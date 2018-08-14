@@ -23,7 +23,8 @@ func printVersion() {
 func main() {
 
 	openShiftRelease := flag.String("release", "v3.10", "The OpenShift release")
-	masterPublicURL := flag.String("masterPublicURL", "", "The public URL of the master")
+	masterPublicURL := flag.String("masterPublicURL", "", "The public URL of the master when using Launcher")
+	deploymentType := flag.String("deploymentType", "", "The default deployment type")
 	flag.Parse()
 
 	printVersion()
@@ -39,6 +40,6 @@ func main() {
 	resyncPeriod := 0
 	logrus.Infof("Watching resource %s, kind %s, namespace %s, resyncPeriod %d", resource, kind, namespace, resyncPeriod)
 	sdk.Watch(resource, kind, namespace, resyncPeriod)
-	sdk.Handle(stub.NewHandler(*openShiftRelease, *masterPublicURL))
+	sdk.Handle(stub.NewHandler(*openShiftRelease, *masterPublicURL, *deploymentType))
 	sdk.Run(context.TODO())
 }
