@@ -13,24 +13,28 @@ required = [
 ]
 
 [[override]]
+  name = "k8s.io/gengo"
+  revision = "01a732e01d00cb9a81bb0ca050d3e6d2b947927b"
+
+[[override]]
   name = "k8s.io/code-generator"
-  # revision for tag "kubernetes-1.10.1"
-  revision = "7ead8f38b01cf8653249f5af80ce7b2c8aba12e2"
+  source = "https://github.com/openshift/kubernetes-code-generator.git"
+  branch = "origin-3.10-kubernetes-1.10.2"
 
 [[override]]
   name = "k8s.io/api"
-  # revision for tag "kubernetes-1.10.1"
-  revision = "73d903622b7391f3312dcbac6483fed484e185f8"
+  source = "https://github.com/openshift/kubernetes-api.git"
+  branch = "origin-3.10-kubernetes-1.10.2"
 
 [[override]]
   name = "k8s.io/apimachinery"
-  # revision for tag "kubernetes-1.10.1"
-  revision = "302974c03f7e50f16561ba237db776ab93594ef6"
+  source = "https://github.com/openshift/kubernetes-apimachinery.git"
+  branch = "origin-3.10-kubernetes-1.10.2"
 
 [[override]]
   name = "k8s.io/client-go"
-  # revision for tag "kubernetes-1.10.1"
-  revision = "989be4278f353e42f26c416c53757d16fcff77db"
+  source = "https://github.com/openshift/kubernetes-client-go.git"
+  branch = "origin-3.10-kubernetes-1.10.2"
 
 [[constraint]]
   name = "github.com/operator-framework/operator-sdk"

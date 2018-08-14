@@ -27,7 +27,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/imdario/mergo"
 
-	"k8s.io/api/core/v1"
 	restclient "k8s.io/client-go/rest"
 	clientauth "k8s.io/client-go/tools/auth"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -36,22 +35,13 @@ import (
 var (
 	// ClusterDefaults has the same behavior as the old EnvVar and DefaultCluster fields
 	// DEPRECATED will be replaced
-	ClusterDefaults = clientcmdapi.Cluster{Server: getDefaultServer()}
+	ClusterDefaults = clientcmdapi.Cluster{Server: os.Getenv("KUBERNETES_MASTER")}
 	// DefaultClientConfig represents the legacy behavior of this package for defaulting
 	// DEPRECATED will be replace
 	DefaultClientConfig = DirectClientConfig{*clientcmdapi.NewConfig(), "", &ConfigOverrides{
 		ClusterDefaults: ClusterDefaults,
 	}, nil, NewDefaultClientConfigLoadingRules(), promptedCredentials{}}
 )
-
-// getDefaultServer returns a default setting for DefaultClientConfig
-// DEPRECATED
-func getDefaultServer() string {
-	if server := os.Getenv("KUBERNETES_MASTER"); len(server) > 0 {
-		return server
-	}
-	return "http://localhost:8080"
-}
 
 // ClientConfig is used to make it easy to get an api server client
 type ClientConfig interface {
@@ -98,6 +88,26 @@ func NewNonInteractiveClientConfig(config clientcmdapi.Config, contextName strin
 // NewInteractiveClientConfig creates a DirectClientConfig using the passed context name and a reader in case auth information is not provided via files or flags
 func NewInteractiveClientConfig(config clientcmdapi.Config, contextName string, overrides *ConfigOverrides, fallbackReader io.Reader, configAccess ConfigAccess) ClientConfig {
 	return &DirectClientConfig{config, contextName, overrides, fallbackReader, configAccess, promptedCredentials{}}
+}
+
+// NewClientConfigFromBytes takes your kubeconfig and gives you back a ClientConfig
+func NewClientConfigFromBytes(configBytes []byte) (ClientConfig, error) {
+	config, err := Load(configBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DirectClientConfig{*config, "", &ConfigOverrides{}, nil, nil, promptedCredentials{}}, nil
+}
+
+// RESTConfigFromKubeConfig is a convenience method to give back a restconfig from your kubeconfig bytes.
+// For programmatic access, this is what you want 80% of the time
+func RESTConfigFromKubeConfig(configBytes []byte) (*restclient.Config, error) {
+	clientConfig, err := NewClientConfigFromBytes(configBytes)
+	if err != nil {
+		return nil, err
+	}
+	return clientConfig.ClientConfig()
 }
 
 func (config *DirectClientConfig) RawConfig() (clientcmdapi.Config, error) {
@@ -318,7 +328,7 @@ func (config *DirectClientConfig) Namespace() (string, bool, error) {
 	}
 
 	if len(configContext.Namespace) == 0 {
-		return v1.NamespaceDefault, false, nil
+		return "default", false, nil
 	}
 
 	return configContext.Namespace, false, nil

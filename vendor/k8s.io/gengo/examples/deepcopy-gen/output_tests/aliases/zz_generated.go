@@ -51,9 +51,11 @@ func (in AliasInterfaceSlice) DeepCopyInto(out *AliasInterfaceSlice) {
 	{
 		in := &in
 		*out = make(AliasInterfaceSlice, len(*in))
-		for i := range *in {
-			if (*in)[i] != nil {
-				(*out)[i] = (*in)[i].DeepCopyAliasInterface()
+		for key, val := range *in {
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				(*out)[key] = val.DeepCopyAliasInterface()
 			}
 		}
 		return
@@ -294,13 +296,21 @@ func (in *Ttest) DeepCopyInto(out *Ttest) {
 	}
 	if in.Pointer != nil {
 		in, out := &in.Pointer, &out.Pointer
-		*out = new(int)
-		**out = **in
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(int)
+			**out = **in
+		}
 	}
 	if in.PointerAlias != nil {
 		in, out := &in.PointerAlias, &out.PointerAlias
-		*out = new(Builtin)
-		**out = **in
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(Builtin)
+			**out = **in
+		}
 	}
 	out.Struct = in.Struct
 	if in.Map != nil {
@@ -325,15 +335,12 @@ func (in *Ttest) DeepCopyInto(out *Ttest) {
 		in, out := &in.MapSlice, &out.MapSlice
 		*out = make(map[string]Slice, len(*in))
 		for key, val := range *in {
-			var outVal []int
 			if val == nil {
 				(*out)[key] = nil
 			} else {
-				in, out := &val, &outVal
-				*out = make(Slice, len(*in))
-				copy(*out, *in)
+				(*out)[key] = make([]int, len(val))
+				copy((*out)[key], val)
 			}
-			(*out)[key] = outVal
 		}
 	}
 	out.FooAlias = in.FooAlias
@@ -344,8 +351,12 @@ func (in *Ttest) DeepCopyInto(out *Ttest) {
 	}
 	if in.FooPointer != nil {
 		in, out := &in.FooPointer, &out.FooPointer
-		*out = new(Foo)
-		**out = **in
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(Foo)
+			**out = **in
+		}
 	}
 	if in.FooMap != nil {
 		in, out := &in.FooMap, &out.FooMap
@@ -361,8 +372,12 @@ func (in *Ttest) DeepCopyInto(out *Ttest) {
 	}
 	if in.AliasPointer != nil {
 		in, out := &in.AliasPointer, &out.AliasPointer
-		*out = new(int)
-		**out = **in
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(int)
+			**out = **in
+		}
 	}
 	out.AliasStruct = in.AliasStruct
 	if in.AliasMap != nil {
@@ -372,10 +387,14 @@ func (in *Ttest) DeepCopyInto(out *Ttest) {
 			(*out)[key] = val
 		}
 	}
-	if in.AliasInterface != nil {
+	if in.AliasInterface == nil {
+		out.AliasInterface = nil
+	} else {
 		out.AliasInterface = in.AliasInterface.DeepCopyAliasInterface()
 	}
-	if in.AliasAliasInterface != nil {
+	if in.AliasAliasInterface == nil {
+		out.AliasAliasInterface = nil
+	} else {
 		out.AliasAliasInterface = in.AliasAliasInterface.DeepCopyAliasAliasInterface()
 	}
 	if in.AliasInterfaceMap != nil {
@@ -392,9 +411,11 @@ func (in *Ttest) DeepCopyInto(out *Ttest) {
 	if in.AliasInterfaceSlice != nil {
 		in, out := &in.AliasInterfaceSlice, &out.AliasInterfaceSlice
 		*out = make(AliasInterfaceSlice, len(*in))
-		for i := range *in {
-			if (*in)[i] != nil {
-				(*out)[i] = (*in)[i].DeepCopyAliasInterface()
+		for key, val := range *in {
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				(*out)[key] = val.DeepCopyAliasInterface()
 			}
 		}
 	}

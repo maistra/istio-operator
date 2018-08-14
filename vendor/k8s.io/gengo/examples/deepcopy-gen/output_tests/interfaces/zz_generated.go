@@ -27,7 +27,9 @@ func (in *Ttest) DeepCopyInto(out *Ttest) {
 		in, out := &in.I, &out.I
 		*out = make([]Inner, len(*in))
 		for i := range *in {
-			if (*in)[i] != nil {
+			if (*in)[i] == nil {
+				(*out)[i] = nil
+			} else {
 				(*out)[i] = (*in)[i].DeepCopyInner()
 			}
 		}

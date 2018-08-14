@@ -112,6 +112,13 @@ func NewRESTMapper(groupResources []*APIGroupResources, versionInterfaces meta.V
 				versionMapper.AddSpecific(gv.WithKind(strings.ToLower(resource.Kind)), plural, singular, scope)
 				// TODO this is producing unsafe guesses that don't actually work, but it matches previous behavior
 				versionMapper.Add(gv.WithKind(resource.Kind+"List"), scope)
+
+				if isOAPIResource(plural) {
+					oapiGV := schema.GroupVersion{Version: "v1"}
+					versionMapper.AddSpecific(oapiGV.WithKind(resource.Kind), plural, singular, scope)
+					// TODO this is producing unsafe guesses that don't actually work, but it matches previous behavior
+					versionMapper.Add(oapiGV.WithKind(resource.Kind+"List"), scope)
+				}
 			}
 			// TODO why is this type not in discovery (at least for "v1")
 			versionMapper.Add(gv.WithKind("List"), meta.RESTScopeRoot)
@@ -144,7 +151,10 @@ func NewRESTMapper(groupResources []*APIGroupResources, versionInterfaces meta.V
 func GetAPIGroupResources(cl DiscoveryInterface) ([]*APIGroupResources, error) {
 	apiGroups, err := cl.ServerGroups()
 	if err != nil {
-		return nil, err
+		if apiGroups == nil || len(apiGroups.Groups) == 0 {
+			return nil, err
+		}
+		// TODO track the errors and update callers to handle partial errors.
 	}
 	var result []*APIGroupResources
 	for _, group := range apiGroups.Groups {
@@ -157,7 +167,9 @@ func GetAPIGroupResources(cl DiscoveryInterface) ([]*APIGroupResources, error) {
 			if err != nil {
 				// continue as best we can
 				// TODO track the errors and update callers to handle partial errors.
-				continue
+				if resources == nil || len(resources.APIResources) == 0 {
+					continue
+				}
 			}
 			groupResources.VersionedResources[version.Version] = resources.APIResources
 		}

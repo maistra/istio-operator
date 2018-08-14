@@ -6,7 +6,6 @@ spec:
   group: istio.openshift.com
   names:
     kind: Installation
-    listKind: InstallationList
     plural: installations
     singular: installation
   scope: Namespaced

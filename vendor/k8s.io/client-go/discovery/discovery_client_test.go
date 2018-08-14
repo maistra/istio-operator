@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package discovery_test
+package discovery
 
 import (
 	"encoding/json"
@@ -23,7 +23,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/googleapis/gnostic/OpenAPIv2"
@@ -32,7 +34,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/version"
-	. "k8s.io/client-go/discovery"
 	restclient "k8s.io/client-go/rest"
 )
 
@@ -127,6 +128,32 @@ func TestGetServerGroupsWithBrokenServer(t *testing.T) {
 		if len(groupVersions) != 0 {
 			t.Errorf("expected empty list, got: %q", groupVersions)
 		}
+	}
+}
+func TestGetServerGroupsWithTimeout(t *testing.T) {
+	done := make(chan bool)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// first we need to write headers, otherwise http client will complain about
+		// exceeding timeout awaiting headers, only after we can block the call
+		w.Header().Set("Connection", "keep-alive")
+		if wf, ok := w.(http.Flusher); ok {
+			wf.Flush()
+		}
+		<-done
+	}))
+	defer server.Close()
+	defer close(done)
+	client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL, Timeout: 2 * time.Second})
+	_, err := client.ServerGroups()
+	// the error we're getting here is wrapped in errors.errorString which makes
+	// it impossible to unwrap and check it's attributes, so instead we're checking
+	// the textual output which is presenting http.httpError with timeout set to true
+	if err == nil {
+		t.Fatal("missing error")
+	}
+	if !strings.Contains(err.Error(), "timeout:true") &&
+		!strings.Contains(err.Error(), "context.deadlineExceededError") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

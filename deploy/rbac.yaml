@@ -19,6 +19,7 @@ rules:
   - events
   - configmaps
   - secrets
+  - securitycontextconstraints
   verbs:
   - "*"
 - apiGroups:
@@ -39,8 +40,24 @@ metadata:
   name: default-account-istio-operator
 subjects:
 - kind: ServiceAccount
+  namespace: istio-operator
   name: default
 roleRef:
   kind: Role
   name: istio-operator
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: default-account-istio-operator-cluster-role-binding
+subjects:
+- kind: ServiceAccount
+  namespace: istio-operator
+  name: default
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
   apiGroup: rbac.authorization.k8s.io
