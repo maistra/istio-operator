@@ -34,10 +34,12 @@ const (
 	istioInstalledState = "Istio Installer Job Created"
 )
 
-func NewHandler(openShiftRelease string, masterPublicURL, deploymentType string) sdk.Handler {
+func NewHandler(openShiftRelease string, masterPublicURL, istioPrefix, istioVersion, deploymentType string) sdk.Handler {
 	return &Handler{
 		openShiftRelease: openShiftRelease,
 		masterPublicURL: masterPublicURL,
+		istioPrefix: istioPrefix,
+		istioVersion: istioVersion,
 		deploymentType: deploymentType,
 	}
 }
@@ -46,8 +48,10 @@ type Handler struct {
 	name string
 	// It is likely possible to determine these at runtime, we should investigate
 	openShiftRelease string
-	masterPublicURL string
-	deploymentType string
+	masterPublicURL  string
+	istioPrefix      string
+	istioVersion     string
+	deploymentType   string
 }
 
 func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
@@ -149,6 +153,8 @@ func (h *Handler) updateItems(items []sdk.Object) error {
 func (h *Handler) getIstioImagePrefix(cr *v1alpha1.Installation) string {
 	if cr.Spec != nil && cr.Spec.Istio != nil && cr.Spec.Istio.Prefix != nil {
 		return *cr.Spec.Istio.Prefix
+	} else if h.istioPrefix != "" {
+		return h.istioPrefix
 	} else {
 		return defaultIstioPrefix
 	}
@@ -157,6 +163,8 @@ func (h *Handler) getIstioImagePrefix(cr *v1alpha1.Installation) string {
 func (h *Handler) getIstioImageVersion(cr *v1alpha1.Installation) string {
 	if cr.Spec != nil && cr.Spec.Istio != nil && cr.Spec.Istio.Version != nil {
 		return *cr.Spec.Istio.Version
+	} else if h.istioVersion != "" {
+		return h.istioVersion
 	} else {
 		return defaultIstioVersion
 	}
