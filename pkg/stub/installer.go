@@ -77,7 +77,7 @@ func (h *Handler) addJaegerInstallerConfiguration(b *bytes.Buffer, jaeger *v1alp
 
 func (h *Handler) addLauncherInstallerConfiguration(b *bytes.Buffer, launcher *v1alpha1.LauncherSpec) {
 	if launcher != nil {
-		addStringValue(b,"openshift_istio_install_launcher=", "true")
+		addBooleanValue(b,"openshift_istio_install_launcher=", true)
 		addStringPtrValue(b,"openshift_istio_master_public_url=", h.getMasterPublicURL())
 		if launcher.OpenShift != nil {
 			addStringPtrValue(b,"launcher_openshift_user=", launcher.OpenShift.User)

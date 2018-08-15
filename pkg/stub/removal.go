@@ -29,7 +29,7 @@ func (h *Handler) getRemovalInventory(cr *v1alpha1.Installation) string {
 masters
 
 [OSEv3:vars]
-openshift_istio_install=false`)
+openshift_istio_install=False`)
 	b.WriteString(newline)
 	addStringValue(&b, "openshift_release=", h.getOpenShiftRelease())
 
