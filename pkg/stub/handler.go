@@ -64,6 +64,9 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 		if o.Name == istioInstallerCRName {
 			if event.Deleted {
 				logrus.Infof("Removing the Istio installation")
+				if err := ensureProjectAndServiceAccount() ; err != nil {
+					return err
+				}
 				removalJob := h.getRemovalJob(o)
 				h.deleteJob(removalJob)
 				installerJob := h.getInstallerJob(o)
