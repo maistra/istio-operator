@@ -5,6 +5,7 @@ import (
 
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"bytes"
+	"k8s.io/api/batch/v1"
 )
 
 const (
@@ -12,8 +13,8 @@ const (
 	removalJobName = "openshift-ansible-istio-removal-job"
 )
 
-func (h *Handler) removalJobExists() bool {
-	return h.jobExists(removalJobName, namespace)
+func (h *Handler) getRemovalJob(cr *v1alpha1.Installation) *v1.Job {
+	return h.getJob(removalJobName, namespace)
 }
 
 func (h *Handler) newRemovalJobItems(cr *v1alpha1.Installation) []sdk.Object {

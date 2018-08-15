@@ -5,6 +5,7 @@ import (
 
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"bytes"
+	"k8s.io/api/batch/v1"
 )
 
 const (
@@ -12,8 +13,8 @@ const (
 	installerJobName = "openshift-ansible-istio-installer-job"
 )
 
-func (h *Handler) installerJobExists() bool {
-	return h.jobExists(installerJobName, namespace)
+func (h *Handler) getInstallerJob(cr *v1alpha1.Installation) *v1.Job {
+	return h.getJob(installerJobName, namespace)
 }
 
 func (h *Handler) newInstallerJobItems(cr *v1alpha1.Installation) []sdk.Object {

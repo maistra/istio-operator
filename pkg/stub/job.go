@@ -9,8 +9,8 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 )
 
-func (h *Handler) jobExists(name, namespace string) bool {
-	job := &v1.Job{
+func (h *Handler) getJob(name, namespace string) *v1.Job {
+	return &v1.Job{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Job",
 			APIVersion: "batch/v1",
@@ -20,9 +20,6 @@ func (h *Handler) jobExists(name, namespace string) bool {
 			Namespace: namespace,
 		},
 	}
-
-	err := sdk.Get(job)
-	return err == nil
 }
 
 func (h *Handler) newJobItems(cr *v1alpha1.Installation, jobName, configMapName, namespace, configMapContent string) []sdk.Object {

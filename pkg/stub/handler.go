@@ -9,6 +9,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"bytes"
 	"reflect"
+	batchv1	"k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -60,19 +64,14 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 		if o.Name == istioInstallerCRName {
 			if event.Deleted {
 				logrus.Infof("Removing the Istio installation")
-				installItems := h.newInstallerJobItems(o)
-				h.deleteItems(installItems)
+				removalJob := h.getRemovalJob(o)
+				h.deleteJob(removalJob)
+				installerJob := h.getInstallerJob(o)
+				h.deleteJob(installerJob)
 				items := h.newRemovalJobItems(o)
-				if h.removalJobExists() {
-					if err := h.updateItems(items); err != nil {
-						logrus.Errorf("Failed to update the istio removal job: %v", err)
-						return err
-					}
-				} else {
-					if err := h.createItems(items); err != nil {
-						logrus.Errorf("Failed to create the istio removal job: %v", err)
-						return err
-					}
+				if err := h.createItems(items); err != nil {
+					logrus.Errorf("Failed to create the istio removal job: %v", err)
+					return err
 				}
 			} else {
 				if o.Status != nil && o.Status.State != nil {
@@ -90,17 +89,14 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 				if err := ensureProjectAndServiceAccount() ; err != nil {
 					return err
 				}
+				installerJob := h.getInstallerJob(o)
+				h.deleteJob(installerJob)
+				removalJob := h.getRemovalJob(o)
+				h.deleteJob(removalJob)
 				items := h.newInstallerJobItems(o)
-				if h.installerJobExists() {
-					if err := h.updateItems(items); err != nil {
-						logrus.Errorf("Failed to update the istio installer job: %v", err)
-						return err
-					}
-				} else {
-					if err := h.createItems(items); err != nil {
-						logrus.Errorf("Failed to create the istio installer job: %v", err)
-						return err
-					}
+				if err := h.createItems(items); err != nil {
+					logrus.Errorf("Failed to create the istio installer job: %v", err)
+					return err
 				}
 				state := istioInstalledState
 				if o.Status == nil {
@@ -123,26 +119,55 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 	return nil
 }
 
+func (h *Handler) deleteJob(job *batchv1.Job) {
+	err := sdk.Get(job) ; if err == nil {
+		uid := job.UID
+		var parallelism int32 = 0
+		job.Spec.Parallelism = &parallelism
+		sdk.Update(job)
+		podList := corev1.PodList{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Pod",
+				APIVersion: "v1",
+			},
+		}
+
+		labelSelector := labels.SelectorFromSet(labels.Set(map[string]string{"controller-uid": string(uid)}))
+		listOptions := sdk.WithListOptions(&metav1.ListOptions{
+			LabelSelector:        labelSelector.String(),
+			IncludeUninitialized: false,
+		})
+
+		err := sdk.List(namespace, &podList, listOptions) ; if err == nil {
+			for _, pod := range podList.Items {
+				sdk.Delete(&pod)
+			}
+			orphanDependents := false
+			sdk.Delete(job, sdk.WithDeleteOptions(&metav1.DeleteOptions{OrphanDependents: &orphanDependents}))
+		}
+	}
+}
+
+func (h *Handler) deleteItem(object sdk.Object) {
+	switch item := object.(type) {
+	case *batchv1.Job:
+		h.deleteJob(item)
+	default:
+		sdk.Delete(item)
+	}
+}
+
 func (h *Handler) deleteItems(items []sdk.Object) {
 	lastItem := len(items)-1
 	for i := range items {
-		sdk.Delete(items[lastItem-i])
+		item:= items[lastItem-i]
+		h.deleteItem(item)
 	}
 }
 
 func (h *Handler) createItems(items []sdk.Object) error {
 	for _, item := range items {
 		if err := sdk.Create(item); err != nil {
-			h.deleteItems(items)
-			return err
-		}
-	}
-	return nil
-}
-
-func (h *Handler) updateItems(items []sdk.Object) error {
-	for _, item := range items {
-		if err := sdk.Update(item); err != nil {
 			h.deleteItems(items)
 			return err
 		}
