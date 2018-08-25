@@ -40,7 +40,7 @@ openshift_istio_install=True`)
 	if cr.Spec != nil {
 		h.addIstioInstallerConfiguration(&b, cr.Spec.Istio)
 		h.addJaegerInstallerConfiguration(&b, cr.Spec.Jaeger)
-		//h.addKialiInstallerConfiguration(&b, cr.Spec.Kiali)
+		h.addKialiInstallerConfiguration(&b, cr.Spec.Kiali)
 		h.addLauncherInstallerConfiguration(&b, cr.Spec.Launcher)
 	}
 
@@ -66,14 +66,14 @@ func (h *Handler) addJaegerInstallerConfiguration(b *bytes.Buffer, jaeger *v1alp
 	}
 }
 
-//func (h *Handler) addKialiInstallerConfiguration(b *bytes.Buffer, kiali *v1alpha1.KialiSpec) {
-//	if kiali != nil {
-//		addStringPtrValue(b,"openshift_istio_kiali_image_prefix=", kiali.Prefix)
-//		addStringPtrValue(b,"openshift_istio_kiali_image_version=", kiali.Version)
-//		addStringPtrValue(b,"openshift_istio_kiali_username=", kiali.Username)
-//		addStringPtrValue(b,"openshift_istio_kiali_password=", kiali.Password)
-//	}
-//}
+func (h *Handler) addKialiInstallerConfiguration(b *bytes.Buffer, kiali *v1alpha1.KialiSpec) {
+	if kiali != nil {
+		addStringPtrValue(b,"openshift_istio_kiali_image_prefix=", kiali.Prefix)
+		addStringPtrValue(b,"openshift_istio_kiali_image_version=", kiali.Version)
+		addStringPtrValue(b,"openshift_istio_kiali_username=", kiali.Username)
+		addStringPtrValue(b,"openshift_istio_kiali_password=", kiali.Password)
+	}
+}
 
 func (h *Handler) addLauncherInstallerConfiguration(b *bytes.Buffer, launcher *v1alpha1.LauncherSpec) {
 	if launcher != nil {

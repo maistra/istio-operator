@@ -17,7 +17,7 @@ type InstallationSpec struct {
 	DeploymentType *string `json:"deployment_type,omitempty"`    // "origin"
 	Istio    *IstioSpec    `json:"istio,omitempty"`
 	Jaeger   *JaegerSpec   `json:"jaeger,omitempty"`
-	//Kiali    *KialiSpec    `json:"kiali,omitempty"`
+	Kiali    *KialiSpec    `json:"kiali,omitempty"`
 	Launcher *LauncherSpec `json:"launcher,omitempty"`
 }
 
@@ -34,12 +34,12 @@ type JaegerSpec struct {
 	ElasticsearchMemory *string `json:"elasticsearch_memory,omitempty"`  // 1Gi
 }
 
-//type KialiSpec struct {
-//	Username *string `json:"username,omitempty"`
-//	Password *string `json:"password,omitempty"`
-//	Prefix   *string `json:"prefix,omitempty"`    // "kiali/"
-//	Version  *string `json:"version,omitempty"`   // "v0.5.0"
-//}
+type KialiSpec struct {
+	Username *string `json:"username,omitempty"`
+	Password *string `json:"password,omitempty"`
+	Prefix   *string `json:"prefix,omitempty"`    // "kiali/"
+	Version  *string `json:"version,omitempty"`   // "v0.6"
+}
 
 type LauncherSpec struct {
 	OpenShift *OpenShiftSpec `json:"openshift,omitempty"`
