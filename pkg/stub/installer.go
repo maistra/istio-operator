@@ -2,6 +2,7 @@ package stub
 
 import (
 	"github.com/maistra/istio-operator/pkg/apis/istio/v1alpha1"
+	"strings"
 
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"bytes"
@@ -33,7 +34,7 @@ openshift_istio_install=True`)
 	b.WriteString(newline)
 	addStringValue(&b,"openshift_deployment_type=", h.getDeploymentType(cr))
 	addStringValue(&b,"openshift_istio_namespace=", namespace)
-	addStringValue(&b,"openshift_istio_image_prefix=", h.getIstioImagePrefix(cr))
+	addStringValue(&b,"openshift_istio_image_prefix=", h.cleanPrefix(h.getIstioImagePrefix(cr)))
 	addStringValue(&b,"openshift_istio_image_version=", h.getIstioImageVersion(cr))
 	addStringValue(&b, "openshift_release=", h.getOpenShiftRelease())
 
@@ -60,7 +61,7 @@ func (h *Handler) addIstioInstallerConfiguration(b *bytes.Buffer, istio *v1alpha
 
 func (h *Handler) addJaegerInstallerConfiguration(b *bytes.Buffer, jaeger *v1alpha1.JaegerSpec) {
 	if jaeger != nil {
-		addStringPtrValue(b,"openshift_istio_jaeger_image_prefix=", jaeger.Prefix)
+		addStringPtrValue(b,"openshift_istio_jaeger_image_prefix=", h.cleanPrefixPtr(jaeger.Prefix))
 		addStringPtrValue(b,"openshift_istio_jaeger_image_version=", jaeger.Version)
 		addStringPtrValue(b,"openshift_istio_elasticsearch_memory=", jaeger.ElasticsearchMemory)
 	}
@@ -68,7 +69,7 @@ func (h *Handler) addJaegerInstallerConfiguration(b *bytes.Buffer, jaeger *v1alp
 
 func (h *Handler) addKialiInstallerConfiguration(b *bytes.Buffer, kiali *v1alpha1.KialiSpec) {
 	if kiali != nil {
-		addStringPtrValue(b,"openshift_istio_kiali_image_prefix=", kiali.Prefix)
+		addStringPtrValue(b,"openshift_istio_kiali_image_prefix=", h.cleanPrefixPtr(kiali.Prefix))
 		addStringPtrValue(b,"openshift_istio_kiali_image_version=", kiali.Version)
 		addStringPtrValue(b,"openshift_istio_kiali_username=", kiali.Username)
 		addStringPtrValue(b,"openshift_istio_kiali_password=", kiali.Password)
@@ -92,5 +93,30 @@ func (h *Handler) addLauncherInstallerConfiguration(b *bytes.Buffer, launcher *v
 			addStringPtrValue(b,"launcher_catalog_git_branch=", launcher.Catalog.Branch)
 			addStringPtrValue(b,"launcher_booster_catalog_filter=", launcher.Catalog.Filter)
 		}
+	}
+}
+
+// We make the following modifications
+//   namespace -> namespace/
+//   registry/namespace -> registry/namespace
+// We do not modify the following formats
+//   namespace/
+//   registry/namespace/
+//   registry/namespace/prefix
+func (h *Handler) cleanPrefix(prefix string) string {
+	if !strings.HasSuffix(prefix,"/") {
+		if strings.Count(prefix, "/") < 2 {
+			return prefix + "/"
+		}
+	}
+	return prefix
+}
+
+func (h *Handler) cleanPrefixPtr(prefixPtr *string) *string {
+	if prefixPtr != nil {
+		result := h.cleanPrefix(*prefixPtr)
+		return &result
+	} else {
+		return nil
 	}
 }
