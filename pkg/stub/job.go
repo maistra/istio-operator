@@ -79,7 +79,7 @@ func (h *Handler) newJobItems(cr *v1alpha1.Installation, jobName, configMapName,
 								Name: "OPTS",
 								Value: playbookOptions,
 							}},
-							Image: h.getIstioImagePrefix(cr) + h.getDeploymentType(cr) + "-ansible:" + h.getIstioImageVersion(cr),
+							Image: h.cleanPrefix(h.getIstioImagePrefix(cr)) + h.getDeploymentType(cr) + "-ansible:" + h.getIstioImageVersion(cr),
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Name: installerJobName,
 							SecurityContext: &corev1.SecurityContext{
