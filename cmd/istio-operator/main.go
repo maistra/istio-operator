@@ -27,6 +27,7 @@ func main() {
 	istioPrefix := flag.String("istioPrefix", "", "The default istio prefix for images")
 	istioVersion := flag.String("istioVersion", "", "The default istio version for images")
 	deploymentType := flag.String("deploymentType", "", "The default deployment type")
+	alwaysPull := flag.Bool("alwaysPull", false, "Whether to always pull the installer container")
 	flag.Parse()
 
 	printVersion()
@@ -42,6 +43,6 @@ func main() {
 	resyncPeriod := 0
 	logrus.Infof("Watching resource %s, kind %s, namespace %s, resyncPeriod %d", resource, kind, namespace, resyncPeriod)
 	sdk.Watch(resource, kind, namespace, resyncPeriod)
-	sdk.Handle(stub.NewHandler(*openShiftRelease, *masterPublicURL, *istioPrefix, *istioVersion, *deploymentType))
+	sdk.Handle(stub.NewHandler(*openShiftRelease, *masterPublicURL, *istioPrefix, *istioVersion, *deploymentType, *alwaysPull))
 	sdk.Run(context.TODO())
 }

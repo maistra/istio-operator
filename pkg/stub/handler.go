@@ -38,13 +38,14 @@ const (
 	istioInstalledState = "Istio Installer Job Created"
 )
 
-func NewHandler(openShiftRelease string, masterPublicURL, istioPrefix, istioVersion, deploymentType string) sdk.Handler {
+func NewHandler(openShiftRelease string, masterPublicURL, istioPrefix, istioVersion, deploymentType string, alwaysPull bool) sdk.Handler {
 	return &Handler{
 		openShiftRelease: openShiftRelease,
 		masterPublicURL: masterPublicURL,
 		istioPrefix: istioPrefix,
 		istioVersion: istioVersion,
 		deploymentType: deploymentType,
+		alwaysPull: alwaysPull,
 	}
 }
 
@@ -56,6 +57,7 @@ type Handler struct {
 	istioPrefix      string
 	istioVersion     string
 	deploymentType   string
+	alwaysPull       bool
 }
 
 func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
@@ -205,6 +207,14 @@ func (h *Handler) getDeploymentType(cr *v1alpha1.Installation) string {
 		return h.deploymentType
 	} else {
 		return defaultDeploymentType
+	}
+}
+
+func (h *Handler) getAlwaysPull() corev1.PullPolicy {
+	if h.alwaysPull {
+		return corev1.PullAlways
+	} else {
+		return corev1.PullIfNotPresent
 	}
 }
 
