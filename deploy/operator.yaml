@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: istio-operator
-          image: maistra/istio-operator-centos7:0.3.0
+          image: maistra/istio-operator-centos7:0.4.0
           command:
           - istio-operator
           imagePullPolicy: Always
