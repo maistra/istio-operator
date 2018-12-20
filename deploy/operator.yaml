@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: istio-operator
-          image: maistra/istio-operator-centos7:0.5.0
+          image: maistra/istio-operator-centos7:0.6.0
           ports:
           - containerPort: 60000
             name: metrics
