@@ -1,0 +1,27 @@
+{{ if eq .Values.provider "jaeger" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticsearch-conf
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: elasticsearch
+    chart: {{ template "tracing.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+data:
+  elasticsearch.yml: |
+    cluster:
+      name: elasticsearch
+    node:
+      name: ${HOSTNAME}
+    network:
+      host: 0.0.0.0
+    discovery:
+      zen.ping.unicast.hosts: elasticsearch-cluster
+      zen.minimum_master_nodes: 1
+    path:
+      data: /elasticsearch/persistent/elasticsearch/data
+      logs: /elasticsearch/logs
+
+{{ end }}

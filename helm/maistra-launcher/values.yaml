@@ -1,0 +1,93 @@
+enabled: false
+
+# Your GitHub username (leave empty when using Keycloak)
+LAUNCHER_MISSIONCONTROL_GITHUB_USERNAME:
+
+# Your GitHub Mission Control access token (leave empty when using Keycloak)
+LAUNCHER_MISSIONCONTROL_GITHUB_TOKEN:
+
+# The base URL of the OpenShift API where the launched boosters
+# should be created (ie. https://hostname[:port] or https://ipaddress[:port]).
+# Leave the default value when targetting the same OpenShift/Minishift you are
+# running this on
+LAUNCHER_MISSIONCONTROL_OPENSHIFT_API_URL: "https://kubernetes.default.svc.cluster.local"
+
+# The base URL of the OpenShift Console where the launched boosters
+# should be created (ie. https://hostname[:port] or https://ipaddress[:port]).
+# When targetting the same OpenShift/Minishift instance you are running this on you
+# can most likely look at this page's address bar of your browser and copy the URL
+# Example value (https://$HOSTNAMEORIP:8443)
+LAUNCHER_MISSIONCONTROL_OPENSHIFT_CONSOLE_URL:
+
+# OpenShift access token
+LAUNCHER_MISSIONCONTROL_OPENSHIFT_TOKEN:
+
+# The URL (with the /auth part) of a Keycloak installation to perform SSO
+# authentication (leave empty if you've explicitly specified GItHub/OpenShift
+# authentication above)
+LAUNCHER_KEYCLOAK_URL:
+
+# The keycloak realm to be used (leave empty if you've explicitly specified
+# GitHub/OpenShift authentication above)
+LAUNCHER_KEYCLOAK_REALM:
+
+# The token to use for Segment tracking. Leaving this empty will disable
+# tracking. This must be set to the proper tokens for staging and production!
+LAUNCHER_TRACKER_SEGMENT_TOKEN:
+
+# The GitHub repository containing the booster catalog
+LAUNCHER_BOOSTER_CATALOG_REPOSITORY: "https://github.com/fabric8-launcher/launcher-booster-catalog.git"
+
+# The Git reference to use for the above repository
+LAUNCHER_BOOSTER_CATALOG_REF: v85
+
+# Optional expression to filter a subset of boosters for the above repository (eg. booster.mission.id == 'rest-http')
+LAUNCHER_BACKEND_CATALOG_FILTER: booster.mission.metadata.istio
+
+# A token that must be passed to the catalog reindex service to trigger the catalog
+# reindexing.
+LAUNCHER_BACKEND_CATALOG_REINDEX_TOKEN:
+
+# The environment where this backend is running. This is used in the environment section
+# in the booster catalog entries. Leaving this empty will set the value to 'development' if the
+# 'Catalog Git Reference' is set to 'master', in any other case the value will default to 'production'.
+LAUNCHER_BACKEND_ENVIRONMENT:
+
+BACKEND_IMAGE: fabric8/launcher-backend
+BACKEND_IMAGE_TAG: ab535bc
+
+# CPU request
+BACKEND_CPU_REQUEST: "10m"
+
+# CPU limit
+BACKEND_CPU_LIMIT: "1000m"
+
+# Memory request
+BACKEND_MEMORY_REQUEST: "768Mi"
+
+# Memory limit
+BACKEND_MEMORY_LIMIT: "2G"
+
+# Number of deployment replicas
+BACKEND_REPLICAS: "1"
+
+FRONTEND_IMAGE: fabric8/launcher-frontend
+FRONTEND_IMAGE_TAG: 4571dfc
+
+# CPU request
+FRONTEND_CPU_REQUEST: "10m"
+
+# CPU limit
+FRONTEND_CPU_LIMIT: "50m"
+
+# Memory request
+FRONTEND_MEMORY_REQUEST: "8M"
+
+# Memory limit
+FRONTEND_MEMORY_LIMIT: "64M"
+
+# Number of deployment replicas
+FRONTEND_REPLICAS: "1"
+
+CONTROLLER_IMAGE: fabric8/configmapcontroller
+CONTROLLER_IMAGE_TAG: "2.3.7"
