@@ -12,6 +12,7 @@ spec:
       labels:
         name: istio-operator
     spec:
+      serviceAccountName: istio-operator
       containers:
         - name: istio-operator
           image: maistra/istio-operator-centos7:0.10.0
@@ -21,10 +22,20 @@ spec:
           command:
           - istio-operator
           imagePullPolicy: Always
+          readinessProbe:
+            exec:
+              command:
+                - stat
+                - /tmp/operator-sdk-ready
+            initialDelaySeconds: 4
+            periodSeconds: 10
+            failureThreshold: 1
           env:
             - name: WATCH_NAMESPACE
+              value: istio-system
+            - name: POD_NAME
               valueFrom:
                 fieldRef:
-                  fieldPath: metadata.namespace
+                  fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "istio-operator"

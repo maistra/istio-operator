@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: threescale-istio-adapter
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: 3scale-istio-adapter
+    chart: {{ template "threescale.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/scheme: http
+    prometheus.io/path: /metrics
+    prometheus.io/port: "{{ .Values.PARAM_THREESCALE_METRICS_PORT }}"
+spec:
+  ports:
+    - port: {{ .Values.PARAM_THREESCALE_LISTEN_ADDR }}
+      targetPort: {{ .Values.PARAM_THREESCALE_LISTEN_ADDR }}
+      name: adapter
+    - port: {{ .Values.PARAM_THREESCALE_METRICS_PORT }}
+      targetPort: {{ .Values.PARAM_THREESCALE_METRICS_PORT }}
+      name: prometheus
+  selector:
+    app: 3scale-istio-adapter

@@ -1,0 +1,80 @@
+apiVersion: istio.openshift.com/v1alpha3
+kind: ControlPlane
+metadata:
+  name: basic-install
+spec:
+  launcher:
+    enabled: false
+    # specify the url to master, e.g. https://master.some.domain.com:443
+    LAUNCHER_MISSIONCONTROL_OPENSHIFT_CONSOLE_URL: 
+    # Your GitHub username
+    LAUNCHER_MISSIONCONTROL_GITHUB_USERNAME:
+    # Your GitHub Mission Control access token
+    LAUNCHER_MISSIONCONTROL_GITHUB_TOKEN:
+
+  threeScale:
+    enabled: false
+
+  istio:
+    global:
+      controlPlaneSecurityEnabled: true
+      mtls:
+        enabled: true
+      proxy:
+        autoInject: disabled
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 128Mi
+
+    gateways:
+      istio-egressgateway:
+        enabled: true
+        autoscaleEnabled: false
+      istio-ingressgateway:
+        autoscaleEnabled: false
+
+    mixer:
+      policy:
+        autoscaleEnabled: false
+
+      telemetry:
+        autoscaleEnabled: false
+        resources:
+          requests:
+            cpu: 100m
+            memory: 1G
+          limits:
+            cpu: 500m
+            memory: 4G
+
+    pilot:
+      autoscaleEnabled: false
+      traceSampling: 100.0
+
+    sidecarInjectorWebhook:
+      enabled: true
+      enableNamespacesByDefault: true
+
+    grafana:
+      enabled: true
+      ingress:
+        enabled: true
+
+    tracing:
+      enabled: true
+      ingress:
+        enabled: true
+
+    kiali:
+      enabled: true
+      hub: kiali
+      tag: v0.15.0
+      ingress:
+        enabled: true
+      dashboard:
+        user: admin
+        passphrase: admin

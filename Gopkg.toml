@@ -10,6 +10,7 @@ required = [
   "k8s.io/code-generator/cmd/informer-gen",
   "k8s.io/code-generator/cmd/openapi-gen",
   "k8s.io/gengo/args",
+  "k8s.io/helm/cmd/helm",
 ]
 
 [[override]]
@@ -19,25 +20,84 @@ required = [
 [[override]]
   name = "k8s.io/code-generator"
   source = "https://github.com/openshift/kubernetes-code-generator.git"
-  branch = "origin-3.10-kubernetes-1.10.2"
+  branch = "origin-3.11-kubernetes-1.11.1"
+
+[[override]]
+  name = "k8s.io/kubernetes"
+  source = "https://github.com/openshift/kubernetes.git"
+  branch = "origin-3.11-kubernetes-1.11.1"
 
 [[override]]
   name = "k8s.io/api"
   source = "https://github.com/openshift/kubernetes-api.git"
-  branch = "origin-3.10-kubernetes-1.10.2"
+  branch = "origin-3.11-kubernetes-1.11.1"
+
+[[override]]
+  name = "k8s.io/apiextensions-apiserver"
+  source = "https://github.com/openshift/kubernetes-apiextensions-apiserver.git"
+  branch = "origin-3.11-kubernetes-1.11.1"
 
 [[override]]
   name = "k8s.io/apimachinery"
   source = "https://github.com/openshift/kubernetes-apimachinery.git"
-  branch = "origin-3.10-kubernetes-1.10.2"
+  branch = "origin-3.11-kubernetes-1.11.1"
+
+[[override]]
+  name = "k8s.io/apiserver"
+  source = "https://github.com/openshift/kubernetes-apiserver.git"
+  branch = "origin-3.11-kubernetes-1.11.1"
 
 [[override]]
   name = "k8s.io/client-go"
   source = "https://github.com/openshift/kubernetes-client-go.git"
-  branch = "origin-3.10-kubernetes-1.10.2"
+  branch = "origin-3.11-kubernetes-1.11.1"
+
+[[override]]
+  name = "k8s.io/kube-openapi"
+  source = "https://github.com/openshift/kube-openapi.git"
+  branch = "master"
+
+[[override]]
+  name = "sigs.k8s.io/controller-runtime"
+  version = "=v0.1.7"
+
+[[override]]
+  name = "github.com/coreos/prometheus-operator"
+  version = "=v0.24.0"
+
+[[override]]
+  name = "github.com/go-openapi/spec"
+  version = "^v0.15.0"
+
+# address compatibility issue with kubernetes 3.11
+[[override]]
+  name = "github.com/docker/docker"
+  revision = "4f3616fb1c112e206b88cb7a9922bf49067a7756"
+
+# address compatibility issue with kubernetes 3.11
+[[override]]
+  name = "github.com/russross/blackfriday"
+  version = "v1.4"
+
+# matching client-go kubernetes-1.11
+[[override]]
+  name = "github.com/Azure/go-autorest"
+  revision = "1ff28809256a84bb6966640ff3d0371af82ccba4"
 
 [[constraint]]
   name = "github.com/operator-framework/operator-sdk"
   # The version rule is used for a specific release and the master branch for in between releases.
-  branch = "master"
-  # version = "=v0.0.5"
+  #branch = "master"
+  version = "=v0.2.1"
+
+[[constraint]]
+  branch = "release-3.11"
+  name = "github.com/openshift/api"
+
+[[constraint]]
+  name = "k8s.io/helm"
+  version = "v2.11.0"
+
+[[constraint]]
+  name = "istio.io/api"
+  branch = "release-1.1"
