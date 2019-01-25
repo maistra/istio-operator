@@ -15,10 +15,11 @@ type Installation struct {
 
 type InstallationSpec struct {
 	DeploymentType *string `json:"deployment_type,omitempty"`    // "origin"
-	Istio    *IstioSpec    `json:"istio,omitempty"`
-	Jaeger   *JaegerSpec   `json:"jaeger,omitempty"`
-	Kiali    *KialiSpec    `json:"kiali,omitempty"`
-	Launcher *LauncherSpec `json:"launcher,omitempty"`
+	Istio      *IstioSpec      `json:"istio,omitempty"`
+	Jaeger     *JaegerSpec     `json:"jaeger,omitempty"`
+	Kiali      *KialiSpec      `json:"kiali,omitempty"`
+	Launcher   *LauncherSpec   `json:"launcher,omitempty"`
+	ThreeScale *ThreeScaleSpec `json:"threeScale,omitempty"`
 }
 
 type IstioSpec struct {
@@ -61,6 +62,33 @@ type CatalogSpec struct {
 	Filter *string `json:"filter,omitempty"`
 	Branch *string `json:"branch,omitempty"`
 	Repo   *string `json:"repo,omitempty"`
+}
+
+type ThreeScaleSpec struct {
+	Prefix   *string                `json:"prefix,omitempty"`
+	Version  *string                `json:"version,omitempty"`
+	Adapter  *ThreeScaleAdapterSpec `json:"adapter,omitempty"`
+	Server   *ThreeScaleServerSpec  `json:"server,imitempty"`
+}
+
+type ThreeScaleAdapterSpec struct {
+	ListenAddr           *int32  `json:"listenAddr,omitempty"`
+	LogLevel             *string `json:"logLevel,omitempty"`
+	LogJSON              *bool   `json:"logJSON,omitempty"`
+	ReportMetrics        *bool   `json:"reportMetrics,omitempty"`
+	MetricsPort          *int32  `json:"metricsPort,omitempty"`
+	CacheTTLSeconds      *int    `json:"cacheTTLSeconds,omitempty"`
+	CacheRefreshSeconds  *int    `json:"cacheRefreshSeconds,omitempty"`
+	CacheEntriesMax      *int    `json:"cacheEntriesMax,omitempty"`
+	CacheRefreshRetries  *int    `json:"cacheRefreshRetries,omitempty"`
+	AllowInsecureConn    *bool   `json:"allowInsecureConn,omitempty"`
+	ClientTimeoutSeconds *int    `json:"clientTimeoutSeconds,omitempty"`
+}
+
+type ThreeScaleServerSpec struct {
+	ServiceId   *string `json:"serviceId,omitempty"`
+	SystemURL   *string `json:"systemURL,omitempty"`
+	AccessToken *string `json:"accessToken,omitempty"`
 }
 
 type InstallationStatus struct {

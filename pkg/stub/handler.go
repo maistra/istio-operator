@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"strconv"
 )
 
 const (
@@ -253,4 +254,24 @@ func addBooleanValue(b *bytes.Buffer, key string, value bool) {
 	} else {
 		addStringValue(b, key, "False")
 	}
+}
+
+func addInt32PtrValue(b *bytes.Buffer, key string, value *int32) {
+	if value != nil {
+		addInt32Value(b, key, *value)
+	}
+}
+
+func addInt32Value(b *bytes.Buffer, key string, value int32) {
+	addStringValue(b, key, strconv.FormatInt(int64(value), 10))
+}
+
+func addIntPtrValue(b *bytes.Buffer, key string, value *int) {
+	if value != nil {
+		addIntValue(b, key, *value)
+	}
+}
+
+func addIntValue(b *bytes.Buffer, key string, value int) {
+	addStringValue(b, key, strconv.FormatInt(int64(value), 10))
 }
