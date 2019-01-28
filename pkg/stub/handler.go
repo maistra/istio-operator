@@ -39,7 +39,7 @@ const (
 	istioInstalledState = "Istio Installer Job Created"
 )
 
-func NewHandler(openShiftRelease string, masterPublicURL, istioPrefix, istioVersion, deploymentType string, alwaysPull bool) sdk.Handler {
+func NewHandler(openShiftRelease string, masterPublicURL, istioPrefix, istioVersion, deploymentType string, alwaysPull, enable3scale bool) sdk.Handler {
 	return &Handler{
 		openShiftRelease: openShiftRelease,
 		masterPublicURL: masterPublicURL,
@@ -47,6 +47,7 @@ func NewHandler(openShiftRelease string, masterPublicURL, istioPrefix, istioVers
 		istioVersion: istioVersion,
 		deploymentType: deploymentType,
 		alwaysPull: alwaysPull,
+		enable3scale: enable3scale,
 	}
 }
 
@@ -59,6 +60,7 @@ type Handler struct {
 	istioVersion     string
 	deploymentType   string
 	alwaysPull       bool
+	enable3scale     bool
 }
 
 func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
@@ -228,6 +230,14 @@ func (h *Handler) getMasterPublicURL() *string {
 		return nil
 	}
 	return &h.masterPublicURL
+}
+
+func (h *Handler) getThreeScaleEnabled(threeScale *v1alpha1.ThreeScaleSpec) bool {
+	if threeScale != nil && threeScale.Enabled != nil {
+		return *threeScale.Enabled
+	} else {
+		return h.enable3scale
+	}
 }
 
 func addStringValue(b *bytes.Buffer, key string, value string) {

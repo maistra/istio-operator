@@ -98,7 +98,8 @@ func (h *Handler) addLauncherInstallerConfiguration(b *bytes.Buffer, launcher *v
 }
 
 func (h *Handler) addThreeScaleInstallerConfiguration(b *bytes.Buffer, threeScale *v1alpha1.ThreeScaleSpec) {
-	if threeScale != nil {
+	if h.getThreeScaleEnabled(threeScale) {
+		addBooleanValue(b,"openshift_istio_install_three_scale=", true)
 		addStringPtrValue(b, "openshift_istio_three_scale_image_prefix=", h.cleanPrefixPtr(threeScale.Prefix))
 		addStringPtrValue(b, "openshift_istio_three_scale_image_version=", threeScale.Version)
 		if threeScale.Adapter != nil {
@@ -113,11 +114,6 @@ func (h *Handler) addThreeScaleInstallerConfiguration(b *bytes.Buffer, threeScal
 			addIntPtrValue(b,"three_scale_adapter_cacheRefreshRetries=", threeScale.Adapter.CacheRefreshRetries)
 			addBooleanPtrValue(b,"three_scale_adapter_allowInsecureConn=", threeScale.Adapter.AllowInsecureConn)
 			addIntPtrValue(b,"three_scale_adapter_clientTimeoutSeconds=", threeScale.Adapter.ClientTimeoutSeconds)
-		}
-		if threeScale.Server != nil {
-			addStringPtrValue(b,"three_scale_server_serviceId=", threeScale.Server.ServiceId)
-			addStringPtrValue(b,"three_scale_server_systemURL=", threeScale.Server.SystemURL)
-			addStringPtrValue(b,"three_scale_server_accessToken=", threeScale.Server.AccessToken)
 		}
 	}
 }
