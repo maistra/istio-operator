@@ -99,21 +99,21 @@ func (h *Handler) addLauncherInstallerConfiguration(b *bytes.Buffer, launcher *v
 
 func (h *Handler) addThreeScaleInstallerConfiguration(b *bytes.Buffer, threeScale *v1alpha1.ThreeScaleSpec) {
 	if h.getThreeScaleEnabled(threeScale) {
-		addBooleanValue(b,"openshift_istio_install_three_scale=", true)
-		addStringPtrValue(b, "openshift_istio_three_scale_image_prefix=", h.cleanPrefixPtr(threeScale.Prefix))
-		addStringPtrValue(b, "openshift_istio_three_scale_image_version=", threeScale.Version)
+		addBooleanValue(b,"openshift_istio_install_threescale=", true)
+		addStringPtrValue(b, "openshift_istio_threescale_image_prefix=", h.cleanPrefixPtr(threeScale.Prefix))
+		addStringPtrValue(b, "openshift_istio_threescale_image_version=", threeScale.Version)
 		if threeScale.Adapter != nil {
-			addInt32PtrValue(b,"three_scale_adapter_listenAddr=", threeScale.Adapter.ListenAddr)
-			addStringPtrValue(b,"three_scale_adapter_logLevel=", threeScale.Adapter.LogLevel)
-			addBooleanPtrValue(b,"three_scale_adapter_logJSON=", threeScale.Adapter.LogJSON)
-			addBooleanPtrValue(b,"three_scale_adapter_reportMetrics=", threeScale.Adapter.ReportMetrics)
-			addInt32PtrValue(b,"three_scale_adapter_metricsPort=", threeScale.Adapter.MetricsPort)
-			addIntPtrValue(b,"three_scale_adapter_cacheTTLSeconds=", threeScale.Adapter.CacheTTLSeconds)
-			addIntPtrValue(b,"three_scale_adapter_cacheRefreshSeconds=", threeScale.Adapter.CacheRefreshSeconds)
-			addIntPtrValue(b,"three_scale_adapter_cacheEntriesMax=", threeScale.Adapter.CacheEntriesMax)
-			addIntPtrValue(b,"three_scale_adapter_cacheRefreshRetries=", threeScale.Adapter.CacheRefreshRetries)
-			addBooleanPtrValue(b,"three_scale_adapter_allowInsecureConn=", threeScale.Adapter.AllowInsecureConn)
-			addIntPtrValue(b,"three_scale_adapter_clientTimeoutSeconds=", threeScale.Adapter.ClientTimeoutSeconds)
+			addInt32PtrValue(b,"threescale_adapter_listenAddr=", threeScale.Adapter.ListenAddr)
+			addStringPtrValue(b,"threescale_adapter_logLevel=", threeScale.Adapter.LogLevel)
+			addBooleanPtrValue(b,"threescale_adapter_logJSON=", threeScale.Adapter.LogJSON)
+			addBooleanPtrValue(b,"threescale_adapter_reportMetrics=", threeScale.Adapter.ReportMetrics)
+			addInt32PtrValue(b,"threescale_adapter_metricsPort=", threeScale.Adapter.MetricsPort)
+			addIntPtrValue(b,"threescale_adapter_cacheTTLSeconds=", threeScale.Adapter.CacheTTLSeconds)
+			addIntPtrValue(b,"threescale_adapter_cacheRefreshSeconds=", threeScale.Adapter.CacheRefreshSeconds)
+			addIntPtrValue(b,"threescale_adapter_cacheEntriesMax=", threeScale.Adapter.CacheEntriesMax)
+			addIntPtrValue(b,"threescale_adapter_cacheRefreshRetries=", threeScale.Adapter.CacheRefreshRetries)
+			addBooleanPtrValue(b,"threescale_adapter_allowInsecureConn=", threeScale.Adapter.AllowInsecureConn)
+			addIntPtrValue(b,"threescale_adapter_clientTimeoutSeconds=", threeScale.Adapter.ClientTimeoutSeconds)
 		}
 	}
 }
