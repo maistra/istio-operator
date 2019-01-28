@@ -67,8 +67,8 @@ type CatalogSpec struct {
 type ThreeScaleSpec struct {
 	Prefix   *string                `json:"prefix,omitempty"`
 	Version  *string                `json:"version,omitempty"`
+	Enabled  *bool                  `json:"enabled,omitempty"`
 	Adapter  *ThreeScaleAdapterSpec `json:"adapter,omitempty"`
-	Server   *ThreeScaleServerSpec  `json:"server,imitempty"`
 }
 
 type ThreeScaleAdapterSpec struct {
@@ -83,12 +83,6 @@ type ThreeScaleAdapterSpec struct {
 	CacheRefreshRetries  *int    `json:"cacheRefreshRetries,omitempty"`
 	AllowInsecureConn    *bool   `json:"allowInsecureConn,omitempty"`
 	ClientTimeoutSeconds *int    `json:"clientTimeoutSeconds,omitempty"`
-}
-
-type ThreeScaleServerSpec struct {
-	ServiceId   *string `json:"serviceId,omitempty"`
-	SystemURL   *string `json:"systemURL,omitempty"`
-	AccessToken *string `json:"accessToken,omitempty"`
 }
 
 type InstallationStatus struct {
