@@ -40,10 +40,11 @@ const (
 	istioInstalledState = "Istio Installer Job Created"
 )
 
-func NewHandler(openShiftRelease string, masterPublicURL, istioPrefix, istioVersion, deploymentType string, alwaysPull, enable3scale bool) sdk.Handler {
+func NewHandler(openShiftRelease string, masterPublicURL, installerImage, istioPrefix, istioVersion, deploymentType string, alwaysPull, enable3scale bool) sdk.Handler {
 	return &Handler{
 		openShiftRelease: openShiftRelease,
 		masterPublicURL:  masterPublicURL,
+		installerImage:   installerImage,
 		istioPrefix:      istioPrefix,
 		istioVersion:     istioVersion,
 		deploymentType:   deploymentType,
@@ -57,6 +58,7 @@ type Handler struct {
 	// It is likely possible to determine these at runtime, we should investigate
 	openShiftRelease string
 	masterPublicURL  string
+	installerImage   string
 	istioPrefix      string
 	istioVersion     string
 	deploymentType   string
@@ -184,6 +186,14 @@ func (h *Handler) createItems(items []sdk.Object) error {
 		}
 	}
 	return nil
+}
+
+func (h *Handler) getInstallerImage(cr *v1alpha1.Installation) string {
+	if h.installerImage != "" {
+		return h.installerImage
+	} else {
+		return h.cleanPrefix(h.getIstioImagePrefix(cr)) + h.getDeploymentType(cr) + "-ansible:" + h.getIstioImageVersion(cr)
+	}
 }
 
 func (h *Handler) getIstioImagePrefix(cr *v1alpha1.Installation) string {

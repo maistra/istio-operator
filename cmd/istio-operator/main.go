@@ -24,6 +24,7 @@ func main() {
 
 	openShiftRelease := flag.String("release", "v3.10", "The OpenShift release")
 	masterPublicURL := flag.String("masterPublicURL", "", "The public URL of the master when using Launcher")
+	installerImage := flag.String("installerImage", "", "The image to use for Ansible install")
 	istioPrefix := flag.String("istioPrefix", "", "The default istio prefix for images")
 	istioVersion := flag.String("istioVersion", "", "The default istio version for images")
 	deploymentType := flag.String("deploymentType", "", "The default deployment type")
@@ -44,6 +45,6 @@ func main() {
 	resyncPeriod := 0
 	logrus.Infof("Watching resource %s, kind %s, namespace %s, resyncPeriod %d", resource, kind, namespace, resyncPeriod)
 	sdk.Watch(resource, kind, namespace, resyncPeriod)
-	sdk.Handle(stub.NewHandler(*openShiftRelease, *masterPublicURL, *istioPrefix, *istioVersion, *deploymentType, *alwaysPull, *enable3scale))
+	sdk.Handle(stub.NewHandler(*openShiftRelease, *masterPublicURL, *installerImage, *istioPrefix, *istioVersion, *deploymentType, *alwaysPull, *enable3scale))
 	sdk.Run(context.TODO())
 }
