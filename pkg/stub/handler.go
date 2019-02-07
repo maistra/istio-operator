@@ -5,31 +5,32 @@ import (
 
 	"github.com/maistra/istio-operator/pkg/apis/istio/v1alpha1"
 
-	"github.com/operator-framework/operator-sdk/pkg/sdk"
-	"github.com/sirupsen/logrus"
 	"bytes"
 	"reflect"
-	batchv1	"k8s.io/api/batch/v1"
+	"strconv"
+
+	"github.com/operator-framework/operator-sdk/pkg/sdk"
+	"github.com/sirupsen/logrus"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"strconv"
 )
 
 const (
-	namespace = "istio-system"
+	namespace          = "istio-system"
 	serviceAccountName = "openshift-ansible"
 
-	inventoryDir = "/tmp/inventory/"
+	inventoryDir  = "/tmp/inventory/"
 	inventoryFile = inventoryDir + "istio.inventory"
 
-	playbookFile = "playbooks/openshift-istio/config.yml"
+	playbookFile    = "playbooks/openshift-istio/config.yml"
 	playbookOptions = "-vvv"
 
 	configurationDir = "/etc/origin/master"
 
-	defaultIstioPrefix = "docker.io/maistra/"
-	defaultIstioVersion = "0.7.0"
+	defaultIstioPrefix    = "docker.io/maistra/"
+	defaultIstioVersion   = "0.7.0"
 	defaultDeploymentType = "origin"
 
 	newline = "\n"
@@ -42,12 +43,12 @@ const (
 func NewHandler(openShiftRelease string, masterPublicURL, istioPrefix, istioVersion, deploymentType string, alwaysPull, enable3scale bool) sdk.Handler {
 	return &Handler{
 		openShiftRelease: openShiftRelease,
-		masterPublicURL: masterPublicURL,
-		istioPrefix: istioPrefix,
-		istioVersion: istioVersion,
-		deploymentType: deploymentType,
-		alwaysPull: alwaysPull,
-		enable3scale: enable3scale,
+		masterPublicURL:  masterPublicURL,
+		istioPrefix:      istioPrefix,
+		istioVersion:     istioVersion,
+		deploymentType:   deploymentType,
+		alwaysPull:       alwaysPull,
+		enable3scale:     enable3scale,
 	}
 }
 
@@ -69,7 +70,7 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 		if o.Name == istioInstallerCRName {
 			if event.Deleted {
 				logrus.Infof("Removing the Istio installation")
-				if err := ensureProjectAndServiceAccount() ; err != nil {
+				if err := ensureProjectAndServiceAccount(); err != nil {
 					return err
 				}
 				removalJob := h.getRemovalJob(o)
@@ -94,7 +95,7 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 				} else {
 					logrus.Infof("Installing istio for %v %v", o.Kind, o.Name)
 				}
-				if err := ensureProjectAndServiceAccount() ; err != nil {
+				if err := ensureProjectAndServiceAccount(); err != nil {
 					return err
 				}
 				installerJob := h.getInstallerJob(o)
@@ -108,9 +109,9 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 				}
 				state := istioInstalledState
 				if o.Status == nil {
-					o.Status = &v1alpha1.InstallationStatus {
+					o.Status = &v1alpha1.InstallationStatus{
 						State: &state,
-						Spec: o.Spec.DeepCopy(),
+						Spec:  o.Spec.DeepCopy(),
 					}
 				} else {
 					o.Status.State = &state
@@ -128,7 +129,8 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 }
 
 func (h *Handler) deleteJob(job *batchv1.Job) {
-	err := sdk.Get(job) ; if err == nil {
+	err := sdk.Get(job)
+	if err == nil {
 		uid := job.UID
 		var parallelism int32 = 0
 		job.Spec.Parallelism = &parallelism
@@ -146,7 +148,8 @@ func (h *Handler) deleteJob(job *batchv1.Job) {
 			IncludeUninitialized: false,
 		})
 
-		err := sdk.List(namespace, &podList, listOptions) ; if err == nil {
+		err := sdk.List(namespace, &podList, listOptions)
+		if err == nil {
 			for _, pod := range podList.Items {
 				sdk.Delete(&pod)
 			}
@@ -166,9 +169,9 @@ func (h *Handler) deleteItem(object sdk.Object) {
 }
 
 func (h *Handler) deleteItems(items []sdk.Object) {
-	lastItem := len(items)-1
+	lastItem := len(items) - 1
 	for i := range items {
-		item:= items[lastItem-i]
+		item := items[lastItem-i]
 		h.deleteItem(item)
 	}
 }
