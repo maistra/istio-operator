@@ -14,32 +14,32 @@ type Installation struct {
 }
 
 type InstallationSpec struct {
-	DeploymentType *string `json:"deployment_type,omitempty"`    // "origin"
-	Istio      *IstioSpec      `json:"istio,omitempty"`
-	Jaeger     *JaegerSpec     `json:"jaeger,omitempty"`
-	Kiali      *KialiSpec      `json:"kiali,omitempty"`
-	Launcher   *LauncherSpec   `json:"launcher,omitempty"`
-	ThreeScale *ThreeScaleSpec `json:"threeScale,omitempty"`
+	DeploymentType *string         `json:"deployment_type,omitempty"` // "origin"
+	Istio          *IstioSpec      `json:"istio,omitempty"`
+	Jaeger         *JaegerSpec     `json:"jaeger,omitempty"`
+	Kiali          *KialiSpec      `json:"kiali,omitempty"`
+	Launcher       *LauncherSpec   `json:"launcher,omitempty"`
+	ThreeScale     *ThreeScaleSpec `json:"threeScale,omitempty"`
 }
 
 type IstioSpec struct {
 	Authentication *bool   `json:"authentication,omitempty"`
 	Community      *bool   `json:"community,omitempty"`
-	Prefix         *string `json:"prefix,omitempty"`             // "maistra/"
-	Version        *string `json:"version,omitempty"`            // "0.1.0"
+	Prefix         *string `json:"prefix,omitempty"`  // "maistra/"
+	Version        *string `json:"version,omitempty"` // "0.1.0"
 }
 
 type JaegerSpec struct {
 	Prefix              *string `json:"prefix,omitempty"`
 	Version             *string `json:"version,omitempty"`
-	ElasticsearchMemory *string `json:"elasticsearch_memory,omitempty"`  // 1Gi
+	ElasticsearchMemory *string `json:"elasticsearch_memory,omitempty"` // 1Gi
 }
 
 type KialiSpec struct {
 	Username *string `json:"username,omitempty"`
 	Password *string `json:"password,omitempty"`
-	Prefix   *string `json:"prefix,omitempty"`    // "kiali/"
-	Version  *string `json:"version,omitempty"`   // "v0.5.0"
+	Prefix   *string `json:"prefix,omitempty"`  // "kiali/"
+	Version  *string `json:"version,omitempty"` // "v0.5.0"
 }
 
 type LauncherSpec struct {
@@ -65,10 +65,10 @@ type CatalogSpec struct {
 }
 
 type ThreeScaleSpec struct {
-	Prefix   *string                `json:"prefix,omitempty"`
-	Version  *string                `json:"version,omitempty"`
-	Enabled  *bool                  `json:"enabled,omitempty"`
-	Adapter  *ThreeScaleAdapterSpec `json:"adapter,omitempty"`
+	Prefix  *string                `json:"prefix,omitempty"`
+	Version *string                `json:"version,omitempty"`
+	Enabled *bool                  `json:"enabled,omitempty"`
+	Adapter *ThreeScaleAdapterSpec `json:"adapter,omitempty"`
 }
 
 type ThreeScaleAdapterSpec struct {
@@ -86,6 +86,6 @@ type ThreeScaleAdapterSpec struct {
 }
 
 type InstallationStatus struct {
-	State *string `json:"state,omitempty"`
-	Spec              *InstallationSpec   `json:"spec,omitempty"`
+	State *string           `json:"state,omitempty"`
+	Spec  *InstallationSpec `json:"spec,omitempty"`
 }
