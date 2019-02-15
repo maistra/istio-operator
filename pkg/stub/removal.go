@@ -3,14 +3,14 @@ package stub
 import (
 	"github.com/maistra/istio-operator/pkg/apis/istio/v1alpha1"
 
-	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"bytes"
+	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"k8s.io/api/batch/v1"
 )
 
 const (
 	removalConfigMapName = "removal.istio.inventory"
-	removalJobName = "openshift-ansible-istio-removal-job"
+	removalJobName       = "openshift-ansible-istio-removal-job"
 )
 
 func (h *Handler) getRemovalJob(cr *v1alpha1.Installation) *v1.Job {
