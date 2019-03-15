@@ -13,6 +13,10 @@ required = [
   "k8s.io/helm/cmd/helm",
 ]
 
+ignored = [
+  "vendor/k8s.io/code-generator/_examples",
+]
+
 [[override]]
   name = "k8s.io/gengo"
   revision = "01a732e01d00cb9a81bb0ca050d3e6d2b947927b"
@@ -101,3 +105,16 @@ required = [
 [[constraint]]
   name = "istio.io/api"
   branch = "release-1.1"
+
+[prune]
+  go-tests = true
+  unused-packages = true
+  non-go = true
+  [[prune.project]]
+    name = "k8s.io/code-generator"
+    non-go = false
+    unused-packages = false
+  [[prune.project]]
+    name = "k8s.io/gengo"
+    non-go = false
+    unused-packages = false
