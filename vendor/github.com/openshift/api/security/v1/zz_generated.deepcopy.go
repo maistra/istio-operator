@@ -424,6 +424,24 @@ func (in *SecurityContextConstraints) DeepCopyInto(out *SecurityContextConstrain
 		*out = make([]AllowedFlexVolume, len(*in))
 		copy(*out, *in)
 	}
+	if in.DefaultAllowPrivilegeEscalation != nil {
+		in, out := &in.DefaultAllowPrivilegeEscalation, &out.DefaultAllowPrivilegeEscalation
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(bool)
+			**out = **in
+		}
+	}
+	if in.AllowPrivilegeEscalation != nil {
+		in, out := &in.AllowPrivilegeEscalation, &out.AllowPrivilegeEscalation
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(bool)
+			**out = **in
+		}
+	}
 	in.SELinuxContext.DeepCopyInto(&out.SELinuxContext)
 	in.RunAsUser.DeepCopyInto(&out.RunAsUser)
 	in.SupplementalGroups.DeepCopyInto(&out.SupplementalGroups)
@@ -440,6 +458,16 @@ func (in *SecurityContextConstraints) DeepCopyInto(out *SecurityContextConstrain
 	}
 	if in.SeccompProfiles != nil {
 		in, out := &in.SeccompProfiles, &out.SeccompProfiles
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.AllowedUnsafeSysctls != nil {
+		in, out := &in.AllowedUnsafeSysctls, &out.AllowedUnsafeSysctls
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.ForbiddenSysctls != nil {
+		in, out := &in.ForbiddenSysctls, &out.ForbiddenSysctls
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}

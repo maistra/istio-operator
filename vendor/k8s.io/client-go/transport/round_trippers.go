@@ -138,7 +138,7 @@ func (rt *authProxyRoundTripper) CancelRequest(req *http.Request) {
 	if canceler, ok := rt.rt.(requestCanceler); ok {
 		canceler.CancelRequest(req)
 	} else {
-		glog.Errorf("CancelRequest not implemented")
+		glog.Errorf("CancelRequest not implemented by %T", rt.rt)
 	}
 }
 
@@ -166,7 +166,7 @@ func (rt *userAgentRoundTripper) CancelRequest(req *http.Request) {
 	if canceler, ok := rt.rt.(requestCanceler); ok {
 		canceler.CancelRequest(req)
 	} else {
-		glog.Errorf("CancelRequest not implemented")
+		glog.Errorf("CancelRequest not implemented by %T", rt.rt)
 	}
 }
 
@@ -197,7 +197,7 @@ func (rt *basicAuthRoundTripper) CancelRequest(req *http.Request) {
 	if canceler, ok := rt.rt.(requestCanceler); ok {
 		canceler.CancelRequest(req)
 	} else {
-		glog.Errorf("CancelRequest not implemented")
+		glog.Errorf("CancelRequest not implemented by %T", rt.rt)
 	}
 }
 
@@ -257,7 +257,7 @@ func (rt *impersonatingRoundTripper) CancelRequest(req *http.Request) {
 	if canceler, ok := rt.delegate.(requestCanceler); ok {
 		canceler.CancelRequest(req)
 	} else {
-		glog.Errorf("CancelRequest not implemented")
+		glog.Errorf("CancelRequest not implemented by %T", rt.delegate)
 	}
 }
 
@@ -288,7 +288,7 @@ func (rt *bearerAuthRoundTripper) CancelRequest(req *http.Request) {
 	if canceler, ok := rt.rt.(requestCanceler); ok {
 		canceler.CancelRequest(req)
 	} else {
-		glog.Errorf("CancelRequest not implemented")
+		glog.Errorf("CancelRequest not implemented by %T", rt.rt)
 	}
 }
 
@@ -335,7 +335,7 @@ func (r *requestInfo) toCurl() string {
 		}
 	}
 
-	return fmt.Sprintf("curl -k -v -X%s %s %s", r.RequestVerb, headers, r.RequestURL)
+	return fmt.Sprintf("curl -k -v -X%s %s '%s'", r.RequestVerb, headers, r.RequestURL)
 }
 
 // debuggingRoundTripper will display information about the requests passing
@@ -372,7 +372,7 @@ func (rt *debuggingRoundTripper) CancelRequest(req *http.Request) {
 	if canceler, ok := rt.delegatedRoundTripper.(requestCanceler); ok {
 		canceler.CancelRequest(req)
 	} else {
-		glog.Errorf("CancelRequest not implemented")
+		glog.Errorf("CancelRequest not implemented by %T", rt.delegatedRoundTripper)
 	}
 }
 
