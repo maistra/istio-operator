@@ -29,7 +29,7 @@ const (
 	configurationDir = "/etc/origin/master"
 
 	defaultIstioPrefix    = "docker.io/maistra/"
-	defaultIstioVersion   = "0.9.0"
+	defaultIstioVersion   = "0.10.0"
 	defaultDeploymentType = "origin"
 
 	newline = "\n"
