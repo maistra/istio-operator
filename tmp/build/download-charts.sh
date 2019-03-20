@@ -83,6 +83,33 @@ function copyOverlay() {
 # - switch health check files into /tmp
 function patchTemplates() {
   echo "patching Helm charts"
+
+  # update global defaults
+  # disable autoInject
+  # enable grafana, tracing and kiali, by default
+  sed -i -e 's/autoInject:.*$/autoInject: disabled/' \
+         -e '/grafana:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
+         -e '/tracing:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
+         -e '/kiali:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/values.yaml
+
+  # enable all namespaces by default
+  sed -i -e 's/enableNamespacesByDefault:.*$/enableNamespacesByDefault: true/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/values.yaml
+
+  # enable egressgateway
+  sed -i -e '/istio-egressgateway:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/charts/gateways/values.yaml
+
+  # enable ingress for grafana
+  sed -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/charts/grafana/values.yaml
+
+  # enable ingress for tracing
+  sed -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/charts/tracing/values.yaml
+
+  # enable ingress for kaili
+  # update hub/tag
+  sed -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
+         -e 's/hub:.*$/hub: kiali/' \
+         -e 's/tag:.*$/tag: v0.15.0/' ${HELM_DIR}/istio/charts/kiali/values.yaml
+
   # - remove the create customer resources job, we handle this in the installer to deal with potential races
   rm ${HELM_DIR}/istio/charts/grafana/templates/create-custom-resources-job.yaml
 

@@ -16,14 +16,8 @@ spec:
     enabled: false
 
   istio:
-    # XXX: everything here should be made the default in istio/values.yaml, except:
-    # resource settings
-    # autoscale settings
-    # pilot.traceSampling
-    # kiali.dashboard
     global:
       proxy:
-        autoInject: disabled
         resources:
           requests:
             cpu: 100m
@@ -34,7 +28,6 @@ spec:
 
     gateways:
       istio-egressgateway:
-        enabled: true
         autoscaleEnabled: false
       istio-ingressgateway:
         autoscaleEnabled: false
@@ -57,26 +50,7 @@ spec:
       autoscaleEnabled: false
       traceSampling: 100.0
 
-    sidecarInjectorWebhook:
-      enabled: true
-      enableNamespacesByDefault: true
-
-    grafana:
-      enabled: true
-      ingress:
-        enabled: true
-
-    tracing:
-      enabled: true
-      ingress:
-        enabled: true
-
     kiali:
-      enabled: true
-      hub: kiali
-      tag: v0.15.0
-      ingress:
-        enabled: true
       dashboard:
         user: admin
         passphrase: admin

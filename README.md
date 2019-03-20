@@ -178,7 +178,7 @@ the the changes made to the base Istio charts can be found below.  For a specifi
 #### General
 
 * GODEBUG environment variable settings have been removed from all templates.
-* A `maistra-version` label is added to all resources.
+* A `maistra-version` label has been added to all resources.
 * The `istio-multi` ServiceAccount and ClusterRoleBinding have been removed, as well as the `istio-reader` ClusterRole.
 * All Ingress resources have been converted to OpenShift Route resources.
 
@@ -190,7 +190,7 @@ the the changes made to the base Istio charts can be found below.  For a specifi
 
 #### Sidecar Injector
 
-* Sidecar proxy init containers are always privileged, regardless of `global.proxy.privileged` setting.
+* Sidecar proxy init containers have been configured as privileged, regardless of `global.proxy.privileged` setting.
 * The opt-out mechanism for injection has been modified when `sidecarInjectorWebhook.enableNamespacesByDefault` is enabled.
   Namespaces now opt-out by adding an `istio.openshift.com/ignore-namespace` label to the namespace.
 * A named `targetPort` has been added to the Sidecar Injector Service.
@@ -198,18 +198,23 @@ the the changes made to the base Istio charts can be found below.  For a specifi
 
 #### Gateways
 
-* A Route has been added for the ingress-gateway.
+* A Route has been added for the istio-ingressgateway gateway.
+* The istio-egressgateway gateway has been enabled by default.
 
 #### Prometheus
 
-* The Prometheus init container now uses the following image, `docker.io/prom/prometheus:v2.3.1`.
+* The Prometheus init container has been modified to use the following image, `docker.io/prom/prometheus:v2.3.1`.
 
 #### Grafana
 
+* Has been enabled by default.
+* Ingress has been enabled by default.
 * A ServiceAccount has been added for Grafana.
 
 #### Tracing
 
+* Has been enabled by default.
+* Ingress has been enabled by default.
 * The `hub` value for the Jaeger images has changed to `jaegertracing` (from `docker.io/jaegertracing`).
 * The tag used for the Jaeger images has been updated to `1.11`.
 * The name for the Zipkin port name has changed to `jaeger-collector-zipkin` (from `http`)
@@ -217,6 +222,10 @@ the the changes made to the base Istio charts can be found below.  For a specifi
 
 #### Kiali
 
+* Has been enabled by default.
+* Ingress has been enabled by default.
+* The `hub` value for the Kiali image has changed to `kiali` (from `docker.io/kiali`).
+* The tag used for the Kiali image has been updated to `v0.15.0`.
 * Updates have been made to the Kiali ConfigMap.
 * Updates have been made to the ClusterRole settings for Kiali.
 * A demo Secret has been added that will get created using values from `kiali.dashboard.user` and `kiali.dashboard.passphrase`,
