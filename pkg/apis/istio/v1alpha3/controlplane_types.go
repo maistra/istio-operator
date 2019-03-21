@@ -43,7 +43,7 @@ type ControlPlaneStatus struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	StatusType `json:",inline"`
 	// ComponentStatus represents the current status of the components
-	ComponentStatus map[string]*ComponentStatus `json:"componentStatus,omitempty"`
+	ComponentStatus []*ComponentStatus `json:"componentStatus,omitempty"`
 }
 
 // HelmValuesType is typedef for Helm .Values

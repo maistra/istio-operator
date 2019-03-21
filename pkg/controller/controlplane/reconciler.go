@@ -24,6 +24,7 @@ type controlPlaneReconciler struct {
 	*ReconcileControlPlane
 	log        logr.Logger
 	instance   *istiov1alpha3.ControlPlane
+	status     *istiov1alpha3.ControlPlaneStatus
 	ownerRefs  []metav1.OwnerReference
 	renderings map[string][]manifest.Manifest
 }
@@ -38,7 +39,7 @@ func (r *controlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	r.instance.Status.RemoveCondition(istiov1alpha3.ConditionTypeReconciled)
 	// ensure ComponentStatus is ready
 	if r.instance.Status.ComponentStatus == nil {
-		r.instance.Status.ComponentStatus = map[string]*istiov1alpha3.ComponentStatus{}
+		r.instance.Status.ComponentStatus = []*istiov1alpha3.ComponentStatus{}
 	}
 
 	// Render the templates
@@ -193,22 +194,23 @@ func (r *controlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	}
 
 	// delete unseen components
-	for key := range r.instance.Status.ComponentStatus {
-		if _, ok := componentsProcessed[key]; ok {
+	for index := len(r.instance.Status.ComponentStatus) -1; index >= 0; index-- {
+		status := r.instance.Status.ComponentStatus[index]
+		if _, ok := componentsProcessed[status.Resource]; ok {
 			continue
 		}
-		componentsProcessed[key] = seen
-		err = r.processComponentManifests(key)
+		componentsProcessed[status.Resource] = seen
+		err = r.processComponentManifests(status.Resource)
 		if err != nil {
 			allErrors = append(allErrors, err)
 		}
 	}
 
-	r.instance.Status.ObservedGeneration = r.instance.GetGeneration()
-
+	r.status.ObservedGeneration = r.instance.GetGeneration()
 	err = utilerrors.NewAggregate(allErrors)
-	updateReconcileStatus(&r.instance.Status.StatusType, err)
+	updateReconcileStatus(&r.status.StatusType, err)
 
+	r.instance.Status = *r.status
 	updateErr := r.client.Status().Update(context.TODO(), r.instance)
 	if updateErr != nil {
 		r.log.Error(err, "error updating ControlPlane status")

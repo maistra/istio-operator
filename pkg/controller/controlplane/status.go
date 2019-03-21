@@ -51,7 +51,7 @@ func updateReconcileStatus(status *istiov1alpha3.StatusType, err error) {
 }
 
 func updateDeleteStatus(status *istiov1alpha3.StatusType, err error) {
-	if err == nil || errors.IsNotFound(err) {
+	if err == nil || errors.IsNotFound(err) || errors.IsGone(err) {
 		status.SetCondition(istiov1alpha3.Condition{
 			Type:   istiov1alpha3.ConditionTypeInstalled,
 			Status: istiov1alpha3.ConditionStatusFalse,

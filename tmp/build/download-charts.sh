@@ -84,6 +84,11 @@ function copyOverlay() {
 function patchTemplates() {
   echo "patching Helm charts"
 
+  # Webhooks are not namespaced!  we do this to ensure we're not setting owner references on them
+  sed -i -e '/metadata:/,/webhooks:/ { /namespace/d }' \
+    ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhook.yaml \
+    ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
+
   # update global defaults
   # disable autoInject
   # enable grafana, tracing and kiali, by default

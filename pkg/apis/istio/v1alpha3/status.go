@@ -10,6 +10,7 @@ import (
 
 // StatusType represents the status for a control plane, component, or resource
 type StatusType struct {
+	Resource           string      `json:"resource,omitempty"`
 	ObservedGeneration int64       `json:"observedGeneration,omitempty"`
 	Conditions         []Condition `json:"conditions,omitempty"`
 }
@@ -19,15 +20,30 @@ func NewStatus() StatusType {
 	return StatusType{Conditions: make([]Condition, 0, 3)}
 }
 
-// ComponentStatus represents the status for a component
-type ComponentStatus struct {
-	StatusType     `json:",inline"`
-	ResourceStatus map[ResourceKey]*StatusType `json:"resourceStatus,omitempty"`
+// NewControlPlaneStatus returns an initialized ControlPlaneStatus object
+func NewControlPlaneStatus() *ControlPlaneStatus {
+	return &ControlPlaneStatus{ComponentStatus: []*ComponentStatus{}}
+}
+
+// FindComponentByName returns the status for a specific component
+func (s *ControlPlaneStatus) FindComponentByName(name string) *ComponentStatus {
+	for _, status := range s.ComponentStatus {
+		if status.Resource == name {
+			return status
+		}
+	}
+	return nil
 }
 
 // NewComponentStatus returns a new ComponentStatus object
 func NewComponentStatus() *ComponentStatus {
-	return &ComponentStatus{StatusType: NewStatus(), ResourceStatus: map[ResourceKey]*StatusType{}}
+	return &ComponentStatus{StatusType: NewStatus(), Resources: []*StatusType{}}
+}
+
+// ComponentStatus represents the status of an object with children
+type ComponentStatus struct {
+	StatusType `json:",inline"`
+	Resources  []*StatusType `json:"children,omitempty"`
 }
 
 // ConditionType represents the type of the condition.  Condition stages are:
@@ -157,7 +173,7 @@ type ResourceKey string
 
 // NewResourceKey for the object and type
 func NewResourceKey(o metav1.Object, t metav1.Type) ResourceKey {
-	return ResourceKey(fmt.Sprintf("%s/%s=%s,%s", o.GetNamespace(), o.GetName(), t.GetAPIVersion(), t.GetKind()))
+	return ResourceKey(fmt.Sprintf("%s/%s=%s,Kind=%s", o.GetNamespace(), o.GetName(), t.GetAPIVersion(), t.GetKind()))
 }
 
 // ToUnstructured returns a an Unstructured object initialized with Namespace,
@@ -168,7 +184,7 @@ func (key ResourceKey) ToUnstructured() *unstructured.Unstructured {
 	retval := &unstructured.Unstructured{}
 	parts := strings.SplitN(string(key), "=", 2)
 	nn := strings.SplitN(parts[0], "/", 2)
-	gvk := strings.SplitN(parts[1], ",", 2)
+	gvk := strings.SplitN(parts[1], ",Kind=", 2)
 	retval.SetNamespace(nn[0])
 	retval.SetName(nn[1])
 	retval.SetAPIVersion(gvk[0])
@@ -177,13 +193,23 @@ func (key ResourceKey) ToUnstructured() *unstructured.Unstructured {
 }
 
 // FindResourcesOfKind returns all the specified kind.  Note, this does not account for group or version.
-func (s *ComponentStatus) FindResourcesOfKind(kind string) map[ResourceKey]*StatusType {
-	resources := map[ResourceKey]*StatusType{}
-	suffix := ","+kind
-	for key, status := range s.ResourceStatus {
-		if strings.HasSuffix(string(key), suffix) {
-			resources[key] = status
+func (s *ComponentStatus) FindResourcesOfKind(kind string) []*StatusType {
+	resources := []*StatusType{}
+	suffix := ",Kind=" + kind
+	for _, status := range s.Resources {
+		if strings.HasSuffix(status.Resource, suffix) {
+			resources = append(resources, status)
 		}
 	}
 	return resources
+}
+
+// FindResourceByKey returns the status for a specific child resource
+func (s *ComponentStatus) FindResourceByKey(key ResourceKey) *StatusType {
+	for _, status := range s.Resources {
+		if status.Resource == string(key) {
+			return status
+		}
+	}
+	return nil
 }
