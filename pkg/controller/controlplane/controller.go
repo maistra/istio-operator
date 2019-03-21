@@ -126,6 +126,7 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		ReconcileControlPlane: r,
 		instance:              instance,
 		log:                   reqLogger,
+		status:                istiov1alpha3.NewControlPlaneStatus(),
 	}
 
 	if deleted {

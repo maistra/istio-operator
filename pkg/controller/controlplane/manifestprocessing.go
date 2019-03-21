@@ -22,29 +22,32 @@ import (
 
 func (r *controlPlaneReconciler) processComponentManifests(componentName string) error {
 	var err error
-	status, hasStatus := r.instance.Status.ComponentStatus[componentName]
+	status := r.instance.Status.FindComponentByName(componentName)
 	renderings, hasRenderings := r.renderings[componentName]
 	origLogger := r.log
 	r.log = r.log.WithValues("Component", componentName)
 	defer func() { r.log = origLogger }()
 	if hasRenderings {
-		if !hasStatus {
-			status = istiov1alpha3.NewComponentStatus()
-			r.instance.Status.ComponentStatus[componentName] = status
-		}
 		r.log.Info("reconciling component resources")
-		status.RemoveCondition(istiov1alpha3.ConditionTypeReconciled)
-		err := r.processManifests(renderings, status)
-		updateReconcileStatus(&status.StatusType, err)
+		if status == nil {
+			status = istiov1alpha3.NewComponentStatus()
+			status.Resource = componentName
+		} else {
+			status.RemoveCondition(istiov1alpha3.ConditionTypeReconciled)
+		}
+		status, err = r.processManifests(renderings, status)
 		status.ObservedGeneration = r.instance.GetGeneration()
 		r.processNewComponent(componentName, status)
-	} else if hasStatus && status.GetCondition(istiov1alpha3.ConditionTypeInstalled).Status != istiov1alpha3.ConditionStatusFalse {
+		r.status.ComponentStatus = append(r.status.ComponentStatus, status)
+	} else if status != nil && status.GetCondition(istiov1alpha3.ConditionTypeInstalled).Status != istiov1alpha3.ConditionStatusFalse && len(status.Resources) > 0 {
 		// delete resources
 		r.log.Info("deleting component resources")
-		err := r.processManifests([]manifest.Manifest{}, status)
-		updateDeleteStatus(&status.StatusType, err)
+		status, err = r.processManifests([]manifest.Manifest{}, status)
 		status.ObservedGeneration = r.instance.GetGeneration()
-		r.processDeletedComponent(componentName, status)
+		if status.GetCondition(istiov1alpha3.ConditionTypeInitialized).Status == istiov1alpha3.ConditionStatusFalse {
+			r.processDeletedComponent(componentName, status)
+		}
+		r.status.ComponentStatus = append(r.status.ComponentStatus, status)
 	} else {
 		r.log.Info("no renderings for component")
 	}
@@ -53,10 +56,13 @@ func (r *controlPlaneReconciler) processComponentManifests(componentName string)
 }
 
 func (r *controlPlaneReconciler) processManifests(manifests []manifest.Manifest,
-	componentStatus *istiov1alpha3.ComponentStatus) error {
+	oldStatus *istiov1alpha3.ComponentStatus) (*istiov1alpha3.ComponentStatus, error) {
 
 	allErrors := []error{}
 	resourcesProcessed := map[istiov1alpha3.ResourceKey]struct{}{}
+	newStatus := istiov1alpha3.NewComponentStatus()
+	newStatus.StatusType = oldStatus.StatusType
+	newStatus.Resource = oldStatus.Resource
 
 	origLogger := r.log
 	defer func() { r.log = origLogger }()
@@ -83,7 +89,7 @@ func (r *controlPlaneReconciler) processManifests(manifests []manifest.Manifest,
 				allErrors = append(allErrors, err)
 				continue
 			}
-			err = r.processObject(obj, resourcesProcessed, componentStatus)
+			err = r.processObject(obj, resourcesProcessed, oldStatus, newStatus)
 			if err != nil {
 				allErrors = append(allErrors, err)
 			}
@@ -92,15 +98,18 @@ func (r *controlPlaneReconciler) processManifests(manifests []manifest.Manifest,
 
 	// handle deletions
 	// XXX: should these be processed in reverse order of creation?
-	for key, status := range componentStatus.ResourceStatus {
-		r.log = origLogger.WithValues("Resource", key)
-		if _, ok := resourcesProcessed[key]; !ok {
+	for index := len(oldStatus.Resources) - 1; index >= 0; index-- {
+		status := oldStatus.Resources[index]
+		resourceKey := istiov1alpha3.ResourceKey(status.Resource)
+		if _, ok := resourcesProcessed[resourceKey]; !ok {
+			r.log = origLogger.WithValues("Resource", resourceKey)
 			if condition := status.GetCondition(istiov1alpha3.ConditionTypeInstalled); condition.Status != istiov1alpha3.ConditionStatusFalse {
 				r.log.Info("deleting resource")
-				unstructured := key.ToUnstructured()
+				unstructured := resourceKey.ToUnstructured()
 				err := r.client.Delete(context.TODO(), unstructured, client.PropagationPolicy(metav1.DeletePropagationForeground))
 				updateDeleteStatus(status, err)
-				if err == nil || errors.IsNotFound(err) {
+				newStatus.Resources = append(newStatus.Resources, status)
+				if err == nil || errors.IsNotFound(err) || errors.IsGone(err) {
 					status.ObservedGeneration = 0
 					// special handling
 					r.processDeletedObject(unstructured)
@@ -111,11 +120,17 @@ func (r *controlPlaneReconciler) processManifests(manifests []manifest.Manifest,
 			}
 		}
 	}
-	return utilerrors.NewAggregate(allErrors)
+	err := utilerrors.NewAggregate(allErrors)
+	if len(manifests) > 0 {
+		updateReconcileStatus(&newStatus.StatusType, err)
+	} else {
+		updateDeleteStatus(&newStatus.StatusType, err)
+	}
+	return newStatus, err
 }
 
 func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, resourcesProcessed map[istiov1alpha3.ResourceKey]struct{},
-	componentStatus *istiov1alpha3.ComponentStatus) error {
+	oldStatus *istiov1alpha3.ComponentStatus, newStatus *istiov1alpha3.ComponentStatus) error {
 	origLogger := r.log
 	defer func() { r.log = origLogger }()
 
@@ -130,7 +145,7 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 			return err
 		}
 		for _, item := range list.Items {
-			err = r.processObject(&item, resourcesProcessed, componentStatus)
+			err = r.processObject(&item, resourcesProcessed, oldStatus, newStatus)
 			if err != nil {
 				allErrors = append(allErrors, err)
 			}
@@ -148,12 +163,13 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 	r.log.V(2).Info("beginning reconciliation of resource", "ResourceKey", key)
 
 	resourcesProcessed[key] = seen
-	status, ok := componentStatus.ResourceStatus[key]
-	if !ok {
-		newStatus := istiov1alpha3.NewStatus()
-		status = &newStatus
-		componentStatus.ResourceStatus[key] = status
+	status := oldStatus.FindResourceByKey(key)
+	if status == nil {
+		newResourceStatus := istiov1alpha3.NewStatus()
+		status = &newResourceStatus
+		status.Resource = string(key)
 	}
+	newStatus.Resources = append(newStatus.Resources, status)
 
 	err := r.patchObject(obj)
 	if err != nil {

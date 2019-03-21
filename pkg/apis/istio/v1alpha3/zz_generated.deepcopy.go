@@ -63,15 +63,15 @@ func (in *CommonComponentConfig) DeepCopy() *CommonComponentConfig {
 func (in *ComponentStatus) DeepCopyInto(out *ComponentStatus) {
 	*out = *in
 	in.StatusType.DeepCopyInto(&out.StatusType)
-	if in.ResourceStatus != nil {
-		in, out := &in.ResourceStatus, &out.ResourceStatus
-		*out = make(map[ResourceKey]*StatusType, len(*in))
-		for key, val := range *in {
-			if val == nil {
-				(*out)[key] = nil
+	if in.Resources != nil {
+		in, out := &in.Resources, &out.Resources
+		*out = make([]*StatusType, len(*in))
+		for i := range *in {
+			if (*in)[i] == nil {
+				(*out)[i] = nil
 			} else {
-				(*out)[key] = new(StatusType)
-				val.DeepCopyInto((*out)[key])
+				(*out)[i] = new(StatusType)
+				(*in)[i].DeepCopyInto((*out)[i])
 			}
 		}
 	}
@@ -207,13 +207,13 @@ func (in *ControlPlaneStatus) DeepCopyInto(out *ControlPlaneStatus) {
 	in.StatusType.DeepCopyInto(&out.StatusType)
 	if in.ComponentStatus != nil {
 		in, out := &in.ComponentStatus, &out.ComponentStatus
-		*out = make(map[string]*ComponentStatus, len(*in))
-		for key, val := range *in {
-			if val == nil {
-				(*out)[key] = nil
+		*out = make([]*ComponentStatus, len(*in))
+		for i := range *in {
+			if (*in)[i] == nil {
+				(*out)[i] = nil
 			} else {
-				(*out)[key] = new(ComponentStatus)
-				val.DeepCopyInto((*out)[key])
+				(*out)[i] = new(ComponentStatus)
+				(*in)[i].DeepCopyInto((*out)[i])
 			}
 		}
 	}

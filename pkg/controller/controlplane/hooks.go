@@ -50,15 +50,17 @@ func (r *controlPlaneReconciler) processNewComponent(name string, status *istiov
 	case "istio/charts/galley":
 		r.waitForDeployments(status)
 		if name == "istio/charts/galley" {
-			for webhookKey, status := range status.FindResourcesOfKind("ValidatingWebhookConfiguration") {
+			for _, status := range status.FindResourcesOfKind("ValidatingWebhookConfiguration") {
 				if installCondition := status.GetCondition(istiov1alpha3.ConditionTypeInstalled); installCondition.Status == istiov1alpha3.ConditionStatusTrue {
+					webhookKey := istiov1alpha3.ResourceKey(status.Resource)
 					r.waitForWebhookCABundleInitialization(webhookKey.ToUnstructured())
 				}
 			}
 		}
 	case "istio/charts/sidecarInjectorWebhook":
-		for webhookKey, status := range status.FindResourcesOfKind("MutatingWebhookConfiguration") {
+		for _, status := range status.FindResourcesOfKind("MutatingWebhookConfiguration") {
 			if installCondition := status.GetCondition(istiov1alpha3.ConditionTypeInstalled); installCondition.Status == istiov1alpha3.ConditionStatusTrue {
+				webhookKey := istiov1alpha3.ResourceKey(status.Resource)
 				r.waitForWebhookCABundleInitialization(webhookKey.ToUnstructured())
 			}
 		}
@@ -240,18 +242,21 @@ func (r *controlPlaneReconciler) removeUserFromSCC(sccName, user string) error {
 }
 
 func (r *controlPlaneReconciler) waitForDeployments(status *istiov1alpha3.ComponentStatus) error {
-	for deploymentKey, status := range status.FindResourcesOfKind("StatefulSet") {
+	for _, status := range status.FindResourcesOfKind("StatefulSet") {
 		if installCondition := status.GetCondition(istiov1alpha3.ConditionTypeInstalled); installCondition.Status == istiov1alpha3.ConditionStatusTrue {
+			deploymentKey := istiov1alpha3.ResourceKey(status.Resource)
 			r.waitForDeployment(deploymentKey.ToUnstructured())
 		}
 	}
-	for deploymentKey, status := range status.FindResourcesOfKind("Deployment") {
+	for _, status := range status.FindResourcesOfKind("Deployment") {
 		if installCondition := status.GetCondition(istiov1alpha3.ConditionTypeInstalled); installCondition.Status == istiov1alpha3.ConditionStatusTrue {
+			deploymentKey := istiov1alpha3.ResourceKey(status.Resource)
 			r.waitForDeployment(deploymentKey.ToUnstructured())
 		}
 	}
-	for deploymentKey, status := range status.FindResourcesOfKind("DeploymentConfig") {
+	for _, status := range status.FindResourcesOfKind("DeploymentConfig") {
 		if installCondition := status.GetCondition(istiov1alpha3.ConditionTypeInstalled); installCondition.Status == istiov1alpha3.ConditionStatusTrue {
+			deploymentKey := istiov1alpha3.ResourceKey(status.Resource)
 			r.waitForDeployment(deploymentKey.ToUnstructured())
 		}
 	}
