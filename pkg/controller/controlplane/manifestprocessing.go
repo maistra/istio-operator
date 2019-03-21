@@ -139,7 +139,11 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 	}
 
 	// Add owner ref
-	obj.SetOwnerReferences(r.ownerRefs)
+	if obj.GetNamespace() == r.instance.GetNamespace() {
+		obj.SetOwnerReferences(r.ownerRefs)
+	} else {
+		// XXX: can't set owner reference on cross-namespace or cluster resources
+	}
 
 	r.log.V(2).Info("beginning reconciliation of resource", "ResourceKey", key)
 
