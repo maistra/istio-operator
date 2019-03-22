@@ -4,6 +4,13 @@ This project is an operator (controller) that can be used to manage the installa
 
 ## Installation
 
+If `istio-operator` and `istio-system` projects/namespaces have not been created, create the new projects first. For example:
+
+```
+$ oc new-project istio-operator
+$ oc new-project istio-system
+```
+
 All resource definitions required to install the operator can be found in the [deploy](./deploy) directory, and can be
 installed easily using your favorite Kubernetes command-line client.  You must have `cluster-admin` privileges to install
 the operator.
@@ -28,6 +35,12 @@ $ oc apply -n istio-system -f ./deploy/examples/istio_v1alpha3_controlplane_cr_b
 Example resources can be found in [./deploy/examples](./deploy/examples).
 
 ## Uninstall
+
+If an existing ControlPlane cr has not been deleted, you need to delete the ControlPlane cr before deleting the istio operator. For example:
+
+```
+$ oc delete -n istio-system -f ./deploy/examples/istio_v1alpha3_controlplane_cr_basic.yaml
+```
 
 If you followed the instructions above for installation, the operator can be uninstalled by simply issuing a delete
 command against the same resources.  For example:
