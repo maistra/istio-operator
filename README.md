@@ -22,7 +22,7 @@ By default, the operator watches for ControlPlane or Installation resources in t
 where the control plane will be installed.  For example:
 
 ```
-$ oc apply -n istio-system ./deploy/examples/istio_v1alpha3_controlplane_cr_basic.yaml
+$ oc apply -n istio-system -f ./deploy/examples/istio_v1alpha3_controlplane_cr_basic.yaml
 ```
 
 Example resources can be found in [./deploy/examples](./deploy/examples).
