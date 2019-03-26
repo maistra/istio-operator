@@ -571,6 +571,125 @@ rules:
 EOF
 }
 
+function convertClusterToNamespaced() {
+  # $1 - file to convert
+  # $2 - cluster kind
+  # $3 - namespaced kind
+  # $4 - dereference
+  sed -i -e 's/^\(\( *\)kind.*'$2'.*$\)/{{- if '$4'.Values.global.multitenant }}\
+\2kind: '$3'\
+{{- else }}\
+\1\
+{{- end }}/' \
+         -e '0,/name:/ s/^\(\(.*\)name:.*$\)/\1\
+{{- if '$4'.Values.global.multitenant }}\
+\2namespace: {{ '$4'.Release.Namespace }}\
+{{- end }}/' "${1}"
+}
+
+function convertClusterRoleBinding() {
+  convertClusterToNamespaced "$1" "ClusterRoleBinding" "RoleBinding" "$2"
+}
+
+function convertMeshPolicy() {
+  convertClusterToNamespaced "$1" "MeshPolicy" "Policy" "$2"
+}
+
+function patchMultiTenant() {
+  echo "Patching charts for multitenancy"
+
+  # galley
+  sed -i -e '/apiGroups:.*admissionregistration/,/apiGroups/ {
+    /admissionregistration/d
+    /apiGroups/!d
+  }' ${HELM_DIR}/istio/charts/galley/templates/clusterrole.yaml
+  sed -i -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/galley/templates/clusterrole.yaml
+  convertClusterRoleBinding ${HELM_DIR}/istio/charts/galley/templates/clusterrolebinding.yaml
+  sed -i -e '/metadata/ {N; s/name: istio-galley/name: istio-galley-\{\{ .Release.Namespace \}\}/}' \
+    ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
+  sed -i -e 's|^\(\(\s*\)rules:.*$\)|{{- if .Values.global.multitenant }}\
+\2namespaceSelector:\
+\2  matchExpressions:\
+\2  - key: istio.openshift.com/mesh\
+\2    operator: In\
+\2      values:\
+\2      - "{{ .Release.Namespace }}"\
+\2  - key: istio.openshift.com/ignore-namespace\
+\2    operator: DoesNotExist\
+{{- end }}\
+\1|' ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
+  sed -i -e '/--validation-webhook-config-file/ {
+    s/^\(\( *\)- --validation-webhook-config-file\)/\2- --deployment-namespace\
+\2- \{\{ .Release.Namespace \}\}\
+\2- --webhook-name\
+\2- istio-galley-\{\{ .Release.Namespace \}\}\
+\1/
+  }' ${HELM_DIR}/istio/charts/galley/templates/deployment.yaml
+
+  # gateways
+  convertClusterRoleBinding ${HELM_DIR}/istio/charts/gateways/templates/clusterrolebindings.yaml "$"
+
+  # istiocoredns
+  convertClusterRoleBinding ${HELM_DIR}/istio/charts/istiocoredns/templates/clusterrolebinding.yaml
+
+  # kiali
+  convertClusterRoleBinding ${HELM_DIR}/istio/charts/kiali/templates/clusterrolebinding.yaml
+
+  # mixer
+  sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ { 
+    /apiextensions/d
+    /apiGroups/!d
+  }'  ${HELM_DIR}/istio/charts/mixer/templates/clusterrole.yaml
+  convertClusterRoleBinding ${HELM_DIR}/istio/charts/mixer/templates/clusterrolebinding.yaml
+
+  # nodeagent
+  convertClusterRoleBinding ${HELM_DIR}/istio/charts/nodeagent/templates/clusterrolebinding.yaml
+
+  # pilot
+  sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ { 
+    /apiextensions/d
+    /apiGroups/!d
+  }' \
+         -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/pilot/templates/clusterrole.yaml
+  convertClusterRoleBinding ${HELM_DIR}/istio/charts/pilot/templates/clusterrolebinding.yaml
+
+  # prometheus
+  sed -i -e '/nodes/d' ${HELM_DIR}/istio/charts/prometheus/templates/clusterrole.yaml
+  convertClusterRoleBinding ${HELM_DIR}/istio/charts/prometheus/templates/clusterrolebindings.yaml
+
+  # security
+  sed -i -e '/apiGroups:.*authentication.k8s.io/,$ { d }' ${HELM_DIR}/istio/charts/security/templates/clusterrole.yaml
+  convertClusterRoleBinding ${HELM_DIR}/istio/charts/security/templates/clusterrolebinding.yaml
+  convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-mtls.yaml
+  convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-permissive.yaml
+  sed -i -e 's/^\(\( *\){.*if .Values.global.trustDomain.*$\)/\2{{- if .Values.global.multitenant }}\
+\            - --listened-namespaces={{ .Release.Namespace }}\
+\2{{- end }}\
+\1/' ${HELM_DIR}/istio/charts/security/templates/deployment.yaml
+
+  # sidecarInjectorWebhook
+  sed -i -e '/apiGroups:.*admissionregistration.k8s.io/,$ { d }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrole.yaml
+  convertClusterRoleBinding ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrolebinding.yaml
+  sed -i -e '/metadata/ {N; s/name: istio-sidecar-injector/name: istio-sidecar-injector-\{\{ .Release.Namespace \}\}/}' \
+         -e '/if \.Values\.enableNamespacesByDefault/,/end/ {
+    /enableNamespacesByDefault/ i\
+\{\{- if .Values.global.multitenant \}\}\
+\    namespaceSelector:\
+\      matchExpressions:\
+\      - key: istio.openshift.com/mesh\
+\        operator: In\
+\        values:\
+\        - "{{ .Release.Namespace }}"\
+\      - key: istio.openshift.com/ignore-namespace\
+\        operator: DoesNotExist\
+\{\{- else \}\}
+    /end/ i\
+\{\{- end \}\}
+  }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhookconfiguration.yaml.tpl
+  sed -i -e '/args:/ a\
+            - --webhookConfigName=istio-sidecar-injector-{{ .Release.Namespace }}' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
+}
+
 copyOverlay
 
 patchTemplates
@@ -578,3 +697,5 @@ patchGrafanaTemplate
 patchTracingtemplate
 patchKialiTemplate
 patchKialiOpenShift
+
+patchMultiTenant

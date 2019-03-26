@@ -7,6 +7,8 @@ import (
 
 	"github.com/ghodss/yaml"
 
+	"github.com/maistra/istio-operator/pkg/controller/common"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -18,7 +20,7 @@ import (
 
 func init() {
 	// inject OpenShift specific kinds into the ordering list
-	serviceIndex := indexOf(tiller.InstallOrder, "Service")
+	serviceIndex := common.IndexOf(tiller.InstallOrder, "Service")
 	// we want route before oauthclient before deployments
 	tiller.InstallOrder = append(tiller.InstallOrder[:serviceIndex], append([]string{"Route", "OAuthClient"}, tiller.InstallOrder[serviceIndex:]...)...)
 }

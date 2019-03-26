@@ -4,11 +4,11 @@ import (
 	"context"
 
 	istiov1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/v1alpha3"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -36,7 +36,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileControlPlane{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileControlPlane{ResourceManager: common.ResourceManager{Client: mgr.GetClient(), Log: log}, scheme: mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -85,7 +85,7 @@ var _ reconcile.Reconciler = &ReconcileControlPlane{}
 type ReconcileControlPlane struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
+	common.ResourceManager
 	scheme *runtime.Scheme
 }
 
@@ -106,7 +106,7 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 
 	// Fetch the ControlPlane instance
 	instance := &istiov1alpha3.ControlPlane{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -127,13 +127,12 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	reconciler := controlPlaneReconciler{
 		ReconcileControlPlane: r,
 		instance:              instance,
-		log:                   reqLogger,
 		status:                istiov1alpha3.NewControlPlaneStatus(),
 	}
 
 	deleted := instance.GetDeletionTimestamp() != nil
 	finalizers := instance.GetFinalizers()
-	finalizerIndex := indexOf(finalizers, finalizer)
+	finalizerIndex := common.IndexOf(finalizers, finalizer)
 
 	if deleted {
 		if finalizerIndex < 0 {
@@ -144,13 +143,13 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		// XXX: for now, nuke the resources, regardless of errors
 		finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
 		instance.SetFinalizers(finalizers)
-		_ = r.client.Update(context.TODO(), instance)
+		_ = r.Client.Update(context.TODO(), instance)
 		return result, err
 	} else if finalizerIndex < 0 {
 		reqLogger.V(1).Info("Adding finalizer", "finalizer", finalizer)
 		finalizers = append(finalizers, finalizer)
 		instance.SetFinalizers(finalizers)
-		err = r.client.Update(context.TODO(), instance)
+		err = r.Client.Update(context.TODO(), instance)
 		return reconcile.Result{}, err
 	}
 
@@ -159,11 +158,3 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	return reconciler.Reconcile()
 }
 
-func indexOf(l []string, s string) int {
-	for i, elem := range l {
-		if elem == s {
-			return i
-		}
-	}
-	return -1
-}
