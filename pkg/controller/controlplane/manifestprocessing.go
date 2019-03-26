@@ -24,11 +24,11 @@ func (r *controlPlaneReconciler) processComponentManifests(componentName string)
 	var err error
 	status := r.instance.Status.FindComponentByName(componentName)
 	renderings, hasRenderings := r.renderings[componentName]
-	origLogger := r.log
-	r.log = r.log.WithValues("Component", componentName)
-	defer func() { r.log = origLogger }()
+	origLogger := r.Log
+	r.Log = r.Log.WithValues("Component", componentName)
+	defer func() { r.Log = origLogger }()
 	if hasRenderings {
-		r.log.Info("reconciling component resources")
+		r.Log.Info("reconciling component resources")
 		if status == nil {
 			status = istiov1alpha3.NewComponentStatus()
 			status.Resource = componentName
@@ -38,24 +38,24 @@ func (r *controlPlaneReconciler) processComponentManifests(componentName string)
 		status, err = r.processManifests(renderings, status)
 		status.ObservedGeneration = r.instance.GetGeneration()
 		if err := r.processNewComponent(componentName, status); err != nil {
-			r.log.Error(err, "unexpected error occurred during postprocessing of new component")
+			r.Log.Error(err, "unexpected error occurred during postprocessing of new component")
 		}
 		r.status.ComponentStatus = append(r.status.ComponentStatus, status)
 	} else if status != nil && status.GetCondition(istiov1alpha3.ConditionTypeInstalled).Status != istiov1alpha3.ConditionStatusFalse && len(status.Resources) > 0 {
 		// delete resources
-		r.log.Info("deleting component resources")
+		r.Log.Info("deleting component resources")
 		status, err = r.processManifests([]manifest.Manifest{}, status)
 		status.ObservedGeneration = r.instance.GetGeneration()
 		if status.GetCondition(istiov1alpha3.ConditionTypeInitialized).Status == istiov1alpha3.ConditionStatusFalse {
 			if err := r.processDeletedComponent(componentName, status); err != nil {
-				r.log.Error(err, "unexpected error occurred during cleanup of deleted component")
+				r.Log.Error(err, "unexpected error occurred during cleanup of deleted component")
 			}
 		}
 		r.status.ComponentStatus = append(r.status.ComponentStatus, status)
 	} else {
-		r.log.Info("no renderings for component")
+		r.Log.Info("no renderings for component")
 	}
-	r.log.Info("component reconciliation complete")
+	r.Log.Info("component reconciliation complete")
 	return err
 }
 
@@ -68,28 +68,28 @@ func (r *controlPlaneReconciler) processManifests(manifests []manifest.Manifest,
 	newStatus.StatusType = oldStatus.StatusType
 	newStatus.Resource = oldStatus.Resource
 
-	origLogger := r.log
-	defer func() { r.log = origLogger }()
+	origLogger := r.Log
+	defer func() { r.Log = origLogger }()
 	for _, manifest := range manifests {
-		r.log = origLogger.WithValues("manifest", manifest.Name)
+		r.Log = origLogger.WithValues("manifest", manifest.Name)
 		if !strings.HasSuffix(manifest.Name, ".yaml") {
-			r.log.V(2).Info("Skipping rendering of manifest")
+			r.Log.V(2).Info("Skipping rendering of manifest")
 			continue
 		}
-		r.log.V(2).Info("Processing resources from manifest")
+		r.Log.V(2).Info("Processing resources from manifest")
 		// split the manifest into individual objects
 		objects := releaseutil.SplitManifests(manifest.Content)
 		for _, raw := range objects {
 			rawJSON, err := yaml.YAMLToJSON([]byte(raw))
 			if err != nil {
-				r.log.Error(err, "unable to convert raw data to JSON")
+				r.Log.Error(err, "unable to convert raw data to JSON")
 				allErrors = append(allErrors, err)
 				continue
 			}
 			obj := &unstructured.Unstructured{}
 			_, _, err = unstructured.UnstructuredJSONScheme.Decode(rawJSON, nil, obj)
 			if err != nil {
-				r.log.Error(err, "unable to decode object into Unstructured")
+				r.Log.Error(err, "unable to decode object into Unstructured")
 				allErrors = append(allErrors, err)
 				continue
 			}
@@ -106,21 +106,21 @@ func (r *controlPlaneReconciler) processManifests(manifests []manifest.Manifest,
 		status := oldStatus.Resources[index]
 		resourceKey := istiov1alpha3.ResourceKey(status.Resource)
 		if _, ok := resourcesProcessed[resourceKey]; !ok {
-			r.log = origLogger.WithValues("Resource", resourceKey)
+			r.Log = origLogger.WithValues("Resource", resourceKey)
 			if condition := status.GetCondition(istiov1alpha3.ConditionTypeInstalled); condition.Status != istiov1alpha3.ConditionStatusFalse {
-				r.log.Info("deleting resource")
+				r.Log.Info("deleting resource")
 				unstructured := resourceKey.ToUnstructured()
-				err := r.client.Delete(context.TODO(), unstructured, client.PropagationPolicy(metav1.DeletePropagationForeground))
+				err := r.Client.Delete(context.TODO(), unstructured, client.PropagationPolicy(metav1.DeletePropagationForeground))
 				updateDeleteStatus(status, err)
 				newStatus.Resources = append(newStatus.Resources, status)
 				if err == nil || errors.IsNotFound(err) || errors.IsGone(err) {
 					status.ObservedGeneration = 0
 					// special handling
 					if err := r.processDeletedObject(unstructured); err != nil {
-						r.log.Error(err, "unexpected error occurred during cleanup of deleted resource")
+						r.Log.Error(err, "unexpected error occurred during cleanup of deleted resource")
 					}
 				} else {
-					r.log.Error(err, "error deleting resource")
+					r.Log.Error(err, "error deleting resource")
 					allErrors = append(allErrors, err)
 				}
 			}
@@ -137,17 +137,17 @@ func (r *controlPlaneReconciler) processManifests(manifests []manifest.Manifest,
 
 func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, resourcesProcessed map[istiov1alpha3.ResourceKey]struct{},
 	oldStatus *istiov1alpha3.ComponentStatus, newStatus *istiov1alpha3.ComponentStatus) error {
-	origLogger := r.log
-	defer func() { r.log = origLogger }()
+	origLogger := r.Log
+	defer func() { r.Log = origLogger }()
 
 	key := istiov1alpha3.NewResourceKey(obj, obj)
-	r.log = origLogger.WithValues("Resource", key)
+	r.Log = origLogger.WithValues("Resource", key)
 
 	if obj.GetKind() == "List" {
 		allErrors := []error{}
 		list, err := obj.ToList()
 		if err != nil {
-			r.log.Error(err, "error converting List object")
+			r.Log.Error(err, "error converting List object")
 			return err
 		}
 		for _, item := range list.Items {
@@ -166,7 +166,7 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 		// XXX: can't set owner reference on cross-namespace or cluster resources
 	}
 
-	r.log.V(2).Info("beginning reconciliation of resource", "ResourceKey", key)
+	r.Log.V(2).Info("beginning reconciliation of resource", "ResourceKey", key)
 
 	resourcesProcessed[key] = seen
 	status := oldStatus.FindResourceByKey(key)
@@ -179,7 +179,7 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 
 	err := r.patchObject(obj)
 	if err != nil {
-		r.log.Error(err, "error patching object")
+		r.Log.Error(err, "error patching object")
 		updateReconcileStatus(status, err)
 		return err
 	}
@@ -187,44 +187,44 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 	receiver := key.ToUnstructured()
 	objectKey, err := client.ObjectKeyFromObject(receiver)
 	if err != nil {
-		r.log.Error(err, "client.ObjectKeyFromObject() failed for resource")
+		r.Log.Error(err, "client.ObjectKeyFromObject() failed for resource")
 		// This can only happen if reciever isn't an unstructured.Unstructured
 		// i.e. this should never happen
 		updateReconcileStatus(status, err)
 		return err
 	}
-	err = r.client.Get(context.TODO(), objectKey, receiver)
+	err = r.Client.Get(context.TODO(), objectKey, receiver)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.log.Info("creating resource")
-			err = r.client.Create(context.TODO(), obj)
+			r.Log.Info("creating resource")
+			err = r.Client.Create(context.TODO(), obj)
 			if err == nil {
 				status.ObservedGeneration = 1
 				// special handling
 				if err := r.processNewObject(obj); err != nil {
 					// just log for now
-					r.log.Error(err, "unexpected error occurred during postprocessing of new resource")
+					r.Log.Error(err, "unexpected error occurred during postprocessing of new resource")
 				}
 			}
 		}
 	} else if receiver.GetGeneration() > 0 && receiver.GetGeneration() == status.ObservedGeneration {
 		// nothing to do
-		r.log.V(2).Info("resource generation matches status")
+		r.Log.V(2).Info("resource generation matches status")
 	} else if shouldUpdate(obj.UnstructuredContent(), receiver.UnstructuredContent()) {
-		r.log.Info("updating existing resource")
+		r.Log.Info("updating existing resource")
 		status.RemoveCondition(istiov1alpha3.ConditionTypeReconciled)
-		//r.log.Info("updates not supported at this time")
+		//r.Log.Info("updates not supported at this time")
 		// XXX: k8s barfs on some updates: metadata.resourceVersion: Invalid value: 0x0: must be specified for an update
 		obj.SetResourceVersion(receiver.GetResourceVersion())
-		err = r.client.Update(context.TODO(), obj)
+		err = r.Client.Update(context.TODO(), obj)
 		if err == nil {
 			status.ObservedGeneration = obj.GetGeneration()
 		}
 	}
-	r.log.V(2).Info("resource reconciliation complete")
+	r.Log.V(2).Info("resource reconciliation complete")
 	updateReconcileStatus(status, err)
 	if err != nil {
-		r.log.Error(err, "error occurred reconciling resource")
+		r.Log.Error(err, "error occurred reconciling resource")
 	}
 	return err
 }
