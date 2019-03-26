@@ -84,11 +84,11 @@ var (
 )
 
 func (r *controlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructured) error {
-	r.log.Info("patching kiali ConfigMap", object.GetKind(), object.GetName())
+	r.Log.Info("patching kiali ConfigMap", object.GetKind(), object.GetName())
 	configYaml, found, err := unstructured.NestedString(object.UnstructuredContent(), "data", "config.yaml")
 	if err != nil {
 		// This shouldn't occur if it's really a ConfigMap, but...
-		r.log.Error(err, "could not parse kiali ConfigMap")
+		r.Log.Error(err, "could not parse kiali ConfigMap")
 		return err
 	} else if !found {
 		return nil
@@ -98,9 +98,9 @@ func (r *controlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructu
 	jaegerRoute := &unstructured.Unstructured{}
 	jaegerRoute.SetAPIVersion("route.openshift.io/v1")
 	jaegerRoute.SetKind("Route")
-	err = r.client.Get(context.TODO(), client.ObjectKey{Name: "jaeger-query", Namespace: object.GetNamespace()}, jaegerRoute)
+	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "jaeger-query", Namespace: object.GetNamespace()}, jaegerRoute)
 	if err != nil && !errors.IsNotFound(err) {
-		r.log.Error(err, "error retrieving jaeger route")
+		r.Log.Error(err, "error retrieving jaeger route")
 		return fmt.Errorf("could not retrieve jaeger route: %s", err)
 	}
 
@@ -108,9 +108,9 @@ func (r *controlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructu
 	grafanaRoute := &unstructured.Unstructured{}
 	grafanaRoute.SetAPIVersion("route.openshift.io/v1")
 	grafanaRoute.SetKind("Route")
-	err = r.client.Get(context.TODO(), client.ObjectKey{Name: "grafana", Namespace: object.GetNamespace()}, grafanaRoute)
+	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "grafana", Namespace: object.GetNamespace()}, grafanaRoute)
 	if err != nil && !errors.IsNotFound(err) {
-		r.log.Error(err, "error retrieving grafana route")
+		r.Log.Error(err, "error retrieving grafana route")
 		return fmt.Errorf("could not retrieve grafana route: %s", err)
 	}
 
@@ -125,11 +125,11 @@ func (r *controlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructu
 }
 
 func (r *controlPlaneReconciler) patchKialiOAuthClient(object *unstructured.Unstructured) error {
-	r.log.Info("patching kiali OAuthClient", object.GetKind(), object.GetName())
+	r.Log.Info("patching kiali OAuthClient", object.GetKind(), object.GetName())
 	redirectURIs, found, err := unstructured.NestedStringSlice(object.UnstructuredContent(), "redirectURIs")
 	if err != nil {
 		// This shouldn't occur if it's really a OAuthClient, but...
-		r.log.Error(err, "could not parse kiali OAuthClient")
+		r.Log.Error(err, "could not parse kiali OAuthClient")
 		return err
 	} else if !found {
 		return nil
@@ -139,19 +139,19 @@ func (r *controlPlaneReconciler) patchKialiOAuthClient(object *unstructured.Unst
 	kialiRoute := &unstructured.Unstructured{}
 	kialiRoute.SetAPIVersion("route.openshift.io/v1")
 	kialiRoute.SetKind("Route")
-	err = r.client.Get(context.TODO(), client.ObjectKey{Name: "kiali", Namespace: r.instance.GetNamespace()}, kialiRoute)
+	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "kiali", Namespace: r.instance.GetNamespace()}, kialiRoute)
 	if err != nil && !errors.IsNotFound(err) {
-		r.log.Error(err, "error retrieving kiali route")
+		r.Log.Error(err, "error retrieving kiali route")
 		return fmt.Errorf("could not retrieve kiali route: %s", err)
 	}
 
 	kialiURL, found, err := unstructured.NestedString(kialiRoute.UnstructuredContent(), "spec", "host")
 	if err != nil {
-		r.log.Error(err, "error retrieving kiali route host name")
+		r.Log.Error(err, "error retrieving kiali route host name")
 		return err
 	} else if !found {
 		err = fmt.Errorf("host field not found in kiali route")
-		r.log.Error(err, "error retrieving kiali route host name")
+		r.Log.Error(err, "error retrieving kiali route host name")
 		return err
 	}
 	if termination, found, _ := unstructured.NestedString(kialiRoute.UnstructuredContent(), "spec", "tls", "termination"); found && len(termination) > 0 {
@@ -181,32 +181,13 @@ func (r *controlPlaneReconciler) processNewServiceAccount(object *unstructured.U
 		"istio-sidecar-injector-service-account",
 		"grafana",
 		"prometheus":
-		return r.addUserToSCC("anyuid", serviceaccount.MakeUsername(object.GetNamespace(), object.GetName()))
+		_, err := r.AddUsersToSCC("anyuid", serviceaccount.MakeUsername(object.GetNamespace(), object.GetName()))
+		return err
 	case "jaeger":
-		return r.addUserToSCC("privileged", serviceaccount.MakeUsername(object.GetNamespace(), object.GetName()))
+		_, err := r.AddUsersToSCC("privileged", serviceaccount.MakeUsername(object.GetNamespace(), object.GetName()))
+		return err
 	}
 	return nil
-}
-
-func (r *controlPlaneReconciler) addUserToSCC(sccName, user string) error {
-	scc := &unstructured.Unstructured{}
-	scc.SetAPIVersion("security.openshift.io/v1")
-	scc.SetKind("SecurityContextConstraints")
-	err := r.client.Get(context.TODO(), client.ObjectKey{Name: sccName}, scc)
-
-	if err == nil {
-		users, exists, _ := unstructured.NestedStringSlice(scc.UnstructuredContent(), "users")
-		if !exists {
-			users = []string{}
-		}
-		if indexOf(users, user) < 0 {
-			r.log.Info("Adding ServiceAccount to SecurityContextConstraints", "ServiceAccount", user, "SecurityContextConstraints", sccName)
-			users = append(users, user)
-			unstructured.SetNestedStringSlice(scc.UnstructuredContent(), users, "users")
-			err = r.client.Update(context.TODO(), scc)
-		}
-	}
-	return err
 }
 
 func (r *controlPlaneReconciler) processDeletedServiceAccount(object *unstructured.Unstructured) error {
@@ -221,32 +202,11 @@ func (r *controlPlaneReconciler) processDeletedServiceAccount(object *unstructur
 		"istio-sidecar-injector-service-account",
 		"grafana",
 		"prometheus":
-		return r.removeUserFromSCC("anyuid", serviceaccount.MakeUsername(object.GetNamespace(), object.GetName()))
+		return r.RemoveUsersFromSCC("anyuid", serviceaccount.MakeUsername(object.GetNamespace(), object.GetName()))
 	case "jaeger":
-		return r.removeUserFromSCC("privileged", serviceaccount.MakeUsername(object.GetNamespace(), object.GetName()))
+		return r.RemoveUsersFromSCC("privileged", serviceaccount.MakeUsername(object.GetNamespace(), object.GetName()))
 	}
 	return nil
-}
-
-func (r *controlPlaneReconciler) removeUserFromSCC(sccName, user string) error {
-	scc := &unstructured.Unstructured{}
-	scc.SetAPIVersion("security.openshift.io/v1")
-	scc.SetKind("SecurityContextConstraints")
-	err := r.client.Get(context.TODO(), client.ObjectKey{Name: sccName}, scc)
-
-	if err == nil {
-		users, exists, _ := unstructured.NestedStringSlice(scc.UnstructuredContent(), "users")
-		if !exists {
-			return nil
-		}
-		if index := indexOf(users, user); index >= 0 {
-			r.log.Info("Removing ServiceAccount from SecurityContextConstraints", "ServiceAccount", user, "SecurityContextConstraints", sccName)
-			users = append(users[:index], users[index+1:]...)
-			unstructured.SetNestedStringSlice(scc.UnstructuredContent(), users, "users")
-			err = r.client.Update(context.TODO(), scc)
-		}
-	}
-	return err
 }
 
 func (r *controlPlaneReconciler) waitForDeployments(status *istiov1alpha3.ComponentStatus) error {
@@ -275,21 +235,21 @@ func (r *controlPlaneReconciler) waitForDeployments(status *istiov1alpha3.Compon
 func (r *controlPlaneReconciler) waitForDeployment(object *unstructured.Unstructured) error {
 	name := object.GetName()
 	// wait for deployment replicas >= 1
-	r.log.Info("waiting for deployment to become ready", object.GetKind(), name)
+	r.Log.Info("waiting for deployment to become ready", object.GetKind(), name)
 	err := wait.ExponentialBackoff(wait.Backoff{Duration: 6 * time.Second, Steps: 10, Factor: 1.1}, func() (bool, error) {
-		err := r.client.Get(context.TODO(), client.ObjectKey{Namespace: object.GetNamespace(), Name: name}, object)
+		err := r.Client.Get(context.TODO(), client.ObjectKey{Namespace: object.GetNamespace(), Name: name}, object)
 		if err == nil {
 			val, _, _ := unstructured.NestedInt64(object.UnstructuredContent(), "status", "readyReplicas")
 			return val > 0, nil
 		} else if errors.IsNotFound(err) {
-			r.log.Error(nil, "attempting to wait on unknown deployment", object.GetKind(), name)
+			r.Log.Error(nil, "attempting to wait on unknown deployment", object.GetKind(), name)
 			return true, nil
 		}
-		r.log.Error(err, "unexpected error occurred waiting for deployment to become ready", object.GetKind(), name)
+		r.Log.Error(err, "unexpected error occurred waiting for deployment to become ready", object.GetKind(), name)
 		return false, err
 	})
 	if err != nil {
-		r.log.Error(nil, "deployment failed to become ready in a timely manner", object.GetKind(), name)
+		r.Log.Error(nil, "deployment failed to become ready in a timely manner", object.GetKind(), name)
 	}
 	return nil
 }
@@ -297,9 +257,9 @@ func (r *controlPlaneReconciler) waitForDeployment(object *unstructured.Unstruct
 func (r *controlPlaneReconciler) waitForWebhookCABundleInitialization(object *unstructured.Unstructured) error {
 	name := object.GetName()
 	kind := object.GetKind()
-	r.log.Info("waiting for webhook CABundle initialization", kind, name)
+	r.Log.Info("waiting for webhook CABundle initialization", kind, name)
 	err := wait.ExponentialBackoff(wait.Backoff{Duration: 6 * time.Second, Steps: 10, Factor: 1.1}, func() (bool, error) {
-		err := r.client.Get(context.TODO(), client.ObjectKey{Name: name}, object)
+		err := r.Client.Get(context.TODO(), client.ObjectKey{Name: name}, object)
 		if err == nil {
 			webhooks, found, _ := unstructured.NestedSlice(object.UnstructuredContent(), "webhooks")
 			if !found || len(webhooks) == 0 {
@@ -313,14 +273,14 @@ func (r *controlPlaneReconciler) waitForWebhookCABundleInitialization(object *un
 			}
 			return true, nil
 		} else if errors.IsNotFound(err) {
-			r.log.Error(nil, "attempting to wait on unknown webhook", kind, name)
+			r.Log.Error(nil, "attempting to wait on unknown webhook", kind, name)
 			return true, nil
 		}
-		r.log.Error(err, "unexpected error occurred waiting for webhook CABundle to become initialized", object.GetKind(), name)
+		r.Log.Error(err, "unexpected error occurred waiting for webhook CABundle to become initialized", object.GetKind(), name)
 		return false, err
 	})
 	if err != nil {
-		r.log.Error(nil, "webhook CABundle failed to become initialized in a timely manner", kind, name)
+		r.Log.Error(nil, "webhook CABundle failed to become initialized in a timely manner", kind, name)
 	}
 	return nil
 }

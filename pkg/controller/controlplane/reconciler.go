@@ -5,8 +5,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/go-logr/logr"
-
 	istiov1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/v1alpha3"
 
 	corev1 "k8s.io/api/core/v1"
@@ -22,7 +20,6 @@ import (
 
 type controlPlaneReconciler struct {
 	*ReconcileControlPlane
-	log        logr.Logger
 	instance   *istiov1alpha3.ControlPlane
 	status     *istiov1alpha3.ControlPlaneStatus
 	ownerRefs  []metav1.OwnerReference
@@ -47,7 +44,7 @@ func (r *controlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	if err != nil {
 		// we can't progress here
 		updateReconcileStatus(&r.instance.Status.StatusType, err)
-		r.client.Status().Update(context.TODO(), r.instance)
+		r.Client.Status().Update(context.TODO(), r.instance)
 		return reconcile.Result{}, err
 	}
 
@@ -60,15 +57,15 @@ func (r *controlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	// which is all we're supporting atm.  if the scope expands to allow
 	// installing custom gateways, etc., we should revisit this.
 	namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: r.instance.Namespace}}
-	err = r.client.Get(context.TODO(), client.ObjectKey{Name: r.instance.Namespace}, namespace)
+	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: r.instance.Namespace}, namespace)
 	if err == nil {
 		if namespace.Labels == nil {
 			namespace.Labels = map[string]string{}
 		}
 		if label, ok := namespace.Labels["istio.openshift.com/ignore-namespace"]; !ok || label != "ignore" {
-			r.log.Info("Adding istio.openshift.com/ignore-namespace=ignore label to Request.Namespace")
+			r.Log.Info("Adding istio.openshift.com/ignore-namespace=ignore label to Request.Namespace")
 			namespace.Labels["istio.openshift.com/ignore-namespace"] = "ignore"
-			err = r.client.Update(context.TODO(), namespace)
+			err = r.Client.Update(context.TODO(), namespace)
 		}
 	} else {
 		allErrors = append(allErrors, err)
@@ -198,16 +195,16 @@ func (r *controlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	updateReconcileStatus(&r.status.StatusType, err)
 
 	r.instance.Status = *r.status
-	updateErr := r.client.Status().Update(context.TODO(), r.instance)
+	updateErr := r.Client.Status().Update(context.TODO(), r.instance)
 	if updateErr != nil {
-		r.log.Error(err, "error updating ControlPlane status")
+		r.Log.Error(err, "error updating ControlPlane status")
 		if err == nil {
 			// XXX: is this the right thing to do?
 			return reconcile.Result{}, updateErr
 		}
 	}
 
-	r.log.Info("reconciliation complete")
+	r.Log.Info("reconciliation complete")
 
 	return reconcile.Result{}, err
 }
@@ -217,13 +214,13 @@ func (r *controlPlaneReconciler) renderCharts() error {
 	var err error
 	var threeScaleRenderings map[string][]manifest.Manifest
 
-	r.log.V(2).Info("rendering Istio charts")
+	r.Log.V(2).Info("rendering Istio charts")
 	istioRenderings, _, err := RenderHelmChart(path.Join(ChartPath, "istio"), r.instance.GetNamespace(), r.instance.Spec.Istio)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
 	if isEnabled(r.instance.Spec.ThreeScale) {
-		r.log.V(2).Info("rendering 3scale charts")
+		r.Log.V(2).Info("rendering 3scale charts")
 		threeScaleRenderings, _, err = RenderHelmChart(path.Join(ChartPath, "maistra-threescale"), r.instance.GetNamespace(), r.instance.Spec.ThreeScale)
 		if err != nil {
 			allErrors = append(allErrors, err)
