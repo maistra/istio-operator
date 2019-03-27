@@ -5,6 +5,7 @@ import (
 
 	istiov1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/v1alpha3"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -32,7 +33,7 @@ func (r *controlPlaneReconciler) Delete() (reconcile.Result, error) {
 
 	r.instance.Status = *r.status
 	updateErr := r.client.Status().Update(context.TODO(), r.instance)
-	if updateErr != nil {
+	if updateErr != nil && !errors.IsGone(err) {
 		r.log.Error(err, "error updating ControlPlane status for object", "object", r.instance.GetName())
 		if err == nil {
 			// XXX: is this the right thing to do?

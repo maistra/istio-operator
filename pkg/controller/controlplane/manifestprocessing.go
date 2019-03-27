@@ -37,7 +37,9 @@ func (r *controlPlaneReconciler) processComponentManifests(componentName string)
 		}
 		status, err = r.processManifests(renderings, status)
 		status.ObservedGeneration = r.instance.GetGeneration()
-		r.processNewComponent(componentName, status)
+		if err := r.processNewComponent(componentName, status); err != nil {
+			r.log.Error(err, "unexped error occurred during postprocessing of new component")
+		}
 		r.status.ComponentStatus = append(r.status.ComponentStatus, status)
 	} else if status != nil && status.GetCondition(istiov1alpha3.ConditionTypeInstalled).Status != istiov1alpha3.ConditionStatusFalse && len(status.Resources) > 0 {
 		// delete resources
@@ -45,7 +47,9 @@ func (r *controlPlaneReconciler) processComponentManifests(componentName string)
 		status, err = r.processManifests([]manifest.Manifest{}, status)
 		status.ObservedGeneration = r.instance.GetGeneration()
 		if status.GetCondition(istiov1alpha3.ConditionTypeInitialized).Status == istiov1alpha3.ConditionStatusFalse {
-			r.processDeletedComponent(componentName, status)
+			if err := r.processDeletedComponent(componentName, status); err != nil {
+				r.log.Error(err, "unexped error occurred during cleanup of deleted component")
+			}
 		}
 		r.status.ComponentStatus = append(r.status.ComponentStatus, status)
 	} else {
@@ -112,7 +116,9 @@ func (r *controlPlaneReconciler) processManifests(manifests []manifest.Manifest,
 				if err == nil || errors.IsNotFound(err) || errors.IsGone(err) {
 					status.ObservedGeneration = 0
 					// special handling
-					r.processDeletedObject(unstructured)
+					if err := r.processDeletedObject(unstructured); err != nil {
+						r.log.Error(err, "unexped error occurred during cleanup of deleted resource")
+					}
 				} else {
 					r.log.Error(err, "error deleting resource")
 					allErrors = append(allErrors, err)
@@ -195,7 +201,10 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 			if err == nil {
 				status.ObservedGeneration = 1
 				// special handling
-				r.processNewObject(obj)
+				if err := r.processNewObject(obj); err != nil {
+					// just log for now
+					r.log.Error(err, "unexped error occurred during postprocessing of new resource")
+				}
 			}
 		}
 	} else if receiver.GetGeneration() > 0 && receiver.GetGeneration() == status.ObservedGeneration {

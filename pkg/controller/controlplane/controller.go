@@ -106,20 +106,10 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	if instance.GetGeneration() == instance.Status.ObservedGeneration {
+	if instance.GetGeneration() == instance.Status.ObservedGeneration &&
+		instance.Status.GetCondition(istiov1alpha3.ConditionTypeInstalled).Status == istiov1alpha3.ConditionStatusTrue {
 		reqLogger.Info("nothing to reconcile, generations match")
 		return reconcile.Result{}, nil
-	}
-
-	deleted := instance.GetDeletionTimestamp() != nil
-	finalizers := instance.GetFinalizers()
-	finalizerIndex := indexOf(finalizers, finalizer)
-	if !deleted && finalizerIndex < 0 {
-		reqLogger.V(1).Info("Adding finalizer", "finalizer", finalizer)
-		finalizers = append(finalizers, finalizer)
-		instance.SetFinalizers(finalizers)
-		err = r.client.Update(context.TODO(), instance)
-		return reconcile.Result{Requeue: err == nil}, err
 	}
 
 	reconciler := controlPlaneReconciler{
@@ -128,6 +118,10 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		log:                   reqLogger,
 		status:                istiov1alpha3.NewControlPlaneStatus(),
 	}
+
+	deleted := instance.GetDeletionTimestamp() != nil
+	finalizers := instance.GetFinalizers()
+	finalizerIndex := indexOf(finalizers, finalizer)
 
 	if deleted {
 		if finalizerIndex < 0 {
@@ -140,6 +134,12 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		instance.SetFinalizers(finalizers)
 		_ = r.client.Update(context.TODO(), instance)
 		return result, err
+	} else if finalizerIndex < 0 {
+		reqLogger.V(1).Info("Adding finalizer", "finalizer", finalizer)
+		finalizers = append(finalizers, finalizer)
+		instance.SetFinalizers(finalizers)
+		err = r.client.Update(context.TODO(), instance)
+		return reconcile.Result{}, err
 	}
 
 	reqLogger.Info("Reconciling ControlPlane")
