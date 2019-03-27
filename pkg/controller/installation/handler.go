@@ -74,7 +74,7 @@ func (h *ReconcileInstallation) Handle(instance *v1alpha1.Installation) (reconci
 		finalizers = append(finalizers, finalizer)
 		instance.SetFinalizers(finalizers)
 		err := h.client.Update(context.TODO(), instance)
-		return reconcile.Result{Requeue: err == nil}, err
+		return reconcile.Result{}, err
 	}
 
 	if deleted {
@@ -99,7 +99,7 @@ func (h *ReconcileInstallation) Handle(instance *v1alpha1.Installation) (reconci
 		finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
 		instance.SetFinalizers(finalizers)
 		err := h.client.Update(context.TODO(), instance)
-		return reconcile.Result{Requeue: err == nil}, err
+		return reconcile.Result{}, err
 	}
 	if instance.Status != nil && instance.Status.State != nil {
 		if *instance.Status.State == istioInstalledState {
