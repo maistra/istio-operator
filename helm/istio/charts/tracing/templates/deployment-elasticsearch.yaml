@@ -27,6 +27,7 @@ spec:
     spec:
       containers:
       - name: elasticsearch
+        image: "{{ .Values.elasticsearch.hub }}/{{ .Values.elasticsearch.image }}:{{ .Values.elasticsearch.tag }}"
         image: registry.centos.org/rhsyseng/elasticsearch:5.6.10
         imagePullPolicy: IfNotPresent
         ports:

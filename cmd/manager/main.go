@@ -20,7 +20,11 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/ready"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/client-go/discovery"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
 
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -29,6 +33,7 @@ import (
 )
 
 var log = logf.Log.WithName("cmd")
+var discoveryCacheDir string
 
 func printVersion() {
 	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
@@ -40,6 +45,8 @@ func main() {
 	// Installation
 	handler := &installation.Handler{}
 	installation.RegisterHandler(handler)
+
+	flag.StringVar(&discoveryCacheDir, "discoveryCacheDir", "/home/istio-operator/.kube/cache/discovery", "The location where cached discovery information used by the REST client is stored.")
 
 	flag.StringVar(&handler.OpenShiftRelease, "release", "v3.10", "The OpenShift release")
 	flag.StringVar(&handler.MasterPublicURL, "masterPublicURL", "", "The public URL of the master when using Launcher")
@@ -86,9 +93,8 @@ func main() {
 	}
 	defer r.Unset()
 
-	syncPeriod := 5 * time.Minute
 	// Create a new Cmd to provide shared dependencies and start components
-	mgr, err := manager.New(cfg, manager.Options{Namespace: namespace, SyncPeriod: &syncPeriod})
+	mgr, err := manager.New(cfg, manager.Options{Namespace: namespace, MapperProvider: NewDeferredDiscoveryRESTMapper})
 	if err != nil {
 		log.Error(err, "")
 		os.Exit(1)
@@ -112,7 +118,7 @@ func main() {
 	metrics.ExposeMetricsPort()
 
 	// Enusure CRDs are installed
-	if err := bootstrap.InstallCRDs(mgr.GetClient()); err != nil {
+	if err := bootstrap.InstallCRDs(mgr); err != nil {
 		log.Error(err, "failed to install CRDs")
 		os.Exit(1)
 	}
@@ -124,4 +130,15 @@ func main() {
 		log.Error(err, "manager exited non-zero")
 		os.Exit(1)
 	}
+}
+
+// NewDeferredDiscoveryRESTMapper constructs a new DeferredDiscoveryRESTMapper
+// based on discovery information fetched by a new client with the given config.
+func NewDeferredDiscoveryRESTMapper(c *rest.Config) (meta.RESTMapper, error) {
+	// Get a mapper
+	dc, err := discovery.NewCachedDiscoveryClientForConfig(c, discoveryCacheDir, "", 10*time.Minute)
+	if err != nil {
+		panic(err)
+	}
+	return restmapper.NewDeferredDiscoveryRESTMapper(dc), nil
 }

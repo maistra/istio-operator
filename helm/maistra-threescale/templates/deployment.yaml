@@ -28,7 +28,7 @@ spec:
     spec:
       serviceAccountName: threescale-service-account
       containers:
-      - image: quay.io/3scale/3scale-istio-adapter:v0.4.1
+      - image: "{{ .Values.hub }}/{{ .Values.image }}:{{ .Values.tag }}"
         imagePullPolicy: Always
         name: 3scale-istio-adapter
         ports:

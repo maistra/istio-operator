@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"k8s.io/apiserver/pkg/authentication/serviceaccount"
 
@@ -268,24 +269,21 @@ func (r *controlPlaneReconciler) waitForDeployment(object *unstructured.Unstruct
 	name := object.GetName()
 	// wait for deployment replicas >= 1
 	r.log.Info("waiting for deployment to become ready", object.GetKind(), name)
-	for i := 0; i < 10; i++ {
+	err := wait.ExponentialBackoff(wait.Backoff{Duration: 6 * time.Second, Steps: 10, Factor: 1.1}, func() (bool, error) {
 		err := r.client.Get(context.TODO(), client.ObjectKey{Namespace: object.GetNamespace(), Name: name}, object)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				// ???
-				r.log.Error(nil, "attempting to wait on unknown deployment", object.GetKind(), name)
-				return nil
-			}
-			// skip it
-			r.log.Error(err, "unexpected error occurred waiting for deployment to become ready", object.GetKind(), name)
-			return nil
+		if err == nil {
+			val, _, _ := unstructured.NestedInt64(object.UnstructuredContent(), "status", "readyReplicas")
+			return val > 0, nil
+		} else if errors.IsNotFound(err) {
+			r.log.Error(nil, "attempting to wait on unknown deployment", object.GetKind(), name)
+			return true, nil
 		}
-		if val, _, _ := unstructured.NestedInt64(object.UnstructuredContent(), "status", "readyReplicas"); val > 0 {
-			return nil
-		}
-		time.Sleep(6 * time.Second)
+		r.log.Error(err, "unexpected error occurred waiting for deployment to become ready", object.GetKind(), name)
+		return false, err
+	})
+	if err != nil {
+		r.log.Error(nil, "deployment failed to become ready in a timely manner", object.GetKind(), name)
 	}
-	r.log.Error(nil, "deployment failed to become ready after 600s", object.GetKind(), name)
 	return nil
 }
 
@@ -293,22 +291,29 @@ func (r *controlPlaneReconciler) waitForWebhookCABundleInitialization(object *un
 	name := object.GetName()
 	kind := object.GetKind()
 	r.log.Info("waiting for webhook CABundle initialization", kind, name)
-outer:
-	for i := 0; i < 10; i++ {
-		r.client.Get(context.TODO(), client.ObjectKey{Name: name}, object)
-		webhooks, found, _ := unstructured.NestedSlice(object.UnstructuredContent(), "webhooks")
-		if !found || len(webhooks) == 0 {
-			return nil
-		}
-		for _, webhook := range webhooks {
-			typedWebhook, _ := webhook.(map[string]interface{})
-			if caBundle, found, _ := unstructured.NestedString(typedWebhook, "clientConfig", "caBundle"); !found || len(caBundle) == 0 {
-				time.Sleep(6 * time.Second)
-				continue outer
+	err := wait.ExponentialBackoff(wait.Backoff{Duration: 6 * time.Second, Steps: 10, Factor: 1.1}, func() (bool, error) {
+		err := r.client.Get(context.TODO(), client.ObjectKey{Name: name}, object)
+		if err == nil {
+			webhooks, found, _ := unstructured.NestedSlice(object.UnstructuredContent(), "webhooks")
+			if !found || len(webhooks) == 0 {
+				return true, nil
 			}
+			for _, webhook := range webhooks {
+				typedWebhook, _ := webhook.(map[string]interface{})
+				if caBundle, found, _ := unstructured.NestedString(typedWebhook, "clientConfig", "caBundle"); !found || len(caBundle) == 0 {
+					return false, nil
+				}
+			}
+			return true, nil
+		} else if errors.IsNotFound(err) {
+			r.log.Error(nil, "attempting to wait on unknown webhook", kind, name)
+			return true, nil
 		}
-		return nil
+		r.log.Error(err, "unexpected error occurred waiting for webhook CABundle to become initialized", object.GetKind(), name)
+		return false, err
+	})
+	if err != nil {
+		r.log.Error(nil, "webhook CABundle failed to become initialized in a timely manner", kind, name)
 	}
-	r.log.Error(nil, "webhook CABundle failed to become initialized after 600s", kind, name)
 	return nil
 }
