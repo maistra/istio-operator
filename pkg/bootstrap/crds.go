@@ -8,6 +8,9 @@ import (
 	"path"
 	"path/filepath"
 
+	"k8s.io/client-go/restmapper"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+
 	"github.com/ghodss/yaml"
 
 	"github.com/maistra/istio-operator/pkg/controller/controlplane"
@@ -26,23 +29,23 @@ var log = logf.Log.WithName("bootstrap")
 
 // InstallCRDs makes sure all CRDs have been installed.  CRDs are located from
 // files in controller.ChartPath/istio-init/files
-func InstallCRDs(k8sClient client.Client) error {
+func InstallCRDs(mgr manager.Manager) error {
 	log.Info("ensuring CRDs have been installed")
 	crdPath := path.Join(controlplane.ChartPath, "istio-init/files")
 	crdDir, err := os.Stat(crdPath)
-	if !crdDir.IsDir() {
+	if err != nil || !crdDir.IsDir() {
 		return fmt.Errorf("Cannot locate any CRD files in %s", crdPath)
 	}
 	err = filepath.Walk(crdPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return err
 		}
-		return processCRDFile(k8sClient, path)
+		return processCRDFile(mgr, path)
 	})
 	return err
 }
 
-func processCRDFile(k8sClient client.Client, fileName string) error {
+func processCRDFile(mgr manager.Manager, fileName string) error {
 	allErrors := []error{}
 	buf := &bytes.Buffer{}
 	file, err := os.Open(fileName)
@@ -54,6 +57,8 @@ func processCRDFile(k8sClient client.Client, fileName string) error {
 	if err != nil {
 		return err
 	}
+	crdsAdded := false
+	k8sClient := mgr.GetClient()
 	for index, raw := range releaseutil.SplitManifests(string(buf.Bytes())) {
 		rawJSON, err := yaml.YAMLToJSON([]byte(raw))
 		if err != nil {
@@ -85,12 +90,20 @@ func processCRDFile(k8sClient client.Client, fileName string) error {
 					allErrors = append(allErrors, err)
 					continue
 				}
+				crdsAdded = true
 			} else {
 				allErrors = append(allErrors, err)
 				continue
 			}
 		}
 		log.Info("CRD installed", "file", fileName, "index", index, "CRD", obj.GetName())
+	}
+	if crdsAdded {
+		// reset client cache
+		mapper := mgr.GetRESTMapper()
+		if cachedMapper, ok := mapper.(*restmapper.DeferredDiscoveryRESTMapper); ok {
+			cachedMapper.Reset()
+		}
 	}
 	return utilerrors.NewAggregate(allErrors)
 }

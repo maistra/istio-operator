@@ -1,26 +1,17 @@
 apiVersion: istio.openshift.com/v1alpha3
 kind: ControlPlane
 metadata:
-  name: basic-install
+  name: auth-install
 spec:
-  launcher:
-    enabled: false
-    # specify the url to master, e.g. https://master.some.domain.com:443
-    LAUNCHER_MISSIONCONTROL_OPENSHIFT_CONSOLE_URL: 
-    # Your GitHub username
-    LAUNCHER_MISSIONCONTROL_GITHUB_USERNAME:
-    # Your GitHub Mission Control access token
-    LAUNCHER_MISSIONCONTROL_GITHUB_TOKEN:
-
-  threeScale:
-    enabled: false
-
   istio:
     global:
+      # the following lines enable tls across the control and data planes
       controlPlaneSecurityEnabled: true
       mtls:
         enabled: true
+
       proxy:
+        # constrain resources for use in smaller environments
         resources:
           requests:
             cpu: 100m
@@ -31,16 +22,21 @@ spec:
 
     gateways:
       istio-egressgateway:
+        # disable autoscaling for use in smaller environments
         autoscaleEnabled: false
       istio-ingressgateway:
+        # disable autoscaling for use in smaller environments
         autoscaleEnabled: false
 
     mixer:
       policy:
+        # disable autoscaling for use in smaller environments
         autoscaleEnabled: false
 
       telemetry:
+        # disable autoscaling for use in smaller environments
         autoscaleEnabled: false
+        # constrain resources for use in smaller environments
         resources:
           requests:
             cpu: 100m
@@ -50,10 +46,20 @@ spec:
             memory: 4G
 
     pilot:
+      # disable autoscaling for use in smaller environments
       autoscaleEnabled: false
+      # increase random sampling rate for development/testing
       traceSampling: 100.0
 
     kiali:
+      # to disable kiali
+      #enabled: false
+
+      # create a secret for accessing kiali dashboard with the following credentials
       dashboard:
         user: admin
         passphrase: admin
+
+    # to disable tracing (i.e. jaeger)
+    #tracing:
+    #  enabled: false

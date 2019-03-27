@@ -13,6 +13,10 @@ spec:
         name: istio-operator
     spec:
       serviceAccountName: istio-operator
+      volumes:
+      - name: discovery-cache
+        emptyDir:
+          medium: Memory
       containers:
         - name: istio-operator
           image: maistra/istio-operator-centos7:0.10.0
@@ -21,6 +25,8 @@ spec:
             name: metrics
           command:
           - istio-operator
+          - --discoveryCacheDir
+          - /home/istio-operator/.kube/cache/discovery
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
@@ -31,3 +37,6 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "istio-operator"
+          volumeMounts:
+          - name: discovery-cache
+            mountPath: /home/istio-operator/.kube/cache/discovery
