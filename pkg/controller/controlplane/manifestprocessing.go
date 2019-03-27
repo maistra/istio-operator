@@ -38,7 +38,7 @@ func (r *controlPlaneReconciler) processComponentManifests(componentName string)
 		status, err = r.processManifests(renderings, status)
 		status.ObservedGeneration = r.instance.GetGeneration()
 		if err := r.processNewComponent(componentName, status); err != nil {
-			r.log.Error(err, "unexped error occurred during postprocessing of new component")
+			r.log.Error(err, "unexpected error occurred during postprocessing of new component")
 		}
 		r.status.ComponentStatus = append(r.status.ComponentStatus, status)
 	} else if status != nil && status.GetCondition(istiov1alpha3.ConditionTypeInstalled).Status != istiov1alpha3.ConditionStatusFalse && len(status.Resources) > 0 {
@@ -48,7 +48,7 @@ func (r *controlPlaneReconciler) processComponentManifests(componentName string)
 		status.ObservedGeneration = r.instance.GetGeneration()
 		if status.GetCondition(istiov1alpha3.ConditionTypeInitialized).Status == istiov1alpha3.ConditionStatusFalse {
 			if err := r.processDeletedComponent(componentName, status); err != nil {
-				r.log.Error(err, "unexped error occurred during cleanup of deleted component")
+				r.log.Error(err, "unexpected error occurred during cleanup of deleted component")
 			}
 		}
 		r.status.ComponentStatus = append(r.status.ComponentStatus, status)
@@ -117,7 +117,7 @@ func (r *controlPlaneReconciler) processManifests(manifests []manifest.Manifest,
 					status.ObservedGeneration = 0
 					// special handling
 					if err := r.processDeletedObject(unstructured); err != nil {
-						r.log.Error(err, "unexped error occurred during cleanup of deleted resource")
+						r.log.Error(err, "unexpected error occurred during cleanup of deleted resource")
 					}
 				} else {
 					r.log.Error(err, "error deleting resource")
@@ -203,7 +203,7 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 				// special handling
 				if err := r.processNewObject(obj); err != nil {
 					// just log for now
-					r.log.Error(err, "unexped error occurred during postprocessing of new resource")
+					r.log.Error(err, "unexpected error occurred during postprocessing of new resource")
 				}
 			}
 		}
