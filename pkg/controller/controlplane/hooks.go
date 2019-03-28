@@ -183,7 +183,7 @@ func (r *controlPlaneReconciler) processNewServiceAccount(object *unstructured.U
 
 func (r *controlPlaneReconciler) addUserToSCC(sccName, user string) error {
 	scc := &unstructured.Unstructured{}
-	scc.SetAPIVersion("v1")
+	scc.SetAPIVersion("security.openshift.io/v1")
 	scc.SetKind("SecurityContextConstraints")
 	err := r.client.Get(context.TODO(), client.ObjectKey{Name: sccName}, scc)
 
@@ -223,7 +223,7 @@ func (r *controlPlaneReconciler) processDeletedServiceAccount(object *unstructur
 
 func (r *controlPlaneReconciler) removeUserFromSCC(sccName, user string) error {
 	scc := &unstructured.Unstructured{}
-	scc.SetAPIVersion("v1")
+	scc.SetAPIVersion("security.openshift.io/v1")
 	scc.SetKind("SecurityContextConstraints")
 	err := r.client.Get(context.TODO(), client.ObjectKey{Name: sccName}, scc)
 
