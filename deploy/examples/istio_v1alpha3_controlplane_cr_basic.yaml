@@ -22,6 +22,8 @@ spec:
       istio-ingressgateway:
         # disable autoscaling for use in smaller environments
         autoscaleEnabled: false
+        # set to true to enable IOR
+        ior_enabled: false
 
     mixer:
       policy:

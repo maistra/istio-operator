@@ -1,0 +1,19 @@
+{{- if and (.Values.enabled) (index .Values "istio-ingressgateway" "enabled") (index .Values "istio-ingressgateway" "ior_enabled") }}
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: ior
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ior
+    chart: {{ template "gateway.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+roleRef:
+  kind: Role
+  namespace: {{ .Release.Namespace }}
+  name: ior
+subjects:
+  - kind: ServiceAccount
+    name: ior
+{{- end }}
