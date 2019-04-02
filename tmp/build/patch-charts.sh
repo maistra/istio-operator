@@ -46,6 +46,17 @@ function patchTemplates() {
 
   # enable egressgateway
   sed -i -e '/istio-egressgateway:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/charts/gateways/values.yaml
+  # add support for IOR
+  sed -i -e '/istio-ingressgateway:/,/enabled:/ {
+    /enabled:/ a\
+\  # set to true to enable route creation\
+\  ior_enabled: false\
+\  ior_image: ior\
+
+  }' ${HELM_DIR}/istio/charts/gateways/values.yaml
+  if [[ "${COMMUNITY,,}" == "true" ]]; then
+    sed -i -e 's/ior_image:.*$/ior_image: ior-centos7/' ${HELM_DIR}/istio/charts/gateways/values.yaml
+  fi
 
   # enable ingress for grafana
   sed -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/charts/grafana/values.yaml

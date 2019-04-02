@@ -1,0 +1,45 @@
+{{- if and (.Values.enabled) (index .Values "istio-ingressgateway" "enabled") (index .Values "istio-ingressgateway" "ior_enabled") }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ior
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ior
+    chart: {{ template "gateway.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ior
+  template:
+    metadata:
+      labels:
+        app: ior
+        chart: {{ template "gateway.chart" . }}
+        heritage: {{ .Release.Service }}
+        release: {{ .Release.Name }}
+    spec:
+{{- if .Values.global.priorityClassName }}
+      priorityClassName: "{{ .Values.global.priorityClassName }}"
+{{- end }}
+{{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.global.imagePullSecrets }}
+      - name: {{ . }}
+{{- end }}
+{{- end }}
+      serviceAccountName: ior
+      containers:
+      - name: ior
+{{- if contains "/" (index .Values "istio-ingressgateway" "ior_image") }}
+        image: "{{ index .Values "istio-ingressgateway" "ior_image" }}"
+{{- else }}
+        image: "{{ .Values.global.hub }}/{{ index .Values "istio-ingressgateway" "ior_image" }}:{{ .Values.global.tag }}"
+{{- end }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        args:
+        - --mcp-address=istio-galley.{{ .Release.Namespace }}:9901
+{{- end }}
