@@ -42,4 +42,8 @@ spec:
         imagePullPolicy: {{ .Values.global.imagePullPolicy }}
         args:
         - --mcp-address=istio-galley.{{ .Release.Namespace }}:9901
+        resources:
+{{ toYaml .Values.global.defaultResources | indent 10 }}
+      affinity:
+      {{- include "nodeaffinity" . | indent 6 }}
 {{- end }}
