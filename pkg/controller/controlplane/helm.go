@@ -16,6 +16,13 @@ import (
 	"k8s.io/helm/pkg/timeconv"
 )
 
+func init() {
+	// inject OpenShift specific kinds into the ordering list
+	serviceIndex := indexOf(tiller.InstallOrder, "Service")
+	// we want route before oauthclient before deployments
+	tiller.InstallOrder = append(tiller.InstallOrder[:serviceIndex], append([]string{"Route", "OAuthClient"}, tiller.InstallOrder[serviceIndex:]...)...)
+}
+
 var (
 	// ChartPath to helm charts
 	ChartPath string

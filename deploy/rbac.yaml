@@ -16,6 +16,7 @@ rules:
   - secrets
   - serviceaccounts
   - namespaces
+  - routes
   verbs:
   - '*'
 - apiGroups:
@@ -126,6 +127,12 @@ rules:
   - apps.openshift.io
   resources:
   - deploymentconfigs
+  verbs:
+  - '*'
+- apiGroups:
+  - oauth.openshift.io
+  resources:
+  - oauthclients
   verbs:
   - '*'
 - apiGroups:

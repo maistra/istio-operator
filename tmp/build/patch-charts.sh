@@ -69,10 +69,10 @@ function patchTemplates() {
   sed -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/charts/kiali/values.yaml
   if [[ "${COMMUNITY,,}" == "true" ]]; then
     sed -i -e 's/hub:.*$/hub: kiali/' \
-           -e 's/tag:.*$/tag: v0.15.0/' ${HELM_DIR}/istio/charts/kiali/values.yaml
+           -e 's/tag:.*$/tag: v0.16.2/' ${HELM_DIR}/istio/charts/kiali/values.yaml
   else
     sed -i -e 's+hub:.*$+hub: openshift-istio-tech-preview+' \
-           -e 's/tag:.*$/tag: 0.15.0/' ${HELM_DIR}/istio/charts/kiali/values.yaml
+           -e 's/tag:.*$/tag: 0.16.2/' ${HELM_DIR}/istio/charts/kiali/values.yaml
   fi
 
   # - remove the create customer resources job, we handle this in the installer to deal with potential races
@@ -297,6 +297,10 @@ function patchKialiOpenShift() {
 \      static_content_root_directory: /opt/kiali/console' \
          -e '/grafana:/,/url:/ {
              /url:/ a\
+\{\{- if not (and (.Values.dashboard.user) (.Values.dashboard.passphrase)) \}\}\
+\    auth:\
+\      strategy: openshift\
+\{\{- end \}\}\
 \    identity:\
 \      cert_file: /kiali-cert/tls.crt\
 \      private_key_file: /kiali-cert/tls.key
@@ -310,6 +314,11 @@ function patchKialiOpenShift() {
 \  verbs:\
 \  - get\
 \- apiGroups: ["route.openshift.io"]\
+\  resources:\
+\  - routes\
+\  verbs:\
+\  - get\
+\- apiGroups: [""]\
 \  resources:\
 \  - routes\
 \  verbs:\
@@ -328,7 +337,7 @@ function patchKialiOpenShift() {
 \    service.alpha.openshift.io/serving-cert-secret-name: kiali-cert-secret' ${HELM_DIR}/istio/charts/kiali/templates/service.yaml
   
   # - Remove the prometheus, grafana environment from the deployment
-  sed -i -e '/PROMETHEUS_SERVICE_URL/,/volumeMounts/ {
+  sed -i -e '/SERVER_CREDENTIALS_USERNAME/,/volumeMounts/ {
     /volumeMounts/b
     d
   }' ${HELM_DIR}/istio/charts/kiali/templates/deployment.yaml
@@ -341,14 +350,23 @@ function patchKialiOpenShift() {
       N
       a\
 \        - name: kiali-cert\
-\          mountPath: "/kiali-cert"
+\          mountPath: "/kiali-cert"\
+\{\{- if and (.Values.dashboard.user) (.Values.dashboard.passphrase) \}\}\
+\        - name: kiali-secret\
+\          mountPath: "/kiali-secret"\
+\{\{- end \}\}
     }
     /configMap:/ {
       N
       a\
 \      - name: kiali-cert\
 \        secret:\
-\          secretName: kiali-cert-secret
+\          secretName: kiali-cert-secret\
+\{\{- if and (.Values.dashboard.user) (.Values.dashboard.passphrase) \}\}\
+\      - name: kiali-secret\
+\        secret:\
+\          secretName: \{\{ .Values.dashboard.secretName \}\}\
+\{\{- end \}\}
     }
   }' ${HELM_DIR}/istio/charts/kiali/templates/deployment.yaml
 
@@ -409,6 +427,143 @@ function patchKialiOpenShift() {
 \  - create
     }' ${HELM_DIR}/istio/charts/kiali/templates/clusterrole.yaml
   fi
+
+  # add new kiali-viewer role
+  cat >> ${HELM_DIR}/istio/charts/kiali/templates/clusterrole.yaml << EOF
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kiali-viewer
+  labels:
+    app: {{ template "kiali.name" . }}
+    chart: {{ template "kiali.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+rules:
+- apiGroups: [""]
+  resources:
+  - configmaps
+  - endpoints
+  - namespaces
+  - nodes
+  - pods
+  - services
+  - replicationcontrollers
+  - routes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["extensions", "apps"]
+  resources:
+  - deployments
+  - statefulsets
+  - replicasets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["autoscaling"]
+  resources:
+  - horizontalpodautoscalers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["batch"]
+  resources:
+  - cronjobs
+  - jobs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["config.istio.io"]
+  resources:
+  - apikeys
+  - authorizations
+  - checknothings
+  - circonuses
+  - deniers
+  - fluentds
+  - handlers
+  - kubernetesenvs
+  - kuberneteses
+  - listcheckers
+  - listentries
+  - logentries
+  - memquotas
+  - metrics
+  - opas
+  - prometheuses
+  - quotas
+  - quotaspecbindings
+  - quotaspecs
+  - rbacs
+  - reportnothings
+  - rules
+  - servicecontrolreports
+  - servicecontrols
+  - solarwindses
+  - stackdrivers
+  - statsds
+  - stdios
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["networking.istio.io"]
+  resources:
+  - destinationrules
+  - gateways
+  - serviceentries
+  - virtualservices
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["authentication.istio.io"]
+  resources:
+  - policies
+  - meshpolicies
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["rbac.istio.io"]
+  resources:
+  - clusterrbacconfigs
+  - rbacconfigs
+  - serviceroles
+  - servicerolebindings
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["apps.openshift.io"]
+  resources:
+  - deploymentconfigs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["project.openshift.io"]
+  resources:
+  - projects
+  verbs:
+  - get
+- apiGroups: ["route.openshift.io"]
+  resources:
+  - routes
+  verbs:
+  - get
+- apiGroups: ["monitoring.kiali.io"]
+  resources:
+  - monitoringdashboards
+  verbs:
+  - get
+EOF
 }
 
 copyOverlay
