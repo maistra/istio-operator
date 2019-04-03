@@ -85,19 +85,21 @@ func (r *controlPlaneReconciler) processDeletedComponent(name string, status *is
 }
 
 func (r *controlPlaneReconciler) patchObject(object *unstructured.Unstructured) error {
-	gk := object.GroupVersionKind().GroupKind()
-	switch gk.String() {
+	switch object.GetKind() {
 	case "ConfigMap":
 		if object.GetName() == "kiali" {
 			return r.patchKialiConfig(object)
+		}
+	case "OAuthClient":
+		if object.GetName() == "kiali" {
+			return r.patchKialiOAuthClient(object)
 		}
 	}
 	return nil
 }
 
 func (r *controlPlaneReconciler) processNewObject(object *unstructured.Unstructured) error {
-	gk := object.GroupVersionKind().GroupKind()
-	switch gk.String() {
+	switch object.GetKind() {
 	case "ServiceAccount":
 		return r.processNewServiceAccount(object)
 	}
@@ -105,8 +107,7 @@ func (r *controlPlaneReconciler) processNewObject(object *unstructured.Unstructu
 }
 
 func (r *controlPlaneReconciler) processDeletedObject(object *unstructured.Unstructured) error {
-	gk := object.GroupVersionKind().GroupKind()
-	switch gk.String() {
+	switch object.GetKind() {
 	case "ServiceAccount":
 		return r.processDeletedServiceAccount(object)
 	}
@@ -119,6 +120,7 @@ var (
 )
 
 func (r *controlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructured) error {
+	r.log.Info("patching kiali ConfigMap", object.GetKind(), object.GetName())
 	configYaml, found, err := unstructured.NestedString(object.UnstructuredContent(), "data", "config.yaml")
 	if err != nil {
 		// This shouldn't occur if it's really a ConfigMap, but...
@@ -156,6 +158,47 @@ func (r *controlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructu
 	configYaml = string(jaegerRegexp.ReplaceAll([]byte(configYaml), []byte(fmt.Sprintf("${1} https://%s\n", jaegerURL))))
 
 	return unstructured.SetNestedField(object.UnstructuredContent(), configYaml, "data", "config.yaml")
+}
+
+func (r *controlPlaneReconciler) patchKialiOAuthClient(object *unstructured.Unstructured) error {
+	r.log.Info("patching kiali OAuthClient", object.GetKind(), object.GetName())
+	redirectURIs, found, err := unstructured.NestedStringSlice(object.UnstructuredContent(), "redirectURIs")
+	if err != nil {
+		// This shouldn't occur if it's really a OAuthClient, but...
+		r.log.Error(err, "could not parse kiali OAuthClient")
+		return err
+	} else if !found {
+		return nil
+	}
+
+	// get kiali route host
+	kialiRoute := &unstructured.Unstructured{}
+	kialiRoute.SetAPIVersion("route.openshift.io/v1")
+	kialiRoute.SetKind("Route")
+	err = r.client.Get(context.TODO(), client.ObjectKey{Name: "kiali", Namespace: r.instance.GetNamespace()}, kialiRoute)
+	if err != nil && !errors.IsNotFound(err) {
+		r.log.Error(err, "error retrieving kiali route")
+		return fmt.Errorf("could not retrieve kiali route: %s", err)
+	}
+
+	kialiURL, found, err := unstructured.NestedString(kialiRoute.UnstructuredContent(), "spec", "host")
+	if err != nil {
+		r.log.Error(err, "error retrieving kiali route host name")
+		return err
+	} else if !found {
+		err = fmt.Errorf("host field not found in kiali route")
+		r.log.Error(err, "error retrieving kiali route host name")
+		return err
+	}
+	if termination, found, _ := unstructured.NestedString(kialiRoute.UnstructuredContent(), "spec", "tls", "termination"); found && len(termination) > 0 {
+		kialiURL = "https://" + kialiURL
+	} else {
+		kialiURL = "http://" + kialiURL
+	}
+	// update redirectURIs
+	redirectURIs = append([]string{kialiURL}, redirectURIs...)
+
+	return unstructured.SetNestedStringSlice(object.UnstructuredContent(), redirectURIs, "redirectURIs")
 }
 
 // add-scc-to-user anyuid to service accounts: citadel, egressgateway, galley, ingressgateway, mixer, pilot, sidecar-injector
