@@ -284,9 +284,7 @@ rules:
   - cronjobs
   - jobs
   verbs:
-  - get
-  - list
-  - watch
+  - '*'
 - apiGroups: ["project.openshift.io"]
   resources:
   - projects
