@@ -53,15 +53,15 @@ spec:
       # increase random sampling rate for development/testing
       traceSampling: 100.0
 
-    #kiali:
-    #  # to disable kiali
-    #  enabled: false
-    #
-    #  # oauth is used by default, but you can manually define a dashboard user
-    #  # create a secret for accessing kiali dashboard with the following credentials
-    #  dashboard:
-    #    user: admin
-    #    passphrase: admin
+    kiali:
+     # to disable kiali
+     #enabled: false
+    
+     # oauth is used by default, but you can manually define a dashboard user
+     # create a secret for accessing kiali dashboard with the following credentials
+     dashboard:
+       user: admin
+       passphrase: admin
 
     # to disable tracing (i.e. jaeger)
     #tracing:
