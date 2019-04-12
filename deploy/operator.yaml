@@ -208,10 +208,12 @@ rules:
   - watch
 - apiGroups:
   - extensions
+  - apps
   resources:
   - deployments/finalizers
   resourceNames:
   - istio-galley
+  - istio-sidecar-injector
   verbs:
   - update
 # for mixer
