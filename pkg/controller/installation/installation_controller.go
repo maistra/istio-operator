@@ -2,6 +2,7 @@ package installation
 
 import (
 	"context"
+	"fmt"
 
 	istiov1alpha1 "github.com/maistra/istio-operator/pkg/apis/istio/v1alpha1"
 
@@ -103,7 +104,7 @@ func (r *ReconcileInstallation) Reconcile(request reconcile.Request) (reconcile.
 	}
 
 	if instance.Name != istioInstallerCRName {
-		reqLogger.Info("Ignoring istio installer CR %v, please redeploy using the %v name", instance.Name, istioInstallerCRName)
+		reqLogger.Info(fmt.Sprintf("Ignoring istio installer CR %v, please redeploy using the %v name", instance.Name, istioInstallerCRName))
 		return reconcile.Result{}, nil
 	}
 

@@ -5,6 +5,9 @@ set -e
 : ${HELM_DIR:?"Need to set HELM_DIR to output location for charts, e.g. tmp/_output/istio-releases/istio-1.1.0"}
 : ${SOURCE_DIR:?"Need to set SOURCE_DIR to location of the istio-operator source directory"}
 
+: ${THREESCALE_VERSION:=0.5.0}
+: ${KIALI_VERSION:=0.16.2}
+
 # copy maistra specific templates into charts
 function copyOverlay() {
   echo "copying Maistra chart customizations over stock Istio charts"
@@ -30,7 +33,7 @@ function patchTemplates() {
 
   # Webhooks are not namespaced!  we do this to ensure we're not setting owner references on them
   sed -i -e '/metadata:/,/webhooks:/ { /namespace/d }' \
-    ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhook.yaml \
+    ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhookconfiguration.yaml.tpl \
     ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
 
   # update global defaults
@@ -69,10 +72,10 @@ function patchTemplates() {
   sed -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/charts/kiali/values.yaml
   if [[ "${COMMUNITY,,}" == "true" ]]; then
     sed -i -e 's/hub:.*$/hub: kiali/' \
-           -e 's/tag:.*$/tag: v0.16.2/' ${HELM_DIR}/istio/charts/kiali/values.yaml
+           -e 's/tag:.*$/tag: v'${KIALI_VERSION}'/' ${HELM_DIR}/istio/charts/kiali/values.yaml
   else
     sed -i -e 's+hub:.*$+hub: openshift-istio-tech-preview+' \
-           -e 's/tag:.*$/tag: 0.16.2/' ${HELM_DIR}/istio/charts/kiali/values.yaml
+           -e 's/tag:.*$/tag: '${KIALI_VERSION}'/' ${HELM_DIR}/istio/charts/kiali/values.yaml
   fi
 
   # - remove the create customer resources job, we handle this in the installer to deal with potential races
@@ -114,7 +117,7 @@ function patchTemplates() {
   sed -i -e '/if \.Values\.enableNamespacesByDefault/,/else/s/istio-injection/istio.openshift.com\/ignore-namespace/' \
          -e 's/NotIn/DoesNotExist/' \
          -e '/values/d' \
-         -e '/disabled/d' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhook.yaml
+         -e '/disabled/d' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhookconfiguration.yaml.tpl
 
   # - add a maistra-version label to all objects which have a release label
   find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl" | \
@@ -139,6 +142,8 @@ function patchTemplates() {
   tag: 5.6.10\
 \
 \1|' ${HELM_DIR}/istio/charts/tracing/values.yaml
+    sed -i -e 's/hub:.*$/hub: openshift-istio-tech-preview/' \
+           -e 's/tag:.*$/tag: v'${THREESCALE_VERSION}'/' ${HELM_DIR}/maistra-threescale/values.yaml
   else
     sed -i -e 's+hub:.*$+hub: openshift-istio-tech-preview+g' \
           -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' \
@@ -156,7 +161,7 @@ function patchTemplates() {
 \
 \1|' ${HELM_DIR}/istio/charts/tracing/values.yaml
     sed -i -e 's/hub:.*$/hub: openshift-istio-tech-preview/' \
-           -e 's/tag:.*$/tag: 0.4.1/' ${HELM_DIR}/maistra-threescale/values.yaml
+           -e 's/tag:.*$/tag: '${THREESCALE_VERSION}'/' ${HELM_DIR}/maistra-threescale/values.yaml
   fi
 
   # - remove istio-multi service account

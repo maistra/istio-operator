@@ -33,7 +33,7 @@ func (r *controlPlaneReconciler) Delete() (reconcile.Result, error) {
 
 	r.instance.Status = *r.status
 	updateErr := r.client.Status().Update(context.TODO(), r.instance)
-	if updateErr != nil && !errors.IsGone(err) {
+	if updateErr != nil && !errors.IsGone(updateErr) {
 		r.log.Error(err, "error updating ControlPlane status for object", "object", r.instance.GetName())
 		if err == nil {
 			// XXX: is this the right thing to do?

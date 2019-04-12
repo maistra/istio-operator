@@ -3,6 +3,7 @@ package installation
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"reflect"
 	"strconv"
 	"time"
@@ -12,8 +13,8 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -104,14 +105,14 @@ func (h *ReconcileInstallation) Handle(instance *v1alpha1.Installation) (reconci
 	if instance.Status != nil && instance.Status.State != nil {
 		if *instance.Status.State == istioInstalledState {
 			if reflect.DeepEqual(instance.Spec, instance.Status.Spec) {
-				reqLogger.V(2).Info("Ignoring installed state for %v %v", instance.Kind, instance.Name)
+				reqLogger.V(2).Info(fmt.Sprintf("Ignoring installed state for %v %v", instance.Kind, instance.Name))
 				return reconcile.Result{}, nil
 			}
 		} else {
-			reqLogger.Info("Reinstalling istio for %v %v", instance.Kind, instance.Name)
+			reqLogger.Info(fmt.Sprintf("Reinstalling istio for %v %v", instance.Kind, instance.Name))
 		}
 	} else {
-		reqLogger.Info("Installing istio for %v %v", instance.Kind, instance.Name)
+		reqLogger.Info(fmt.Sprintf("Installing istio for %v %v", instance.Kind, instance.Name))
 	}
 
 	if err := h.ensureProjectAndServiceAccount(); err != nil {
@@ -147,49 +148,10 @@ func (h *ReconcileInstallation) Handle(instance *v1alpha1.Installation) (reconci
 }
 
 func (h *ReconcileInstallation) deleteJob(job *batchv1.Job) {
-	objectKey, err := client.ObjectKeyFromObject(job)
-	if err != nil {
-		return
+	err := h.client.Delete(context.TODO(), job, client.PropagationPolicy(metav1.DeletePropagationForeground))
+	if err != nil && !errors.IsGone(err) && !errors.IsNotFound(err) {
+		log.Error(err, "Error deleting job", "job", job.Name)
 	}
-	err = h.client.Get(context.TODO(), objectKey, job)
-	if err == nil {
-		uid := job.UID
-		var parallelism int32 = 0
-		job.Spec.Parallelism = &parallelism
-		h.client.Update(context.TODO(), job)
-		podList := corev1.PodList{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Pod",
-				APIVersion: "v1",
-			},
-		}
-
-		labelSelector := labels.SelectorFromSet(labels.Set(map[string]string{"controller-uid": string(uid)}))
-		listOptions := &client.ListOptions{
-			Raw: &metav1.ListOptions{
-				LabelSelector:        labelSelector.String(),
-				IncludeUninitialized: false,
-			},
-		}
-
-		err := h.client.List(context.TODO(), listOptions, &podList)
-		if err == nil {
-			for _, pod := range podList.Items {
-				h.client.Delete(context.TODO(), &pod)
-			}
-			orphanDependents := false
-			h.client.Delete(context.TODO(), job, func(opts *client.DeleteOptions) { deleteOrphanedDependents(opts, &orphanDependents) })
-		}
-	}
-}
-
-func deleteOrphanedDependents(opts *client.DeleteOptions, orphanedDependents *bool) {
-	raw := opts.Raw
-	if raw == nil {
-		raw = &metav1.DeleteOptions{}
-		opts.Raw = raw
-	}
-	raw.OrphanDependents = orphanedDependents
 }
 
 func (h *ReconcileInstallation) deleteItem(object runtime.Object) {
@@ -197,7 +159,7 @@ func (h *ReconcileInstallation) deleteItem(object runtime.Object) {
 	case *batchv1.Job:
 		h.deleteJob(item)
 	default:
-		h.client.Delete(context.TODO(), item)
+		h.client.Delete(context.TODO(), item, client.PropagationPolicy(metav1.DeletePropagationForeground))
 	}
 }
 
