@@ -3,6 +3,10 @@ kind: ControlPlane
 metadata:
   name: auth-install
 spec:
+  # NOTE, if you remove all children from an element, you should remove the
+  # element too.  An empty element is interpreted as null and will override all
+  # default values (i.e. no values will be specified for that element, not even
+  # the defaults baked into the chart values.yaml).
   istio:
     global:
       # the following lines enable tls across the control and data planes
@@ -54,15 +58,15 @@ spec:
       traceSampling: 100.0
 
     kiali:
-     # to disable kiali
-     #enabled: false
+      # change to false to disable kiali
+      enabled: true
     
-     # oauth is used by default, but you can manually define a dashboard user
-     # create a secret for accessing kiali dashboard with the following credentials
-     dashboard:
-       user: admin
-       passphrase: admin
+      # to use oauth, remove the following 'dashboard' section (note, oauth is broken on OCP 4.0 with kiali 0.16.2)
+      # create a secret for accessing kiali dashboard with the following credentials
+      dashboard:
+        user: admin
+        passphrase: admin
 
-    # to disable tracing (i.e. jaeger)
-    #tracing:
-    #  enabled: false
+    tracing:
+      # change to false to disable tracing (i.e. jaeger)
+      enabled: true
