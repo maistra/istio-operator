@@ -274,7 +274,7 @@ rules:
   - get
   - list
   - watch
-- nonResourceURLs: 
+- nonResourceURLs:
   - "/metrics"
   verbs:
   - get
@@ -430,6 +430,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: istio-operator
+  namespace: istio-operator
 spec:
   replicas: 1
   selector:
@@ -458,7 +459,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
-              value: "istio-operator"
+              value: "istio-system"
             - name: POD_NAME
               valueFrom:
                 fieldRef:
