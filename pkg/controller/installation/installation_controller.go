@@ -11,14 +11,18 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 var log = logf.Log.WithName("controller_installation")
+
+const watchNamespace = "istio-operator"
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -45,7 +49,15 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource Installation
-	err = c.Watch(&source.Kind{Type: &istiov1alpha1.Installation{}}, &handler.EnqueueRequestForObject{})
+	// XXX: hack: remove predicate once old installation mechanism is removed
+	err = c.Watch(&source.Kind{Type: &istiov1alpha1.Installation{}}, &handler.EnqueueRequestForObject{}, predicate.Funcs{
+		CreateFunc: func(evt event.CreateEvent) bool { return evt.Meta != nil && evt.Meta.GetNamespace() == watchNamespace },
+		DeleteFunc: func(evt event.DeleteEvent) bool { return evt.Meta != nil && evt.Meta.GetNamespace() == watchNamespace },
+		UpdateFunc: func(evt event.UpdateEvent) bool {
+			return evt.MetaNew != nil && evt.MetaNew.GetNamespace() == watchNamespace
+		},
+		GenericFunc: func(evt event.GenericEvent) bool { return evt.Meta != nil && evt.Meta.GetNamespace() == watchNamespace },
+	})
 	if err != nil {
 		return err
 	}
