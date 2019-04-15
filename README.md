@@ -16,13 +16,13 @@ installed easily using your favorite Kubernetes command-line client.  You must h
 the operator.
 
 ```
-$ oc apply -n istio-operator -f ./deploy/
+$ oc apply -n istio-operator -f ./deploy/maistra-operator.yaml
 ```
 
 or
 
 ```
-$ kubectl apply -n istio-operator -f ./deploy/
+$ kubectl apply -n istio-operator -f ./deploy/maistra-operator.yaml
 ```
 
 By default, the operator watches for ControlPlane or Installation resources in the `istio-system` namespace, which is
@@ -46,7 +46,7 @@ If you followed the instructions above for installation, the operator can be uni
 command against the same resources.  For example:
 
 ```
-$ oc delete -n istio-operator -f ./deploy/
+$ oc delete -n istio-operator -f ./deploy/maistra-operator.yaml
 ```
 
 ## Customizing the Installation
