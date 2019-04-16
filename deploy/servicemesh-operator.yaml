@@ -457,6 +457,11 @@ spec:
           - istio-operator
           - --discoveryCacheDir
           - /home/istio-operator/.kube/cache/discovery
+          - "--release=v3.11.0"
+          - "--masterPublicURL=https://127.0.0.1:8443"
+          - "--istioPrefix=openshift-istio-tech-preview/"
+          - "--istioVersion=0.10.0"
+          - "--deploymentType=openshift"
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
