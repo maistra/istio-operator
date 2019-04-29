@@ -676,7 +676,7 @@ function patchMultiTenant() {
 \{\{- if .Values.global.multitenant \}\}\
 \    namespaceSelector:\
 \      matchExpressions:\
-\      - key: istio.openshift.com/mesh\
+\      - key: istio.openshift.com/member-of\
 \        operator: In\
 \        values:\
 \        - "{{ .Release.Namespace }}"\
