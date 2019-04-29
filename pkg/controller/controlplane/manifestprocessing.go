@@ -8,6 +8,7 @@ import (
 	"github.com/ghodss/yaml"
 
 	istiov1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/v1alpha3"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -165,6 +166,9 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 	} else {
 		// XXX: can't set owner reference on cross-namespace or cluster resources
 	}
+
+	// add owner label
+	common.SetLabel(obj, common.OwnerKey, r.instance.GetNamespace())
 
 	r.Log.V(2).Info("beginning reconciliation of resource", "ResourceKey", key)
 
