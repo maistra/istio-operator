@@ -173,19 +173,6 @@ func (r *controlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 		}
 	}
 
-	// install launcher
-	componentsProcessed["maistra-launcher"] = seen
-	if len(r.renderings["maistra-launcher"]) > 0 {
-		err = r.createLauncherProject()
-		if err == nil {
-			// can't process if there's no project
-			err = r.processComponentManifests("maistra-launcher")
-		}
-	}
-	if err != nil {
-		allErrors = append(allErrors, err)
-	}
-
 	// install 3scale
 	componentsProcessed["maistra-threescale"] = seen
 	err = r.processComponentManifests("maistra-threescale")
@@ -228,22 +215,12 @@ func (r *controlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 func (r *controlPlaneReconciler) renderCharts() error {
 	allErrors := []error{}
 	var err error
-	var launcherRenderings, threeScaleRenderings map[string][]manifest.Manifest
+	var threeScaleRenderings map[string][]manifest.Manifest
 
 	r.log.V(2).Info("rendering Istio charts")
 	istioRenderings, _, err := RenderHelmChart(path.Join(ChartPath, "istio"), r.instance.GetNamespace(), r.instance.Spec.Istio)
 	if err != nil {
 		allErrors = append(allErrors, err)
-	}
-	if isEnabled(r.instance.Spec.Launcher) {
-		r.log.V(2).Info("rendering Launcher charts")
-		// XXX: hard-coding launcher project
-		launcherRenderings, _, err = RenderHelmChart(path.Join(ChartPath, "maistra-launcher"), launcherProjectName, r.instance.Spec.Launcher)
-		if err != nil {
-			allErrors = append(allErrors, err)
-		}
-	} else {
-		launcherRenderings = map[string][]manifest.Manifest{}
 	}
 	if isEnabled(r.instance.Spec.ThreeScale) {
 		r.log.V(2).Info("rendering 3scale charts")
@@ -262,9 +239,6 @@ func (r *controlPlaneReconciler) renderCharts() error {
 	// merge the rendernings
 	r.renderings = map[string][]manifest.Manifest{}
 	for key, value := range istioRenderings {
-		r.renderings[key] = value
-	}
-	for key, value := range launcherRenderings {
 		r.renderings[key] = value
 	}
 	for key, value := range threeScaleRenderings {

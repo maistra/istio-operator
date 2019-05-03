@@ -52,7 +52,6 @@ type HelmValuesType map[string]interface{}
 // ControlPlaneSpec represents the configuration for installing a control plane
 type ControlPlaneSpec struct {
 	Istio      HelmValuesType `json:"istio,omitempty"`
-	Launcher   HelmValuesType `json:"launcher,omitempty"`
 	ThreeScale HelmValuesType `json:"threeScale,omitempty"`
 }
 

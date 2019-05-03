@@ -186,7 +186,6 @@ func (in *ControlPlaneList) DeepCopyObject() runtime.Object {
 func (in *ControlPlaneSpec) DeepCopyInto(out *ControlPlaneSpec) {
 	*out = *in
 	out.Istio = in.Istio.DeepCopy()
-	out.Launcher = in.Launcher.DeepCopy()
 	out.ThreeScale = in.ThreeScale.DeepCopy()
 	return
 }

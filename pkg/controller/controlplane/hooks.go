@@ -8,10 +8,7 @@ import (
 
 	istiov1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/v1alpha3"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -19,32 +16,6 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-var launcherProjectName = "devex"
-
-// XXX: should call this from a hook, e.g. preprocessNewComponent()
-func (r *controlPlaneReconciler) createLauncherProject() error {
-	namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: launcherProjectName}}
-	err := r.client.Get(context.TODO(), client.ObjectKey{Name: launcherProjectName}, namespace)
-	if err == nil {
-		// project exists
-		return nil
-	} else if !errors.IsNotFound(err) {
-		return err
-	}
-	r.log.Info("creating launcher project")
-	projectRequest := &unstructured.Unstructured{}
-	projectRequest.SetAPIVersion("project.openshift.io/v1")
-	projectRequest.SetKind("ProjectRequest")
-	projectRequest.SetName(launcherProjectName)
-	projectRequest.SetOwnerReferences(r.ownerRefs)
-	projectRequest.SetLabels(map[string]string{
-		"app":                                  "fabric8-launcher",
-		"istio.openshift.com/ignore-namespace": "ignore",
-	})
-	unstructured.SetNestedField(projectRequest.UnstructuredContent(), "this project provides launcher capabilities and is administered by the istio-operator", "description")
-	return r.client.Create(context.TODO(), projectRequest)
-}
 
 func (r *controlPlaneReconciler) processNewComponent(name string, status *istiov1alpha3.ComponentStatus) error {
 	switch name {
@@ -73,14 +44,7 @@ func (r *controlPlaneReconciler) processNewComponent(name string, status *istiov
 }
 
 func (r *controlPlaneReconciler) processDeletedComponent(name string, status *istiov1alpha3.ComponentStatus) error {
-	switch name {
-	case "maistra-launcher":
-		project := &unstructured.Unstructured{}
-		project.SetAPIVersion("project.openshift.io/v1")
-		project.SetKind("Project")
-		project.SetName(launcherProjectName)
-		return r.client.Delete(context.TODO(), project)
-	}
+	// nop
 	return nil
 }
 
