@@ -36,7 +36,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileControlPlane{ResourceManager: common.ResourceManager{Client: mgr.GetClient(), Log: log}, scheme: mgr.GetScheme()}
+	return &ReconcileControlPlane{ResourceManager: common.ResourceManager{Client: mgr.GetClient(), PatchFactory: common.NewPatchFactory(mgr.GetClient()), Log: log}, scheme: mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -157,4 +157,3 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 
 	return reconciler.Reconcile()
 }
-

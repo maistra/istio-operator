@@ -610,7 +610,7 @@ function patchMultiTenant() {
   sed -i -e 's|^\(\(\s*\)rules:.*$\)|{{- if .Values.global.multitenant }}\
 \2namespaceSelector:\
 \2  matchExpressions:\
-\2  - key: istio.openshift.com/mesh\
+\2  - key: istio.openshift.com/member-of\
 \2    operator: In\
 \2      values:\
 \2      - "{{ .Release.Namespace }}"\

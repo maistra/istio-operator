@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"path"
+	"strconv"
 	"strings"
 
 	istiov1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/v1alpha3"
@@ -20,10 +21,11 @@ import (
 
 type controlPlaneReconciler struct {
 	*ReconcileControlPlane
-	instance   *istiov1alpha3.ControlPlane
-	status     *istiov1alpha3.ControlPlaneStatus
-	ownerRefs  []metav1.OwnerReference
-	renderings map[string][]manifest.Manifest
+	instance       *istiov1alpha3.ControlPlane
+	status         *istiov1alpha3.ControlPlaneStatus
+	ownerRefs      []metav1.OwnerReference
+	meshGeneration string
+	renderings     map[string][]manifest.Manifest
 }
 
 var seen = struct{}{}
@@ -71,10 +73,12 @@ func (r *controlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 		allErrors = append(allErrors, err)
 	}
 
-	// create components
+	// initialize common data
 	owner := metav1.NewControllerRef(r.instance, istiov1alpha3.SchemeGroupVersion.WithKind("ControlPlane"))
 	r.ownerRefs = []metav1.OwnerReference{*owner}
+	r.meshGeneration = strconv.FormatInt(r.instance.GetGeneration(), 10)
 
+	// create components
 	componentsProcessed := map[string]struct{}{}
 
 	// create core istio resources
@@ -191,16 +195,9 @@ func (r *controlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	}
 
 	// delete unseen components
-	for index := len(r.instance.Status.ComponentStatus) -1; index >= 0; index-- {
-		status := r.instance.Status.ComponentStatus[index]
-		if _, ok := componentsProcessed[status.Resource]; ok {
-			continue
-		}
-		componentsProcessed[status.Resource] = seen
-		err = r.processComponentManifests(status.Resource)
-		if err != nil {
-			allErrors = append(allErrors, err)
-		}
+	err = r.prune(r.instance.GetGeneration())
+	if err != nil {
+		allErrors = append(allErrors, err)
 	}
 
 	r.status.ObservedGeneration = r.instance.GetGeneration()
