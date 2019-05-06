@@ -12,7 +12,6 @@ import (
 	"github.com/maistra/istio-operator/pkg/bootstrap"
 	"github.com/maistra/istio-operator/pkg/controller"
 	"github.com/maistra/istio-operator/pkg/controller/controlplane"
-	"github.com/maistra/istio-operator/pkg/controller/installation"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
@@ -42,20 +41,6 @@ func printVersion() {
 }
 
 func main() {
-	// Installation
-	handler := &installation.Handler{}
-	installation.RegisterHandler(handler)
-
-	flag.StringVar(&discoveryCacheDir, "discoveryCacheDir", "/home/istio-operator/.kube/cache/discovery", "The location where cached discovery information used by the REST client is stored.")
-
-	flag.StringVar(&handler.OpenShiftRelease, "release", "v3.10", "The OpenShift release")
-	flag.StringVar(&handler.MasterPublicURL, "masterPublicURL", "", "The public URL of the master when using Launcher")
-	flag.StringVar(&handler.IstioPrefix, "istioPrefix", "", "The default istio prefix for images")
-	flag.StringVar(&handler.IstioVersion, "istioVersion", "", "The default istio version for images")
-	flag.StringVar(&handler.DeploymentType, "deploymentType", "", "The default deployment type")
-	flag.BoolVar(&handler.AlwaysPull, "alwaysPull", false, "Whether to always pull the installer container")
-	flag.BoolVar(&handler.Enable3Scale, "enable3scale", false, "Whether to enable the 3scale adapter")
-
 	// ControlPlane
 	flag.StringVar(&controlplane.ChartPath, "chartPath", "/etc/istio-operator/1.1.0/helm", "The location of the Helm charts.  The charts will be rendered using $chartPath/istio (similar layout to istio.io/istio/install/kubernetes/helm).")
 
