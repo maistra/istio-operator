@@ -583,9 +583,13 @@
 
 [[projects]]
   branch = "release-3.11"
-  digest = "1:0e4a2394c09372421e41095dfe6ff6e56ac9cdb301064e21c0b015d20ae16c4d"
+  digest = "1:519f22942517726181a5208a95d3715ecb6f7e826aba3b3fe17b5cfaa9fc9e32"
   name = "github.com/openshift/api"
-  packages = ["security/v1"]
+  packages = [
+    "apps/v1",
+    "route/v1",
+    "security/v1",
+  ]
   pruneopts = "NUT"
   revision = "5ad8479f64f1b60ee9c62ce8ef1fe6638838725e"
 
@@ -1027,7 +1031,7 @@
 
 [[projects]]
   branch = "origin-3.11-kubernetes-1.11.1"
-  digest = "1:fb20c325d9ac6e1d76736a8c93d8c66b423266eb9312b7af4192f593623ec841"
+  digest = "1:afc8c32e027fc6d5604e01601537fbbe5981583094d9217a715ea0f651400eff"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/equality",
@@ -1066,6 +1070,7 @@
     "pkg/util/httpstream/spdy",
     "pkg/util/intstr",
     "pkg/util/json",
+    "pkg/util/jsonmergepatch",
     "pkg/util/mergepatch",
     "pkg/util/naming",
     "pkg/util/net",
@@ -1528,30 +1533,44 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/evanphx/json-patch",
     "github.com/ghodss/yaml",
     "github.com/go-logr/logr",
+    "github.com/openshift/api/apps/v1",
+    "github.com/openshift/api/route/v1",
     "github.com/openshift/api/security/v1",
     "github.com/operator-framework/operator-sdk/pkg/k8sutil",
     "github.com/operator-framework/operator-sdk/pkg/leader",
     "github.com/operator-framework/operator-sdk/pkg/metrics",
     "github.com/operator-framework/operator-sdk/pkg/ready",
     "github.com/operator-framework/operator-sdk/version",
+    "github.com/pkg/errors",
     "github.com/sirupsen/logrus",
     "istio.io/api/mesh/v1alpha1",
+    "k8s.io/api/apps/v1beta1",
+    "k8s.io/api/autoscaling/v2beta1",
     "k8s.io/api/batch/v1",
     "k8s.io/api/core/v1",
     "k8s.io/api/extensions/v1beta1",
     "k8s.io/api/policy/v1beta1",
     "k8s.io/api/rbac/v1",
     "k8s.io/apimachinery/pkg/api/errors",
+    "k8s.io/apimachinery/pkg/api/meta",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
-    "k8s.io/apimachinery/pkg/labels",
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/util/errors",
+    "k8s.io/apimachinery/pkg/util/jsonmergepatch",
+    "k8s.io/apimachinery/pkg/util/mergepatch",
+    "k8s.io/apimachinery/pkg/util/strategicpatch",
+    "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apiserver/pkg/authentication/serviceaccount",
+    "k8s.io/client-go/discovery",
+    "k8s.io/client-go/kubernetes/scheme",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
+    "k8s.io/client-go/rest",
+    "k8s.io/client-go/restmapper",
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/conversion-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
@@ -1569,11 +1588,14 @@
     "k8s.io/helm/pkg/renderutil",
     "k8s.io/helm/pkg/tiller",
     "k8s.io/helm/pkg/timeconv",
+    "k8s.io/kubernetes/pkg/kubectl",
     "sigs.k8s.io/controller-runtime/pkg/client",
     "sigs.k8s.io/controller-runtime/pkg/client/config",
     "sigs.k8s.io/controller-runtime/pkg/controller",
+    "sigs.k8s.io/controller-runtime/pkg/event",
     "sigs.k8s.io/controller-runtime/pkg/handler",
     "sigs.k8s.io/controller-runtime/pkg/manager",
+    "sigs.k8s.io/controller-runtime/pkg/predicate",
     "sigs.k8s.io/controller-runtime/pkg/reconcile",
     "sigs.k8s.io/controller-runtime/pkg/runtime/log",
     "sigs.k8s.io/controller-runtime/pkg/runtime/scheme",

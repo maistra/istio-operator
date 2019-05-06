@@ -9,8 +9,9 @@ import (
 )
 
 type ResourceManager struct {
-	Client client.Client
-	Log    logr.Logger
+	Client       client.Client
+	PatchFactory *PatchFactory
+	Log          logr.Logger
 }
 
 func IndexOf(l []string, s string) int {

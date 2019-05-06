@@ -2,7 +2,6 @@ package controlplane
 
 import (
 	"context"
-	"reflect"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -17,6 +16,8 @@ import (
 
 	"k8s.io/helm/pkg/manifest"
 	"k8s.io/helm/pkg/releaseutil"
+
+	"k8s.io/kubernetes/pkg/kubectl"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -40,17 +41,6 @@ func (r *controlPlaneReconciler) processComponentManifests(componentName string)
 		status.ObservedGeneration = r.instance.GetGeneration()
 		if err := r.processNewComponent(componentName, status); err != nil {
 			r.Log.Error(err, "unexpected error occurred during postprocessing of new component")
-		}
-		r.status.ComponentStatus = append(r.status.ComponentStatus, status)
-	} else if status != nil && status.GetCondition(istiov1alpha3.ConditionTypeInstalled).Status != istiov1alpha3.ConditionStatusFalse && len(status.Resources) > 0 {
-		// delete resources
-		r.Log.Info("deleting component resources")
-		status, err = r.processManifests([]manifest.Manifest{}, status)
-		status.ObservedGeneration = r.instance.GetGeneration()
-		if status.GetCondition(istiov1alpha3.ConditionTypeInitialized).Status == istiov1alpha3.ConditionStatusFalse {
-			if err := r.processDeletedComponent(componentName, status); err != nil {
-				r.Log.Error(err, "unexpected error occurred during cleanup of deleted component")
-			}
 		}
 		r.status.ComponentStatus = append(r.status.ComponentStatus, status)
 	} else {
@@ -169,6 +159,8 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 
 	// add owner label
 	common.SetLabel(obj, common.OwnerKey, r.instance.GetNamespace())
+	// add generation annotation
+	common.SetAnnotation(obj, common.MeshGenerationKey, r.meshGeneration)
 
 	r.Log.V(2).Info("beginning reconciliation of resource", "ResourceKey", key)
 
@@ -181,11 +173,16 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 	}
 	newStatus.Resources = append(newStatus.Resources, status)
 
-	err := r.patchObject(obj)
+	err := r.preprocessObject(obj)
 	if err != nil {
-		r.Log.Error(err, "error patching object")
+		r.Log.Error(err, "error preprocessing object")
 		updateReconcileStatus(status, err)
 		return err
+	}
+
+	err = kubectl.CreateApplyAnnotation(obj, unstructured.UnstructuredJSONScheme)
+	if err != nil {
+		r.Log.Error(err, "unexpected error adding apply annotation to object")
 	}
 
 	receiver := key.ToUnstructured()
@@ -197,6 +194,9 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 		updateReconcileStatus(status, err)
 		return err
 	}
+
+	var patch common.Patch
+
 	err = r.Client.Get(context.TODO(), objectKey, receiver)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -209,21 +209,14 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 					// just log for now
 					r.Log.Error(err, "unexpected error occurred during postprocessing of new resource")
 				}
+			} else {
+				r.Log.Error(err, "unexpected error occurred during creation of new resource")
 			}
 		}
-	} else if receiver.GetGeneration() > 0 && receiver.GetGeneration() == status.ObservedGeneration {
-		// nothing to do
-		r.Log.V(2).Info("resource generation matches status")
-	} else if shouldUpdate(obj.UnstructuredContent(), receiver.UnstructuredContent()) {
+	} else if patch, err = r.PatchFactory.CreatePatch(receiver, obj); err == nil && patch != nil {
 		r.Log.Info("updating existing resource")
 		status.RemoveCondition(istiov1alpha3.ConditionTypeReconciled)
-		//r.Log.Info("updates not supported at this time")
-		// XXX: k8s barfs on some updates: metadata.resourceVersion: Invalid value: 0x0: must be specified for an update
-		obj.SetResourceVersion(receiver.GetResourceVersion())
-		err = r.Client.Update(context.TODO(), obj)
-		if err == nil {
-			status.ObservedGeneration = obj.GetGeneration()
-		}
+		_, err = patch.Apply()
 	}
 	r.Log.V(2).Info("resource reconciliation complete")
 	updateReconcileStatus(status, err)
@@ -231,23 +224,4 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 		r.Log.Error(err, "error occurred reconciling resource")
 	}
 	return err
-}
-
-// shouldUpdate checks to see if the spec fields are the same for both objects.
-// if the objects don't have a spec field, it checks all other fields, skipping
-// known fields that shouldn't impact updates: kind, apiVersion, metadata, and status.
-func shouldUpdate(o1, o2 map[string]interface{}) bool {
-	if spec1, ok1 := o1["spec"]; ok1 {
-		// we assume these are the same type of object
-		return reflect.DeepEqual(spec1, o2["spec"])
-	}
-	for key, value := range o1 {
-		if key == "status" || key == "kind" || key == "apiVersion" || key == "metadata" {
-			continue
-		}
-		if !reflect.DeepEqual(value, o2[key]) {
-			return true
-		}
-	}
-	return false
 }
