@@ -118,12 +118,6 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	if instance.GetGeneration() == instance.Status.ObservedGeneration &&
-		instance.Status.GetCondition(istiov1alpha3.ConditionTypeInstalled).Status == istiov1alpha3.ConditionStatusTrue {
-		reqLogger.Info("nothing to reconcile, generations match")
-		return reconcile.Result{}, nil
-	}
-
 	reconciler := controlPlaneReconciler{
 		ReconcileControlPlane: r,
 		instance:              instance,
@@ -136,6 +130,7 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 
 	if deleted {
 		if finalizerIndex < 0 {
+			reqLogger.Info("ControlPlane deleted")
 			return reconcile.Result{}, nil
 		}
 		reqLogger.Info("Deleting ControlPlane")
@@ -143,7 +138,19 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		// XXX: for now, nuke the resources, regardless of errors
 		finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
 		instance.SetFinalizers(finalizers)
-		_ = r.Client.Update(context.TODO(), instance)
+		finalizerError := r.Client.Update(context.TODO(), instance)
+		for retryCount := 0; errors.IsConflict(finalizerError) && retryCount < 5; retryCount++ {
+			reqLogger.Info("confilict during finalizer removal, retrying")
+			r.Client.Get(context.TODO(), request.NamespacedName, instance)
+			finalizers = instance.GetFinalizers()
+			finalizerIndex = common.IndexOf(finalizers, finalizer)
+			finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
+			instance.SetFinalizers(finalizers)
+			finalizerError = r.Client.Update(context.TODO(), instance)
+		}
+		if finalizerError != nil {
+			reqLogger.Error(finalizerError, "error removing finalizer")
+		}
 		return result, err
 	} else if finalizerIndex < 0 {
 		reqLogger.V(1).Info("Adding finalizer", "finalizer", finalizer)
@@ -151,6 +158,12 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		instance.SetFinalizers(finalizers)
 		err = r.Client.Update(context.TODO(), instance)
 		return reconcile.Result{}, err
+	}
+
+	if instance.GetGeneration() == instance.Status.ObservedGeneration &&
+		instance.Status.GetCondition(istiov1alpha3.ConditionTypeReconciled).Status == istiov1alpha3.ConditionStatusTrue {
+		reqLogger.Info("nothing to reconcile, generations match")
+		return reconcile.Result{}, nil
 	}
 
 	reqLogger.Info("Reconciling ControlPlane")
