@@ -39,8 +39,8 @@ func (r *controlPlaneReconciler) createLauncherProject() error {
 	projectRequest.SetName(launcherProjectName)
 	projectRequest.SetOwnerReferences(r.ownerRefs)
 	projectRequest.SetLabels(map[string]string{
-		"app":                                  "fabric8-launcher",
-		"istio.openshift.com/ignore-namespace": "ignore",
+		"app":                                 "fabric8-launcher",
+		"istio.openshift.io/ignore-namespace": "ignore",
 	})
 	unstructured.SetNestedField(projectRequest.UnstructuredContent(), "this project provides launcher capabilities and is administered by the istio-operator", "description")
 	return r.Client.Create(context.TODO(), projectRequest)
