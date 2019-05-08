@@ -70,12 +70,7 @@ var (
 
 func (r *controlPlaneReconciler) prune(generation int64) error {
 	allErrors := []error{}
-	// special handling for launcher
-	err := r.pruneResources(namespacedResources, generation, launcherProjectName)
-	if err != nil {
-		allErrors = append(allErrors, err)
-	}
-	err = r.pruneResources(namespacedResources, generation, r.instance.Namespace)
+	err := r.pruneResources(namespacedResources, generation, r.instance.Namespace)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}

@@ -64,9 +64,9 @@ func (r *controlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 		if namespace.Labels == nil {
 			namespace.Labels = map[string]string{}
 		}
-		if label, ok := namespace.Labels["istio.openshift.com/ignore-namespace"]; !ok || label != "ignore" {
-			r.Log.Info("Adding istio.openshift.com/ignore-namespace=ignore label to Request.Namespace")
-			namespace.Labels["istio.openshift.com/ignore-namespace"] = "ignore"
+		if label, ok := namespace.Labels["istio.openshift.io/ignore-namespace"]; !ok || label != "ignore" {
+			r.Log.Info("Adding istio.openshift.io/ignore-namespace=ignore label to Request.Namespace")
+			namespace.Labels["istio.openshift.io/ignore-namespace"] = "ignore"
 			err = r.Client.Update(context.TODO(), namespace)
 		}
 	} else {
