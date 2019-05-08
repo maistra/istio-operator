@@ -11,5 +11,4 @@ metadata:
 rules:
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["mutatingwebhookconfigurations"]
-  resourceNames: ["istio-sidecar-injector-{{ .Release.Namespace }}"]
-  verbs: ["get", "list", "watch", "patch"]
+  verbs: ["create", "get", "list", "watch", "patch"]
