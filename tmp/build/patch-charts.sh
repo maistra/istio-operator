@@ -19,7 +19,7 @@ function copyOverlay() {
 # - remove the cleanup secrets job, we handle this in the installer
 # - remove the kubernetes gateways
 # - change privileged value on istio-proxy injection configmap to false
-# - update the namespaceSelector to ignore namespaces with the label istio.openshift.com/ignore-namespace
+# - update the namespaceSelector to ignore namespaces with the label istio.openshift.io/ignore-namespace
 # - add a maistra-version label to all objects which have a release label
 # - remove GODEBUG from the pilot environment
 # - remove istio-multi service account
@@ -112,7 +112,7 @@ function patchTemplates() {
     }
   }' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
 
-  # - update the namespaceSelector to ignore namespaces with the label istio.openshift.com/ignore-namespace
+  # - update the namespaceSelector to ignore namespaces with the label istio.openshift.io/ignore-namespace
   # set sidecarInjectorWebhook.enableNamespacesByDefault=true
   sed -i -e '/if \.Values\.enableNamespacesByDefault/,/else/s/istio-injection/istio.openshift.com\/ignore-namespace/' \
          -e 's/NotIn/DoesNotExist/' \
@@ -610,11 +610,11 @@ function patchMultiTenant() {
   sed -i -e 's|^\(\(\s*\)rules:.*$\)|{{- if .Values.global.multitenant }}\
 \2namespaceSelector:\
 \2  matchExpressions:\
-\2  - key: istio.openshift.com/member-of\
+\2  - key: istio.openshift.io/member-of\
 \2    operator: In\
 \2      values:\
 \2      - "{{ .Release.Namespace }}"\
-\2  - key: istio.openshift.com/ignore-namespace\
+\2  - key: istio.openshift.io/ignore-namespace\
 \2    operator: DoesNotExist\
 {{- end }}\
 \1|' ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
@@ -676,11 +676,11 @@ function patchMultiTenant() {
 \{\{- if .Values.global.multitenant \}\}\
 \    namespaceSelector:\
 \      matchExpressions:\
-\      - key: istio.openshift.com/member-of\
+\      - key: istio.openshift.io/member-of\
 \        operator: In\
 \        values:\
 \        - "{{ .Release.Namespace }}"\
-\      - key: istio.openshift.com/ignore-namespace\
+\      - key: istio.openshift.io/ignore-namespace\
 \        operator: DoesNotExist\
 \{\{- else \}\}
     /end/ i\
