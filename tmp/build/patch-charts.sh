@@ -302,6 +302,11 @@ function patchKialiOpenShift() {
 \      static_content_root_directory: /opt/kiali/console' \
          -e '/grafana:/,/url:/ {
              /url:/ a\
+\{\{- if .Values.global.multitenant \}\}\
+\    api:\
+       namespaces: \
+\        label_selector: istio.openshift.io/member-of=\{\{ .Release.Namespace \}\}\
+\{\{- end \}\}\		     
 \{\{- if not (and (.Values.dashboard.user) (.Values.dashboard.passphrase)) \}\}\
 \    auth:\
 \      strategy: openshift\
