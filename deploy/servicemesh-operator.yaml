@@ -449,7 +449,7 @@ spec:
           medium: Memory
       containers:
         - name: istio-operator
-          image: openshift-istio-tech-preview/istio-operator:0.10.0
+          image: openshift-istio-tech-preview/istio-operator-rhel8:0.11.0
           ports:
           - containerPort: 60000
             name: metrics
