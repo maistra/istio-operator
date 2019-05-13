@@ -54,11 +54,11 @@ function patchTemplates() {
     /enabled:/ a\
 \  # set to true to enable route creation\
 \  ior_enabled: false\
-\  ior_image: ior\
+\  ior_image: istio-ior-rhel8\
 
   }' ${HELM_DIR}/istio/charts/gateways/values.yaml
   if [[ "${COMMUNITY,,}" == "true" ]]; then
-    sed -i -e 's/ior_image:.*$/ior_image: ior-centos7/' ${HELM_DIR}/istio/charts/gateways/values.yaml
+    sed -i -e 's/ior_image:.*$/ior_image: istio-ior-ubi8/' ${HELM_DIR}/istio/charts/gateways/values.yaml
   fi
 
   # enable ingress for grafana
@@ -129,13 +129,13 @@ function patchTemplates() {
   if [[ "${COMMUNITY,,}" == "true" ]]; then
     sed -i -e 's+hub:.*$+hub: docker.io/maistra+g' \
           -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' \
-          -e 's/image: *proxy_init/image: proxy-init-centos7/' \
-          -e 's/image: *proxyv2/image: proxyv2-centos7/' ${HELM_DIR}/istio/values.yaml ${HELM_DIR}/istio-init/values.yaml
-    sed -i -e 's/image: *galley/image: galley-centos7/' ${HELM_DIR}/istio/charts/galley/values.yaml
-    sed -i -e 's/image: *sidecar_injector/image: sidecar-injector-centos7/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/values.yaml
-    sed -i -e 's/image: *mixer/image: mixer-centos7/' ${HELM_DIR}/istio/charts/mixer/values.yaml
-    sed -i -e 's/image: *pilot/image: pilot-centos7/' ${HELM_DIR}/istio/charts/pilot/values.yaml
-    sed -i -e 's/image: *citadel/image: citadel-centos7/' ${HELM_DIR}/istio/charts/security/values.yaml
+          -e 's/image: *proxy_init/image: proxy-init-ubi8/' \
+          -e 's/image: *proxyv2/image: proxyv2-ubi8/' ${HELM_DIR}/istio/values.yaml ${HELM_DIR}/istio-init/values.yaml
+    sed -i -e 's/image: *galley/image: galley-ubi8/' ${HELM_DIR}/istio/charts/galley/values.yaml
+    sed -i -e 's/image: *sidecar_injector/image: sidecar-injector-ubi8/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/values.yaml
+    sed -i -e 's/image: *mixer/image: mixer-ubi8/' ${HELM_DIR}/istio/charts/mixer/values.yaml
+    sed -i -e 's/image: *pilot/image: pilot-ubi8/' ${HELM_DIR}/istio/charts/pilot/values.yaml
+    sed -i -e 's/image: *citadel/image: citadel-ubi8/' ${HELM_DIR}/istio/charts/security/values.yaml
     sed -i -e 's|\(^jaeger:.*$\)|elasticsearch:\
   hub: registry.centos.org/rhsyseng\
   image: elasticsearch\
@@ -147,13 +147,13 @@ function patchTemplates() {
   else
     sed -i -e 's+hub:.*$+hub: openshift-istio-tech-preview+g' \
           -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' \
-          -e 's/image: *proxy_init/image: proxy-init/' \
-          -e 's/image: *proxyv2/image: proxyv2/' ${HELM_DIR}/istio/values.yaml ${HELM_DIR}/istio-init/values.yaml
-    sed -i -e 's/image: *galley/image: galley/' ${HELM_DIR}/istio/charts/galley/values.yaml
-    sed -i -e 's/image: *sidecar_injector/image: sidecar-injector/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/values.yaml
-    sed -i -e 's/image: *mixer/image: mixer/' ${HELM_DIR}/istio/charts/mixer/values.yaml
-    sed -i -e 's/image: *pilot/image: pilot/' ${HELM_DIR}/istio/charts/pilot/values.yaml
-    sed -i -e 's/image: *citadel/image: citadel/' ${HELM_DIR}/istio/charts/security/values.yaml
+          -e 's/image: *proxy_init/image: proxy-init-rhel8/' \
+          -e 's/image: *proxyv2/image: proxyv2-rhel8/' ${HELM_DIR}/istio/values.yaml ${HELM_DIR}/istio-init/values.yaml
+    sed -i -e 's/image: *galley/image: galley-rhel8/' ${HELM_DIR}/istio/charts/galley/values.yaml
+    sed -i -e 's/image: *sidecar_injector/image: sidecar-injector-rhel8/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/values.yaml
+    sed -i -e 's/image: *mixer/image: mixer-rhel8/' ${HELM_DIR}/istio/charts/mixer/values.yaml
+    sed -i -e 's/image: *pilot/image: pilot-rhel8/' ${HELM_DIR}/istio/charts/pilot/values.yaml
+    sed -i -e 's/image: *citadel/image: citadel-rhel8/' ${HELM_DIR}/istio/charts/security/values.yaml
     sed -i -e 's|\(^jaeger:.*$\)|elasticsearch:\
   hub: registry.centos.org/rhsyseng\
   image: elasticsearch\
