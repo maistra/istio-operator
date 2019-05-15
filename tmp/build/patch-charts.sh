@@ -61,9 +61,6 @@ function patchTemplates() {
     sed -i -e 's/ior_image:.*$/ior_image: istio-ior-ubi8/' ${HELM_DIR}/istio/charts/gateways/values.yaml
   fi
 
-  # enable ingress for grafana
-  sed -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/charts/grafana/values.yaml
-
   # enable ingress for tracing
   sed -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/charts/tracing/values.yaml
 
@@ -77,9 +74,6 @@ function patchTemplates() {
     sed -i -e 's+hub:.*$+hub: registry\.redhat\.io\/openshift-istio-tech-preview+' \
            -e 's/tag:.*$/tag: '${KIALI_VERSION}'/' ${HELM_DIR}/istio/charts/kiali/values.yaml
   fi
-
-  # - remove the create customer resources job, we handle this in the installer to deal with potential races
-  rm ${HELM_DIR}/istio/charts/grafana/templates/create-custom-resources-job.yaml
 
   # - remove the cleanup secrets job, we handle this in the installer
   rm ${HELM_DIR}/istio/charts/security/templates/cleanup-secrets.yaml
@@ -225,34 +219,6 @@ function patchTemplates() {
 # - remove all content except for the crd configmaps
 # - add maistra-version labels
 # all of this is done above in patchTemplates()
-
-# The following modifications are made to the generated helm template for the Grafana yaml file
-# - add a service account for grafana
-# - remove all non grafana configuration
-# - remove the extraneous create custom resources job
-# - add the service account to the deployment
-# - add a maistra-version label to all objects which have a release label (done in patchTemplates())
-function patchGrafanaTemplate() {
-  echo "patching Grafana specific Helm charts"
-
-  # - add a service account for grafana
-  # added a file to overlays
-
-  # - remove the extraneous create custom resources job
-  if [ -f ${HELM_DIR}/istio/charts/grafana/templates/create-custom-resources-job.yaml ]; then
-    rm ${HELM_DIR}/istio/charts/grafana/templates/create-custom-resources-job.yaml
-  fi
-
-  # - custom resources will be installed directly
-  if [ -f ${HELM_DIR}/istio/charts/grafana/templates/configmap-custom-resources.yaml ]; then
-    rm ${HELM_DIR}/istio/charts/grafana/templates/configmap-custom-resources.yaml
-  fi
-  sed -i -e '/grafana-default.yaml.tpl/d' -e '/{{.*end.*}}/d' ${HELM_DIR}/istio/charts/grafana/templates/grafana-ports-mtls.yaml
-
-  # - add the service account to the deployment
-  sed -i -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: grafana\
-\1containers:\2/' ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
-}
 
 # patch tracing specific templates
 function patchTracingtemplate() {
@@ -556,9 +522,9 @@ function patchMultiTenant() {
 copyOverlay
 
 patchTemplates
-patchGrafanaTemplate
 patchTracingtemplate
 patchKialiTemplate
 patchKialiOpenShift
 
 patchMultiTenant
+source ${SOURCE_DIR}/tmp/build/patch-grafana.sh
