@@ -106,6 +106,8 @@ func (r *controlPlaneReconciler) pruneResources(gvks []schema.GroupVersionKind, 
 				if err != nil {
 					r.Log.Error(err, "Error pruning resource", "resource", istiov1alpha3.NewResourceKey(&object, &object))
 					allErrors = append(allErrors, err)
+				} else {
+					r.processDeletedObject(&object)
 				}
 			}
 		}
