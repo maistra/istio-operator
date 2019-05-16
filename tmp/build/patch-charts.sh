@@ -355,23 +355,14 @@ function patchKialiOpenShift() {
       N
       a\
 \        - name: kiali-cert\
-\          mountPath: "/kiali-cert"\
-\{\{- if and (.Values.dashboard.user) (.Values.dashboard.passphrase) \}\}\
-\        - name: kiali-secret\
-\          mountPath: "/kiali-secret"\
-\{\{- end \}\}
+\          mountPath: "/kiali-cert"
     }
     /configMap:/ {
       N
       a\
 \      - name: kiali-cert\
 \        secret:\
-\          secretName: kiali-cert-secret\
-\{\{- if and (.Values.dashboard.user) (.Values.dashboard.passphrase) \}\}\
-\      - name: kiali-secret\
-\        secret:\
-\          secretName: \{\{ .Values.dashboard.secretName \}\}\
-\{\{- end \}\}
+\          secretName: kiali-cert-secret
     }
   }' ${HELM_DIR}/istio/charts/kiali/templates/deployment.yaml
 
