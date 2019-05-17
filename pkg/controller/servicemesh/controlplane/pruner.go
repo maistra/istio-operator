@@ -4,7 +4,7 @@ import (
 	"context"
 	"strconv"
 
-	istiov1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/v1alpha3"
+	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,9 +68,9 @@ var (
 	}
 )
 
-func (r *controlPlaneReconciler) prune(generation int64) error {
+func (r *ControlPlaneReconciler) prune(generation int64) error {
 	allErrors := []error{}
-	err := r.pruneResources(namespacedResources, generation, r.instance.Namespace)
+	err := r.pruneResources(namespacedResources, generation, r.Instance.Namespace)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
@@ -81,10 +81,10 @@ func (r *controlPlaneReconciler) prune(generation int64) error {
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (r *controlPlaneReconciler) pruneResources(gvks []schema.GroupVersionKind, generation int64, namespace string) error {
+func (r *ControlPlaneReconciler) pruneResources(gvks []schema.GroupVersionKind, generation int64, namespace string) error {
 	allErrors := []error{}
 	instanceGeneration := strconv.FormatInt(generation, 10)
-	labelSelector := map[string]string{common.OwnerKey: r.instance.Namespace}
+	labelSelector := map[string]string{common.OwnerKey: r.Instance.Namespace}
 	for _, gvk := range gvks {
 		objects := &unstructured.UnstructuredList{}
 		objects.SetGroupVersionKind(gvk)
@@ -96,10 +96,10 @@ func (r *controlPlaneReconciler) pruneResources(gvks []schema.GroupVersionKind, 
 		}
 		for _, object := range objects.Items {
 			if generation, ok := common.GetAnnotation(&object, common.MeshGenerationKey); ok && generation != instanceGeneration {
-                r.Log.Info("pruning resource", "resource", istiov1alpha3.NewResourceKey(&object, &object))
+                r.Log.Info("pruning resource", "resource", v1.NewResourceKey(&object, &object))
 				err = r.Client.Delete(context.TODO(), &object, client.PropagationPolicy(metav1.DeletePropagationBackground))
 				if err != nil {
-					r.Log.Error(err, "Error pruning resource", "resource", istiov1alpha3.NewResourceKey(&object, &object))
+					r.Log.Error(err, "Error pruning resource", "resource", v1.NewResourceKey(&object, &object))
 					allErrors = append(allErrors, err)
 				} else {
 					r.processDeletedObject(&object)

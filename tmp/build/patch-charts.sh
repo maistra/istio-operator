@@ -19,7 +19,7 @@ function copyOverlay() {
 # - remove the cleanup secrets job, we handle this in the installer
 # - remove the kubernetes gateways
 # - change privileged value on istio-proxy injection configmap to false
-# - update the namespaceSelector to ignore namespaces with the label istio.openshift.com/ignore-namespace
+# - update the namespaceSelector to ignore namespaces with the label maistra.io/ignore-namespace
 # - add a maistra-version label to all objects which have a release label
 # - remove GODEBUG from the pilot environment
 # - remove istio-multi service account
@@ -112,12 +112,17 @@ function patchTemplates() {
     }
   }' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
 
-  # - update the namespaceSelector to ignore namespaces with the label istio.openshift.com/ignore-namespace
+  # - update the namespaceSelector to ignore namespaces with the label maistra.io/ignore-namespace
   # set sidecarInjectorWebhook.enableNamespacesByDefault=true
-  sed -i -e '/if \.Values\.enableNamespacesByDefault/,/else/s/istio-injection/istio.openshift.com\/ignore-namespace/' \
-         -e 's/NotIn/DoesNotExist/' \
-         -e '/values/d' \
-         -e '/disabled/d' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhookconfiguration.yaml.tpl
+  sed -i -e '/if \.Values\.enableNamespacesByDefault/,/else/ {
+    s/istio-injection/maistra.io\/ignore-namespace/
+    s/NotIn/DoesNotExist/
+    /values/d
+    /disabled/d
+    /else/ i\
+\      - key: istio.openshift.com/ignore-namespace\
+\        operator: DoesNotExist
+  }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhookconfiguration.yaml.tpl
 
   # - add a maistra-version label to all objects which have a release label
   find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl" | \
@@ -305,7 +310,7 @@ function patchKialiOpenShift() {
 \{\{- if .Values.global.multitenant \}\}\
 \    api:\
 \      namespaces:\
-\        label_selector: istio.openshift.io/member-of=\{\{ .Release.Namespace \}\}\
+\        label_selector: maistra.io/member-of=\{\{ .Release.Namespace \}\}\
 \{\{- end \}\}\
 \{\{- if not (and (.Values.dashboard.user) (.Values.dashboard.passphrase)) \}\}\
 \    auth:\
@@ -421,7 +426,7 @@ function patchMultiTenant() {
   sed -i -e 's|^\(\(\s*\)rules:.*$\)|{{- if .Values.global.multitenant }}\
 \2namespaceSelector:\
 \2  matchExpressions:\
-\2  - key: istio.openshift.io/member-of\
+\2  - key: maistra.io/member-of\
 \2    operator: In\
 \2      values:\
 \2      - "{{ .Release.Namespace }}"\
@@ -495,10 +500,12 @@ function patchMultiTenant() {
 \{\{- if .Values.global.multitenant \}\}\
 \    namespaceSelector:\
 \      matchExpressions:\
-\      - key: istio.openshift.io/member-of\
+\      - key: maistra.io/member-of\
 \        operator: In\
 \        values:\
 \        - "{{ .Release.Namespace }}"\
+\      - key: maistra.io/ignore-namespace\
+\        operator: DoesNotExist\
 \      - key: istio.openshift.com/ignore-namespace\
 \        operator: DoesNotExist\
 \{\{- else \}\}

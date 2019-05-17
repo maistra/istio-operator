@@ -13,7 +13,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"github.com/maistra/istio-operator/pkg/controller/controlplane"
+	"github.com/maistra/istio-operator/pkg/controller/servicemesh/controlplane"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
