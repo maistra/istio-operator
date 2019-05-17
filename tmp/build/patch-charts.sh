@@ -5,8 +5,8 @@ set -e
 : ${HELM_DIR:?"Need to set HELM_DIR to output location for charts, e.g. tmp/_output/istio-releases/istio-1.1.0"}
 : ${SOURCE_DIR:?"Need to set SOURCE_DIR to location of the istio-operator source directory"}
 
-: ${THREESCALE_VERSION:=0.5.0}
-: ${KIALI_VERSION:=0.16.2}
+: ${THREESCALE_VERSION:=0.6.0}
+: ${KIALI_VERSION:=0.20.0.snapshot.0}
 
 # copy maistra specific templates into charts
 function copyOverlay() {
@@ -19,7 +19,7 @@ function copyOverlay() {
 # - remove the cleanup secrets job, we handle this in the installer
 # - remove the kubernetes gateways
 # - change privileged value on istio-proxy injection configmap to false
-# - update the namespaceSelector to ignore namespaces with the label istio.openshift.io/ignore-namespace
+# - update the namespaceSelector to ignore namespaces with the label istio.openshift.com/ignore-namespace
 # - add a maistra-version label to all objects which have a release label
 # - remove GODEBUG from the pilot environment
 # - remove istio-multi service account
@@ -112,7 +112,7 @@ function patchTemplates() {
     }
   }' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
 
-  # - update the namespaceSelector to ignore namespaces with the label istio.openshift.io/ignore-namespace
+  # - update the namespaceSelector to ignore namespaces with the label istio.openshift.com/ignore-namespace
   # set sidecarInjectorWebhook.enableNamespacesByDefault=true
   sed -i -e '/if \.Values\.enableNamespacesByDefault/,/else/s/istio-injection/istio.openshift.com\/ignore-namespace/' \
          -e 's/NotIn/DoesNotExist/' \
@@ -380,200 +380,6 @@ function patchKialiOpenShift() {
     }
   }' ${HELM_DIR}/istio/charts/kiali/templates/deployment.yaml
 
-  # - add authorization details for authentication.istio.io (for 1.0 templates)
-  if [ -n "${PATCH_1_0}" ]; then
-    sed -i -e '/apiGroups:.*networking.istio.io/,/^-/ {
-      /- watch/ a\
-\- apiGroups: ["authentication.istio.io"]\
-\  resources:\
-\  - policies\
-\  - meshpolicies\
-\  verbs:\
-\  - create\
-\  - delete\
-\  - get\
-\  - list\
-\  - patch\
-\  - watch
-    }' ${HELM_DIR}/istio/charts/kiali/templates/clusterrole.yaml
-  fi
-
-  # add monitoring.kiali.io
-  sed -i -e '/apiGroups:.*authentication.istio.io/,/^-/ {
-      /- policies/ a\
-\  - meshpolicies
-      /- watch/ a\
-\- apiGroups: ["monitoring.kiali.io"]\
-\  resources:\
-\  - monitoringdashboards\
-\  verbs:\
-\  - get\
-\- apiGroups: ["rbac.istio.io"]\
-\  resources:\
-\  - clusterrbacconfigs\
-\  - serviceroles\
-\  - servicerolebindings\
-\  verbs:\
-\  - create\
-\  - delete\
-\  - get\
-\  - list\
-\  - patch\
-\  - watch
-  }' ${HELM_DIR}/istio/charts/kiali/templates/clusterrole.yaml
-  
-  # - add create verb to config.istio.io (for 1.0 templates)
-  if [ -n "${PATCH_1_0}" ]; then
-    sed -i -e '/apiGroups:.*config.istio.io/,/^-/ {
-      /verbs:/ a\
-\  - create
-    }' ${HELM_DIR}/istio/charts/kiali/templates/clusterrole.yaml
-  fi
-  
-  # - add create verb to networking.istio.io  (for 1.0 templates)
-  if [ -n "${PATCH_1_0}" ]; then
-    sed -i -e '/apiGroups:.*networking.istio.io/,/^-/ {
-      /verbs:/ a\
-\  - create
-    }' ${HELM_DIR}/istio/charts/kiali/templates/clusterrole.yaml
-  fi
-
-  # add new kiali-viewer role
-  cat >> ${HELM_DIR}/istio/charts/kiali/templates/clusterrole.yaml << EOF
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: kiali-viewer
-  labels:
-    app: {{ template "kiali.name" . }}
-    chart: {{ template "kiali.chart" . }}
-    heritage: {{ .Release.Service }}
-    release: {{ .Release.Name }}
-rules:
-- apiGroups: [""]
-  resources:
-  - configmaps
-  - endpoints
-  - namespaces
-  - nodes
-  - pods
-  - services
-  - replicationcontrollers
-  - routes
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups: ["extensions", "apps"]
-  resources:
-  - deployments
-  - statefulsets
-  - replicasets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups: ["autoscaling"]
-  resources:
-  - horizontalpodautoscalers
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups: ["batch"]
-  resources:
-  - cronjobs
-  - jobs
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups: ["config.istio.io"]
-  resources:
-  - apikeys
-  - authorizations
-  - checknothings
-  - circonuses
-  - deniers
-  - fluentds
-  - handlers
-  - kubernetesenvs
-  - kuberneteses
-  - listcheckers
-  - listentries
-  - logentries
-  - memquotas
-  - metrics
-  - opas
-  - prometheuses
-  - quotas
-  - quotaspecbindings
-  - quotaspecs
-  - rbacs
-  - reportnothings
-  - rules
-  - servicecontrolreports
-  - servicecontrols
-  - solarwindses
-  - stackdrivers
-  - statsds
-  - stdios
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups: ["networking.istio.io"]
-  resources:
-  - destinationrules
-  - gateways
-  - serviceentries
-  - virtualservices
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups: ["authentication.istio.io"]
-  resources:
-  - policies
-  - meshpolicies
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups: ["rbac.istio.io"]
-  resources:
-  - clusterrbacconfigs
-  - rbacconfigs
-  - serviceroles
-  - servicerolebindings
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups: ["apps.openshift.io"]
-  resources:
-  - deploymentconfigs
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups: ["project.openshift.io"]
-  resources:
-  - projects
-  verbs:
-  - get
-- apiGroups: ["route.openshift.io"]
-  resources:
-  - routes
-  verbs:
-  - get
-- apiGroups: ["monitoring.kiali.io"]
-  resources:
-  - monitoringdashboards
-  verbs:
-  - get
-EOF
 }
 
 function convertClusterToNamespaced() {
@@ -619,8 +425,6 @@ function patchMultiTenant() {
 \2    operator: In\
 \2      values:\
 \2      - "{{ .Release.Namespace }}"\
-\2  - key: istio.openshift.io/ignore-namespace\
-\2    operator: DoesNotExist\
 {{- end }}\
 \1|' ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
   sed -i -e '/--validation-webhook-config-file/ {
@@ -642,6 +446,8 @@ function patchMultiTenant() {
 
   # kiali
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/kiali/templates/clusterrolebinding.yaml
+  sed -i -e 's/\(name:.*\)$/\1-{{ .Release.Namespace }}/' ${HELM_DIR}/istio/charts/kiali/templates/clusterrole.yaml
+  sed -i -e 's/\(name: *kiali\)$/\1-{{ .Release.Namespace }}/' ${HELM_DIR}/istio/charts/kiali/templates/clusterrolebinding.yaml
 
   # mixer
   sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ { 
@@ -692,7 +498,7 @@ function patchMultiTenant() {
 \        operator: In\
 \        values:\
 \        - "{{ .Release.Namespace }}"\
-\      - key: istio.openshift.io/ignore-namespace\
+\      - key: istio.openshift.com/ignore-namespace\
 \        operator: DoesNotExist\
 \{\{- else \}\}
     /end/ i\

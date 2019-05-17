@@ -65,5 +65,5 @@ source $(dirname ${BASH_SOURCE})/patch-charts.sh
 (
   cd "${RELEASES_DIR}"
   echo "producing diff file for charts: $(pwd)/chart-diffs.txt"
-  diff --context=3 -r istio-maistra-0.10/install/kubernetes/helm/ istio-1.1.0/ > chart-diffs.txt
+  diff --context=3 -r istio-maistra-${MAISTRA_BRANCH}/install/kubernetes/helm/ ${RELEASE_DIR}/ > chart-diffs.txt || [ $? -eq 1 ]
 )

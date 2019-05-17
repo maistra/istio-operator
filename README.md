@@ -205,7 +205,7 @@ the the changes made to the base Istio charts can be found below.  For a specifi
 
 * Sidecar proxy init containers have been configured as privileged, regardless of `global.proxy.privileged` setting.
 * The opt-out mechanism for injection has been modified when `sidecarInjectorWebhook.enableNamespacesByDefault` is enabled.
-  Namespaces now opt-out by adding an `istio.openshift.io/ignore-namespace` label to the namespace.
+  Namespaces now opt-out by adding an `istio.openshift.com/ignore-namespace` label to the namespace.
 * A named `targetPort` has been added to the Sidecar Injector Service.
 * The Sidecar Injector webhook port has been moved from 443 to 8443.
 
