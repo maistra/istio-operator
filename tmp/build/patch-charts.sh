@@ -478,8 +478,9 @@ function patchMultiTenant() {
   # security
   sed -i -e '/apiGroups:.*authentication.k8s.io/,$ { d }' ${HELM_DIR}/istio/charts/security/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/security/templates/clusterrolebinding.yaml
-  convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-mtls.yaml
-  convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-permissive.yaml
+  # revisit in TP12
+  #convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-mtls.yaml
+  #convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-permissive.yaml
   sed -i -e 's/^\(\( *\){.*if .Values.global.trustDomain.*$\)/\2{{- if .Values.global.multitenant }}\
 \            - --member-roll-name=default\
 \2{{- end }}\
