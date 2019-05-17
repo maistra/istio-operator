@@ -304,9 +304,9 @@ function patchKialiOpenShift() {
              /url:/ a\
 \{\{- if .Values.global.multitenant \}\}\
 \    api:\
-       namespaces: \
+\      namespaces:\
 \        label_selector: istio.openshift.io/member-of=\{\{ .Release.Namespace \}\}\
-\{\{- end \}\}\		     
+\{\{- end \}\}\
 \{\{- if not (and (.Values.dashboard.user) (.Values.dashboard.passphrase)) \}\}\
 \    auth:\
 \      strategy: openshift\
@@ -628,6 +628,9 @@ function patchMultiTenant() {
 \2- \{\{ .Release.Namespace \}\}\
 \2- --webhook-name\
 \2- istio-galley-\{\{ .Release.Namespace \}\}\
+\2\{\{- if .Values.global.multitenant \}\}\
+\2- --memberRollName=default\
+\2\{\{- end \}\}\
 \1/
   }' ${HELM_DIR}/istio/charts/galley/templates/deployment.yaml
 
@@ -657,6 +660,10 @@ function patchMultiTenant() {
   }' \
          -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/pilot/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/pilot/templates/clusterrolebinding.yaml
+  sed -i -e 's/^\(\( *\)- "?discovery"?\)/\1\
+\2\{\{- if .Values.global.multitenant \}\}\
+\2- --memberRollName=default\
+\2\{\{- end \}\}/' ${HELM_DIR}/istio/charts/pilot/templates/deployment.yaml
 
   # prometheus
   sed -i -e '/nodes/d' ${HELM_DIR}/istio/charts/prometheus/templates/clusterrole.yaml
@@ -668,7 +675,7 @@ function patchMultiTenant() {
   convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-mtls.yaml
   convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-permissive.yaml
   sed -i -e 's/^\(\( *\){.*if .Values.global.trustDomain.*$\)/\2{{- if .Values.global.multitenant }}\
-\            - --listened-namespaces={{ .Release.Namespace }}\
+\            - --member-roll-name=default\
 \2{{- end }}\
 \1/' ${HELM_DIR}/istio/charts/security/templates/deployment.yaml
 
