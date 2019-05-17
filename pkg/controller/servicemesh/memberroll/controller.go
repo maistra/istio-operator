@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 
-	istiov1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/v1alpha3"
+	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	corev1 "k8s.io/api/core/v1"
@@ -26,7 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var log = logf.Log.WithName("controller_controlplane")
+var log = logf.Log.WithName("controller_servicemeshmemberroll")
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -47,13 +47,13 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("servicemeshmemberlist-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("servicemeshmemberroll-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
 	// Watch for changes to primary resource ServiceMeshMemberRoll
-	err = c.Watch(&source.Kind{Type: &istiov1alpha3.ServiceMeshMemberRoll{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &v1.ServiceMeshMemberRoll{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ type ReconcileMemberList struct {
 }
 
 const (
-	finalizer = "istio-operator-ServiceMeshMemberRoll"
+	finalizer = "istio-operator-MemberRoll"
 )
 
 // Reconcile reads that state of the cluster for a ServiceMeshMemberRoll object and makes changes based on the state read
@@ -87,7 +87,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	reqLogger.Info("Processing ServiceMeshMemberRoll")
 
 	// Fetch the ServiceMeshMemberRoll instance
-	instance := &istiov1alpha3.ServiceMeshMemberRoll{}
+	instance := &v1.ServiceMeshMemberRoll{}
 	err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) || errors.IsGone(err) {
@@ -100,14 +100,14 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		return reconcile.Result{}, err
 	}
 
-	meshList := &istiov1alpha3.ControlPlaneList{}
+	meshList := &v1.ServiceMeshControlPlaneList{}
 	err = r.Client.List(context.TODO(), client.InNamespace(instance.Namespace), meshList)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 	if len(meshList.Items) != 1 {
-		reqLogger.Error(nil, "cannot reconcile ControlPlane: multiple ControlPlane resources exist in project")
-		return reconcile.Result{}, fmt.Errorf("failed to locate single ControlPlane for project %s", instance.Namespace)
+		reqLogger.Error(nil, "cannot reconcile ServiceMeshControlPlane: multiple ServiceMeshControlPlane resources exist in project")
+		return reconcile.Result{}, fmt.Errorf("failed to locate single ServiceMeshControlPlane for project %s", instance.Namespace)
 	}
 
 	mesh := meshList.Items[0]
@@ -137,7 +137,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		finalizers = append(finalizers, finalizer)
 		instance.SetFinalizers(finalizers)
 		// add owner reference to the mesh so we can clean up if the mesh gets deleted
-		owner := metav1.NewControllerRef(&mesh, istiov1alpha3.SchemeGroupVersion.WithKind("ControlPlane"))
+		owner := metav1.NewControllerRef(&mesh, v1.SchemeGroupVersion.WithKind("ControlPlane"))
 		instance.SetOwnerReferences([]metav1.OwnerReference{*owner})
 		err = r.Client.Update(context.TODO(), instance)
 		return reconcile.Result{Requeue: err == nil}, err
@@ -253,6 +253,7 @@ func (r *ReconcileMemberList) removeNamespaceFromMesh(namespace string, meshName
 
 	// remove mesh labels
 	common.DeleteLabel(namespaceResource, common.MemberOfKey)
+	common.DeleteLabel(namespaceResource, common.LegacyMemberOfKey)
 	err = r.Client.Update(context.TODO(), namespaceResource)
 	if err != nil {
 		logger.Error(err, "error member-of label from member namespace")
@@ -262,7 +263,7 @@ func (r *ReconcileMemberList) removeNamespaceFromMesh(namespace string, meshName
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (r *ReconcileMemberList) reconcileNamespaceInMesh(namespace string, mesh *istiov1alpha3.ControlPlane, reqLogger logr.Logger) error {
+func (r *ReconcileMemberList) reconcileNamespaceInMesh(namespace string, mesh *v1.ServiceMeshControlPlane, reqLogger logr.Logger) error {
 	logger := reqLogger.WithValues("namespace", namespace)
 	logger.Info("configuring namespace for use with mesh")
 
@@ -300,6 +301,7 @@ func (r *ReconcileMemberList) reconcileNamespaceInMesh(namespace string, mesh *i
 	// add mesh labels
 	if !common.HasLabel(namespaceResource, common.MemberOfKey) {
 		common.SetLabel(namespaceResource, common.MemberOfKey, mesh.Namespace)
+		common.SetLabel(namespaceResource, common.LegacyMemberOfKey, mesh.Namespace)
 		err = r.Client.Update(context.TODO(), namespaceResource)
 		if err != nil {
 			allErrors = append(allErrors, err)
@@ -309,7 +311,7 @@ func (r *ReconcileMemberList) reconcileNamespaceInMesh(namespace string, mesh *i
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (r *ReconcileMemberList) reconcileRoleBindings(namespace string, mesh *istiov1alpha3.ControlPlane, reqLogger logr.Logger) error {
+func (r *ReconcileMemberList) reconcileRoleBindings(namespace string, mesh *v1.ServiceMeshControlPlane, reqLogger logr.Logger) error {
 	meshRoleBindingsList, err := common.FetchOwnedResources(r.Client, rbacv1.SchemeGroupVersion.WithKind("RoleBindingList"), mesh.Namespace, mesh.Namespace)
 	if err != nil {
 		reqLogger.Error(err, "could not read RoleBinding resources for mesh")
@@ -378,7 +380,7 @@ func (r *ReconcileMemberList) reconcileRoleBindings(namespace string, mesh *isti
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (r *ReconcileMemberList) reconcilePodServiceAccounts(namespace string, mesh *istiov1alpha3.ControlPlane, reqLogger logr.Logger) error {
+func (r *ReconcileMemberList) reconcilePodServiceAccounts(namespace string, mesh *v1.ServiceMeshControlPlane, reqLogger logr.Logger) error {
 	// scan for pods with injection labels
 	serviceAccounts := map[string]struct{}{}
 	podList := &unstructured.UnstructuredList{}

@@ -11,7 +11,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/apis"
 	"github.com/maistra/istio-operator/pkg/bootstrap"
 	"github.com/maistra/istio-operator/pkg/controller"
-	"github.com/maistra/istio-operator/pkg/controller/controlplane"
+	"github.com/maistra/istio-operator/pkg/controller/servicemesh/controlplane"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
