@@ -6,10 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	istiov1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/v1alpha3"
+	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 
 	corev1 "k8s.io/api/core/v1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
@@ -19,10 +18,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-type controlPlaneReconciler struct {
+type ControlPlaneReconciler struct {
 	*ReconcileControlPlane
-	instance       *istiov1alpha3.ControlPlane
-	status         *istiov1alpha3.ControlPlaneStatus
+	Instance       *v1.ServiceMeshControlPlane
+	Status         *v1.ControlPlaneStatus
+	NewOwnerRef    func (*v1.ServiceMeshControlPlane) *metav1.OwnerReference
 	ownerRefs      []metav1.OwnerReference
 	meshGeneration string
 	renderings     map[string][]manifest.Manifest
@@ -30,23 +30,23 @@ type controlPlaneReconciler struct {
 
 var seen = struct{}{}
 
-func (r *controlPlaneReconciler) Reconcile() (reconcile.Result, error) {
+func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	allErrors := []error{}
 	var err error
 
 	// prepare to write a new reconciliation status
-	r.instance.Status.RemoveCondition(istiov1alpha3.ConditionTypeReconciled)
+	r.Instance.Status.RemoveCondition(v1.ConditionTypeReconciled)
 	// ensure ComponentStatus is ready
-	if r.instance.Status.ComponentStatus == nil {
-		r.instance.Status.ComponentStatus = []*istiov1alpha3.ComponentStatus{}
+	if r.Instance.Status.ComponentStatus == nil {
+		r.Instance.Status.ComponentStatus = []*v1.ComponentStatus{}
 	}
 
 	// Render the templates
 	err = r.renderCharts()
 	if err != nil {
 		// we can't progress here
-		updateReconcileStatus(&r.instance.Status.StatusType, err)
-		r.Client.Status().Update(context.TODO(), r.instance)
+		updateReconcileStatus(&r.Instance.Status.StatusType, err)
+		r.Client.Status().Update(context.TODO(), r.Instance)
 		return reconcile.Result{}, err
 	}
 
@@ -58,15 +58,15 @@ func (r *controlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	// e.g. spec.pilot.enabled || spec.mixer.enabled || spec.galley.enabled || spec.sidecarInjectorWebhook.enabled || ....
 	// which is all we're supporting atm.  if the scope expands to allow
 	// installing custom gateways, etc., we should revisit this.
-	namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: r.instance.Namespace}}
-	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: r.instance.Namespace}, namespace)
+	namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: r.Instance.Namespace}}
+	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Namespace}, namespace)
 	if err == nil {
 		if namespace.Labels == nil {
 			namespace.Labels = map[string]string{}
 		}
-		if label, ok := namespace.Labels["istio.openshift.com/ignore-namespace"]; !ok || label != "ignore" {
-			r.Log.Info("Adding istio.openshift.com/ignore-namespace=ignore label to Request.Namespace")
-			namespace.Labels["istio.openshift.com/ignore-namespace"] = "ignore"
+		if label, ok := namespace.Labels["maistra.io/ignore-namespace"]; !ok || label != "ignore" {
+			r.Log.Info("Adding maistra.io/ignore-namespace=ignore label to Request.Namespace")
+			namespace.Labels["maistra.io/ignore-namespace"] = "ignore"
 			err = r.Client.Update(context.TODO(), namespace)
 		}
 	} else {
@@ -74,9 +74,9 @@ func (r *controlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	}
 
 	// initialize common data
-	owner := metav1.NewControllerRef(r.instance, istiov1alpha3.SchemeGroupVersion.WithKind("ControlPlane"))
+	owner := r.NewOwnerRef(r.Instance)
 	r.ownerRefs = []metav1.OwnerReference{*owner}
-	r.meshGeneration = strconv.FormatInt(r.instance.GetGeneration(), 10)
+	r.meshGeneration = strconv.FormatInt(r.Instance.GetGeneration(), 10)
 
 	// create components
 	componentsProcessed := map[string]struct{}{}
@@ -182,19 +182,19 @@ func (r *controlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	}
 
 	// delete unseen components
-	err = r.prune(r.instance.GetGeneration())
+	err = r.prune(r.Instance.GetGeneration())
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
 
-	r.status.ObservedGeneration = r.instance.GetGeneration()
+	r.Status.ObservedGeneration = r.Instance.GetGeneration()
 	err = utilerrors.NewAggregate(allErrors)
-	updateReconcileStatus(&r.status.StatusType, err)
+	updateReconcileStatus(&r.Status.StatusType, err)
 
-	r.instance.Status = *r.status
-	updateErr := r.Client.Status().Update(context.TODO(), r.instance)
+	r.Instance.Status = *r.Status
+	updateErr := r.Client.Status().Update(context.TODO(), r.Instance)
 	if updateErr != nil {
-		r.Log.Error(err, "error updating ControlPlane status")
+		r.Log.Error(err, "error updating ServiceMeshControlPlane status")
 		if err == nil {
 			// XXX: is this the right thing to do?
 			return reconcile.Result{}, updateErr
@@ -206,19 +206,19 @@ func (r *controlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	return reconcile.Result{}, err
 }
 
-func (r *controlPlaneReconciler) renderCharts() error {
+func (r *ControlPlaneReconciler) renderCharts() error {
 	allErrors := []error{}
 	var err error
 	var threeScaleRenderings map[string][]manifest.Manifest
 
 	r.Log.V(2).Info("rendering Istio charts")
-	istioRenderings, _, err := RenderHelmChart(path.Join(ChartPath, "istio"), r.instance.GetNamespace(), r.instance.Spec.Istio)
+	istioRenderings, _, err := RenderHelmChart(path.Join(ChartPath, "istio"), r.Instance.GetNamespace(), r.Instance.Spec.Istio)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
-	if isEnabled(r.instance.Spec.ThreeScale) {
+	if isEnabled(r.Instance.Spec.ThreeScale) {
 		r.Log.V(2).Info("rendering 3scale charts")
-		threeScaleRenderings, _, err = RenderHelmChart(path.Join(ChartPath, "maistra-threescale"), r.instance.GetNamespace(), r.instance.Spec.ThreeScale)
+		threeScaleRenderings, _, err = RenderHelmChart(path.Join(ChartPath, "maistra-threescale"), r.Instance.GetNamespace(), r.Instance.Spec.ThreeScale)
 		if err != nil {
 			allErrors = append(allErrors, err)
 		}
@@ -241,7 +241,7 @@ func (r *controlPlaneReconciler) renderCharts() error {
 	return nil
 }
 
-func isEnabled(spec istiov1alpha3.HelmValuesType) bool {
+func isEnabled(spec v1.HelmValuesType) bool {
 	if enabledVal, ok := spec["enabled"]; ok {
 		if enabled, ok := enabledVal.(bool); ok {
 			return enabled

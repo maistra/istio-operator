@@ -10,13 +10,14 @@ import (
 
 const (
 	// MetadataNamespace is the namespace for service mesh metadata (labels, annotations)
-	MetadataNamespace = "istio.openshift.io"
+	MetadataNamespace = "maistra.io"
 
 	// OwnerKey represents the mesh (namespace) to which the resource relates
 	OwnerKey = MetadataNamespace + "/owner"
 
 	// MemberOfKey represents the mesh (namespace) to which the resource relates
 	MemberOfKey = MetadataNamespace + "/member-of"
+	LegacyMemberOfKey = "istio.openshift.io/member-of"
 
 	// GenerationKey represents the generation to which the resource was last reconciled
 	GenerationKey = MetadataNamespace + "/generation"

@@ -25,21 +25,21 @@ or
 $ kubectl apply -n istio-operator -f ./deploy/maistra-operator.yaml
 ```
 
-By default, the operator watches for ControlPlane or Installation resources in the `istio-system` namespace, which is
+By default, the operator watches for ServiceMeshControlPlane or Installation resources in the `istio-system` namespace, which is
 where the control plane will be installed.  For example:
 
 ```
-$ oc apply -n istio-system -f ./deploy/examples/istio_v1alpha3_controlplane_cr_basic.yaml
+$ oc apply -n istio-system -f ./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_basic.yaml
 ```
 
 Example resources can be found in [./deploy/examples](./deploy/examples).
 
 ## Uninstall
 
-If an existing ControlPlane cr has not been deleted, you need to delete the ControlPlane cr before deleting the istio operator. For example:
+If an existing ServiceMeshControlPlane cr has not been deleted, you need to delete the ServiceMeshControlPlane cr before deleting the istio operator. For example:
 
 ```
-$ oc delete -n istio-system -f ./deploy/examples/istio_v1alpha3_controlplane_cr_basic.yaml
+$ oc delete -n istio-system -f ./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_basic.yaml
 ```
 
 If you followed the instructions above for installation, the operator can be uninstalled by simply issuing a delete
@@ -51,7 +51,7 @@ $ oc delete -n istio-operator -f ./deploy/maistra-operator.yaml
 
 ## Customizing the Installation
 
-The installation is easily customizable by modifying the `.spec.istio` section of the ControlPlane resource.  If you are
+The installation is easily customizable by modifying the `.spec.istio` section of the ServiceMeshControlPlane resource.  If you are
 familiar with the Helm based installation, all of those settings are exposed through the operator.
 
 The following sections describe common types of customizations.
@@ -59,12 +59,12 @@ The following sections describe common types of customizations.
 ### Custom Images
 
 The image registry from which the Istio control plane images are pulled may be changed by adding a global `hub`
-value to the ControlPlane specification.  The default `tag` used for the images may be changed in a similar fashion.
+value to the ServiceMeshControlPlane specification.  The default `tag` used for the images may be changed in a similar fashion.
 For example:
 
 ```yaml
-apiVersion: istio.openshift.com/v1alpha3
-kind: ControlPlane
+apiVersion: maistra.io/v1
+kind: ServiceMeshControlPlane
 metadata:
   name: basic-install
 spec:
@@ -82,8 +82,8 @@ If access to the registry providing the Istio images is secure, you may add your
 `imagePullSecrets` to the appropriate ServiceAccount resources.  For example:
 
 ```yaml
-apiVersion: istio.openshift.com/v1alpha3
-kind: ControlPlane
+apiVersion: maistra.io/v1
+kind: ServiceMeshControlPlane
 metadata:
   name: basic-install
 spec:
@@ -103,8 +103,8 @@ resource limits used by default.  Resource limits can be set by default in `.spe
 example:
 
 ```yaml
-apiVersion: istio.openshift.com/v1alpha3
-kind: ControlPlane
+apiVersion: maistra.io/v1
+kind: ServiceMeshControlPlane
 metadata:
   name: basic-install
 spec:
@@ -129,8 +129,8 @@ Some examples:
 
 Customize resources (e.g. proxy, mixer):
 ```yaml
-apiVersion: istio.openshift.com/v1alpha3
-kind: ControlPlane
+apiVersion: maistra.io/v1
+kind: ServiceMeshControlPlane
 metadata:
   name: basic-install
 spec:
@@ -159,8 +159,8 @@ spec:
 
 Customize component image (e.g. Kiali):
 ```yaml
-apiVersion: istio.openshift.com/v1alpha3
-kind: ControlPlane
+apiVersion: maistra.io/v1
+kind: ServiceMeshControlPlane
 metadata:
   name: basic-install
 spec:
@@ -177,8 +177,8 @@ spec:
 
 This operator provides a wrapper around the helm charts used when installing Istio via `helm template` or `helm install`.
 As such, the custom resource used to define the features of the control plane maps directly to a `values.yaml` file, the
-root of which is located in the resource's `.spec.istio` field.  See examples of a [basic installation](./deploy/examples/istio_v1alpha3_controlplane_cr_basic.yaml)
-or a [secured installation](./deploy/examples/istio_v1alpha3_controlplane_cr_secure.yaml).
+root of which is located in the resource's `.spec.istio` field.  See examples of a [basic installation](./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_basic.yaml)
+or a [secured installation](./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_secure.yaml).
 
 ## Modifications for Maistra
 
@@ -205,7 +205,7 @@ the the changes made to the base Istio charts can be found below.  For a specifi
 
 * Sidecar proxy init containers have been configured as privileged, regardless of `global.proxy.privileged` setting.
 * The opt-out mechanism for injection has been modified when `sidecarInjectorWebhook.enableNamespacesByDefault` is enabled.
-  Namespaces now opt-out by adding an `istio.openshift.com/ignore-namespace` label to the namespace.
+  Namespaces now opt-out by adding an `maistra.io/ignore-namespace` label to the namespace.
 * A named `targetPort` has been added to the Sidecar Injector Service.
 * The Sidecar Injector webhook port has been moved from 443 to 8443.
 
@@ -249,10 +249,10 @@ the the changes made to the base Istio charts can be found below.  For a specifi
 The following are known issues that need to be addressed:
 
 * Istio CustomResourceDefinition resources are not removed during uninstall.
-* Updates have not been tested (e.g. modifying a ControlPlane resource to enable/disable a component).
+* Updates have not been tested (e.g. modifying a ServiceMeshControlPlane resource to enable/disable a component).
 * Uninstall is a little sloppy (i.e. resources are just deleted, and not in an intelligent fashion).
-* Reconciliation is only performed on the ControlPlane resource (i.e. the operator is not watching installed resources,
+* Reconciliation is only performed on the ServiceMeshControlPlane resource (i.e. the operator is not watching installed resources,
   e.g. galley Deployment).  This means users may modify those resources and the operator will not revert them (unless
-  the ControlPlane resource is modified).
+  the ServiceMeshControlPlane resource is modified).
 * Rollout may hang if configuration changes made to the istio-operator deployment.  (I believe this has to do with
   leader election, where the new deployment fails to become ready until the prior one is terminated.)

@@ -3,25 +3,22 @@ package controlplane
 import (
 	"context"
 
-	istiov1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/v1alpha3"
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var log = logf.Log.WithName("controller_controlplane")
-
-const watchNamespace = "istio-system"
+var log = logf.Log.WithName("controller_servicemeshcontrolplane")
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -36,27 +33,27 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileControlPlane{ResourceManager: common.ResourceManager{Client: mgr.GetClient(), PatchFactory: common.NewPatchFactory(mgr.GetClient()), Log: log}, scheme: mgr.GetScheme()}
+	return &ReconcileControlPlane{
+		ResourceManager: common.ResourceManager{
+			Client:       mgr.GetClient(),
+			PatchFactory: common.NewPatchFactory(mgr.GetClient()),
+			Log:          log,
+		},
+		Scheme: mgr.GetScheme(),
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("controlplane-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("servicemeshcontrolplane-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to primary resource ControlPlane
+	// Watch for changes to primary resource ServiceMeshControlPlane
 	// XXX: hack: remove predicate once old installation mechanism is removed
-	err = c.Watch(&source.Kind{Type: &istiov1alpha3.ControlPlane{}}, &handler.EnqueueRequestForObject{}, predicate.Funcs{
-		CreateFunc: func(evt event.CreateEvent) bool { return evt.Meta != nil && evt.Meta.GetNamespace() == watchNamespace },
-		DeleteFunc: func(evt event.DeleteEvent) bool { return evt.Meta != nil && evt.Meta.GetNamespace() == watchNamespace },
-		UpdateFunc: func(evt event.UpdateEvent) bool {
-			return evt.MetaNew != nil && evt.MetaNew.GetNamespace() == watchNamespace
-		},
-		GenericFunc: func(evt event.GenericEvent) bool { return evt.Meta != nil && evt.Meta.GetNamespace() == watchNamespace },
-	})
+	err = c.Watch(&source.Kind{Type: &v1.ServiceMeshControlPlane{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -70,7 +67,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch for changes to secondary resource Pods and requeue the owner ControlPlane
 	// err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 	// 	IsController: true,
-	// 	OwnerType:    &istiov1alpha3.ControlPlane{},
+	// 	OwnerType:    &v1.ControlPlane{},
 	// })
 	// if err != nil {
 	// 	return err
@@ -81,20 +78,20 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 var _ reconcile.Reconciler = &ReconcileControlPlane{}
 
-// ReconcileControlPlane reconciles a ControlPlane object
+// ReconcileControlPlane reconciles a ServiceMeshControlPlane object
 type ReconcileControlPlane struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	common.ResourceManager
-	scheme *runtime.Scheme
+	Scheme *runtime.Scheme
 }
 
 const (
 	finalizer = "istio-operator-ControlPlane"
 )
 
-// Reconcile reads that state of the cluster for a ControlPlane object and makes changes based on the state read
-// and what is in the ControlPlane.Spec
+// Reconcile reads that state of the cluster for a ServiceMeshControlPlane object and makes changes based on the state read
+// and what is in the ServiceMeshControlPlane.Spec
 // TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
 // a Pod as an example
 // Note:
@@ -102,10 +99,10 @@ const (
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Processing ControlPlane")
+	reqLogger.Info("Processing ServiceMeshControlPlane")
 
-	// Fetch the ControlPlane instance
-	instance := &istiov1alpha3.ControlPlane{}
+	// Fetch the ServiceMeshControlPlane instance
+	instance := &v1.ServiceMeshControlPlane{}
 	err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -118,10 +115,13 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	reconciler := controlPlaneReconciler{
+	reconciler := ControlPlaneReconciler{
 		ReconcileControlPlane: r,
-		instance:              instance,
-		status:                istiov1alpha3.NewControlPlaneStatus(),
+		Instance:              instance,
+		Status:                v1.NewControlPlaneStatus(),
+		NewOwnerRef: func(owner *v1.ServiceMeshControlPlane) *metav1.OwnerReference {
+			return metav1.NewControllerRef(owner, v1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
+		},
 	}
 
 	deleted := instance.GetDeletionTimestamp() != nil
@@ -130,10 +130,10 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 
 	if deleted {
 		if finalizerIndex < 0 {
-			reqLogger.Info("ControlPlane deleted")
+			reqLogger.Info("ServiceMeshControlPlane deleted")
 			return reconcile.Result{}, nil
 		}
-		reqLogger.Info("Deleting ControlPlane")
+		reqLogger.Info("Deleting ServiceMeshControlPlane")
 		result, err := reconciler.Delete()
 		// XXX: for now, nuke the resources, regardless of errors
 		finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
@@ -161,12 +161,12 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	}
 
 	if instance.GetGeneration() == instance.Status.ObservedGeneration &&
-		instance.Status.GetCondition(istiov1alpha3.ConditionTypeReconciled).Status == istiov1alpha3.ConditionStatusTrue {
+		instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
 		reqLogger.Info("nothing to reconcile, generations match")
 		return reconcile.Result{}, nil
 	}
 
-	reqLogger.Info("Reconciling ControlPlane")
+	reqLogger.Info("Reconciling ServiceMeshControlPlane")
 
 	return reconciler.Reconcile()
 }

@@ -6,7 +6,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	istiov1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/v1alpha3"
+	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -22,9 +22,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *controlPlaneReconciler) processComponentManifests(componentName string) error {
+func (r *ControlPlaneReconciler) processComponentManifests(componentName string) error {
 	var err error
-	status := r.instance.Status.FindComponentByName(componentName)
+	status := r.Instance.Status.FindComponentByName(componentName)
 	renderings, hasRenderings := r.renderings[componentName]
 	origLogger := r.Log
 	r.Log = r.Log.WithValues("Component", componentName)
@@ -32,17 +32,17 @@ func (r *controlPlaneReconciler) processComponentManifests(componentName string)
 	if hasRenderings {
 		r.Log.Info("reconciling component resources")
 		if status == nil {
-			status = istiov1alpha3.NewComponentStatus()
+			status = v1.NewComponentStatus()
 			status.Resource = componentName
 		} else {
-			status.RemoveCondition(istiov1alpha3.ConditionTypeReconciled)
+			status.RemoveCondition(v1.ConditionTypeReconciled)
 		}
 		status, err = r.processManifests(renderings, status)
-		status.ObservedGeneration = r.instance.GetGeneration()
+		status.ObservedGeneration = r.Instance.GetGeneration()
 		if err := r.processNewComponent(componentName, status); err != nil {
 			r.Log.Error(err, "unexpected error occurred during postprocessing of new component")
 		}
-		r.status.ComponentStatus = append(r.status.ComponentStatus, status)
+		r.Status.ComponentStatus = append(r.Status.ComponentStatus, status)
 	} else {
 		r.Log.Info("no renderings for component")
 	}
@@ -50,12 +50,12 @@ func (r *controlPlaneReconciler) processComponentManifests(componentName string)
 	return err
 }
 
-func (r *controlPlaneReconciler) processManifests(manifests []manifest.Manifest,
-	oldStatus *istiov1alpha3.ComponentStatus) (*istiov1alpha3.ComponentStatus, error) {
+func (r *ControlPlaneReconciler) processManifests(manifests []manifest.Manifest,
+	oldStatus *v1.ComponentStatus) (*v1.ComponentStatus, error) {
 
 	allErrors := []error{}
-	resourcesProcessed := map[istiov1alpha3.ResourceKey]struct{}{}
-	newStatus := istiov1alpha3.NewComponentStatus()
+	resourcesProcessed := map[v1.ResourceKey]struct{}{}
+	newStatus := v1.NewComponentStatus()
 	newStatus.StatusType = oldStatus.StatusType
 	newStatus.Resource = oldStatus.Resource
 
@@ -95,10 +95,10 @@ func (r *controlPlaneReconciler) processManifests(manifests []manifest.Manifest,
 	// XXX: should these be processed in reverse order of creation?
 	for index := len(oldStatus.Resources) - 1; index >= 0; index-- {
 		status := oldStatus.Resources[index]
-		resourceKey := istiov1alpha3.ResourceKey(status.Resource)
+		resourceKey := v1.ResourceKey(status.Resource)
 		if _, ok := resourcesProcessed[resourceKey]; !ok {
 			r.Log = origLogger.WithValues("Resource", resourceKey)
-			if condition := status.GetCondition(istiov1alpha3.ConditionTypeInstalled); condition.Status != istiov1alpha3.ConditionStatusFalse {
+			if condition := status.GetCondition(v1.ConditionTypeInstalled); condition.Status != v1.ConditionStatusFalse {
 				r.Log.Info("deleting resource")
 				unstructured := resourceKey.ToUnstructured()
 				err := r.Client.Delete(context.TODO(), unstructured, client.PropagationPolicy(metav1.DeletePropagationForeground))
@@ -126,12 +126,12 @@ func (r *controlPlaneReconciler) processManifests(manifests []manifest.Manifest,
 	return newStatus, err
 }
 
-func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, resourcesProcessed map[istiov1alpha3.ResourceKey]struct{},
-	oldStatus *istiov1alpha3.ComponentStatus, newStatus *istiov1alpha3.ComponentStatus) error {
+func (r *ControlPlaneReconciler) processObject(obj *unstructured.Unstructured, resourcesProcessed map[v1.ResourceKey]struct{},
+	oldStatus *v1.ComponentStatus, newStatus *v1.ComponentStatus) error {
 	origLogger := r.Log
 	defer func() { r.Log = origLogger }()
 
-	key := istiov1alpha3.NewResourceKey(obj, obj)
+	key := v1.NewResourceKey(obj, obj)
 	r.Log = origLogger.WithValues("Resource", key)
 
 	if obj.GetKind() == "List" {
@@ -151,14 +151,14 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 	}
 
 	// Add owner ref
-	if obj.GetNamespace() == r.instance.GetNamespace() {
+	if obj.GetNamespace() == r.Instance.GetNamespace() {
 		obj.SetOwnerReferences(r.ownerRefs)
 	} else {
 		// XXX: can't set owner reference on cross-namespace or cluster resources
 	}
 
 	// add owner label
-	common.SetLabel(obj, common.OwnerKey, r.instance.GetNamespace())
+	common.SetLabel(obj, common.OwnerKey, r.Instance.GetNamespace())
 	// add generation annotation
 	common.SetAnnotation(obj, common.MeshGenerationKey, r.meshGeneration)
 
@@ -167,7 +167,7 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 	resourcesProcessed[key] = seen
 	status := oldStatus.FindResourceByKey(key)
 	if status == nil {
-		newResourceStatus := istiov1alpha3.NewStatus()
+		newResourceStatus := v1.NewStatus()
 		status = &newResourceStatus
 		status.Resource = string(key)
 	}
@@ -215,7 +215,7 @@ func (r *controlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 		}
 	} else if patch, err = r.PatchFactory.CreatePatch(receiver, obj); err == nil && patch != nil {
 		r.Log.Info("updating existing resource")
-		status.RemoveCondition(istiov1alpha3.ConditionTypeReconciled)
+		status.RemoveCondition(v1.ConditionTypeReconciled)
 		_, err = patch.Apply()
 	}
 	r.Log.V(2).Info("resource reconciliation complete")

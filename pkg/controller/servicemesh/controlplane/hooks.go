@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"time"
 
-	istiov1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/v1alpha3"
+	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -17,22 +17,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *controlPlaneReconciler) processNewComponent(name string, status *istiov1alpha3.ComponentStatus) error {
+func (r *ControlPlaneReconciler) processNewComponent(name string, status *v1.ComponentStatus) error {
 	switch name {
 	case "istio/charts/galley":
 		r.waitForDeployments(status)
 		if name == "istio/charts/galley" {
 			for _, status := range status.FindResourcesOfKind("ValidatingWebhookConfiguration") {
-				if installCondition := status.GetCondition(istiov1alpha3.ConditionTypeInstalled); installCondition.Status == istiov1alpha3.ConditionStatusTrue {
-					webhookKey := istiov1alpha3.ResourceKey(status.Resource)
+				if installCondition := status.GetCondition(v1.ConditionTypeInstalled); installCondition.Status == v1.ConditionStatusTrue {
+					webhookKey := v1.ResourceKey(status.Resource)
 					r.waitForWebhookCABundleInitialization(webhookKey.ToUnstructured())
 				}
 			}
 		}
 	case "istio/charts/sidecarInjectorWebhook":
 		for _, status := range status.FindResourcesOfKind("MutatingWebhookConfiguration") {
-			if installCondition := status.GetCondition(istiov1alpha3.ConditionTypeInstalled); installCondition.Status == istiov1alpha3.ConditionStatusTrue {
-				webhookKey := istiov1alpha3.ResourceKey(status.Resource)
+			if installCondition := status.GetCondition(v1.ConditionTypeInstalled); installCondition.Status == v1.ConditionStatusTrue {
+				webhookKey := v1.ResourceKey(status.Resource)
 				r.waitForWebhookCABundleInitialization(webhookKey.ToUnstructured())
 			}
 		}
@@ -43,12 +43,12 @@ func (r *controlPlaneReconciler) processNewComponent(name string, status *istiov
 	return nil
 }
 
-func (r *controlPlaneReconciler) processDeletedComponent(name string, status *istiov1alpha3.ComponentStatus) error {
+func (r *ControlPlaneReconciler) processDeletedComponent(name string, status *v1.ComponentStatus) error {
 	// nop
 	return nil
 }
 
-func (r *controlPlaneReconciler) preprocessObject(object *unstructured.Unstructured) error {
+func (r *ControlPlaneReconciler) preprocessObject(object *unstructured.Unstructured) error {
 	switch object.GetKind() {
 	case "ConfigMap":
 		if object.GetName() == "kiali" {
@@ -62,7 +62,7 @@ func (r *controlPlaneReconciler) preprocessObject(object *unstructured.Unstructu
 	return nil
 }
 
-func (r *controlPlaneReconciler) processNewObject(object *unstructured.Unstructured) error {
+func (r *ControlPlaneReconciler) processNewObject(object *unstructured.Unstructured) error {
 	switch object.GetKind() {
 	case "ServiceAccount":
 		return r.processNewServiceAccount(object)
@@ -70,7 +70,7 @@ func (r *controlPlaneReconciler) processNewObject(object *unstructured.Unstructu
 	return nil
 }
 
-func (r *controlPlaneReconciler) processDeletedObject(object *unstructured.Unstructured) error {
+func (r *ControlPlaneReconciler) processDeletedObject(object *unstructured.Unstructured) error {
 	switch object.GetKind() {
 	case "ServiceAccount":
 		return r.processDeletedServiceAccount(object)
@@ -83,7 +83,7 @@ var (
 	jaegerRegexp  = regexp.MustCompile("(jaeger:\\s*url:).*?\n")
 )
 
-func (r *controlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructured) error {
+func (r *ControlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructured) error {
 	r.Log.Info("patching kiali ConfigMap", object.GetKind(), object.GetName())
 	configYaml, found, err := unstructured.NestedString(object.UnstructuredContent(), "data", "config.yaml")
 	if err != nil {
@@ -124,7 +124,7 @@ func (r *controlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructu
 	return unstructured.SetNestedField(object.UnstructuredContent(), configYaml, "data", "config.yaml")
 }
 
-func (r *controlPlaneReconciler) patchKialiOAuthClient(object *unstructured.Unstructured) error {
+func (r *ControlPlaneReconciler) patchKialiOAuthClient(object *unstructured.Unstructured) error {
 	r.Log.Info("patching kiali OAuthClient", object.GetKind(), object.GetName())
 	redirectURIs, found, err := unstructured.NestedStringSlice(object.UnstructuredContent(), "redirectURIs")
 	if err != nil {
@@ -139,7 +139,7 @@ func (r *controlPlaneReconciler) patchKialiOAuthClient(object *unstructured.Unst
 	kialiRoute := &unstructured.Unstructured{}
 	kialiRoute.SetAPIVersion("route.openshift.io/v1")
 	kialiRoute.SetKind("Route")
-	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "kiali", Namespace: r.instance.GetNamespace()}, kialiRoute)
+	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "kiali", Namespace: r.Instance.GetNamespace()}, kialiRoute)
 	if err != nil && !errors.IsNotFound(err) {
 		r.Log.Error(err, "error retrieving kiali route")
 		return fmt.Errorf("could not retrieve kiali route: %s", err)
@@ -169,7 +169,7 @@ func (r *controlPlaneReconciler) patchKialiOAuthClient(object *unstructured.Unst
 // plus: grafana, prometheus
 
 // add-scc-to-user privileged service accounts: jaeger
-func (r *controlPlaneReconciler) processNewServiceAccount(object *unstructured.Unstructured) error {
+func (r *ControlPlaneReconciler) processNewServiceAccount(object *unstructured.Unstructured) error {
 	switch object.GetName() {
 	case
 		"istio-citadel-service-account",
@@ -190,7 +190,7 @@ func (r *controlPlaneReconciler) processNewServiceAccount(object *unstructured.U
 	return nil
 }
 
-func (r *controlPlaneReconciler) processDeletedServiceAccount(object *unstructured.Unstructured) error {
+func (r *ControlPlaneReconciler) processDeletedServiceAccount(object *unstructured.Unstructured) error {
 	switch object.GetName() {
 	case
 		"istio-citadel-service-account",
@@ -209,22 +209,22 @@ func (r *controlPlaneReconciler) processDeletedServiceAccount(object *unstructur
 	return nil
 }
 
-func (r *controlPlaneReconciler) waitForDeployments(status *istiov1alpha3.ComponentStatus) error {
+func (r *ControlPlaneReconciler) waitForDeployments(status *v1.ComponentStatus) error {
 	for _, status := range status.FindResourcesOfKind("StatefulSet") {
-		if installCondition := status.GetCondition(istiov1alpha3.ConditionTypeInstalled); installCondition.Status == istiov1alpha3.ConditionStatusTrue {
-			deploymentKey := istiov1alpha3.ResourceKey(status.Resource)
+		if installCondition := status.GetCondition(v1.ConditionTypeInstalled); installCondition.Status == v1.ConditionStatusTrue {
+			deploymentKey := v1.ResourceKey(status.Resource)
 			r.waitForDeployment(deploymentKey.ToUnstructured())
 		}
 	}
 	for _, status := range status.FindResourcesOfKind("Deployment") {
-		if installCondition := status.GetCondition(istiov1alpha3.ConditionTypeInstalled); installCondition.Status == istiov1alpha3.ConditionStatusTrue {
-			deploymentKey := istiov1alpha3.ResourceKey(status.Resource)
+		if installCondition := status.GetCondition(v1.ConditionTypeInstalled); installCondition.Status == v1.ConditionStatusTrue {
+			deploymentKey := v1.ResourceKey(status.Resource)
 			r.waitForDeployment(deploymentKey.ToUnstructured())
 		}
 	}
 	for _, status := range status.FindResourcesOfKind("DeploymentConfig") {
-		if installCondition := status.GetCondition(istiov1alpha3.ConditionTypeInstalled); installCondition.Status == istiov1alpha3.ConditionStatusTrue {
-			deploymentKey := istiov1alpha3.ResourceKey(status.Resource)
+		if installCondition := status.GetCondition(v1.ConditionTypeInstalled); installCondition.Status == v1.ConditionStatusTrue {
+			deploymentKey := v1.ResourceKey(status.Resource)
 			r.waitForDeployment(deploymentKey.ToUnstructured())
 		}
 	}
@@ -232,7 +232,7 @@ func (r *controlPlaneReconciler) waitForDeployments(status *istiov1alpha3.Compon
 }
 
 // XXX: configure wait period
-func (r *controlPlaneReconciler) waitForDeployment(object *unstructured.Unstructured) error {
+func (r *ControlPlaneReconciler) waitForDeployment(object *unstructured.Unstructured) error {
 	name := object.GetName()
 	// wait for deployment replicas >= 1
 	r.Log.Info("waiting for deployment to become ready", object.GetKind(), name)
@@ -254,7 +254,7 @@ func (r *controlPlaneReconciler) waitForDeployment(object *unstructured.Unstruct
 	return nil
 }
 
-func (r *controlPlaneReconciler) waitForWebhookCABundleInitialization(object *unstructured.Unstructured) error {
+func (r *ControlPlaneReconciler) waitForWebhookCABundleInitialization(object *unstructured.Unstructured) error {
 	name := object.GetName()
 	kind := object.GetKind()
 	r.Log.Info("waiting for webhook CABundle initialization", kind, name)
