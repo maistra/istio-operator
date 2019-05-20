@@ -6,7 +6,7 @@ set -e
 : ${SOURCE_DIR:?"Need to set SOURCE_DIR to location of the istio-operator source directory"}
 
 : ${THREESCALE_VERSION:=0.6.0}
-: ${KIALI_VERSION:=0.20.0.snapshot.0}
+: ${KIALI_VERSION:=0.20.0-snapshot.0}
 
 # copy maistra specific templates into charts
 function copyOverlay() {
@@ -365,23 +365,14 @@ function patchKialiOpenShift() {
       N
       a\
 \        - name: kiali-cert\
-\          mountPath: "/kiali-cert"\
-\{\{- if and (.Values.dashboard.user) (.Values.dashboard.passphrase) \}\}\
-\        - name: kiali-secret\
-\          mountPath: "/kiali-secret"\
-\{\{- end \}\}
+\          mountPath: "/kiali-cert"
     }
     /configMap:/ {
       N
       a\
 \      - name: kiali-cert\
 \        secret:\
-\          secretName: kiali-cert-secret\
-\{\{- if and (.Values.dashboard.user) (.Values.dashboard.passphrase) \}\}\
-\      - name: kiali-secret\
-\        secret:\
-\          secretName: \{\{ .Values.dashboard.secretName \}\}\
-\{\{- end \}\}
+\          secretName: kiali-cert-secret
     }
   }' ${HELM_DIR}/istio/charts/kiali/templates/deployment.yaml
 
@@ -492,7 +483,7 @@ function patchMultiTenant() {
 \1/' ${HELM_DIR}/istio/charts/security/templates/deployment.yaml
 
   # sidecarInjectorWebhook
-  sed -i -e '/apiGroups:.*admissionregistration.k8s.io/,$ { d }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrole.yaml
+  sed -i -e '/apiGroups:.*admissionregistration.k8s.io/,+2 { d }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrolebinding.yaml
   sed -i -e '/metadata/ {N; s/name: istio-sidecar-injector/name: istio-sidecar-injector-\{\{ .Release.Namespace \}\}/}' \
          -e '/if \.Values\.enableNamespacesByDefault/,/end/ {
