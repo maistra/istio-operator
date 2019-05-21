@@ -6,7 +6,7 @@ set -e
 : ${SOURCE_DIR:?"Need to set SOURCE_DIR to location of the istio-operator source directory"}
 
 : ${THREESCALE_VERSION:=0.6.0}
-: ${KIALI_VERSION:=0.20.0-snapshot.0}
+: ${KIALI_VERSION:=0.20.0}
 
 # copy maistra specific templates into charts
 function copyOverlay() {
@@ -175,7 +175,7 @@ function patchTemplates() {
   rm ${HELM_DIR}/istio/templates/clusterrolebinding.yaml
   # - remove istio-reader cluster role
   rm ${HELM_DIR}/istio/templates/clusterrole.yaml
-  
+
   # - switch prometheus init container image from busybox to prometheus
   sed -i -r -e 's/"?busybox:?.*$/"docker.io\/prom\/prometheus:v2.3.1"/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 
@@ -350,13 +350,13 @@ function patchKialiOpenShift() {
   sed -i -e '/metadata/ a\
 \  annotations:\
 \    service.alpha.openshift.io/serving-cert-secret-name: kiali-cert-secret' ${HELM_DIR}/istio/charts/kiali/templates/service.yaml
-  
+
   # - Remove the prometheus, grafana environment from the deployment
   sed -i -e '/SERVER_CREDENTIALS_USERNAME/,/volumeMounts/ {
     /volumeMounts/b
     d
   }' ${HELM_DIR}/istio/charts/kiali/templates/deployment.yaml
-  
+
   # - Add the kiali-cert volume mount
   # - Add the kiali-cert volume
   sed -i -e '/kind.*Deployment$/,/^.*affinity:/ {
@@ -446,7 +446,7 @@ function patchMultiTenant() {
   sed -i -e 's/\(name: *kiali\)$/\1-{{ .Release.Namespace }}/' ${HELM_DIR}/istio/charts/kiali/templates/clusterrolebinding.yaml
 
   # mixer
-  sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ { 
+  sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ {
     /apiextensions/d
     /apiGroups/!d
   }'  ${HELM_DIR}/istio/charts/mixer/templates/clusterrole.yaml
@@ -456,7 +456,7 @@ function patchMultiTenant() {
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/nodeagent/templates/clusterrolebinding.yaml
 
   # pilot
-  sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ { 
+  sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ {
     /apiextensions/d
     /apiGroups/!d
   }' \
