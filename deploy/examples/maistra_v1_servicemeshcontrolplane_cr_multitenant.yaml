@@ -5,6 +5,10 @@ metadata:
 spec:
   istio:
     global:
+      defaultResources:
+        limits:
+          memory: 1Gi
+
       # enable multitenant
       multitenant: true
       proxy:

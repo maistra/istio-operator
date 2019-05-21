@@ -487,8 +487,6 @@ spec:
           - istio-operator
           - --discoveryCacheDir
           - /home/istio-operator/.kube/cache/discovery
-          - "--istioPrefix=openshift-istio-tech-preview/"
-          - "--deploymentType=openshift"
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
