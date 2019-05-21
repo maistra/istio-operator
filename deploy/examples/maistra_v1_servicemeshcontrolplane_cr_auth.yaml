@@ -9,6 +9,10 @@ spec:
   # the defaults baked into the chart values.yaml).
   istio:
     global:
+      defaultResources:
+        limits:
+          memory: 1Gi
+
       # the following lines enable tls across the control and data planes
       controlPlaneSecurityEnabled: true
       mtls:
