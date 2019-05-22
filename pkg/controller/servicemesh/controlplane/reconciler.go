@@ -89,6 +89,20 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 		allErrors = append(allErrors, err)
 	}
 
+	// prometheus
+	componentsProcessed["istio/charts/prometheus"] = seen
+	err = r.processComponentManifests("istio/charts/prometheus")
+	if err != nil {
+		allErrors = append(allErrors, err)
+	}
+
+	// install jaeger
+	componentsProcessed["istio/charts/tracing"] = seen
+	err = r.processComponentManifests("istio/charts/tracing")
+	if err != nil {
+		allErrors = append(allErrors, err)
+	}
+
 	// create security
 	componentsProcessed["istio/charts/security"] = seen
 	err = r.processComponentManifests("istio/charts/security")
@@ -99,13 +113,6 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	// create galley
 	componentsProcessed["istio/charts/galley"] = seen
 	err = r.processComponentManifests("istio/charts/galley")
-	if err != nil {
-		allErrors = append(allErrors, err)
-	}
-
-	// prometheus
-	componentsProcessed["istio/charts/prometheus"] = seen
-	err = r.processComponentManifests("istio/charts/prometheus")
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
@@ -141,13 +148,6 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	// install grafana
 	componentsProcessed["istio/charts/grafana"] = seen
 	err = r.processComponentManifests("istio/charts/grafana")
-	if err != nil {
-		allErrors = append(allErrors, err)
-	}
-
-	// install jaeger
-	componentsProcessed["istio/charts/tracing"] = seen
-	err = r.processComponentManifests("istio/charts/tracing")
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
