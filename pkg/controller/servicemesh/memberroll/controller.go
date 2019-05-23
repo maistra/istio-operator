@@ -137,7 +137,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		finalizers = append(finalizers, finalizer)
 		instance.SetFinalizers(finalizers)
 		// add owner reference to the mesh so we can clean up if the mesh gets deleted
-		owner := metav1.NewControllerRef(&mesh, v1.SchemeGroupVersion.WithKind("ControlPlane"))
+		owner := metav1.NewControllerRef(&mesh, v1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
 		instance.SetOwnerReferences([]metav1.OwnerReference{*owner})
 		err = r.Client.Update(context.TODO(), instance)
 		return reconcile.Result{Requeue: err == nil}, err
@@ -391,7 +391,7 @@ func (r *ReconcileMemberList) reconcilePodServiceAccounts(namespace string, mesh
 		for _, pod := range podList.Items {
 			if val, ok := pod.GetAnnotations()["sidecar.istio.io/inject"]; ok && (val == "y" || val == "yes" || val == "true" || val == "on") {
 				// XXX: this is pretty hacky.  we need to recreate the logic that determines whether or not injection is
-				// enabled on the pod.  maybe we just have the user add ServiceAccounts to the ControlPlaneMember spec
+				// enabled on the pod.  maybe we just have the user add ServiceAccounts to the ServiceMeshMember spec
 				if podSA, ok, err := unstructured.NestedString(pod.UnstructuredContent(), "spec", "serviceAccountName"); ok || err == nil {
 					if len(podSA) == 0 {
 						podSA = "default"
