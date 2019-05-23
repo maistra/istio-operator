@@ -467,7 +467,7 @@ function patchMultiTenant() {
          -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/pilot/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/pilot/templates/clusterrolebinding.yaml
 
-  sed -i -e 's/^\(\( *\)- "?discovery"?\)/\1\
+  sed -i -e 's/^\(\( *\)- "\?discovery"\?\)/\1\
 \2\{\{- if .Values.global.multitenant \}\}\
 \2- --memberRollName=default\
 \2\{\{- end \}\}/' ${HELM_DIR}/istio/charts/pilot/templates/deployment.yaml
