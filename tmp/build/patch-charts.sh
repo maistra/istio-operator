@@ -410,10 +410,13 @@ function patchMultiTenant() {
     /admissionregistration/d
     /apiGroups/!d
   }' ${HELM_DIR}/istio/charts/galley/templates/clusterrole.yaml
+
   sed -i -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/galley/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/galley/templates/clusterrolebinding.yaml
+
   sed -i -e '/metadata/ {N; s/name: istio-galley/name: istio-galley-\{\{ .Release.Namespace \}\}/}' \
     ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
+
   sed -i -e 's|^\(\(\s*\)rules:.*$\)|{{- if .Values.global.multitenant }}\
 \2namespaceSelector:\
 \2  matchExpressions:\
@@ -423,6 +426,7 @@ function patchMultiTenant() {
 \2      - "{{ .Release.Namespace }}"\
 {{- end }}\
 \1|' ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
+
   sed -i -e '/--validation-webhook-config-file/ {
     s/^\(\( *\)- --validation-webhook-config-file\)/\2- --deployment-namespace\
 \2- \{\{ .Release.Namespace \}\}\
@@ -462,6 +466,7 @@ function patchMultiTenant() {
   }' \
          -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/pilot/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/pilot/templates/clusterrolebinding.yaml
+
   sed -i -e 's/^\(\( *\)- "?discovery"?\)/\1\
 \2\{\{- if .Values.global.multitenant \}\}\
 \2- --memberRollName=default\
@@ -485,6 +490,7 @@ function patchMultiTenant() {
   # sidecarInjectorWebhook
   sed -i -e '/apiGroups:.*admissionregistration.k8s.io/,+2 { d }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrolebinding.yaml
+
   sed -i -e '/metadata/ {N; s/name: istio-sidecar-injector/name: istio-sidecar-injector-\{\{ .Release.Namespace \}\}/}' \
          -e '/if \.Values\.enableNamespacesByDefault/,/end/ {
     /enableNamespacesByDefault/ i\
@@ -503,6 +509,7 @@ function patchMultiTenant() {
     /end/ i\
 \{\{- end \}\}
   }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhookconfiguration.yaml.tpl
+
   sed -i -e '/args:/ a\
             - --webhookConfigName=istio-sidecar-injector-{{ .Release.Namespace }}' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
 }
