@@ -137,7 +137,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		finalizers = append(finalizers, finalizer)
 		instance.SetFinalizers(finalizers)
 		// add owner reference to the mesh so we can clean up if the mesh gets deleted
-		owner := metav1.NewControllerRef(&mesh, v1.SchemeGroupVersion.WithKind("ControlPlane"))
+		owner := metav1.NewControllerRef(&mesh, v1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
 		instance.SetOwnerReferences([]metav1.OwnerReference{*owner})
 		err = r.Client.Update(context.TODO(), instance)
 		return reconcile.Result{Requeue: err == nil}, err
