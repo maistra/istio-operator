@@ -407,7 +407,13 @@ function patchMultiTenant() {
 
   # galley
   sed -i -e '/apiGroups:.*admissionregistration/,/apiGroups/ {
-    /admissionregistration/d
+    /admissionregistration/ {
+      i\
+- apiGroups: ["maistra.io"]\
+\  resources: ["servicemeshmemberrolls"]\
+\  verbs: ["get", "list", "watch"]
+      d
+    }
     /apiGroups/!d
   }' ${HELM_DIR}/istio/charts/galley/templates/clusterrole.yaml
   sed -i -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/galley/templates/clusterrole.yaml
@@ -456,13 +462,19 @@ function patchMultiTenant() {
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/nodeagent/templates/clusterrolebinding.yaml
 
   # pilot
-  sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ {
-    /apiextensions/d
+  sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ { 
+    /apiextensions/ {
+      i\
+- apiGroups: ["maistra.io"]\
+\  resources: ["servicemeshmemberrolls"]\
+\  verbs: ["get", "list", "watch"]
+      d
+    }
     /apiGroups/!d
   }' \
          -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/pilot/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/pilot/templates/clusterrolebinding.yaml
-  sed -i -e 's/^\(\( *\)- "?discovery"?\)/\1\
+  sed -i -r -e 's/^(( *)- "?discovery"?)/\1\
 \2\{\{- if .Values.global.multitenant \}\}\
 \2- --memberRollName=default\
 \2\{\{- end \}\}/' ${HELM_DIR}/istio/charts/pilot/templates/deployment.yaml
@@ -472,7 +484,13 @@ function patchMultiTenant() {
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/prometheus/templates/clusterrolebindings.yaml
 
   # security
-  sed -i -e '/apiGroups:.*authentication.k8s.io/,$ { d }' ${HELM_DIR}/istio/charts/security/templates/clusterrole.yaml
+  sed -i -e '/apiGroups:.*authentication.k8s.io/,$ {
+    /apiGroups/ i\
+- apiGroups: ["maistra.io"]\
+\  resources: ["servicemeshmemberrolls"]\
+\  verbs: ["get", "list", "watch"]
+    d
+  }' ${HELM_DIR}/istio/charts/security/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/security/templates/clusterrolebinding.yaml
   # revisit in TP12
   #convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-mtls.yaml
@@ -483,7 +501,10 @@ function patchMultiTenant() {
 \1/' ${HELM_DIR}/istio/charts/security/templates/deployment.yaml
 
   # sidecarInjectorWebhook
-  sed -i -e '/apiGroups:.*admissionregistration.k8s.io/,+2 { d }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrole.yaml
+  sed -i -e '/apiGroups:.*admissionregistration.k8s.io/,/apiGroups:/ {
+    /admissionregistration/d
+    /apiGroups/!d
+  }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrolebinding.yaml
   sed -i -e '/metadata/ {N; s/name: istio-sidecar-injector/name: istio-sidecar-injector-\{\{ .Release.Namespace \}\}/}' \
          -e '/if \.Values\.enableNamespacesByDefault/,/end/ {
