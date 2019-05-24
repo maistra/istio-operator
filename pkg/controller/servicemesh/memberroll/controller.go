@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -54,6 +55,39 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// Watch for changes to primary resource ServiceMeshMemberRoll
 	err = c.Watch(&source.Kind{Type: &v1.ServiceMeshMemberRoll{}}, &handler.EnqueueRequestForObject{})
+	if err != nil {
+		return err
+	}
+
+	// TODO: should this be moved somewhere else?
+	err = mgr.GetFieldIndexer().IndexField(&v1.ServiceMeshMemberRoll{}, "spec.members", func(obj runtime.Object) []string {
+		roll := obj.(*v1.ServiceMeshMemberRoll)
+		return roll.Spec.Members
+	})
+	if err != nil {
+		return err
+	}
+
+	err = c.Watch(&source.Kind{Type: &corev1.Namespace{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(ns handler.MapObject) []reconcile.Request {
+			list := &v1.ServiceMeshMemberRollList{}
+			err := mgr.GetClient().List(context.TODO(), client.MatchingField("spec.members", ns.Meta.GetName()), list)
+			if err != nil {
+				log.Error(err, "Could not list ServiceMeshMemberRolls")
+			}
+
+			var requests []reconcile.Request
+			for _, pod := range list.Items {
+				requests = append(requests, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      pod.Name,
+						Namespace: pod.Namespace,
+					},
+				})
+			}
+			return requests
+		}),
+	})
 	if err != nil {
 		return err
 	}
