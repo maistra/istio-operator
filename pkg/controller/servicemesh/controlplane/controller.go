@@ -119,7 +119,7 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		ReconcileControlPlane: r,
 		Instance:              instance,
 		Status:                v1.NewControlPlaneStatus(),
-		UpdateStatus: func () error {
+		UpdateStatus: func() error {
 			return r.Client.Status().Update(context.TODO(), instance)
 		},
 		NewOwnerRef: func(owner *v1.ServiceMeshControlPlane) *metav1.OwnerReference {
@@ -143,8 +143,12 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		instance.SetFinalizers(finalizers)
 		finalizerError := r.Client.Update(context.TODO(), instance)
 		for retryCount := 0; errors.IsConflict(finalizerError) && retryCount < 5; retryCount++ {
-			reqLogger.Info("confilict during finalizer removal, retrying")
-			r.Client.Get(context.TODO(), request.NamespacedName, instance)
+			reqLogger.Info("conflict during finalizer removal, retrying")
+			err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
+			if err != nil {
+				reqLogger.Error(err, "Could not get ServiceMeshControlPlane")
+				continue
+			}
 			finalizers = instance.GetFinalizers()
 			finalizerIndex = common.IndexOf(finalizers, finalizer)
 			finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
