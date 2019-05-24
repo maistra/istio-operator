@@ -105,10 +105,11 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	instance := &v1.ServiceMeshControlPlane{}
 	err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if errors.IsNotFound(err) || errors.IsGone(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
+			reqLogger.Info("ServiceMeshControlPlane deleted")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object

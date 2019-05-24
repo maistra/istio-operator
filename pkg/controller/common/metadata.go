@@ -16,7 +16,7 @@ const (
 	OwnerKey = MetadataNamespace + "/owner"
 
 	// MemberOfKey represents the mesh (namespace) to which the resource relates
-	MemberOfKey = MetadataNamespace + "/member-of"
+	MemberOfKey       = MetadataNamespace + "/member-of"
 	LegacyMemberOfKey = "istio.openshift.io/member-of"
 
 	// GenerationKey represents the generation to which the resource was last reconciled
