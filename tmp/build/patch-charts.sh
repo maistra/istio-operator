@@ -453,10 +453,23 @@ function patchMultiTenant() {
 
   # mixer
   sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ {
-    /apiextensions/d
+    /apiextensions/ {
+      i\
+- apiGroups: ["maistra.io"]\
+\  resources: ["servicemeshmemberrolls"]\
+\  verbs: ["get", "list", "watch"]
+      d
+    }
     /apiGroups/!d
   }'  ${HELM_DIR}/istio/charts/mixer/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/mixer/templates/clusterrolebinding.yaml
+  sed -i -e '/name: *mixer/,/args:/ {
+    /args/ a\
+\{\{- if .Values.global.multitenant \}\}\
+\          - --memberRollName=default\
+\          - --memberRollNamespace=\{\{ .Release.Namespace \}\}\
+\{\{- end \}\}
+  }' ${HELM_DIR}/istio/charts/mixer/templates/deployment.yaml
 
   # nodeagent
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/nodeagent/templates/clusterrolebinding.yaml
