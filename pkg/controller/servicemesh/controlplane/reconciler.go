@@ -22,8 +22,8 @@ type ControlPlaneReconciler struct {
 	*ReconcileControlPlane
 	Instance       *v1.ServiceMeshControlPlane
 	Status         *v1.ControlPlaneStatus
-	NewOwnerRef    func (*v1.ServiceMeshControlPlane) *metav1.OwnerReference
-	UpdateStatus   func () error
+	NewOwnerRef    func(*v1.ServiceMeshControlPlane) *metav1.OwnerReference
+	UpdateStatus   func() error
 	ownerRefs      []metav1.OwnerReference
 	meshGeneration string
 	renderings     map[string][]manifest.Manifest
@@ -89,6 +89,13 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 		allErrors = append(allErrors, err)
 	}
 
+	// create security
+	componentsProcessed["istio/charts/security"] = seen
+	err = r.processComponentManifests("istio/charts/security")
+	if err != nil {
+		allErrors = append(allErrors, err)
+	}
+
 	// prometheus
 	componentsProcessed["istio/charts/prometheus"] = seen
 	err = r.processComponentManifests("istio/charts/prometheus")
@@ -99,13 +106,6 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	// install jaeger
 	componentsProcessed["istio/charts/tracing"] = seen
 	err = r.processComponentManifests("istio/charts/tracing")
-	if err != nil {
-		allErrors = append(allErrors, err)
-	}
-
-	// create security
-	componentsProcessed["istio/charts/security"] = seen
-	err = r.processComponentManifests("istio/charts/security")
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
