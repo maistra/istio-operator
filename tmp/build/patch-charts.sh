@@ -299,10 +299,16 @@ function patchKialiOpenShift() {
   # - Add istio namespace to the configmap (for 1.0 templates)
   # - Add the kiali-cert volume mount
   # - Add the kiali-cert volume
+  # - Add jaeger's namespace to the configmap
+  # - Add grafana's service_namespace to the configmap
   if [ -n "${PATCH_1_0}" ]; then
     sed -i -e '/server:/ i\
 \    istio_namespace: {{ .Release.Namespace }}' ${HELM_DIR}/istio/charts/kiali/templates/configmap.yaml
   fi
+  sed -i -e '/jaeger:/ a\
+\        namespace: {{ .Release.Namespace }}' ${HELM_DIR}/istio/charts/kiali/templates/configmap.yaml
+  sed -i -e '/grafana:/ a\
+\        service_namespace: {{ .Release.Namespace }}' ${HELM_DIR}/istio/charts/kiali/templates/configmap.yaml
   sed -i -e '/port: 20001/ a\
 \      static_content_root_directory: /opt/kiali/console' \
          -e '/grafana:/,/url:/ {
