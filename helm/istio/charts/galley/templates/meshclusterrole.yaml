@@ -10,7 +10,6 @@ metadata:
 rules:
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["validatingwebhookconfigurations"]
-  resourceNames: ["istio-galley-{{ .Release.Namespace }}"]
   verbs: ["*"]
 - apiGroups: [""]
   resources: ["nodes"]
