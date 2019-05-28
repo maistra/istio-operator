@@ -301,6 +301,7 @@ function patchKialiOpenShift() {
   # - Add the kiali-cert volume
   # - Add jaeger's namespace to the configmap
   # - Add grafana's service_namespace to the configmap
+  # - Add kiali log access
   if [ -n "${PATCH_1_0}" ]; then
     sed -i -e '/server:/ i\
 \    istio_namespace: {{ .Release.Namespace }}' ${HELM_DIR}/istio/charts/kiali/templates/configmap.yaml
@@ -351,6 +352,9 @@ function patchKialiOpenShift() {
 \  - get\
 \  - list\
 \  - watch' ${HELM_DIR}/istio/charts/kiali/templates/clusterrole.yaml
+  # - Add the pods/log resource permission
+  sed -i -e 's/^\( *- pods\)$/\1\
+\1\/log/' ${HELM_DIR}/istio/charts/kiali/templates/clusterrole.yaml
 
   # - Add the openshift annotation to the service
   sed -i -e '/metadata/ a\
