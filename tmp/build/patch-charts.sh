@@ -435,8 +435,8 @@ function patchMultiTenant() {
 \2  matchExpressions:\
 \2  - key: maistra.io/member-of\
 \2    operator: In\
-\2      values:\
-\2      - "{{ .Release.Namespace }}"\
+\2    values:\
+\2    - "{{ .Release.Namespace }}"\
 {{- end }}\
 \1|' ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
   sed -i -e '/--validation-webhook-config-file/ {
