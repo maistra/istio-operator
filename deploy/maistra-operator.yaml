@@ -27,6 +27,8 @@ spec:
     listKind: ServiceMeshControlPlaneList
     plural: servicemeshcontrolplanes
     singular: servicemeshcontrolplane
+    shortNames:
+     - smcp
   scope: Namespaced
   subresources:
     status: {}
@@ -45,6 +47,8 @@ spec:
     listKind: ServiceMeshMemberRollList
     plural: servicemeshmemberrolls
     singular: servicemeshmemberroll
+    shortNames:
+      - smmr
   scope: Namespaced
   subresources:
     status: {}
