@@ -9,9 +9,6 @@ spec:
   # the defaults baked into the chart values.yaml).
   istio:
     global:
-      defaultResources:
-        limits:
-          memory: 1Gi
       proxy:
         # constrain resources for use in smaller environments
         resources:
