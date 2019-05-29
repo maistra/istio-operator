@@ -6,10 +6,13 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"k8s.io/apiserver/pkg/authentication/serviceaccount"
@@ -74,6 +77,10 @@ func (r *ControlPlaneReconciler) processDeletedObject(object *unstructured.Unstr
 	switch object.GetKind() {
 	case "ServiceAccount":
 		return r.processDeletedServiceAccount(object)
+	case "Route":
+		if object.GetName() == "kiali" {
+			return r.processDeletedKialiRoute(object)
+		}
 	}
 	return nil
 }
@@ -124,44 +131,76 @@ func (r *ControlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructu
 	return unstructured.SetNestedField(object.UnstructuredContent(), configYaml, "data", "config.yaml")
 }
 
+func (r *ControlPlaneReconciler) processDeletedKialiRoute(route *unstructured.Unstructured) error {
+	oauthClient := &unstructured.Unstructured{}
+	oauthClient.SetAPIVersion("oauth.openshift.io/v1")
+	oauthClient.SetKind("OAuthClient")
+	err := r.Client.Get(context.TODO(), client.ObjectKey{Name: "kiali"}, oauthClient)
+	if err != nil {
+		r.Log.Error(err, "error retrieving kiali OAuthClient")
+		return err
+	}
+	err = r.patchKialiOAuthClient(oauthClient)
+	if err != nil {
+		r.Log.Error(err, "error removing deleted Route from OAuthClient", "Route", route.GetName())
+		return err
+	}
+	redirectURIs, exists, err := unstructured.NestedStringSlice(oauthClient.UnstructuredContent(), "redirectURIs")
+	if err != nil {
+		r.Log.Error(err, "error retrieving redirectURIs from kiali OAuthClient")
+		return err
+	}
+	if !exists || len(redirectURIs) == 0 {
+		return r.Client.Delete(context.TODO(), oauthClient)
+	}
+	return r.Client.Update(context.TODO(), oauthClient)
+}
+
 func (r *ControlPlaneReconciler) patchKialiOAuthClient(object *unstructured.Unstructured) error {
 	r.Log.Info("patching kiali OAuthClient", object.GetKind(), object.GetName())
-	redirectURIs, found, err := unstructured.NestedStringSlice(object.UnstructuredContent(), "redirectURIs")
-	if err != nil {
-		// This shouldn't occur if it's really a OAuthClient, but...
-		r.Log.Error(err, "could not parse kiali OAuthClient")
-		return err
-	} else if !found {
-		return nil
-	}
 
 	// get kiali route host
-	kialiRoute := &unstructured.Unstructured{}
-	kialiRoute.SetAPIVersion("route.openshift.io/v1")
-	kialiRoute.SetKind("Route")
-	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "kiali", Namespace: r.Instance.GetNamespace()}, kialiRoute)
+	kialiRouteList := &unstructured.UnstructuredList{}
+	kialiRouteList.SetAPIVersion("route.openshift.io/v1")
+	kialiRouteList.SetKind("Route")
+	listOptions := client.MatchingField("metadata.name", "kiali")
+	labelSelector, err := labels.NewRequirement(common.OwnerKey, selection.Exists, []string{})
+	if err != nil {
+		r.Log.Error(err, "error creating label selector for kiali routes associated with service meshes")
+		return fmt.Errorf("error creating label selectors for kiali routes: %s", err)
+	}
+	listOptions.LabelSelector = labels.NewSelector().Add(*labelSelector)
+	err = r.Client.List(context.TODO(), listOptions, kialiRouteList)
 	if err != nil && !errors.IsNotFound(err) {
 		r.Log.Error(err, "error retrieving kiali route")
 		return fmt.Errorf("could not retrieve kiali route: %s", err)
 	}
 
-	kialiURL, found, err := unstructured.NestedString(kialiRoute.UnstructuredContent(), "spec", "host")
-	if err != nil {
-		r.Log.Error(err, "error retrieving kiali route host name")
-		return err
-	} else if !found {
-		err = fmt.Errorf("host field not found in kiali route")
-		r.Log.Error(err, "error retrieving kiali route host name")
-		return err
+	redirectURIs := make([]string, 0, len(kialiRouteList.Items))
+	for _, kialiRoute := range kialiRouteList.Items {
+		kialiURL, found, err := unstructured.NestedString(kialiRoute.UnstructuredContent(), "spec", "host")
+		if err != nil {
+			r.Log.Error(err, "error retrieving kiali route host name")
+			return err
+		} else if !found {
+			err = fmt.Errorf("host field not found in kiali route")
+			r.Log.Error(err, "error retrieving kiali route host name")
+			return err
+		}
+		if termination, found, _ := unstructured.NestedString(kialiRoute.UnstructuredContent(), "spec", "tls", "termination"); found && len(termination) > 0 {
+			kialiURL = "https://" + kialiURL
+		} else {
+			kialiURL = "http://" + kialiURL
+		}
+		// update redirectURIs
+		redirectURIs = append(redirectURIs, kialiURL)
 	}
-	if termination, found, _ := unstructured.NestedString(kialiRoute.UnstructuredContent(), "spec", "tls", "termination"); found && len(termination) > 0 {
-		kialiURL = "https://" + kialiURL
-	} else {
-		kialiURL = "http://" + kialiURL
-	}
-	// update redirectURIs
-	redirectURIs = append([]string{kialiURL}, redirectURIs...)
 
+	// delete the owner key so this doesn't get deleted during a normal prune
+	common.DeleteLabel(object, common.OwnerKey)
+	common.DeleteAnnotation(object, common.MeshGenerationKey)
+
+	// set the redirect URIs
 	return unstructured.SetNestedStringSlice(object.UnstructuredContent(), redirectURIs, "redirectURIs")
 }
 
