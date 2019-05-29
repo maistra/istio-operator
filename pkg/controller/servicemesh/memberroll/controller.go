@@ -682,11 +682,19 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
 	logger.Info("configuring namespace for use with mesh")
 
 	// get namespace
-	namespaceResource := &unstructured.Unstructured{}
-	namespaceResource.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Namespace"))
+	namespaceResource := &corev1.Namespace{}
 	err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, namespaceResource)
 	if err != nil {
 		return err
+	}
+
+	memberOf := ""
+	if namespaceResource.Labels != nil {
+		memberOf = namespaceResource.Labels[common.MemberOfKey]
+	}
+	isMemberOfDifferentMesh := memberOf != "" && memberOf != r.meshNamespace
+	if isMemberOfDifferentMesh {
+		return fmt.Errorf("Cannot reconcile namespace %s in mesh %s, as it is already a member of %s", namespace, r.meshNamespace, memberOf)
 	}
 
 	// configure networking
@@ -728,8 +736,7 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
 			err = r.client.Update(context.TODO(), namespaceResource)
 			if err != nil {
 				if errors.IsConflict(err) {
-					namespaceResource = &unstructured.Unstructured{}
-					namespaceResource.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Namespace"))
+					namespaceResource := &corev1.Namespace{}
 					err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, namespaceResource)
 					if err == nil {
 						continue
