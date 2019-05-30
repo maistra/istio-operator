@@ -16,3 +16,7 @@ rules:
   resources: ["deployments/finalizers"]
   resourceNames: ["istio-sidecar-injector"]
   verbs: ["update"]
+- apiGroups: ["security.openshift.io"]
+  resources: ["securitycontextconstraints"]
+  resourceNames: ["anyuid"]
+  verbs: ["use"]

@@ -18,6 +18,10 @@ rules:
 - apiGroups: [""]
   resources: ["nodes"]
   verbs: ["get", "list", "watch"]
+- apiGroups: ["security.openshift.io"]
+  resources: ["securitycontextconstraints"]
+  resourceNames: ["anyuid"]
+  verbs: ["use"]
 # revisit in TP12
 - apiGroups: ["authentication.istio.io"]
   resources: ["meshpolicies"]

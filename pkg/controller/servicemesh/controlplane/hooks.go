@@ -15,8 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"k8s.io/apiserver/pkg/authentication/serviceaccount"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -66,17 +64,11 @@ func (r *ControlPlaneReconciler) preprocessObject(object *unstructured.Unstructu
 }
 
 func (r *ControlPlaneReconciler) processNewObject(object *unstructured.Unstructured) error {
-	switch object.GetKind() {
-	case "ServiceAccount":
-		return r.processNewServiceAccount(object)
-	}
 	return nil
 }
 
 func (r *ControlPlaneReconciler) processDeletedObject(object *unstructured.Unstructured) error {
 	switch object.GetKind() {
-	case "ServiceAccount":
-		return r.processDeletedServiceAccount(object)
 	case "Route":
 		if object.GetName() == "kiali" {
 			return r.processDeletedKialiRoute(object)
@@ -202,50 +194,6 @@ func (r *ControlPlaneReconciler) patchKialiOAuthClient(object *unstructured.Unst
 
 	// set the redirect URIs
 	return unstructured.SetNestedStringSlice(object.UnstructuredContent(), redirectURIs, "redirectURIs")
-}
-
-// add-scc-to-user anyuid to service accounts: citadel, egressgateway, galley, ingressgateway, mixer, pilot, sidecar-injector
-// plus: grafana, prometheus
-
-// add-scc-to-user privileged service accounts: jaeger
-func (r *ControlPlaneReconciler) processNewServiceAccount(object *unstructured.Unstructured) error {
-	switch object.GetName() {
-	case
-		"istio-citadel-service-account",
-		"istio-egressgateway-service-account",
-		"istio-galley-service-account",
-		"istio-ingressgateway-service-account",
-		"istio-mixer-service-account",
-		"istio-pilot-service-account",
-		"istio-sidecar-injector-service-account",
-		"grafana",
-		"prometheus":
-		_, err := r.AddUsersToSCC("anyuid", serviceaccount.MakeUsername(object.GetNamespace(), object.GetName()))
-		return err
-	case "jaeger":
-		_, err := r.AddUsersToSCC("privileged", serviceaccount.MakeUsername(object.GetNamespace(), object.GetName()))
-		return err
-	}
-	return nil
-}
-
-func (r *ControlPlaneReconciler) processDeletedServiceAccount(object *unstructured.Unstructured) error {
-	switch object.GetName() {
-	case
-		"istio-citadel-service-account",
-		"istio-egressgateway-service-account",
-		"istio-galley-service-account",
-		"istio-ingressgateway-service-account",
-		"istio-mixer-service-account",
-		"istio-pilot-service-account",
-		"istio-sidecar-injector-service-account",
-		"grafana",
-		"prometheus":
-		return r.RemoveUsersFromSCC("anyuid", serviceaccount.MakeUsername(object.GetNamespace(), object.GetName()))
-	case "jaeger":
-		return r.RemoveUsersFromSCC("privileged", serviceaccount.MakeUsername(object.GetNamespace(), object.GetName()))
-	}
-	return nil
 }
 
 func (r *ControlPlaneReconciler) waitForDeployments(status *v1.ComponentStatus) error {

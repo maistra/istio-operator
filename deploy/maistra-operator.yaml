@@ -221,8 +221,11 @@ rules:
   - security.openshift.io
   resources:
   - securitycontextconstraints
+  resourceNames:
+  - privileged
+  - anyuid
   verbs:
-  - '*'
+  - 'use'
 # for galley (pilot and prometheus also watch nodes)
 - apiGroups:
   - ""
