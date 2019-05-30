@@ -1,0 +1,19 @@
+{{ if eq .Values.provider "jaeger" }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: istio-jaeger-mesh-{{ .Release.Namespace }}
+  labels:
+    app: jaeger
+    chart: {{ template "tracing.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: istio-jaeger-mesh-{{ .Release.Namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: jaeger
+    namespace: {{ .Release.Namespace }}
+{{ end }}

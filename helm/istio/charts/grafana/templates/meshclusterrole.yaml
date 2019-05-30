@@ -1,18 +1,13 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: prometheus-mesh-{{ .Release.Namespace }}
+  name: istio-grafana-mesh-{{ .Release.Namespace }}
   labels:
-    app: prometheus
-    chart: {{ template "prometheus.chart" . }}
+    app: {{ template "grafana.name" . }}
+    chart: {{ template "grafana.chart" . }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
 rules:
-- apiGroups: [""]
-  resources:
-  - nodes
-  - nodes/proxy
-  verbs: ["get", "list", "watch"]
 - apiGroups: ["security.openshift.io"]
   resources: ["securitycontextconstraints"]
   resourceNames: ["anyuid"]
