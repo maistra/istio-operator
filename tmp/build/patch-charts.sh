@@ -215,30 +215,6 @@ function patchTemplates() {
   sed -i '/match: (context.protocol == "http" || context.protocol == "grpc")/ s/$/ \&\& (match((request.useragent | "-"), "Prometheus*") == false)/' ${HELM_DIR}/istio/charts/mixer/templates/config.yaml 
 }
 
-# The following modifications are made to the generated helm template to extract the CRDs
-# - remove all content except for the crd configmaps
-# - add maistra-version labels
-# all of this is done above in patchTemplates()
-
-# patch tracing specific templates
-function patchTracingtemplate() {
-  echo "patching Jaeger (tracing) specific Helm charts"
-  # update jaeger image hub
-  if [[ "${COMMUNITY,,}" == "true" ]]; then
-    sed -i -e 's+hub: docker.io/jaegertracing+hub: jaegertracing+g' \
-           -e 's+tag: 1.9+tag: 1.11+g' ${HELM_DIR}/istio/charts/tracing/values.yaml
-  else
-    sed -i -e 's+hub: docker.io/jaegertracing+hub: distributed-tracing-tech-preview+g' \
-           -e 's+tag: 1.9+tag: 1.11.0+g' ${HELM_DIR}/istio/charts/tracing/values.yaml
-  fi
-
-  # update jaeger zipkin port name
-  sed -i -e '/service:$/,/externalPort:/ {
-    s/name:.*$/name: jaeger-collector-zipkin/
-}' ${HELM_DIR}/istio/charts/tracing/values.yaml
-
-}
-
 # The following modifications are made to the generated helm template for the Kiali yaml file
 # - remove all non kiali configuration
 # - remove the kiali username/password secret
@@ -522,9 +498,9 @@ function patchMultiTenant() {
 copyOverlay
 
 patchTemplates
-patchTracingtemplate
 patchKialiTemplate
 patchKialiOpenShift
 
 patchMultiTenant
 source ${SOURCE_DIR}/tmp/build/patch-grafana.sh
+source ${SOURCE_DIR}/tmp/build/patch-jaeger.sh

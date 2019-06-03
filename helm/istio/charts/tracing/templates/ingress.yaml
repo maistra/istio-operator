@@ -42,6 +42,6 @@ spec:
     kind: Service
     name: jaeger-query
   tls:
-    termination: edge
+    termination: passthrough
 {{ end }}
 {{- end -}}
