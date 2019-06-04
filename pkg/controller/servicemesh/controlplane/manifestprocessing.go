@@ -22,15 +22,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *ControlPlaneReconciler) processComponentManifests(componentName string) error {
-	var err error
-	status := r.Instance.Status.FindComponentByName(componentName)
-	renderings, hasRenderings := r.renderings[componentName]
+func (r *ControlPlaneReconciler) processComponentManifests(componentName string) (err error) {
 	origLogger := r.Log
 	r.Log = r.Log.WithValues("Component", componentName)
 	defer func() { r.Log = origLogger }()
+
+	renderings, hasRenderings := r.renderings[componentName]
 	if hasRenderings {
 		r.Log.Info("reconciling component resources")
+		status := r.Instance.Status.FindComponentByName(componentName)
 		if status == nil {
 			status = v1.NewComponentStatus()
 			status.Resource = componentName
