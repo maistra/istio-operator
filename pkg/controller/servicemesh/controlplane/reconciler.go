@@ -82,81 +82,26 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	// create components
 	componentsProcessed := map[string]struct{}{}
 
-	// create core istio resources
-	componentsProcessed["istio"] = seen
-	err = r.processComponentManifests("istio")
-	if err != nil {
-		allErrors = append(allErrors, err)
+	// these components have to be installed in the specified order
+	orderedComponents := []string{
+		"istio", // core istio resources
+		"istio/charts/security",
+		"istio/charts/prometheus",
+		"istio/charts/tracing",
+		"istio/charts/galley",
+		"istio/charts/mixer",
+		"istio/charts/pilot",
+		"istio/charts/gateways",
+		"istio/charts/sidecarInjectorWebhook",
+		"istio/charts/grafana",
+		"istio/charts/kiali",
 	}
-
-	// create security
-	componentsProcessed["istio/charts/security"] = seen
-	err = r.processComponentManifests("istio/charts/security")
-	if err != nil {
-		allErrors = append(allErrors, err)
-	}
-
-	// prometheus
-	componentsProcessed["istio/charts/prometheus"] = seen
-	err = r.processComponentManifests("istio/charts/prometheus")
-	if err != nil {
-		allErrors = append(allErrors, err)
-	}
-
-	// install jaeger
-	componentsProcessed["istio/charts/tracing"] = seen
-	err = r.processComponentManifests("istio/charts/tracing")
-	if err != nil {
-		allErrors = append(allErrors, err)
-	}
-
-	// create galley
-	componentsProcessed["istio/charts/galley"] = seen
-	err = r.processComponentManifests("istio/charts/galley")
-	if err != nil {
-		allErrors = append(allErrors, err)
-	}
-
-	// create mixer
-	componentsProcessed["istio/charts/mixer"] = seen
-	err = r.processComponentManifests("istio/charts/mixer")
-	if err != nil {
-		allErrors = append(allErrors, err)
-	}
-
-	// create pilot
-	componentsProcessed["istio/charts/pilot"] = seen
-	err = r.processComponentManifests("istio/charts/pilot")
-	if err != nil {
-		allErrors = append(allErrors, err)
-	}
-
-	// gateways
-	componentsProcessed["istio/charts/gateways"] = seen
-	err = r.processComponentManifests("istio/charts/gateways")
-	if err != nil {
-		allErrors = append(allErrors, err)
-	}
-
-	// sidecar injector
-	componentsProcessed["istio/charts/sidecarInjectorWebhook"] = seen
-	err = r.processComponentManifests("istio/charts/sidecarInjectorWebhook")
-	if err != nil {
-		allErrors = append(allErrors, err)
-	}
-
-	// install grafana
-	componentsProcessed["istio/charts/grafana"] = seen
-	err = r.processComponentManifests("istio/charts/grafana")
-	if err != nil {
-		allErrors = append(allErrors, err)
-	}
-
-	// install kiali
-	componentsProcessed["istio/charts/kiali"] = seen
-	err = r.processComponentManifests("istio/charts/kiali")
-	if err != nil {
-		allErrors = append(allErrors, err)
+	for _, componentName := range orderedComponents {
+		componentsProcessed[componentName] = seen
+		err = r.processComponentManifests(componentName)
+		if err != nil {
+			allErrors = append(allErrors, err)
+		}
 	}
 
 	// other components
