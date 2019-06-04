@@ -25,7 +25,6 @@ function copyOverlay() {
 # - remove istio-multi service account
 # - remove istio-multi cluster role binding
 # - remove istio-reader cluster role
-# - switch prometheus init container image from busybox to prometheus
 # - switch webhook ports to 8443
 # - switch health check files into /tmp
 function patchTemplates() {

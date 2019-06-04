@@ -49,8 +49,15 @@ function prometheus_patch_deployment() {
 \1containers:\2/' \
   ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 
-  # - switch prometheus init container image from busybox to prometheus
-  sed -i -r -e 's/"?busybox:?.*$/"docker.io\/prom\/prometheus:v2.3.1"/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+  if [[ "${COMMUNITY,,}" == "true" ]]; then
+    sed -i -e 's/image: \(".*\/\)prometheus/image: \1origin-prometheus/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+  else
+    sed -i -e 's/image: \(".*\/\)prometheus/image: \1ose-prometheus/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+  fi
+
+  # Prometheus containers created by Red Hat use /prometheus dir for data storage
+  sed -i -e '/args:/ a\
+            - --storage.tsdb.path=/prometheus' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml  
 }
 
 function prometheus_patch_service() {
@@ -64,6 +71,14 @@ function prometheus_patch_values() {
     -e 's|  annotations: {}|  annotations:\n    service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls|' \
     -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
     ${HELM_DIR}/istio/charts/prometheus/values.yaml
+
+    if [[ "${COMMUNITY,,}" == "true" ]]; then
+      sed -i -e 's/hub:.*$/hub: quay\.io\/openshift/' \
+          -e 's/tag:.*$/tag: 4.1.0/' ${HELM_DIR}/istio/charts/prometheus/values.yaml
+    else
+      sed -i -e 's/hub:.*$/hub: registry\.redhat\.io\/openshift4/' \
+          -e 's/tag:.*$/tag: v4.1.0-201905191700/' ${HELM_DIR}/istio/charts/prometheus/values.yaml
+    fi
 }
 
 function prometheus_patch_service_account() {
