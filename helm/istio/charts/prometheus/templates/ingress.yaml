@@ -17,4 +17,6 @@ spec:
   to:
     kind: Service
     name: prometheus
+  tls:
+    termination: passthrough
 {{- end -}}

@@ -170,14 +170,6 @@ function patchTemplates() {
   # - remove istio-reader cluster role
   rm ${HELM_DIR}/istio/templates/clusterrole.yaml
 
-  # - switch prometheus init container image from busybox to prometheus
-  sed -i -r -e 's/"?busybox:?.*$/"docker.io\/prom\/prometheus:v2.3.1"/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
-
-  # - enable ingress (route) for prometheus
-  sed -i -e '/ingress:/,/service:/ {
-    s/enabled:.*$/enabled: true/
-}' ${HELM_DIR}/istio/charts/prometheus/values.yaml
-
   # - switch webhook ports to 8443: add targetPort name to galley service
   # XXX: move upstream (add targetPort name)
   sed -i -e 's/^\(.*\)\(- port: 443.*\)$/\1\2\
@@ -446,10 +438,6 @@ function patchMultiTenant() {
 \2- --memberRollName=default\
 \2\{\{- end \}\}/' ${HELM_DIR}/istio/charts/pilot/templates/deployment.yaml
 
-  # prometheus
-  sed -i -e '/nodes/d' ${HELM_DIR}/istio/charts/prometheus/templates/clusterrole.yaml
-  convertClusterRoleBinding ${HELM_DIR}/istio/charts/prometheus/templates/clusterrolebindings.yaml
-
   # security
   sed -i -e '/apiGroups:.*authentication.k8s.io/,$ {
     /apiGroups/ i\
@@ -504,3 +492,4 @@ patchKialiOpenShift
 patchMultiTenant
 source ${SOURCE_DIR}/tmp/build/patch-grafana.sh
 source ${SOURCE_DIR}/tmp/build/patch-jaeger.sh
+source ${SOURCE_DIR}/tmp/build/patch-prometheus.sh
