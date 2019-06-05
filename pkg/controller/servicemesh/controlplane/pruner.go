@@ -54,6 +54,7 @@ var (
 		schema.GroupVersionKind{Group: "networking.istio.io", Version: "v1alpha3", Kind: "EnvoyFilter"},
 		schema.GroupVersionKind{Group: "networking.istio.io", Version: "v1alpha3", Kind: "Gateway"},
 		schema.GroupVersionKind{Group: "networking.istio.io", Version: "v1alpha3", Kind: "VirtualService"},
+		schema.GroupVersionKind{Group: "jaegertracing.io", Version: "v1", Kind: "jaeger"},
 	}
 
 	// ordered by which types should be deleted, first to last

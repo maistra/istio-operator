@@ -6,7 +6,7 @@ set -e
 : ${SOURCE_DIR:?"Need to set SOURCE_DIR to location of the istio-operator source directory"}
 
 : ${THREESCALE_VERSION:=0.6.0}
-: ${KIALI_VERSION:=0.20.0}
+: ${KIALI_VERSION:=0.21.0}
 
 # copy maistra specific templates into charts
 function copyOverlay() {
@@ -241,14 +241,33 @@ function patchKialiOpenShift() {
     sed -i -e '/server:/ i\
 \    istio_namespace: {{ .Release.Namespace }}' ${HELM_DIR}/istio/charts/kiali/templates/configmap.yaml
   fi
-  sed -i -e '/jaeger:/ a\
-\        namespace: {{ .Release.Namespace }}' ${HELM_DIR}/istio/charts/kiali/templates/configmap.yaml
-  sed -i -e '/grafana:/ a\
-\        service_namespace: {{ .Release.Namespace }}' ${HELM_DIR}/istio/charts/kiali/templates/configmap.yaml
+  sed -i -e '/PROMETHEUS_SERVICE_URL/,+1 d' ${HELM_DIR}/istio/charts/kiali/templates/deployment.yaml
+  sed -i -e '/jaeger:/,/url:/ {
+    s/jaeger:/tracing:/
+    /url:/ a\
+\        namespace: \{\{ .Release.Namespace \}\}\
+\        enabled: true\
+\        auth:\
+\          type: bearer\
+\          use_kiali_token: true\
+\          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+    }' ${HELM_DIR}/istio/charts/kiali/templates/configmap.yaml
   sed -i -e '/port: 20001/ a\
 \      static_content_root_directory: /opt/kiali/console' \
          -e '/grafana:/,/url:/ {
              /url:/ a\
+\        service_namespace: \{\{ .Release.Namespace \}\}\
+\        in_cluster_url: https://grafana.\{\{ .Release.Namespace \}\}.svc:3000\
+\        auth:\
+\          type: bearer\
+\          use_kiali_token: true\
+\          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt\
+\      prometheus:\
+\        url: https://prometheus.\{\{ .Release.Namespace \}\}.svc:9090\
+\        auth:\
+\          type: bearer\
+\          use_kiali_token: true\
+\          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt\
 \{\{- if .Values.global.multitenant \}\}\
 \    api:\
 \      namespaces:\

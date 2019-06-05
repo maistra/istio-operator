@@ -193,6 +193,12 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - jaegertracing.io
+  resources:
+  - jaegers
+  verbs:
+  - '*'
+- apiGroups:
   - apps.openshift.io
   resources:
   - deploymentconfigs

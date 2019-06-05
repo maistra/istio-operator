@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -56,7 +57,7 @@ func (r *ControlPlaneReconciler) preprocessObject(object *unstructured.Unstructu
 			return r.patchKialiConfig(object)
 		}
 	case "OAuthClient":
-		if object.GetName() == "kiali" {
+		if strings.HasPrefix(object.GetName(), "kiali-") {
 			return r.patchKialiOAuthClient(object)
 		}
 	}
@@ -78,8 +79,8 @@ func (r *ControlPlaneReconciler) processDeletedObject(object *unstructured.Unstr
 }
 
 var (
-	grafanaRegexp = regexp.MustCompile("(grafana:\\s*url:).*?\n")
-	jaegerRegexp  = regexp.MustCompile("(jaeger:\\s*url:).*?\n")
+	grafanaRegexp = regexp.MustCompile("(?s)(grafana:.*?url:).*?\n")
+	jaegerRegexp  = regexp.MustCompile("(?s)(tracing:.*?url:).*?\n")
 )
 
 func (r *ControlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructured) error {
@@ -90,6 +91,7 @@ func (r *ControlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructu
 		r.Log.Error(err, "could not parse kiali ConfigMap")
 		return err
 	} else if !found {
+		r.Log.Error(nil, "failed to patch kiali ConfigMap")
 		return nil
 	}
 
@@ -97,7 +99,8 @@ func (r *ControlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructu
 	jaegerRoute := &unstructured.Unstructured{}
 	jaegerRoute.SetAPIVersion("route.openshift.io/v1")
 	jaegerRoute.SetKind("Route")
-	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "jaeger-query", Namespace: object.GetNamespace()}, jaegerRoute)
+	// jaeger is the name of the Jaeger CR
+	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "jaeger", Namespace: object.GetNamespace()}, jaegerRoute)
 	if err != nil && !errors.IsNotFound(err) {
 		r.Log.Error(err, "error retrieving jaeger route")
 		return fmt.Errorf("could not retrieve jaeger route: %s", err)
@@ -115,10 +118,22 @@ func (r *ControlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructu
 
 	// update config.yaml.external_services.grafana.url
 	grafanaURL, _, _ := unstructured.NestedString(grafanaRoute.UnstructuredContent(), "spec", "host")
-	configYaml = string(grafanaRegexp.ReplaceAll([]byte(configYaml), []byte(fmt.Sprintf("${1} http://%s\n", grafanaURL))))
+	grafanaScheme := "http"
+	if grafanaTLSTermination, ok, _ := unstructured.NestedString(grafanaRoute.UnstructuredContent(), "spec", "tls", "termination"); ok && len(grafanaTLSTermination) > 0 {
+		grafanaScheme = "https"
+	}
+	if len(grafanaURL) > 0 {
+		configYaml = string(grafanaRegexp.ReplaceAll([]byte(configYaml), []byte(fmt.Sprintf("${1} %s://%s\n", grafanaScheme, grafanaURL))))
+	}
 	// update config.yaml.external_services.jaeger.url
 	jaegerURL, _, _ := unstructured.NestedString(jaegerRoute.UnstructuredContent(), "spec", "host")
-	configYaml = string(jaegerRegexp.ReplaceAll([]byte(configYaml), []byte(fmt.Sprintf("${1} https://%s\n", jaegerURL))))
+	jaegerScheme := "http"
+	if jaegerTLSTermination, ok, _ := unstructured.NestedString(jaegerRoute.UnstructuredContent(), "spec", "tls", "termination"); ok && len(jaegerTLSTermination) > 0 {
+		jaegerScheme = "https"
+	}
+	if len(jaegerURL) > 0 {
+		configYaml = string(jaegerRegexp.ReplaceAll([]byte(configYaml), []byte(fmt.Sprintf("${1} %s://%s\n", jaegerScheme, jaegerURL))))
+	}
 
 	return unstructured.SetNestedField(object.UnstructuredContent(), configYaml, "data", "config.yaml")
 }

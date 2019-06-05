@@ -20,28 +20,4 @@ spec:
     name: tracing
   tls:
     termination: edge
-{{ if eq .Values.provider "jaeger" }}
----
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  name: jaeger-query
-  namespace: {{ .Release.Namespace }}
-  labels:
-    app: jaeger
-    jaeger-infra: query-service
-    chart: {{ template "tracing.chart" . }}
-    heritage: {{ .Release.Service }}
-    release: {{ .Release.Name }}
-  annotations:
-    {{- range $key, $value := .Values.ingress.annotations }}
-      {{ $key }}: {{ $value | quote }}
-    {{- end }}
-spec:
-  to:
-    kind: Service
-    name: jaeger-query
-  tls:
-    termination: passthrough
-{{ end }}
 {{- end -}}
