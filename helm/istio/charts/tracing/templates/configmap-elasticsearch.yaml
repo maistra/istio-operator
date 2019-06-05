@@ -1,4 +1,4 @@
-{{ if eq .Values.provider "jaeger" }}
+{{ if and (eq .Values.provider "jaeger") (eq .Values.jaeger.template "production-elasticsearch") }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

@@ -4,7 +4,25 @@ This project is an operator (controller) that can be used to manage the installa
 
 ## Installation
 
-If `istio-operator` and `istio-system` projects/namespaces have not been created, create the new projects first. For example:
+The **Istio Operator** has a dependency on the **Jaeger Operator**.  Before installing the Istio Operator, please make sure the
+Jaeger Operator has been installed.
+
+### Installing the Jaeger Operator
+
+To install the Jaeger operator, execute the following commands:
+
+```
+oc new-project observability # create the project for the jaeger operator
+oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/crds/jaegertracing_v1_jaeger_crd.yaml
+oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/service_account.yaml
+oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/role.yaml
+oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/role_binding.yaml
+oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/operator.yaml
+```
+
+### Installing the Istio Operator
+
+If `istio-operator` and `istio-system` projects/namespaces have not been created, create these projects first. For example:
 
 ```
 $ oc new-project istio-operator
@@ -25,8 +43,8 @@ or
 $ kubectl apply -n istio-operator -f ./deploy/maistra-operator.yaml
 ```
 
-By default, the operator watches for ServiceMeshControlPlane or Installation resources in the `istio-system` namespace, which is
-where the control plane will be installed.  For example:
+By default, the operator watches for ServiceMeshControlPlane in all namespaces.  Typically, a cluster-wide control plane
+is installed in `istio-system`.  For example:
 
 ```
 $ oc apply -n istio-system -f ./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_basic.yaml
@@ -42,11 +60,27 @@ If an existing ServiceMeshControlPlane cr has not been deleted, you need to dele
 $ oc delete -n istio-system -f ./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_basic.yaml
 ```
 
+### Uninstalling the Istio Operator
+
 If you followed the instructions above for installation, the operator can be uninstalled by simply issuing a delete
 command against the same resources.  For example:
 
 ```
 $ oc delete -n istio-operator -f ./deploy/maistra-operator.yaml
+```
+
+Once the Istio Operator has been uninstalled, the Jaeger Operator should be uninstalled.
+
+### Uninstalling the Jaeger Operator
+
+To uninstall the Jaeger operator, execute the following commands:
+
+```
+oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/operator.yaml
+oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/role_binding.yaml
+oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/role.yaml
+oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/service_account.yaml
+oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/crds/jaegertracing_v1_jaeger_crd.yaml
 ```
 
 ## Customizing the Installation

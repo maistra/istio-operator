@@ -61,12 +61,18 @@ spec:
       # change to false to disable kiali
       enabled: true
     
-      # to use oauth, remove the following 'dashboard' section (note, oauth is broken on OCP 4.0 with kiali 0.16.2)
       # create a secret for accessing kiali dashboard with the following credentials
-      dashboard:
-        user: admin
-        passphrase: admin
+      # dashboard:
+      #   user: admin
+      #   passphrase: admin
 
     tracing:
       # change to false to disable tracing (i.e. jaeger)
       enabled: true
+      jaeger:
+        # simple, all-in-one strategy
+        template: all-in-one
+        # production strategy, utilizing elasticsearch
+        #template: production-elasticsearch
+        # if required. only one instance may use agentStrategy=DaemonSet
+        #agentStrategy: DaemonSet

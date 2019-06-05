@@ -1,0 +1,73 @@
+{{ if and (eq .Values.provider "jaeger") (eq .Values.jaeger.template "all-in-one") }}
+apiVersion: jaegertracing.io/v1
+kind: "Jaeger"
+metadata:
+  name: "jaeger"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    chart: {{ template "tracing.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+spec:
+  strategy: allInOne
+
+  allInOne:
+    image: {{ .Values.jaeger.hub }}/all-in-one:{{ .Values.jaeger.tag }}
+    options:
+      log-level: debug
+      query:
+        base-path: /
+    annotations:
+      {{- range $key, $value := .Values.jaeger.annotations }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
+
+  agent:
+    strategy: {{ .Values.jaeger.agentStrategy }}
+    image: {{ .Values.jaeger.hub }}/jaeger-agent:{{ .Values.jaeger.tag }}
+    serviceAccount: jaeger-agent
+    options:
+      collector:
+        host-port: jaeger-collector:14267
+
+  ui:
+    options:
+      dependencies:
+        menuEnabled: false
+      menu:
+        - label: "About Jaeger"
+          items:
+            - label: "Documentation"
+              url: "https://www.jaegertracing.io/docs/latest"
+            - label: "Log Out"
+              url: "/oauth/sign_in"
+              anchorTarget: "_self"
+
+  storage:
+    options:
+      memory:
+        {{- if .Values.jaeger.memory.max_traces }}
+        max-traces: {{ .Values.jaeger.memory.max_traces }}
+        {{- else }}
+        max-traces: 100000
+        {{- end }}
+
+  ingress:
+    enabled: {{ .Values.ingress.enabled }}
+    # XXX: should this be parameterized?
+    security: oauth-proxy
+    annotations:
+      {{- range $key, $value := .Values.ingress.annotations }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
+
+  resources:
+{{- if .Values.jaeger.resources }}
+{{ toYaml .Values.jaeger.resources | indent 4 }}
+{{- else }}
+{{ toYaml .Values.global.defaultResources | indent 4 }}
+{{- end }}
+  affinity:
+  {{- include "nodeaffinity" . | indent 2 }}
+
+{{ end }}

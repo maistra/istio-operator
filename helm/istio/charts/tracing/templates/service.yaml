@@ -30,9 +30,19 @@ items:
         protocol: TCP
         name: {{ .Values.service.name }}
     selector:
-      app: {{ .Values.provider }}
 {{ if eq .Values.provider "jaeger" }}
-      jaeger-infra: collector-pod
+  {{ if eq .Values.jaeger.template "all-in-one"}}
+      app.kubernetes.io/name: jaeger
+      app.kubernetes.io/component: all-in-one
+  {{ else }}
+      app.kubernetes.io/name: jaeger-collector
+      app.kubernetes.io/component: collector
+  {{ end }}
+      app.kubernetes.io/instance: jaeger
+      app.kubernetes.io/part-of: jaeger
+      app.kubernetes.io/managed-by: jaeger-operator
+{{ else }}
+      app: {{ .Values.provider }}
 {{ end }}
 - apiVersion: v1
   kind: Service
@@ -69,7 +79,17 @@ items:
         targetPort: 9411
 {{ end}}
     selector:
-      app: {{ .Values.provider }}
 {{ if eq .Values.provider "jaeger" }}
-      jaeger-infra: query-pod
+  {{ if eq .Values.jaeger.template "all-in-one"}}
+      app.kubernetes.io/name: jaeger
+      app.kubernetes.io/component: all-in-one
+  {{ else }}
+      app.kubernetes.io/name: jaeger-query
+      app.kubernetes.io/component: query
+  {{ end }}
+      app.kubernetes.io/instance: jaeger
+      app.kubernetes.io/part-of: jaeger
+      app.kubernetes.io/managed-by: jaeger-operator
+{{ else }}
+      app: {{ .Values.provider }}
 {{ end }}

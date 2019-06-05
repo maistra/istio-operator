@@ -29,8 +29,8 @@ function grafana_patch_deployment() {
           - -http-address=\
           - -email-domain=*\
           - -upstream=http://localhost:3000\
-          - '\''-openshift-sar={"namespace": "istio-system", "resource": "pods", "verb": "get"}'\''\
-          - '\''-openshift-delegate-urls={"/":{"namespace": "istio-system", "resource": "pods", "verb": "get"}}'\''\
+          - '\''-openshift-sar={"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}'\''\
+          - '\''-openshift-delegate-urls={"/":{"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}}'\''\
           - -skip-auth-regex=^/metrics\
           - -client-secret-file=/var/run/secrets/kubernetes.io/serviceaccount/token\
           - -openshift-service-account=grafana\
@@ -47,6 +47,22 @@ function grafana_patch_deployment() {
           secretName: grafana-tls' \
       -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: grafana\
 \1containers:\2/' \
+      -e '/- if \.Values\.security\.enabled/,/- end/ { d }' \
+      -e 's/^\(\( *\)-.*GF_PATHS_DATA.*\)$/\2- name: GF_AUTH_BASIC_ENABLED\
+\2  value: "false"\
+\2- name: GF_AUTH_PROXY_ENABLED\
+\2  value: "true"\
+\2- name: GF_AUTH_PROXY_AUTO_SIGN_UP\
+\2  value: "true"\
+\2- name: GF_AUTH_PROXY_WHITELIST\
+\2  value: 127.0.0.0\/24,::1\
+\2- name: GF_AUTH_PROXY_HEADERS\
+\2  value: Email:X-Forwarded-Email\
+\2- name: GF_AUTH_PROXY_HEADER_NAME\
+\2  value: X-Forwarded-User\
+\2- name: GF_USERS_AUTO_ASSIGN_ORG_ROLE\
+\2  value: Admin\
+\1/' \
   ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
 }
 
@@ -59,6 +75,10 @@ function grafana_patch_values() {
   sed -i \
     -e 's|  annotations: {}|  annotations:\n    service.alpha.openshift.io/serving-cert-secret-name: grafana-tls|' \
     -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
+    -e 's+http://prometheus:9090+https://prometheus:9090+' \
+    -e 's+^\(\( *\)timeInterval.*\)$+\1\
+\2# we should be using the CA cert in /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt\
+\2tlsSkipVerify: true+' \
     ${HELM_DIR}/istio/charts/grafana/values.yaml
 
 }

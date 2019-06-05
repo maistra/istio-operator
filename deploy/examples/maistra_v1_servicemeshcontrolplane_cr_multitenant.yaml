@@ -77,3 +77,10 @@ spec:
     # to disable tracing (i.e. jaeger)
     tracing:
       enabled: false
+      jaeger:
+        # simple, all-in-one strategy
+        template: all-in-one
+        # production strategy, utilizing elasticsearch
+        #template: production-elasticsearch
+        # if required. only one instance may use agentStrategy=DaemonSet
+        #agentStrategy: DaemonSet

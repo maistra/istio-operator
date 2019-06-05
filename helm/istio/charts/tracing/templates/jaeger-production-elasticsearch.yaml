@@ -1,0 +1,80 @@
+{{ if and (eq .Values.provider "jaeger") (eq .Values.jaeger.template "production-elasticsearch") }}
+apiVersion: jaegertracing.io/v1
+kind: "Jaeger"
+metadata:
+  name: "jaeger"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    chart: {{ template "tracing.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+spec:
+  strategy: production
+
+  query:
+    image: {{ .Values.jaeger.hub }}/jaeger-query:{{ .Values.jaeger.tag }}
+    options:
+      query:
+        base-path: /
+    annotations:
+      {{- range $key, $value := .Values.jaeger.annotations }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
+
+  collector:
+    image: {{ .Values.jaeger.hub }}/jaeger-collector:{{ .Values.jaeger.tag }}
+    annotations:
+      {{- range $key, $value := .Values.jaeger.annotations }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
+
+  agent:
+    strategy: {{ .Values.jaeger.agentStrategy }}
+    image: {{ .Values.jaeger.hub }}/jaeger-agent:{{ .Values.jaeger.tag }}
+    serviceAccount: jaeger-agent
+    options:
+      collector:
+        host-port: jaeger-collector:14267
+    annotations:
+      {{- range $key, $value := .Values.jaeger.annotations }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
+
+  ui:
+    options:
+      dependencies:
+        menuEnabled: false
+      menu:
+        - label: "About Jaeger"
+          items:
+            - label: "Documentation"
+              url: "https://www.jaegertracing.io/docs/latest"
+            - label: "Log Out"
+              url: "/oauth/sign_in"
+              anchorTarget: "_self"
+
+  storage:
+    type: elasticsearch
+    options:
+      es:
+        server-urls: http://elasticsearch:9200
+
+  ingress:
+    enabled: {{ .Values.ingress.enabled }}
+    # XXX: should this be parameterized?
+    security: oauth-proxy
+    annotations:
+      {{- range $key, $value := .Values.ingress.annotations }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
+
+  resources:
+{{- if .Values.jaeger.resources }}
+{{ toYaml .Values.jaeger.resources | indent 4 }}
+{{- else }}
+{{ toYaml .Values.global.defaultResources | indent 4 }}
+{{- end }}
+  affinity:
+  {{- include "nodeaffinity" . | indent 2 }}
+
+{{ end }}
