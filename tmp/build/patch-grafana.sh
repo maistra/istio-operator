@@ -30,6 +30,7 @@ function grafana_patch_deployment() {
           - -email-domain=*\
           - -upstream=http://localhost:3000\
           - '\''-openshift-sar={"namespace": "istio-system", "resource": "pods", "verb": "get"}'\''\
+          - '\''-openshift-delegate-urls={"/":{"namespace": "istio-system", "resource": "pods", "verb": "get"}}'\''\
           - -skip-auth-regex=^/metrics\
           - -client-secret-file=/var/run/secrets/kubernetes.io/serviceaccount/token\
           - -openshift-service-account=grafana\
