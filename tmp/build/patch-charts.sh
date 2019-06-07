@@ -74,7 +74,7 @@ function patchTemplates() {
     sed -i -e 's/hub:.*$/hub: kiali/' \
            -e 's/tag:.*$/tag: v'${KIALI_VERSION}'/' ${HELM_DIR}/istio/charts/kiali/values.yaml
   else
-    sed -i -e 's+hub:.*$+hub: openshift-istio-tech-preview+' \
+    sed -i -e 's+hub:.*$+hub: registry\.redhat\.io\/openshift-istio-tech-preview+' \
            -e 's/tag:.*$/tag: '${KIALI_VERSION}'/' ${HELM_DIR}/istio/charts/kiali/values.yaml
   fi
 
@@ -147,10 +147,10 @@ function patchTemplates() {
   tag: 5.6.10\
 \
 \1|' ${HELM_DIR}/istio/charts/tracing/values.yaml
-    sed -i -e 's/hub:.*$/hub: openshift-istio-tech-preview/' \
+    sed -i -e 's/hub:.*$/hub: registry\.redhat\.io\/openshift-istio-tech-preview/' \
            -e 's/tag:.*$/tag: v'${THREESCALE_VERSION}'/' ${HELM_DIR}/maistra-threescale/values.yaml
   else
-    sed -i -e 's+hub:.*$+hub: openshift-istio-tech-preview+g' \
+    sed -i -e 's+hub:.*$+hub: registry\.redhat\.io\/openshift-istio-tech-preview+g' \
           -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' \
           -e 's/image: *proxy_init/image: proxy-init-rhel8/' \
           -e 's/image: *proxyv2/image: proxyv2-rhel8/' ${HELM_DIR}/istio/values.yaml ${HELM_DIR}/istio-init/values.yaml
@@ -165,7 +165,7 @@ function patchTemplates() {
   tag: 5.6.10\
 \
 \1|' ${HELM_DIR}/istio/charts/tracing/values.yaml
-    sed -i -e 's/hub:.*$/hub: openshift-istio-tech-preview/' \
+    sed -i -e 's/hub:.*$/hub: registry\.redhat\.io\/openshift-istio-tech-preview/' \
            -e 's/tag:.*$/tag: '${THREESCALE_VERSION}'/' ${HELM_DIR}/maistra-threescale/values.yaml
   fi
 
@@ -485,7 +485,7 @@ function patchMultiTenant() {
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/nodeagent/templates/clusterrolebinding.yaml
 
   # pilot
-  sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ { 
+  sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ {
     /apiextensions/ {
       i\
 - apiGroups: ["maistra.io"]\
