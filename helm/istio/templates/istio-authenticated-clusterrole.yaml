@@ -21,3 +21,6 @@ rules:
 - apiGroups: ["rbac.istio.io"]
   resources: ["*"]
   verbs: ["*"]
+- apiGroups: ["maistra.io"]
+  resources: ["*"]
+  verbs: ["*"]
