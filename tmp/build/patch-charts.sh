@@ -217,6 +217,8 @@ function patchTemplates() {
     sed -i -e 's/\/health/\/tmp\/health/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
   fi
 
+  # Fix for MAISTRA-334, can be removed when we move to Istio-1.2
+  sed -i '/match: (context.protocol == "http" || context.protocol == "grpc")/ s/$/ \&\& (match((request.useragent | "-"), "Prometheus*") == false)/' ${HELM_DIR}/istio/charts/mixer/templates/config.yaml 
 }
 
 # The following modifications are made to the generated helm template to extract the CRDs
