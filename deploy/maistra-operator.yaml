@@ -132,7 +132,7 @@ rules:
   # for galley, *: get, list, watch
   # for mixer, *: create, get, list, watch
   # for pilot, *: *
-  # for istio-authenticated, *: *
+  # for istio-admin, *: *
   - '*'
   - meshpolicies
   verbs:
@@ -142,7 +142,7 @@ rules:
   resources:
   # for galley, *: get, list, watch
   # for pilot, *: *
-  # for istio-authenticated, *: *
+  # for istio-admin, *: *
   - '*'
   - attributemanifests
   - handlers
@@ -311,7 +311,7 @@ rules:
   - get
   - list
   - watch
-- nonResourceURLs: 
+- nonResourceURLs:
   - "/metrics"
   verbs:
   - get

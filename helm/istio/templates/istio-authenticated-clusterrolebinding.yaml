@@ -1,16 +1,13 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: istio-authenticated
+  name: istio-admin
   labels:
-    app: istio-authenticated
+    app: istio-admin
     chart: {{ template "istio.chart" . }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
 roleRef:
   kind: ClusterRole
   apiGroup: rbac.authorization.k8s.io
-  name: istio-authenticated
-subjects:
-- kind: Group
-  name: system:authenticated
+  name: istio-admin
