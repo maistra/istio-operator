@@ -31,7 +31,7 @@ items:
     - name: jaeger-query
       port: 80
       protocol: TCP
-      targetPort: 16686
+      targetPort: 3001
     selector:
       app: jaeger
       jaeger-infra: query-pod

@@ -61,9 +61,6 @@ function patchTemplates() {
     sed -i -e 's/ior_image:.*$/ior_image: istio-ior-ubi8/' ${HELM_DIR}/istio/charts/gateways/values.yaml
   fi
 
-  # enable ingress for grafana
-  sed -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/charts/grafana/values.yaml
-
   # enable ingress for tracing
   sed -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/charts/tracing/values.yaml
 
@@ -77,9 +74,6 @@ function patchTemplates() {
     sed -i -e 's+hub:.*$+hub: registry\.redhat\.io\/openshift-istio-tech-preview+' \
            -e 's/tag:.*$/tag: '${KIALI_VERSION}'/' ${HELM_DIR}/istio/charts/kiali/values.yaml
   fi
-
-  # - remove the create customer resources job, we handle this in the installer to deal with potential races
-  rm ${HELM_DIR}/istio/charts/grafana/templates/create-custom-resources-job.yaml
 
   # - remove the cleanup secrets job, we handle this in the installer
   rm ${HELM_DIR}/istio/charts/security/templates/cleanup-secrets.yaml
@@ -176,14 +170,6 @@ function patchTemplates() {
   # - remove istio-reader cluster role
   rm ${HELM_DIR}/istio/templates/clusterrole.yaml
 
-  # - switch prometheus init container image from busybox to prometheus
-  sed -i -r -e 's/"?busybox:?.*$/"docker.io\/prom\/prometheus:v2.3.1"/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
-
-  # - enable ingress (route) for prometheus
-  sed -i -e '/ingress:/,/service:/ {
-    s/enabled:.*$/enabled: true/
-}' ${HELM_DIR}/istio/charts/prometheus/values.yaml
-
   # - switch webhook ports to 8443: add targetPort name to galley service
   # XXX: move upstream (add targetPort name)
   sed -i -e 's/^\(.*\)\(- port: 443.*\)$/\1\2\
@@ -219,58 +205,6 @@ function patchTemplates() {
 
   # Fix for MAISTRA-334, can be removed when we move to Istio-1.2
   sed -i '/match: (context.protocol == "http" || context.protocol == "grpc")/ s/$/ \&\& (match((request.useragent | "-"), "Prometheus*") == false)/' ${HELM_DIR}/istio/charts/mixer/templates/config.yaml 
-}
-
-# The following modifications are made to the generated helm template to extract the CRDs
-# - remove all content except for the crd configmaps
-# - add maistra-version labels
-# all of this is done above in patchTemplates()
-
-# The following modifications are made to the generated helm template for the Grafana yaml file
-# - add a service account for grafana
-# - remove all non grafana configuration
-# - remove the extraneous create custom resources job
-# - add the service account to the deployment
-# - add a maistra-version label to all objects which have a release label (done in patchTemplates())
-function patchGrafanaTemplate() {
-  echo "patching Grafana specific Helm charts"
-
-  # - add a service account for grafana
-  # added a file to overlays
-
-  # - remove the extraneous create custom resources job
-  if [ -f ${HELM_DIR}/istio/charts/grafana/templates/create-custom-resources-job.yaml ]; then
-    rm ${HELM_DIR}/istio/charts/grafana/templates/create-custom-resources-job.yaml
-  fi
-
-  # - custom resources will be installed directly
-  if [ -f ${HELM_DIR}/istio/charts/grafana/templates/configmap-custom-resources.yaml ]; then
-    rm ${HELM_DIR}/istio/charts/grafana/templates/configmap-custom-resources.yaml
-  fi
-  sed -i -e '/grafana-default.yaml.tpl/d' -e '/{{.*end.*}}/d' ${HELM_DIR}/istio/charts/grafana/templates/grafana-ports-mtls.yaml
-
-  # - add the service account to the deployment
-  sed -i -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: grafana\
-\1containers:\2/' ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
-}
-
-# patch tracing specific templates
-function patchTracingtemplate() {
-  echo "patching Jaeger (tracing) specific Helm charts"
-  # update jaeger image hub
-  if [[ "${COMMUNITY,,}" == "true" ]]; then
-    sed -i -e 's+hub: docker.io/jaegertracing+hub: jaegertracing+g' \
-           -e 's+tag: 1.9+tag: 1.11+g' ${HELM_DIR}/istio/charts/tracing/values.yaml
-  else
-    sed -i -e 's+hub: docker.io/jaegertracing+hub: distributed-tracing-tech-preview+g' \
-           -e 's+tag: 1.9+tag: 1.11.0+g' ${HELM_DIR}/istio/charts/tracing/values.yaml
-  fi
-
-  # update jaeger zipkin port name
-  sed -i -e '/service:$/,/externalPort:/ {
-    s/name:.*$/name: jaeger-collector-zipkin/
-}' ${HELM_DIR}/istio/charts/tracing/values.yaml
-
 }
 
 # The following modifications are made to the generated helm template for the Kiali yaml file
@@ -504,10 +438,6 @@ function patchMultiTenant() {
 \2- --memberRollName=default\
 \2\{\{- end \}\}/' ${HELM_DIR}/istio/charts/pilot/templates/deployment.yaml
 
-  # prometheus
-  sed -i -e '/nodes/d' ${HELM_DIR}/istio/charts/prometheus/templates/clusterrole.yaml
-  convertClusterRoleBinding ${HELM_DIR}/istio/charts/prometheus/templates/clusterrolebindings.yaml
-
   # security
   sed -i -e '/apiGroups:.*authentication.k8s.io/,$ {
     /apiGroups/ i\
@@ -556,9 +486,10 @@ function patchMultiTenant() {
 copyOverlay
 
 patchTemplates
-patchGrafanaTemplate
-patchTracingtemplate
 patchKialiTemplate
 patchKialiOpenShift
 
 patchMultiTenant
+source ${SOURCE_DIR}/tmp/build/patch-grafana.sh
+source ${SOURCE_DIR}/tmp/build/patch-jaeger.sh
+source ${SOURCE_DIR}/tmp/build/patch-prometheus.sh

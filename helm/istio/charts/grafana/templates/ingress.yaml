@@ -17,4 +17,6 @@ spec:
   to:
     kind: Service
     name: grafana
+  tls:
+    termination: passthrough
 {{- end -}}

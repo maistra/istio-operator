@@ -315,11 +315,18 @@ rules:
   - "/metrics"
   verbs:
   - get
-# citadel
+# citadel and oauth proxy
 - apiGroups:
   - authentication.k8s.io
   resources:
   - tokenreviews
+  verbs:
+  - create
+# oauth proxy
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
   verbs:
   - create
 # kiali

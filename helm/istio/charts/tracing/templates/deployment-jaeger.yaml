@@ -113,6 +113,44 @@ spec:
 {{- end }}
       serviceAccountName: jaeger
       containers:
+      # OAuth proxy
+      - args:
+        - -provider=openshift
+        - -https-address=:3001
+        - -http-address=
+        - -email-domain=*
+        - -upstream=http://localhost:16686
+        - '-openshift-sar={"namespace": "istio-system", "resource": "pods", "verb": "get"}'
+        - '-openshift-delegate-urls={"/":{"namespace":"istio-system","resource":"pods","verb":"get"}}'
+        - -skip-auth-regex=^/metrics
+        - -client-secret-file=/var/run/secrets/kubernetes.io/serviceaccount/token
+        - -openshift-service-account=jaeger
+        - -cookie-secret=SECRET
+        - -tls-cert=/etc/tls/private/tls.crt
+        - -tls-key=/etc/tls/private/tls.key
+        - -openshift-ca=/etc/pki/tls/cert.pem
+        - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        image: openshift/oauth-proxy:latest
+        imagePullPolicy: IfNotPresent
+        name: jaeger-proxy
+        ports:
+        - containerPort: 3001
+          name: https
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: https
+          timeoutSeconds: 1
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/tls/private
+          name: secret-jaeger-query-tls
+
       - image: "{{ .Values.jaeger.hub }}/jaeger-query:{{ .Values.jaeger.tag }}"
         name: jaeger-query
         command:
@@ -141,6 +179,12 @@ spec:
 {{ toYaml .Values.global.defaultResources | indent 10 }}
 {{- end }}
       volumes:
+      # OAuth proxy
+        - name: secret-jaeger-query-tls
+          secret:
+            defaultMode: 420
+            secretName: jaeger-query-tls
+
         - configMap:
             name: jaeger-configuration
             items:
