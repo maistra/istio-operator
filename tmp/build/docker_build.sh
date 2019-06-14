@@ -2,8 +2,11 @@
 
 set -e
 
-if ! which docker > /dev/null; then
-	echo "docker needs to be installed"
+# Allow the developer to use other tool, e.g. podman
+CONTAINER_CLI=${CONTAINER_CLI:-docker}
+
+if ! which ${CONTAINER_CLI} > /dev/null; then
+	echo "${CONTAINER_CLI} needs to be installed"
 	exit 1
 fi
 
@@ -18,4 +21,4 @@ echo "collecting helm charts"
 ${BUILD_DIR}/download-charts.sh
 
 echo "building container ${IMAGE}..."
-docker build --no-cache -t "${IMAGE}" -f tmp/build/Dockerfile .
+${CONTAINER_CLI} build --no-cache -t "${IMAGE}" -f tmp/build/Dockerfile .
