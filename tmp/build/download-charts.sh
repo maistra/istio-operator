@@ -2,8 +2,8 @@
 
 set -e
 
-: ${MAISTRA_VERSION:=0.11.0}
-: ${MAISTRA_BRANCH:=0.11}
+: ${MAISTRA_VERSION:=0.12.0}
+: ${MAISTRA_BRANCH:=0.12}
 
 SOURCE_DIR=$(pwd)
 DIR=$(pwd)/tmp/_output/helm
