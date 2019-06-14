@@ -141,8 +141,7 @@ function patchTemplates() {
   tag: 5.6.10\
 \
 \1|' ${HELM_DIR}/istio/charts/tracing/values.yaml
-    sed -i -e 's/hub:.*$/hub: registry\.redhat\.io\/openshift-istio-tech-preview/' \
-           -e 's/tag:.*$/tag: v'${THREESCALE_VERSION}'/' ${HELM_DIR}/maistra-threescale/values.yaml
+    sed -i -e 's/tag:.*$/tag: v'${THREESCALE_VERSION}'/' ${HELM_DIR}/maistra-threescale/values.yaml
   else
     sed -i -e 's+hub:.*$+hub: registry\.redhat\.io\/openshift-istio-tech-preview+g' \
           -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' \
