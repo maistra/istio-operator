@@ -104,6 +104,13 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - batch
+  resources:
+  - cronjobs
+  - jobs
+  verbs:
+  - '*'
+- apiGroups:
   - policy
   resources:
   - poddisruptionbudgets
@@ -202,6 +209,12 @@ rules:
   - jaegertracing.io
   resources:
   - jaegers
+  verbs:
+  - '*'
+- apiGroups:
+  - kiali.io
+  resources:
+  - kialis
   verbs:
   - '*'
 - apiGroups:
@@ -357,123 +370,6 @@ rules:
   - subjectaccessreviews
   verbs:
   - create
-# kiali
-- apiGroups: [""]
-  resources:
-  - configmaps
-  - endpoints
-  - namespaces
-  - nodes
-  - pods
-  - pods/log
-  - services
-  - replicationcontrollers
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups: ["extensions", "apps"]
-  resources:
-  - deployments
-  - statefulsets
-  - replicasets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups: ["autoscaling"]
-  resources:
-  - horizontalpodautoscalers
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups: ["batch"]
-  resources:
-  - cronjobs
-  - jobs
-  verbs:
-  - '*'
-- apiGroups: ["project.openshift.io"]
-  resources:
-  - projects
-  verbs:
-  - get
-- apiGroups: ["route.openshift.io"]
-  resources:
-  - routes
-  verbs:
-  - get
-- apiGroups: ["apps.openshift.io"]
-  resources:
-  - deploymentconfigs
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups: ["config.istio.io"]
-  resources:
-  - apikeys
-  - authorizations
-  - checknothings
-  - circonuses
-  - deniers
-  - fluentds
-  - handlers
-  - kubernetesenvs
-  - kuberneteses
-  - listcheckers
-  - listentries
-  - logentries
-  - memquotas
-  - metrics
-  - opas
-  - prometheuses
-  - quotas
-  - quotaspecbindings
-  - quotaspecs
-  - rbacs
-  - reportnothings
-  - rules
-  - solarwindses
-  - stackdrivers
-  - statsds
-  - stdios
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - watch
-- apiGroups: ["networking.istio.io"]
-  resources:
-  - destinationrules
-  - gateways
-  - serviceentries
-  - virtualservices
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - watch
-- apiGroups: ["authentication.istio.io"]
-  resources:
-  - policies
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - watch
-- apiGroups: ["monitoring.kiali.io"]
-  resources:
-  - monitoringdashboards
-  verbs:
-  - get
 
 ---
 

@@ -20,6 +20,7 @@ var (
 	// XXX: move this into a ConfigMap so users can override things if they add new types in customized charts
 	// ordered by which types should be deleted, first to last
 	namespacedResources = []schema.GroupVersionKind{
+		schema.GroupVersionKind{Group: "kiali.io", Version: "v1alpha1", Kind: "Kiali"},
 		schema.GroupVersionKind{Group: "autoscaling", Version: "v2beta1", Kind: "HorizontalPodAutoscaler"},
 		schema.GroupVersionKind{Group: "policy", Version: "v1beta1", Kind: "PodDisruptionBudget"},
 		schema.GroupVersionKind{Group: "route.openshift.io", Version: "v1", Kind: "Route"},

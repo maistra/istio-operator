@@ -3,17 +3,12 @@ package controlplane
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strings"
 	"time"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -52,14 +47,8 @@ func (r *ControlPlaneReconciler) processDeletedComponent(name string, status *v1
 
 func (r *ControlPlaneReconciler) preprocessObject(object *unstructured.Unstructured) error {
 	switch object.GetKind() {
-	case "ConfigMap":
-		if object.GetName() == "kiali" {
-			return r.patchKialiConfig(object)
-		}
-	case "OAuthClient":
-		if strings.HasPrefix(object.GetName(), "kiali-") {
-			return r.patchKialiOAuthClient(object)
-		}
+	case "Kiali":
+		return r.patchKialiConfig(object)
 	}
 	return nil
 }
@@ -69,146 +58,111 @@ func (r *ControlPlaneReconciler) processNewObject(object *unstructured.Unstructu
 }
 
 func (r *ControlPlaneReconciler) processDeletedObject(object *unstructured.Unstructured) error {
-	switch object.GetKind() {
-	case "Route":
-		if object.GetName() == "kiali" {
-			return r.processDeletedKialiRoute(object)
-		}
-	}
 	return nil
 }
 
-var (
-	grafanaRegexp = regexp.MustCompile("(?s)(grafana:.*?url:).*?\n")
-	jaegerRegexp  = regexp.MustCompile("(?s)(tracing:.*?url:).*?\n")
-)
-
 func (r *ControlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructured) error {
-	r.Log.Info("patching kiali ConfigMap", object.GetKind(), object.GetName())
-	configYaml, found, err := unstructured.NestedString(object.UnstructuredContent(), "data", "config.yaml")
-	if err != nil {
-		// This shouldn't occur if it's really a ConfigMap, but...
-		r.Log.Error(err, "could not parse kiali ConfigMap")
-		return err
-	} else if !found {
-		r.Log.Error(nil, "failed to patch kiali ConfigMap")
-		return nil
+	r.Log.Info("patching kiali CR", object.GetKind(), object.GetName())
+
+	// get jaeger URL and enabled flags from Kiali CR
+	jaegerURL, found, err := unstructured.NestedString(object.UnstructuredContent(), "spec", "external_services", "tracing", "url")
+	if !found || err != nil {
+		jaegerURL = ""
+	}
+	jaegerEnabled, found, err := unstructured.NestedBool(object.UnstructuredContent(), "spec", "external_services", "tracing", "enabled")
+	if !found || err != nil {
+		jaegerEnabled = true // if not set, assume we want it - we'll turn this off if we can't auto-detect
 	}
 
-	// get jaeger route host
-	jaegerRoute := &unstructured.Unstructured{}
-	jaegerRoute.SetAPIVersion("route.openshift.io/v1")
-	jaegerRoute.SetKind("Route")
-	// jaeger is the name of the Jaeger CR
-	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "jaeger", Namespace: object.GetNamespace()}, jaegerRoute)
-	if err != nil && !errors.IsNotFound(err) {
-		r.Log.Error(err, "error retrieving jaeger route")
-		return fmt.Errorf("could not retrieve jaeger route: %s", err)
-	}
-
-	// get grafana route host
-	grafanaRoute := &unstructured.Unstructured{}
-	grafanaRoute.SetAPIVersion("route.openshift.io/v1")
-	grafanaRoute.SetKind("Route")
-	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "grafana", Namespace: object.GetNamespace()}, grafanaRoute)
-	if err != nil && !errors.IsNotFound(err) {
-		r.Log.Error(err, "error retrieving grafana route")
-		return fmt.Errorf("could not retrieve grafana route: %s", err)
-	}
-
-	// update config.yaml.external_services.grafana.url
-	grafanaURL, _, _ := unstructured.NestedString(grafanaRoute.UnstructuredContent(), "spec", "host")
-	grafanaScheme := "http"
-	if grafanaTLSTermination, ok, _ := unstructured.NestedString(grafanaRoute.UnstructuredContent(), "spec", "tls", "termination"); ok && len(grafanaTLSTermination) > 0 {
-		grafanaScheme = "https"
-	}
-	if len(grafanaURL) > 0 {
-		configYaml = string(grafanaRegexp.ReplaceAll([]byte(configYaml), []byte(fmt.Sprintf("${1} %s://%s\n", grafanaScheme, grafanaURL))))
-	}
-	// update config.yaml.external_services.jaeger.url
-	jaegerURL, _, _ := unstructured.NestedString(jaegerRoute.UnstructuredContent(), "spec", "host")
-	jaegerScheme := "http"
-	if jaegerTLSTermination, ok, _ := unstructured.NestedString(jaegerRoute.UnstructuredContent(), "spec", "tls", "termination"); ok && len(jaegerTLSTermination) > 0 {
-		jaegerScheme = "https"
-	}
-	if len(jaegerURL) > 0 {
-		configYaml = string(jaegerRegexp.ReplaceAll([]byte(configYaml), []byte(fmt.Sprintf("${1} %s://%s\n", jaegerScheme, jaegerURL))))
-	}
-
-	return unstructured.SetNestedField(object.UnstructuredContent(), configYaml, "data", "config.yaml")
-}
-
-func (r *ControlPlaneReconciler) processDeletedKialiRoute(route *unstructured.Unstructured) error {
-	oauthClient := &unstructured.Unstructured{}
-	oauthClient.SetAPIVersion("oauth.openshift.io/v1")
-	oauthClient.SetKind("OAuthClient")
-	err := r.Client.Get(context.TODO(), client.ObjectKey{Name: "kiali"}, oauthClient)
-	if err != nil {
-		r.Log.Error(err, "error retrieving kiali OAuthClient")
-		return err
-	}
-	err = r.patchKialiOAuthClient(oauthClient)
-	if err != nil {
-		r.Log.Error(err, "error removing deleted Route from OAuthClient", "Route", route.GetName())
-		return err
-	}
-	redirectURIs, exists, err := unstructured.NestedStringSlice(oauthClient.UnstructuredContent(), "redirectURIs")
-	if err != nil {
-		r.Log.Error(err, "error retrieving redirectURIs from kiali OAuthClient")
-		return err
-	}
-	if !exists || len(redirectURIs) == 0 {
-		return r.Client.Delete(context.TODO(), oauthClient)
-	}
-	return r.Client.Update(context.TODO(), oauthClient)
-}
-
-func (r *ControlPlaneReconciler) patchKialiOAuthClient(object *unstructured.Unstructured) error {
-	r.Log.Info("patching kiali OAuthClient", object.GetKind(), object.GetName())
-
-	// get kiali route host
-	kialiRouteList := &unstructured.UnstructuredList{}
-	kialiRouteList.SetAPIVersion("route.openshift.io/v1")
-	kialiRouteList.SetKind("Route")
-	listOptions := client.MatchingField("metadata.name", "kiali")
-	labelSelector, err := labels.NewRequirement(common.OwnerKey, selection.Exists, []string{})
-	if err != nil {
-		r.Log.Error(err, "error creating label selector for kiali routes associated with service meshes")
-		return fmt.Errorf("error creating label selectors for kiali routes: %s", err)
-	}
-	listOptions.LabelSelector = labels.NewSelector().Add(*labelSelector)
-	err = r.Client.List(context.TODO(), listOptions, kialiRouteList)
-	if err != nil && !errors.IsNotFound(err) {
-		r.Log.Error(err, "error retrieving kiali route")
-		return fmt.Errorf("could not retrieve kiali route: %s", err)
-	}
-
-	redirectURIs := make([]string, 0, len(kialiRouteList.Items))
-	for _, kialiRoute := range kialiRouteList.Items {
-		kialiURL, found, err := unstructured.NestedString(kialiRoute.UnstructuredContent(), "spec", "host")
+	// if the user has not yet configured this, let's try to auto-detect it now.
+	if len(jaegerURL) == 0 && jaegerEnabled {
+		r.Log.Info("attempting to auto-detect jaeger for kiali")
+		jaegerRoute := &unstructured.Unstructured{}
+		jaegerRoute.SetAPIVersion("route.openshift.io/v1")
+		jaegerRoute.SetKind("Route")
+		// jaeger is the name of the Jaeger CR
+		err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "jaeger", Namespace: object.GetNamespace()}, jaegerRoute)
 		if err != nil {
-			r.Log.Error(err, "error retrieving kiali route host name")
-			return err
-		} else if !found {
-			err = fmt.Errorf("host field not found in kiali route")
-			r.Log.Error(err, "error retrieving kiali route host name")
-			return err
-		}
-		if termination, found, _ := unstructured.NestedString(kialiRoute.UnstructuredContent(), "spec", "tls", "termination"); found && len(termination) > 0 {
-			kialiURL = "https://" + kialiURL
+			if !errors.IsNotFound(err) {
+				r.Log.Error(err, "error retrieving jaeger route - will disable it in Kiali")
+				// we aren't going to return here - Jaeger is optional for Kiali; Kiali can still run without it
+			}
+			jaegerEnabled = false
 		} else {
-			kialiURL = "http://" + kialiURL
+			jaegerURL, _, _ = unstructured.NestedString(jaegerRoute.UnstructuredContent(), "spec", "host")
+			jaegerScheme := "http"
+			if jaegerTLSTermination, ok, _ := unstructured.NestedString(jaegerRoute.UnstructuredContent(), "spec", "tls", "termination"); ok && len(jaegerTLSTermination) > 0 {
+				jaegerScheme = "https"
+			}
+			if len(jaegerURL) > 0 {
+				jaegerURL = fmt.Sprintf("%s://%s", jaegerScheme, jaegerURL)
+			} else {
+				jaegerEnabled = false // there is no host on this route - disable it in kiali
+			}
 		}
-		// update redirectURIs
-		redirectURIs = append(redirectURIs, kialiURL)
 	}
 
-	// delete the owner key so this doesn't get deleted during a normal prune
-	common.DeleteLabel(object, common.OwnerKey)
-	common.DeleteAnnotation(object, common.MeshGenerationKey)
+	// get grafana URL and enabled flags from Kiali CR
+	grafanaURL, found, err := unstructured.NestedString(object.UnstructuredContent(), "spec", "external_services", "grafana", "url")
+	if !found || err != nil {
+		grafanaURL = ""
+	}
+	grafanaEnabled, found, err := unstructured.NestedBool(object.UnstructuredContent(), "spec", "external_services", "grafana", "enabled")
+	if !found || err != nil {
+		grafanaEnabled = true // if not set, assume we want it - we'll turn this off if we can't auto-detect
+	}
 
-	// set the redirect URIs
-	return unstructured.SetNestedStringSlice(object.UnstructuredContent(), redirectURIs, "redirectURIs")
+	// if the user has not yet configured this, let's try to auto-detect it now.
+	if len(grafanaURL) == 0 && grafanaEnabled {
+		r.Log.Info("attempting to auto-detect grafana for kiali")
+		grafanaRoute := &unstructured.Unstructured{}
+		grafanaRoute.SetAPIVersion("route.openshift.io/v1")
+		grafanaRoute.SetKind("Route")
+		err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "grafana", Namespace: object.GetNamespace()}, grafanaRoute)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				r.Log.Error(err, "error retrieving grafana route - will disable it in Kiali")
+				// we aren't going to return here - Grafana is optional for Kiali; Kiali can still run without it
+			}
+			grafanaEnabled = false
+		} else {
+			grafanaURL, _, _ = unstructured.NestedString(grafanaRoute.UnstructuredContent(), "spec", "host")
+			grafanaScheme := "http"
+			if grafanaTLSTermination, ok, _ := unstructured.NestedString(grafanaRoute.UnstructuredContent(), "spec", "tls", "termination"); ok && len(grafanaTLSTermination) > 0 {
+				grafanaScheme = "https"
+			}
+			if len(grafanaURL) > 0 {
+				grafanaURL = fmt.Sprintf("%s://%s", grafanaScheme, grafanaURL)
+			} else {
+				grafanaEnabled = false // there is no host on this route - disable it in kiali
+			}
+		}
+	}
+
+	r.Log.Info("new kiali jaeger settings", jaegerURL, jaegerEnabled)
+	r.Log.Info("new kiali grafana setting", grafanaURL, grafanaEnabled)
+
+	err = unstructured.SetNestedField(object.UnstructuredContent(), jaegerURL, "spec", "external_services", "tracing", "url")
+	if err != nil {
+		return fmt.Errorf("could not set jaeger url in kiali CR: %s", err)
+	}
+
+	err = unstructured.SetNestedField(object.UnstructuredContent(), jaegerEnabled, "spec", "external_services", "tracing", "enabled")
+	if err != nil {
+		return fmt.Errorf("could not set jaeger enabled flag in kiali CR: %s", err)
+	}
+
+	err = unstructured.SetNestedField(object.UnstructuredContent(), grafanaURL, "spec", "external_services", "grafana", "url")
+	if err != nil {
+		return fmt.Errorf("could not set grafana url in kiali CR: %s", err)
+	}
+
+	err = unstructured.SetNestedField(object.UnstructuredContent(), grafanaEnabled, "spec", "external_services", "grafana", "enabled")
+	if err != nil {
+		return fmt.Errorf("could not set grafana enabled flag in kiali CR: %s", err)
+	}
+
+	return nil
 }
 
 func (r *ControlPlaneReconciler) waitForDeployments(status *v1.ComponentStatus) error {

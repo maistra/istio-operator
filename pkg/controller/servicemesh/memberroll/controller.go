@@ -227,6 +227,10 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 			}
 			break
 		}
+
+		// tell Kiali that MT mode is disabled. This allows Kiali to see the full cluster.
+		r.reconcileKiali(instance.Namespace, nil, reqLogger)
+
 		return reconcile.Result{}, err
 	} else if finalizerIndex < 0 {
 		reqLogger.Info("Adding finalizer to ServiceMeshMemberRoll", "finalizer", finalizer)
@@ -439,7 +443,58 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 	}
 
+	// tell Kiali about all the namespaces in the mesh
+	r.reconcileKiali(instance.Namespace, requiredMembers, reqLogger)
+
 	return reconcile.Result{}, err
+}
+
+func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, requiredMembers map[string]struct{}, reqLogger logr.Logger) error {
+
+	reqLogger.Info("Attempting to get Kiali CR", "kialiCRNamespace", kialiCRNamespace)
+
+	kialiCR := &unstructured.Unstructured{}
+	kialiCR.SetAPIVersion("kiali.io/v1alpha1")
+	kialiCR.SetKind("Kiali")
+	kialiCR.SetNamespace(kialiCRNamespace)
+	kialiCR.SetName("kiali")
+	err := r.Client.Get(context.TODO(), client.ObjectKey{Name: "kiali", Namespace: kialiCRNamespace}, kialiCR)
+	if err != nil {
+		if errors.IsNotFound(err) || errors.IsGone(err) {
+			reqLogger.Info("Kiali CR does not exist, Kiali probably not enabled")
+			return nil
+		}
+		reqLogger.Error(err, "error retrieving Kiali CR from mesh")
+		return err
+	}
+
+	// just get an array of strings consisting of the list of namespaces to be accessible to Kiali
+	var accessibleNamespaces []string
+	if len(requiredMembers) == 0 {
+		// we are not in multitenency mode - kiali can access the entire cluster
+		accessibleNamespaces = []string{"**"}
+	} else {
+		// we are in multitenency mode
+		accessibleNamespaces = make([]string, 0, len(requiredMembers))
+		for key := range requiredMembers {
+			accessibleNamespaces = append(accessibleNamespaces, key)
+		}
+	}
+
+	reqLogger.Info("Updating Kiali CR deployment.accessible_namespaces", "accessibleNamespaces", accessibleNamespaces)
+
+	err = unstructured.SetNestedStringSlice(kialiCR.UnstructuredContent(), accessibleNamespaces, "spec", "deployment", "accessible_namespaces")
+	if err != nil {
+		reqLogger.Error(err, "cannot set deployment.accessible_namespaces in Kiali CR", "kialiCRNamespace", kialiCRNamespace)
+	}
+
+	err = r.Client.Update(context.TODO(), kialiCR)
+	if err != nil {
+		reqLogger.Error(err, "cannot update Kiali CR with new accessible namespaces", "kialiCRNamespace", kialiCRNamespace)
+	}
+
+	reqLogger.Info("Kiali CR deployment.accessible_namespaces updated", "accessibleNamespaces", accessibleNamespaces)
+	return nil
 }
 
 func (r *ReconcileMemberList) getAllNamespaces() (map[string]struct{}, error) {

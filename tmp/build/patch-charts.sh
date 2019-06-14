@@ -75,6 +75,9 @@ function patchTemplates() {
            -e 's/tag:.*$/tag: '${KIALI_VERSION}'/' ${HELM_DIR}/istio/charts/kiali/values.yaml
   fi
 
+  # In Istio 1.2, this viewOnlyMode is there, but in Istio 1.1 we need to add it - it is supported by the latest Kiali
+  sed -i -e 's/grafanaURL:/viewOnlyMode: false\n  grafanaURL:/' ${HELM_DIR}/istio/charts/kiali/values.yaml
+
   # - remove the cleanup secrets job, we handle this in the installer
   rm ${HELM_DIR}/istio/charts/security/templates/cleanup-secrets.yaml
 
@@ -218,139 +221,21 @@ function patchTemplates() {
 }
 
 # The following modifications are made to the generated helm template for the Kiali yaml file
-# - remove all non kiali configuration
-# - remove the kiali username/password secret
+# - remove all non-kiali operator configuration
 function patchKialiTemplate() {
   echo "patching Kiali specific Helm charts"
 
-  # - remove the kiali username/password secret
-  rm ${HELM_DIR}/istio/charts/kiali/templates/demosecret.yaml
+  # we are using kiali operator, no need for the other templates
+  for yaml in demosecret clusterrolebinding clusterrole configmap deployment ingress serviceaccount service
+  do
+    rm "${HELM_DIR}/istio/charts/kiali/templates/${yaml}.yaml"
+  done
 }
 
 # The following modifications are made to the upstream kiali configuration for deployment on OpenShift
-# - Add jaeger and grafana URLs to the configmap as well as the identity certs
-# - Add the route.openshift.io api group to the cluster role
-# - Add the openshift annotation to the service
-# - Remove the prometheus, grafana environment from the deployment
-# - Add the kiali-cert volume mount
-# - Add the kiali-cert volume
-# - Add istio namespace to the configmap
 function patchKialiOpenShift() {
   echo "more patching of Kiali specific Helm charts"
-  # - Add jaeger and grafana URLs to the configmap as well as the identity certs
-  #   these should be defined in the values file kiali.dashboard.grafanaURL
-  #   and kiali.dashboard.jaegerURL.  If not specified, the URLs should be
-  #   determined from the routes created for Jaeger and Grafana.  This needs to
-  #   be done after rendering, unfortunately.
-  # - Add istio namespace to the configmap (for 1.0 templates)
-  # - Add the kiali-cert volume mount
-  # - Add the kiali-cert volume
-  # - Add jaeger's namespace to the configmap
-  # - Add grafana's service_namespace to the configmap
-  # - Add kiali log access
-  if [ -n "${PATCH_1_0}" ]; then
-    sed -i -e '/server:/ i\
-\    istio_namespace: {{ .Release.Namespace }}' ${HELM_DIR}/istio/charts/kiali/templates/configmap.yaml
-  fi
-  sed -i -e '/PROMETHEUS_SERVICE_URL/,+1 d' ${HELM_DIR}/istio/charts/kiali/templates/deployment.yaml
-  sed -i -e '/jaeger:/,/url:/ {
-    s/jaeger:/tracing:/
-    /url:/ a\
-\        namespace: \{\{ .Release.Namespace \}\}\
-\        enabled: true\
-\        auth:\
-\          type: bearer\
-\          use_kiali_token: true\
-\          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
-    }' ${HELM_DIR}/istio/charts/kiali/templates/configmap.yaml
-  sed -i -e '/port: 20001/ a\
-\      static_content_root_directory: /opt/kiali/console' \
-         -e '/grafana:/,/url:/ {
-             /url:/ a\
-\        service_namespace: \{\{ .Release.Namespace \}\}\
-\        in_cluster_url: https://grafana.\{\{ .Release.Namespace \}\}.svc:3000\
-\        auth:\
-\          type: bearer\
-\          use_kiali_token: true\
-\          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt\
-\      prometheus:\
-\        url: https://prometheus.\{\{ .Release.Namespace \}\}.svc:9090\
-\        auth:\
-\          type: bearer\
-\          use_kiali_token: true\
-\          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt\
-\{\{- if .Values.global.multitenant \}\}\
-\    api:\
-\      namespaces:\
-\        label_selector: maistra.io/member-of=\{\{ .Release.Namespace \}\}\
-\{\{- end \}\}\
-\{\{- if not (and (.Values.dashboard.user) (.Values.dashboard.passphrase)) \}\}\
-\    auth:\
-\      strategy: openshift\
-\{\{- end \}\}\
-\    identity:\
-\      cert_file: /kiali-cert/tls.crt\
-\      private_key_file: /kiali-cert/tls.key
-             }' ${HELM_DIR}/istio/charts/kiali/templates/configmap.yaml
-
-  # - Add the route.openshift.io api group to the cluster role
-  sed -i -e '/apiGroups:.*config.istio.io/ i\
-\- apiGroups: ["project.openshift.io"]\
-\  resources:\
-\  - projects\
-\  verbs:\
-\  - get\
-\- apiGroups: ["route.openshift.io"]\
-\  resources:\
-\  - routes\
-\  verbs:\
-\  - get\
-\- apiGroups: [""]\
-\  resources:\
-\  - routes\
-\  verbs:\
-\  - get\
-\- apiGroups: ["apps.openshift.io"]\
-\  resources:\
-\  - deploymentconfigs\
-\  verbs:\
-\  - get\
-\  - list\
-\  - watch' ${HELM_DIR}/istio/charts/kiali/templates/clusterrole.yaml
-  # - Add the pods/log resource permission
-  sed -i -e 's/^\( *- pods\)$/\1\
-\1\/log/' ${HELM_DIR}/istio/charts/kiali/templates/clusterrole.yaml
-
-  # - Add the openshift annotation to the service
-  sed -i -e '/metadata/ a\
-\  annotations:\
-\    service.alpha.openshift.io/serving-cert-secret-name: kiali-cert-secret' ${HELM_DIR}/istio/charts/kiali/templates/service.yaml
-
-  # - Remove the prometheus, grafana environment from the deployment
-  sed -i -e '/SERVER_CREDENTIALS_USERNAME/,/volumeMounts/ {
-    /volumeMounts/b
-    d
-  }' ${HELM_DIR}/istio/charts/kiali/templates/deployment.yaml
-
-  # - Add the kiali-cert volume mount
-  # - Add the kiali-cert volume
-  sed -i -e '/kind.*Deployment$/,/^.*affinity:/ {
-    /volumeMounts:/ {
-      N
-      N
-      a\
-\        - name: kiali-cert\
-\          mountPath: "/kiali-cert"
-    }
-    /configMap:/ {
-      N
-      a\
-\      - name: kiali-cert\
-\        secret:\
-\          secretName: kiali-cert-secret
-    }
-  }' ${HELM_DIR}/istio/charts/kiali/templates/deployment.yaml
-
+  echo "Nothing to do - using kiali operator and the kiali-cr.yaml"
 }
 
 function convertClusterToNamespaced() {
@@ -420,11 +305,6 @@ function patchMultiTenant() {
 
   # istiocoredns
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/istiocoredns/templates/clusterrolebinding.yaml
-
-  # kiali
-  convertClusterRoleBinding ${HELM_DIR}/istio/charts/kiali/templates/clusterrolebinding.yaml
-  sed -i -e 's/\(name:.*\)$/\1-{{ .Release.Namespace }}/' ${HELM_DIR}/istio/charts/kiali/templates/clusterrole.yaml
-  sed -i -e 's/\(name: *kiali\)$/\1-{{ .Release.Namespace }}/' ${HELM_DIR}/istio/charts/kiali/templates/clusterrolebinding.yaml
 
   # mixer
   sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ {
