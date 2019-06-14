@@ -1,0 +1,59 @@
+apiVersion: kiali.io/v1alpha1
+kind: Kiali
+metadata:
+  name: kiali
+  namespace: {{ .Release.Namespace }}
+spec:
+  installation_tag: "Kiali [{{ .Release.Namespace }}]"
+  istio_namespace: "{{ .Release.Namespace }}"
+
+  auth:
+{{- if not (and (.Values.dashboard.user) (.Values.dashboard.passphrase)) }}
+    strategy: "openshift"
+{{- else }}
+    strategy: "login"
+{{- end }}
+
+  deployment:
+    accessible_namespaces:
+{{- if not .Values.global.multitenant }}
+    - "**"
+{{- else }}
+    - "{{ .Release.Namespace }}"
+{{- end }}
+    image_name: "{{ .Values.hub }}/kiali"
+    image_pull_policy: "{{ .Values.global.imagePullPolicy }}"
+    image_version: "{{ .Values.tag }}"
+    ingress_enabled: {{ .Values.ingress.enabled }}
+    namespace: "{{ .Release.Namespace }}"
+    secret_name: "{{ .Values.dashboard.secretName }}"
+    version_label: "{{ .Values.tag }}"
+    view_only_mode: {{ .Values.dashboard.viewOnlyMode }}
+
+  external_services:
+    grafana:
+      auth:
+        ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
+        type: "bearer"
+        use_kiali_token: true
+      enabled: true
+      in_cluster_url: "https://grafana.{{ .Release.Namespace }}.svc:3000"
+      url: "{{ .Values.dashboard.grafanaURL }}"
+    prometheus:
+      auth:
+        ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
+        type: "bearer"
+        use_kiali_token: true
+      url: "https://prometheus.{{ .Release.Namespace }}.svc:9090"
+    tracing:
+      auth:
+        ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
+        type: "bearer"
+        use_kiali_token: true
+      enabled: true
+      namespace: "{{ .Release.Namespace }}"
+      service : ""
+      url: "{{ .Values.dashboard.jaegerURL }}"
+
+  server:
+    web_root: "{{ .Values.contextPath }}"
