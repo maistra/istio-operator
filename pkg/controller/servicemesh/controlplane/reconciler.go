@@ -6,7 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,11 +66,16 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 		if namespace.Labels == nil {
 			namespace.Labels = map[string]string{}
 		}
+
+		// Label the control plane namespace so that Kiali knows about it
+		namespace.Labels[common.MemberOfKey] = r.Instance.Namespace
+
 		if label, ok := namespace.Labels["maistra.io/ignore-namespace"]; !ok || label != "ignore" {
 			r.Log.Info("Adding maistra.io/ignore-namespace=ignore label to Request.Namespace")
 			namespace.Labels["maistra.io/ignore-namespace"] = "ignore"
-			err = r.Client.Update(context.TODO(), namespace)
 		}
+
+		err = r.Client.Update(context.TODO(), namespace)
 	} else {
 		allErrors = append(allErrors, err)
 	}
