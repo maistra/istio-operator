@@ -53,6 +53,11 @@ spec:
   subresources:
     status: {}
   version: v1
+  additionalPrinterColumns:
+  - JSONPath: .spec.members
+    description: Namespaces that are members of this Control Plane
+    name: Members
+    type: string
 
 ---
 
