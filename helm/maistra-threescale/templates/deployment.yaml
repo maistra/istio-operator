@@ -45,6 +45,8 @@ spec:
           value: "{{ .Values.PARAM_THREESCALE_LOG_LEVEL }}"
         - name: "THREESCALE_LOG_JSON"
           value: "{{ .Values.PARAM_THREESCALE_LOG_JSON }}"
+        - name: "THREESCALE_LOG_GRPC"
+          value: "{{ .Values.PARAM_THREESCALE_LOG_GRPC }}"
         - name: "THREESCALE_REPORT_METRICS"
           value: "{{ .Values.PARAM_THREESCALE_REPORT_METRICS }}"
         - name: "THREESCALE_METRICS_PORT"
@@ -61,6 +63,8 @@ spec:
           value: "{{ .Values.PARAM_THREESCALE_ALLOW_INSECURE_CONN }}"
         - name: "THREESCALE_CLIENT_TIMEOUT_SECONDS"
           value: "{{ .Values.PARAM_THREESCALE_CLIENT_TIMEOUT_SECONDS }}"
+        - name: "THREESCALE_GRPC_CONN_MAX_SECONDS"
+          value: "{{ .Values.PARAM_THREESCALE_GRPC_CONN_MAX_SECONDS }}"
         resources: {}
         terminationMessagePath: /dev/termination-log
       dnsPolicy: ClusterFirst
