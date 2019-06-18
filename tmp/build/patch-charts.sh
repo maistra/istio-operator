@@ -109,6 +109,13 @@ function patchTemplates() {
     }
   }' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
 
+  # add annotation for Multus & Istio CNI
+  sed -i -e 's/^\(.*template:.*\)$/\1\
+    \{\{- if .Values.istio_cni.enabled \}\}\
+      annotations:\
+        k8s.v1.cni.cncf.io\/networks: {{ .Release.Namespace }}-istio-cni\
+    \{\{- end \}\}/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
+
   # allow the sidecar injector to set the runAsUser ID dynamically
   # drop unneeded capabilities from sidecar container, so using the restricted SCC doesn't require the SCC admission controller to mutate the pod
   sed -i -e 's/^\(.*runAsUser: 1337.*\)$/\
