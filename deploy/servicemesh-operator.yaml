@@ -180,12 +180,8 @@ rules:
 - apiGroups:
   - maistra.io
   resources:
-  - servicemeshcontrolplanes
-  - servicemeshcontrolplanes/status
-  - servicemeshcontrolplanes/finalizers
-  - servicemeshmemberrolls
-  - servicemeshmemberrolls/status
-  - servicemeshmemberrolls/finalizers
+  # for istio-admin clusterrole
+  - '*'
   verbs:
   - '*'
 - apiGroups:
