@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -194,7 +195,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		reqLogger.Info("Deleting ServiceMeshMemberRoll")
 
 		// create reconciler
-		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, instance.Namespace, false)
+		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, instance.Namespace, false, false)
 		if err == nil {
 			for _, namespace := range instance.Spec.Members {
 				err := reconciler.removeNamespaceFromMesh(namespace)
@@ -312,6 +313,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	// never include the mesh namespace in unconfigured list
 	delete(unconfiguredMembers, instance.Namespace)
 
+	isCNIEnabled := isCNIEnabled(&mesh)
 	isMultitenant := isMeshMultitenant(&mesh)
 
 	if instance.Generation != instance.Status.ObservedGeneration { // member roll has been updated
@@ -328,7 +330,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 
 		// create reconciler
-		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, isMultitenant)
+		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, isMultitenant, isCNIEnabled)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -366,7 +368,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		reqLogger.Info("Reconciling newly created namespaces associated with this ServiceMeshMemberRoll")
 
 		// create reconciler
-		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, isMultitenant)
+		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, isMultitenant, isCNIEnabled)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -392,7 +394,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		reqLogger.Info("Reconciling ServiceMeshMemberRoll namespaces with new generation of ServiceMeshControlPlane")
 
 		// create reconciler
-		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, isMultitenant)
+		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, isMultitenant, isCNIEnabled)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -516,18 +518,20 @@ type namespaceReconciler struct {
 	logger               logr.Logger
 	meshNamespace        string
 	isMultitenant        bool
+	isCNIEnabled         bool
 	networkingStrategy   networkingStrategy
 	roleBindingsList     *unstructured.UnstructuredList
 	requiredRoleBindings map[string]struct{}
 }
 
-func newNamespaceReconciler(client client.Client, logger logr.Logger, meshNamespace string, isMultitenant bool) (*namespaceReconciler, error) {
+func newNamespaceReconciler(client client.Client, logger logr.Logger, meshNamespace string, isMultitenant, isCNIEnabled bool) (*namespaceReconciler, error) {
 	var err error
 	reconciler := &namespaceReconciler{
 		client:               client,
 		logger:               logger.WithValues("MeshNamespace", meshNamespace),
 		meshNamespace:        meshNamespace,
 		isMultitenant:        isMultitenant,
+		isCNIEnabled:         isCNIEnabled,
 		requiredRoleBindings: map[string]struct{}{},
 	}
 	err = reconciler.initializeNetworkingStrategy()
@@ -633,6 +637,12 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(namespace string) error {
 		allErrors = append(allErrors, err)
 	}
 
+	// remove NetworkAttachmentDefinition so that Multus CNI no longer invokes Istio CNI for pods in this namespace
+	err = r.removeNetworkAttachmentDefinition(namespace, r.meshNamespace, logger)
+	if err != nil {
+		allErrors = append(allErrors, err)
+	}
+
 	// delete network policies
 	err = r.networkingStrategy.removeNamespaceFromMesh(namespace)
 	if err != nil {
@@ -690,6 +700,16 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
 
 	// add role bindings
 	err = r.reconcileRoleBindings(namespace, r.logger)
+	if err != nil {
+		allErrors = append(allErrors, err)
+	}
+
+	if r.isCNIEnabled {
+		// add NetworkAttachmentDefinition to tell Multus to invoke Istio CNI for pods in this namespace
+		err = r.addNetworkAttachmentDefinition(namespace, r.meshNamespace, logger)
+	} else {
+		err = r.removeNetworkAttachmentDefinition(namespace, r.meshNamespace, logger)
+	}
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
@@ -784,6 +804,68 @@ func (r *namespaceReconciler) reconcileRoleBindings(namespace string, reqLogger 
 	// maybe a following reconcile will add the required role binding that failed.  if it was a delete that failed, we're
 	// just leaving behind some cruft.
 	return utilerrors.NewAggregate(allErrors)
+}
+
+func (r *namespaceReconciler) addNetworkAttachmentDefinition(namespace, meshNamespace string, reqLogger logr.Logger) error {
+	name := fmt.Sprintf("%s-%s", meshNamespace, "istio-cni") // must match name of .conf file in multus.d
+
+	netAttachDef := &unstructured.Unstructured{}
+	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "k8s.cni.cncf.io",
+		Version: "v1",
+		Kind:    "NetworkAttachmentDefinition",
+	})
+
+	err := r.client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, netAttachDef)
+	if err == nil {
+		// resource exists, do nothing
+		return nil
+	}
+	if !errors.IsNotFound(err) {
+		return fmt.Errorf("Could not get NetworkAttachmentDefinition %s/%s: %v", namespace, name, err)
+	}
+
+	// TODO: update resource if its state isn't what we want
+
+	netAttachDef.SetNamespace(namespace)
+	netAttachDef.SetName(name)
+	err = r.client.Create(context.TODO(), netAttachDef)
+	if err != nil {
+		return fmt.Errorf("Could not create NetworkAttachmentDefinition %s/%s: %v", namespace, name, err)
+	}
+	return nil
+}
+
+func (r *namespaceReconciler) removeNetworkAttachmentDefinition(namespace, meshNamespace string, reqLogger logr.Logger) error {
+	name := fmt.Sprintf("%s-%s", meshNamespace, "istio-cni")
+
+	netAttachDef := &unstructured.Unstructured{}
+	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "k8s.cni.cncf.io",
+		Version: "v1",
+		Kind:    "NetworkAttachmentDefinition",
+	})
+
+	err := r.client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, netAttachDef)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// resource doesn't exist, so everything's fine
+			return nil
+		} else {
+			return fmt.Errorf("Could not get NetworkAttachmentDefinition %s/%s: %v", namespace, name, err)
+		}
+	}
+
+	err = r.client.Delete(context.TODO(), netAttachDef, client.PropagationPolicy(metav1.DeletePropagationOrphan))
+	if err == nil {
+		// resource successfully deleted
+		return nil
+	}
+	if !errors.IsNotFound(err) {
+		// resource was deleted between our Get call and our Delete call - everything is fine
+		return nil
+	}
+	return fmt.Errorf("Could not delete NetworkAttachmentDefinition %s/%s: %v", namespace, name, err)
 }
 
 func (r *ReconcileMemberList) reconcilePodServiceAccounts(namespace string, mesh *v1.ServiceMeshControlPlane, reqLogger logr.Logger) error {
@@ -978,6 +1060,15 @@ func isMeshMultitenant(mesh *v1.ServiceMeshControlPlane) bool {
 				}
 			}
 		}
+	}
+	return false
+}
+
+func isCNIEnabled(mesh *v1.ServiceMeshControlPlane) bool {
+	val := mesh.Spec.Istio["istio_cni"]
+	if cni, ok := val.(map[string]interface{}); ok {
+		val = cni["enabled"]
+		return val == "y" || val == "yes" || val == "true" || val == "on" || val == true
 	}
 	return false
 }

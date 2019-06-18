@@ -370,6 +370,17 @@ rules:
   - subjectaccessreviews
   verbs:
   - create
+# cni
+- apiGroups: ["k8s.cni.cncf.io"]
+  resources:
+    - network-attachment-definitions
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - watch
 
 ---
 
