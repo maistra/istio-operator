@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"fmt"
 	"path"
 	"strconv"
 	"strings"
@@ -68,11 +69,12 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 		}
 
 		// Label the control plane namespace so that Kiali knows about it
+		r.Log.Info(fmt.Sprintf("Adding %s label to namespace %s", common.MemberOfKey, r.Instance.Namespace))
 		namespace.Labels[common.MemberOfKey] = r.Instance.Namespace
 
-		if label, ok := namespace.Labels["maistra.io/ignore-namespace"]; !ok || label != "ignore" {
-			r.Log.Info("Adding maistra.io/ignore-namespace=ignore label to Request.Namespace")
-			namespace.Labels["maistra.io/ignore-namespace"] = "ignore"
+		if label, ok := namespace.Labels[common.IgnoreNamespace]; !ok || label != "ignore" {
+			r.Log.Info(fmt.Sprintf("Adding %s=ignore label to namespace %s", common.IgnoreNamespace, r.Instance.Namespace))
+			namespace.Labels[common.IgnoreNamespace] = "ignore"
 		}
 
 		err = r.Client.Update(context.TODO(), namespace)

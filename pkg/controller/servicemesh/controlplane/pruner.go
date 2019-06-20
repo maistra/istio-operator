@@ -2,9 +2,10 @@ package controlplane
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -78,6 +80,11 @@ func (r *ControlPlaneReconciler) prune(generation int64) error {
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
+	err = r.pruneNamespaceLabels(generation)
+	if err != nil {
+		allErrors = append(allErrors, err)
+	}
+
 	return utilerrors.NewAggregate(allErrors)
 }
 
@@ -96,7 +103,7 @@ func (r *ControlPlaneReconciler) pruneResources(gvks []schema.GroupVersionKind, 
 		}
 		for _, object := range objects.Items {
 			if generation, ok := common.GetAnnotation(&object, common.MeshGenerationKey); ok && generation != instanceGeneration {
-                r.Log.Info("pruning resource", "resource", v1.NewResourceKey(&object, &object))
+				r.Log.Info("pruning resource", "resource", v1.NewResourceKey(&object, &object))
 				err = r.Client.Delete(context.TODO(), &object, client.PropagationPolicy(metav1.DeletePropagationBackground))
 				if err != nil {
 					r.Log.Error(err, "Error pruning resource", "resource", v1.NewResourceKey(&object, &object))
@@ -108,4 +115,27 @@ func (r *ControlPlaneReconciler) pruneResources(gvks []schema.GroupVersionKind, 
 		}
 	}
 	return utilerrors.NewAggregate(allErrors)
+}
+
+func (r *ControlPlaneReconciler) pruneNamespaceLabels(generation int64) error {
+	if generation >= 0 {
+		return nil
+	}
+
+	namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: r.Instance.Namespace}}
+
+	err := r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Namespace}, namespace)
+	if err != nil {
+		return err
+	}
+
+	if namespace.Labels == nil {
+		return nil
+	}
+
+	r.Log.Info(fmt.Sprintf("Removing %s and %s labels from namespace %s", common.MemberOfKey, common.IgnoreNamespace, r.Instance.Namespace))
+	delete(namespace.Labels, common.MemberOfKey)
+	delete(namespace.Labels, common.IgnoreNamespace)
+
+	return r.Client.Update(context.TODO(), namespace)
 }

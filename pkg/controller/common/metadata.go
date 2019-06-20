@@ -15,6 +15,9 @@ const (
 	// OwnerKey represents the mesh (namespace) to which the resource relates
 	OwnerKey = MetadataNamespace + "/owner"
 
+	// IgnoreNamespace tells the injector to ignore a namespace
+	IgnoreNamespace = MetadataNamespace + "/ignore-namespace"
+
 	// MemberOfKey represents the mesh (namespace) to which the resource relates
 	MemberOfKey       = MetadataNamespace + "/member-of"
 	LegacyMemberOfKey = "istio.openshift.io/member-of"
