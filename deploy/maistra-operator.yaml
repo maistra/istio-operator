@@ -308,7 +308,7 @@ rules:
   - get
   - list
   - watch
-- nonResourceURLs: 
+- nonResourceURLs:
   - "/metrics"
   verbs:
   - get
