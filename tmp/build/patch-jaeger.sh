@@ -14,12 +14,6 @@ function jaeger_patch_values() {
   sed -i -e '/service:$/,/externalPort:/ {
     s/name:.*$/name: jaeger-collector-zipkin/
 }' ${HELM_DIR}/istio/charts/tracing/values.yaml
-
-  # add annotations
-  sed -i \
-    -e 's|  annotations: {}|  annotations:\n    service.alpha.openshift.io/serving-cert-secret-name: jaeger-query-tls|' \
-    ${HELM_DIR}/istio/charts/tracing/values.yaml
-
 }
 
 function JaegerPatch() {

@@ -19,7 +19,7 @@ spec:
     kind: Service
     name: tracing
   tls:
-    termination: edge
+    termination: passthrough
 {{ if eq .Values.provider "jaeger" }}
 ---
 apiVersion: route.openshift.io/v1

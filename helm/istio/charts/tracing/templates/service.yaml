@@ -40,6 +40,7 @@ items:
     name: tracing
     namespace: {{ .Release.Namespace }}
     annotations:
+      service.alpha.openshift.io/serving-cert-secret-name: tracing-tls
       {{- range $key, $val := .Values.service.annotations }}
       {{ $key }}: {{ $val | quote }}
       {{- end }}
@@ -64,7 +65,7 @@ items:
         port: 80
         protocol: TCP
 {{ if eq .Values.provider "jaeger" }}
-        targetPort: 16686
+        targetPort: 3002
 {{ else }}
         targetPort: 9411
 {{ end}}

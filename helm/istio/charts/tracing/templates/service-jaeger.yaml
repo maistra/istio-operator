@@ -17,6 +17,7 @@ items:
     name: jaeger-query
     namespace: {{ .Release.Namespace }}
     annotations:
+      service.alpha.openshift.io/serving-cert-secret-name: jaeger-query-tls
       {{- range $key, $val := .Values.service.annotations }}
       {{ $key }}: {{ $val | quote }}
       {{- end }}
