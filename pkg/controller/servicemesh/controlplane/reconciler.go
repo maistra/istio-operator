@@ -68,16 +68,24 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 			namespace.Labels = map[string]string{}
 		}
 
-		// Label the control plane namespace so that Kiali knows about it
-		r.Log.Info(fmt.Sprintf("Adding %s label to namespace %s", common.MemberOfKey, r.Instance.Namespace))
-		namespace.Labels[common.MemberOfKey] = r.Instance.Namespace
+		needsUpdate := false
+
+		if label, ok := namespace.Labels[common.MemberOfKey]; !ok || label != r.Instance.Namespace {
+			// Label the control plane namespace so that Kiali knows about it
+			r.Log.Info(fmt.Sprintf("Adding %s=%s label to namespace %s", common.MemberOfKey, r.Instance.Namespace, r.Instance.Namespace))
+			namespace.Labels[common.MemberOfKey] = r.Instance.Namespace
+			needsUpdate = true
+		}
 
 		if label, ok := namespace.Labels[common.IgnoreNamespace]; !ok || label != "ignore" {
 			r.Log.Info(fmt.Sprintf("Adding %s=ignore label to namespace %s", common.IgnoreNamespace, r.Instance.Namespace))
 			namespace.Labels[common.IgnoreNamespace] = "ignore"
+			needsUpdate = true
 		}
 
-		err = r.Client.Update(context.TODO(), namespace)
+		if needsUpdate {
+			err = r.Client.Update(context.TODO(), namespace)
+		}
 	} else {
 		allErrors = append(allErrors, err)
 	}
