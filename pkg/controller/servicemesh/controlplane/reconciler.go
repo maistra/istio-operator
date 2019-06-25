@@ -2,11 +2,13 @@ package controlplane
 
 import (
 	"context"
+	"fmt"
 	"path"
 	"strconv"
 	"strings"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,12 +64,23 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: r.Instance.Namespace}}
 	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Namespace}, namespace)
 	if err == nil {
+		updateLabels := false
 		if namespace.Labels == nil {
 			namespace.Labels = map[string]string{}
 		}
+		// make sure injection is disabled for the control plane
 		if label, ok := namespace.Labels["maistra.io/ignore-namespace"]; !ok || label != "ignore" {
 			r.Log.Info("Adding maistra.io/ignore-namespace=ignore label to Request.Namespace")
 			namespace.Labels["maistra.io/ignore-namespace"] = "ignore"
+			updateLabels = true
+		}
+		// make sure the member-of label is specified, so networking works correctly
+		if label, ok := namespace.Labels[common.MemberOfKey]; !ok || label != namespace.GetName() {
+			r.Log.Info(fmt.Sprintf("Adding %s label to Request.Namespace", common.MemberOfKey))
+			namespace.Labels[common.MemberOfKey] = namespace.GetName()
+			updateLabels = true
+		}
+		if updateLabels {
 			err = r.Client.Update(context.TODO(), namespace)
 		}
 	} else {

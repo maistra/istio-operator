@@ -583,15 +583,23 @@
 
 [[projects]]
   branch = "release-3.11"
-  digest = "1:519f22942517726181a5208a95d3715ecb6f7e826aba3b3fe17b5cfaa9fc9e32"
+  digest = "1:28c37077c0028cc45719f11bd753b24619008f6fc08fb1d16b222888e73bfd7a"
   name = "github.com/openshift/api"
   packages = [
     "apps/v1",
+    "network/v1",
     "route/v1",
-    "security/v1",
   ]
   pruneopts = "NUT"
   revision = "5ad8479f64f1b60ee9c62ce8ef1fe6638838725e"
+
+[[projects]]
+  branch = "release-3.11"
+  digest = "1:1d2c999deccb785491ec38be9ab2179cf1207a1035ba34264eca1e1cb73da38c"
+  name = "github.com/openshift/library-go"
+  packages = ["pkg/network/networkapihelpers"]
+  pruneopts = "NUT"
+  revision = "0b8367a4679859036c27a30dbe010d76409e7075"
 
 [[projects]]
   digest = "1:eb76cf038fe9ce017d0b20e2f46b2a7a930a8a996c3261530d8d150d24df96fc"
@@ -1537,35 +1545,38 @@
     "github.com/ghodss/yaml",
     "github.com/go-logr/logr",
     "github.com/openshift/api/apps/v1",
+    "github.com/openshift/api/network/v1",
     "github.com/openshift/api/route/v1",
-    "github.com/openshift/api/security/v1",
+    "github.com/openshift/library-go/pkg/network/networkapihelpers",
     "github.com/operator-framework/operator-sdk/pkg/k8sutil",
     "github.com/operator-framework/operator-sdk/pkg/leader",
     "github.com/operator-framework/operator-sdk/pkg/metrics",
     "github.com/operator-framework/operator-sdk/pkg/ready",
     "github.com/operator-framework/operator-sdk/version",
     "github.com/pkg/errors",
-    "github.com/sirupsen/logrus",
     "istio.io/api/mesh/v1alpha1",
     "k8s.io/api/apps/v1beta1",
     "k8s.io/api/autoscaling/v2beta1",
     "k8s.io/api/batch/v1",
     "k8s.io/api/core/v1",
     "k8s.io/api/extensions/v1beta1",
+    "k8s.io/api/networking/v1",
     "k8s.io/api/policy/v1beta1",
     "k8s.io/api/rbac/v1",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/api/meta",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
+    "k8s.io/apimachinery/pkg/labels",
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",
+    "k8s.io/apimachinery/pkg/selection",
+    "k8s.io/apimachinery/pkg/types",
     "k8s.io/apimachinery/pkg/util/errors",
     "k8s.io/apimachinery/pkg/util/jsonmergepatch",
     "k8s.io/apimachinery/pkg/util/mergepatch",
     "k8s.io/apimachinery/pkg/util/strategicpatch",
     "k8s.io/apimachinery/pkg/util/wait",
-    "k8s.io/apiserver/pkg/authentication/serviceaccount",
     "k8s.io/client-go/discovery",
     "k8s.io/client-go/kubernetes/scheme",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",

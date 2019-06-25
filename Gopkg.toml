@@ -118,3 +118,7 @@ ignored = [
     name = "k8s.io/gengo"
     non-go = false
     unused-packages = false
+
+[[constraint]]
+  branch = "release-3.11"
+  name = "github.com/openshift/library-go"

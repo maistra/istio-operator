@@ -123,6 +123,12 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
+  verbs:
+  - '*'
+- apiGroups:
   - rbac.authorization.k8s.io
   resources:
   - clusterrolebindings
@@ -204,6 +210,21 @@ rules:
   - deploymentconfigs
   verbs:
   - '*'
+- apiGroups:
+  - network.openshift.io
+  resources:
+  - clusternetworks
+  verbs:
+  - 'get'
+- apiGroups:
+  - network.openshift.io
+  resources:
+  - netnamespaces
+  verbs:
+  - 'get'
+  - 'list'
+  - 'watch'
+  - 'update'
 - apiGroups:
   - oauth.openshift.io
   resources:

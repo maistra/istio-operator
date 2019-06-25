@@ -1,0 +1,23 @@
+{{- if .Values.global.multitenant }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: istio-mesh
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: istio
+    chart: {{ template "istio.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+spec:
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          "maistra.io/member-of": "{{ .Release.Namespace }}"
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          "maistra.io/member-of": "{{ .Release.Namespace }}"
+{{- end }}
