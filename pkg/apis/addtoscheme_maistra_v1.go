@@ -4,6 +4,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 
 	originappsv1 "github.com/openshift/api/apps/v1"
+	networkv1 "github.com/openshift/api/network/v1"
 	routev1 "github.com/openshift/api/route/v1"
 
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
@@ -20,6 +21,7 @@ func init() {
 	AddToSchemes = append(AddToSchemes,
 		v1.SchemeBuilder.AddToScheme,
 		originappsv1.AddToScheme,
+		networkv1.AddToScheme,
 		routev1.AddToScheme,
 		autoscalingv2beta1.AddToScheme,
 		policyv1beta1.AddToScheme,

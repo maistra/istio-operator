@@ -37,6 +37,7 @@ var (
 		schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Pod"},
 		schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Secret"},
 		schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ServiceAccount"},
+		schema.GroupVersionKind{Group: "networking.k8s.io", Version: "v1", Kind: "NetworkPolicy"},
 		schema.GroupVersionKind{Group: "rbac.authorization.k8s.io", Version: "v1beta1", Kind: "RoleBinding"},
 		schema.GroupVersionKind{Group: "rbac.authorization.k8s.io", Version: "v1", Kind: "RoleBinding"},
 		schema.GroupVersionKind{Group: "rbac.authorization.k8s.io", Version: "v1beta1", Kind: "Role"},
