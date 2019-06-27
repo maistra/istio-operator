@@ -106,6 +106,12 @@ function patchTemplates() {
     }
   }' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
 
+  # drop CAP_MKNOD from sidecar container, so using the anyuid SCC doesn't require the SCC admission controller to mutate the pod
+  sed -i -e 's/^\(.*runAsUser: 1337.*\)$/\1\
+          capabilities:\
+            drop:\
+            - MKNOD/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
+
   # - update the namespaceSelector to ignore namespaces with the label maistra.io/ignore-namespace
   # set sidecarInjectorWebhook.enableNamespacesByDefault=true
   sed -i -e '/if \.Values\.enableNamespacesByDefault/,/else/ {
