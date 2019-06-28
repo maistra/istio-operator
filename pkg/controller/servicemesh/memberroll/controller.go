@@ -3,7 +3,6 @@ package memberroll
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
@@ -314,7 +313,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	delete(unconfiguredMembers, instance.Namespace)
 
 	isCNIEnabled := isCNIEnabled(&mesh)
-	isMultitenant := isMeshMultitenant(&mesh)
+	isMultitenant := common.IsMeshMultitenant(&mesh)
 
 	if instance.Generation != instance.Status.ObservedGeneration { // member roll has been updated
 
@@ -1040,28 +1039,6 @@ func nameSet(items []unstructured.Unstructured) map[string]struct{} {
 		set[object.GetName()] = struct{}{}
 	}
 	return set
-}
-
-func isMeshMultitenant(mesh *v1.ServiceMeshControlPlane) bool {
-	if mesh == nil {
-		return false
-	}
-	if global, ok := mesh.Spec.Istio["global"]; ok {
-		switch globalMap := global.(type) {
-		case map[string]interface{}:
-			if multitenant, ok := globalMap["multitenant"]; ok {
-				switch flag := multitenant.(type) {
-				case bool:
-					return flag
-				case string:
-					if boolval, err := strconv.ParseBool(flag); err != nil {
-						return boolval
-					}
-				}
-			}
-		}
-	}
-	return false
 }
 
 func isCNIEnabled(mesh *v1.ServiceMeshControlPlane) bool {
