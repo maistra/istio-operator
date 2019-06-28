@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"strconv"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -91,13 +92,15 @@ func (r *ControlPlaneReconciler) pruneResources(gvks []schema.GroupVersionKind, 
 		objects.SetGroupVersionKind(gvk)
 		err := r.Client.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(namespace), objects)
 		if err != nil {
-			r.Log.Error(err, "Error retrieving resources to prune", "type", gvk.String())
-			allErrors = append(allErrors, err)
+			if !meta.IsNoMatchError(err) {
+				r.Log.Error(err, "Error retrieving resources to prune", "type", gvk.String())
+				allErrors = append(allErrors, err)
+			}
 			continue
 		}
 		for _, object := range objects.Items {
 			if generation, ok := common.GetAnnotation(&object, common.MeshGenerationKey); ok && generation != instanceGeneration {
-                r.Log.Info("pruning resource", "resource", v1.NewResourceKey(&object, &object))
+				r.Log.Info("pruning resource", "resource", v1.NewResourceKey(&object, &object))
 				err = r.Client.Delete(context.TODO(), &object, client.PropagationPolicy(metav1.DeletePropagationBackground))
 				if err != nil {
 					r.Log.Error(err, "Error pruning resource", "resource", v1.NewResourceKey(&object, &object))
