@@ -55,8 +55,10 @@ function prometheus_patch_deployment() {
     sed -i -r -e 's/image:(.*)prometheus:/image:\1prometheus-rhel8:/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
   fi
 
-  sed -i -e '/args:/ a\
-            - --storage.tsdb.path=/prometheus' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+  sed -i -e '/image.*prometheus/,/args:/ {
+      /args:/ a\
+            - --storage.tsdb.path=/prometheus
+    }' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 }
 
 function prometheus_patch_service() {

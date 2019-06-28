@@ -61,6 +61,64 @@ spec:
 
 ---
 
+# create role that can be used to grant users permission to create smcp and smmr resources
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: maistra-admin
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+rules:
+- apiGroups: ["maistra.io"]
+  resources: ["*"]
+  verbs: ["*"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: maistra-admin
+roleRef:
+  kind: ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+  name: maistra-admin
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: istio-admin
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+rules:
+- apiGroups: ["config.istio.io"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["networking.istio.io"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["authentication.istio.io"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["rbac.istio.io"]
+  resources: ["*"]
+  verbs: ["*"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: istio-admin
+roleRef:
+  kind: ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+  name: istio-admin
+
+---
+
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -175,7 +233,7 @@ rules:
   resources:
   # for galley, *: get, list, watch
   # for pilot, *: *
-  # for istio-authenticated, *: *
+  # for istio-admin, *: *
   - '*'
   - gateways
   - destinationrules
@@ -320,7 +378,7 @@ rules:
   - list
   - watch
 # for pilot
-# for istio-authenticated, *: *
+# for istio-admin, *: *
 - apiGroups:
   - rbac.istio.io
   resources:
@@ -405,6 +463,53 @@ roleRef:
   name: istio-operator
   apiGroup: rbac.authorization.k8s.io
 
+---
+
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  # this must match what is used inside the operator, which is <operator-namespace>.servicemesh-resources.maistra.io
+  name: istio-operator.servicemesh-resources.maistra.io
+webhooks:
+- name: smcp.validation.maistra.io
+  rules:
+  - apiGroups:
+    - maistra.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - servicemeshcontrolplanes
+  failurePolicy: Fail
+  clientConfig:
+    caBundle: ""
+    service:
+      name: admission-controller
+      namespace: istio-operator
+      path: /validate-smcp
+  namespaceSelector: {}
+- name: smmr.validation.maistra.io
+  rules:
+  - apiGroups:
+    - maistra.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - servicemeshmemberrolls
+  failurePolicy: Fail
+  clientConfig:
+    caBundle: ""
+    service:
+      name: admission-controller
+      namespace: istio-operator
+      path: /validate-smmr
+  namespaceSelector: {}
+  
 ---
 
 apiVersion: apps/v1
