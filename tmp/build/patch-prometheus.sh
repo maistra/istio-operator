@@ -78,6 +78,15 @@ function prometheus_patch_misc() {
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/prometheus/templates/clusterrolebindings.yaml
 }
 
+function prometheus_patch_configmap() {
+  sed -i -e "/job_name: 'kubernetes-apiservers'/,/^$/ c\
+\    # config removed" ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml
+  sed -i -e "/job_name: 'kubernetes-nodes'/,/^$/ c\
+\    # config removed"  ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml 
+  sed -i -e "/job_name: 'kubernetes-cadvisor'/,/^$/ c\
+\    # config removed" ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml
+}	
+
 function prometheusPatch() {
   echo "Patching Prometheus"
 
@@ -86,6 +95,7 @@ function prometheusPatch() {
   prometheus_patch_service_account
   prometheus_patch_values
   prometheus_patch_misc
+  prometheus_patch_configmap
 }
 
 prometheusPatch
