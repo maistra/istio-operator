@@ -49,6 +49,14 @@ func (r *ControlPlaneReconciler) preprocessObject(object *unstructured.Unstructu
 	switch object.GetKind() {
 	case "Kiali":
 		return r.patchKialiConfig(object)
+	case "ConfigMap":
+		if object.GetName() == "istio-grafana" {
+			return r.patchGrafanaConfig(object)
+		}
+	case "Secret":
+		if object.GetName() == "prometheus-htpasswd" {
+			return r.patchPrometheusHtpasswd(object)
+		}
 	}
 	return nil
 }

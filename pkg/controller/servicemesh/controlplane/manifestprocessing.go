@@ -6,7 +6,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	"k8s.io/apimachinery/pkg/api/errors"
