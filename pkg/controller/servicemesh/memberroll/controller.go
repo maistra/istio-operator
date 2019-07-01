@@ -218,8 +218,8 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 			break
 		}
 
-		// tell Kiali that MT mode is disabled. This allows Kiali to see the full cluster.
-		r.reconcileKiali(instance.Namespace, nil, reqLogger)
+		// Kiali is prohibited from seeing any namespace other than the control plane itself
+		r.reconcileKiali(instance.Namespace, []string{instance.Namespace}, reqLogger)
 
 		return reconcile.Result{}, err
 	} else if finalizerIndex < 0 {
@@ -405,12 +405,12 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	// tell Kiali about all the namespaces in the mesh
-	r.reconcileKiali(instance.Namespace, requiredMembers, reqLogger)
+	r.reconcileKiali(instance.Namespace, instance.Status.ConfiguredMembers, reqLogger)
 
 	return reconcile.Result{}, err
 }
 
-func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, requiredMembers map[string]struct{}, reqLogger logr.Logger) error {
+func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, configuredMembers []string, reqLogger logr.Logger) error {
 
 	reqLogger.Info("Attempting to get Kiali CR", "kialiCRNamespace", kialiCRNamespace)
 
@@ -431,14 +431,14 @@ func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, requiredMe
 
 	// just get an array of strings consisting of the list of namespaces to be accessible to Kiali
 	var accessibleNamespaces []string
-	if len(requiredMembers) == 0 {
-		// we are not in multitenency mode - kiali can access the entire cluster
-		accessibleNamespaces = []string{"**"}
+	if len(configuredMembers) == 0 {
+		// no configured members available - just allow access only to the control plane namespace
+		accessibleNamespaces = []string{kialiCRNamespace}
 	} else {
-		// we are in multitenency mode
-		accessibleNamespaces = make([]string, 0, len(requiredMembers))
-		for key := range requiredMembers {
-			accessibleNamespaces = append(accessibleNamespaces, key)
+		// we are in multitenency mode with some namespaces being made available to kiali
+		accessibleNamespaces = make([]string, 0, len(configuredMembers))
+		for _, cm := range configuredMembers {
+			accessibleNamespaces = append(accessibleNamespaces, cm)
 		}
 	}
 
