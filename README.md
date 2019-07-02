@@ -4,8 +4,8 @@ This project is an operator (controller) that can be used to manage the installa
 
 ## Installation
 
-The **Istio Operator** has a dependency on the **Jaeger Operator**.  Before installing the Istio Operator, please make sure the
-Jaeger Operator has been installed.
+The **Istio Operator** has a dependency on the **Jaeger Operator** and **Kiali Operator**.  Before installing the Istio Operator, please make sure the
+Jaeger Operator and Kiali Operator have been installed.
 
 ### Installing the Jaeger Operator
 
@@ -19,6 +19,16 @@ oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/ja
 oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/role_binding.yaml
 oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/operator.yaml
 ```
+
+### Installing the Kiali Operator
+
+To install the Kiali operator, execute the following command:
+
+```
+bash <(curl -L https://git.io/getLatestKialiOperator) --operator-image-version v1.0.0 --operator-watch-namespace '**' --accessible-namespaces '**'
+```
+
+For more details on installing the Kiali operator, see the [Kiali documentaton](https://www.kiali.io/documentation/getting-started).
 
 ### Installing the Istio Operator
 
@@ -69,7 +79,7 @@ command against the same resources.  For example:
 $ oc delete -n istio-operator -f ./deploy/maistra-operator.yaml
 ```
 
-Once the Istio Operator has been uninstalled, the Jaeger Operator should be uninstalled.
+Once the Istio Operator has been uninstalled, the Jaeger Operator and the Kiali Operator should be uninstalled.
 
 ### Uninstalling the Jaeger Operator
 
@@ -82,6 +92,16 @@ oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/ja
 oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/service_account.yaml
 oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/crds/jaegertracing_v1_jaeger_crd.yaml
 ```
+
+### Uninstalling the Kiali Operator
+
+To uninstall the Kiali operator, execute the following command:
+
+```
+bash <(curl -L https://git.io/getLatestKialiOperator) --uninstall-mode true --operator-watch-namespace '**'
+```
+
+For more details on uninstalling the Kiali operator, see the [Kiali documentaton](https://www.kiali.io/documentation/getting-started/#_uninstall_kiali_operator_and_kiali).
 
 ## Customizing the Installation
 
@@ -201,7 +221,7 @@ spec:
   istio:
     kiali:
       hub: kiali
-      tag: v0.15.0
+      tag: v1.0.1
 
   ...
 ```
@@ -272,9 +292,8 @@ the the changes made to the base Istio charts can be found below.  For a specifi
 * Has been enabled by default.
 * Ingress has been enabled by default.
 * The `hub` value for the Kiali image has changed to `kiali` (from `docker.io/kiali`).
-* The tag used for the Kiali image has been updated to `v0.15.0`.
-* Updates have been made to the Kiali ConfigMap.
-* Updates have been made to the ClusterRole settings for Kiali.
+* The tag used for the Kiali image has been updated to `v1.0.0`.
+* A Kiali CR is now created (for the Kiali Operator) as opposed to individual Kiali resources like ConfigMap, Deployment, etc.
 * A demo Secret has been added that will get created using values from `kiali.dashboard.user` and `kiali.dashboard.passphrase`,
   if specified.
 
