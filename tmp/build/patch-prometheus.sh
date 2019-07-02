@@ -49,8 +49,11 @@ function prometheus_patch_deployment() {
 \1containers:\2/' \
   ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 
-  # - switch prometheus init container image from busybox to prometheus
-  sed -i -r -e 's/"?busybox:?.*$/"docker.io\/prom\/prometheus:v2.3.1"/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+  if [[ "${COMMUNITY,,}" == "true" ]]; then
+    sed -i -r -e 's/image: *prometheus/image: prometheus-ubi8/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+  else
+    sed -i -r -e 's/image: *prometheus/image: prometheus-rhel8/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+  fi 
 }
 
 function prometheus_patch_service() {
@@ -64,6 +67,9 @@ function prometheus_patch_values() {
     -e 's|  annotations: {}|  annotations:\n    service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls|' \
     -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
     ${HELM_DIR}/istio/charts/prometheus/values.yaml
+ 
+  sed -i -e 's+hub:.*$+hub: '${HUB}'+g' \
+         -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' ${HELM_DIR}/istio/charts/prometheus/values.yaml
 }
 
 function prometheus_patch_service_account() {

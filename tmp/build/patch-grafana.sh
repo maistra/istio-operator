@@ -81,6 +81,13 @@ function grafana_patch_values() {
 \2tlsSkipVerify: true+' \
     ${HELM_DIR}/istio/charts/grafana/values.yaml
 
+  if [[ "${COMMUNITY,,}" == "true" ]]; then  
+    sed -i -e 's+repository: grafana/grafana+repository: '${HUB}'/grafana-ubi8+g' \
+           -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' ${HELM_DIR}/istio/charts/grafana/values.yaml
+  else
+    sed -i -e 's+repository: grafana/grafana+repository: '${HUB}'/grafana-rhel8+g' \
+           -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' ${HELM_DIR}/istio/charts/grafana/values.yaml
+  fi
 }
 
 function grafana_patch_misc() {

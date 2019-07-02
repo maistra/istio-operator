@@ -8,6 +8,12 @@ set -e
 : ${THREESCALE_VERSION:=0.6.0}
 : ${KIALI_VERSION:=1.0.0}
 
+if [[ "${COMMUNITY,,}" == "true" ]]; then
+  : ${HUB:=docker.io/maistra}
+else
+  : ${HUB:=registry.redhat.io/openshift-istio-tech-preview}
+fi
+
 # copy maistra specific templates into charts
 function copyOverlay() {
   echo "copying Maistra chart customizations over stock Istio charts"
@@ -147,7 +153,7 @@ function patchTemplates() {
   # update the images
   # set global.hub=docker.io/maistra
   if [[ "${COMMUNITY,,}" == "true" ]]; then
-    sed -i -e 's+hub:.*$+hub: docker.io/maistra+g' \
+    sed -i -e 's+hub:.*$+hub: '${HUB}'+g' \
           -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' \
           -e 's/image: *proxy_init/image: proxy-init-ubi8/' \
           -e 's/image: *proxyv2/image: proxyv2-ubi8/' ${HELM_DIR}/istio/values.yaml ${HELM_DIR}/istio-init/values.yaml
@@ -164,7 +170,7 @@ function patchTemplates() {
 \1|' ${HELM_DIR}/istio/charts/tracing/values.yaml
     sed -i -e 's/tag:.*$/tag: v'${THREESCALE_VERSION}'/' ${HELM_DIR}/maistra-threescale/values.yaml
   else
-    sed -i -e 's+hub:.*$+hub: registry\.redhat\.io\/openshift-istio-tech-preview+g' \
+    sed -i -e 's+hub:.*$+hub: '${HUB}'+g' \
           -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' \
           -e 's/image: *proxy_init/image: proxy-init-rhel8/' \
           -e 's/image: *proxyv2/image: proxyv2-rhel8/' ${HELM_DIR}/istio/values.yaml ${HELM_DIR}/istio-init/values.yaml

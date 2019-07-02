@@ -13,9 +13,6 @@ rules:
   - nodes
   - nodes/proxy
   verbs: ["get", "list", "watch"]
-- apiGroups: ["security.openshift.io"]
-  resources: ["securitycontextconstraints"]
-  resourceNames: ["anyuid"]
   verbs: ["use"]
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
