@@ -6,7 +6,7 @@ set -e
 : ${SOURCE_DIR:?"Need to set SOURCE_DIR to location of the istio-operator source directory"}
 
 : ${THREESCALE_VERSION:=0.6.0}
-: ${KIALI_VERSION:=0.21.0}
+: ${KIALI_VERSION:=1.0.0}
 
 # copy maistra specific templates into charts
 function copyOverlay() {
