@@ -49,16 +49,8 @@ function prometheus_patch_deployment() {
 \1containers:\2/' \
   ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 
-  if [[ "${COMMUNITY,,}" == "true" ]]; then
-    sed -i -r -e 's/image:(.*)prometheus:/image:\1prometheus-ubi8:/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
-  else
-    sed -i -r -e 's/image:(.*)prometheus:/image:\1prometheus-rhel8:/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
-  fi
-
-  sed -i -e '/image.*prometheus/,/args:/ {
-      /args:/ a\
-            - --storage.tsdb.path=/prometheus
-    }' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+  sed -i -r -e 's/image:(.*)prometheus:/image:\1{{ \.Values\.image }}:/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+	sed "/storage.tsdb.retention.*/a\ \ \ \ \ \ \ \ \ \ \ \ - \'--storage.tsdb.path=/prometheus\'" deployment.yaml
 }
 
 function prometheus_patch_service() {
@@ -72,7 +64,6 @@ function prometheus_patch_values() {
     -e 's|  annotations: {}|  annotations:\n    service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls|' \
     -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
     ${HELM_DIR}/istio/charts/prometheus/values.yaml
- 
   sed -i -e 's+hub:.*$+hub: '${HUB}'+g' \
          -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' ${HELM_DIR}/istio/charts/prometheus/values.yaml
 }
@@ -93,10 +84,10 @@ function prometheus_patch_configmap() {
   sed -i -e "/job_name: 'kubernetes-apiservers'/,/^$/ c\
 \    # config removed" ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml
   sed -i -e "/job_name: 'kubernetes-nodes'/,/^$/ c\
-\    # config removed"  ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml 
+\    # config removed"  ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml
   sed -i -e "/job_name: 'kubernetes-cadvisor'/,/^$/ c\
 \    # config removed" ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml
-}	
+}
 
 function prometheusPatch() {
   echo "Patching Prometheus"
