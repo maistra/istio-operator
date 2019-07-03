@@ -25,7 +25,7 @@ oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/ja
 To install the Kiali operator, execute the following command:
 
 ```
-bash <(curl -L https://git.io/getLatestKialiOperator) --operator-image-version v1.0.0 --operator-watch-namespace '**' --accessible-namespaces '**'
+bash <(curl -L https://git.io/getLatestKialiOperator) --operator-image-version v1.0.0 --operator-watch-namespace '**' --accessible-namespaces '**' --operator-install-kiali false
 ```
 
 For more details on installing the Kiali operator, see the [Kiali documentaton](https://www.kiali.io/documentation/getting-started).
