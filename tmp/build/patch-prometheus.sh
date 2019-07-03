@@ -50,10 +50,13 @@ function prometheus_patch_deployment() {
   ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 
   if [[ "${COMMUNITY,,}" == "true" ]]; then
-    sed -i -r -e 's/image: *prometheus/image: prometheus-ubi8/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+    sed -i -r -e 's/image:(.*)prometheus:/image:\1prometheus-ubi8:/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
   else
-    sed -i -r -e 's/image: *prometheus/image: prometheus-rhel8/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
-  fi 
+    sed -i -r -e 's/image:(.*)prometheus:/image\1prometheus-rhel8:/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+  fi
+
+  sed -i -e '/args:/ a\
+            - --storage.tsdb.path=/prometheus' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 }
 
 function prometheus_patch_service() {
