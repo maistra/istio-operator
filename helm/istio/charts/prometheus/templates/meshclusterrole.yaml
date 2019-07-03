@@ -13,7 +13,6 @@ rules:
   - nodes
   - nodes/proxy
   verbs: ["get", "list", "watch"]
-  verbs: ["use"]
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
   verbs: ["create"]
