@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
 function grafana_patch_deployment() {
+  local image="grafana-ubi8"
+  if [[ "${COMMUNITY,,}" != "true" ]]; then
+    image="grafana-rhel8"
+  fi
+
   sed -i -e '/      containers:/ a\
           # OAuth proxy\
         - name: grafana-proxy\
@@ -63,6 +68,7 @@ function grafana_patch_deployment() {
 \2- name: GF_USERS_AUTO_ASSIGN_ORG_ROLE\
 \2  value: Admin\
 \1/' \
+  -e 's+image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"+image: "{{ .Values.global.hub }}/'${image}':{{ .Values.global.tag }}"+' \
   ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
 
   sed -i -e '/securityContext/,/fsGroup/d' ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml    
@@ -82,14 +88,6 @@ function grafana_patch_values() {
 \2# we should be using the CA cert in /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt\
 \2tlsSkipVerify: true+' \
     ${HELM_DIR}/istio/charts/grafana/values.yaml
-
-  if [[ "${COMMUNITY,,}" == "true" ]]; then  
-    sed -i -e 's+repository: grafana/grafana+repository: '${HUB}'/grafana-ubi8+g' \
-           -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' ${HELM_DIR}/istio/charts/grafana/values.yaml
-  else
-    sed -i -e 's+repository: grafana/grafana+repository: '${HUB}'/grafana-rhel8+g' \
-           -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' ${HELM_DIR}/istio/charts/grafana/values.yaml
-  fi
 }
 
 function grafana_patch_misc() {
