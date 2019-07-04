@@ -49,7 +49,12 @@ function prometheus_patch_deployment() {
 \1containers:\2/' \
   ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 
-  sed -i -r -e 's/image:(.*)prometheus:/image:\1{{ \.Values\.image }}:/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+  sed -i -r -e 's/.*image:.*prometheus.*$/{{- if contains "\/" .Values.image }}\
+          image: "{{ .Values.image }}"\
+{{- else }}\
+          image: "{{ .Values.global.hub }}\/{{ .Values.image }}:{{ .Values.global.tag }}"\
+{{- end }}/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+
 	sed "/storage.tsdb.retention.*/a\ \ \ \ \ \ \ \ \ \ \ \ - \'--storage.tsdb.path=/prometheus\'" ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 }
 
@@ -64,8 +69,16 @@ function prometheus_patch_values() {
     -e 's|  annotations: {}|  annotations:\n    service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls|' \
     -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
     ${HELM_DIR}/istio/charts/prometheus/values.yaml
-  sed -i -e 's+hub:.*$+hub: '${HUB}'+g' \
-         -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' ${HELM_DIR}/istio/charts/prometheus/values.yaml
+
+  # TODO: currently, upstream does not include the image value, so we're inserting it here (and removing hub and tag to make this values.yaml consistent with the others
+  sed -i -e 's/hub:.*$/image: prometheus/g' \
+         -e '/tag:.*$/d' ${HELM_DIR}/istio/charts/prometheus/values.yaml
+
+  if [[ "${COMMUNITY,,}" == "true" ]]; then
+    sed -i -r -e 's/image:(.*)prometheus/image: prometheus-ubi8/' ${HELM_DIR}/istio/charts/prometheus/values.yaml
+  else
+    sed -i -r -e 's/image:(.*)prometheus/image: prometheus-rhel8/' ${HELM_DIR}/istio/charts/prometheus/values.yaml
+  fi
 }
 
 function prometheus_patch_service_account() {

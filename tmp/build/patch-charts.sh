@@ -158,8 +158,6 @@ function patchTemplates() {
           -e 's/image: *proxy_init/image: proxy-init-ubi8/' \
           -e 's/image: *proxyv2/image: proxyv2-ubi8/' ${HELM_DIR}/istio/values.yaml ${HELM_DIR}/istio-init/values.yaml
 
-		# TODO: currently we're appending. When this comes down from upstream, we'll want to replace this with a substitution
-		sed -i -e "\$aimage: prometheus-ubi8" ${HELM_DIR}/istio/charts/prometheus/values.yaml
     sed -i -e 's/image: *galley/image: galley-ubi8/' ${HELM_DIR}/istio/charts/galley/values.yaml
     sed -i -e 's/image: *sidecar_injector/image: sidecar-injector-ubi8/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/values.yaml
     sed -i -e 's/image: *mixer/image: mixer-ubi8/' ${HELM_DIR}/istio/charts/mixer/values.yaml
@@ -177,8 +175,6 @@ function patchTemplates() {
           -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' \
           -e 's/image: *proxy_init/image: proxy-init-rhel8/' \
           -e 's/image: *proxyv2/image: proxyv2-rhel8/' ${HELM_DIR}/istio/values.yaml ${HELM_DIR}/istio-init/values.yaml
-		# TODO: currently we're appending. When this comes down from upstream, we'll want to replace this with a substitution
-		sed -i -e "\$a image: prometheus-rhel8" ${HELM_DIR}/istio/charts/prometheus/values.yaml
     sed -i -e 's/image: *galley/image: galley-rhel8/' ${HELM_DIR}/istio/charts/galley/values.yaml
     sed -i -e 's/image: *sidecar_injector/image: sidecar-injector-rhel8/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/values.yaml
     sed -i -e 's/image: *mixer/image: mixer-rhel8/' ${HELM_DIR}/istio/charts/mixer/values.yaml
