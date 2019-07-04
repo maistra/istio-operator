@@ -64,6 +64,8 @@ function grafana_patch_deployment() {
 \2  value: Admin\
 \1/' \
   ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
+
+  sed -i -e '/securityContext/,/fsGroup/d' ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml    
 }
 
 function grafana_patch_service() {
