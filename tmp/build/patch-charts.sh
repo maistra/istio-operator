@@ -45,10 +45,12 @@ function patchTemplates() {
   # update global defaults
   # disable autoInject
   # enable grafana, tracing and kiali, by default
+  # set dnsRefreshRate to 300s
   sed -i -e 's/autoInject:.*$/autoInject: disabled/' \
          -e '/grafana:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
          -e '/tracing:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
-         -e '/kiali:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/values.yaml
+         -e '/kiali:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
+         -e '/dnsRefreshRate:/ { s/5s/300s/ }' ${HELM_DIR}/istio/values.yaml
 
   # enable all namespaces by default
   sed -i -e 's/enableNamespacesByDefault:.*$/enableNamespacesByDefault: true/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/values.yaml
