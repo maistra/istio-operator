@@ -163,6 +163,7 @@ function patchTemplates() {
     sed -i -e 's/image: *mixer/image: mixer-ubi8/' ${HELM_DIR}/istio/charts/mixer/values.yaml
     sed -i -e 's/image: *pilot/image: pilot-ubi8/' ${HELM_DIR}/istio/charts/pilot/values.yaml
     sed -i -e 's/image: *citadel/image: citadel-ubi8/' ${HELM_DIR}/istio/charts/security/values.yaml
+    sed -i -e 's/image: *istio-cni/image: istio-cni-ubi8/' ${HELM_DIR}/istio/charts/istio_cni/values.yaml
     sed -i -e 's|\(^jaeger:.*$\)|elasticsearch:\
   hub: registry.centos.org/rhsyseng\
   image: elasticsearch\
@@ -180,6 +181,7 @@ function patchTemplates() {
     sed -i -e 's/image: *mixer/image: mixer-rhel8/' ${HELM_DIR}/istio/charts/mixer/values.yaml
     sed -i -e 's/image: *pilot/image: pilot-rhel8/' ${HELM_DIR}/istio/charts/pilot/values.yaml
     sed -i -e 's/image: *citadel/image: citadel-rhel8/' ${HELM_DIR}/istio/charts/security/values.yaml
+    sed -i -e 's/image: *istio-cni/image: istio-cni-rhel8/' ${HELM_DIR}/istio/charts/istio_cni/values.yaml
     sed -i -e 's|\(^jaeger:.*$\)|elasticsearch:\
   hub: registry.centos.org/rhsyseng\
   image: elasticsearch\
