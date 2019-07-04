@@ -152,9 +152,9 @@ function patchTemplates() {
     xargs sed -i -e 's/^\(.*\)release:\(.*\)$/\1maistra-version: '${MAISTRA_VERSION}'\
 \1release:\2/'
 
-# MAISTRA-506 add a maistra-control-plane label for deployment specs
-find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl" | xargs grep -Hl 'kind: Deployment' |\
-  xargs sed -i -e '/^spec:/,$ { /template:$/,$ { /metadata:$/,$ { /labels:$/,$ s/^\(.*\)release:\(.*\)$/\1maistra-control-plane: {{ .Release.Namespace }}\n\1release:\2/ } } }'
+  # MAISTRA-506 add a maistra-control-plane label for deployment specs
+  find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl" | xargs grep -Hl 'kind: Deployment' |\
+    xargs sed -i -e '/^spec:/,$ { /template:$/,$ { /metadata:$/,$ { /labels:$/,$ s/^\(.*\)release:\(.*Name\)\(.*\)$/\1maistra-control-plane:\2space }}\n\1release:\2\3/ } } }'
 
   # update the images
   # set global.hub=docker.io/maistra
