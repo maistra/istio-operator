@@ -55,9 +55,8 @@ spec:
 
   storage:
     type: elasticsearch
-    options:
-      es:
-        server-urls: http://elasticsearch:9200
+    elasticsearch:
+      nodeCount: 3
 
   ingress:
     enabled: {{ .Values.ingress.enabled }}
