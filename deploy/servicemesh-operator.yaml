@@ -513,6 +513,22 @@ webhooks:
   
 ---
 
+apiVersion: v1
+kind: Service
+metadata:
+  name: admission-controller
+  namespace: istio-operator
+spec:
+  ports:
+  - port: 443
+    protocol: TCP
+    targetPort: 11999
+  selector:
+    name: istio-operator
+  type: ClusterIP
+
+---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
