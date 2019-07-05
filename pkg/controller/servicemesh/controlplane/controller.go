@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"github.com/maistra/istio-operator/pkg/bootstrap"
 	"context"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -40,6 +41,7 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 			Log:          log,
 		},
 		Scheme: mgr.GetScheme(),
+		Manager: mgr,
 	}
 }
 
@@ -84,6 +86,7 @@ type ReconcileControlPlane struct {
 	// that reads objects from the cache and writes to the apiserver
 	common.ResourceManager
 	Scheme *runtime.Scheme
+	Manager manager.Manager
 }
 
 const (
@@ -175,6 +178,13 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	}
 
 	reqLogger.Info("Reconciling ServiceMeshControlPlane")
+
+	// Enusure CRDs are installed
+	err = bootstrap.InstallCRDs(reconciler.Manager)
+	if err != nil {
+		reqLogger.Error(err, "Failed to install/update Istio CRDs")
+		return reconcile.Result{}, err
+	}
 
 	return reconciler.Reconcile()
 }

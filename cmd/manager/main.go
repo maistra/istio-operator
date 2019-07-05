@@ -9,13 +9,11 @@ import (
 	"time"
 
 	"github.com/maistra/istio-operator/pkg/apis"
-	"github.com/maistra/istio-operator/pkg/bootstrap"
 	"github.com/maistra/istio-operator/pkg/controller"
-	"github.com/maistra/istio-operator/pkg/controller/servicemesh/controlplane"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
-	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	"github.com/operator-framework/operator-sdk/pkg/ready"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 
@@ -44,7 +42,7 @@ func main() {
 	flag.StringVar(&discoveryCacheDir, "discoveryCacheDir", "/home/istio-operator/.kube/cache/discovery", "The location where cached discovery information used by the REST client is stored.")
 
 	// ControlPlane
-	flag.StringVar(&controlplane.ChartPath, "chartPath", "/etc/istio-operator/1.1.0/helm", "The location of the Helm charts.  The charts will be rendered using $chartPath/istio (similar layout to istio.io/istio/install/kubernetes/helm).")
+	flag.StringVar(&common.ChartPath, "chartPath", "/etc/istio-operator/1.1.0/helm", "The location of the Helm charts.  The charts will be rendered using $chartPath/istio (similar layout to istio.io/istio/install/kubernetes/helm).")
 
 	logConfig := "production"
 	flag.StringVar(&logConfig, "logConfig", logConfig, "Whether to configure logging for production use (json, info level, w/ log sampling) or development (plain-text, debug level, w/o log sampling)")
@@ -104,13 +102,7 @@ func main() {
 	}
 
 	// Create Service object to expose the metrics port.
-	metrics.ExposeMetricsPort()
-
-	// Enusure CRDs are installed
-	if err := bootstrap.InstallCRDs(mgr); err != nil {
-		log.Error(err, "failed to install CRDs")
-		os.Exit(1)
-	}
+	//metrics.ExposeMetricsPort()
 
 	log.Info("Starting the Cmd.")
 

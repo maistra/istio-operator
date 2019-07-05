@@ -1,4 +1,4 @@
-package controlplane
+package common
 
 import (
 	"encoding/json"
@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-
-	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
@@ -20,7 +18,7 @@ import (
 
 func init() {
 	// inject OpenShift specific kinds into the ordering list
-	serviceIndex := common.IndexOf(tiller.InstallOrder, "Service")
+	serviceIndex := IndexOf(tiller.InstallOrder, "Service")
 	// we want route before oauthclient before deployments
 	tiller.InstallOrder = append(tiller.InstallOrder[:serviceIndex], append([]string{"Route", "OAuthClient"}, tiller.InstallOrder[serviceIndex:]...)...)
 }

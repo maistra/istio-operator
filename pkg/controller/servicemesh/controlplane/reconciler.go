@@ -171,13 +171,13 @@ func (r *ControlPlaneReconciler) renderCharts() error {
 	var threeScaleRenderings map[string][]manifest.Manifest
 
 	r.Log.V(2).Info("rendering Istio charts")
-	istioRenderings, _, err := RenderHelmChart(path.Join(ChartPath, "istio"), r.Instance.GetNamespace(), r.Instance.Spec.Istio)
+	istioRenderings, _, err := common.RenderHelmChart(path.Join(common.ChartPath, "istio"), r.Instance.GetNamespace(), r.Instance.Spec.Istio)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
 	if isEnabled(r.Instance.Spec.ThreeScale) {
 		r.Log.V(2).Info("rendering 3scale charts")
-		threeScaleRenderings, _, err = RenderHelmChart(path.Join(ChartPath, "maistra-threescale"), r.Instance.GetNamespace(), r.Instance.Spec.ThreeScale)
+		threeScaleRenderings, _, err =common. RenderHelmChart(path.Join(common.ChartPath, "maistra-threescale"), r.Instance.GetNamespace(), r.Instance.Spec.ThreeScale)
 		if err != nil {
 			allErrors = append(allErrors, err)
 		}
