@@ -2,7 +2,13 @@ package controlplane
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -49,6 +55,8 @@ func (r *ControlPlaneReconciler) preprocessObject(object *unstructured.Unstructu
 	switch object.GetKind() {
 	case "Kiali":
 		return r.patchKialiConfig(object)
+	case "Jaeger":
+		return r.generateElasticsearchSecrets(object)
 	}
 	return nil
 }
@@ -163,6 +171,116 @@ func (r *ControlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructu
 	}
 
 	return nil
+}
+
+func (r *ControlPlaneReconciler) generateElasticsearchSecrets(object *unstructured.Unstructured) error {
+	// if we are using Elasticsearch, we need to check whether the secrets are there already
+	// and create if they are absent
+	jaegerWithElasticsearch, found, err := unstructured.NestedString(object.UnstructuredContent(), "spec", "external_services", "tracing", "jaeger", "template")
+	if !found || err != nil {
+		jaegerWithElasticsearch = "production-elasticsearch" // this is the default when omitted
+	}
+
+	if "production-elasticsearch" == jaegerWithElasticsearch {
+		// do we have the secrets already?
+		// list of secrets we expect to exist: jaeger-curator, elasticsearch, jaeger-elasticsearch, jaeger-master-certs
+		// if any one of them are missing, we have to (re-)create them all
+		for _, secret := range []string{"jaeger-curator", "elasticsearch", "jaeger-elasticsearch", "jaeger-master-certs"} {
+			missing, err := r.secretMissing(secret, object.GetNamespace())
+			if err != nil {
+				return fmt.Errorf("failed to check if the secret '%s' is missing", secret)
+			}
+
+			if missing {
+				// generate new certs
+				if err = r.generateCerts(object.GetNamespace()); err != nil {
+					return fmt.Errorf("failed to generate new certs: %s", err)
+				}
+
+				// generate new secrets
+				if err = r.populateCertValues(object); err != nil {
+					// if one is missing, we need to generate it again, but we might get cert mismatches, so,
+					// we just generate them all again -- in that case, no need to check if the next secret is missing
+					break
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r *ControlPlaneReconciler) secretMissing(secret string, namespace string) (bool, error) {
+	s := &unstructured.Unstructured{}
+	s.SetAPIVersion("v1")
+	s.SetKind("Secret")
+	err := r.Client.Get(context.TODO(), client.ObjectKey{Name: secret, Namespace: namespace}, s)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			r.Log.Error(err, "error retrieving secret")
+			return false, err // err
+		}
+		return true, nil // not found
+	}
+
+	return false, nil // found
+}
+
+func (r *ControlPlaneReconciler) generateCerts(namespace string) error {
+	script := "/usr/local/bin/cert_generation.sh" // should match the place specified in the Dockerfile
+	cmd := exec.Command("bash", script)
+	cmd.Env = append(os.Environ(), "NAMESPACE="+namespace)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		r.Log.Error(err, "failed to create certificates")
+		r.Log.V(100).Info("output from the cert_generation.sh script", "output", out)
+		return fmt.Errorf("error running script %s: %v", script, err)
+	}
+	return nil
+}
+
+func (r *ControlPlaneReconciler) populateCertValues(object *unstructured.Unstructured) error {
+	mapping := map[string]string{
+		"spec.external_services.tracing.jaeger.es.certs.ca":                              "ca.crt",
+		"spec.external_services.tracing.jaeger.es.certs.ca-key":                          "ca.key",
+		"spec.external_services.tracing.jaeger.es.certs.curator.cert":                    "system.logging.curator.crt",
+		"spec.external_services.tracing.jaeger.es.certs.curator.key":                     "system.logging.curator.key",
+		"spec.external_services.tracing.jaeger.es.certs.elasticsearch.admin-cert":        "system.admin.crt",
+		"spec.external_services.tracing.jaeger.es.certs.elasticsearch.admin-key":         "system.admin.key",
+		"spec.external_services.tracing.jaeger.es.certs.elasticsearch.elasticsearch.crt": "elasticsearch.crt",
+		"spec.external_services.tracing.jaeger.es.certs.elasticsearch.elasticsearch.key": "elasticsearch.key",
+		"spec.external_services.tracing.jaeger.es.certs.elasticsearch.logging-es.crt":    "logging-es.crt",
+		"spec.external_services.tracing.jaeger.es.certs.elasticsearch.logging-es.key":    "logging-es.key",
+		"spec.external_services.tracing.jaeger.es.certs.client.cert":                     "user.jaeger.crt",
+		"spec.external_services.tracing.jaeger.es.certs.client.key":                      "user.jaeger.key",
+	}
+
+	for k, v := range mapping {
+		field := strings.Split(k, ".")
+		contents, err := getFileContents(v)
+		if err != nil {
+			return fmt.Errorf("could not get the cert contents for the key '%s'", k)
+		}
+		encoded := base64.StdEncoding.EncodeToString(contents)
+
+		err = unstructured.SetNestedField(object.UnstructuredContent(), encoded, field...)
+		if err != nil {
+			return fmt.Errorf("could not populate the cert value for the key '%s': %v", k, err)
+		}
+
+	}
+
+	return nil
+}
+
+func getFileContents(path string) ([]byte, error) {
+	if path == "" {
+		return nil, fmt.Errorf("path to file is empty")
+	}
+	contents, err := ioutil.ReadFile(filepath.Clean(path))
+	if err != nil {
+		return nil, err
+	}
+	return contents, nil
 }
 
 func (r *ControlPlaneReconciler) waitForDeployments(status *v1.ComponentStatus) error {
