@@ -57,7 +57,7 @@ By default, the operator watches for ServiceMeshControlPlane in all namespaces. 
 is installed in `istio-system`.  For example:
 
 ```
-$ oc apply -n istio-system -f ./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_basic.yaml
+$ oc apply -n istio-system -f ./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_full.yaml
 ```
 
 Example resources can be found in [./deploy/examples](./deploy/examples).
@@ -67,7 +67,7 @@ Example resources can be found in [./deploy/examples](./deploy/examples).
 If an existing ServiceMeshControlPlane cr has not been deleted, you need to delete the ServiceMeshControlPlane cr before deleting the istio operator. For example:
 
 ```
-$ oc delete -n istio-system -f ./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_basic.yaml
+$ oc delete -n istio-system -f ./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_full.yaml
 ```
 
 ### Uninstalling the Istio Operator
@@ -103,6 +103,33 @@ bash <(curl -L https://git.io/getLatestKialiOperator) --uninstall-mode true --op
 
 For more details on uninstalling the Kiali operator, see the [Kiali documentaton](https://www.kiali.io/documentation/getting-started/#_uninstall_kiali_operator_and_kiali).
 
+## Multitenancy
+
+The operator installs a control plane configured for multitenancy.  This installation reduces the scope of the control plane
+to only those projects/namespaces listed in a `ServiceMeshMemberRoll`.  After installing the control plane, create/update
+a ServiceMeshMemberRoll resource with the project/namespaces you wish to be part of the mesh.  The name of the
+ServiceMeshMemberRoll resource must be named `default`.  The operator will configure the control plane to watch/manage pods
+in those projects/namespaces and will configure the project/namespaces to work with the control plane.  (Note, auto-injection
+only occurs after the project/namespace has become a member of the mesh.)
+
+### ServiceMeshMemberRoll
+
+A ServiceMeshMemberRoll is used to specify which projects/namespaces should be part of a service mesh installation.  It
+has a single field in it's spec, which is a list of members, for example:
+
+```yaml
+apiVersion: maistra.io/v1
+kind: ServiceMeshMemberRoll
+metadata:
+  # name must be default
+  name: default
+spec:
+  members:
+  # a list of projects/namespaces that should be joined into the service mesh
+  # for example, the bookinfo project/namespace
+  - bookinfo
+```
+
 ## Customizing the Installation
 
 The installation is easily customizable by modifying the `.spec.istio` section of the ServiceMeshControlPlane resource.  If you are
@@ -120,7 +147,7 @@ For example:
 apiVersion: maistra.io/v1
 kind: ServiceMeshControlPlane
 metadata:
-  name: basic-install
+  name: full-install
 spec:
   istio:
     global:
@@ -139,7 +166,7 @@ If access to the registry providing the Istio images is secure, you may add your
 apiVersion: maistra.io/v1
 kind: ServiceMeshControlPlane
 metadata:
-  name: basic-install
+  name: full-install
 spec:
   istio:
     global:
@@ -160,7 +187,7 @@ example:
 apiVersion: maistra.io/v1
 kind: ServiceMeshControlPlane
 metadata:
-  name: basic-install
+  name: full-install
 spec:
   istio:
     global:
@@ -186,7 +213,7 @@ Customize resources (e.g. proxy, mixer):
 apiVersion: maistra.io/v1
 kind: ServiceMeshControlPlane
 metadata:
-  name: basic-install
+  name: full-install
 spec:
   istio:
     global:
@@ -216,7 +243,7 @@ Customize component image (e.g. Kiali):
 apiVersion: maistra.io/v1
 kind: ServiceMeshControlPlane
 metadata:
-  name: basic-install
+  name: full-install
 spec:
   istio:
     kiali:
@@ -231,14 +258,13 @@ spec:
 
 This operator provides a wrapper around the helm charts used when installing Istio via `helm template` or `helm install`.
 As such, the custom resource used to define the features of the control plane maps directly to a `values.yaml` file, the
-root of which is located in the resource's `.spec.istio` field.  See examples of a [basic installation](./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_basic.yaml)
-or a [secured installation](./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_secure.yaml).
+root of which is located in the resource's `.spec.istio` field.  See examples of a [minimal installation](./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_minimal.yaml), [full installation](./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_full.yaml), a [full installation with auth](./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_auth.yaml).
 
 ## Modifications for Maistra
 
 Aside from embedding all installation logic into the operator (e.g. removing `create-custom-resources.yaml` templates),
 the the changes made to the base Istio charts can be found below.  For a specific list of all modifications, see
-[download-charts.sh](./tmp/build/download-charts.sh).
+[patch-charts.sh](./tmp/build/patch-charts.sh).
 
 ### Component Modifications
 

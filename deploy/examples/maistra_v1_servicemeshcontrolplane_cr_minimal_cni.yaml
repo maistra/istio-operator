@@ -1,12 +1,10 @@
 apiVersion: maistra.io/v1
 kind: ServiceMeshControlPlane
 metadata:
-  name: multitenant-install
+  name: minimal-cni-install
 spec:
   istio:
     global:
-      # enable multitenant
-      multitenant: true
       proxy:
         # constrain resources for use in smaller environments
         resources:
@@ -80,3 +78,22 @@ spec:
     # to disable tracing (i.e. jaeger)
     tracing:
       enabled: false
+      jaeger:
+        # simple, all-in-one strategy
+        template: all-in-one
+        # production strategy, utilizing elasticsearch
+        #template: production-elasticsearch
+        # if required. only one instance may use agentStrategy=DaemonSet
+        #agentStrategy: DaemonSet
+
+---
+
+apiVersion: maistra.io/v1
+kind: ServiceMeshMemberRoll
+metadata:
+  name: default
+spec:
+  members:
+  # a list of namespaces that should be joined into the service mesh
+  # for example, to add the bookinfo namespace
+  #- bookinfo

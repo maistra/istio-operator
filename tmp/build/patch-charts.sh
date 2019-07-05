@@ -287,6 +287,14 @@ function convertMeshPolicy() {
 function patchMultiTenant() {
   echo "Patching charts for multitenancy"
 
+  # multitenant is the default
+  sed -i -e '/global:/,/tag:/ {
+    /tag:/ a\
+\
+\  # set multitenant as the default install type\
+\  multitenant: true
+    }' ${HELM_DIR}/istio/values.yaml
+
   # galley
   sed -i -e '/apiGroups:.*admissionregistration/,/apiGroups/ {
     /admissionregistration/ {
