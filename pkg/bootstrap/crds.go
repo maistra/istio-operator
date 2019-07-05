@@ -13,7 +13,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"github.com/maistra/istio-operator/pkg/controller/servicemesh/controlplane"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -31,7 +31,7 @@ var log = logf.Log.WithName("bootstrap")
 // files in controller.ChartPath/istio-init/files
 func InstallCRDs(mgr manager.Manager) error {
 	log.Info("ensuring CRDs have been installed")
-	crdPath := path.Join(controlplane.ChartPath, "istio-init/files")
+	crdPath := path.Join(common.ChartPath, "istio-init/files")
 	crdDir, err := os.Stat(crdPath)
 	if err != nil || !crdDir.IsDir() {
 		return fmt.Errorf("Cannot locate any CRD files in %s", crdPath)
