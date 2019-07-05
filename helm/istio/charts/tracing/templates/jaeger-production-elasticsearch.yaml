@@ -63,6 +63,9 @@ spec:
     enabled: {{ .Values.ingress.enabled }}
     # XXX: should this be parameterized?
     security: oauth-proxy
+    openshift:
+      sar: '{"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}'
+      delegate-urls: '{"/":{"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}}'
     annotations:
       {{- range $key, $value := .Values.ingress.annotations }}
         {{ $key }}: {{ $value | quote }}
