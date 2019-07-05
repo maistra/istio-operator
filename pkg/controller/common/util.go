@@ -109,5 +109,6 @@ func IsMeshMultitenant(mesh *maistrav1.ServiceMeshControlPlane) bool {
 			}
 		}
 	}
-	return false
+	// charts default to multitenant=true
+	return true
 }
