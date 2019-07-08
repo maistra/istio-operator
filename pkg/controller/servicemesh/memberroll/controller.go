@@ -312,7 +312,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	// never include the mesh namespace in unconfigured list
 	delete(unconfiguredMembers, instance.Namespace)
 
-	isCNIEnabled := isCNIEnabled(&mesh)
+	isCNIEnabled := common.IsCNIEnabled(&mesh)
 	isMultitenant := common.IsMeshMultitenant(&mesh)
 
 	if instance.Generation != instance.Status.ObservedGeneration { // member roll has been updated
@@ -1046,13 +1046,4 @@ func nameSet(items []unstructured.Unstructured) map[string]struct{} {
 		set[object.GetName()] = struct{}{}
 	}
 	return set
-}
-
-func isCNIEnabled(mesh *v1.ServiceMeshControlPlane) bool {
-	val := mesh.Spec.Istio["istio_cni"]
-	if cni, ok := val.(map[string]interface{}); ok {
-		val = cni["enabled"]
-		return val == "y" || val == "yes" || val == "true" || val == "on" || val == true
-	}
-	return false
 }
