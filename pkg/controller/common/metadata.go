@@ -24,6 +24,9 @@ const (
 
 	// MeshGenerationKey represents the generation of the service mesh to which the resource was last reconciled
 	MeshGenerationKey = MetadataNamespace + "/mesh-generation"
+
+	// InternalKey is used to identify the resource as being internal to the mesh itself (i.e. should not be applied to members)
+	InternalKey = MetadataNamespace + "/internal"
 )
 
 func FetchOwnedResources(kubeClient client.Client, gvk schema.GroupVersionKind, owner, namespace string) (*unstructured.UnstructuredList, error) {

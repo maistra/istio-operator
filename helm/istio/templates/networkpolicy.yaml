@@ -20,4 +20,5 @@ spec:
     - namespaceSelector:
         matchLabels:
           "maistra.io/member-of": "{{ .Release.Namespace }}"
+
 {{- end }}

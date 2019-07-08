@@ -39,6 +39,9 @@ func newNetworkPolicyStrategy(r *namespaceReconciler) (*networkPolicyStrategy, e
 		return nil, err
 	}
 	for _, np := range strategy.networkPoliciesList.Items {
+		if _, ok := common.GetAnnotation(&np, common.InternalKey); ok {
+			continue
+		}
 		strategy.requiredNetworkPolicies[np.GetName()] = struct{}{}
 	}
 	return strategy, nil
@@ -59,6 +62,10 @@ func (s *networkPolicyStrategy) reconcileNamespaceInMesh(namespace string) error
 	addedNetworkPolicies := map[string]struct{}{}
 	for _, meshNetworkPolicy := range s.networkPoliciesList.Items {
 		networkPolicyName := meshNetworkPolicy.GetName()
+		if _, ok := s.requiredNetworkPolicies[networkPolicyName]; !ok {
+			// this is not required for members
+			continue
+		}
 		if _, ok := existingNetworkPolicies[networkPolicyName]; !ok {
 			logger.Info("creating NetworkPolicy", "NetworkPolicy", networkPolicyName)
 			networkPolicy := &unstructured.Unstructured{}
