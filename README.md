@@ -4,8 +4,23 @@ This project is an operator (controller) that can be used to manage the installa
 
 ## Installation
 
-The **Istio Operator** has a dependency on the **Jaeger Operator** and **Kiali Operator**.  Before installing the Istio Operator, please make sure the
-Jaeger Operator and Kiali Operator have been installed.
+The **Istio Operator** has a dependency on the **Jaeger Operator**, **Elasticsearch Operator**  and **Kiali Operator**.  Before installing the Istio Operator, please make sure the
+Jaeger Operator, Elasticsearch Operator and Kiali Operator have been installed.
+
+### Installing the Elasticsearch Operator
+
+If available, the Elasticsearch operator (version 4.1) should be installed from the OperatorHub.
+
+Alternatively, to install the Elasticsearch operator manually, execute the following commands:
+
+```
+kubectl create ns openshift-logging # create the project for the elasticsearch operator
+oc create -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/01-service-account.yaml -n openshift-logging
+oc create -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/02-role.yaml
+oc create -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/03-role-bindings.yaml
+oc create -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/04-crd.yaml -n openshift-logging
+sed 's/latest/4.1/g' https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/05-deployment.yaml | oc create -n openshift-logging -f -
+```
 
 ### Installing the Jaeger Operator
 
@@ -91,6 +106,18 @@ oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/ja
 oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/role.yaml
 oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/service_account.yaml
 oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/crds/jaegertracing_v1_jaeger_crd.yaml
+```
+
+### Uninstalling the Elasticsearch Operator
+
+To uninstall the Elasticsearch operator, execute the following commands:
+
+```
+oc delete -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/05-deployment.yaml -n openshift-logging
+oc delete -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/04-crd.yaml -n openshift-logging
+oc delete -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/03-role-bindings.yaml
+oc delete -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/02-role.yaml
+oc delete -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/01-service-account.yaml -n openshift-logging
 ```
 
 ### Uninstalling the Kiali Operator
