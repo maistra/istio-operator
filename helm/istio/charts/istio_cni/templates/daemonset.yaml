@@ -98,12 +98,16 @@ spec:
             - mountPath: /host/etc/cni/
               name: etc-cni-dir
           resources:
+{{- if .Values.resources }}
+{{ toYaml .Values.resources | indent 12 }}
+{{- else }}
             requests:
               cpu: 100m
               memory: 50Mi
             limits:
               cpu: 500m
               memory: 50Mi
+{{- end }}
       volumes:
         # Used to install CNI.
         - name: cni-bin-dir
