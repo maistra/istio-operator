@@ -111,3 +111,12 @@ func IsMeshMultitenant(mesh *maistrav1.ServiceMeshControlPlane) bool {
 	}
 	return false
 }
+
+func IsCNIEnabled(mesh *maistrav1.ServiceMeshControlPlane) bool {
+	val := mesh.Spec.Istio["istio_cni"]
+	if cni, ok := val.(map[string]interface{}); ok {
+		val = cni["enabled"]
+		return val == "y" || val == "yes" || val == "true" || val == "on" || val == true
+	}
+	return false
+}

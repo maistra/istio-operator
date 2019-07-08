@@ -66,6 +66,10 @@ func (v *controlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 		}
 	}
 
+	if clusterInstall && common.IsCNIEnabled(smcp) {
+		return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("CNI can only be enabled when multitenancy is enabled"))
+	}
+
 	return admission.ValidationResponse(true, "")
 }
 
