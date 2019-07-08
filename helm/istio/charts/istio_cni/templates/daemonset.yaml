@@ -100,10 +100,10 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 10Mi
+              memory: 50Mi
             limits:
               cpu: 500m
-              memory: 10Mi
+              memory: 50Mi
       volumes:
         # Used to install CNI.
         - name: cni-bin-dir
