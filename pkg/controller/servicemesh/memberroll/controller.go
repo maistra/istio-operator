@@ -14,6 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -854,7 +855,7 @@ func (r *namespaceReconciler) removeNetworkAttachmentDefinition(namespace, meshN
 
 	err := r.client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, netAttachDef)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if errors.IsNotFound(err) || meta.IsNoMatchError(err) {
 			// resource doesn't exist, so everything's fine
 			return nil
 		} else {
