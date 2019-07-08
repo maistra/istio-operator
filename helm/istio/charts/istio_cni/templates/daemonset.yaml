@@ -108,7 +108,7 @@ spec:
         # Used to install CNI.
         - name: cni-bin-dir
           hostPath:
-            path: /opt/cni/bin
+            path: /opt/multus/bin
         - name: etc-cni-dir
           hostPath:
             path: /etc/cni
