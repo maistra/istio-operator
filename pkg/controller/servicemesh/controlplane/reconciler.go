@@ -98,6 +98,7 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	// these components have to be installed in the specified order
 	orderedComponents := []string{
 		"istio", // core istio resources
+		"istio/charts/istio_cni",
 		"istio/charts/security",
 		"istio/charts/prometheus",
 		"istio/charts/tracing",
@@ -177,7 +178,7 @@ func (r *ControlPlaneReconciler) renderCharts() error {
 	}
 	if isEnabled(r.Instance.Spec.ThreeScale) {
 		r.Log.V(2).Info("rendering 3scale charts")
-		threeScaleRenderings, _, err =common. RenderHelmChart(path.Join(common.ChartPath, "maistra-threescale"), r.Instance.GetNamespace(), r.Instance.Spec.ThreeScale)
+		threeScaleRenderings, _, err = common.RenderHelmChart(path.Join(common.ChartPath, "maistra-threescale"), r.Instance.GetNamespace(), r.Instance.Spec.ThreeScale)
 		if err != nil {
 			allErrors = append(allErrors, err)
 		}
