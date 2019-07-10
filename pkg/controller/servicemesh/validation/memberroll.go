@@ -9,6 +9,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	authorizationv1 "k8s.io/api/authorization/v1"
+	authenticationv1 "k8s.io/api/authentication/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
@@ -86,6 +87,9 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 	}
 	sar := &authorizationv1.SubjectAccessReview{}
 	sar.Spec.User = req.AdmissionRequest.UserInfo.Username
+	sar.Spec.UID = req.AdmissionRequest.UserInfo.UID
+	sar.Spec.Extra = convertUserInfoExtra(req.AdmissionRequest.UserInfo.Extra)
+	sar.Spec.Groups = make([]string, len(req.AdmissionRequest.UserInfo.Groups))
 	copy(sar.Spec.Groups, req.AdmissionRequest.UserInfo.Groups)
 	sar.Spec.ResourceAttributes = &authorizationv1.ResourceAttributes{
 		Verb:     "update",
@@ -100,6 +104,7 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 		}
 		// verify user can access all smmr member namespaces
 		sar.Spec.ResourceAttributes.Namespace = member
+		sar.Status = authorizationv1.SubjectAccessReviewStatus{}
 		err = v.client.Create(ctx, sar)
 		if err != nil {
 			logger.Error(err, "error processing SubjectAccessReview")
@@ -111,6 +116,14 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 	}
 
 	return admission.ValidationResponse(true, "")
+}
+
+func convertUserInfoExtra(extra map[string]authenticationv1.ExtraValue) map[string]authorizationv1.ExtraValue {
+	converted := map[string]authorizationv1.ExtraValue{}
+	for key, value := range extra {
+		converted[key] = authorizationv1.ExtraValue(value)
+	}
+	return converted
 }
 
 // InjectClient injects the client.
