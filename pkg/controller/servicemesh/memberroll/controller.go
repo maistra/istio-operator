@@ -32,6 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+const maxUpdateAttemptsOnConflict = 5
+
 var log = logf.Log.WithName("controller_servicemeshmemberroll")
 
 /**
@@ -650,7 +652,8 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(namespace string) error {
 	}
 
 	// remove mesh labels
-	for tries := 0; tries < 5; tries++ {
+	for tries := 0; tries < maxUpdateAttemptsOnConflict; tries++ {
+		lastTry := tries == maxUpdateAttemptsOnConflict-1
 		common.DeleteLabel(namespaceResource, common.MemberOfKey)
 		common.DeleteLabel(namespaceResource, common.LegacyMemberOfKey)
 		err = r.client.Update(context.TODO(), namespaceResource)
@@ -659,11 +662,11 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(namespace string) error {
 				namespaceResource = &unstructured.Unstructured{}
 				namespaceResource.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Namespace"))
 				err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, namespaceResource)
-				if err == nil {
+				if err == nil && !lastTry {
 					continue
 				}
 			}
-			allErrors = append(allErrors, err)
+			allErrors = append(allErrors, fmt.Errorf("Error removing mesh labels from namespace %s: %v", namespace, err))
 		}
 		break
 	}
@@ -731,9 +734,8 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
 
 	// add mesh labels
 	if !common.HasLabel(namespaceResource, common.MemberOfKey) {
-		const maxRetriesOnConflict = 5
-		for tries := 0; tries < maxRetriesOnConflict; tries++ {
-			lastTry := tries == maxRetriesOnConflict-1
+		for tries := 0; tries < maxUpdateAttemptsOnConflict; tries++ {
+			lastTry := tries == maxUpdateAttemptsOnConflict-1
 			common.SetLabel(namespaceResource, common.MemberOfKey, r.meshNamespace)
 			common.SetLabel(namespaceResource, common.LegacyMemberOfKey, r.meshNamespace)
 			err = r.client.Update(context.TODO(), namespaceResource)
