@@ -731,7 +731,9 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
 
 	// add mesh labels
 	if !common.HasLabel(namespaceResource, common.MemberOfKey) {
-		for tries := 0; tries < 5; tries++ {
+		const maxRetriesOnConflict = 5
+		for tries := 0; tries < maxRetriesOnConflict; tries++ {
+			lastTry := tries == maxRetriesOnConflict-1
 			common.SetLabel(namespaceResource, common.MemberOfKey, r.meshNamespace)
 			common.SetLabel(namespaceResource, common.LegacyMemberOfKey, r.meshNamespace)
 			err = r.client.Update(context.TODO(), namespaceResource)
@@ -739,11 +741,11 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
 				if errors.IsConflict(err) {
 					namespaceResource := &corev1.Namespace{}
 					err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, namespaceResource)
-					if err == nil {
+					if err == nil && !lastTry {
 						continue
 					}
 				}
-				allErrors = append(allErrors, err)
+				allErrors = append(allErrors, fmt.Errorf("Error adding mesh labels to namespace %s: %v", namespace, err))
 			}
 			break
 		}
