@@ -133,7 +133,8 @@ function patchTemplates() {
             - KILL\
             - SETUID\
             - SETGID\
-            - MKNOD/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
+            - MKNOD/' \
+         -e 's/- 1337/- \{\{ "[[ .ProxyUID ]]" \}\}/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
 
   # - update the namespaceSelector to ignore namespaces with the label maistra.io/ignore-namespace
   # set sidecarInjectorWebhook.enableNamespacesByDefault=true
