@@ -453,16 +453,18 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	return reconcile.Result{}, err
 }
 
-func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, configuredMembers []string, reqLogger logr.Logger) error {
+func (r *ReconcileMemberList) reconcileKiali(controlPlaneNamespace string, configuredMembers []string, reqLogger logr.Logger) error {
 
-	reqLogger.Info("Attempting to get Kiali CR", "kialiCRNamespace", kialiCRNamespace)
+	kialiOperatorNamespace := "kiali-operator"
+
+	reqLogger.Info("Attempting to get Kiali CR", "controlPlaneNamespace", controlPlaneNamespace)
 
 	kialiCR := &unstructured.Unstructured{}
 	kialiCR.SetAPIVersion("kiali.io/v1alpha1")
 	kialiCR.SetKind("Kiali")
-	kialiCR.SetNamespace(kialiCRNamespace)
-	kialiCR.SetName("kiali")
-	err := r.Client.Get(context.TODO(), client.ObjectKey{Name: "kiali", Namespace: kialiCRNamespace}, kialiCR)
+	kialiCR.SetNamespace(kialiOperatorNamespace)
+	kialiCR.SetName("kiali-" + controlPlaneNamespace)
+	err := r.Client.Get(context.TODO(), client.ObjectKey{Name: "kiali-" + controlPlaneNamespace, Namespace: kialiOperatorNamespace}, kialiCR)
 	if err != nil {
 		if errors.IsNotFound(err) || errors.IsGone(err) {
 			reqLogger.Info("Kiali CR does not exist, Kiali probably not enabled")
@@ -476,7 +478,7 @@ func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, configured
 	var accessibleNamespaces []string
 	if len(configuredMembers) == 0 {
 		// no configured members available - just allow access only to the control plane namespace
-		accessibleNamespaces = []string{kialiCRNamespace}
+		accessibleNamespaces = []string{controlPlaneNamespace}
 	} else {
 		// we are in multitenency mode with some namespaces being made available to kiali
 		accessibleNamespaces = make([]string, 0, len(configuredMembers))
@@ -489,12 +491,12 @@ func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, configured
 
 	err = unstructured.SetNestedStringSlice(kialiCR.UnstructuredContent(), accessibleNamespaces, "spec", "deployment", "accessible_namespaces")
 	if err != nil {
-		reqLogger.Error(err, "cannot set deployment.accessible_namespaces in Kiali CR", "kialiCRNamespace", kialiCRNamespace)
+		reqLogger.Error(err, "cannot set deployment.accessible_namespaces in Kiali CR", "controlPlaneNamespace", controlPlaneNamespace)
 	}
 
 	err = r.Client.Update(context.TODO(), kialiCR)
 	if err != nil {
-		reqLogger.Error(err, "cannot update Kiali CR with new accessible namespaces", "kialiCRNamespace", kialiCRNamespace)
+		reqLogger.Error(err, "cannot update Kiali CR with new accessible namespaces", "controlPlaneNamespace", controlPlaneNamespace)
 	}
 
 	reqLogger.Info("Kiali CR deployment.accessible_namespaces updated", "accessibleNamespaces", accessibleNamespaces)

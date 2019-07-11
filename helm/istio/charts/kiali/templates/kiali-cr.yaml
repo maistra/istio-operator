@@ -1,8 +1,8 @@
 apiVersion: kiali.io/v1alpha1
 kind: Kiali
 metadata:
-  name: kiali
-  namespace: {{ .Release.Namespace }}
+  name: "kiali-{{ .Release.Namespace }}"
+  namespace: kiali-operator
 spec:
   installation_tag: "Kiali [{{ .Release.Namespace }}]"
   istio_namespace: "{{ .Release.Namespace }}"
