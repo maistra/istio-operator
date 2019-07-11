@@ -56,7 +56,18 @@ function patchTemplates() {
   sed -i -e 's/enableNamespacesByDefault:.*$/enableNamespacesByDefault: true/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/values.yaml
 
   # enable egressgateway
-  sed -i -e '/istio-egressgateway:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/charts/gateways/values.yaml
+  sed -i -e '/istio-egressgateway:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
+         -e '/istio-ingressgateway:/,/^[^ ]/ {
+                s/type:.*$/type: ClusterIP/
+                /ports:/,/meshExpansionPorts:/ {
+                  /nodePort/ d
+                  /port: 31400/,+1 d
+                  /port: 15029/,+2 d
+                  /port: 15030/,+2 d
+                  /port: 15031/,+2 d
+                  /port: 15032/,+2 d
+                }
+             }' ${HELM_DIR}/istio/charts/gateways/values.yaml
   # add support for IOR
   sed -i -e '/istio-ingressgateway:/,/enabled:/ {
     /enabled:/ a\
