@@ -13,11 +13,11 @@ To install the Jaeger operator, execute the following commands:
 
 ```
 oc new-project observability # create the project for the jaeger operator
-oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/crds/jaegertracing_v1_jaeger_crd.yaml
-oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/service_account.yaml
-oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/role.yaml
-oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/role_binding.yaml
-oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/operator.yaml
+oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/crds/jaegertracing_v1_jaeger_crd.yaml
+oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/service_account.yaml
+oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/role.yaml
+oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/role_binding.yaml
+oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/operator.yaml
 ```
 
 ### Installing the Kiali Operator
@@ -86,11 +86,11 @@ Once the Istio Operator has been uninstalled, the Jaeger Operator and the Kiali 
 To uninstall the Jaeger operator, execute the following commands:
 
 ```
-oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/operator.yaml
-oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/role_binding.yaml
-oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/role.yaml
-oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/service_account.yaml
-oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.12.1/deploy/crds/jaegertracing_v1_jaeger_crd.yaml
+oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/operator.yaml
+oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/role_binding.yaml
+oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/role.yaml
+oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/service_account.yaml
+oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/crds/jaegertracing_v1_jaeger_crd.yaml
 ```
 
 ### Uninstalling the Kiali Operator
