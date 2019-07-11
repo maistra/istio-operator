@@ -248,7 +248,7 @@ spec:
   istio:
     kiali:
       hub: kiali
-      tag: v1.0.1
+      tag: v1.0.0
 
   ...
 ```
