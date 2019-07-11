@@ -138,14 +138,12 @@ function patchTemplates() {
   # allow the sidecar injector to set the runAsUser ID dynamically
   # drop unneeded capabilities from sidecar container, so using the restricted SCC doesn't require the SCC admission controller to mutate the pod
   sed -i -e 's/^\(.*runAsUser: 1337.*\)$/\
-          runAsUser: \{\{ "[[ .ProxyUID ]]" \}\}\
           capabilities:\
             drop:\
             - KILL\
             - SETUID\
             - SETGID\
-            - MKNOD/' \
-         -e 's/- 1337/- \{\{ "[[ .ProxyUID ]]" \}\}/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
+            - MKNOD/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
 
   # - update the namespaceSelector to ignore namespaces with the label maistra.io/ignore-namespace
   # set sidecarInjectorWebhook.enableNamespacesByDefault=true
