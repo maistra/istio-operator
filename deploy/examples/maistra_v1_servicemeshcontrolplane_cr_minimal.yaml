@@ -22,20 +22,7 @@ spec:
       istio-ingressgateway:
         # disable autoscaling for use in smaller environments
         autoscaleEnabled: false
-        type: ClusterIP
-        ports:
-        - port: 15020
-          targetPort: 15020
-          name: status-port
-        - port: 80
-          targetPort: 80
-          name: http2
-        - port: 443
-          name: https
-          # This is the port where sni routing happens
-        - port: 15443
-          targetPort: 15443
-          name: tls
+
     mixer:
       policy:
         # disable autoscaling for use in smaller environments
