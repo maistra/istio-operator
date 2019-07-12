@@ -1,6 +1,12 @@
 package common
 
 import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"strings"
+
 	"github.com/go-logr/logr"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -10,10 +16,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var log = logf.Log.WithName("util")
+
 type ResourceManager struct {
-	Client       client.Client
-	PatchFactory *PatchFactory
-	Log          logr.Logger
+	Client            client.Client
+	PatchFactory      *PatchFactory
+	Log               logr.Logger
+	OperatorNamespace string
 }
 
 func IndexOf(l []string, s string) int {
@@ -95,4 +104,19 @@ func IsCNIEnabled(mesh *maistrav1.ServiceMeshControlPlane) bool {
 		return val == "y" || val == "yes" || val == "true" || val == "on" || val == true
 	}
 	return false
+}
+
+// XXX: remove after updating to newer version of operator-sdk
+// from newer version of operator-sdk
+func GetOperatorNamespace() (string, error) {
+	nsBytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("namespace not found for current environment")
+		}
+		return "", err
+	}
+	ns := strings.TrimSpace(string(nsBytes))
+	log.Info("Found namespace", "Namespace", ns)
+	return ns, nil
 }

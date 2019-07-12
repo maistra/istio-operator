@@ -78,6 +78,10 @@ func (r *ControlPlaneReconciler) prune(generation int64) error {
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
+	err = r.pruneResources(namespacedResources, generation, r.OperatorNamespace)
+	if err != nil {
+		allErrors = append(allErrors, err)
+	}
 	err = r.pruneResources(nonNamespacedResources, generation, "")
 	if err != nil {
 		allErrors = append(allErrors, err)
