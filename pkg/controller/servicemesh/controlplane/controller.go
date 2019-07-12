@@ -1,8 +1,8 @@
 package controlplane
 
 import (
-	"github.com/maistra/istio-operator/pkg/bootstrap"
 	"context"
+	"github.com/maistra/istio-operator/pkg/bootstrap"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -29,18 +29,23 @@ var log = logf.Log.WithName("controller_servicemeshcontrolplane")
 // Add creates a new ControlPlane Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	operatorNamespace, err := common.GetOperatorNamespace()
+	if err != nil {
+		return err
+	}
+	return add(mgr, newReconciler(mgr, operatorNamespace))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, operatorNamespace string) reconcile.Reconciler {
 	return &ReconcileControlPlane{
 		ResourceManager: common.ResourceManager{
-			Client:       mgr.GetClient(),
-			PatchFactory: common.NewPatchFactory(mgr.GetClient()),
-			Log:          log,
+			Client:            mgr.GetClient(),
+			PatchFactory:      common.NewPatchFactory(mgr.GetClient()),
+			Log:               log,
+			OperatorNamespace: operatorNamespace,
 		},
-		Scheme: mgr.GetScheme(),
+		Scheme:  mgr.GetScheme(),
 		Manager: mgr,
 	}
 }
@@ -85,7 +90,7 @@ type ReconcileControlPlane struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	common.ResourceManager
-	Scheme *runtime.Scheme
+	Scheme  *runtime.Scheme
 	Manager manager.Manager
 }
 
