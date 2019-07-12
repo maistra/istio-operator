@@ -28,24 +28,25 @@ func (r *ControlPlaneReconciler) processComponentManifests(componentName string)
 	defer func() { r.Log = origLogger }()
 
 	renderings, hasRenderings := r.renderings[componentName]
-	if hasRenderings {
-		r.Log.Info("reconciling component resources")
-		status := r.Instance.Status.FindComponentByName(componentName)
-		if status == nil {
-			status = v1.NewComponentStatus()
-			status.Resource = componentName
-		} else {
-			status.RemoveCondition(v1.ConditionTypeReconciled)
-		}
-		status, err = r.processManifests(renderings, status)
-		status.ObservedGeneration = r.Instance.GetGeneration()
-		if err := r.processNewComponent(componentName, status); err != nil {
-			r.Log.Error(err, "unexpected error occurred during postprocessing of new component")
-		}
-		r.Status.ComponentStatus = append(r.Status.ComponentStatus, status)
-	} else {
+	if !hasRenderings {
 		r.Log.Info("no renderings for component")
+		return nil
 	}
+
+	r.Log.Info("reconciling component resources")
+	status := r.Instance.Status.FindComponentByName(componentName)
+	if status == nil {
+		status = v1.NewComponentStatus()
+		status.Resource = componentName
+	} else {
+		status.RemoveCondition(v1.ConditionTypeReconciled)
+	}
+	status, err = r.processManifests(renderings, status)
+	status.ObservedGeneration = r.Instance.GetGeneration()
+	if err := r.processNewComponent(componentName, status); err != nil {
+		r.Log.Error(err, "unexpected error occurred during postprocessing of new component")
+	}
+	r.Status.ComponentStatus = append(r.Status.ComponentStatus, status)
 	r.Log.Info("component reconciliation complete")
 	return err
 }
