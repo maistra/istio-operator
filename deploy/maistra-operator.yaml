@@ -35,7 +35,6 @@ spec:
     description: The status of the reconciliation process, if the control plane is not up to date with the latest version this resource.
     type: string
     priority: 1
-
 ---
 
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -59,6 +58,35 @@ spec:
   - JSONPath: .spec.members
     description: Namespaces that are members of this Control Plane
     name: Members
+    type: string
+
+---
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: servicemeshmembers.maistra.io
+spec:
+  group: maistra.io
+  names:
+    kind: ServiceMeshMember
+    listKind: ServiceMeshMemberList
+    plural: servicemeshmembers
+    singular: servicemeshmember
+    shortNames:
+      - smm
+  scope: Namespaced
+  subresources:
+    status: {}
+  version: v1
+  additionalPrinterColumns:
+  - JSONPath: .spec.controlPlaneRef.namespace
+    description: The ServiceMeshControlPlane's namespace that this namespace belongs to
+    name: "Control Plane Namespace"
+    type: string
+  - JSONPath: .spec.controlPlaneRef.name
+    description: The ServiceMeshControlPlane that this namespace belongs to
+    name: "Control Plane"
     type: string
 
 ---

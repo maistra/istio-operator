@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	authenticationv1 "k8s.io/api/authentication/v1"
 	authorizationv1 "k8s.io/api/authorization/v1"
@@ -17,8 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 )
-
-const memberRollName = "default"
 
 type memberRollValidator struct {
 	client  client.Client
@@ -60,8 +59,8 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 	}
 
 	// verify name == default
-	if memberRollName != smmr.Name {
-		return validationFailedResponse(http.StatusBadRequest, fmt.Sprintf("ServiceMeshMemberRoll must be named '%s'", memberRollName))
+	if common.MemberRollName != smmr.Name {
+		return validationFailedResponse(http.StatusBadRequest, fmt.Sprintf("ServiceMeshMemberRoll must be named '%s'", common.MemberRollName))
 	}
 
 	smmrList := &maistrav1.ServiceMeshMemberRollList{}

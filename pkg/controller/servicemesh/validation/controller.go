@@ -63,7 +63,7 @@ func Add(mgr manager.Manager) error {
 			Name: "smcp.validation.maistra.io",
 			Path: "/validate-smcp",
 			Rules: []arbeta1.RuleWithOperations{
-				arbeta1.RuleWithOperations{
+				{
 					Rule: arbeta1.Rule{
 						APIGroups:   []string{maistrav1.SchemeGroupVersion.Group},
 						APIVersions: []string{maistrav1.SchemeGroupVersion.Version},
@@ -82,7 +82,7 @@ func Add(mgr manager.Manager) error {
 			Name: "smmr.validation.maistra.io",
 			Path: "/validate-smmr",
 			Rules: []arbeta1.RuleWithOperations{
-				arbeta1.RuleWithOperations{
+				{
 					Rule: arbeta1.Rule{
 						APIGroups:   []string{maistrav1.SchemeGroupVersion.Group},
 						APIVersions: []string{maistrav1.SchemeGroupVersion.Version},
@@ -95,6 +95,25 @@ func Add(mgr manager.Manager) error {
 			Type:          types.WebhookTypeValidating,
 			Handlers: []admission.Handler{
 				&memberRollValidator{},
+			},
+		},
+		&admission.Webhook{
+			Name: "smm.validation.maistra.io",
+			Path: "/validate-smm",
+			Rules: []arbeta1.RuleWithOperations{
+				{
+					Rule: arbeta1.Rule{
+						APIGroups:   []string{maistrav1.SchemeGroupVersion.Group},
+						APIVersions: []string{maistrav1.SchemeGroupVersion.Version},
+						Resources:   []string{"servicemeshmembers"},
+					},
+					Operations: []arbeta1.OperationType{arbeta1.Create, arbeta1.Update},
+				},
+			},
+			FailurePolicy: &failurePolicy,
+			Type:          types.WebhookTypeValidating,
+			Handlers: []admission.Handler{
+				&memberValidator{},
 			},
 		},
 	)

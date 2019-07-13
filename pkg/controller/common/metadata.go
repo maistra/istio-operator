@@ -12,6 +12,9 @@ const (
 	// MetadataNamespace is the namespace for service mesh metadata (labels, annotations)
 	MetadataNamespace = "maistra.io"
 
+	// CreatedByKey is used in annotations to mark ServiceMeshMemberRolls created by the ServiceMeshMember controller
+	CreatedByKey = MetadataNamespace + "/created-by"
+
 	// OwnerKey represents the mesh (namespace) to which the resource relates
 	OwnerKey = MetadataNamespace + "/owner"
 
@@ -38,6 +41,12 @@ const (
 	KubernetesAppComponentKey = KubernetesAppNamespace + "/component"
 	KubernetesAppPartOfKey    = KubernetesAppNamespace + "/part-of"
 	KubernetesAppManagedByKey = KubernetesAppNamespace + "/managed-by"
+
+	// MemberRollName is the only name we allow for ServiceMeshMemberRoll objects
+	MemberRollName = "default"
+
+	// MemberName is the only name we allow for ServiceMeshMember objects
+	MemberName = "default"
 )
 
 func FetchOwnedResources(kubeClient client.Client, gvk schema.GroupVersionKind, owner, namespace string) (*unstructured.UnstructuredList, error) {
