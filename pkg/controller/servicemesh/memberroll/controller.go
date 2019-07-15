@@ -741,7 +741,7 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
 			err = r.client.Update(context.TODO(), namespaceResource)
 			if err != nil {
 				if errors.IsConflict(err) {
-					namespaceResource := &corev1.Namespace{}
+					namespaceResource = &corev1.Namespace{}
 					err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, namespaceResource)
 					if err == nil && !lastTry {
 						continue
