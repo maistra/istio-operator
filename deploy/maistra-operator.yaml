@@ -28,7 +28,7 @@ spec:
     plural: servicemeshcontrolplanes
     singular: servicemeshcontrolplane
     shortNames:
-     - smcp
+      - smcp
   scope: Namespaced
   subresources:
     status: {}
