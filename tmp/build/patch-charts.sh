@@ -275,15 +275,9 @@ function convertClusterToNamespaced() {
   # $2 - cluster kind
   # $3 - namespaced kind
   # $4 - dereference
-  sed -i -e 's/^\(\( *\)kind.*'$2'.*$\)/{{- if '$4'.Values.global.multitenant }}\
-\2kind: '$3'\
-{{- else }}\
-\1\
-{{- end }}/' \
+  sed -i -e 's/^\(\( *\)kind.*'$2'.*$\)/\2kind: '$3'/' \
          -e '0,/name:/ s/^\(\(.*\)name:.*$\)/\1\
-{{- if '$4'.Values.global.multitenant }}\
-\2namespace: {{ '$4'.Release.Namespace }}\
-{{- end }}/' "${1}"
+\2namespace: {{ '$4'.Release.Namespace }}/' "${1}"
 }
 
 function convertClusterRoleBinding() {
@@ -296,14 +290,6 @@ function convertMeshPolicy() {
 
 function patchMultiTenant() {
   echo "Patching charts for multitenancy"
-
-  # multitenant is the default
-  sed -i -e '/global:/,/tag:/ {
-    /tag:/ a\
-\
-\  # set multitenant as the default install type\
-\  multitenant: true
-    }' ${HELM_DIR}/istio/values.yaml
 
   # galley
   sed -i -e '/apiGroups:.*admissionregistration/,/apiGroups/ {
@@ -320,23 +306,20 @@ function patchMultiTenant() {
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/galley/templates/clusterrolebinding.yaml
   sed -i -e '/metadata/ {N; s/name: istio-galley/name: istio-galley-\{\{ .Release.Namespace \}\}/}' \
     ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
-  sed -i -e 's|^\(\(\s*\)rules:.*$\)|{{- if .Values.global.multitenant }}\
+  sed -i -e 's|^\(\(\s*\)rules:.*$\)|\
 \2namespaceSelector:\
 \2  matchExpressions:\
 \2  - key: maistra.io/member-of\
 \2    operator: In\
 \2    values:\
 \2    - "{{ .Release.Namespace }}"\
-{{- end }}\
 \1|' ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
   sed -i -e '/--validation-webhook-config-file/ {
     s/^\(\( *\)- --validation-webhook-config-file\)/\2- --deployment-namespace\
 \2- \{\{ .Release.Namespace \}\}\
 \2- --webhook-name\
 \2- istio-galley-\{\{ .Release.Namespace \}\}\
-\2\{\{- if .Values.global.multitenant \}\}\
 \2- --memberRollName=default\
-\2\{\{- end \}\}\
 \1/
   }' ${HELM_DIR}/istio/charts/galley/templates/deployment.yaml
 
@@ -360,10 +343,8 @@ function patchMultiTenant() {
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/mixer/templates/clusterrolebinding.yaml
   sed -i -e '/name: *mixer/,/args:/ {
     /args/ a\
-\{\{- if .Values.global.multitenant \}\}\
 \          - --memberRollName=default\
-\          - --memberRollNamespace=\{\{ .Release.Namespace \}\}\
-\{\{- end \}\}
+\          - --memberRollNamespace=\{\{ .Release.Namespace \}\}
   }' ${HELM_DIR}/istio/charts/mixer/templates/deployment.yaml
 
   # nodeagent
@@ -383,9 +364,7 @@ function patchMultiTenant() {
          -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/pilot/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/pilot/templates/clusterrolebinding.yaml
   sed -i -r -e 's/^(( *)- "?discovery"?)/\1\
-\2\{\{- if .Values.global.multitenant \}\}\
-\2- --memberRollName=default\
-\2\{\{- end \}\}/' ${HELM_DIR}/istio/charts/pilot/templates/deployment.yaml
+\2- --memberRollName=default/' ${HELM_DIR}/istio/charts/pilot/templates/deployment.yaml
 
   # security
   sed -i -e '/apiGroups:.*authentication.k8s.io/,$ {
@@ -399,9 +378,8 @@ function patchMultiTenant() {
   # revisit in TP12
   #convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-mtls.yaml
   #convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-permissive.yaml
-  sed -i -e 's/^\(\( *\){.*if .Values.global.trustDomain.*$\)/\2{{- if .Values.global.multitenant }}\
+  sed -i -e 's/^\(\( *\){.*if .Values.global.trustDomain.*$\)/\
 \            - --member-roll-name=default\
-\2{{- end }}\
 \1/' ${HELM_DIR}/istio/charts/security/templates/deployment.yaml
 
   # sidecarInjectorWebhook
@@ -413,7 +391,6 @@ function patchMultiTenant() {
   sed -i -e '/metadata/ {N; s/name: istio-sidecar-injector/name: istio-sidecar-injector-\{\{ .Release.Namespace \}\}/}' \
          -e '/if \.Values\.enableNamespacesByDefault/,/end/ {
     /enableNamespacesByDefault/ i\
-\{\{- if .Values.global.multitenant \}\}\
 \    namespaceSelector:\
 \      matchExpressions:\
 \      - key: maistra.io/member-of\
@@ -423,10 +400,7 @@ function patchMultiTenant() {
 \      - key: maistra.io/ignore-namespace\
 \        operator: DoesNotExist\
 \      - key: istio.openshift.com/ignore-namespace\
-\        operator: DoesNotExist\
-\{\{- else \}\}
-    /end/ i\
-\{\{- end \}\}
+\        operator: DoesNotExist
   }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhookconfiguration.yaml.tpl
   sed -i -e '/args:/ a\
             - --webhookConfigName=istio-sidecar-injector-{{ .Release.Namespace }}' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml

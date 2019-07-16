@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
@@ -50,24 +49,14 @@ func (v *controlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 	}
 
 	namespace := smcp.Namespace
-	clusterInstall := !common.IsMeshMultitenant(smcp)
 	for _, othercp := range smcpList.Items {
 		if othercp.Name == smcp.Name && othercp.Namespace == smcp.Namespace {
 			continue
 		}
-		// verify single cluster-wide instance
-		if clusterInstall {
-			return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("cannot install cluster wide service mesh when other service meshes are already installed"))
-		} else if !common.IsMeshMultitenant(&othercp) {
-			return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("cannot install service mesh when a cluster wide service mesh is already installed"))
-		} else if othercp.Namespace == namespace {
+		if othercp.Namespace == namespace {
 			// verify single instance per namespace
 			return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("only one service mesh may be installed per project/namespace"))
 		}
-	}
-
-	if clusterInstall && common.IsCNIEnabled(smcp) {
-		return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("CNI can only be enabled when multitenancy is enabled"))
 	}
 
 	return admission.ValidationResponse(true, "")

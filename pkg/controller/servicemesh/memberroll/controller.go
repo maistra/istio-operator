@@ -197,7 +197,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		reqLogger.Info("Deleting ServiceMeshMemberRoll")
 
 		// create reconciler
-		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, instance.Namespace, false, false)
+		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, instance.Namespace, false)
 		if err == nil {
 			for _, namespace := range instance.Spec.Members {
 				err := reconciler.removeNamespaceFromMesh(namespace)
@@ -316,7 +316,6 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	delete(unconfiguredMembers, instance.Namespace)
 
 	isCNIEnabled := common.IsCNIEnabled(&mesh)
-	isMultitenant := common.IsMeshMultitenant(&mesh)
 
 	if instance.Generation != instance.Status.ObservedGeneration { // member roll has been updated
 
@@ -332,7 +331,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 
 		// create reconciler
-		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, isMultitenant, isCNIEnabled)
+		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, isCNIEnabled)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -370,7 +369,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		reqLogger.Info("Reconciling newly created namespaces associated with this ServiceMeshMemberRoll")
 
 		// create reconciler
-		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, isMultitenant, isCNIEnabled)
+		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, isCNIEnabled)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -396,7 +395,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		reqLogger.Info("Reconciling ServiceMeshMemberRoll namespaces with new generation of ServiceMeshControlPlane")
 
 		// create reconciler
-		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, isMultitenant, isCNIEnabled)
+		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, isCNIEnabled)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -519,20 +518,18 @@ type namespaceReconciler struct {
 	client               client.Client
 	logger               logr.Logger
 	meshNamespace        string
-	isMultitenant        bool
 	isCNIEnabled         bool
 	networkingStrategy   networkingStrategy
 	roleBindingsList     *unstructured.UnstructuredList
 	requiredRoleBindings map[string]struct{}
 }
 
-func newNamespaceReconciler(client client.Client, logger logr.Logger, meshNamespace string, isMultitenant, isCNIEnabled bool) (*namespaceReconciler, error) {
+func newNamespaceReconciler(client client.Client, logger logr.Logger, meshNamespace string, isCNIEnabled bool) (*namespaceReconciler, error) {
 	var err error
 	reconciler := &namespaceReconciler{
 		client:               client,
 		logger:               logger.WithValues("MeshNamespace", meshNamespace),
 		meshNamespace:        meshNamespace,
-		isMultitenant:        isMultitenant,
 		isCNIEnabled:         isCNIEnabled,
 		requiredRoleBindings: map[string]struct{}{},
 	}
@@ -679,9 +676,6 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(namespace string) error {
 }
 
 func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
-	if !r.isMultitenant {
-		return r.removeNamespaceFromMesh(namespace)
-	}
 	logger := r.logger.WithValues("namespace", namespace)
 	logger.Info("configuring namespace for use with mesh")
 
@@ -862,9 +856,8 @@ func (r *namespaceReconciler) removeNetworkAttachmentDefinition(namespace, meshN
 		if errors.IsNotFound(err) || meta.IsNoMatchError(err) {
 			// resource doesn't exist, so everything's fine
 			return nil
-		} else {
-			return fmt.Errorf("Could not get NetworkAttachmentDefinition %s/%s: %v", namespace, name, err)
 		}
+		return fmt.Errorf("Could not get NetworkAttachmentDefinition %s/%s: %v", namespace, name, err)
 	}
 
 	err = r.client.Delete(context.TODO(), netAttachDef, client.PropagationPolicy(metav1.DeletePropagationOrphan))

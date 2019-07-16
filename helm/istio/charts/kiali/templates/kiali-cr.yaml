@@ -16,11 +16,7 @@ spec:
 
   deployment:
     accessible_namespaces:
-{{- if not .Values.global.multitenant }}
-    - "**"
-{{- else }}
     - "{{ .Release.Namespace }}"
-{{- end }}
     image_name: "{{ .Values.hub }}/kiali"
     image_pull_policy: "{{ .Values.global.imagePullPolicy }}"
     image_version: "{{ .Values.tag }}"
