@@ -1,4 +1,3 @@
-{{- if .Values.global.multitenant }}
 # This is to support routes on ocp 3.11 installs
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -19,5 +18,3 @@ spec:
   ingress:
   - ports:
     port: 20001
-
-{{- end }}

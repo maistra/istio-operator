@@ -1,4 +1,4 @@
-{{- if and .Values.global.multitenant (index .Values "istio-ingressgateway" "enabled") }}
+{{- if (index .Values "istio-ingressgateway" "enabled") }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

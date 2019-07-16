@@ -1,8 +1,6 @@
 package common
 
 import (
-	"strconv"
-
 	"github.com/go-logr/logr"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -88,29 +86,6 @@ func SetAnnotation(resource metav1.Object, annotation, value string) {
 	}
 	annotations[annotation] = value
 	resource.SetAnnotations(annotations)
-}
-
-func IsMeshMultitenant(mesh *maistrav1.ServiceMeshControlPlane) bool {
-	if mesh == nil {
-		return false
-	}
-	if global, ok := mesh.Spec.Istio["global"]; ok {
-		switch globalMap := global.(type) {
-		case map[string]interface{}:
-			if multitenant, ok := globalMap["multitenant"]; ok {
-				switch flag := multitenant.(type) {
-				case bool:
-					return flag
-				case string:
-					if boolval, err := strconv.ParseBool(flag); err != nil {
-						return boolval
-					}
-				}
-			}
-		}
-	}
-	// charts default to multitenant=true
-	return true
 }
 
 func IsCNIEnabled(mesh *maistrav1.ServiceMeshControlPlane) bool {
