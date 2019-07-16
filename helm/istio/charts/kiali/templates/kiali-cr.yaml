@@ -23,6 +23,12 @@ spec:
 {{- end }}
     image_name: "{{ .Values.hub }}/kiali"
     image_pull_policy: "{{ .Values.global.imagePullPolicy }}"
+{{- if .Values.global.imagePullSecrets }}
+    image_pull_secrets: 
+{{- range .Values.global.imagePullSecrets }}
+    - name: {{ . }}
+{{- end }}
+{{- end }}
     image_version: "{{ .Values.tag }}"
     ingress_enabled: {{ .Values.ingress.enabled }}
     namespace: "{{ .Release.Namespace }}"
