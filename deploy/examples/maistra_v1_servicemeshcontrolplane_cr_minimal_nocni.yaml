@@ -1,7 +1,7 @@
 apiVersion: maistra.io/v1
 kind: ServiceMeshControlPlane
 metadata:
-  name: minimal-cni-install
+  name: minimal-nocni-install
 spec:
   istio:
     global:
@@ -16,7 +16,7 @@ spec:
             memory: 128Mi
 
     istio_cni:
-      enabled: true
+      enabled: false
 
     gateways:
       istio-egressgateway:
