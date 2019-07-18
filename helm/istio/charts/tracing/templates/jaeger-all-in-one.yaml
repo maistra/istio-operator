@@ -23,9 +23,6 @@ spec:
       {{- end }}
 
   agent:
-    strategy: {{ .Values.jaeger.agentStrategy }}
-    image: {{ .Values.jaeger.hub }}/jaeger-agent:{{ .Values.jaeger.tag }}
-    serviceAccount: jaeger-agent
     options:
       collector:
         host-port: jaeger-collector:14267

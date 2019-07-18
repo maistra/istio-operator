@@ -134,6 +134,10 @@ function patchTemplates() {
       annotations:\
         k8s.v1.cni.cncf.io\/networks: {{ .Release.Namespace }}-istio-cni\
     \{\{- end \}\}/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
+  sed -i -e 's/\(\( *\)- name:.*sidecarInjector.*$\)/\1\
+\2- name: istio_cni\
+\2  version: 1.1.0\
+\2  condition: istio_cni.enabled/' ${HELM_DIR}/istio/requirements.yaml
 
   # allow the sidecar injector to set the runAsUser ID dynamically
   # drop unneeded capabilities from sidecar container, so using the restricted SCC doesn't require the SCC admission controller to mutate the pod
@@ -326,9 +330,6 @@ function patchMultiTenant() {
   # gateways
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/gateways/templates/clusterrolebindings.yaml "$"
 
-  # istiocoredns
-  convertClusterRoleBinding ${HELM_DIR}/istio/charts/istiocoredns/templates/clusterrolebinding.yaml
-
   # mixer
   sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ {
     /apiextensions/ {
@@ -346,9 +347,6 @@ function patchMultiTenant() {
 \          - --memberRollName=default\
 \          - --memberRollNamespace=\{\{ .Release.Namespace \}\}
   }' ${HELM_DIR}/istio/charts/mixer/templates/deployment.yaml
-
-  # nodeagent
-  convertClusterRoleBinding ${HELM_DIR}/istio/charts/nodeagent/templates/clusterrolebinding.yaml
 
   # pilot
   sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ {
@@ -406,8 +404,22 @@ function patchMultiTenant() {
             - --webhookConfigName=istio-sidecar-injector-{{ .Release.Namespace }}' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
 }
 
+function removeUnsupportedCharts() {
+  rm -rf ${HELM_DIR}/istio/charts/nodeagent
+  rm -rf ${HELM_DIR}/istio/charts/servicegraph
+  rm -rf ${HELM_DIR}/istio/charts/istiocoredns
+  rm -rf ${HELM_DIR}/istio/charts/certmanager
+
+  sed -i -e '/name:.*nodeagent/,+2 d' \
+         -e '/name:.*servicegraph/,+2 d' \
+         -e '/name:.*istiocoredns/,+2 d' \
+         -e '/name:.*certmanager/,+2 d' ${HELM_DIR}/istio/requirements.yaml
+}
+
+
 copyOverlay
 
+removeUnsupportedCharts
 patchTemplates
 patchKialiTemplate
 patchKialiOpenShift
