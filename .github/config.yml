@@ -1,1 +1,1 @@
-COMMIT_MESSAGE_REGEX: "\bMAISTRA-\d+(?![.\d])|Merge branch '.*' into .*$"
+COMMIT_MESSAGE_REGEX: "\bMAISTRA-\d+(?![.\d])"
