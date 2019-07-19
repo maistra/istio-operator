@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+
 	"github.com/maistra/istio-operator/pkg/bootstrap"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -33,6 +34,12 @@ func Add(mgr manager.Manager) error {
 	if err != nil {
 		return err
 	}
+
+	err = common.InitCNIStatus(mgr)
+	if err != nil {
+		return err
+	}
+
 	return add(mgr, newReconciler(mgr, operatorNamespace))
 }
 

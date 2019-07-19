@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"strings"
 
-	"github.com/go-logr/logr"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
-	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/go-logr/logr"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -95,15 +94,6 @@ func SetAnnotation(resource metav1.Object, annotation, value string) {
 	}
 	annotations[annotation] = value
 	resource.SetAnnotations(annotations)
-}
-
-func IsCNIEnabled(mesh *maistrav1.ServiceMeshControlPlane) bool {
-	val := mesh.Spec.Istio["istio_cni"]
-	if cni, ok := val.(map[string]interface{}); ok {
-		val = cni["enabled"]
-		return val == "y" || val == "yes" || val == "true" || val == "on" || val == true
-	}
-	return false
 }
 
 // XXX: remove after updating to newer version of operator-sdk

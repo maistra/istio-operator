@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	corev1 "k8s.io/api/core/v1"
@@ -176,6 +176,14 @@ func (r *ControlPlaneReconciler) renderCharts() error {
 	} else {
 		return fmt.Errorf("Could not set operatorNamespace value, as .Values.global is not a map[string]interface{}: %v", err)
 	}
+
+	var CNIValues map[string]interface{}
+	var ok bool
+	if CNIValues, ok = r.Instance.Spec.Istio["istio_cni"].(map[string]interface{}); !ok {
+		CNIValues = make(map[string]interface{})
+		r.Instance.Spec.Istio["istio_cni"] = CNIValues
+	}
+	CNIValues["enabled"] = common.IsCNIEnabled
 
 	r.Log.V(2).Info("rendering Istio charts")
 	istioRenderings, _, err := common.RenderHelmChart(path.Join(common.ChartPath, "istio"), r.Instance.GetNamespace(), r.Instance.Spec.Istio)
