@@ -1,0 +1,30 @@
+pull_request_rules:
+  - name: automatic merge with strict when reviewed and not work in progress
+    conditions:
+      - '#approved-reviews-by>=2'
+      - '#review-requested=0'
+      - '#changes-requested-reviews-by=0'
+      - '#commented-reviews-by=0'
+      - label != "work in progress"
+      - label = "okay to merge"
+      #- milestone ~= '^maistra-\d+-\d+$'
+    actions:
+      merge:
+        method: merge
+        strict: true
+  - name: label work in progress PRs
+    conditions:
+      - label != "work in progress"
+      - title ~= '^WIP\b'
+    actions:
+      label:
+        add:
+          - "work in progress"
+  - name: remove work in progress labels
+    conditions:
+      - label = "work in progress"
+      - title ~= '^(?!WIP\b)'
+    actions:
+      label:
+        remove:
+          - "work in progress"
