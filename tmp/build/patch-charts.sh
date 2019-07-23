@@ -11,7 +11,7 @@ set -e
 if [[ "${COMMUNITY,,}" == "true" ]]; then
   : ${HUB:=docker.io/maistra}
 else
-  : ${HUB:=registry.redhat.io/openshift-istio-tech-preview}
+  : ${HUB:=registry.redhat.io/openshift-service-mesh}
 fi
 
 # copy maistra specific templates into charts
@@ -90,7 +90,7 @@ function patchTemplates() {
     sed -i -e 's/hub:.*$/hub: kiali/' \
            -e 's/tag:.*$/tag: v'${KIALI_VERSION}'/' ${HELM_DIR}/istio/charts/kiali/values.yaml
   else
-    sed -i -e 's+hub:.*$+hub: registry\.redhat\.io\/openshift-istio-tech-preview+' \
+    sed -i -e 's+hub:.*$+hub: registry\.redhat\.io\/openshift-service-mesh+' \
            -e 's/tag:.*$/tag: '${KIALI_VERSION}'/' ${HELM_DIR}/istio/charts/kiali/values.yaml
   fi
 
@@ -204,7 +204,7 @@ function patchTemplates() {
   tag: 5.6.10\
 \
 \1|' ${HELM_DIR}/istio/charts/tracing/values.yaml
-    sed -i -e 's/hub:.*$/hub: registry\.redhat\.io\/openshift-istio-tech-preview/' \
+    sed -i -e 's/hub:.*$/hub: registry\.redhat\.io\/openshift-service-mesh/' \
            -e 's/tag:.*$/tag: '${THREESCALE_VERSION}'/' ${HELM_DIR}/maistra-threescale/values.yaml
   fi
 
