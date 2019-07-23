@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"encoding/json"
+
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -811,6 +813,21 @@ func (r *namespaceReconciler) reconcileRoleBindings(namespace string, reqLogger 
 	return utilerrors.NewAggregate(allErrors)
 }
 
+type kubernetesCNIConfig struct {
+	Kubeconfig string `json:"kubeconfig"`
+	CniBinDir string `json:"cni_bin_dir"`
+	IptablesScript string `json:"iptables_script"`
+	ExcludeNamespaces []string `json:"exclude_namespaces"`
+}
+
+type runtimeCNIConfig struct {
+	CniVersion string `json:"cniVersion"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+	LogLevel string `json:"log_level"`
+	Kubernetes *kubernetesCNIConfig `json:"kubernetes"`
+}
+
 func (r *namespaceReconciler) addNetworkAttachmentDefinition(namespace, meshNamespace string, reqLogger logr.Logger) error {
 	name := fmt.Sprintf("%s-%s", meshNamespace, "istio-cni") // must match name of .conf file in multus.d
 
@@ -831,9 +848,23 @@ func (r *namespaceReconciler) addNetworkAttachmentDefinition(namespace, meshName
 	}
 
 	// TODO: update resource if its state isn't what we want
-
 	netAttachDef.SetNamespace(namespace)
 	netAttachDef.SetName(name)
+	config := &runtimeCNIConfig{
+		CniVersion: "0.3.0",
+		Name: fmt.Sprintf("%s-istio-cni", meshNamespace),
+		Type: fmt.Sprintf("%s-istio-cni", meshNamespace),
+		LogLevel: "info",
+		Kubernetes: &kubernetesCNIConfig{
+			Kubeconfig: fmt.Sprintf("/etc/cni/multus/net.d/%s-istio-cni.kubeconfig", meshNamespace),
+			CniBinDir: "/opt/multus/bin",
+			IptablesScript: fmt.Sprintf("%s-istio-iptables.sh", meshNamespace),
+			ExcludeNamespaces: []string{meshNamespace},
+		},
+	}
+	marshalled, _ := json.Marshal(config)
+	unstructured.SetNestedField(netAttachDef.Object, string(marshalled), "spec", "config")
+
 	err = r.client.Create(context.TODO(), netAttachDef)
 	if err != nil {
 		return fmt.Errorf("Could not create NetworkAttachmentDefinition %s/%s: %v", namespace, name, err)
