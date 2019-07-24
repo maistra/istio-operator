@@ -22,7 +22,7 @@ spec:
 {{- if .Values.global.imagePullSecrets }}
     image_pull_secrets: 
 {{- range .Values.global.imagePullSecrets }}
-    - name: {{ . }}
+    - {{ . }}
 {{- end }}
 {{- end }}
     image_version: "{{ .Values.tag }}"
