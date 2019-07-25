@@ -5,8 +5,8 @@
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
-  name: istio-node
-  namespace: {{ .Release.Namespace }}
+  name: istio-node-{{ .Release.Namespace }}
+  namespace: {{ .Values.global.operatorNamespace }}
   labels:
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
@@ -45,7 +45,7 @@ spec:
           operator: Exists
         - effect: NoExecute
           operator: Exists
-      serviceAccountName: istio-cni
+      serviceAccountName: istio-cni-{{ .Release.Namespace }}
       # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
       # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
       terminationGracePeriodSeconds: 0
@@ -88,7 +88,7 @@ spec:
             - name: CNI_NETWORK_CONFIG
               valueFrom:
                 configMapKeyRef:
-                  name: istio-cni-config
+                  name: istio-cni-config-{{ .Release.Namespace }}
                   key: cni_network_config
           volumeMounts:
             - mountPath: /host/opt/cni/bin

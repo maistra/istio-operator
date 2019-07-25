@@ -171,6 +171,12 @@ func (r *ControlPlaneReconciler) renderCharts() error {
 	var err error
 	var threeScaleRenderings map[string][]manifest.Manifest
 
+	if globalValues, ok := r.Instance.Spec.Istio["global"].(map[string]interface{}); ok {
+		globalValues["operatorNamespace"] = r.OperatorNamespace
+	} else {
+		return fmt.Errorf("Could not set operatorNamespace value, as .Values.global is not a map[string]interface{}: %v", err)
+	}
+
 	r.Log.V(2).Info("rendering Istio charts")
 	istioRenderings, _, err := common.RenderHelmChart(path.Join(common.ChartPath, "istio"), r.Instance.GetNamespace(), r.Instance.Spec.Istio)
 	if err != nil {

@@ -33,17 +33,22 @@ const watchNamespace = "istio-system"
 // Add creates a new ControlPlane Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	operatorNamespace, err := common.GetOperatorNamespace()
+	if err != nil {
+		return err
+	}
+	return add(mgr, newReconciler(mgr, operatorNamespace))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, operatorNamespace string) reconcile.Reconciler {
 	return &ReconcileControlPlane{
 		ReconcileControlPlane: &controlplane.ReconcileControlPlane{
 			ResourceManager: common.ResourceManager{
-				Client:       mgr.GetClient(),
-				PatchFactory: common.NewPatchFactory(mgr.GetClient()),
-				Log:          log,
+				Client:            mgr.GetClient(),
+				PatchFactory:      common.NewPatchFactory(mgr.GetClient()),
+				Log:               log,
+				OperatorNamespace: operatorNamespace,
 			},
 			Scheme: mgr.GetScheme(),
 		},
@@ -130,7 +135,7 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		ReconcileControlPlane: r.ReconcileControlPlane,
 		Instance:              &instance.ServiceMeshControlPlane,
 		Status:                v1.NewControlPlaneStatus(),
-		UpdateStatus: func () error {
+		UpdateStatus: func() error {
 			return r.Client.Status().Update(context.TODO(), instance)
 		},
 		NewOwnerRef: func(owner *v1.ServiceMeshControlPlane) *metav1.OwnerReference {

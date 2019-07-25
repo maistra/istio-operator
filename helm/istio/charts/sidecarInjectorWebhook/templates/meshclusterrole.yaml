@@ -12,11 +12,8 @@ rules:
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["mutatingwebhookconfigurations"]
   verbs: ["create", "get", "list", "watch", "patch"]
+# required to be able to set OwnerReference with BlockOwnerDeletion=true
 - apiGroups: ["extensions"]
   resources: ["deployments/finalizers"]
   resourceNames: ["istio-sidecar-injector"]
   verbs: ["update"]
-- apiGroups: ["security.openshift.io"]
-  resources: ["securitycontextconstraints"]
-  resourceNames: ["anyuid"]
-  verbs: ["use"]

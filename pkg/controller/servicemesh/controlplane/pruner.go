@@ -24,11 +24,9 @@ var (
 		schema.GroupVersionKind{Group: "autoscaling", Version: "v2beta1", Kind: "HorizontalPodAutoscaler"},
 		schema.GroupVersionKind{Group: "policy", Version: "v1beta1", Kind: "PodDisruptionBudget"},
 		schema.GroupVersionKind{Group: "route.openshift.io", Version: "v1", Kind: "Route"},
-		schema.GroupVersionKind{Group: "apps.openshift.io", Version: "v1", Kind: "DeploymentConfig"},
 		schema.GroupVersionKind{Group: "apps", Version: "v1beta1", Kind: "Deployment"},
 		schema.GroupVersionKind{Group: "apps", Version: "v1beta1", Kind: "StatefulSet"},
 		schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
-		schema.GroupVersionKind{Group: "batch", Version: "v1", Kind: "Job"},
 		schema.GroupVersionKind{Group: "extensions", Version: "v1beta1", Kind: "DaemonSet"},
 		schema.GroupVersionKind{Group: "extensions", Version: "v1beta1", Kind: "Deployment"},
 		schema.GroupVersionKind{Group: "extensions", Version: "v1beta1", Kind: "Ingress"},
@@ -65,7 +63,6 @@ var (
 		schema.GroupVersionKind{Group: "admissionregistration.k8s.io", Version: "v1beta1", Kind: "MutatingWebhookConfiguration"},
 		schema.GroupVersionKind{Group: "admissionregistration.k8s.io", Version: "v1beta1", Kind: "ValidatingWebhookConfiguration"},
 		schema.GroupVersionKind{Group: "certmanager.k8s.io", Version: "v1alpha1", Kind: "ClusterIssuer"},
-		schema.GroupVersionKind{Group: "oauth.openshift.io", Version: "v1", Kind: "OAuthClient"},
 		schema.GroupVersionKind{Group: "rbac.authorization.k8s.io", Version: "v1", Kind: "ClusterRole"},
 		schema.GroupVersionKind{Group: "rbac.authorization.k8s.io", Version: "v1", Kind: "ClusterRoleBinding"},
 		schema.GroupVersionKind{Group: "authentication.istio.io", Version: "v1alpha1", Kind: "MeshPolicy"},
@@ -75,6 +72,10 @@ var (
 func (r *ControlPlaneReconciler) prune(generation int64) error {
 	allErrors := []error{}
 	err := r.pruneResources(namespacedResources, generation, r.Instance.Namespace)
+	if err != nil {
+		allErrors = append(allErrors, err)
+	}
+	err = r.pruneResources(namespacedResources, generation, r.OperatorNamespace)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}

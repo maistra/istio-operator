@@ -21,13 +21,9 @@ function jaeger_patch_values() {
 }
 
 function jaeger_remove_files() {
-  if [ -f ${HELM_DIR}/istio/charts/tracing/templates/deployment-jaeger.yaml ]; then
-    rm ${HELM_DIR}/istio/charts/tracing/templates/deployment-jaeger.yaml
-  fi
-
-  if [ -f ${HELM_DIR}/istio/charts/tracing/templates/service-jaeger.yaml ]; then
-    rm ${HELM_DIR}/istio/charts/tracing/templates/service-jaeger.yaml
-  fi
+  rm -f ${HELM_DIR}/istio/charts/tracing/templates/deployment-jaeger.yaml
+  rm -f ${HELM_DIR}/istio/charts/tracing/templates/service-jaeger.yaml
+  rm -f ${HELM_DIR}/istio/charts/tracing/templates/ingress.yaml
 }
 
 function jaeger_patch_production() {

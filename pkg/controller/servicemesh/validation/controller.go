@@ -2,9 +2,7 @@ package validation
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
-	"strings"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 
@@ -32,7 +30,7 @@ func init() {
 // Add webhooks
 func Add(mgr manager.Manager) error {
 	log.Info("setting up webhook server")
-	operatorNamespace, err := getOperatorNamespace()
+	operatorNamespace, err := common.GetOperatorNamespace()
 	if err != nil {
 		return err
 	}
@@ -103,19 +101,4 @@ func Add(mgr manager.Manager) error {
 
 func (f namespaceFilter) watching(namespace string) bool {
 	return len(f) == 0 || namespace == string(f)
-}
-
-// XXX: remove after updating to newer version of operator-sdk
-// from newer version of operator-sdk
-func getOperatorNamespace() (string, error) {
-	nsBytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", fmt.Errorf("namespace not found for current environment")
-		}
-		return "", err
-	}
-	ns := strings.TrimSpace(string(nsBytes))
-	log.V(1).Info("Found namespace", "Namespace", ns)
-	return ns, nil
 }

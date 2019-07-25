@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	authorizationv1 "k8s.io/api/authorization/v1"
 	authenticationv1 "k8s.io/api/authentication/v1"
@@ -56,11 +55,6 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 	}
 	if len(smcpList.Items) == 0 {
 		return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("no service mesh is configured in namespace '%s'", smmr.Namespace))
-	}
-	for _, smcp := range smcpList.Items {
-		if !common.IsMeshMultitenant(&smcp) {
-			return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("service mesh is not configured for multitenancy"))
-		}
 	}
 
 	// verify name == default

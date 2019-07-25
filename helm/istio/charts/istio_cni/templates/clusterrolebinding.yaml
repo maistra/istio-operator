@@ -9,6 +9,6 @@ roleRef:
   name: istio-cni-{{ .Release.Namespace }}
 subjects:
   - kind: ServiceAccount
-    name: istio-cni
-    namespace: {{ .Release.Namespace }}
+    name: istio-cni-{{ .Release.Namespace }}
+    namespace: {{ .Values.global.operatorNamespace }}
 {{ end }}
