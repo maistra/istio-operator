@@ -389,19 +389,18 @@ function patchMultiTenant() {
   }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrolebinding.yaml
   sed -i -e '/metadata/ {N; s/name: istio-sidecar-injector/name: istio-sidecar-injector-\{\{ .Release.Namespace \}\}/}' \
-         -e '/if \.Values\.enableNamespacesByDefault/,/end/ {
-    /enableNamespacesByDefault/ i\
-\    namespaceSelector:\
-\      matchExpressions:\
-\      - key: maistra.io/member-of\
-\        operator: In\
-\        values:\
-\        - "{{ .Release.Namespace }}"\
-\      - key: maistra.io/ignore-namespace\
-\        operator: DoesNotExist\
-\      - key: istio.openshift.com/ignore-namespace\
-\        operator: DoesNotExist
-  }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhookconfiguration.yaml.tpl
+         -e '/if \.Values\.enableNamespacesByDefault/,/end/ d' \
+         -e 's+\(^ *\)namespaceSelector:+\
+\1namespaceSelector:\
+\1  matchExpressions:\
+\1  - key: maistra.io/member-of\
+\1    operator: In\
+\1    values:\
+\1    - "{{ .Release.Namespace }}"\
+\1  - key: maistra.io/ignore-namespace\
+\1    operator: DoesNotExist\
+\1  - key: istio.openshift.com/ignore-namespace\
+\1    operator: DoesNotExist+' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhookconfiguration.yaml.tpl
   sed -i -e '/args:/ a\
             - --webhookConfigName=istio-sidecar-injector-{{ .Release.Namespace }}' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
 }
