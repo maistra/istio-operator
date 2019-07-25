@@ -2,8 +2,6 @@ package controlplane
 
 import (
 	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-
-	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 func updateReconcileStatus(status *v1.StatusType, err error) {
@@ -45,28 +43,6 @@ func updateReconcileStatus(status *v1.StatusType, err error) {
 			Type:    v1.ConditionTypeReconciled,
 			Reason:  v1.ConditionReasonReconcileError,
 			Status:  v1.ConditionStatusFalse,
-			Message: err.Error(),
-		})
-	}
-}
-
-func updateDeleteStatus(status *v1.StatusType, err error) {
-	if err == nil || errors.IsNotFound(err) || errors.IsGone(err) {
-		status.SetCondition(v1.Condition{
-			Type:   v1.ConditionTypeInstalled,
-			Status: v1.ConditionStatusFalse,
-			Reason: v1.ConditionReasonDeletionSuccessful,
-		})
-		status.SetCondition(v1.Condition{
-			Type:   v1.ConditionTypeReconciled,
-			Status: v1.ConditionStatusTrue,
-			Reason: v1.ConditionReasonDeletionSuccessful,
-		})
-	} else {
-		status.SetCondition(v1.Condition{
-			Type:    v1.ConditionTypeReconciled,
-			Status:  v1.ConditionStatusFalse,
-			Reason:  v1.ConditionReasonDeletionError,
 			Message: err.Error(),
 		})
 	}

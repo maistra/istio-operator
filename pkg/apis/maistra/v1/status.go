@@ -47,19 +47,19 @@ type ComponentStatus struct {
 }
 
 // ConditionType represents the type of the condition.  Condition stages are:
-// Initialized, Installed, Reconciled
+// Installed, Reconciled, Ready
 type ConditionType string
 
 const (
-	// ConditionTypeInitialized signifies the whether or not the controller has
-	// initialized the CR.
-	ConditionTypeInitialized ConditionType = "Initialized"
 	// ConditionTypeInstalled signifies the whether or not the controller has
 	// installed the resources defined through the CR.
 	ConditionTypeInstalled ConditionType = "Installed"
 	// ConditionTypeReconciled signifies the whether or not the controller has
 	// reconciled the resources defined through the CR.
 	ConditionTypeReconciled ConditionType = "Reconciled"
+	// ConditionTypeReady signifies the whether or not any Deployment, StatefulSet,
+	// etc. resources are Ready.
+	ConditionTypeReady ConditionType = "Ready"
 )
 
 // ConditionStatus represents the status of the condition

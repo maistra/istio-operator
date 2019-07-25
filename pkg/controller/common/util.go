@@ -51,13 +51,28 @@ func DeleteLabel(resource metav1.Object, label string) {
 	resource.SetLabels(labels)
 }
 
-func SetLabel(resource metav1.Object, label, value string) {
+func GetLabel(resource metav1.Object, label string) (value string, ok bool) {
 	labels := resource.GetLabels()
 	if labels == nil {
-		labels = map[string]string{}
+		return "", false
 	}
-	labels[label] = value
-	resource.SetLabels(labels)
+	value, ok = labels[label]
+	return
+}
+
+func SetLabels(resource metav1.Object, labels map[string]string) {
+	existingLabels := resource.GetLabels()
+	if existingLabels == nil {
+		existingLabels = map[string]string{}
+	}
+	for key, value := range labels {
+		existingLabels[key] = value
+	}
+	resource.SetLabels(existingLabels)
+}
+
+func SetLabel(resource metav1.Object, label, value string) {
+	SetLabels(resource, map[string]string{label: value})
 }
 
 func HasAnnotation(resource metav1.Object, annotation string) bool {
@@ -81,7 +96,7 @@ func DeleteAnnotation(resource metav1.Object, annotation string) {
 func GetAnnotation(resource metav1.Object, annotation string) (value string, ok bool) {
 	annotations := resource.GetAnnotations()
 	if annotations == nil {
-		annotations = map[string]string{}
+		return "", false
 	}
 	value, ok = annotations[annotation]
 	return
