@@ -3,7 +3,7 @@
 set -e
 
 : ${HELM_DIR:?"Need to set HELM_DIR to output location for charts, e.g. tmp/_output/istio-releases/istio-1.1.0"}
-: ${SOURCE_DIR:?"Need to set SOURCE_DIR to location of the istio-operator source directory"}
+: ${MAIN_DIR:?"Need to set MAIN_DIR to location of the istio-operator source directory"}
 
 : ${THREESCALE_VERSION:=0.7.1}
 : ${KIALI_VERSION:=1.0.0}
@@ -17,7 +17,7 @@ fi
 # copy maistra specific templates into charts
 function copyOverlay() {
   echo "copying Maistra chart customizations over stock Istio charts"
-  find "${SOURCE_DIR}/helm/" -maxdepth 1 -mindepth 1 -type d | xargs -I '{}' -n 1 -rt cp -r '{}' ${HELM_DIR}
+  find "${MAIN_DIR}/helm/" -maxdepth 1 -mindepth 1 -type d | xargs -I '{}' -n 1 -rt cp -r '{}' ${HELM_DIR}
 }
 
 # The following modifications are made to the generated helm template for the Istio yaml files
@@ -101,18 +101,12 @@ function patchTemplates() {
   rm ${HELM_DIR}/istio/charts/security/templates/cleanup-secrets.yaml
 
   # - we create custom resources in the normal way
-  if [ "${PATCH_1_0}" == "" ]; then
-    rm ${HELM_DIR}/istio/charts/security/templates/create-custom-resources-job.yaml
-    rm ${HELM_DIR}/istio/charts/security/templates/configmap.yaml
+  rm ${HELM_DIR}/istio/charts/security/templates/create-custom-resources-job.yaml
+  rm ${HELM_DIR}/istio/charts/security/templates/configmap.yaml
 
-    # now make sure they're available
-    sed -i -e 's/define "security-default\.yaml\.tpl"/if and .Values.createMeshPolicy .Values.global.mtls.enabled/' ${HELM_DIR}/istio/charts/security/templates/enable-mesh-mtls.yaml
-    sed -i -e 's/define "security-permissive\.yaml\.tpl"/if and .Values.createMeshPolicy (not .Values.global.mtls.enabled)/' ${HELM_DIR}/istio/charts/security/templates/enable-mesh-permissive.yaml
-  fi
-
-  # - remove the kubernetes gateways
-  # this no longer exists
-  # rm ${HELM_DIR}istio/charts/pilot/templates/gateway.yaml
+  # now make sure they're available
+  sed -i -e 's/define "security-default\.yaml\.tpl"/if and .Values.createMeshPolicy .Values.global.mtls.enabled/' ${HELM_DIR}/istio/charts/security/templates/enable-mesh-mtls.yaml
+  sed -i -e 's/define "security-permissive\.yaml\.tpl"/if and .Values.createMeshPolicy (not .Values.global.mtls.enabled)/' ${HELM_DIR}/istio/charts/security/templates/enable-mesh-permissive.yaml
 
   # - remove GODEBUG from the pilot environment (and mixer too)
   sed -i -e '/GODEBUG/d' ${HELM_DIR}/istio/charts/pilot/values.yaml ${HELM_DIR}/istio/charts/mixer/values.yaml
@@ -415,7 +409,6 @@ function removeUnsupportedCharts() {
          -e '/name:.*certmanager/,+2 d' ${HELM_DIR}/istio/requirements.yaml
 }
 
-
 copyOverlay
 
 removeUnsupportedCharts
@@ -424,6 +417,6 @@ patchKialiTemplate
 patchKialiOpenShift
 
 patchMultiTenant
-source ${SOURCE_DIR}/tmp/build/patch-grafana.sh
-source ${SOURCE_DIR}/tmp/build/patch-jaeger.sh
-source ${SOURCE_DIR}/tmp/build/patch-prometheus.sh
+source ${MAIN_DIR}/build/patch-grafana.sh
+source ${MAIN_DIR}/build/patch-jaeger.sh
+source ${MAIN_DIR}/build/patch-prometheus.sh
