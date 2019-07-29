@@ -5,16 +5,17 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/maistra/istio-operator/pkg/apis"
 	"github.com/maistra/istio-operator/pkg/controller"
 	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/version"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/ready"
+	sdkVersion "github.com/operator-framework/operator-sdk/version"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/discovery"
@@ -31,6 +32,12 @@ import (
 var log = logf.Log.WithName("cmd")
 var discoveryCacheDir string
 
+func printVersion() {
+	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
+	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
+	log.Info(fmt.Sprintf("operator-sdk Version: %v", sdkVersion.Version))
+}
+
 func main() {
 	flag.StringVar(&discoveryCacheDir, "discoveryCacheDir", "/home/istio-operator/.kube/cache/discovery", "The location where cached discovery information used by the REST client is stored.")
 
@@ -40,14 +47,7 @@ func main() {
 	logConfig := "production"
 	flag.StringVar(&logConfig, "logConfig", logConfig, "Whether to configure logging for production use (json, info level, w/ log sampling) or development (plain-text, debug level, w/o log sampling)")
 
-	printVersion := false
-	flag.BoolVar(&printVersion, "version", printVersion, "Prints version information and exits")
-
 	flag.Parse()
-	if printVersion {
-		fmt.Printf("%s\n", version.Info)
-		os.Exit(0)
-	}
 
 	// The logger instantiated here can be changed to any logger
 	// implementing the logr.Logger interface. This logger will
@@ -55,7 +55,7 @@ func main() {
 	// uniform and structured logs.
 	logf.SetLogger(logf.ZapLogger(logConfig != "production"))
 
-	log.Info(fmt.Sprintf("Starting Istio Operator %s", version.Info))
+	printVersion()
 
 	namespace, err := k8sutil.GetWatchNamespace()
 	if err != nil {

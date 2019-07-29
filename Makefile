@@ -25,43 +25,13 @@ COMMUNITY       ?= true
 
 export MAIN_DIR OUT_DIR MAISTRA_BRANCH MAISTRA_VERSION COMMUNITY
 
-PACKAGE_NAME := github.com/maistra/istio-operator
-LD_EXTRAFLAGS =
-
-VERSION ?= development
-LD_EXTRAFLAGS += -X ${PACKAGE_NAME}/pkg/version.buildVersion=${VERSION}
-
-GITREVISION ?= $(shell git rev-parse --verify HEAD 2> /dev/null)
-ifeq ($(GITREVISION),)
-  GITREVISION = unknown
-endif
-LD_EXTRAFLAGS += -X ${PACKAGE_NAME}/pkg/version.buildGitRevision=${GITREVISION}
-
-GITSTATUS ?= $(shell git diff-index --quiet HEAD --  2> /dev/null; echo $$?)
-ifeq ($(GITSTATUS),0)
-  GITSTATUS = Clean
-else ifeq ($(GITSTATUS),1)
-  GITSTATUS = Modified
-else
-  GITSTATUS = unknown
-endif
-LD_EXTRAFLAGS += -X ${PACKAGE_NAME}/pkg/version.buildStatus=${GITSTATUS}
-
-GITTAG ?= $(shell git describe 2> /dev/null)
-ifeq ($(GITTAG),)
-  GITTAG = unknown
-endif
-LD_EXTRAFLAGS += -X ${PACKAGE_NAME}/pkg/version.buildTag=${GITTAG}
-
-LDFLAGS = '-extldflags -static ${LD_EXTRAFLAGS}'
-
 .PHONY: clean
 clean:
 	rm -rf "${OUT_DIR}"
 
 .PHONY: build
 build:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 ${GOBINARY} build -o "${OUT_DIR}/bin/istio-operator" -ldflags ${LDFLAGS} ./cmd/...
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 ${GOBINARY} build -o "${OUT_DIR}/bin/istio-operator" ./cmd/...
 
 patch-charts:
 	${MAIN_DIR}/build/patch-charts.sh
