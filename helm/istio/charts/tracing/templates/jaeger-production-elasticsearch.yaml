@@ -54,6 +54,12 @@ spec:
     type: elasticsearch
     elasticsearch:
       nodeCount: 3
+      resources:
+        requests:
+          memory: "16Gi"
+          cpu: "1"
+        limits:
+          memory: "16Gi"
 
   ingress:
     enabled: {{ .Values.ingress.enabled }}
