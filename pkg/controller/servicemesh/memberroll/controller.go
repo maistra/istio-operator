@@ -463,7 +463,7 @@ func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, configured
 	kialiCR.SetName("kiali")
 	err := r.Client.Get(context.TODO(), client.ObjectKey{Name: "kiali", Namespace: kialiCRNamespace}, kialiCR)
 	if err != nil {
-		if errors.IsNotFound(err) || errors.IsGone(err) {
+		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
 			reqLogger.Info("Kiali CR does not exist, Kiali probably not enabled")
 			return nil
 		}
