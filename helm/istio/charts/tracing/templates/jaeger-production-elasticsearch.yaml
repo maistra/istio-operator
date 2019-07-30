@@ -55,11 +55,15 @@ spec:
     elasticsearch:
       nodeCount: 3
       resources:
+{{- if .Values.jaeger.elasticsearch.resources }}
+{{ toYaml .Values.jaeger.elasticsearch.resources | indent 8 }}
+{{- else }}
         requests:
           memory: "16Gi"
           cpu: "1"
         limits:
           memory: "16Gi"
+{{- end }}
 
   ingress:
     enabled: {{ .Values.ingress.enabled }}
