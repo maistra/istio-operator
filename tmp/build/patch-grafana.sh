@@ -28,15 +28,17 @@ function grafana_patch_deployment() {
           volumeMounts:\
           - mountPath: /etc/tls/private\
             name: secret-grafana-tls\
+          - mountPath: /etc/proxy/htpasswd\
+            name: secret-htpasswd\
           args:\
           - -provider=openshift\
           - -https-address=:3001\
           - -http-address=\
           - -email-domain=*\
           - -upstream=http://localhost:3000\
+          - -htpasswd-file=/etc/proxy/htpasswd/auth\
+          - -display-htpasswd-form=false\
           - '\''-openshift-sar={"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}'\''\
-          - '\''-openshift-delegate-urls={"/":{"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}}'\''\
-          - -skip-auth-regex=^/metrics\
           - -client-secret-file=/var/run/secrets/kubernetes.io/serviceaccount/token\
           - -openshift-service-account=grafana\
           - -cookie-secret=SECRET\
@@ -49,7 +51,11 @@ function grafana_patch_deployment() {
       - name: secret-grafana-tls\
         secret:\
           defaultMode: 420\
-          secretName: grafana-tls' \
+          secretName: grafana-tls\
+      - name: secret-htpasswd\
+        secret:\
+          defaultMode: 420\
+          secretName: htpasswd' \
       -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: grafana\
 \1containers:\2/' \
       -e '/- if \.Values\.security\.enabled/,/- end/ { d }' \
