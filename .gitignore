@@ -1,5 +1,7 @@
+
 # Temporary Build Files
-_output
+tmp/_output
+tmp/_test
 
 
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
