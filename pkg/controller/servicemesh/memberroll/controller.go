@@ -554,12 +554,16 @@ func (r *namespaceReconciler) initializeNetworkingStrategy() error {
 	clusterNetwork := &unstructured.Unstructured{}
 	clusterNetwork.SetAPIVersion("network.openshift.io/v1")
 	clusterNetwork.SetKind("ClusterNetwork")
+	r.networkingStrategy = &subnetStrategy{}
 	err := r.client.Get(context.TODO(), client.ObjectKey{Name: "default"}, clusterNetwork)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			r.logger.Info("default cluster network not defined, skipping network configuration")
+			return nil
+		}
 		return err
 	}
 	networkPlugin, ok, err := unstructured.NestedString(clusterNetwork.UnstructuredContent(), "pluginName")
-	r.networkingStrategy = &subnetStrategy{}
 	if err != nil {
 		return pkgerrors.Wrap(err, "cluster network plugin not defined")
 	}
