@@ -9,7 +9,6 @@ metadata:
   namespace: {{ .Values.global.operatorNamespace }}
   labels:
     heritage: {{ .Release.Service }}
-    maistra-version: 0.12.0
     release: {{ .Release.Name }}
     istio: cni
 spec:
@@ -24,7 +23,6 @@ spec:
     metadata:
       labels:
         heritage: {{ .Release.Service }}
-        maistra-version: 0.12.0
         release: {{ .Release.Name }}
         istio: cni
       annotations:

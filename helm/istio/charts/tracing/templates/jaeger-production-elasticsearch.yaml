@@ -29,9 +29,6 @@ spec:
       {{- end }}
 
   agent:
-    strategy: {{ .Values.jaeger.agentStrategy }}
-    image: {{ .Values.jaeger.hub }}/jaeger-agent:{{ .Values.jaeger.tag }}
-    serviceAccount: jaeger-agent
     options:
       collector:
         host-port: jaeger-collector:14267
@@ -55,9 +52,8 @@ spec:
 
   storage:
     type: elasticsearch
-    options:
-      es:
-        server-urls: http://elasticsearch:9200
+    elasticsearch:
+      nodeCount: 3
 
   ingress:
     enabled: {{ .Values.ingress.enabled }}

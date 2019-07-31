@@ -11,7 +11,7 @@ set -e
 if [[ "${COMMUNITY,,}" == "true" ]]; then
   : ${HUB:=docker.io/maistra}
 else
-  : ${HUB:=registry.redhat.io/openshift-istio-tech-preview}
+  : ${HUB:=registry.redhat.io/openshift-service-mesh}
 fi
 
 # copy maistra specific templates into charts
@@ -90,7 +90,7 @@ function patchTemplates() {
     sed -i -e 's/hub:.*$/hub: kiali/' \
            -e 's/tag:.*$/tag: v'${KIALI_VERSION}'/' ${HELM_DIR}/istio/charts/kiali/values.yaml
   else
-    sed -i -e 's+hub:.*$+hub: registry\.redhat\.io\/openshift-istio-tech-preview+' \
+    sed -i -e 's+hub:.*$+hub: registry\.redhat\.io\/openshift-service-mesh+' \
            -e 's/tag:.*$/tag: '${KIALI_VERSION}'/' ${HELM_DIR}/istio/charts/kiali/values.yaml
   fi
 
@@ -134,6 +134,10 @@ function patchTemplates() {
       annotations:\
         k8s.v1.cni.cncf.io\/networks: {{ .Release.Namespace }}-istio-cni\
     \{\{- end \}\}/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
+  sed -i -e 's/\(\( *\)- name:.*sidecarInjector.*$\)/\1\
+\2- name: istio_cni\
+\2  version: 1.1.0\
+\2  condition: istio_cni.enabled/' ${HELM_DIR}/istio/requirements.yaml
 
   # allow the sidecar injector to set the runAsUser ID dynamically
   # drop unneeded capabilities from sidecar container, so using the restricted SCC doesn't require the SCC admission controller to mutate the pod
@@ -204,7 +208,7 @@ function patchTemplates() {
   tag: 5.6.10\
 \
 \1|' ${HELM_DIR}/istio/charts/tracing/values.yaml
-    sed -i -e 's/hub:.*$/hub: registry\.redhat\.io\/openshift-istio-tech-preview/' \
+    sed -i -e 's/hub:.*$/hub: registry\.redhat\.io\/openshift-service-mesh/' \
            -e 's/tag:.*$/tag: '${THREESCALE_VERSION}'/' ${HELM_DIR}/maistra-threescale/values.yaml
   fi
 
@@ -326,9 +330,6 @@ function patchMultiTenant() {
   # gateways
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/gateways/templates/clusterrolebindings.yaml "$"
 
-  # istiocoredns
-  convertClusterRoleBinding ${HELM_DIR}/istio/charts/istiocoredns/templates/clusterrolebinding.yaml
-
   # mixer
   sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ {
     /apiextensions/ {
@@ -346,9 +347,6 @@ function patchMultiTenant() {
 \          - --memberRollName=default\
 \          - --memberRollNamespace=\{\{ .Release.Namespace \}\}
   }' ${HELM_DIR}/istio/charts/mixer/templates/deployment.yaml
-
-  # nodeagent
-  convertClusterRoleBinding ${HELM_DIR}/istio/charts/nodeagent/templates/clusterrolebinding.yaml
 
   # pilot
   sed -i -e '/apiGroups:.*apiextensions.k8s.io/,/apiGroups:/ {
@@ -389,25 +387,38 @@ function patchMultiTenant() {
   }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrolebinding.yaml
   sed -i -e '/metadata/ {N; s/name: istio-sidecar-injector/name: istio-sidecar-injector-\{\{ .Release.Namespace \}\}/}' \
-         -e '/if \.Values\.enableNamespacesByDefault/,/end/ {
-    /enableNamespacesByDefault/ i\
-\    namespaceSelector:\
-\      matchExpressions:\
-\      - key: maistra.io/member-of\
-\        operator: In\
-\        values:\
-\        - "{{ .Release.Namespace }}"\
-\      - key: maistra.io/ignore-namespace\
-\        operator: DoesNotExist\
-\      - key: istio.openshift.com/ignore-namespace\
-\        operator: DoesNotExist
-  }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhookconfiguration.yaml.tpl
+         -e '/if \.Values\.enableNamespacesByDefault/,/end/ d' \
+         -e 's+\(^ *\)namespaceSelector:+\
+\1namespaceSelector:\
+\1  matchExpressions:\
+\1  - key: maistra.io/member-of\
+\1    operator: In\
+\1    values:\
+\1    - "{{ .Release.Namespace }}"\
+\1  - key: maistra.io/ignore-namespace\
+\1    operator: DoesNotExist\
+\1  - key: istio.openshift.com/ignore-namespace\
+\1    operator: DoesNotExist+' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhookconfiguration.yaml.tpl
   sed -i -e '/args:/ a\
             - --webhookConfigName=istio-sidecar-injector-{{ .Release.Namespace }}' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
 }
 
+function removeUnsupportedCharts() {
+  rm -rf ${HELM_DIR}/istio/charts/nodeagent
+  rm -rf ${HELM_DIR}/istio/charts/servicegraph
+  rm -rf ${HELM_DIR}/istio/charts/istiocoredns
+  rm -rf ${HELM_DIR}/istio/charts/certmanager
+
+  sed -i -e '/name:.*nodeagent/,+2 d' \
+         -e '/name:.*servicegraph/,+2 d' \
+         -e '/name:.*istiocoredns/,+2 d' \
+         -e '/name:.*certmanager/,+2 d' ${HELM_DIR}/istio/requirements.yaml
+}
+
+
 copyOverlay
 
+removeUnsupportedCharts
 patchTemplates
 patchKialiTemplate
 patchKialiOpenShift
