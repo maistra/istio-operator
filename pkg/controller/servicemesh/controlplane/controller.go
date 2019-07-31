@@ -2,25 +2,33 @@ package controlplane
 
 import (
 	"context"
-
-	"github.com/maistra/istio-operator/pkg/bootstrap"
+	"fmt"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/bootstrap"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
+	appsv1 "k8s.io/api/apps/v1"
+
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 var log = logf.Log.WithName("controller_servicemeshcontrolplane")
+
+const (
+	finalizer      = "istio-operator-ControlPlane"
+	controllerName = "servicemeshcontrolplane-controller"
+)
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -60,34 +68,58 @@ func newReconciler(mgr manager.Manager, operatorNamespace string) reconcile.Reco
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("servicemeshcontrolplane-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New(controllerName, mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
 	// Watch for changes to primary resource ServiceMeshControlPlane
-	// XXX: hack: remove predicate once old installation mechanism is removed
 	err = c.Watch(&source.Kind{Type: &v1.ServiceMeshControlPlane{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
-	// XXX: consider adding watches on created resources.  This would need to be
-	// done in the reconciler, although I suppose we could hard code known types
-	// (ServiceAccount, Service, ClusterRole, ClusterRoleBinding, Deployment,
-	// ConfigMap, ValidatingWebhook, MutatingWebhook, MeshPolicy, DestinationRule,
-	// Gateway, PodDisruptionBudget, HorizontalPodAutoscaler, Ingress, Route).
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner ControlPlane
-	// err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
-	// 	IsController: true,
-	// 	OwnerType:    &v1.ControlPlane{},
-	// })
-	// if err != nil {
-	// 	return err
-	// }
+	// watch created resources for use in synchronizing ready status
+	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}},
+		&handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &v1.ServiceMeshControlPlane{},
+		},
+		ownedResourcePredicates)
+	if err != nil {
+		return err
+	}
+	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}},
+		&handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &v1.ServiceMeshControlPlane{},
+		},
+		ownedResourcePredicates)
+	if err != nil {
+		return err
+	}
+	err = c.Watch(&source.Kind{Type: &appsv1.DaemonSet{}},
+		&handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &v1.ServiceMeshControlPlane{},
+		},
+		ownedResourcePredicates)
+	if err != nil {
+		return err
+	}
 
 	return nil
+}
+
+var ownedResourcePredicates = predicate.Funcs{
+	CreateFunc: func(_ event.CreateEvent) bool {
+		// we don't need to update status on create events
+		return false
+	},
+	GenericFunc: func(_ event.GenericEvent) bool {
+		// we don't need to update status on generic events
+		return false
+	},
 }
 
 var _ reconcile.Reconciler = &ReconcileControlPlane{}
@@ -101,10 +133,6 @@ type ReconcileControlPlane struct {
 	Manager manager.Manager
 }
 
-const (
-	finalizer = "istio-operator-ControlPlane"
-)
-
 // Reconcile reads that state of the cluster for a ServiceMeshControlPlane object and makes changes based on the state read
 // and what is in the ServiceMeshControlPlane.Spec
 // TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
@@ -115,6 +143,9 @@ const (
 func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Processing ServiceMeshControlPlane")
+	defer func() {
+		reqLogger.Info("Completed ServiceMeshControlPlane processing")
+	}()
 
 	// Fetch the ServiceMeshControlPlane instance
 	instance := &v1.ServiceMeshControlPlane{}
@@ -131,25 +162,15 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	reconciler := ControlPlaneReconciler{
-		ReconcileControlPlane: r,
-		Instance:              instance,
-		Status:                v1.NewControlPlaneStatus(),
-		UpdateStatus: func() error {
-			return r.Client.Status().Update(context.TODO(), instance)
-		},
-		NewOwnerRef: func(owner *v1.ServiceMeshControlPlane) *metav1.OwnerReference {
-			return metav1.NewControllerRef(owner, v1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
-		},
-	}
-
+	reconciler := r.getOrCreateReconciler(instance)
+	defer r.deleteReconciler(reconciler)
 	deleted := instance.GetDeletionTimestamp() != nil
 	finalizers := instance.GetFinalizers()
 	finalizerIndex := common.IndexOf(finalizers, finalizer)
 
 	if deleted {
 		if finalizerIndex < 0 {
-			reqLogger.Info("ServiceMeshControlPlane deleted")
+			reqLogger.Info("Deletion of ServiceMeshControlPlane complete")
 			return reconcile.Result{}, nil
 		}
 		reqLogger.Info("Deleting ServiceMeshControlPlane")
@@ -173,6 +194,7 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		}
 		if finalizerError != nil {
 			reqLogger.Error(finalizerError, "error removing finalizer")
+			r.Manager.GetRecorder(controllerName).Event(instance, "Warning", "ServiceMeshDeleted", fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", finalizerError))
 		}
 		return result, err
 	} else if finalizerIndex < 0 {
@@ -185,11 +207,36 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 
 	if instance.GetGeneration() == instance.Status.ObservedGeneration &&
 		instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
-		reqLogger.Info("nothing to reconcile, generations match")
-		return reconcile.Result{}, nil
+		// sync readiness state
+		return reconciler.UpdateReadiness()
 	}
 
 	reqLogger.Info("Reconciling ServiceMeshControlPlane")
+
+	if instance.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse {
+		var readyMessage string
+		if instance.Status.ObservedGeneration == 0 {
+			readyMessage = fmt.Sprintf("Installing mesh generation %d", instance.GetGeneration())
+			r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "CreatingServiceMesh", readyMessage)
+		} else {
+			readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", instance.Status.ObservedGeneration, instance.GetGeneration())
+			r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "UpdatingServiceMesh", readyMessage)
+		}
+		instance.Status.SetCondition(v1.Condition{
+			Type:   v1.ConditionTypeReconciled,
+			Status: v1.ConditionStatusFalse,
+			Message: readyMessage,
+		})
+		instance.Status.SetCondition(v1.Condition{
+			Type:    v1.ConditionTypeReady,
+			Status:  v1.ConditionStatusFalse,
+			Message: readyMessage,
+		})
+		err = reconciler.PostStatus()
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
 
 	// Enusure CRDs are installed
 	err = bootstrap.InstallCRDs(reconciler.Manager)
@@ -199,4 +246,61 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	}
 
 	return reconciler.Reconcile()
+}
+
+var reconcilers = map[string]*ControlPlaneReconciler{}
+
+func reconcilersMapKey(instance *v1.ServiceMeshControlPlane) string {
+	return fmt.Sprintf("%s/%s", instance.GetNamespace(), instance.GetName())
+}
+
+func (r *ReconcileControlPlane) getOrCreateReconciler(instance *v1.ServiceMeshControlPlane) *ControlPlaneReconciler {
+	key := reconcilersMapKey(instance)
+	if existing, ok := reconcilers[key]; ok {
+		if existing.Instance.GetGeneration() != instance.GetGeneration() {
+			// we need to regenerate the renderings
+			existing.renderings = nil
+			var readyMessage string
+			if instance.Status.ObservedGeneration == 0 {
+				readyMessage = fmt.Sprintf("Installing mesh generation %d", instance.GetGeneration())
+				r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "CreatingServiceMesh", readyMessage)
+			} else {
+				readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", instance.Status.ObservedGeneration, instance.GetGeneration())
+				r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "UpdatingServiceMesh", readyMessage)
+			}
+			instance.Status.SetCondition(v1.Condition{
+				Type:    v1.ConditionTypeReady,
+				Status:  v1.ConditionStatusFalse,
+				Message: readyMessage,
+			})
+			// ignore error.  instance already has ready status. it will just have a stale message
+			_ = existing.PostStatus()
+		}
+		existing.Instance = instance
+		return existing
+	}
+	newReconciler := &ControlPlaneReconciler{
+		ReconcileControlPlane: r,
+		Instance:              instance,
+		Status:                v1.NewControlPlaneStatus(),
+	}
+
+	reconcilers[key] = newReconciler
+	return newReconciler
+}
+
+func (r *ReconcileControlPlane) getReconciler(instance *v1.ServiceMeshControlPlane) *ControlPlaneReconciler {
+	if existing, ok := reconcilers[reconcilersMapKey(instance)]; ok {
+		return existing
+	}
+	return nil
+}
+
+func (r *ReconcileControlPlane) deleteReconciler(reconciler *ControlPlaneReconciler) {
+	if reconciler == nil {
+		return
+	}
+	if reconciler.Instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
+		delete(reconcilers, reconcilersMapKey(reconciler.Instance))
+	}
 }

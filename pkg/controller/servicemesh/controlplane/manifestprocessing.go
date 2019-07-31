@@ -10,7 +10,6 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
@@ -22,43 +21,48 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *ControlPlaneReconciler) processComponentManifests(componentName string) (err error) {
+func (r *ControlPlaneReconciler) processComponentManifests(chartName string) (ready bool, err error) {
+	componentName := componentFromChartName(chartName)
 	origLogger := r.Log
 	r.Log = r.Log.WithValues("Component", componentName)
 	defer func() { r.Log = origLogger }()
 
-	renderings, hasRenderings := r.renderings[componentName]
+	renderings, hasRenderings := r.renderings[chartName]
 	if !hasRenderings {
-		r.Log.Info("no renderings for component")
-		return nil
+		r.Log.V(5).Info("no renderings for component")
+		ready = true
+		return
 	}
 
 	r.Log.Info("reconciling component resources")
-	status := r.Instance.Status.FindComponentByName(componentName)
-	if status == nil {
-		status = v1.NewComponentStatus()
-		status.Resource = componentName
+	status := r.Status.FindComponentByName(componentName)
+	defer func() {
+		updateReconcileStatus(&status.StatusType, err)
+		r.Log.Info("component reconciliation complete")
+	}()
+	if err = r.processManifests(renderings, status); err != nil {
+		return
+	}
+	if err = r.processNewComponent(componentName, status); err != nil {
+		r.Log.Error(err, "unexpected error occurred during postprocessing of component")
+		return
+	}
+
+	// if we get here, the component has been successfully installed
+	delete(r.renderings, chartName)
+
+	// for reentry into the reconcile loop, if not ready
+	r.lastComponent = componentName
+	if notReadyMap, readyErr := r.calculateNotReadyState(); readyErr == nil {
+		ready = !notReadyMap[r.lastComponent]
 	} else {
-		status.RemoveCondition(v1.ConditionTypeReconciled)
+		err = readyErr
 	}
-	status, err = r.processManifests(renderings, status)
-	status.ObservedGeneration = r.Instance.GetGeneration()
-	if err := r.processNewComponent(componentName, status); err != nil {
-		r.Log.Error(err, "unexpected error occurred during postprocessing of new component")
-	}
-	r.Status.ComponentStatus = append(r.Status.ComponentStatus, status)
-	r.Log.Info("component reconciliation complete")
-	return err
+	return
 }
 
-func (r *ControlPlaneReconciler) processManifests(manifests []manifest.Manifest,
-	oldStatus *v1.ComponentStatus) (*v1.ComponentStatus, error) {
-
+func (r *ControlPlaneReconciler) processManifests(manifests []manifest.Manifest, status *v1.ComponentStatus) error {
 	allErrors := []error{}
-	resourcesProcessed := map[v1.ResourceKey]struct{}{}
-	newStatus := v1.NewComponentStatus()
-	newStatus.StatusType = oldStatus.StatusType
-	newStatus.Resource = oldStatus.Resource
 
 	origLogger := r.Log
 	defer func() { r.Log = origLogger }()
@@ -85,50 +89,17 @@ func (r *ControlPlaneReconciler) processManifests(manifests []manifest.Manifest,
 				allErrors = append(allErrors, err)
 				continue
 			}
-			err = r.processObject(obj, resourcesProcessed, oldStatus, newStatus)
+			err = r.processObject(obj, status)
 			if err != nil {
 				allErrors = append(allErrors, err)
 			}
 		}
 	}
 
-	// handle deletions
-	// XXX: should these be processed in reverse order of creation?
-	for index := len(oldStatus.Resources) - 1; index >= 0; index-- {
-		status := oldStatus.Resources[index]
-		resourceKey := v1.ResourceKey(status.Resource)
-		if _, ok := resourcesProcessed[resourceKey]; !ok {
-			r.Log = origLogger.WithValues("Resource", resourceKey)
-			if condition := status.GetCondition(v1.ConditionTypeInstalled); condition.Status != v1.ConditionStatusFalse {
-				r.Log.Info("deleting resource")
-				unstructured := resourceKey.ToUnstructured()
-				err := r.Client.Delete(context.TODO(), unstructured, client.PropagationPolicy(metav1.DeletePropagationForeground))
-				updateDeleteStatus(status, err)
-				newStatus.Resources = append(newStatus.Resources, status)
-				if err == nil || errors.IsNotFound(err) || errors.IsGone(err) {
-					status.ObservedGeneration = 0
-					// special handling
-					if err := r.processDeletedObject(unstructured); err != nil {
-						r.Log.Error(err, "unexpected error occurred during cleanup of deleted resource")
-					}
-				} else {
-					r.Log.Error(err, "error deleting resource")
-					allErrors = append(allErrors, err)
-				}
-			}
-		}
-	}
-	err := utilerrors.NewAggregate(allErrors)
-	if len(manifests) > 0 {
-		updateReconcileStatus(&newStatus.StatusType, err)
-	} else {
-		updateDeleteStatus(&newStatus.StatusType, err)
-	}
-	return newStatus, err
+	return utilerrors.NewAggregate(allErrors)
 }
 
-func (r *ControlPlaneReconciler) processObject(obj *unstructured.Unstructured, resourcesProcessed map[v1.ResourceKey]struct{},
-	oldStatus *v1.ComponentStatus, newStatus *v1.ComponentStatus) error {
+func (r *ControlPlaneReconciler) processObject(obj *unstructured.Unstructured, status *v1.ComponentStatus) error {
 	origLogger := r.Log
 	defer func() { r.Log = origLogger }()
 
@@ -143,7 +114,7 @@ func (r *ControlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 			return err
 		}
 		for _, item := range list.Items {
-			err = r.processObject(&item, resourcesProcessed, oldStatus, newStatus)
+			err = r.processObject(&item, status)
 			if err != nil {
 				allErrors = append(allErrors, err)
 			}
@@ -158,26 +129,13 @@ func (r *ControlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 		// XXX: can't set owner reference on cross-namespace or cluster resources
 	}
 
-	// add owner label
-	common.SetLabel(obj, common.OwnerKey, r.Instance.GetNamespace())
-	// add generation annotation
-	common.SetAnnotation(obj, common.MeshGenerationKey, r.meshGeneration)
+	r.addMetadata(obj, status.Resource)
 
 	r.Log.V(2).Info("beginning reconciliation of resource", "ResourceKey", key)
-
-	resourcesProcessed[key] = seen
-	status := oldStatus.FindResourceByKey(key)
-	if status == nil {
-		newResourceStatus := v1.NewStatus()
-		status = &newResourceStatus
-		status.Resource = string(key)
-	}
-	newStatus.Resources = append(newStatus.Resources, status)
 
 	err := r.preprocessObject(obj)
 	if err != nil {
 		r.Log.Error(err, "error preprocessing object")
-		updateReconcileStatus(status, err)
 		return err
 	}
 
@@ -192,7 +150,6 @@ func (r *ControlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 		r.Log.Error(err, "client.ObjectKeyFromObject() failed for resource")
 		// This can only happen if reciever isn't an unstructured.Unstructured
 		// i.e. this should never happen
-		updateReconcileStatus(status, err)
 		return err
 	}
 
@@ -204,7 +161,6 @@ func (r *ControlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 			r.Log.Info("creating resource")
 			err = r.Client.Create(context.TODO(), obj)
 			if err == nil {
-				status.ObservedGeneration = 1
 				// special handling
 				if err := r.processNewObject(obj); err != nil {
 					// just log for now
@@ -216,13 +172,30 @@ func (r *ControlPlaneReconciler) processObject(obj *unstructured.Unstructured, r
 		}
 	} else if patch, err = r.PatchFactory.CreatePatch(receiver, obj); err == nil && patch != nil {
 		r.Log.Info("updating existing resource")
-		status.RemoveCondition(v1.ConditionTypeReconciled)
 		_, err = patch.Apply()
 	}
 	r.Log.V(2).Info("resource reconciliation complete")
-	updateReconcileStatus(status, err)
 	if err != nil {
 		r.Log.Error(err, "error occurred reconciling resource")
 	}
 	return err
+}
+
+func (r *ControlPlaneReconciler) addMetadata(obj *unstructured.Unstructured, component string) {
+	labels := map[string]string{
+		// add app labels
+		common.KubernetesAppNameKey:      component,
+		common.KubernetesAppInstanceKey:  r.Instance.GetNamespace(),
+		common.KubernetesAppVersionKey:   r.meshGeneration,
+		common.KubernetesAppComponentKey: component,
+		common.KubernetesAppPartOfKey:    "istio",
+		common.KubernetesAppManagedByKey: "maistra-istio-operator",
+		// legacy
+		// add owner label
+		common.OwnerKey: r.Instance.GetNamespace(),
+	}
+	common.SetLabels(obj, labels)
+
+	// add generation annotation
+	common.SetAnnotation(obj, common.MeshGenerationKey, r.meshGeneration)
 }

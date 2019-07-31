@@ -236,14 +236,6 @@ spec:
           - '*'
           verbs:
           - '*'
-        - apiGroups: # support for these should be removed
-          - istio.openshift.com
-          resources:
-          - controlplanes
-          - controlplanes/status
-          - controlplanes/finalizers
-          verbs:
-          - '*'
         - apiGroups:
           - route.openshift.io
           resources:
@@ -378,11 +370,6 @@ spec:
       displayName: Jaeger
       description: A configuration file for a Jaeger installation.  
     owned:
-    - name: controlplanes.istio.openshift.com
-      version: v1alpha3
-      kind: ControlPlane
-      displayName: Istio Control Plane (deprecated)
-      description: An Istio control plane installation (deprecated)
     - name: servicemeshmemberrolls.maistra.io
       version: v1
       kind: ServiceMeshMemberRoll

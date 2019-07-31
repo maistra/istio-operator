@@ -7,10 +7,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
@@ -24,149 +27,189 @@ type ControlPlaneReconciler struct {
 	*ReconcileControlPlane
 	Instance       *v1.ServiceMeshControlPlane
 	Status         *v1.ControlPlaneStatus
-	NewOwnerRef    func(*v1.ServiceMeshControlPlane) *metav1.OwnerReference
-	UpdateStatus   func() error
 	ownerRefs      []metav1.OwnerReference
 	meshGeneration string
 	renderings     map[string][]manifest.Manifest
+	lastComponent  string
 }
 
-var seen = struct{}{}
+// these components have to be installed in the specified order
+var orderedCharts = []string{
+	"istio", // core istio resources
+	"istio/charts/istio_cni",
+	"istio/charts/security",
+	"istio/charts/prometheus",
+	"istio/charts/tracing",
+	"istio/charts/galley",
+	"istio/charts/mixer",
+	"istio/charts/pilot",
+	"istio/charts/gateways",
+	"istio/charts/sidecarInjectorWebhook",
+	"istio/charts/grafana",
+	"istio/charts/kiali",
+}
 
 func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
-	allErrors := []error{}
 	var err error
+	var ready bool
 
-	// prepare to write a new reconciliation status
-	r.Instance.Status.RemoveCondition(v1.ConditionTypeReconciled)
-	// ensure ComponentStatus is ready
-	if r.Instance.Status.ComponentStatus == nil {
-		r.Instance.Status.ComponentStatus = []*v1.ComponentStatus{}
-	}
-
-	// Render the templates
-	err = r.renderCharts()
-	if err != nil {
-		// we can't progress here
-		updateReconcileStatus(&r.Instance.Status.StatusType, err)
-		r.Client.Status().Update(context.TODO(), r.Instance)
-		return reconcile.Result{}, err
-	}
-
-	// install istio
-
-	// set the auto-injection flag
-	// update injection label on namespace
-	// XXX: this should probably only be done when installing a control plane
-	// e.g. spec.pilot.enabled || spec.mixer.enabled || spec.galley.enabled || spec.sidecarInjectorWebhook.enabled || ....
-	// which is all we're supporting atm.  if the scope expands to allow
-	// installing custom gateways, etc., we should revisit this.
-	namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: r.Instance.Namespace}}
-	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Namespace}, namespace)
-	if err == nil {
-		updateLabels := false
-		if namespace.Labels == nil {
-			namespace.Labels = map[string]string{}
+	if r.renderings == nil {
+		// Render the templates
+		err = r.renderCharts()
+		if err != nil {
+			// we can't progress here
+			err = errors.Wrap(err, "unexpected error rendering helm charts")
+			updateReconcileStatus(&r.Instance.Status.StatusType, err)
+			r.PostStatus()
+			return reconcile.Result{}, err
 		}
-		// make sure injection is disabled for the control plane
-		if label, ok := namespace.Labels["maistra.io/ignore-namespace"]; !ok || label != "ignore" {
-			r.Log.Info("Adding maistra.io/ignore-namespace=ignore label to Request.Namespace")
-			namespace.Labels["maistra.io/ignore-namespace"] = "ignore"
-			updateLabels = true
+
+		// install istio
+
+		// set the auto-injection flag
+		// update injection label on namespace
+		// XXX: this should probably only be done when installing a control plane
+		// e.g. spec.pilot.enabled || spec.mixer.enabled || spec.galley.enabled || spec.sidecarInjectorWebhook.enabled || ....
+		// which is all we're supporting atm.  if the scope expands to allow
+		// installing custom gateways, etc., we should revisit this.
+		namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: r.Instance.Namespace}}
+		err = r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Namespace}, namespace)
+		if err == nil {
+			updateLabels := false
+			if namespace.Labels == nil {
+				namespace.Labels = map[string]string{}
+			}
+			// make sure injection is disabled for the control plane
+			if label, ok := namespace.Labels["maistra.io/ignore-namespace"]; !ok || label != "ignore" {
+				r.Log.Info("Adding maistra.io/ignore-namespace=ignore label to Request.Namespace")
+				namespace.Labels["maistra.io/ignore-namespace"] = "ignore"
+				updateLabels = true
+			}
+			// make sure the member-of label is specified, so networking works correctly
+			if label, ok := namespace.Labels[common.MemberOfKey]; !ok || label != namespace.GetName() {
+				r.Log.Info(fmt.Sprintf("Adding %s label to Request.Namespace", common.MemberOfKey))
+				namespace.Labels[common.MemberOfKey] = namespace.GetName()
+				updateLabels = true
+			}
+			if updateLabels {
+				err = r.Client.Update(context.TODO(), namespace)
+			}
 		}
-		// make sure the member-of label is specified, so networking works correctly
-		if label, ok := namespace.Labels[common.MemberOfKey]; !ok || label != namespace.GetName() {
-			r.Log.Info(fmt.Sprintf("Adding %s label to Request.Namespace", common.MemberOfKey))
-			namespace.Labels[common.MemberOfKey] = namespace.GetName()
-			updateLabels = true
+		if err != nil {
+			// bail if there was an error updating the namespace
+			err = errors.Wrap(err, "unexpected error updating labels on mesh namespace")
+			r.renderings = nil
+			return reconcile.Result{}, err
 		}
-		if updateLabels {
-			err = r.Client.Update(context.TODO(), namespace)
+
+		// initialize new Status
+		r.Status.StatusType = r.Instance.Status.StatusType
+		for chartName := range r.renderings {
+			componentName := componentFromChartName(chartName)
+			componentStatus := r.Instance.Status.FindComponentByName(componentName)
+			if componentStatus == nil {
+				componentStatus = v1.NewComponentStatus()
+				componentStatus.Resource = componentName
+			}
+			componentStatus.SetCondition(v1.Condition{
+				Type:   v1.ConditionTypeReconciled,
+				Status: v1.ConditionStatusFalse,
+			})
+			r.Status.ComponentStatus = append(r.Status.ComponentStatus, componentStatus)
+		}
+
+		// initialize common data
+		owner := metav1.NewControllerRef(r.Instance, v1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
+		r.ownerRefs = []metav1.OwnerReference{*owner}
+		r.meshGeneration = strconv.FormatInt(r.Instance.GetGeneration(), 10)
+	} else if notReadyMap, readinessErr := r.calculateNotReadyState(); readinessErr == nil {
+		// if we've already begun reconciling, make sure we weren't waiting for
+		// the last component to become ready
+		if notReady, ok := notReadyMap[r.lastComponent]; ok && notReady {
+			// last component has not become ready yet
+			r.Log.Info(fmt.Sprintf("Paused until %s becomes ready", r.lastComponent))
+			return reconcile.Result{}, nil
 		}
 	} else {
-		allErrors = append(allErrors, err)
+		// error calculating readiness
+		readinessErr = errors.Wrapf(readinessErr, "unexpected error checking readiness of component %s", r.lastComponent)
+		r.Log.Error(readinessErr, "")
+		return reconcile.Result{}, readinessErr
 	}
 
-	// initialize common data
-	owner := r.NewOwnerRef(r.Instance)
-	r.ownerRefs = []metav1.OwnerReference{*owner}
-	r.meshGeneration = strconv.FormatInt(r.Instance.GetGeneration(), 10)
+	// Update reconcile status
+	reconcileCondition := r.Instance.Status.GetCondition(v1.ConditionTypeReconciled)
+	reconcileCondition.Message = "Progressing"
+	r.Instance.Status.SetCondition(reconcileCondition)
+	r.PostStatus()
+
+	// make sure status gets updated on exit
+	var reconciliationMessage string
+	defer func() {
+		r.postReconciliationStatus(reconciliationMessage, err)
+	}()
 
 	// create components
-	componentsProcessed := map[string]struct{}{}
-
-	// these components have to be installed in the specified order
-	orderedComponents := []string{
-		"istio", // core istio resources
-		"istio/charts/istio_cni",
-		"istio/charts/security",
-		"istio/charts/prometheus",
-		"istio/charts/tracing",
-		"istio/charts/galley",
-		"istio/charts/mixer",
-		"istio/charts/pilot",
-		"istio/charts/gateways",
-		"istio/charts/sidecarInjectorWebhook",
-		"istio/charts/grafana",
-		"istio/charts/kiali",
-	}
-	for _, componentName := range orderedComponents {
-		componentsProcessed[componentName] = seen
-		err = r.processComponentManifests(componentName)
-		if err != nil {
-			allErrors = append(allErrors, err)
+	for _, chartName := range orderedCharts {
+		if ready, err = r.processComponentManifests(chartName); !ready {
+			componentName := componentFromChartName(chartName)
+			reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
+			r.Log.Info(reconciliationMessage)
+			err = errors.Wrapf(err, "unexpected error processing component %s", componentName)
+			return reconcile.Result{}, err
 		}
 	}
 
-	// other components
+	// any other istio components
 	for key := range r.renderings {
 		if !strings.HasPrefix(key, "istio/") {
 			continue
 		}
-		if _, ok := componentsProcessed[key]; ok {
-			// already processed this component
-			continue
-		}
-		componentsProcessed[key] = seen
-		err = r.processComponentManifests(key)
-		if err != nil {
-			allErrors = append(allErrors, err)
+		if ready, err = r.processComponentManifests(key); !ready {
+			componentName := componentFromChartName(key)
+			reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
+			r.Log.Info(reconciliationMessage)
+			err = errors.Wrapf(err, "unexpected error processing component %s", componentName)
+			return reconcile.Result{}, err
 		}
 	}
 
-	// install 3scale
-	componentsProcessed["maistra-threescale"] = seen
-	err = r.processComponentManifests("maistra-threescale")
-	if err != nil {
-		allErrors = append(allErrors, err)
+	// install 3scale and any other components
+	for key := range r.renderings {
+		if ready, err = r.processComponentManifests(key); !ready {
+			componentName := componentFromChartName(key)
+			reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
+			r.Log.Info(reconciliationMessage)
+			err = errors.Wrapf(err, "unexpected error processing component %s", componentName)
+			return reconcile.Result{}, err
+		}
 	}
 
+	reconciliationMessage = "Pruning old resources"
 	// delete unseen components
 	err = r.prune(r.Instance.GetGeneration())
 	if err != nil {
-		allErrors = append(allErrors, err)
+		err = errors.Wrap(err, "unexpected error pruning old resources")
+		return reconcile.Result{}, err
 	}
 
+	if r.Status.ObservedGeneration == 0 {
+		reconciliationMessage = fmt.Sprintf("Successfully installed generation %d", r.Instance.GetGeneration())
+		r.Manager.GetRecorder(controllerName).Event(r.Instance, "Normal", "ServiceMeshInstalled", reconciliationMessage)
+	} else {
+		reconciliationMessage = fmt.Sprintf("Successfully updated from generation %d to generation %d", r.Instance.Status.ObservedGeneration, r.Instance.GetGeneration())
+		r.Manager.GetRecorder(controllerName).Event(r.Instance, "Normal", "ServiceMeshUpdated", reconciliationMessage)
+	}
 	r.Status.ObservedGeneration = r.Instance.GetGeneration()
-	err = utilerrors.NewAggregate(allErrors)
-	updateReconcileStatus(&r.Status.StatusType, err)
+	updateReconcileStatus(&r.Status.StatusType, nil)
 
-	r.Instance.Status = *r.Status
-	updateErr := r.UpdateStatus()
-	if updateErr != nil {
-		r.Log.Error(err, "error updating ServiceMeshControlPlane status")
-		if err == nil {
-			// XXX: is this the right thing to do?
-			return reconcile.Result{}, updateErr
-		}
-	}
-
-	r.Log.Info("reconciliation complete")
-
-	return reconcile.Result{}, err
+	r.Log.Info("Completed ServiceMeshControlPlane reconcilation")
+	// requeue to ensure readiness is updated
+	return reconcile.Result{Requeue: true}, nil
 }
 
 func (r *ControlPlaneReconciler) renderCharts() error {
+	r.Log.Info("rendering helm charts")
 	allErrors := []error{}
 	var err error
 	var threeScaleRenderings map[string][]manifest.Manifest
@@ -213,6 +256,35 @@ func (r *ControlPlaneReconciler) renderCharts() error {
 		r.renderings[key] = value
 	}
 	return nil
+}
+
+func (r *ControlPlaneReconciler) PostStatus() error {
+	return r.Client.Status().Update(context.TODO(), r.Instance)
+}
+
+func (r *ControlPlaneReconciler) postReconciliationStatus(reconciliationMessage string, processingErr error) {
+	reconciledCondition := r.Status.GetCondition(v1.ConditionTypeReconciled)
+	if processingErr == nil {
+		reconciledCondition.Message = reconciliationMessage
+	} else {
+		reconciledCondition.Message = fmt.Sprintf("reconciliation error: %s", processingErr)
+	}
+	r.Status.SetCondition(reconciledCondition)
+	instance := &v1.ServiceMeshControlPlane{}
+	if updateErr := r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); updateErr == nil {
+		instance.Status = *r.Status
+		r.Instance = instance
+		if updateErr = r.PostStatus(); updateErr != nil && !(apierrors.IsGone(updateErr) || apierrors.IsNotFound(updateErr)) {
+			r.Log.Error(updateErr, "error updating ServiceMeshControlPlane status")
+		}
+	} else if !(apierrors.IsGone(updateErr) || apierrors.IsNotFound(updateErr)) {
+		r.Log.Error(updateErr, "error updating ServiceMeshControlPlane status")
+	}
+}
+
+func componentFromChartName(chartName string) string {
+	_, componentName := path.Split(chartName)
+	return componentName
 }
 
 func isEnabled(spec v1.HelmValuesType) bool {
