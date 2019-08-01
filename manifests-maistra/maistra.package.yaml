@@ -2,3 +2,4 @@ packageName: maistra
 channels:
 - name: alpha
   currentCSV: maistra.v1.0.0
+
