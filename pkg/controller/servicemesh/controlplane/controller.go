@@ -3,10 +3,10 @@ package controlplane
 import (
 	"context"
 	"fmt"
-
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/bootstrap"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	errors2 "github.com/pkg/errors"
 
 	appsv1 "k8s.io/api/apps/v1"
 
@@ -193,10 +193,13 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 			finalizerError = r.Client.Update(context.TODO(), instance)
 		}
 		if finalizerError != nil {
-			reqLogger.Error(finalizerError, "error removing finalizer")
 			r.Manager.GetRecorder(controllerName).Event(instance, "Warning", "ServiceMeshDeleted", fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", finalizerError))
 		}
-		return result, err
+		if err != nil {
+			// return original error, since it's more important than finalizerError
+			return result, err
+		}
+		return result, errors2.Wrapf(finalizerError, "Error removing finalizer from ServiceMeshControlPlane %s/%s", instance.Namespace, instance.Name)
 	} else if finalizerIndex < 0 {
 		reqLogger.V(1).Info("Adding finalizer", "finalizer", finalizer)
 		finalizers = append(finalizers, finalizer)
