@@ -1,0 +1,5 @@
+packageName: maistra
+channels:
+- name: alpha
+  currentCSV: maistra.v__VERSION__
+
