@@ -250,6 +250,22 @@ function patchTemplates() {
     sed -i -e 's/\/health/\/tmp\/health/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
   fi
 
+  # add oauth-proxy default hub, image, tag and imagePullPolicy
+  if [[ "${COMMUNITY,,}" == "true" ]]; then
+    sed -i -e '/^global:/a \
+\  oauthproxy:\
+\    hub: quay.io/openshift\
+\    image: origin-oauth-proxy\
+\    tag: 4.1\
+\    imagePullPolicy: IfNotPresent\n' ${HELM_DIR}/istio/values.yaml
+  else
+    sed -i -e '/^global:/a \
+\  oauthproxy:\
+\    hub: registry.redhat.io/openshift4\
+\    image: ose-oauth-proxy\
+\    tag: 4.1\
+\    imagePullPolicy: IfNotPresent\n' ${HELM_DIR}/istio/values.yaml
+  fi
   # Fix for MAISTRA-334, can be removed when we move to Istio-1.2
   sed -i '/match: (context.protocol == "http" || context.protocol == "grpc")/ s/$/ \&\& (match((request.useragent | "-"), "Prometheus*") == false)/' ${HELM_DIR}/istio/charts/mixer/templates/config.yaml 
 }

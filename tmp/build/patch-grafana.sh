@@ -9,8 +9,8 @@ function grafana_patch_deployment() {
   sed -i -e '/      containers:/ a\
           # OAuth proxy\
         - name: grafana-proxy\
-          image: openshift/oauth-proxy:latest\
-          imagePullPolicy: IfNotPresent\
+          image: {{ .Values.global.oauthproxy.hub }}/{{ .Values.global.oauthproxy.image }}:{{ .Values.global.oauthproxy.tag }}\
+          imagePullPolicy: {{ .Values.global.oauthproxy.imagePullPolicy }}\
           ports:\
           - containerPort: 3001\
             name: https\
