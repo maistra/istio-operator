@@ -3,6 +3,7 @@ package common
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	jsonpatch "github.com/evanphx/json-patch"
 
@@ -38,7 +39,6 @@ func NewPatchFactory(k8sClient client.Client) *PatchFactory {
 
 // CreatePatch creates a patch based on the current and new versions of an object
 func (p *PatchFactory) CreatePatch(current, new runtime.Object) (Patch, error) {
-	var retVal Patch
 	patch := &basicPatch{client: p.client}
 	currentAccessor, err := meta.Accessor(current)
 	if err != nil {
@@ -50,7 +50,7 @@ func (p *PatchFactory) CreatePatch(current, new runtime.Object) (Patch, error) {
 	}
 
 	// Serialize the current configuration of the object.
-	patch.currentBytes, err = runtime.Encode(unstructured.UnstructuredJSONScheme, current)
+	currentBytes, err := runtime.Encode(unstructured.UnstructuredJSONScheme, current)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("could not serialize current object into raw json:\n%v", current))
 	}
@@ -85,14 +85,29 @@ func (p *PatchFactory) CreatePatch(current, new runtime.Object) (Patch, error) {
 			mergepatch.RequireMetadataKeyUnchanged("name"),
 			mergepatch.RequireMetadataKeyUnchanged("namespace"),
 		}
-		patch.patchBytes, err = jsonmergepatch.CreateThreeWayJSONMergePatch(originalBytes, newBytes, patch.currentBytes, preconditions...)
+		patchBytes, err := jsonmergepatch.CreateThreeWayJSONMergePatch(originalBytes, newBytes, currentBytes, preconditions...)
 		if err != nil {
 			if mergepatch.IsPreconditionFailed(err) {
 				return nil, errors.Wrap(err, fmt.Sprintf("cannot change apiVersion, kind, name, or namespace fields"))
 			}
-			return nil, errors.Wrap(err, fmt.Sprintf("could not create patch for object, original:\n%v\ncurrent:\n%v\nnew:\n%v", originalBytes, patch.currentBytes, newBytes))
+			return nil, errors.Wrap(err, fmt.Sprintf("could not create patch for object, original:\n%v\ncurrent:\n%v\nnew:\n%v", originalBytes, currentBytes, newBytes))
 		}
-		retVal = &jsonMergePatch{basicPatch: patch}
+		if string(patchBytes) == "{}" {
+			// empty patch, nothing to do
+			return nil, nil
+		}
+		newBytes, err := jsonpatch.MergePatch(currentBytes, patchBytes)
+		if err != nil {
+			return nil, err
+		}
+		newObj, err := runtime.Decode(unstructured.UnstructuredJSONScheme, newBytes)
+		if err != nil {
+			return nil, err
+		}
+		if reflect.DeepEqual(newObj, current) {
+			return nil, nil
+		}
+		patch.newObj = newObj
 	} else {
 		// XXX: if we fail to create a strategic patch, should we fall back to json merge patch?
 		// strategic merge patch
@@ -100,68 +115,42 @@ func (p *PatchFactory) CreatePatch(current, new runtime.Object) (Patch, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("could not retrieve patch metadata for object: %s", gvk.String()))
 		}
-		patch.patchBytes, err = strategicpatch.CreateThreeWayMergePatch(originalBytes, newBytes, patch.currentBytes, lookupPatchMeta, true)
+		patchBytes, err := strategicpatch.CreateThreeWayMergePatch(originalBytes, newBytes, currentBytes, lookupPatchMeta, true)
 		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("could not create patch for object, original:\n%v\ncurrent:\n%v\nnew:\n%v", originalBytes, patch.currentBytes, newBytes))
+			return nil, errors.Wrap(err, fmt.Sprintf("could not create patch for object, original:\n%v\ncurrent:\n%v\nnew:\n%v", originalBytes, currentBytes, newBytes))
 		}
-		retVal = &strategicMergePatch{basicPatch: patch, schema: lookupPatchMeta}
+		if string(patchBytes) == "{}" {
+			// empty patch, nothing to do
+			return nil, nil
+		}
+		newBytes, err := strategicpatch.StrategicMergePatchUsingLookupPatchMeta(currentBytes, patchBytes, lookupPatchMeta)
+		if err != nil {
+			return nil, err
+		}
+		newObj, err := runtime.Decode(unstructured.UnstructuredJSONScheme, newBytes)
+		if err != nil {
+			return nil, err
+		}
+		if reflect.DeepEqual(newObj, current) {
+			return nil, nil
+		}
+		patch.newObj = newObj
 	}
 
-	if string(patch.patchBytes) == "{}" {
-		// empty patch, nothing to do
-		return nil, nil
-	}
-
-	return retVal, nil
+	return patch, nil
 }
 
 type basicPatch struct {
-	client       client.Client
-	patchBytes   []byte
-	currentBytes []byte
-}
-type strategicMergePatch struct {
-	*basicPatch
-	schema strategicpatch.LookupPatchMeta
+	client client.Client
+	newObj runtime.Object
 }
 
-var _ Patch = &strategicMergePatch{}
-
-func (p *strategicMergePatch) Apply() (*unstructured.Unstructured, error) {
-	newBytes, err := strategicpatch.StrategicMergePatchUsingLookupPatchMeta(p.currentBytes, p.patchBytes, p.schema)
-	if err != nil {
+func (p *basicPatch) Apply() (*unstructured.Unstructured, error) {
+	if err := p.client.Update(context.TODO(), p.newObj); err != nil {
 		return nil, err
 	}
-	newObj, err := runtime.Decode(unstructured.UnstructuredJSONScheme, newBytes)
-	if err != nil {
-		return nil, err
-	}
-	if err = p.client.Update(context.TODO(), newObj); err != nil {
-		return nil, err
-	}
-	if newUnstructured, ok := newObj.(*unstructured.Unstructured); ok {
+	if newUnstructured, ok := p.newObj.(*unstructured.Unstructured); ok {
 		return newUnstructured, nil
 	}
-	return nil, fmt.Errorf("could not decode unstructured object:\n%v", newObj)
-}
-
-type jsonMergePatch struct {
-	*basicPatch
-}
-
-var _ Patch = &jsonMergePatch{}
-
-func (p *jsonMergePatch) Apply() (*unstructured.Unstructured, error) {
-	newBytes, err := jsonpatch.MergePatch(p.currentBytes, p.patchBytes)
-	newObj, err := runtime.Decode(unstructured.UnstructuredJSONScheme, newBytes)
-	if err != nil {
-		return nil, err
-	}
-	if err = p.client.Update(context.TODO(), newObj); err != nil {
-		return nil, err
-	}
-	if newUnstructured, ok := newObj.(*unstructured.Unstructured); ok {
-		return newUnstructured, nil
-	}
-	return nil, fmt.Errorf("could not decode unstructured object:\n%v", newObj)
+	return nil, fmt.Errorf("could not decode unstructured object:\n%v", p.newObj)
 }

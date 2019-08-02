@@ -9,12 +9,10 @@ metadata:
     certified: "false"
     repository: https://github.com/maistra/istio-operator
     description: |-
-      The Service Mesh Operator provides means for configuring and managing an instance of Red Hat OpenShift Service Mesh.
-      ## Prerequisites and Requirements
-      ### Maistra Operator Namespace
+      The Service Mesh Operator provides means for installing, configuring, and managing an instance of Red Hat OpenShift Service Mesh.
 
-    containerImage: quay.io/maistra/istio-operator-rhel8:latest-qe
-    createdAt: 2019-07-18T08:00:00Z
+    containerImage: registry.redhat.io/openshift-service-mesh/istio-operator-rhel8:1.0.0
+    createdAt: 2019-08-01T12:13:46PDT
     support: Red Hat, Inc. 
     alm-examples: |-
       [
@@ -72,14 +70,16 @@ metadata:
                 "traceSampling": 100.0
               },
               "kiali": {
-                "enabled": true,
-                "dashboard": {
-                  "user": "admin",
-                  "passphrase": "admin"
-                }
+                "enabled": false
+              },
+              "grafana": {
+                "enabled": false
               },
               "tracing": {
-                "enabled": true
+                "enabled": true,
+                "jaeger": {
+                  "template": "all-in-one"
+                }
               }
             }
           }
@@ -120,8 +120,9 @@ spec:
       clusterPermissions:
       - serviceAccountName: istio-operator
         rules:
+
         - apiGroups:
-          - ""
+          - ''
           resources:
           - configmaps
           - endpoints
@@ -132,7 +133,7 @@ spec:
           - secrets
           - serviceaccounts
           - services
-          - events # is this needed?
+          - events
           verbs:
           - '*'
         - apiGroups:
@@ -142,7 +143,7 @@ spec:
           - daemonsets
           - deployments
           - deployments/finalizers
-          - ingresses # is this needed? should it be converted to a route?
+          - ingresses
           - ingresses/status
           - replicasets
           - statefulsets
@@ -236,14 +237,6 @@ spec:
           - '*'
           verbs:
           - '*'
-        - apiGroups: # support for these should be removed
-          - istio.openshift.com
-          resources:
-          - controlplanes
-          - controlplanes/status
-          - controlplanes/finalizers
-          verbs:
-          - '*'
         - apiGroups:
           - route.openshift.io
           resources:
@@ -251,7 +244,6 @@ spec:
           - routes/custom-host
           verbs:
           - '*'
-        # required by smmr controller
         - apiGroups:
           - authorization.k8s.io
           resources:
@@ -273,7 +265,7 @@ spec:
           - list
           - watch
           - update
-        - apiGroups: 
+        - apiGroups:
           - k8s.cni.cncf.io
           resources:
           - network-attachment-definitions
@@ -284,8 +276,6 @@ spec:
           - list
           - patch
           - watch
-
-        # required by cni daemonset
         - apiGroups:
           - security.openshift.io
           resources:
@@ -294,8 +284,6 @@ spec:
           - privileged
           verbs:
           - use
-
-        # required by ingress gateway
         - apiGroups:
           - security.openshift.io
           resources:
@@ -304,10 +292,8 @@ spec:
           - anyuid
           verbs:
           - use
-
-        # to be removed
         - apiGroups:
-          - ""
+          - ''
           resources:
           - nodes
           - nodes/proxy
@@ -315,14 +301,14 @@ spec:
           - get
           - list
           - watch
-        - apiGroups: # might be required by citadel
+        - apiGroups:
           - authentication.k8s.io
           resources:
           - tokenreviews
           verbs:
           - create
         - nonResourceURLs:
-          - '/metrics'
+          - /metrics
           verbs:
           - get
       deployments:
@@ -344,7 +330,7 @@ spec:
                   medium: Memory
               containers:
                 - name: istio-operator
-                  image: maistra/istio-operator-ubi8:0.12.0
+                  image: registry.redhat.io/openshift-service-mesh/istio-operator-rhel8:1.0.0
                   ports:
                   - containerPort: 60000
                     name: metrics
@@ -378,11 +364,6 @@ spec:
       displayName: Jaeger
       description: A configuration file for a Jaeger installation.  
     owned:
-    - name: controlplanes.istio.openshift.com
-      version: v1alpha3
-      kind: ControlPlane
-      displayName: Istio Control Plane (deprecated)
-      description: An Istio control plane installation (deprecated)
     - name: servicemeshmemberrolls.maistra.io
       version: v1
       kind: ServiceMeshMemberRoll

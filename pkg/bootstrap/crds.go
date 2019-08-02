@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 
 	"k8s.io/client-go/restmapper"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -26,23 +27,33 @@ import (
 )
 
 var log = logf.Log.WithName("bootstrap")
+var installCRDsTask sync.Once
 
 // InstallCRDs makes sure all CRDs have been installed.  CRDs are located from
 // files in controller.ChartPath/istio-init/files
 func InstallCRDs(mgr manager.Manager) error {
+	// we only try to install them once.  if there's an error, we should probably
+	// panic, as there's no way to recover.  for now, we just pass the error along.
+	var err error
+	installCRDsTask.Do(func() { internalInstallCRDs(mgr, &err) })
+	return err
+}
+
+func internalInstallCRDs(mgr manager.Manager, err *error) {
 	log.Info("ensuring CRDs have been installed")
 	crdPath := path.Join(common.ChartPath, "istio-init/files")
-	crdDir, err := os.Stat(crdPath)
-	if err != nil || !crdDir.IsDir() {
-		return fmt.Errorf("Cannot locate any CRD files in %s", crdPath)
+	var crdDir os.FileInfo
+	crdDir, *err = os.Stat(crdPath)
+	if *err != nil || !crdDir.IsDir() {
+		*err = fmt.Errorf("Cannot locate any CRD files in %s", crdPath)
+		return
 	}
-	err = filepath.Walk(crdPath, func(path string, info os.FileInfo, err error) error {
+	*err = filepath.Walk(crdPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return err
 		}
 		return processCRDFile(mgr, path)
 	})
-	return err
 }
 
 func processCRDFile(mgr manager.Manager, fileName string) error {

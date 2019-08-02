@@ -315,8 +315,6 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	// never include the mesh namespace in unconfigured list
 	delete(unconfiguredMembers, instance.Namespace)
 
-	isCNIEnabled := common.IsCNIEnabled(&mesh)
-
 	if instance.Generation != instance.Status.ObservedGeneration { // member roll has been updated
 
 		reqLogger.Info("Reconciling new generation of ServiceMeshMemberRoll")
@@ -331,7 +329,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 
 		// create reconciler
-		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, isCNIEnabled)
+		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, common.IsCNIEnabled)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -369,7 +367,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		reqLogger.Info("Reconciling newly created namespaces associated with this ServiceMeshMemberRoll")
 
 		// create reconciler
-		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, isCNIEnabled)
+		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, common.IsCNIEnabled)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -395,7 +393,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		reqLogger.Info("Reconciling ServiceMeshMemberRoll namespaces with new generation of ServiceMeshControlPlane")
 
 		// create reconciler
-		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, isCNIEnabled)
+		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, common.IsCNIEnabled)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -463,7 +461,7 @@ func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, configured
 	kialiCR.SetName("kiali")
 	err := r.Client.Get(context.TODO(), client.ObjectKey{Name: "kiali", Namespace: kialiCRNamespace}, kialiCR)
 	if err != nil {
-		if errors.IsNotFound(err) || errors.IsGone(err) {
+		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
 			reqLogger.Info("Kiali CR does not exist, Kiali probably not enabled")
 			return nil
 		}

@@ -15,28 +15,6 @@ import (
 )
 
 func (r *ControlPlaneReconciler) processNewComponent(name string, status *v1.ComponentStatus) error {
-	switch name {
-	case "istio/charts/galley":
-		r.waitForDeployments(status)
-		if name == "istio/charts/galley" {
-			for _, status := range status.FindResourcesOfKind("ValidatingWebhookConfiguration") {
-				if installCondition := status.GetCondition(v1.ConditionTypeInstalled); installCondition.Status == v1.ConditionStatusTrue {
-					webhookKey := v1.ResourceKey(status.Resource)
-					r.waitForWebhookCABundleInitialization(webhookKey.ToUnstructured())
-				}
-			}
-		}
-	case "istio/charts/sidecarInjectorWebhook":
-		for _, status := range status.FindResourcesOfKind("MutatingWebhookConfiguration") {
-			if installCondition := status.GetCondition(v1.ConditionTypeInstalled); installCondition.Status == v1.ConditionStatusTrue {
-				webhookKey := v1.ResourceKey(status.Resource)
-				r.waitForWebhookCABundleInitialization(webhookKey.ToUnstructured())
-			}
-		}
-		r.waitForDeployments(status)
-	default:
-		r.waitForDeployments(status)
-	}
 	return nil
 }
 
@@ -170,51 +148,6 @@ func (r *ControlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructu
 		return fmt.Errorf("could not set grafana enabled flag in kiali CR: %s", err)
 	}
 
-	return nil
-}
-
-func (r *ControlPlaneReconciler) waitForDeployments(status *v1.ComponentStatus) error {
-	for _, status := range status.FindResourcesOfKind("StatefulSet") {
-		if installCondition := status.GetCondition(v1.ConditionTypeInstalled); installCondition.Status == v1.ConditionStatusTrue {
-			deploymentKey := v1.ResourceKey(status.Resource)
-			r.waitForDeployment(deploymentKey.ToUnstructured())
-		}
-	}
-	for _, status := range status.FindResourcesOfKind("Deployment") {
-		if installCondition := status.GetCondition(v1.ConditionTypeInstalled); installCondition.Status == v1.ConditionStatusTrue {
-			deploymentKey := v1.ResourceKey(status.Resource)
-			r.waitForDeployment(deploymentKey.ToUnstructured())
-		}
-	}
-	for _, status := range status.FindResourcesOfKind("DeploymentConfig") {
-		if installCondition := status.GetCondition(v1.ConditionTypeInstalled); installCondition.Status == v1.ConditionStatusTrue {
-			deploymentKey := v1.ResourceKey(status.Resource)
-			r.waitForDeployment(deploymentKey.ToUnstructured())
-		}
-	}
-	return nil
-}
-
-// XXX: configure wait period
-func (r *ControlPlaneReconciler) waitForDeployment(object *unstructured.Unstructured) error {
-	name := object.GetName()
-	// wait for deployment replicas >= 1
-	r.Log.Info("waiting for deployment to become ready", object.GetKind(), name)
-	err := wait.ExponentialBackoff(wait.Backoff{Duration: 6 * time.Second, Steps: 10, Factor: 1.1}, func() (bool, error) {
-		err := r.Client.Get(context.TODO(), client.ObjectKey{Namespace: object.GetNamespace(), Name: name}, object)
-		if err == nil {
-			val, _, _ := unstructured.NestedInt64(object.UnstructuredContent(), "status", "readyReplicas")
-			return val > 0, nil
-		} else if errors.IsNotFound(err) {
-			r.Log.Error(nil, "attempting to wait on unknown deployment", object.GetKind(), name)
-			return true, nil
-		}
-		r.Log.Error(err, "unexpected error occurred waiting for deployment to become ready", object.GetKind(), name)
-		return false, err
-	})
-	if err != nil {
-		r.Log.Error(nil, "deployment failed to become ready in a timely manner", object.GetKind(), name)
-	}
 	return nil
 }
 

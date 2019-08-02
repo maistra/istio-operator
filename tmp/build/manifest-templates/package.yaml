@@ -1,4 +1,5 @@
 packageName: maistra
 channels:
 - name: alpha
-  currentCSV: maistra.v1.0.0
+  currentCSV: maistra.v__VERSION__
+
