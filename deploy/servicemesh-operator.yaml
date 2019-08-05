@@ -107,6 +107,12 @@ rules:
 - apiGroups: ["rbac.istio.io"]
   resources: ["*"]
   verbs: ["*"]
+- apiGroups: ["authentication.maistra.io"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["rbac.maistra.io"]
+  resources: ["*"]
+  verbs: ["*"]
 
 ---
 
@@ -238,6 +244,18 @@ rules:
   - '*'
 - apiGroups:
   - maistra.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - authentication.maistra.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - rbac.maistra.io
   resources:
   - '*'
   verbs:
