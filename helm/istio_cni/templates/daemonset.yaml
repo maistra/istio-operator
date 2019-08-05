@@ -5,8 +5,8 @@
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
-  name: istio-node-{{ .Release.Namespace }}
-  namespace: {{ .Values.global.operatorNamespace }}
+  name: istio-node
+  namespace: {{ .Release.Namespace }}
   labels:
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
@@ -45,16 +45,16 @@ spec:
           operator: Exists
         - effect: NoExecute
           operator: Exists
-      serviceAccountName: istio-cni-{{ .Release.Namespace }}
+      serviceAccountName: istio-cni
       # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
       # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
       terminationGracePeriodSeconds: 0
-{{- if .Values.global.priorityClassName }}
-      priorityClassName: "{{ .Values.global.priorityClassName }}"
+{{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
 {{- end }}
-{{- if .Values.global.imagePullSecrets }}
+{{- if .Values.imagePullSecrets }}
       imagePullSecrets:
-{{- range .Values.global.imagePullSecrets }}
+{{- range .Values.imagePullSecrets }}
       - name: {{ . }}
 {{- end }}
 {{- end }}
@@ -62,8 +62,8 @@ spec:
         # This container installs the Istio CNI binaries
         # and CNI network config file on each node.
         - name: install-cni
-          image: "{{ .Values.global.hub }}/{{ .Values.image }}:{{ .Values.global.tag }}"
-          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          image: "{{ .Values.image }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
           command: ["/install-cni.sh"]
           env:
             # Directory where the CNI config file should be created in
@@ -74,13 +74,12 @@ spec:
               value: "/host/etc/cni/multus/net.d"
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
-              value: "{{ .Release.Namespace }}-istio-cni.conf"
+              value: "istio-cni.conf"
             # Name of the kubeconfig file used by CNI agent
             - name: KUBECFG_FILE_NAME
-              value: "{{ .Release.Namespace }}-istio-cni.kubeconfig"
-            # Prefix for the istio-cni binary and install-iptables.sh script
+              value: "istio-cni.kubeconfig"
             - name: CNI_BINARIES_PREFIX
-              value: "{{ .Release.Namespace }}-"
+              value: ""
             # Deploy as a standalone CNI plugin instead of as chained
             - name: CHAINED_CNI_PLUGIN
               value: "false"
@@ -88,7 +87,7 @@ spec:
             - name: CNI_NETWORK_CONFIG
               valueFrom:
                 configMapKeyRef:
-                  name: istio-cni-config-{{ .Release.Namespace }}
+                  name: istio-cni-config
                   key: cni_network_config
           volumeMounts:
             - mountPath: /host/opt/cni/bin

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/maistra/istio-operator/pkg/controller/common"
+
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -24,6 +26,16 @@ func (r *ControlPlaneReconciler) processDeletedComponent(name string, status *v1
 }
 
 func (r *ControlPlaneReconciler) preprocessObject(object *unstructured.Unstructured) error {
+	// Add owner ref
+	if object.GetNamespace() == r.Instance.GetNamespace() {
+		object.SetOwnerReferences(r.ownerRefs)
+	} else {
+		// XXX: can't set owner reference on cross-namespace or cluster resources
+	}
+
+	// add generation annotation
+	common.SetAnnotation(object, common.MeshGenerationKey, r.meshGeneration)
+
 	switch object.GetKind() {
 	case "Kiali":
 		return r.patchKialiConfig(object)

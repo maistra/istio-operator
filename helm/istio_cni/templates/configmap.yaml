@@ -3,21 +3,21 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: istio-cni-config-{{ .Release.Namespace }}
-  namespace: {{ .Values.global.operatorNamespace }}
+  name: istio-cni-config
+  namespace: {{ .Release.Namespace }}
 data:
   # The CNI network configuration to add to the plugin chain on each node.  The special
   # values in this config will be automatically populated.
   cni_network_config: |-
     {
       "cniVersion": "0.3.0",
-      "name": "{{ .Release.Namespace }}-istio-cni",
-      "type": "{{ .Release.Namespace }}-istio-cni",
+      "name": "istio-cni",
+      "type": "istio-cni",
       "log_level": "info",
       "kubernetes": {
           "kubeconfig": "__KUBECONFIG_FILEPATH__",
           "cni_bin_dir": "/opt/multus/bin",
-          "iptables_script": "{{ .Release.Namespace }}-istio-iptables.sh",
+          "iptables_script": "istio-iptables.sh",
           "exclude_namespaces": [ "{{ .Release.Namespace }}" ]
       }
     }
