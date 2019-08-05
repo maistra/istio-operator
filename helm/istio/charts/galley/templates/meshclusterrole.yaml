@@ -11,7 +11,3 @@ rules:
 - apiGroups: [""]
   resources: ["nodes"]
   verbs: ["get", "list", "watch"]
-# revisit in TP12
-- apiGroups: ["authentication.istio.io"]
-  resources: ["meshpolicies"]
-  verbs: ["*"]

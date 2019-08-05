@@ -251,6 +251,18 @@ spec:
           verbs:
           - '*'
         - apiGroups:
+          - authentication.maistra.io
+          resources:
+          - '*'
+          verbs:
+          - '*'
+        - apiGroups:
+          - rbac.maistra.io
+          resources:
+          - '*'
+          verbs:
+          - '*'
+        - apiGroups:
           - route.openshift.io
           resources:
           - routes

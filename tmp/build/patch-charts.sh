@@ -286,10 +286,6 @@ function convertClusterRoleBinding() {
   convertClusterToNamespaced "$1" "ClusterRoleBinding" "RoleBinding" "$2"
 }
 
-function convertMeshPolicy() {
-  convertClusterToNamespaced "$1" "MeshPolicy" "Policy" "$2"
-}
-
 function patchMultiTenant() {
   echo "Patching charts for multitenancy"
 
@@ -362,9 +358,6 @@ function patchMultiTenant() {
     d
   }' ${HELM_DIR}/istio/charts/security/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/security/templates/clusterrolebinding.yaml
-  # revisit in TP12
-  #convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-mtls.yaml
-  #convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-permissive.yaml
   sed -i -e 's/^\(\( *\){.*if .Values.global.trustDomain.*$\)/\
 \            - --member-roll-name=default\
 \1/' ${HELM_DIR}/istio/charts/security/templates/deployment.yaml
