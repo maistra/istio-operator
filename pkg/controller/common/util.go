@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"strings"
 
-	"github.com/go-logr/logr"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
-	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/go-logr/logr"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -52,13 +51,28 @@ func DeleteLabel(resource metav1.Object, label string) {
 	resource.SetLabels(labels)
 }
 
-func SetLabel(resource metav1.Object, label, value string) {
+func GetLabel(resource metav1.Object, label string) (value string, ok bool) {
 	labels := resource.GetLabels()
 	if labels == nil {
-		labels = map[string]string{}
+		return "", false
 	}
-	labels[label] = value
-	resource.SetLabels(labels)
+	value, ok = labels[label]
+	return
+}
+
+func SetLabels(resource metav1.Object, labels map[string]string) {
+	existingLabels := resource.GetLabels()
+	if existingLabels == nil {
+		existingLabels = map[string]string{}
+	}
+	for key, value := range labels {
+		existingLabels[key] = value
+	}
+	resource.SetLabels(existingLabels)
+}
+
+func SetLabel(resource metav1.Object, label, value string) {
+	SetLabels(resource, map[string]string{label: value})
 }
 
 func HasAnnotation(resource metav1.Object, annotation string) bool {
@@ -82,7 +96,7 @@ func DeleteAnnotation(resource metav1.Object, annotation string) {
 func GetAnnotation(resource metav1.Object, annotation string) (value string, ok bool) {
 	annotations := resource.GetAnnotations()
 	if annotations == nil {
-		annotations = map[string]string{}
+		return "", false
 	}
 	value, ok = annotations[annotation]
 	return
@@ -95,15 +109,6 @@ func SetAnnotation(resource metav1.Object, annotation, value string) {
 	}
 	annotations[annotation] = value
 	resource.SetAnnotations(annotations)
-}
-
-func IsCNIEnabled(mesh *maistrav1.ServiceMeshControlPlane) bool {
-	val := mesh.Spec.Istio["istio_cni"]
-	if cni, ok := val.(map[string]interface{}); ok {
-		val = cni["enabled"]
-		return val == "y" || val == "yes" || val == "true" || val == "on" || val == true
-	}
-	return false
 }
 
 // XXX: remove after updating to newer version of operator-sdk

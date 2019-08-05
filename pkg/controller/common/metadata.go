@@ -27,6 +27,15 @@ const (
 
 	// InternalKey is used to identify the resource as being internal to the mesh itself (i.e. should not be applied to members)
 	InternalKey = MetadataNamespace + "/internal"
+
+	// KubernetesAppNamespace is the common namespace for application information
+	KubernetesAppNamespace = "app.kubernetes.io"
+	KubernetesAppNameKey = KubernetesAppNamespace + "/name"
+	KubernetesAppInstanceKey = KubernetesAppNamespace + "/instance"
+	KubernetesAppVersionKey = KubernetesAppNamespace + "/version"
+	KubernetesAppComponentKey = KubernetesAppNamespace + "/component"
+	KubernetesAppPartOfKey = KubernetesAppNamespace + "/part-of"
+	KubernetesAppManagedByKey = KubernetesAppNamespace + "/managed-by"
 )
 
 func FetchOwnedResources(kubeClient client.Client, gvk schema.GroupVersionKind, owner, namespace string) (*unstructured.UnstructuredList, error) {
