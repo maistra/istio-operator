@@ -34,6 +34,8 @@ import (
 
 const maxUpdateAttemptsOnConflict = 5
 
+const netAttachDefName = "istio-cni" // must match name of .conf file in multus.d
+
 var log = logf.Log.WithName("controller_servicemeshmemberroll")
 
 /**
@@ -814,8 +816,6 @@ func (r *namespaceReconciler) reconcileRoleBindings(namespace string, reqLogger 
 }
 
 func (r *namespaceReconciler) addNetworkAttachmentDefinition(namespace, meshNamespace string, reqLogger logr.Logger) error {
-	name := fmt.Sprintf("%s-%s", meshNamespace, "istio-cni") // must match name of .conf file in multus.d
-
 	netAttachDef := &unstructured.Unstructured{}
 	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "k8s.cni.cncf.io",
@@ -823,29 +823,27 @@ func (r *namespaceReconciler) addNetworkAttachmentDefinition(namespace, meshName
 		Kind:    "NetworkAttachmentDefinition",
 	})
 
-	err := r.client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, netAttachDef)
+	err := r.client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: netAttachDefName}, netAttachDef)
 	if err == nil {
 		// resource exists, do nothing
 		return nil
 	}
 	if !errors.IsNotFound(err) {
-		return fmt.Errorf("Could not get NetworkAttachmentDefinition %s/%s: %v", namespace, name, err)
+		return fmt.Errorf("Could not get NetworkAttachmentDefinition %s/%s: %v", namespace, netAttachDefName, err)
 	}
 
 	// TODO: update resource if its state isn't what we want
 
 	netAttachDef.SetNamespace(namespace)
-	netAttachDef.SetName(name)
+	netAttachDef.SetName(netAttachDefName)
 	err = r.client.Create(context.TODO(), netAttachDef)
 	if err != nil {
-		return fmt.Errorf("Could not create NetworkAttachmentDefinition %s/%s: %v", namespace, name, err)
+		return fmt.Errorf("Could not create NetworkAttachmentDefinition %s/%s: %v", namespace, netAttachDefName, err)
 	}
 	return nil
 }
 
 func (r *namespaceReconciler) removeNetworkAttachmentDefinition(namespace, meshNamespace string, reqLogger logr.Logger) error {
-	name := fmt.Sprintf("%s-%s", meshNamespace, "istio-cni")
-
 	netAttachDef := &unstructured.Unstructured{}
 	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "k8s.cni.cncf.io",
@@ -853,13 +851,13 @@ func (r *namespaceReconciler) removeNetworkAttachmentDefinition(namespace, meshN
 		Kind:    "NetworkAttachmentDefinition",
 	})
 
-	err := r.client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, netAttachDef)
+	err := r.client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: netAttachDefName}, netAttachDef)
 	if err != nil {
 		if errors.IsNotFound(err) || meta.IsNoMatchError(err) {
 			// resource doesn't exist, so everything's fine
 			return nil
 		}
-		return fmt.Errorf("Could not get NetworkAttachmentDefinition %s/%s: %v", namespace, name, err)
+		return fmt.Errorf("Could not get NetworkAttachmentDefinition %s/%s: %v", namespace, netAttachDefName, err)
 	}
 
 	err = r.client.Delete(context.TODO(), netAttachDef, client.PropagationPolicy(metav1.DeletePropagationOrphan))
@@ -871,7 +869,7 @@ func (r *namespaceReconciler) removeNetworkAttachmentDefinition(namespace, meshN
 		// resource was deleted between our Get call and our Delete call - everything is fine
 		return nil
 	}
-	return fmt.Errorf("Could not delete NetworkAttachmentDefinition %s/%s: %v", namespace, name, err)
+	return fmt.Errorf("Could not delete NetworkAttachmentDefinition %s/%s: %v", namespace, netAttachDefName, err)
 }
 
 func (r *ReconcileMemberList) reconcilePodServiceAccounts(namespace string, mesh *v1.ServiceMeshControlPlane, reqLogger logr.Logger) error {

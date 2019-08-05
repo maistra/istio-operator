@@ -132,12 +132,8 @@ function patchTemplates() {
   sed -i -e 's/^\(.*template:.*\)$/\1\
     \{\{- if .Values.istio_cni.enabled \}\}\
       annotations:\
-        k8s.v1.cni.cncf.io\/networks: {{ .Release.Namespace }}-istio-cni\
+        k8s.v1.cni.cncf.io\/networks: istio-cni\
     \{\{- end \}\}/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
-  sed -i -e 's/\(\( *\)- name:.*sidecarInjector.*$\)/\1\
-\2- name: istio_cni\
-\2  version: 1.1.0\
-\2  condition: istio_cni.enabled/' ${HELM_DIR}/istio/requirements.yaml
 
   # allow the sidecar injector to set the runAsUser ID dynamically
   # drop unneeded capabilities from sidecar container, so using the restricted SCC doesn't require the SCC admission controller to mutate the pod
@@ -183,7 +179,7 @@ function patchTemplates() {
     sed -i -e 's/image: *mixer/image: mixer-ubi8/' ${HELM_DIR}/istio/charts/mixer/values.yaml
     sed -i -e 's/image: *pilot/image: pilot-ubi8/' ${HELM_DIR}/istio/charts/pilot/values.yaml
     sed -i -e 's/image: *citadel/image: citadel-ubi8/' ${HELM_DIR}/istio/charts/security/values.yaml
-    sed -i -e 's/image: *istio-cni/image: istio-cni-ubi8/' ${HELM_DIR}/istio/charts/istio_cni/values.yaml
+    sed -i -e 's/image: *istio-cni/image: istio-cni-ubi8/' ${HELM_DIR}/istio_cni/values.yaml
     sed -i -e 's|\(^jaeger:.*$\)|elasticsearch:\
   hub: registry.centos.org/rhsyseng\
   image: elasticsearch\
@@ -201,7 +197,7 @@ function patchTemplates() {
     sed -i -e 's/image: *mixer/image: mixer-rhel8/' ${HELM_DIR}/istio/charts/mixer/values.yaml
     sed -i -e 's/image: *pilot/image: pilot-rhel8/' ${HELM_DIR}/istio/charts/pilot/values.yaml
     sed -i -e 's/image: *citadel/image: citadel-rhel8/' ${HELM_DIR}/istio/charts/security/values.yaml
-    sed -i -e 's/image: *istio-cni/image: istio-cni-rhel8/' ${HELM_DIR}/istio/charts/istio_cni/values.yaml
+    sed -i -e 's/image: *istio-cni/image: istio-cni-rhel8/' ${HELM_DIR}/istio_cni/values.yaml
     sed -i -e 's|\(^jaeger:.*$\)|elasticsearch:\
   hub: registry.centos.org/rhsyseng\
   image: elasticsearch\
