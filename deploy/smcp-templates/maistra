@@ -12,7 +12,8 @@ spec:
         image: proxy-init-ubi8
     galley:
       image: galley-ubi8
-    grafana: {}
+    grafana:
+      image: grafana-ubi8
     tracing:
       jaeger:
         hub: jaegertracing

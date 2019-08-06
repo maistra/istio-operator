@@ -71,6 +71,12 @@ function prometheus_patch_service() {
     targetPort: 3001' ${HELM_DIR}/istio/charts/prometheus/templates/service.yaml
 }
 
+function prometheus_patch_values() {
+  # TODO: currently, upstream does not include the image value, so we're inserting it here (and removing hub and tag to make this values.yaml consistent with the others
+  sed -i -e 's/hub:.*$/image: prometheus/g' \
+         -e '/tag:.*$/d' ${HELM_DIR}/istio/charts/prometheus/values.yaml
+}
+
 function prometheus_patch_service_account() {
   sed -i -e '/name: prometheus/ a\
   annotations:\
@@ -103,3 +109,4 @@ function prometheusPatch() {
 }
 
 prometheusPatch
+

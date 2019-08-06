@@ -9,6 +9,8 @@ spec:
         image: proxyv2-rhel8
       proxy_init:
         image: proxy-init-rhel8
+    grafana:
+      image: grafana-rhel8
     galley:
       image: galley-rhel8
     tracing:

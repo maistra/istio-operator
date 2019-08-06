@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 
 function grafana_patch_deployment() {
-  local image="grafana-ubi8"
-  if [[ "${COMMUNITY,,}" != "true" ]]; then
-    image="grafana-rhel8"
-  fi
-
   sed -i -e '/      containers:/ a\
           # OAuth proxy\
         - name: grafana-proxy\
@@ -68,7 +63,7 @@ function grafana_patch_deployment() {
 \2- name: GF_USERS_AUTO_ASSIGN_ORG_ROLE\
 \2  value: Admin\
 \1/' \
-  -e 's+image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"+image: "{{ .Values.global.hub }}/'${image}':{{ .Values.global.tag }}"+' \
+  -e 's+image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"+image: "{{ .Values.global.hub }}/{{.Values.image}}:{{ .Values.global.tag }}"+' \
   ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
 
   sed -i -e '/securityContext/,/fsGroup/d' ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml

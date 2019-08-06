@@ -42,6 +42,19 @@ function patchTemplates() {
     ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhookconfiguration.yaml.tpl \
     ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
 
+# enable egressgateway
+  sed -i -e '/istio-ingressgateway:/,/^[^ ]/ {
+                s/type:.*$/type: ClusterIP/
+                /ports:/,/meshExpansionPorts:/ {
+                  /nodePort/ d
+                  /port: 31400/,+1 d
+                  /port: 15029/,+2 d
+                  /port: 15030/,+2 d
+                  /port: 15031/,+2 d
+                  /port: 15032/,+2 d
+                }
+             }' ${HELM_DIR}/istio/charts/gateways/values.yaml
+
   # - remove the cleanup secrets job, we handle this in the installer
   rm ${HELM_DIR}/istio/charts/security/templates/cleanup-secrets.yaml
 

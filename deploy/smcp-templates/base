@@ -18,6 +18,9 @@ spec:
       enabled: true
       ingress:
         enabled: true
+      service:
+        annotations:
+           service.alpha.openshift.io/serving-cert-secret-name: grafana-tls
     tracing:
       enabled: true
       ingress:
@@ -28,9 +31,6 @@ spec:
       jaeger:
         tag: 1.13.1
         template: production-elasticsearch
-      service:
-        externalPort:
-          name: zipkin
     kiali:
       enabled: true
       dashboard:
@@ -47,9 +47,10 @@ spec:
         ior_enabled: false
         type: ClusterIP
     prometheus:
+     service:
       annotations:
         service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls
-      ingress:
+     ingress:
         enabled: true
   threeScale:
     tag: 0.7.1
