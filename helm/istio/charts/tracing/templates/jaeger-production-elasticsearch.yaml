@@ -73,7 +73,17 @@ spec:
       {{- range $key, $value := .Values.ingress.annotations }}
         {{ $key }}: {{ $value | quote }}
       {{- end }}
+    openshift:
+      sar: '{"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}'
+      htpasswdFile: /etc/proxy/htpasswd/auth
 
+  volumeMounts:
+  - name: secret-htpasswd
+    mountPath: /etc/proxy/htpasswd
+  volumes:
+  - name: secret-htpasswd
+    secret:
+      secretName: htpasswd
   resources:
 {{- if .Values.jaeger.resources }}
 {{ toYaml .Values.jaeger.resources | indent 4 }}
