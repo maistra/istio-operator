@@ -71,24 +71,6 @@ function prometheus_patch_service() {
     targetPort: 3001' ${HELM_DIR}/istio/charts/prometheus/templates/service.yaml
 }
 
-function prometheus_patch_values() {
-  # add annotations and enable ingress
-  sed -i \
-    -e 's|  annotations: {}|  annotations:\n    service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls|' \
-    -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
-    ${HELM_DIR}/istio/charts/prometheus/values.yaml
-
-  # TODO: currently, upstream does not include the image value, so we're inserting it here (and removing hub and tag to make this values.yaml consistent with the others
-  sed -i -e 's/hub:.*$/image: prometheus/g' \
-         -e '/tag:.*$/d' ${HELM_DIR}/istio/charts/prometheus/values.yaml
-
-  if [[ "${COMMUNITY,,}" == "true" ]]; then
-    sed -i -r -e 's/image:(.*)prometheus/image: prometheus-ubi8/' ${HELM_DIR}/istio/charts/prometheus/values.yaml
-  else
-    sed -i -r -e 's/image:(.*)prometheus/image: prometheus-rhel8/' ${HELM_DIR}/istio/charts/prometheus/values.yaml
-  fi
-}
-
 function prometheus_patch_service_account() {
   sed -i -e '/name: prometheus/ a\
   annotations:\
@@ -116,7 +98,6 @@ function prometheusPatch() {
   prometheus_patch_deployment
   prometheus_patch_service
   prometheus_patch_service_account
-  prometheus_patch_values
   prometheus_patch_misc
   prometheus_patch_configmap
 }

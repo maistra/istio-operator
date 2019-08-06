@@ -1,4 +1,3 @@
----
 apiVersion: maistra.io/v1
 kind: ServiceMeshControlPlane
 spec:
@@ -23,7 +22,7 @@ spec:
       image: mixer-ubi8
     pilot:
       image: pilot-ubi8
-    citadel:
+    security:
       image: citadel-ubi8
     istio-cni:
       image: istio-cni-ubi8
@@ -35,7 +34,7 @@ spec:
     gateways:
       istio-ingressgateway:
         ior_image: istio-ior-ubi8
-      prometheus:
-        image: prometheus-ubi8
+    prometheus:
+      image: prometheus-ubi8
   threeScale:
     hub: quay.io/3scale

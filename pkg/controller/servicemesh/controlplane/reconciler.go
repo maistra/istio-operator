@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-
 	"github.com/pkg/errors"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -53,28 +52,14 @@ var orderedCharts = []string{
 }
 
 const (
-	smcpTemplatePath        = "/etc/istio-operator/templates/"
-	smcpDefaultTemplatePath = "/etc/istio-operator/default-templates/"
+	smcpTemplatePath        = "/usr/share/istio-operator/templates/"
+	smcpDefaultTemplatePath = "/usr/share/istio-operator/default-templates/"
 	smcpDefaultTemplate     = "default"
 )
 
 func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	var err error
 	var ready bool
-
-	//render the ServiceMeshControlPlane templates
-	spec, err := r.updateSMCPWithTemplates(r.Instance.Spec)
-	if err != nil {
-		r.Log.Info(fmt.Sprintf("Warning: failed to render ServiceMeshControlPlane templates:%s", err))
-
-		//TODO: Remove these comments we've decided that templates are stable.
-		//updateReconcileStatus(&r.Instance.Status.StatusType, err)
-		//return reconcile.Result{}, err
-	} else {
-		r.Instance.Spec = spec
-	}
-
-	r.Status.LastAppliedConfiguration = r.Instance.Spec
 
 	if r.renderings == nil {
 		// Render the templates
@@ -278,12 +263,12 @@ func (r *ControlPlaneReconciler) getSMCPTemplate(name string) (v1.ControlPlaneSp
 	var template v1.ServiceMeshControlPlane
 	if err = yaml.Unmarshal(templateContent, &template); err != nil {
 		return v1.ControlPlaneSpec{}, fmt.Errorf("failed to parse template %s contents: %s", name, err)
-
 	}
 	return template.Spec, nil
 }
 
-func (r *ControlPlaneReconciler) renderSMCPTemplates(smcp v1.ControlPlaneSpec, visited map[string]struct{}) (v1.ControlPlaneSpec, error) {
+//renderSMCPTemplates traverses and processes all of the references templates
+func (r *ControlPlaneReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneSpec, visited map[string]struct{}) (v1.ControlPlaneSpec, error) {
 	if smcp.Template == "" {
 		return smcp, nil
 	}
@@ -298,7 +283,7 @@ func (r *ControlPlaneReconciler) renderSMCPTemplates(smcp v1.ControlPlaneSpec, v
 		return smcp, err
 	}
 
-	template, err = r.renderSMCPTemplates(template, visited)
+	template, err = r.recursivelyApplyTemplates(template, visited)
 	if err != nil {
 		r.Log.Info(fmt.Sprintf("error rendering SMCP templates: %s\n", err))
 		return smcp, err
@@ -311,50 +296,70 @@ func (r *ControlPlaneReconciler) renderSMCPTemplates(smcp v1.ControlPlaneSpec, v
 	return smcp, nil
 }
 
-func (r *ControlPlaneReconciler) updateSMCPWithTemplates(smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
+func (r *ControlPlaneReconciler) applyTemplates(smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
 	r.Log.Info("updating servicemeshcontrolplane with templates")
 	if smcpSpec.Template == "" {
 		smcpSpec.Template = smcpDefaultTemplate
+		r.Log.Info("No template provided. Using default")
 	}
 
-	spec, err := r.renderSMCPTemplates(smcpSpec, make(map[string]struct{}, 0))
+	spec, err := r.recursivelyApplyTemplates(smcpSpec, make(map[string]struct{}, 0))
 	r.Log.Info(fmt.Sprintf("finished updating ServiceMeshControlPlane: %+v", spec))
 
 	return spec, err
 }
 
+func (r *ControlPlaneReconciler) validateSMCPSpec(spec v1.ControlPlaneSpec) error {
+	if spec.Istio == nil {
+		return fmt.Errorf("ServiceMeshControlPlane missing Istio section")
+	}
+
+	if _, ok := spec.Istio["global"].(map[string]interface{}); !ok {
+		return fmt.Errorf("ServiceMeshControlPlane missing global section")
+	}
+	return nil
+}
+
 func (r *ControlPlaneReconciler) renderCharts() error {
-	r.Log.Info("rendering helm charts")
-	allErrors := []error{}
-	var err error
-	var threeScaleRenderings map[string][]manifest.Manifest
+	//Generate the spec
+	r.Status.LastAppliedConfiguration = r.Instance.Spec
 
-	if r.Instance.Spec.Istio == nil {
-		r.Instance.Spec.Istio = make(map[string]interface{}, 0)
+	spec, err := r.applyTemplates(r.Status.LastAppliedConfiguration)
+	if err != nil {
+		r.Log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates: %s", err)
+
+		return err
+	}
+	r.Status.LastAppliedConfiguration = spec
+
+	if err := r.validateSMCPSpec(r.Status.LastAppliedConfiguration); err != nil {
+		return err
 	}
 
-	globalValues, ok := r.Instance.Spec.Istio["global"].(map[string]interface{})
-	if !ok {
-		globalValues = make(map[string]interface{}, 0)
-		r.Instance.Spec.Istio["global"] = globalValues
+	if globalValues, ok := r.Status.LastAppliedConfiguration.Istio["global"].(map[string]interface{}); ok {
+		globalValues["operatorNamespace"] = r.OperatorNamespace
 	}
-	globalValues["operatorNamespace"] = r.OperatorNamespace
 
 	var CNIValues map[string]interface{}
-	if CNIValues, ok = r.Instance.Spec.Istio["istio_cni"].(map[string]interface{}); !ok {
+	var ok bool
+	if CNIValues, ok = r.Status.LastAppliedConfiguration.Istio["istio_cni"].(map[string]interface{}); !ok {
 		CNIValues = make(map[string]interface{})
-		r.Instance.Spec.Istio["istio_cni"] = CNIValues
+		r.Status.LastAppliedConfiguration.Istio["istio_cni"] = CNIValues
 	}
 	CNIValues["enabled"] = common.IsCNIEnabled
 
+	//Render the charts
+	allErrors := []error{}
+	var threeScaleRenderings map[string][]manifest.Manifest
+	r.Log.Info("rendering helm charts")
 	r.Log.V(2).Info("rendering Istio charts")
-	istioRenderings, _, err := common.RenderHelmChart(path.Join(common.ChartPath, "istio"), r.Instance.GetNamespace(), r.Instance.Spec.Istio)
+	istioRenderings, _, err := common.RenderHelmChart(path.Join(common.ChartPath, "istio"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.Istio)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
 	if isEnabled(r.Instance.Spec.ThreeScale) {
 		r.Log.V(2).Info("rendering 3scale charts")
-		threeScaleRenderings, _, err = common.RenderHelmChart(path.Join(common.ChartPath, "maistra-threescale"), r.Instance.GetNamespace(), r.Instance.Spec.ThreeScale)
+		threeScaleRenderings, _, err = common.RenderHelmChart(path.Join(common.ChartPath, "maistra-threescale"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.ThreeScale)
 		if err != nil {
 			allErrors = append(allErrors, err)
 		}

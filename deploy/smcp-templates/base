@@ -8,6 +8,12 @@ spec:
       proxy:
         autoInject: disabled
         dnsRefreshRate: 300s
+    pilot:
+      env:
+        GODEBUG: null
+    mixer:
+      env:
+        GODEBUG: null
     grafana:
       enabled: true
       ingress:
@@ -39,6 +45,7 @@ spec:
       istio-ingressgateway:
         enabled: true
         ior_enabled: false
+        type: ClusterIP
     prometheus:
       annotations:
         service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls

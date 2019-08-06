@@ -20,7 +20,7 @@ spec:
       image: mixer-rhel8
     pilot:
       image: pilot-rhel8
-    citadel:
+    security:
       image: citadel-rhel8
     istio-cni:
       image: istio-cni-rhel8

@@ -2,6 +2,10 @@
 
 set -e
 
+TEMPLATES_DIR="$(pwd)/tmp/_output/templates"
+COMMUNITY=${COMMUNITY:-true}
+SOURCE_DIR=$(pwd)
+
 # Allow the developer to use other tool, e.g. podman
 CONTAINER_CLI=${CONTAINER_CLI:-docker}
 
@@ -19,6 +23,14 @@ ${BUILD_DIR}/build.sh
 
 echo "collecting helm charts"
 ${BUILD_DIR}/download-charts.sh
+
+mkdir -p ${TEMPLATES_DIR}
+if [[ "${COMMUNITY,,}" == "true" ]]; then
+	cp ${SOURCE_DIR}/deploy/smcp-templates/maistra ${TEMPLATES_DIR}/default
+else
+	cp ${SOURCE_DIR}/deploy/smcp-templates/servicemesh ${TEMPLATES_DIR}/default
+fi
+cp ${SOURCE_DIR}/deploy/smcp-templates/base ${TEMPLATES_DIR}
 
 echo "building container ${IMAGE}..."
 ${CONTAINER_CLI} build --no-cache -t "${IMAGE}" -f tmp/build/Dockerfile .
