@@ -83,7 +83,20 @@ metadata:
               }
             }
           }
-        }              
+        },
+        {
+          "apiVersion": "maistra.io/v1",
+          "kind": "ServiceMeshMemberRoll",
+          "metadata": {
+            "name": "default"
+          },
+          "spec": {
+            "members": [
+              "your-project",
+              "another-of-your-projects" 
+            ]
+          }
+        }
       ]
 spec:
   version: __VERSION__
