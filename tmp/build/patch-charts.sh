@@ -56,7 +56,15 @@ function patchTemplates() {
   sed -i -e 's/enableNamespacesByDefault:.*$/enableNamespacesByDefault: true/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/values.yaml
 
   # enable egressgateway
-  sed -i -e '/istio-egressgateway:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
+  sed -i -e '/istio-egressgateway:/,/^[^ ]/ {
+                s/enabled: .*$/enabled: true/
+                /ports:/,/secretVolumes:/ {
+                  s/\(\(^ *\)- port: 80\)/\1\
+\2  targetPort: 8080/
+                  s/\(\(^ *\)- port: 443\)/\1\
+\2  targetPort: 8443/
+                }
+              }' \
          -e '/istio-ingressgateway:/,/^[^ ]/ {
                 s/type:.*$/type: ClusterIP/
                 /ports:/,/meshExpansionPorts:/ {
@@ -66,8 +74,13 @@ function patchTemplates() {
                   /port: 15030/,+2 d
                   /port: 15031/,+2 d
                   /port: 15032/,+2 d
+                  s/targetPort: 80/targetPort: 8080/
+                  s/\(\(^ *\)- port: 443\)/\1\
+\2  targetPort: 8443/
                 }
-             }' ${HELM_DIR}/istio/charts/gateways/values.yaml
+              }' ${HELM_DIR}/istio/charts/gateways/values.yaml
+  sed -i -e 's/\(^ *\)- containerPort: {{ $val.port }}/\1- name: {{ $val.name }}\
+\1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/istio/charts/gateways/templates/deployment.yaml
   # add support for IOR
   sed -i -e '/istio-ingressgateway:/,/enabled:/ {
     /enabled:/ a\
@@ -246,9 +259,7 @@ function patchTemplates() {
 \1\2/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
 
   # change the location of the healthCheckFile from /health to /tmp/health
-  if [[ "${COMMUNITY,,}" != "true" ]]; then
-    sed -i -e 's/\/health/\/tmp\/health/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
-  fi
+  sed -i -e 's/\/health/\/tmp\/health/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
 
   # Fix for MAISTRA-334, can be removed when we move to Istio-1.2
   sed -i '/match: (context.protocol == "http" || context.protocol == "grpc")/ s/$/ \&\& (match((request.useragent | "-"), "Prometheus*") == false)/' ${HELM_DIR}/istio/charts/mixer/templates/config.yaml 
