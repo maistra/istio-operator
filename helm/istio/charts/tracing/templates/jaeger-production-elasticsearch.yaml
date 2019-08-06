@@ -54,6 +54,16 @@ spec:
     type: elasticsearch
     elasticsearch:
       nodeCount: 3
+      resources:
+{{- if .Values.jaeger.elasticsearch.resources }}
+{{ toYaml .Values.jaeger.elasticsearch.resources | indent 8 }}
+{{- else }}
+        requests:
+          memory: "16Gi"
+          cpu: "1"
+        limits:
+          memory: "16Gi"
+{{- end }}
 
   ingress:
     enabled: {{ .Values.ingress.enabled }}
@@ -63,7 +73,17 @@ spec:
       {{- range $key, $value := .Values.ingress.annotations }}
         {{ $key }}: {{ $value | quote }}
       {{- end }}
+    openshift:
+      sar: '{"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}'
+      htpasswdFile: /etc/proxy/htpasswd/auth
 
+  volumeMounts:
+  - name: secret-htpasswd
+    mountPath: /etc/proxy/htpasswd
+  volumes:
+  - name: secret-htpasswd
+    secret:
+      secretName: htpasswd
   resources:
 {{- if .Values.jaeger.resources }}
 {{ toYaml .Values.jaeger.resources | indent 4 }}

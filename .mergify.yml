@@ -11,8 +11,8 @@ pull_request_rules:
       #- milestone ~= '^maistra-\d+-\d+$'
     actions:
       merge:
-        method: merge
-        strict: true
+        method: rebase
+        strict: smart
   - name: label work in progress PRs
     conditions:
       - label != "work in progress"
