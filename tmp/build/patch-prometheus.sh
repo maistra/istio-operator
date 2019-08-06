@@ -24,7 +24,7 @@ function prometheus_patch_deployment() {
           - mountPath: /etc/tls/private\
             name: secret-prometheus-tls\
           - mountPath: /etc/proxy/htpasswd\
-            name: secret-prometheus-htpasswd\
+            name: secret-htpasswd\
           args:\
           - -provider=openshift\
           - -https-address=:3001\
@@ -34,8 +34,6 @@ function prometheus_patch_deployment() {
           - -htpasswd-file=/etc/proxy/htpasswd/auth\
           - -display-htpasswd-form=false\
           - '\''-openshift-sar={"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}'\''\
-          - '\''-openshift-delegate-urls={"/":{"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}}'\''\
-          - -skip-auth-regex=^/metrics\
           - -client-secret-file=/var/run/secrets/kubernetes.io/serviceaccount/token\
           - -openshift-service-account=prometheus\
           - -cookie-secret=SECRET\
@@ -49,10 +47,10 @@ function prometheus_patch_deployment() {
         secret:\
           defaultMode: 420\
           secretName: prometheus-tls\
-      - name: secret-prometheus-htpasswd\
+      - name: secret-htpasswd\
         secret:\
           defaultMode: 420\
-          secretName: prometheus-htpasswd' \
+          secretName: htpasswd' \
       -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: prometheus\
 \1containers:\2/' \
   ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml

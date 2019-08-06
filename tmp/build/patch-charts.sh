@@ -83,12 +83,8 @@ function patchTemplates() {
   sed -i -e 's/^\(.*template:.*\)$/\1\
     \{\{- if .Values.istio_cni.enabled \}\}\
       annotations:\
-        k8s.v1.cni.cncf.io\/networks: {{ .Release.Namespace }}-istio-cni\
+        k8s.v1.cni.cncf.io\/networks: istio-cni\
     \{\{- end \}\}/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
-  sed -i -e 's/\(\( *\)- name:.*sidecarInjector.*$\)/\1\
-\2- name: istio_cni\
-\2  version: 1.1.0\
-\2  condition: istio_cni.enabled/' ${HELM_DIR}/istio/requirements.yaml
 
   # allow the sidecar injector to set the runAsUser ID dynamically
   # drop unneeded capabilities from sidecar container, so using the restricted SCC doesn't require the SCC admission controller to mutate the pod
@@ -149,8 +145,10 @@ function patchTemplates() {
 \1  targetPort: webhook/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/service.yaml
 
   # - switch webhook ports to 8443
-  # add webhook port
+  # - disable management of webhook config
+  # - add webhook port
   sed -i -e 's/^\(.*\)\(volumeMounts:.*\)$/\1  - --port=8443\
+\1  - --manageWebhookConfig=false\
 \1ports:\
 \1- name: webhook\
 \1  containerPort: 8443\
@@ -217,22 +215,13 @@ function patchMultiTenant() {
   }' ${HELM_DIR}/istio/charts/galley/templates/clusterrole.yaml
   sed -i -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/galley/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/galley/templates/clusterrolebinding.yaml
-  sed -i -e '/metadata/ {N; s/name: istio-galley/name: istio-galley-\{\{ .Release.Namespace \}\}/}' \
-    ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
-  sed -i -e 's|^\(\(\s*\)rules:.*$\)|\
-\2namespaceSelector:\
-\2  matchExpressions:\
-\2  - key: maistra.io/member-of\
-\2    operator: In\
-\2    values:\
-\2    - "{{ .Release.Namespace }}"\
-\1|' ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
   sed -i -e '/--validation-webhook-config-file/ {
     s/^\(\( *\)- --validation-webhook-config-file\)/\2- --deployment-namespace\
 \2- \{\{ .Release.Namespace \}\}\
 \2- --webhook-name\
 \2- istio-galley-\{\{ .Release.Namespace \}\}\
 \2- --memberRollName=default\
+\2- --manageWebhookConfig=false\
 \1/
   }' ${HELM_DIR}/istio/charts/galley/templates/deployment.yaml
 
@@ -295,19 +284,6 @@ function patchMultiTenant() {
     /apiGroups/!d
   }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/clusterrolebinding.yaml
-  sed -i -e '/metadata/ {N; s/name: istio-sidecar-injector/name: istio-sidecar-injector-\{\{ .Release.Namespace \}\}/}' \
-         -e '/if \.Values\.enableNamespacesByDefault/,/end/ d' \
-         -e 's+\(^ *\)namespaceSelector:+\
-\1namespaceSelector:\
-\1  matchExpressions:\
-\1  - key: maistra.io/member-of\
-\1    operator: In\
-\1    values:\
-\1    - "{{ .Release.Namespace }}"\
-\1  - key: maistra.io/ignore-namespace\
-\1    operator: DoesNotExist\
-\1  - key: istio.openshift.com/ignore-namespace\
-\1    operator: DoesNotExist+' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhookconfiguration.yaml.tpl
   sed -i -e '/args:/ a\
             - --webhookConfigName=istio-sidecar-injector-{{ .Release.Namespace }}' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
 }
