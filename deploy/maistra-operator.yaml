@@ -292,16 +292,6 @@ rules:
   verbs:
   - use
 
-# required by ingress gateway
-- apiGroups:
-  - security.openshift.io
-  resources:
-  - securitycontextconstraints
-  resourceNames:
-  - anyuid
-  verbs:
-  - use
-
 # to be removed
 - apiGroups:
   - ""
