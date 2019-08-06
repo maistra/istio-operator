@@ -36,22 +36,28 @@ spec:
     grafana:
       auth:
         ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
-        type: "bearer"
-        use_kiali_token: true
+        type: "basic"
+        use_kiali_token: false
+        username: "internal"
+        password: ""
       enabled: true
       in_cluster_url: "https://grafana.{{ .Release.Namespace }}.svc:3000"
       url: "{{ .Values.dashboard.grafanaURL }}"
     prometheus:
       auth:
         ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
-        type: "bearer"
-        use_kiali_token: true
+        type: "basic"
+        use_kiali_token: false
+        username: "internal"
+        password: ""
       url: "https://prometheus.{{ .Release.Namespace }}.svc:9090"
     tracing:
       auth:
         ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
-        type: "bearer"
-        use_kiali_token: true
+        type: "basic"
+        use_kiali_token: false
+        username: "internal"
+        password: ""
       enabled: true
       namespace: "{{ .Release.Namespace }}"
       service : ""

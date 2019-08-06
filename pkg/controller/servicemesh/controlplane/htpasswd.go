@@ -14,20 +14,20 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-func (r *ControlPlaneReconciler) patchPrometheusHtpasswd(object *unstructured.Unstructured) error {
+func (r *ControlPlaneReconciler) patchHtpasswdSecret(object *unstructured.Unstructured) error {
 	var rawPassword, auth string
 
 	htSecret := &corev1.Secret{}
-	err := r.Client.Get(context.TODO(), client.ObjectKey{Namespace: object.GetNamespace(), Name: "prometheus-htpasswd"}, htSecret)
+	err := r.Client.Get(context.TODO(), client.ObjectKey{Namespace: object.GetNamespace(), Name: "htpasswd"}, htSecret)
 	if err == nil {
 		rawPassword = string(htSecret.Data["rawPassword"])
 		auth = string(htSecret.Data["auth"])
 	} else {
-		r.Log.Info("Creating Prometheus HTPasswd entry", object.GetKind(), object.GetName())
+		r.Log.Info("Creating HTPasswd entry", object.GetKind(), object.GetName())
 
 		rawPassword, err = generatePassword(255)
 		if err != nil {
-			r.Log.Error(err, "failed to generate the Prometheus password")
+			r.Log.Error(err, "failed to generate the HTPasswd password")
 			return err
 		}
 		h := sha1.New()
@@ -41,17 +41,28 @@ func (r *ControlPlaneReconciler) patchPrometheusHtpasswd(object *unstructured.Un
 	// We store the raw password in order to be able to retrieve it below, when patching Grafana ConfigMap
 	err = unstructured.SetNestedField(object.UnstructuredContent(), b64Password, "data", "rawPassword")
 	if err != nil {
-		r.Log.Error(err, "failed to set prometheus raw password")
+		r.Log.Error(err, "failed to set htpasswd raw password")
 		return err
 	}
 
 	err = unstructured.SetNestedField(object.UnstructuredContent(), b64Auth, "data", "auth")
 	if err != nil {
-		r.Log.Error(err, "failed to set prometheus htpasswd entry")
+		r.Log.Error(err, "failed to set htpasswd auth entry")
 		return err
 	}
 
 	return nil
+}
+
+func (r *ControlPlaneReconciler) getRawHtPasswd(object *unstructured.Unstructured) (string, error) {
+	htSecret := &corev1.Secret{}
+	err := r.Client.Get(context.TODO(), client.ObjectKey{Namespace: object.GetNamespace(), Name: "htpasswd"}, htSecret)
+	if err != nil {
+		r.Log.Error(err, "error retrieving htpasswd Secret")
+		return "", err
+	}
+
+	return string(htSecret.Data["rawPassword"]), nil
 }
 
 func (r *ControlPlaneReconciler) patchGrafanaConfig(object *unstructured.Unstructured) error {
@@ -63,14 +74,10 @@ func (r *ControlPlaneReconciler) patchGrafanaConfig(object *unstructured.Unstruc
 
 	r.Log.Info("patching Grafana-Prometheus link", object.GetKind(), object.GetName())
 
-	// Retrieve the raw password created when processing Prometheus charts
-	htSecret := &corev1.Secret{}
-	err = r.Client.Get(context.TODO(), client.ObjectKey{Namespace: object.GetNamespace(), Name: "prometheus-htpasswd"}, htSecret)
+	rawPassword, err := r.getRawHtPasswd(object)
 	if err != nil {
-		r.Log.Error(err, "error retrieving prometheus-htpasswd Secret")
 		return err
 	}
-	rawPassword := string(htSecret.Data["rawPassword"])
 
 	var re = regexp.MustCompile("(?s)(basicAuthPassword:).*?\n")
 	dsYaml = re.ReplaceAllString(dsYaml, fmt.Sprintf("${1} %s\n", rawPassword))
