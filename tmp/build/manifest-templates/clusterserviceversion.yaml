@@ -9,7 +9,7 @@ metadata:
     certified: "false"
     repository: https://github.com/maistra/istio-operator
     description: |-
-      The Service Mesh Operator provides means for installing, configuring, and managing an instance of Red Hat OpenShift Service Mesh.
+      The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh.
 
     containerImage: __IMAGE_SRC__
     createdAt: __DATE__
