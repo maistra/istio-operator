@@ -20,5 +20,8 @@ ${BUILD_DIR}/build.sh
 echo "collecting helm charts"
 ${BUILD_DIR}/download-charts.sh
 
+: ${COMMUNITY:=true}
+[ "${COMMUNITY}" = "true" ] && BUILD_TYPE="maistra" || BUILD_TYPE="servicemesh"
+
 echo "building container ${IMAGE}..."
-${CONTAINER_CLI} build --no-cache -t "${IMAGE}" -f tmp/build/Dockerfile .
+${CONTAINER_CLI} build --no-cache -t "${IMAGE}" -f tmp/build/Dockerfile --build-arg build_type=${BUILD_TYPE} .

@@ -360,7 +360,9 @@ spec:
                         fieldRef:
                           fieldPath: metadata.name
                     - name: OPERATOR_NAME
-                      value: "istio-operator"
+                      value: istio-operator
+                    - name: ISTIO_CNI_IMAGE
+                      value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.0.0
                   volumeMounts:
                   - name: discovery-cache
                     mountPath: /home/istio-operator/.kube/cache/discovery
