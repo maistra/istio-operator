@@ -119,7 +119,7 @@ spec:
   - type: OwnNamespace
     supported: true
   - type: SingleNamespace
-    supported: true
+    supported: false
   - type: MultiNamespace
     supported: false
   - type: AllNamespaces
@@ -137,43 +137,7 @@ __CLUSTER_ROLE_RULES__
       deployments:
       - name: istio-operator
         spec:
-          replicas: 1
-          selector:
-            matchLabels:
-              name: istio-operator
-          template:
-            metadata:
-              labels:
-                name: istio-operator
-            spec:
-              serviceAccountName: istio-operator
-              volumes:
-              - name: discovery-cache
-                emptyDir:
-                  medium: Memory
-              containers:
-                - name: istio-operator
-                  image: __IMAGE_SRC__
-                  ports:
-                  - containerPort: 60000
-                    name: metrics
-                  command:
-                  - istio-operator
-                  - --discoveryCacheDir
-                  - /home/istio-operator/.kube/cache/discovery
-                  imagePullPolicy: Always
-                  env:
-                    - name: WATCH_NAMESPACE
-                      value: ""
-                    - name: POD_NAME
-                      valueFrom:
-                        fieldRef:
-                          fieldPath: metadata.name
-                    - name: OPERATOR_NAME
-                      value: "istio-operator"
-                  volumeMounts:
-                  - name: discovery-cache
-                    mountPath: /home/istio-operator/.kube/cache/discovery
+__DEPLOYMENT_SPEC__
   customresourcedefinitions:
     required:
     - name: kialis.kiali.io
