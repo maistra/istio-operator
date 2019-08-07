@@ -241,7 +241,16 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		}
 	}
 
-	// Enusure CRDs are installed
+	// Ensure Istio CNI is installed
+	if common.IsCNIEnabled {
+		err = bootstrap.InstallCNI(reconciler.Manager)
+		if err != nil {
+			reqLogger.Error(err, "Failed to install/update Istio CNI")
+			return reconcile.Result{}, err
+		}
+	}
+
+	// Ensure CRDs are installed
 	err = bootstrap.InstallCRDs(reconciler.Manager)
 	if err != nil {
 		reqLogger.Error(err, "Failed to install/update Istio CRDs")

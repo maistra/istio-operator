@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/maistra/istio-operator/pkg/controller/common"
+
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -24,6 +26,16 @@ func (r *ControlPlaneReconciler) processDeletedComponent(name string, status *v1
 }
 
 func (r *ControlPlaneReconciler) preprocessObject(object *unstructured.Unstructured) error {
+	// Add owner ref
+	if object.GetNamespace() == r.Instance.GetNamespace() {
+		object.SetOwnerReferences(r.ownerRefs)
+	} else {
+		// XXX: can't set owner reference on cross-namespace or cluster resources
+	}
+
+	// add generation annotation
+	common.SetAnnotation(object, common.MeshGenerationKey, r.meshGeneration)
+
 	switch object.GetKind() {
 	case "Kiali":
 		return r.patchKialiConfig(object)
@@ -32,8 +44,8 @@ func (r *ControlPlaneReconciler) preprocessObject(object *unstructured.Unstructu
 			return r.patchGrafanaConfig(object)
 		}
 	case "Secret":
-		if object.GetName() == "prometheus-htpasswd" {
-			return r.patchPrometheusHtpasswd(object)
+		if object.GetName() == "htpasswd" {
+			return r.patchHtpasswdSecret(object)
 		}
 	}
 	return nil
@@ -146,6 +158,23 @@ func (r *ControlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructu
 	err = unstructured.SetNestedField(object.UnstructuredContent(), grafanaEnabled, "spec", "external_services", "grafana", "enabled")
 	if err != nil {
 		return fmt.Errorf("could not set grafana enabled flag in kiali CR: %s", err)
+	}
+
+	rawPassword, err := r.getRawHtPasswd(object)
+	if err != nil {
+		return err
+	}
+	err = unstructured.SetNestedField(object.UnstructuredContent(), rawPassword, "spec", "external_services", "grafana", "auth", "password")
+	if err != nil {
+		return fmt.Errorf("could not set grafana password in kiali CR: %s", err)
+	}
+	err = unstructured.SetNestedField(object.UnstructuredContent(), rawPassword, "spec", "external_services", "prometheus", "auth", "password")
+	if err != nil {
+		return fmt.Errorf("could not set prometheus password in kiali CR: %s", err)
+	}
+	err = unstructured.SetNestedField(object.UnstructuredContent(), rawPassword, "spec", "external_services", "tracing", "auth", "password")
+	if err != nil {
+		return fmt.Errorf("could not set tracing password in kiali CR: %s", err)
 	}
 
 	return nil

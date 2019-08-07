@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 set -o errexit
-set -o nounset
 set -o pipefail
 
 if ! which go > /dev/null; then
@@ -14,5 +13,29 @@ mkdir -p ${BIN_DIR}
 PROJECT_NAME="istio-operator"
 REPO_PATH="github.com/maistra/istio-operator"
 BUILD_PATH="${REPO_PATH}/cmd/manager"
+
+: ${VERSION:=development}
+LD_EXTRAFLAGS="-X ${REPO_PATH}/pkg/version.buildVersion=${VERSION}"
+
+: ${GITREVISION:=$(git rev-parse --verify HEAD 2> /dev/null || echo "unknown")}
+LD_EXTRAFLAGS+=" -X ${REPO_PATH}/pkg/version.buildGitRevision=${GITREVISION}"
+
+if [ -z "${GITSTATUS}" ]; then
+  GITSTATUS="$(git diff-index --quiet HEAD -- 2> /dev/null; echo $?)"
+  if [ "${GITSTATUS}" == "0" ]; then
+    GITSTATUS="Clean"
+  elif [ "${GITSTATUS}" == "1" ]; then
+    GITSTATUS="Modified"
+  else
+    GITSTATUS="unknown"
+  fi
+fi
+LD_EXTRAFLAGS+=" -X ${REPO_PATH}/pkg/version.buildStatus=${GITSTATUS}"
+
+: ${GITTAG:=$(git describe 2> /dev/null || echo "unknown")}
+LD_EXTRAFLAGS+=" -X ${REPO_PATH}/pkg/version.buildTag=${GITTAG}"
+
+LDFLAGS="-extldflags -static ${LD_EXTRAFLAGS}"
+
 echo "building "${PROJECT_NAME}"..."
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ${BIN_DIR}/${PROJECT_NAME} $BUILD_PATH
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o "${BIN_DIR}/${PROJECT_NAME}" -ldflags "${LDFLAGS}" "$BUILD_PATH"
