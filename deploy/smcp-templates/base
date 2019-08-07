@@ -52,5 +52,4 @@ spec:
         service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls
      ingress:
         enabled: true
-  threeScale:
-    tag: 0.7.1
+  threeScale: {}

@@ -39,3 +39,4 @@ spec:
       image: prometheus-ubi8
   threeScale:
     hub: quay.io/3scale
+    tag: v1.0.0
