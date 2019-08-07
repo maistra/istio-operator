@@ -357,53 +357,6 @@ roleRef:
 
 ---
 
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: ValidatingWebhookConfiguration
-metadata:
-  # this must match what is used inside the operator, which is <operator-namespace>.servicemesh-resources.maistra.io
-  name: istio-operator.servicemesh-resources.maistra.io
-webhooks:
-- name: smcp.validation.maistra.io
-  rules:
-  - apiGroups:
-    - maistra.io
-    apiVersions:
-    - v1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - servicemeshcontrolplanes
-  failurePolicy: Fail
-  clientConfig:
-    caBundle: ""
-    service:
-      name: admission-controller
-      namespace: istio-operator
-      path: /validate-smcp
-  namespaceSelector: {}
-- name: smmr.validation.maistra.io
-  rules:
-  - apiGroups:
-    - maistra.io
-    apiVersions:
-    - v1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - servicemeshmemberrolls
-  failurePolicy: Fail
-  clientConfig:
-    caBundle: ""
-    service:
-      name: admission-controller
-      namespace: istio-operator
-      path: /validate-smmr
-  namespaceSelector: {}
-  
----
-
 apiVersion: v1
 kind: Service
 metadata:
