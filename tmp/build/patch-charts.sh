@@ -56,7 +56,15 @@ function patchTemplates() {
   sed -i -e 's/enableNamespacesByDefault:.*$/enableNamespacesByDefault: true/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/values.yaml
 
   # enable egressgateway
-  sed -i -e '/istio-egressgateway:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
+  sed -i -e '/istio-egressgateway:/,/^[^ ]/ {
+                s/enabled: .*$/enabled: true/
+                /ports:/,/secretVolumes:/ {
+                  s/\(\(^ *\)- port: 80\)/\1\
+\2  targetPort: 8080/
+                  s/\(\(^ *\)- port: 443\)/\1\
+\2  targetPort: 8443/
+                }
+              }' \
          -e '/istio-ingressgateway:/,/^[^ ]/ {
                 s/type:.*$/type: ClusterIP/
                 /ports:/,/meshExpansionPorts:/ {
@@ -66,8 +74,13 @@ function patchTemplates() {
                   /port: 15030/,+2 d
                   /port: 15031/,+2 d
                   /port: 15032/,+2 d
+                  s/targetPort: 80/targetPort: 8080/
+                  s/\(\(^ *\)- port: 443\)/\1\
+\2  targetPort: 8443/
                 }
-             }' ${HELM_DIR}/istio/charts/gateways/values.yaml
+              }' ${HELM_DIR}/istio/charts/gateways/values.yaml
+  sed -i -e 's/\(^ *\)- containerPort: {{ $val.port }}/\1- name: {{ $val.name }}\
+\1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/istio/charts/gateways/templates/deployment.yaml
   # add support for IOR
   sed -i -e '/istio-ingressgateway:/,/enabled:/ {
     /enabled:/ a\
@@ -246,9 +259,7 @@ function patchTemplates() {
 \1\2/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
 
   # change the location of the healthCheckFile from /health to /tmp/health
-  if [[ "${COMMUNITY,,}" != "true" ]]; then
-    sed -i -e 's/\/health/\/tmp\/health/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
-  fi
+  sed -i -e 's/\/health/\/tmp\/health/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
 
   # add oauth-proxy default hub, image, tag and imagePullPolicy
   if [[ "${COMMUNITY,,}" == "true" ]]; then
@@ -300,10 +311,6 @@ function convertClusterToNamespaced() {
 
 function convertClusterRoleBinding() {
   convertClusterToNamespaced "$1" "ClusterRoleBinding" "RoleBinding" "$2"
-}
-
-function convertMeshPolicy() {
-  convertClusterToNamespaced "$1" "MeshPolicy" "Policy" "$2"
 }
 
 function patchMultiTenant() {
@@ -378,9 +385,6 @@ function patchMultiTenant() {
     d
   }' ${HELM_DIR}/istio/charts/security/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/security/templates/clusterrolebinding.yaml
-  # revisit in TP12
-  #convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-mtls.yaml
-  #convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-permissive.yaml
   sed -i -e 's/^\(\( *\){.*if .Values.global.trustDomain.*$\)/\
 \            - --member-roll-name=default\
 \1/' ${HELM_DIR}/istio/charts/security/templates/deployment.yaml

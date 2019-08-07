@@ -9,7 +9,7 @@ metadata:
     certified: "false"
     repository: https://github.com/maistra/istio-operator
     description: |-
-      The Service Mesh Operator provides means for installing, configuring, and managing an instance of Red Hat OpenShift Service Mesh.
+      The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh.
 
     containerImage: maistra/istio-operator-ubi8:1.0.0
     createdAt: 2019-08-06T17:47:41PDT
@@ -251,6 +251,18 @@ spec:
           verbs:
           - '*'
         - apiGroups:
+          - authentication.maistra.io
+          resources:
+          - '*'
+          verbs:
+          - '*'
+        - apiGroups:
+          - rbac.maistra.io
+          resources:
+          - '*'
+          verbs:
+          - '*'
+        - apiGroups:
           - route.openshift.io
           resources:
           - routes
@@ -295,14 +307,6 @@ spec:
           - securitycontextconstraints
           resourceNames:
           - privileged
-          verbs:
-          - use
-        - apiGroups:
-          - security.openshift.io
-          resources:
-          - securitycontextconstraints
-          resourceNames:
-          - anyuid
           verbs:
           - use
         - apiGroups:
