@@ -23,10 +23,8 @@ import (
 	"k8s.io/helm/pkg/releaseutil"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-var log = logf.Log.WithName("bootstrap")
 var installCRDsTask sync.Once
 
 // InstallCRDs makes sure all CRDs have been installed.  CRDs are located from

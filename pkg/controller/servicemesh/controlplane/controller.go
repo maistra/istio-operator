@@ -3,10 +3,10 @@ package controlplane
 import (
 	"context"
 	"fmt"
-
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/bootstrap"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	errors2 "github.com/pkg/errors"
 
 	appsv1 "k8s.io/api/apps/v1"
 
@@ -193,10 +193,13 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 			finalizerError = r.Client.Update(context.TODO(), instance)
 		}
 		if finalizerError != nil {
-			reqLogger.Error(finalizerError, "error removing finalizer")
 			r.Manager.GetRecorder(controllerName).Event(instance, "Warning", "ServiceMeshDeleted", fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", finalizerError))
 		}
-		return result, err
+		if err != nil {
+			// return original error, since it's more important than finalizerError
+			return result, err
+		}
+		return result, errors2.Wrapf(finalizerError, "Error removing finalizer from ServiceMeshControlPlane %s/%s", instance.Namespace, instance.Name)
 	} else if finalizerIndex < 0 {
 		reqLogger.V(1).Info("Adding finalizer", "finalizer", finalizer)
 		finalizers = append(finalizers, finalizer)
@@ -223,8 +226,8 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 			r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "UpdatingServiceMesh", readyMessage)
 		}
 		instance.Status.SetCondition(v1.Condition{
-			Type:   v1.ConditionTypeReconciled,
-			Status: v1.ConditionStatusFalse,
+			Type:    v1.ConditionTypeReconciled,
+			Status:  v1.ConditionStatusFalse,
 			Message: readyMessage,
 		})
 		instance.Status.SetCondition(v1.Condition{
@@ -238,7 +241,16 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		}
 	}
 
-	// Enusure CRDs are installed
+	// Ensure Istio CNI is installed
+	if common.IsCNIEnabled {
+		err = bootstrap.InstallCNI(reconciler.Manager)
+		if err != nil {
+			reqLogger.Error(err, "Failed to install/update Istio CNI")
+			return reconcile.Result{}, err
+		}
+	}
+
+	// Ensure CRDs are installed
 	err = bootstrap.InstallCRDs(reconciler.Manager)
 	if err != nil {
 		reqLogger.Error(err, "Failed to install/update Istio CRDs")

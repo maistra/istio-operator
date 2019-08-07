@@ -106,6 +106,12 @@ rules:
 - apiGroups: ["rbac.istio.io"]
   resources: ["*"]
   verbs: ["*"]
+- apiGroups: ["authentication.maistra.io"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["rbac.maistra.io"]
+  resources: ["*"]
+  verbs: ["*"]
 
 ---
 
@@ -237,6 +243,18 @@ rules:
   - '*'
 - apiGroups:
   - maistra.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - authentication.maistra.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - rbac.maistra.io
   resources:
   - '*'
   verbs:
@@ -440,7 +458,11 @@ spec:
                 fieldRef:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
-              value: "istio-operator"
+              value: istio-operator
+            - name: ISTIO_CNI_IMAGE
+              value: maistra/istio-cni-ubi8:1.0.0
+#            - name: ISTIO_CNI_IMAGE_PULL_SECRET
+#              value: name-of-secret
           volumeMounts:
           - name: discovery-cache
             mountPath: /home/istio-operator/.kube/cache/discovery

@@ -8,18 +8,6 @@ metadata:
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
 rules:
-- apiGroups: ["admissionregistration.k8s.io"]
-  resources: ["validatingwebhookconfigurations"]
-  verbs: ["*"]
-# required to be able to set OwnerReference with BlockOwnerDeletion=true
-- apiGroups: ["extensions"]
-  resources: ["deployments/finalizers"]
-  resourceNames: ["istio-galley"]
-  verbs: ["update"]
 - apiGroups: [""]
   resources: ["nodes"]
   verbs: ["get", "list", "watch"]
-# revisit in TP12
-- apiGroups: ["authentication.istio.io"]
-  resources: ["meshpolicies"]
-  verbs: ["*"]
