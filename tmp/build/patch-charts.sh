@@ -42,8 +42,18 @@ function patchTemplates() {
     ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhookconfiguration.yaml.tpl \
     ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
 
-# enable egressgateway
-  sed -i -e '/istio-ingressgateway:/,/^[^ ]/ {
+
+  # enable egressgateway
+  sed -i -e '/istio-egressgateway:/,/^[^ ]/ {
+                s/enabled: .*$/enabled: true/
+                /ports:/,/secretVolumes:/ {
+                  s/\(\(^ *\)- port: 80\)/\1\
+\2  targetPort: 8080/
+                  s/\(\(^ *\)- port: 443\)/\1\
+\2  targetPort: 8443/
+                }
+              }' \
+         -e '/istio-ingressgateway:/,/^[^ ]/ {
                 s/type:.*$/type: ClusterIP/
                 /ports:/,/meshExpansionPorts:/ {
                   /nodePort/ d
@@ -52,8 +62,21 @@ function patchTemplates() {
                   /port: 15030/,+2 d
                   /port: 15031/,+2 d
                   /port: 15032/,+2 d
+                  s/targetPort: 80/targetPort: 8080/
+                  s/\(\(^ *\)- port: 443\)/\1\
+\2  targetPort: 8443/
                 }
              }' ${HELM_DIR}/istio/charts/gateways/values.yaml
+
+  sed -i -e 's/\(^ *\)- containerPort: {{ $val.port }}/\1- name: {{ $val.name }}\
+\1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/istio/charts/gateways/templates/deployment.yaml
+
+	#CNI is handled separately
+	if [[ "${COMMUNITY,,}" == "true" ]]; then
+		sed -i -e 's/image: *istio-cni/image: istio-cni-ubi8/' ${HELM_DIR}/istio_cni/values.yaml
+	else
+		sed -i -e 's/image: *istio-cni/image: istio-cni-rhel8/' ${HELM_DIR}/istio_cni/values.yaml
+	fi
 
   # - remove the cleanup secrets job, we handle this in the installer
   rm ${HELM_DIR}/istio/charts/security/templates/cleanup-secrets.yaml
@@ -155,9 +178,7 @@ function patchTemplates() {
 \1\2/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
 
   # change the location of the healthCheckFile from /health to /tmp/health
-  if [[ "${COMMUNITY,,}" != "true" ]]; then
-    sed -i -e 's/\/health/\/tmp\/health/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
-  fi
+  sed -i -e 's/\/health/\/tmp\/health/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
 
   # Fix for MAISTRA-334, can be removed when we move to Istio-1.2
   sed -i '/match: (context.protocol == "http" || context.protocol == "grpc")/ s/$/ \&\& (match((request.useragent | "-"), "Prometheus*") == false)/' ${HELM_DIR}/istio/charts/mixer/templates/config.yaml
@@ -193,10 +214,6 @@ function convertClusterToNamespaced() {
 
 function convertClusterRoleBinding() {
   convertClusterToNamespaced "$1" "ClusterRoleBinding" "RoleBinding" "$2"
-}
-
-function convertMeshPolicy() {
-  convertClusterToNamespaced "$1" "MeshPolicy" "Policy" "$2"
 }
 
 function patchMultiTenant() {
@@ -271,9 +288,6 @@ function patchMultiTenant() {
     d
   }' ${HELM_DIR}/istio/charts/security/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/security/templates/clusterrolebinding.yaml
-  # revisit in TP12
-  #convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-mtls.yaml
-  #convertMeshPolicy ${HELM_DIR}/istio/charts/security/templates/enable-mesh-permissive.yaml
   sed -i -e 's/^\(\( *\){.*if .Values.global.trustDomain.*$\)/\
 \            - --member-roll-name=default\
 \1/' ${HELM_DIR}/istio/charts/security/templates/deployment.yaml

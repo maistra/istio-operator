@@ -106,6 +106,12 @@ rules:
 - apiGroups: ["rbac.istio.io"]
   resources: ["*"]
   verbs: ["*"]
+- apiGroups: ["authentication.maistra.io"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["rbac.maistra.io"]
+  resources: ["*"]
+  verbs: ["*"]
 
 ---
 
@@ -242,6 +248,18 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - authentication.maistra.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - rbac.maistra.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
   - route.openshift.io
   resources:
   - routes
@@ -289,16 +307,6 @@ rules:
   - securitycontextconstraints
   resourceNames:
   - privileged
-  verbs:
-  - use
-
-# required by ingress gateway
-- apiGroups:
-  - security.openshift.io
-  resources:
-  - securitycontextconstraints
-  resourceNames:
-  - anyuid
   verbs:
   - use
 

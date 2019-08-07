@@ -10,6 +10,9 @@ spec:
         image: proxyv2-ubi8
       proxy_init:
         image: proxy-init-ubi8
+      oauthproxy:
+        image: origin-oauth-proxy
+        hub: quay.io/openshift
     galley:
       image: galley-ubi8
     grafana:
@@ -17,16 +20,14 @@ spec:
     tracing:
       jaeger:
         hub: jaegertracing
-      elasticsearch:
-        hub: registry.centos.org/rhsyseng
+        elasticsearch:
+         hub: registry.centos.org/rhsyseng
     mixer:
       image: mixer-ubi8
     pilot:
       image: pilot-ubi8
     security:
       image: citadel-ubi8
-    istio-cni:
-      image: istio-cni-ubi8
     kiali:
       hub: kiali
       tag: v1.0.0

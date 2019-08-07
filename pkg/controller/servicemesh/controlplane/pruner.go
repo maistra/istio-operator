@@ -56,6 +56,7 @@ var (
 		schema.GroupVersionKind{Group: "networking.istio.io", Version: "v1alpha3", Kind: "Gateway"},
 		schema.GroupVersionKind{Group: "networking.istio.io", Version: "v1alpha3", Kind: "VirtualService"},
 		schema.GroupVersionKind{Group: "jaegertracing.io", Version: "v1", Kind: "jaeger"},
+		schema.GroupVersionKind{Group: "authentication.maistra.io", Version: "v1", Kind: "ServiceMeshPolicy"},
 	}
 
 	// ordered by which types should be deleted, first to last
@@ -65,7 +66,6 @@ var (
 		schema.GroupVersionKind{Group: "certmanager.k8s.io", Version: "v1alpha1", Kind: "ClusterIssuer"},
 		schema.GroupVersionKind{Group: "rbac.authorization.k8s.io", Version: "v1", Kind: "ClusterRole"},
 		schema.GroupVersionKind{Group: "rbac.authorization.k8s.io", Version: "v1", Kind: "ClusterRoleBinding"},
-		schema.GroupVersionKind{Group: "authentication.istio.io", Version: "v1alpha1", Kind: "MeshPolicy"},
 	}
 )
 

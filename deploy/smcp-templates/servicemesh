@@ -9,6 +9,9 @@ spec:
         image: proxyv2-rhel8
       proxy_init:
         image: proxy-init-rhel8
+      oauthproxy:
+        image: ose-oauth-proxy
+        hub: registry.redhat.io/openshift4
     grafana:
       image: grafana-rhel8
     galley:
@@ -16,16 +19,14 @@ spec:
     tracing:
       jaeger:
         hub: registry.redhat.io/distributed-tracing-tech-preview
-      elasticsearch:
-        hub: registry.centos.org/rhsyseng
+        elasticsearch:
+         hub: registry.centos.org/rhsyseng
     mixer:
       image: mixer-rhel8
     pilot:
       image: pilot-rhel8
     security:
       image: citadel-rhel8
-    istio-cni:
-      image: istio-cni-rhel8
     kiali:
       tag: 1.0.0
     sidecarInjectorWebhook:
