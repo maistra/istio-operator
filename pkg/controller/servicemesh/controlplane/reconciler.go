@@ -3,10 +3,12 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"path"
 	"strconv"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -48,6 +50,12 @@ var orderedCharts = []string{
 	"istio/charts/grafana",
 	"istio/charts/kiali",
 }
+
+const (
+	smcpTemplatePath        = "/usr/share/istio-operator/templates/"
+	smcpDefaultTemplatePath = "/usr/share/istio-operator/default-templates/"
+	smcpDefaultTemplate     = "default"
+)
 
 func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	var err error
@@ -208,34 +216,150 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 	return reconcile.Result{Requeue: true}, nil
 }
 
-func (r *ControlPlaneReconciler) renderCharts() error {
-	r.Log.Info("rendering helm charts")
-	allErrors := []error{}
-	var err error
-	var threeScaleRenderings map[string][]manifest.Manifest
+// mergeValues merges a map containing input values on top of a map containing
+// base values, giving preference to the base values for conflicts
+func mergeValues(base map[string]interface{}, input map[string]interface{}) map[string]interface{} {
+	if base == nil {
+		base = make(map[string]interface{}, 1)
+	}
 
-	if globalValues, ok := r.Instance.Spec.Istio["global"].(map[string]interface{}); ok {
+	for key, value := range input {
+		//if the key doesn't already exist, add it
+		if _, exists := base[key]; !exists {
+			base[key] = value
+			continue
+		}
+
+		// at this point, key exists in both input and base.
+		// If both are maps, recurse.
+		// If only input is a map, ignore it. We don't want to overrwrite base.
+		// If both are values, again, ignore it since we don't want to overrwrite base.
+		if baseKeyAsMap, baseOK := base[key].(map[string]interface{}); baseOK {
+			if inputAsMap, inputOK := value.(map[string]interface{}); inputOK {
+				base[key] = mergeValues(baseKeyAsMap, inputAsMap)
+			}
+		}
+	}
+	return base
+}
+
+func (r *ControlPlaneReconciler) getSMCPTemplate(name string) (v1.ControlPlaneSpec, error) {
+	if strings.Contains(name, "/") {
+		return v1.ControlPlaneSpec{}, fmt.Errorf("template name contains invalid character '/'")
+	}
+
+	templateContent, err := ioutil.ReadFile(smcpTemplatePath + name)
+	if err != nil {
+		//if we can't read from the user template path, try from the default path
+		//we use two paths because Kubernetes will not auto-update volume mounted
+		//configmaps mounted in directories with pre-existing content
+		defaultTemplateContent, defaultErr := ioutil.ReadFile(smcpDefaultTemplatePath + name)
+		if defaultErr != nil {
+			return v1.ControlPlaneSpec{}, fmt.Errorf("template cannot be loaded from user or default directory. Error from user: %s. Error from default: %s", err, defaultErr)
+		}
+		templateContent = defaultTemplateContent
+	}
+
+	var template v1.ServiceMeshControlPlane
+	if err = yaml.Unmarshal(templateContent, &template); err != nil {
+		return v1.ControlPlaneSpec{}, fmt.Errorf("failed to parse template %s contents: %s", name, err)
+	}
+	return template.Spec, nil
+}
+
+//renderSMCPTemplates traverses and processes all of the references templates
+func (r *ControlPlaneReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneSpec, visited map[string]struct{}) (v1.ControlPlaneSpec, error) {
+	if smcp.Template == "" {
+		return smcp, nil
+	}
+	r.Log.Info(fmt.Sprintf("processing smcp template %s", smcp.Template))
+
+	if _, ok := visited[smcp.Template]; ok {
+		return smcp, fmt.Errorf("SMCP templates form cyclic dependency. Cannot proceed")
+	}
+
+	template, err := r.getSMCPTemplate(smcp.Template)
+	if err != nil {
+		return smcp, err
+	}
+
+	template, err = r.recursivelyApplyTemplates(template, visited)
+	if err != nil {
+		r.Log.Info(fmt.Sprintf("error rendering SMCP templates: %s\n", err))
+		return smcp, err
+	}
+
+	visited[smcp.Template] = struct{}{}
+
+	smcp.Istio = mergeValues(smcp.Istio, template.Istio)
+	smcp.ThreeScale = mergeValues(smcp.ThreeScale, template.ThreeScale)
+	return smcp, nil
+}
+
+func (r *ControlPlaneReconciler) applyTemplates(smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
+	r.Log.Info("updating servicemeshcontrolplane with templates")
+	if smcpSpec.Template == "" {
+		smcpSpec.Template = smcpDefaultTemplate
+		r.Log.Info("No template provided. Using default")
+	}
+
+	spec, err := r.recursivelyApplyTemplates(smcpSpec, make(map[string]struct{}, 0))
+	r.Log.Info(fmt.Sprintf("finished updating ServiceMeshControlPlane: %+v", spec))
+
+	return spec, err
+}
+
+func (r *ControlPlaneReconciler) validateSMCPSpec(spec v1.ControlPlaneSpec) error {
+	if spec.Istio == nil {
+		return fmt.Errorf("ServiceMeshControlPlane missing Istio section")
+	}
+
+	if _, ok := spec.Istio["global"].(map[string]interface{}); !ok {
+		return fmt.Errorf("ServiceMeshControlPlane missing global section")
+	}
+	return nil
+}
+
+func (r *ControlPlaneReconciler) renderCharts() error {
+	//Generate the spec
+	r.Status.LastAppliedConfiguration = r.Instance.Spec
+
+	spec, err := r.applyTemplates(r.Status.LastAppliedConfiguration)
+	if err != nil {
+		r.Log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates: %s", err)
+
+		return err
+	}
+	r.Status.LastAppliedConfiguration = spec
+
+	if err := r.validateSMCPSpec(r.Status.LastAppliedConfiguration); err != nil {
+		return err
+	}
+
+	if globalValues, ok := r.Status.LastAppliedConfiguration.Istio["global"].(map[string]interface{}); ok {
 		globalValues["operatorNamespace"] = r.OperatorNamespace
-	} else {
-		return fmt.Errorf("Could not set operatorNamespace value, as .Values.global is not a map[string]interface{}: %v", err)
 	}
 
 	var CNIValues map[string]interface{}
 	var ok bool
-	if CNIValues, ok = r.Instance.Spec.Istio["istio_cni"].(map[string]interface{}); !ok {
+	if CNIValues, ok = r.Status.LastAppliedConfiguration.Istio["istio_cni"].(map[string]interface{}); !ok {
 		CNIValues = make(map[string]interface{})
-		r.Instance.Spec.Istio["istio_cni"] = CNIValues
+		r.Status.LastAppliedConfiguration.Istio["istio_cni"] = CNIValues
 	}
 	CNIValues["enabled"] = common.IsCNIEnabled
 
+	//Render the charts
+	allErrors := []error{}
+	var threeScaleRenderings map[string][]manifest.Manifest
+	r.Log.Info("rendering helm charts")
 	r.Log.V(2).Info("rendering Istio charts")
-	istioRenderings, _, err := common.RenderHelmChart(path.Join(common.ChartPath, "istio"), r.Instance.GetNamespace(), r.Instance.Spec.Istio)
+	istioRenderings, _, err := common.RenderHelmChart(path.Join(common.ChartPath, "istio"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.Istio)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
 	if isEnabled(r.Instance.Spec.ThreeScale) {
 		r.Log.V(2).Info("rendering 3scale charts")
-		threeScaleRenderings, _, err = common.RenderHelmChart(path.Join(common.ChartPath, "maistra-threescale"), r.Instance.GetNamespace(), r.Instance.Spec.ThreeScale)
+		threeScaleRenderings, _, err = common.RenderHelmChart(path.Join(common.ChartPath, "maistra-threescale"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.ThreeScale)
 		if err != nil {
 			allErrors = append(allErrors, err)
 		}

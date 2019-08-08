@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 
 function grafana_patch_deployment() {
-  local image="grafana-ubi8"
-  if [[ "${COMMUNITY,,}" != "true" ]]; then
-    image="grafana-rhel8"
-  fi
-
   sed -i -e '/      containers:/ a\
           # OAuth proxy\
         - name: grafana-proxy\
@@ -74,31 +69,14 @@ function grafana_patch_deployment() {
 \2- name: GF_USERS_AUTO_ASSIGN_ORG_ROLE\
 \2  value: Admin\
 \1/' \
-  -e 's+image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"+image: "{{ .Values.global.hub }}/'${image}':{{ .Values.global.tag }}"+' \
+  -e 's+image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"+image: "{{ .Values.global.hub }}/{{.Values.image}}:{{ .Values.global.tag }}"+' \
   ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
 
-  sed -i -e '/securityContext/,/fsGroup/d' ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml    
+  sed -i -e '/securityContext/,/fsGroup/d' ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
 }
 
 function grafana_patch_service() {
   sed -i -e 's/      targetPort: 3000/      targetPort: 3001/' ${HELM_DIR}/istio/charts/grafana/templates/service.yaml
-}
-
-function grafana_patch_values() {
-  # add annotations and enable ingress
-  sed -i \
-    -e 's|  annotations: {}|  annotations:\n    service.alpha.openshift.io/serving-cert-secret-name: grafana-tls|' \
-    -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
-    -e 's+http://prometheus:9090+https://prometheus:9090+' \
-    -e '/access: proxy/ a\
-      basicAuth: true\
-      basicAuthPassword: ""\
-      basicAuthUser: internal\
-      version: 1' \
-    -e 's+^\(\( *\)timeInterval.*\)$+\1\
-\2# we should be using the CA cert in /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt\
-\2tlsSkipVerify: true+' \
-    ${HELM_DIR}/istio/charts/grafana/values.yaml
 }
 
 function grafana_patch_misc() {
@@ -116,7 +94,6 @@ function GrafanaPatch() {
 
   grafana_patch_deployment
   grafana_patch_service
-  grafana_patch_values
   grafana_patch_misc
 }
 
