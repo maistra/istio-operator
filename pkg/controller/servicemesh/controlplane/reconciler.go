@@ -52,9 +52,7 @@ var orderedCharts = []string{
 }
 
 const (
-	smcpTemplatePath        = "/usr/share/istio-operator/templates/"
-	smcpDefaultTemplatePath = "/usr/share/istio-operator/default-templates/"
-	smcpDefaultTemplate     = "default"
+	smcpDefaultTemplate = "default"
 )
 
 func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
@@ -248,12 +246,12 @@ func (r *ControlPlaneReconciler) getSMCPTemplate(name string) (v1.ControlPlaneSp
 		return v1.ControlPlaneSpec{}, fmt.Errorf("template name contains invalid character '/'")
 	}
 
-	templateContent, err := ioutil.ReadFile(smcpTemplatePath + name)
+	templateContent, err := ioutil.ReadFile(path.Join(common.TemplatePath, name))
 	if err != nil {
 		//if we can't read from the user template path, try from the default path
 		//we use two paths because Kubernetes will not auto-update volume mounted
 		//configmaps mounted in directories with pre-existing content
-		defaultTemplateContent, defaultErr := ioutil.ReadFile(smcpDefaultTemplatePath + name)
+		defaultTemplateContent, defaultErr := ioutil.ReadFile(path.Join(common.DefaultTemplatePath, name))
 		if defaultErr != nil {
 			return v1.ControlPlaneSpec{}, fmt.Errorf("template cannot be loaded from user or default directory. Error from user: %s. Error from default: %s", err, defaultErr)
 		}

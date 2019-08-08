@@ -36,6 +36,8 @@ func main() {
 
 	// ControlPlane
 	flag.StringVar(&common.ChartPath, "chartPath", "/etc/istio-operator/1.1.0/helm", "The location of the Helm charts.  The charts will be rendered using $chartPath/istio (similar layout to istio.io/istio/install/kubernetes/helm).")
+	flag.StringVar(&common.TemplatePath, "templatePath", "/usr/share/istio-operator/templates/", "The location of the ServiceMeshControlPlane templates.")
+	flag.StringVar(&common.DefaultTemplatePath, "defaultTemplatePath", "/usr/share/istio-operator/default-templates/", "The location of the default ServiceMeshControlPlane templates.")
 
 	logConfig := "production"
 	flag.StringVar(&logConfig, "logConfig", logConfig, "Whether to configure logging for production use (json, info level, w/ log sampling) or development (plain-text, debug level, w/o log sampling)")

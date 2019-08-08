@@ -26,6 +26,10 @@ func init() {
 var (
 	// ChartPath to helm charts
 	ChartPath string
+	// TemplatePath is the directory where the SMCP templates are located in
+	TemplatePath string
+	// DefaultTemplatePath is the directory where the default SMCP templates are located in
+	DefaultTemplatePath string
 )
 
 // RenderHelmChart renders the helm charts, returning a map of rendered templates.
