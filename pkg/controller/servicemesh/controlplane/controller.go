@@ -177,7 +177,10 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		}
 		reqLogger.Info("Deleting ServiceMeshControlPlane")
 		err := reconciler.Delete()
-		// XXX: for now, nuke the resources, regardless of errors
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
 		finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
 		instance.SetFinalizers(finalizers)
 		finalizerError := r.Client.Update(context.TODO(), instance)
@@ -200,12 +203,9 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		}
 		if finalizerError != nil {
 			r.Manager.GetRecorder(controllerName).Event(instance, "Warning", "ServiceMeshDeleted", fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", finalizerError))
+			return reconcile.Result{}, errors2.Wrapf(finalizerError, "Error removing finalizer from ServiceMeshControlPlane %s/%s", instance.Namespace, instance.Name)
 		}
-		if err != nil {
-			// return original error, since it's more important than finalizerError
-			return reconcile.Result{}, err
-		}
-		return reconcile.Result{}, errors2.Wrapf(finalizerError, "Error removing finalizer from ServiceMeshControlPlane %s/%s", instance.Namespace, instance.Name)
+		return reconcile.Result{}, nil
 	} else if finalizerIndex < 0 {
 		reqLogger.V(1).Info("Adding finalizer", "finalizer", finalizer)
 		finalizers = append(finalizers, finalizer)
