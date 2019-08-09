@@ -1,0 +1,58 @@
+apiVersion: maistra.io/v1
+kind: ServiceMeshControlPlane
+spec:
+  istio:
+    global:
+      tag: 1.0.0
+      multitenant: true
+      proxy:
+        autoInject: disabled
+        dnsRefreshRate: 300s
+      oauthproxy:
+        tag: 4.1
+        imagePullPolicy: IfNotPresent
+    pilot:
+      env:
+        GODEBUG: null
+    mixer:
+      env:
+        GODEBUG: null
+    grafana:
+      enabled: true
+      ingress:
+        enabled: true
+      service:
+        annotations:
+           service.alpha.openshift.io/serving-cert-secret-name: grafana-tls
+    tracing:
+      enabled: true
+      ingress:
+        enabled: true
+      jaeger:
+        tag: 1.13.1
+        template: production-elasticsearch
+        elasticsearch:
+          tag: 5.6.10
+          image: elasticsearch
+    kiali:
+      enabled: true
+      dashboard:
+        viewOnlyMode: false
+      ingress:
+        enabled: true
+    sidecarInjectorWebhook:
+      enableNamespacesByDefault: true
+    gateways:
+      istio-egressgateway:
+        enabled: true
+      istio-ingressgateway:
+        enabled: true
+        ior_enabled: false
+        type: ClusterIP
+    prometheus:
+     service:
+      annotations:
+        service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls
+     ingress:
+        enabled: true
+  threeScale: {}

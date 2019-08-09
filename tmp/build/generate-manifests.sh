@@ -40,6 +40,12 @@ function generateCSV() {
      exit 1
   fi
 
+  DEPLOYMENT_SPEC=$(yq -s -r -y '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec' ${DEPLOYMENT_FILE} | sed 's/^/          /')
+  if [ "$DEPLOYMENT_SPEC" == "" ]; then
+     echo "generateCSV(): Operator deployment spec is empty, please verify source yaml/path to the field."
+     exit 1
+  fi
+
   CLUSTER_ROLE_RULES=$(yq -s -y '.[] | select(.kind=="ClusterRole" and .metadata.name=="istio-operator") | .rules' ${DEPLOYMENT_FILE} | sed 's/^/        /')
   if [ "$CLUSTER_ROLE_RULES" == "null" ]; then
      echo "generateCSV(): istio-operator cluster role source is empty, please verify source yaml/path to the field."
@@ -55,6 +61,10 @@ function generateCSV() {
   sed -i -e '/__CLUSTER_ROLE_RULES__/{
     s/__CLUSTER_ROLE_RULES__//
     r '<(echo "$CLUSTER_ROLE_RULES")'
+  }' ${csv_path}
+  sed -i -e '/__DEPLOYMENT_SPEC__/{
+    s/__DEPLOYMENT_SPEC__//
+    r '<(echo "$DEPLOYMENT_SPEC")'
   }' ${csv_path}
 }
 

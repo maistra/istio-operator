@@ -3,10 +3,12 @@ package controlplane
 import (
 	"context"
 	"fmt"
+
+	errors2 "github.com/pkg/errors"
+
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/bootstrap"
 	"github.com/maistra/istio-operator/pkg/controller/common"
-	errors2 "github.com/pkg/errors"
 
 	appsv1 "k8s.io/api/apps/v1"
 
@@ -174,18 +176,22 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 			return reconcile.Result{}, nil
 		}
 		reqLogger.Info("Deleting ServiceMeshControlPlane")
-		result, err := reconciler.Delete()
+		err := reconciler.Delete()
 		// XXX: for now, nuke the resources, regardless of errors
 		finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
 		instance.SetFinalizers(finalizers)
 		finalizerError := r.Client.Update(context.TODO(), instance)
 		for retryCount := 0; errors.IsConflict(finalizerError) && retryCount < 5; retryCount++ {
-			reqLogger.Info("conflict during finalizer removal, retrying")
 			err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
 			if err != nil {
-				reqLogger.Error(err, "Could not get ServiceMeshControlPlane")
-				continue
+				if errors.IsNotFound(err) {
+					// SMCP was deleted (most likely in the previous invocation of reconcile(), but the SMCP was re-queued because reconcile() deleted the owned resources
+					reqLogger.Info("ServiceMeshControlPlane already deleted")
+					return reconcile.Result{}, nil
+				}
+				return reconcile.Result{}, errors2.Wrap(err, "Conflict during finalizer removal and additional error when retrieving the ServiceMeshControlPlane during retry")
 			}
+			reqLogger.Info("Conflict during finalizer removal, retrying")
 			finalizers = instance.GetFinalizers()
 			finalizerIndex = common.IndexOf(finalizers, finalizer)
 			finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
@@ -197,9 +203,9 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		}
 		if err != nil {
 			// return original error, since it's more important than finalizerError
-			return result, err
+			return reconcile.Result{}, err
 		}
-		return result, errors2.Wrapf(finalizerError, "Error removing finalizer from ServiceMeshControlPlane %s/%s", instance.Namespace, instance.Name)
+		return reconcile.Result{}, errors2.Wrapf(finalizerError, "Error removing finalizer from ServiceMeshControlPlane %s/%s", instance.Namespace, instance.Name)
 	} else if finalizerIndex < 0 {
 		reqLogger.V(1).Info("Adding finalizer", "finalizer", finalizer)
 		finalizers = append(finalizers, finalizer)
