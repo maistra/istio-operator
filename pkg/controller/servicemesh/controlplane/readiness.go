@@ -1,6 +1,8 @@
 package controlplane
 
 import (
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"context"
 	"fmt"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -21,7 +23,7 @@ func (r *ControlPlaneReconciler) UpdateReadiness() (reconcile.Result, error) {
 			Status:  v1.ConditionStatusUnknown,
 			Message: fmt.Sprintf("error collecting ready state: %s", err),
 		}
-		r.Instance.Status.SetCondition(condition)
+		r.Status.SetCondition(condition)
 		r.Manager.GetRecorder(controllerName).Event(r.Instance, "Warning", "ServiceMeshNotReady", condition.Message)
 		r.PostStatus()
 		return reconcile.Result{}, err
@@ -33,7 +35,7 @@ func (r *ControlPlaneReconciler) UpdateReadiness() (reconcile.Result, error) {
 			unreadyComponents = append(unreadyComponents, component)
 		}
 	}
-	readyCondition := r.Instance.Status.GetCondition(v1.ConditionTypeReady)
+	readyCondition := r.Status.GetCondition(v1.ConditionTypeReady)
 	updateStatus := false
 	if len(unreadyComponents) > 0 {
 		if readyCondition.Status != v1.ConditionStatusFalse {
@@ -42,7 +44,7 @@ func (r *ControlPlaneReconciler) UpdateReadiness() (reconcile.Result, error) {
 				Status:  v1.ConditionStatusFalse,
 				Message: fmt.Sprintf("the following components are not fully available: %s", unreadyComponents),
 			}
-			r.Instance.Status.SetCondition(condition)
+			r.Status.SetCondition(condition)
 			r.Manager.GetRecorder(controllerName).Event(r.Instance, "Warning", "ServiceMeshNotReady", condition.Message)
 			updateStatus = true
 		}
@@ -53,7 +55,7 @@ func (r *ControlPlaneReconciler) UpdateReadiness() (reconcile.Result, error) {
 				Status: v1.ConditionStatusTrue,
 				Message: "All component deployments are Available",
 			}
-			r.Instance.Status.SetCondition(condition)
+			r.Status.SetCondition(condition)
 			r.Manager.GetRecorder(controllerName).Event(r.Instance, "Normal", "ServiceMeshReady", condition.Message)
 			updateStatus = true
 		}
@@ -66,6 +68,7 @@ func (r *ControlPlaneReconciler) UpdateReadiness() (reconcile.Result, error) {
 }
 
 func (r *ControlPlaneReconciler) calculateNotReadyState() (map[string]bool, error) {
+	var cniNotReady bool
 	notReadyState := map[string]bool{}
 	err := r.calculateNotReadyStateForType(appsv1.SchemeGroupVersion.WithKind("Deployment"), notReadyState, r.deploymentReady)
 	if err != nil {
@@ -76,7 +79,31 @@ func (r *ControlPlaneReconciler) calculateNotReadyState() (map[string]bool, erro
 		return notReadyState, err
 	}
 	err = r.calculateNotReadyStateForType(appsv1.SchemeGroupVersion.WithKind("DaemonSet"), notReadyState, r.daemonSetReady)
+	if err != nil {
+		return notReadyState, err
+	}
+	cniNotReady, err = r.calculateNotReadyStateForCNI()
+	notReadyState["cni"] = cniNotReady
 	return notReadyState, err
+}
+
+func (r *ControlPlaneReconciler) calculateNotReadyStateForCNI() (bool, error) {
+	if !common.IsCNIEnabled {
+		return false, nil
+	}
+	labelSelector := map[string]string{"istio": "cni"}
+	daemonSets := &unstructured.UnstructuredList{}
+	daemonSets.SetGroupVersionKind(appsv1.SchemeGroupVersion.WithKind("DaemonSet"))
+	operatorNamespace := common.GetOperatorNamespace()
+	if err := r.Client.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(operatorNamespace), daemonSets); err != nil {
+		return true, err
+	}
+	for _, ds := range daemonSets.Items {
+		if !r.daemonSetReady(&ds) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (r *ControlPlaneReconciler) calculateNotReadyStateForType(gvk schema.GroupVersionKind, notReadyState map[string]bool, isReady func(*unstructured.Unstructured) bool) error {
