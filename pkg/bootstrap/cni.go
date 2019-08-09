@@ -16,22 +16,14 @@ var installCNITask sync.Once
 // InstallCNI makes sure all Istio CNI resources have been created.  CRDs are located from
 // files in controller.HelmDir/istio-init/files
 func InstallCNI(mgr manager.Manager) error {
-	// we only try to install CNI once.  if there's an error, we should probably
-	// panic, as there's no way to recover.  for now, we just pass the error along.
-	var err error
-	installCNITask.Do(func() {
-		err = internalInstallCNI(mgr)
-	})
-	return err
+	// we should run through this each reconcile to make sure it's there
+	return internalInstallCNI(mgr)
 }
 
 func internalInstallCNI(mgr manager.Manager) error {
 	log.Info("ensuring Istio CNI has been installed")
 
-	operatorNamespace, err := common.GetOperatorNamespace()
-	if err != nil {
-		return err
-	}
+	operatorNamespace := common.GetOperatorNamespace()
 
 	log.Info("rendering Istio CNI chart")
 
