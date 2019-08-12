@@ -288,6 +288,9 @@ spec:
   ...
 ```
 
+## Developing the Istio Operator
+
+You'll find instructions on how to build and run the Operator locally in [DEVEL.md](DEVEL.md). 
 
 ## Architecture
 
