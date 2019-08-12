@@ -12,7 +12,9 @@ spec:
   strategy: allInOne
 
   allInOne:
+    {{- if and .Values.jaeger.hub .Values.jaeger.tag }}
     image: {{ .Values.jaeger.hub }}/all-in-one:{{ .Values.jaeger.tag }}
+    {{- end }}
     options:
       log-level: debug
       query:
