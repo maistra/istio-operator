@@ -311,7 +311,7 @@ rules:
   verbs:
   - use
 
-# to be removed
+# required by pod locality controller
 - apiGroups:
   - ""
   resources:
@@ -444,6 +444,8 @@ spec:
         - name: istio-operator
           image: registry.redhat.io/openshift-service-mesh/istio-operator-rhel8:1.0.0
           ports:
+          - containerPort: 11999
+            name: validation
           - containerPort: 60000
             name: metrics
           command:

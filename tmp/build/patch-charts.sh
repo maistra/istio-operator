@@ -5,7 +5,6 @@ set -e
 : ${HELM_DIR:?"Need to set HELM_DIR to output location for charts, e.g. tmp/_output/istio-releases/istio-1.1.0"}
 : ${SOURCE_DIR:?"Need to set SOURCE_DIR to location of the istio-operator source directory"}
 
-: ${THREESCALE_VERSION:=0.7.1}
 : ${KIALI_VERSION:=1.0.0}
 
 if [[ "${COMMUNITY,,}" == "true" ]]; then
@@ -277,7 +276,8 @@ function patchMultiTenant() {
          -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/pilot/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/pilot/templates/clusterrolebinding.yaml
   sed -i -r -e 's/^(( *)- "?discovery"?)/\1\
-\2- --memberRollName=default/' ${HELM_DIR}/istio/charts/pilot/templates/deployment.yaml
+\2- --memberRollName=default\
+\2- --podLocalitySource=pod/' ${HELM_DIR}/istio/charts/pilot/templates/deployment.yaml
 
   # security
   sed -i -e '/apiGroups:.*authentication.k8s.io/,$ {
