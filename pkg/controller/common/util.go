@@ -114,6 +114,10 @@ func SetAnnotation(resource metav1.Object, annotation, value string) {
 // XXX: remove after updating to newer version of operator-sdk
 // from newer version of operator-sdk
 func GetOperatorNamespace() (string, error) {
+	if ns := os.Getenv("POD_NAMESPACE"); ns != "" {
+		return ns, nil
+	}
+
 	nsBytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 	if err != nil {
 		if os.IsNotExist(err) {
