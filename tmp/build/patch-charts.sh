@@ -276,7 +276,8 @@ function patchMultiTenant() {
          -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/pilot/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/pilot/templates/clusterrolebinding.yaml
   sed -i -r -e 's/^(( *)- "?discovery"?)/\1\
-\2- --memberRollName=default/' ${HELM_DIR}/istio/charts/pilot/templates/deployment.yaml
+\2- --memberRollName=default\
+\2- --podLocalitySource=pod/' ${HELM_DIR}/istio/charts/pilot/templates/deployment.yaml
 
   # security
   sed -i -e '/apiGroups:.*authentication.k8s.io/,$ {

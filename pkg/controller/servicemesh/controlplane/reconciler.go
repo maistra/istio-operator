@@ -326,7 +326,7 @@ func (r *ControlPlaneReconciler) renderCharts() error {
 
 	spec, err := r.applyTemplates(r.Status.LastAppliedConfiguration)
 	if err != nil {
-		r.Log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates: %s", err)
+		r.Log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates")
 
 		return err
 	}
