@@ -62,6 +62,13 @@ function prometheus_patch_deployment() {
 {{- end }}/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 
 	sed -i "/storage.tsdb.retention.*/a\ \ \ \ \ \ \ \ \ \ \ \ - \'--storage.tsdb.path=/prometheus\'" ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+
+  # Fix for MAISTRA-746, can be removed when we move to Istio-1.2
+  sed -i -e '/^spec:/ a\
+  strategy:\
+    rollingUpdate:\
+      maxSurge: 25%\
+      maxUnavailable: 25%' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 }
 
 function prometheus_patch_service() {
