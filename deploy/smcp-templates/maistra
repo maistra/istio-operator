@@ -17,11 +17,6 @@ spec:
       image: galley-ubi8
     grafana:
       image: grafana-ubi8
-    tracing:
-      jaeger:
-        hub: jaegertracing
-        elasticsearch:
-         hub: registry.centos.org/rhsyseng
     mixer:
       image: mixer-ubi8
     pilot:

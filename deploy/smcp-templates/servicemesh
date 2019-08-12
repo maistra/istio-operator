@@ -16,11 +16,6 @@ spec:
       image: grafana-rhel8
     galley:
       image: galley-rhel8
-    tracing:
-      jaeger:
-        hub: registry.redhat.io/distributed-tracing-tech-preview
-        elasticsearch:
-         hub: registry.centos.org/rhsyseng
     mixer:
       image: mixer-rhel8
     pilot:
