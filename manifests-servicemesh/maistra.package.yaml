@@ -1,5 +1,0 @@
-packageName: maistra
-channels:
-- name: "1.0"
-  currentCSV: maistra.v1.0.0
-defaultChannel: "1.0"

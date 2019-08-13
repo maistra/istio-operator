@@ -1,7 +1,7 @@
 apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
-  name: maistra.v1.0.0
+  name: maistraoperator.v1.0.0
   namespace: placeholder
   annotations:
     categories: "OpenShift Optional, Integration & Delivery"
@@ -11,8 +11,8 @@ metadata:
     description: |-
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh.
 
-    containerImage: registry.redhat.io/openshift-service-mesh/istio-operator-rhel8:1.0.0
-    createdAt: 2019-08-09T11:59:01PDT
+    containerImage: maistra/istio-operator-ubi8:1.0.0
+    createdAt: 2019-08-13T14:32:23PDT
     support: Red Hat, Inc. 
     alm-examples: |-
       [
@@ -348,7 +348,7 @@ spec:
                   medium: Memory
               containers:
               - name: istio-operator
-                image: registry.redhat.io/openshift-service-mesh/istio-operator-rhel8:1.0.0
+                image: maistra/istio-operator-ubi8:1.0.0
                 ports:
                 - containerPort: 11999
                   name: validation
@@ -369,7 +369,7 @@ spec:
                 - name: OPERATOR_NAME
                   value: istio-operator
                 - name: ISTIO_CNI_IMAGE
-                  value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.0.0
+                  value: maistra/istio-cni-ubi8:1.0.0
                 volumeMounts:
                 - name: discovery-cache
                   mountPath: /home/istio-operator/.kube/cache/discovery
