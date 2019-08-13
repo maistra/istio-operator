@@ -1,5 +1,5 @@
-packageName: maistra
+packageName: __NAME__
 channels:
 - name: "1.0"
-  currentCSV: maistra.v__VERSION__
+  currentCSV: __NAME__.v__VERSION__
 defaultChannel: "1.0"

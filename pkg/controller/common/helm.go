@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -23,10 +24,30 @@ func init() {
 	tiller.InstallOrder = append(tiller.InstallOrder[:serviceIndex], append([]string{"Route", "OAuthClient"}, tiller.InstallOrder[serviceIndex:]...)...)
 }
 
-var (
-	// ChartPath to helm charts
-	ChartPath string
+const (
+	istioVersion = "1.1.0"
 )
+
+var (
+	// ResourceDir is the base dir to helm charts and templates files.
+	ResourceDir string
+)
+
+// GetHelmDir returns the location of the Helm charts. Similar layout to istio.io/istio/install/kubernetes/helm.
+func GetHelmDir() string {
+	// FIXME: Should not be hardcoded when https://issues.jboss.org/browse/MAISTRA-766 is implemented
+	return path.Join(ResourceDir, "helm", istioVersion)
+}
+
+// GetTemplatesDir returns the location of the Operator templates files
+func GetTemplatesDir() string {
+	return path.Join(ResourceDir, "templates")
+}
+
+// GetDefaultTemplatesDir returns the location of the Default Operator templates files
+func GetDefaultTemplatesDir() string {
+	return path.Join(ResourceDir, "default-templates")
+}
 
 // RenderHelmChart renders the helm charts, returning a map of rendered templates.
 // key names represent the chart from which the template was processed.  Subcharts

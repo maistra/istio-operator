@@ -5,7 +5,6 @@ set -e
 : ${HELM_DIR:?"Need to set HELM_DIR to output location for charts, e.g. tmp/_output/istio-releases/istio-1.1.0"}
 : ${SOURCE_DIR:?"Need to set SOURCE_DIR to location of the istio-operator source directory"}
 
-: ${THREESCALE_VERSION:=0.7.1}
 : ${KIALI_VERSION:=1.0.0}
 
 if [[ "${COMMUNITY,,}" == "true" ]]; then
@@ -70,6 +69,13 @@ function patchTemplates() {
 
   sed -i -e 's/\(^ *\)- containerPort: {{ $val.port }}/\1- name: {{ $val.name }}\
 \1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/istio/charts/gateways/templates/deployment.yaml
+
+  # Fix for MAISTRA-746, can be removed when we move to Istio-1.2
+  sed -i -e '/^spec:/ a\
+  strategy:\
+    rollingUpdate:\
+      maxSurge: 25%\
+      maxUnavailable: 25%' ${HELM_DIR}/istio/charts/gateways/templates/deployment.yaml
 
 	#CNI is handled separately
 	if [[ "${COMMUNITY,,}" == "true" ]]; then

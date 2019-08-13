@@ -73,6 +73,13 @@ function grafana_patch_deployment() {
   ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
 
   sed -i -e '/securityContext/,/fsGroup/d' ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
+
+  # Fix for MAISTRA-746, can be removed when we move to Istio-1.2
+  sed -i -e '/^spec:/ a\
+  strategy:\
+    rollingUpdate:\
+      maxSurge: 25%\
+      maxUnavailable: 25%' ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
 }
 
 function grafana_patch_service() {
