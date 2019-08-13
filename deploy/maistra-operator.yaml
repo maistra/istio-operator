@@ -311,7 +311,7 @@ rules:
   verbs:
   - use
 
-# to be removed
+# required by pod locality controller
 - apiGroups:
   - ""
   resources:
@@ -397,6 +397,8 @@ spec:
         - name: istio-operator
           image: maistra/istio-operator-ubi8:1.0.0
           ports:
+          - containerPort: 11999
+            name: validation
           - containerPort: 60000
             name: metrics
           command:

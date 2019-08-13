@@ -2,7 +2,6 @@ enabled: false
 
 hub: quay.io/3scale
 image: 3scale-istio-adapter
-tag: v0.4.1
 
 PARAM_THREESCALE_LISTEN_ADDR: 3333
 PARAM_THREESCALE_LOG_LEVEL: info

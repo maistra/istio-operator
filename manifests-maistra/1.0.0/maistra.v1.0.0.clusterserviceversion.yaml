@@ -12,7 +12,7 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh.
 
     containerImage: maistra/istio-operator-ubi8:1.0.0
-    createdAt: 2019-08-06T17:47:41PDT
+    createdAt: 2019-08-09T11:58:56PDT
     support: Red Hat, Inc. 
     alm-examples: |-
       [
@@ -119,7 +119,7 @@ spec:
   - type: OwnNamespace
     supported: true
   - type: SingleNamespace
-    supported: true
+    supported: false
   - type: MultiNamespace
     supported: false
   - type: AllNamespaces
@@ -331,6 +331,7 @@ spec:
       deployments:
       - name: istio-operator
         spec:
+
           replicas: 1
           selector:
             matchLabels:
@@ -346,30 +347,32 @@ spec:
                 emptyDir:
                   medium: Memory
               containers:
-                - name: istio-operator
-                  image: maistra/istio-operator-ubi8:1.0.0
-                  ports:
-                  - containerPort: 60000
-                    name: metrics
-                  command:
-                  - istio-operator
-                  - --discoveryCacheDir
-                  - /home/istio-operator/.kube/cache/discovery
-                  imagePullPolicy: Always
-                  env:
-                    - name: WATCH_NAMESPACE
-                      value: ""
-                    - name: POD_NAME
-                      valueFrom:
-                        fieldRef:
-                          fieldPath: metadata.name
-                    - name: OPERATOR_NAME
-                      value: istio-operator
-                    - name: ISTIO_CNI_IMAGE
-                      value: maistra/istio-cni-ubi8:1.0.0
-                  volumeMounts:
-                  - name: discovery-cache
-                    mountPath: /home/istio-operator/.kube/cache/discovery
+              - name: istio-operator
+                image: maistra/istio-operator-ubi8:1.0.0
+                ports:
+                - containerPort: 11999
+                  name: validation
+                - containerPort: 60000
+                  name: metrics
+                command:
+                - istio-operator
+                - --discoveryCacheDir
+                - /home/istio-operator/.kube/cache/discovery
+                imagePullPolicy: Always
+                env:
+                - name: WATCH_NAMESPACE
+                  value: ''
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: OPERATOR_NAME
+                  value: istio-operator
+                - name: ISTIO_CNI_IMAGE
+                  value: maistra/istio-cni-ubi8:1.0.0
+                volumeMounts:
+                - name: discovery-cache
+                  mountPath: /home/istio-operator/.kube/cache/discovery
   customresourcedefinitions:
     required:
     - name: kialis.kiali.io

@@ -5,7 +5,6 @@ set -e
 : ${HELM_DIR:?"Need to set HELM_DIR to output location for charts, e.g. tmp/_output/istio-releases/istio-1.1.0"}
 : ${SOURCE_DIR:?"Need to set SOURCE_DIR to location of the istio-operator source directory"}
 
-: ${THREESCALE_VERSION:=0.7.1}
 : ${KIALI_VERSION:=1.0.0}
 
 if [[ "${COMMUNITY,,}" == "true" ]]; then
@@ -42,18 +41,6 @@ function patchTemplates() {
     ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhookconfiguration.yaml.tpl \
     ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml.tpl
 
-  # update global defaults
-  # disable autoInject
-  # enable grafana, tracing and kiali, by default
-  # set dnsRefreshRate to 300s
-  sed -i -e 's/autoInject:.*$/autoInject: disabled/' \
-         -e '/grafana:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
-         -e '/tracing:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
-         -e '/kiali:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
-         -e '/dnsRefreshRate:/ { s/5s/300s/ }' ${HELM_DIR}/istio/values.yaml
-
-  # enable all namespaces by default
-  sed -i -e 's/enableNamespacesByDefault:.*$/enableNamespacesByDefault: true/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/values.yaml
 
   # enable egressgateway
   sed -i -e '/istio-egressgateway:/,/^[^ ]/ {
@@ -78,37 +65,17 @@ function patchTemplates() {
                   s/\(\(^ *\)- port: 443\)/\1\
 \2  targetPort: 8443/
                 }
-              }' ${HELM_DIR}/istio/charts/gateways/values.yaml
+             }' ${HELM_DIR}/istio/charts/gateways/values.yaml
+
   sed -i -e 's/\(^ *\)- containerPort: {{ $val.port }}/\1- name: {{ $val.name }}\
 \1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/istio/charts/gateways/templates/deployment.yaml
-  # add support for IOR
-  sed -i -e '/istio-ingressgateway:/,/enabled:/ {
-    /enabled:/ a\
-\  # set to true to enable route creation\
-\  ior_enabled: false\
-\  ior_image: istio-ior-rhel8\
 
-  }' ${HELM_DIR}/istio/charts/gateways/values.yaml
-  if [[ "${COMMUNITY,,}" == "true" ]]; then
-    sed -i -e 's/ior_image:.*$/ior_image: istio-ior-ubi8/' ${HELM_DIR}/istio/charts/gateways/values.yaml
-  fi
-
-  # enable ingress for tracing
-  sed -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/charts/tracing/values.yaml
-
-  # enable ingress for kaili
-  # update hub/tag
-  sed -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' ${HELM_DIR}/istio/charts/kiali/values.yaml
-  if [[ "${COMMUNITY,,}" == "true" ]]; then
-    sed -i -e 's/hub:.*$/hub: kiali/' \
-           -e 's/tag:.*$/tag: v'${KIALI_VERSION}'/' ${HELM_DIR}/istio/charts/kiali/values.yaml
-  else
-    sed -i -e 's+hub:.*$+hub: registry\.redhat\.io\/openshift-service-mesh+' \
-           -e 's/tag:.*$/tag: '${KIALI_VERSION}'/' ${HELM_DIR}/istio/charts/kiali/values.yaml
-  fi
-
-  # In Istio 1.2, this viewOnlyMode is there, but in Istio 1.1 we need to add it - it is supported by the latest Kiali
-  sed -i -e 's/grafanaURL:/viewOnlyMode: false\n  grafanaURL:/' ${HELM_DIR}/istio/charts/kiali/values.yaml
+	#CNI is handled separately
+	if [[ "${COMMUNITY,,}" == "true" ]]; then
+		sed -i -e 's/image: *istio-cni/image: istio-cni-ubi8/' ${HELM_DIR}/istio_cni/values.yaml
+	else
+		sed -i -e 's/image: *istio-cni/image: istio-cni-rhel8/' ${HELM_DIR}/istio_cni/values.yaml
+	fi
 
   # - remove the cleanup secrets job, we handle this in the installer
   rm ${HELM_DIR}/istio/charts/security/templates/cleanup-secrets.yaml
@@ -122,13 +89,6 @@ function patchTemplates() {
     sed -i -e 's/define "security-default\.yaml\.tpl"/if and .Values.createMeshPolicy .Values.global.mtls.enabled/' ${HELM_DIR}/istio/charts/security/templates/enable-mesh-mtls.yaml
     sed -i -e 's/define "security-permissive\.yaml\.tpl"/if and .Values.createMeshPolicy (not .Values.global.mtls.enabled)/' ${HELM_DIR}/istio/charts/security/templates/enable-mesh-permissive.yaml
   fi
-
-  # - remove the kubernetes gateways
-  # this no longer exists
-  # rm ${HELM_DIR}istio/charts/pilot/templates/gateway.yaml
-
-  # - remove GODEBUG from the pilot environment (and mixer too)
-  sed -i -e '/GODEBUG/d' ${HELM_DIR}/istio/charts/pilot/values.yaml ${HELM_DIR}/istio/charts/mixer/values.yaml
 
   # - change privileged value on istio-proxy injection configmap to false
   # setting the proper values will fix this:
@@ -179,48 +139,6 @@ function patchTemplates() {
   find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl" | xargs grep -Hl 'kind: Deployment' |\
     xargs sed -i -e '/^spec:/,$ { /template:$/,$ { /metadata:$/,$ { /labels:$/,$ s/^\(.*\)release:\(.*Name\)\(.*\)$/\1maistra-control-plane:\2space }}\n\1release:\2\3/ } } }'
 
-  # update the images
-  # set global.hub=docker.io/maistra
-  if [[ "${COMMUNITY,,}" == "true" ]]; then
-    sed -i -e 's+hub:.*$+hub: '${HUB}'+g' \
-          -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' \
-          -e 's/image: *proxy_init/image: proxy-init-ubi8/' \
-          -e 's/image: *proxyv2/image: proxyv2-ubi8/' ${HELM_DIR}/istio/values.yaml ${HELM_DIR}/istio-init/values.yaml
-
-    sed -i -e 's/image: *galley/image: galley-ubi8/' ${HELM_DIR}/istio/charts/galley/values.yaml
-    sed -i -e 's/image: *sidecar_injector/image: sidecar-injector-ubi8/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/values.yaml
-    sed -i -e 's/image: *mixer/image: mixer-ubi8/' ${HELM_DIR}/istio/charts/mixer/values.yaml
-    sed -i -e 's/image: *pilot/image: pilot-ubi8/' ${HELM_DIR}/istio/charts/pilot/values.yaml
-    sed -i -e 's/image: *citadel/image: citadel-ubi8/' ${HELM_DIR}/istio/charts/security/values.yaml
-    sed -i -e 's/image: *istio-cni/image: istio-cni-ubi8/' ${HELM_DIR}/istio_cni/values.yaml
-    sed -i -e 's|\(^jaeger:.*$\)|elasticsearch:\
-  hub: registry.centos.org/rhsyseng\
-  image: elasticsearch\
-  tag: 5.6.10\
-\
-\1|' ${HELM_DIR}/istio/charts/tracing/values.yaml
-    sed -i -e 's/tag:.*$/tag: v'${THREESCALE_VERSION}'/' ${HELM_DIR}/maistra-threescale/values.yaml
-  else
-    sed -i -e 's+hub:.*$+hub: '${HUB}'+g' \
-          -e 's/tag:.*$/tag: '${MAISTRA_VERSION}'/' \
-          -e 's/image: *proxy_init/image: proxy-init-rhel8/' \
-          -e 's/image: *proxyv2/image: proxyv2-rhel8/' ${HELM_DIR}/istio/values.yaml ${HELM_DIR}/istio-init/values.yaml
-    sed -i -e 's/image: *galley/image: galley-rhel8/' ${HELM_DIR}/istio/charts/galley/values.yaml
-    sed -i -e 's/image: *sidecar_injector/image: sidecar-injector-rhel8/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/values.yaml
-    sed -i -e 's/image: *mixer/image: mixer-rhel8/' ${HELM_DIR}/istio/charts/mixer/values.yaml
-    sed -i -e 's/image: *pilot/image: pilot-rhel8/' ${HELM_DIR}/istio/charts/pilot/values.yaml
-    sed -i -e 's/image: *citadel/image: citadel-rhel8/' ${HELM_DIR}/istio/charts/security/values.yaml
-    sed -i -e 's/image: *istio-cni/image: istio-cni-rhel8/' ${HELM_DIR}/istio_cni/values.yaml
-    sed -i -e 's|\(^jaeger:.*$\)|elasticsearch:\
-  hub: registry.centos.org/rhsyseng\
-  image: elasticsearch\
-  tag: 5.6.10\
-\
-\1|' ${HELM_DIR}/istio/charts/tracing/values.yaml
-    sed -i -e 's/hub:.*$/hub: registry\.redhat\.io\/openshift-service-mesh/' \
-           -e 's/tag:.*$/tag: '${THREESCALE_VERSION}'/' ${HELM_DIR}/maistra-threescale/values.yaml
-  fi
-
   # - remove istio-multi service account
   rm ${HELM_DIR}/istio/templates/serviceaccount.yaml
   # - remove istio-multi cluster role binding
@@ -261,24 +179,8 @@ function patchTemplates() {
   # change the location of the healthCheckFile from /health to /tmp/health
   sed -i -e 's/\/health/\/tmp\/health/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
 
-  # add oauth-proxy default hub, image, tag and imagePullPolicy
-  if [[ "${COMMUNITY,,}" == "true" ]]; then
-    sed -i -e '/^global:/a \
-\  oauthproxy:\
-\    hub: quay.io/openshift\
-\    image: origin-oauth-proxy\
-\    tag: 4.1\
-\    imagePullPolicy: IfNotPresent\n' ${HELM_DIR}/istio/values.yaml
-  else
-    sed -i -e '/^global:/a \
-\  oauthproxy:\
-\    hub: registry.redhat.io/openshift4\
-\    image: ose-oauth-proxy\
-\    tag: 4.1\
-\    imagePullPolicy: IfNotPresent\n' ${HELM_DIR}/istio/values.yaml
-  fi
   # Fix for MAISTRA-334, can be removed when we move to Istio-1.2
-  sed -i '/match: (context.protocol == "http" || context.protocol == "grpc")/ s/$/ \&\& (match((request.useragent | "-"), "Prometheus*") == false)/' ${HELM_DIR}/istio/charts/mixer/templates/config.yaml 
+  sed -i '/match: (context.protocol == "http" || context.protocol == "grpc")/ s/$/ \&\& (match((request.useragent | "-"), "Prometheus*") == false)/' ${HELM_DIR}/istio/charts/mixer/templates/config.yaml
 }
 
 # The following modifications are made to the generated helm template for the Kiali yaml file
@@ -374,7 +276,8 @@ function patchMultiTenant() {
          -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/pilot/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/pilot/templates/clusterrolebinding.yaml
   sed -i -r -e 's/^(( *)- "?discovery"?)/\1\
-\2- --memberRollName=default/' ${HELM_DIR}/istio/charts/pilot/templates/deployment.yaml
+\2- --memberRollName=default\
+\2- --podLocalitySource=pod/' ${HELM_DIR}/istio/charts/pilot/templates/deployment.yaml
 
   # security
   sed -i -e '/apiGroups:.*authentication.k8s.io/,$ {

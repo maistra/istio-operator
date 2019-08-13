@@ -44,6 +44,9 @@ type ControlPlaneStatus struct {
 	StatusType `json:",inline"`
 	// ComponentStatus represents the current status of the components
 	ComponentStatus []*ComponentStatus `json:"components"`
+
+	//LastAppliedConfiguration lists the last appllied ServiceMeshControlPlane
+	LastAppliedConfiguration ControlPlaneSpec `json:"lastAppliedConfiguration"`
 }
 
 // HelmValuesType is typedef for Helm .Values
@@ -51,14 +54,18 @@ type HelmValuesType map[string]interface{}
 
 // ControlPlaneSpec represents the configuration for installing a control plane
 type ControlPlaneSpec struct {
+	//Template selects the template to use for default values
+	Template string `json:"template,omitempty"`
+
 	// NetworkType of the cluster.  Defaults to subnet.
 	NetworkType NetworkType    `json:"networkType,omitempty"`
-	Istio      HelmValuesType `json:"istio,omitempty"`
-	ThreeScale HelmValuesType `json:"threeScale,omitempty"`
+	Istio       HelmValuesType `json:"istio,omitempty"`
+	ThreeScale  HelmValuesType `json:"threeScale,omitempty"`
 }
 
 // NetworkType is type definition representing the network type of the cluster
 type NetworkType string
+
 const (
 	// NetworkTypeSubnet when using ovs-subnet
 	NetworkTypeSubnet NetworkType = "subnet"
