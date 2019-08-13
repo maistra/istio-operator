@@ -94,11 +94,12 @@ $ oc delete -n istio-system -f ./deploy/examples/maistra_v1_servicemeshcontrolpl
 
 ### Uninstalling the Istio Operator
 
-If you followed the instructions above for installation, the operator can be uninstalled by simply issuing a delete
-command against the same resources.  For example:
+If you followed the instructions above for installation, the operator can be uninstalled by issuing the following delete
+commands:
 
 ```
 $ oc delete -n istio-operator -f ./deploy/maistra-operator.yaml
+$ oc delete validatingwebhookconfiguration/istio-operator.servicemesh-resources.maistra.io
 ```
 
 Once the Istio Operator has been uninstalled, the Jaeger Operator and the Kiali Operator should be uninstalled.

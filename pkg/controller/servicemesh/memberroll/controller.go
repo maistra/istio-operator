@@ -200,19 +200,17 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 
 		// create reconciler
 		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, instance.Namespace, false)
-		if err == nil {
-			for _, namespace := range instance.Spec.Members {
-				err := reconciler.removeNamespaceFromMesh(namespace)
-				if err != nil && !(errors.IsNotFound(err) || errors.IsGone(err)) {
-					reqLogger.Error(err, "error cleaning up mesh member namespace")
-					// XXX: do we prevent removing the finalizer?
-				}
-			}
-		} else {
-			reqLogger.Error(err, "error creating namespace reconciler, mesh member namespaces may contain residual mesh related resources")
+		if err != nil {
+			return reconcile.Result{}, pkgerrors.Wrapf(err, "Error creating namespace reconciler")
 		}
 
-		// XXX: for now, nuke the resources, regardless of errors
+		for _, namespace := range instance.Spec.Members {
+			err := reconciler.removeNamespaceFromMesh(namespace)
+			if err != nil && !(errors.IsNotFound(err) || errors.IsGone(err)) {
+				return reconcile.Result{}, pkgerrors.Wrapf(err, "Error cleaning up mesh member namespace %s", namespace)
+			}
+		}
+
 		for tries := 0; tries < 5; tries++ {
 			finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
 			instance.SetFinalizers(finalizers)
