@@ -8,7 +8,7 @@ spec:
       proxy:
         image: proxyv2-rhel8
       proxy_init:
-        image: proxy-init-rhel8
+        image: proxy-init
       oauthproxy:
         image: ose-oauth-proxy
         hub: registry.redhat.io/openshift4
