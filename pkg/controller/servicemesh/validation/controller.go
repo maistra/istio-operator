@@ -30,10 +30,7 @@ func init() {
 // Add webhooks
 func Add(mgr manager.Manager) error {
 	log.Info("setting up webhook server")
-	operatorNamespace, err := common.GetOperatorNamespace()
-	if err != nil {
-		return err
-	}
+	operatorNamespace := common.GetOperatorNamespace()
 	hookServer, err := webhook.NewServer(
 		"servicemesh-webhook-server",
 		mgr,

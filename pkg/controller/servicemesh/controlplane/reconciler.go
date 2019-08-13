@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/bootstrap"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	corev1 "k8s.io/api/core/v1"
@@ -38,7 +39,6 @@ type ControlPlaneReconciler struct {
 // these components have to be installed in the specified order
 var orderedCharts = []string{
 	"istio", // core istio resources
-	"istio/charts/istio_cni",
 	"istio/charts/security",
 	"istio/charts/prometheus",
 	"istio/charts/tracing",
@@ -52,24 +52,35 @@ var orderedCharts = []string{
 }
 
 const (
-	smcpTemplatePath        = "/usr/share/istio-operator/templates/"
-	smcpDefaultTemplatePath = "/usr/share/istio-operator/default-templates/"
-	smcpDefaultTemplate     = "default"
+	smcpDefaultTemplate = "default"
 )
 
-func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
-	var err error
+func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error) {
 	var ready bool
+	// make sure status gets updated on exit
+	reconciliationMessage := r.Status.GetCondition(v1.ConditionTypeReconciled).Message
+	defer func() {
+		if statusErr := r.postReconciliationStatus(reconciliationMessage, err); statusErr != nil && err == nil {
+			err = statusErr
+		}
+	}()
 
 	if r.renderings == nil {
+		// error handling
+		defer func() {
+			if err != nil {
+				r.renderings = nil
+				updateReconcileStatus(&r.Status.StatusType, err)
+			}
+		}()
+
 		// Render the templates
 		err = r.renderCharts()
 		if err != nil {
 			// we can't progress here
-			err = errors.Wrap(err, "unexpected error rendering helm charts")
-			updateReconcileStatus(&r.Instance.Status.StatusType, err)
-			r.PostStatus()
-			return reconcile.Result{}, err
+			reconciliationMessage = "unexpected error rendering helm charts"
+			err = errors.Wrap(err, reconciliationMessage)
+			return
 		}
 
 		// install istio
@@ -105,16 +116,16 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 		}
 		if err != nil {
 			// bail if there was an error updating the namespace
-			err = errors.Wrap(err, "unexpected error updating labels on mesh namespace")
-			r.renderings = nil
-			return reconcile.Result{}, err
+			reconciliationMessage = "unexpected error updating labels on mesh namespace"
+			err = errors.Wrap(err, reconciliationMessage)
+			return
 		}
 
 		// initialize new Status
-		r.Status.StatusType = r.Instance.Status.StatusType
+		componentStatuses := make([]*v1.ComponentStatus, 0, len(r.Status.ComponentStatus))
 		for chartName := range r.renderings {
 			componentName := componentFromChartName(chartName)
-			componentStatus := r.Instance.Status.FindComponentByName(componentName)
+			componentStatus := r.Status.FindComponentByName(componentName)
 			if componentStatus == nil {
 				componentStatus = v1.NewComponentStatus()
 				componentStatus.Resource = componentName
@@ -123,39 +134,49 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 				Type:   v1.ConditionTypeReconciled,
 				Status: v1.ConditionStatusFalse,
 			})
-			r.Status.ComponentStatus = append(r.Status.ComponentStatus, componentStatus)
+			componentStatuses = append(componentStatuses, componentStatus)
 		}
+		r.Status.ComponentStatus = componentStatuses
 
 		// initialize common data
 		owner := metav1.NewControllerRef(r.Instance, v1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
 		r.ownerRefs = []metav1.OwnerReference{*owner}
 		r.meshGeneration = strconv.FormatInt(r.Instance.GetGeneration(), 10)
+
+		// Ensure CRDs are installed
+		if err = bootstrap.InstallCRDs(r.Manager); err != nil {
+			reconciliationMessage = "Failed to install/update Istio CRDs"
+			r.Log.Error(err, reconciliationMessage)
+			return
+		}
+
+		// Ensure Istio CNI is installed
+		if common.IsCNIEnabled {
+			r.lastComponent = "cni"
+			if err = bootstrap.InstallCNI(r.Manager); err != nil {
+				reconciliationMessage = "Failed to install/update Istio CNI"
+				r.Log.Error(err, reconciliationMessage)
+				return
+			} else if notReady, _ := r.calculateNotReadyStateForCNI(); notReady {
+				reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", "cni")
+				return
+			}
+		}
 	} else if notReadyMap, readinessErr := r.calculateNotReadyState(); readinessErr == nil {
 		// if we've already begun reconciling, make sure we weren't waiting for
 		// the last component to become ready
 		if notReady, ok := notReadyMap[r.lastComponent]; ok && notReady {
 			// last component has not become ready yet
 			r.Log.Info(fmt.Sprintf("Paused until %s becomes ready", r.lastComponent))
-			return reconcile.Result{}, nil
+			return
 		}
 	} else {
 		// error calculating readiness
-		readinessErr = errors.Wrapf(readinessErr, "unexpected error checking readiness of component %s", r.lastComponent)
-		r.Log.Error(readinessErr, "")
-		return reconcile.Result{}, readinessErr
+		reconciliationMessage = fmt.Sprintf("unexpected error checking readiness of component %s", r.lastComponent)
+		err = errors.Wrap(readinessErr, reconciliationMessage)
+		r.Log.Error(err, reconciliationMessage)
+		return
 	}
-
-	// Update reconcile status
-	reconcileCondition := r.Instance.Status.GetCondition(v1.ConditionTypeReconciled)
-	reconcileCondition.Message = "Progressing"
-	r.Instance.Status.SetCondition(reconcileCondition)
-	r.PostStatus()
-
-	// make sure status gets updated on exit
-	var reconciliationMessage string
-	defer func() {
-		r.postReconciliationStatus(reconciliationMessage, err)
-	}()
 
 	// create components
 	for _, chartName := range orderedCharts {
@@ -164,7 +185,7 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 			reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
 			r.Log.Info(reconciliationMessage)
 			err = errors.Wrapf(err, "unexpected error processing component %s", componentName)
-			return reconcile.Result{}, err
+			return
 		}
 	}
 
@@ -178,7 +199,7 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 			reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
 			r.Log.Info(reconciliationMessage)
 			err = errors.Wrapf(err, "unexpected error processing component %s", componentName)
-			return reconcile.Result{}, err
+			return
 		}
 	}
 
@@ -189,23 +210,26 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 			reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
 			r.Log.Info(reconciliationMessage)
 			err = errors.Wrapf(err, "unexpected error processing component %s", componentName)
-			return reconcile.Result{}, err
+			return
 		}
 	}
 
-	reconciliationMessage = "Pruning old resources"
 	// delete unseen components
+	reconciliationMessage = "Pruning obsolete resources"
+	_ = r.postReconciliationStatus(reconciliationMessage, err)
+	r.Log.Info(reconciliationMessage)
 	err = r.prune(r.Instance.GetGeneration())
 	if err != nil {
-		err = errors.Wrap(err, "unexpected error pruning old resources")
-		return reconcile.Result{}, err
+		reconciliationMessage = "unexpected error pruning obsolete resources"
+		err = errors.Wrap(err, reconciliationMessage)
+		return
 	}
 
 	if r.Status.ObservedGeneration == 0 {
 		reconciliationMessage = fmt.Sprintf("Successfully installed generation %d", r.Instance.GetGeneration())
 		r.Manager.GetRecorder(controllerName).Event(r.Instance, "Normal", "ServiceMeshInstalled", reconciliationMessage)
 	} else {
-		reconciliationMessage = fmt.Sprintf("Successfully updated from generation %d to generation %d", r.Instance.Status.ObservedGeneration, r.Instance.GetGeneration())
+		reconciliationMessage = fmt.Sprintf("Successfully updated from generation %d to generation %d", r.Status.ObservedGeneration, r.Instance.GetGeneration())
 		r.Manager.GetRecorder(controllerName).Event(r.Instance, "Normal", "ServiceMeshUpdated", reconciliationMessage)
 	}
 	r.Status.ObservedGeneration = r.Instance.GetGeneration()
@@ -213,7 +237,8 @@ func (r *ControlPlaneReconciler) Reconcile() (reconcile.Result, error) {
 
 	r.Log.Info("Completed ServiceMeshControlPlane reconcilation")
 	// requeue to ensure readiness is updated
-	return reconcile.Result{Requeue: true}, nil
+	result.Requeue = true
+	return
 }
 
 // mergeValues merges a map containing input values on top of a map containing
@@ -248,12 +273,12 @@ func (r *ControlPlaneReconciler) getSMCPTemplate(name string) (v1.ControlPlaneSp
 		return v1.ControlPlaneSpec{}, fmt.Errorf("template name contains invalid character '/'")
 	}
 
-	templateContent, err := ioutil.ReadFile(smcpTemplatePath + name)
+	templateContent, err := ioutil.ReadFile(path.Join(common.GetTemplatesDir(), name))
 	if err != nil {
 		//if we can't read from the user template path, try from the default path
 		//we use two paths because Kubernetes will not auto-update volume mounted
 		//configmaps mounted in directories with pre-existing content
-		defaultTemplateContent, defaultErr := ioutil.ReadFile(smcpDefaultTemplatePath + name)
+		defaultTemplateContent, defaultErr := ioutil.ReadFile(path.Join(common.GetDefaultTemplatesDir(), name))
 		if defaultErr != nil {
 			return v1.ControlPlaneSpec{}, fmt.Errorf("template cannot be loaded from user or default directory. Error from user: %s. Error from default: %s", err, defaultErr)
 		}
@@ -353,13 +378,13 @@ func (r *ControlPlaneReconciler) renderCharts() error {
 	var threeScaleRenderings map[string][]manifest.Manifest
 	r.Log.Info("rendering helm charts")
 	r.Log.V(2).Info("rendering Istio charts")
-	istioRenderings, _, err := common.RenderHelmChart(path.Join(common.ChartPath, "istio"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.Istio)
+	istioRenderings, _, err := common.RenderHelmChart(path.Join(common.GetHelmDir(), "istio"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.Istio)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
 	if isEnabled(r.Instance.Spec.ThreeScale) {
 		r.Log.V(2).Info("rendering 3scale charts")
-		threeScaleRenderings, _, err = common.RenderHelmChart(path.Join(common.ChartPath, "maistra-threescale"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.ThreeScale)
+		threeScaleRenderings, _, err = common.RenderHelmChart(path.Join(common.GetHelmDir(), "maistra-threescale"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.ThreeScale)
 		if err != nil {
 			allErrors = append(allErrors, err)
 		}
@@ -383,27 +408,36 @@ func (r *ControlPlaneReconciler) renderCharts() error {
 }
 
 func (r *ControlPlaneReconciler) PostStatus() error {
-	return r.Client.Status().Update(context.TODO(), r.Instance)
+	instance := &v1.ServiceMeshControlPlane{}
+	if updateErr := r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); updateErr == nil {
+		instance.Status = *r.Status.DeepCopy()
+		if updateErr = r.Client.Status().Update(context.TODO(), instance); updateErr != nil && !(apierrors.IsGone(updateErr) || apierrors.IsNotFound(updateErr)) {
+			r.Log.Error(updateErr, "error updating ServiceMeshControlPlane status")
+			return updateErr
+		}
+	} else if !(apierrors.IsGone(updateErr) || apierrors.IsNotFound(updateErr)) {
+		r.Log.Error(updateErr, "error updating ServiceMeshControlPlane status")
+		return updateErr
+	}
+	return nil
 }
 
-func (r *ControlPlaneReconciler) postReconciliationStatus(reconciliationMessage string, processingErr error) {
+func (r *ControlPlaneReconciler) postReconciliationStatus(reconciliationMessage string, processingErr error) error {
 	reconciledCondition := r.Status.GetCondition(v1.ConditionTypeReconciled)
 	if processingErr == nil {
 		reconciledCondition.Message = reconciliationMessage
 	} else {
-		reconciledCondition.Message = fmt.Sprintf("reconciliation error: %s", processingErr)
+		reconciledCondition.Message = fmt.Sprintf("%s: error: %s", reconciliationMessage, processingErr)
+		var reason string
+		if r.Status.ObservedGeneration == 0 {
+			reason = "CreatingServiceMesh"
+		} else {
+			reason = "UpdatingServiceMesh"
+		}
+		r.Manager.GetRecorder(controllerName).Event(r.Instance, "Error", reason, reconciliationMessage)
 	}
 	r.Status.SetCondition(reconciledCondition)
-	instance := &v1.ServiceMeshControlPlane{}
-	if updateErr := r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); updateErr == nil {
-		instance.Status = *r.Status
-		r.Instance = instance
-		if updateErr = r.PostStatus(); updateErr != nil && !(apierrors.IsGone(updateErr) || apierrors.IsNotFound(updateErr)) {
-			r.Log.Error(updateErr, "error updating ServiceMeshControlPlane status")
-		}
-	} else if !(apierrors.IsGone(updateErr) || apierrors.IsNotFound(updateErr)) {
-		r.Log.Error(updateErr, "error updating ServiceMeshControlPlane status")
-	}
+	return r.PostStatus()
 }
 
 func componentFromChartName(chartName string) string {
