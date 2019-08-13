@@ -178,14 +178,10 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		return
 	}
 
-	// Update reconcile status
-	_ = r.postReconciliationStatus("Progressing", err)
-
 	// create components
 	for _, chartName := range orderedCharts {
-		componentName := componentFromChartName(chartName)
-		_ = r.postReconciliationStatus(fmt.Sprintf("Reconciling %s component", componentName), err)
 		if ready, err = r.processComponentManifests(chartName); !ready {
+			componentName := componentFromChartName(chartName)
 			reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
 			r.Log.Info(reconciliationMessage)
 			err = errors.Wrapf(err, "unexpected error processing component %s", componentName)
@@ -198,9 +194,8 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		if !strings.HasPrefix(key, "istio/") {
 			continue
 		}
-		componentName := componentFromChartName(key)
-		_ = r.postReconciliationStatus(fmt.Sprintf("Reconciling %s component", componentName), err)
 		if ready, err = r.processComponentManifests(key); !ready {
+			componentName := componentFromChartName(key)
 			reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
 			r.Log.Info(reconciliationMessage)
 			err = errors.Wrapf(err, "unexpected error processing component %s", componentName)
@@ -210,9 +205,8 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 
 	// install 3scale and any other components
 	for key := range r.renderings {
-		componentName := componentFromChartName(key)
-		_ = r.postReconciliationStatus(fmt.Sprintf("Reconciling %s component", componentName), err)
 		if ready, err = r.processComponentManifests(key); !ready {
+			componentName := componentFromChartName(key)
 			reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
 			r.Log.Info(reconciliationMessage)
 			err = errors.Wrapf(err, "unexpected error processing component %s", componentName)

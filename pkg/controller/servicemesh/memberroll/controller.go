@@ -113,9 +113,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// watch control planes and trigger reconcile requests as they come and go
 	err = c.Watch(&source.Kind{Type: &v1.ServiceMeshControlPlane{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(ns handler.MapObject) []reconcile.Request {
+		ToRequests: handler.ToRequestsFunc(func(smcpMap handler.MapObject) []reconcile.Request {
+			if smcp, ok := smcpMap.Object.(*v1.ServiceMeshControlPlane); !ok {
+				return nil
+			} else if installCondition := smcp.Status.GetCondition(v1.ConditionTypeInstalled); installCondition.Status != v1.ConditionStatusTrue {
+				return nil
+			}
 			list := &v1.ServiceMeshMemberRollList{}
-			err := mgr.GetClient().List(context.TODO(), client.InNamespace(ns.Meta.GetNamespace()), list)
+			err := mgr.GetClient().List(context.TODO(), client.InNamespace(smcpMap.Meta.GetNamespace()), list)
 			if err != nil {
 				log.Error(err, "Could not list ServiceMeshMemberRolls")
 			}

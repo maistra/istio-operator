@@ -1,6 +1,8 @@
 package controlplane
 
 import (
+	"fmt"
+
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
@@ -18,6 +20,7 @@ func (r *ControlPlaneReconciler) processComponentManifests(chartName string) (re
 	}
 
 	r.Log.Info("reconciling component resources")
+	_ = r.postReconciliationStatus(fmt.Sprintf("Reconciling %s component", componentName), nil)
 	status := r.Status.FindComponentByName(componentName)
 	defer func() {
 		updateReconcileStatus(&status.StatusType, err)
