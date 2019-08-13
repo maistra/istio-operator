@@ -5,7 +5,6 @@ set -e
 : ${HELM_DIR:?"Need to set HELM_DIR to output location for charts, e.g. tmp/_output/istio-releases/istio-1.1.0"}
 : ${SOURCE_DIR:?"Need to set SOURCE_DIR to location of the istio-operator source directory"}
 
-: ${THREESCALE_VERSION:=0.7.1}
 : ${KIALI_VERSION:=1.0.0}
 
 if [[ "${COMMUNITY,,}" == "true" ]]; then

@@ -14,7 +14,7 @@ import (
 var installCNITask sync.Once
 
 // InstallCNI makes sure all Istio CNI resources have been created.  CRDs are located from
-// files in controller.ChartPath/istio-init/files
+// files in controller.HelmDir/istio-init/files
 func InstallCNI(mgr manager.Manager) error {
 	// we only try to install CNI once.  if there's an error, we should probably
 	// panic, as there's no way to recover.  for now, we just pass the error along.
@@ -41,7 +41,7 @@ func internalInstallCNI(mgr manager.Manager) error {
 	values["imagePullSecrets"] = common.CNIImagePullSecrets
 	// TODO: imagePullPolicy, resources
 
-	renderings, _, err := common.RenderHelmChart(path.Join(common.ChartPath, "istio_cni"), operatorNamespace, values)
+	renderings, _, err := common.RenderHelmChart(path.Join(common.GetHelmDir(), "istio_cni"), operatorNamespace, values)
 	if err != nil {
 		return err
 	}
