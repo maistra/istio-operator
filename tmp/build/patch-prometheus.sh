@@ -53,6 +53,9 @@ function prometheus_patch_deployment() {
           secretName: htpasswd' \
       -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: prometheus\
 \1containers:\2/' \
+      -e 's/^\(.*\)\(- .--config.file.*\)$/\1\2\
+\1- --discovery.member-roll-name=default\
+\1- --discovery.member-roll-namespace={{ .Release.Namespace }}/' \
   ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 
   sed -i -r -e 's/.*image:.*prometheus.*$/{{- if contains "\/" .Values.image }}\
@@ -83,7 +86,12 @@ function prometheus_patch_service_account() {
 }
 
 function prometheus_patch_misc() {
-  sed -i -e '/nodes/d' ${HELM_DIR}/istio/charts/prometheus/templates/clusterrole.yaml
+  sed -i -e '/nodes/d' \
+         -e '/rules:/ a\
+- apiGroups: ["maistra.io"]\
+\  resources: ["servicemeshmemberrolls"]\
+\  verbs: ["get", "list", "watch"]' \
+         ${HELM_DIR}/istio/charts/prometheus/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/prometheus/templates/clusterrolebindings.yaml
 }
 
