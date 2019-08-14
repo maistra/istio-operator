@@ -116,7 +116,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		ToRequests: handler.ToRequestsFunc(func(smcpMap handler.MapObject) []reconcile.Request {
 			if smcp, ok := smcpMap.Object.(*v1.ServiceMeshControlPlane); !ok {
 				return nil
-			} else if installCondition := smcp.Status.GetCondition(v1.ConditionTypeInstalled); installCondition.Status != v1.ConditionStatusTrue {
+			} else if installCondition := smcp.Status.GetCondition(v1.ConditionTypeReconciled); installCondition.Status != v1.ConditionStatusTrue {
+				// skip processing if the smcp is not fully reconciled (e.g. it's installing or updating)
 				return nil
 			}
 			list := &v1.ServiceMeshMemberRollList{}
