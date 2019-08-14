@@ -53,6 +53,21 @@ var orderedCharts = []string{
 
 const (
 	smcpDefaultTemplate = "default"
+
+	// Event reasons
+	eventReasonInstalling = "Installing"
+	eventReasonPausingInstall = "PausingInstall"
+	eventReasonPausingUpdate = "PausingUpdate"
+	eventReasonInstalled = "Installed"
+	eventReasonUpdating = "Updating"
+	eventReasonUpdated = "Updated"
+	eventReasonDeleting = "Deleting"
+	eventReasonDeleted = "Deleted"
+	eventReasonPruningObsoleteResources = "PruningObsoleteResources"
+	eventReasonFailedRemovingFinalizer = "FailedRemovingFinalizer"
+	eventReasonFailedDeletingComponents = "FailedDeletingComponents"
+	eventReasonNotReady = "NotReady"
+	eventReasonReady = "Ready"
 )
 
 func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error) {
@@ -181,10 +196,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 	// create components
 	for _, chartName := range orderedCharts {
 		if ready, err = r.processComponentManifests(chartName); !ready {
-			componentName := componentFromChartName(chartName)
-			reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
-			r.Log.Info(reconciliationMessage)
-			err = errors.Wrapf(err, "unexpected error processing component %s", componentName)
+			reconciliationMessage, err = r.pauseReconciliation(chartName, err)
 			return
 		}
 	}
@@ -195,10 +207,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 			continue
 		}
 		if ready, err = r.processComponentManifests(key); !ready {
-			componentName := componentFromChartName(key)
-			reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
-			r.Log.Info(reconciliationMessage)
-			err = errors.Wrapf(err, "unexpected error processing component %s", componentName)
+			reconciliationMessage, err = r.pauseReconciliation(key, err)
 			return
 		}
 	}
@@ -206,17 +215,14 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 	// install 3scale and any other components
 	for key := range r.renderings {
 		if ready, err = r.processComponentManifests(key); !ready {
-			componentName := componentFromChartName(key)
-			reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
-			r.Log.Info(reconciliationMessage)
-			err = errors.Wrapf(err, "unexpected error processing component %s", componentName)
+			reconciliationMessage, err = r.pauseReconciliation(key, err)
 			return
 		}
 	}
 
 	// delete unseen components
 	reconciliationMessage = "Pruning obsolete resources"
-	_ = r.postReconciliationStatus(reconciliationMessage, err)
+	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonPruningObsoleteResources, reconciliationMessage)
 	r.Log.Info(reconciliationMessage)
 	err = r.prune(r.Instance.GetGeneration())
 	if err != nil {
@@ -225,20 +231,38 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		return
 	}
 
-	if r.Status.ObservedGeneration == 0 {
-		reconciliationMessage = fmt.Sprintf("Successfully installed generation %d", r.Instance.GetGeneration())
-		r.Manager.GetRecorder(controllerName).Event(r.Instance, "Normal", "ServiceMeshInstalled", reconciliationMessage)
-	} else {
+	if r.isUpdating() {
 		reconciliationMessage = fmt.Sprintf("Successfully updated from generation %d to generation %d", r.Status.ObservedGeneration, r.Instance.GetGeneration())
-		r.Manager.GetRecorder(controllerName).Event(r.Instance, "Normal", "ServiceMeshUpdated", reconciliationMessage)
+		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonUpdated, reconciliationMessage)
+	} else {
+		reconciliationMessage = fmt.Sprintf("Successfully installed generation %d", r.Instance.GetGeneration())
+		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonInstalled, reconciliationMessage)
 	}
 	r.Status.ObservedGeneration = r.Instance.GetGeneration()
 	updateReconcileStatus(&r.Status.StatusType, nil)
 
+	_, err = r.updateReadinessStatus()
+
 	r.Log.Info("Completed ServiceMeshControlPlane reconcilation")
-	// requeue to ensure readiness is updated
-	result.Requeue = true
 	return
+}
+
+func (r *ControlPlaneReconciler) pauseReconciliation(chartName string, err error) (string, error) {
+	var reason string
+	if r.isUpdating() {
+		reason = eventReasonPausingUpdate
+	} else {
+		reason = eventReasonPausingInstall
+	}
+	componentName := componentFromChartName(chartName)
+	reconciliationMessage := fmt.Sprintf("Paused until %s becomes ready", componentName)
+	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, reason, reconciliationMessage)
+	r.Log.Info(reconciliationMessage)
+	return reconciliationMessage, errors.Wrapf(err, "unexpected error processing component %s", componentName)
+}
+
+func (r *ControlPlaneReconciler) isUpdating() bool {
+	return r.Instance.Status.ObservedGeneration != 0
 }
 
 // mergeValues merges a map containing input values on top of a map containing
@@ -423,21 +447,44 @@ func (r *ControlPlaneReconciler) PostStatus() error {
 }
 
 func (r *ControlPlaneReconciler) postReconciliationStatus(reconciliationMessage string, processingErr error) error {
+	var reason string
+	if r.isUpdating() {
+		reason = eventReasonUpdating
+	} else {
+		reason = eventReasonInstalling
+	}
 	reconciledCondition := r.Status.GetCondition(v1.ConditionTypeReconciled)
 	if processingErr == nil {
 		reconciledCondition.Message = reconciliationMessage
 	} else {
 		reconciledCondition.Message = fmt.Sprintf("%s: error: %s", reconciliationMessage, processingErr)
-		var reason string
-		if r.Status.ObservedGeneration == 0 {
-			reason = "CreatingServiceMesh"
-		} else {
-			reason = "UpdatingServiceMesh"
-		}
-		r.Manager.GetRecorder(controllerName).Event(r.Instance, "Error", reason, reconciliationMessage)
+		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeWarning, reason, reconciliationMessage)
 	}
 	r.Status.SetCondition(reconciledCondition)
 	return r.PostStatus()
+}
+
+func (r *ControlPlaneReconciler) initializeReconcileStatus() {
+	var readyMessage string
+	var reason string
+	if r.isUpdating() {
+		readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", r.Status.ObservedGeneration, r.Instance.GetGeneration())
+		reason = eventReasonUpdating
+	} else {
+		readyMessage = fmt.Sprintf("Installing mesh generation %d", r.Instance.GetGeneration())
+		reason = eventReasonInstalling
+	}
+	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, reason, readyMessage)
+	r.Status.SetCondition(v1.Condition{
+		Type:    v1.ConditionTypeReconciled,
+		Status:  v1.ConditionStatusFalse,
+		Message: readyMessage,
+	})
+	r.Status.SetCondition(v1.Condition{
+		Type:    v1.ConditionTypeReady,
+		Status:  v1.ConditionStatusFalse,
+		Message: readyMessage,
+	})
 }
 
 func componentFromChartName(chartName string) string {

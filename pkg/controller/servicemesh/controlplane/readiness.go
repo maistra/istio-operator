@@ -9,12 +9,20 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func (r *ControlPlaneReconciler) UpdateReadiness() (reconcile.Result, error) {
+	update, err := r.updateReadinessStatus()
+	if update {
+		r.PostStatus()
+	}
+	return reconcile.Result{}, err
+}
+func (r *ControlPlaneReconciler) updateReadinessStatus() (bool, error) {
 	r.Log.Info("Updating ServiceMeshControlPlane readiness state")
 	notReadyState, err := r.calculateNotReadyState()
 	if err != nil {
@@ -24,9 +32,8 @@ func (r *ControlPlaneReconciler) UpdateReadiness() (reconcile.Result, error) {
 			Message: fmt.Sprintf("error collecting ready state: %s", err),
 		}
 		r.Status.SetCondition(condition)
-		r.Manager.GetRecorder(controllerName).Event(r.Instance, "Warning", "ServiceMeshNotReady", condition.Message)
-		r.PostStatus()
-		return reconcile.Result{}, err
+		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeWarning, eventReasonNotReady, condition.Message)
+		return true, err
 	}
 	unreadyComponents := make([]string, 0, len(notReadyState))
 	for component, notReady := range notReadyState {
@@ -45,7 +52,7 @@ func (r *ControlPlaneReconciler) UpdateReadiness() (reconcile.Result, error) {
 				Message: fmt.Sprintf("the following components are not fully available: %s", unreadyComponents),
 			}
 			r.Status.SetCondition(condition)
-			r.Manager.GetRecorder(controllerName).Event(r.Instance, "Warning", "ServiceMeshNotReady", condition.Message)
+			r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeWarning, eventReasonNotReady, condition.Message)
 			updateStatus = true
 		}
 	} else {
@@ -56,15 +63,12 @@ func (r *ControlPlaneReconciler) UpdateReadiness() (reconcile.Result, error) {
 				Message: "All component deployments are Available",
 			}
 			r.Status.SetCondition(condition)
-			r.Manager.GetRecorder(controllerName).Event(r.Instance, "Normal", "ServiceMeshReady", condition.Message)
+			r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonReady, condition.Message)
 			updateStatus = true
 		}
 	}
 
-	if updateStatus {
-		err = r.PostStatus()
-	}
-	return reconcile.Result{}, err
+	return updateStatus, err
 }
 
 func (r *ControlPlaneReconciler) calculateNotReadyState() (map[string]bool, error) {
