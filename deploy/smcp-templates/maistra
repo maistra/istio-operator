@@ -9,7 +9,7 @@ spec:
         autoInject: disabled
         image: proxyv2-ubi8
       proxy_init:
-        image: proxy-init-ubi8
+        image: proxy-init-centos7
       oauthproxy:
         image: origin-oauth-proxy
         hub: quay.io/openshift
@@ -17,11 +17,6 @@ spec:
       image: galley-ubi8
     grafana:
       image: grafana-ubi8
-    tracing:
-      jaeger:
-        hub: jaegertracing
-        elasticsearch:
-         hub: registry.centos.org/rhsyseng
     mixer:
       image: mixer-ubi8
     pilot:

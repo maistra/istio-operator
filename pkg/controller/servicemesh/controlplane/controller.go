@@ -4,17 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	errors2 "github.com/pkg/errors"
-
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	"github.com/maistra/istio-operator/pkg/bootstrap"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
-	appsv1 "k8s.io/api/apps/v1"
+	errors2 "github.com/pkg/errors"
 
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -40,13 +38,8 @@ const (
 // Add creates a new ControlPlane Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	operatorNamespace, err := common.GetOperatorNamespace()
-	if err != nil {
-		return err
-	}
-
-	err = common.InitCNIStatus(mgr)
-	if err != nil {
+	operatorNamespace := common.GetOperatorNamespace()
+	if err := common.InitCNIStatus(mgr); err != nil {
 		return err
 	}
 
@@ -70,43 +63,69 @@ func newReconciler(mgr manager.Manager, operatorNamespace string) reconcile.Reco
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New(controllerName, mgr, controller.Options{Reconciler: r})
-	if err != nil {
+	var c controller.Controller
+	var err error
+	if c, err = controller.New(controllerName, mgr, controller.Options{Reconciler: r}); err != nil {
 		return err
 	}
 
 	// Watch for changes to primary resource ServiceMeshControlPlane
-	err = c.Watch(&source.Kind{Type: &v1.ServiceMeshControlPlane{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
+	if err = c.Watch(&source.Kind{Type: &v1.ServiceMeshControlPlane{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
 	// watch created resources for use in synchronizing ready status
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}},
+	if err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}},
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &v1.ServiceMeshControlPlane{},
 		},
-		ownedResourcePredicates)
-	if err != nil {
+		ownedResourcePredicates); err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}},
+	if err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}},
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &v1.ServiceMeshControlPlane{},
 		},
-		ownedResourcePredicates)
-	if err != nil {
+		ownedResourcePredicates); err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &appsv1.DaemonSet{}},
+	if err = c.Watch(&source.Kind{Type: &appsv1.DaemonSet{}},
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &v1.ServiceMeshControlPlane{},
 		},
-		ownedResourcePredicates)
-	if err != nil {
+		ownedResourcePredicates); err != nil {
+		return err
+	}
+
+	// add watch for cni daemon set
+	operatorNamespace := common.GetOperatorNamespace()
+	if err = c.Watch(&source.Kind{Type: &appsv1.DaemonSet{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
+				if obj.Meta.GetNamespace() != operatorNamespace {
+					return nil
+				}
+				smcpList := &v1.ServiceMeshControlPlaneList{}
+				if err := mgr.GetClient().List(context.TODO(), nil, smcpList); err != nil {
+					log.Error(err, "error listing ServiceMeshControlPlane objects in CNI DaemonSet watcher")
+					return nil
+				}
+				requests := make([]reconcile.Request, 0, len(smcpList.Items))
+				for _, smcp := range smcpList.Items {
+					requests = append(requests, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Name:      smcp.Name,
+							Namespace: smcp.Namespace,
+						},
+					})
+				}
+				return requests
+			}),
+		},
+		ownedResourcePredicates); err != nil {
 		return err
 	}
 
@@ -222,21 +241,21 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 
 	reqLogger.Info("Reconciling ServiceMeshControlPlane")
 
-	if instance.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse {
+	if reconciler.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse {
 		var readyMessage string
-		if instance.Status.ObservedGeneration == 0 {
+		if reconciler.Status.ObservedGeneration == 0 {
 			readyMessage = fmt.Sprintf("Installing mesh generation %d", instance.GetGeneration())
 			r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "CreatingServiceMesh", readyMessage)
 		} else {
-			readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", instance.Status.ObservedGeneration, instance.GetGeneration())
+			readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", reconciler.Status.ObservedGeneration, instance.GetGeneration())
 			r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "UpdatingServiceMesh", readyMessage)
 		}
-		instance.Status.SetCondition(v1.Condition{
+		reconciler.Status.SetCondition(v1.Condition{
 			Type:    v1.ConditionTypeReconciled,
 			Status:  v1.ConditionStatusFalse,
 			Message: readyMessage,
 		})
-		instance.Status.SetCondition(v1.Condition{
+		reconciler.Status.SetCondition(v1.Condition{
 			Type:    v1.ConditionTypeReady,
 			Status:  v1.ConditionStatusFalse,
 			Message: readyMessage,
@@ -245,22 +264,6 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-	}
-
-	// Ensure Istio CNI is installed
-	if common.IsCNIEnabled {
-		err = bootstrap.InstallCNI(reconciler.Manager)
-		if err != nil {
-			reqLogger.Error(err, "Failed to install/update Istio CNI")
-			return reconcile.Result{}, err
-		}
-	}
-
-	// Ensure CRDs are installed
-	err = bootstrap.InstallCRDs(reconciler.Manager)
-	if err != nil {
-		reqLogger.Error(err, "Failed to install/update Istio CRDs")
-		return reconcile.Result{}, err
 	}
 
 	return reconciler.Reconcile()
@@ -279,14 +282,14 @@ func (r *ReconcileControlPlane) getOrCreateReconciler(instance *v1.ServiceMeshCo
 			// we need to regenerate the renderings
 			existing.renderings = nil
 			var readyMessage string
-			if instance.Status.ObservedGeneration == 0 {
+			if existing.Status.ObservedGeneration == 0 {
 				readyMessage = fmt.Sprintf("Installing mesh generation %d", instance.GetGeneration())
 				r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "CreatingServiceMesh", readyMessage)
 			} else {
-				readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", instance.Status.ObservedGeneration, instance.GetGeneration())
+				readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", existing.Status.ObservedGeneration, instance.GetGeneration())
 				r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "UpdatingServiceMesh", readyMessage)
 			}
-			instance.Status.SetCondition(v1.Condition{
+			existing.Status.SetCondition(v1.Condition{
 				Type:    v1.ConditionTypeReady,
 				Status:  v1.ConditionStatusFalse,
 				Message: readyMessage,
@@ -300,7 +303,7 @@ func (r *ReconcileControlPlane) getOrCreateReconciler(instance *v1.ServiceMeshCo
 	newReconciler := &ControlPlaneReconciler{
 		ReconcileControlPlane: r,
 		Instance:              instance,
-		Status:                v1.NewControlPlaneStatus(),
+		Status:                instance.Status.DeepCopy(),
 	}
 
 	reconcilers[key] = newReconciler
@@ -318,7 +321,7 @@ func (r *ReconcileControlPlane) deleteReconciler(reconciler *ControlPlaneReconci
 	if reconciler == nil {
 		return
 	}
-	if reconciler.Instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
+	if reconciler.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
 		delete(reconcilers, reconcilersMapKey(reconciler.Instance))
 	}
 }

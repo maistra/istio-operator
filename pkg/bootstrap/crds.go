@@ -28,7 +28,7 @@ import (
 var installCRDsTask sync.Once
 
 // InstallCRDs makes sure all CRDs have been installed.  CRDs are located from
-// files in controller.ChartPath/istio-init/files
+// files in controller.HelmDir/istio-init/files
 func InstallCRDs(mgr manager.Manager) error {
 	// we only try to install them once.  if there's an error, we should probably
 	// panic, as there's no way to recover.  for now, we just pass the error along.
@@ -39,7 +39,7 @@ func InstallCRDs(mgr manager.Manager) error {
 
 func internalInstallCRDs(mgr manager.Manager, err *error) {
 	log.Info("ensuring CRDs have been installed")
-	crdPath := path.Join(common.ChartPath, "istio-init/files")
+	crdPath := path.Join(common.GetHelmDir(), "istio-init/files")
 	var crdDir os.FileInfo
 	crdDir, *err = os.Stat(crdPath)
 	if *err != nil || !crdDir.IsDir() {

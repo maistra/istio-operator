@@ -70,6 +70,13 @@ function patchTemplates() {
   sed -i -e 's/\(^ *\)- containerPort: {{ $val.port }}/\1- name: {{ $val.name }}\
 \1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/istio/charts/gateways/templates/deployment.yaml
 
+  # Fix for MAISTRA-746, can be removed when we move to Istio-1.2
+  sed -i -e '/^spec:/ a\
+  strategy:\
+    rollingUpdate:\
+      maxSurge: 25%\
+      maxUnavailable: 25%' ${HELM_DIR}/istio/charts/gateways/templates/deployment.yaml
+
 	#CNI is handled separately
 	if [[ "${COMMUNITY,,}" == "true" ]]; then
 		sed -i -e 's/image: *istio-cni/image: istio-cni-ubi8/' ${HELM_DIR}/istio_cni/values.yaml

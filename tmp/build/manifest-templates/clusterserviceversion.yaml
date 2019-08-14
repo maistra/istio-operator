@@ -1,7 +1,7 @@
 apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
-  name: maistra.v__VERSION__
+  name: __NAME__.v__VERSION__
   namespace: placeholder
   annotations:
     categories: "OpenShift Optional, Integration & Delivery"
