@@ -8,8 +8,12 @@ spec:
   istio_namespace: "{{ .Release.Namespace }}"
 
   auth:
+{{- if .Values.dashboard }}
 {{- if not (and (.Values.dashboard.user) (.Values.dashboard.passphrase)) }}
     strategy: "openshift"
+{{- else }}
+    strategy: "login"
+{{- end }}
 {{- else }}
     strategy: "login"
 {{- end }}
@@ -17,7 +21,9 @@ spec:
   deployment:
     accessible_namespaces:
     - "{{ .Release.Namespace }}"
-    image_name: "{{ .Values.hub }}/kiali"
+{{- if and .Values.hub .Values.image }}
+    image_name: "{{ .Values.hub }}/{{ .Values.image }}"
+{{- end }}
     image_pull_policy: "{{ .Values.global.imagePullPolicy }}"
 {{- if .Values.global.imagePullSecrets }}
     image_pull_secrets: 
@@ -25,12 +31,24 @@ spec:
     - {{ . }}
 {{- end }}
 {{- end }}
+{{- if .Values.tag }}
     image_version: "{{ .Values.tag }}"
-    ingress_enabled: {{ .Values.ingress.enabled }}
-    namespace: "{{ .Release.Namespace }}"
-    secret_name: "{{ .Values.dashboard.secretName }}"
     version_label: "{{ .Values.tag }}"
+{{- end }}
+{{- if .Values.ingress }}
+{{- if .Values.ingress.enabled }}
+    ingress_enabled: {{ .Values.ingress.enabled }}
+{{- end }}
+{{- end }}
+    namespace: "{{ .Release.Namespace }}"
+{{- if .Values.dashboard }}
+{{- if .Values.dashboard.secretName }}
+    secret_name: "{{ .Values.dashboard.secretName }}"
+{{- end }}
+{{- if .Values.dashboard.viewOnlyMode }}
     view_only_mode: {{ .Values.dashboard.viewOnlyMode }}
+{{- end }}
+{{- end }}
 
   external_services:
     grafana:
@@ -42,7 +60,11 @@ spec:
         password: ""
       enabled: true
       in_cluster_url: "https://grafana.{{ .Release.Namespace }}.svc:3000"
+{{- if .Values.dashboard }}
+{{- if .Values.dashboard.grafanaURL }}
       url: "{{ .Values.dashboard.grafanaURL }}"
+{{- end }}
+{{- end }}
     prometheus:
       auth:
         ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
@@ -61,7 +83,13 @@ spec:
       enabled: true
       namespace: "{{ .Release.Namespace }}"
       service : ""
+{{- if .Values.dashboard }}
+{{- if .Values.dashboard.jaegerURL }}
       url: "{{ .Values.dashboard.jaegerURL }}"
+{{- end }}
+{{- end }}
 
+{{- if .Values.contextPath }}
   server:
     web_root: "{{ .Values.contextPath }}"
+{{- end }}

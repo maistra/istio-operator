@@ -5,8 +5,6 @@ set -e
 : ${HELM_DIR:?"Need to set HELM_DIR to output location for charts, e.g. tmp/_output/istio-releases/istio-1.1.0"}
 : ${SOURCE_DIR:?"Need to set SOURCE_DIR to location of the istio-operator source directory"}
 
-: ${KIALI_VERSION:=1.0.0}
-
 if [[ "${COMMUNITY,,}" == "true" ]]; then
   : ${HUB:=docker.io/maistra}
 else
@@ -192,6 +190,7 @@ function patchTemplates() {
 
 # The following modifications are made to the generated helm template for the Kiali yaml file
 # - remove all non-kiali operator configuration
+# - remove values.yaml from community
 function patchKialiTemplate() {
   echo "patching Kiali specific Helm charts"
 
@@ -200,6 +199,7 @@ function patchKialiTemplate() {
   do
     rm "${HELM_DIR}/istio/charts/kiali/templates/${yaml}.yaml"
   done
+  rm "${HELM_DIR}/istio/charts/kiali/values.yaml"
 }
 
 # The following modifications are made to the upstream kiali configuration for deployment on OpenShift
