@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -37,11 +38,6 @@ const maxUpdateAttemptsOnConflict = 5
 const netAttachDefName = "istio-cni" // must match name of .conf file in multus.d
 
 var log = logf.Log.WithName("controller_servicemeshmemberroll")
-
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
 
 // Add creates a new ServiceMeshMemberRoll Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -166,11 +162,6 @@ const (
 
 // Reconcile reads that state of the cluster for a ServiceMeshMemberRoll object and makes changes based on the state read
 // and what is in the ServiceMeshMemberRoll.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
-// Note:
-// The Controller will requeue the Request to be processed again if the returned error is non-nil or
-// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Processing ServiceMeshMemberRoll")
@@ -195,10 +186,9 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	deleted := instance.GetDeletionTimestamp() != nil
-	finalizers := instance.GetFinalizers()
-	finalizerIndex := common.IndexOf(finalizers, finalizer)
+	finalizers := sets.NewString(instance.Finalizers...)
 	if deleted {
-		if finalizerIndex < 0 {
+		if !finalizers.Has(finalizer) {
 			reqLogger.Info("ServiceMeshMemberRoll deleted")
 			return reconcile.Result{}, nil
 		}
@@ -218,19 +208,16 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 
 		for tries := 0; tries < 5; tries++ {
-			finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
-			instance.SetFinalizers(finalizers)
+			finalizers.Delete(finalizer)
+			instance.SetFinalizers(finalizers.List())
 			err = r.Client.Update(context.TODO(), instance)
-			if err != nil {
-				if errors.IsConflict(err) {
-					instance = &v1.ServiceMeshMemberRoll{}
-					err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
-					if err == nil {
-						finalizers = instance.GetFinalizers()
-						finalizerIndex = common.IndexOf(finalizers, finalizer)
-						if finalizerIndex >= 0 {
-							continue
-						}
+			if errors.IsConflict(err) {
+				instance = &v1.ServiceMeshMemberRoll{}
+				err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
+				if err == nil {
+					finalizers := sets.NewString(instance.Finalizers...)
+					if finalizers.Has(finalizer) {
+						continue
 					}
 				}
 			}
@@ -241,10 +228,10 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		r.reconcileKiali(instance.Namespace, []string{instance.Namespace}, reqLogger)
 
 		return reconcile.Result{}, err
-	} else if finalizerIndex < 0 {
+	} else if !finalizers.Has(finalizer) {
 		reqLogger.Info("Adding finalizer to ServiceMeshMemberRoll", "finalizer", finalizer)
-		finalizers = append(finalizers, finalizer)
-		instance.SetFinalizers(finalizers)
+		finalizers.Insert(finalizer)
+		instance.SetFinalizers(finalizers.List())
 		err = r.Client.Update(context.TODO(), instance)
 		if err != nil {
 			reqLogger.Error(err, "error adding finalizer to ServiceMeshMemberRoll")
