@@ -12,8 +12,8 @@ spec:
   strategy: production
 
   query:
-    {{- if and .Values.jaeger.hub .Values.jaeger.tag }}
-    image: {{ .Values.jaeger.hub }}/jaeger-query:{{ .Values.jaeger.tag }}
+    {{- if and .Values.jaeger.hub .Values.jaeger.tag .Values.jaeger.queryImage }}
+    image: {{ .Values.jaeger.hub }}/{{ .Values.jaeger.queryImage }}:{{ .Values.jaeger.tag }}
     {{- end }}
     options:
       query:
@@ -24,8 +24,8 @@ spec:
       {{- end }}
 
   collector:
-    {{- if and .Values.jaeger.hub .Values.jaeger.tag }}
-    image: {{ .Values.jaeger.hub }}/jaeger-collector:{{ .Values.jaeger.tag }}
+    {{- if and .Values.jaeger.hub .Values.jaeger.tag .Values.jaeger.collectorImage }}
+    image: {{ .Values.jaeger.hub }}/{{ .Values.jaeger.collectorImage }}:{{ .Values.jaeger.tag }}
     {{- end }}
     annotations:
       {{- range $key, $value := .Values.jaeger.annotations }}
