@@ -91,7 +91,7 @@ func TestCyclicTemplate(t *testing.T) {
 	reconciler := reconcileControlPlane.getOrCreateReconciler(&v1.ServiceMeshControlPlane{})
 	reconciler.Log = log.WithValues()
 
-	_, err := reconciler.recursivelyApplyTemplates(v1.ControlPlaneSpec{Template: "visited"}, map[string]struct{}{"visited": {}})
+	_, err := reconciler.renderSMCPTemplates(v1.ControlPlaneSpec{Template: "visited"}, map[string]struct{}{"visited": {}})
 	if err == nil {
 		t.Fatalf("Expected error to not be nil. Cyclic dependencies should not be allowed.")
 	}
