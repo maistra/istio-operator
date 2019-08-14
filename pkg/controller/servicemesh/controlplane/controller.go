@@ -10,6 +10,7 @@ import (
 	errors2 "github.com/pkg/errors"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -221,7 +222,7 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 			finalizerError = r.Client.Update(context.TODO(), instance)
 		}
 		if finalizerError != nil {
-			r.Manager.GetRecorder(controllerName).Event(instance, "Warning", "ServiceMeshDeleted", fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", finalizerError))
+			r.Manager.GetRecorder(controllerName).Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", finalizerError))
 			return reconcile.Result{}, errors2.Wrapf(finalizerError, "Error removing finalizer from ServiceMeshControlPlane %s/%s", instance.Namespace, instance.Name)
 		}
 		return reconcile.Result{}, nil
@@ -239,31 +240,9 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		return reconciler.UpdateReadiness()
 	}
 
-	reqLogger.Info("Reconciling ServiceMeshControlPlane")
-
+	reqLogger.Info(fmt.Sprintf("Reconciling ServiceMeshControlPlane: %v", instance.Status.StatusType))
 	if reconciler.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse {
-		var readyMessage string
-		if reconciler.Status.ObservedGeneration == 0 {
-			readyMessage = fmt.Sprintf("Installing mesh generation %d", instance.GetGeneration())
-			r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "CreatingServiceMesh", readyMessage)
-		} else {
-			readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", reconciler.Status.ObservedGeneration, instance.GetGeneration())
-			r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "UpdatingServiceMesh", readyMessage)
-		}
-		reconciler.Status.SetCondition(v1.Condition{
-			Type:    v1.ConditionTypeReconciled,
-			Status:  v1.ConditionStatusFalse,
-			Message: readyMessage,
-		})
-		reconciler.Status.SetCondition(v1.Condition{
-			Type:    v1.ConditionTypeReady,
-			Status:  v1.ConditionStatusFalse,
-			Message: readyMessage,
-		})
-		err = reconciler.PostStatus()
-		if err != nil {
-			return reconcile.Result{}, err
-		}
+		reconciler.initializeReconcileStatus()
 	}
 
 	return reconciler.Reconcile()
@@ -275,46 +254,25 @@ func reconcilersMapKey(instance *v1.ServiceMeshControlPlane) string {
 	return fmt.Sprintf("%s/%s", instance.GetNamespace(), instance.GetName())
 }
 
-func (r *ReconcileControlPlane) getOrCreateReconciler(instance *v1.ServiceMeshControlPlane) *ControlPlaneReconciler {
-	key := reconcilersMapKey(instance)
+func (r *ReconcileControlPlane) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) *ControlPlaneReconciler {
+	key := reconcilersMapKey(newInstance)
 	if existing, ok := reconcilers[key]; ok {
-		if existing.Instance.GetGeneration() != instance.GetGeneration() {
+		oldInstance := existing.Instance
+		existing.Instance = newInstance
+		if existing.Instance.GetGeneration() != oldInstance.GetGeneration() {
 			// we need to regenerate the renderings
 			existing.renderings = nil
-			var readyMessage string
-			if existing.Status.ObservedGeneration == 0 {
-				readyMessage = fmt.Sprintf("Installing mesh generation %d", instance.GetGeneration())
-				r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "CreatingServiceMesh", readyMessage)
-			} else {
-				readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", existing.Status.ObservedGeneration, instance.GetGeneration())
-				r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "UpdatingServiceMesh", readyMessage)
-			}
-			existing.Status.SetCondition(v1.Condition{
-				Type:    v1.ConditionTypeReady,
-				Status:  v1.ConditionStatusFalse,
-				Message: readyMessage,
-			})
-			// ignore error.  instance already has ready status. it will just have a stale message
-			_ = existing.PostStatus()
+			existing.initializeReconcileStatus()
 		}
-		existing.Instance = instance
 		return existing
 	}
 	newReconciler := &ControlPlaneReconciler{
 		ReconcileControlPlane: r,
-		Instance:              instance,
-		Status:                instance.Status.DeepCopy(),
+		Instance:              newInstance,
+		Status:                newInstance.Status.DeepCopy(),
 	}
-
 	reconcilers[key] = newReconciler
 	return newReconciler
-}
-
-func (r *ReconcileControlPlane) getReconciler(instance *v1.ServiceMeshControlPlane) *ControlPlaneReconciler {
-	if existing, ok := reconcilers[reconcilersMapKey(instance)]; ok {
-		return existing
-	}
-	return nil
 }
 
 func (r *ReconcileControlPlane) deleteReconciler(reconciler *ControlPlaneReconciler) {
