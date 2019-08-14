@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
@@ -29,11 +31,6 @@ const (
 	finalizer      = "istio-operator-ControlPlane"
 	controllerName = "servicemeshcontrolplane-controller"
 )
-
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
 
 // Add creates a new ControlPlane Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -156,11 +153,6 @@ type ReconcileControlPlane struct {
 
 // Reconcile reads that state of the cluster for a ServiceMeshControlPlane object and makes changes based on the state read
 // and what is in the ServiceMeshControlPlane.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
-// Note:
-// The Controller will requeue the Request to be processed again if the returned error is non-nil or
-// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Processing ServiceMeshControlPlane")
@@ -186,11 +178,10 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	reconciler := r.getOrCreateReconciler(instance)
 	defer r.deleteReconciler(reconciler)
 	deleted := instance.GetDeletionTimestamp() != nil
-	finalizers := instance.GetFinalizers()
-	finalizerIndex := common.IndexOf(finalizers, finalizer)
+	finalizers := sets.NewString(instance.Finalizers...)
 
 	if deleted {
-		if finalizerIndex < 0 {
+		if !finalizers.Has(finalizer) {
 			reqLogger.Info("Deletion of ServiceMeshControlPlane complete")
 			return reconcile.Result{}, nil
 		}
@@ -200,8 +191,8 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 			return reconcile.Result{}, err
 		}
 
-		finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
-		instance.SetFinalizers(finalizers)
+		finalizers.Delete(finalizer)
+		instance.SetFinalizers(finalizers.List())
 		finalizerError := r.Client.Update(context.TODO(), instance)
 		for retryCount := 0; errors.IsConflict(finalizerError) && retryCount < 5; retryCount++ {
 			err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
@@ -214,21 +205,24 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 				return reconcile.Result{}, errors2.Wrap(err, "Conflict during finalizer removal and additional error when retrieving the ServiceMeshControlPlane during retry")
 			}
 			reqLogger.Info("Conflict during finalizer removal, retrying")
-			finalizers = instance.GetFinalizers()
-			finalizerIndex = common.IndexOf(finalizers, finalizer)
-			finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
-			instance.SetFinalizers(finalizers)
-			finalizerError = r.Client.Update(context.TODO(), instance)
+			finalizers = sets.NewString(instance.Finalizers...)
+			if finalizers.Has(finalizer) { // need to re-check, since finalizer may no longer be there
+				finalizers.Delete(finalizer)
+				instance.SetFinalizers(finalizers.List())
+				finalizerError = r.Client.Update(context.TODO(), instance)
+			} else {
+				finalizerError = nil
+			}
 		}
 		if finalizerError != nil {
 			r.Manager.GetRecorder(controllerName).Event(instance, "Warning", "ServiceMeshDeleted", fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", finalizerError))
 			return reconcile.Result{}, errors2.Wrapf(finalizerError, "Error removing finalizer from ServiceMeshControlPlane %s/%s", instance.Namespace, instance.Name)
 		}
 		return reconcile.Result{}, nil
-	} else if finalizerIndex < 0 {
+	} else if !finalizers.Has(finalizer) {
 		reqLogger.V(1).Info("Adding finalizer", "finalizer", finalizer)
-		finalizers = append(finalizers, finalizer)
-		instance.SetFinalizers(finalizers)
+		finalizers.Insert(finalizer)
+		instance.SetFinalizers(finalizers.List())
 		err = r.Client.Update(context.TODO(), instance)
 		return reconcile.Result{}, err
 	}
