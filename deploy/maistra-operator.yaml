@@ -395,7 +395,7 @@ spec:
           medium: Memory
       containers:
         - name: istio-operator
-          image: maistra/istio-operator-ubi8:1.0.0
+          image: maistra/istio-ubi8-operator:1.0.0
           ports:
           - containerPort: 11999
             name: validation

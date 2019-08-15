@@ -395,7 +395,7 @@ spec:
           medium: Memory
       containers:
         - name: istio-operator
-          image: registry.redhat.io/openshift-service-mesh/istio-operator-rhel8:1.0.0
+          image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.0.0
           ports:
           - containerPort: 11999
             name: validation
