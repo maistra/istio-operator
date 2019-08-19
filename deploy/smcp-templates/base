@@ -43,7 +43,6 @@ spec:
         enabled: true
       istio-ingressgateway:
         enabled: true
-        ior_enabled: false
         type: ClusterIP
     prometheus:
      service:
