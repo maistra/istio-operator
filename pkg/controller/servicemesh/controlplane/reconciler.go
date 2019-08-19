@@ -75,8 +75,12 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 	// make sure status gets updated on exit
 	reconciliationMessage := r.Status.GetCondition(v1.ConditionTypeReconciled).Message
 	defer func() {
-		if statusErr := r.postReconciliationStatus(reconciliationMessage, err); statusErr != nil && err == nil {
-			err = statusErr
+		if statusErr := r.postReconciliationStatus(reconciliationMessage, err); statusErr != nil {
+			if err == nil {
+				err = statusErr
+			} else {
+				r.Log.Error(statusErr, "Error posting reconciliation status")
+			}
 		}
 	}()
 
@@ -247,7 +251,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 	r.Status.ObservedGeneration = r.Instance.GetGeneration()
 	updateReconcileStatus(&r.Status.StatusType, nil)
 
-	_, err = r.updateReadinessStatus()
+	_, err = r.updateReadinessStatus() // this only updates the local object instance; it doesn't post the status update; postReconciliationStatus (called using defer) actually does that
 
 	r.Log.Info("Completed ServiceMeshControlPlane reconcilation")
 	return
@@ -440,16 +444,15 @@ func (r *ControlPlaneReconciler) renderCharts() error {
 func (r *ControlPlaneReconciler) PostStatus() error {
 	instance := &v1.ServiceMeshControlPlane{}
 	r.Log.Info("Posting status update", "conditions", r.Status.Conditions)
-	if updateErr := r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); updateErr == nil {
+	if err := r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); err == nil {
 		instance.Status = *r.Status.DeepCopy()
-		if updateErr = r.Client.Status().Update(context.TODO(), instance); updateErr != nil && !(apierrors.IsGone(updateErr) || apierrors.IsNotFound(updateErr)) {
-			r.Log.Error(updateErr, "error updating ServiceMeshControlPlane status")
-			return updateErr
+		if err = r.Client.Status().Update(context.TODO(), instance); err != nil && !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
+			return errors.Wrap(err, "error updating ServiceMeshControlPlane status")
 		}
-	} else if !(apierrors.IsGone(updateErr) || apierrors.IsNotFound(updateErr)) {
-		r.Log.Error(updateErr, "error updating ServiceMeshControlPlane status")
-		return updateErr
+	} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
+		return errors.Wrap(err, "error getting ServiceMeshControlPlane prior to updating status")
 	}
+
 	return nil
 }
 

@@ -13,16 +13,26 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (r *ControlPlaneReconciler) UpdateReadiness() (reconcile.Result, error) {
+func (r *ControlPlaneReconciler) UpdateReadiness() error {
 	update, err := r.updateReadinessStatus()
 	if update {
-		r.PostStatus()
+		statusErr := r.PostStatus()
+		if statusErr != nil {
+			// original error is more important than the status update error
+			if err == nil {
+				// if there's no original error, we can return the status update error
+				return statusErr
+			} else {
+				// otherwise, we must log the status update error and return the original error
+				log.Error(statusErr, "Error updating status")
+			}
+		}
 	}
-	return reconcile.Result{}, err
+	return err
 }
+
 func (r *ControlPlaneReconciler) updateReadinessStatus() (bool, error) {
 	r.Log.Info("Updating ServiceMeshControlPlane readiness state")
 	notReadyState, err := r.calculateNotReadyState()
@@ -30,7 +40,7 @@ func (r *ControlPlaneReconciler) updateReadinessStatus() (bool, error) {
 		condition := v1.Condition{
 			Type:    v1.ConditionTypeReady,
 			Status:  v1.ConditionStatusUnknown,
-			Message: fmt.Sprintf("error collecting ready state: %s", err),
+			Message: fmt.Sprintf("Error collecting ready state: %s", err),
 		}
 		r.Status.SetCondition(condition)
 		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeWarning, eventReasonNotReady, condition.Message)
@@ -69,7 +79,7 @@ func (r *ControlPlaneReconciler) updateReadinessStatus() (bool, error) {
 		}
 	}
 
-	return updateStatus, err
+	return updateStatus, nil
 }
 
 func (r *ControlPlaneReconciler) calculateNotReadyState() (map[string]bool, error) {
