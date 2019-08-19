@@ -230,7 +230,8 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	if instance.GetGeneration() == instance.Status.ObservedGeneration &&
 		instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
 		// sync readiness state
-		return reconciler.UpdateReadiness()
+		err := reconciler.UpdateReadiness()
+		return reconcile.Result{}, err
 	}
 
 	reqLogger.Info(fmt.Sprintf("Reconciling ServiceMeshControlPlane: %v", instance.Status.StatusType))
