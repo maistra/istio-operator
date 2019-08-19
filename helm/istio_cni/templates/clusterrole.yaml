@@ -7,7 +7,6 @@ rules:
   - apiGroups: [""]
     resources:
       - pods
-      - nodes
     verbs:
       - get
   - apiGroups:
