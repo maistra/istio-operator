@@ -1,9 +1,10 @@
 package controlplane
 
 import (
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"context"
 	"fmt"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -49,7 +50,7 @@ func (r *ControlPlaneReconciler) updateReadinessStatus() (bool, error) {
 			condition := v1.Condition{
 				Type:    v1.ConditionTypeReady,
 				Status:  v1.ConditionStatusFalse,
-				Message: fmt.Sprintf("the following components are not fully available: %s", unreadyComponents),
+				Message: fmt.Sprintf("The following components are not fully available: %s", unreadyComponents),
 			}
 			r.Status.SetCondition(condition)
 			r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeWarning, eventReasonNotReady, condition.Message)
@@ -58,8 +59,8 @@ func (r *ControlPlaneReconciler) updateReadinessStatus() (bool, error) {
 	} else {
 		if readyCondition.Status != v1.ConditionStatusTrue {
 			condition := v1.Condition{
-				Type:   v1.ConditionTypeReady,
-				Status: v1.ConditionStatusTrue,
+				Type:    v1.ConditionTypeReady,
+				Status:  v1.ConditionStatusTrue,
 				Message: "All component deployments are Available",
 			}
 			r.Status.SetCondition(condition)

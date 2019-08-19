@@ -55,19 +55,19 @@ const (
 	smcpDefaultTemplate = "default"
 
 	// Event reasons
-	eventReasonInstalling = "Installing"
-	eventReasonPausingInstall = "PausingInstall"
-	eventReasonPausingUpdate = "PausingUpdate"
-	eventReasonInstalled = "Installed"
-	eventReasonUpdating = "Updating"
-	eventReasonUpdated = "Updated"
-	eventReasonDeleting = "Deleting"
-	eventReasonDeleted = "Deleted"
-	eventReasonPruningObsoleteResources = "PruningObsoleteResources"
+	eventReasonInstalling              = "Installing"
+	eventReasonPausingInstall          = "PausingInstall"
+	eventReasonPausingUpdate           = "PausingUpdate"
+	eventReasonInstalled               = "Installed"
+	eventReasonUpdating                = "Updating"
+	eventReasonUpdated                 = "Updated"
+	eventReasonDeleting                = "Deleting"
+	eventReasonDeleted                 = "Deleted"
+	eventReasonPruning                 = "Pruning"
 	eventReasonFailedRemovingFinalizer = "FailedRemovingFinalizer"
-	eventReasonFailedDeletingComponents = "FailedDeletingComponents"
-	eventReasonNotReady = "NotReady"
-	eventReasonReady = "Ready"
+	eventReasonFailedDeletingResources = "FailedDeletingResources"
+	eventReasonNotReady                = "NotReady"
+	eventReasonReady                   = "Ready"
 )
 
 func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error) {
@@ -99,7 +99,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		err = r.renderCharts()
 		if err != nil {
 			// we can't progress here
-			reconciliationMessage = "unexpected error rendering helm charts"
+			reconciliationMessage = "Error rendering helm charts"
 			err = errors.Wrap(err, reconciliationMessage)
 			return
 		}
@@ -137,7 +137,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		}
 		if err != nil {
 			// bail if there was an error updating the namespace
-			reconciliationMessage = "unexpected error updating labels on mesh namespace"
+			reconciliationMessage = "Error updating labels on mesh namespace"
 			err = errors.Wrap(err, reconciliationMessage)
 			return
 		}
@@ -193,7 +193,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		}
 	} else {
 		// error calculating readiness
-		reconciliationMessage = fmt.Sprintf("unexpected error checking readiness of component %s", r.lastComponent)
+		reconciliationMessage = fmt.Sprintf("Error checking readiness of component %s", r.lastComponent)
 		err = errors.Wrap(readinessErr, reconciliationMessage)
 		r.Log.Error(err, reconciliationMessage)
 		return
@@ -228,11 +228,11 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 
 	// delete unseen components
 	reconciliationMessage = "Pruning obsolete resources"
-	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonPruningObsoleteResources, reconciliationMessage)
+	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonPruning, reconciliationMessage)
 	r.Log.Info(reconciliationMessage)
 	err = r.prune(r.Instance.GetGeneration())
 	if err != nil {
-		reconciliationMessage = "unexpected error pruning obsolete resources"
+		reconciliationMessage = "Error pruning obsolete resources"
 		err = errors.Wrap(err, reconciliationMessage)
 		return
 	}
@@ -264,7 +264,7 @@ func (r *ControlPlaneReconciler) pauseReconciliation(chartName string, err error
 	reconciliationMessage := fmt.Sprintf("Paused until %s becomes ready", componentName)
 	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, reason, reconciliationMessage)
 	r.Log.Info(reconciliationMessage)
-	return reconciliationMessage, errors.Wrapf(err, "unexpected error processing component %s", componentName)
+	return reconciliationMessage, errors.Wrapf(err, "error processing component %s", componentName)
 }
 
 func (r *ControlPlaneReconciler) isUpdating() bool {

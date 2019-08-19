@@ -202,7 +202,7 @@ func (r *ControlPlaneReconciler) waitForWebhookCABundleInitialization(object *un
 			r.Log.Error(nil, "attempting to wait on unknown webhook", kind, name)
 			return true, nil
 		}
-		r.Log.Error(err, "unexpected error occurred waiting for webhook CABundle to become initialized", object.GetKind(), name)
+		r.Log.Error(err, "error waiting for webhook CABundle to become initialized", object.GetKind(), name)
 		return false, err
 	})
 	if err != nil {
