@@ -154,7 +154,7 @@ type ReconcileControlPlane struct {
 // Reconcile reads that state of the cluster for a ServiceMeshControlPlane object and makes changes based on the state read
 // and what is in the ServiceMeshControlPlane.Spec
 func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	reqLogger := log.WithValues("ServiceMeshControlPlane", request)
 	reqLogger.Info("Processing ServiceMeshControlPlane")
 	defer func() {
 		reqLogger.Info("Completed ServiceMeshControlPlane processing")
@@ -191,33 +191,23 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 			return reconcile.Result{}, err
 		}
 
-		finalizers.Delete(common.FinalizerName)
-		instance.SetFinalizers(finalizers.List())
-		finalizerError := r.Client.Update(context.TODO(), instance)
-		for retryCount := 0; errors.IsConflict(finalizerError) && retryCount < 5; retryCount++ {
-			err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
-			if err != nil {
-				if errors.IsNotFound(err) {
-					// SMCP was deleted (most likely in the previous invocation of reconcile(), but the SMCP was re-queued because reconcile() deleted the owned resources
-					reqLogger.Info("ServiceMeshControlPlane already deleted")
-					return reconcile.Result{}, nil
-				}
-				return reconcile.Result{}, errors2.Wrap(err, "Conflict during finalizer removal and additional error when retrieving the ServiceMeshControlPlane during retry")
-			}
-			reqLogger.Info("Conflict during finalizer removal, retrying")
+		// get fresh SMCP from cache to minimize the chance of a conflict during update (the SMCP might have been updated during the execution of reconciler.Delete())
+		instance = &v1.ServiceMeshControlPlane{}
+		if err := r.Client.Get(context.TODO(), request.NamespacedName, instance); err == nil {
 			finalizers = sets.NewString(instance.Finalizers...)
-			if finalizers.Has(common.FinalizerName) { // need to re-check, since finalizer may no longer be there
-				finalizers.Delete(common.FinalizerName)
-				instance.SetFinalizers(finalizers.List())
-				finalizerError = r.Client.Update(context.TODO(), instance)
-			} else {
-				finalizerError = nil
+			finalizers.Delete(common.FinalizerName)
+			instance.SetFinalizers(finalizers.List())
+			if err := r.Client.Update(context.TODO(), instance); err == nil {
+				reqLogger.Info("Removed finalizer")
+			} else if !(errors.IsGone(err) || errors.IsNotFound(err)) {
+				r.Manager.GetRecorder(controllerName).Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", err)) // TODO: this event probably isn't needed at all
+				return reconcile.Result{}, errors2.Wrap(err, "Error removing ServiceMeshControlPlane finalizer")
 			}
+		} else if !(errors.IsGone(err) || errors.IsNotFound(err)) {
+			r.Manager.GetRecorder(controllerName).Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", err))
+			return reconcile.Result{}, errors2.Wrap(err, "Error getting ServiceMeshControlPlane prior to removing finalizer")
 		}
-		if finalizerError != nil {
-			r.Manager.GetRecorder(controllerName).Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", finalizerError))
-			return reconcile.Result{}, errors2.Wrapf(finalizerError, "Error removing finalizer from ServiceMeshControlPlane %s/%s", instance.Namespace, instance.Name)
-		}
+
 		return reconcile.Result{}, nil
 	} else if !finalizers.Has(common.FinalizerName) {
 		reqLogger.V(1).Info("Adding finalizer", "finalizer", common.FinalizerName)
