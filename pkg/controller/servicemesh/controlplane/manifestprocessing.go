@@ -29,7 +29,7 @@ func (r *ControlPlaneReconciler) processComponentManifests(chartName string) (re
 		return
 	}
 	if err = r.processNewComponent(componentName, status); err != nil {
-		r.Log.Error(err, "unexpected error occurred during postprocessing of component")
+		r.Log.Error(err, "error during postprocessing of component")
 		return
 	}
 
