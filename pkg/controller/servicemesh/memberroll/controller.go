@@ -647,7 +647,6 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(namespace string) error {
 	for tries := 0; tries < maxUpdateAttemptsOnConflict; tries++ {
 		lastTry := tries == maxUpdateAttemptsOnConflict-1
 		common.DeleteLabel(namespaceResource, common.MemberOfKey)
-		common.DeleteLabel(namespaceResource, common.LegacyMemberOfKey)
 		err = r.client.Update(context.TODO(), namespaceResource)
 		if err != nil {
 			if errors.IsConflict(err) {
@@ -726,7 +725,6 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
 		for tries := 0; tries < maxUpdateAttemptsOnConflict; tries++ {
 			lastTry := tries == maxUpdateAttemptsOnConflict-1
 			common.SetLabel(namespaceResource, common.MemberOfKey, r.meshNamespace)
-			common.SetLabel(namespaceResource, common.LegacyMemberOfKey, r.meshNamespace)
 			err = r.client.Update(context.TODO(), namespaceResource)
 			if err != nil {
 				if errors.IsConflict(err) {
