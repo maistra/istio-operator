@@ -44,7 +44,6 @@ metadata:
                 },
                 "istio-ingressgateway": {
                   "autoscaleEnabled": false,
-                  "ior_enabled": false
                 }
               },
               "mixer": {

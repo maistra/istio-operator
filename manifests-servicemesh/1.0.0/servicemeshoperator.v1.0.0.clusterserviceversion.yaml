@@ -12,7 +12,7 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh.
 
     containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.0.0
-    createdAt: 2019-08-16T11:14:26PDT
+    createdAt: 2019-08-19T14:28:16PDT
     support: Red Hat, Inc. 
     alm-examples: |-
       [
@@ -44,7 +44,6 @@ metadata:
                 },
                 "istio-ingressgateway": {
                   "autoscaleEnabled": false,
-                  "ior_enabled": false
                 }
               },
               "mixer": {
