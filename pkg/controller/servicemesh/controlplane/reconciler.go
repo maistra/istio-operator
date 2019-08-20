@@ -80,6 +80,12 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		}
 	}()
 
+	if r.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse {
+		r.initializeReconcileStatus()
+		reconciliationMessage = r.Status.GetCondition(v1.ConditionTypeReconciled).Message // TODO: this shouldn't be necessary, but it is, because the code around reconciliationMessage is a mess. We need to clean it up.
+		return reconcile.Result{}, nil                                                    // ensure that the new reconcile status is posted immediately. Reconciliation will resume when the status update comes back into the operator
+	}
+
 	if r.renderings == nil {
 		// error handling
 		defer func() {
@@ -433,6 +439,7 @@ func (r *ControlPlaneReconciler) renderCharts() error {
 
 func (r *ControlPlaneReconciler) PostStatus() error {
 	instance := &v1.ServiceMeshControlPlane{}
+	r.Log.Info("Posting status update", "conditions", r.Status.Conditions)
 	if updateErr := r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); updateErr == nil {
 		instance.Status = *r.Status.DeepCopy()
 		if updateErr = r.Client.Status().Update(context.TODO(), instance); updateErr != nil && !(apierrors.IsGone(updateErr) || apierrors.IsNotFound(updateErr)) {
