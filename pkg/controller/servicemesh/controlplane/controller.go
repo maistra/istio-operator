@@ -235,9 +235,6 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	}
 
 	reqLogger.Info(fmt.Sprintf("Reconciling ServiceMeshControlPlane: %v", instance.Status.StatusType))
-	if reconciler.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse {
-		reconciler.initializeReconcileStatus()
-	}
 
 	return reconciler.Reconcile()
 }
