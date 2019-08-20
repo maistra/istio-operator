@@ -55,19 +55,19 @@ const (
 	smcpDefaultTemplate = "default"
 
 	// Event reasons
-	eventReasonInstalling = "Installing"
-	eventReasonPausingInstall = "PausingInstall"
-	eventReasonPausingUpdate = "PausingUpdate"
-	eventReasonInstalled = "Installed"
-	eventReasonUpdating = "Updating"
-	eventReasonUpdated = "Updated"
-	eventReasonDeleting = "Deleting"
-	eventReasonDeleted = "Deleted"
-	eventReasonPruningObsoleteResources = "PruningObsoleteResources"
+	eventReasonInstalling              = "Installing"
+	eventReasonPausingInstall          = "PausingInstall"
+	eventReasonPausingUpdate           = "PausingUpdate"
+	eventReasonInstalled               = "Installed"
+	eventReasonUpdating                = "Updating"
+	eventReasonUpdated                 = "Updated"
+	eventReasonDeleting                = "Deleting"
+	eventReasonDeleted                 = "Deleted"
+	eventReasonPruning                 = "Pruning"
 	eventReasonFailedRemovingFinalizer = "FailedRemovingFinalizer"
-	eventReasonFailedDeletingComponents = "FailedDeletingComponents"
-	eventReasonNotReady = "NotReady"
-	eventReasonReady = "Ready"
+	eventReasonFailedDeletingResources = "FailedDeletingResources"
+	eventReasonNotReady                = "NotReady"
+	eventReasonReady                   = "Ready"
 )
 
 func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error) {
@@ -79,6 +79,12 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 			err = statusErr
 		}
 	}()
+
+	if r.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse {
+		r.initializeReconcileStatus()
+		reconciliationMessage = r.Status.GetCondition(v1.ConditionTypeReconciled).Message // TODO: this shouldn't be necessary, but it is, because the code around reconciliationMessage is a mess. We need to clean it up.
+		return reconcile.Result{}, nil                                                    // ensure that the new reconcile status is posted immediately. Reconciliation will resume when the status update comes back into the operator
+	}
 
 	if r.renderings == nil {
 		// error handling
@@ -93,7 +99,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		err = r.renderCharts()
 		if err != nil {
 			// we can't progress here
-			reconciliationMessage = "unexpected error rendering helm charts"
+			reconciliationMessage = "Error rendering helm charts"
 			err = errors.Wrap(err, reconciliationMessage)
 			return
 		}
@@ -131,7 +137,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		}
 		if err != nil {
 			// bail if there was an error updating the namespace
-			reconciliationMessage = "unexpected error updating labels on mesh namespace"
+			reconciliationMessage = "Error updating labels on mesh namespace"
 			err = errors.Wrap(err, reconciliationMessage)
 			return
 		}
@@ -187,7 +193,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		}
 	} else {
 		// error calculating readiness
-		reconciliationMessage = fmt.Sprintf("unexpected error checking readiness of component %s", r.lastComponent)
+		reconciliationMessage = fmt.Sprintf("Error checking readiness of component %s", r.lastComponent)
 		err = errors.Wrap(readinessErr, reconciliationMessage)
 		r.Log.Error(err, reconciliationMessage)
 		return
@@ -222,11 +228,11 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 
 	// delete unseen components
 	reconciliationMessage = "Pruning obsolete resources"
-	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonPruningObsoleteResources, reconciliationMessage)
+	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonPruning, reconciliationMessage)
 	r.Log.Info(reconciliationMessage)
 	err = r.prune(r.Instance.GetGeneration())
 	if err != nil {
-		reconciliationMessage = "unexpected error pruning obsolete resources"
+		reconciliationMessage = "Error pruning obsolete resources"
 		err = errors.Wrap(err, reconciliationMessage)
 		return
 	}
@@ -258,7 +264,7 @@ func (r *ControlPlaneReconciler) pauseReconciliation(chartName string, err error
 	reconciliationMessage := fmt.Sprintf("Paused until %s becomes ready", componentName)
 	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, reason, reconciliationMessage)
 	r.Log.Info(reconciliationMessage)
-	return reconciliationMessage, errors.Wrapf(err, "unexpected error processing component %s", componentName)
+	return reconciliationMessage, errors.Wrapf(err, "error processing component %s", componentName)
 }
 
 func (r *ControlPlaneReconciler) isUpdating() bool {
@@ -433,6 +439,7 @@ func (r *ControlPlaneReconciler) renderCharts() error {
 
 func (r *ControlPlaneReconciler) PostStatus() error {
 	instance := &v1.ServiceMeshControlPlane{}
+	r.Log.Info("Posting status update", "conditions", r.Status.Conditions)
 	if updateErr := r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); updateErr == nil {
 		instance.Status = *r.Status.DeepCopy()
 		if updateErr = r.Client.Status().Update(context.TODO(), instance); updateErr != nil && !(apierrors.IsGone(updateErr) || apierrors.IsNotFound(updateErr)) {

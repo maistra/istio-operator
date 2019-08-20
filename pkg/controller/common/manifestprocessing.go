@@ -112,7 +112,7 @@ func (p *ManifestProcessor) processObject(obj *unstructured.Unstructured, compon
 
 	err = kubectl.CreateApplyAnnotation(obj, unstructured.UnstructuredJSONScheme)
 	if err != nil {
-		p.Log.Error(err, "unexpected error adding apply annotation to object")
+		p.Log.Error(err, "error adding apply annotation to object")
 	}
 
 	receiver := key.ToUnstructured()
@@ -135,10 +135,10 @@ func (p *ManifestProcessor) processObject(obj *unstructured.Unstructured, compon
 				// special handling
 				if err := p.processNewObject(obj); err != nil {
 					// just log for now
-					p.Log.Error(err, "unexpected error occurred during postprocessing of new resource")
+					p.Log.Error(err, "error during postprocessing of new resource")
 				}
 			} else {
-				p.Log.Error(err, "unexpected error occurred during creation of new resource")
+				p.Log.Error(err, "error during creation of new resource")
 			}
 		}
 	} else if patch, err = p.PatchFactory.CreatePatch(receiver, obj); err == nil && patch != nil {
