@@ -27,6 +27,9 @@ const (
 	// InternalKey is used to identify the resource as being internal to the mesh itself (i.e. should not be applied to members)
 	InternalKey = MetadataNamespace + "/internal"
 
+	// FinalizerName is the finalizer name the controllers add to any resources that need to be finalized during deletion
+	FinalizerName = MetadataNamespace + "/istio-operator"
+
 	// KubernetesAppNamespace is the common namespace for application information
 	KubernetesAppNamespace    = "app.kubernetes.io"
 	KubernetesAppNameKey      = KubernetesAppNamespace + "/name"

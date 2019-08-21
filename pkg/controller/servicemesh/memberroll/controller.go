@@ -156,10 +156,6 @@ type ReconcileMemberList struct {
 	scheme *runtime.Scheme
 }
 
-const (
-	finalizer = "istio-operator-MemberRoll"
-)
-
 // Reconcile reads that state of the cluster for a ServiceMeshMemberRoll object and makes changes based on the state read
 // and what is in the ServiceMeshMemberRoll.Spec
 func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Result, error) {
@@ -188,7 +184,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	deleted := instance.GetDeletionTimestamp() != nil
 	finalizers := sets.NewString(instance.Finalizers...)
 	if deleted {
-		if !finalizers.Has(finalizer) {
+		if !finalizers.Has(common.FinalizerName) {
 			reqLogger.Info("ServiceMeshMemberRoll deleted")
 			return reconcile.Result{}, nil
 		}
@@ -208,7 +204,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 
 		for tries := 0; tries < 5; tries++ {
-			finalizers.Delete(finalizer)
+			finalizers.Delete(common.FinalizerName)
 			instance.SetFinalizers(finalizers.List())
 			err = r.Client.Update(context.TODO(), instance)
 			if errors.IsConflict(err) {
@@ -216,7 +212,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 				err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
 				if err == nil {
 					finalizers := sets.NewString(instance.Finalizers...)
-					if finalizers.Has(finalizer) {
+					if finalizers.Has(common.FinalizerName) {
 						continue
 					}
 				}
@@ -225,12 +221,12 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 
 		// Kiali is prohibited from seeing any namespace other than the control plane itself
-		r.reconcileKiali(instance.Namespace, []string{instance.Namespace}, reqLogger)
+		err = r.reconcileKiali(instance.Namespace, []string{instance.Namespace}, reqLogger)
 
 		return reconcile.Result{}, err
-	} else if !finalizers.Has(finalizer) {
-		reqLogger.Info("Adding finalizer to ServiceMeshMemberRoll", "finalizer", finalizer)
-		finalizers.Insert(finalizer)
+	} else if !finalizers.Has(common.FinalizerName) {
+		reqLogger.Info("Adding finalizer to ServiceMeshMemberRoll", "finalizer", common.FinalizerName)
+		finalizers.Insert(common.FinalizerName)
 		instance.SetFinalizers(finalizers.List())
 		err = r.Client.Update(context.TODO(), instance)
 		if err != nil {
@@ -438,7 +434,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	// tell Kiali about all the namespaces in the mesh
-	r.reconcileKiali(instance.Namespace, instance.Status.ConfiguredMembers, reqLogger)
+	err = r.reconcileKiali(instance.Namespace, instance.Status.ConfiguredMembers, reqLogger)
 
 	return reconcile.Result{}, err
 }
@@ -447,19 +443,19 @@ func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, configured
 
 	reqLogger.Info("Attempting to get Kiali CR", "kialiCRNamespace", kialiCRNamespace)
 
+	kialiCRName := "kiali"
 	kialiCR := &unstructured.Unstructured{}
 	kialiCR.SetAPIVersion("kiali.io/v1alpha1")
 	kialiCR.SetKind("Kiali")
 	kialiCR.SetNamespace(kialiCRNamespace)
-	kialiCR.SetName("kiali")
-	err := r.Client.Get(context.TODO(), client.ObjectKey{Name: "kiali", Namespace: kialiCRNamespace}, kialiCR)
+	kialiCR.SetName(kialiCRName)
+	err := r.Client.Get(context.TODO(), client.ObjectKey{Name: kialiCRName, Namespace: kialiCRNamespace}, kialiCR)
 	if err != nil {
 		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
 			reqLogger.Info("Kiali CR does not exist, Kiali probably not enabled")
 			return nil
 		}
-		reqLogger.Error(err, "error retrieving Kiali CR from mesh")
-		return err
+		return pkgerrors.Wrap(err, "error retrieving Kiali CR from mesh")
 	}
 
 	// just get an array of strings consisting of the list of namespaces to be accessible to Kiali
@@ -479,12 +475,12 @@ func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, configured
 
 	err = unstructured.SetNestedStringSlice(kialiCR.UnstructuredContent(), accessibleNamespaces, "spec", "deployment", "accessible_namespaces")
 	if err != nil {
-		reqLogger.Error(err, "cannot set deployment.accessible_namespaces in Kiali CR", "kialiCRNamespace", kialiCRNamespace)
+		return pkgerrors.Wrapf(err, "cannot set deployment.accessible_namespaces in Kiali CR %s/%s", kialiCRNamespace, kialiCRName)
 	}
 
 	err = r.Client.Update(context.TODO(), kialiCR)
 	if err != nil {
-		reqLogger.Error(err, "cannot update Kiali CR with new accessible namespaces", "kialiCRNamespace", kialiCRNamespace)
+		return pkgerrors.Wrapf(err, "cannot update Kiali CR %s/%s with new accessible namespaces", kialiCRNamespace, kialiCRName)
 	}
 
 	reqLogger.Info("Kiali CR deployment.accessible_namespaces updated", "accessibleNamespaces", accessibleNamespaces)
