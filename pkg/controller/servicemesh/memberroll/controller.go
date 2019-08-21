@@ -156,10 +156,6 @@ type ReconcileMemberList struct {
 	scheme *runtime.Scheme
 }
 
-const (
-	finalizer = "istio-operator-MemberRoll"
-)
-
 // Reconcile reads that state of the cluster for a ServiceMeshMemberRoll object and makes changes based on the state read
 // and what is in the ServiceMeshMemberRoll.Spec
 func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Result, error) {
@@ -188,7 +184,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	deleted := instance.GetDeletionTimestamp() != nil
 	finalizers := sets.NewString(instance.Finalizers...)
 	if deleted {
-		if !finalizers.Has(finalizer) {
+		if !finalizers.Has(common.FinalizerName) {
 			reqLogger.Info("ServiceMeshMemberRoll deleted")
 			return reconcile.Result{}, nil
 		}
@@ -208,7 +204,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 
 		for tries := 0; tries < 5; tries++ {
-			finalizers.Delete(finalizer)
+			finalizers.Delete(common.FinalizerName)
 			instance.SetFinalizers(finalizers.List())
 			err = r.Client.Update(context.TODO(), instance)
 			if errors.IsConflict(err) {
@@ -216,7 +212,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 				err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
 				if err == nil {
 					finalizers := sets.NewString(instance.Finalizers...)
-					if finalizers.Has(finalizer) {
+					if finalizers.Has(common.FinalizerName) {
 						continue
 					}
 				}
@@ -228,9 +224,9 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		err = r.reconcileKiali(instance.Namespace, []string{instance.Namespace}, reqLogger)
 
 		return reconcile.Result{}, err
-	} else if !finalizers.Has(finalizer) {
-		reqLogger.Info("Adding finalizer to ServiceMeshMemberRoll", "finalizer", finalizer)
-		finalizers.Insert(finalizer)
+	} else if !finalizers.Has(common.FinalizerName) {
+		reqLogger.Info("Adding finalizer to ServiceMeshMemberRoll", "finalizer", common.FinalizerName)
+		finalizers.Insert(common.FinalizerName)
 		instance.SetFinalizers(finalizers.List())
 		err = r.Client.Update(context.TODO(), instance)
 		if err != nil {

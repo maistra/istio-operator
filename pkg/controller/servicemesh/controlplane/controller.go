@@ -29,7 +29,6 @@ import (
 var log = logf.Log.WithName("controller_servicemeshcontrolplane")
 
 const (
-	finalizer      = "istio-operator-ControlPlane"
 	controllerName = "servicemeshcontrolplane-controller"
 )
 
@@ -182,7 +181,7 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	finalizers := sets.NewString(instance.Finalizers...)
 
 	if deleted {
-		if !finalizers.Has(finalizer) {
+		if !finalizers.Has(common.FinalizerName) {
 			reqLogger.Info("Deletion of ServiceMeshControlPlane complete")
 			return reconcile.Result{}, nil
 		}
@@ -192,7 +191,7 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 			return reconcile.Result{}, err
 		}
 
-		finalizers.Delete(finalizer)
+		finalizers.Delete(common.FinalizerName)
 		instance.SetFinalizers(finalizers.List())
 		finalizerError := r.Client.Update(context.TODO(), instance)
 		for retryCount := 0; errors.IsConflict(finalizerError) && retryCount < 5; retryCount++ {
@@ -207,8 +206,8 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 			}
 			reqLogger.Info("Conflict during finalizer removal, retrying")
 			finalizers = sets.NewString(instance.Finalizers...)
-			if finalizers.Has(finalizer) { // need to re-check, since finalizer may no longer be there
-				finalizers.Delete(finalizer)
+			if finalizers.Has(common.FinalizerName) { // need to re-check, since finalizer may no longer be there
+				finalizers.Delete(common.FinalizerName)
 				instance.SetFinalizers(finalizers.List())
 				finalizerError = r.Client.Update(context.TODO(), instance)
 			} else {
@@ -220,9 +219,9 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 			return reconcile.Result{}, errors2.Wrapf(finalizerError, "Error removing finalizer from ServiceMeshControlPlane %s/%s", instance.Namespace, instance.Name)
 		}
 		return reconcile.Result{}, nil
-	} else if !finalizers.Has(finalizer) {
-		reqLogger.V(1).Info("Adding finalizer", "finalizer", finalizer)
-		finalizers.Insert(finalizer)
+	} else if !finalizers.Has(common.FinalizerName) {
+		reqLogger.V(1).Info("Adding finalizer", "finalizer", common.FinalizerName)
+		finalizers.Insert(common.FinalizerName)
 		instance.SetFinalizers(finalizers.List())
 		err = r.Client.Update(context.TODO(), instance)
 		return reconcile.Result{}, err
