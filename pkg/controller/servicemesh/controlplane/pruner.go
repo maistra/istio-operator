@@ -97,7 +97,7 @@ func (r *ControlPlaneReconciler) pruneResources(gvks []schema.GroupVersionKind, 
 		objects.SetGroupVersionKind(gvk)
 		err := r.Client.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(namespace), objects)
 		if err != nil {
-			if !meta.IsNoMatchError(err) {
+			if !meta.IsNoMatchError(err) && !errors.IsNotFound(err) {
 				r.Log.Error(err, "Error retrieving resources to prune", "type", gvk.String())
 				allErrors = append(allErrors, err)
 			}
