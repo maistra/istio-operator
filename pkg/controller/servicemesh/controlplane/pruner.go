@@ -2,8 +2,10 @@ package controlplane
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"strconv"
+
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -105,7 +107,7 @@ func (r *ControlPlaneReconciler) pruneResources(gvks []schema.GroupVersionKind, 
 			if generation, ok := common.GetAnnotation(&object, common.MeshGenerationKey); ok && generation != instanceGeneration {
 				r.Log.Info("pruning resource", "resource", v1.NewResourceKey(&object, &object))
 				err = r.Client.Delete(context.TODO(), &object, client.PropagationPolicy(metav1.DeletePropagationBackground))
-				if err != nil {
+				if err != nil && !errors.IsNotFound(err) {
 					r.Log.Error(err, "Error pruning resource", "resource", v1.NewResourceKey(&object, &object))
 					allErrors = append(allErrors, err)
 				} else {
