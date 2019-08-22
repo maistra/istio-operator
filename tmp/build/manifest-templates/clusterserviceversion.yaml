@@ -69,15 +69,15 @@ metadata:
                 "traceSampling": 100.0
               },
               "kiali": {
-                "enabled": false
+                "enabled": true
               },
               "grafana": {
-                "enabled": false
+                "enabled": true
               },
               "tracing": {
                 "enabled": true,
                 "jaeger": {
-                  "template": "all-in-one"
+                  "template": "__JAEGER_TEMPLATE__"
                 }
               }
             }
