@@ -6,10 +6,11 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	errors2 "github.com/pkg/errors"
+
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
-
-	errors2 "github.com/pkg/errors"
+	"github.com/maistra/istio-operator/pkg/controller/hacks"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -199,6 +200,7 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 			instance.SetFinalizers(finalizers.List())
 			if err := r.Client.Update(context.TODO(), instance); err == nil {
 				reqLogger.Info("Removed finalizer")
+				hacks.ReduceLikelihoodOfRepeatedReconciliation()
 			} else if !(errors.IsGone(err) || errors.IsNotFound(err)) {
 				r.Manager.GetRecorder(controllerName).Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", err)) // TODO: this event probably isn't needed at all
 				return reconcile.Result{}, errors2.Wrap(err, "Error removing ServiceMeshControlPlane finalizer")
