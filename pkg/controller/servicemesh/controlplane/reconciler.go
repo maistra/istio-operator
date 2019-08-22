@@ -14,6 +14,7 @@ import (
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/bootstrap"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/hacks"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -74,6 +75,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 	var ready bool
 	// make sure status gets updated on exit
 	reconciliationMessage := r.Status.GetCondition(v1.ConditionTypeReconciled).Message
+	reconciliationComplete := false
 	defer func() {
 		if statusErr := r.postReconciliationStatus(reconciliationMessage, err); statusErr != nil {
 			if err == nil {
@@ -81,6 +83,9 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 			} else {
 				r.Log.Error(statusErr, "Error posting reconciliation status")
 			}
+		}
+		if reconciliationComplete {
+			hacks.ReduceLikelihoodOfRepeatedReconciliation()
 		}
 	}()
 
@@ -253,6 +258,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 
 	_, err = r.updateReadinessStatus() // this only updates the local object instance; it doesn't post the status update; postReconciliationStatus (called using defer) actually does that
 
+	reconciliationComplete = true
 	r.Log.Info("Completed ServiceMeshControlPlane reconcilation")
 	return
 }
