@@ -14,8 +14,10 @@ function prometheus_patch_deployment() {
             failureThreshold: 3\
             periodSeconds: 10\
             successThreshold: 1\
-            tcpSocket:\
+            httpGet:\
+              path: /oauth/healthz\
               port: https\
+              scheme: HTTPS\
             timeoutSeconds: 1\
           resources: {}\
           terminationMessagePath: /dev/termination-log\
@@ -109,6 +111,15 @@ function prometheus_patch_configmap() {
 \    # config removed"  ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml
   sed -i -e "/job_name: 'kubernetes-cadvisor'/,/^$/ c\
 \    # config removed" ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml
+
+  # MAISTRA-748: Exclude scraping of prometheus itself on the oauth port
+  sed -i -e '/job_name: '\''kubernetes-service-endpoints'\''/,/target_label: kubernetes_name$/ {
+    /target_label: kubernetes_name$/ a\
+      - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_pod_container_port_number]\
+        regex: prometheus;3001\
+        action: drop
+  }' ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml
+
 }
 
 function prometheusPatch() {

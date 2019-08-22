@@ -14,8 +14,10 @@ function grafana_patch_deployment() {
             failureThreshold: 3\
             periodSeconds: 10\
             successThreshold: 1\
-            tcpSocket:\
+            httpGet:\
+              path: /oauth/healthz\
               port: https\
+              scheme: HTTPS\
             timeoutSeconds: 1\
           resources: {}\
           terminationMessagePath: /dev/termination-log\
