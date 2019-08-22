@@ -186,9 +186,41 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 			reqLogger.Info("Deletion of ServiceMeshControlPlane complete")
 			return reconcile.Result{}, nil
 		}
+
+		// TODO: move the whole deletion code into reconciler.Delete()
+		reconciledCondition := reconciler.Status.GetCondition(v1.ConditionTypeReconciled)
+		if reconciledCondition.Status != v1.ConditionStatusFalse || reconciledCondition.Reason != v1.ConditionReasonDeleting {
+			reconciler.Status.SetCondition(v1.Condition{
+				Type:    v1.ConditionTypeReconciled,
+				Status:  v1.ConditionStatusFalse,
+				Reason:  v1.ConditionReasonDeleting,
+				Message: "Deleting service mesh",
+			})
+			reconciler.Status.SetCondition(v1.Condition{
+				Type:    v1.ConditionTypeReady,
+				Status:  v1.ConditionStatusFalse,
+				Reason:  v1.ConditionReasonDeleting,
+				Message: "Deleting service mesh",
+			})
+
+			err = reconciler.PostStatus()
+			return reconcile.Result{}, err // return regardless of error; deletion will continue when update event comes back into the operator
+		}
+
 		reqLogger.Info("Deleting ServiceMeshControlPlane")
 		err := reconciler.Delete()
 		if err != nil {
+			reconciler.Status.SetCondition(v1.Condition{
+				Type:    v1.ConditionTypeReconciled,
+				Status:  v1.ConditionStatusFalse,
+				Reason:  v1.ConditionReasonDeletionError,
+				Message: fmt.Sprintf("Error deleting service mesh: %s", err),
+			})
+			statusErr := reconciler.PostStatus()
+			if statusErr != nil {
+				// we must return the original error, thus we can only log the status update error
+				reqLogger.Error(statusErr, "Error updating status")
+			}
 			return reconcile.Result{}, err
 		}
 

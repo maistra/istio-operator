@@ -40,6 +40,7 @@ func (r *ControlPlaneReconciler) updateReadinessStatus() (bool, error) {
 		condition := v1.Condition{
 			Type:    v1.ConditionTypeReady,
 			Status:  v1.ConditionStatusUnknown,
+			Reason:  v1.ConditionReasonProbeError,
 			Message: fmt.Sprintf("Error collecting ready state: %s", err),
 		}
 		r.Status.SetCondition(condition)
@@ -60,6 +61,7 @@ func (r *ControlPlaneReconciler) updateReadinessStatus() (bool, error) {
 			condition := v1.Condition{
 				Type:    v1.ConditionTypeReady,
 				Status:  v1.ConditionStatusFalse,
+				Reason:  v1.ConditionReasonComponentsNotReady,
 				Message: fmt.Sprintf("The following components are not fully available: %s", unreadyComponents),
 			}
 			r.Status.SetCondition(condition)
@@ -71,6 +73,7 @@ func (r *ControlPlaneReconciler) updateReadinessStatus() (bool, error) {
 			condition := v1.Condition{
 				Type:    v1.ConditionTypeReady,
 				Status:  v1.ConditionStatusTrue,
+				Reason:  v1.ConditionReasonComponentsReady,
 				Message: "All component deployments are Available",
 			}
 			r.Status.SetCondition(condition)
