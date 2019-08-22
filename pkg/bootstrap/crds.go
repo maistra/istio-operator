@@ -9,20 +9,21 @@ import (
 	"path/filepath"
 	"sync"
 
-	"k8s.io/client-go/restmapper"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-
 	"github.com/ghodss/yaml"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/client-go/restmapper"
 
 	"k8s.io/helm/pkg/releaseutil"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 var installCRDsTask sync.Once
@@ -52,6 +53,41 @@ func internalInstallCRDs(mgr manager.Manager, err *error) {
 		}
 		return processCRDFile(mgr, path)
 	})
+	if *err == nil {
+		*err = installCRDRole(mgr)
+	}
+}
+
+func installCRDRole(mgr manager.Manager) error {
+	crdRole := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "istio-admin",
+			Labels: map[string]string{
+				"rbac.authorization.k8s.io/aggregate-to-admin": "true",
+			},
+		},
+		Rules: []rbacv1.PolicyRule{
+			rbacv1.PolicyRule{
+				APIGroups: []string{
+					"config.istio.io",
+					"networking.istio.io",
+					"authentication.istio.io",
+					"rbac.istio.io",
+					"authentication.maistra.io",
+					"rbac.maistra.io",
+				},
+				Resources: []string{rbacv1.ResourceAll},
+				Verbs:     []string{rbacv1.VerbAll},
+			},
+		},
+	}
+	if err := mgr.GetClient().Get(context.TODO(), client.ObjectKey{Name: crdRole.Name}, crdRole); err == nil {
+		return nil
+	} else if errors.IsNotFound(err) {
+		return mgr.GetClient().Create(context.TODO(), crdRole)
+	} else {
+		return err
+	}
 }
 
 func processCRDFile(mgr manager.Manager, fileName string) error {
