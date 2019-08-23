@@ -3,6 +3,8 @@ kind: ServiceMeshControlPlane
 metadata:
   name: minimal-install
 spec:
+  # For a complete list of all options, see the docs at https://maistra.io/docs/getting_started/custom-install/
+
   istio:
     global:
       proxy:
@@ -49,11 +51,6 @@ spec:
     kiali:
       # to disable kiali
       enabled: false
-
-      # create a secret for accessing kiali dashboard with the following credentials
-      # dashboard:
-      #   user: admin
-      #   passphrase: admin
 
     # disable grafana
     grafana:

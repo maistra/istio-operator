@@ -358,8 +358,7 @@ the the changes made to the base Istio charts can be found below.  For a specifi
 * The `hub` value for the Kiali image has changed to `kiali` (from `docker.io/kiali`).
 * The tag used for the Kiali image has been updated to `v1.0.0`.
 * A Kiali CR is now created (for the Kiali Operator) as opposed to individual Kiali resources like ConfigMap, Deployment, etc.
-* A demo Secret has been added that will get created using values from `kiali.dashboard.user` and `kiali.dashboard.passphrase`,
-  if specified.
+* The auth strategy is "openshift".
 
 ## Known Issues
 

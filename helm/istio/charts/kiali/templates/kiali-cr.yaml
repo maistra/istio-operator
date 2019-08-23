@@ -8,15 +8,7 @@ spec:
   istio_namespace: "{{ .Release.Namespace }}"
 
   auth:
-{{- if .Values.dashboard }}
-{{- if not (and (.Values.dashboard.user) (.Values.dashboard.passphrase)) }}
     strategy: "openshift"
-{{- else }}
-    strategy: "login"
-{{- end }}
-{{- else }}
-    strategy: "login"
-{{- end }}
 
   deployment:
     accessible_namespaces:
@@ -42,9 +34,6 @@ spec:
 {{- end }}
     namespace: "{{ .Release.Namespace }}"
 {{- if .Values.dashboard }}
-{{- if .Values.dashboard.secretName }}
-    secret_name: "{{ .Values.dashboard.secretName }}"
-{{- end }}
 {{- if .Values.dashboard.viewOnlyMode }}
     view_only_mode: {{ .Values.dashboard.viewOnlyMode }}
 {{- end }}
