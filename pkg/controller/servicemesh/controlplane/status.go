@@ -9,20 +9,23 @@ func updateReconcileStatus(status *v1.StatusType, err error) {
 	if err == nil {
 		if installStatus != v1.ConditionStatusTrue {
 			status.SetCondition(v1.Condition{
-				Type:   v1.ConditionTypeInstalled,
-				Reason: v1.ConditionReasonInstallSuccessful,
-				Status: v1.ConditionStatusTrue,
+				Type:    v1.ConditionTypeInstalled,
+				Reason:  v1.ConditionReasonInstallSuccessful,
+				Message: "Successfully installed all mesh components",
+				Status:  v1.ConditionStatusTrue,
 			})
 			status.SetCondition(v1.Condition{
-				Type:   v1.ConditionTypeReconciled,
-				Reason: v1.ConditionReasonInstallSuccessful,
-				Status: v1.ConditionStatusTrue,
+				Type:    v1.ConditionTypeReconciled,
+				Reason:  v1.ConditionReasonInstallSuccessful,
+				Message: "Successfully installed all mesh components",
+				Status:  v1.ConditionStatusTrue,
 			})
 		} else {
 			status.SetCondition(v1.Condition{
-				Type:   v1.ConditionTypeReconciled,
-				Reason: v1.ConditionReasonReconcileSuccessful,
-				Status: v1.ConditionStatusTrue,
+				Type:    v1.ConditionTypeReconciled,
+				Reason:  v1.ConditionReasonReconcileSuccessful,
+				Message: "Successfully reconciled",
+				Status:  v1.ConditionStatusTrue,
 			})
 		}
 	} else if installStatus == v1.ConditionStatusUnknown {

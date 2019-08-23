@@ -1,12 +1,11 @@
 package controlplane
 
 import (
-	"fmt"
-
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
 func (r *ControlPlaneReconciler) processComponentManifests(chartName string) (ready bool, err error) {
+	r.lastComponent = ""
 	componentName := componentFromChartName(chartName)
 	origLogger := r.Log
 	r.Log = r.Log.WithValues("Component", componentName)
@@ -20,7 +19,6 @@ func (r *ControlPlaneReconciler) processComponentManifests(chartName string) (re
 	}
 
 	r.Log.Info("reconciling component resources")
-	_ = r.postReconciliationStatus(fmt.Sprintf("Reconciling %s component", componentName), nil)
 	status := r.Status.FindComponentByName(componentName)
 	defer func() {
 		updateReconcileStatus(&status.StatusType, err)
@@ -32,7 +30,7 @@ func (r *ControlPlaneReconciler) processComponentManifests(chartName string) (re
 		return
 	}
 	if err = r.processNewComponent(componentName, status); err != nil {
-		r.Log.Error(err, "unexpected error occurred during postprocessing of component")
+		r.Log.Error(err, "error during postprocessing of component")
 		return
 	}
 
@@ -40,9 +38,12 @@ func (r *ControlPlaneReconciler) processComponentManifests(chartName string) (re
 	delete(r.renderings, chartName)
 
 	// for reentry into the reconcile loop, if not ready
-	r.lastComponent = componentName
 	if notReadyMap, readyErr := r.calculateNotReadyState(); readyErr == nil {
-		ready = !notReadyMap[r.lastComponent]
+		if notReadyMap[componentName] {
+			r.lastComponent = componentName
+		} else {
+			ready = true
+		}
 	} else {
 		err = readyErr
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -32,16 +33,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const maxUpdateAttemptsOnConflict = 5
-
 const netAttachDefName = "istio-cni" // must match name of .conf file in multus.d
 
 var log = logf.Log.WithName("controller_servicemeshmemberroll")
-
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
 
 // Add creates a new ServiceMeshMemberRoll Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -116,7 +110,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		ToRequests: handler.ToRequestsFunc(func(smcpMap handler.MapObject) []reconcile.Request {
 			if smcp, ok := smcpMap.Object.(*v1.ServiceMeshControlPlane); !ok {
 				return nil
-			} else if installCondition := smcp.Status.GetCondition(v1.ConditionTypeInstalled); installCondition.Status != v1.ConditionStatusTrue {
+			} else if installCondition := smcp.Status.GetCondition(v1.ConditionTypeReconciled); installCondition.Status != v1.ConditionStatusTrue {
+				// skip processing if the smcp is not fully reconciled (e.g. it's installing or updating)
 				return nil
 			}
 			list := &v1.ServiceMeshMemberRollList{}
@@ -159,19 +154,10 @@ type ReconcileMemberList struct {
 	scheme *runtime.Scheme
 }
 
-const (
-	finalizer = "istio-operator-MemberRoll"
-)
-
 // Reconcile reads that state of the cluster for a ServiceMeshMemberRoll object and makes changes based on the state read
 // and what is in the ServiceMeshMemberRoll.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
-// Note:
-// The Controller will requeue the Request to be processed again if the returned error is non-nil or
-// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	reqLogger := log.WithValues("ServiceMeshMemberRoll", request)
 	reqLogger.Info("Processing ServiceMeshMemberRoll")
 
 	defer func() {
@@ -194,10 +180,9 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	deleted := instance.GetDeletionTimestamp() != nil
-	finalizers := instance.GetFinalizers()
-	finalizerIndex := common.IndexOf(finalizers, finalizer)
+	finalizers := sets.NewString(instance.Finalizers...)
 	if deleted {
-		if finalizerIndex < 0 {
+		if !finalizers.Has(common.FinalizerName) {
 			reqLogger.Info("ServiceMeshMemberRoll deleted")
 			return reconcile.Result{}, nil
 		}
@@ -216,34 +201,32 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 			}
 		}
 
-		for tries := 0; tries < 5; tries++ {
-			finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
-			instance.SetFinalizers(finalizers)
-			err = r.Client.Update(context.TODO(), instance)
-			if err != nil {
-				if errors.IsConflict(err) {
-					instance = &v1.ServiceMeshMemberRoll{}
-					err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
-					if err == nil {
-						finalizers = instance.GetFinalizers()
-						finalizerIndex = common.IndexOf(finalizers, finalizer)
-						if finalizerIndex >= 0 {
-							continue
-						}
-					}
-				}
-			}
-			break
+		// Kiali is prohibited from seeing any namespace other than the control plane itself
+		err = r.reconcileKiali(instance.Namespace, []string{instance.Namespace}, reqLogger)
+		if err != nil {
+			return reconcile.Result{}, err
 		}
 
-		// Kiali is prohibited from seeing any namespace other than the control plane itself
-		r.reconcileKiali(instance.Namespace, []string{instance.Namespace}, reqLogger)
+		// get fresh SMMR from cache to minimize the chance of a conflict during update (the SMMR might have been updated during the execution of Reconcile())
+		instance = &v1.ServiceMeshMemberRoll{}
+		if err := r.Client.Get(context.TODO(), request.NamespacedName, instance); err == nil {
+			finalizers = sets.NewString(instance.Finalizers...)
+			finalizers.Delete(common.FinalizerName)
+			instance.SetFinalizers(finalizers.List())
+			if err := r.Client.Update(context.TODO(), instance); err == nil {
+				reqLogger.Info("Removed finalizer")
+			} else if !(errors.IsGone(err) || errors.IsNotFound(err)) {
+				return reconcile.Result{}, pkgerrors.Wrap(err, "Error removing ServiceMeshMemberRoll finalizer")
+			}
+		} else if !(errors.IsGone(err) || errors.IsNotFound(err)) {
+			return reconcile.Result{}, pkgerrors.Wrap(err, "Error getting ServiceMeshMemberRoll prior to removing finalizer")
+		}
 
 		return reconcile.Result{}, err
-	} else if finalizerIndex < 0 {
-		reqLogger.Info("Adding finalizer to ServiceMeshMemberRoll", "finalizer", finalizer)
-		finalizers = append(finalizers, finalizer)
-		instance.SetFinalizers(finalizers)
+	} else if !finalizers.Has(common.FinalizerName) {
+		reqLogger.Info("Adding finalizer to ServiceMeshMemberRoll", "finalizer", common.FinalizerName)
+		finalizers.Insert(common.FinalizerName)
+		instance.SetFinalizers(finalizers.List())
 		err = r.Client.Update(context.TODO(), instance)
 		if err != nil {
 			reqLogger.Error(err, "error adding finalizer to ServiceMeshMemberRoll")
@@ -450,7 +433,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	// tell Kiali about all the namespaces in the mesh
-	r.reconcileKiali(instance.Namespace, instance.Status.ConfiguredMembers, reqLogger)
+	err = r.reconcileKiali(instance.Namespace, instance.Status.ConfiguredMembers, reqLogger)
 
 	return reconcile.Result{}, err
 }
@@ -459,19 +442,19 @@ func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, configured
 
 	reqLogger.Info("Attempting to get Kiali CR", "kialiCRNamespace", kialiCRNamespace)
 
+	kialiCRName := "kiali"
 	kialiCR := &unstructured.Unstructured{}
 	kialiCR.SetAPIVersion("kiali.io/v1alpha1")
 	kialiCR.SetKind("Kiali")
 	kialiCR.SetNamespace(kialiCRNamespace)
-	kialiCR.SetName("kiali")
-	err := r.Client.Get(context.TODO(), client.ObjectKey{Name: "kiali", Namespace: kialiCRNamespace}, kialiCR)
+	kialiCR.SetName(kialiCRName)
+	err := r.Client.Get(context.TODO(), client.ObjectKey{Name: kialiCRName, Namespace: kialiCRNamespace}, kialiCR)
 	if err != nil {
 		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
 			reqLogger.Info("Kiali CR does not exist, Kiali probably not enabled")
 			return nil
 		}
-		reqLogger.Error(err, "error retrieving Kiali CR from mesh")
-		return err
+		return pkgerrors.Wrap(err, "error retrieving Kiali CR from mesh")
 	}
 
 	// just get an array of strings consisting of the list of namespaces to be accessible to Kiali
@@ -491,12 +474,12 @@ func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, configured
 
 	err = unstructured.SetNestedStringSlice(kialiCR.UnstructuredContent(), accessibleNamespaces, "spec", "deployment", "accessible_namespaces")
 	if err != nil {
-		reqLogger.Error(err, "cannot set deployment.accessible_namespaces in Kiali CR", "kialiCRNamespace", kialiCRNamespace)
+		return pkgerrors.Wrapf(err, "cannot set deployment.accessible_namespaces in Kiali CR %s/%s", kialiCRNamespace, kialiCRName)
 	}
 
 	err = r.Client.Update(context.TODO(), kialiCR)
 	if err != nil {
-		reqLogger.Error(err, "cannot update Kiali CR with new accessible namespaces", "kialiCRNamespace", kialiCRNamespace)
+		return pkgerrors.Wrapf(err, "cannot update Kiali CR %s/%s with new accessible namespaces", kialiCRNamespace, kialiCRName)
 	}
 
 	reqLogger.Info("Kiali CR deployment.accessible_namespaces updated", "accessibleNamespaces", accessibleNamespaces)
@@ -592,9 +575,7 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(namespace string) error {
 	logger.Info("cleaning up resources in namespace removed from mesh")
 
 	// get namespace
-	namespaceResource := &unstructured.Unstructured{}
-	namespaceResource.SetAPIVersion(corev1.SchemeGroupVersion.String())
-	namespaceResource.SetKind("Namespace")
+	namespaceResource := &corev1.Namespace{}
 	err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, namespaceResource)
 	if err != nil {
 		if errors.IsNotFound(err) || errors.IsGone(err) {
@@ -656,27 +637,18 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(namespace string) error {
 	}
 
 	// remove mesh labels
-	for tries := 0; tries < maxUpdateAttemptsOnConflict; tries++ {
-		lastTry := tries == maxUpdateAttemptsOnConflict-1
+	// get fresh Namespace from cache to minimize the chance of a conflict during update (the Namespace might have been updated during the execution of removeNamespaceFromMesh())
+	namespaceResource = &corev1.Namespace{}
+	if err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, namespaceResource); err == nil {
 		common.DeleteLabel(namespaceResource, common.MemberOfKey)
-		common.DeleteLabel(namespaceResource, common.LegacyMemberOfKey)
-		err = r.client.Update(context.TODO(), namespaceResource)
-		if err != nil {
-			if errors.IsConflict(err) {
-				namespaceResource = &unstructured.Unstructured{}
-				namespaceResource.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Namespace"))
-				err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, namespaceResource)
-				if err == nil && !lastTry {
-					continue
-				}
-			}
-			allErrors = append(allErrors, fmt.Errorf("Error removing mesh labels from namespace %s: %v", namespace, err))
+		if err := r.client.Update(context.TODO(), namespaceResource); err == nil {
+			logger.Info("Removed member-of label from namespace")
+		} else if !(errors.IsGone(err) || errors.IsNotFound(err)) {
+			allErrors = append(allErrors, fmt.Errorf("Error removing member-of label from namespace %s: %v", namespace, err))
+			return utilerrors.NewAggregate(allErrors)
 		}
-		break
-	}
-	if err != nil {
-		logger.Error(err, "error removing member-of label from member namespace")
-		allErrors = append(allErrors, err)
+	} else if !(errors.IsGone(err) || errors.IsNotFound(err)) {
+		allErrors = append(allErrors, fmt.Errorf("Error getting namespace %s prior to removing member-of label: %v", namespace, err))
 	}
 
 	return utilerrors.NewAggregate(allErrors)
@@ -735,22 +707,17 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
 
 	// add mesh labels
 	if !common.HasLabel(namespaceResource, common.MemberOfKey) {
-		for tries := 0; tries < maxUpdateAttemptsOnConflict; tries++ {
-			lastTry := tries == maxUpdateAttemptsOnConflict-1
+		// get fresh Namespace from cache to minimize the chance of a conflict during update (the Namespace might have been updated during the execution of reconcileNamespaceInMesh())
+		namespaceResource = &corev1.Namespace{}
+		if err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, namespaceResource); err == nil {
 			common.SetLabel(namespaceResource, common.MemberOfKey, r.meshNamespace)
-			common.SetLabel(namespaceResource, common.LegacyMemberOfKey, r.meshNamespace)
-			err = r.client.Update(context.TODO(), namespaceResource)
-			if err != nil {
-				if errors.IsConflict(err) {
-					namespaceResource = &corev1.Namespace{}
-					err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, namespaceResource)
-					if err == nil && !lastTry {
-						continue
-					}
-				}
-				allErrors = append(allErrors, fmt.Errorf("Error adding mesh labels to namespace %s: %v", namespace, err))
+			if err := r.client.Update(context.TODO(), namespaceResource); err == nil {
+				logger.Info("Added member-of label to namespace")
+			} else {
+				allErrors = append(allErrors, fmt.Errorf("Error adding member-of label to namespace %s: %v", namespace, err))
 			}
-			break
+		} else {
+			allErrors = append(allErrors, fmt.Errorf("Error getting namespace %s prior to adding member-of label: %v", namespace, err))
 		}
 	}
 

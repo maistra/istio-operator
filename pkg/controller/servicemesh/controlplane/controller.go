@@ -4,12 +4,16 @@ import (
 	"context"
 	"fmt"
 
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	"github.com/maistra/istio-operator/pkg/controller/common"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	errors2 "github.com/pkg/errors"
 
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/hacks"
+
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -26,14 +30,8 @@ import (
 var log = logf.Log.WithName("controller_servicemeshcontrolplane")
 
 const (
-	finalizer      = "istio-operator-ControlPlane"
 	controllerName = "servicemeshcontrolplane-controller"
 )
-
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
 
 // Add creates a new ControlPlane Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -156,13 +154,8 @@ type ReconcileControlPlane struct {
 
 // Reconcile reads that state of the cluster for a ServiceMeshControlPlane object and makes changes based on the state read
 // and what is in the ServiceMeshControlPlane.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
-// Note:
-// The Controller will requeue the Request to be processed again if the returned error is non-nil or
-// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	reqLogger := log.WithValues("ServiceMeshControlPlane", request)
 	reqLogger.Info("Processing ServiceMeshControlPlane")
 	defer func() {
 		reqLogger.Info("Completed ServiceMeshControlPlane processing")
@@ -186,49 +179,82 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	reconciler := r.getOrCreateReconciler(instance)
 	defer r.deleteReconciler(reconciler)
 	deleted := instance.GetDeletionTimestamp() != nil
-	finalizers := instance.GetFinalizers()
-	finalizerIndex := common.IndexOf(finalizers, finalizer)
+	finalizers := sets.NewString(instance.Finalizers...)
 
 	if deleted {
-		if finalizerIndex < 0 {
+		if !finalizers.Has(common.FinalizerName) {
 			reqLogger.Info("Deletion of ServiceMeshControlPlane complete")
 			return reconcile.Result{}, nil
 		}
+
+		// TODO: move the whole deletion code into reconciler.Delete()
+		reconciledCondition := reconciler.Status.GetCondition(v1.ConditionTypeReconciled)
+		if reconciledCondition.Status != v1.ConditionStatusFalse || reconciledCondition.Reason != v1.ConditionReasonDeleting {
+			reconciler.Status.SetCondition(v1.Condition{
+				Type:    v1.ConditionTypeReconciled,
+				Status:  v1.ConditionStatusFalse,
+				Reason:  v1.ConditionReasonDeleting,
+				Message: "Deleting service mesh",
+			})
+			reconciler.Status.SetCondition(v1.Condition{
+				Type:    v1.ConditionTypeReady,
+				Status:  v1.ConditionStatusFalse,
+				Reason:  v1.ConditionReasonDeleting,
+				Message: "Deleting service mesh",
+			})
+
+			err = reconciler.PostStatus()
+			return reconcile.Result{}, err // return regardless of error; deletion will continue when update event comes back into the operator
+		}
+
 		reqLogger.Info("Deleting ServiceMeshControlPlane")
 		err := reconciler.Delete()
-		if err != nil {
+		if err == nil {
+			// set reconcile status to true to ensure reconciler is deleted from the cache
+			reconciler.Status.SetCondition(v1.Condition{
+				Type:    v1.ConditionTypeReconciled,
+				Status:  v1.ConditionStatusTrue,
+				Reason:  v1.ConditionReasonDeleted,
+				Message: "Service mesh deleted",
+			})
+		} else {
+			reconciler.Status.SetCondition(v1.Condition{
+				Type:    v1.ConditionTypeReconciled,
+				Status:  v1.ConditionStatusFalse,
+				Reason:  v1.ConditionReasonDeletionError,
+				Message: fmt.Sprintf("Error deleting service mesh: %s", err),
+			})
+			statusErr := reconciler.PostStatus()
+			if statusErr != nil {
+				// we must return the original error, thus we can only log the status update error
+				reqLogger.Error(statusErr, "Error updating status")
+			}
 			return reconcile.Result{}, err
 		}
 
-		finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
-		instance.SetFinalizers(finalizers)
-		finalizerError := r.Client.Update(context.TODO(), instance)
-		for retryCount := 0; errors.IsConflict(finalizerError) && retryCount < 5; retryCount++ {
-			err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
-			if err != nil {
-				if errors.IsNotFound(err) {
-					// SMCP was deleted (most likely in the previous invocation of reconcile(), but the SMCP was re-queued because reconcile() deleted the owned resources
-					reqLogger.Info("ServiceMeshControlPlane already deleted")
-					return reconcile.Result{}, nil
-				}
-				return reconcile.Result{}, errors2.Wrap(err, "Conflict during finalizer removal and additional error when retrieving the ServiceMeshControlPlane during retry")
+		// get fresh SMCP from cache to minimize the chance of a conflict during update (the SMCP might have been updated during the execution of reconciler.Delete())
+		instance = &v1.ServiceMeshControlPlane{}
+		if err := r.Client.Get(context.TODO(), request.NamespacedName, instance); err == nil {
+			finalizers = sets.NewString(instance.Finalizers...)
+			finalizers.Delete(common.FinalizerName)
+			instance.SetFinalizers(finalizers.List())
+			if err := r.Client.Update(context.TODO(), instance); err == nil {
+				reqLogger.Info("Removed finalizer")
+				hacks.ReduceLikelihoodOfRepeatedReconciliation()
+			} else if !(errors.IsGone(err) || errors.IsNotFound(err)) {
+				r.Manager.GetRecorder(controllerName).Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", err)) // TODO: this event probably isn't needed at all
+				return reconcile.Result{}, errors2.Wrap(err, "Error removing ServiceMeshControlPlane finalizer")
 			}
-			reqLogger.Info("Conflict during finalizer removal, retrying")
-			finalizers = instance.GetFinalizers()
-			finalizerIndex = common.IndexOf(finalizers, finalizer)
-			finalizers = append(finalizers[:finalizerIndex], finalizers[finalizerIndex+1:]...)
-			instance.SetFinalizers(finalizers)
-			finalizerError = r.Client.Update(context.TODO(), instance)
+		} else if !(errors.IsGone(err) || errors.IsNotFound(err)) {
+			r.Manager.GetRecorder(controllerName).Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", err))
+			return reconcile.Result{}, errors2.Wrap(err, "Error getting ServiceMeshControlPlane prior to removing finalizer")
 		}
-		if finalizerError != nil {
-			r.Manager.GetRecorder(controllerName).Event(instance, "Warning", "ServiceMeshDeleted", fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", finalizerError))
-			return reconcile.Result{}, errors2.Wrapf(finalizerError, "Error removing finalizer from ServiceMeshControlPlane %s/%s", instance.Namespace, instance.Name)
-		}
+
 		return reconcile.Result{}, nil
-	} else if finalizerIndex < 0 {
-		reqLogger.V(1).Info("Adding finalizer", "finalizer", finalizer)
-		finalizers = append(finalizers, finalizer)
-		instance.SetFinalizers(finalizers)
+	} else if !finalizers.Has(common.FinalizerName) {
+		reqLogger.V(1).Info("Adding finalizer", "finalizer", common.FinalizerName)
+		finalizers.Insert(common.FinalizerName)
+		instance.SetFinalizers(finalizers.List())
 		err = r.Client.Update(context.TODO(), instance)
 		return reconcile.Result{}, err
 	}
@@ -236,35 +262,11 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	if instance.GetGeneration() == instance.Status.ObservedGeneration &&
 		instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
 		// sync readiness state
-		return reconciler.UpdateReadiness()
+		err := reconciler.UpdateReadiness()
+		return reconcile.Result{}, err
 	}
 
-	reqLogger.Info("Reconciling ServiceMeshControlPlane")
-
-	if reconciler.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse {
-		var readyMessage string
-		if reconciler.Status.ObservedGeneration == 0 {
-			readyMessage = fmt.Sprintf("Installing mesh generation %d", instance.GetGeneration())
-			r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "CreatingServiceMesh", readyMessage)
-		} else {
-			readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", reconciler.Status.ObservedGeneration, instance.GetGeneration())
-			r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "UpdatingServiceMesh", readyMessage)
-		}
-		reconciler.Status.SetCondition(v1.Condition{
-			Type:    v1.ConditionTypeReconciled,
-			Status:  v1.ConditionStatusFalse,
-			Message: readyMessage,
-		})
-		reconciler.Status.SetCondition(v1.Condition{
-			Type:    v1.ConditionTypeReady,
-			Status:  v1.ConditionStatusFalse,
-			Message: readyMessage,
-		})
-		err = reconciler.PostStatus()
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	}
+	reqLogger.Info(fmt.Sprintf("Reconciling ServiceMeshControlPlane: %v", instance.Status.StatusType))
 
 	return reconciler.Reconcile()
 }
@@ -275,46 +277,27 @@ func reconcilersMapKey(instance *v1.ServiceMeshControlPlane) string {
 	return fmt.Sprintf("%s/%s", instance.GetNamespace(), instance.GetName())
 }
 
-func (r *ReconcileControlPlane) getOrCreateReconciler(instance *v1.ServiceMeshControlPlane) *ControlPlaneReconciler {
-	key := reconcilersMapKey(instance)
+func (r *ReconcileControlPlane) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) *ControlPlaneReconciler {
+	key := reconcilersMapKey(newInstance)
 	if existing, ok := reconcilers[key]; ok {
-		if existing.Instance.GetGeneration() != instance.GetGeneration() {
+		oldInstance := existing.Instance
+		existing.Instance = newInstance
+		if existing.Instance.GetGeneration() != oldInstance.GetGeneration() {
 			// we need to regenerate the renderings
 			existing.renderings = nil
-			var readyMessage string
-			if existing.Status.ObservedGeneration == 0 {
-				readyMessage = fmt.Sprintf("Installing mesh generation %d", instance.GetGeneration())
-				r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "CreatingServiceMesh", readyMessage)
-			} else {
-				readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", existing.Status.ObservedGeneration, instance.GetGeneration())
-				r.Manager.GetRecorder(controllerName).Event(instance, "Normal", "UpdatingServiceMesh", readyMessage)
-			}
-			existing.Status.SetCondition(v1.Condition{
-				Type:    v1.ConditionTypeReady,
-				Status:  v1.ConditionStatusFalse,
-				Message: readyMessage,
-			})
-			// ignore error.  instance already has ready status. it will just have a stale message
-			_ = existing.PostStatus()
+			existing.lastComponent = ""
+			// reset reconcile status
+			existing.Status.SetCondition(v1.Condition{Type: v1.ConditionTypeReconciled, Status: v1.ConditionStatusUnknown})
 		}
-		existing.Instance = instance
 		return existing
 	}
 	newReconciler := &ControlPlaneReconciler{
 		ReconcileControlPlane: r,
-		Instance:              instance,
-		Status:                instance.Status.DeepCopy(),
+		Instance:              newInstance,
+		Status:                newInstance.Status.DeepCopy(),
 	}
-
 	reconcilers[key] = newReconciler
 	return newReconciler
-}
-
-func (r *ReconcileControlPlane) getReconciler(instance *v1.ServiceMeshControlPlane) *ControlPlaneReconciler {
-	if existing, ok := reconcilers[reconcilersMapKey(instance)]; ok {
-		return existing
-	}
-	return nil
 }
 
 func (r *ReconcileControlPlane) deleteReconciler(reconciler *ControlPlaneReconciler) {

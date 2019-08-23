@@ -14,8 +14,10 @@ function prometheus_patch_deployment() {
             failureThreshold: 3\
             periodSeconds: 10\
             successThreshold: 1\
-            tcpSocket:\
+            httpGet:\
+              path: /oauth/healthz\
               port: https\
+              scheme: HTTPS\
             timeoutSeconds: 1\
           resources: {}\
           terminationMessagePath: /dev/termination-log\
@@ -53,6 +55,9 @@ function prometheus_patch_deployment() {
           secretName: htpasswd' \
       -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: prometheus\
 \1containers:\2/' \
+      -e 's/^\(.*\)\(- .--config.file.*\)$/\1\2\
+\1- --discovery.member-roll-name=default\
+\1- --discovery.member-roll-namespace={{ .Release.Namespace }}/' \
   ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 
   sed -i -r -e 's/.*image:.*prometheus.*$/{{- if contains "\/" .Values.image }}\
@@ -90,7 +95,12 @@ function prometheus_patch_service_account() {
 }
 
 function prometheus_patch_misc() {
-  sed -i -e '/nodes/d' ${HELM_DIR}/istio/charts/prometheus/templates/clusterrole.yaml
+  sed -i -e '/nodes/d' \
+         -e '/rules:/ a\
+- apiGroups: ["maistra.io"]\
+\  resources: ["servicemeshmemberrolls"]\
+\  verbs: ["get", "list", "watch"]' \
+         ${HELM_DIR}/istio/charts/prometheus/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/prometheus/templates/clusterrolebindings.yaml
 }
 
@@ -101,6 +111,15 @@ function prometheus_patch_configmap() {
 \    # config removed"  ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml
   sed -i -e "/job_name: 'kubernetes-cadvisor'/,/^$/ c\
 \    # config removed" ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml
+
+  # MAISTRA-748: Exclude scraping of prometheus itself on the oauth port
+  sed -i -e '/job_name: '\''kubernetes-service-endpoints'\''/,/target_label: kubernetes_name$/ {
+    /target_label: kubernetes_name$/ a\
+      - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_pod_container_port_number]\
+        regex: prometheus;3001\
+        action: drop
+  }' ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml
+
 }
 
 function prometheusPatch() {

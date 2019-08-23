@@ -25,13 +25,8 @@ spec:
       image: pilot-rhel8
     security:
       image: citadel-rhel8
-    kiali:
-      tag: 1.0.0
     sidecarInjectorWebhook:
       image: sidecar-injector-rhel8
-    gateways:
-      istio-ingressgateway:
-        ior_image: istio-ior-rhel8
     prometheus:
       image: prometheus-rhel8
   threeScale:

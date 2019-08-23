@@ -14,6 +14,7 @@ import (
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/bootstrap"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/hacks"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -53,15 +54,47 @@ var orderedCharts = []string{
 
 const (
 	smcpDefaultTemplate = "default"
+
+	// Event reasons
+	eventReasonInstalling              = "Installing"
+	eventReasonPausingInstall          = "PausingInstall"
+	eventReasonPausingUpdate           = "PausingUpdate"
+	eventReasonInstalled               = "Installed"
+	eventReasonUpdating                = "Updating"
+	eventReasonUpdated                 = "Updated"
+	eventReasonDeleting                = "Deleting"
+	eventReasonDeleted                 = "Deleted"
+	eventReasonPruning                 = "Pruning"
+	eventReasonFailedRemovingFinalizer = "FailedRemovingFinalizer"
+	eventReasonFailedDeletingResources = "FailedDeletingResources"
+	eventReasonNotReady                = "NotReady"
+	eventReasonReady                   = "Ready"
 )
 
 func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error) {
+	if r.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse { 
+		r.initializeReconcileStatus()
+		err := r.PostStatus()
+		return reconcile.Result{}, err // ensure that the new reconcile status is posted immediately. Reconciliation will resume when the status update comes back into the operator
+	}
+
 	var ready bool
 	// make sure status gets updated on exit
-	reconciliationMessage := r.Status.GetCondition(v1.ConditionTypeReconciled).Message
+	reconciledCondition := r.Status.GetCondition(v1.ConditionTypeReconciled)
+	reconciliationMessage := reconciledCondition.Message
+	reconciliationReason := reconciledCondition.Reason
+	reconciliationComplete := false
 	defer func() {
-		if statusErr := r.postReconciliationStatus(reconciliationMessage, err); statusErr != nil && err == nil {
-			err = statusErr
+		// this ensures we're updating status (if necessary) and recording events on exit
+		if statusErr := r.postReconciliationStatus(reconciliationReason, reconciliationMessage, err); statusErr != nil {
+			if err == nil {
+				err = statusErr
+			} else {
+				r.Log.Error(statusErr, "Error posting reconciliation status")
+			}
+		}
+		if reconciliationComplete {
+			hacks.ReduceLikelihoodOfRepeatedReconciliation()
 		}
 	}()
 
@@ -70,6 +103,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		defer func() {
 			if err != nil {
 				r.renderings = nil
+				r.lastComponent = ""
 				updateReconcileStatus(&r.Status.StatusType, err)
 			}
 		}()
@@ -78,7 +112,8 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		err = r.renderCharts()
 		if err != nil {
 			// we can't progress here
-			reconciliationMessage = "unexpected error rendering helm charts"
+			reconciliationReason = v1.ConditionReasonReconcileError
+			reconciliationMessage = "Error rendering helm charts"
 			err = errors.Wrap(err, reconciliationMessage)
 			return
 		}
@@ -116,7 +151,8 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		}
 		if err != nil {
 			// bail if there was an error updating the namespace
-			reconciliationMessage = "unexpected error updating labels on mesh namespace"
+			reconciliationReason = v1.ConditionReasonReconcileError
+			reconciliationMessage = "Error updating labels on mesh namespace"
 			err = errors.Wrap(err, reconciliationMessage)
 			return
 		}
@@ -145,6 +181,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 
 		// Ensure CRDs are installed
 		if err = bootstrap.InstallCRDs(r.Manager); err != nil {
+			reconciliationReason = v1.ConditionReasonReconcileError
 			reconciliationMessage = "Failed to install/update Istio CRDs"
 			r.Log.Error(err, reconciliationMessage)
 			return
@@ -154,37 +191,39 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		if common.IsCNIEnabled {
 			r.lastComponent = "cni"
 			if err = bootstrap.InstallCNI(r.Manager); err != nil {
+				reconciliationReason = v1.ConditionReasonReconcileError
 				reconciliationMessage = "Failed to install/update Istio CNI"
 				r.Log.Error(err, reconciliationMessage)
 				return
 			} else if notReady, _ := r.calculateNotReadyStateForCNI(); notReady {
+				reconciliationReason = v1.ConditionReasonPausingInstall
 				reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", "cni")
 				return
 			}
 		}
-	} else if notReadyMap, readinessErr := r.calculateNotReadyState(); readinessErr == nil {
-		// if we've already begun reconciling, make sure we weren't waiting for
-		// the last component to become ready
-		if notReady, ok := notReadyMap[r.lastComponent]; ok && notReady {
-			// last component has not become ready yet
-			r.Log.Info(fmt.Sprintf("Paused until %s becomes ready", r.lastComponent))
+	} else if r.lastComponent != "" {
+		if notReadyMap, readinessErr := r.calculateNotReadyState(); readinessErr == nil {
+			// if we've already begun reconciling, make sure we weren't waiting for
+			// the last component to become ready
+			if notReady, ok := notReadyMap[r.lastComponent]; ok && notReady {
+				// last component has not become ready yet
+				r.Log.Info(fmt.Sprintf("Paused until %s becomes ready", r.lastComponent))
+				return
+			}
+		} else {
+			// error calculating readiness
+			reconciliationReason = v1.ConditionReasonProbeError
+			reconciliationMessage = fmt.Sprintf("Error checking readiness of component %s", r.lastComponent)
+			err = errors.Wrap(readinessErr, reconciliationMessage)
+			r.Log.Error(err, reconciliationMessage)
 			return
 		}
-	} else {
-		// error calculating readiness
-		reconciliationMessage = fmt.Sprintf("unexpected error checking readiness of component %s", r.lastComponent)
-		err = errors.Wrap(readinessErr, reconciliationMessage)
-		r.Log.Error(err, reconciliationMessage)
-		return
 	}
 
 	// create components
 	for _, chartName := range orderedCharts {
 		if ready, err = r.processComponentManifests(chartName); !ready {
-			componentName := componentFromChartName(chartName)
-			reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
-			r.Log.Info(reconciliationMessage)
-			err = errors.Wrapf(err, "unexpected error processing component %s", componentName)
+			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(chartName, err)
 			return
 		}
 	}
@@ -195,10 +234,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 			continue
 		}
 		if ready, err = r.processComponentManifests(key); !ready {
-			componentName := componentFromChartName(key)
-			reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
-			r.Log.Info(reconciliationMessage)
-			err = errors.Wrapf(err, "unexpected error processing component %s", componentName)
+			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(key, err)
 			return
 		}
 	}
@@ -206,39 +242,71 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 	// install 3scale and any other components
 	for key := range r.renderings {
 		if ready, err = r.processComponentManifests(key); !ready {
-			componentName := componentFromChartName(key)
-			reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
-			r.Log.Info(reconciliationMessage)
-			err = errors.Wrapf(err, "unexpected error processing component %s", componentName)
+			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(key, err)
 			return
 		}
 	}
 
-	// delete unseen components
-	reconciliationMessage = "Pruning obsolete resources"
-	_ = r.postReconciliationStatus(reconciliationMessage, err)
-	r.Log.Info(reconciliationMessage)
-	err = r.prune(r.Instance.GetGeneration())
-	if err != nil {
-		reconciliationMessage = "unexpected error pruning obsolete resources"
-		err = errors.Wrap(err, reconciliationMessage)
-		return
+	// we only need to prune if we've actually installed something
+	if r.Instance.Generation != 1 {
+		// delete unseen components
+		reconciliationMessage = "Pruning obsolete resources"
+		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonPruning, reconciliationMessage)
+		r.Log.Info(reconciliationMessage)
+		err = r.prune(r.Instance.GetGeneration())
+		if err != nil {
+			reconciliationReason = v1.ConditionReasonReconcileError
+			reconciliationMessage = "Error pruning obsolete resources"
+			err = errors.Wrap(err, reconciliationMessage)
+			return
+		}
 	}
 
-	if r.Status.ObservedGeneration == 0 {
-		reconciliationMessage = fmt.Sprintf("Successfully installed generation %d", r.Instance.GetGeneration())
-		r.Manager.GetRecorder(controllerName).Event(r.Instance, "Normal", "ServiceMeshInstalled", reconciliationMessage)
-	} else {
+	if r.isUpdating() {
+		reconciliationReason = v1.ConditionReasonUpdateSuccessful
 		reconciliationMessage = fmt.Sprintf("Successfully updated from generation %d to generation %d", r.Status.ObservedGeneration, r.Instance.GetGeneration())
-		r.Manager.GetRecorder(controllerName).Event(r.Instance, "Normal", "ServiceMeshUpdated", reconciliationMessage)
+		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonUpdated, reconciliationMessage)
+	} else {
+		reconciliationReason = v1.ConditionReasonInstallSuccessful
+		reconciliationMessage = fmt.Sprintf("Successfully installed generation %d", r.Instance.GetGeneration())
+		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonInstalled, reconciliationMessage)
 	}
 	r.Status.ObservedGeneration = r.Instance.GetGeneration()
 	updateReconcileStatus(&r.Status.StatusType, nil)
 
+	_, err = r.updateReadinessStatus() // this only updates the local object instance; it doesn't post the status update; postReconciliationStatus (called using defer) actually does that
+
+	reconciliationComplete = true
 	r.Log.Info("Completed ServiceMeshControlPlane reconcilation")
-	// requeue to ensure readiness is updated
-	result.Requeue = true
 	return
+}
+
+func (r *ControlPlaneReconciler) pauseReconciliation(chartName string, err error) (v1.ConditionReason, string, error) {
+	var eventReason string
+	var conditionReason v1.ConditionReason
+	var reconciliationMessage string
+	if r.isUpdating() {
+		eventReason = eventReasonPausingUpdate
+		conditionReason = v1.ConditionReasonPausingUpdate
+	} else {
+		eventReason = eventReasonPausingInstall
+		conditionReason = v1.ConditionReasonPausingInstall
+	}
+	componentName := componentFromChartName(chartName)
+	if err == nil {
+		reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
+		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReason, reconciliationMessage)
+		r.Log.Info(reconciliationMessage)
+	} else {
+		conditionReason = v1.ConditionReasonReconcileError
+		reconciliationMessage = fmt.Sprintf("Error processing component %s", componentName)
+		r.Log.Error(err, reconciliationMessage)
+	}
+	return conditionReason, reconciliationMessage, errors.Wrapf(err, reconciliationMessage)
+}
+
+func (r *ControlPlaneReconciler) isUpdating() bool {
+	return r.Instance.Status.ObservedGeneration != 0
 }
 
 // mergeValues merges a map containing input values on top of a map containing
@@ -409,35 +477,87 @@ func (r *ControlPlaneReconciler) renderCharts() error {
 
 func (r *ControlPlaneReconciler) PostStatus() error {
 	instance := &v1.ServiceMeshControlPlane{}
-	if updateErr := r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); updateErr == nil {
+	r.Log.Info("Posting status update", "conditions", r.Status.Conditions)
+	if err := r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); err == nil {
 		instance.Status = *r.Status.DeepCopy()
-		if updateErr = r.Client.Status().Update(context.TODO(), instance); updateErr != nil && !(apierrors.IsGone(updateErr) || apierrors.IsNotFound(updateErr)) {
-			r.Log.Error(updateErr, "error updating ServiceMeshControlPlane status")
-			return updateErr
+		if err = r.Client.Status().Update(context.TODO(), instance); err != nil && !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
+			return errors.Wrap(err, "error updating ServiceMeshControlPlane status")
 		}
-	} else if !(apierrors.IsGone(updateErr) || apierrors.IsNotFound(updateErr)) {
-		r.Log.Error(updateErr, "error updating ServiceMeshControlPlane status")
-		return updateErr
+	} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
+		return errors.Wrap(err, "error getting ServiceMeshControlPlane prior to updating status")
 	}
+
 	return nil
 }
 
-func (r *ControlPlaneReconciler) postReconciliationStatus(reconciliationMessage string, processingErr error) error {
+func (r *ControlPlaneReconciler) postReconciliationStatus(reconciliationReason v1.ConditionReason, reconciliationMessage string, processingErr error) error {
+	var reason string
+	if r.isUpdating() {
+		reason = eventReasonUpdating
+	} else {
+		reason = eventReasonInstalling
+	}
 	reconciledCondition := r.Status.GetCondition(v1.ConditionTypeReconciled)
+	reconciledCondition.Reason = reconciliationReason
 	if processingErr == nil {
 		reconciledCondition.Message = reconciliationMessage
 	} else {
-		reconciledCondition.Message = fmt.Sprintf("%s: error: %s", reconciliationMessage, processingErr)
-		var reason string
-		if r.Status.ObservedGeneration == 0 {
-			reason = "CreatingServiceMesh"
-		} else {
-			reason = "UpdatingServiceMesh"
-		}
-		r.Manager.GetRecorder(controllerName).Event(r.Instance, "Error", reason, reconciliationMessage)
+		// grab the cause, as it's likely the error includes the reconciliation message
+		reconciledCondition.Message = fmt.Sprintf("%s: error: %s", reconciliationMessage, errors.Cause(processingErr))
+		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeWarning, reason, reconciledCondition.Message)
 	}
 	r.Status.SetCondition(reconciledCondition)
+
+	// we should only post status updates if condition status has changed
+	if r.skipStatusUpdate() {
+		return nil
+	}
+
 	return r.PostStatus()
+}
+
+func (r *ControlPlaneReconciler) skipStatusUpdate() bool {
+	for _, conditionType := range []v1.ConditionType{v1.ConditionTypeInstalled, v1.ConditionTypeReconciled, v1.ConditionTypeReady} {
+		if r.Status.GetCondition(conditionType).Status != r.Instance.Status.GetCondition(conditionType).Status {
+			return false
+		}
+	}
+	return true
+}
+
+func (r *ControlPlaneReconciler) initializeReconcileStatus() {
+	var readyMessage string
+	var eventReason string
+	var conditionReason v1.ConditionReason
+	if r.isUpdating() {
+		readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", r.Status.ObservedGeneration, r.Instance.GetGeneration())
+		eventReason = eventReasonUpdating
+		conditionReason = v1.ConditionReasonSpecUpdated
+	} else {
+		readyMessage = fmt.Sprintf("Installing mesh generation %d", r.Instance.GetGeneration())
+		eventReason = eventReasonInstalling
+		conditionReason = v1.ConditionReasonResourceCreated
+
+		r.Status.SetCondition(v1.Condition{
+			Type:    v1.ConditionTypeInstalled,
+			Status:  v1.ConditionStatusFalse,
+			Reason:  conditionReason,
+			Message: readyMessage,
+		})
+	}
+	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReason, readyMessage)
+	r.Status.SetCondition(v1.Condition{
+		Type:    v1.ConditionTypeReconciled,
+		Status:  v1.ConditionStatusFalse,
+		Reason:  conditionReason,
+		Message: readyMessage,
+	})
+	r.Status.SetCondition(v1.Condition{
+		Type:    v1.ConditionTypeReady,
+		Status:  v1.ConditionStatusFalse,
+		Reason:  conditionReason,
+		Message: readyMessage,
+	})
 }
 
 func componentFromChartName(chartName string) string {

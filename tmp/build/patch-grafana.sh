@@ -14,8 +14,10 @@ function grafana_patch_deployment() {
             failureThreshold: 3\
             periodSeconds: 10\
             successThreshold: 1\
-            tcpSocket:\
+            httpGet:\
+              path: /oauth/healthz\
               port: https\
+              scheme: HTTPS\
             timeoutSeconds: 1\
           resources: {}\
           terminationMessagePath: /dev/termination-log\
@@ -96,10 +98,28 @@ function grafana_patch_misc() {
   sed -i -e '/grafana-default.yaml.tpl/d' -e '/{{.*end.*}}/d' ${HELM_DIR}/istio/charts/grafana/templates/grafana-ports-mtls.yaml
 }
 
+function grafana_patch_values() {
+  # add annotations and enable ingress
+  sed -i \
+    -e 's|  annotations: {}|  annotations:\n    service.alpha.openshift.io/serving-cert-secret-name: grafana-tls|' \
+    -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
+    -e 's+http://prometheus:9090+https://prometheus:9090+' \
+    -e '/access: proxy/ a\
+      basicAuth: true\
+      basicAuthPassword: ""\
+      basicAuthUser: internal\
+      version: 1' \
+    -e 's+^\(\( *\)timeInterval.*\)$+\1\
+\2# we should be using the CA cert in /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt\
+\2tlsSkipVerify: true+' \
+    ${HELM_DIR}/istio/charts/grafana/values.yaml
+}
+
 function GrafanaPatch() {
   echo "Patching Grafana"
 
   grafana_patch_deployment
+	grafana_patch_values
   grafana_patch_service
   grafana_patch_misc
 }

@@ -9,8 +9,10 @@ set -e
 
 if [[ ${COMMUNITY} == "true" ]]; then
   BUILD_TYPE="maistra"
+  JAEGER_TEMPLATE="all-in-one"
 else
   BUILD_TYPE="servicemesh"
+  JAEGER_TEMPLATE="production-elasticsearch"
 fi
 : ${DEPLOYMENT_FILE:=deploy/${BUILD_TYPE}-operator.yaml}
 : ${MANIFESTS_DIR:=manifests-${BUILD_TYPE}}
@@ -64,6 +66,7 @@ function generateCSV() {
 
   sed -i -e 's/__NAME__/'${OPERATOR_NAME}'/g' ${csv_path}
   sed -i -e 's/__VERSION__/'${MAISTRA_VERSION}'/g' ${csv_path}
+  sed -i -e 's/__JAEGER_TEMPLATE__/'${JAEGER_TEMPLATE}'/' ${csv_path}
   sed -i -e 's/__DATE__/'$(date +%Y-%m-%dT%H:%M:%S%Z)'/g' ${csv_path}
   sed -i -e 's+__IMAGE_SRC__+'${IMAGE_SRC}'+g' ${csv_path}
   sed -i -e '/__CLUSTER_ROLE_RULES__/{

@@ -4,7 +4,6 @@ spec:
   istio:
     global:
       tag: 1.0.0
-      multitenant: true
       proxy:
         autoInject: disabled
         dnsRefreshRate: 300s
@@ -41,7 +40,6 @@ spec:
         enabled: true
       istio-ingressgateway:
         enabled: true
-        ior_enabled: false
         type: ClusterIP
     prometheus:
      service:

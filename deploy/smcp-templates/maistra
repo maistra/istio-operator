@@ -26,14 +26,8 @@ spec:
       image: pilot-ubi8
     security:
       image: citadel-ubi8
-    kiali:
-      hub: kiali
-      tag: v1.0.0
     sidecarInjectorWebhook:
       image: sidecar-injector-ubi8
-    gateways:
-      istio-ingressgateway:
-        ior_image: istio-ior-ubi8
     prometheus:
       image: prometheus-ubi8
   threeScale:
