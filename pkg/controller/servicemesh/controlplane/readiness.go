@@ -17,17 +17,16 @@ import (
 
 func (r *ControlPlaneReconciler) UpdateReadiness() error {
 	update, err := r.updateReadinessStatus()
-	if update {
+	if update && !r.skipStatusUpdate() {
 		statusErr := r.PostStatus()
 		if statusErr != nil {
 			// original error is more important than the status update error
 			if err == nil {
 				// if there's no original error, we can return the status update error
 				return statusErr
-			} else {
-				// otherwise, we must log the status update error and return the original error
-				log.Error(statusErr, "Error updating status")
 			}
+			// otherwise, we must log the status update error and return the original error
+			log.Error(statusErr, "Error updating status")
 		}
 	}
 	return err
@@ -62,10 +61,10 @@ func (r *ControlPlaneReconciler) updateReadinessStatus() (bool, error) {
 				Type:    v1.ConditionTypeReady,
 				Status:  v1.ConditionStatusFalse,
 				Reason:  v1.ConditionReasonComponentsNotReady,
-				Message: fmt.Sprintf("The following components are not fully available: %s", unreadyComponents),
+				Message: "Some components are not fully available",
 			}
 			r.Status.SetCondition(condition)
-			r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeWarning, eventReasonNotReady, condition.Message)
+			r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeWarning, eventReasonNotReady, fmt.Sprintf("The following components are not fully available: %s", unreadyComponents))
 			updateStatus = true
 		}
 	} else {
