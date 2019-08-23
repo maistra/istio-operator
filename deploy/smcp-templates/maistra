@@ -17,6 +17,9 @@ spec:
       image: galley-ubi8
     grafana:
       image: grafana-ubi8
+    tracing:
+      jaeger:
+        template: all-in-one
     mixer:
       image: mixer-ubi8
     pilot:
