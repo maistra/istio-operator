@@ -14,6 +14,14 @@ spec:
       env:
         GODEBUG: null
     mixer:
+      telemetry:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 1G
+          limits:
+            cpu: 500m
+            memory: 4G
       env:
         GODEBUG: null
     grafana:
