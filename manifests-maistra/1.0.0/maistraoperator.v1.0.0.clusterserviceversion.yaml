@@ -9,10 +9,10 @@ metadata:
     certified: "false"
     repository: https://github.com/maistra/istio-operator
     description: |-
-      The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh.
+      The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: maistra/istio-ubi8-operator:1.0.0
-    createdAt: 2019-08-23T10:50:38PDT
+    createdAt: 2019-08-23T16:47:10PDT
     support: Red Hat, Inc. 
     alm-examples: |-
       [
