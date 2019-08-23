@@ -209,7 +209,15 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 
 		reqLogger.Info("Deleting ServiceMeshControlPlane")
 		err := reconciler.Delete()
-		if err != nil {
+		if err == nil {
+			// set reconcile status to true to ensure reconciler is deleted from the cache
+			reconciler.Status.SetCondition(v1.Condition{
+				Type:    v1.ConditionTypeReconciled,
+				Status:  v1.ConditionStatusTrue,
+				Reason:  v1.ConditionReasonDeleted,
+				Message: "Service mesh deleted",
+			})
+		} else {
 			reconciler.Status.SetCondition(v1.Condition{
 				Type:    v1.ConditionTypeReconciled,
 				Status:  v1.ConditionStatusFalse,
@@ -277,7 +285,9 @@ func (r *ReconcileControlPlane) getOrCreateReconciler(newInstance *v1.ServiceMes
 		if existing.Instance.GetGeneration() != oldInstance.GetGeneration() {
 			// we need to regenerate the renderings
 			existing.renderings = nil
-			existing.initializeReconcileStatus()
+			existing.lastComponent = ""
+			// reset reconcile status
+			existing.Status.SetCondition(v1.Condition{Type: v1.ConditionTypeReconciled, Status: v1.ConditionStatusUnknown})
 		}
 		return existing
 	}

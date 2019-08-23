@@ -5,6 +5,7 @@ import (
 )
 
 func (r *ControlPlaneReconciler) processComponentManifests(chartName string) (ready bool, err error) {
+	r.lastComponent = ""
 	componentName := componentFromChartName(chartName)
 	origLogger := r.Log
 	r.Log = r.Log.WithValues("Component", componentName)
@@ -37,9 +38,12 @@ func (r *ControlPlaneReconciler) processComponentManifests(chartName string) (re
 	delete(r.renderings, chartName)
 
 	// for reentry into the reconcile loop, if not ready
-	r.lastComponent = componentName
 	if notReadyMap, readyErr := r.calculateNotReadyState(); readyErr == nil {
-		ready = !notReadyMap[r.lastComponent]
+		if notReadyMap[componentName] {
+			r.lastComponent = componentName
+		} else {
+			ready = true
+		}
 	} else {
 		err = readyErr
 	}
