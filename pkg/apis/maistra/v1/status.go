@@ -112,6 +112,8 @@ const (
 	ConditionReasonPausingUpdate ConditionReason = "PausingUpdate"
 	// ConditionReasonDeleting ...
 	ConditionReasonDeleting ConditionReason = "Deleting"
+	// ConditionReasonDeleted ...
+	ConditionReasonDeleted ConditionReason = "Deleted"
 )
 
 // Condition represents a specific condition on a resource

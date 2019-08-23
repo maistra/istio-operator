@@ -72,6 +72,12 @@ const (
 )
 
 func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error) {
+	if r.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse { 
+		r.initializeReconcileStatus()
+		err := r.PostStatus()
+		return reconcile.Result{}, err // ensure that the new reconcile status is posted immediately. Reconciliation will resume when the status update comes back into the operator
+	}
+
 	var ready bool
 	// make sure status gets updated on exit
 	reconciledCondition := r.Status.GetCondition(v1.ConditionTypeReconciled)
@@ -79,6 +85,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 	reconciliationReason := reconciledCondition.Reason
 	reconciliationComplete := false
 	defer func() {
+		// this ensures we're updating status (if necessary) and recording events on exit
 		if statusErr := r.postReconciliationStatus(reconciliationReason, reconciliationMessage, err); statusErr != nil {
 			if err == nil {
 				err = statusErr
@@ -91,19 +98,12 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		}
 	}()
 
-	if r.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse { // TODO: what if the condition is already false, but for a different reason - we should also compare the reason
-		r.initializeReconcileStatus()
-		reconciledCondition := r.Status.GetCondition(v1.ConditionTypeReconciled)
-		reconciliationMessage = reconciledCondition.Message // TODO: this shouldn't be necessary, but it is, because the code around reconciliationMessage is a mess. We need to clean it up.
-		reconciliationReason = reconciledCondition.Reason
-		return reconcile.Result{}, nil // ensure that the new reconcile status is posted immediately. Reconciliation will resume when the status update comes back into the operator
-	}
-
 	if r.renderings == nil {
 		// error handling
 		defer func() {
 			if err != nil {
 				r.renderings = nil
+				r.lastComponent = ""
 				updateReconcileStatus(&r.Status.StatusType, err)
 			}
 		}()
@@ -201,21 +201,23 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 				return
 			}
 		}
-	} else if notReadyMap, readinessErr := r.calculateNotReadyState(); readinessErr == nil {
-		// if we've already begun reconciling, make sure we weren't waiting for
-		// the last component to become ready
-		if notReady, ok := notReadyMap[r.lastComponent]; ok && notReady {
-			// last component has not become ready yet
-			r.Log.Info(fmt.Sprintf("Paused until %s becomes ready", r.lastComponent))
+	} else if r.lastComponent != "" {
+		if notReadyMap, readinessErr := r.calculateNotReadyState(); readinessErr == nil {
+			// if we've already begun reconciling, make sure we weren't waiting for
+			// the last component to become ready
+			if notReady, ok := notReadyMap[r.lastComponent]; ok && notReady {
+				// last component has not become ready yet
+				r.Log.Info(fmt.Sprintf("Paused until %s becomes ready", r.lastComponent))
+				return
+			}
+		} else {
+			// error calculating readiness
+			reconciliationReason = v1.ConditionReasonProbeError
+			reconciliationMessage = fmt.Sprintf("Error checking readiness of component %s", r.lastComponent)
+			err = errors.Wrap(readinessErr, reconciliationMessage)
+			r.Log.Error(err, reconciliationMessage)
 			return
 		}
-	} else {
-		// error calculating readiness
-		reconciliationReason = v1.ConditionReasonProbeError
-		reconciliationMessage = fmt.Sprintf("Error checking readiness of component %s", r.lastComponent)
-		err = errors.Wrap(readinessErr, reconciliationMessage)
-		r.Log.Error(err, reconciliationMessage)
-		return
 	}
 
 	// create components
@@ -245,16 +247,19 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		}
 	}
 
-	// delete unseen components
-	reconciliationMessage = "Pruning obsolete resources"
-	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonPruning, reconciliationMessage)
-	r.Log.Info(reconciliationMessage)
-	err = r.prune(r.Instance.GetGeneration())
-	if err != nil {
-		reconciliationReason = v1.ConditionReasonReconcileError
-		reconciliationMessage = "Error pruning obsolete resources"
-		err = errors.Wrap(err, reconciliationMessage)
-		return
+	// we only need to prune if we've actually installed something
+	if r.Instance.Generation != 1 {
+		// delete unseen components
+		reconciliationMessage = "Pruning obsolete resources"
+		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonPruning, reconciliationMessage)
+		r.Log.Info(reconciliationMessage)
+		err = r.prune(r.Instance.GetGeneration())
+		if err != nil {
+			reconciliationReason = v1.ConditionReasonReconcileError
+			reconciliationMessage = "Error pruning obsolete resources"
+			err = errors.Wrap(err, reconciliationMessage)
+			return
+		}
 	}
 
 	if r.isUpdating() {
@@ -279,6 +284,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 func (r *ControlPlaneReconciler) pauseReconciliation(chartName string, err error) (v1.ConditionReason, string, error) {
 	var eventReason string
 	var conditionReason v1.ConditionReason
+	var reconciliationMessage string
 	if r.isUpdating() {
 		eventReason = eventReasonPausingUpdate
 		conditionReason = v1.ConditionReasonPausingUpdate
@@ -287,10 +293,16 @@ func (r *ControlPlaneReconciler) pauseReconciliation(chartName string, err error
 		conditionReason = v1.ConditionReasonPausingInstall
 	}
 	componentName := componentFromChartName(chartName)
-	reconciliationMessage := fmt.Sprintf("Paused until %s becomes ready", componentName)
-	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReason, reconciliationMessage)
-	r.Log.Info(reconciliationMessage)
-	return conditionReason, reconciliationMessage, errors.Wrapf(err, "error processing component %s", componentName)
+	if err == nil {
+		reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
+		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReason, reconciliationMessage)
+		r.Log.Info(reconciliationMessage)
+	} else {
+		conditionReason = v1.ConditionReasonReconcileError
+		reconciliationMessage = fmt.Sprintf("Error processing component %s", componentName)
+		r.Log.Error(err, reconciliationMessage)
+	}
+	return conditionReason, reconciliationMessage, errors.Wrapf(err, reconciliationMessage)
 }
 
 func (r *ControlPlaneReconciler) isUpdating() bool {
@@ -490,11 +502,27 @@ func (r *ControlPlaneReconciler) postReconciliationStatus(reconciliationReason v
 	if processingErr == nil {
 		reconciledCondition.Message = reconciliationMessage
 	} else {
-		reconciledCondition.Message = fmt.Sprintf("%s: error: %s", reconciliationMessage, processingErr)
-		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeWarning, reason, reconciliationMessage)
+		// grab the cause, as it's likely the error includes the reconciliation message
+		reconciledCondition.Message = fmt.Sprintf("%s: error: %s", reconciliationMessage, errors.Cause(processingErr))
+		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeWarning, reason, reconciledCondition.Message)
 	}
 	r.Status.SetCondition(reconciledCondition)
+
+	// we should only post status updates if condition status has changed
+	if r.skipStatusUpdate() {
+		return nil
+	}
+
 	return r.PostStatus()
+}
+
+func (r *ControlPlaneReconciler) skipStatusUpdate() bool {
+	for _, conditionType := range []v1.ConditionType{v1.ConditionTypeInstalled, v1.ConditionTypeReconciled, v1.ConditionTypeReady} {
+		if r.Status.GetCondition(conditionType).Status != r.Instance.Status.GetCondition(conditionType).Status {
+			return false
+		}
+	}
+	return true
 }
 
 func (r *ControlPlaneReconciler) initializeReconcileStatus() {
