@@ -160,12 +160,17 @@ __DEPLOYMENT_SPEC__
       specDescriptors:
       - description: Set to true to install Kiali
         displayName: Install Kiali
-        path: kiali.enabled
+        path: istio.kiali.enabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: Set to true to install Grafana
+        displayName: Install Grafana
+        path: istio.grafana.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: Set to false to disable tracing
         displayName: Enable tracing
-        path: tracing.enabled
+        path: istio.tracing.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: Set to true to install the Istio 3Scale adapter
@@ -175,6 +180,6 @@ __DEPLOYMENT_SPEC__
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: Limits describes the minimum/maximum amount of compute resources required/allowed
         displayName: Default Resource Requirements
-        path: istio.defaultResources
+        path: istio.global.defaultResources
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'

@@ -12,7 +12,7 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh.
 
     containerImage: maistra/istio-ubi8-operator:1.0.0
-    createdAt: 2019-08-21T15:47:33PDT
+    createdAt: 2019-08-22T19:47:37PDT
     support: Red Hat, Inc. 
     alm-examples: |-
       [
@@ -395,12 +395,17 @@ spec:
       specDescriptors:
       - description: Set to true to install Kiali
         displayName: Install Kiali
-        path: kiali.enabled
+        path: istio.kiali.enabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: Set to true to install Grafana
+        displayName: Install Grafana
+        path: istio.grafana.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: Set to false to disable tracing
         displayName: Enable tracing
-        path: tracing.enabled
+        path: istio.tracing.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: Set to true to install the Istio 3Scale adapter
@@ -410,6 +415,6 @@ spec:
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: Limits describes the minimum/maximum amount of compute resources required/allowed
         displayName: Default Resource Requirements
-        path: istio.defaultResources
+        path: istio.global.defaultResources
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
