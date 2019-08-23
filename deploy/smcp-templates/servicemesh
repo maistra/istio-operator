@@ -14,6 +14,9 @@ spec:
         hub: registry.redhat.io/openshift4
     grafana:
       image: grafana-rhel8
+    tracing:
+      jaeger:
+        template: production-elasticsearch
     galley:
       image: galley-rhel8
     mixer:

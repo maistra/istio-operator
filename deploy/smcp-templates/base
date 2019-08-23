@@ -28,8 +28,6 @@ spec:
       enabled: true
       ingress:
         enabled: true
-      jaeger:
-        template: production-elasticsearch
     kiali:
       enabled: true
       dashboard:
