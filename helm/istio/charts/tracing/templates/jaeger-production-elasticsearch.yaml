@@ -63,7 +63,7 @@ spec:
 {{- if .Values.jaeger.elasticsearch.nodeCount }}
       nodeCount: {{ toYaml .Values.jaeger.elasticsearch.nodeCount }}
 {{- else }}
-      nodeCount: 3
+      nodeCount: 1
 {{- end }}
 {{- if .Values.jaeger.elasticsearch.storage }}
       storage:
@@ -81,10 +81,11 @@ spec:
 {{ toYaml .Values.jaeger.elasticsearch.resources | indent 8 }}
 {{- else }}
         requests:
-          memory: "16Gi"
-          cpu: "1"
+          memory: "1Gi"
+          cpu: "500m"
         limits:
-          memory: "16Gi"
+          memory: "1Gi"
+          cpu: "500m"
 {{- end }}
 
   ingress:
