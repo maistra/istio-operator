@@ -33,9 +33,6 @@ spec:
       {{- end }}
 
   agent:
-    options:
-      collector:
-        host-port: jaeger-collector:14267
     annotations:
       {{- range $key, $value := .Values.jaeger.annotations }}
         {{ $key }}: {{ $value | quote }}

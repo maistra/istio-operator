@@ -25,9 +25,6 @@ spec:
       {{- end }}
 
   agent:
-    options:
-      collector:
-        host-port: jaeger-collector:14267
 
   ui:
     options:
