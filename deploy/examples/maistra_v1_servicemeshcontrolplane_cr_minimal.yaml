@@ -3,7 +3,7 @@ kind: ServiceMeshControlPlane
 metadata:
   name: minimal-install
 spec:
-  # For a complete list of all options, see the docs at https://maistra.io/docs/getting_started/custom-install/
+  # For a complete list of all options, see the docs at https://maistra-1-0.maistra.io/docs/installation/installation-options/
 
   istio:
     global:
