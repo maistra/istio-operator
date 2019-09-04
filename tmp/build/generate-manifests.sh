@@ -13,7 +13,7 @@ if [[ ${COMMUNITY} == "true" ]]; then
   DESCRIPTION="The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project."
 else
   BUILD_TYPE="servicemesh"
-  JAEGER_TEMPLATE="production-elasticsearch"
+  JAEGER_TEMPLATE="all-in-one"
   DESCRIPTION="The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project."
 fi
 : ${DEPLOYMENT_FILE:=deploy/${BUILD_TYPE}-operator.yaml}
