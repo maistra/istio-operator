@@ -33,7 +33,7 @@ oc -n istio-operator scale deployment istio-operator --replicas 0
 
 Run the operator locally with the following command-line options:
 ```bash
---resourceDir tmp/_output/resources/ --discoveryCacheDir /tmp/istio-operator/.kube/cache/discovery
+--resourceDir tmp/_output/resources/
 ```
 
 ### Modifying the ValidatingWebhookConfiguration 
