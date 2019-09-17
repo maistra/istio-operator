@@ -18,12 +18,13 @@ package types
 
 import (
 	"fmt"
-	"strings"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	kubeapi "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/scheduling"
+	"k8s.io/kubernetes/pkg/features"
 )
 
 const (
@@ -142,10 +143,36 @@ func (sp SyncPodType) String() string {
 }
 
 // IsCriticalPod returns true if the pod bears the critical pod annotation key or if pod's priority is greater than
-// or equal to SystemCriticalPriority. Both the rescheduler(deprecated in 1.10) and the kubelet use this function
+// or equal to SystemCriticalPriority. Both the default scheduler and the kubelet use this function
 // to make admission and scheduling decisions.
 func IsCriticalPod(pod *v1.Pod) bool {
-	return IsCritical(pod.Namespace, pod.Annotations) || (pod.Spec.Priority != nil && IsCriticalPodBasedOnPriority(*pod.Spec.Priority))
+	if utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
+		if pod.Spec.Priority != nil && IsCriticalPodBasedOnPriority(*pod.Spec.Priority) {
+			return true
+		}
+	}
+	if utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalCriticalPodAnnotation) {
+		if IsCritical(pod.Namespace, pod.Annotations) {
+			return true
+		}
+	}
+	return false
+}
+
+// Preemptable returns true if preemptor pod can preempt preemptee pod
+// if preemptee is not critical or if preemptor's priority is greater than preemptee's priority
+func Preemptable(preemptor, preemptee *v1.Pod) bool {
+	if IsCriticalPod(preemptor) && !IsCriticalPod(preemptee) {
+		return true
+	}
+	if utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
+		if (preemptor != nil && preemptor.Spec.Priority != nil) &&
+			(preemptee != nil && preemptee.Spec.Priority != nil) {
+			return *(preemptor.Spec.Priority) > *(preemptee.Spec.Priority)
+		}
+	}
+
+	return false
 }
 
 // IsCritical returns true if parameters bear the critical pod annotation
@@ -154,11 +181,7 @@ func IsCriticalPod(pod *v1.Pod) bool {
 func IsCritical(ns string, annotations map[string]string) bool {
 	// Critical pods are restricted to "kube-system" namespace as of now.
 	if ns != kubeapi.NamespaceSystem {
-		// <carry>: critical pods may exist in openshift- namespaces
-		// pending priority and preemption support.
-		if !strings.HasPrefix(ns, "openshift-") {
-			return false
-		}
+		return false
 	}
 	val, ok := annotations[CriticalPodAnnotationKey]
 	if ok && val == "" {

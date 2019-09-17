@@ -22,8 +22,9 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"sort"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	restclient "k8s.io/client-go/rest"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -155,6 +156,17 @@ func NewDefaultPathOptions() *PathOptions {
 // that means that this code will only write into a single file.  If you want to relativizePaths, you must provide a fully qualified path in any
 // modified element.
 func ModifyConfig(configAccess ConfigAccess, newConfig clientcmdapi.Config, relativizePaths bool) error {
+	possibleSources := configAccess.GetLoadingPrecedence()
+	// sort the possible kubeconfig files so we always "lock" in the same order
+	// to avoid deadlock (note: this can fail w/ symlinks, but... come on).
+	sort.Strings(possibleSources)
+	for _, filename := range possibleSources {
+		if err := lockFile(filename); err != nil {
+			return err
+		}
+		defer unlockFile(filename)
+	}
+
 	startingConfig, err := configAccess.GetStartingConfig()
 	if err != nil {
 		return err
@@ -208,7 +220,7 @@ func ModifyConfig(configAccess ConfigAccess, newConfig clientcmdapi.Config, rela
 		}
 	}
 
-	// seenConfigs stores a map of config source filenames to computed config objects.
+	// seenConfigs stores a map of config source filenames to computed config objects
 	seenConfigs := map[string]*clientcmdapi.Config{}
 
 	for key, context := range newConfig.Contexts {
@@ -471,7 +483,7 @@ func getConfigFromFile(filename string) (*clientcmdapi.Config, error) {
 func GetConfigFromFileOrDie(filename string) *clientcmdapi.Config {
 	config, err := getConfigFromFile(filename)
 	if err != nil {
-		glog.FatalDepth(1, err)
+		klog.FatalDepth(1, err)
 	}
 
 	return config
