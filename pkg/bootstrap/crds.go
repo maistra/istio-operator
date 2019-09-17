@@ -18,7 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/restmapper"
 
 	"k8s.io/helm/pkg/releaseutil"
 
@@ -102,7 +101,6 @@ func processCRDFile(mgr manager.Manager, fileName string) error {
 	if err != nil {
 		return err
 	}
-	crdsAdded := false
 	k8sClient := mgr.GetClient()
 	for index, raw := range releaseutil.SplitManifests(string(buf.Bytes())) {
 		rawJSON, err := yaml.YAMLToJSON([]byte(raw))
@@ -131,24 +129,16 @@ func processCRDFile(mgr manager.Manager, fileName string) error {
 				log.Info("creating CRD", "file", fileName, "index", index, "CRD", obj.GetName())
 				err = k8sClient.Create(context.TODO(), obj)
 				if err != nil {
-					log.Error(err, "error creating CRD", fileName, "index", index, "CRD", obj.GetName())
+					log.Error(err, "error creating CRD", "file", fileName, "index", index, "CRD", obj.GetName())
 					allErrors = append(allErrors, err)
 					continue
 				}
-				crdsAdded = true
 			} else {
 				allErrors = append(allErrors, err)
 				continue
 			}
 		}
 		log.Info("CRD installed", "file", fileName, "index", index, "CRD", obj.GetName())
-	}
-	if crdsAdded {
-		// reset client cache
-		mapper := mgr.GetRESTMapper()
-		if cachedMapper, ok := mapper.(*restmapper.DeferredDiscoveryRESTMapper); ok {
-			cachedMapper.Reset()
-		}
 	}
 	return utilerrors.NewAggregate(allErrors)
 }

@@ -338,10 +338,6 @@ spec:
                 name: istio-operator
             spec:
               serviceAccountName: istio-operator
-              volumes:
-              - name: discovery-cache
-                emptyDir:
-                  medium: Memory
               containers:
               - name: istio-operator
                 image: maistra/istio-ubi8-operator:1.0.0
@@ -352,8 +348,6 @@ spec:
                   name: metrics
                 command:
                 - istio-operator
-                - --discoveryCacheDir
-                - /home/istio-operator/.kube/cache/discovery
                 imagePullPolicy: Always
                 env:
                 - name: WATCH_NAMESPACE
@@ -366,9 +360,6 @@ spec:
                   value: istio-operator
                 - name: ISTIO_CNI_IMAGE
                   value: maistra/istio-cni-ubi8:1.0.0
-                volumeMounts:
-                - name: discovery-cache
-                  mountPath: /home/istio-operator/.kube/cache/discovery
   customresourcedefinitions:
     required:
     - name: kialis.kiali.io

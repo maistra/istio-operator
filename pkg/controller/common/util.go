@@ -1,12 +1,10 @@
 package common
 
 import (
-	"fmt"
-	"io/ioutil"
 	"os"
-	"strings"
 	"sync"
 
+	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/go-logr/logr"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -114,24 +112,19 @@ func SetAnnotation(resource metav1.Object, annotation, value string) {
 var initOperatorNamespace sync.Once
 var operatorNamespace string
 
-// XXX: remove after updating to newer version of operator-sdk
-// from newer version of operator-sdk
+// GetOperatorNamespace initializes and caches this operator's namespace; panics on error
 func GetOperatorNamespace() string {
 	initOperatorNamespace.Do(func() {
-		if ns := os.Getenv("POD_NAMESPACE"); ns != "" {
-			operatorNamespace = ns
-			log.Info("Found namespace", "Namespace", ns)
-			return
-		}
-
-		nsBytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
-		if err != nil {
-			if os.IsNotExist(err) {
-				panic(fmt.Errorf("namespace not found for current environment"))
+		var err error
+		if operatorNamespace, err = k8sutil.GetOperatorNamespace(); err != nil {
+			if err == k8sutil.ErrNoNamespace {
+				// see if dev is manually specifying this during debugging
+				if operatorNamespace = os.Getenv("POD_NAMESPACE"); operatorNamespace != "" {
+					return
+				}
 			}
+			panic(err)
 		}
-		operatorNamespace = strings.TrimSpace(string(nsBytes))
-		log.Info("Found namespace", "Namespace", operatorNamespace)
 	})
 	return operatorNamespace
 }
