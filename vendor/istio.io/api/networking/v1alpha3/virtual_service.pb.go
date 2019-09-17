@@ -53,7 +53,8 @@
 //   hosts:
 //   - reviews.prod.svc.cluster.local
 //   http:
-//   - match:
+//   - name: "reviews-v2-routes"
+//     match:
 //     - uri:
 //         prefix: "/wpcatalog"
 //     - uri:
@@ -64,7 +65,8 @@
 //     - destination:
 //         host: reviews.prod.svc.cluster.local
 //         subset: v2
-//   - route:
+//   - name: "reviews-v1-route"
+//     route:
 //     - destination:
 //         host: reviews.prod.svc.cluster.local
 //         subset: v1
@@ -100,6 +102,7 @@ import (
 	types "github.com/gogo/protobuf/types"
 	io "io"
 	math "math"
+	math_bits "math/bits"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -120,9 +123,13 @@ type VirtualService struct {
 	// dots in the name). In such a scenario, the FQDN of the host would be
 	// derived based on the underlying platform.
 	//
-	// **A host name can be defined by only one VirtualService**. A single
-	// VirtualService can be used to describe traffic properties for multiple
-	// HTTP and TCP ports.
+	// A single VirtualService can be used to describe all the traffic
+	// properties of the corresponding hosts, including those for multiple
+	// HTTP and TCP ports. Alternatively, the traffic properties of a host
+	// can be defined using more than one VirtualService, with certain
+	// caveats. Refer to the
+	// [Operations Guide](https://istio.io/docs/ops/traffic-management/deploy-guidelines/#multiple-virtual-services-and-destination-rules-for-the-same-host)
+	// for details.
 	//
 	// *Note for Kubernetes users*: When short names are used (e.g. "reviews"
 	// instead of "reviews.default.svc.cluster.local"), Istio will interpret
@@ -204,7 +211,7 @@ func (m *VirtualService) XXX_Marshal(b []byte, deterministic bool) ([]byte, erro
 		return xxx_messageInfo_VirtualService.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -271,7 +278,7 @@ func (m *VirtualService) GetExportTo() []string {
 // registry. Istio's service registry is composed of all the services found
 // in the platform's service registry (e.g., Kubernetes services, Consul
 // services), as well as services declared through the
-// [ServiceEntry](/docs/reference/config/networking/v1alpha3/service-entry/#ServiceEntry) resource.
+// [ServiceEntry](https://istio.io/docs/reference/config/networking/v1alpha3/service-entry/#ServiceEntry) resource.
 //
 // *Note for Kubernetes users*: When short names are used (e.g. "reviews"
 // instead of "reviews.default.svc.cluster.local"), Istio will interpret
@@ -396,7 +403,7 @@ type Destination struct {
 	// REQUIRED. The name of a service from the service registry. Service
 	// names are looked up from the platform's service registry (e.g.,
 	// Kubernetes services, Consul services, etc.) and from the hosts
-	// declared by [ServiceEntry](/docs/reference/config/networking/v1alpha3/service-entry/#ServiceEntry). Traffic forwarded to
+	// declared by [ServiceEntry](https://istio.io/docs/reference/config/networking/v1alpha3/service-entry/#ServiceEntry). Traffic forwarded to
 	// destinations that are not found in either of the two, will be dropped.
 	//
 	// *Note for Kubernetes users*: When short names are used (e.g. "reviews"
@@ -435,7 +442,7 @@ func (m *Destination) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return xxx_messageInfo_Destination.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -478,6 +485,11 @@ func (m *Destination) GetPort() *PortSelector {
 // Describes match conditions and actions for routing HTTP/1.1, HTTP2, and
 // gRPC traffic. See VirtualService for usage examples.
 type HTTPRoute struct {
+	// The name assigned to the route for debugging purposes. The
+	// route's name will be concatenated with the match's name and will
+	// be logged in the access logs for requests matching this
+	// route/match.
+	Name string `protobuf:"bytes,17,opt,name=name,proto3" json:"name,omitempty"`
 	// Match conditions to be satisfied for the rule to be
 	// activated. All conditions inside a single match block have AND
 	// semantics, while the list of match blocks have OR semantics. The rule
@@ -514,24 +526,23 @@ type HTTPRoute struct {
 	// original destination.  Statistics will be generated for the mirrored
 	// destination.
 	Mirror *Destination `protobuf:"bytes,9,opt,name=mirror,proto3" json:"mirror,omitempty"`
+	// Percentage of the traffic to be mirrored by the `mirror` field.
+	// If this field is absent, all the traffic (100%) will be mirrored.
+	// Max value is 100.
+	MirrorPercent *types.UInt32Value `protobuf:"bytes,18,opt,name=mirror_percent,json=mirrorPercent,proto3" json:"mirror_percent,omitempty"`
 	// Cross-Origin Resource Sharing policy (CORS). Refer to
 	// [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
 	// for further details about cross origin resource sharing.
 	CorsPolicy *CorsPolicy `protobuf:"bytes,10,opt,name=cors_policy,json=corsPolicy,proto3" json:"cors_policy,omitempty"`
-	// Use of `append_headers` is deprecated. Use the `headers`
-	// field instead.
+	// $hide_from_docs
 	AppendHeaders map[string]string `protobuf:"bytes,11,rep,name=append_headers,json=appendHeaders,proto3" json:"append_headers,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // Deprecated: Do not use.
-	// Use of `remove_response_header` is deprecated. Use the `headers`
-	// field instead.
+	// $hide_from_docs
 	RemoveResponseHeaders []string `protobuf:"bytes,12,rep,name=remove_response_headers,json=removeResponseHeaders,proto3" json:"remove_response_headers,omitempty"` // Deprecated: Do not use.
-	// Use of `append_response_headers` is deprecated. Use the `headers`
-	// field instead.
+	// $hide_from_docs
 	AppendResponseHeaders map[string]string `protobuf:"bytes,13,rep,name=append_response_headers,json=appendResponseHeaders,proto3" json:"append_response_headers,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // Deprecated: Do not use.
-	// Use of `remove_request_headers` is deprecated. Use the `headers`
-	// field instead.
+	// $hide_from_docs
 	RemoveRequestHeaders []string `protobuf:"bytes,14,rep,name=remove_request_headers,json=removeRequestHeaders,proto3" json:"remove_request_headers,omitempty"` // Deprecated: Do not use.
-	// Use of `append_request_headers` is deprecated. Use the `headers`
-	// field instead.
+	// $hide_from_docs
 	AppendRequestHeaders map[string]string `protobuf:"bytes,15,rep,name=append_request_headers,json=appendRequestHeaders,proto3" json:"append_request_headers,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // Deprecated: Do not use.
 	// Header manipulation rules
 	Headers              *Headers `protobuf:"bytes,16,opt,name=headers,proto3" json:"headers,omitempty"`
@@ -554,7 +565,7 @@ func (m *HTTPRoute) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_HTTPRoute.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -572,6 +583,13 @@ func (m *HTTPRoute) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_HTTPRoute proto.InternalMessageInfo
+
+func (m *HTTPRoute) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
 
 func (m *HTTPRoute) GetMatch() []*HTTPMatchRequest {
 	if m != nil {
@@ -636,6 +654,13 @@ func (m *HTTPRoute) GetMirror() *Destination {
 	return nil
 }
 
+func (m *HTTPRoute) GetMirrorPercent() *types.UInt32Value {
+	if m != nil {
+		return m.MirrorPercent
+	}
+	return nil
+}
+
 func (m *HTTPRoute) GetCorsPolicy() *CorsPolicy {
 	if m != nil {
 		return m.CorsPolicy
@@ -690,7 +715,41 @@ func (m *HTTPRoute) GetHeaders() *Headers {
 	return nil
 }
 
-// Header manipulation rules
+// Message headers can be manipulated when Envoy forwards requests to,
+// or responses from, a destination service. Header manipulation rules can
+// be specified for a specific route destination or for all destinations.
+// The following VirtualService adds a `test` header with the value `true`
+// to requests that are routed to any `reviews` service destination.
+// It also romoves the `foo` response header, but only from responses
+// coming from the `v1` subset (version) of the `reviews` service.
+//
+// ```yaml
+// apiVersion: networking.istio.io/v1alpha3
+// kind: VirtualService
+// metadata:
+//   name: reviews-route
+// spec:
+//   hosts:
+//   - reviews.prod.svc.cluster.local
+//   http:
+//   - headers:
+//       request:
+//         set:
+//           test: true
+//     route:
+//     - destination:
+//         host: reviews.prod.svc.cluster.local
+//         subset: v2
+//       weight: 25
+//     - destination:
+//         host: reviews.prod.svc.cluster.local
+//         subset: v1
+//       headers:
+//         response:
+//           remove:
+//           - foo
+//       weight: 75
+// ```
 type Headers struct {
 	// Header manipulation rules to apply before forwarding a request
 	// to the destination service
@@ -717,7 +776,7 @@ func (m *Headers) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_Headers.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -778,7 +837,7 @@ func (m *Headers_HeaderOperations) XXX_Marshal(b []byte, deterministic bool) ([]
 		return xxx_messageInfo_Headers_HeaderOperations.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -876,7 +935,7 @@ func (m *TLSRoute) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_TLSRoute.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -957,7 +1016,7 @@ func (m *TCPRoute) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_TCPRoute.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1011,6 +1070,7 @@ func (m *TCPRoute) GetRoute() []*RouteDestination {
 //           exact: jason
 //       uri:
 //         prefix: "/ratings/v2/"
+//       ignoreUriCase: true
 //     route:
 //     - destination:
 //         host: ratings.prod.svc.cluster.local
@@ -1018,6 +1078,10 @@ func (m *TCPRoute) GetRoute() []*RouteDestination {
 //
 // HTTPMatchRequest CANNOT be empty.
 type HTTPMatchRequest struct {
+	// The name assigned to a match. The match's name will be
+	// concatenated with the parent route's name and will be logged in
+	// the access logs for requests matching this route.
+	Name string `protobuf:"bytes,11,opt,name=name,proto3" json:"name,omitempty"`
 	// URI to match
 	// values are case-sensitive and formatted as follows:
 	//
@@ -1027,6 +1091,8 @@ type HTTPMatchRequest struct {
 	//
 	// - `regex: "value"` for ECMAscript style regex-based match
 	//
+	// **Note:** Case-insensitive matching could be enabled via the
+	// `ignore_uri_case` flag.
 	Uri *StringMatch `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"`
 	// URI Scheme
 	// values are case-sensitive and formatted as follows:
@@ -1075,15 +1141,28 @@ type HTTPMatchRequest struct {
 	// only expose a single port or label ports with the protocols they support,
 	// in these cases it is not required to explicitly select the port.
 	Port uint32 `protobuf:"varint,6,opt,name=port,proto3" json:"port,omitempty"`
-	// One or more labels that constrain the applicability of a rule to
-	// workloads with the given labels. If the VirtualService has a list of
-	// gateways specified at the top, it should include the reserved gateway
-	// `mesh` in order for this field to be applicable.
+	// $hide_from_docs
 	SourceLabels map[string]string `protobuf:"bytes,7,rep,name=source_labels,json=sourceLabels,proto3" json:"source_labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	// Names of gateways where the rule should be applied to. Gateway names
-	// at the top of the VirtualService (if any) are overridden. The gateway match is
-	// independent of sourceLabels.
-	Gateways             []string `protobuf:"bytes,8,rep,name=gateways,proto3" json:"gateways,omitempty"`
+	// $hide_from_docs
+	Gateways []string `protobuf:"bytes,8,rep,name=gateways,proto3" json:"gateways,omitempty"`
+	// Query parameters for matching.
+	//
+	// Ex:
+	// - For a query parameter like "?key=true", the map key would be "key" and
+	//   the string match could be defined as `exact: "true"`.
+	// - For a query parameter like "?key", the map key would be "key" and the
+	//   string match could be defined as `exact: ""`.
+	// - For a query parameter like "?key=123", the map key would be "key" and the
+	//   string match could be defined as `regex: "\d+$"`. Note that this
+	//   configuration will only match values like "123" but not "a123" or "123a".
+	//
+	// **Note:** `prefix` matching is currently not supported.
+	QueryParams map[string]*StringMatch `protobuf:"bytes,9,rep,name=query_params,json=queryParams,proto3" json:"query_params,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// Flag to specify whether the URI matching should be case-insensitive.
+	//
+	// **Note:** The case will be ignored only in the case of `exact` and `prefix`
+	// URI matches.
+	IgnoreUriCase        bool     `protobuf:"varint,10,opt,name=ignore_uri_case,json=ignoreUriCase,proto3" json:"ignore_uri_case,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1103,7 +1182,7 @@ func (m *HTTPMatchRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, er
 		return xxx_messageInfo_HTTPMatchRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1121,6 +1200,13 @@ func (m *HTTPMatchRequest) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_HTTPMatchRequest proto.InternalMessageInfo
+
+func (m *HTTPMatchRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
 
 func (m *HTTPMatchRequest) GetUri() *StringMatch {
 	if m != nil {
@@ -1176,6 +1262,20 @@ func (m *HTTPMatchRequest) GetGateways() []string {
 		return m.Gateways
 	}
 	return nil
+}
+
+func (m *HTTPMatchRequest) GetQueryParams() map[string]*StringMatch {
+	if m != nil {
+		return m.QueryParams
+	}
+	return nil
+}
+
+func (m *HTTPMatchRequest) GetIgnoreUriCase() bool {
+	if m != nil {
+		return m.IgnoreUriCase
+	}
+	return false
 }
 
 // Each routing rule is associated with one or more service versions (see
@@ -1286,7 +1386,7 @@ func (m *HTTPRouteDestination) XXX_Marshal(b []byte, deterministic bool) ([]byte
 		return xxx_messageInfo_HTTPRouteDestination.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1386,7 +1486,7 @@ func (m *RouteDestination) XXX_Marshal(b []byte, deterministic bool) ([]byte, er
 		return xxx_messageInfo_RouteDestination.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1461,7 +1561,7 @@ func (m *L4MatchAttributes) XXX_Marshal(b []byte, deterministic bool) ([]byte, e
 		return xxx_messageInfo_L4MatchAttributes.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1562,7 +1662,7 @@ func (m *TLSMatchAttributes) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return xxx_messageInfo_TLSMatchAttributes.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1641,9 +1741,9 @@ func (m *TLSMatchAttributes) GetGateways() []string {
 //   - match:
 //     - uri:
 //         exact: /v1/getProductRatings
-//   redirect:
-//     uri: /v1/bookRatings
-//     authority: newratings.default.svc.cluster.local
+//     redirect:
+//       uri: /v1/bookRatings
+//       authority: newratings.default.svc.cluster.local
 //   ...
 // ```
 type HTTPRedirect struct {
@@ -1653,7 +1753,10 @@ type HTTPRedirect struct {
 	Uri string `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"`
 	// On a redirect, overwrite the Authority/Host portion of the URL with
 	// this value.
-	Authority            string   `protobuf:"bytes,2,opt,name=authority,proto3" json:"authority,omitempty"`
+	Authority string `protobuf:"bytes,2,opt,name=authority,proto3" json:"authority,omitempty"`
+	// On a redirect, Specifies the HTTP status code to use in the redirect
+	// response. The default response code is MOVED_PERMANENTLY (301).
+	RedirectCode         uint32   `protobuf:"varint,3,opt,name=redirect_code,json=redirectCode,proto3" json:"redirect_code,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1673,7 +1776,7 @@ func (m *HTTPRedirect) XXX_Marshal(b []byte, deterministic bool) ([]byte, error)
 		return xxx_messageInfo_HTTPRedirect.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1704,6 +1807,13 @@ func (m *HTTPRedirect) GetAuthority() string {
 		return m.Authority
 	}
 	return ""
+}
+
+func (m *HTTPRedirect) GetRedirectCode() uint32 {
+	if m != nil {
+		return m.RedirectCode
+	}
+	return 0
 }
 
 // HTTPRewrite can be used to rewrite specific parts of a HTTP request
@@ -1758,7 +1868,7 @@ func (m *HTTPRewrite) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return xxx_messageInfo_HTTPRewrite.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1818,7 +1928,7 @@ func (m *StringMatch) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return xxx_messageInfo_StringMatch.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1998,8 +2108,8 @@ type HTTPRetry struct {
 	PerTryTimeout *types.Duration `protobuf:"bytes,2,opt,name=per_try_timeout,json=perTryTimeout,proto3" json:"per_try_timeout,omitempty"`
 	// Specifies the conditions under which retry takes place.
 	// One or more policies can be specified using a ‘,’ delimited list.
-	// See the [supported policies](https://www.envoyproxy.io/docs/envoy/latest/configuration/http_filters/router_filter#x-envoy-retry-on)
-	// and [here](https://www.envoyproxy.io/docs/envoy/latest/configuration/http_filters/router_filter#x-envoy-retry-grpc-on) for more details.
+	// See the [supported policies](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/router_filter#x-envoy-retry-grpc-on)
+	// and [here](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/router_filter#x-envoy-retry-grpc-on) for more details.
 	RetryOn              string   `protobuf:"bytes,3,opt,name=retry_on,json=retryOn,proto3" json:"retry_on,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -2020,7 +2130,7 @@ func (m *HTTPRetry) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_HTTPRetry.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -2133,7 +2243,7 @@ func (m *CorsPolicy) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_CorsPolicy.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -2228,7 +2338,7 @@ func (m *HTTPFaultInjection) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return xxx_messageInfo_HTTPFaultInjection.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -2285,7 +2395,7 @@ func (m *HTTPFaultInjection) GetAbort() *HTTPFaultInjection_Abort {
 //     fault:
 //       delay:
 //         percentage:
-//           value: 0.001
+//           value: 0.1
 //         fixedDelay: 5s
 // ```
 //
@@ -2322,7 +2432,7 @@ func (m *HTTPFaultInjection_Delay) XXX_Marshal(b []byte, deterministic bool) ([]
 		return xxx_messageInfo_HTTPFaultInjection_Delay.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -2487,7 +2597,7 @@ func _HTTPFaultInjection_Delay_OneofSizer(msg proto.Message) (n int) {
 //     fault:
 //       abort:
 //         percentage:
-//           value: 0.001
+//           value: 0.1
 //         httpStatus: 400
 // ```
 //
@@ -2526,7 +2636,7 @@ func (m *HTTPFaultInjection_Abort) XXX_Marshal(b []byte, deterministic bool) ([]
 		return xxx_messageInfo_HTTPFaultInjection_Abort.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -2714,7 +2824,7 @@ func (m *PortSelector) XXX_Marshal(b []byte, deterministic bool) ([]byte, error)
 		return xxx_messageInfo_PortSelector.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -2857,7 +2967,7 @@ func (m *Percent) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_Percent.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -2898,6 +3008,7 @@ func init() {
 	proto.RegisterType((*TCPRoute)(nil), "istio.networking.v1alpha3.TCPRoute")
 	proto.RegisterType((*HTTPMatchRequest)(nil), "istio.networking.v1alpha3.HTTPMatchRequest")
 	proto.RegisterMapType((map[string]*StringMatch)(nil), "istio.networking.v1alpha3.HTTPMatchRequest.HeadersEntry")
+	proto.RegisterMapType((map[string]*StringMatch)(nil), "istio.networking.v1alpha3.HTTPMatchRequest.QueryParamsEntry")
 	proto.RegisterMapType((map[string]string)(nil), "istio.networking.v1alpha3.HTTPMatchRequest.SourceLabelsEntry")
 	proto.RegisterType((*HTTPRouteDestination)(nil), "istio.networking.v1alpha3.HTTPRouteDestination")
 	proto.RegisterMapType((map[string]string)(nil), "istio.networking.v1alpha3.HTTPRouteDestination.AppendRequestHeadersEntry")
@@ -2924,125 +3035,133 @@ func init() {
 }
 
 var fileDescriptor_e85a9a4fa9c17a22 = []byte{
-	// 1785 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x59, 0x5f, 0x73, 0xdb, 0x4a,
-	0x15, 0xaf, 0x6c, 0xcb, 0x7f, 0x8e, 0x9d, 0xd4, 0x59, 0x72, 0x73, 0x15, 0xdf, 0x3b, 0x21, 0xd7,
-	0x97, 0x0b, 0x61, 0x4a, 0xed, 0x21, 0x81, 0x92, 0x29, 0x69, 0x5a, 0x3b, 0x69, 0xeb, 0x32, 0x2d,
-	0xc9, 0xc8, 0xa1, 0x0f, 0xbc, 0x68, 0x64, 0x69, 0x63, 0x8b, 0xda, 0x5a, 0xb1, 0x5a, 0x25, 0xf6,
-	0xf0, 0xc8, 0xbf, 0x67, 0x18, 0x5e, 0x19, 0xbe, 0x07, 0x2f, 0xbc, 0xf2, 0xc4, 0xf0, 0x09, 0x98,
-	0x4e, 0x1f, 0x78, 0xe5, 0x2b, 0x30, 0xbb, 0x2b, 0xc9, 0x4a, 0x9c, 0x58, 0x76, 0x28, 0x0c, 0x4f,
-	0xf1, 0xee, 0x9e, 0xdf, 0x6f, 0xcf, 0x9e, 0xdd, 0x3d, 0xe7, 0xa7, 0x0d, 0x7c, 0xdb, 0xc5, 0xec,
-	0x92, 0xd0, 0x77, 0x8e, 0xdb, 0x6f, 0x5e, 0x7c, 0xd7, 0x1c, 0x7a, 0x03, 0x73, 0xaf, 0x79, 0xe1,
-	0x50, 0x16, 0x98, 0x43, 0xc3, 0xc7, 0xf4, 0xc2, 0xb1, 0x70, 0xc3, 0xa3, 0x84, 0x11, 0xb4, 0xe9,
-	0xf8, 0xcc, 0x21, 0x8d, 0x29, 0xa0, 0x11, 0x01, 0x6a, 0x5b, 0x7d, 0x42, 0xfa, 0x43, 0xdc, 0x14,
-	0x86, 0xbd, 0xe0, 0xbc, 0x69, 0x07, 0xd4, 0x64, 0x0e, 0x71, 0x25, 0x74, 0x76, 0xfc, 0x92, 0x9a,
-	0x9e, 0x87, 0xa9, 0x2f, 0xc7, 0xeb, 0xbf, 0xcd, 0xc0, 0xea, 0x5b, 0x39, 0x69, 0x57, 0xce, 0x89,
-	0xd6, 0x41, 0x1d, 0x10, 0x9f, 0xf9, 0x9a, 0xb2, 0x9d, 0xdd, 0x29, 0xe9, 0xb2, 0x81, 0x6a, 0x50,
-	0xec, 0x9b, 0x0c, 0x5f, 0x9a, 0x13, 0x5f, 0xcb, 0x88, 0x81, 0xb8, 0x8d, 0xf6, 0x21, 0x37, 0x60,
-	0xcc, 0xd3, 0xb2, 0xdb, 0xd9, 0x9d, 0xf2, 0xee, 0x37, 0x1a, 0xb7, 0xba, 0xdb, 0xe8, 0x9c, 0x9d,
-	0x9d, 0xea, 0x24, 0x60, 0x58, 0x17, 0x08, 0xf4, 0x7d, 0xc8, 0xb2, 0xa1, 0xaf, 0xa9, 0x02, 0xf8,
-	0xe5, 0x1c, 0xe0, 0xd9, 0xeb, 0xae, 0xc4, 0x71, 0x7b, 0x01, 0xb3, 0x3c, 0x2d, 0x97, 0x0e, 0x3b,
-	0x3a, 0x8d, 0x60, 0x96, 0x87, 0x3e, 0x83, 0x12, 0x1e, 0x7b, 0x84, 0x32, 0x83, 0x11, 0x2d, 0x2f,
-	0x17, 0x21, 0x3b, 0xce, 0x48, 0xfd, 0x02, 0xca, 0xc7, 0xd8, 0x67, 0x8e, 0x2b, 0xc2, 0x87, 0x10,
-	0xe4, 0xf8, 0xc2, 0x35, 0x65, 0x5b, 0xd9, 0x29, 0xe9, 0xe2, 0x37, 0xda, 0x80, 0xbc, 0x1f, 0xf4,
-	0x7c, 0xcc, 0xb4, 0x8c, 0xe8, 0x0d, 0x5b, 0xe8, 0x87, 0x90, 0xe3, 0x24, 0x5a, 0x76, 0x5b, 0xd9,
-	0x29, 0xef, 0x7e, 0x6b, 0x8e, 0x3f, 0xa7, 0x84, 0xb2, 0x2e, 0x1e, 0x62, 0x8b, 0x11, 0xaa, 0x0b,
-	0x50, 0xfd, 0x5f, 0x00, 0xa5, 0x38, 0x2c, 0xa8, 0x05, 0xea, 0xc8, 0x64, 0xd6, 0x40, 0x04, 0xbf,
-	0xbc, 0xfb, 0x20, 0x25, 0x96, 0x6f, 0xb8, 0xad, 0x8e, 0x7f, 0x1e, 0x60, 0x9f, 0xe9, 0x12, 0x89,
-	0x9e, 0x83, 0x4a, 0x39, 0x97, 0xd8, 0xa6, 0xf2, 0x6e, 0x73, 0x91, 0xed, 0x48, 0xac, 0x5c, 0x97,
-	0x68, 0x74, 0x04, 0x45, 0x8a, 0x6d, 0x87, 0x62, 0x6b, 0x91, 0x85, 0x09, 0xa6, 0xd0, 0x5c, 0x8f,
-	0x81, 0xe8, 0x19, 0x14, 0x28, 0xbe, 0xa4, 0x0e, 0xc3, 0x5a, 0x4e, 0x70, 0x7c, 0x33, 0x95, 0x43,
-	0x58, 0xeb, 0x11, 0x0c, 0x3d, 0x80, 0xb5, 0x4b, 0xdc, 0xf3, 0x89, 0xf5, 0x0e, 0x33, 0x23, 0xf0,
-	0xfa, 0xd4, 0xb4, 0xb1, 0xa6, 0x6e, 0x2b, 0x3b, 0x45, 0xbd, 0x1a, 0x0f, 0xfc, 0x44, 0xf6, 0xa3,
-	0x3d, 0x28, 0x30, 0x67, 0x84, 0x49, 0xc0, 0xb4, 0xbc, 0x98, 0x6e, 0xb3, 0x21, 0xcf, 0x7f, 0x23,
-	0x3a, 0xff, 0x8d, 0xe3, 0xf0, 0x7e, 0xe8, 0x91, 0x25, 0x3a, 0xe4, 0x3e, 0x32, 0xea, 0x60, 0x5f,
-	0x2b, 0x08, 0x50, 0xea, 0x01, 0xc6, 0x8c, 0x4e, 0xf4, 0x08, 0x84, 0x8e, 0x40, 0x3d, 0x37, 0x83,
-	0x21, 0xd3, 0x8a, 0x02, 0xfd, 0x30, 0x05, 0xfd, 0x82, 0xdb, 0xbe, 0x72, 0x7f, 0x86, 0x2d, 0x19,
-	0x6d, 0x81, 0x45, 0x87, 0x90, 0x1f, 0x39, 0x94, 0x12, 0xaa, 0x95, 0x52, 0xe3, 0x94, 0xdc, 0xac,
-	0x10, 0x85, 0x5e, 0x40, 0xd9, 0x22, 0xd4, 0x37, 0x3c, 0x32, 0x74, 0xac, 0x89, 0x06, 0x82, 0xe4,
-	0xab, 0x39, 0x24, 0x47, 0x84, 0xfa, 0xa7, 0xc2, 0x58, 0x07, 0x2b, 0xfe, 0x8d, 0x7a, 0xb0, 0xca,
-	0xf3, 0x83, 0x6b, 0x1b, 0x03, 0x6c, 0xda, 0x98, 0xfa, 0x5a, 0x59, 0x9c, 0xa2, 0x1f, 0x2c, 0x72,
-	0x8a, 0x1a, 0x2d, 0x01, 0xed, 0x48, 0xe4, 0x73, 0x97, 0xd1, 0x49, 0x3b, 0xa3, 0x29, 0xfa, 0x8a,
-	0x99, 0xec, 0x47, 0x8f, 0xe1, 0x53, 0x8a, 0x47, 0xe4, 0x02, 0x1b, 0x14, 0xfb, 0x1e, 0x71, 0x7d,
-	0x1c, 0x4f, 0x56, 0xe1, 0x97, 0x52, 0x60, 0x3e, 0x91, 0x26, 0x7a, 0x68, 0x11, 0x61, 0x7f, 0x01,
-	0x9f, 0x86, 0xfe, 0xcd, 0x60, 0x57, 0x84, 0xa3, 0x4f, 0x97, 0x70, 0xf4, 0x1a, 0xf9, 0xd4, 0xe1,
-	0x4f, 0xcc, 0x9b, 0xc6, 0xd1, 0x3e, 0x6c, 0xc4, 0x8e, 0x8b, 0x2b, 0x17, 0xcf, 0xbd, 0x1a, 0xfb,
-	0xbd, 0x1e, 0xf9, 0x2d, 0x0c, 0x22, 0xe4, 0x18, 0x36, 0x62, 0xb7, 0xaf, 0x22, 0xef, 0x0b, 0xaf,
-	0x0f, 0x97, 0xf2, 0x3a, 0x49, 0x3d, 0x75, 0x7a, 0xdd, 0xbc, 0x61, 0x18, 0x1d, 0x40, 0x21, 0x9a,
-	0xaa, 0x2a, 0x0e, 0x45, 0x7d, 0xde, 0x54, 0xd2, 0x52, 0x8f, 0x20, 0xb5, 0x67, 0x80, 0x66, 0xf7,
-	0x14, 0x55, 0x21, 0xfb, 0x0e, 0x4f, 0xc2, 0xd4, 0xc8, 0x7f, 0xf2, 0x9a, 0x71, 0x61, 0x0e, 0x03,
-	0x1c, 0x26, 0x46, 0xd9, 0x78, 0x9c, 0xd9, 0x57, 0x6a, 0x1d, 0xa8, 0xdd, 0x1e, 0xec, 0xa5, 0x98,
-	0x5e, 0xc2, 0xe6, 0xad, 0x01, 0x58, 0x86, 0xa8, 0xfe, 0xcf, 0x2c, 0x14, 0xa2, 0xf0, 0xbc, 0xe1,
-	0x97, 0x5f, 0xd0, 0x09, 0x6c, 0x79, 0x77, 0x2f, 0x3d, 0x3c, 0xe1, 0xdf, 0x13, 0x0f, 0xcb, 0x54,
-	0xe2, 0xeb, 0x11, 0x07, 0x3a, 0xe1, 0x49, 0x53, 0xae, 0x53, 0xcc, 0x7b, 0x47, 0xbe, 0x98, 0xa4,
-	0xf6, 0xe7, 0x0c, 0x54, 0xaf, 0x0f, 0xa3, 0x1f, 0x43, 0x96, 0x17, 0x21, 0x59, 0x22, 0x0e, 0xee,
-	0x30, 0x41, 0xa3, 0x8b, 0x99, 0x88, 0x9b, 0xce, 0x89, 0x38, 0x9f, 0x69, 0xdb, 0x61, 0xbd, 0xb8,
-	0x13, 0x5f, 0xcb, 0xb6, 0x43, 0x3e, 0xd3, 0xb6, 0x79, 0x9d, 0x94, 0xb7, 0x40, 0x28, 0x82, 0x92,
-	0x1e, 0xb6, 0x6a, 0x8f, 0xa0, 0x18, 0x4d, 0xbc, 0xd4, 0xce, 0x3f, 0x82, 0x62, 0x34, 0xc1, 0x52,
-	0x1b, 0xfd, 0x7b, 0x05, 0x8a, 0x91, 0x70, 0xe0, 0x69, 0x3a, 0x59, 0x59, 0x1f, 0xce, 0x17, 0x1b,
-	0xa2, 0xb0, 0xb6, 0x18, 0xa3, 0x4e, 0x2f, 0x60, 0xd8, 0x8f, 0x6a, 0x6b, 0xeb, 0x6a, 0x6d, 0x9d,
-	0x57, 0x9e, 0x6f, 0xa9, 0xab, 0xf5, 0xdf, 0x71, 0xa7, 0x42, 0x59, 0x82, 0xda, 0x57, 0x9d, 0xfa,
-	0xce, 0x1c, 0xbe, 0xd7, 0xdf, 0xfb, 0xef, 0xf9, 0xf4, 0x27, 0x15, 0xaa, 0xd7, 0xe5, 0x04, 0xda,
-	0x87, 0x6c, 0x40, 0x9d, 0xf0, 0x5a, 0xcc, 0xab, 0x47, 0x5d, 0x46, 0x1d, 0xb7, 0x2f, 0xb1, 0x1c,
-	0xc2, 0x8b, 0x99, 0x6f, 0x0d, 0xf0, 0x28, 0xba, 0x03, 0x8b, 0x82, 0x43, 0x94, 0x28, 0x86, 0x98,
-	0x0d, 0x88, 0x1d, 0x0a, 0x8f, 0x85, 0xf1, 0x12, 0x85, 0x8e, 0xa1, 0x64, 0x06, 0x6c, 0x40, 0xa8,
-	0xc3, 0x26, 0x0b, 0xe8, 0x8e, 0x24, 0xc5, 0x14, 0x88, 0xf4, 0x69, 0xe6, 0x94, 0xfa, 0x74, 0x7f,
-	0x09, 0x31, 0xd6, 0x48, 0x66, 0xa7, 0x38, 0x9f, 0x72, 0x55, 0x29, 0x94, 0x22, 0x57, 0x27, 0x2b,
-	0x52, 0x00, 0xa2, 0x1e, 0xac, 0xf8, 0x24, 0xa0, 0x16, 0x36, 0x86, 0x66, 0x0f, 0x0f, 0xb9, 0x0a,
-	0xe1, 0xb3, 0x3d, 0x59, 0x66, 0xb6, 0xae, 0x20, 0x78, 0x2d, 0xf0, 0x72, 0xca, 0x8a, 0x9f, 0xe8,
-	0xba, 0xa2, 0xde, 0x8b, 0x57, 0xd5, 0x7b, 0xad, 0x07, 0x95, 0x94, 0x54, 0x7a, 0x90, 0xbc, 0x61,
-	0x8b, 0xc7, 0x32, 0x71, 0x83, 0x9f, 0xc2, 0xda, 0x8c, 0x8b, 0x4b, 0x5d, 0xe5, 0xbf, 0xa9, 0xb0,
-	0x7e, 0x93, 0x5a, 0x45, 0x1d, 0x28, 0xdb, 0xd3, 0xe6, 0x02, 0xa7, 0x35, 0x79, 0xfc, 0x93, 0x50,
-	0x9e, 0xb5, 0x2e, 0xb1, 0xd3, 0x1f, 0x48, 0x75, 0xaf, 0xea, 0x61, 0x6b, 0x9e, 0x5c, 0xc9, 0xa6,
-	0xc9, 0x95, 0xdf, 0x28, 0xb7, 0xeb, 0x15, 0xf9, 0xf5, 0xf2, 0xa3, 0x25, 0xe5, 0xf9, 0x47, 0x97,
-	0x2e, 0x6a, 0x8a, 0x74, 0xf9, 0xa5, 0x72, 0xab, 0x76, 0xc9, 0x8b, 0x15, 0xbc, 0xba, 0xeb, 0x0a,
-	0xee, 0x28, 0x63, 0x0a, 0xcb, 0xcb, 0x98, 0xff, 0x43, 0x11, 0xc2, 0xa0, 0xfa, 0xbf, 0x3f, 0xcb,
-	0xf5, 0xbf, 0x64, 0x60, 0x6d, 0xa6, 0x90, 0xa0, 0x26, 0x7c, 0x2d, 0x01, 0x36, 0xfc, 0xa0, 0xe7,
-	0xe2, 0xf8, 0xfb, 0x1f, 0x25, 0x86, 0xba, 0x72, 0x24, 0x4e, 0x63, 0x99, 0x44, 0x1a, 0xfb, 0x32,
-	0x4e, 0x63, 0x12, 0x2f, 0x72, 0x77, 0x29, 0xca, 0x43, 0x12, 0x89, 0xac, 0xeb, 0xb9, 0x2e, 0x97,
-	0x2a, 0x7f, 0x67, 0xdc, 0x5d, 0x2a, 0xd9, 0xa9, 0xd7, 0x92, 0xdd, 0x7f, 0x9c, 0x88, 0xfe, 0x91,
-	0x01, 0x34, 0xab, 0x0f, 0xd0, 0x67, 0x50, 0xf2, 0x5d, 0xc7, 0x48, 0x3e, 0x9c, 0x14, 0x7d, 0xd7,
-	0xe9, 0x88, 0xb7, 0x93, 0x5b, 0xe2, 0x9b, 0x49, 0x8d, 0x6f, 0x76, 0x5e, 0x7c, 0x73, 0x37, 0xc4,
-	0xd7, 0xbe, 0x1e, 0x5f, 0x35, 0xf5, 0xa3, 0x68, 0x76, 0x31, 0x4b, 0x05, 0x38, 0xff, 0xb1, 0x03,
-	0x7c, 0x08, 0x95, 0xe4, 0x63, 0x02, 0xc7, 0x46, 0x32, 0xa4, 0x24, 0xe5, 0xc5, 0xe7, 0xc9, 0xf2,
-	0x2e, 0xf1, 0xd3, 0x8e, 0xfa, 0x13, 0x28, 0x27, 0x1e, 0x12, 0x96, 0x86, 0x63, 0x28, 0x27, 0x6a,
-	0x18, 0xda, 0x00, 0x15, 0x8f, 0x4d, 0x2b, 0x7c, 0x07, 0xea, 0xdc, 0xd3, 0x65, 0x13, 0x69, 0x90,
-	0xf7, 0x28, 0x3e, 0x77, 0xc6, 0x92, 0xa1, 0x73, 0x4f, 0x0f, 0xdb, 0x1c, 0x41, 0x71, 0x1f, 0x8f,
-	0xe5, 0xf9, 0xe7, 0x08, 0xd1, 0x6c, 0x57, 0x00, 0x84, 0x5e, 0x33, 0xd8, 0xc4, 0xc3, 0xf5, 0x5f,
-	0x2b, 0xe1, 0xab, 0x0f, 0xe6, 0xf1, 0xa9, 0x41, 0xd1, 0x64, 0x0c, 0x8f, 0x3c, 0x71, 0x78, 0xf8,
-	0x85, 0x8d, 0xdb, 0xa8, 0x05, 0xf7, 0x3d, 0x4c, 0x0d, 0x46, 0x27, 0x46, 0xf4, 0xb6, 0x91, 0x49,
-	0x7b, 0xdb, 0x58, 0xf1, 0x30, 0x3d, 0xa3, 0x93, 0xb3, 0xf0, 0x85, 0x63, 0x93, 0x7f, 0x95, 0x70,
-	0x02, 0xe2, 0x86, 0xb7, 0x52, 0x3c, 0x5e, 0x4c, 0x4e, 0xdc, 0xfa, 0x1f, 0x33, 0x00, 0xd3, 0xa7,
-	0x00, 0xf4, 0x05, 0x54, 0xcc, 0xe1, 0x90, 0x5c, 0x1a, 0x84, 0x3a, 0x7d, 0xc7, 0x0d, 0x4f, 0x72,
-	0x59, 0xf4, 0x9d, 0x88, 0x2e, 0x7e, 0x0e, 0xa5, 0x89, 0x14, 0x5b, 0xd1, 0x31, 0x96, 0xb8, 0x37,
-	0xb2, 0x6f, 0x6a, 0x74, 0xa5, 0x52, 0x86, 0x46, 0x51, 0x4e, 0xff, 0x0a, 0x56, 0xf1, 0xd8, 0x23,
-	0xd7, 0x4a, 0x62, 0x49, 0x5f, 0x91, 0xbd, 0x91, 0xd9, 0x2e, 0x14, 0x46, 0xe6, 0xd8, 0x30, 0xfb,
-	0xf2, 0xdd, 0x67, 0xee, 0xc2, 0xf3, 0x23, 0x73, 0xdc, 0xea, 0x63, 0xf4, 0x12, 0xd6, 0xe4, 0xfc,
-	0x16, 0xc5, 0x36, 0x76, 0x99, 0x63, 0x0e, 0xfd, 0xf0, 0x49, 0xa8, 0x36, 0x83, 0x6e, 0x13, 0x32,
-	0x7c, 0xcb, 0xcf, 0x9f, 0x5e, 0x15, 0xa0, 0xa3, 0x29, 0xa6, 0xfe, 0x07, 0x15, 0xd0, 0xec, 0xab,
-	0x0d, 0x7a, 0x05, 0xaa, 0x8d, 0x87, 0xe6, 0x64, 0x91, 0x8f, 0xc6, 0x19, 0x74, 0xe3, 0x98, 0x43,
-	0x75, 0xc9, 0xc0, 0xa9, 0xcc, 0x5e, 0x94, 0x4c, 0x97, 0xa6, 0x6a, 0x71, 0xa8, 0x2e, 0x19, 0x6a,
-	0xbf, 0xca, 0x80, 0x2a, 0xb8, 0xd1, 0xe7, 0x50, 0xf0, 0x30, 0xb5, 0xb0, 0x2b, 0x0f, 0xae, 0x2a,
-	0x2a, 0x6b, 0xd4, 0x85, 0x0e, 0xa0, 0x7c, 0xee, 0x8c, 0xb1, 0x6d, 0xc8, 0x35, 0xa4, 0x1d, 0xa7,
-	0xce, 0x3d, 0x1d, 0x84, 0xbd, 0xe4, 0xee, 0xc0, 0x1a, 0xdf, 0x20, 0x57, 0x86, 0x28, 0xe4, 0xc8,
-	0xa6, 0x73, 0x54, 0x13, 0x28, 0xc9, 0xd4, 0x06, 0x08, 0x5d, 0x9a, 0x6e, 0xee, 0xbc, 0xba, 0x7e,
-	0x2a, 0x8d, 0xf5, 0x04, 0xaa, 0xbd, 0x06, 0xf7, 0x07, 0x8c, 0x79, 0xd2, 0x0d, 0x71, 0xb7, 0x6a,
-	0xef, 0x15, 0x50, 0x45, 0x5c, 0x52, 0xc2, 0xf0, 0x05, 0x94, 0x05, 0xd4, 0x67, 0x26, 0x0b, 0x7c,
-	0x59, 0x29, 0xf9, 0x5a, 0x79, 0x67, 0x57, 0xf4, 0x71, 0x93, 0x3e, 0xf5, 0xac, 0xc8, 0x24, 0xba,
-	0xd2, 0xc0, 0x3b, 0xa7, 0x26, 0x1c, 0xb0, 0x6b, 0x60, 0xf1, 0x7c, 0x97, 0x8b, 0x4c, 0x44, 0xe7,
-	0x73, 0xf1, 0x38, 0xf7, 0x31, 0xd6, 0x59, 0x01, 0x10, 0x13, 0xc8, 0xf4, 0xf1, 0x02, 0x2a, 0xc9,
-	0xa7, 0x64, 0x9e, 0x8e, 0xdc, 0x60, 0xd4, 0xc3, 0x54, 0xac, 0x73, 0x85, 0xa7, 0x23, 0xd9, 0x46,
-	0xeb, 0x90, 0x73, 0xcd, 0xf0, 0x4b, 0x8c, 0xfb, 0x25, 0x5a, 0xed, 0xbc, 0x2c, 0x30, 0xf5, 0xaf,
-	0x43, 0x21, 0x9c, 0x6c, 0x9a, 0x91, 0x39, 0x83, 0x12, 0x66, 0xe4, 0x76, 0xe3, 0xaf, 0x1f, 0xb6,
-	0x94, 0xbf, 0x7f, 0xd8, 0x52, 0xde, 0x7f, 0xd8, 0x52, 0x7e, 0xba, 0x2d, 0x7d, 0x76, 0x48, 0xd3,
-	0xf4, 0x9c, 0xe6, 0x0d, 0xff, 0xc0, 0xe8, 0xe5, 0xc5, 0xce, 0xef, 0xfd, 0x3b, 0x00, 0x00, 0xff,
-	0xff, 0x73, 0x7c, 0x3f, 0xb9, 0xde, 0x18, 0x00, 0x00,
+	// 1911 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x59, 0xcd, 0x72, 0x1b, 0xc7,
+	0x11, 0x16, 0x00, 0xe2, 0xaf, 0x01, 0x50, 0xe4, 0x84, 0x96, 0x57, 0xb0, 0x4a, 0xa1, 0xa1, 0xd8,
+	0x61, 0xca, 0x31, 0x58, 0x21, 0x13, 0x87, 0xe5, 0xc8, 0xb2, 0x49, 0x4a, 0x32, 0x94, 0x92, 0x22,
+	0x66, 0x49, 0xf9, 0x90, 0xcb, 0xd6, 0x60, 0xb7, 0x09, 0x6c, 0x04, 0xec, 0xac, 0x66, 0x67, 0x49,
+	0xa0, 0x72, 0xcc, 0xdf, 0x39, 0xa9, 0x5c, 0x73, 0xcb, 0x53, 0xe4, 0x92, 0xab, 0x4f, 0xa9, 0x3c,
+	0x41, 0xca, 0xa5, 0x43, 0x9e, 0x23, 0x35, 0x33, 0xbb, 0x8b, 0x25, 0x40, 0x62, 0x01, 0x46, 0x4a,
+	0xf9, 0x44, 0xcc, 0x6c, 0x7f, 0x5f, 0xf7, 0xf4, 0xcc, 0x74, 0xf7, 0x34, 0xe1, 0x07, 0x1e, 0x8a,
+	0x73, 0xc6, 0x5f, 0xba, 0x5e, 0x6f, 0xfb, 0xec, 0x47, 0x74, 0xe0, 0xf7, 0xe9, 0xee, 0xf6, 0x99,
+	0xcb, 0x45, 0x48, 0x07, 0x56, 0x80, 0xfc, 0xcc, 0xb5, 0xb1, 0xed, 0x73, 0x26, 0x18, 0xb9, 0xed,
+	0x06, 0xc2, 0x65, 0xed, 0x09, 0xa0, 0x1d, 0x03, 0x9a, 0x77, 0x7b, 0x8c, 0xf5, 0x06, 0xb8, 0xad,
+	0x04, 0xbb, 0xe1, 0xe9, 0xb6, 0x13, 0x72, 0x2a, 0x5c, 0xe6, 0x69, 0xe8, 0xec, 0xf7, 0x73, 0x4e,
+	0x7d, 0x1f, 0x79, 0xa0, 0xbf, 0xb7, 0xfe, 0x98, 0x87, 0xd5, 0xaf, 0xb4, 0xd2, 0x63, 0xad, 0x93,
+	0x6c, 0x40, 0xb1, 0xcf, 0x02, 0x11, 0x18, 0xb9, 0xcd, 0xc2, 0x56, 0xd5, 0xd4, 0x03, 0xd2, 0x84,
+	0x4a, 0x8f, 0x0a, 0x3c, 0xa7, 0xe3, 0xc0, 0xc8, 0xab, 0x0f, 0xc9, 0x98, 0xec, 0xc1, 0x4a, 0x5f,
+	0x08, 0xdf, 0x28, 0x6c, 0x16, 0xb6, 0x6a, 0x3b, 0xdf, 0x6b, 0x5f, 0x69, 0x6e, 0xbb, 0x73, 0x72,
+	0x72, 0x64, 0xb2, 0x50, 0xa0, 0xa9, 0x10, 0xe4, 0x27, 0x50, 0x10, 0x83, 0xc0, 0x28, 0x2a, 0xe0,
+	0xbd, 0x39, 0xc0, 0x93, 0xa7, 0xc7, 0x1a, 0x27, 0xe5, 0x15, 0xcc, 0xf6, 0x8d, 0x95, 0x6c, 0xd8,
+	0xe1, 0x51, 0x0c, 0xb3, 0x7d, 0xf2, 0x1e, 0x54, 0x71, 0xe4, 0x33, 0x2e, 0x2c, 0xc1, 0x8c, 0x92,
+	0x5e, 0x84, 0x9e, 0x38, 0x61, 0xad, 0x33, 0xa8, 0x3d, 0xc4, 0x40, 0xb8, 0x9e, 0x72, 0x1f, 0x21,
+	0xb0, 0x22, 0x17, 0x6e, 0xe4, 0x36, 0x73, 0x5b, 0x55, 0x53, 0xfd, 0x26, 0xb7, 0xa0, 0x14, 0x84,
+	0xdd, 0x00, 0x85, 0x91, 0x57, 0xb3, 0xd1, 0x88, 0xfc, 0x0c, 0x56, 0x24, 0x89, 0x51, 0xd8, 0xcc,
+	0x6d, 0xd5, 0x76, 0xbe, 0x3f, 0xc7, 0x9e, 0x23, 0xc6, 0xc5, 0x31, 0x0e, 0xd0, 0x16, 0x8c, 0x9b,
+	0x0a, 0xd4, 0xfa, 0xba, 0x06, 0xd5, 0xc4, 0x2d, 0x52, 0xad, 0x47, 0x87, 0x68, 0xac, 0x6b, 0xb5,
+	0xf2, 0x37, 0xd9, 0x87, 0xe2, 0x90, 0x0a, 0xbb, 0xaf, 0x36, 0xa4, 0xb6, 0xf3, 0x51, 0x86, 0x7f,
+	0x9f, 0x49, 0x59, 0x13, 0x5f, 0x85, 0x18, 0x08, 0x53, 0x23, 0xc9, 0x23, 0x28, 0x72, 0xc9, 0xaf,
+	0xb6, 0xae, 0xb6, 0xb3, 0xbd, 0xc8, 0x16, 0xa5, 0xbc, 0x61, 0x6a, 0x34, 0x39, 0x84, 0x0a, 0x47,
+	0xc7, 0xe5, 0x68, 0x2f, 0xb2, 0x58, 0xc5, 0x14, 0x89, 0x9b, 0x09, 0x90, 0x7c, 0x01, 0x65, 0x8e,
+	0xe7, 0xdc, 0x15, 0x68, 0xac, 0x28, 0x8e, 0x0f, 0x33, 0x39, 0x94, 0xb4, 0x19, 0xc3, 0xc8, 0x47,
+	0xb0, 0x7e, 0x8e, 0xdd, 0x80, 0xd9, 0x2f, 0x51, 0x58, 0xa1, 0xdf, 0xe3, 0xd4, 0x41, 0xa3, 0xb8,
+	0x99, 0xdb, 0xaa, 0x98, 0x6b, 0xc9, 0x87, 0x17, 0x7a, 0x9e, 0xec, 0x42, 0x59, 0xb8, 0x43, 0x64,
+	0xa1, 0x30, 0x4a, 0x4a, 0xdd, 0xed, 0xb6, 0xbe, 0x13, 0xed, 0xf8, 0x4e, 0xb4, 0x1f, 0x46, 0x77,
+	0xc6, 0x8c, 0x25, 0xc9, 0x03, 0x69, 0xa3, 0xe0, 0x2e, 0x06, 0x46, 0x59, 0x81, 0x32, 0x0f, 0x35,
+	0x0a, 0x3e, 0x36, 0x63, 0x10, 0x39, 0x84, 0xe2, 0x29, 0x0d, 0x07, 0xc2, 0xa8, 0x28, 0xf4, 0xc7,
+	0x19, 0xe8, 0xc7, 0x52, 0xf6, 0x89, 0xf7, 0x6b, 0xb4, 0xb5, 0xb7, 0x15, 0x96, 0x3c, 0x80, 0xd2,
+	0xd0, 0xe5, 0x9c, 0x71, 0xa3, 0x9a, 0xe9, 0xa7, 0xf4, 0x66, 0x45, 0x28, 0x72, 0x08, 0xab, 0xfa,
+	0x97, 0xe5, 0x23, 0xb7, 0xd1, 0x13, 0x06, 0x51, 0x3c, 0x77, 0x66, 0x1c, 0xf0, 0xe2, 0x89, 0x27,
+	0x76, 0x77, 0xbe, 0xa2, 0x83, 0x10, 0xcd, 0x86, 0xc6, 0x1c, 0x69, 0x08, 0x79, 0x0c, 0x35, 0x9b,
+	0xf1, 0xc0, 0xf2, 0xd9, 0xc0, 0xb5, 0xc7, 0x06, 0x28, 0x86, 0x0f, 0xe6, 0x58, 0x72, 0xc8, 0x78,
+	0x70, 0xa4, 0x84, 0x4d, 0xb0, 0x93, 0xdf, 0xa4, 0x0b, 0xab, 0x32, 0xf0, 0x78, 0x8e, 0xd5, 0x47,
+	0xea, 0x20, 0x0f, 0x8c, 0x9a, 0x3a, 0x8a, 0x3f, 0x5d, 0xe4, 0x28, 0xb6, 0xf7, 0x15, 0xb4, 0xa3,
+	0x91, 0x8f, 0x3c, 0xc1, 0xc7, 0x07, 0x79, 0x23, 0x67, 0x36, 0x68, 0x7a, 0x9e, 0x7c, 0x0a, 0xef,
+	0x72, 0x1c, 0xb2, 0x33, 0xb4, 0x38, 0x06, 0x3e, 0xf3, 0x02, 0x4c, 0x94, 0xd5, 0xe5, 0x6d, 0x57,
+	0x98, 0x77, 0xb4, 0x88, 0x19, 0x49, 0xc4, 0xd8, 0xdf, 0xc0, 0xbb, 0x91, 0x7d, 0x33, 0xd8, 0x86,
+	0x32, 0xf4, 0xf3, 0x25, 0x0c, 0x9d, 0x22, 0x9f, 0x18, 0xfc, 0x0e, 0xbd, 0xec, 0x3b, 0xd9, 0x83,
+	0x5b, 0x89, 0xe1, 0xea, 0xde, 0x26, 0xba, 0x57, 0x13, 0xbb, 0x37, 0x62, 0xbb, 0x95, 0x40, 0x8c,
+	0x1c, 0xc1, 0xad, 0xc4, 0xec, 0x8b, 0xc8, 0x9b, 0xca, 0xea, 0x07, 0x4b, 0x59, 0x9d, 0xa6, 0x9e,
+	0x18, 0xbd, 0x41, 0x2f, 0xf9, 0x4c, 0xee, 0x43, 0x39, 0x56, 0xb5, 0xa6, 0x0e, 0x45, 0x6b, 0x9e,
+	0x2a, 0x2d, 0x69, 0xc6, 0x90, 0xe6, 0x17, 0x40, 0x66, 0xf7, 0x94, 0xac, 0x41, 0xe1, 0x25, 0x8e,
+	0xa3, 0x98, 0x2b, 0x7f, 0xca, 0x64, 0x74, 0x26, 0x8f, 0x65, 0x14, 0x71, 0xf5, 0xe0, 0xd3, 0xfc,
+	0x5e, 0xae, 0xd9, 0x81, 0xe6, 0xd5, 0xce, 0x5e, 0x8a, 0xe9, 0x4b, 0xb8, 0x7d, 0xa5, 0x03, 0x96,
+	0x21, 0x6a, 0xfd, 0xa7, 0x00, 0xe5, 0xd8, 0x3d, 0xcf, 0x64, 0x04, 0x51, 0x74, 0x0a, 0x5b, 0xdb,
+	0xd9, 0xcd, 0x76, 0x4f, 0xf4, 0xf7, 0xb9, 0x8f, 0x3a, 0x1e, 0x05, 0x66, 0xcc, 0x41, 0x9e, 0xcb,
+	0xc8, 0xab, 0xd7, 0xa9, 0xf4, 0x5e, 0x93, 0x2f, 0x21, 0x69, 0xfe, 0x3d, 0x0f, 0x6b, 0xd3, 0x9f,
+	0xc9, 0x2f, 0xa0, 0x20, 0xb3, 0x9b, 0xce, 0x33, 0xf7, 0xaf, 0xa1, 0xa0, 0x7d, 0x8c, 0x42, 0xf9,
+	0xcd, 0x94, 0x44, 0x92, 0x8f, 0x3a, 0x4e, 0x94, 0x74, 0xae, 0xc5, 0xb7, 0xef, 0x38, 0x11, 0x1f,
+	0x75, 0x1c, 0x99, 0x80, 0xf5, 0x2d, 0x50, 0xa5, 0x46, 0xd5, 0x8c, 0x46, 0xcd, 0x4f, 0xa0, 0x12,
+	0x2b, 0x5e, 0x6a, 0xe7, 0x3f, 0x81, 0x4a, 0xac, 0x60, 0xa9, 0x8d, 0xfe, 0x73, 0x0e, 0x2a, 0x71,
+	0x45, 0x22, 0x63, 0x7d, 0x3a, 0x3d, 0x7f, 0x3c, 0xbf, 0x8a, 0x51, 0xd9, 0x79, 0x5f, 0x08, 0xee,
+	0x76, 0x43, 0x81, 0x41, 0x9c, 0xa0, 0xf7, 0x2f, 0x26, 0xe8, 0x79, 0x39, 0xfe, 0x8a, 0xe4, 0xdc,
+	0xfa, 0x93, 0x34, 0x2a, 0xaa, 0x77, 0xc8, 0xc1, 0x45, 0xa3, 0x7e, 0x38, 0x87, 0xef, 0xe9, 0x8f,
+	0xdf, 0x9e, 0x4d, 0x7f, 0x2b, 0xc3, 0xda, 0x74, 0x4d, 0x92, 0xd4, 0x38, 0xb5, 0x54, 0x8d, 0xb3,
+	0x07, 0x85, 0x90, 0xbb, 0xd1, 0x55, 0x99, 0x97, 0xe8, 0x8e, 0x05, 0x77, 0xbd, 0x9e, 0xe6, 0x93,
+	0x10, 0x99, 0x25, 0x03, 0xbb, 0x8f, 0xc3, 0xf8, 0x5e, 0x2c, 0x0a, 0x8e, 0x50, 0x2a, 0xcb, 0xa2,
+	0xe8, 0x33, 0x27, 0xaa, 0x68, 0x16, 0xc6, 0x6b, 0x14, 0x79, 0x08, 0x55, 0x1a, 0x8a, 0x3e, 0xe3,
+	0xae, 0x18, 0x2f, 0x50, 0xd0, 0xa4, 0x29, 0x26, 0x40, 0x62, 0x4e, 0xa2, 0xa9, 0x2e, 0x86, 0xf7,
+	0x96, 0xa8, 0xf2, 0xda, 0xe9, 0x88, 0x95, 0xc4, 0x58, 0xe9, 0x67, 0x55, 0x96, 0xca, 0xb2, 0xa7,
+	0xa1, 0xab, 0x4d, 0xd2, 0x85, 0x46, 0xc0, 0x42, 0x6e, 0xa3, 0x35, 0xa0, 0x5d, 0x1c, 0xc8, 0xf2,
+	0x46, 0x6a, 0xfb, 0x6c, 0x19, 0x6d, 0xc7, 0x8a, 0xe0, 0xa9, 0xc2, 0x6b, 0x95, 0xf5, 0x20, 0x35,
+	0x75, 0xe1, 0xa9, 0x50, 0x99, 0x7a, 0x2a, 0x58, 0x50, 0x7f, 0x15, 0x22, 0x1f, 0x5b, 0x3e, 0xe5,
+	0x74, 0x18, 0x18, 0xd5, 0xec, 0xd0, 0x30, 0xad, 0xfe, 0x97, 0x12, 0x7f, 0xa4, 0xe0, 0x5a, 0x7b,
+	0xed, 0xd5, 0x64, 0x86, 0x7c, 0x08, 0x37, 0xdd, 0x9e, 0xc7, 0x38, 0x5a, 0x21, 0x77, 0x2d, 0x9b,
+	0x06, 0xa8, 0x6a, 0x96, 0x8a, 0xd9, 0xd0, 0xd3, 0x2f, 0xb8, 0x7b, 0x48, 0x03, 0x6c, 0x76, 0xa1,
+	0x9e, 0x11, 0xe7, 0xef, 0xa7, 0xaf, 0xff, 0xe2, 0x9b, 0x9a, 0x0a, 0x2f, 0x9f, 0xc3, 0xfa, 0x8c,
+	0xaf, 0x96, 0x8a, 0x4f, 0xa7, 0xb0, 0x36, 0xbd, 0xda, 0xb7, 0x61, 0x68, 0xeb, 0x9f, 0x45, 0xd8,
+	0xb8, 0xac, 0xee, 0x27, 0x1d, 0xa8, 0x39, 0x93, 0xe1, 0x02, 0xd7, 0x33, 0x1d, 0x03, 0xd2, 0x50,
+	0x19, 0xba, 0xcf, 0xd1, 0xed, 0xf5, 0xf5, 0xdb, 0xa9, 0x68, 0x46, 0xa3, 0x79, 0x35, 0x5b, 0x21,
+	0xab, 0x66, 0xfb, 0x43, 0xee, 0xea, 0xa2, 0x4d, 0xbf, 0x0d, 0x7f, 0xbe, 0xe4, 0x43, 0xe7, 0x8d,
+	0xd7, 0x6f, 0xc5, 0x8c, 0xfa, 0xed, 0xb7, 0xb9, 0x2b, 0x0b, 0xb8, 0x92, 0x5a, 0xc1, 0x93, 0xeb,
+	0xae, 0xe0, 0x9a, 0xb5, 0x5c, 0x79, 0xf9, 0x5a, 0xee, 0x5b, 0x58, 0x89, 0x09, 0x58, 0xfb, 0xff,
+	0x9f, 0xe5, 0xd6, 0x3f, 0xf2, 0xb0, 0x3e, 0x93, 0x4d, 0xc9, 0x36, 0x7c, 0x27, 0x05, 0xb6, 0x82,
+	0xb0, 0xeb, 0x61, 0xd2, 0x5d, 0x21, 0xa9, 0x4f, 0xc7, 0xfa, 0x4b, 0x12, 0xb7, 0xf3, 0xa9, 0xb8,
+	0x7d, 0x2f, 0x89, 0xdb, 0x1a, 0xaf, 0x92, 0x55, 0x35, 0x0e, 0xbc, 0x1a, 0x49, 0xec, 0xe9, 0xe0,
+	0xbe, 0x92, 0xf9, 0x06, 0x98, 0x31, 0x77, 0xa9, 0xe8, 0x5e, 0xbc, 0x18, 0xdd, 0xff, 0xe7, 0x80,
+	0xd7, 0xfa, 0x77, 0x1e, 0xc8, 0x6c, 0x91, 0x44, 0xde, 0x83, 0x6a, 0xe0, 0xb9, 0x56, 0xba, 0x2d,
+	0x55, 0x09, 0x3c, 0xb7, 0xa3, 0x3a, 0x53, 0x57, 0xf8, 0x37, 0x9f, 0xe9, 0xdf, 0xc2, 0x3c, 0xff,
+	0xae, 0x5c, 0xe2, 0x5f, 0x67, 0xda, 0xbf, 0xc5, 0xcc, 0x97, 0xe1, 0xec, 0x62, 0x96, 0x72, 0x70,
+	0xe9, 0x4d, 0x3b, 0xd8, 0x86, 0x7a, 0xba, 0x2d, 0x23, 0xb1, 0x71, 0xdd, 0x55, 0xd5, 0xf5, 0xd4,
+	0x9d, 0x74, 0x3d, 0xa3, 0xf1, 0xa9, 0x3a, 0xe5, 0x1e, 0x34, 0xe2, 0x46, 0x8e, 0x65, 0x33, 0x07,
+	0x23, 0x27, 0xd6, 0xe3, 0xc9, 0x43, 0xe6, 0x60, 0xeb, 0x33, 0xa8, 0xa5, 0xfa, 0x36, 0xcb, 0xea,
+	0x68, 0x21, 0xd4, 0x52, 0x79, 0x8a, 0xdc, 0x82, 0x22, 0x8e, 0xa8, 0x1d, 0xb5, 0xe2, 0x3a, 0x37,
+	0x4c, 0x3d, 0x24, 0x06, 0x94, 0x7c, 0x8e, 0xa7, 0xee, 0x48, 0x33, 0x74, 0x6e, 0x98, 0xd1, 0x58,
+	0x22, 0x38, 0xf6, 0x70, 0xa4, 0x2f, 0x89, 0x44, 0xa8, 0xe1, 0x41, 0x1d, 0x40, 0x55, 0xb6, 0x96,
+	0x18, 0xfb, 0xd8, 0xfa, 0x7d, 0x2e, 0x6a, 0xbc, 0xa1, 0x74, 0x62, 0x13, 0x2a, 0x54, 0x08, 0x1c,
+	0xfa, 0xea, 0x84, 0xc9, 0x5b, 0x9d, 0x8c, 0xc9, 0x3e, 0xdc, 0xf4, 0x91, 0x5b, 0x82, 0x8f, 0xad,
+	0xb8, 0x95, 0x94, 0xcf, 0x6a, 0x25, 0x35, 0x7c, 0xe4, 0x27, 0x7c, 0x7c, 0x12, 0x35, 0x94, 0x6e,
+	0xcb, 0xf7, 0x9b, 0x24, 0x60, 0x5e, 0x74, 0x75, 0x55, 0xaf, 0x68, 0xfc, 0xdc, 0x6b, 0xfd, 0x35,
+	0x0f, 0x30, 0x69, 0x9a, 0x90, 0xf7, 0xa1, 0x4e, 0x07, 0x03, 0x76, 0x6e, 0x31, 0xee, 0xf6, 0x5c,
+	0x2f, 0x3a, 0xee, 0x35, 0x35, 0xf7, 0x5c, 0x4d, 0xc9, 0x4d, 0xd0, 0x22, 0xba, 0x04, 0x8d, 0xcf,
+	0xba, 0xc6, 0x3d, 0xd3, 0x73, 0x13, 0xa1, 0x0b, 0xe9, 0x34, 0x12, 0x8a, 0x03, 0xff, 0x07, 0xb0,
+	0x8a, 0x23, 0x9f, 0x4d, 0xe5, 0xcd, 0xaa, 0xd9, 0xd0, 0xb3, 0xb1, 0xd8, 0x0e, 0x94, 0x87, 0x74,
+	0x64, 0xd1, 0x9e, 0x6e, 0xb3, 0xcd, 0x5d, 0x78, 0x69, 0x48, 0x47, 0xfb, 0x3d, 0x24, 0x5f, 0xc2,
+	0xba, 0xd6, 0x6f, 0x73, 0x74, 0xd0, 0x13, 0x2e, 0x1d, 0x04, 0x51, 0x07, 0xae, 0x39, 0x83, 0x3e,
+	0x60, 0x6c, 0xa0, 0xdb, 0x4f, 0x6b, 0x0a, 0x74, 0x38, 0xc1, 0xb4, 0xfe, 0x52, 0x04, 0x32, 0xdb,
+	0x24, 0x23, 0x4f, 0xa0, 0xe8, 0xe0, 0x80, 0x8e, 0x17, 0x79, 0x5e, 0xcf, 0xa0, 0xdb, 0x0f, 0x25,
+	0xd4, 0xd4, 0x0c, 0x92, 0x8a, 0x76, 0xe3, 0x88, 0xbb, 0x34, 0xd5, 0xbe, 0x84, 0x9a, 0x9a, 0xa1,
+	0xf9, 0xbb, 0x3c, 0x14, 0x15, 0x37, 0xb9, 0x03, 0xe5, 0xb8, 0xed, 0xa6, 0xce, 0x93, 0x4a, 0xbf,
+	0xf1, 0x14, 0xb9, 0x0f, 0xb5, 0x53, 0x77, 0x84, 0x8e, 0xa5, 0xd7, 0x90, 0x75, 0x9c, 0x3a, 0x37,
+	0x4c, 0x50, 0xf2, 0x9a, 0xbb, 0x03, 0xeb, 0x72, 0x83, 0x3c, 0xed, 0xa2, 0x88, 0xa3, 0x90, 0xcd,
+	0xb1, 0x96, 0x42, 0x69, 0xa6, 0x03, 0x80, 0xc8, 0xa4, 0xc9, 0xe6, 0xce, 0x4b, 0xfe, 0x51, 0x5b,
+	0xd0, 0x4c, 0xa1, 0x0e, 0xd6, 0xe1, 0x66, 0x5f, 0x08, 0x5f, 0x9b, 0xa1, 0xee, 0x56, 0xf3, 0x9b,
+	0x1c, 0x14, 0x95, 0x5f, 0x32, 0xdc, 0xf0, 0x3e, 0xd4, 0x14, 0x34, 0x10, 0x54, 0x84, 0x81, 0x4e,
+	0xa7, 0x72, 0xad, 0x72, 0xf2, 0x58, 0xcd, 0x49, 0x91, 0x1e, 0xf7, 0xed, 0x58, 0x24, 0xbe, 0xd2,
+	0x20, 0x27, 0x27, 0x22, 0x12, 0xb0, 0x63, 0xa1, 0xea, 0x96, 0xae, 0xc4, 0x22, 0x6a, 0xf2, 0x91,
+	0xea, 0x85, 0xbe, 0x89, 0x75, 0xd6, 0x01, 0x94, 0x02, 0x1d, 0x3e, 0x1e, 0x43, 0x3d, 0xdd, 0xcd,
+	0x97, 0xe1, 0xc8, 0x0b, 0x87, 0x5d, 0xe4, 0x6a, 0x9d, 0x0d, 0x19, 0x8e, 0xf4, 0x98, 0x6c, 0x44,
+	0xef, 0xdd, 0x38, 0x4c, 0xa9, 0xd1, 0x41, 0x49, 0x67, 0xa1, 0xd6, 0x77, 0xa1, 0x1c, 0xf7, 0x5a,
+	0x93, 0xb0, 0x2d, 0x19, 0x72, 0x51, 0xd8, 0x3e, 0x68, 0x7f, 0xfd, 0xfa, 0x6e, 0xee, 0x5f, 0xaf,
+	0xef, 0xe6, 0xbe, 0x79, 0x7d, 0x37, 0xf7, 0xab, 0x4d, 0x6d, 0xb3, 0xcb, 0xb6, 0xa9, 0xef, 0x6e,
+	0x5f, 0xf2, 0x3f, 0xa4, 0x6e, 0x49, 0xed, 0xfc, 0xee, 0x7f, 0x03, 0x00, 0x00, 0xff, 0xff, 0x3a,
+	0xa8, 0x9e, 0xea, 0x61, 0x1a, 0x00, 0x00,
 }
 
 func (m *VirtualService) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -3050,101 +3169,95 @@ func (m *VirtualService) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *VirtualService) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *VirtualService) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Hosts) > 0 {
-		for _, s := range m.Hosts {
-			dAtA[i] = 0xa
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
-		}
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	if len(m.Gateways) > 0 {
-		for _, s := range m.Gateways {
-			dAtA[i] = 0x12
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
-		}
-	}
-	if len(m.Http) > 0 {
-		for _, msg := range m.Http {
-			dAtA[i] = 0x1a
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	if len(m.Tcp) > 0 {
-		for _, msg := range m.Tcp {
-			dAtA[i] = 0x22
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
+	if len(m.ExportTo) > 0 {
+		for iNdEx := len(m.ExportTo) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ExportTo[iNdEx])
+			copy(dAtA[i:], m.ExportTo[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.ExportTo[iNdEx])))
+			i--
+			dAtA[i] = 0x32
 		}
 	}
 	if len(m.Tls) > 0 {
-		for _, msg := range m.Tls {
+		for iNdEx := len(m.Tls) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Tls[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintVirtualService(dAtA, i, uint64(size))
+			}
+			i--
 			dAtA[i] = 0x2a
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
 		}
 	}
-	if len(m.ExportTo) > 0 {
-		for _, s := range m.ExportTo {
-			dAtA[i] = 0x32
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
+	if len(m.Tcp) > 0 {
+		for iNdEx := len(m.Tcp) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Tcp[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintVirtualService(dAtA, i, uint64(size))
 			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
+			i--
+			dAtA[i] = 0x22
 		}
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.Http) > 0 {
+		for iNdEx := len(m.Http) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Http[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintVirtualService(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x1a
+		}
 	}
-	return i, nil
+	if len(m.Gateways) > 0 {
+		for iNdEx := len(m.Gateways) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Gateways[iNdEx])
+			copy(dAtA[i:], m.Gateways[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Gateways[iNdEx])))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if len(m.Hosts) > 0 {
+		for iNdEx := len(m.Hosts) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Hosts[iNdEx])
+			copy(dAtA[i:], m.Hosts[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Hosts[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *Destination) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -3152,42 +3265,52 @@ func (m *Destination) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Destination) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Destination) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Host) > 0 {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Host)))
-		i += copy(dAtA[i:], m.Host)
-	}
-	if len(m.Subset) > 0 {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Subset)))
-		i += copy(dAtA[i:], m.Subset)
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if m.Port != nil {
-		dAtA[i] = 0x1a
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Port.Size()))
-		n1, err := m.Port.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
+		{
+			size, err := m.Port.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
 		}
-		i += n1
+		i--
+		dAtA[i] = 0x1a
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.Subset) > 0 {
+		i -= len(m.Subset)
+		copy(dAtA[i:], m.Subset)
+		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Subset)))
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if len(m.Host) > 0 {
+		i -= len(m.Host)
+		copy(dAtA[i:], m.Host)
+		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Host)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *HTTPRoute) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -3195,217 +3318,260 @@ func (m *HTTPRoute) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *HTTPRoute) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *HTTPRoute) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Match) > 0 {
-		for _, msg := range m.Match {
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if m.MirrorPercent != nil {
+		{
+			size, err := m.MirrorPercent.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
-			i += n
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
 		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x92
 	}
-	if len(m.Route) > 0 {
-		for _, msg := range m.Route {
+	if len(m.Name) > 0 {
+		i -= len(m.Name)
+		copy(dAtA[i:], m.Name)
+		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Name)))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x8a
+	}
+	if m.Headers != nil {
+		{
+			size, err := m.Headers.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x82
+	}
+	if len(m.AppendRequestHeaders) > 0 {
+		for k := range m.AppendRequestHeaders {
+			v := m.AppendRequestHeaders[k]
+			baseI := i
+			i -= len(v)
+			copy(dAtA[i:], v)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
+			i--
 			dAtA[i] = 0x12
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintVirtualService(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x7a
+		}
+	}
+	if len(m.RemoveRequestHeaders) > 0 {
+		for iNdEx := len(m.RemoveRequestHeaders) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.RemoveRequestHeaders[iNdEx])
+			copy(dAtA[i:], m.RemoveRequestHeaders[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.RemoveRequestHeaders[iNdEx])))
+			i--
+			dAtA[i] = 0x72
+		}
+	}
+	if len(m.AppendResponseHeaders) > 0 {
+		for k := range m.AppendResponseHeaders {
+			v := m.AppendResponseHeaders[k]
+			baseI := i
+			i -= len(v)
+			copy(dAtA[i:], v)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
+			i--
+			dAtA[i] = 0x12
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintVirtualService(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x6a
+		}
+	}
+	if len(m.RemoveResponseHeaders) > 0 {
+		for iNdEx := len(m.RemoveResponseHeaders) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.RemoveResponseHeaders[iNdEx])
+			copy(dAtA[i:], m.RemoveResponseHeaders[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.RemoveResponseHeaders[iNdEx])))
+			i--
+			dAtA[i] = 0x62
+		}
+	}
+	if len(m.AppendHeaders) > 0 {
+		for k := range m.AppendHeaders {
+			v := m.AppendHeaders[k]
+			baseI := i
+			i -= len(v)
+			copy(dAtA[i:], v)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
+			i--
+			dAtA[i] = 0x12
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintVirtualService(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x5a
+		}
+	}
+	if m.CorsPolicy != nil {
+		{
+			size, err := m.CorsPolicy.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
-			i += n
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
 		}
+		i--
+		dAtA[i] = 0x52
 	}
-	if m.Redirect != nil {
-		dAtA[i] = 0x1a
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Redirect.Size()))
-		n2, err := m.Redirect.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
+	if m.Mirror != nil {
+		{
+			size, err := m.Mirror.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
 		}
-		i += n2
+		i--
+		dAtA[i] = 0x4a
 	}
-	if m.Rewrite != nil {
-		dAtA[i] = 0x22
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Rewrite.Size()))
-		n3, err := m.Rewrite.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
+	if m.Fault != nil {
+		{
+			size, err := m.Fault.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
 		}
-		i += n3
+		i--
+		dAtA[i] = 0x42
+	}
+	if m.Retries != nil {
+		{
+			size, err := m.Retries.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x3a
+	}
+	if m.Timeout != nil {
+		{
+			size, err := m.Timeout.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x32
 	}
 	if m.WebsocketUpgrade {
-		dAtA[i] = 0x28
-		i++
+		i--
 		if m.WebsocketUpgrade {
 			dAtA[i] = 1
 		} else {
 			dAtA[i] = 0
 		}
-		i++
+		i--
+		dAtA[i] = 0x28
 	}
-	if m.Timeout != nil {
-		dAtA[i] = 0x32
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Timeout.Size()))
-		n4, err := m.Timeout.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n4
-	}
-	if m.Retries != nil {
-		dAtA[i] = 0x3a
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Retries.Size()))
-		n5, err := m.Retries.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n5
-	}
-	if m.Fault != nil {
-		dAtA[i] = 0x42
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Fault.Size()))
-		n6, err := m.Fault.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n6
-	}
-	if m.Mirror != nil {
-		dAtA[i] = 0x4a
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Mirror.Size()))
-		n7, err := m.Mirror.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n7
-	}
-	if m.CorsPolicy != nil {
-		dAtA[i] = 0x52
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.CorsPolicy.Size()))
-		n8, err := m.CorsPolicy.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n8
-	}
-	if len(m.AppendHeaders) > 0 {
-		for k, _ := range m.AppendHeaders {
-			dAtA[i] = 0x5a
-			i++
-			v := m.AppendHeaders[k]
-			mapSize := 1 + len(k) + sovVirtualService(uint64(len(k))) + 1 + len(v) + sovVirtualService(uint64(len(v)))
-			i = encodeVarintVirtualService(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			dAtA[i] = 0x12
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
-			i += copy(dAtA[i:], v)
-		}
-	}
-	if len(m.RemoveResponseHeaders) > 0 {
-		for _, s := range m.RemoveResponseHeaders {
-			dAtA[i] = 0x62
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
+	if m.Rewrite != nil {
+		{
+			size, err := m.Rewrite.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
 			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
 		}
+		i--
+		dAtA[i] = 0x22
 	}
-	if len(m.AppendResponseHeaders) > 0 {
-		for k, _ := range m.AppendResponseHeaders {
-			dAtA[i] = 0x6a
-			i++
-			v := m.AppendResponseHeaders[k]
-			mapSize := 1 + len(k) + sovVirtualService(uint64(len(k))) + 1 + len(v) + sovVirtualService(uint64(len(v)))
-			i = encodeVarintVirtualService(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			dAtA[i] = 0x12
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
-			i += copy(dAtA[i:], v)
-		}
-	}
-	if len(m.RemoveRequestHeaders) > 0 {
-		for _, s := range m.RemoveRequestHeaders {
-			dAtA[i] = 0x72
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
+	if m.Redirect != nil {
+		{
+			size, err := m.Redirect.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
 			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
 		}
+		i--
+		dAtA[i] = 0x1a
 	}
-	if len(m.AppendRequestHeaders) > 0 {
-		for k, _ := range m.AppendRequestHeaders {
-			dAtA[i] = 0x7a
-			i++
-			v := m.AppendRequestHeaders[k]
-			mapSize := 1 + len(k) + sovVirtualService(uint64(len(k))) + 1 + len(v) + sovVirtualService(uint64(len(v)))
-			i = encodeVarintVirtualService(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
+	if len(m.Route) > 0 {
+		for iNdEx := len(m.Route) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Route[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintVirtualService(dAtA, i, uint64(size))
+			}
+			i--
 			dAtA[i] = 0x12
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
-			i += copy(dAtA[i:], v)
 		}
 	}
-	if m.Headers != nil {
-		dAtA[i] = 0x82
-		i++
-		dAtA[i] = 0x1
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Headers.Size()))
-		n9, err := m.Headers.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
+	if len(m.Match) > 0 {
+		for iNdEx := len(m.Match) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Match[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintVirtualService(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0xa
 		}
-		i += n9
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
-	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *Headers) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -3413,40 +3579,50 @@ func (m *Headers) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Headers) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Headers) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Request != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Request.Size()))
-		n10, err := m.Request.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n10
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if m.Response != nil {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Response.Size()))
-		n11, err := m.Response.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
+		{
+			size, err := m.Response.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
 		}
-		i += n11
+		i--
+		dAtA[i] = 0x12
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if m.Request != nil {
+		{
+			size, err := m.Request.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *Headers_HeaderOperations) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -3454,69 +3630,73 @@ func (m *Headers_HeaderOperations) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Headers_HeaderOperations) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Headers_HeaderOperations) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Set) > 0 {
-		for k, _ := range m.Set {
-			dAtA[i] = 0xa
-			i++
-			v := m.Set[k]
-			mapSize := 1 + len(k) + sovVirtualService(uint64(len(k))) + 1 + len(v) + sovVirtualService(uint64(len(v)))
-			i = encodeVarintVirtualService(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			dAtA[i] = 0x12
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
-			i += copy(dAtA[i:], v)
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if len(m.Remove) > 0 {
+		for iNdEx := len(m.Remove) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Remove[iNdEx])
+			copy(dAtA[i:], m.Remove[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Remove[iNdEx])))
+			i--
+			dAtA[i] = 0x1a
 		}
 	}
 	if len(m.Add) > 0 {
-		for k, _ := range m.Add {
-			dAtA[i] = 0x12
-			i++
+		for k := range m.Add {
 			v := m.Add[k]
-			mapSize := 1 + len(k) + sovVirtualService(uint64(len(k))) + 1 + len(v) + sovVirtualService(uint64(len(v)))
-			i = encodeVarintVirtualService(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			dAtA[i] = 0x12
-			i++
+			baseI := i
+			i -= len(v)
+			copy(dAtA[i:], v)
 			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
-			i += copy(dAtA[i:], v)
+			i--
+			dAtA[i] = 0x12
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintVirtualService(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x12
 		}
 	}
-	if len(m.Remove) > 0 {
-		for _, s := range m.Remove {
-			dAtA[i] = 0x1a
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
+	if len(m.Set) > 0 {
+		for k := range m.Set {
+			v := m.Set[k]
+			baseI := i
+			i -= len(v)
+			copy(dAtA[i:], v)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
+			i--
+			dAtA[i] = 0x12
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintVirtualService(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0xa
 		}
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
-	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *TLSRoute) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -3524,44 +3704,54 @@ func (m *TLSRoute) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *TLSRoute) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *TLSRoute) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Match) > 0 {
-		for _, msg := range m.Match {
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if len(m.Route) > 0 {
-		for _, msg := range m.Route {
-			dAtA[i] = 0x12
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
+		for iNdEx := len(m.Route) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Route[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintVirtualService(dAtA, i, uint64(size))
 			}
-			i += n
+			i--
+			dAtA[i] = 0x12
 		}
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.Match) > 0 {
+		for iNdEx := len(m.Match) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Match[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintVirtualService(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0xa
+		}
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *TCPRoute) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -3569,44 +3759,54 @@ func (m *TCPRoute) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *TCPRoute) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *TCPRoute) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Match) > 0 {
-		for _, msg := range m.Match {
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if len(m.Route) > 0 {
-		for _, msg := range m.Route {
-			dAtA[i] = 0x12
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
+		for iNdEx := len(m.Route) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Route[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintVirtualService(dAtA, i, uint64(size))
 			}
-			i += n
+			i--
+			dAtA[i] = 0x12
 		}
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.Match) > 0 {
+		for iNdEx := len(m.Match) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Match[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintVirtualService(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0xa
+		}
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *HTTPMatchRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -3614,125 +3814,176 @@ func (m *HTTPMatchRequest) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *HTTPMatchRequest) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *HTTPMatchRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Uri != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Uri.Size()))
-		n12, err := m.Uri.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n12
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	if m.Scheme != nil {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Scheme.Size()))
-		n13, err := m.Scheme.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n13
+	if len(m.Name) > 0 {
+		i -= len(m.Name)
+		copy(dAtA[i:], m.Name)
+		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Name)))
+		i--
+		dAtA[i] = 0x5a
 	}
-	if m.Method != nil {
-		dAtA[i] = 0x1a
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Method.Size()))
-		n14, err := m.Method.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
+	if m.IgnoreUriCase {
+		i--
+		if m.IgnoreUriCase {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
 		}
-		i += n14
+		i--
+		dAtA[i] = 0x50
 	}
-	if m.Authority != nil {
-		dAtA[i] = 0x22
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Authority.Size()))
-		n15, err := m.Authority.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n15
-	}
-	if len(m.Headers) > 0 {
-		for k, _ := range m.Headers {
-			dAtA[i] = 0x2a
-			i++
-			v := m.Headers[k]
-			msgSize := 0
+	if len(m.QueryParams) > 0 {
+		for k := range m.QueryParams {
+			v := m.QueryParams[k]
+			baseI := i
 			if v != nil {
-				msgSize = v.Size()
-				msgSize += 1 + sovVirtualService(uint64(msgSize))
-			}
-			mapSize := 1 + len(k) + sovVirtualService(uint64(len(k))) + msgSize
-			i = encodeVarintVirtualService(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			if v != nil {
-				dAtA[i] = 0x12
-				i++
-				i = encodeVarintVirtualService(dAtA, i, uint64(v.Size()))
-				n16, err := v.MarshalTo(dAtA[i:])
-				if err != nil {
-					return 0, err
+				{
+					size, err := v.MarshalToSizedBuffer(dAtA[:i])
+					if err != nil {
+						return 0, err
+					}
+					i -= size
+					i = encodeVarintVirtualService(dAtA, i, uint64(size))
 				}
-				i += n16
+				i--
+				dAtA[i] = 0x12
 			}
-		}
-	}
-	if m.Port != 0 {
-		dAtA[i] = 0x30
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Port))
-	}
-	if len(m.SourceLabels) > 0 {
-		for k, _ := range m.SourceLabels {
-			dAtA[i] = 0x3a
-			i++
-			v := m.SourceLabels[k]
-			mapSize := 1 + len(k) + sovVirtualService(uint64(len(k))) + 1 + len(v) + sovVirtualService(uint64(len(v)))
-			i = encodeVarintVirtualService(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
+			i -= len(k)
+			copy(dAtA[i:], k)
 			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			dAtA[i] = 0x12
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
-			i += copy(dAtA[i:], v)
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintVirtualService(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x4a
 		}
 	}
 	if len(m.Gateways) > 0 {
-		for _, s := range m.Gateways {
+		for iNdEx := len(m.Gateways) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Gateways[iNdEx])
+			copy(dAtA[i:], m.Gateways[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Gateways[iNdEx])))
+			i--
 			dAtA[i] = 0x42
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
 		}
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.SourceLabels) > 0 {
+		for k := range m.SourceLabels {
+			v := m.SourceLabels[k]
+			baseI := i
+			i -= len(v)
+			copy(dAtA[i:], v)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
+			i--
+			dAtA[i] = 0x12
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintVirtualService(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x3a
+		}
 	}
-	return i, nil
+	if m.Port != 0 {
+		i = encodeVarintVirtualService(dAtA, i, uint64(m.Port))
+		i--
+		dAtA[i] = 0x30
+	}
+	if len(m.Headers) > 0 {
+		for k := range m.Headers {
+			v := m.Headers[k]
+			baseI := i
+			if v != nil {
+				{
+					size, err := v.MarshalToSizedBuffer(dAtA[:i])
+					if err != nil {
+						return 0, err
+					}
+					i -= size
+					i = encodeVarintVirtualService(dAtA, i, uint64(size))
+				}
+				i--
+				dAtA[i] = 0x12
+			}
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintVirtualService(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x2a
+		}
+	}
+	if m.Authority != nil {
+		{
+			size, err := m.Authority.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.Method != nil {
+		{
+			size, err := m.Method.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.Scheme != nil {
+		{
+			size, err := m.Scheme.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Uri != nil {
+		{
+			size, err := m.Uri.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *HTTPRouteDestination) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -3740,109 +3991,111 @@ func (m *HTTPRouteDestination) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *HTTPRouteDestination) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *HTTPRouteDestination) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Destination != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Destination.Size()))
-		n17, err := m.Destination.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n17
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	if m.Weight != 0 {
-		dAtA[i] = 0x10
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Weight))
-	}
-	if len(m.RemoveResponseHeaders) > 0 {
-		for _, s := range m.RemoveResponseHeaders {
-			dAtA[i] = 0x1a
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
+	if m.Headers != nil {
+		{
+			size, err := m.Headers.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
 			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
 		}
+		i--
+		dAtA[i] = 0x3a
 	}
-	if len(m.AppendResponseHeaders) > 0 {
-		for k, _ := range m.AppendResponseHeaders {
-			dAtA[i] = 0x22
-			i++
-			v := m.AppendResponseHeaders[k]
-			mapSize := 1 + len(k) + sovVirtualService(uint64(len(k))) + 1 + len(v) + sovVirtualService(uint64(len(v)))
-			i = encodeVarintVirtualService(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			dAtA[i] = 0x12
-			i++
+	if len(m.AppendRequestHeaders) > 0 {
+		for k := range m.AppendRequestHeaders {
+			v := m.AppendRequestHeaders[k]
+			baseI := i
+			i -= len(v)
+			copy(dAtA[i:], v)
 			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
-			i += copy(dAtA[i:], v)
+			i--
+			dAtA[i] = 0x12
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintVirtualService(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x32
 		}
 	}
 	if len(m.RemoveRequestHeaders) > 0 {
-		for _, s := range m.RemoveRequestHeaders {
+		for iNdEx := len(m.RemoveRequestHeaders) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.RemoveRequestHeaders[iNdEx])
+			copy(dAtA[i:], m.RemoveRequestHeaders[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.RemoveRequestHeaders[iNdEx])))
+			i--
 			dAtA[i] = 0x2a
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
 		}
 	}
-	if len(m.AppendRequestHeaders) > 0 {
-		for k, _ := range m.AppendRequestHeaders {
-			dAtA[i] = 0x32
-			i++
-			v := m.AppendRequestHeaders[k]
-			mapSize := 1 + len(k) + sovVirtualService(uint64(len(k))) + 1 + len(v) + sovVirtualService(uint64(len(v)))
-			i = encodeVarintVirtualService(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			dAtA[i] = 0x12
-			i++
+	if len(m.AppendResponseHeaders) > 0 {
+		for k := range m.AppendResponseHeaders {
+			v := m.AppendResponseHeaders[k]
+			baseI := i
+			i -= len(v)
+			copy(dAtA[i:], v)
 			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
-			i += copy(dAtA[i:], v)
+			i--
+			dAtA[i] = 0x12
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintVirtualService(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x22
 		}
 	}
-	if m.Headers != nil {
-		dAtA[i] = 0x3a
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Headers.Size()))
-		n18, err := m.Headers.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
+	if len(m.RemoveResponseHeaders) > 0 {
+		for iNdEx := len(m.RemoveResponseHeaders) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.RemoveResponseHeaders[iNdEx])
+			copy(dAtA[i:], m.RemoveResponseHeaders[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.RemoveResponseHeaders[iNdEx])))
+			i--
+			dAtA[i] = 0x1a
 		}
-		i += n18
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if m.Weight != 0 {
+		i = encodeVarintVirtualService(dAtA, i, uint64(m.Weight))
+		i--
+		dAtA[i] = 0x10
 	}
-	return i, nil
+	if m.Destination != nil {
+		{
+			size, err := m.Destination.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *RouteDestination) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -3850,35 +4103,43 @@ func (m *RouteDestination) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *RouteDestination) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RouteDestination) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Destination != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Destination.Size()))
-		n19, err := m.Destination.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n19
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if m.Weight != 0 {
-		dAtA[i] = 0x10
-		i++
 		i = encodeVarintVirtualService(dAtA, i, uint64(m.Weight))
+		i--
+		dAtA[i] = 0x10
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if m.Destination != nil {
+		{
+			size, err := m.Destination.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *L4MatchAttributes) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -3886,78 +4147,75 @@ func (m *L4MatchAttributes) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *L4MatchAttributes) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *L4MatchAttributes) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.DestinationSubnets) > 0 {
-		for _, s := range m.DestinationSubnets {
-			dAtA[i] = 0xa
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
-		}
-	}
-	if m.Port != 0 {
-		dAtA[i] = 0x10
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Port))
-	}
-	if len(m.SourceSubnet) > 0 {
-		dAtA[i] = 0x1a
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.SourceSubnet)))
-		i += copy(dAtA[i:], m.SourceSubnet)
-	}
-	if len(m.SourceLabels) > 0 {
-		for k, _ := range m.SourceLabels {
-			dAtA[i] = 0x22
-			i++
-			v := m.SourceLabels[k]
-			mapSize := 1 + len(k) + sovVirtualService(uint64(len(k))) + 1 + len(v) + sovVirtualService(uint64(len(v)))
-			i = encodeVarintVirtualService(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			dAtA[i] = 0x12
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
-			i += copy(dAtA[i:], v)
-		}
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if len(m.Gateways) > 0 {
-		for _, s := range m.Gateways {
+		for iNdEx := len(m.Gateways) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Gateways[iNdEx])
+			copy(dAtA[i:], m.Gateways[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Gateways[iNdEx])))
+			i--
 			dAtA[i] = 0x2a
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
 		}
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.SourceLabels) > 0 {
+		for k := range m.SourceLabels {
+			v := m.SourceLabels[k]
+			baseI := i
+			i -= len(v)
+			copy(dAtA[i:], v)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
+			i--
+			dAtA[i] = 0x12
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintVirtualService(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x22
+		}
 	}
-	return i, nil
+	if len(m.SourceSubnet) > 0 {
+		i -= len(m.SourceSubnet)
+		copy(dAtA[i:], m.SourceSubnet)
+		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.SourceSubnet)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.Port != 0 {
+		i = encodeVarintVirtualService(dAtA, i, uint64(m.Port))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.DestinationSubnets) > 0 {
+		for iNdEx := len(m.DestinationSubnets) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.DestinationSubnets[iNdEx])
+			copy(dAtA[i:], m.DestinationSubnets[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.DestinationSubnets[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *TLSMatchAttributes) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -3965,93 +4223,84 @@ func (m *TLSMatchAttributes) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *TLSMatchAttributes) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *TLSMatchAttributes) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.SniHosts) > 0 {
-		for _, s := range m.SniHosts {
-			dAtA[i] = 0xa
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
-		}
-	}
-	if len(m.DestinationSubnets) > 0 {
-		for _, s := range m.DestinationSubnets {
-			dAtA[i] = 0x12
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
-		}
-	}
-	if m.Port != 0 {
-		dAtA[i] = 0x18
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Port))
-	}
-	if len(m.SourceSubnet) > 0 {
-		dAtA[i] = 0x22
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.SourceSubnet)))
-		i += copy(dAtA[i:], m.SourceSubnet)
-	}
-	if len(m.SourceLabels) > 0 {
-		for k, _ := range m.SourceLabels {
-			dAtA[i] = 0x2a
-			i++
-			v := m.SourceLabels[k]
-			mapSize := 1 + len(k) + sovVirtualService(uint64(len(k))) + 1 + len(v) + sovVirtualService(uint64(len(v)))
-			i = encodeVarintVirtualService(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			dAtA[i] = 0x12
-			i++
-			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
-			i += copy(dAtA[i:], v)
-		}
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if len(m.Gateways) > 0 {
-		for _, s := range m.Gateways {
+		for iNdEx := len(m.Gateways) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Gateways[iNdEx])
+			copy(dAtA[i:], m.Gateways[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Gateways[iNdEx])))
+			i--
 			dAtA[i] = 0x32
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
 		}
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.SourceLabels) > 0 {
+		for k := range m.SourceLabels {
+			v := m.SourceLabels[k]
+			baseI := i
+			i -= len(v)
+			copy(dAtA[i:], v)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(v)))
+			i--
+			dAtA[i] = 0x12
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintVirtualService(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x2a
+		}
 	}
-	return i, nil
+	if len(m.SourceSubnet) > 0 {
+		i -= len(m.SourceSubnet)
+		copy(dAtA[i:], m.SourceSubnet)
+		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.SourceSubnet)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.Port != 0 {
+		i = encodeVarintVirtualService(dAtA, i, uint64(m.Port))
+		i--
+		dAtA[i] = 0x18
+	}
+	if len(m.DestinationSubnets) > 0 {
+		for iNdEx := len(m.DestinationSubnets) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.DestinationSubnets[iNdEx])
+			copy(dAtA[i:], m.DestinationSubnets[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.DestinationSubnets[iNdEx])))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if len(m.SniHosts) > 0 {
+		for iNdEx := len(m.SniHosts) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.SniHosts[iNdEx])
+			copy(dAtA[i:], m.SniHosts[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.SniHosts[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *HTTPRedirect) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -4059,32 +4308,45 @@ func (m *HTTPRedirect) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *HTTPRedirect) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *HTTPRedirect) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Uri) > 0 {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Uri)))
-		i += copy(dAtA[i:], m.Uri)
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if m.RedirectCode != 0 {
+		i = encodeVarintVirtualService(dAtA, i, uint64(m.RedirectCode))
+		i--
+		dAtA[i] = 0x18
 	}
 	if len(m.Authority) > 0 {
-		dAtA[i] = 0x12
-		i++
+		i -= len(m.Authority)
+		copy(dAtA[i:], m.Authority)
 		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Authority)))
-		i += copy(dAtA[i:], m.Authority)
+		i--
+		dAtA[i] = 0x12
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.Uri) > 0 {
+		i -= len(m.Uri)
+		copy(dAtA[i:], m.Uri)
+		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Uri)))
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *HTTPRewrite) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -4092,32 +4354,40 @@ func (m *HTTPRewrite) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *HTTPRewrite) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *HTTPRewrite) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Uri) > 0 {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Uri)))
-		i += copy(dAtA[i:], m.Uri)
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if len(m.Authority) > 0 {
-		dAtA[i] = 0x12
-		i++
+		i -= len(m.Authority)
+		copy(dAtA[i:], m.Authority)
 		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Authority)))
-		i += copy(dAtA[i:], m.Authority)
+		i--
+		dAtA[i] = 0x12
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.Uri) > 0 {
+		i -= len(m.Uri)
+		copy(dAtA[i:], m.Uri)
+		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Uri)))
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *StringMatch) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -4125,51 +4395,74 @@ func (m *StringMatch) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *StringMatch) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *StringMatch) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.MatchType != nil {
-		nn20, err := m.MatchType.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += nn20
-	}
 	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	return i, nil
+	if m.MatchType != nil {
+		{
+			size := m.MatchType.Size()
+			i -= size
+			if _, err := m.MatchType.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *StringMatch_Exact) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0xa
-	i++
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *StringMatch_Exact) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.Exact)
+	copy(dAtA[i:], m.Exact)
 	i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Exact)))
-	i += copy(dAtA[i:], m.Exact)
-	return i, nil
+	i--
+	dAtA[i] = 0xa
+	return len(dAtA) - i, nil
 }
 func (m *StringMatch_Prefix) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0x12
-	i++
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *StringMatch_Prefix) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.Prefix)
+	copy(dAtA[i:], m.Prefix)
 	i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Prefix)))
-	i += copy(dAtA[i:], m.Prefix)
-	return i, nil
+	i--
+	dAtA[i] = 0x12
+	return len(dAtA) - i, nil
 }
 func (m *StringMatch_Regex) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0x1a
-	i++
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *StringMatch_Regex) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.Regex)
+	copy(dAtA[i:], m.Regex)
 	i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Regex)))
-	i += copy(dAtA[i:], m.Regex)
-	return i, nil
+	i--
+	dAtA[i] = 0x1a
+	return len(dAtA) - i, nil
 }
 func (m *HTTPRetry) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -4177,41 +4470,50 @@ func (m *HTTPRetry) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *HTTPRetry) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *HTTPRetry) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Attempts != 0 {
-		dAtA[i] = 0x8
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Attempts))
-	}
-	if m.PerTryTimeout != nil {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.PerTryTimeout.Size()))
-		n21, err := m.PerTryTimeout.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n21
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if len(m.RetryOn) > 0 {
-		dAtA[i] = 0x1a
-		i++
+		i -= len(m.RetryOn)
+		copy(dAtA[i:], m.RetryOn)
 		i = encodeVarintVirtualService(dAtA, i, uint64(len(m.RetryOn)))
-		i += copy(dAtA[i:], m.RetryOn)
+		i--
+		dAtA[i] = 0x1a
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if m.PerTryTimeout != nil {
+		{
+			size, err := m.PerTryTimeout.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if m.Attempts != 0 {
+		i = encodeVarintVirtualService(dAtA, i, uint64(m.Attempts))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *CorsPolicy) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -4219,100 +4521,86 @@ func (m *CorsPolicy) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *CorsPolicy) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *CorsPolicy) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.AllowOrigin) > 0 {
-		for _, s := range m.AllowOrigin {
-			dAtA[i] = 0xa
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
-		}
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	if len(m.AllowMethods) > 0 {
-		for _, s := range m.AllowMethods {
-			dAtA[i] = 0x12
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
+	if m.AllowCredentials != nil {
+		{
+			size, err := m.AllowCredentials.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
 			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x32
+	}
+	if m.MaxAge != nil {
+		{
+			size, err := m.MaxAge.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x2a
+	}
+	if len(m.ExposeHeaders) > 0 {
+		for iNdEx := len(m.ExposeHeaders) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ExposeHeaders[iNdEx])
+			copy(dAtA[i:], m.ExposeHeaders[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.ExposeHeaders[iNdEx])))
+			i--
+			dAtA[i] = 0x22
 		}
 	}
 	if len(m.AllowHeaders) > 0 {
-		for _, s := range m.AllowHeaders {
+		for iNdEx := len(m.AllowHeaders) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.AllowHeaders[iNdEx])
+			copy(dAtA[i:], m.AllowHeaders[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.AllowHeaders[iNdEx])))
+			i--
 			dAtA[i] = 0x1a
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
 		}
 	}
-	if len(m.ExposeHeaders) > 0 {
-		for _, s := range m.ExposeHeaders {
-			dAtA[i] = 0x22
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
+	if len(m.AllowMethods) > 0 {
+		for iNdEx := len(m.AllowMethods) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.AllowMethods[iNdEx])
+			copy(dAtA[i:], m.AllowMethods[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.AllowMethods[iNdEx])))
+			i--
+			dAtA[i] = 0x12
 		}
 	}
-	if m.MaxAge != nil {
-		dAtA[i] = 0x2a
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.MaxAge.Size()))
-		n22, err := m.MaxAge.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
+	if len(m.AllowOrigin) > 0 {
+		for iNdEx := len(m.AllowOrigin) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.AllowOrigin[iNdEx])
+			copy(dAtA[i:], m.AllowOrigin[iNdEx])
+			i = encodeVarintVirtualService(dAtA, i, uint64(len(m.AllowOrigin[iNdEx])))
+			i--
+			dAtA[i] = 0xa
 		}
-		i += n22
 	}
-	if m.AllowCredentials != nil {
-		dAtA[i] = 0x32
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.AllowCredentials.Size()))
-		n23, err := m.AllowCredentials.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n23
-	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
-	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *HTTPFaultInjection) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -4320,40 +4608,50 @@ func (m *HTTPFaultInjection) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *HTTPFaultInjection) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *HTTPFaultInjection) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Delay != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Delay.Size()))
-		n24, err := m.Delay.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n24
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if m.Abort != nil {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Abort.Size()))
-		n25, err := m.Abort.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
+		{
+			size, err := m.Abort.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
 		}
-		i += n25
+		i--
+		dAtA[i] = 0x12
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if m.Delay != nil {
+		{
+			size, err := m.Delay.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *HTTPFaultInjection_Delay) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -4361,70 +4659,92 @@ func (m *HTTPFaultInjection_Delay) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *HTTPFaultInjection_Delay) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *HTTPFaultInjection_Delay) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Percent != 0 {
-		dAtA[i] = 0x8
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Percent))
-	}
-	if m.HttpDelayType != nil {
-		nn26, err := m.HttpDelayType.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += nn26
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if m.Percentage != nil {
-		dAtA[i] = 0x2a
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Percentage.Size()))
-		n27, err := m.Percentage.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
+		{
+			size, err := m.Percentage.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
 		}
-		i += n27
+		i--
+		dAtA[i] = 0x2a
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if m.HttpDelayType != nil {
+		{
+			size := m.HttpDelayType.Size()
+			i -= size
+			if _, err := m.HttpDelayType.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
 	}
-	return i, nil
+	if m.Percent != 0 {
+		i = encodeVarintVirtualService(dAtA, i, uint64(m.Percent))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *HTTPFaultInjection_Delay_FixedDelay) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *HTTPFaultInjection_Delay_FixedDelay) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	if m.FixedDelay != nil {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.FixedDelay.Size()))
-		n28, err := m.FixedDelay.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
+		{
+			size, err := m.FixedDelay.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
 		}
-		i += n28
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 func (m *HTTPFaultInjection_Delay_ExponentialDelay) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *HTTPFaultInjection_Delay_ExponentialDelay) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	if m.ExponentialDelay != nil {
-		dAtA[i] = 0x1a
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.ExponentialDelay.Size()))
-		n29, err := m.ExponentialDelay.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
+		{
+			size, err := m.ExponentialDelay.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
 		}
-		i += n29
+		i--
+		dAtA[i] = 0x1a
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 func (m *HTTPFaultInjection_Abort) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -4432,65 +4752,89 @@ func (m *HTTPFaultInjection_Abort) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *HTTPFaultInjection_Abort) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *HTTPFaultInjection_Abort) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Percent != 0 {
-		dAtA[i] = 0x8
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Percent))
-	}
-	if m.ErrorType != nil {
-		nn30, err := m.ErrorType.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += nn30
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if m.Percentage != nil {
-		dAtA[i] = 0x2a
-		i++
-		i = encodeVarintVirtualService(dAtA, i, uint64(m.Percentage.Size()))
-		n31, err := m.Percentage.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
+		{
+			size, err := m.Percentage.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintVirtualService(dAtA, i, uint64(size))
 		}
-		i += n31
+		i--
+		dAtA[i] = 0x2a
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if m.ErrorType != nil {
+		{
+			size := m.ErrorType.Size()
+			i -= size
+			if _, err := m.ErrorType.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
 	}
-	return i, nil
+	if m.Percent != 0 {
+		i = encodeVarintVirtualService(dAtA, i, uint64(m.Percent))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *HTTPFaultInjection_Abort_HttpStatus) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0x10
-	i++
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *HTTPFaultInjection_Abort_HttpStatus) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	i = encodeVarintVirtualService(dAtA, i, uint64(m.HttpStatus))
-	return i, nil
+	i--
+	dAtA[i] = 0x10
+	return len(dAtA) - i, nil
 }
 func (m *HTTPFaultInjection_Abort_GrpcStatus) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0x1a
-	i++
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *HTTPFaultInjection_Abort_GrpcStatus) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.GrpcStatus)
+	copy(dAtA[i:], m.GrpcStatus)
 	i = encodeVarintVirtualService(dAtA, i, uint64(len(m.GrpcStatus)))
-	i += copy(dAtA[i:], m.GrpcStatus)
-	return i, nil
+	i--
+	dAtA[i] = 0x1a
+	return len(dAtA) - i, nil
 }
 func (m *HTTPFaultInjection_Abort_Http2Error) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0x22
-	i++
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *HTTPFaultInjection_Abort_Http2Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.Http2Error)
+	copy(dAtA[i:], m.Http2Error)
 	i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Http2Error)))
-	i += copy(dAtA[i:], m.Http2Error)
-	return i, nil
+	i--
+	dAtA[i] = 0x22
+	return len(dAtA) - i, nil
 }
 func (m *PortSelector) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -4498,42 +4842,59 @@ func (m *PortSelector) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *PortSelector) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *PortSelector) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Port != nil {
-		nn32, err := m.Port.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += nn32
-	}
 	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	return i, nil
+	if m.Port != nil {
+		{
+			size := m.Port.Size()
+			i -= size
+			if _, err := m.Port.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *PortSelector_Number) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0x8
-	i++
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *PortSelector_Number) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	i = encodeVarintVirtualService(dAtA, i, uint64(m.Number))
-	return i, nil
+	i--
+	dAtA[i] = 0x8
+	return len(dAtA) - i, nil
 }
 func (m *PortSelector_Name) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0x12
-	i++
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *PortSelector_Name) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.Name)
+	copy(dAtA[i:], m.Name)
 	i = encodeVarintVirtualService(dAtA, i, uint64(len(m.Name)))
-	i += copy(dAtA[i:], m.Name)
-	return i, nil
+	i--
+	dAtA[i] = 0x12
+	return len(dAtA) - i, nil
 }
 func (m *Percent) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -4541,30 +4902,38 @@ func (m *Percent) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Percent) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Percent) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Value != 0 {
-		dAtA[i] = 0x9
-		i++
-		encoding_binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Value))))
-		i += 8
-	}
 	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	return i, nil
+	if m.Value != 0 {
+		i -= 8
+		encoding_binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Value))))
+		i--
+		dAtA[i] = 0x9
+	}
+	return len(dAtA) - i, nil
 }
 
 func encodeVarintVirtualService(dAtA []byte, offset int, v uint64) int {
+	offset -= sovVirtualService(v)
+	base := offset
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
 	dAtA[offset] = uint8(v)
-	return offset + 1
+	return base
 }
 func (m *VirtualService) Size() (n int) {
 	if m == nil {
@@ -4727,6 +5096,14 @@ func (m *HTTPRoute) Size() (n int) {
 		l = m.Headers.Size()
 		n += 2 + l + sovVirtualService(uint64(l))
 	}
+	l = len(m.Name)
+	if l > 0 {
+		n += 2 + l + sovVirtualService(uint64(l))
+	}
+	if m.MirrorPercent != nil {
+		l = m.MirrorPercent.Size()
+		n += 2 + l + sovVirtualService(uint64(l))
+	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -4886,6 +5263,26 @@ func (m *HTTPMatchRequest) Size() (n int) {
 			l = len(s)
 			n += 1 + l + sovVirtualService(uint64(l))
 		}
+	}
+	if len(m.QueryParams) > 0 {
+		for k, v := range m.QueryParams {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+				l += 1 + sovVirtualService(uint64(l))
+			}
+			mapEntrySize := 1 + len(k) + sovVirtualService(uint64(len(k))) + l
+			n += mapEntrySize + 1 + sovVirtualService(uint64(mapEntrySize))
+		}
+	}
+	if m.IgnoreUriCase {
+		n += 2
+	}
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovVirtualService(uint64(l))
 	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
@@ -5060,6 +5457,9 @@ func (m *HTTPRedirect) Size() (n int) {
 	l = len(m.Authority)
 	if l > 0 {
 		n += 1 + l + sovVirtualService(uint64(l))
+	}
+	if m.RedirectCode != 0 {
+		n += 1 + sovVirtualService(uint64(m.RedirectCode))
 	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
@@ -5366,14 +5766,7 @@ func (m *Percent) Size() (n int) {
 }
 
 func sovVirtualService(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
+	return (math_bits.Len64(x|1) + 6) / 7
 }
 func sozVirtualService(x uint64) (n int) {
 	return sovVirtualService(uint64((x << 1) ^ uint64((int64(x) >> 63))))
@@ -6634,6 +7027,74 @@ func (m *HTTPRoute) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 17:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowVirtualService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthVirtualService
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthVirtualService
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 18:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MirrorPercent", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowVirtualService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthVirtualService
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthVirtualService
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.MirrorPercent == nil {
+				m.MirrorPercent = &types.UInt32Value{}
+			}
+			if err := m.MirrorPercent.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipVirtualService(dAtA[iNdEx:])
@@ -7848,6 +8309,187 @@ func (m *HTTPMatchRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Gateways = append(m.Gateways, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field QueryParams", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowVirtualService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthVirtualService
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthVirtualService
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.QueryParams == nil {
+				m.QueryParams = make(map[string]*StringMatch)
+			}
+			var mapkey string
+			var mapvalue *StringMatch
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowVirtualService
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					var stringLenmapkey uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowVirtualService
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						stringLenmapkey |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intStringLenmapkey := int(stringLenmapkey)
+					if intStringLenmapkey < 0 {
+						return ErrInvalidLengthVirtualService
+					}
+					postStringIndexmapkey := iNdEx + intStringLenmapkey
+					if postStringIndexmapkey < 0 {
+						return ErrInvalidLengthVirtualService
+					}
+					if postStringIndexmapkey > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
+					iNdEx = postStringIndexmapkey
+				} else if fieldNum == 2 {
+					var mapmsglen int
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowVirtualService
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapmsglen |= int(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					if mapmsglen < 0 {
+						return ErrInvalidLengthVirtualService
+					}
+					postmsgIndex := iNdEx + mapmsglen
+					if postmsgIndex < 0 {
+						return ErrInvalidLengthVirtualService
+					}
+					if postmsgIndex > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = &StringMatch{}
+					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
+						return err
+					}
+					iNdEx = postmsgIndex
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipVirtualService(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthVirtualService
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.QueryParams[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 10:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IgnoreUriCase", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowVirtualService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.IgnoreUriCase = bool(v != 0)
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowVirtualService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthVirtualService
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthVirtualService
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -9163,6 +9805,25 @@ func (m *HTTPRedirect) Unmarshal(dAtA []byte) error {
 			}
 			m.Authority = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RedirectCode", wireType)
+			}
+			m.RedirectCode = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowVirtualService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.RedirectCode |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipVirtualService(dAtA[iNdEx:])

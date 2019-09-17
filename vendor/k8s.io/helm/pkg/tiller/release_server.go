@@ -25,10 +25,9 @@ import (
 	"strings"
 
 	"github.com/technosophos/moniker"
-	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/client-go/kubernetes"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
@@ -83,12 +82,12 @@ var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+
 type ReleaseServer struct {
 	ReleaseModule
 	env       *environment.Environment
-	clientset internalclientset.Interface
+	clientset kubernetes.Interface
 	Log       func(string, ...interface{})
 }
 
 // NewReleaseServer creates a new release server.
-func NewReleaseServer(env *environment.Environment, clientset internalclientset.Interface, useRemote bool) *ReleaseServer {
+func NewReleaseServer(env *environment.Environment, clientset kubernetes.Interface, useRemote bool) *ReleaseServer {
 	var releaseModule ReleaseModule
 	if useRemote {
 		releaseModule = &RemoteReleaseModule{}
@@ -136,28 +135,28 @@ func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 		if err != nil {
 			return err
 		}
-
-		// merge new values with current
-		if current.Config != nil && current.Config.Raw != "" && current.Config.Raw != "{}\n" {
-			if req.Values.Raw != "{}\n" {
-				req.Values.Raw = current.Config.Raw + "\n" + req.Values.Raw
-			} else {
-				req.Values.Raw = current.Config.Raw + "\n"
-			}
-		}
 		req.Chart.Values = &chart.Config{Raw: nv}
 
-		// yaml unmarshal and marshal to remove duplicate keys
-		y := map[string]interface{}{}
-		if err := yaml.Unmarshal([]byte(req.Values.Raw), &y); err != nil {
-			return err
-		}
-		data, err := yaml.Marshal(y)
+		reqValues, err := chartutil.ReadValues([]byte(req.Values.Raw))
 		if err != nil {
 			return err
 		}
 
-		req.Values.Raw = string(data)
+		currentConfig := chartutil.Values{}
+		if current.Config != nil && current.Config.Raw != "" && current.Config.Raw != "{}\n" {
+			currentConfig, err = chartutil.ReadValues([]byte(current.Config.Raw))
+			if err != nil {
+				return err
+			}
+		}
+
+		currentConfig.MergeInto(reqValues)
+		data, err := currentConfig.YAML()
+		if err != nil {
+			return err
+		}
+
+		req.Values.Raw = data
 		return nil
 	}
 
@@ -202,15 +201,28 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 		return "", fmt.Errorf("a release named %s already exists.\nRun: helm ls --all %s; to check the status of the release\nOr run: helm del --purge %s; to delete it", start, start, start)
 	}
 
+	moniker := moniker.New()
+	newname, err := s.createUniqName(moniker)
+	if err != nil {
+		return "ERROR", err
+	}
+
+	s.Log("info: Created new release name %s", newname)
+	return newname, nil
+
+}
+
+func (s *ReleaseServer) createUniqName(m moniker.Namer) (string, error) {
 	maxTries := 5
 	for i := 0; i < maxTries; i++ {
-		namer := moniker.New()
-		name := namer.NameSep("-")
+		name := m.NameSep("-")
 		if len(name) > releaseNameMaxLen {
 			name = name[:releaseNameMaxLen]
 		}
-		if _, err := s.env.Releases.Get(name, 1); strings.Contains(err.Error(), "not found") {
-			return name, nil
+		if _, err := s.env.Releases.Get(name, 1); err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				return name, nil
+			}
 		}
 		s.Log("info: generated name %s is taken. Searching again.", name)
 	}
@@ -266,7 +278,7 @@ func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet
 	return chartutil.NewVersionSet(versions...), nil
 }
 
-func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values, subNotes bool, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
 	// Guard to make sure Tiller is at the right version to handle this chart.
 	sver := version.GetVersion()
 	if ch.Metadata.TillerVersion != "" &&
@@ -295,17 +307,22 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	// text file. We have to spin through this map because the file contains path information, so we
 	// look for terminating NOTES.txt. We also remove it from the files so that we don't have to skip
 	// it in the sortHooks.
-	notes := ""
+	var notesBuffer bytes.Buffer
 	for k, v := range files {
 		if strings.HasSuffix(k, notesFileSuffix) {
-			// Only apply the notes if it belongs to the parent chart
-			// Note: Do not use filePath.Join since it creates a path with \ which is not expected
-			if k == path.Join(ch.Metadata.Name, "templates", notesFileSuffix) {
-				notes = v
+			if subNotes || (k == path.Join(ch.Metadata.Name, "templates", notesFileSuffix)) {
+
+				// If buffer contains data, add newline before adding more
+				if notesBuffer.Len() > 0 {
+					notesBuffer.WriteString("\n")
+				}
+				notesBuffer.WriteString(v)
 			}
 			delete(files, k)
 		}
 	}
+
+	notes := notesBuffer.String()
 
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
@@ -439,7 +456,7 @@ func (s *ReleaseServer) deleteHookByPolicy(h *release.Hook, policy string, name,
 	return nil
 }
 
-// hookShouldBeDeleted determines whether the defined hook deletion policy matches the hook deletion polices
+// hookHasDeletePolicy determines whether the defined hook deletion policy matches the hook deletion polices
 // supported by helm. If so, mark the hook as one should be deleted.
 func hookHasDeletePolicy(h *release.Hook, policy string) bool {
 	if dp, ok := deletePolices[policy]; ok {

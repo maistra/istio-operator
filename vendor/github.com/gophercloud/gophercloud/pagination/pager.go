@@ -22,7 +22,6 @@ var (
 // Depending on the pagination strategy of a particular resource, there may be an additional subinterface that the result type
 // will need to implement.
 type Page interface {
-
 	// NextPageURL generates the URL for the page of data that follows this collection.
 	// Return "" if no such page exists.
 	NextPageURL() (string, error)
@@ -41,6 +40,8 @@ type Pager struct {
 	initialURL string
 
 	createPage func(r PageResult) Page
+
+	firstPage Page
 
 	Err error
 
@@ -90,9 +91,18 @@ func (p Pager) EachPage(handler func(Page) (bool, error)) error {
 	}
 	currentURL := p.initialURL
 	for {
-		currentPage, err := p.fetchNextPage(currentURL)
-		if err != nil {
-			return err
+		var currentPage Page
+
+		// if first page has already been fetched, no need to fetch it again
+		if p.firstPage != nil {
+			currentPage = p.firstPage
+			p.firstPage = nil
+		} else {
+			var err error
+			currentPage, err = p.fetchNextPage(currentURL)
+			if err != nil {
+				return err
+			}
 		}
 
 		empty, err := currentPage.IsEmpty()
@@ -129,42 +139,42 @@ func (p Pager) AllPages() (Page, error) {
 	// body will contain the final concatenated Page body.
 	var body reflect.Value
 
-	// Grab a test page to ascertain the page body type.
-	testPage, err := p.fetchNextPage(p.initialURL)
+	// Grab a first page to ascertain the page body type.
+	firstPage, err := p.fetchNextPage(p.initialURL)
 	if err != nil {
 		return nil, err
 	}
 	// Store the page type so we can use reflection to create a new mega-page of
 	// that type.
-	pageType := reflect.TypeOf(testPage)
+	pageType := reflect.TypeOf(firstPage)
 
-	// if it's a single page, just return the testPage (first page)
+	// if it's a single page, just return the firstPage (first page)
 	if _, found := pageType.FieldByName("SinglePageBase"); found {
-		return testPage, nil
+		return firstPage, nil
 	}
+
+	// store the first page to avoid getting it twice
+	p.firstPage = firstPage
 
 	// Switch on the page body type. Recognized types are `map[string]interface{}`,
 	// `[]byte`, and `[]interface{}`.
-	switch testPage.GetBody().(type) {
+	switch pb := firstPage.GetBody().(type) {
 	case map[string]interface{}:
 		// key is the map key for the page body if the body type is `map[string]interface{}`.
 		var key string
 		// Iterate over the pages to concatenate the bodies.
 		err = p.EachPage(func(page Page) (bool, error) {
 			b := page.GetBody().(map[string]interface{})
-			for k := range b {
+			for k, v := range b {
 				// If it's a linked page, we don't want the `links`, we want the other one.
 				if !strings.HasSuffix(k, "links") {
-					key = k
+					// check the field's type. we only want []interface{} (which is really []map[string]interface{})
+					switch vt := v.(type) {
+					case []interface{}:
+						key = k
+						pagesSlice = append(pagesSlice, vt...)
+					}
 				}
-			}
-			switch keyType := b[key].(type) {
-			case map[string]interface{}:
-				pagesSlice = append(pagesSlice, keyType)
-			case []interface{}:
-				pagesSlice = append(pagesSlice, b[key].([]interface{})...)
-			default:
-				return false, fmt.Errorf("Unsupported page body type: %+v", keyType)
 			}
 			return true, nil
 		})
@@ -216,7 +226,7 @@ func (p Pager) AllPages() (Page, error) {
 	default:
 		err := gophercloud.ErrUnexpectedType{}
 		err.Expected = "map[string]interface{}/[]byte/[]interface{}"
-		err.Actual = fmt.Sprintf("%v", reflect.TypeOf(testPage.GetBody()))
+		err.Actual = fmt.Sprintf("%T", pb)
 		return nil, err
 	}
 
