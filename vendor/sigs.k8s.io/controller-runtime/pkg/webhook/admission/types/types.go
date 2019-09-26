@@ -41,4 +41,6 @@ type Response struct {
 type Decoder interface {
 	// Decode decodes the raw byte object from the AdmissionRequest to the passed-in runtime.Object.
 	Decode(Request, runtime.Object) error
+	// DecodeRaw decodes a RawExtension object into the passed-in runtime.Object.
+	DecodeRaw(rawObj runtime.RawExtension, into runtime.Object) error
 }
