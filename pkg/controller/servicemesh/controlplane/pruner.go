@@ -2,12 +2,11 @@ package controlplane
 
 import (
 	"context"
-	"strconv"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -71,7 +70,7 @@ var (
 	}
 )
 
-func (r *ControlPlaneReconciler) prune(generation int64) error {
+func (r *ControlPlaneReconciler) prune(generation string) error {
 	allErrors := []error{}
 	err := r.pruneResources(namespacedResources, generation, r.Instance.Namespace)
 	if err != nil {
@@ -88,9 +87,8 @@ func (r *ControlPlaneReconciler) prune(generation int64) error {
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (r *ControlPlaneReconciler) pruneResources(gvks []schema.GroupVersionKind, generation int64, namespace string) error {
+func (r *ControlPlaneReconciler) pruneResources(gvks []schema.GroupVersionKind, instanceGeneration string, namespace string) error {
 	allErrors := []error{}
-	instanceGeneration := strconv.FormatInt(generation, 10)
 	labelSelector := map[string]string{common.OwnerKey: r.Instance.Namespace}
 	for _, gvk := range gvks {
 		objects := &unstructured.UnstructuredList{}
