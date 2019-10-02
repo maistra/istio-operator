@@ -239,15 +239,14 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	meshList := &v1.ServiceMeshControlPlaneList{}
 	err = r.Client.List(context.TODO(), client.InNamespace(instance.Namespace), meshList)
 	if err != nil {
-		reqLogger.Error(err, "error retrieving ServiceMeshControlPlane resources")
-		return reconcile.Result{}, err
+		return reconcile.Result{}, pkgerrors.Wrap(err, "Error retrieving ServiceMeshControlPlane resources")
 	}
 	meshCount := len(meshList.Items)
 	if meshCount != 1 {
 		if meshCount > 0 {
-			reqLogger.Info("cannot reconcile ServiceMeshControlPlane: multiple ServiceMeshControlPlane resources exist in project")
+			reqLogger.Info("Skipping reconciliation of SMMR, because multiple ServiceMeshControlPlane resources exist in the project", "project", instance.Namespace)
 		} else {
-			reqLogger.Info(fmt.Sprintf("failed to locate ServiceMeshControlPlane for project %s", instance.Namespace))
+			reqLogger.Info("Skipping reconciliation of SMMR, because no ServiceMeshControlPlane exists in the project.", "project", instance.Namespace)
 		}
 		// when a control plane is created/deleted our watch will pick it up and issue a new reconcile event
 		return reconcile.Result{}, nil
@@ -272,9 +271,9 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		instance.SetOwnerReferences([]metav1.OwnerReference{*owner})
 		err = r.Client.Update(context.TODO(), instance)
 		if err != nil {
-			reqLogger.Error(err, "error adding OwnerReference to ServiceMeshMemberRoll")
+			return reconcile.Result{}, pkgerrors.Wrap(err, "error adding ownerReference to ServiceMeshMemberRoll")
 		}
-		return reconcile.Result{}, err
+		return reconcile.Result{}, nil
 	}
 
 	if mesh.Status.ObservedGeneration == 0 {
@@ -290,8 +289,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	var nsErrors []error
 	allNamespaces, err := r.getAllNamespaces()
 	if err != nil {
-		reqLogger.Error(err, "could not list all namespaces")
-		return reconcile.Result{}, err
+		return reconcile.Result{}, pkgerrors.Wrap(err, "could not list all namespaces")
 	}
 	requiredMembers := sets.NewString(instance.Spec.Members...)
 	configuredMembers := sets.NewString(instance.Status.ConfiguredMembers...)
@@ -309,14 +307,17 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 
 		instance.Status.ConfiguredMembers = make([]string, 0, len(instance.Spec.Members))
 
-		// setup projects
-		configuredNamespaces, err := common.FetchMeshResources(r.Client, corev1.SchemeGroupVersion.WithKind("Namespace"), mesh.Namespace, "")
+		// setup namespaces
+		configuredNamespaces := corev1.NamespaceList{}
+
+		labelSelector := map[string]string{common.MemberOfKey: mesh.Namespace}
+		err := r.Client.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(""), &configuredNamespaces)
 		if err != nil {
 			reqLogger.Error(err, "error listing mesh member namespaces")
 			return reconcile.Result{}, err
 		}
 
-		existingMembers := nameSet(configuredNamespaces.Items)
+		existingMembers := nameSet(&configuredNamespaces)
 		namespacesToRemove := existingMembers.Difference(requiredMembers)
 		err, nsErrors = r.reconcileNamespaces(mesh.Namespace, requiredMembers, namespacesToRemove, instance, reqLogger)
 		if err != nil {
@@ -463,7 +464,6 @@ func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, configured
 
 func (r *ReconcileMemberList) getAllNamespaces() (sets.String, error) {
 	namespaceList := &corev1.NamespaceList{}
-	namespaceList.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("NamespaceList"))
 	err := r.Client.List(context.TODO(), nil, namespaceList)
 	if err != nil {
 		return nil, err
@@ -481,17 +481,18 @@ type namespaceReconciler struct {
 	meshNamespace        string
 	isCNIEnabled         bool
 	networkingStrategy   networkingStrategy
-	roleBindingsList     *unstructured.UnstructuredList
+	roleBindingsList     rbacv1.RoleBindingList
 	requiredRoleBindings sets.String
 }
 
-func newNamespaceReconciler(client client.Client, logger logr.Logger, meshNamespace string, isCNIEnabled bool) (*namespaceReconciler, error) {
+func newNamespaceReconciler(cl client.Client, logger logr.Logger, meshNamespace string, isCNIEnabled bool) (*namespaceReconciler, error) {
 	var err error
 	reconciler := &namespaceReconciler{
-		client:               client,
+		client:               cl,
 		logger:               logger.WithValues("MeshNamespace", meshNamespace),
 		meshNamespace:        meshNamespace,
 		isCNIEnabled:         isCNIEnabled,
+		roleBindingsList:     rbacv1.RoleBindingList{},
 		requiredRoleBindings: sets.NewString(),
 	}
 	err = reconciler.initializeNetworkingStrategy()
@@ -499,10 +500,11 @@ func newNamespaceReconciler(client client.Client, logger logr.Logger, meshNamesp
 		return nil, err
 	}
 
-	reconciler.roleBindingsList, err = common.FetchOwnedResources(client, rbacv1.SchemeGroupVersion.WithKind("RoleBinding"), meshNamespace, meshNamespace)
+	labelSelector := map[string]string{common.OwnerKey: meshNamespace}
+	err = cl.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(meshNamespace), &reconciler.roleBindingsList)
 	if err != nil {
 		reconciler.logger.Error(err, "error retrieving RoleBinding resources for mesh")
-		return nil, err
+		return nil, pkgerrors.Wrap(err, "error retrieving RoleBinding resources for mesh")
 	}
 	for _, rb := range reconciler.roleBindingsList.Items {
 		reconciler.requiredRoleBindings.Insert(rb.GetName())
@@ -562,26 +564,6 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(namespace string) error {
 	}
 
 	allErrors := []error{}
-
-	// XXX: Disable for now.  This should not be required when using CNI plugin
-	// remove service accounts from SCC
-	// saList, err := common.FetchMeshResources(r.Client, corev1.SchemeGroupVersion.WithKind("ServiceAccount"), meshNamespace, namespace)
-	// if err == nil {
-	// 	saNames := nameList(saList.Items)
-	// 	err = r.RemoveUsersFromSCC("anyuid", saNames...)
-	// 	if err != nil {
-	// 		logger.Error(err, "error removing ServiceAccounts associated with mesh from anyuid SecurityContextConstraints", "ServiceAccounts", saNames)
-	// 		allErrors = append(allErrors, err)
-	// 	}
-	// 	err = r.RemoveUsersFromSCC("privileged", saNames...)
-	// 	if err != nil {
-	// 		logger.Error(err, "error removing ServiceAccounts associated with mesh from privileged SecurityContextConstraints", "ServiceAccounts", saNames)
-	// 		allErrors = append(allErrors, err)
-	// 	}
-	// } else {
-	// 	logger.Error(err, "error could not retrieve ServiceAccounts associated with mesh")
-	// 	allErrors = append(allErrors, err)
-	// }
 
 	// delete role bindings
 	rbList, err := common.FetchMeshResources(r.client, rbacv1.SchemeGroupVersion.WithKind("RoleBinding"), r.meshNamespace, namespace)
@@ -673,13 +655,6 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
 		allErrors = append(allErrors, err)
 	}
 
-	// XXX: Disable for now.  This should not be required when using CNI plugin
-	// add service accounts to SCC
-	// err = r.reconcilePodServiceAccounts(namespace, mesh, logger)
-	// if err != nil {
-	// 	allErrors = append(allErrors, err)
-	// }
-
 	// add mesh labels
 	if !common.HasLabel(namespaceResource, common.MemberOfKey) {
 		// get fresh Namespace from cache to minimize the chance of a conflict during update (the Namespace might have been updated during the execution of reconcileNamespaceInMesh())
@@ -700,7 +675,9 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
 }
 
 func (r *namespaceReconciler) reconcileRoleBindings(namespace string, reqLogger logr.Logger) error {
-	namespaceRoleBindings, err := common.FetchMeshResources(r.client, rbacv1.SchemeGroupVersion.WithKind("RoleBinding"), r.meshNamespace, namespace)
+	namespaceRoleBindings := rbacv1.RoleBindingList{}
+	labelSelector := map[string]string{common.MemberOfKey: r.meshNamespace}
+	err := r.client.List(context.TODO(), client.InNamespace(namespace).MatchingLabels(labelSelector), &namespaceRoleBindings)
 	if err != nil {
 		reqLogger.Error(err, "error retrieving RoleBinding resources for namespace")
 		return err
@@ -709,24 +686,14 @@ func (r *namespaceReconciler) reconcileRoleBindings(namespace string, reqLogger 
 	allErrors := []error{}
 
 	// add required role bindings
-	existingRoleBindings := nameSet(namespaceRoleBindings.Items)
+	existingRoleBindings := nameSet(&namespaceRoleBindings)
 	addedRoleBindings := sets.NewString()
 	for _, meshRoleBinding := range r.roleBindingsList.Items {
 		roleBindingName := meshRoleBinding.GetName()
 		if !existingRoleBindings.Has(roleBindingName) {
 			reqLogger.Info("creating RoleBinding for mesh ServiceAccount", "RoleBinding", roleBindingName)
-			roleBinding := &unstructured.Unstructured{}
-			roleBinding.SetGroupVersionKind(rbacv1.SchemeGroupVersion.WithKind("RoleBinding"))
+			roleBinding := meshRoleBinding.DeepCopy()
 			roleBinding.SetNamespace(namespace)
-			roleBinding.SetName(meshRoleBinding.GetName())
-			roleBinding.SetLabels(meshRoleBinding.GetLabels())
-			roleBinding.SetAnnotations(meshRoleBinding.GetAnnotations())
-			if subjects, ok, _ := unstructured.NestedSlice(meshRoleBinding.UnstructuredContent(), "subjects"); ok {
-				unstructured.SetNestedSlice(roleBinding.UnstructuredContent(), subjects, "subjects")
-			}
-			if roleRef, ok, _ := unstructured.NestedFieldNoCopy(meshRoleBinding.UnstructuredContent(), "roleRef"); ok {
-				unstructured.SetNestedField(roleBinding.UnstructuredContent(), roleRef, "roleRef")
-			}
 			common.SetLabel(roleBinding, common.MemberOfKey, r.meshNamespace)
 			err = r.client.Create(context.TODO(), roleBinding)
 			if err == nil {
@@ -743,8 +710,7 @@ func (r *namespaceReconciler) reconcileRoleBindings(namespace string, reqLogger 
 	// delete obsolete role bindings
 	for roleBindingName := range existingRoleBindings.Difference(r.requiredRoleBindings) {
 		reqLogger.Info("deleting RoleBinding for mesh ServiceAccount", "RoleBinding", roleBindingName)
-		roleBinding := &unstructured.Unstructured{}
-		roleBinding.SetGroupVersionKind(rbacv1.SchemeGroupVersion.WithKind("RoleBinding"))
+		roleBinding := &rbacv1.RoleBinding{}
 		roleBinding.SetName(roleBindingName)
 		roleBinding.SetNamespace(namespace)
 		err = r.client.Delete(context.TODO(), roleBinding, client.PropagationPolicy(metav1.DeletePropagationForeground))
@@ -817,116 +783,25 @@ func (r *namespaceReconciler) removeNetworkAttachmentDefinition(namespace, meshN
 	return fmt.Errorf("Could not delete NetworkAttachmentDefinition %s/%s: %v", namespace, netAttachDefName, err)
 }
 
-func (r *ReconcileMemberList) reconcilePodServiceAccounts(namespace string, mesh *v1.ServiceMeshControlPlane, reqLogger logr.Logger) error {
-	// scan for pods with injection labels
-	serviceAccounts := sets.NewString()
-	podList := &unstructured.UnstructuredList{}
-	podList.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("PodList"))
-	err := r.Client.List(context.TODO(), client.InNamespace(namespace), podList)
-	if err == nil {
-		// update account privileges used by deployments with injection labels
-		for _, pod := range podList.Items {
-			if val, ok := pod.GetAnnotations()["sidecar.istio.io/inject"]; ok && (val == "y" || val == "yes" || val == "true" || val == "on") {
-				// XXX: this is pretty hacky.  we need to recreate the logic that determines whether or not injection is
-				// enabled on the pod.  maybe we just have the user add ServiceAccounts to the ServiceMeshMember spec
-				if podSA, ok, err := unstructured.NestedString(pod.UnstructuredContent(), "spec", "serviceAccountName"); ok || err == nil {
-					if len(podSA) == 0 {
-						podSA = "default"
-					}
-					serviceAccounts.Insert(podSA)
-				}
-			}
-		}
-	} else {
-		// skip trying to add, but delete whatever's left
-		reqLogger.Error(err, "cannot update ServiceAccount SCC settings: error occurred scanning for Pods")
-	}
-
-	meshServiceAccounts, err := common.FetchMeshResources(r.Client, corev1.SchemeGroupVersion.WithKind("ServiceAccount"), mesh.Namespace, namespace)
-	currentlyManagedServiceAccounts := nameSet(meshServiceAccounts.Items)
-	if err != nil {
-		// worst case, we'll try to associate the service accounts again
-		reqLogger.Error(err, "cannot list ServiceAcccounts configured for use with mesh")
-	}
-
-	allErrors := []error{}
-
-	if len(serviceAccounts) > 0 {
-		// add labels before we add the ServiceAccount to the SCCs
-		erroredServiceAccounts := sets.NewString()
-		for saName := range serviceAccounts {
-			if currentlyManagedServiceAccounts.Has(saName) {
-				continue
-			}
-			saResource := &unstructured.Unstructured{}
-			saResource.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("ServiceAccount"))
-			err = r.Client.Get(context.TODO(), client.ObjectKey{Name: saName, Namespace: namespace}, saResource)
-			if err != nil {
-				erroredServiceAccounts.Insert(saName)
-				reqLogger.Error(err, "error retrieving ServiceAccount to configure SCC", "ServiceAccount", saName)
-				allErrors = append(allErrors, err)
-			} else if !common.HasLabel(saResource, common.MemberOfKey) {
-				common.SetLabel(saResource, common.MemberOfKey, mesh.Namespace)
-				err = r.Client.Update(context.TODO(), saResource)
-				if err != nil {
-					erroredServiceAccounts.Insert(saName)
-					reqLogger.Error(err, "error setting label on ServiceAccount to configure SCC", "ServiceAccount", saName)
-					allErrors = append(allErrors, err)
-				}
-			}
-		}
-
-		// XXX: use privileged and anyuid for now
-		serviceAccountsToUpdate := serviceAccounts.Difference(erroredServiceAccounts).List()
-		_, err = r.AddUsersToSCC("privileged", serviceAccountsToUpdate...)
-		if err != nil {
-			reqLogger.Error(err, "error adding ServiceAccounts to privileged SecurityContextConstraints", "ServiceAccounts", serviceAccountsToUpdate)
-			allErrors = append(allErrors, err)
-		}
-		_, err = r.AddUsersToSCC("anyuid", serviceAccountsToUpdate...)
-		if err != nil {
-			reqLogger.Error(err, "error adding ServiceAccounts to anyuid SecurityContextConstraints", "ServiceAccounts", serviceAccountsToUpdate)
-			allErrors = append(allErrors, err)
-		}
-	}
-
-	// remove unused service accounts that may have been previously configured
-	removedServiceAccounts := currentlyManagedServiceAccounts.Difference(serviceAccounts)
-	removedServiceAccountsList := removedServiceAccounts.List()
-	if err := r.RemoveUsersFromSCC("privileged", removedServiceAccountsList...); err != nil {
-		reqLogger.Error(err, "error removing unused ServiceAccounts from privileged SecurityContextConstraints", "ServiceAccounts", removedServiceAccountsList)
-		allErrors = append(allErrors, err)
-	}
-	if err := r.RemoveUsersFromSCC("anyuid", removedServiceAccountsList...); err != nil {
-		reqLogger.Error(err, "error removing unused ServiceAccounts from anyuid SecurityContextConstraints", "ServiceAccounts", removedServiceAccountsList)
-		allErrors = append(allErrors, err)
-	}
-
-	// Remove the labels, now that we've removed them from the SCCs
-	for _, saResource := range meshServiceAccounts.Items {
-		if !removedServiceAccounts.Has(saResource.GetName()) {
-			continue
-		}
-		common.DeleteLabel(&saResource, common.MemberOfKey)
-		err = r.Client.Update(context.TODO(), &saResource)
-		if err != nil {
-			reqLogger.Error(err, "error removing member-of label from ServiceAccount", "ServiceAccount", saResource.GetName())
-			// don't return these errors
-		}
-	}
-
-	return utilerrors.NewAggregate(allErrors)
-}
-
 type networkingStrategy interface {
 	reconcileNamespaceInMesh(namespace string) error
 	removeNamespaceFromMesh(namespace string) error
 }
 
-func nameSet(items []unstructured.Unstructured) sets.String {
+func nameSet(list runtime.Object) sets.String {
 	set := sets.NewString()
-	for _, object := range items {
-		set.Insert(object.GetName())
+	err := meta.EachListItem(list, func(obj runtime.Object) error {
+		o, err := meta.Accessor(obj)
+		if err != nil {
+			return err
+		}
+		set.Insert(o.GetName())
+		return nil
+	})
+	if err != nil {
+		// meta.EachListItem only returns an error if you pass in something that's not a ResourceList, so
+		// it we don't expect it to ever return an error.
+		panic(err)
 	}
 	return set
 }
