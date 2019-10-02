@@ -377,7 +377,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 			}
 			// we don't update the ServiceMeshGeneration in case the other members need to be updated
 		}
-	} else if mesh.Status.ObservedGeneration != instance.Status.ServiceMeshGeneration { // service mesh has been updated
+	} else if mesh.Status.GetReconciledVersion() != instance.Status.ServiceMeshReconciledVersion { // service mesh has been updated
 		reqLogger.Info("Reconciling ServiceMeshMemberRoll namespaces with new generation of ServiceMeshControlPlane")
 
 		// create reconciler

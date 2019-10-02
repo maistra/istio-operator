@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/go-logr/logr"
+	"github.com/maistra/istio-operator/pkg/version"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -22,6 +23,11 @@ type ResourceManager struct {
 	PatchFactory      *PatchFactory
 	Log               logr.Logger
 	OperatorNamespace string
+}
+
+// ReconciledVersion returns a string encompasing the resource generation and the operator version, e.g. "1.0.0-1" (version 1.0.0, generation 1)
+func ReconciledVersion(generation int64) string {
+	return fmt.Sprintf("%s-%d", version.Info.Version, generation)
 }
 
 func IndexOf(l []string, s string) int {
