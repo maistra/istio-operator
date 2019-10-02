@@ -59,7 +59,7 @@ func (s *networkPolicyStrategy) reconcileNamespaceInMesh(namespace string) error
 	allErrors := []error{}
 
 	// add required network policies
-	existingNetworkPolicies := nameSet(namespaceNetworkPolicies.Items)
+	existingNetworkPolicies := nameSet(namespaceNetworkPolicies)
 	addedNetworkPolicies := sets.NewString()
 	for _, meshNetworkPolicy := range s.networkPoliciesList.Items {
 		networkPolicyName := meshNetworkPolicy.GetName()

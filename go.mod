@@ -47,7 +47,7 @@ replace (
 )
 
 // maistra forks
-replace sigs.k8s.io/controller-runtime => github.com/maistra/controller-runtime v0.1.13-0.20190926110539-8c6fdfaa0ad1
+replace sigs.k8s.io/controller-runtime => github.com/maistra/controller-runtime v0.1.13-0.20191029133215-623f07679978
 
 replace github.com/operator-framework/operator-sdk => github.com/operator-framework/operator-sdk v0.10.0
 
