@@ -259,7 +259,7 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	if instance.GetGeneration() == instance.Status.ObservedGeneration &&
+	if common.ReconciledVersion(instance.GetGeneration()) == instance.Status.GetReconciledVersion() &&
 		instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
 		// sync readiness state
 		err := reconciler.UpdateReadiness()
