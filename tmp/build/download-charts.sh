@@ -2,7 +2,7 @@
 
 set -e
 
-: ${MAISTRA_VERSION:=1.0.0}
+: ${MAISTRA_VERSION:=1.0.1}
 : ${MAISTRA_BRANCH:=1.0}
 
 SOURCE_DIR=$(pwd)
