@@ -83,7 +83,10 @@ func (p *PatchFactory) CreatePatch(current, new runtime.Object) (Patch, error) {
 			mergepatch.RequireKeyUnchanged("apiVersion"),
 			mergepatch.RequireKeyUnchanged("kind"),
 			mergepatch.RequireMetadataKeyUnchanged("name"),
-			mergepatch.RequireMetadataKeyUnchanged("namespace"),
+		}
+		// prevent precondition errors for cluster scoped resources
+		if currentAccessor.GetNamespace() != "" {
+			preconditions = append(preconditions, mergepatch.RequireMetadataKeyUnchanged("namespace"))
 		}
 		patchBytes, err := jsonmergepatch.CreateThreeWayJSONMergePatch(originalBytes, newBytes, currentBytes, preconditions...)
 		if err != nil {
