@@ -16,7 +16,7 @@ spec:
       image: grafana-rhel8
     tracing:
       jaeger:
-        template: production-elasticsearch
+        template: all-in-one
     galley:
       image: galley-rhel8
     mixer:
