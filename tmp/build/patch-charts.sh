@@ -137,8 +137,8 @@ function patchTemplates() {
 
   # - add a maistra-version label to all objects which have a release label
   find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl" | \
-    xargs sed -i -e 's/^\(.*\)release:\(.*\)$/\1maistra-version: '${MAISTRA_VERSION}'\
-\1release:\2/'
+    xargs sed -i -e '/^metadata:/,/^[! ]/ { s/^\(.*\)release:\(.*\)$/\1maistra-version: '${MAISTRA_VERSION}'\
+\1release:\2/ }'
 
   # MAISTRA-506 add a maistra-control-plane label for deployment specs
   find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl" | xargs grep -Hl 'kind: Deployment' |\
@@ -321,6 +321,30 @@ function removeUnsupportedCharts() {
          -e '/name:.*certmanager/,+2 d' ${HELM_DIR}/istio/requirements.yaml
 }
 
+function patchDeploymentSelectors() {
+  find ${HELM_DIR}/istio/charts -not -path "*/gateways/*" -type f |xargs grep -l "^kind:.* Deployment"| xargs grep -L "^ *selector:" | xargs \
+  sed -i -e '/^metadata:/,/^template:/ { 
+               /^ *app:.*$/ H
+               /^ *istio:.*$/ H
+               /^ *release:.*$/ H
+               /template:/ {
+                 x
+                 s/\(\n\)/\1    /g
+                 s/\n/\
+\  selector:\
+\    matchLabels:\
+/
+                 G
+               }
+             }'
+
+  sed -i -e '/template:/ i\
+\  selector:\
+\    matchLabels:\
+\      {{- range $key, $val := $spec.labels }}\
+\      {{ $key }}: {{ $val }}\
+\      {{- end }}' ${HELM_DIR}/istio/charts/gateways/templates/deployment.yaml
+}
 
 copyOverlay
 
@@ -328,6 +352,7 @@ removeUnsupportedCharts
 patchTemplates
 patchKialiTemplate
 patchKialiOpenShift
+patchDeploymentSelectors
 
 patchMultiTenant
 source ${SOURCE_DIR}/tmp/build/patch-grafana.sh
