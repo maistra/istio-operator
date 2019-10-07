@@ -114,6 +114,7 @@ spec:
     url: https://github.com/Maistra/istio-operator
   - name: Istio
     url: https://istio.io/
+__REPLACES_CSV__
   installModes:
   - type: OwnNamespace
     supported: true
