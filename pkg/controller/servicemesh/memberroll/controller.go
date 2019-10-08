@@ -287,7 +287,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		return reconcile.Result{}, nil
 	}
 
-	allErrors := []error{}
+	var nsErrors []error
 	allNamespaces, err := r.getAllNamespaces()
 	if err != nil {
 		reqLogger.Error(err, "could not list all namespaces")
@@ -316,92 +316,28 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, err
 		}
 
-		// create reconciler
-		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, common.IsCNIEnabled)
+		existingMembers := nameSet(configuredNamespaces.Items)
+		namespacesToRemove := difference(existingMembers, requiredMembers)
+		err, nsErrors = r.reconcileNamespaces(mesh.Namespace, requiredMembers, namespacesToRemove, instance, reqLogger)
 		if err != nil {
 			return reconcile.Result{}, err
-		}
-
-		existingMembers := nameSet(configuredNamespaces.Items)
-		for namespaceToRemove := range difference(existingMembers, requiredMembers) {
-			if namespaceToRemove == instance.Namespace {
-				// we never operate on the control plane namespace
-				continue
-			}
-			err = reconciler.removeNamespaceFromMesh(namespaceToRemove)
-			if err != nil {
-				allErrors = append(allErrors, err)
-			}
-		}
-		for namespaceToReconcile := range requiredMembers {
-			if namespaceToReconcile == instance.Namespace {
-				// we never operate on the control plane namespace
-				reqLogger.Info("ignoring control plane namespace in members list of ServiceMeshMemberRoll")
-				continue
-			}
-			err = reconciler.reconcileNamespaceInMesh(namespaceToReconcile)
-			if err != nil {
-				if errors.IsNotFound(err) || errors.IsGone(err) {
-					reqLogger.Info("namespace to configure with mesh is missing", "Namespace", namespaceToReconcile)
-				} else {
-					allErrors = append(allErrors, err)
-				}
-			} else {
-				instance.Status.ConfiguredMembers = append(instance.Status.ConfiguredMembers, namespaceToReconcile)
-			}
 		}
 		instance.Status.ServiceMeshGeneration = mesh.Status.ObservedGeneration
 	} else if len(unconfiguredMembers) > 0 { // required namespace that was missing has been created
 		reqLogger.Info("Reconciling newly created namespaces associated with this ServiceMeshMemberRoll")
 
-		// create reconciler
-		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, common.IsCNIEnabled)
+		err, nsErrors = r.reconcileNamespaces(mesh.Namespace, unconfiguredMembers, nil, instance, reqLogger)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-
-		for namespaceToReconcile := range unconfiguredMembers {
-			if namespaceToReconcile == instance.Namespace {
-				// we never operate on the control plane namespace
-				continue
-			}
-			err = reconciler.reconcileNamespaceInMesh(namespaceToReconcile)
-			if err != nil {
-				if errors.IsNotFound(err) || errors.IsGone(err) {
-					reqLogger.Info("namespace to configure with mesh is missing")
-				} else {
-					allErrors = append(allErrors, err)
-				}
-			} else {
-				instance.Status.ConfiguredMembers = append(instance.Status.ConfiguredMembers, namespaceToReconcile)
-			}
-			// we don't update the ServiceMeshGeneration in case the other members need to be updated
-		}
+		// we don't update the ServiceMeshGeneration in case the other members need to be updated
 	} else if mesh.Status.ObservedGeneration != instance.Status.ServiceMeshGeneration { // service mesh has been updated
 		reqLogger.Info("Reconciling ServiceMeshMemberRoll namespaces with new generation of ServiceMeshControlPlane")
 
-		// create reconciler
-		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, mesh.Namespace, common.IsCNIEnabled)
+		instance.Status.ConfiguredMembers = make([]string, 0, len(instance.Spec.Members))
+		err, nsErrors = r.reconcileNamespaces(mesh.Namespace, requiredMembers, nil, instance, reqLogger)
 		if err != nil {
 			return reconcile.Result{}, err
-		}
-
-		instance.Status.ConfiguredMembers = make([]string, 0, len(instance.Spec.Members))
-		for namespaceToReconcile := range requiredMembers {
-			if namespaceToReconcile == instance.Namespace {
-				// we never operate on the control plane namespace
-				continue
-			}
-			err = reconciler.reconcileNamespaceInMesh(namespaceToReconcile)
-			if err != nil {
-				if errors.IsNotFound(err) || errors.IsGone(err) {
-					reqLogger.Info("namespace to configure with mesh is missing")
-				} else {
-					allErrors = append(allErrors, err)
-				}
-			} else {
-				instance.Status.ConfiguredMembers = append(instance.Status.ConfiguredMembers, namespaceToReconcile)
-			}
 		}
 		instance.Status.ServiceMeshGeneration = mesh.Status.ObservedGeneration
 	} else if len(deletedMembers) > 0 { // namespace that was configured has been deleted
@@ -423,7 +359,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		return reconcile.Result{}, nil
 	}
 
-	err = utilerrors.NewAggregate(allErrors)
+	err = utilerrors.NewAggregate(nsErrors)
 	if err == nil {
 		instance.Status.ObservedGeneration = instance.GetGeneration()
 		err = r.Client.Status().Update(context.TODO(), instance)
@@ -436,6 +372,43 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	err = r.reconcileKiali(instance.Namespace, instance.Status.ConfiguredMembers, reqLogger)
 
 	return reconcile.Result{}, err
+}
+
+func (r *ReconcileMemberList) reconcileNamespaces(meshNamespace string, namespacesToReconcile, namespacesToRemove map[string]struct{}, instance *v1.ServiceMeshMemberRoll, reqLogger logr.Logger) (err error, nsErrors []error) {
+	// create reconciler
+	reconciler, err := newNamespaceReconciler(r.Client, reqLogger, meshNamespace, common.IsCNIEnabled)
+	if err != nil {
+		return err, nil
+	}
+
+	for ns := range namespacesToRemove {
+		if ns == instance.Namespace {
+			// we never operate on the control plane namespace
+			continue
+		}
+		err = reconciler.removeNamespaceFromMesh(ns)
+		if err != nil {
+			nsErrors = append(nsErrors, err)
+		}
+	}
+	for ns := range namespacesToReconcile {
+		if ns == instance.Namespace {
+			// we never operate on the control plane namespace
+			reqLogger.Info("ignoring control plane namespace in members list of ServiceMeshMemberRoll")
+			continue
+		}
+		err = reconciler.reconcileNamespaceInMesh(ns)
+		if err != nil {
+			if errors.IsNotFound(err) || errors.IsGone(err) {
+				reqLogger.Info("namespace to configure with mesh is missing", "Namespace", ns)
+			} else {
+				nsErrors = append(nsErrors, err)
+			}
+		} else {
+			instance.Status.ConfiguredMembers = append(instance.Status.ConfiguredMembers, ns)
+		}
+	}
+	return nil, nsErrors
 }
 
 func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, configuredMembers []string, reqLogger logr.Logger) error {
