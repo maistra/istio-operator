@@ -293,13 +293,13 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		reqLogger.Error(err, "could not list all namespaces")
 		return reconcile.Result{}, err
 	}
-	requiredMembers := toSet(instance.Spec.Members)
-	configuredMembers := toSet(instance.Status.ConfiguredMembers)
-	deletedMembers := difference(configuredMembers, allNamespaces)
-	unconfiguredMembers := intersection(difference(requiredMembers, configuredMembers), allNamespaces)
+	requiredMembers := sets.NewString(instance.Spec.Members...)
+	configuredMembers := sets.NewString(instance.Status.ConfiguredMembers...)
+	deletedMembers := configuredMembers.Difference(allNamespaces)
+	unconfiguredMembers := allNamespaces.Intersection(requiredMembers.Difference(configuredMembers))
 
 	// always include the mesh namespace in the configured list
-	configuredMembers[instance.Namespace] = struct{}{}
+	configuredMembers.Insert(instance.Namespace)
 	// never include the mesh namespace in unconfigured list
 	delete(unconfiguredMembers, instance.Namespace)
 
@@ -317,7 +317,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 
 		existingMembers := nameSet(configuredNamespaces.Items)
-		namespacesToRemove := difference(existingMembers, requiredMembers)
+		namespacesToRemove := existingMembers.Difference(requiredMembers)
 		err, nsErrors = r.reconcileNamespaces(mesh.Namespace, requiredMembers, namespacesToRemove, instance, reqLogger)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -349,7 +349,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 				// we never operate on the control plane namespace
 				continue
 			}
-			if _, ok := allNamespaces[member]; ok {
+			if allNamespaces.Has(member) {
 				instance.Status.ConfiguredMembers = append(instance.Status.ConfiguredMembers, member)
 			}
 		}
@@ -374,7 +374,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	return reconcile.Result{}, err
 }
 
-func (r *ReconcileMemberList) reconcileNamespaces(meshNamespace string, namespacesToReconcile, namespacesToRemove map[string]struct{}, instance *v1.ServiceMeshMemberRoll, reqLogger logr.Logger) (err error, nsErrors []error) {
+func (r *ReconcileMemberList) reconcileNamespaces(meshNamespace string, namespacesToReconcile, namespacesToRemove sets.String, instance *v1.ServiceMeshMemberRoll, reqLogger logr.Logger) (err error, nsErrors []error) {
 	// create reconciler
 	reconciler, err := newNamespaceReconciler(r.Client, reqLogger, meshNamespace, common.IsCNIEnabled)
 	if err != nil {
@@ -459,16 +459,16 @@ func (r *ReconcileMemberList) reconcileKiali(kialiCRNamespace string, configured
 	return nil
 }
 
-func (r *ReconcileMemberList) getAllNamespaces() (map[string]struct{}, error) {
+func (r *ReconcileMemberList) getAllNamespaces() (sets.String, error) {
 	namespaceList := &corev1.NamespaceList{}
 	namespaceList.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("NamespaceList"))
 	err := r.Client.List(context.TODO(), nil, namespaceList)
 	if err != nil {
 		return nil, err
 	}
-	allNamespaces := map[string]struct{}{}
+	allNamespaces := sets.NewString()
 	for _, namespace := range namespaceList.Items {
-		allNamespaces[namespace.Name] = struct{}{}
+		allNamespaces.Insert(namespace.Name)
 	}
 	return allNamespaces, nil
 }
@@ -480,7 +480,7 @@ type namespaceReconciler struct {
 	isCNIEnabled         bool
 	networkingStrategy   networkingStrategy
 	roleBindingsList     *unstructured.UnstructuredList
-	requiredRoleBindings map[string]struct{}
+	requiredRoleBindings sets.String
 }
 
 func newNamespaceReconciler(client client.Client, logger logr.Logger, meshNamespace string, isCNIEnabled bool) (*namespaceReconciler, error) {
@@ -490,7 +490,7 @@ func newNamespaceReconciler(client client.Client, logger logr.Logger, meshNamesp
 		logger:               logger.WithValues("MeshNamespace", meshNamespace),
 		meshNamespace:        meshNamespace,
 		isCNIEnabled:         isCNIEnabled,
-		requiredRoleBindings: map[string]struct{}{},
+		requiredRoleBindings: sets.NewString(),
 	}
 	err = reconciler.initializeNetworkingStrategy()
 	if err != nil {
@@ -503,7 +503,7 @@ func newNamespaceReconciler(client client.Client, logger logr.Logger, meshNamesp
 		return nil, err
 	}
 	for _, rb := range reconciler.roleBindingsList.Items {
-		reconciler.requiredRoleBindings[rb.GetName()] = struct{}{}
+		reconciler.requiredRoleBindings.Insert(rb.GetName())
 	}
 	return reconciler, nil
 }
@@ -708,10 +708,10 @@ func (r *namespaceReconciler) reconcileRoleBindings(namespace string, reqLogger 
 
 	// add required role bindings
 	existingRoleBindings := nameSet(namespaceRoleBindings.Items)
-	addedRoleBindings := map[string]struct{}{}
+	addedRoleBindings := sets.NewString()
 	for _, meshRoleBinding := range r.roleBindingsList.Items {
 		roleBindingName := meshRoleBinding.GetName()
-		if _, ok := existingRoleBindings[roleBindingName]; !ok {
+		if !existingRoleBindings.Has(roleBindingName) {
 			reqLogger.Info("creating RoleBinding for mesh ServiceAccount", "RoleBinding", roleBindingName)
 			roleBinding := &unstructured.Unstructured{}
 			roleBinding.SetGroupVersionKind(rbacv1.SchemeGroupVersion.WithKind("RoleBinding"))
@@ -728,7 +728,7 @@ func (r *namespaceReconciler) reconcileRoleBindings(namespace string, reqLogger 
 			common.SetLabel(roleBinding, common.MemberOfKey, r.meshNamespace)
 			err = r.client.Create(context.TODO(), roleBinding)
 			if err == nil {
-				addedRoleBindings[roleBindingName] = struct{}{}
+				addedRoleBindings.Insert(roleBindingName)
 			} else {
 				reqLogger.Error(err, "error creating RoleBinding for mesh ServiceAccount", "RoleBinding", roleBindingName)
 				allErrors = append(allErrors, err)
@@ -736,10 +736,10 @@ func (r *namespaceReconciler) reconcileRoleBindings(namespace string, reqLogger 
 		} // XXX: else if existingRoleBinding.annotations[mesh-generation] != meshRoleBinding.annotations[generation] then update?
 	}
 
-	existingRoleBindings = union(existingRoleBindings, addedRoleBindings)
+	existingRoleBindings = existingRoleBindings.Union(addedRoleBindings)
 
 	// delete obsolete role bindings
-	for roleBindingName := range difference(existingRoleBindings, r.requiredRoleBindings) {
+	for roleBindingName := range existingRoleBindings.Difference(r.requiredRoleBindings) {
 		reqLogger.Info("deleting RoleBinding for mesh ServiceAccount", "RoleBinding", roleBindingName)
 		roleBinding := &unstructured.Unstructured{}
 		roleBinding.SetGroupVersionKind(rbacv1.SchemeGroupVersion.WithKind("RoleBinding"))
@@ -817,7 +817,7 @@ func (r *namespaceReconciler) removeNetworkAttachmentDefinition(namespace, meshN
 
 func (r *ReconcileMemberList) reconcilePodServiceAccounts(namespace string, mesh *v1.ServiceMeshControlPlane, reqLogger logr.Logger) error {
 	// scan for pods with injection labels
-	serviceAccounts := map[string]struct{}{}
+	serviceAccounts := sets.NewString()
 	podList := &unstructured.UnstructuredList{}
 	podList.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("PodList"))
 	err := r.Client.List(context.TODO(), client.InNamespace(namespace), podList)
@@ -831,7 +831,7 @@ func (r *ReconcileMemberList) reconcilePodServiceAccounts(namespace string, mesh
 					if len(podSA) == 0 {
 						podSA = "default"
 					}
-					serviceAccounts[podSA] = struct{}{}
+					serviceAccounts.Insert(podSA)
 				}
 			}
 		}
@@ -851,23 +851,23 @@ func (r *ReconcileMemberList) reconcilePodServiceAccounts(namespace string, mesh
 
 	if len(serviceAccounts) > 0 {
 		// add labels before we add the ServiceAccount to the SCCs
-		erroredServiceAccounts := map[string]struct{}{}
+		erroredServiceAccounts := sets.NewString()
 		for saName := range serviceAccounts {
-			if _, ok := currentlyManagedServiceAccounts[saName]; ok {
+			if currentlyManagedServiceAccounts.Has(saName) {
 				continue
 			}
 			saResource := &unstructured.Unstructured{}
 			saResource.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("ServiceAccount"))
 			err = r.Client.Get(context.TODO(), client.ObjectKey{Name: saName, Namespace: namespace}, saResource)
 			if err != nil {
-				erroredServiceAccounts[saName] = struct{}{}
+				erroredServiceAccounts.Insert(saName)
 				reqLogger.Error(err, "error retrieving ServiceAccount to configure SCC", "ServiceAccount", saName)
 				allErrors = append(allErrors, err)
 			} else if !common.HasLabel(saResource, common.MemberOfKey) {
 				common.SetLabel(saResource, common.MemberOfKey, mesh.Namespace)
 				err = r.Client.Update(context.TODO(), saResource)
 				if err != nil {
-					erroredServiceAccounts[saName] = struct{}{}
+					erroredServiceAccounts.Insert(saName)
 					reqLogger.Error(err, "error setting label on ServiceAccount to configure SCC", "ServiceAccount", saName)
 					allErrors = append(allErrors, err)
 				}
@@ -875,7 +875,7 @@ func (r *ReconcileMemberList) reconcilePodServiceAccounts(namespace string, mesh
 		}
 
 		// XXX: use privileged and anyuid for now
-		serviceAccountsToUpdate := toList(difference(serviceAccounts, erroredServiceAccounts))
+		serviceAccountsToUpdate := serviceAccounts.Difference(erroredServiceAccounts).List()
 		_, err = r.AddUsersToSCC("privileged", serviceAccountsToUpdate...)
 		if err != nil {
 			reqLogger.Error(err, "error adding ServiceAccounts to privileged SecurityContextConstraints", "ServiceAccounts", serviceAccountsToUpdate)
@@ -889,8 +889,8 @@ func (r *ReconcileMemberList) reconcilePodServiceAccounts(namespace string, mesh
 	}
 
 	// remove unused service accounts that may have been previously configured
-	removedServiceAccounts := difference(currentlyManagedServiceAccounts, serviceAccounts)
-	removedServiceAccountsList := toList(removedServiceAccounts)
+	removedServiceAccounts := currentlyManagedServiceAccounts.Difference(serviceAccounts)
+	removedServiceAccountsList := removedServiceAccounts.List()
 	if err := r.RemoveUsersFromSCC("privileged", removedServiceAccountsList...); err != nil {
 		reqLogger.Error(err, "error removing unused ServiceAccounts from privileged SecurityContextConstraints", "ServiceAccounts", removedServiceAccountsList)
 		allErrors = append(allErrors, err)
@@ -902,7 +902,7 @@ func (r *ReconcileMemberList) reconcilePodServiceAccounts(namespace string, mesh
 
 	// Remove the labels, now that we've removed them from the SCCs
 	for _, saResource := range meshServiceAccounts.Items {
-		if _, ok := removedServiceAccounts[saResource.GetName()]; !ok {
+		if !removedServiceAccounts.Has(saResource.GetName()) {
 			continue
 		}
 		common.DeleteLabel(&saResource, common.MemberOfKey)
@@ -921,70 +921,10 @@ type networkingStrategy interface {
 	removeNamespaceFromMesh(namespace string) error
 }
 
-func toSet(values []string) map[string]struct{} {
-	set := map[string]struct{}{}
-	for _, value := range values {
-		set[value] = struct{}{}
-	}
-	return set
-}
-
-func toList(set map[string]struct{}) []string {
-	list := make([]string, 0, len(set))
-	for val := range set {
-		list = append(list, val)
-	}
-	return list
-}
-
-func difference(source, remove map[string]struct{}) map[string]struct{} {
-	diff := map[string]struct{}{}
-	for val := range source {
-		if _, ok := remove[val]; !ok {
-			diff[val] = struct{}{}
-		}
-	}
-	return diff
-}
-
-func intersection(set1, set2 map[string]struct{}) map[string]struct{} {
-	commonSet := map[string]struct{}{}
-	if len(set1) > len(set2) {
-		temp := set1
-		set1 = set2
-		set2 = temp
-	}
-	for val := range set1 {
-		if _, ok := set2[val]; ok {
-			commonSet[val] = struct{}{}
-		}
-	}
-	return commonSet
-}
-
-func union(set1, set2 map[string]struct{}) map[string]struct{} {
-	unionSet := map[string]struct{}{}
-	for val := range set1 {
-		unionSet[val] = struct{}{}
-	}
-	for val := range set2 {
-		unionSet[val] = struct{}{}
-	}
-	return unionSet
-}
-
-func nameList(items []unstructured.Unstructured) []string {
-	list := make([]string, 0, len(items))
+func nameSet(items []unstructured.Unstructured) sets.String {
+	set := sets.NewString()
 	for _, object := range items {
-		list = append(list, object.GetName())
-	}
-	return list
-}
-
-func nameSet(items []unstructured.Unstructured) map[string]struct{} {
-	set := map[string]struct{}{}
-	for _, object := range items {
-		set[object.GetName()] = struct{}{}
+		set.Insert(object.GetName())
 	}
 	return set
 }
