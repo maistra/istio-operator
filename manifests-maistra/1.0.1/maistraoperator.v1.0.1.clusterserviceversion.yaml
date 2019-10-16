@@ -1,7 +1,7 @@
 apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
-  name: servicemeshoperator.v1.0.0
+  name: maistraoperator.v1.0.1
   namespace: placeholder
   annotations:
     categories: "OpenShift Optional, Integration & Delivery"
@@ -9,10 +9,10 @@ metadata:
     certified: "false"
     repository: https://github.com/maistra/istio-operator
     description: |-
-      The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
+      The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
-    containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.0.0
-    createdAt: 2019-09-04T13:39:05UTC
+    containerImage: maistra/istio-ubi8-operator:1.0.1
+    createdAt: 2019-10-07T14:14:32PDT
     support: Red Hat, Inc. 
     alm-examples: |-
       [
@@ -98,7 +98,7 @@ metadata:
         }
       ]
 spec:
-  version: 1.0.0
+  version: 1.0.1
   maturity: alpha
   displayName: Red Hat OpenShift Service Mesh
   description: |-
@@ -114,6 +114,7 @@ spec:
     url: https://github.com/Maistra/istio-operator
   - name: Istio
     url: https://istio.io/
+  replaces: maistraoperator.v1.0.0
   installModes:
   - type: OwnNamespace
     supported: true
@@ -344,7 +345,7 @@ spec:
                   medium: Memory
               containers:
               - name: istio-operator
-                image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.0.0
+                image: maistra/istio-ubi8-operator:1.0.1
                 ports:
                 - containerPort: 11999
                   name: validation
@@ -365,7 +366,7 @@ spec:
                 - name: OPERATOR_NAME
                   value: istio-operator
                 - name: ISTIO_CNI_IMAGE
-                  value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.0.0
+                  value: maistra/istio-cni-ubi8:1.0.1
                 volumeMounts:
                 - name: discovery-cache
                   mountPath: /home/istio-operator/.kube/cache/discovery

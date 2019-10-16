@@ -3,7 +3,7 @@ kind: ServiceMeshControlPlane
 spec:
   istio:
     global:
-      tag: 1.0.0
+      tag: 1.0.1
       proxy:
         autoInject: disabled
         dnsRefreshRate: 300s
