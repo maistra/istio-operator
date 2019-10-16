@@ -24,7 +24,7 @@ type networkPolicyStrategy struct {
 	networkPoliciesList     *unstructured.UnstructuredList
 }
 
-var _ networkingStrategy = (*networkPolicyStrategy)(nil)
+var _ NamespaceReconciler = (*networkPolicyStrategy)(nil)
 
 func newNetworkPolicyStrategy(r *namespaceReconciler) (*networkPolicyStrategy, error) {
 	var err error

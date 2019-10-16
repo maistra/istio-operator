@@ -45,7 +45,11 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileMemberList{ResourceManager: common.ResourceManager{Client: mgr.GetClient(), Log: log}, scheme: mgr.GetScheme()}
+	return &ReconcileMemberList{
+		ResourceManager:        common.ResourceManager{Client: mgr.GetClient(), Log: log},
+		scheme:                 mgr.GetScheme(),
+		newNamespaceReconciler: newNamespaceReconciler,
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -152,6 +156,8 @@ type ReconcileMemberList struct {
 	// that reads objects from the cache and writes to the apiserver
 	common.ResourceManager
 	scheme *runtime.Scheme
+
+	newNamespaceReconciler func(cl client.Client, logger logr.Logger, meshNamespace string, isCNIEnabled bool) (NamespaceReconciler, error)
 }
 
 // Reconcile reads that state of the cluster for a ServiceMeshMemberRoll object and makes changes based on the state read
@@ -189,7 +195,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		reqLogger.Info("Deleting ServiceMeshMemberRoll")
 
 		// create reconciler
-		reconciler, err := newNamespaceReconciler(r.Client, reqLogger, instance.Namespace, false)
+		reconciler, err := r.newNamespaceReconciler(r.Client, reqLogger, instance.Namespace, false)
 		if err != nil {
 			return reconcile.Result{}, pkgerrors.Wrapf(err, "Error creating namespace reconciler")
 		}
@@ -379,7 +385,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 
 func (r *ReconcileMemberList) reconcileNamespaces(meshNamespace string, namespacesToReconcile, namespacesToRemove sets.String, instance *v1.ServiceMeshMemberRoll, reqLogger logr.Logger) (err error, nsErrors []error) {
 	// create reconciler
-	reconciler, err := newNamespaceReconciler(r.Client, reqLogger, meshNamespace, common.IsCNIEnabled)
+	reconciler, err := r.newNamespaceReconciler(r.Client, reqLogger, meshNamespace, common.IsCNIEnabled)
 	if err != nil {
 		return err, nil
 	}
@@ -480,12 +486,12 @@ type namespaceReconciler struct {
 	logger               logr.Logger
 	meshNamespace        string
 	isCNIEnabled         bool
-	networkingStrategy   networkingStrategy
+	networkingStrategy   NamespaceReconciler
 	roleBindingsList     rbacv1.RoleBindingList
 	requiredRoleBindings sets.String
 }
 
-func newNamespaceReconciler(cl client.Client, logger logr.Logger, meshNamespace string, isCNIEnabled bool) (*namespaceReconciler, error) {
+func newNamespaceReconciler(cl client.Client, logger logr.Logger, meshNamespace string, isCNIEnabled bool) (NamespaceReconciler, error) {
 	var err error
 	reconciler := &namespaceReconciler{
 		client:               cl,
@@ -783,7 +789,7 @@ func (r *namespaceReconciler) removeNetworkAttachmentDefinition(namespace, meshN
 	return fmt.Errorf("Could not delete NetworkAttachmentDefinition %s/%s: %v", namespace, netAttachDefName, err)
 }
 
-type networkingStrategy interface {
+type NamespaceReconciler interface {
 	reconcileNamespaceInMesh(namespace string) error
 	removeNamespaceFromMesh(namespace string) error
 }
