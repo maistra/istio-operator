@@ -10,6 +10,8 @@ spec:
       oauthproxy:
         tag: 4.1
         imagePullPolicy: IfNotPresent
+      defaultPodDisruptionBudget:
+        enabled: false
     pilot:
       env:
         GODEBUG: null
