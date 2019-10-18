@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"net/http"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 
-	authorizationv1 "k8s.io/api/authorization/v1"
 	authenticationv1 "k8s.io/api/authentication/v1"
+	authorizationv1 "k8s.io/api/authorization/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
@@ -70,13 +72,13 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 	}
 
 	// verify no duplicate members across all smmr resources
-	namespacesAlreadyConfigured := map[string]struct{}{}
+	namespacesAlreadyConfigured := sets.NewString()
 	for _, othermr := range smmrList.Items {
 		if othermr.Name == smmr.Name && othermr.Namespace == smmr.Namespace {
 			continue
 		}
 		for _, member := range othermr.Spec.Members {
-			namespacesAlreadyConfigured[member] = struct{}{}
+			namespacesAlreadyConfigured.Insert(member)
 		}
 	}
 	sar := &authorizationv1.SubjectAccessReview{}
@@ -91,7 +93,7 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 		Resource: "pods",
 	}
 	for _, member := range smmr.Spec.Members {
-		if _, ok := namespacesAlreadyConfigured[member]; ok {
+		if namespacesAlreadyConfigured.Has(member) {
 			return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("one or more members are already defined in another ServiceMeshMemberRoll"))
 		} else if smmr.Namespace == member {
 			return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("mesh project/namespace cannot be listed as a member"))

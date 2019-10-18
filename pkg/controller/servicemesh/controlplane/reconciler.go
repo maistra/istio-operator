@@ -10,6 +10,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/bootstrap"
@@ -72,7 +73,7 @@ const (
 )
 
 func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error) {
-	if r.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse { 
+	if r.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse {
 		r.initializeReconcileStatus()
 		err := r.PostStatus()
 		return reconcile.Result{}, err // ensure that the new reconcile status is posted immediately. Reconciliation will resume when the status update comes back into the operator
@@ -361,13 +362,13 @@ func (r *ControlPlaneReconciler) getSMCPTemplate(name string) (v1.ControlPlaneSp
 }
 
 //renderSMCPTemplates traverses and processes all of the references templates
-func (r *ControlPlaneReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneSpec, visited map[string]struct{}) (v1.ControlPlaneSpec, error) {
+func (r *ControlPlaneReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneSpec, visited sets.String) (v1.ControlPlaneSpec, error) {
 	if smcp.Template == "" {
 		return smcp, nil
 	}
 	r.Log.Info(fmt.Sprintf("processing smcp template %s", smcp.Template))
 
-	if _, ok := visited[smcp.Template]; ok {
+	if visited.Has(smcp.Template) {
 		return smcp, fmt.Errorf("SMCP templates form cyclic dependency. Cannot proceed")
 	}
 
@@ -382,7 +383,7 @@ func (r *ControlPlaneReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneS
 		return smcp, err
 	}
 
-	visited[smcp.Template] = struct{}{}
+	visited.Insert(smcp.Template)
 
 	smcp.Istio = mergeValues(smcp.Istio, template.Istio)
 	smcp.ThreeScale = mergeValues(smcp.ThreeScale, template.ThreeScale)
@@ -396,7 +397,7 @@ func (r *ControlPlaneReconciler) applyTemplates(smcpSpec v1.ControlPlaneSpec) (v
 		r.Log.Info("No template provided. Using default")
 	}
 
-	spec, err := r.recursivelyApplyTemplates(smcpSpec, make(map[string]struct{}, 0))
+	spec, err := r.recursivelyApplyTemplates(smcpSpec, sets.NewString())
 	r.Log.Info(fmt.Sprintf("finished updating ServiceMeshControlPlane: %+v", spec))
 
 	return spec, err
