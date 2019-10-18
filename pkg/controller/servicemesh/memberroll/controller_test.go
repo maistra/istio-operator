@@ -382,6 +382,64 @@ func TestReconcileDoesNotAddControlPlaneNamespaceToMembers(t *testing.T) {
 	kialiReconciler.assertInvokedWith(t /* no namespaces */)
 }
 
+func TestReconcileHandlesDeletionProperly(t *testing.T) {
+	cases := []struct {
+		name                      string
+		specMembers               []string
+		configuredMembers         []string
+		expectedRemovedNamespaces []string
+	}{
+		{
+			name:                      "normal-deletion",
+			specMembers:               []string{appNamespace},
+			configuredMembers:         []string{appNamespace},
+			expectedRemovedNamespaces: []string{appNamespace},
+		},
+		{
+			name:                      "ns-removed-from-members-list-and-smmr-deleted-immediately",
+			specMembers:               []string{}, // appNamespace was removed, but then the SMMR was deleted immediately. The controller is reconciling both actions at once.
+			configuredMembers:         []string{appNamespace},
+			expectedRemovedNamespaces: []string{appNamespace},
+		},
+		// TODO: add a member, it gets configured by namespace reconciler, but then the SMMR update fails (configuredMembers doesn't include the namespace). Then the SMMR is deleted. Does the namespace get cleaned up?
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			roll := newMemberRoll()
+			roll.Spec.Members = tc.specMembers
+			roll.Status.ConfiguredMembers = tc.configuredMembers
+			roll.DeletionTimestamp = &oneMinuteAgo
+
+			initObjects := []runtime.Object{roll}
+			for _, ns := range tc.configuredMembers {
+				initObjects = append(initObjects, &core.Namespace{
+					ObjectMeta: meta.ObjectMeta{
+						Name: ns,
+						Labels: map[string]string{
+							common.MemberOfKey: controlPlaneNamespace,
+						},
+					},
+				})
+			}
+
+			cl, _, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, initObjects...)
+
+			assertReconcileSucceeds(r, t)
+
+			updatedRoll := test.GetUpdatedObject(cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+			assert.StringArrayEmpty(updatedRoll.Finalizers, "Expected finalizers list in SMMR to be empty, but it wasn't", t)
+
+			assertNamespaceRemoveInvoked(t, nsReconciler, tc.expectedRemovedNamespaces...)
+			kialiReconciler.assertInvokedWith(t /* no namespaces */)
+		})
+	}
+}
+
+// TODO: removal of namespace from SMMR.spec.members - does it get cleaned up?
+
+// TODO: test reconcileNamespaces() - including cases where namespace is NotFound or Gone (shouldn't be an error)
+
 func TestClientReturnsErrorWhenRemovingFinalizer(t *testing.T) {
 	cases := []struct {
 		name                 string
