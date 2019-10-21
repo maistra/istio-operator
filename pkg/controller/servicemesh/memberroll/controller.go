@@ -323,6 +323,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, err
 		}
 		instance.Status.ServiceMeshGeneration = mesh.Status.ObservedGeneration
+		instance.Status.ServiceMeshReconciledVersion = mesh.Status.GetReconciledVersion()
 	} else if len(unconfiguredMembers) > 0 { // required namespace that was missing has been created
 		reqLogger.Info("Reconciling newly created namespaces associated with this ServiceMeshMemberRoll")
 
@@ -340,6 +341,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, err
 		}
 		instance.Status.ServiceMeshGeneration = mesh.Status.ObservedGeneration
+		instance.Status.ServiceMeshReconciledVersion = mesh.Status.GetReconciledVersion()
 	} else if len(deletedMembers) > 0 { // namespace that was configured has been deleted
 		// nothing to do, but we need to update the ConfiguredMembers field
 		reqLogger.Info("Removing deleted namespaces from ConfiguredMembers")
