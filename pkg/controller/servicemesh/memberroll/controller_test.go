@@ -207,9 +207,8 @@ func TestReconcileReconcilesAddedMember(t *testing.T) {
 	roll.Status.ObservedGeneration = 1
 	controlPlane := markControlPlaneReconciled(newControlPlane())
 	namespace := newAppNamespace()
-	meshRoleBinding := newMeshRoleBinding()
 
-	cl, _, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace, meshRoleBinding)
+	cl, _, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace)
 	common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
 
 	assertReconcileSucceeds(r, t)
@@ -230,9 +229,8 @@ func TestReconcileFailsIfMemberRollUpdateFails(t *testing.T) {
 	roll.Status.ObservedGeneration = 1
 	controlPlane := markControlPlaneReconciled(newControlPlane())
 	namespace := newAppNamespace()
-	meshRoleBinding := newMeshRoleBinding()
 
-	_, tracker, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace, meshRoleBinding)
+	_, tracker, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace)
 	common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
 	tracker.AddReactor(test.ClientFailsOn("update", "servicemeshmemberrolls"))
 
@@ -250,9 +248,8 @@ func TestReconcileFailsIfKialiReconcileFails(t *testing.T) {
 	roll.Status.ObservedGeneration = 1
 	controlPlane := markControlPlaneReconciled(newControlPlane())
 	namespace := newAppNamespace()
-	meshRoleBinding := newMeshRoleBinding()
 
-	_, _, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace, meshRoleBinding)
+	_, _, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace)
 	common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
 	kialiReconciler.errorToReturn = fmt.Errorf("error")
 
@@ -270,9 +267,8 @@ func TestReconcileReconcilesMemberIfNamespaceIsCreatedLater(t *testing.T) {
 	roll.Status.ObservedGeneration = 2 // NOTE: generation 2 of the member roll has already been reconciled
 	controlPlane := markControlPlaneReconciled(newControlPlane())
 	namespace := newAppNamespace()
-	meshRoleBinding := newMeshRoleBinding()
 
-	cl, _, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace, meshRoleBinding)
+	cl, _, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace)
 	common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
 
 	assertReconcileSucceeds(r, t)
@@ -437,6 +433,13 @@ func TestClientReturnsErrorWhenRemovingFinalizer(t *testing.T) {
 	}
 }
 
+func createClient(clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker) {
+	tracker := clienttesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
+	enhancedTracker := test.NewEnhancedTracker(tracker)
+	cl := fake.NewFakeClientWithSchemeAndTracker(scheme.Scheme, &enhancedTracker, clientObjects...)
+	return cl, &enhancedTracker
+}
+
 func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker, *ReconcileMemberList, *fakeNamespaceReconciler, *fakeKialiReconciler) {
 	s := scheme.Scheme // scheme must be initialized before creating the client below
 	if err := rbac.AddToScheme(s); err != nil {
@@ -446,9 +449,7 @@ func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (c
 		t.Fatalf("Could not add to scheme: %v", err)
 	}
 
-	tracker := clienttesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
-	enhancedTracker := test.NewEnhancedTracker(tracker)
-	cl := fake.NewFakeClientWithSchemeAndTracker(scheme.Scheme, &enhancedTracker, clientObjects...)
+	cl, enhancedTracker := createClient(clientObjects...)
 
 	rf := fakeNamespaceReconcilerFactory{
 		reconciler: &fakeNamespaceReconciler{},
@@ -463,7 +464,7 @@ func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (c
 	kialiReconciler := &fakeKialiReconciler{}
 	r.reconcileKiali = kialiReconciler.reconcileKiali
 
-	return cl, &enhancedTracker, r, rf.reconciler, kialiReconciler
+	return cl, enhancedTracker, r, rf.reconciler, kialiReconciler
 }
 
 type fakeNamespaceReconcilerFactory struct {

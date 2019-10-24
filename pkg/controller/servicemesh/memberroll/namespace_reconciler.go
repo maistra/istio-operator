@@ -11,9 +11,9 @@ import (
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
-	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	core "k8s.io/api/core/v1"
+	rbac "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -28,21 +28,20 @@ type namespaceReconciler struct {
 	meshNamespace        string
 	isCNIEnabled         bool
 	networkingStrategy   NamespaceReconciler
-	roleBindingsList     rbacv1.RoleBindingList
+	roleBindingsList     rbac.RoleBindingList
 	requiredRoleBindings sets.String
 }
 
 func newNamespaceReconciler(cl client.Client, logger logr.Logger, meshNamespace string, isCNIEnabled bool) (NamespaceReconciler, error) {
-	var err error
 	reconciler := &namespaceReconciler{
 		client:               cl,
 		logger:               logger.WithValues("MeshNamespace", meshNamespace),
 		meshNamespace:        meshNamespace,
 		isCNIEnabled:         isCNIEnabled,
-		roleBindingsList:     rbacv1.RoleBindingList{},
+		roleBindingsList:     rbac.RoleBindingList{},
 		requiredRoleBindings: sets.NewString(),
 	}
-	err = reconciler.initializeNetworkingStrategy()
+	err := reconciler.initializeNetworkingStrategy()
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +66,7 @@ func (r *namespaceReconciler) initializeNetworkingStrategy() error {
 	r.networkingStrategy = &subnetStrategy{}
 	err := r.client.Get(context.TODO(), client.ObjectKey{Name: "default"}, clusterNetwork)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			r.logger.Info("default cluster network not defined, skipping network configuration")
 			return nil
 		}
@@ -99,10 +98,10 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(namespace string) error {
 	logger.Info("cleaning up resources in namespace removed from mesh")
 
 	// get namespace
-	namespaceResource := &corev1.Namespace{}
+	namespaceResource := &core.Namespace{}
 	err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, namespaceResource)
 	if err != nil {
-		if errors.IsNotFound(err) || errors.IsGone(err) {
+		if apierrors.IsNotFound(err) || apierrors.IsGone(err) {
 			logger.Info("namespace to remove from mesh is missing")
 			return nil
 		}
@@ -113,7 +112,9 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(namespace string) error {
 	allErrors := []error{}
 
 	// delete role bindings
-	rbList, err := common.FetchMeshResources(r.client, rbacv1.SchemeGroupVersion.WithKind("RoleBinding"), r.meshNamespace, namespace)
+	rbList := &rbac.RoleBindingList{}
+	labelSelector := map[string]string{common.OwnerKey: r.meshNamespace}
+	err = r.client.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(namespace), rbList)
 	if err == nil {
 		for _, rb := range rbList.Items {
 			logger.Info("deleting RoleBinding for mesh ServiceAccount", "RoleBinding", rb.GetName())
@@ -142,16 +143,16 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(namespace string) error {
 
 	// remove mesh labels
 	// get fresh Namespace from cache to minimize the chance of a conflict during update (the Namespace might have been updated during the execution of removeNamespaceFromMesh())
-	namespaceResource = &corev1.Namespace{}
+	namespaceResource = &core.Namespace{}
 	if err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, namespaceResource); err == nil {
 		common.DeleteLabel(namespaceResource, common.MemberOfKey)
 		if err := r.client.Update(context.TODO(), namespaceResource); err == nil {
 			logger.Info("Removed member-of label from namespace")
-		} else if !(errors.IsGone(err) || errors.IsNotFound(err)) {
+		} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
 			allErrors = append(allErrors, fmt.Errorf("Error removing member-of label from namespace %s: %v", namespace, err))
 			return utilerrors.NewAggregate(allErrors)
 		}
-	} else if !(errors.IsGone(err) || errors.IsNotFound(err)) {
+	} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
 		allErrors = append(allErrors, fmt.Errorf("Error getting namespace %s prior to removing member-of label: %v", namespace, err))
 	}
 
@@ -163,7 +164,7 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
 	logger.Info("configuring namespace for use with mesh")
 
 	// get namespace
-	namespaceResource := &corev1.Namespace{}
+	namespaceResource := &core.Namespace{}
 	err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, namespaceResource)
 	if err != nil {
 		return err
@@ -205,7 +206,7 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
 	// add mesh labels
 	if !common.HasLabel(namespaceResource, common.MemberOfKey) {
 		// get fresh Namespace from cache to minimize the chance of a conflict during update (the Namespace might have been updated during the execution of reconcileNamespaceInMesh())
-		namespaceResource = &corev1.Namespace{}
+		namespaceResource = &core.Namespace{}
 		if err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, namespaceResource); err == nil {
 			common.SetLabel(namespaceResource, common.MemberOfKey, r.meshNamespace)
 			if err := r.client.Update(context.TODO(), namespaceResource); err == nil {
@@ -222,7 +223,7 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
 }
 
 func (r *namespaceReconciler) reconcileRoleBindings(namespace string, reqLogger logr.Logger) error {
-	namespaceRoleBindings := rbacv1.RoleBindingList{}
+	namespaceRoleBindings := rbac.RoleBindingList{}
 	labelSelector := map[string]string{common.MemberOfKey: r.meshNamespace}
 	err := r.client.List(context.TODO(), client.InNamespace(namespace).MatchingLabels(labelSelector), &namespaceRoleBindings)
 	if err != nil {
@@ -257,11 +258,11 @@ func (r *namespaceReconciler) reconcileRoleBindings(namespace string, reqLogger 
 	// delete obsolete role bindings
 	for roleBindingName := range existingRoleBindings.Difference(r.requiredRoleBindings) {
 		reqLogger.Info("deleting RoleBinding for mesh ServiceAccount", "RoleBinding", roleBindingName)
-		roleBinding := &rbacv1.RoleBinding{}
+		roleBinding := &rbac.RoleBinding{}
 		roleBinding.SetName(roleBindingName)
 		roleBinding.SetNamespace(namespace)
 		err = r.client.Delete(context.TODO(), roleBinding, client.PropagationPolicy(metav1.DeletePropagationForeground))
-		if err != nil && !(errors.IsNotFound(err) || errors.IsGone(err)) {
+		if err != nil && !(apierrors.IsNotFound(err) || apierrors.IsGone(err)) {
 			reqLogger.Error(err, "error deleting RoleBinding for mesh ServiceAccount", "RoleBinding", roleBindingName)
 			allErrors = append(allErrors, err)
 		}
@@ -286,7 +287,7 @@ func (r *namespaceReconciler) addNetworkAttachmentDefinition(namespace, meshName
 		// resource exists, do nothing
 		return nil
 	}
-	if !errors.IsNotFound(err) {
+	if !apierrors.IsNotFound(err) {
 		return fmt.Errorf("Could not get NetworkAttachmentDefinition %s/%s: %v", namespace, netAttachDefName, err)
 	}
 
@@ -311,7 +312,7 @@ func (r *namespaceReconciler) removeNetworkAttachmentDefinition(namespace, meshN
 
 	err := r.client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: netAttachDefName}, netAttachDef)
 	if err != nil {
-		if errors.IsNotFound(err) || meta.IsNoMatchError(err) {
+		if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
 			// resource doesn't exist, so everything's fine
 			return nil
 		}
@@ -323,7 +324,7 @@ func (r *namespaceReconciler) removeNetworkAttachmentDefinition(namespace, meshN
 		// resource successfully deleted
 		return nil
 	}
-	if !errors.IsNotFound(err) {
+	if !apierrors.IsNotFound(err) {
 		// resource was deleted between our Get call and our Delete call - everything is fine
 		return nil
 	}
