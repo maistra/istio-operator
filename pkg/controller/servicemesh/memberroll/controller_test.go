@@ -13,13 +13,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes/scheme"
-	clienttesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
-	"github.com/maistra/istio-operator/pkg/apis"
 	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -491,23 +488,8 @@ func TestClientReturnsErrorWhenRemovingFinalizer(t *testing.T) {
 	}
 }
 
-func createClient(clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker) {
-	tracker := clienttesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
-	enhancedTracker := test.NewEnhancedTracker(tracker)
-	cl := fake.NewFakeClientWithSchemeAndTracker(scheme.Scheme, &enhancedTracker, clientObjects...)
-	return cl, &enhancedTracker
-}
-
 func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker, *ReconcileMemberList, *fakeNamespaceReconciler, *fakeKialiReconciler) {
-	s := scheme.Scheme // scheme must be initialized before creating the client below
-	if err := rbac.AddToScheme(s); err != nil {
-		t.Fatalf("Could not add to scheme: %v", err)
-	}
-	if err := apis.AddToScheme(s); err != nil {
-		t.Fatalf("Could not add to scheme: %v", err)
-	}
-
-	cl, enhancedTracker := createClient(clientObjects...)
+	cl, enhancedTracker := test.CreateClient(clientObjects...)
 
 	rf := fakeNamespaceReconcilerFactory{
 		reconciler: &fakeNamespaceReconciler{},
@@ -515,7 +497,7 @@ func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (c
 
 	r := &ReconcileMemberList{
 		ResourceManager:        common.ResourceManager{Client: cl, PatchFactory: common.NewPatchFactory(cl), Log: log},
-		scheme:                 s,
+		scheme:                 scheme.Scheme,
 		newNamespaceReconciler: rf.newReconciler,
 	}
 

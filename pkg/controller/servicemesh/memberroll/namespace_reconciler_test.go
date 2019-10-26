@@ -23,7 +23,7 @@ func TestReconcileNamespaceInMesh(t *testing.T) {
 	namespace := newAppNamespace()
 	meshRoleBinding := newMeshRoleBinding()
 	meshRoleBindings := []*rbac.RoleBinding{meshRoleBinding}
-	cl, _ := createClient(namespace, meshRoleBinding)
+	cl, _ := test.CreateClient(namespace, meshRoleBinding)
 
 	fakeNetworkStrategy := &fakeNetworkStrategy{}
 	assertReconcileNamespaceSucceeds(t, cl, fakeNetworkStrategy)
@@ -69,7 +69,7 @@ func TestReconcileFailsIfNamespaceIsPartOfAnotherMesh(t *testing.T) {
 	namespace.Labels = map[string]string{
 		common.MemberOfKey: "other-control-plane",
 	}
-	cl, _ := createClient(namespace)
+	cl, _ := test.CreateClient(namespace)
 
 	assertReconcileNamespaceFails(t, cl)
 }
@@ -77,7 +77,7 @@ func TestReconcileFailsIfNamespaceIsPartOfAnotherMesh(t *testing.T) {
 func TestRemoveNamespaceFromMesh(t *testing.T) {
 	namespace := newAppNamespace()
 	meshRoleBinding := newMeshRoleBinding()
-	cl, _ := createClient(namespace, meshRoleBinding)
+	cl, _ := test.CreateClient(namespace, meshRoleBinding)
 	setupReconciledNamespace(t, cl, appNamespace)
 
 	fakeNetworkStrategy := &fakeNetworkStrategy{}
@@ -111,7 +111,7 @@ func TestReconcileUpdatesModifiedRoleBindings(t *testing.T) {
 	t.Skip("Not implemented yet")
 	namespace := newAppNamespace()
 	meshRoleBinding := newMeshRoleBinding()
-	cl, _ := createClient(namespace, meshRoleBinding)
+	cl, _ := test.CreateClient(namespace, meshRoleBinding)
 	setupReconciledNamespace(t, cl, appNamespace)
 
 	// update mesh role binding
@@ -151,7 +151,7 @@ func TestReconcileDeletesObsoleteRoleBindings(t *testing.T) {
 	namespace := newAppNamespace()
 	meshRoleBinding := newMeshRoleBinding()
 
-	cl, _ := createClient(namespace, meshRoleBinding)
+	cl, _ := test.CreateClient(namespace, meshRoleBinding)
 	setupReconciledNamespace(t, cl, appNamespace)
 
 	err := cl.Delete(context.TODO(), meshRoleBinding)
