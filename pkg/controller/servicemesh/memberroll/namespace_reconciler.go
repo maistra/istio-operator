@@ -81,9 +81,9 @@ func (r *namespaceReconciler) initializeNetworkingStrategy() error {
 		case "redhat/openshift-ovs-subnet":
 			// nothing to do
 		case "redhat/openshift-ovs-networkpolicy":
-			r.networkingStrategy, err = newNetworkPolicyStrategy(r)
+			r.networkingStrategy, err = newNetworkPolicyStrategy(r.client, r.logger, r.meshNamespace)
 		case "redhat/openshift-ovs-multitenant":
-			r.networkingStrategy, err = newMultitenantStrategy(r)
+			r.networkingStrategy, err = newMultitenantStrategy(r.client, r.logger, r.meshNamespace)
 		default:
 			return fmt.Errorf("unsupported cluster network plugin: %s", networkPlugin)
 		}

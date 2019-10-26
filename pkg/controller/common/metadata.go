@@ -56,11 +56,3 @@ func FetchOwnedResources(kubeClient client.Client, gvk schema.GroupVersionKind, 
 	err := kubeClient.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(namespace), objects)
 	return objects, err
 }
-
-func FetchMeshResources(kubeClient client.Client, gvk schema.GroupVersionKind, mesh, namespace string) (*unstructured.UnstructuredList, error) {
-	labelSelector := map[string]string{MemberOfKey: mesh}
-	objects := &unstructured.UnstructuredList{}
-	objects.SetGroupVersionKind(gvk)
-	err := kubeClient.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(namespace), objects)
-	return objects, err
-}
