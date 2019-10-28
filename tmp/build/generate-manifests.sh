@@ -4,7 +4,7 @@
 
 set -e
 
-: ${COMMUNITY:-"true"}
+COMMUNITY=${COMMUNITY:-"true"}
 : ${MAISTRA_VERSION:?"Need to set maistra version, e.g. 1.0.2"}
 if [[ ${COMMUNITY} == "true" ]]; then
   BUILD_TYPE="maistra"
