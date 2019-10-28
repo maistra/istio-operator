@@ -4,26 +4,68 @@ spec:
   istio:
     global:
       tag: 1.0.2
+      # constrain resources for use in smaller environments
+      defaultResources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 50m
+          memory: 256Mi
       proxy:
         autoInject: disabled
         dnsRefreshRate: 300s
+        # constrain resources for use in smaller environments
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 50m
+            memory: 256Mi
       oauthproxy:
         tag: 4.1
         imagePullPolicy: IfNotPresent
       defaultPodDisruptionBudget:
         enabled: false
+    security:
+      # constrain resources for use in smaller environments
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 256Mi
+    galley:
+      # constrain resources for use in smaller environments
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 256Mi
     pilot:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 256Mi
       env:
         GODEBUG: null
     mixer:
       telemetry:
+        # constrain resources for use in smaller environments
         resources:
           requests:
-            cpu: 100m
-            memory: 1G
+            cpu: 50m
+            memory: 128Mi
           limits:
-            cpu: 500m
-            memory: 4G
+            cpu: 50m
+            memory: 256Mi
       env:
         GODEBUG: null
     grafana:
@@ -48,13 +90,37 @@ spec:
     gateways:
       istio-egressgateway:
         enabled: true
+        # constrain resources for use in smaller environments
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 50m
+            memory: 256Mi
       istio-ingressgateway:
         enabled: true
         type: ClusterIP
+        # constrain resources for use in smaller environments
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 50m
+            memory: 256Mi
     prometheus:
-     service:
-      annotations:
-        service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls
-     ingress:
+      service:
+        annotations:
+          service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls
+      ingress:
         enabled: true
+      # constrain resources for use in smaller environments
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 50m
+          memory: 512Mi
   threeScale: {}
