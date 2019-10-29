@@ -28,12 +28,12 @@ metadata:
                 "proxy": {
                   "resources": {
                     "requests": {
-                      "cpu": "100m",
+                      "cpu": "50m",
                       "memory": "128Mi"
                     },
                     "limits": {
-                      "cpu": "500m",
-                      "memory": "128Mi"
+                      "cpu": "50m",
+                      "memory": "256Mi"
                     }
                   }
                 }
@@ -55,11 +55,11 @@ metadata:
                   "resources": {
                     "requests": {
                       "cpu": "100m",
-                      "memory": "1G"
+                      "memory": "256Mi"
                     },
                     "limits": {
-                      "cpu": "500m",
-                      "memory": "4G"
+                      "cpu": "100m",
+                      "memory": "512Mi"
                     }
                   }
                 }
