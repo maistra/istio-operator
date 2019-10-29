@@ -180,7 +180,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		r.meshGeneration = common.ReconciledVersion(r.Instance.GetGeneration())
 
 		// Ensure CRDs are installed
-		if err = bootstrap.InstallCRDs(r.Manager); err != nil {
+		if err = bootstrap.InstallCRDs(r.Client); err != nil {
 			reconciliationReason = v1.ConditionReasonReconcileError
 			reconciliationMessage = "Failed to install/update Istio CRDs"
 			r.Log.Error(err, reconciliationMessage)
@@ -190,7 +190,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		// Ensure Istio CNI is installed
 		if common.IsCNIEnabled {
 			r.lastComponent = "cni"
-			if err = bootstrap.InstallCNI(r.Manager); err != nil {
+			if err = bootstrap.InstallCNI(r.Client); err != nil {
 				reconciliationReason = v1.ConditionReasonReconcileError
 				reconciliationMessage = "Failed to install/update Istio CNI"
 				r.Log.Error(err, reconciliationMessage)
@@ -251,7 +251,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 	// it's possible that some resources in the original version may not be present in the new version.
 	// delete unseen components
 	reconciliationMessage = "Pruning obsolete resources"
-	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonPruning, reconciliationMessage)
+	r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReasonPruning, reconciliationMessage)
 	r.Log.Info(reconciliationMessage)
 	err = r.prune(r.meshGeneration)
 	if err != nil {
@@ -264,11 +264,11 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 	if r.isUpdating() {
 		reconciliationReason = v1.ConditionReasonUpdateSuccessful
 		reconciliationMessage = fmt.Sprintf("Successfully updated from version %s to version %s", r.Status.GetReconciledVersion(), r.meshGeneration)
-		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonUpdated, reconciliationMessage)
+		r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReasonUpdated, reconciliationMessage)
 	} else {
 		reconciliationReason = v1.ConditionReasonInstallSuccessful
 		reconciliationMessage = fmt.Sprintf("Successfully installed version %s", r.meshGeneration)
-		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonInstalled, reconciliationMessage)
+		r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReasonInstalled, reconciliationMessage)
 	}
 	r.Status.ObservedGeneration = r.Instance.GetGeneration()
 	r.Status.ReconciledVersion = r.meshGeneration
@@ -295,7 +295,7 @@ func (r *ControlPlaneReconciler) pauseReconciliation(chartName string, err error
 	componentName := componentFromChartName(chartName)
 	if err == nil {
 		reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
-		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReason, reconciliationMessage)
+		r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReason, reconciliationMessage)
 		r.Log.Info(reconciliationMessage)
 	} else {
 		conditionReason = v1.ConditionReasonReconcileError
@@ -504,7 +504,7 @@ func (r *ControlPlaneReconciler) postReconciliationStatus(reconciliationReason v
 	} else {
 		// grab the cause, as it's likely the error includes the reconciliation message
 		reconciledCondition.Message = fmt.Sprintf("%s: error: %s", reconciliationMessage, errors.Cause(processingErr))
-		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeWarning, reason, reconciledCondition.Message)
+		r.EventRecorder.Event(r.Instance, corev1.EventTypeWarning, reason, reconciledCondition.Message)
 	}
 	r.Status.SetCondition(reconciledCondition)
 
@@ -545,7 +545,7 @@ func (r *ControlPlaneReconciler) initializeReconcileStatus() {
 			Message: readyMessage,
 		})
 	}
-	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReason, readyMessage)
+	r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReason, readyMessage)
 	r.Status.SetCondition(v1.Condition{
 		Type:    v1.ConditionTypeReconciled,
 		Status:  v1.ConditionStatusFalse,

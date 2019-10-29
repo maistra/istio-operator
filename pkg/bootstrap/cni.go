@@ -4,7 +4,7 @@ import (
 	"path"
 	"sync"
 
-	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
@@ -15,12 +15,12 @@ var installCNITask sync.Once
 
 // InstallCNI makes sure all Istio CNI resources have been created.  CRDs are located from
 // files in controller.HelmDir/istio-init/files
-func InstallCNI(mgr manager.Manager) error {
+func InstallCNI(cl client.Client) error {
 	// we should run through this each reconcile to make sure it's there
-	return internalInstallCNI(mgr)
+	return internalInstallCNI(cl)
 }
 
-func internalInstallCNI(mgr manager.Manager) error {
+func internalInstallCNI(cl client.Client) error {
 	log.Info("ensuring Istio CNI has been installed")
 
 	operatorNamespace := common.GetOperatorNamespace()
@@ -39,8 +39,8 @@ func internalInstallCNI(mgr manager.Manager) error {
 	}
 
 	resourceManager := common.ResourceManager{
-		Client:            mgr.GetClient(),
-		PatchFactory:      common.NewPatchFactory(mgr.GetClient()),
+		Client:            cl,
+		PatchFactory:      common.NewPatchFactory(cl),
 		Log:               log,
 		OperatorNamespace: operatorNamespace,
 	}

@@ -22,22 +22,21 @@ import (
 	"k8s.io/helm/pkg/releaseutil"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 var installCRDsTask sync.Once
 
 // InstallCRDs makes sure all CRDs have been installed.  CRDs are located from
 // files in controller.HelmDir/istio-init/files
-func InstallCRDs(mgr manager.Manager) error {
+func InstallCRDs(cl client.Client) error {
 	// we only try to install them once.  if there's an error, we should probably
 	// panic, as there's no way to recover.  for now, we just pass the error along.
 	var err error
-	installCRDsTask.Do(func() { internalInstallCRDs(mgr, &err) })
+	installCRDsTask.Do(func() { internalInstallCRDs(cl, &err) })
 	return err
 }
 
-func internalInstallCRDs(mgr manager.Manager, err *error) {
+func internalInstallCRDs(cl client.Client, err *error) {
 	log.Info("ensuring CRDs have been installed")
 	crdPath := path.Join(common.GetHelmDir(), "istio-init/files")
 	var crdDir os.FileInfo
@@ -50,14 +49,14 @@ func internalInstallCRDs(mgr manager.Manager, err *error) {
 		if err != nil || info.IsDir() {
 			return err
 		}
-		return processCRDFile(mgr, path)
+		return processCRDFile(cl, path)
 	})
 	if *err == nil {
-		*err = installCRDRole(mgr)
+		*err = installCRDRole(cl)
 	}
 }
 
-func installCRDRole(mgr manager.Manager) error {
+func installCRDRole(cl client.Client) error {
 	crdRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "istio-admin",
@@ -66,7 +65,7 @@ func installCRDRole(mgr manager.Manager) error {
 			},
 		},
 		Rules: []rbacv1.PolicyRule{
-			rbacv1.PolicyRule{
+			{
 				APIGroups: []string{
 					"config.istio.io",
 					"networking.istio.io",
@@ -80,16 +79,16 @@ func installCRDRole(mgr manager.Manager) error {
 			},
 		},
 	}
-	if err := mgr.GetClient().Get(context.TODO(), client.ObjectKey{Name: crdRole.Name}, crdRole); err == nil {
+	if err := cl.Get(context.TODO(), client.ObjectKey{Name: crdRole.Name}, crdRole); err == nil {
 		return nil
 	} else if errors.IsNotFound(err) {
-		return mgr.GetClient().Create(context.TODO(), crdRole)
+		return cl.Create(context.TODO(), crdRole)
 	} else {
 		return err
 	}
 }
 
-func processCRDFile(mgr manager.Manager, fileName string) error {
+func processCRDFile(cl client.Client, fileName string) error {
 	allErrors := []error{}
 	buf := &bytes.Buffer{}
 	file, err := os.Open(fileName)
@@ -101,7 +100,6 @@ func processCRDFile(mgr manager.Manager, fileName string) error {
 	if err != nil {
 		return err
 	}
-	k8sClient := mgr.GetClient()
 	for index, raw := range releaseutil.SplitManifests(string(buf.Bytes())) {
 		rawJSON, err := yaml.YAMLToJSON([]byte(raw))
 		if err != nil {
@@ -123,11 +121,11 @@ func processCRDFile(mgr manager.Manager, fileName string) error {
 		receiver := &unstructured.Unstructured{}
 		receiver.SetGroupVersionKind(obj.GroupVersionKind())
 		receiver.SetName(obj.GetName())
-		err = k8sClient.Get(context.TODO(), client.ObjectKey{Name: obj.GetName()}, receiver)
+		err = cl.Get(context.TODO(), client.ObjectKey{Name: obj.GetName()}, receiver)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				log.Info("creating CRD", "file", fileName, "index", index, "CRD", obj.GetName())
-				err = k8sClient.Create(context.TODO(), obj)
+				err = cl.Create(context.TODO(), obj)
 				if err != nil {
 					log.Error(err, "error creating CRD", "file", fileName, "index", index, "CRD", obj.GetName())
 					allErrors = append(allErrors, err)
