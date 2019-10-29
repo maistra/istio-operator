@@ -24,20 +24,7 @@ metadata:
           },
           "spec": {
             "istio": {
-              "global": {
-                "proxy": {
-                  "resources": {
-                    "requests": {
-                      "cpu": "50m",
-                      "memory": "128Mi"
-                    },
-                    "limits": {
-                      "cpu": "50m",
-                      "memory": "256Mi"
-                    }
-                  }
-                }
-              },
+
               "gateways": {
                 "istio-egressgateway": {
                   "autoscaleEnabled": false
@@ -51,17 +38,7 @@ metadata:
                   "autoscaleEnabled": false
                 },
                 "telemetry": {
-                  "autoscaleEnabled": false,
-                  "resources": {
-                    "requests": {
-                      "cpu": "100m",
-                      "memory": "256Mi"
-                    },
-                    "limits": {
-                      "cpu": "100m",
-                      "memory": "512Mi"
-                    }
-                  }
+                  "autoscaleEnabled": false
                 }
               },
               "pilot": {
