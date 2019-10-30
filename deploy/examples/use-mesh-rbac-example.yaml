@@ -11,7 +11,7 @@ rules:
     verbs:
     - use
     resourceNames:
-    - multitenant-install
+    - minimal-install
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
