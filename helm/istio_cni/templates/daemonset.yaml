@@ -101,9 +101,6 @@ spec:
             requests:
               cpu: 10m
               memory: 100Mi
-            limits:
-              cpu: 100m
-              memory: 100Mi
 {{- end }}
       volumes:
         # Used to install CNI.
