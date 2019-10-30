@@ -107,7 +107,8 @@ func TestRemoveNamespaceFromMesh(t *testing.T) {
 	assert.DeepEquals(fakeNetworkStrategy.removedNamespaces, []string{appNamespace}, "Expected removeNamespaceFromMesh to invoke the networkStrategy with only the appNamespace, but it didn't", t)
 }
 
-func IGNORED_TestReconcileUpdatesModifiedRoleBindings(t *testing.T) {
+func TestReconcileUpdatesModifiedRoleBindings(t *testing.T) {
+	t.Skip("Not implemented yet")
 	namespace := newAppNamespace()
 	meshRoleBinding := newMeshRoleBinding()
 	cl, _ := createClient(namespace, meshRoleBinding)
