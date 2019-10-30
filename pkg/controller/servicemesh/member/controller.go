@@ -64,25 +64,11 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err != nil {
 		return err
 	}
-	// watch namespaces and trigger reconcile requests as those that match a member come and go
+
+	// watch namespaces so we can create the SMMR when the control plane namespace is created
 	err = c.Watch(&source.Kind{Type: &corev1.Namespace{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(ns handler.MapObject) []reconcile.Request {
-			list := &v1.ServiceMeshMemberList{}
-			err := mgr.GetClient().List(context.TODO(), client.MatchingField("spec.controlPlaneRef.namespace", ns.Meta.GetName()), list)
-			if err != nil {
-				log.Error(err, "Could not list ServiceMeshMembers")
-			}
-
-			var requests []reconcile.Request
-			for _, smm := range list.Items {
-				requests = append(requests, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      smm.Name,
-						Namespace: smm.Namespace,
-					},
-				})
-			}
-			return requests
+			return getRequestsForMembersReferencing(ns.Meta.GetName(), mgr.GetClient())
 		}),
 	}, predicate.Funcs{
 		UpdateFunc: func(_ event.UpdateEvent) bool {
@@ -102,7 +88,36 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// watch member rolls to revert any incompatible changes users make (e.g. user removes a member namespace, but the Member object is still there)
+	err = c.Watch(&source.Kind{Type: &v1.ServiceMeshMemberRoll{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(smmr handler.MapObject) []reconcile.Request {
+			return getRequestsForMembersReferencing(smmr.Meta.GetNamespace(), mgr.GetClient())
+		}),
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func getRequestsForMembersReferencing(ns string, cl client.Client) []reconcile.Request {
+	list := &v1.ServiceMeshMemberList{}
+	err := cl.List(context.TODO(), client.MatchingField("spec.controlPlaneRef.namespace", ns), list)
+	if err != nil {
+		log.Error(err, "Could not list ServiceMeshMembers")
+	}
+
+	var requests []reconcile.Request
+	for _, smm := range list.Items {
+		requests = append(requests, reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      smm.Name,
+				Namespace: smm.Namespace,
+			},
+		})
+	}
+	return requests
 }
 
 var _ reconcile.Reconciler = &MemberReconciler{}
