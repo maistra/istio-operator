@@ -170,3 +170,9 @@ func AttemptNumber(attempt int, reaction ReactFunc) ReactFunc {
 		return false, nil
 	}
 }
+
+func PanicOnError(err error) {
+	if err != nil {
+		panic(fmt.Sprintf("Unexpected error: %v", err))
+	}
+}
