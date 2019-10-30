@@ -10,8 +10,6 @@ spec:
           cpu: 10m
           memory: 128Mi
         limits:
-          cpu: 50m
-          memory: 256Mi
       proxy:
         autoInject: disabled
         dnsRefreshRate: 300s
@@ -21,8 +19,6 @@ spec:
             cpu: 10m
             memory: 128Mi
           limits:
-            cpu: 50m
-            memory: 256Mi
       oauthproxy:
         tag: 4.1
         imagePullPolicy: IfNotPresent
@@ -35,8 +31,6 @@ spec:
           cpu: 10m
           memory: 128Mi
         limits:
-          cpu: 100m
-          memory: 256Mi
     galley:
       # constrain resources for use in smaller environments
       resources:
@@ -44,16 +38,12 @@ spec:
           cpu: 10m
           memory: 128Mi
         limits:
-          cpu: 100m
-          memory: 256Mi
     pilot:
       resources:
         requests:
           cpu: 10m
           memory: 128Mi
         limits:
-          cpu: 100m
-          memory: 256Mi
       env:
         GODEBUG: null
     mixer:
@@ -64,8 +54,6 @@ spec:
             cpu: 10m
             memory: 128Mi
           limits:
-            cpu: 50m
-            memory: 256Mi
       env:
         GODEBUG: null
     grafana:
@@ -96,8 +84,6 @@ spec:
             cpu: 10m
             memory: 128Mi
           limits:
-            cpu: 50m
-            memory: 256Mi
       istio-ingressgateway:
         enabled: true
         type: ClusterIP
@@ -107,8 +93,6 @@ spec:
             cpu: 10m
             memory: 128Mi
           limits:
-            cpu: 50m
-            memory: 256Mi
     prometheus:
       service:
         annotations:
@@ -121,6 +105,4 @@ spec:
           cpu: 10m
           memory: 128Mi
         limits:
-          cpu: 50m
-          memory: 512Mi
   threeScale: {}

@@ -215,7 +215,7 @@ spec:
 ### Resource Limits
 
 If you will be installing into an instance that is resource constrained, you most likely will need to modify the
-resource limits used by default.  Resource limits can be set by default in `.spec.istio.global.defaultResources`.  For
+resource requirements used by default.  Resource requirements can be set by default in `.spec.istio.global.defaultResources`.  For
 example:
 
 ```yaml
@@ -230,9 +230,6 @@ spec:
         requests:
           cpu: 10m
           memory: 128Mi
-        limits:
-          cpu: 100m
-          memory: 256Mi
 
   ...
 ```
@@ -255,20 +252,14 @@ spec:
       proxy:
         resources:
           requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 500m
+            cpu: 10m
             memory: 128Mi
     mixer:
       telemetry:
         resources:
           requests:
-            cpu: 100m
-            memory: 1G
-          limits:
-            cpu: 500m
-            memory: 4G
+            cpu: 10m
+            memory: 128Mi
 
   ...
 ```
