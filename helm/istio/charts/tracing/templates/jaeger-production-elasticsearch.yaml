@@ -80,8 +80,6 @@ spec:
         requests:
           memory: "16Gi"
           cpu: "1"
-        limits:
-          memory: "16Gi"
 {{- end }}
 
   ingress:
