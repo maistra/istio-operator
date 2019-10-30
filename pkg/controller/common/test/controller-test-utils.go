@@ -149,3 +149,9 @@ func AttemptNumber(attempt int, reaction ReactFunc) ReactFunc {
 		return false, nil
 	}
 }
+
+func MustSucceed(err error, t *testing.T) {
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+}
