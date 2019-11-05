@@ -20,7 +20,7 @@ spec:
             memory: 128Mi
           limits:
       oauthproxy:
-        tag: 4.1
+        tag: 4.2
         imagePullPolicy: IfNotPresent
       defaultPodDisruptionBudget:
         enabled: false
