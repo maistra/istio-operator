@@ -356,7 +356,7 @@ spec:
           medium: Memory
       containers:
         - name: istio-operator
-          image: maistra/istio-ubi8-operator:1.0.2
+          image: maistra/istio-ubi8-operator:1.0.3
           ports:
           - containerPort: 11999
             name: validation
@@ -377,7 +377,7 @@ spec:
             - name: OPERATOR_NAME
               value: istio-operator
             - name: ISTIO_CNI_IMAGE
-              value: maistra/istio-cni-ubi8:1.0.2
+              value: maistra/istio-cni-ubi8:1.0.3
 #            - name: ISTIO_CNI_IMAGE_PULL_SECRET
 #              value: name-of-secret
           volumeMounts:
