@@ -1,6 +1,7 @@
 package v1
 
 import (
+	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -43,6 +44,80 @@ type ServiceMeshControlPlaneRef struct {
 	Namespace string `json:"namespace"`
 }
 
-// ServiceMeshMemberStatus contains the state last used to reconcile the list
+// ServiceMeshMemberStatus contains information on whether the Member has been reconciled or not
 type ServiceMeshMemberStatus struct {
+	// ObservedGeneration is the most recent generation observed by the controller.
+	ObservedGeneration int64 `json:"observedGeneration"`
+
+	// Represents the latest available observations of a ServiceMeshMember's current state.
+	Conditions []ServiceMeshMemberCondition `json:"conditions"`
+}
+
+// ServiceMeshMemberConditionType represents the type of the condition.  Condition types are:
+// Reconciled, NamespaceConfigured
+type ServiceMeshMemberConditionType ConditionType
+
+const (
+	// ConditionTypeReconciled signifies whether or not the controller has
+	// updated the ServiceMeshMemberRoll object based on this ServiceMeshMember.
+	ConditionTypeMemberReconciled ServiceMeshMemberConditionType = "Reconciled"
+	// ConditionTypeReady signifies whether the namespace has been configured
+	// to use the mesh
+	ConditionTypeMemberReady ServiceMeshMemberConditionType = "Ready"
+)
+
+type ServiceMeshMemberConditionReason string
+
+const (
+	// ConditionReasonDeletionError ...
+	ConditionReasonMemberCannotCreateMemberRoll ServiceMeshMemberConditionReason = "CreateMemberRollFailed"
+	ConditionReasonMemberCannotUpdateMemberRoll ServiceMeshMemberConditionReason = "UpdateMemberRollFailed"
+	ConditionReasonMemberCannotDeleteMemberRoll ServiceMeshMemberConditionReason = "DeleteMemberRollFailed"
+)
+
+// Condition represents a specific condition on a resource
+type ServiceMeshMemberCondition struct {
+	Type               ServiceMeshMemberConditionType   `json:"type,omitempty"`
+	Status             core.ConditionStatus             `json:"status,omitempty"`
+	LastTransitionTime metav1.Time                      `json:"lastTransitionTime,omitempty"`
+	Reason             ServiceMeshMemberConditionReason `json:"reason,omitempty"`
+	Message            string                           `json:"message,omitempty"`
+}
+
+// GetCondition removes a condition for the list of conditions
+func (s *ServiceMeshMemberStatus) GetCondition(conditionType ServiceMeshMemberConditionType) ServiceMeshMemberCondition {
+	if s == nil {
+		return ServiceMeshMemberCondition{Type: conditionType, Status: core.ConditionUnknown}
+	}
+	for i := range s.Conditions {
+		if s.Conditions[i].Type == conditionType {
+			return s.Conditions[i]
+		}
+	}
+	return ServiceMeshMemberCondition{Type: conditionType, Status: core.ConditionUnknown}
+}
+
+// SetCondition sets a specific condition in the list of conditions
+func (s *ServiceMeshMemberStatus) SetCondition(condition ServiceMeshMemberCondition) *ServiceMeshMemberStatus {
+	if s == nil {
+		return nil
+	}
+	now := metav1.Now()
+	for i := range s.Conditions {
+		if s.Conditions[i].Type == condition.Type {
+			if s.Conditions[i].Status != condition.Status {
+				condition.LastTransitionTime = now
+			} else {
+				condition.LastTransitionTime = s.Conditions[i].LastTransitionTime
+			}
+			s.Conditions[i] = condition
+			return s
+		}
+	}
+
+	// If the condition does not exist,
+	// initialize the lastTransitionTime
+	condition.LastTransitionTime = now
+	s.Conditions = append(s.Conditions, condition)
+	return s
 }
