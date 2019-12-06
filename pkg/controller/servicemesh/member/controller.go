@@ -4,16 +4,18 @@ import (
 	"context"
 
 	errors2 "github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
+	core "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/hacks"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,6 +30,9 @@ import (
 
 const (
 	controllerName = "servicemeshmember-controller"
+
+	eventReasonFailedReconcile     maistra.ConditionReason = "FailedReconcile"
+	eventReasonSuccessfulReconcile maistra.ConditionReason = "Reconciled"
 )
 
 var log = logf.Log.WithName("controller_member")
@@ -39,12 +44,20 @@ func Add(mgr manager.Manager) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &MemberReconciler{ResourceManager: common.ResourceManager{Client: mgr.GetClient(), PatchFactory: common.NewPatchFactory(mgr.GetClient()), Log: log}, scheme: mgr.GetScheme()}
+func newReconciler(mgr manager.Manager) *MemberReconciler {
+	return &MemberReconciler{
+		ResourceManager: common.ResourceManager{
+			Client:       mgr.GetClient(),
+			PatchFactory: common.NewPatchFactory(mgr.GetClient()),
+			Log:          log,
+		},
+		scheme:        mgr.GetScheme(),
+		eventRecorder: mgr.GetRecorder(controllerName),
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
+func add(mgr manager.Manager, r *MemberReconciler) error {
 	// Create a new controller
 	c, err := controller.New("servicemeshmember-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -52,13 +65,13 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource ServiceMeshMember
-	err = c.Watch(&source.Kind{Type: &v1.ServiceMeshMember{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &maistra.ServiceMeshMember{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
-	err = mgr.GetFieldIndexer().IndexField(&v1.ServiceMeshMember{}, "spec.controlPlaneRef.namespace", func(obj runtime.Object) []string {
-		roll := obj.(*v1.ServiceMeshMember)
+	err = mgr.GetFieldIndexer().IndexField(&maistra.ServiceMeshMember{}, "spec.controlPlaneRef.namespace", func(obj runtime.Object) []string {
+		roll := obj.(*maistra.ServiceMeshMember)
 		return []string{roll.Spec.ControlPlaneRef.Namespace}
 	})
 	if err != nil {
@@ -66,7 +79,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// watch namespaces so we can create the SMMR when the control plane namespace is created
-	err = c.Watch(&source.Kind{Type: &corev1.Namespace{}}, &handler.EnqueueRequestsFromMapFunc{
+	err = c.Watch(&source.Kind{Type: &core.Namespace{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(ns handler.MapObject) []reconcile.Request {
 			return getRequestsForMembersReferencing(ns.Meta.GetName(), mgr.GetClient())
 		}),
@@ -89,7 +102,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// watch member rolls to revert any incompatible changes users make (e.g. user removes a member namespace, but the Member object is still there)
-	err = c.Watch(&source.Kind{Type: &v1.ServiceMeshMemberRoll{}}, &handler.EnqueueRequestsFromMapFunc{
+	err = c.Watch(&source.Kind{Type: &maistra.ServiceMeshMemberRoll{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(smmr handler.MapObject) []reconcile.Request {
 			return getRequestsForMembersReferencing(smmr.Meta.GetNamespace(), mgr.GetClient())
 		}),
@@ -102,7 +115,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 }
 
 func getRequestsForMembersReferencing(ns string, cl client.Client) []reconcile.Request {
-	list := &v1.ServiceMeshMemberList{}
+	list := &maistra.ServiceMeshMemberList{}
 	err := cl.List(context.TODO(), client.MatchingField("spec.controlPlaneRef.namespace", ns), list)
 	if err != nil {
 		log.Error(err, "Could not list ServiceMeshMembers")
@@ -127,7 +140,8 @@ type MemberReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	common.ResourceManager
-	scheme *runtime.Scheme
+	scheme        *runtime.Scheme
+	eventRecorder record.EventRecorder
 }
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
@@ -136,7 +150,7 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 	reqLogger := log.WithValues("ServiceMeshMember", request)
 	reqLogger.Info("Processing ServiceMeshMember")
 
-	member := &v1.ServiceMeshMember{}
+	member := &maistra.ServiceMeshMember{}
 	err := r.Client.Get(context.TODO(), request.NamespacedName, member)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -151,7 +165,7 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		Name:      common.MemberRollName,
 		Namespace: member.Spec.ControlPlaneRef.Namespace,
 	}
-	memberRoll := &v1.ServiceMeshMemberRoll{}
+	memberRoll := &maistra.ServiceMeshMemberRoll{}
 	isNewMemberRoll := false
 	err = r.Client.Get(context.TODO(), memberRollKey, memberRoll)
 	if err != nil {
@@ -160,7 +174,7 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 		// MemberRoll doesn't exist, let's create it
 		isNewMemberRoll = true
-		memberRoll = &v1.ServiceMeshMemberRoll{
+		memberRoll = &maistra.ServiceMeshMemberRoll{
 			ObjectMeta: v12.ObjectMeta{
 				Name:      common.MemberRollName,
 				Namespace: member.Spec.ControlPlaneRef.Namespace,
@@ -192,12 +206,28 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			if len(memberRoll.Spec.Members) == 0 && memberRollCreatedByThisController {
 				err = r.Client.Delete(context.TODO(), memberRoll)
 				if err != nil {
-					return reconcile.Result{}, errors2.Wrapf(err, "Could not delete ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+					err = errors2.Wrapf(err, "Could not delete ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+					r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, err.Error())
+					statusUpdateErr := r.updateStatus(member, false, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotDeleteMemberRoll, err.Error())
+					if statusUpdateErr != nil {
+						r.Log.Error(statusUpdateErr, "Error updating ServiceMeshMember status")
+					} else {
+						hacks.ReduceLikelihoodOfReconcilingStaleObjectAfterStatusUpdate()
+					}
+					return reconcile.Result{}, err
 				}
 			} else {
 				err = r.Client.Update(context.TODO(), memberRoll)
 				if err != nil {
-					return reconcile.Result{}, errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+					err = errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+					r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, err.Error())
+					statusUpdateErr := r.updateStatus(member, false, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotUpdateMemberRoll, err.Error())
+					if statusUpdateErr != nil {
+						r.Log.Error(statusUpdateErr, "Error updating ServiceMeshMember status")
+					} else {
+						hacks.ReduceLikelihoodOfReconcilingStaleObjectAfterStatusUpdate()
+					}
+					return reconcile.Result{}, err
 				}
 			}
 		}
@@ -207,7 +237,9 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		member.SetFinalizers(finalizers.List())
 		err = r.Client.Update(context.TODO(), member)
 		if err != nil {
-			return reconcile.Result{}, errors2.Wrapf(err, "Could not update ServiceMeshMember %s/%s when removing finalizer", member.Namespace, member.Name)
+			err = errors2.Wrapf(err, "Could not update ServiceMeshMember %s/%s when removing finalizer", member.Namespace, member.Name)
+			r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, err.Error())
+			return reconcile.Result{}, err
 		}
 
 		return reconcile.Result{}, nil
@@ -227,24 +259,81 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			err = r.Client.Create(context.TODO(), memberRoll)
 			if err != nil {
 				if errors.IsNotFound(err) {
-					reqLogger.Info("Could not create ServiceMeshMemberRoll, because the referenced namespace doesn't exist", "namespace", memberRoll.Namespace)
-					return reconcile.Result{}, nil
+					errorMessage := "Could not create ServiceMeshMemberRoll, because the referenced namespace doesn't exist"
+					reqLogger.Info(errorMessage, "namespace", memberRoll.Namespace)
+					err = r.updateStatus(member, false, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, errorMessage)
+					r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, errorMessage)
+					return reconcile.Result{}, err
 				}
-				return reconcile.Result{}, errors2.Wrapf(err, "Could not create ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+				err := errors2.Wrapf(err, "Could not create ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+				r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, err.Error())
+				statusUpdateErr := r.updateStatus(member, false, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, err.Error())
+				if statusUpdateErr != nil {
+					r.Log.Error(statusUpdateErr, "Error updating ServiceMeshMember status")
+				} else {
+					hacks.ReduceLikelihoodOfReconcilingStaleObjectAfterStatusUpdate()
+				}
+				return reconcile.Result{}, err
 			}
+			r.recordEvent(member, core.EventTypeNormal, eventReasonSuccessfulReconcile, "Successfully created ServiceMeshMemberRoll and added namespace to it")
+
 		} else {
 			err = r.Client.Update(context.TODO(), memberRoll)
 			if err != nil {
-				return reconcile.Result{}, errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+				err = errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+				r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, err.Error())
+				statusUpdateErr := r.updateStatus(member, false, false, maistra.ConditionReasonMemberCannotUpdateMemberRoll, err.Error())
+				if statusUpdateErr != nil {
+					r.Log.Error(statusUpdateErr, "Error updating ServiceMeshMember status")
+				} else {
+					hacks.ReduceLikelihoodOfReconcilingStaleObjectAfterStatusUpdate()
+				}
+				return reconcile.Result{}, err
 			}
+			r.recordEvent(member, core.EventTypeNormal, eventReasonSuccessfulReconcile, "Successfully added namespace to ServiceMeshMemberRoll")
 		}
 	}
 
-	err = r.Client.Update(context.TODO(), member)
+	err = r.updateStatus(member, true, r.isNamespaceConfigured(memberRoll, member.Namespace), "", "")
+	return reconcile.Result{}, err
+}
+
+func (r *MemberReconciler) isNamespaceConfigured(memberRoll *maistra.ServiceMeshMemberRoll, namespace string) bool {
+	return sets.NewString(memberRoll.Status.ConfiguredMembers...).Has(namespace)
+}
+
+func (r *MemberReconciler) updateStatus(member *maistra.ServiceMeshMember, reconciled, ready bool, reason maistra.ServiceMeshMemberConditionReason, message string) error {
+	member.Status.ObservedGeneration = member.Generation // TODO: if we have re-read the member from the cache, the Generation may no longer be the same as in the member we reconciled. We shouldn't store the new member's generation as the observedGeneration, but the original one
+	member.Status.SetCondition(maistra.ServiceMeshMemberCondition{
+		Type:    maistra.ConditionTypeMemberReconciled,
+		Status:  boolToConditionStatus(reconciled),
+		Reason:  reason,
+		Message: message,
+	})
+	member.Status.SetCondition(maistra.ServiceMeshMemberCondition{
+		Type:    maistra.ConditionTypeMemberReady,
+		Status:  boolToConditionStatus(ready),
+		Reason:  reason,
+		Message: message,
+	})
+
+	err := r.Client.Status().Update(context.TODO(), member)
 	if err != nil {
-		return reconcile.Result{}, errors2.Wrapf(err, "Could not update ServiceMeshMember %s/%s", member.Namespace, member.Name)
+		return errors2.Wrapf(err, "Could not update status of ServiceMeshMember %s/%s", member.Namespace, member.Name)
 	}
-	return reconcile.Result{}, nil
+	return nil
+}
+
+func (r *MemberReconciler) recordEvent(member *maistra.ServiceMeshMember, eventType string, reason maistra.ConditionReason, message string) {
+	r.eventRecorder.Event(member, eventType, string(reason), message)
+}
+
+func boolToConditionStatus(b bool) core.ConditionStatus {
+	if b {
+		return core.ConditionTrue
+	} else {
+		return core.ConditionFalse
+	}
 }
 
 func contains(needle string, haystack []string) bool {
