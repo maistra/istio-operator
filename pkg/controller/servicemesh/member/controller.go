@@ -161,30 +161,6 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
-	memberRollKey := client.ObjectKey{
-		Name:      common.MemberRollName,
-		Namespace: member.Spec.ControlPlaneRef.Namespace,
-	}
-	memberRoll := &maistra.ServiceMeshMemberRoll{}
-	isNewMemberRoll := false
-	err = r.Client.Get(context.TODO(), memberRollKey, memberRoll)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return reconcile.Result{}, err
-		}
-		// MemberRoll doesn't exist, let's create it
-		isNewMemberRoll = true
-		memberRoll = &maistra.ServiceMeshMemberRoll{
-			ObjectMeta: v12.ObjectMeta{
-				Name:      common.MemberRollName,
-				Namespace: member.Spec.ControlPlaneRef.Namespace,
-				Annotations: map[string]string{
-					common.CreatedByKey: controllerName,
-				},
-			},
-		}
-	}
-
 	deleted := member.GetDeletionTimestamp() != nil
 	finalizers := sets.NewString(member.Finalizers...)
 	if deleted {
@@ -193,7 +169,13 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			return reconcile.Result{}, nil
 		}
 
-		if !isNewMemberRoll {
+		memberRoll := &maistra.ServiceMeshMemberRoll{}
+		err = r.Client.Get(context.TODO(), getMemberRollKey(member), memberRoll)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return reconcile.Result{}, err
+			}
+		} else {
 			reqLogger.Info("Removing ServiceMeshMember from ServiceMeshMemberRoll")
 			for i, m := range memberRoll.Spec.Members {
 				if m == member.Namespace {
@@ -252,32 +234,51 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
-	if !contains(member.Namespace, memberRoll.Spec.Members) {
-		memberRoll.Spec.Members = append(memberRoll.Spec.Members, member.Namespace)
+	memberRoll := &maistra.ServiceMeshMemberRoll{}
+	err = r.Client.Get(context.TODO(), getMemberRollKey(member), memberRoll)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return reconcile.Result{}, err
+		}
+		// MemberRoll doesn't exist, let's create it
+		memberRoll = &maistra.ServiceMeshMemberRoll{
+			ObjectMeta: v12.ObjectMeta{
+				Name:      common.MemberRollName,
+				Namespace: member.Spec.ControlPlaneRef.Namespace,
+				Annotations: map[string]string{
+					common.CreatedByKey: controllerName,
+				},
+			},
+			Spec: maistra.ServiceMeshMemberRollSpec{
+				Members: []string{member.Namespace},
+			},
+		}
 
-		if isNewMemberRoll {
-			err = r.Client.Create(context.TODO(), memberRoll)
-			if err != nil {
-				if errors.IsNotFound(err) {
-					errorMessage := "Could not create ServiceMeshMemberRoll, because the referenced namespace doesn't exist"
-					reqLogger.Info(errorMessage, "namespace", memberRoll.Namespace)
-					err = r.updateStatus(member, false, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, errorMessage)
-					r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, errorMessage)
-					return reconcile.Result{}, err
-				}
-				err := errors2.Wrapf(err, "Could not create ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-				r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, err.Error())
-				statusUpdateErr := r.updateStatus(member, false, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, err.Error())
-				if statusUpdateErr != nil {
-					r.Log.Error(statusUpdateErr, "Error updating ServiceMeshMember status")
-				} else {
-					hacks.ReduceLikelihoodOfReconcilingStaleObjectAfterStatusUpdate()
-				}
+		err = r.Client.Create(context.TODO(), memberRoll)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				errorMessage := "Could not create ServiceMeshMemberRoll, because the referenced namespace doesn't exist"
+				reqLogger.Info(errorMessage, "namespace", memberRoll.Namespace)
+				err = r.updateStatus(member, false, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, errorMessage)
+				r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, errorMessage)
 				return reconcile.Result{}, err
 			}
-			r.recordEvent(member, core.EventTypeNormal, eventReasonSuccessfulReconcile, "Successfully created ServiceMeshMemberRoll and added namespace to it")
+			err := errors2.Wrapf(err, "Could not create ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+			r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, err.Error())
+			statusUpdateErr := r.updateStatus(member, false, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, err.Error())
+			if statusUpdateErr != nil {
+				r.Log.Error(statusUpdateErr, "Error updating ServiceMeshMember status")
+			} else {
+				hacks.ReduceLikelihoodOfReconcilingStaleObjectAfterStatusUpdate()
+			}
+			return reconcile.Result{}, err
+		}
+		r.recordEvent(member, core.EventTypeNormal, eventReasonSuccessfulReconcile, "Successfully created ServiceMeshMemberRoll and added namespace to it")
 
-		} else {
+	} else {
+		if !contains(member.Namespace, memberRoll.Spec.Members) {
+			memberRoll.Spec.Members = append(memberRoll.Spec.Members, member.Namespace)
+
 			err = r.Client.Update(context.TODO(), memberRoll)
 			if err != nil {
 				err = errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
@@ -334,6 +335,14 @@ func boolToConditionStatus(b bool) core.ConditionStatus {
 	} else {
 		return core.ConditionFalse
 	}
+}
+
+func getMemberRollKey(member *maistra.ServiceMeshMember) client.ObjectKey {
+	memberRollKey := client.ObjectKey{
+		Name:      common.MemberRollName,
+		Namespace: member.Spec.ControlPlaneRef.Namespace,
+	}
+	return memberRollKey
 }
 
 func contains(needle string, haystack []string) bool {
