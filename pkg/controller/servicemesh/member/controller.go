@@ -187,28 +187,21 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			memberRollCreatedByThisController := memberRoll.Annotations[common.CreatedByKey] == controllerName
 			if len(memberRoll.Spec.Members) == 0 && memberRollCreatedByThisController {
 				err = r.Client.Delete(context.TODO(), memberRoll)
-				if err != nil {
+				if err != nil && !errors.IsNotFound(err) { // if NotFound, MemberRoll has been deleted, which is what we wanted. This means this is not an error, but a success.
 					err = errors2.Wrapf(err, "Could not delete ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-					r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, err.Error())
-					statusUpdateErr := r.updateStatus(member, false, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotDeleteMemberRoll, err.Error())
-					if statusUpdateErr != nil {
-						r.Log.Error(statusUpdateErr, "Error updating ServiceMeshMember status")
-					} else {
-						hacks.ReduceLikelihoodOfReconcilingStaleObjectAfterStatusUpdate()
-					}
+					_ = r.reportError(member, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotDeleteMemberRoll, err.Error())
 					return reconcile.Result{}, err
 				}
 			} else {
 				err = r.Client.Update(context.TODO(), memberRoll)
 				if err != nil {
-					err = errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-					r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, err.Error())
-					statusUpdateErr := r.updateStatus(member, false, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotUpdateMemberRoll, err.Error())
-					if statusUpdateErr != nil {
-						r.Log.Error(statusUpdateErr, "Error updating ServiceMeshMember status")
-					} else {
-						hacks.ReduceLikelihoodOfReconcilingStaleObjectAfterStatusUpdate()
+					if errors.IsNotFound(err) || errors.IsConflict(err) {
+						// local cache is stale; this isn't an error, so we shouldn't log it as such;
+						// instead, we stop reconciling and wait for the watch event to arrive and trigger another reconciliation
+						return reconcile.Result{}, nil
 					}
+					err = errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+					_ = r.reportError(member, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotUpdateMemberRoll, err.Error())
 					return reconcile.Result{}, err
 				}
 			}
@@ -259,19 +252,25 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			if errors.IsNotFound(err) {
 				errorMessage := "Could not create ServiceMeshMemberRoll, because the referenced namespace doesn't exist"
 				reqLogger.Info(errorMessage, "namespace", memberRoll.Namespace)
-				err = r.updateStatus(member, false, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, errorMessage)
-				r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, errorMessage)
+				statusUpdateErr := r.reportError(member, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, errorMessage)
+				return reconcile.Result{}, statusUpdateErr
+			} else if errors.IsConflict(err) {
+				// local cache is stale; this isn't an error, so we shouldn't log it as such;
+				// instead, we stop reconciling and wait for the watch event to arrive and trigger another reconciliation
+				return reconcile.Result{}, nil
+			} else {
+				// we're dealing with a different type of error (either a validation error or an actual (e.g. I/O) error
+				err := errors2.Wrapf(err, "Could not create ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+				_ = r.reportError(member, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, err.Error())
+				// 400 Bad Request is returned by the validation webhook. This isn't a controller error, but a user error. We shouldn't log it as an error.
+				// this happens when the namespace is already a member of a different MemberRoll.
+				if errors.IsBadRequest(err) {
+					// TODO: should we requeue or not? is the resync enough? Ideally, we'd reconcile immediately when the member is removed from the other MemberRoll
+					reqLogger.Info(err.Error())
+					return reconcile.Result{}, nil
+				}
 				return reconcile.Result{}, err
 			}
-			err := errors2.Wrapf(err, "Could not create ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-			r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, err.Error())
-			statusUpdateErr := r.updateStatus(member, false, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, err.Error())
-			if statusUpdateErr != nil {
-				r.Log.Error(statusUpdateErr, "Error updating ServiceMeshMember status")
-			} else {
-				hacks.ReduceLikelihoodOfReconcilingStaleObjectAfterStatusUpdate()
-			}
-			return reconcile.Result{}, err
 		}
 		r.recordEvent(member, core.EventTypeNormal, eventReasonSuccessfulReconcile, "Successfully created ServiceMeshMemberRoll and added namespace to it")
 
@@ -281,15 +280,20 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 
 			err = r.Client.Update(context.TODO(), memberRoll)
 			if err != nil {
-				err = errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-				r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, err.Error())
-				statusUpdateErr := r.updateStatus(member, false, false, maistra.ConditionReasonMemberCannotUpdateMemberRoll, err.Error())
-				if statusUpdateErr != nil {
-					r.Log.Error(statusUpdateErr, "Error updating ServiceMeshMember status")
+				if errors.IsNotFound(err) || errors.IsConflict(err) {
+					// local cache is stale; this isn't an error, so we shouldn't log it as such;
+					// instead, we stop reconciling and wait for the watch event to arrive and trigger another reconciliation
+					return reconcile.Result{}, nil
 				} else {
-					hacks.ReduceLikelihoodOfReconcilingStaleObjectAfterStatusUpdate()
+					// we're dealing with either a validation error or an actual (e.g. I/O) error
+					err = errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+					_ = r.reportError(member, false, maistra.ConditionReasonMemberCannotUpdateMemberRoll, err.Error())
+					if errors.IsBadRequest(err) {
+						reqLogger.Info(err.Error())
+						return reconcile.Result{}, nil
+					}
+					return reconcile.Result{}, err
 				}
-				return reconcile.Result{}, err
 			}
 			r.recordEvent(member, core.EventTypeNormal, eventReasonSuccessfulReconcile, "Successfully added namespace to ServiceMeshMemberRoll")
 		}
@@ -301,6 +305,11 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 
 func (r *MemberReconciler) isNamespaceConfigured(memberRoll *maistra.ServiceMeshMemberRoll, namespace string) bool {
 	return sets.NewString(memberRoll.Status.ConfiguredMembers...).Has(namespace)
+}
+
+func (r *MemberReconciler) reportError(member *maistra.ServiceMeshMember, ready bool, reason maistra.ServiceMeshMemberConditionReason, message string) error {
+	r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, message)
+	return r.updateStatus(member, false, ready, reason, message)
 }
 
 func (r *MemberReconciler) updateStatus(member *maistra.ServiceMeshMember, reconciled, ready bool, reason maistra.ServiceMeshMemberConditionReason, message string) error {
@@ -321,6 +330,9 @@ func (r *MemberReconciler) updateStatus(member *maistra.ServiceMeshMember, recon
 	err := r.Client.Status().Update(context.TODO(), member)
 	if err != nil {
 		return errors2.Wrapf(err, "Could not update status of ServiceMeshMember %s/%s", member.Namespace, member.Name)
+		r.Log.Error(err, "Error updating ServiceMeshMember status")
+	} else {
+		hacks.ReduceLikelihoodOfReconcilingStaleObjectAfterStatusUpdate()
 	}
 	return nil
 }
