@@ -2,6 +2,7 @@ package member
 
 import (
 	"context"
+	"reflect"
 
 	errors2 "github.com/pkg/errors"
 	core "k8s.io/api/core/v1"
@@ -13,12 +14,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/controller/hacks"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -65,7 +65,14 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 	}
 
 	// Watch for changes to primary resource ServiceMeshMember
-	err = c.Watch(&source.Kind{Type: &maistra.ServiceMeshMember{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &maistra.ServiceMeshMember{}}, &handler.EnqueueRequestForObject{}, predicate.Funcs{
+		UpdateFunc: func(event event.UpdateEvent) bool {
+			return event.MetaOld.GetGeneration() != event.MetaNew.GetGeneration() ||
+				!reflect.DeepEqual(event.MetaOld.GetAnnotations(), event.MetaNew.GetAnnotations()) ||
+				!reflect.DeepEqual(event.MetaOld.GetFinalizers(), event.MetaNew.GetFinalizers()) ||
+				!reflect.DeepEqual(event.MetaOld.GetDeletionTimestamp(), event.MetaNew.GetDeletionTimestamp())
+		},
+	})
 	if err != nil {
 		return err
 	}
@@ -331,8 +338,6 @@ func (r *MemberReconciler) updateStatus(member *maistra.ServiceMeshMember, recon
 	if err != nil {
 		return errors2.Wrapf(err, "Could not update status of ServiceMeshMember %s/%s", member.Namespace, member.Name)
 		r.Log.Error(err, "Error updating ServiceMeshMember status")
-	} else {
-		hacks.ReduceLikelihoodOfReconcilingStaleObjectAfterStatusUpdate()
 	}
 	return nil
 }
