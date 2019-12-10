@@ -182,7 +182,7 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			if !errors.IsNotFound(err) {
 				return reconcile.Result{}, err
 			}
-		} else {
+		} else if memberRoll.DeletionTimestamp == nil {
 			reqLogger.Info("Removing ServiceMeshMember from ServiceMeshMemberRoll")
 			for i, m := range memberRoll.Spec.Members {
 				if m == member.Namespace {
