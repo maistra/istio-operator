@@ -1,0 +1,108 @@
+apiVersion: maistra.io/v1
+kind: ServiceMeshControlPlane
+spec:
+  istio:
+    global:
+      tag: 1.0.3
+      # constrain resources for use in smaller environments
+      defaultResources:
+        requests:
+          cpu: 10m
+          memory: 128Mi
+        limits:
+      proxy:
+        autoInject: disabled
+        dnsRefreshRate: 300s
+        # constrain resources for use in smaller environments
+        resources:
+          requests:
+            cpu: 10m
+            memory: 128Mi
+          limits:
+      oauthproxy:
+        tag: 4.2
+        imagePullPolicy: IfNotPresent
+      defaultPodDisruptionBudget:
+        enabled: false
+    security:
+      # constrain resources for use in smaller environments
+      resources:
+        requests:
+          cpu: 10m
+          memory: 128Mi
+        limits:
+    galley:
+      # constrain resources for use in smaller environments
+      resources:
+        requests:
+          cpu: 10m
+          memory: 128Mi
+        limits:
+    pilot:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 128Mi
+        limits:
+      env:
+        GODEBUG: null
+    mixer:
+      telemetry:
+        # constrain resources for use in smaller environments
+        resources:
+          requests:
+            cpu: 10m
+            memory: 128Mi
+          limits:
+      env:
+        GODEBUG: null
+    grafana:
+      enabled: true
+      ingress:
+        enabled: true
+      service:
+        annotations:
+           service.alpha.openshift.io/serving-cert-secret-name: grafana-tls
+    tracing:
+      enabled: true
+      ingress:
+        enabled: true
+    kiali:
+      enabled: true
+      dashboard:
+        viewOnlyMode: false
+      ingress:
+        enabled: true
+    sidecarInjectorWebhook:
+      enableNamespacesByDefault: true
+    gateways:
+      istio-egressgateway:
+        enabled: true
+        # constrain resources for use in smaller environments
+        resources:
+          requests:
+            cpu: 10m
+            memory: 128Mi
+          limits:
+      istio-ingressgateway:
+        enabled: true
+        type: ClusterIP
+        # constrain resources for use in smaller environments
+        resources:
+          requests:
+            cpu: 10m
+            memory: 128Mi
+          limits:
+    prometheus:
+      service:
+        annotations:
+          service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls
+      ingress:
+        enabled: true
+      # constrain resources for use in smaller environments
+      resources:
+        requests:
+          cpu: 10m
+          memory: 128Mi
+        limits:
+  threeScale: {}
