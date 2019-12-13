@@ -39,6 +39,7 @@ func InstallCRDs(mgr manager.Manager) error {
 
 func internalInstallCRDs(mgr manager.Manager, err *error) {
 	log.Info("ensuring CRDs have been installed")
+	// Always install the latest set of CRDs
 	crdPath := path.Join(common.GetHelmDir(), "istio-init/files")
 	var crdDir os.FileInfo
 	crdDir, *err = os.Stat(crdPath)

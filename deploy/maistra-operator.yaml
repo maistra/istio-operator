@@ -380,7 +380,7 @@ spec:
       serviceAccountName: istio-operator
       containers:
         - name: istio-operator
-          image: maistra/istio-ubi8-operator:1.0.0
+          image: maistra/istio-ubi8-operator:1.1.0
           ports:
           - containerPort: 11999
             name: validation
@@ -399,6 +399,6 @@ spec:
             - name: OPERATOR_NAME
               value: istio-operator
             - name: ISTIO_CNI_IMAGE
-              value: maistra/istio-cni-ubi8:1.0.0
+              value: maistra/istio-cni-ubi8:1.1.0
 #            - name: ISTIO_CNI_IMAGE_PULL_SECRET
 #              value: name-of-secret
