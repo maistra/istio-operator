@@ -13,6 +13,7 @@ require (
 	k8s.io/api v0.0.0-20190612125737-db0771252981
 	k8s.io/apimachinery v0.0.0-20190612125636-6a5db36e93ad
 	k8s.io/client-go v11.0.0+incompatible
+	k8s.io/code-generator v0.0.0-20190612205613-18da4a14b22b
 	k8s.io/helm v2.13.1+incompatible
 	k8s.io/kube-openapi v0.0.0-20190603182131-db7b694dc208 // indirect
 	k8s.io/kubernetes v1.11.8-beta.0.0.20190124204751-3a10094374f2
@@ -26,6 +27,7 @@ replace (
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20190228180357-d002e88f6236
 	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190221213512-86fb29eff628
 	k8s.io/client-go => k8s.io/client-go v0.0.0-20190228174230-b40b2a5939e4
+	k8s.io/code-generator => k8s.io/code-generator v0.0.0-20190612205613-18da4a14b22b
 	k8s.io/kubernetes => k8s.io/kubernetes v1.13.4
 )
 
