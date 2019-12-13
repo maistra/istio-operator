@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -55,12 +56,12 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 		return admission.ErrorResponse(http.StatusInternalServerError, err)
 	}
 	if len(smcpList.Items) == 0 {
-		return validationFailedResponse(http.StatusBadRequest, fmt.Sprintf("no service mesh is configured in namespace '%s'", smmr.Namespace))
+		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("no service mesh is configured in namespace '%s'", smmr.Namespace))
 	}
 
 	// verify name == default
 	if common.MemberRollName != smmr.Name {
-		return validationFailedResponse(http.StatusBadRequest, fmt.Sprintf("ServiceMeshMemberRoll must be named '%s'", common.MemberRollName))
+		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("ServiceMeshMemberRoll must be named '%s'", common.MemberRollName))
 	}
 
 	smmrList := &maistrav1.ServiceMeshMemberRollList{}
@@ -93,9 +94,9 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 	}
 	for _, member := range smmr.Spec.Members {
 		if namespacesAlreadyConfigured.Has(member) {
-			return validationFailedResponse(http.StatusBadRequest, "one or more members are already defined in another ServiceMeshMemberRoll")
+			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "one or more members are already defined in another ServiceMeshMemberRoll")
 		} else if smmr.Namespace == member {
-			return validationFailedResponse(http.StatusBadRequest, "mesh project/namespace cannot be listed as a member")
+			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "mesh project/namespace cannot be listed as a member")
 		}
 		// verify user can access all smmr member namespaces
 		sar.Spec.ResourceAttributes.Namespace = member
@@ -106,7 +107,7 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 			return admission.ErrorResponse(http.StatusInternalServerError, err)
 		}
 		if !sar.Status.Allowed || sar.Status.Denied {
-			return validationFailedResponse(http.StatusForbidden, fmt.Sprintf("user '%s' does not have permission to access project/namespace '%s'", req.AdmissionRequest.UserInfo.Username, member))
+			return validationFailedResponse(http.StatusForbidden, metav1.StatusReasonBadRequest, fmt.Sprintf("user '%s' does not have permission to access project/namespace '%s'", req.AdmissionRequest.UserInfo.Username, member))
 		}
 	}
 

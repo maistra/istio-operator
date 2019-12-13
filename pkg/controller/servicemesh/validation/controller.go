@@ -123,11 +123,12 @@ func (f namespaceFilter) watching(namespace string) bool {
 	return len(f) == 0 || namespace == string(f)
 }
 
-func validationFailedResponse(httpStatusCode int32, reason string) admissiontypes.Response {
-	response := admission.ValidationResponse(false, reason)
+func validationFailedResponse(httpStatusCode int32, reason metav1.StatusReason, message string) admissiontypes.Response {
+	response := admission.ValidationResponse(false, string(reason))
 	if len(reason) == 0 {
 		response.Response.Result = &metav1.Status{}
 	}
 	response.Response.Result.Code = httpStatusCode
+	response.Response.Result.Message = message
 	return response
 }
