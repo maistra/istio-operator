@@ -1,0 +1,85 @@
+apiVersion: kiali.io/v1alpha1
+kind: Kiali
+metadata:
+  name: kiali
+  namespace: {{ .Release.Namespace }}
+spec:
+  installation_tag: "Kiali [{{ .Release.Namespace }}]"
+  istio_namespace: "{{ .Release.Namespace }}"
+
+  auth:
+    strategy: "openshift"
+
+  deployment:
+    accessible_namespaces:
+    - "{{ .Release.Namespace }}"
+{{- if and .Values.hub .Values.image }}
+    image_name: "{{ .Values.hub }}/{{ .Values.image }}"
+{{- end }}
+    image_pull_policy: "{{ .Values.global.imagePullPolicy }}"
+{{- if .Values.global.imagePullSecrets }}
+    image_pull_secrets: 
+{{- range .Values.global.imagePullSecrets }}
+    - {{ . }}
+{{- end }}
+{{- end }}
+{{- if .Values.tag }}
+    image_version: "{{ .Values.tag }}"
+    version_label: "{{ .Values.tag }}"
+{{- end }}
+{{- if .Values.ingress }}
+{{- if .Values.ingress.enabled }}
+    ingress_enabled: {{ .Values.ingress.enabled }}
+{{- end }}
+{{- end }}
+    namespace: "{{ .Release.Namespace }}"
+{{- if .Values.dashboard }}
+{{- if .Values.dashboard.viewOnlyMode }}
+    view_only_mode: {{ .Values.dashboard.viewOnlyMode }}
+{{- end }}
+{{- end }}
+
+  external_services:
+    grafana:
+      auth:
+        ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
+        type: "basic"
+        use_kiali_token: false
+        username: "internal"
+        password: ""
+      enabled: true
+      in_cluster_url: "https://grafana.{{ .Release.Namespace }}.svc:3000"
+{{- if .Values.dashboard }}
+{{- if .Values.dashboard.grafanaURL }}
+      url: "{{ .Values.dashboard.grafanaURL }}"
+{{- end }}
+{{- end }}
+    prometheus:
+      auth:
+        ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
+        type: "basic"
+        use_kiali_token: false
+        username: "internal"
+        password: ""
+      url: "https://prometheus.{{ .Release.Namespace }}.svc:9090"
+    tracing:
+      auth:
+        ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
+        type: "basic"
+        use_kiali_token: false
+        username: "internal"
+        password: ""
+      enabled: true
+      in_cluster_url: "https://jaeger-query.{{ .Release.Namespace }}.svc"
+      namespace: "{{ .Release.Namespace }}"
+      service : ""
+{{- if .Values.dashboard }}
+{{- if .Values.dashboard.jaegerURL }}
+      url: "{{ .Values.dashboard.jaegerURL }}"
+{{- end }}
+{{- end }}
+
+{{- if .Values.contextPath }}
+  server:
+    web_root: "{{ .Values.contextPath }}"
+{{- end }}

@@ -1,0 +1,164 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "grafana.name" . }}
+    chart: {{ template "grafana.chart" . }}
+    heritage: {{ .Release.Service }}
+    maistra-version: 1.0.3
+    release: {{ .Release.Name }}
+spec:
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  replicas: {{ .Values.replicaCount }}
+
+  selector:
+    matchLabels:
+        app: {{ template "grafana.name" . }}
+        release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: grafana
+        chart: {{ template "grafana.chart" . }}
+        heritage: {{ .Release.Service }}
+        maistra-control-plane: {{ .Release.Namespace }}
+        release: {{ .Release.Name }}
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+{{- if .Values.global.priorityClassName }}
+      priorityClassName: "{{ .Values.global.priorityClassName }}"
+{{- end }}
+{{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.global.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      serviceAccountName: grafana
+      containers:
+          # OAuth proxy
+        - name: grafana-proxy
+          image: {{ .Values.global.oauthproxy.hub }}/{{ .Values.global.oauthproxy.image }}:{{ .Values.global.oauthproxy.tag }}
+          imagePullPolicy: {{ .Values.global.oauthproxy.imagePullPolicy }}
+          ports:
+          - containerPort: 3001
+            name: https
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            httpGet:
+              path: /oauth/healthz
+              port: https
+              scheme: HTTPS
+            timeoutSeconds: 1
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/tls/private
+            name: secret-grafana-tls
+          - mountPath: /etc/proxy/htpasswd
+            name: secret-htpasswd
+          args:
+          - -provider=openshift
+          - -https-address=:3001
+          - -http-address=
+          - -email-domain=*
+          - -upstream=http://localhost:3000
+          - -htpasswd-file=/etc/proxy/htpasswd/auth
+          - -display-htpasswd-form=false
+          - '-openshift-sar={"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}'
+          - -client-secret-file=/var/run/secrets/kubernetes.io/serviceaccount/token
+          - -openshift-service-account=grafana
+          - -cookie-secret=SECRET
+          - -tls-cert=/etc/tls/private/tls.crt
+          - -tls-key=/etc/tls/private/tls.key
+          - -openshift-ca=/etc/pki/tls/cert.pem
+          - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.global.hub }}/{{.Values.image}}:{{ .Values.global.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+          - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /login
+              port: 3000
+          env:
+          - name: GRAFANA_PORT
+            value: "3000"
+          - name: GF_AUTH_BASIC_ENABLED
+            value: "false"
+          - name: GF_AUTH_PROXY_ENABLED
+            value: "true"
+          - name: GF_AUTH_PROXY_AUTO_SIGN_UP
+            value: "true"
+          - name: GF_AUTH_PROXY_WHITELIST
+            value: 127.0.0.0/24,::1
+          - name: GF_AUTH_PROXY_HEADERS
+            value: Email:X-Forwarded-Email
+          - name: GF_AUTH_PROXY_HEADER_NAME
+            value: X-Forwarded-User
+          - name: GF_USERS_AUTO_ASSIGN_ORG_ROLE
+            value: Admin
+          - name: GF_PATHS_DATA
+            value: /data/grafana
+          resources:
+{{- if .Values.resources }}
+{{ toYaml .Values.resources | indent 12 }}
+{{- else }}
+{{ toYaml .Values.global.defaultResources | indent 12 }}
+{{- end }}
+          volumeMounts:
+          - name: data
+            mountPath: /data/grafana
+          {{- range $path, $bytes := .Files.Glob "dashboards/*.json" }}
+          {{- $filename := trimSuffix (ext $path) (base $path) }}
+          - name: dashboards-istio-{{ $filename }}
+            mountPath: "/var/lib/grafana/dashboards/istio/{{ base $path }}"
+            subPath: {{ base $path }}
+            readOnly: true
+          {{- end }}
+          - name: config
+            mountPath: "/etc/grafana/provisioning/datasources/datasources.yaml"
+            subPath: datasources.yaml
+          - name: config
+            mountPath: "/etc/grafana/provisioning/dashboards/dashboardproviders.yaml"
+            subPath: dashboardproviders.yaml
+      affinity:
+      {{- include "nodeaffinity" . | indent 6 }}
+      {{- include "podAntiAffinity" . | indent 6 }}
+      volumes:
+      # OAuth proxy
+      - name: secret-grafana-tls
+        secret:
+          defaultMode: 420
+          secretName: grafana-tls
+      - name: secret-htpasswd
+        secret:
+          defaultMode: 420
+          secretName: htpasswd
+      - name: config
+        configMap:
+          name: istio-grafana
+      - name: data
+{{- if .Values.persist }}
+        persistentVolumeClaim:
+          claimName: istio-grafana-pvc
+{{- else }}
+        emptyDir: {}
+{{- end }}
+{{- range $path, $bytes := .Files.Glob "dashboards/*.json" }}
+{{- $filename := trimSuffix (ext $path) (base $path) }}
+      - name: dashboards-istio-{{ $filename }}
+        configMap:
+          name:  istio-grafana-configuration-dashboards-{{ $filename }}
+{{- end }}
