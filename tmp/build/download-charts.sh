@@ -2,7 +2,7 @@
 
 set -e
 
-: ${MAISTRA_VERSION:=1.0.2}
+: ${MAISTRA_VERSION:=1.0.3}
 : ${MAISTRA_BRANCH:=1.0}
 
 SOURCE_DIR=$(pwd)
@@ -23,22 +23,23 @@ RELEASE_DIR="${RELEASES_DIR}/${ISTIO_NAME}"
 
 ISTIO_NAME=${ISTIO_NAME//./-}
 
-HELM_DIR=${RELEASE_DIR}
+: ${HELM_DIR:=${RELEASE_DIR}}
 
 if [[ "${ISTIO_VERSION}" =~ ^1\.0\..* ]]; then
   PATCH_1_0="true"
 fi
 
-COMMUNITY=${COMMUNITY:-true}
-
 function retrieveIstioRelease() {
-  if [ -d "${RELEASE_DIR}" ] ; then
-    rm -rf "${RELEASE_DIR}"
+  if [ -d "${HELM_DIR}" ] ; then
+    rm -rf "${HELM_DIR}"
   fi
-  mkdir -p "${RELEASE_DIR}"
+  mkdir -p "${HELM_DIR}"
 
   if [ ! -f "${RELEASES_DIR}/${ISTIO_FILE}" ] ; then
     (
+      if [ ! -f "${RELEASES_DIR}" ] ; then
+        mkdir -p "${RELEASES_DIR}"
+      fi
       echo "downloading Istio Release: ${ISTIO_URL}"
       cd "${RELEASES_DIR}"
       curl -LO "${ISTIO_URL}"
@@ -50,7 +51,7 @@ function retrieveIstioRelease() {
       cd "${RELEASES_DIR}"
       rm -rf istio-maistra-${MAISTRA_BRANCH}
       ${EXTRACT_CMD}
-      cp -rf istio-maistra-${MAISTRA_BRANCH}/install/kubernetes/helm/* ${RELEASE_DIR}/
+      cp -rf istio-maistra-${MAISTRA_BRANCH}/install/kubernetes/helm/* ${HELM_DIR}/
       #(
       #  cd "${HELM_DIR}/istio"
       #  helm dep update
@@ -65,5 +66,5 @@ source $(dirname ${BASH_SOURCE})/patch-charts.sh
 (
   cd "${RELEASES_DIR}"
   echo "producing diff file for charts: $(pwd)/chart-diffs.diff"
-  diff -uNr istio-maistra-${MAISTRA_BRANCH}/install/kubernetes/helm/ ${RELEASE_DIR}/ > chart-diffs.diff || [ $? -eq 1 ]
+  diff -uNr istio-maistra-${MAISTRA_BRANCH}/install/kubernetes/helm/ ${HELM_DIR}/ > chart-diffs.diff || [ $? -eq 1 ]
 )

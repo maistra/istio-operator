@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: istio-sidecar-webhook-configuration
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "sidecar-injector.name" . }}
+    chart: {{ template "sidecar-injector.chart" . }}
+    heritage: {{ .Release.Service }}
+    maistra-version: 1.0.4
+    release: {{ .Release.Name }}
+    istio: sidecar-injector
+data:
+  mutatingwebhookconfiguration.yaml: |-
+    {{- include "mutatingwebhookconfiguration.yaml.tpl" . | indent 4}}

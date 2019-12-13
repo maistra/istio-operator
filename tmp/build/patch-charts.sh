@@ -5,12 +5,6 @@ set -e
 : ${HELM_DIR:?"Need to set HELM_DIR to output location for charts, e.g. tmp/_output/istio-releases/istio-1.1.0"}
 : ${SOURCE_DIR:?"Need to set SOURCE_DIR to location of the istio-operator source directory"}
 
-if [[ "${COMMUNITY,,}" == "true" ]]; then
-  : ${HUB:=docker.io/maistra}
-else
-  : ${HUB:=registry.redhat.io/openshift-service-mesh}
-fi
-
 # copy maistra specific templates into charts
 function copyOverlay() {
   echo "copying Maistra chart customizations over stock Istio charts"
@@ -75,13 +69,6 @@ function patchTemplates() {
       maxSurge: 25%\
       maxUnavailable: 25%' ${HELM_DIR}/istio/charts/gateways/templates/deployment.yaml
 
-	#CNI is handled separately
-	if [[ "${COMMUNITY,,}" == "true" ]]; then
-		sed -i -e 's/image: *istio-cni/image: istio-cni-ubi8/' ${HELM_DIR}/istio_cni/values.yaml
-	else
-		sed -i -e 's/image: *istio-cni/image: istio-cni-rhel8/' ${HELM_DIR}/istio_cni/values.yaml
-	fi
-
   # - remove the cleanup secrets job, we handle this in the installer
   rm ${HELM_DIR}/istio/charts/security/templates/cleanup-secrets.yaml
 
@@ -137,7 +124,7 @@ function patchTemplates() {
 
   # - add a maistra-version label to all objects which have a release label
   find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl" | \
-    xargs sed -i -e '/^metadata:/,/^[! ]/ { s/^\(.*\)release:\(.*\)$/\1maistra-version: '${MAISTRA_VERSION}'\
+    xargs sed -i -e '/^metadata:/,/^[^ ]/ { s/^\(.*\)release:\(.*\)$/\1maistra-version: '${MAISTRA_VERSION}'\
 \1release:\2/ }'
 
   # MAISTRA-506 add a maistra-control-plane label for deployment specs

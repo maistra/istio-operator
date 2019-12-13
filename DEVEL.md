@@ -1,5 +1,13 @@
 # Developing the Maistra Istio Operator
 
+## Updating Helm Charts
+
+To update the helm charts stored in `./resources/helm/v1.0`, run the following command:
+
+```bash
+HELM_DIR="$(pwd)/resources/helm/v1.0" ./tmp/build/download-charts.sh
+```
+
 ## Building the binary and the container image
 
 To build the Operator container image, run:
