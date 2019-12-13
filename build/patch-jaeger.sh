@@ -17,6 +17,7 @@ function jaeger_remove_files() {
   rm -f ${HELM_DIR}/istio/charts/tracing/templates/deployment-jaeger.yaml
   rm -f ${HELM_DIR}/istio/charts/tracing/templates/service-jaeger.yaml
   rm -f ${HELM_DIR}/istio/charts/tracing/templates/ingress.yaml
+  rm -f ${HELM_DIR}/istio/charts/tracing/templates/pvc.yaml
 }
 
 function JaegerPatch() {

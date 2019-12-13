@@ -25,7 +25,7 @@ func init() {
 }
 
 const (
-	istioVersion = "1.1.0"
+	istioVersion = "v1.1"
 )
 
 var (
@@ -46,7 +46,7 @@ func GetTemplatesDir() string {
 
 // GetDefaultTemplatesDir returns the location of the Default Operator templates files
 func GetDefaultTemplatesDir() string {
-	return path.Join(ResourceDir, "default-templates")
+	return path.Join(ResourceDir, "default-templates", istioVersion)
 }
 
 // RenderHelmChart renders the helm charts, returning a map of rendered templates.

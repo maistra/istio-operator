@@ -1,0 +1,140 @@
+# TODO: the original template has service account, roles, etc
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: prometheus
+    chart: {{ template "prometheus.chart" . }}
+    heritage: {{ .Release.Service }}
+    maistra-version: 1.1.0
+    release: {{ .Release.Name }}
+spec:
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+        chart: {{ template "prometheus.chart" . }}
+        heritage: {{ .Release.Service }}
+        maistra-control-plane: {{ .Release.Namespace }}
+        release: {{ .Release.Name }}
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      serviceAccountName: prometheus
+{{- if .Values.global.priorityClassName }}
+      priorityClassName: "{{ .Values.global.priorityClassName }}"
+{{- end }}
+      serviceAccountName: prometheus
+      containers:
+          # OAuth proxy
+        - name: prometheus-proxy
+          image: {{ .Values.global.oauthproxy.hub }}/{{ .Values.global.oauthproxy.image }}:{{ .Values.global.oauthproxy.tag }}
+          imagePullPolicy: {{ .Values.global.oauthproxy.imagePullPolicy }}
+          ports:
+          - containerPort: 3001
+            name: https
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            httpGet:
+              path: /oauth/healthz
+              port: https
+              scheme: HTTPS
+            timeoutSeconds: 1
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/tls/private
+            name: secret-prometheus-tls
+          - mountPath: /etc/proxy/htpasswd
+            name: secret-htpasswd
+          args:
+          - -provider=openshift
+          - -https-address=:3001
+          - -http-address=
+          - -email-domain=*
+          - -upstream=http://localhost:9090
+          - -htpasswd-file=/etc/proxy/htpasswd/auth
+          - -display-htpasswd-form=false
+          - '-openshift-sar={"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}'
+          - -client-secret-file=/var/run/secrets/kubernetes.io/serviceaccount/token
+          - -openshift-service-account=prometheus
+          - -cookie-secret=SECRET
+          - -tls-cert=/etc/tls/private/tls.crt
+          - -tls-key=/etc/tls/private/tls.key
+          - -openshift-ca=/etc/pki/tls/cert.pem
+          - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        - name: prometheus
+          image: "{{ .Values.hub }}/{{ .Values.image }}:{{ .Values.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          args:
+            - '--storage.tsdb.retention={{ .Values.retention }}'
+            - '--storage.tsdb.path=/prometheus'
+            - '--config.file=/etc/prometheus/prometheus.yml'
+            - --discovery.member-roll-name=default
+            - --discovery.member-roll-namespace={{ .Release.Namespace }}
+          ports:
+            - containerPort: 9090
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9090
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+          resources:
+{{- if .Values.resources }}
+{{ toYaml .Values.resources | indent 12 }}
+{{- else }}
+{{ toYaml .Values.global.defaultResources | indent 12 }}
+{{- end }}
+          volumeMounts:
+          - name: config-volume
+            mountPath: /etc/prometheus
+          - mountPath: /etc/istio-certs
+            name: istio-certs
+      volumes:
+      # OAuth proxy
+      - name: secret-prometheus-tls
+        secret:
+          defaultMode: 420
+          secretName: prometheus-tls
+      - name: secret-htpasswd
+        secret:
+          defaultMode: 420
+          secretName: htpasswd
+      - name: config-volume
+        configMap:
+          name: prometheus
+      - name: istio-certs
+        secret:
+          defaultMode: 420
+{{- if not .Values.security.enabled }}
+          optional: true
+{{- end }}
+          secretName: istio.default
+      affinity:
+      {{- include "nodeaffinity" . | indent 6 }}
+      {{- include "podAntiAffinity" . | indent 6 }}
+      {{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 6 }}
+      {{- else if .Values.global.defaultTolerations }}
+      tolerations:
+{{ toYaml .Values.global.defaultTolerations | indent 6 }}
+      {{- end }}

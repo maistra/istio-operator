@@ -381,7 +381,7 @@ spec:
       serviceAccountName: istio-operator
       containers:
         - name: istio-operator
-          image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.0.0
+          image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.1.0
           ports:
           - containerPort: 11999
             name: validation
@@ -400,6 +400,6 @@ spec:
             - name: OPERATOR_NAME
               value: istio-operator
             - name: ISTIO_CNI_IMAGE
-              value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.0.0
+              value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.1.0
 #            - name: ISTIO_CNI_IMAGE_PULL_SECRET
 #              value: name-of-secret
