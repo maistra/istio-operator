@@ -55,7 +55,7 @@ func (v *controlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 		}
 		if othercp.Namespace == namespace {
 			// verify single instance per namespace
-			return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("only one service mesh may be installed per project/namespace"))
+			return validationFailedResponse(http.StatusBadRequest, "only one service mesh may be installed per project/namespace")
 		}
 	}
 
