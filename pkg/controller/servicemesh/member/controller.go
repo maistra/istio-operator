@@ -276,9 +276,10 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 				// 400 Bad Request is returned by the validation webhook. This isn't a controller error, but a user error, so we shouldn't log it as such.
 				// This happens when the namespace is already a member of a different MemberRoll.
 				if errors.IsBadRequest(err) {
-					// TODO: should we requeue or not? is the resync enough? Ideally, we'd reconcile immediately when the member is removed from the other MemberRoll
 					reqLogger.Info(wrappedErr.Error())
-					return reconcile.Result{}, nil
+					return reconcile.Result{
+						Requeue: true,
+					}, nil
 				}
 				return reconcile.Result{}, wrappedErr
 			}
@@ -301,7 +302,9 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 					_ = r.reportError(member, false, maistra.ConditionReasonMemberCannotUpdateMemberRoll, wrappedErr.Error())
 					if errors.IsBadRequest(err) {
 						reqLogger.Info(wrappedErr.Error())
-						return reconcile.Result{}, nil
+						return reconcile.Result{
+							Requeue: true,
+						}, nil
 					}
 					return reconcile.Result{}, wrappedErr
 				}
