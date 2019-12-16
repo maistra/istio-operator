@@ -67,10 +67,13 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 	// Watch for changes to primary resource ServiceMeshMember
 	err = c.Watch(&source.Kind{Type: &maistra.ServiceMeshMember{}}, &handler.EnqueueRequestForObject{}, predicate.Funcs{
 		UpdateFunc: func(event event.UpdateEvent) bool {
-			return event.MetaOld.GetGeneration() != event.MetaNew.GetGeneration() ||
-				!reflect.DeepEqual(event.MetaOld.GetAnnotations(), event.MetaNew.GetAnnotations()) ||
-				!reflect.DeepEqual(event.MetaOld.GetFinalizers(), event.MetaNew.GetFinalizers()) ||
-				!reflect.DeepEqual(event.MetaOld.GetDeletionTimestamp(), event.MetaNew.GetDeletionTimestamp())
+			o := event.MetaOld
+			n := event.MetaNew
+			return o.GetResourceVersion() == n.GetResourceVersion() || // ensure reconciliation is triggered by periodic resyncs
+				o.GetGeneration() != n.GetGeneration() ||
+				!reflect.DeepEqual(o.GetAnnotations(), n.GetAnnotations()) ||
+				!reflect.DeepEqual(o.GetFinalizers(), n.GetFinalizers()) ||
+				!reflect.DeepEqual(o.GetDeletionTimestamp(), n.GetDeletionTimestamp())
 		},
 	})
 	if err != nil {
