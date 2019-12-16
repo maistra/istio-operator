@@ -227,6 +227,12 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		member.SetFinalizers(finalizers.List())
 		err = r.Client.Update(context.TODO(), member)
 		if err != nil {
+			if errors.IsNotFound(err) || errors.IsConflict(err) {
+				// We're reconciling a stale instance. If the object no longer exists, we're done. If there was a
+				// conflict, we'll receive another watch event, which will trigger another reconciliation. We'll remove
+				// the finalizer then.
+				return reconcile.Result{}, nil
+			}
 			err = errors2.Wrapf(err, "Could not update ServiceMeshMember %s/%s when removing finalizer", member.Namespace, member.Name)
 			r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, err.Error())
 			return reconcile.Result{}, err
@@ -239,6 +245,17 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		finalizers.Insert(common.FinalizerName)
 		member.SetFinalizers(finalizers.List())
 		err = r.Client.Update(context.TODO(), member)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				// Object was deleted manually before we could add the finalizer to it. This is not an error.
+				return reconcile.Result{}, nil
+			} else if errors.IsConflict(err) {
+				// Object was created and immediately updated, before the controller was able to add the finalizer.
+				// The instance we're reconciling is stale, hence the Conflict error. When the update watch event
+				// arrives, another reconciliation will be triggered, which means we don't need to do anything here.
+				return reconcile.Result{}, nil
+			}
+		}
 		return reconcile.Result{}, err
 	}
 
