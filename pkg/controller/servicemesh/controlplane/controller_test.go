@@ -4,7 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 type mergeTestCases struct {
@@ -91,7 +92,7 @@ func TestCyclicTemplate(t *testing.T) {
 	reconciler := reconcileControlPlane.getOrCreateReconciler(&v1.ServiceMeshControlPlane{})
 	reconciler.Log = log.WithValues()
 
-	_, err := reconciler.recursivelyApplyTemplates(v1.ControlPlaneSpec{Template: "visited"}, map[string]struct{}{"visited": {}})
+	_, err := reconciler.recursivelyApplyTemplates(v1.ControlPlaneSpec{Template: "visited"}, sets.NewString("visited"))
 	if err == nil {
 		t.Fatalf("Expected error to not be nil. Cyclic dependencies should not be allowed.")
 	}
