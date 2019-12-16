@@ -270,16 +270,17 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 				return reconcile.Result{}, nil
 			} else {
 				// we're dealing with a different type of error (either a validation error or an actual (e.g. I/O) error
-				err := errors2.Wrapf(err, "Could not create ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-				_ = r.reportError(member, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, err.Error())
-				// 400 Bad Request is returned by the validation webhook. This isn't a controller error, but a user error. We shouldn't log it as an error.
-				// this happens when the namespace is already a member of a different MemberRoll.
+				wrappedErr := errors2.Wrapf(err, "Could not create ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+				_ = r.reportError(member, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, wrappedErr.Error())
+
+				// 400 Bad Request is returned by the validation webhook. This isn't a controller error, but a user error, so we shouldn't log it as such.
+				// This happens when the namespace is already a member of a different MemberRoll.
 				if errors.IsBadRequest(err) {
 					// TODO: should we requeue or not? is the resync enough? Ideally, we'd reconcile immediately when the member is removed from the other MemberRoll
-					reqLogger.Info(err.Error())
+					reqLogger.Info(wrappedErr.Error())
 					return reconcile.Result{}, nil
 				}
-				return reconcile.Result{}, err
+				return reconcile.Result{}, wrappedErr
 			}
 		}
 		r.recordEvent(member, core.EventTypeNormal, eventReasonSuccessfulReconcile, "Successfully created ServiceMeshMemberRoll and added namespace to it")
@@ -296,13 +297,13 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 					return reconcile.Result{}, nil
 				} else {
 					// we're dealing with either a validation error or an actual (e.g. I/O) error
-					err = errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-					_ = r.reportError(member, false, maistra.ConditionReasonMemberCannotUpdateMemberRoll, err.Error())
+					wrappedErr := errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+					_ = r.reportError(member, false, maistra.ConditionReasonMemberCannotUpdateMemberRoll, wrappedErr.Error())
 					if errors.IsBadRequest(err) {
-						reqLogger.Info(err.Error())
+						reqLogger.Info(wrappedErr.Error())
 						return reconcile.Result{}, nil
 					}
-					return reconcile.Result{}, err
+					return reconcile.Result{}, wrappedErr
 				}
 			}
 			r.recordEvent(member, core.EventTypeNormal, eventReasonSuccessfulReconcile, "Successfully added namespace to ServiceMeshMemberRoll")
