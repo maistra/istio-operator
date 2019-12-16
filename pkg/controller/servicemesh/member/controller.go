@@ -4,9 +4,12 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/go-logr/logr"
 	errors2 "github.com/pkg/errors"
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
@@ -33,6 +36,8 @@ const (
 
 	eventReasonFailedReconcile     maistra.ConditionReason = "FailedReconcile"
 	eventReasonSuccessfulReconcile maistra.ConditionReason = "Reconciled"
+
+	maxStatusUpdateRetriesOnConflict = 3
 )
 
 var log = logf.Log.WithName("controller_member")
@@ -199,7 +204,7 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 				err = r.Client.Delete(context.TODO(), memberRoll)
 				if err != nil && !errors.IsNotFound(err) { // if NotFound, MemberRoll has been deleted, which is what we wanted. This means this is not an error, but a success.
 					err = errors2.Wrapf(err, "Could not delete ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-					_ = r.reportError(member, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotDeleteMemberRoll, err.Error())
+					_ = r.reportError(member, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotDeleteMemberRoll, err.Error(), reqLogger)
 					return reconcile.Result{}, err
 				}
 			} else {
@@ -211,7 +216,7 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 						return reconcile.Result{}, nil
 					}
 					err = errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-					_ = r.reportError(member, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotUpdateMemberRoll, err.Error())
+					_ = r.reportError(member, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotUpdateMemberRoll, err.Error(), reqLogger)
 					return reconcile.Result{}, err
 				}
 			}
@@ -262,7 +267,7 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			if errors.IsNotFound(err) {
 				errorMessage := "Could not create ServiceMeshMemberRoll, because the referenced namespace doesn't exist"
 				reqLogger.Info(errorMessage, "namespace", memberRoll.Namespace)
-				statusUpdateErr := r.reportError(member, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, errorMessage)
+				statusUpdateErr := r.reportError(member, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, errorMessage, reqLogger)
 				return reconcile.Result{}, statusUpdateErr
 			} else if errors.IsConflict(err) {
 				// local cache is stale; this isn't an error, so we shouldn't log it as such;
@@ -271,7 +276,7 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			} else {
 				// we're dealing with a different type of error (either a validation error or an actual (e.g. I/O) error
 				wrappedErr := errors2.Wrapf(err, "Could not create ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-				_ = r.reportError(member, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, wrappedErr.Error())
+				_ = r.reportError(member, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, wrappedErr.Error(), reqLogger)
 
 				// 400 Bad Request is returned by the validation webhook. This isn't a controller error, but a user error, so we shouldn't log it as such.
 				// This happens when the namespace is already a member of a different MemberRoll.
@@ -299,7 +304,7 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 				} else {
 					// we're dealing with either a validation error or an actual (e.g. I/O) error
 					wrappedErr := errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-					_ = r.reportError(member, false, maistra.ConditionReasonMemberCannotUpdateMemberRoll, wrappedErr.Error())
+					_ = r.reportError(member, false, maistra.ConditionReasonMemberCannotUpdateMemberRoll, wrappedErr.Error(), reqLogger)
 					if errors.IsBadRequest(err) {
 						reqLogger.Info(wrappedErr.Error())
 						return reconcile.Result{
@@ -313,7 +318,7 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 	}
 
-	err = r.updateStatus(member, true, r.isNamespaceConfigured(memberRoll, member.Namespace), "", "")
+	err = r.updateStatus(member, true, r.isNamespaceConfigured(memberRoll, member.Namespace), "", "", reqLogger)
 	return reconcile.Result{}, err
 }
 
@@ -321,13 +326,13 @@ func (r *MemberReconciler) isNamespaceConfigured(memberRoll *maistra.ServiceMesh
 	return sets.NewString(memberRoll.Status.ConfiguredMembers...).Has(namespace)
 }
 
-func (r *MemberReconciler) reportError(member *maistra.ServiceMeshMember, ready bool, reason maistra.ServiceMeshMemberConditionReason, message string) error {
+func (r *MemberReconciler) reportError(member *maistra.ServiceMeshMember, ready bool, reason maistra.ServiceMeshMemberConditionReason, message string, reqLogger logr.Logger) error {
 	r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, message)
-	return r.updateStatus(member, false, ready, reason, message)
+	return r.updateStatus(member, false, ready, reason, message, reqLogger)
 }
 
-func (r *MemberReconciler) updateStatus(member *maistra.ServiceMeshMember, reconciled, ready bool, reason maistra.ServiceMeshMemberConditionReason, message string) error {
-	member.Status.ObservedGeneration = member.Generation // TODO: if we have re-read the member from the cache, the Generation may no longer be the same as in the member we reconciled. We shouldn't store the new member's generation as the observedGeneration, but the original one
+func (r *MemberReconciler) updateStatus(member *maistra.ServiceMeshMember, reconciled, ready bool, reason maistra.ServiceMeshMemberConditionReason, message string, reqLogger logr.Logger) error {
+	member.Status.ObservedGeneration = member.Generation
 	member.Status.SetCondition(maistra.ServiceMeshMemberCondition{
 		Type:    maistra.ConditionTypeMemberReconciled,
 		Status:  boolToConditionStatus(reconciled),
@@ -341,12 +346,58 @@ func (r *MemberReconciler) updateStatus(member *maistra.ServiceMeshMember, recon
 		Message: message,
 	})
 
+	// TODO: use Client().Status().Patch() and remove the retry code below after we upgrade to controller-runtime 0.2+
 	err := r.Client.Status().Update(context.TODO(), member)
-	if err != nil {
-		return errors2.Wrapf(err, "Could not update status of ServiceMeshMember %s/%s", member.Namespace, member.Name)
-		r.Log.Error(err, "Error updating ServiceMeshMember status")
+	if err == nil {
+		return nil
 	}
-	return nil
+
+	// We only retry on conflict, because a retry will almost certainly succeed, since we first obtain a
+	// fresh instance of the object. We don't retry on any other errors, as it's likely that we'll get the
+	// same error again (plus, it's good to let the human operator know there was an error even if the
+	// retry would succeed).
+	converter := runtime.NewTestUnstructuredConverter(equality.Semantic)
+	for retry := 0; retry < maxStatusUpdateRetriesOnConflict; retry++ {
+		if errors.IsNotFound(err) {
+			// The Member has disappeared, which means it was deleted by someone. We shouldn't treat this as an error
+			// and we shouldn't retry.
+			reqLogger.Info("Couldn't update status, because ServiceMeshMember has been deleted")
+			return nil
+		} else if errors.IsConflict(err) {
+			reqLogger.Info("Ran into conflict when updating ServiceMeshMember's status. Retrying...")
+
+			// This controller owns the ServiceMeshMember's status and can thus always override it (no-one else should
+			// modify the status). We can't simply do a client.Get(), as that would again return the locally cached
+			// object, which means that the update may fail again. We thus need to fetch the object from the API
+			// server directly, update its status, and submit it back to the API Server. Hence the use of Unstructured.
+			freshMember := unstructured.Unstructured{}
+			freshMember.SetAPIVersion(maistra.SchemeGroupVersion.String())
+			freshMember.SetKind("ServiceMeshMember")
+
+			err = r.Client.Get(context.TODO(), types.NamespacedName{member.Namespace, member.Name}, &freshMember)
+			if err != nil {
+				break
+			}
+
+			unstructuredStatus, err := converter.ToUnstructured(member.Status)
+			if err != nil {
+				break
+			}
+
+			err = unstructured.SetNestedField(freshMember.UnstructuredContent(), unstructuredStatus, "status")
+			if err != nil {
+				break
+			}
+
+			err = r.Client.Status().Update(context.TODO(), &freshMember)
+			if err == nil {
+				return nil
+			}
+		} else {
+			break
+		}
+	}
+	return errors2.Wrapf(err, "Could not update status of ServiceMeshMember %s/%s", member.Namespace, member.Name)
 }
 
 func (r *MemberReconciler) recordEvent(member *maistra.ServiceMeshMember, eventType string, reason maistra.ConditionReason, message string) {
