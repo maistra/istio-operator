@@ -78,7 +78,7 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 				o.GetGeneration() != n.GetGeneration() ||
 				!reflect.DeepEqual(o.GetAnnotations(), n.GetAnnotations()) ||
 				!reflect.DeepEqual(o.GetFinalizers(), n.GetFinalizers()) ||
-				!reflect.DeepEqual(o.GetDeletionTimestamp(), n.GetDeletionTimestamp())
+				n.GetDeletionTimestamp() != nil
 		},
 	})
 	if err != nil {
