@@ -5,8 +5,10 @@ import (
 	"os"
 	"sync"
 
-	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/go-logr/logr"
+	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/maistra/istio-operator/pkg/version"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -134,4 +136,8 @@ func GetOperatorNamespace() string {
 		}
 	})
 	return operatorNamespace
+}
+
+func ToNamespacedName(objectMeta metav1.ObjectMeta) types.NamespacedName {
+	return types.NamespacedName{objectMeta.Namespace, objectMeta.Name}
 }

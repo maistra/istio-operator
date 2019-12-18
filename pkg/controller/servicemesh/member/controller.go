@@ -8,7 +8,7 @@ import (
 	errors2 "github.com/pkg/errors"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -176,98 +176,23 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
-	deleted := member.GetDeletionTimestamp() != nil
-	finalizers := sets.NewString(member.Finalizers...)
-	if deleted {
-		if !finalizers.Has(common.FinalizerName) {
-			reqLogger.Info("ServiceMeshMember deleted")
-			return reconcile.Result{}, nil
-		}
-
-		memberRoll := &maistra.ServiceMeshMemberRoll{}
-		err = r.Client.Get(context.TODO(), getMemberRollKey(member), memberRoll)
-		if err != nil {
-			if !errors.IsNotFound(err) {
-				return reconcile.Result{}, err
-			}
-		} else if memberRoll.DeletionTimestamp == nil {
-			reqLogger.Info("Removing ServiceMeshMember from ServiceMeshMemberRoll")
-			for i, m := range memberRoll.Spec.Members {
-				if m == member.Namespace {
-					memberRoll.Spec.Members = append(memberRoll.Spec.Members[:i], memberRoll.Spec.Members[i+1:]...)
-					break
-				}
-			}
-
-			memberRollCreatedByThisController := memberRoll.Annotations[common.CreatedByKey] == controllerName
-			if len(memberRoll.Spec.Members) == 0 && memberRollCreatedByThisController {
-				err = r.Client.Delete(context.TODO(), memberRoll)
-				if err != nil && !errors.IsNotFound(err) { // if NotFound, MemberRoll has been deleted, which is what we wanted. This means this is not an error, but a success.
-					err = errors2.Wrapf(err, "Could not delete ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-					_ = r.reportError(member, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotDeleteMemberRoll, err.Error(), reqLogger)
-					return reconcile.Result{}, err
-				}
-			} else {
-				err = r.Client.Update(context.TODO(), memberRoll)
-				if err != nil {
-					if errors.IsNotFound(err) || errors.IsConflict(err) {
-						// local cache is stale; this isn't an error, so we shouldn't log it as such;
-						// instead, we stop reconciling and wait for the watch event to arrive and trigger another reconciliation
-						return reconcile.Result{}, nil
-					}
-					err = errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-					_ = r.reportError(member, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotUpdateMemberRoll, err.Error(), reqLogger)
-					return reconcile.Result{}, err
-				}
-			}
-		}
-
-		reqLogger.Info("Removing finalizer from ServiceMeshMember")
-		finalizers.Delete(common.FinalizerName)
-		member.SetFinalizers(finalizers.List())
-		err = r.Client.Update(context.TODO(), member)
-		if err != nil {
-			if errors.IsNotFound(err) || errors.IsConflict(err) {
-				// We're reconciling a stale instance. If the object no longer exists, we're done. If there was a
-				// conflict, we'll receive another watch event, which will trigger another reconciliation. We'll remove
-				// the finalizer then.
-				return reconcile.Result{}, nil
-			}
-			err = errors2.Wrapf(err, "Could not update ServiceMeshMember %s/%s when removing finalizer", member.Namespace, member.Name)
-			r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, err.Error())
-			return reconcile.Result{}, err
-		}
-
-		return reconcile.Result{}, nil
-
-	} else if !finalizers.Has(common.FinalizerName) {
-		reqLogger.Info("Adding finalizer to ServiceMeshMember", "finalizer", common.FinalizerName)
-		finalizers.Insert(common.FinalizerName)
-		member.SetFinalizers(finalizers.List())
-		err = r.Client.Update(context.TODO(), member)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				// Object was deleted manually before we could add the finalizer to it. This is not an error.
-				return reconcile.Result{}, nil
-			} else if errors.IsConflict(err) {
-				// Object was created and immediately updated, before the controller was able to add the finalizer.
-				// The instance we're reconciling is stale, hence the Conflict error. When the update watch event
-				// arrives, another reconciliation will be triggered, which means we don't need to do anything here.
-				return reconcile.Result{}, nil
-			}
-		}
+	mayContinue, err := common.HandleFinalization(r.finalizeMember, member, r.Client, r.eventRecorder, reqLogger)
+	if err != nil || !mayContinue {
 		return reconcile.Result{}, err
 	}
+	return r.reconcileMember(member, reqLogger)
+}
 
+func (r *MemberReconciler) reconcileMember(member *maistra.ServiceMeshMember, reqLogger logr.Logger) (reconcile.Result, error) {
 	memberRoll := &maistra.ServiceMeshMemberRoll{}
-	err = r.Client.Get(context.TODO(), getMemberRollKey(member), memberRoll)
+	err := r.Client.Get(context.TODO(), getMemberRollKey(member), memberRoll)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return reconcile.Result{}, err
 		}
 		// MemberRoll doesn't exist, let's create it
 		memberRoll = &maistra.ServiceMeshMemberRoll{
-			ObjectMeta: v12.ObjectMeta{
+			ObjectMeta: meta.ObjectMeta{
 				Name:      common.MemberRollName,
 				Namespace: member.Spec.ControlPlaneRef.Namespace,
 				Annotations: map[string]string{
@@ -279,6 +204,7 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			},
 		}
 
+		reqLogger.Info("Creating ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll.ObjectMeta).String())
 		err = r.Client.Create(context.TODO(), memberRoll)
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -310,6 +236,7 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	} else {
 		if !contains(member.Namespace, memberRoll.Spec.Members) {
+			reqLogger.Info("Adding ServiceMeshMember to ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll.ObjectMeta).String())
 			memberRoll.Spec.Members = append(memberRoll.Spec.Members, member.Namespace)
 
 			err = r.Client.Update(context.TODO(), memberRoll)
@@ -337,6 +264,50 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	err = r.updateStatus(member, true, r.isNamespaceConfigured(memberRoll, member.Namespace), "", "", reqLogger)
 	return reconcile.Result{}, err
+}
+
+func (r *MemberReconciler) finalizeMember(obj runtime.Object, reqLogger logr.Logger) (continueReconciliation bool, err error) {
+	member := obj.(*maistra.ServiceMeshMember)
+	memberRoll := &maistra.ServiceMeshMemberRoll{}
+	err = r.Client.Get(context.TODO(), getMemberRollKey(member), memberRoll)
+	if err != nil {
+		// TODO: what if the MemberRoll is not found in the local cache, but it does exists in the API? Can we even detect this?
+		if !errors.IsNotFound(err) {
+			return false, err
+		}
+	} else if memberRoll.DeletionTimestamp == nil {
+		for i, m := range memberRoll.Spec.Members {
+			if m == member.Namespace {
+				memberRoll.Spec.Members = append(memberRoll.Spec.Members[:i], memberRoll.Spec.Members[i+1:]...)
+				break
+			}
+		}
+
+		memberRollCreatedByThisController := memberRoll.Annotations[common.CreatedByKey] == controllerName
+		if len(memberRoll.Spec.Members) == 0 && memberRollCreatedByThisController {
+			reqLogger.Info("Deleting ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll.ObjectMeta).String())
+			err = r.Client.Delete(context.TODO(), memberRoll) // TODO: need to add resourceVersion precondition to delete request (need newer apimachinery to do that)
+			if err != nil && !errors.IsNotFound(err) {        // if NotFound, MemberRoll has been deleted, which is what we wanted. This means this is not an error, but a success.
+				err = errors2.Wrapf(err, "Could not delete ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+				_ = r.reportError(member, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotDeleteMemberRoll, err.Error(), reqLogger)
+				return false, err
+			}
+		} else {
+			reqLogger.Info("Removing ServiceMeshMember from ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll.ObjectMeta).String())
+			err = r.Client.Update(context.TODO(), memberRoll)
+			if err != nil {
+				if errors.IsNotFound(err) || errors.IsConflict(err) {
+					// local cache is stale; this isn't an error, so we shouldn't log it as such;
+					// instead, we stop reconciling and wait for the watch event to arrive and trigger another reconciliation
+					return false, nil
+				}
+				err = errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
+				_ = r.reportError(member, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotUpdateMemberRoll, err.Error(), reqLogger)
+				return false, err
+			}
+		}
+	}
+	return true, nil
 }
 
 func (r *MemberReconciler) isNamespaceConfigured(memberRoll *maistra.ServiceMeshMemberRoll, namespace string) bool {
