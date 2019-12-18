@@ -40,7 +40,7 @@ const (
 	maxStatusUpdateRetriesOnConflict = 3
 )
 
-var log = logf.Log.WithName("controller_member")
+var log = logf.Log.WithName(controllerName)
 
 // Add creates a new ServiceMeshMember Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
