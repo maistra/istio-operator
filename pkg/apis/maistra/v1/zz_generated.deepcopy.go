@@ -5,7 +5,7 @@
 package v1
 
 import (
-	core_v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	v1beta1 "k8s.io/api/extensions/v1beta1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -39,12 +39,8 @@ func (in *CommonComponentConfig) DeepCopyInto(out *CommonComponentConfig) {
 	out.NameOverrides = in.NameOverrides
 	if in.Global != nil {
 		in, out := &in.Global, &out.Global
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(GlobalConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(GlobalConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -67,11 +63,10 @@ func (in *ComponentStatus) DeepCopyInto(out *ComponentStatus) {
 		in, out := &in.Resources, &out.Resources
 		*out = make([]*StatusType, len(*in))
 		for i := range *in {
-			if (*in)[i] == nil {
-				(*out)[i] = nil
-			} else {
-				(*out)[i] = new(StatusType)
-				(*in)[i].DeepCopyInto((*out)[i])
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(StatusType)
+				(*in).DeepCopyInto(*out)
 			}
 		}
 	}
@@ -147,14 +142,14 @@ func (in *ControlPlaneStatus) DeepCopyInto(out *ControlPlaneStatus) {
 		in, out := &in.ComponentStatus, &out.ComponentStatus
 		*out = make([]*ComponentStatus, len(*in))
 		for i := range *in {
-			if (*in)[i] == nil {
-				(*out)[i] = nil
-			} else {
-				(*out)[i] = new(ComponentStatus)
-				(*in)[i].DeepCopyInto((*out)[i])
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(ComponentStatus)
+				(*in).DeepCopyInto(*out)
 			}
 		}
 	}
+	in.LastAppliedConfiguration.DeepCopyInto(&out.LastAppliedConfiguration)
 	return
 }
 
@@ -174,21 +169,13 @@ func (in *DeploymentFields) DeepCopyInto(out *DeploymentFields) {
 	in.HorizontalPodAutoscalerFields.DeepCopyInto(&out.HorizontalPodAutoscalerFields)
 	if in.ReplicaCount != nil {
 		in, out := &in.ReplicaCount, &out.ReplicaCount
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(int32)
-			**out = **in
-		}
+		*out = new(int32)
+		**out = **in
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(core_v1.ResourceRequirements)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(corev1.ResourceRequirements)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.NodeSelector != nil {
 		in, out := &in.NodeSelector, &out.NodeSelector
@@ -229,12 +216,8 @@ func (in *EnabledField) DeepCopyInto(out *EnabledField) {
 	*out = *in
 	if in.Enabled != nil {
 		in, out := &in.Enabled, &out.Enabled
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
@@ -291,7 +274,7 @@ func (in *GatewayConfig) DeepCopyInto(out *GatewayConfig) {
 	in.DeploymentFields.DeepCopyInto(&out.DeploymentFields)
 	if in.AdditionalContainers != nil {
 		in, out := &in.AdditionalContainers, &out.AdditionalContainers
-		*out = make([]core_v1.Container, len(*in))
+		*out = make([]corev1.Container, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -303,12 +286,8 @@ func (in *GatewayConfig) DeepCopyInto(out *GatewayConfig) {
 	}
 	if in.SDS != nil {
 		in, out := &in.SDS, &out.SDS
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(SDSContainerConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(SDSContainerConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.SecretVolumes != nil {
 		in, out := &in.SecretVolumes, &out.SecretVolumes
@@ -327,7 +306,7 @@ func (in *GatewayConfig) DeepCopyInto(out *GatewayConfig) {
 	}
 	if in.MeshExpansionPorts != nil {
 		in, out := &in.MeshExpansionPorts, &out.MeshExpansionPorts
-		*out = make([]core_v1.ServicePort, len(*in))
+		*out = make([]corev1.ServicePort, len(*in))
 		copy(*out, *in)
 	}
 	if in.ServiceAnnotations != nil {
@@ -346,7 +325,7 @@ func (in *GatewayConfig) DeepCopyInto(out *GatewayConfig) {
 	}
 	if in.Ports != nil {
 		in, out := &in.Ports, &out.Ports
-		*out = make([]core_v1.ServicePort, len(*in))
+		*out = make([]corev1.ServicePort, len(*in))
 		copy(*out, *in)
 	}
 	return
@@ -370,9 +349,7 @@ func (in *GatewaysConfig) DeepCopyInto(out *GatewaysConfig) {
 		in, out := &in.Gateways, &out.Gateways
 		*out = make(map[string]GatewayConfig, len(*in))
 		for key, val := range *in {
-			newVal := new(GatewayConfig)
-			val.DeepCopyInto(newVal)
-			(*out)[key] = *newVal
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	return
@@ -400,48 +377,28 @@ func (in *GlobalConfig) DeepCopyInto(out *GlobalConfig) {
 	}
 	if in.ConfigValidation != nil {
 		in, out := &in.ConfigValidation, &out.ConfigValidation
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.ControlPlaneSecurityEnabled != nil {
 		in, out := &in.ControlPlaneSecurityEnabled, &out.ControlPlaneSecurityEnabled
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.CreateRemoteSvcEndpoints != nil {
 		in, out := &in.CreateRemoteSvcEndpoints, &out.CreateRemoteSvcEndpoints
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.RemotePilotCreateSvcEndpoint != nil {
 		in, out := &in.RemotePilotCreateSvcEndpoint, &out.RemotePilotCreateSvcEndpoint
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.IstioRemote != nil {
 		in, out := &in.IstioRemote, &out.IstioRemote
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.DefaultConfigVisibilitySettings != nil {
 		in, out := &in.DefaultConfigVisibilitySettings, &out.DefaultConfigVisibilitySettings
@@ -457,39 +414,23 @@ func (in *GlobalConfig) DeepCopyInto(out *GlobalConfig) {
 	}
 	if in.DefaultPodDisruptionBudget != nil {
 		in, out := &in.DefaultPodDisruptionBudget, &out.DefaultPodDisruptionBudget
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(PodDisruptionBudget)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(PodDisruptionBudget)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.DefaultResources != nil {
 		in, out := &in.DefaultResources, &out.DefaultResources
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(core_v1.ResourceRequirements)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(corev1.ResourceRequirements)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.DisablePolicyChecks != nil {
 		in, out := &in.DisablePolicyChecks, &out.DisablePolicyChecks
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.EnableTracing != nil {
 		in, out := &in.EnableTracing, &out.EnableTracing
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.ImagePullSecrets != nil {
 		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
@@ -498,76 +439,44 @@ func (in *GlobalConfig) DeepCopyInto(out *GlobalConfig) {
 	}
 	if in.KubernetesIngress != nil {
 		in, out := &in.KubernetesIngress, &out.KubernetesIngress
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(KubernetesIngressConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(KubernetesIngressConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.MeshExpansion != nil {
 		in, out := &in.MeshExpansion, &out.MeshExpansion
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(MeshExpansionConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(MeshExpansionConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	out.MeshNetworks = in.MeshNetworks.DeepCopy()
 	if in.MonitoringPort != nil {
 		in, out := &in.MonitoringPort, &out.MonitoringPort
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(int32)
-			**out = **in
-		}
+		*out = new(int32)
+		**out = **in
 	}
 	if in.MTLS != nil {
 		in, out := &in.MTLS, &out.MTLS
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(MTLSConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(MTLSConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.MultiCluster != nil {
 		in, out := &in.MultiCluster, &out.MultiCluster
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(MultiClusterConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(MultiClusterConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.OmitSidecarInjectorConfigMap != nil {
 		in, out := &in.OmitSidecarInjectorConfigMap, &out.OmitSidecarInjectorConfigMap
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.OneNamespace != nil {
 		in, out := &in.OneNamespace, &out.OneNamespace
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.OutboundTrafficPolicy != nil {
 		in, out := &in.OutboundTrafficPolicy, &out.OutboundTrafficPolicy
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(OutboundTrafficPolicyConfig)
-			**out = **in
-		}
+		*out = new(OutboundTrafficPolicyConfig)
+		**out = **in
 	}
 	if in.PodDNSSearchNamespaces != nil {
 		in, out := &in.PodDNSSearchNamespaces, &out.PodDNSSearchNamespaces
@@ -576,57 +485,33 @@ func (in *GlobalConfig) DeepCopyInto(out *GlobalConfig) {
 	}
 	if in.PolicyCheckFailOpen != nil {
 		in, out := &in.PolicyCheckFailOpen, &out.PolicyCheckFailOpen
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.UseMCP != nil {
 		in, out := &in.UseMCP, &out.UseMCP
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.Proxy != nil {
 		in, out := &in.Proxy, &out.Proxy
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(ProxyConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(ProxyConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.ProxyInit != nil {
 		in, out := &in.ProxyInit, &out.ProxyInit
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(ProxyInitConfig)
-			**out = **in
-		}
+		*out = new(ProxyInitConfig)
+		**out = **in
 	}
 	if in.SDS != nil {
 		in, out := &in.SDS, &out.SDS
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(SDSConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(SDSConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Tracer != nil {
 		in, out := &in.Tracer, &out.Tracer
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(ProxyTracerConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(ProxyTracerConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -656,39 +541,23 @@ func (in *HorizontalPodAutoscalerFields) DeepCopyInto(out *HorizontalPodAutoscal
 	*out = *in
 	if in.AutoscaleEnabled != nil {
 		in, out := &in.AutoscaleEnabled, &out.AutoscaleEnabled
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.AutoscaleMax != nil {
 		in, out := &in.AutoscaleMax, &out.AutoscaleMax
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(int32)
-			**out = **in
-		}
+		*out = new(int32)
+		**out = **in
 	}
 	if in.AutoscaleMin != nil {
 		in, out := &in.AutoscaleMin, &out.AutoscaleMin
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(int32)
-			**out = **in
-		}
+		*out = new(int32)
+		**out = **in
 	}
 	if in.CPU != nil {
 		in, out := &in.CPU, &out.CPU
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(ResourceMetricCPU)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(ResourceMetricCPU)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -744,94 +613,54 @@ func (in *IstioHelmValues) DeepCopyInto(out *IstioHelmValues) {
 	*out = *in
 	if in.Global != nil {
 		in, out := &in.Global, &out.Global
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(GlobalConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(GlobalConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Galley != nil {
 		in, out := &in.Galley, &out.Galley
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(GalleyConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(GalleyConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Gateways != nil {
 		in, out := &in.Gateways, &out.Gateways
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(GatewaysConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(GatewaysConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	out.Grafana = in.Grafana.DeepCopy()
 	if in.Mixer != nil {
 		in, out := &in.Mixer, &out.Mixer
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(MixerConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(MixerConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Pilot != nil {
 		in, out := &in.Pilot, &out.Pilot
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(PilotConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(PilotConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Prometheus != nil {
 		in, out := &in.Prometheus, &out.Prometheus
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(PrometheusConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(PrometheusConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Security != nil {
 		in, out := &in.Security, &out.Security
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(SecurityConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(SecurityConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.SidecarInjector != nil {
 		in, out := &in.SidecarInjector, &out.SidecarInjector
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(SidecarInjectorConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(SidecarInjectorConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Tracing != nil {
 		in, out := &in.Tracing, &out.Tracing
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(TracingConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(TracingConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Kiali != nil {
 		in, out := &in.Kiali, &out.Kiali
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(KialiConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(KialiConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -853,39 +682,23 @@ func (in *KialiConfig) DeepCopyInto(out *KialiConfig) {
 	in.DeploymentFields.DeepCopyInto(&out.DeploymentFields)
 	if in.Gateway != nil {
 		in, out := &in.Gateway, &out.Gateway
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(EnabledField)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(EnabledField)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Ingress != nil {
 		in, out := &in.Ingress, &out.Ingress
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(IngressConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(IngressConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Dashboard != nil {
 		in, out := &in.Dashboard, &out.Dashboard
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(KialiDashboardConfig)
-			**out = **in
-		}
+		*out = new(KialiDashboardConfig)
+		**out = **in
 	}
 	if in.CreateDemoSecret != nil {
 		in, out := &in.CreateDemoSecret, &out.CreateDemoSecret
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
@@ -939,12 +752,8 @@ func (in *KubernetesIngressConfig) DeepCopyInto(out *KubernetesIngressConfig) {
 	in.EnabledField.DeepCopyInto(&out.EnabledField)
 	if in.EnableHTTPS != nil {
 		in, out := &in.EnableHTTPS, &out.EnableHTTPS
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
@@ -982,12 +791,8 @@ func (in *MeshExpansionConfig) DeepCopyInto(out *MeshExpansionConfig) {
 	in.EnabledField.DeepCopyInto(&out.EnabledField)
 	if in.UseILB != nil {
 		in, out := &in.UseILB, &out.UseILB
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
@@ -1017,39 +822,23 @@ func (in *MixerAdaptersConfig) DeepCopyInto(out *MixerAdaptersConfig) {
 	*out = *in
 	if in.KubernetesEnv != nil {
 		in, out := &in.KubernetesEnv, &out.KubernetesEnv
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(KubernetesEnvMixerAdapterConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(KubernetesEnvMixerAdapterConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Prometheus != nil {
 		in, out := &in.Prometheus, &out.Prometheus
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(PrometheusMixerAdapterConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(PrometheusMixerAdapterConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Stdio != nil {
 		in, out := &in.Stdio, &out.Stdio
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(StdioMixerAdapterConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(StdioMixerAdapterConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.UseAdapterCRDs != nil {
 		in, out := &in.UseAdapterCRDs, &out.UseAdapterCRDs
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
@@ -1071,30 +860,18 @@ func (in *MixerConfig) DeepCopyInto(out *MixerConfig) {
 	in.DeploymentFields.DeepCopyInto(&out.DeploymentFields)
 	if in.Policy != nil {
 		in, out := &in.Policy, &out.Policy
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(MixerPolicyConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(MixerPolicyConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Telemetry != nil {
 		in, out := &in.Telemetry, &out.Telemetry
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(MixerTelemetryConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(MixerTelemetryConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Adapters != nil {
 		in, out := &in.Adapters, &out.Adapters
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(MixerAdaptersConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(MixerAdaptersConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -1133,12 +910,8 @@ func (in *MixerTelemetryConfig) DeepCopyInto(out *MixerTelemetryConfig) {
 	in.DeploymentFields.DeepCopyInto(&out.DeploymentFields)
 	if in.SessionAffinityEnabled != nil {
 		in, out := &in.SessionAffinityEnabled, &out.SessionAffinityEnabled
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
@@ -1209,21 +982,13 @@ func (in *PilotConfig) DeepCopyInto(out *PilotConfig) {
 	in.DeploymentFields.DeepCopyInto(&out.DeploymentFields)
 	if in.Sidecar != nil {
 		in, out := &in.Sidecar, &out.Sidecar
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.TraceSampling != nil {
 		in, out := &in.TraceSampling, &out.TraceSampling
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(float64)
-			**out = **in
-		}
+		*out = new(float64)
+		**out = **in
 	}
 	return
 }
@@ -1263,39 +1028,23 @@ func (in *PrometheusConfig) DeepCopyInto(out *PrometheusConfig) {
 	in.DeploymentFields.DeepCopyInto(&out.DeploymentFields)
 	if in.Gateway != nil {
 		in, out := &in.Gateway, &out.Gateway
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(PrometheusGatewayConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(PrometheusGatewayConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Ingress != nil {
 		in, out := &in.Ingress, &out.Ingress
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(IngressConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(IngressConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Security != nil {
 		in, out := &in.Security, &out.Security
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(PrometheusSecurityConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(PrometheusSecurityConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Service != nil {
 		in, out := &in.Service, &out.Service
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(PrometheusServiceConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(PrometheusServiceConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -1373,12 +1122,8 @@ func (in *PrometheusServiceConfig) DeepCopyInto(out *PrometheusServiceConfig) {
 	}
 	if in.NodePort != nil {
 		in, out := &in.NodePort, &out.NodePort
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(PrometheusServiceNodePortConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(PrometheusServiceNodePortConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -1399,12 +1144,8 @@ func (in *PrometheusServiceNodePortConfig) DeepCopyInto(out *PrometheusServiceNo
 	in.EnabledField.DeepCopyInto(&out.EnabledField)
 	if in.Port != nil {
 		in, out := &in.Port, &out.Port
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(int32)
-			**out = **in
-		}
+		*out = new(int32)
+		**out = **in
 	}
 	return
 }
@@ -1424,84 +1165,48 @@ func (in *ProxyConfig) DeepCopyInto(out *ProxyConfig) {
 	*out = *in
 	if in.Concurrency != nil {
 		in, out := &in.Concurrency, &out.Concurrency
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(int32)
-			**out = **in
-		}
+		*out = new(int32)
+		**out = **in
 	}
 	if in.EnableCoreDump != nil {
 		in, out := &in.EnableCoreDump, &out.EnableCoreDump
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.Privileged != nil {
 		in, out := &in.Privileged, &out.Privileged
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.ReadinessFailureThreshold != nil {
 		in, out := &in.ReadinessFailureThreshold, &out.ReadinessFailureThreshold
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(int32)
-			**out = **in
-		}
+		*out = new(int32)
+		**out = **in
 	}
 	if in.ReadinessInitialDelaySeconds != nil {
 		in, out := &in.ReadinessInitialDelaySeconds, &out.ReadinessInitialDelaySeconds
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(int32)
-			**out = **in
-		}
+		*out = new(int32)
+		**out = **in
 	}
 	if in.ReadinessPeriodSeconds != nil {
 		in, out := &in.ReadinessPeriodSeconds, &out.ReadinessPeriodSeconds
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(int32)
-			**out = **in
-		}
+		*out = new(int32)
+		**out = **in
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(core_v1.ResourceRequirements)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(corev1.ResourceRequirements)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.StatusPort != nil {
 		in, out := &in.StatusPort, &out.StatusPort
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(int32)
-			**out = **in
-		}
+		*out = new(int32)
+		**out = **in
 	}
 	if in.EnvoyStatsD != nil {
 		in, out := &in.EnvoyStatsD, &out.EnvoyStatsD
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(EnvoyStatsDConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(EnvoyStatsDConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -1537,21 +1242,13 @@ func (in *ProxyTracerConfig) DeepCopyInto(out *ProxyTracerConfig) {
 	*out = *in
 	if in.LightStep != nil {
 		in, out := &in.LightStep, &out.LightStep
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(ProxyTracerLightStepConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(ProxyTracerLightStepConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Zipkin != nil {
 		in, out := &in.Zipkin, &out.Zipkin
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(ProxyTracerZipkinConfig)
-			**out = **in
-		}
+		*out = new(ProxyTracerZipkinConfig)
+		**out = **in
 	}
 	return
 }
@@ -1571,12 +1268,8 @@ func (in *ProxyTracerLightStepConfig) DeepCopyInto(out *ProxyTracerLightStepConf
 	*out = *in
 	if in.Secure != nil {
 		in, out := &in.Secure, &out.Secure
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
@@ -1612,12 +1305,8 @@ func (in *ResourceMetricCPU) DeepCopyInto(out *ResourceMetricCPU) {
 	*out = *in
 	if in.TargetAverageUtilization != nil {
 		in, out := &in.TargetAverageUtilization, &out.TargetAverageUtilization
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(int32)
-			**out = **in
-		}
+		*out = new(int32)
+		**out = **in
 	}
 	return
 }
@@ -1638,21 +1327,13 @@ func (in *SDSConfig) DeepCopyInto(out *SDSConfig) {
 	in.EnabledField.DeepCopyInto(&out.EnabledField)
 	if in.UseNormalJWT != nil {
 		in, out := &in.UseNormalJWT, &out.UseNormalJWT
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.UseTrustworthyJWT != nil {
 		in, out := &in.UseTrustworthyJWT, &out.UseTrustworthyJWT
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
@@ -1707,21 +1388,13 @@ func (in *SecurityConfig) DeepCopyInto(out *SecurityConfig) {
 	in.DeploymentFields.DeepCopyInto(&out.DeploymentFields)
 	if in.SelfSigned != nil {
 		in, out := &in.SelfSigned, &out.SelfSigned
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	if in.CreateMeshPolicy != nil {
 		in, out := &in.CreateMeshPolicy, &out.CreateMeshPolicy
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
@@ -1839,6 +1512,23 @@ func (in *ServiceMeshMember) DeepCopyObject() runtime.Object {
 		return c
 	}
 	return nil
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *ServiceMeshMemberCondition) DeepCopyInto(out *ServiceMeshMemberCondition) {
+	*out = *in
+	in.LastTransitionTime.DeepCopyInto(&out.LastTransitionTime)
+	return
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ServiceMeshMemberCondition.
+func (in *ServiceMeshMemberCondition) DeepCopy() *ServiceMeshMemberCondition {
+	if in == nil {
+		return nil
+	}
+	out := new(ServiceMeshMemberCondition)
+	in.DeepCopyInto(out)
+	return out
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
@@ -1997,6 +1687,13 @@ func (in *ServiceMeshMemberSpec) DeepCopy() *ServiceMeshMemberSpec {
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
 func (in *ServiceMeshMemberStatus) DeepCopyInto(out *ServiceMeshMemberStatus) {
 	*out = *in
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]ServiceMeshMemberCondition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -2017,12 +1714,8 @@ func (in *SidecarInjectorConfig) DeepCopyInto(out *SidecarInjectorConfig) {
 	in.DeploymentFields.DeepCopyInto(&out.DeploymentFields)
 	if in.EnableNamespacesByDefault != nil {
 		in, out := &in.EnableNamespacesByDefault, &out.EnableNamespacesByDefault
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
@@ -2066,12 +1759,8 @@ func (in *StdioMixerAdapterConfig) DeepCopyInto(out *StdioMixerAdapterConfig) {
 	in.EnabledField.DeepCopyInto(&out.EnabledField)
 	if in.OutputAsJSON != nil {
 		in, out := &in.OutputAsJSON, &out.OutputAsJSON
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
@@ -2099,48 +1788,28 @@ func (in *TracingConfig) DeepCopyInto(out *TracingConfig) {
 	}
 	if in.Gateway != nil {
 		in, out := &in.Gateway, &out.Gateway
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(TracingGatewayConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(TracingGatewayConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Ingress != nil {
 		in, out := &in.Ingress, &out.Ingress
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(IngressConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(IngressConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Jaeger != nil {
 		in, out := &in.Jaeger, &out.Jaeger
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(TracingJaegerConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(TracingJaegerConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Service != nil {
 		in, out := &in.Service, &out.Service
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(TracingServiceConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(TracingServiceConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Zipkin != nil {
 		in, out := &in.Zipkin, &out.Zipkin
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(TracingZipkinConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(TracingZipkinConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -2177,21 +1846,13 @@ func (in *TracingJaegerConfig) DeepCopyInto(out *TracingJaegerConfig) {
 	*out = *in
 	if in.Memory != nil {
 		in, out := &in.Memory, &out.Memory
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(TracingJaegerMemoryConfig)
-			**out = **in
-		}
+		*out = new(TracingJaegerMemoryConfig)
+		**out = **in
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(core_v1.ResourceRequirements)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(corev1.ResourceRequirements)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -2234,12 +1895,8 @@ func (in *TracingServiceConfig) DeepCopyInto(out *TracingServiceConfig) {
 	}
 	if in.ExternalPort != nil {
 		in, out := &in.ExternalPort, &out.ExternalPort
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(int32)
-			**out = **in
-		}
+		*out = new(int32)
+		**out = **in
 	}
 	return
 }
@@ -2259,39 +1916,23 @@ func (in *TracingZipkinConfig) DeepCopyInto(out *TracingZipkinConfig) {
 	*out = *in
 	if in.Node != nil {
 		in, out := &in.Node, &out.Node
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(TracingZipkinNodeConfig)
-			**out = **in
-		}
+		*out = new(TracingZipkinNodeConfig)
+		**out = **in
 	}
 	if in.ProbeStartupDelay != nil {
 		in, out := &in.ProbeStartupDelay, &out.ProbeStartupDelay
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(int32)
-			**out = **in
-		}
+		*out = new(int32)
+		**out = **in
 	}
 	if in.QueryPort != nil {
 		in, out := &in.QueryPort, &out.QueryPort
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(int32)
-			**out = **in
-		}
+		*out = new(int32)
+		**out = **in
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(core_v1.ResourceRequirements)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(corev1.ResourceRequirements)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }

@@ -43,4 +43,5 @@ type ServiceMeshMemberRollStatus struct {
 	ServiceMeshGeneration        int64    `json:"meshGeneration,omitempty"`
 	ServiceMeshReconciledVersion string   `json:"meshReconciledVersion,omitempty"`
 	ConfiguredMembers            []string `json:"configuredMembers,omitempty"`
+	MeshVersion                  string   `json:"meshVersion,omitempty"`
 }

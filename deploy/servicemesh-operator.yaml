@@ -399,7 +399,9 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: istio-operator
-            - name: ISTIO_CNI_IMAGE
+            - name: ISTIO_CNI_IMAGE_V1_0
+              value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.0.4
+            - name: ISTIO_CNI_IMAGE_V1_1
               value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.1.0
 #            - name: ISTIO_CNI_IMAGE_PULL_SECRET
 #              value: name-of-secret

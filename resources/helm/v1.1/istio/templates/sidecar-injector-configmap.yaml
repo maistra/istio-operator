@@ -24,7 +24,7 @@ data:
     template: |-
     {{- if .Values.istio_cni.enabled }}
       annotations:
-        k8s.v1.cni.cncf.io/networks: istio-cni
+        k8s.v1.cni.cncf.io/networks: {{.Values.istio_cni.istio_cni_network}}
     {{- end }}
 {{ .Files.Get "files/injection-template.yaml" | trim | indent 6 }}
     injectedAnnotations:

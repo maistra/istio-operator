@@ -10,6 +10,7 @@ metadata:
   labels:
     heritage: {{ .Release.Service }}
     maistra-version: 1.1.0
+    maistra-version: 1.1.0
     release: {{ .Release.Name }}
     istio: cni
 spec:
@@ -62,8 +63,8 @@ spec:
       containers:
         # This container installs the Istio CNI binaries
         # and CNI network config file on each node.
-        - name: install-cni
-          image: "{{ .Values.image }}"
+        - name: install-cni-v1-0
+          image: "{{ .Values.image_v1_0 }}"
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           command: ["/install-cni.sh"]
           env:
@@ -75,7 +76,7 @@ spec:
               value: "/host/etc/cni/multus/net.d"
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
-              value: "istio-cni-v1.0.conf"
+              value: "istio-cni.conf"
             # Name of the kubeconfig file used by CNI agent
             - name: KUBECFG_FILE_NAME
               value: "istio-cni.kubeconfig"
@@ -89,7 +90,48 @@ spec:
               valueFrom:
                 configMapKeyRef:
                   name: istio-cni-config
-                  key: cni_network_config
+                  key: cni_network_config_1_0
+          volumeMounts:
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
+            - mountPath: /host/etc/cni/
+              name: etc-cni-dir
+          resources:
+{{- if .Values.resources }}
+{{ toYaml .Values.resources | indent 12 }}
+{{- else }}
+            requests:
+              cpu: 10m
+              memory: 100Mi
+{{- end }}
+        - name: install-cni-v1-1
+          image: "{{ .Values.image_v1_1 }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command: ["/install-cni.sh"]
+          env:
+            # Directory where the CNI config file should be created in
+            - name: CNI_NET_DIR
+              value: "/etc/cni/multus/net.d"
+            # Directory where the CNI config file should be created in (host path mounted in the container)
+            - name: MOUNTED_CNI_NET_DIR
+              value: "/host/etc/cni/multus/net.d"
+            # Name of the CNI config file to create.
+            - name: CNI_CONF_NAME
+              value: "v1.1-istio-cni.conf"
+            # Name of the kubeconfig file used by CNI agent
+            - name: KUBECFG_FILE_NAME
+              value: "istio-cni.kubeconfig"
+            - name: CNI_BINARIES_PREFIX
+              value: "v1.1-"
+            # Deploy as a standalone CNI plugin instead of as chained
+            - name: CHAINED_CNI_PLUGIN
+              value: "false"
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: istio-cni-config
+                  key: cni_network_config_1_1
           volumeMounts:
             - mountPath: /host/opt/cni/bin
               name: cni-bin-dir

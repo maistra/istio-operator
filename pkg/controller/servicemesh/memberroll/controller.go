@@ -30,8 +30,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const netAttachDefName = "istio-cni" // must match name of .conf file in multus.d
-
 var log = logf.Log.WithName("controller_servicemeshmemberroll")
 
 // Add creates a new ServiceMeshMemberRoll Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -154,7 +152,7 @@ type ReconcileMemberList struct {
 	common.ResourceManager
 	scheme *runtime.Scheme
 
-	newNamespaceReconciler func(cl client.Client, logger logr.Logger, meshNamespace string, isCNIEnabled bool) (NamespaceReconciler, error)
+	newNamespaceReconciler func(cl client.Client, logger logr.Logger, meshNamespace string, meshVersion string, isCNIEnabled bool) (NamespaceReconciler, error)
 	reconcileKiali         func(kialiCRNamespace string, configuredMembers []string, reqLogger logr.Logger) error
 }
 
@@ -192,7 +190,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 		reqLogger.Info("Deleting ServiceMeshMemberRoll")
 
-		configuredMembers, err, nsErrors := r.reconcileNamespaces(nil, sets.NewString(instance.Spec.Members...), instance.Namespace, reqLogger)
+		configuredMembers, err, nsErrors := r.reconcileNamespaces(nil, sets.NewString(instance.Spec.Members...), instance.Namespace, common.DefaultMaistraVersion, reqLogger)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -249,7 +247,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		return reconcile.Result{}, nil
 	}
 
-	mesh := meshList.Items[0]
+	mesh := &meshList.Items[0]
 
 	// verify owner reference, so member roll gets deleted with control plane
 	addOwner := true
@@ -262,7 +260,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	if addOwner {
 		// add owner reference to the mesh so we can clean up if the mesh gets deleted
 		reqLogger.Info("Adding OwnerReference to ServiceMeshMemberRoll")
-		owner := metav1.NewControllerRef(&mesh, v1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
+		owner := metav1.NewControllerRef(mesh, v1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
 		owner.Controller = nil
 		owner.BlockOwnerDeletion = nil
 		instance.SetOwnerReferences([]metav1.OwnerReference{*owner})
@@ -297,7 +295,25 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	// never include the mesh namespace in unconfigured list
 	delete(unconfiguredMembers, instance.Namespace)
 
-	if instance.Generation != instance.Status.ObservedGeneration { // member roll has been updated
+	meshVersion := mesh.Status.AppliedVersion
+	if len(meshVersion) == 0 {
+		meshVersion = common.LegacyMaistraVersion
+	}
+
+	// this must be checked first to ensure the correct cni network is attached to the members
+	if mesh.Status.GetReconciledVersion() != instance.Status.ServiceMeshReconciledVersion { // service mesh has been updated
+		reqLogger.Info("Reconciling ServiceMeshMemberRoll namespaces with new generation of ServiceMeshControlPlane")
+
+		instance.Status.ConfiguredMembers = make([]string, 0, len(instance.Spec.Members))
+		newConfiguredMembers, err, nsErrors = r.reconcileNamespaces(requiredMembers, nil, instance.Namespace, meshVersion, reqLogger)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		instance.Status.ConfiguredMembers = newConfiguredMembers
+		instance.Status.ServiceMeshGeneration = mesh.Status.ObservedGeneration
+		instance.Status.ServiceMeshReconciledVersion = mesh.Status.GetReconciledVersion()
+		instance.Status.MeshVersion = meshVersion
+	} else if instance.Generation != instance.Status.ObservedGeneration { // member roll has been updated
 
 		reqLogger.Info("Reconciling new generation of ServiceMeshMemberRoll")
 
@@ -315,33 +331,23 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 
 		existingMembers := nameSet(&configuredNamespaces)
 		namespacesToRemove := existingMembers.Difference(requiredMembers)
-		newConfiguredMembers, err, nsErrors = r.reconcileNamespaces(requiredMembers, namespacesToRemove, instance.Namespace, reqLogger)
+		newConfiguredMembers, err, nsErrors = r.reconcileNamespaces(requiredMembers, namespacesToRemove, instance.Namespace, meshVersion, reqLogger)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 		instance.Status.ConfiguredMembers = newConfiguredMembers
 		instance.Status.ServiceMeshGeneration = mesh.Status.ObservedGeneration
 		instance.Status.ServiceMeshReconciledVersion = mesh.Status.GetReconciledVersion()
+		instance.Status.MeshVersion = meshVersion
 	} else if len(unconfiguredMembers) > 0 { // required namespace that was missing has been created
 		reqLogger.Info("Reconciling newly created namespaces associated with this ServiceMeshMemberRoll")
 
-		newConfiguredMembers, err, nsErrors = r.reconcileNamespaces(unconfiguredMembers, nil, instance.Namespace, reqLogger)
+		newConfiguredMembers, err, nsErrors = r.reconcileNamespaces(unconfiguredMembers, nil, instance.Namespace, meshVersion, reqLogger)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 		instance.Status.ConfiguredMembers = newConfiguredMembers
 		// we don't update the ServiceMeshGeneration in case the other members need to be updated
-	} else if mesh.Status.GetReconciledVersion() != instance.Status.ServiceMeshReconciledVersion { // service mesh has been updated
-		reqLogger.Info("Reconciling ServiceMeshMemberRoll namespaces with new generation of ServiceMeshControlPlane")
-
-		instance.Status.ConfiguredMembers = make([]string, 0, len(instance.Spec.Members))
-		newConfiguredMembers, err, nsErrors = r.reconcileNamespaces(requiredMembers, nil, instance.Namespace, reqLogger)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		instance.Status.ConfiguredMembers = newConfiguredMembers
-		instance.Status.ServiceMeshGeneration = mesh.Status.ObservedGeneration
-		instance.Status.ServiceMeshReconciledVersion = mesh.Status.GetReconciledVersion()
 	} else if len(deletedMembers) > 0 { // namespace that was configured has been deleted
 		// nothing to do, but we need to update the ConfiguredMembers field
 		reqLogger.Info("Removing deleted namespaces from ConfiguredMembers")
@@ -368,6 +374,8 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		if err != nil {
 			reqLogger.Error(err, "error updating status for ServiceMeshMemberRoll")
 		}
+	} else {
+		return reconcile.Result{}, err
 	}
 
 	// tell Kiali about all the namespaces in the mesh
@@ -379,9 +387,9 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	return reconcile.Result{}, kialiErr
 }
 
-func (r *ReconcileMemberList) reconcileNamespaces(namespacesToReconcile, namespacesToRemove sets.String, controlPlaneNamespace string, reqLogger logr.Logger) (configuredMembers []string, err error, nsErrors []error) {
+func (r *ReconcileMemberList) reconcileNamespaces(namespacesToReconcile, namespacesToRemove sets.String, controlPlaneNamespace string, controlPlaneVersion string, reqLogger logr.Logger) (configuredMembers []string, err error, nsErrors []error) {
 	// create reconciler
-	reconciler, err := r.newNamespaceReconciler(r.Client, reqLogger, controlPlaneNamespace, common.IsCNIEnabled)
+	reconciler, err := r.newNamespaceReconciler(r.Client, reqLogger, controlPlaneNamespace, controlPlaneVersion, common.IsCNIEnabled)
 	if err != nil {
 		return nil, err, nil
 	}
@@ -446,6 +454,12 @@ func (r *ReconcileMemberList) reconcileKialiInternal(kialiCRNamespace string, co
 		for _, cm := range configuredMembers {
 			accessibleNamespaces = append(accessibleNamespaces, cm)
 		}
+	}
+
+	if existingNamespaces, found, _ := unstructured.NestedStringSlice(kialiCR.UnstructuredContent(), "spec", "deployment", "accessible_namespaces");
+			found && sets.NewString(accessibleNamespaces...).Equal(sets.NewString(existingNamespaces...)){
+				reqLogger.Info("Kiali CR deployment.accessible_namespaces already up to date")
+		return nil
 	}
 
 	reqLogger.Info("Updating Kiali CR deployment.accessible_namespaces", "accessibleNamespaces", accessibleNamespaces)

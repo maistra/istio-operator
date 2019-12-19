@@ -43,6 +43,10 @@ function generateServiceMeshMemberRollsCrd() {
   yq -s -y --indentless '.[] | select(.kind=="CustomResourceDefinition" and .metadata.name=="servicemeshmemberrolls.maistra.io") | .' ${DEPLOYMENT_FILE} > ${BUNDLE_DIR}/servicemeshmemberrolls.crd.yaml
 }
 
+function generateServiceMeshMembersCrd() {
+  yq -s -y --indentless '.[] | select(.kind=="CustomResourceDefinition" and .metadata.name=="servicemeshmembers.maistra.io") | .' ${DEPLOYMENT_FILE} > ${BUNDLE_DIR}/servicemeshmembers.crd.yaml
+}
+
 function generateCSV() {
   IMAGE_SRC=$(yq -s -r '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.spec.containers[0].image' ${DEPLOYMENT_FILE})
   if [ "$IMAGE_SRC" == "" ]; then
@@ -96,6 +100,7 @@ function generatePackage() {
 checkDependencies
 generateServiceMeshControlPlanesCrd
 generateServiceMeshMemberRollsCrd
+generateServiceMeshMembersCrd
 generateCSV
 generatePackage
 
