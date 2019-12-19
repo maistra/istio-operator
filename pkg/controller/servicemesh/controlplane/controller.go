@@ -255,11 +255,16 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 		reqLogger.V(1).Info("Adding finalizer", "finalizer", common.FinalizerName)
 		finalizers.Insert(common.FinalizerName)
 		instance.SetFinalizers(finalizers.List())
+		// set default version if necessary
+		if len(instance.Spec.Version) == 0 {
+			instance.Status.AppliedVersion = common.DefaultMaistraVersion
+			reqLogger.V(1).Info("Initializing Version", "version", instance.Status.AppliedVersion)
+		}
 		err = r.Client.Update(context.TODO(), instance)
 		return reconcile.Result{}, err
 	}
 
-	if common.ReconciledVersion(instance.GetGeneration()) == instance.Status.GetReconciledVersion() &&
+	if v1.CurrentReconciledVersion(instance.GetGeneration()) == instance.Status.GetReconciledVersion() &&
 		instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
 		// sync readiness state
 		err := reconciler.UpdateReadiness()

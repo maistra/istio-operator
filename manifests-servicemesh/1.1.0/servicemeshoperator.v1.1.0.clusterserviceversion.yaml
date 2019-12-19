@@ -12,7 +12,7 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
 
     containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.1.0
-    createdAt: 2019-12-13T17:27:30MST
+    createdAt: 2020-01-09T14:30:59MST
     support: Red Hat, Inc. 
     alm-examples: |-
       [
@@ -334,7 +334,9 @@ spec:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
                   value: istio-operator
-                - name: ISTIO_CNI_IMAGE
+                - name: ISTIO_CNI_IMAGE_V1_0
+                  value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.0.4
+                - name: ISTIO_CNI_IMAGE_V1_1
                   value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.1.0
   customresourcedefinitions:
     required:
@@ -354,11 +356,20 @@ spec:
       kind: ServiceMeshMemberRoll
       displayName: Istio Service Mesh Member Roll
       description: A list of namespaces in Service Mesh
-    - name: servicemeshmemberrolls.maistra.io
+    - name: servicemeshmembers.maistra.io
       version: v1
       kind: ServiceMeshMember
       displayName: Istio Service Mesh Member
       description: Marks the containing namespace as a member of the referenced Service Mesh
+      specDescriptors:
+      - JSONPath: .spec.controlPlaneRef.namespace
+        description: The namespace of the ServiceMeshControlPlane to which this namespace belongs
+        name: Control Plane Namespace
+        type: string
+      - JSONPath: .spec.controlPlaneRef.name
+        description: The name of the ServiceMeshControlPlane to which this namespace belongs
+        name: Control Plane
+        type: string
     - name: servicemeshcontrolplanes.maistra.io
       version: v1
       kind: ServiceMeshControlPlane

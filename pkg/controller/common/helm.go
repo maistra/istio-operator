@@ -25,7 +25,8 @@ func init() {
 }
 
 const (
-	istioVersion = "v1.1"
+	DefaultMaistraVersion = "v1.1"
+	LegacyMaistraVersion  = "v1.0"
 )
 
 var (
@@ -34,9 +35,12 @@ var (
 )
 
 // GetHelmDir returns the location of the Helm charts. Similar layout to istio.io/istio/install/kubernetes/helm.
-func GetHelmDir() string {
+func GetHelmDir(maistraVersion string) string {
+	if len(maistraVersion) == 0 {
+		maistraVersion = DefaultMaistraVersion
+	}
 	// FIXME: Should not be hardcoded when https://issues.jboss.org/browse/MAISTRA-766 is implemented
-	return path.Join(ResourceDir, "helm", istioVersion)
+	return path.Join(ResourceDir, "helm", maistraVersion)
 }
 
 // GetTemplatesDir returns the location of the Operator templates files
@@ -45,8 +49,11 @@ func GetTemplatesDir() string {
 }
 
 // GetDefaultTemplatesDir returns the location of the Default Operator templates files
-func GetDefaultTemplatesDir() string {
-	return path.Join(ResourceDir, "default-templates", istioVersion)
+func GetDefaultTemplatesDir(maistraVersion string) string {
+	if len(maistraVersion) == 0 {
+		maistraVersion = DefaultMaistraVersion
+	}
+	return path.Join(ResourceDir, "default-templates", maistraVersion)
 }
 
 // RenderHelmChart renders the helm charts, returning a map of rendered templates.

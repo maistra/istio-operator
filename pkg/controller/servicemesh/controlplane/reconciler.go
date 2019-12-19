@@ -177,7 +177,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		// initialize common data
 		owner := metav1.NewControllerRef(r.Instance, v1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
 		r.ownerRefs = []metav1.OwnerReference{*owner}
-		r.meshGeneration = common.ReconciledVersion(r.Instance.GetGeneration())
+		r.meshGeneration = v1.CurrentReconciledVersion(r.Instance.GetGeneration())
 
 		// Ensure CRDs are installed
 		if err = bootstrap.InstallCRDs(r.Manager); err != nil {
@@ -272,6 +272,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 	}
 	r.Status.ObservedGeneration = r.Instance.GetGeneration()
 	r.Status.ReconciledVersion = r.meshGeneration
+	r.Status.AppliedVersion = r.Status.LastAppliedConfiguration.Version
 	updateReconcileStatus(&r.Status.StatusType, nil)
 
 	_, err = r.updateReadinessStatus() // this only updates the local object instance; it doesn't post the status update; postReconciliationStatus (called using defer) actually does that
@@ -336,7 +337,7 @@ func mergeValues(base map[string]interface{}, input map[string]interface{}) map[
 	return base
 }
 
-func (r *ControlPlaneReconciler) getSMCPTemplate(name string) (v1.ControlPlaneSpec, error) {
+func (r *ControlPlaneReconciler) getSMCPTemplate(name string, maistraVersion string) (v1.ControlPlaneSpec, error) {
 	if strings.Contains(name, "/") {
 		return v1.ControlPlaneSpec{}, fmt.Errorf("template name contains invalid character '/'")
 	}
@@ -346,7 +347,7 @@ func (r *ControlPlaneReconciler) getSMCPTemplate(name string) (v1.ControlPlaneSp
 		//if we can't read from the user template path, try from the default path
 		//we use two paths because Kubernetes will not auto-update volume mounted
 		//configmaps mounted in directories with pre-existing content
-		defaultTemplateContent, defaultErr := ioutil.ReadFile(path.Join(common.GetDefaultTemplatesDir(), name))
+		defaultTemplateContent, defaultErr := ioutil.ReadFile(path.Join(common.GetDefaultTemplatesDir(maistraVersion), name))
 		if defaultErr != nil {
 			return v1.ControlPlaneSpec{}, fmt.Errorf("template cannot be loaded from user or default directory. Error from user: %s. Error from default: %s", err, defaultErr)
 		}
@@ -371,7 +372,7 @@ func (r *ControlPlaneReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneS
 		return smcp, fmt.Errorf("SMCP templates form cyclic dependency. Cannot proceed")
 	}
 
-	template, err := r.getSMCPTemplate(smcp.Template)
+	template, err := r.getSMCPTemplate(smcp.Template, smcp.Version)
 	if err != nil {
 		return smcp, err
 	}
@@ -416,6 +417,17 @@ func (r *ControlPlaneReconciler) validateSMCPSpec(spec v1.ControlPlaneSpec) erro
 func (r *ControlPlaneReconciler) renderCharts() error {
 	//Generate the spec
 	r.Status.LastAppliedConfiguration = r.Instance.Spec
+	if len(r.Status.LastAppliedConfiguration.Version) == 0 {
+		// initialize version
+		if len(r.Status.AppliedVersion) == 0 {
+			// this must be from a 1.0 operator
+			r.Status.LastAppliedConfiguration.Version = common.LegacyMaistraVersion
+		} else {
+			// use the version that's already been applied
+			// users must manually upgrade their mesh version
+			r.Status.LastAppliedConfiguration.Version = r.Status.AppliedVersion
+		}
+	}
 
 	spec, err := r.applyTemplates(r.Status.LastAppliedConfiguration)
 	if err != nil {
@@ -440,19 +452,23 @@ func (r *ControlPlaneReconciler) renderCharts() error {
 		r.Status.LastAppliedConfiguration.Istio["istio_cni"] = CNIValues
 	}
 	CNIValues["enabled"] = common.IsCNIEnabled
+	CNIValues["istio_cni_network"], ok = common.GetCNINetworkName(r.Status.LastAppliedConfiguration.Version)
+	if !ok {
+		return fmt.Errorf("unknown maistra version: %s", r.Status.LastAppliedConfiguration.Version)
+	}
 
 	//Render the charts
 	allErrors := []error{}
 	var threeScaleRenderings map[string][]manifest.Manifest
 	r.Log.Info("rendering helm charts")
 	r.Log.V(2).Info("rendering Istio charts")
-	istioRenderings, _, err := common.RenderHelmChart(path.Join(common.GetHelmDir(), "istio"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.Istio)
+	istioRenderings, _, err := common.RenderHelmChart(path.Join(common.GetHelmDir(r.Status.LastAppliedConfiguration.Version), "istio"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.Istio)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
 	if isEnabled(r.Instance.Spec.ThreeScale) {
 		r.Log.V(2).Info("rendering 3scale charts")
-		threeScaleRenderings, _, err = common.RenderHelmChart(path.Join(common.GetHelmDir(), "maistra-threescale"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.ThreeScale)
+		threeScaleRenderings, _, err = common.RenderHelmChart(path.Join(common.GetHelmDir(r.Status.LastAppliedConfiguration.Version), "maistra-threescale"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.ThreeScale)
 		if err != nil {
 			allErrors = append(allErrors, err)
 		}
@@ -530,11 +546,17 @@ func (r *ControlPlaneReconciler) initializeReconcileStatus() {
 	var eventReason string
 	var conditionReason v1.ConditionReason
 	if r.isUpdating() {
-		readyMessage = fmt.Sprintf("Updating mesh from generation %s to generation %s", r.Status.GetReconciledVersion(), common.ReconciledVersion(r.Instance.GetGeneration()))
+		if r.Status.ObservedGeneration == r.Instance.GetGeneration() {
+			fromVersion := r.Status.GetReconciledVersion()
+			toVersion := v1.CurrentReconciledVersion(r.Instance.GetGeneration())
+			readyMessage = fmt.Sprintf("Upgrading mesh from version %s to version %s", fromVersion[strings.LastIndex(fromVersion, "-")+1:], toVersion[strings.LastIndex(toVersion, "-")+1:])
+		} else {
+			readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", r.Status.ObservedGeneration, r.Instance.GetGeneration())
+		}
 		eventReason = eventReasonUpdating
 		conditionReason = v1.ConditionReasonSpecUpdated
 	} else {
-		readyMessage = fmt.Sprintf("Installing mesh generation %s", common.ReconciledVersion(r.Instance.GetGeneration()))
+		readyMessage = fmt.Sprintf("Installing mesh generation %d", r.Instance.GetGeneration())
 		eventReason = eventReasonInstalling
 		conditionReason = v1.ConditionReasonResourceCreated
 

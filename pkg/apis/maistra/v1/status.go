@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/maistra/istio-operator/pkg/version"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -126,13 +128,23 @@ type Condition struct {
 	LastTransitionTime metav1.Time     `json:"lastTransitionTime,omitempty"`
 }
 
+// CurrentReconciledVersion returns a ReconciledVersion for this release of the operator
+func CurrentReconciledVersion(generation int64) string {
+	return ComposeReconciledVersion(version.Info.Version, generation)
+}
+
+// ComposeReconciledVersion returns a string for use in ReconciledVersion fields
+func ComposeReconciledVersion(operatorVersion string, generation int64) string {
+	return fmt.Sprintf("%s-%d", operatorVersion, generation)
+}
+
 // GetReconciledVersion returns the reconciled version, or a default for older resources
 func (s *StatusType) GetReconciledVersion() string {
 	if s == nil {
-		return "0.0.0-0"
+		return ComposeReconciledVersion("0.0.0", 0)
 	}
 	if s.ReconciledVersion == "" {
-		return fmt.Sprintf("1.0.0-%d", s.ObservedGeneration)
+		return ComposeReconciledVersion("1.0.0", s.ObservedGeneration)
 	}
 	return s.ReconciledVersion
 }

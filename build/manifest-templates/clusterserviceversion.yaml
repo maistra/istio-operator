@@ -129,6 +129,20 @@ __DEPLOYMENT_SPEC__
       kind: ServiceMeshMemberRoll
       displayName: Istio Service Mesh Member Roll
       description: A list of namespaces in Service Mesh
+    - name: servicemeshmembers.maistra.io
+      version: v1
+      kind: ServiceMeshMember
+      displayName: Istio Service Mesh Member
+      description: Marks the containing namespace as a member of the referenced Service Mesh
+      specDescriptors:
+      - JSONPath: .spec.controlPlaneRef.namespace
+        description: The namespace of the ServiceMeshControlPlane to which this namespace belongs
+        name: Control Plane Namespace
+        type: string
+      - JSONPath: .spec.controlPlaneRef.name
+        description: The name of the ServiceMeshControlPlane to which this namespace belongs
+        name: Control Plane
+        type: string
     - name: servicemeshcontrolplanes.maistra.io
       version: v1
       kind: ServiceMeshControlPlane

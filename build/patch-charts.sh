@@ -236,7 +236,7 @@ function patchSidecarInjector() {
   sed -i -e 's/^\(.*template:.*\)$/\1\
     \{\{- if .Values.istio_cni.enabled \}\}\
       annotations:\
-        k8s.v1.cni.cncf.io\/networks: istio-cni\
+        k8s.v1.cni.cncf.io\/networks: \{\{.Values.istio_cni.istio_cni_network\}\}\
     \{\{- end \}\}/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
 
   # allow the sidecar injector to set the runAsUser ID dynamically

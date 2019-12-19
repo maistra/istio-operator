@@ -14,7 +14,6 @@ import (
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -26,17 +25,19 @@ type namespaceReconciler struct {
 	client               client.Client
 	logger               logr.Logger
 	meshNamespace        string
+	meshVersion          string
 	isCNIEnabled         bool
 	networkingStrategy   NamespaceReconciler
 	roleBindingsList     rbac.RoleBindingList
 	requiredRoleBindings sets.String
 }
 
-func newNamespaceReconciler(cl client.Client, logger logr.Logger, meshNamespace string, isCNIEnabled bool) (NamespaceReconciler, error) {
+func newNamespaceReconciler(cl client.Client, logger logr.Logger, meshNamespace string, meshVersion string, isCNIEnabled bool) (NamespaceReconciler, error) {
 	reconciler := &namespaceReconciler{
 		client:               cl,
 		logger:               logger.WithValues("MeshNamespace", meshNamespace),
 		meshNamespace:        meshNamespace,
+		meshVersion:          meshVersion,
 		isCNIEnabled:         isCNIEnabled,
 		roleBindingsList:     rbac.RoleBindingList{},
 		requiredRoleBindings: sets.NewString(),
@@ -130,7 +131,7 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(namespace string) error {
 	}
 
 	// remove NetworkAttachmentDefinition so that Multus CNI no longer invokes Istio CNI for pods in this namespace
-	err = r.removeNetworkAttachmentDefinition(namespace, r.meshNamespace, logger)
+	err = r.removeNetworkAttachmentDefinition(namespace, logger)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
@@ -195,9 +196,9 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
 
 	if r.isCNIEnabled {
 		// add NetworkAttachmentDefinition to tell Multus to invoke Istio CNI for pods in this namespace
-		err = r.addNetworkAttachmentDefinition(namespace, r.meshNamespace, logger)
+		err = r.addNetworkAttachmentDefinition(namespace, logger)
 	} else {
-		err = r.removeNetworkAttachmentDefinition(namespace, r.meshNamespace, logger)
+		err = r.removeNetworkAttachmentDefinition(namespace, logger)
 	}
 	if err != nil {
 		allErrors = append(allErrors, err)
@@ -274,59 +275,66 @@ func (r *namespaceReconciler) reconcileRoleBindings(namespace string, reqLogger 
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (r *namespaceReconciler) addNetworkAttachmentDefinition(namespace, meshNamespace string, reqLogger logr.Logger) error {
+func (r *namespaceReconciler) addNetworkAttachmentDefinition(namespace string, reqLogger logr.Logger) error {
+	netAttachDefName, ok := common.GetCNINetworkName(r.meshVersion)
+	if !ok {
+		return fmt.Errorf("unknown maistra version: %s", r.meshVersion)
+	}
+
+	nadList, err := common.FetchMeshResources(r.client, schema.GroupVersionKind{
+		Group:   "k8s.cni.cncf.io",
+		Version: "v1",
+		Kind:    "NetworkAttachmentDefinitionList",
+	}, r.meshNamespace, namespace)
+	if err != nil {
+		return fmt.Errorf("Could not list NetworkAttachmentDefinition resources in member namespace %s: %v", namespace, err)
+	}
+
+	found := false
+	var allErrors []error
+	for _, nad := range nadList.Items {
+		if nad.GetName() == netAttachDefName {
+			found = true
+		} else if err := r.client.Delete(context.TODO(), &nad, client.PropagationPolicy(metav1.DeletePropagationOrphan)); err != nil {
+			allErrors = append(allErrors, err)
+		}
+	}
+	if found {
+		// TODO: update resource if its state isn't what we want
+		return utilerrors.NewAggregate(allErrors)
+	}
+
 	netAttachDef := &unstructured.Unstructured{}
 	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "k8s.cni.cncf.io",
 		Version: "v1",
 		Kind:    "NetworkAttachmentDefinition",
 	})
-
-	err := r.client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: netAttachDefName}, netAttachDef)
-	if err == nil {
-		// resource exists, do nothing
-		return nil
-	}
-	if !apierrors.IsNotFound(err) {
-		return fmt.Errorf("Could not get NetworkAttachmentDefinition %s/%s: %v", namespace, netAttachDefName, err)
-	}
-
-	// TODO: update resource if its state isn't what we want
-
 	netAttachDef.SetNamespace(namespace)
 	netAttachDef.SetName(netAttachDefName)
+	common.SetLabel(netAttachDef, common.MemberOfKey, r.meshNamespace)
 	err = r.client.Create(context.TODO(), netAttachDef)
 	if err != nil {
-		return fmt.Errorf("Could not create NetworkAttachmentDefinition %s/%s: %v", namespace, netAttachDefName, err)
+		allErrors = append(allErrors, fmt.Errorf("Could not create NetworkAttachmentDefinition %s/%s: %v", namespace, netAttachDefName, err))
 	}
-	return nil
+	return utilerrors.NewAggregate(allErrors)
 }
 
-func (r *namespaceReconciler) removeNetworkAttachmentDefinition(namespace, meshNamespace string, reqLogger logr.Logger) error {
-	netAttachDef := &unstructured.Unstructured{}
-	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
+func (r *namespaceReconciler) removeNetworkAttachmentDefinition(namespace string, reqLogger logr.Logger) error {
+	nadList, err := common.FetchMeshResources(r.client, schema.GroupVersionKind{
 		Group:   "k8s.cni.cncf.io",
 		Version: "v1",
-		Kind:    "NetworkAttachmentDefinition",
-	})
-
-	err := r.client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: netAttachDefName}, netAttachDef)
+		Kind:    "NetworkAttachmentDefinitionList",
+	}, r.meshNamespace, namespace)
 	if err != nil {
-		if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
-			// resource doesn't exist, so everything's fine
-			return nil
-		}
-		return fmt.Errorf("Could not get NetworkAttachmentDefinition %s/%s: %v", namespace, netAttachDefName, err)
+		return fmt.Errorf("Could not list NetworkAttachmentDefinition resources in member namespace %s: %v", namespace, err)
 	}
 
-	err = r.client.Delete(context.TODO(), netAttachDef, client.PropagationPolicy(metav1.DeletePropagationOrphan))
-	if err == nil {
-		// resource successfully deleted
-		return nil
+	var allErrors []error
+	for _, nad := range nadList.Items {
+		if err := r.client.Delete(context.TODO(), &nad, client.PropagationPolicy(metav1.DeletePropagationOrphan)); err != nil {
+			allErrors = append(allErrors, err)
+		}
 	}
-	if !apierrors.IsNotFound(err) {
-		// resource was deleted between our Get call and our Delete call - everything is fine
-		return nil
-	}
-	return fmt.Errorf("Could not delete NetworkAttachmentDefinition %s/%s: %v", namespace, netAttachDefName, err)
+	return utilerrors.NewAggregate(allErrors)
 }
