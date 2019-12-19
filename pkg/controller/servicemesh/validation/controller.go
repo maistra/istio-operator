@@ -2,6 +2,9 @@ package validation
 
 import (
 	"fmt"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -13,6 +16,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	admissiontypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/types"
 )
 
@@ -98,4 +102,13 @@ func Add(mgr manager.Manager) error {
 
 func (f namespaceFilter) watching(namespace string) bool {
 	return len(f) == 0 || namespace == string(f)
+}
+
+func validationFailedResponse(httpStatusCode int32, reason string) admissiontypes.Response {
+	response := admission.ValidationResponse(false, reason)
+	if len(reason) == 0 {
+		response.Response.Result = &metav1.Status{}
+	}
+	response.Response.Result.Code = httpStatusCode
+	return response
 }

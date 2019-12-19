@@ -3,25 +3,57 @@ kind: ServiceMeshControlPlane
 spec:
   istio:
     global:
-      tag: 1.0.0
+      tag: 1.0.2
+      # constrain resources for use in smaller environments
+      defaultResources:
+        requests:
+          cpu: 10m
+          memory: 128Mi
+        limits:
       proxy:
         autoInject: disabled
         dnsRefreshRate: 300s
+        # constrain resources for use in smaller environments
+        resources:
+          requests:
+            cpu: 10m
+            memory: 128Mi
+          limits:
       oauthproxy:
-        tag: 4.1
+        tag: 4.2
         imagePullPolicy: IfNotPresent
+      defaultPodDisruptionBudget:
+        enabled: false
+    security:
+      # constrain resources for use in smaller environments
+      resources:
+        requests:
+          cpu: 10m
+          memory: 128Mi
+        limits:
+    galley:
+      # constrain resources for use in smaller environments
+      resources:
+        requests:
+          cpu: 10m
+          memory: 128Mi
+        limits:
     pilot:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 128Mi
+        limits:
       env:
         GODEBUG: null
     mixer:
       telemetry:
+        # constrain resources for use in smaller environments
         resources:
           requests:
-            cpu: 100m
-            memory: 1G
+            cpu: 10m
+            memory: 128Mi
           limits:
-            cpu: 500m
-            memory: 4G
       env:
         GODEBUG: null
     grafana:
@@ -46,13 +78,31 @@ spec:
     gateways:
       istio-egressgateway:
         enabled: true
+        # constrain resources for use in smaller environments
+        resources:
+          requests:
+            cpu: 10m
+            memory: 128Mi
+          limits:
       istio-ingressgateway:
         enabled: true
         type: ClusterIP
+        # constrain resources for use in smaller environments
+        resources:
+          requests:
+            cpu: 10m
+            memory: 128Mi
+          limits:
     prometheus:
-     service:
-      annotations:
-        service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls
-     ingress:
+      service:
+        annotations:
+          service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls
+      ingress:
         enabled: true
+      # constrain resources for use in smaller environments
+      resources:
+        requests:
+          cpu: 10m
+          memory: 128Mi
+        limits:
   threeScale: {}

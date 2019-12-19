@@ -56,12 +56,12 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 		return admission.ErrorResponse(http.StatusInternalServerError, err)
 	}
 	if len(smcpList.Items) == 0 {
-		return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("no service mesh is configured in namespace '%s'", smmr.Namespace))
+		return validationFailedResponse(http.StatusBadRequest, fmt.Sprintf("no service mesh is configured in namespace '%s'", smmr.Namespace))
 	}
 
 	// verify name == default
 	if memberRollName != smmr.Name {
-		return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("ServiceMeshMemberRoll must be named '%s'", memberRollName))
+		return validationFailedResponse(http.StatusBadRequest, fmt.Sprintf("ServiceMeshMemberRoll must be named '%s'", memberRollName))
 	}
 
 	smmrList := &maistrav1.ServiceMeshMemberRollList{}
@@ -94,9 +94,9 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 	}
 	for _, member := range smmr.Spec.Members {
 		if namespacesAlreadyConfigured.Has(member) {
-			return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("one or more members are already defined in another ServiceMeshMemberRoll"))
+			return validationFailedResponse(http.StatusBadRequest, "one or more members are already defined in another ServiceMeshMemberRoll")
 		} else if smmr.Namespace == member {
-			return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("mesh project/namespace cannot be listed as a member"))
+			return validationFailedResponse(http.StatusBadRequest, "mesh project/namespace cannot be listed as a member")
 		}
 		// verify user can access all smmr member namespaces
 		sar.Spec.ResourceAttributes.Namespace = member
@@ -107,7 +107,7 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 			return admission.ErrorResponse(http.StatusInternalServerError, err)
 		}
 		if !sar.Status.Allowed || sar.Status.Denied {
-			return admission.ErrorResponse(http.StatusForbidden, fmt.Errorf("user '%s' does not have permission to access project/namespace '%s'", req.AdmissionRequest.UserInfo.Username, member))
+			return validationFailedResponse(http.StatusForbidden, fmt.Sprintf("user '%s' does not have permission to access project/namespace '%s'", req.AdmissionRequest.UserInfo.Username, member))
 		}
 	}
 
