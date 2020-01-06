@@ -170,6 +170,23 @@ func TestReconcileDeletesMemberRollIfItHadCreatedIt(t *testing.T) {
 	test.AssertNotFound(cl, types.NamespacedName{controlPlaneNamespace, common.MemberRollName}, &maistra.ServiceMeshMemberRoll{}, "Expected reconcile to delete the SMMR, but it didn't", t)
 }
 
+func TestReconcilePreservesMemberRollIfItCreatedItButUserManuallyAddedAnotherNamespace(t *testing.T) {
+	member := newMember()
+	member.DeletionTimestamp = &oneMinuteAgo
+	memberRoll := newMemberRoll()
+	memberRoll.Annotations = map[string]string{
+		common.CreatedByKey: controllerName,
+	}
+	memberRoll.Spec.Members = []string{appNamespace, "other-ns-1"}
+
+	cl, _, r := createClientAndReconciler(t, member, memberRoll)
+
+	assertReconcileSucceeds(r, t)
+
+	updatedMemberRoll := test.GetUpdatedObject(cl, memberRoll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	assert.DeepEquals(updatedMemberRoll.Spec.Members, []string{"other-ns-1"}, "Unexpected members in SMMR", t)
+}
+
 func TestReconcileWorksIfMembersRollDoesNotExistWhenRemovingMember(t *testing.T) {
 	member := newMember()
 	member.DeletionTimestamp = &oneMinuteAgo
@@ -178,8 +195,6 @@ func TestReconcileWorksIfMembersRollDoesNotExistWhenRemovingMember(t *testing.T)
 
 	assertReconcileSucceeds(r, t)
 }
-
-// TODO: what if SMMR is created by the controller, but then an additional namespace is added manually.. should the SMMR be deleted when you delete the Member?
 
 func TestReconcileWorksIfMembersRollIsDeletedExternallyWhenRemovingMember(t *testing.T) {
 	member := newMember()
