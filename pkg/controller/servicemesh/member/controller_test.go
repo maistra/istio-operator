@@ -379,8 +379,6 @@ func assertReconcileSucceeds(r *MemberReconciler, t *testing.T) {
 	if res.Requeue {
 		t.Error("Reconcile requeued the request, but it shouldn't have")
 	}
-
-	// TODO: check if Reconcile mutated the object in the local cache (it should never do that)
 }
 
 func assertReconcileFails(r *MemberReconciler, t *testing.T) {
