@@ -58,13 +58,7 @@ func TestReconcileAddsFinalizer(t *testing.T) {
 	updatedMember := test.GetUpdatedObject(cl, member.ObjectMeta, &maistra.ServiceMeshMember{}).(*maistra.ServiceMeshMember)
 
 	assert.DeepEquals(updatedMember.GetFinalizers(), []string{common.FinalizerName}, "Invalid finalizers in SMM", t)
-
-	// TODO: retrieve actions performed on client and check if no unexpected actions were performed (in all other tests, too!)
-	actions := tracker.Actions()
-	test.AssertNumberOfActions(t, actions, 3)
-	test.AssertGetAction(t, actions[0], member.ObjectMeta, member)
-	//test.AssertUpdateAction(t, actions[1], member.ObjectMeta, member)
-	test.AssertGetAction(t, actions[2], member.ObjectMeta, member)
+	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
 }
 
 func TestReconcileAddsNamespaceToMemberRoll(t *testing.T) {
