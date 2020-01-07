@@ -74,6 +74,9 @@ func (s *networkPolicyStrategy) reconcileNamespaceInMesh(namespace string) error
 			networkPolicy.SetName(networkPolicyName)
 			networkPolicy.SetLabels(meshNetworkPolicy.GetLabels())
 			networkPolicy.SetAnnotations(meshNetworkPolicy.GetAnnotations())
+			if podSelector, ok, _ := unstructured.NestedFieldCopy(meshNetworkPolicy.UnstructuredContent(), "spec", "podSelector"); ok {
+				unstructured.SetNestedField(networkPolicy.UnstructuredContent(), podSelector, "spec", "podSelector")
+			}
 			if ingress, ok, _ := unstructured.NestedSlice(meshNetworkPolicy.UnstructuredContent(), "spec", "ingress"); ok {
 				unstructured.SetNestedSlice(networkPolicy.UnstructuredContent(), ingress, "spec", "ingress")
 			}
