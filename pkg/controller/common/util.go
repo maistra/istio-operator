@@ -5,11 +5,13 @@ import (
 	"os"
 	"sync"
 
-	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/go-logr/logr"
 	"github.com/maistra/istio-operator/pkg/version"
+	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -19,9 +21,22 @@ var log = logf.Log.WithName("util")
 
 type ResourceManager struct {
 	Client            client.Client
+	Scheme            *runtime.Scheme
+	JSONSerializer    runtime.Serializer
 	PatchFactory      *PatchFactory
 	Log               logr.Logger
 	OperatorNamespace string
+}
+
+func NewResourceManager(k8sClient client.Client, scheme *runtime.Scheme, log logr.Logger, operatorNamespace string) ResourceManager {
+	return ResourceManager{
+		Client:            k8sClient,
+		Scheme:            scheme,
+		JSONSerializer:    json.NewSerializer(json.DefaultMetaFactory, scheme, scheme, false),
+		PatchFactory:      NewPatchFactory(k8sClient, scheme),
+		Log:               log,
+		OperatorNamespace: operatorNamespace,
+	}
 }
 
 // ReconciledVersion returns a string encompasing the resource generation and the operator version, e.g. "1.0.0-1" (version 1.0.0, generation 1)
