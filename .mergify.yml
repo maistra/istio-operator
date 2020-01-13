@@ -1,5 +1,5 @@
 pull_request_rules:
-  - name: automatic merge with strict when reviewed and not work in progress
+  - name: automatic merge (with squash) with strict when reviewed and not work in progress
     conditions:
       - '#approved-reviews-by>=2'
       - '#review-requested=0'
@@ -7,6 +7,22 @@ pull_request_rules:
       #- '#commented-reviews-by=0'
       - label != "work in progress"
       - label = "okay to merge"
+      - label != "don't squash"
+      #- status-success=Commit Message Lint
+      #- milestone ~= '^maistra-\d+-\d+$'
+    actions:
+      merge:
+        method: squash
+        strict: smart
+  - name: automatic merge (without squash) with strict when reviewed and not work in progress
+    conditions:
+      - '#approved-reviews-by>=2'
+      - '#review-requested=0'
+      - '#changes-requested-reviews-by=0'
+      #- '#commented-reviews-by=0'
+      - label != "work in progress"
+      - label = "okay to merge"
+      - label = "don't squash"
       #- status-success=Commit Message Lint
       #- milestone ~= '^maistra-\d+-\d+$'
     actions:
