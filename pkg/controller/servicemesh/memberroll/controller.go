@@ -222,7 +222,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, pkgerrors.Wrap(err, "Error getting ServiceMeshMemberRoll prior to removing finalizer")
 		}
 
-		return reconcile.Result{}, err
+		return reconcile.Result{}, nil
 	} else if !finalizers.Has(common.FinalizerName) {
 		reqLogger.Info("Adding finalizer to ServiceMeshMemberRoll", "finalizer", common.FinalizerName)
 		finalizers.Insert(common.FinalizerName)
@@ -296,8 +296,6 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	deletedMembers := configuredMembers.Difference(allNamespaces)
 	unconfiguredMembers := allNamespaces.Intersection(requiredMembers.Difference(configuredMembers))
 
-	// always include the mesh namespace in the configured list
-	configuredMembers.Insert(instance.Namespace)
 	// never include the mesh namespace in unconfigured list
 	delete(unconfiguredMembers, instance.Namespace)
 
