@@ -33,26 +33,13 @@ spec:
       {{- end }}
 
   agent:
-    options:
-      collector:
-        host-port: jaeger-collector:14267
+    {{- if and .Values.jaeger.hub .Values.jaeger.tag .Values.jaeger.agentImage }}
+    image: {{ .Values.jaeger.hub }}/{{ .Values.jaeger.agentImage }}:{{ .Values.jaeger.tag }}
+    {{- end }}
     annotations:
       {{- range $key, $value := .Values.jaeger.annotations }}
         {{ $key }}: {{ $value | quote }}
       {{- end }}
-
-  ui:
-    options:
-      dependencies:
-        menuEnabled: false
-      menu:
-        - label: "About Jaeger"
-          items:
-            - label: "Documentation"
-              url: "https://www.jaegertracing.io/docs/latest"
-            - label: "Log Out"
-              url: "/oauth/sign_in"
-              anchorTarget: "_self"
 
   storage:
     type: elasticsearch
@@ -83,8 +70,6 @@ spec:
         requests:
           memory: "16Gi"
           cpu: "1"
-        limits:
-          memory: "16Gi"
 {{- end }}
 
 {{- if .Values.jaeger.esIndexCleaner }}

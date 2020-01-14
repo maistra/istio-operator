@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -55,7 +57,7 @@ func (v *controlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 		}
 		if othercp.Namespace == namespace {
 			// verify single instance per namespace
-			return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("only one service mesh may be installed per project/namespace"))
+			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "only one service mesh may be installed per project/namespace")
 		}
 	}
 

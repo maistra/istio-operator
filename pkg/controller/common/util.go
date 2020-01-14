@@ -1,11 +1,15 @@
 package common
 
 import (
+	"fmt"
 	"os"
 	"sync"
 
-	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/go-logr/logr"
+	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/maistra/istio-operator/pkg/version"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -20,6 +24,11 @@ type ResourceManager struct {
 	PatchFactory      *PatchFactory
 	Log               logr.Logger
 	OperatorNamespace string
+}
+
+// ReconciledVersion returns a string encompasing the resource generation and the operator version, e.g. "1.0.0-1" (version 1.0.0, generation 1)
+func ReconciledVersion(generation int64) string {
+	return fmt.Sprintf("%s-%d", version.Info.Version, generation)
 }
 
 func IndexOf(l []string, s string) int {
@@ -127,4 +136,8 @@ func GetOperatorNamespace() string {
 		}
 	})
 	return operatorNamespace
+}
+
+func ToNamespacedName(objectMeta metav1.ObjectMeta) types.NamespacedName {
+	return types.NamespacedName{objectMeta.Namespace, objectMeta.Name}
 }

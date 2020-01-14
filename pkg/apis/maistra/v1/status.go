@@ -12,6 +12,7 @@ import (
 type StatusType struct {
 	Resource           string      `json:"resource,omitempty"`
 	ObservedGeneration int64       `json:"observedGeneration,omitempty"`
+	ReconciledVersion  string      `json:"reconciledVersion,omitempty"`
 	Conditions         []Condition `json:"conditions,omitempty"`
 }
 
@@ -123,6 +124,17 @@ type Condition struct {
 	Reason             ConditionReason `json:"reason,omitempty"`
 	Message            string          `json:"message,omitempty"`
 	LastTransitionTime metav1.Time     `json:"lastTransitionTime,omitempty"`
+}
+
+// GetReconciledVersion returns the reconciled version, or a default for older resources
+func (s *StatusType) GetReconciledVersion() string {
+	if s == nil {
+		return "0.0.0-0"
+	}
+	if s.ReconciledVersion == "" {
+		return fmt.Sprintf("1.0.0-%d", s.ObservedGeneration)
+	}
+	return s.ReconciledVersion
 }
 
 // GetCondition removes a condition for the list of conditions

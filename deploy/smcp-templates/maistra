@@ -32,4 +32,5 @@ spec:
       image: prometheus-ubi8
   threeScale:
     hub: quay.io/3scale
+    image: 3scale-istio-adapter
     tag: v1.0.0

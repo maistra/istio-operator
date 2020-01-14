@@ -8,7 +8,7 @@ import (
 
 func (r *ControlPlaneReconciler) Delete() error {
 	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonDeleting, "Deleting service mesh")
-	err := r.prune(-1)
+	err := r.prune("")
 	if err == nil {
 		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonDeleted, "Successfully deleted service mesh resources")
 	} else {

@@ -2,6 +2,9 @@ package validation
 
 import (
 	"fmt"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -13,6 +16,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	admissiontypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/types"
 )
 
@@ -59,7 +63,7 @@ func Add(mgr manager.Manager) error {
 			Name: "smcp.validation.maistra.io",
 			Path: "/validate-smcp",
 			Rules: []arbeta1.RuleWithOperations{
-				arbeta1.RuleWithOperations{
+				{
 					Rule: arbeta1.Rule{
 						APIGroups:   []string{maistrav1.SchemeGroupVersion.Group},
 						APIVersions: []string{maistrav1.SchemeGroupVersion.Version},
@@ -78,7 +82,7 @@ func Add(mgr manager.Manager) error {
 			Name: "smmr.validation.maistra.io",
 			Path: "/validate-smmr",
 			Rules: []arbeta1.RuleWithOperations{
-				arbeta1.RuleWithOperations{
+				{
 					Rule: arbeta1.Rule{
 						APIGroups:   []string{maistrav1.SchemeGroupVersion.Group},
 						APIVersions: []string{maistrav1.SchemeGroupVersion.Version},
@@ -93,9 +97,38 @@ func Add(mgr manager.Manager) error {
 				&memberRollValidator{},
 			},
 		},
+		&admission.Webhook{
+			Name: "smm.validation.maistra.io",
+			Path: "/validate-smm",
+			Rules: []arbeta1.RuleWithOperations{
+				{
+					Rule: arbeta1.Rule{
+						APIGroups:   []string{maistrav1.SchemeGroupVersion.Group},
+						APIVersions: []string{maistrav1.SchemeGroupVersion.Version},
+						Resources:   []string{"servicemeshmembers"},
+					},
+					Operations: []arbeta1.OperationType{arbeta1.Create, arbeta1.Update},
+				},
+			},
+			FailurePolicy: &failurePolicy,
+			Type:          types.WebhookTypeValidating,
+			Handlers: []admission.Handler{
+				&memberValidator{},
+			},
+		},
 	)
 }
 
 func (f namespaceFilter) watching(namespace string) bool {
 	return len(f) == 0 || namespace == string(f)
+}
+
+func validationFailedResponse(httpStatusCode int32, reason metav1.StatusReason, message string) admissiontypes.Response {
+	response := admission.ValidationResponse(false, string(reason))
+	if len(reason) == 0 {
+		response.Response.Result = &metav1.Status{}
+	}
+	response.Response.Result.Code = httpStatusCode
+	response.Response.Result.Message = message
+	return response
 }

@@ -5,18 +5,20 @@ import (
 	"fmt"
 	"net/http"
 
-	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 
-	authorizationv1 "k8s.io/api/authorization/v1"
+	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller/common"
+
 	authenticationv1 "k8s.io/api/authentication/v1"
+	authorizationv1 "k8s.io/api/authorization/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 )
-
-const memberRollName = "default"
 
 type memberRollValidator struct {
 	client  client.Client
@@ -54,12 +56,12 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 		return admission.ErrorResponse(http.StatusInternalServerError, err)
 	}
 	if len(smcpList.Items) == 0 {
-		return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("no service mesh is configured in namespace '%s'", smmr.Namespace))
+		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("no service mesh is configured in namespace '%s'", smmr.Namespace))
 	}
 
 	// verify name == default
-	if memberRollName != smmr.Name {
-		return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("ServiceMeshMemberRoll must be named '%s'", memberRollName))
+	if common.MemberRollName != smmr.Name {
+		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("ServiceMeshMemberRoll must be named '%s'", common.MemberRollName))
 	}
 
 	smmrList := &maistrav1.ServiceMeshMemberRollList{}
@@ -70,13 +72,13 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 	}
 
 	// verify no duplicate members across all smmr resources
-	namespacesAlreadyConfigured := map[string]struct{}{}
+	namespacesAlreadyConfigured := sets.NewString()
 	for _, othermr := range smmrList.Items {
 		if othermr.Name == smmr.Name && othermr.Namespace == smmr.Namespace {
 			continue
 		}
 		for _, member := range othermr.Spec.Members {
-			namespacesAlreadyConfigured[member] = struct{}{}
+			namespacesAlreadyConfigured.Insert(member)
 		}
 	}
 	sar := &authorizationv1.SubjectAccessReview{}
@@ -91,10 +93,10 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 		Resource: "pods",
 	}
 	for _, member := range smmr.Spec.Members {
-		if _, ok := namespacesAlreadyConfigured[member]; ok {
-			return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("one or more members are already defined in another ServiceMeshMemberRoll"))
+		if namespacesAlreadyConfigured.Has(member) {
+			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "one or more members are already defined in another ServiceMeshMemberRoll")
 		} else if smmr.Namespace == member {
-			return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("mesh project/namespace cannot be listed as a member"))
+			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "mesh project/namespace cannot be listed as a member")
 		}
 		// verify user can access all smmr member namespaces
 		sar.Spec.ResourceAttributes.Namespace = member
@@ -105,7 +107,7 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 			return admission.ErrorResponse(http.StatusInternalServerError, err)
 		}
 		if !sar.Status.Allowed || sar.Status.Denied {
-			return admission.ErrorResponse(http.StatusForbidden, fmt.Errorf("user '%s' does not have permission to access project/namespace '%s'", req.AdmissionRequest.UserInfo.Username, member))
+			return validationFailedResponse(http.StatusForbidden, metav1.StatusReasonBadRequest, fmt.Sprintf("user '%s' does not have permission to access project/namespace '%s'", req.AdmissionRequest.UserInfo.Username, member))
 		}
 	}
 

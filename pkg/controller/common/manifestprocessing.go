@@ -7,6 +7,7 @@ import (
 	"github.com/ghodss/yaml"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
@@ -144,6 +145,22 @@ func (p *ManifestProcessor) processObject(obj *unstructured.Unstructured, compon
 	} else if patch, err = p.PatchFactory.CreatePatch(receiver, obj); err == nil && patch != nil {
 		p.Log.Info("updating existing resource")
 		_, err = patch.Apply()
+		if errors.IsInvalid(err) {
+			// patch was invalid, try delete/create
+			p.Log.Info("patch failed.  attempting to delete and recreate the resource")
+			if deleteErr := p.Client.Delete(context.TODO(), obj, client.PropagationPolicy(metav1.DeletePropagationBackground)); deleteErr == nil {
+				// we need to remove the resource version, which was updated by the patching process
+				obj.SetResourceVersion("")
+				if createErr := p.Client.Create(context.TODO(), obj); createErr == nil {
+					p.Log.Info("successfully recreated resource after patch failure")
+					err = nil
+				} else {
+					p.Log.Error(createErr, "error trying to recreate resource after patch failure")
+				}
+			} else {
+				p.Log.Error(deleteErr, "error deleting resource for recreation")
+			}
+		}
 	}
 	p.Log.V(2).Info("resource reconciliation complete")
 	if err != nil {

@@ -272,6 +272,8 @@ github.com/mailru/easyjson v0.0.0-20190403194419-1ea4449da983 h1:wL11wNW7dhKIcRC
 github.com/mailru/easyjson v0.0.0-20190403194419-1ea4449da983/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/maistra/controller-runtime v0.1.13-0.20190926110539-8c6fdfaa0ad1 h1:BDMAIhhTd4LX2Naq7Haud/KiK/Sw+H1H2cjHjo2+/Xk=
 github.com/maistra/controller-runtime v0.1.13-0.20190926110539-8c6fdfaa0ad1/go.mod h1:xTw1FBKc3r729i9JBXQeUaILM4+C6YtyBYxYLOsi5Q4=
+github.com/maistra/controller-runtime v0.1.13-0.20191029124451-623f07679978 h1:S6+sAZdwdwi7BE6lxa5o817nC7i62K5Le8XGsnWKubM=
+github.com/maistra/controller-runtime v0.1.13-0.20191029124451-623f07679978/go.mod h1:xTw1FBKc3r729i9JBXQeUaILM4+C6YtyBYxYLOsi5Q4=
 github.com/markbates/inflect v1.0.4 h1:5fh1gzTFhfae06u3hzHYO9xe3l3v3nW5Pwt3naLTP5g=
 github.com/markbates/inflect v1.0.4/go.mod h1:1fR9+pO2KHEO9ZRtto13gDwwZaAKstQzferVeWqbgNs=
 github.com/martinlindhe/base36 v0.0.0-20180729042928-5cda0030da17/go.mod h1:+AtEs8xrBpCeYgSLoY/aJ6Wf37jtBuR0s35750M27+8=

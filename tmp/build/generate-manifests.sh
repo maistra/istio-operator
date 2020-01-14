@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# to generate Maistra OLM metadata: MAISTRA_VERSION=1.0.0 tmp/build/generate-manifests.sh
-# to generate ServiceMesh OLM metadata: COMMUNITY=false MAISTRA_VERSION=1.0.0 tmp/build/generate-manifests.sh
+# to generate Maistra OLM metadata: MAISTRA_VERSION=1.0.1 REPLACES_CSV=1.0.0 tmp/build/generate-manifests.sh
+# to generate ServiceMesh OLM metadata: COMMUNITY=false MAISTRA_VERSION=1.0.1 REPLACES_CSV=1.0.0 tmp/build/generate-manifests.sh
 
 set -e
 
 : ${COMMUNITY:-"true"}
-: ${MAISTRA_VERSION:?"Need to set maistra version, e.g. 1.0.0"}
-
+: ${MAISTRA_VERSION:?"Need to set maistra version, e.g. 1.0.1"}
 if [[ ${COMMUNITY} == "true" ]]; then
   BUILD_TYPE="maistra"
   JAEGER_TEMPLATE="all-in-one"
@@ -80,6 +79,11 @@ function generateCSV() {
     s/__DEPLOYMENT_SPEC__//
     r '<(echo "$DEPLOYMENT_SPEC")'
   }' ${csv_path}
+  if [ -z "$REPLACES_CSV" ]; then
+    sed -i '/__REPLACES_CSV__/d' ${csv_path}
+  else
+    sed -i -e 's+__REPLACES_CSV__+'"  replaces: $OPERATOR_NAME.v$REPLACES_CSV"'+g' ${csv_path}
+  fi
 }
 
 function generatePackage() {
@@ -94,3 +98,4 @@ generateServiceMeshControlPlanesCrd
 generateServiceMeshMemberRollsCrd
 generateCSV
 generatePackage
+

@@ -17,16 +17,6 @@ spec:
       mtls:
         enabled: true
 
-      proxy:
-        # constrain resources for use in smaller environments
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 500m
-            memory: 128Mi
-
     gateways:
       istio-egressgateway:
         # disable autoscaling for use in smaller environments
@@ -43,14 +33,6 @@ spec:
       telemetry:
         # disable autoscaling for use in smaller environments
         autoscaleEnabled: false
-        # constrain resources for use in smaller environments
-        resources:
-          requests:
-            cpu: 100m
-            memory: 1G
-          limits:
-            cpu: 500m
-            memory: 4G
 
     pilot:
       # disable autoscaling for use in smaller environments
@@ -70,6 +52,8 @@ spec:
         template: all-in-one
         # production strategy, utilizing elasticsearch
         #template: production-elasticsearch
+        # streaming strategy, utilizing elasticsearch
+        #template: streaming-elasticsearch
         # if required. only one instance may use agentStrategy=DaemonSet
         #agentStrategy: DaemonSet
 

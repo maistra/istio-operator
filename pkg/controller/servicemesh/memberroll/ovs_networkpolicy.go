@@ -4,10 +4,11 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/util/sets"
 
-    "github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 
-    networkingv1 "k8s.io/api/networking/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -19,11 +20,11 @@ type networkPolicyStrategy struct {
 	client                  client.Client
 	logger                  logr.Logger
 	meshNamespace           string
-	requiredNetworkPolicies map[string]struct{}
+	requiredNetworkPolicies sets.String
 	networkPoliciesList     *unstructured.UnstructuredList
 }
 
-var _ networkingStrategy = (*networkPolicyStrategy)(nil)
+var _ NamespaceReconciler = (*networkPolicyStrategy)(nil)
 
 func newNetworkPolicyStrategy(r *namespaceReconciler) (*networkPolicyStrategy, error) {
 	var err error
@@ -31,7 +32,7 @@ func newNetworkPolicyStrategy(r *namespaceReconciler) (*networkPolicyStrategy, e
 		client:                  r.client,
 		logger:                  r.logger.WithValues("NetworkStrategy", "NetworkPolicy"),
 		meshNamespace:           r.meshNamespace,
-		requiredNetworkPolicies: map[string]struct{}{},
+		requiredNetworkPolicies: sets.NewString(),
 	}
 	strategy.networkPoliciesList, err = common.FetchOwnedResources(r.client, networkingv1.SchemeGroupVersion.WithKind("NetworkPolicy"), strategy.meshNamespace, strategy.meshNamespace)
 	if err != nil {
@@ -42,7 +43,7 @@ func newNetworkPolicyStrategy(r *namespaceReconciler) (*networkPolicyStrategy, e
 		if _, ok := common.GetAnnotation(&np, common.InternalKey); ok {
 			continue
 		}
-		strategy.requiredNetworkPolicies[np.GetName()] = struct{}{}
+		strategy.requiredNetworkPolicies.Insert(np.GetName())
 	}
 	return strategy, nil
 }
@@ -58,15 +59,15 @@ func (s *networkPolicyStrategy) reconcileNamespaceInMesh(namespace string) error
 	allErrors := []error{}
 
 	// add required network policies
-	existingNetworkPolicies := nameSet(namespaceNetworkPolicies.Items)
-	addedNetworkPolicies := map[string]struct{}{}
+	existingNetworkPolicies := nameSet(namespaceNetworkPolicies)
+	addedNetworkPolicies := sets.NewString()
 	for _, meshNetworkPolicy := range s.networkPoliciesList.Items {
 		networkPolicyName := meshNetworkPolicy.GetName()
-		if _, ok := s.requiredNetworkPolicies[networkPolicyName]; !ok {
+		if !s.requiredNetworkPolicies.Has(networkPolicyName) {
 			// this is not required for members
 			continue
 		}
-		if _, ok := existingNetworkPolicies[networkPolicyName]; !ok {
+		if !existingNetworkPolicies.Has(networkPolicyName) {
 			logger.Info("creating NetworkPolicy", "NetworkPolicy", networkPolicyName)
 			networkPolicy := &unstructured.Unstructured{}
 			networkPolicy.SetGroupVersionKind(networkingv1.SchemeGroupVersion.WithKind("NetworkPolicy"))
@@ -83,7 +84,7 @@ func (s *networkPolicyStrategy) reconcileNamespaceInMesh(namespace string) error
 			common.SetLabel(networkPolicy, common.MemberOfKey, s.meshNamespace)
 			err = s.client.Create(context.TODO(), networkPolicy)
 			if err == nil {
-				addedNetworkPolicies[networkPolicyName] = struct{}{}
+				addedNetworkPolicies.Insert(networkPolicyName)
 			} else {
 				logger.Error(err, "error creating NetworkPolicy", "NetworkPolicy", networkPolicyName)
 				allErrors = append(allErrors, err)
@@ -91,10 +92,10 @@ func (s *networkPolicyStrategy) reconcileNamespaceInMesh(namespace string) error
 		} // XXX: else if existingNetworkPolicy.annotations[mesh-generation] != meshNetworkPolicy.annotations[generation] then update?
 	}
 
-	existingNetworkPolicies = union(existingNetworkPolicies, addedNetworkPolicies)
+	existingNetworkPolicies = existingNetworkPolicies.Union(addedNetworkPolicies)
 
 	// delete obsolete network policies
-	for networkPolicyName := range difference(existingNetworkPolicies, s.requiredNetworkPolicies) {
+	for networkPolicyName := range existingNetworkPolicies.Difference(s.requiredNetworkPolicies) {
 		logger.Info("deleting NetworkPolicy", "NetworkPolicy", networkPolicyName)
 		networkPolicy := &unstructured.Unstructured{}
 		networkPolicy.SetGroupVersionKind(networkingv1.SchemeGroupVersion.WithKind("NetworkPolicy"))

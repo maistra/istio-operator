@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
-	"strconv"
 	"strings"
 
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/bootstrap"
@@ -72,7 +72,7 @@ const (
 )
 
 func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error) {
-	if r.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse { 
+	if r.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse {
 		r.initializeReconcileStatus()
 		err := r.PostStatus()
 		return reconcile.Result{}, err // ensure that the new reconcile status is posted immediately. Reconciliation will resume when the status update comes back into the operator
@@ -177,7 +177,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		// initialize common data
 		owner := metav1.NewControllerRef(r.Instance, v1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
 		r.ownerRefs = []metav1.OwnerReference{*owner}
-		r.meshGeneration = strconv.FormatInt(r.Instance.GetGeneration(), 10)
+		r.meshGeneration = common.ReconciledVersion(r.Instance.GetGeneration())
 
 		// Ensure CRDs are installed
 		if err = bootstrap.InstallCRDs(r.Manager); err != nil {
@@ -247,31 +247,31 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 		}
 	}
 
-	// we only need to prune if we've actually installed something
-	if r.Instance.Generation != 1 {
-		// delete unseen components
-		reconciliationMessage = "Pruning obsolete resources"
-		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonPruning, reconciliationMessage)
-		r.Log.Info(reconciliationMessage)
-		err = r.prune(r.Instance.GetGeneration())
-		if err != nil {
-			reconciliationReason = v1.ConditionReasonReconcileError
-			reconciliationMessage = "Error pruning obsolete resources"
-			err = errors.Wrap(err, reconciliationMessage)
-			return
-		}
+	// we still need to prune if this is the first generation, e.g. if the operator was updated during the install,
+	// it's possible that some resources in the original version may not be present in the new version.
+	// delete unseen components
+	reconciliationMessage = "Pruning obsolete resources"
+	r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonPruning, reconciliationMessage)
+	r.Log.Info(reconciliationMessage)
+	err = r.prune(r.meshGeneration)
+	if err != nil {
+		reconciliationReason = v1.ConditionReasonReconcileError
+		reconciliationMessage = "Error pruning obsolete resources"
+		err = errors.Wrap(err, reconciliationMessage)
+		return
 	}
 
 	if r.isUpdating() {
 		reconciliationReason = v1.ConditionReasonUpdateSuccessful
-		reconciliationMessage = fmt.Sprintf("Successfully updated from generation %d to generation %d", r.Status.ObservedGeneration, r.Instance.GetGeneration())
+		reconciliationMessage = fmt.Sprintf("Successfully updated from version %s to version %s", r.Status.GetReconciledVersion(), r.meshGeneration)
 		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonUpdated, reconciliationMessage)
 	} else {
 		reconciliationReason = v1.ConditionReasonInstallSuccessful
-		reconciliationMessage = fmt.Sprintf("Successfully installed generation %d", r.Instance.GetGeneration())
+		reconciliationMessage = fmt.Sprintf("Successfully installed version %s", r.meshGeneration)
 		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonInstalled, reconciliationMessage)
 	}
 	r.Status.ObservedGeneration = r.Instance.GetGeneration()
+	r.Status.ReconciledVersion = r.meshGeneration
 	updateReconcileStatus(&r.Status.StatusType, nil)
 
 	_, err = r.updateReadinessStatus() // this only updates the local object instance; it doesn't post the status update; postReconciliationStatus (called using defer) actually does that
@@ -361,13 +361,13 @@ func (r *ControlPlaneReconciler) getSMCPTemplate(name string) (v1.ControlPlaneSp
 }
 
 //renderSMCPTemplates traverses and processes all of the references templates
-func (r *ControlPlaneReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneSpec, visited map[string]struct{}) (v1.ControlPlaneSpec, error) {
+func (r *ControlPlaneReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneSpec, visited sets.String) (v1.ControlPlaneSpec, error) {
 	if smcp.Template == "" {
 		return smcp, nil
 	}
 	r.Log.Info(fmt.Sprintf("processing smcp template %s", smcp.Template))
 
-	if _, ok := visited[smcp.Template]; ok {
+	if visited.Has(smcp.Template) {
 		return smcp, fmt.Errorf("SMCP templates form cyclic dependency. Cannot proceed")
 	}
 
@@ -382,7 +382,7 @@ func (r *ControlPlaneReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneS
 		return smcp, err
 	}
 
-	visited[smcp.Template] = struct{}{}
+	visited.Insert(smcp.Template)
 
 	smcp.Istio = mergeValues(smcp.Istio, template.Istio)
 	smcp.ThreeScale = mergeValues(smcp.ThreeScale, template.ThreeScale)
@@ -396,7 +396,7 @@ func (r *ControlPlaneReconciler) applyTemplates(smcpSpec v1.ControlPlaneSpec) (v
 		r.Log.Info("No template provided. Using default")
 	}
 
-	spec, err := r.recursivelyApplyTemplates(smcpSpec, make(map[string]struct{}, 0))
+	spec, err := r.recursivelyApplyTemplates(smcpSpec, sets.NewString())
 	r.Log.Info(fmt.Sprintf("finished updating ServiceMeshControlPlane: %+v", spec))
 
 	return spec, err
@@ -530,11 +530,11 @@ func (r *ControlPlaneReconciler) initializeReconcileStatus() {
 	var eventReason string
 	var conditionReason v1.ConditionReason
 	if r.isUpdating() {
-		readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", r.Status.ObservedGeneration, r.Instance.GetGeneration())
+		readyMessage = fmt.Sprintf("Updating mesh from generation %s to generation %s", r.Status.GetReconciledVersion(), common.ReconciledVersion(r.Instance.GetGeneration()))
 		eventReason = eventReasonUpdating
 		conditionReason = v1.ConditionReasonSpecUpdated
 	} else {
-		readyMessage = fmt.Sprintf("Installing mesh generation %d", r.Instance.GetGeneration())
+		readyMessage = fmt.Sprintf("Installing mesh generation %s", common.ReconciledVersion(r.Instance.GetGeneration()))
 		eventReason = eventReasonInstalling
 		conditionReason = v1.ConditionReasonResourceCreated
 
