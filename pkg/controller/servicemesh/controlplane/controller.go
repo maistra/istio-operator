@@ -53,8 +53,9 @@ func newReconciler(mgr manager.Manager, operatorNamespace string) reconcile.Reco
 			Log:               log,
 			OperatorNamespace: operatorNamespace,
 		},
-		Scheme:  mgr.GetScheme(),
-		Manager: mgr,
+		Scheme:      mgr.GetScheme(),
+		Manager:     mgr,
+		reconcilers: map[string]*ControlPlaneReconciler{},
 	}
 }
 
@@ -150,6 +151,9 @@ type ReconcileControlPlane struct {
 	common.ResourceManager
 	Scheme  *runtime.Scheme
 	Manager manager.Manager
+
+	reconcilers map[string]*ControlPlaneReconciler
+	mu          sync.Mutex
 }
 
 // Reconcile reads that state of the cluster for a ServiceMeshControlPlane object and makes changes based on the state read
@@ -271,19 +275,16 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	return reconciler.Reconcile()
 }
 
-var reconcilers = map[string]*ControlPlaneReconciler{}
-var mu sync.Mutex
-
 func reconcilersMapKey(instance *v1.ServiceMeshControlPlane) string {
 	return fmt.Sprintf("%s/%s", instance.GetNamespace(), instance.GetName())
 }
 
 func (r *ReconcileControlPlane) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) *ControlPlaneReconciler {
-	mu.Lock()
-	defer mu.Unlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	key := reconcilersMapKey(newInstance)
-	if existing, ok := reconcilers[key]; ok {
+	if existing, ok := r.reconcilers[key]; ok {
 		oldInstance := existing.Instance
 		existing.Instance = newInstance
 		if existing.Instance.GetGeneration() != oldInstance.GetGeneration() {
@@ -300,7 +301,7 @@ func (r *ReconcileControlPlane) getOrCreateReconciler(newInstance *v1.ServiceMes
 		Instance:              newInstance,
 		Status:                newInstance.Status.DeepCopy(),
 	}
-	reconcilers[key] = newReconciler
+	r.reconcilers[key] = newReconciler
 	return newReconciler
 }
 
@@ -309,8 +310,8 @@ func (r *ReconcileControlPlane) deleteReconciler(reconciler *ControlPlaneReconci
 		return
 	}
 	if reconciler.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
-		mu.Lock()
-		defer mu.Unlock()
-		delete(reconcilers, reconcilersMapKey(reconciler.Instance))
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		delete(r.reconcilers, reconcilersMapKey(reconciler.Instance))
 	}
 }
