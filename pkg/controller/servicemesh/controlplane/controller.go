@@ -3,10 +3,10 @@ package controlplane
 import (
 	"context"
 	"fmt"
-
-	"k8s.io/apimachinery/pkg/util/sets"
+	"sync"
 
 	errors2 "github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -63,7 +63,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
 	var c controller.Controller
 	var err error
-	if c, err = controller.New(controllerName, mgr, controller.Options{Reconciler: r}); err != nil {
+	if c, err = controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.ControlPlaneReconcilers, Reconciler: r}); err != nil {
 		return err
 	}
 
@@ -272,12 +272,16 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 }
 
 var reconcilers = map[string]*ControlPlaneReconciler{}
+var mu sync.Mutex
 
 func reconcilersMapKey(instance *v1.ServiceMeshControlPlane) string {
 	return fmt.Sprintf("%s/%s", instance.GetNamespace(), instance.GetName())
 }
 
 func (r *ReconcileControlPlane) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) *ControlPlaneReconciler {
+	mu.Lock()
+	defer mu.Unlock()
+
 	key := reconcilersMapKey(newInstance)
 	if existing, ok := reconcilers[key]; ok {
 		oldInstance := existing.Instance
@@ -305,6 +309,8 @@ func (r *ReconcileControlPlane) deleteReconciler(reconciler *ControlPlaneReconci
 		return
 	}
 	if reconciler.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
+		mu.Lock()
+		defer mu.Unlock()
 		delete(reconcilers, reconcilersMapKey(reconciler.Instance))
 	}
 }

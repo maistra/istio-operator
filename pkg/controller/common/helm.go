@@ -31,6 +31,11 @@ const (
 var (
 	// ResourceDir is the base dir to helm charts and templates files.
 	ResourceDir string
+
+	// Number of concurrent reconcilers for each controller
+	ControlPlaneReconcilers int
+	MemberRollReconcilers   int
+	MemberReconcilers       int
 )
 
 // GetHelmDir returns the location of the Helm charts. Similar layout to istio.io/istio/install/kubernetes/helm.
