@@ -19,13 +19,13 @@ type multitenantStrategy struct {
 	meshNamespace string
 }
 
-var _ networkingStrategy = (*multitenantStrategy)(nil)
+var _ NamespaceReconciler = (*multitenantStrategy)(nil)
 
 func newMultitenantStrategy(r *namespaceReconciler) (*multitenantStrategy, error) {
 	return &multitenantStrategy{
-		client:                  r.client,
-		logger:                  r.logger.WithValues("NetworkStrategy", "Multitenant"),
-		meshNamespace:           r.meshNamespace,
+		client:        r.client,
+		logger:        r.logger.WithValues("NetworkStrategy", "Multitenant"),
+		meshNamespace: r.meshNamespace,
 	}, nil
 }
 
