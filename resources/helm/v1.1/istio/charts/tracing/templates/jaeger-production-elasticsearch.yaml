@@ -73,6 +73,11 @@ spec:
           cpu: "1"
 {{- end }}
 
+{{- if .Values.jaeger.esIndexCleaner }}
+    esIndexCleaner:
+{{ toYaml .Values.jaeger.esIndexCleaner | indent 6 }}
+{{- end }}
+
   ingress:
     enabled: {{ .Values.ingress.enabled }}
     # XXX: should this be parameterized?
