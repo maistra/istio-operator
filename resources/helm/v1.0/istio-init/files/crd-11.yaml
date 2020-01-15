@@ -50,7 +50,7 @@ metadata:
     app: istio-pilot
     chart: istio
     heritage: Tiller
-    maistra-version: 1.0.3
+    maistra-version: 1.0.4
     release: istio
   annotations:
     "helm.sh/resource-policy": keep
