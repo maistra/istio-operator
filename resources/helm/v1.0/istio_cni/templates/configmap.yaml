@@ -8,7 +8,7 @@ metadata:
 data:
   # The CNI network configuration to add to the plugin chain on each node.  The special
   # values in this config will be automatically populated.
-  cni_network_config_v1.0: |-
+  cni_network_config: |-
     {
       "cniVersion": "0.3.0",
       "name": "istio-cni",
@@ -18,19 +18,6 @@ data:
           "kubeconfig": "__KUBECONFIG_FILEPATH__",
           "cni_bin_dir": "/opt/multus/bin",
           "iptables_script": "istio-iptables.sh",
-          "exclude_namespaces": [ "{{ .Release.Namespace }}" ]
-      }
-    }
-  cni_network_config_v1.1: |-
-    {
-      "cniVersion": "0.3.0",
-      "name": "v1.1-istio-cni",
-      "type": "v1.1-istio-cni",
-      "log_level": "info",
-      "kubernetes": {
-          "kubeconfig": "__KUBECONFIG_FILEPATH__",
-          "cni_bin_dir": "/opt/multus/bin",
-          "iptables_script": "v1.1-istio-iptables.sh",
           "exclude_namespaces": [ "{{ .Release.Namespace }}" ]
       }
     }

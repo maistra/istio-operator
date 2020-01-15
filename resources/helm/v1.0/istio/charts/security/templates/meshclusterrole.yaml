@@ -6,7 +6,7 @@ metadata:
     app: {{ template "security.name" . }}
     chart: {{ template "security.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.0.3
+    maistra-version: 1.0.4
     release: {{ .Release.Name }}
 rules:
 - apiGroups: ["authentication.k8s.io"]
