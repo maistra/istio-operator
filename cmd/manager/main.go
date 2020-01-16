@@ -48,6 +48,11 @@ func main() {
 	// controller-runtime)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
+	// number of concurrent reconciler for each controller
+	pflag.IntVar(&common.ControlPlaneReconcilers, "controlPlaneReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshControlPlane resources")
+	pflag.IntVar(&common.MemberRollReconcilers, "memberRollReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMemberRoll resources")
+	pflag.IntVar(&common.MemberReconcilers, "memberReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMember resources")
+
 	// custom flags for istio operator
 	pflag.StringVar(&common.ResourceDir, "resourceDir", "/usr/local/share/istio-operator", "The location of the resources - helm charts, templates, etc.")
 

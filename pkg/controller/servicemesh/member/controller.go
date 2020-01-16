@@ -64,7 +64,7 @@ func newReconciler(mgr manager.Manager) *MemberReconciler {
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r *MemberReconciler) error {
 	// Create a new controller
-	c, err := controller.New("servicemeshmember-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("servicemeshmember-controller", mgr, controller.Options{MaxConcurrentReconciles: common.MemberReconcilers, Reconciler: r})
 	if err != nil {
 		return err
 	}
