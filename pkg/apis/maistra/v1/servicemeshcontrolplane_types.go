@@ -47,6 +47,11 @@ type ControlPlaneStatus struct {
 
 	//LastAppliedConfiguration lists the last appllied ServiceMeshControlPlane
 	LastAppliedConfiguration ControlPlaneSpec `json:"lastAppliedConfiguration"`
+
+	//AppliedVersion represents the version that was applied.  v1.0 did not have
+	// this field, so if it is unset, the AppliedVersion is v1.0 and should be
+	// initialized on a subsequent status udpate.
+	AppliedVersion string `json:"appliedVersion,omitempty"`
 }
 
 // HelmValuesType is typedef for Helm .Values
@@ -56,6 +61,7 @@ type HelmValuesType map[string]interface{}
 type ControlPlaneSpec struct {
 	//Template selects the template to use for default values
 	Template string `json:"template,omitempty"`
+	Version  string `json:"version,omitempty"`
 
 	// NetworkType of the cluster.  Defaults to subnet.
 	NetworkType NetworkType    `json:"networkType,omitempty"`

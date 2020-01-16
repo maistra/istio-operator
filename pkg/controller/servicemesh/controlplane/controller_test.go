@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -70,7 +71,7 @@ func TestGetSMCPTemplateWithSlashReturnsError(t *testing.T) {
 	reconciler := reconcileControlPlane.getOrCreateReconciler(&v1.ServiceMeshControlPlane{})
 	reconciler.Log = log.WithValues()
 
-	_, err := reconciler.getSMCPTemplate("/")
+	_, err := reconciler.getSMCPTemplate("/", common.DefaultMaistraVersion)
 	if err == nil {
 		t.Fatalf("Allowed to access path outside of deployment directory")
 	}

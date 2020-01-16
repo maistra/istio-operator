@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
@@ -43,6 +44,11 @@ func (v *controlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 		return admission.ValidationResponse(true, "")
 	}
 
+	if len(smcp.Spec.Version) > 0 {
+		if _, ok := common.GetCNINetworkName(smcp.Spec.Version); !ok {
+			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("invalid Version specified; supported versions are: %v", common.GetSupportedVersions()))
+		}
+	}
 	smcpList := &maistrav1.ServiceMeshControlPlaneList{}
 	err = v.client.List(ctx, nil, smcpList)
 	if err != nil {

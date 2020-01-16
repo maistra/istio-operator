@@ -34,6 +34,7 @@ func TestReconcileNamespaceInMesh(t *testing.T) {
 	assert.Equals(ns.Labels[common.MemberOfKey], controlPlaneNamespace, "Unexpected or missing member-of label in namespace", t)
 
 	// check if net-attach-def exists
+	netAttachDefName, _ := common.GetCNINetworkName(meshVersionDefault)
 	netAttachDef := &unstructured.Unstructured{}
 	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "k8s.cni.cncf.io",
@@ -90,6 +91,7 @@ func TestRemoveNamespaceFromMesh(t *testing.T) {
 	assert.False(found, "Expected member-of label to be removed, but it is still present", t)
 
 	// check that net-attach-def was removed
+	netAttachDefName, _ := common.GetCNINetworkName(meshVersionDefault)
 	netAttachDef := &unstructured.Unstructured{}
 	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "k8s.cni.cncf.io",
@@ -173,7 +175,7 @@ func TestReconcileDeletesObsoleteRoleBindings(t *testing.T) {
 }
 
 func setupReconciledNamespace(t *testing.T, cl client.Client, namespace string) {
-	reconciler, err := newNamespaceReconciler(cl, logf.Log, controlPlaneNamespace, true)
+	reconciler, err := newNamespaceReconciler(cl, logf.Log, controlPlaneNamespace, meshVersionDefault, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
@@ -192,7 +194,7 @@ func assertNotFound(err error, message string, t *testing.T) {
 }
 
 func assertReconcileNamespaceSucceeds(t *testing.T, cl client.Client, networkStrategy NamespaceReconciler) {
-	reconciler, err := newNamespaceReconciler(cl, logf.Log, controlPlaneNamespace, true)
+	reconciler, err := newNamespaceReconciler(cl, logf.Log, controlPlaneNamespace, meshVersionDefault, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
@@ -207,7 +209,7 @@ func assertReconcileNamespaceSucceeds(t *testing.T, cl client.Client, networkStr
 }
 
 func assertRemoveNamespaceSucceeds(t *testing.T, cl client.Client, networkStrategy NamespaceReconciler) {
-	reconciler, err := newNamespaceReconciler(cl, logf.Log, controlPlaneNamespace, true)
+	reconciler, err := newNamespaceReconciler(cl, logf.Log, controlPlaneNamespace, meshVersionDefault, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
@@ -222,7 +224,7 @@ func assertRemoveNamespaceSucceeds(t *testing.T, cl client.Client, networkStrate
 }
 
 func assertReconcileNamespaceFails(t *testing.T, cl client.Client) {
-	reconciler, err := newNamespaceReconciler(cl, logf.Log, controlPlaneNamespace, true)
+	reconciler, err := newNamespaceReconciler(cl, logf.Log, controlPlaneNamespace, meshVersionDefault, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}

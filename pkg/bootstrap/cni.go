@@ -29,11 +29,13 @@ func internalInstallCNI(mgr manager.Manager) error {
 
 	values := make(map[string]interface{})
 	values["enabled"] = common.IsCNIEnabled
-	values["image"] = common.CNIImage
+	values["image_v1_0"] = common.CNIImageV1_0
+	values["image_v1_1"] = common.CNIImageV1_1
 	values["imagePullSecrets"] = common.CNIImagePullSecrets
 	// TODO: imagePullPolicy, resources
 
-	renderings, _, err := common.RenderHelmChart(path.Join(common.GetHelmDir(), "istio_cni"), operatorNamespace, values)
+	// always install the latest version of the CNI image
+	renderings, _, err := common.RenderHelmChart(path.Join(common.GetHelmDir(common.DefaultMaistraVersion), "istio_cni"), operatorNamespace, values)
 	if err != nil {
 		return err
 	}
