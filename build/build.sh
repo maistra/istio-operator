@@ -40,4 +40,4 @@ LD_EXTRAFLAGS+=" -X ${REPO_PATH}/pkg/version.buildTag=${GITTAG}"
 LDFLAGS="-extldflags -static ${LD_EXTRAFLAGS}"
 
 echo "building "${PROJECT_NAME}"..."
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -mod=vendor -o "${BIN_DIR}/${PROJECT_NAME}" -ldflags "${LDFLAGS}" "$BUILD_PATH"
+GO111MODULE=on GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -mod=vendor -o "${BIN_DIR}/${PROJECT_NAME}" -ldflags "${LDFLAGS}" "$BUILD_PATH"
