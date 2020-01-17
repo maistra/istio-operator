@@ -4,9 +4,10 @@ import (
 	"reflect"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
-	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 type mergeTestCases struct {
@@ -67,7 +68,9 @@ var mergeTests = []mergeTestCases{
 }
 
 func TestGetSMCPTemplateWithSlashReturnsError(t *testing.T) {
-	reconcileControlPlane := ReconcileControlPlane{}
+	reconcileControlPlane := ReconcileControlPlane{
+		reconcilers: map[string]*ControlPlaneReconciler{},
+	}
 	reconciler := reconcileControlPlane.getOrCreateReconciler(&v1.ServiceMeshControlPlane{})
 	reconciler.Log = log.WithValues()
 
@@ -89,7 +92,9 @@ func TestMerge(t *testing.T) {
 }
 
 func TestCyclicTemplate(t *testing.T) {
-	reconcileControlPlane := ReconcileControlPlane{}
+	reconcileControlPlane := ReconcileControlPlane{
+		reconcilers: map[string]*ControlPlaneReconciler{},
+	}
 	reconciler := reconcileControlPlane.getOrCreateReconciler(&v1.ServiceMeshControlPlane{})
 	reconciler.Log = log.WithValues()
 
