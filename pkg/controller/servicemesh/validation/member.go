@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1beta1"
 	authorizationv1 "k8s.io/api/authorization/v1"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -47,7 +47,7 @@ func (v *memberValidator) Handle(ctx context.Context, req atypes.Request) atypes
 		return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("ServiceMeshMember must be named %q", common.MemberName))
 	}
 
-	if req.AdmissionRequest.Operation == v1beta1.Update {
+	if req.AdmissionRequest.Operation == admissionv1.Update {
 		oldSmm := &maistrav1.ServiceMeshMember{}
 		err := v.decoder.DecodeRaw(req.AdmissionRequest.OldObject, oldSmm)
 		if err != nil {
