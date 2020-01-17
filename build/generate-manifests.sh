@@ -36,15 +36,15 @@ function checkDependencies() {
 }
 
 function generateServiceMeshControlPlanesCrd() {
-  yq -s -y --indentless '.[] | select(.kind=="CustomResourceDefinition" and .metadata.name=="servicemeshcontrolplanes.maistra.io") | .' ${DEPLOYMENT_FILE} > ${BUNDLE_DIR}/servicemeshcontrolplanes.crd.yaml
+  yq -s -y '.[] | select(.kind=="CustomResourceDefinition" and .metadata.name=="servicemeshcontrolplanes.maistra.io") | .' ${DEPLOYMENT_FILE} > ${BUNDLE_DIR}/servicemeshcontrolplanes.crd.yaml
 }
 
 function generateServiceMeshMemberRollsCrd() {
-  yq -s -y --indentless '.[] | select(.kind=="CustomResourceDefinition" and .metadata.name=="servicemeshmemberrolls.maistra.io") | .' ${DEPLOYMENT_FILE} > ${BUNDLE_DIR}/servicemeshmemberrolls.crd.yaml
+  yq -s -y '.[] | select(.kind=="CustomResourceDefinition" and .metadata.name=="servicemeshmemberrolls.maistra.io") | .' ${DEPLOYMENT_FILE} > ${BUNDLE_DIR}/servicemeshmemberrolls.crd.yaml
 }
 
 function generateServiceMeshMembersCrd() {
-  yq -s -y --indentless '.[] | select(.kind=="CustomResourceDefinition" and .metadata.name=="servicemeshmembers.maistra.io") | .' ${DEPLOYMENT_FILE} > ${BUNDLE_DIR}/servicemeshmembers.crd.yaml
+  yq -s -y '.[] | select(.kind=="CustomResourceDefinition" and .metadata.name=="servicemeshmembers.maistra.io") | .' ${DEPLOYMENT_FILE} > ${BUNDLE_DIR}/servicemeshmembers.crd.yaml
 }
 
 function generateCSV() {
@@ -54,13 +54,13 @@ function generateCSV() {
      exit 1
   fi
 
-  DEPLOYMENT_SPEC=$(yq -s -r -y --indentless '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec' ${DEPLOYMENT_FILE} | sed 's/^/          /')
+  DEPLOYMENT_SPEC=$(yq -s -r -y '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec' ${DEPLOYMENT_FILE} | sed 's/^/          /')
   if [ "$DEPLOYMENT_SPEC" == "" ]; then
      echo "generateCSV(): Operator deployment spec is empty, please verify source yaml/path to the field."
      exit 1
   fi
 
-  CLUSTER_ROLE_RULES=$(yq -s -y --indentless '.[] | select(.kind=="ClusterRole" and .metadata.name=="istio-operator") | .rules' ${DEPLOYMENT_FILE} | sed 's/^/        /')
+  CLUSTER_ROLE_RULES=$(yq -s -y '.[] | select(.kind=="ClusterRole" and .metadata.name=="istio-operator") | .rules' ${DEPLOYMENT_FILE} | sed 's/^/        /')
   if [ "$CLUSTER_ROLE_RULES" == "null" ]; then
      echo "generateCSV(): istio-operator cluster role source is empty, please verify source yaml/path to the field."
      exit 1
