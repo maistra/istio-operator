@@ -28,6 +28,9 @@ spec:
       image: citadel-ubi8
     sidecarInjectorWebhook:
       image: sidecar-injector-ubi8
+    gateways:
+      istio-ingressgateway:
+        ior_image: istio-ior-ubi8
     prometheus:
       image: prometheus-ubi8
   threeScale:
