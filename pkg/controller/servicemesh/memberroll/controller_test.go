@@ -757,27 +757,33 @@ func markControlPlaneReconciled(controlPlane *maistra.ServiceMeshControlPlane, m
 func newAppNamespace() *core.Namespace {
 	namespace := &core.Namespace{
 		ObjectMeta: meta.ObjectMeta{
-			Name: appNamespace,
+			Name:   appNamespace,
+			Labels: map[string]string{},
 		},
 	}
 	return namespace
 }
 
-func newMeshRoleBinding() *rbac.RoleBinding {
+func newRoleBinding(namespace, name string) *rbac.RoleBinding {
 	return &rbac.RoleBinding{
 		ObjectMeta: meta.ObjectMeta{
-			Namespace: controlPlaneNamespace,
-			Name:      "role-binding",
-			Labels: map[string]string{
-				common.OwnerKey: controlPlaneNamespace,
-			},
+			Namespace: namespace,
+			Name:      name,
 		},
 	}
 }
 
+func newMeshRoleBinding() *rbac.RoleBinding {
+	roleBinding := newRoleBinding(controlPlaneNamespace, "role-binding")
+	roleBinding.Labels = map[string]string{}
+	roleBinding.Labels[common.OwnerKey] = controlPlaneNamespace
+	return roleBinding
+}
+
 func newAppNamespaceRoleBinding() *rbac.RoleBinding {
-	roleBinding := newMeshRoleBinding()
-	roleBinding.Namespace = appNamespace
+	roleBinding := newRoleBinding(appNamespace, "role-binding")
+	roleBinding.Labels = map[string]string{}
+	roleBinding.Labels[common.OwnerKey] = controlPlaneNamespace
 	roleBinding.Labels[common.MemberOfKey] = controlPlaneNamespace
 	return roleBinding
 }
