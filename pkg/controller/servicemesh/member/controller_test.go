@@ -13,11 +13,9 @@ import (
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
-	"github.com/maistra/istio-operator/pkg/apis"
 	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -357,18 +355,10 @@ func newMemberRoll() *maistra.ServiceMeshMemberRoll {
 }
 
 func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker, *MemberReconciler) {
-	s := scheme.Scheme
-	if err := apis.AddToScheme(s); err != nil { // scheme must be initialized before creating the client below
-		t.Fatalf("Could not add to scheme: %v", err)
-	}
-
-	tracker := clienttesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
-	enhancedTracker := test.NewEnhancedTracker(tracker)
-	cl := fake.NewFakeClientWithSchemeAndTracker(scheme.Scheme, &enhancedTracker, clientObjects...)
+	cl, enhancedTracker := test.CreateClient(clientObjects...)
 	fakeEventRecorder := &record.FakeRecorder{}
-
-	r := &MemberReconciler{ResourceManager: common.ResourceManager{Client: cl, PatchFactory: common.NewPatchFactory(cl), Log: log}, scheme: s, eventRecorder: fakeEventRecorder}
-	return cl, &enhancedTracker, r
+	r := &MemberReconciler{ResourceManager: common.ResourceManager{Client: cl, PatchFactory: common.NewPatchFactory(cl), Log: log}, scheme: scheme.Scheme, eventRecorder: fakeEventRecorder}
+	return cl, enhancedTracker, r
 }
 
 func assertReconcileSucceeds(r *MemberReconciler, t *testing.T) {
