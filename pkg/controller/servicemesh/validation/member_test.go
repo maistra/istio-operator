@@ -86,7 +86,7 @@ func TestMemberWithFailedSubjectAccessReview(t *testing.T) {
 		},
 	}
 
-	validator, _, tracker := createMemberValidatorTextFixture()
+	validator, _, tracker := createMemberValidatorTestFixture()
 	tracker.AddReactor(createSubjectAccessReviewReactor(false))
 
 	response := validator.Handle(context.TODO(), createCreateRequest(member))
@@ -100,7 +100,7 @@ func TestValidMember(t *testing.T) {
 		},
 	}
 
-	validator, _, tracker := createMemberValidatorTextFixture()
+	validator, _, tracker := createMemberValidatorTestFixture()
 	tracker.AddReactor(createSubjectAccessReviewReactor(true))
 
 	response := validator.Handle(context.TODO(), createCreateRequest(member))
@@ -108,12 +108,12 @@ func TestValidMember(t *testing.T) {
 }
 
 func invokeMemberValidator(request atypes.Request) atypes.Response {
-	validator, _, _ := createMemberValidatorTextFixture()
+	validator, _, _ := createMemberValidatorTestFixture()
 	response := validator.Handle(context.TODO(), request)
 	return response
 }
 
-func createMemberValidatorTextFixture() (memberValidator, client.Client, *test.EnhancedTracker) {
+func createMemberValidatorTestFixture() (memberValidator, client.Client, *test.EnhancedTracker) {
 	cl, tracker := test.CreateClient()
 	decoder, err := webhookadmission.NewDecoder(test.GetScheme())
 	if err != nil {
