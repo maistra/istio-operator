@@ -106,7 +106,8 @@ func TestMemberRollValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 			assert.Equals(sar.Spec.ResourceAttributes.Verb, "update", "Unexpected Verb in SAR check", t)
 			assert.Equals(sar.Spec.ResourceAttributes.Group, "", "Unexpected resource Group in SAR check", t)
 			assert.Equals(sar.Spec.ResourceAttributes.Resource, "pods", "Unexpected Resource in SAR check", t)
-			assert.Equals(sar.Spec.ResourceAttributes.Namespace, "app-namespace", "Unexpected Namespace in SAR check", t)
+			assert.Equals(sar.Spec.ResourceAttributes.Name, "", "Unexpected resource Name in SAR check", t)
+			assert.Equals(sar.Spec.ResourceAttributes.Namespace, "app-namespace", "Unexpected resource Namespace in SAR check", t)
 			sar.Status.Allowed = true
 			return true, nil
 		}

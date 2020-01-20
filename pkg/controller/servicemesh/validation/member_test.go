@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"testing"
 
+	authorizationv1 "k8s.io/api/authorization/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clienttesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
@@ -16,23 +18,30 @@ import (
 )
 
 func TestDeletedMemberIsAlwaysAllowed(t *testing.T) {
-	member := &maistra.ServiceMeshMember{
-		ObjectMeta: meta.ObjectMeta{
-			Name:              "not-default",
-			DeletionTimestamp: now(),
-		},
-	}
+	member := newMember("not-default", "app-namespace", "my-smcp", "istio-system")
+	member.DeletionTimestamp = now()
 
 	response := invokeMemberValidator(createCreateRequest(member))
 	assert.True(response.Response.Allowed, "Expected validator to allow deleted ServiceMeshMember", t)
 }
 
-func TestMemberWithWrongNameIsRejected(t *testing.T) {
-	member := &maistra.ServiceMeshMember{
+func newMember(name, namespace, smcpName, smcpNamespace string) *maistra.ServiceMeshMember {
+	return &maistra.ServiceMeshMember{
 		ObjectMeta: meta.ObjectMeta{
-			Name: "not-default",
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: maistra.ServiceMeshMemberSpec{
+			ControlPlaneRef: maistra.ServiceMeshControlPlaneRef{
+				Name:      smcpName,
+				Namespace: smcpNamespace,
+			},
 		},
 	}
+}
+
+func TestMemberWithWrongNameIsRejected(t *testing.T) {
+	member := newMember("not-default", "app-namespace", "my-smcp", "istio-system")
 
 	response := invokeMemberValidator(createCreateRequest(member))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMember with wrong name", t)
@@ -59,17 +68,7 @@ func TestMutationOfSpecControlPlaneRefIsRejected(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			oldMember := &maistra.ServiceMeshMember{
-				ObjectMeta: meta.ObjectMeta{
-					Name: "default",
-				},
-				Spec: maistra.ServiceMeshMemberSpec{
-					ControlPlaneRef: maistra.ServiceMeshControlPlaneRef{
-						Name:      "my-smcp",
-						Namespace: "istio-system",
-					},
-				},
-			}
+			oldMember := newMember("default", "app-namespace", "my-smcp", "istio-system")
 			newMember := oldMember.DeepCopy()
 			tc.mutateMember(newMember)
 
@@ -80,31 +79,46 @@ func TestMutationOfSpecControlPlaneRefIsRejected(t *testing.T) {
 }
 
 func TestMemberWithFailedSubjectAccessReview(t *testing.T) {
-	member := &maistra.ServiceMeshMember{
-		ObjectMeta: meta.ObjectMeta{
-			Name: "default",
-		},
-	}
-
 	validator, _, tracker := createMemberValidatorTestFixture()
 	tracker.AddReactor(createSubjectAccessReviewReactor(false))
 
+	member := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	response := validator.Handle(context.TODO(), createCreateRequest(member))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMember due to failed SubjectAccessReview check", t)
 }
 
 func TestValidMember(t *testing.T) {
-	member := &maistra.ServiceMeshMember{
-		ObjectMeta: meta.ObjectMeta{
-			Name: "default",
-		},
-	}
-
 	validator, _, tracker := createMemberValidatorTestFixture()
 	tracker.AddReactor(createSubjectAccessReviewReactor(true))
 
+	member := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	response := validator.Handle(context.TODO(), createCreateRequest(member))
 	assert.True(response.Response.Allowed, "Expected validator to allow ServiceMeshMember", t)
+}
+
+func TestMemberValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
+	validator, _, tracker := createMemberValidatorTestFixture()
+	tracker.AddReactor(func(action clienttesting.Action) (handled bool, err error) {
+		if action.Matches("create", "subjectaccessreviews") {
+			createAction := action.(clienttesting.CreateAction)
+			sar := createAction.GetObject().(*authorizationv1.SubjectAccessReview)
+			assert.Equals(sar.Spec.User, userInfo.Username, "Unexpected User in SAR check", t)
+			assert.Equals(sar.Spec.UID, userInfo.UID, "Unexpected UID in SAR check", t)
+			assert.DeepEquals(sar.Spec.Groups, userInfo.Groups, "Unexpected Groups in SAR check", t)
+			assert.DeepEquals(sar.Spec.Extra, convertUserInfoExtra(userInfo.Extra), "Unexpected Extra in SAR check", t)
+			assert.Equals(sar.Spec.ResourceAttributes.Verb, "use", "Unexpected Verb in SAR check", t)
+			assert.Equals(sar.Spec.ResourceAttributes.Group, "maistra.io", "Unexpected resource Group in SAR check", t)
+			assert.Equals(sar.Spec.ResourceAttributes.Resource, "servicemeshcontrolplanes", "Unexpected Resource in SAR check", t)
+			assert.Equals(sar.Spec.ResourceAttributes.Name, "my-smcp", "Unexpected Namespace in SAR check", t)
+			assert.Equals(sar.Spec.ResourceAttributes.Namespace, "istio-system", "Unexpected Namespace in SAR check", t)
+			sar.Status.Allowed = true
+			return true, nil
+		}
+		return false, nil
+	})
+
+	roll := newMember("default", "app-namespace", "my-smcp", "istio-system")
+	_ = validator.Handle(context.TODO(), createCreateRequest(roll))
 }
 
 func invokeMemberValidator(request atypes.Request) atypes.Response {
