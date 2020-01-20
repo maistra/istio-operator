@@ -102,6 +102,20 @@ func TestMemberRollValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMemberRoll due to SAR check error", t)
 }
 
+func TestValidMemberRollUpdate(t *testing.T) {
+	oldRoll := newMemberRoll("default", "istio-system", "app-namespace1")
+	validator, _, tracker := createMemberRollValidatorTestFixture(smcp, oldRoll)
+	tracker.AddReactor(createSubjectAccessReviewReactor(true, nil))
+
+	newRoll := oldRoll.DeepCopy()
+	newRoll.Labels = map[string]string{
+		"some-label": "some-label-value",
+	}
+
+	response := validator.Handle(context.TODO(), createUpdateRequest(oldRoll, newRoll))
+	assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshMemberRoll update", t)
+}
+
 func TestMemberRollValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 	validator, _, tracker := createMemberRollValidatorTestFixture(smcp)
 	tracker.AddReactor(func(action clienttesting.Action) (handled bool, err error) {
