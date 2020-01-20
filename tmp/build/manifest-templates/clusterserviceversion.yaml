@@ -93,7 +93,7 @@ spec:
 __REPLACES_CSV__
   installModes:
   - type: OwnNamespace
-    supported: true
+    supported: false
   - type: SingleNamespace
     supported: false
   - type: MultiNamespace
