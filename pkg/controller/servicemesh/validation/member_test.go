@@ -2,15 +2,10 @@ package validation
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 
-	admission "k8s.io/api/admission/v1beta1"
-	authorization "k8s.io/api/authorization/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	clienttesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
@@ -28,7 +23,7 @@ func TestDeletedMemberIsAlwaysAllowed(t *testing.T) {
 		},
 	}
 
-	response := invokeValidator(createCreateRequest(member))
+	response := invokeMemberValidator(createCreateRequest(member))
 	assert.True(response.Response.Allowed, "Expected validator to allow deleted ServiceMeshMember", t)
 }
 
@@ -39,7 +34,7 @@ func TestMemberWithWrongNameIsRejected(t *testing.T) {
 		},
 	}
 
-	response := invokeValidator(createCreateRequest(member))
+	response := invokeMemberValidator(createCreateRequest(member))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMember with wrong name", t)
 }
 
@@ -78,7 +73,7 @@ func TestMutationOfSpecControlPlaneRefIsRejected(t *testing.T) {
 			newMember := oldMember.DeepCopy()
 			tc.mutateMember(newMember)
 
-			response := invokeValidator(createUpdateRequest(oldMember, newMember))
+			response := invokeMemberValidator(createUpdateRequest(oldMember, newMember))
 			assert.False(response.Response.Allowed, "Expected validator to reject mutation of ServiceMeshMember.spec.controlPlaneRef", t)
 		})
 	}
@@ -91,7 +86,7 @@ func TestMemberWithFailedSubjectAccessReview(t *testing.T) {
 		},
 	}
 
-	validator, _, tracker := createTestFixture()
+	validator, _, tracker := createMemberValidatorTextFixture()
 	tracker.AddReactor(createSubjectAccessReviewReactor(false))
 
 	response := validator.Handle(context.TODO(), createCreateRequest(member))
@@ -105,63 +100,20 @@ func TestValidMember(t *testing.T) {
 		},
 	}
 
-	validator, _, tracker := createTestFixture()
+	validator, _, tracker := createMemberValidatorTextFixture()
 	tracker.AddReactor(createSubjectAccessReviewReactor(true))
 
 	response := validator.Handle(context.TODO(), createCreateRequest(member))
 	assert.True(response.Response.Allowed, "Expected validator to allow ServiceMeshMember", t)
 }
 
-func createSubjectAccessReviewReactor(allowed bool) func(action clienttesting.Action) (handled bool, err error) {
-	return func(action clienttesting.Action) (handled bool, err error) {
-		if action.Matches("create", "subjectaccessreviews") {
-			createAction := action.(clienttesting.CreateAction)
-			sar := createAction.GetObject().(*authorization.SubjectAccessReview)
-			sar.Status.Allowed = allowed
-			return true, nil
-		}
-		return false, nil
-	}
-}
-
-func createCreateRequest(member *maistra.ServiceMeshMember) atypes.Request {
-	request := atypes.Request{
-		AdmissionRequest: &admission.AdmissionRequest{
-			Operation: admission.Create,
-			Object:    toRawExtension(member),
-		},
-	}
-	return request
-}
-
-func createUpdateRequest(oldMember *maistra.ServiceMeshMember, newMember *maistra.ServiceMeshMember) atypes.Request {
-	request := atypes.Request{
-		AdmissionRequest: &admission.AdmissionRequest{
-			Operation: admission.Update,
-			Object:    toRawExtension(newMember),
-			OldObject: toRawExtension(oldMember),
-		},
-	}
-	return request
-}
-
-func createDeleteRequest(newMember *maistra.ServiceMeshMember) atypes.Request {
-	request := atypes.Request{
-		AdmissionRequest: &admission.AdmissionRequest{
-			Operation: admission.Delete,
-			Object:    toRawExtension(newMember),
-		},
-	}
-	return request
-}
-
-func invokeValidator(request atypes.Request) atypes.Response {
-	validator, _, _ := createTestFixture()
+func invokeMemberValidator(request atypes.Request) atypes.Response {
+	validator, _, _ := createMemberValidatorTextFixture()
 	response := validator.Handle(context.TODO(), request)
 	return response
 }
 
-func createTestFixture() (memberValidator, client.Client, *test.EnhancedTracker) {
+func createMemberValidatorTextFixture() (memberValidator, client.Client, *test.EnhancedTracker) {
 	cl, tracker := test.CreateClient()
 	decoder, err := webhookadmission.NewDecoder(test.GetScheme())
 	if err != nil {
@@ -180,20 +132,4 @@ func createTestFixture() (memberValidator, client.Client, *test.EnhancedTracker)
 	}
 
 	return validator, cl, tracker
-}
-
-func toRawExtension(member *maistra.ServiceMeshMember) runtime.RawExtension {
-	memberJson, err := json.Marshal(member)
-	if err != nil {
-		panic(fmt.Sprintf("Could not marshal ServiceMeshMember: %s", err))
-	}
-
-	return runtime.RawExtension{
-		Raw: memberJson,
-	}
-}
-
-func now() *meta.Time {
-	now := meta.Now()
-	return &now
 }
