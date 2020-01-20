@@ -80,7 +80,7 @@ func TestMutationOfSpecControlPlaneRefIsRejected(t *testing.T) {
 
 func TestMemberWithFailedSubjectAccessReview(t *testing.T) {
 	validator, _, tracker := createMemberValidatorTestFixture()
-	tracker.AddReactor(createSubjectAccessReviewReactor(false))
+	tracker.AddReactor(createSubjectAccessReviewReactor(false, nil))
 
 	member := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	response := validator.Handle(context.TODO(), createCreateRequest(member))
@@ -89,11 +89,20 @@ func TestMemberWithFailedSubjectAccessReview(t *testing.T) {
 
 func TestValidMember(t *testing.T) {
 	validator, _, tracker := createMemberValidatorTestFixture()
-	tracker.AddReactor(createSubjectAccessReviewReactor(true))
+	tracker.AddReactor(createSubjectAccessReviewReactor(true, nil))
 
 	member := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	response := validator.Handle(context.TODO(), createCreateRequest(member))
 	assert.True(response.Response.Allowed, "Expected validator to allow ServiceMeshMember", t)
+}
+
+func TestMemberValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
+	validator, _, tracker := createMemberValidatorTestFixture()
+	tracker.AddReactor(createSubjectAccessReviewReactor(true, fmt.Errorf("SAR check error")))
+
+	roll := newMember("default", "app-namespace", "my-smcp", "istio-system")
+	response := validator.Handle(context.TODO(), createCreateRequest(roll))
+	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMember due to SAR check error", t)
 }
 
 func TestMemberValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {

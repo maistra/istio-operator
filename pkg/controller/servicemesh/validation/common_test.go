@@ -22,13 +22,13 @@ var userInfo = authentication.UserInfo{
 	},
 }
 
-func createSubjectAccessReviewReactor(allowed bool) func(action clienttesting.Action) (handled bool, err error) {
+func createSubjectAccessReviewReactor(allowed bool, errorToReturn error) func(action clienttesting.Action) (handled bool, err error) {
 	return func(action clienttesting.Action) (handled bool, err error) {
 		if action.Matches("create", "subjectaccessreviews") {
 			createAction := action.(clienttesting.CreateAction)
 			sar := createAction.GetObject().(*authorization.SubjectAccessReview)
 			sar.Status.Allowed = allowed
-			return true, nil
+			return true, errorToReturn
 		}
 		return false, nil
 	}
