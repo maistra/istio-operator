@@ -7,6 +7,7 @@ import (
 
 	authorizationv1 "k8s.io/api/authorization/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	clienttesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -87,13 +88,27 @@ func TestMemberWithFailedSubjectAccessReview(t *testing.T) {
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMember due to failed SubjectAccessReview check", t)
 }
 
-func TestValidMember(t *testing.T) {
+func TestValidMemberCreation(t *testing.T) {
 	validator, _, tracker := createMemberValidatorTestFixture()
 	tracker.AddReactor(createSubjectAccessReviewReactor(true, nil))
 
 	member := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	response := validator.Handle(context.TODO(), createCreateRequest(member))
 	assert.True(response.Response.Allowed, "Expected validator to allow ServiceMeshMember", t)
+}
+
+func TestValidMemberUpdate(t *testing.T) {
+	oldMember := newMember("default", "app-namespace", "my-smcp", "istio-system")
+	validator, _, tracker := createMemberValidatorTestFixture()
+	tracker.AddReactor(createSubjectAccessReviewReactor(true, nil))
+
+	newMember := oldMember.DeepCopy()
+	newMember.Labels = map[string]string{
+		"some-label": "some-label-value",
+	}
+
+	response := validator.Handle(context.TODO(), createUpdateRequest(oldMember, newMember))
+	assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshMember update", t)
 }
 
 func TestMemberValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
@@ -131,13 +146,14 @@ func TestMemberValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 }
 
 func invokeMemberValidator(request atypes.Request) atypes.Response {
-	validator, _, _ := createMemberValidatorTestFixture()
+	validator, _, tracker := createMemberValidatorTestFixture()
+	tracker.AddReactor(createSubjectAccessReviewReactor(true, nil))
 	response := validator.Handle(context.TODO(), request)
 	return response
 }
 
-func createMemberValidatorTestFixture() (memberValidator, client.Client, *test.EnhancedTracker) {
-	cl, tracker := test.CreateClient()
+func createMemberValidatorTestFixture(clientObjects ...runtime.Object) (memberValidator, client.Client, *test.EnhancedTracker) {
+	cl, tracker := test.CreateClient(clientObjects...)
 	decoder, err := webhookadmission.NewDecoder(test.GetScheme())
 	if err != nil {
 		panic(fmt.Sprintf("Could not create decoder: %s", err))
