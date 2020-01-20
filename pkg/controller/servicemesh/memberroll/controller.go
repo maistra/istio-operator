@@ -50,7 +50,7 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("servicemeshmemberroll-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("servicemeshmemberroll-controller", mgr, controller.Options{MaxConcurrentReconciles: common.MemberRollReconcilers, Reconciler: r})
 	if err != nil {
 		return err
 	}
@@ -190,7 +190,13 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 		reqLogger.Info("Deleting ServiceMeshMemberRoll")
 
-		configuredMembers, err, nsErrors := r.reconcileNamespaces(nil, sets.NewString(instance.Spec.Members...), instance.Namespace, common.DefaultMaistraVersion, reqLogger)
+		configuredNamespaces, err := r.findConfiguredNamespaces(instance.Namespace)
+		if err != nil {
+			reqLogger.Error(err, "error listing mesh member namespaces")
+			return reconcile.Result{}, err
+		}
+
+		configuredMembers, err, nsErrors := r.reconcileNamespaces(nil, nameSet(&configuredNamespaces), instance.Namespace, common.DefaultMaistraVersion, reqLogger)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -320,10 +326,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		instance.Status.ConfiguredMembers = make([]string, 0, len(instance.Spec.Members))
 
 		// setup namespaces
-		configuredNamespaces := corev1.NamespaceList{}
-
-		labelSelector := map[string]string{common.MemberOfKey: mesh.Namespace}
-		err := r.Client.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(""), &configuredNamespaces)
+		configuredNamespaces, err := r.findConfiguredNamespaces(mesh.Namespace)
 		if err != nil {
 			reqLogger.Error(err, "error listing mesh member namespaces")
 			return reconcile.Result{}, err
@@ -385,6 +388,13 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, kialiErr
+}
+
+func (r *ReconcileMemberList) findConfiguredNamespaces(meshNamespace string) (corev1.NamespaceList, error) {
+	list := corev1.NamespaceList{}
+	labelSelector := map[string]string{common.MemberOfKey: meshNamespace}
+	err := r.Client.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(""), &list)
+	return list, err
 }
 
 func (r *ReconcileMemberList) reconcileNamespaces(namespacesToReconcile, namespacesToRemove sets.String, controlPlaneNamespace string, controlPlaneVersion string, reqLogger logr.Logger) (configuredMembers []string, err error, nsErrors []error) {

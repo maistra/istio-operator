@@ -21,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
-	"github.com/maistra/istio-operator/pkg/apis"
 	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -435,7 +434,7 @@ func TestReconcileDoesNotUpdateMemberRollWhenNothingToReconcile(t *testing.T) {
 	assertReconcileSucceeds(r, t)
 
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
-	if updatedObj, err := tracker.Get(maistra.SchemeBuilder.GroupVersion.WithResource("servicemeshmemberrolls"), controlPlaneNamespace, "default"); err!= nil {
+	if updatedObj, err := tracker.Get(maistra.SchemeBuilder.GroupVersion.WithResource("servicemeshmemberrolls"), controlPlaneNamespace, "default"); err != nil {
 		t.Errorf("Unexpected error retrieving updated ServiceMeshMemberRoll: %v", err)
 	} else if updatedRoll, ok := updatedObj.(*maistra.ServiceMeshMemberRoll); !ok {
 		t.Errorf("Unexpected error casting runtime.Object to ServiceMeshMemberRoll: %v", updatedObj)
@@ -512,6 +511,64 @@ func TestReconcileRemovesFinalizerFromMemberRoll(t *testing.T) {
 	assert.StringArrayEmpty(updatedRoll.Finalizers, "Expected finalizers list in SMMR to be empty, but it wasn't", t)
 }
 
+func TestReconcileHandlesDeletionProperly(t *testing.T) {
+	cases := []struct {
+		name                      string
+		specMembers               []string
+		configuredMembers         []string
+		expectedRemovedNamespaces []string
+	}{
+		{
+			name:                      "normal-deletion",
+			specMembers:               []string{appNamespace},
+			configuredMembers:         []string{appNamespace},
+			expectedRemovedNamespaces: []string{appNamespace},
+		},
+		{
+			name:                      "ns-removed-from-members-list-and-smmr-deleted-immediately",
+			specMembers:               []string{}, // appNamespace was removed, but then the SMMR was deleted immediately. The controller is reconciling both actions at once.
+			configuredMembers:         []string{appNamespace},
+			expectedRemovedNamespaces: []string{appNamespace},
+		},
+		// TODO: add a member, it gets configured by namespace reconciler, but then the SMMR update fails (configuredMembers doesn't include the namespace). Then the SMMR is deleted. Does the namespace get cleaned up?
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			roll := newDefaultMemberRoll()
+			roll.Spec.Members = tc.specMembers
+			roll.Status.ConfiguredMembers = tc.configuredMembers
+			roll.DeletionTimestamp = &oneMinuteAgo
+
+			initObjects := []runtime.Object{roll}
+			for _, ns := range tc.configuredMembers {
+				initObjects = append(initObjects, &core.Namespace{
+					ObjectMeta: meta.ObjectMeta{
+						Name: ns,
+						Labels: map[string]string{
+							common.MemberOfKey: controlPlaneNamespace,
+						},
+					},
+				})
+			}
+
+			cl, _, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, initObjects...)
+
+			assertReconcileSucceeds(r, t)
+
+			updatedRoll := test.GetUpdatedObject(cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+			assert.StringArrayEmpty(updatedRoll.Finalizers, "Expected finalizers list in SMMR to be empty, but it wasn't", t)
+
+			assertNamespaceRemoveInvoked(t, nsReconciler, tc.expectedRemovedNamespaces...)
+			kialiReconciler.assertInvokedWith(t /* no namespaces */)
+		})
+	}
+}
+
+// TODO: removal of namespace from SMMR.spec.members - does it get cleaned up?
+
+// TODO: test reconcileNamespaces() - including cases where namespace is NotFound or Gone (shouldn't be an error)
+
 func TestClientReturnsErrorWhenRemovingFinalizer(t *testing.T) {
 	cases := []struct {
 		name                 string
@@ -563,30 +620,9 @@ func TestClientReturnsErrorWhenRemovingFinalizer(t *testing.T) {
 	}
 }
 
-func createClient(clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker) {
-	tracker := clienttesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
-	enhancedTracker := test.NewEnhancedTracker(tracker)
-	cl := test.NewFakeClientWithSchemeAndTracker(scheme.Scheme, &enhancedTracker, clientObjects...)
-	return cl, &enhancedTracker
-}
-
 func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker, *ReconcileMemberList, *fakeNamespaceReconciler, *fakeKialiReconciler) {
-	s := scheme.Scheme // scheme must be initialized before creating the client below
-	if err := apis.AddToScheme(s); err != nil {
-		t.Fatalf("Could not add to scheme: %v", err)
-	}
-	s.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "k8s.cni.cncf.io",
-		Version: "v1",
-		Kind:    "NetworkAttachmentDefinition",
-	}, &unstructured.Unstructured{})
-	s.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "k8s.cni.cncf.io",
-		Version: "v1",
-		Kind:    "NetworkAttachmentDefinitionList",
-	}, &unstructured.UnstructuredList{})
 
-	cl, enhancedTracker := createClient(clientObjects...)
+	cl, enhancedTracker := test.CreateClient(clientObjects...)
 
 	rf := fakeNamespaceReconcilerFactory{
 		reconciler: &fakeNamespaceReconciler{},
@@ -594,7 +630,7 @@ func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (c
 
 	r := &ReconcileMemberList{
 		ResourceManager:        common.ResourceManager{Client: cl, PatchFactory: common.NewPatchFactory(cl), Log: log},
-		scheme:                 s,
+		scheme:                 scheme.Scheme,
 		newNamespaceReconciler: rf.newReconciler,
 	}
 

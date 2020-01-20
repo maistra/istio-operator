@@ -3,10 +3,10 @@ package controlplane
 import (
 	"context"
 	"fmt"
-
-	"k8s.io/apimachinery/pkg/util/sets"
+	"sync"
 
 	errors2 "github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -53,8 +53,9 @@ func newReconciler(mgr manager.Manager, operatorNamespace string) reconcile.Reco
 			Log:               log,
 			OperatorNamespace: operatorNamespace,
 		},
-		Scheme:  mgr.GetScheme(),
-		Manager: mgr,
+		Scheme:      mgr.GetScheme(),
+		Manager:     mgr,
+		reconcilers: map[string]*ControlPlaneReconciler{},
 	}
 }
 
@@ -63,7 +64,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
 	var c controller.Controller
 	var err error
-	if c, err = controller.New(controllerName, mgr, controller.Options{Reconciler: r}); err != nil {
+	if c, err = controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.ControlPlaneReconcilers, Reconciler: r}); err != nil {
 		return err
 	}
 
@@ -150,6 +151,9 @@ type ReconcileControlPlane struct {
 	common.ResourceManager
 	Scheme  *runtime.Scheme
 	Manager manager.Manager
+
+	reconcilers map[string]*ControlPlaneReconciler
+	mu          sync.Mutex
 }
 
 // Reconcile reads that state of the cluster for a ServiceMeshControlPlane object and makes changes based on the state read
@@ -276,15 +280,16 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	return reconciler.Reconcile()
 }
 
-var reconcilers = map[string]*ControlPlaneReconciler{}
-
 func reconcilersMapKey(instance *v1.ServiceMeshControlPlane) string {
 	return fmt.Sprintf("%s/%s", instance.GetNamespace(), instance.GetName())
 }
 
 func (r *ReconcileControlPlane) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) *ControlPlaneReconciler {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	key := reconcilersMapKey(newInstance)
-	if existing, ok := reconcilers[key]; ok {
+	if existing, ok := r.reconcilers[key]; ok {
 		oldInstance := existing.Instance
 		existing.Instance = newInstance
 		if existing.Instance.GetGeneration() != oldInstance.GetGeneration() {
@@ -301,7 +306,7 @@ func (r *ReconcileControlPlane) getOrCreateReconciler(newInstance *v1.ServiceMes
 		Instance:              newInstance,
 		Status:                newInstance.Status.DeepCopy(),
 	}
-	reconcilers[key] = newReconciler
+	r.reconcilers[key] = newReconciler
 	return newReconciler
 }
 
@@ -310,6 +315,8 @@ func (r *ReconcileControlPlane) deleteReconciler(reconciler *ControlPlaneReconci
 		return
 	}
 	if reconciler.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
-		delete(reconcilers, reconcilersMapKey(reconciler.Instance))
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		delete(r.reconcilers, reconcilersMapKey(reconciler.Instance))
 	}
 }

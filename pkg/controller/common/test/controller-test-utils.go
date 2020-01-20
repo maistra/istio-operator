@@ -5,17 +5,48 @@ import (
 	"fmt"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	clienttesting "k8s.io/client-go/testing"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/kubernetes/pkg/apis/rbac"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
+	clienttesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/maistra/istio-operator/pkg/apis"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
+
+func CreateClient(clientObjects ...runtime.Object) (client.Client, *EnhancedTracker) {
+	s := scheme.Scheme
+	if err := apis.AddToScheme(s); err != nil {
+		panic(fmt.Sprintf("Could not add to scheme: %v", err))
+	}
+	if err := rbac.AddToScheme(s); err != nil {
+		panic(fmt.Sprintf("Could not add to scheme: %v", err))
+	}
+	s.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "k8s.cni.cncf.io",
+		Version: "v1",
+		Kind:    "NetworkAttachmentDefinition",
+	}, &unstructured.Unstructured{})
+	s.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "k8s.cni.cncf.io",
+		Version: "v1",
+		Kind:    "NetworkAttachmentDefinitionList",
+	}, &unstructured.UnstructuredList{})
+
+	codecs := serializer.NewCodecFactory(s)
+	tracker := clienttesting.NewObjectTracker(s, codecs.UniversalDecoder())
+	enhancedTracker := NewEnhancedTracker(tracker)
+	cl := NewFakeClientWithSchemeAndTracker(s, &enhancedTracker, clientObjects...)
+	return cl, &enhancedTracker
+}
 
 func GetObject(cl client.Client, objectKey client.ObjectKey, into runtime.Object) runtime.Object {
 	err := cl.Get(context.TODO(), objectKey, into)
