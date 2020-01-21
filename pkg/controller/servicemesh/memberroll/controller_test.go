@@ -628,14 +628,14 @@ func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (c
 		reconciler: &fakeNamespaceReconciler{},
 	}
 
+	kialiReconciler := &fakeKialiReconciler{}
+
 	r := &ReconcileMemberList{
 		ResourceManager:        common.ResourceManager{Client: cl, PatchFactory: common.NewPatchFactory(cl), Log: log},
 		scheme:                 scheme.Scheme,
 		newNamespaceReconciler: rf.newReconciler,
+		reconcileKiali:         kialiReconciler.reconcileKiali,
 	}
-
-	kialiReconciler := &fakeKialiReconciler{}
-	r.reconcileKiali = kialiReconciler.reconcileKiali
 
 	return cl, enhancedTracker, r, rf.reconciler, kialiReconciler
 }
