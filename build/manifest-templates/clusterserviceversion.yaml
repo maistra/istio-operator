@@ -29,7 +29,8 @@ metadata:
                   "autoscaleEnabled": false
                 },
                 "istio-ingressgateway": {
-                  "autoscaleEnabled": false
+                  "autoscaleEnabled": false,
+                  "ior_enabled": false
                 }
               },
               "mixer": {

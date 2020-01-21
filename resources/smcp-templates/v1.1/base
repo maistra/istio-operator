@@ -86,6 +86,7 @@ spec:
           limits:
       istio-ingressgateway:
         enabled: true
+        ior_enabled: false
         type: ClusterIP
         # constrain resources for use in smaller environments
         resources:
