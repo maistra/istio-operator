@@ -40,11 +40,13 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileMemberList{
+	reconciler := ReconcileMemberList{
 		ResourceManager:        common.ResourceManager{Client: mgr.GetClient(), Log: log},
 		scheme:                 mgr.GetScheme(),
 		newNamespaceReconciler: newNamespaceReconciler,
 	}
+	reconciler.reconcileKiali = reconciler.reconcileKialiInternal
+	return &reconciler
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -466,9 +468,8 @@ func (r *ReconcileMemberList) reconcileKialiInternal(kialiCRNamespace string, co
 		}
 	}
 
-	if existingNamespaces, found, _ := unstructured.NestedStringSlice(kialiCR.UnstructuredContent(), "spec", "deployment", "accessible_namespaces");
-			found && sets.NewString(accessibleNamespaces...).Equal(sets.NewString(existingNamespaces...)){
-				reqLogger.Info("Kiali CR deployment.accessible_namespaces already up to date")
+	if existingNamespaces, found, _ := unstructured.NestedStringSlice(kialiCR.UnstructuredContent(), "spec", "deployment", "accessible_namespaces"); found && sets.NewString(accessibleNamespaces...).Equal(sets.NewString(existingNamespaces...)) {
+		reqLogger.Info("Kiali CR deployment.accessible_namespaces already up to date")
 		return nil
 	}
 
