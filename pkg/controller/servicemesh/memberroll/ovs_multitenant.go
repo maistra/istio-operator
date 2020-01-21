@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 
-	networkv1 "github.com/openshift/api/network/v1"
+	network "github.com/openshift/api/network/v1"
 	"github.com/openshift/library-go/pkg/network/networkapihelpers"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -21,11 +21,17 @@ type multitenantStrategy struct {
 
 var _ NamespaceReconciler = (*multitenantStrategy)(nil)
 
-func newMultitenantStrategy(r *namespaceReconciler) (*multitenantStrategy, error) {
+var netNamespaceCheckBackOff = wait.Backoff{
+	Steps:    15,
+	Duration: 500 * time.Millisecond,
+	Factor:   1.1,
+}
+
+func newMultitenantStrategy(client client.Client, baseLogger logr.Logger, meshNamespace string) (*multitenantStrategy, error) {
 	return &multitenantStrategy{
-		client:        r.client,
-		logger:        r.logger.WithValues("NetworkStrategy", "Multitenant"),
-		meshNamespace: r.meshNamespace,
+		client:        client,
+		logger:        baseLogger.WithValues("NetworkStrategy", "Multitenant"),
+		meshNamespace: meshNamespace,
 	}, nil
 }
 
@@ -41,8 +47,7 @@ func (s *multitenantStrategy) removeNamespaceFromMesh(namespace string) error {
 
 // adapted from github.com/openshift/oc/pkg/cli/admin/network/project_options.go#UpdatePodNetwork()
 func (s *multitenantStrategy) updateNetworkNamespace(namespace string, action networkapihelpers.PodNetworkAction, args string) error {
-	netns := &networkv1.NetNamespace{}
-	netns.SetGroupVersionKind(networkv1.GroupVersion.WithKind("NetNamespace"))
+	netns := &network.NetNamespace{}
 	err := s.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, netns)
 	if err != nil {
 		return err
@@ -53,14 +58,8 @@ func (s *multitenantStrategy) updateNetworkNamespace(namespace string, action ne
 		return err
 	}
 	// Validate SDN controller applied or rejected the intent
-	backoff := wait.Backoff{
-		Steps:    15,
-		Duration: 500 * time.Millisecond,
-		Factor:   1.1,
-	}
-	return wait.ExponentialBackoff(backoff, func() (bool, error) {
-		updatedNetNs := &networkv1.NetNamespace{}
-		updatedNetNs.SetGroupVersionKind(networkv1.GroupVersion.WithKind("NetNamespace"))
+	return wait.ExponentialBackoff(netNamespaceCheckBackOff, func() (bool, error) {
+		updatedNetNs := &network.NetNamespace{}
 		err := s.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, updatedNetNs)
 		if err != nil {
 			return false, err

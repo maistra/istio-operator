@@ -4,10 +4,23 @@ import (
 	"reflect"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
-	"k8s.io/apimachinery/pkg/util/sets"
 )
+
+func newTestReconciler(client client.Client) *ReconcileControlPlane {
+	return &ReconcileControlPlane{
+		ResourceManager: common.ResourceManager{
+			Client:       client,
+			PatchFactory: common.NewPatchFactory(client),
+			Log:          log,
+		},
+		reconcilers: map[string]*ControlPlaneReconciler{},
+	}
+}
 
 type mergeTestCases struct {
 	name           string
@@ -67,7 +80,7 @@ var mergeTests = []mergeTestCases{
 }
 
 func TestGetSMCPTemplateWithSlashReturnsError(t *testing.T) {
-	reconcileControlPlane := ReconcileControlPlane{}
+	reconcileControlPlane := newTestReconciler(nil)
 	reconciler := reconcileControlPlane.getOrCreateReconciler(&v1.ServiceMeshControlPlane{})
 	reconciler.Log = log.WithValues()
 
@@ -89,11 +102,11 @@ func TestMerge(t *testing.T) {
 }
 
 func TestCyclicTemplate(t *testing.T) {
-	reconcileControlPlane := ReconcileControlPlane{}
+	reconcileControlPlane := newTestReconciler(nil)
 	reconciler := reconcileControlPlane.getOrCreateReconciler(&v1.ServiceMeshControlPlane{})
 	reconciler.Log = log.WithValues()
 
-	_, err := reconciler.recursivelyApplyTemplates(v1.ControlPlaneSpec{Template: "visited"}, sets.NewString("visited"))
+	_, err := reconciler.recursivelyApplyTemplates(v1.ControlPlaneSpec{Template: "visited"}, "", sets.NewString("visited"))
 	if err == nil {
 		t.Fatalf("Expected error to not be nil. Cyclic dependencies should not be allowed.")
 	}
