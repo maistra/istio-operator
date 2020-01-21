@@ -22,7 +22,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
 
-func CreateClient(clientObjects ...runtime.Object) (client.Client, *EnhancedTracker) {
+func GetScheme() *runtime.Scheme {
 	s := scheme.Scheme
 	if err := apis.AddToScheme(s); err != nil {
 		panic(fmt.Sprintf("Could not add to scheme: %v", err))
@@ -40,7 +40,11 @@ func CreateClient(clientObjects ...runtime.Object) (client.Client, *EnhancedTrac
 		Version: "v1",
 		Kind:    "NetworkAttachmentDefinitionList",
 	}, &unstructured.UnstructuredList{})
+	return s
+}
 
+func CreateClient(clientObjects ...runtime.Object) (client.Client, *EnhancedTracker) {
+	s := GetScheme()
 	codecs := serializer.NewCodecFactory(s)
 	tracker := clienttesting.NewObjectTracker(s, codecs.UniversalDecoder())
 	enhancedTracker := NewEnhancedTracker(tracker)
