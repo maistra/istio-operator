@@ -242,7 +242,12 @@ func (r *namespaceReconciler) reconcileRoleBindings(namespace string, reqLogger 
 		if !existingRoleBindings.Has(roleBindingName) {
 			reqLogger.Info("creating RoleBinding for mesh ServiceAccount", "RoleBinding", roleBindingName)
 			roleBinding := meshRoleBinding.DeepCopy()
-			roleBinding.SetNamespace(namespace)
+			roleBinding.ObjectMeta = metav1.ObjectMeta{
+				Name:        meshRoleBinding.Name,
+				Namespace:   namespace,
+				Labels:      roleBinding.Labels,
+				Annotations: roleBinding.Annotations,
+			}
 			common.SetLabel(roleBinding, common.MemberOfKey, r.meshNamespace)
 			err = r.client.Create(context.TODO(), roleBinding)
 			if err == nil {
