@@ -35,12 +35,7 @@ func TestReconcileNamespaceInMesh(t *testing.T) {
 
 	// check if net-attach-def exists
 	netAttachDefName, _ := common.GetCNINetworkName(meshVersionDefault)
-	netAttachDef := &unstructured.Unstructured{}
-	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "k8s.cni.cncf.io",
-		Version: "v1",
-		Kind:    "NetworkAttachmentDefinition",
-	})
+	netAttachDef := newNetworkAttachmentDefinition()
 	err := cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: netAttachDefName}, netAttachDef)
 	if err != nil {
 		t.Fatalf("Couldn't get NetworkAttachmentDefinition from client: %v", err)
@@ -92,12 +87,7 @@ func TestRemoveNamespaceFromMesh(t *testing.T) {
 
 	// check that net-attach-def was removed
 	netAttachDefName, _ := common.GetCNINetworkName(meshVersionDefault)
-	netAttachDef := &unstructured.Unstructured{}
-	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "k8s.cni.cncf.io",
-		Version: "v1",
-		Kind:    "NetworkAttachmentDefinition",
-	})
+	netAttachDef := newNetworkAttachmentDefinition()
 	err := cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: netAttachDefName}, netAttachDef)
 	assertNotFound(err, "Expected NetworkAttachmentDefinition to be deleted, but it is still present", t)
 
@@ -172,6 +162,92 @@ func TestReconcileDeletesObsoleteRoleBindings(t *testing.T) {
 	}
 
 	assert.DeepEquals(roleBindings.Items, []rbac.RoleBinding{}, "Unexpected RoleBindings found in namespace", t)
+}
+
+func TestOtherResourcesArePreserved(t *testing.T) {
+	otherLabelName := "other-label"
+	otherLabelValue := "other-label-value"
+	namespace := newAppNamespace()
+	namespace.Labels[otherLabelName] = otherLabelValue
+	meshRoleBinding := newMeshRoleBinding()
+
+	otherNetAttachDefNamme := "some-other-net-attach-def"
+	otherNetAttachDef := newNetworkAttachmentDefinition()
+	otherNetAttachDef.SetNamespace(appNamespace)
+	otherNetAttachDef.SetName(otherNetAttachDefNamme)
+
+	otherRoleBindingName := "other-role-binding"
+	otherRoleBinding := newRoleBinding(appNamespace, otherRoleBindingName)
+
+	cl, _ := test.CreateClient(namespace, meshRoleBinding, otherNetAttachDef, otherRoleBinding)
+
+	fakeNetworkStrategy := &fakeNetworkStrategy{}
+
+	// 1. check if reconcileNamespaceInMesh preserves other resources
+	assertReconcileNamespaceSucceeds(t, cl, fakeNetworkStrategy)
+
+	// 1a. check if other namespace labels were preserved
+	ns := &core.Namespace{}
+	test.GetObject(cl, types.NamespacedName{Name: appNamespace}, ns)
+	assert.Equals(ns.Labels[otherLabelName], otherLabelValue, "Expected reconcileNamespaceInMesh to preserve other namespace labels, but it didn't", t)
+
+	// 1b. check if other NetworkAttachmentDefinitions were preserved
+	nad := newNetworkAttachmentDefinition()
+	err := cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: otherNetAttachDefNamme}, nad)
+	if errors.IsNotFound(err) {
+		t.Fatalf("Expected reconcileNamespaceInMesh to preserve other NetworkAttachmentDefinition, but it deleted it")
+	} else if err != nil {
+		panic(err)
+	}
+	assert.DeepEquals(nad, otherNetAttachDef, "Expected reconcileNamespaceInMesh to preserve other NetworkAttachmentDefinition, but it modified it", t)
+
+	// 1c. check if other RoleBindings were preserved
+	rb := &rbac.RoleBinding{}
+	err = cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: otherRoleBindingName}, rb)
+	if errors.IsNotFound(err) {
+		t.Fatalf("Expected reconcileNamespaceInMesh to preserve other RoleBinding, but it deleted it")
+	} else if err != nil {
+		panic(err)
+	}
+	assert.DeepEquals(rb, otherRoleBinding, "Expected reconcileNamespaceInMesh to preserve other RoleBinding, but it modified it", t)
+
+	// 2. check if removeNamespaceFromMesh preserves other resources
+	assertRemoveNamespaceSucceeds(t, cl, fakeNetworkStrategy)
+
+	// 2a. check if other namespace labels were preserved
+	ns = &core.Namespace{}
+	test.GetObject(cl, types.NamespacedName{Name: appNamespace}, ns)
+	assert.Equals(ns.Labels[otherLabelName], otherLabelValue, "Expected removeNamespaceFromMesh to preserve other namespace labels, but it didn't", t)
+
+	// 2b. check if other NetworkAttachmentDefinitions were preserved
+	nad = newNetworkAttachmentDefinition()
+	err = cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: otherNetAttachDefNamme}, nad)
+	if errors.IsNotFound(err) {
+		t.Fatalf("Expected removeNamespaceFromMesh to preserve other NetworkAttachmentDefinition, but it deleted it")
+	} else if err != nil {
+		panic(err)
+	}
+	assert.DeepEquals(nad, otherNetAttachDef, "Expected removeNamespaceFromMesh to preserve other NetworkAttachmentDefinition, but it modified it", t)
+
+	// 2c. check if other RoleBindings were preserved
+	rb = &rbac.RoleBinding{}
+	err = cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: otherRoleBindingName}, rb)
+	if errors.IsNotFound(err) {
+		t.Fatalf("Expected removeNamespaceFromMesh to preserve other RoleBinding, but it deleted it")
+	} else if err != nil {
+		panic(err)
+	}
+	assert.DeepEquals(rb, otherRoleBinding, "Expected removeNamespaceFromMesh to preserve other RoleBinding, but it modified it", t)
+}
+
+func newNetworkAttachmentDefinition() *unstructured.Unstructured {
+	netAttachDef := &unstructured.Unstructured{}
+	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "k8s.cni.cncf.io",
+		Version: "v1",
+		Kind:    "NetworkAttachmentDefinition",
+	})
+	return netAttachDef
 }
 
 func setupReconciledNamespace(t *testing.T, cl client.Client, namespace string) {

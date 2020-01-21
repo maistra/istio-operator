@@ -81,17 +81,7 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 			namespacesAlreadyConfigured.Insert(member)
 		}
 	}
-	sar := &authorizationv1.SubjectAccessReview{}
-	sar.Spec.User = req.AdmissionRequest.UserInfo.Username
-	sar.Spec.UID = req.AdmissionRequest.UserInfo.UID
-	sar.Spec.Extra = convertUserInfoExtra(req.AdmissionRequest.UserInfo.Extra)
-	sar.Spec.Groups = make([]string, len(req.AdmissionRequest.UserInfo.Groups))
-	copy(sar.Spec.Groups, req.AdmissionRequest.UserInfo.Groups)
-	sar.Spec.ResourceAttributes = &authorizationv1.ResourceAttributes{
-		Verb:     "update",
-		Group:    "",
-		Resource: "pods",
-	}
+
 	for _, member := range smmr.Spec.Members {
 		if namespacesAlreadyConfigured.Has(member) {
 			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "one or more members are already defined in another ServiceMeshMemberRoll")
@@ -99,8 +89,20 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "mesh project/namespace cannot be listed as a member")
 		}
 		// verify user can access all smmr member namespaces
-		sar.Spec.ResourceAttributes.Namespace = member
-		sar.Status = authorizationv1.SubjectAccessReviewStatus{}
+		sar := &authorizationv1.SubjectAccessReview{
+			Spec: authorizationv1.SubjectAccessReviewSpec{
+				User:   req.AdmissionRequest.UserInfo.Username,
+				UID:    req.AdmissionRequest.UserInfo.UID,
+				Extra:  convertUserInfoExtra(req.AdmissionRequest.UserInfo.Extra),
+				Groups: req.AdmissionRequest.UserInfo.Groups,
+				ResourceAttributes: &authorizationv1.ResourceAttributes{
+					Verb:      "update",
+					Group:     "",
+					Resource:  "pods",
+					Namespace: member,
+				},
+			},
+		}
 		err = v.client.Create(ctx, sar)
 		if err != nil {
 			logger.Error(err, "error processing SubjectAccessReview")

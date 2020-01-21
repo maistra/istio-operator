@@ -15,9 +15,21 @@ func False(actual bool, message string, t *testing.T) {
 	True(!actual, message, t)
 }
 
+func Success(err error, functionName string, t *testing.T) {
+	if err != nil {
+		t.Fatalf("Expected %s to succeed, but it failed: %v", functionName, err)
+	}
+}
+
+func Failure(err error, functionName string, t *testing.T) {
+	if err == nil {
+		t.Fatalf("Expected %s to fail, but it didn't", functionName)
+	}
+}
+
 func Equals(actual interface{}, expected interface{}, message string, t *testing.T) {
 	if actual != expected {
-		t.Fatalf("%s. Expected: %v, actual: %v", message, expected, actual)
+		t.Fatalf("%s.\nExpected: %v\n  actual: %v", message, expected, actual)
 	}
 }
 

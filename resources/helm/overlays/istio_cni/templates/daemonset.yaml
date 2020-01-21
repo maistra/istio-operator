@@ -89,7 +89,7 @@ spec:
               valueFrom:
                 configMapKeyRef:
                   name: istio-cni-config
-                  key: cni_network_config_1_0
+                  key: cni_network_config_v1_0
           volumeMounts:
             - mountPath: /host/opt/cni/bin
               name: cni-bin-dir
@@ -130,7 +130,7 @@ spec:
               valueFrom:
                 configMapKeyRef:
                   name: istio-cni-config
-                  key: cni_network_config_1_1
+                  key: cni_network_config_v1_1
           volumeMounts:
             - mountPath: /host/opt/cni/bin
               name: cni-bin-dir

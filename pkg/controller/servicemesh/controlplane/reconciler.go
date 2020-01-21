@@ -362,7 +362,7 @@ func (r *ControlPlaneReconciler) getSMCPTemplate(name string, maistraVersion str
 }
 
 //renderSMCPTemplates traverses and processes all of the references templates
-func (r *ControlPlaneReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneSpec, visited sets.String) (v1.ControlPlaneSpec, error) {
+func (r *ControlPlaneReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneSpec, version string, visited sets.String) (v1.ControlPlaneSpec, error) {
 	if smcp.Template == "" {
 		return smcp, nil
 	}
@@ -372,12 +372,12 @@ func (r *ControlPlaneReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneS
 		return smcp, fmt.Errorf("SMCP templates form cyclic dependency. Cannot proceed")
 	}
 
-	template, err := r.getSMCPTemplate(smcp.Template, smcp.Version)
+	template, err := r.getSMCPTemplate(smcp.Template, version)
 	if err != nil {
 		return smcp, err
 	}
 
-	template, err = r.recursivelyApplyTemplates(template, visited)
+	template, err = r.recursivelyApplyTemplates(template, version, visited)
 	if err != nil {
 		r.Log.Info(fmt.Sprintf("error rendering SMCP templates: %s\n", err))
 		return smcp, err
@@ -397,7 +397,7 @@ func (r *ControlPlaneReconciler) applyTemplates(smcpSpec v1.ControlPlaneSpec) (v
 		r.Log.Info("No template provided. Using default")
 	}
 
-	spec, err := r.recursivelyApplyTemplates(smcpSpec, sets.NewString())
+	spec, err := r.recursivelyApplyTemplates(smcpSpec, smcpSpec.Version, sets.NewString())
 	r.Log.Info(fmt.Sprintf("finished updating ServiceMeshControlPlane: %+v", spec))
 
 	return spec, err
