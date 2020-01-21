@@ -29,7 +29,7 @@ func Failure(err error, functionName string, t *testing.T) {
 
 func Equals(actual interface{}, expected interface{}, message string, t *testing.T) {
 	if actual != expected {
-		t.Fatalf("%s. Expected: %v, actual: %v", message, expected, actual)
+		t.Fatalf("%s.\nExpected: %v\n  actual: %v", message, expected, actual)
 	}
 }
 
