@@ -3,7 +3,7 @@ kind: ServiceMeshControlPlane
 spec:
   istio:
     global:
-      tag: 1.0.4
+      tag: 1.0.5
       # constrain resources for use in smaller environments
       defaultResources:
         requests:
