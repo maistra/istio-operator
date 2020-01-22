@@ -38,12 +38,12 @@ var log = logf.Log.WithName("controller_podlocality")
 // Add creates a new PodLocality Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme()))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &PodLocalityReconciler{ResourceManager: common.ResourceManager{Client: mgr.GetClient(), PatchFactory: common.NewPatchFactory(mgr.GetClient()), Log: log}, scheme: mgr.GetScheme()}
+func newReconciler(cl client.Client, scheme *runtime.Scheme) reconcile.Reconciler {
+	return &PodLocalityReconciler{ResourceManager: common.ResourceManager{Client: cl, PatchFactory: common.NewPatchFactory(cl), Log: log}, scheme: scheme}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler

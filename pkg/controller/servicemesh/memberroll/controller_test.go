@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes/scheme"
 	clienttesting "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -427,8 +428,7 @@ func TestReconcileDoesNotUpdateMemberRollWhenNothingToReconcile(t *testing.T) {
 
 	nad := createNAD(cniNetworkDefault, appNamespace, controlPlaneNamespace)
 
-	_, tracker, r, _, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace, nad, kialiCR)
-	kialiReconciler.delegate = r.reconcileKialiInternal
+	_, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane, namespace, nad, kialiCR)
 	common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
 
 	assertReconcileSucceeds(r, t)
@@ -628,14 +628,10 @@ func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (c
 		reconciler: &fakeNamespaceReconciler{},
 	}
 
+	fakeEventRecorder := &record.FakeRecorder{}
 	kialiReconciler := &fakeKialiReconciler{}
 
-	r := &ReconcileMemberList{
-		ResourceManager:        common.ResourceManager{Client: cl, PatchFactory: common.NewPatchFactory(cl), Log: log},
-		scheme:                 scheme.Scheme,
-		newNamespaceReconciler: rf.newReconciler,
-		reconcileKiali:         kialiReconciler.reconcileKiali,
-	}
+	r := newReconciler(cl, scheme.Scheme, fakeEventRecorder, rf.newReconciler, kialiReconciler)
 
 	return cl, enhancedTracker, r, rf.reconciler, kialiReconciler
 }

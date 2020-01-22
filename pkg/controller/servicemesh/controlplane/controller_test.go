@@ -5,21 +5,14 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/util/sets"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/client-go/kubernetes/scheme"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
-func newTestReconciler(client client.Client) *ReconcileControlPlane {
-	return &ReconcileControlPlane{
-		ResourceManager: common.ResourceManager{
-			Client:       client,
-			PatchFactory: common.NewPatchFactory(client),
-			Log:          log,
-		},
-		reconcilers: map[string]*ControlPlaneReconciler{},
-	}
+func newTestReconciler() *ReconcileControlPlane {
+	return newReconciler(nil, scheme.Scheme, nil, "")
 }
 
 type mergeTestCases struct {
@@ -80,9 +73,8 @@ var mergeTests = []mergeTestCases{
 }
 
 func TestGetSMCPTemplateWithSlashReturnsError(t *testing.T) {
-	reconcileControlPlane := newTestReconciler(nil)
+	reconcileControlPlane := newTestReconciler()
 	reconciler := reconcileControlPlane.getOrCreateReconciler(&v1.ServiceMeshControlPlane{})
-	reconciler.Log = log.WithValues()
 
 	_, err := reconciler.getSMCPTemplate("/", common.DefaultMaistraVersion)
 	if err == nil {
@@ -102,9 +94,8 @@ func TestMerge(t *testing.T) {
 }
 
 func TestCyclicTemplate(t *testing.T) {
-	reconcileControlPlane := newTestReconciler(nil)
+	reconcileControlPlane := newTestReconciler()
 	reconciler := reconcileControlPlane.getOrCreateReconciler(&v1.ServiceMeshControlPlane{})
-	reconciler.Log = log.WithValues()
 
 	_, err := reconciler.recursivelyApplyTemplates(v1.ControlPlaneSpec{Template: "visited"}, "", sets.NewString("visited"))
 	if err == nil {

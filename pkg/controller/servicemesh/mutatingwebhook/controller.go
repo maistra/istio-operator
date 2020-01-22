@@ -4,11 +4,13 @@ import (
 	"context"
 	"strings"
 
-	"github.com/maistra/istio-operator/pkg/controller/common"
 	"k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -33,11 +35,11 @@ var (
 // Add creates a new Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme()))
 }
 
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &reconciler{ResourceManager: common.ResourceManager{Client: mgr.GetClient(), Log: log}, scheme: mgr.GetScheme()}
+func newReconciler(cl client.Client, scheme *runtime.Scheme) reconcile.Reconciler {
+	return &reconciler{ResourceManager: common.ResourceManager{Client: cl, Log: log}, scheme: scheme}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler

@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"sync"
 
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	errors2 "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -41,21 +44,22 @@ func Add(mgr manager.Manager) error {
 		return err
 	}
 
-	return add(mgr, newReconciler(mgr, operatorNamespace))
+	reconciler := newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetRecorder(controllerName), operatorNamespace)
+	return add(mgr, reconciler)
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, operatorNamespace string) reconcile.Reconciler {
+func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, operatorNamespace string) *ReconcileControlPlane {
 	return &ReconcileControlPlane{
 		ResourceManager: common.ResourceManager{
-			Client:            mgr.GetClient(),
-			PatchFactory:      common.NewPatchFactory(mgr.GetClient()),
+			Client:            cl,
+			PatchFactory:      common.NewPatchFactory(cl),
 			Log:               log,
 			OperatorNamespace: operatorNamespace,
 		},
-		Scheme:      mgr.GetScheme(),
-		Manager:     mgr,
-		reconcilers: map[string]*ControlPlaneReconciler{},
+		Scheme:        scheme,
+		EventRecorder: eventRecorder,
+		reconcilers:   map[string]*ControlPlaneReconciler{},
 	}
 }
 
@@ -149,8 +153,8 @@ type ReconcileControlPlane struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	common.ResourceManager
-	Scheme  *runtime.Scheme
-	Manager manager.Manager
+	Scheme        *runtime.Scheme
+	EventRecorder record.EventRecorder
 
 	reconcilers map[string]*ControlPlaneReconciler
 	mu          sync.Mutex
@@ -246,11 +250,11 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 				reqLogger.Info("Removed finalizer")
 				hacks.ReduceLikelihoodOfRepeatedReconciliation()
 			} else if !(errors.IsGone(err) || errors.IsNotFound(err)) {
-				r.Manager.GetRecorder(controllerName).Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", err)) // TODO: this event probably isn't needed at all
+				r.EventRecorder.Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", err)) // TODO: this event probably isn't needed at all
 				return reconcile.Result{}, errors2.Wrap(err, "Error removing ServiceMeshControlPlane finalizer")
 			}
 		} else if !(errors.IsGone(err) || errors.IsNotFound(err)) {
-			r.Manager.GetRecorder(controllerName).Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", err))
+			r.EventRecorder.Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", err))
 			return reconcile.Result{}, errors2.Wrap(err, "Error getting ServiceMeshControlPlane prior to removing finalizer")
 		}
 

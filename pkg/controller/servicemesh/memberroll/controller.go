@@ -6,6 +6,7 @@ import (
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/tools/record"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -30,23 +31,30 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var log = logf.Log.WithName("controller_servicemeshmemberroll")
+const controllerName = "controller_servicemeshmemberroll"
+
+var log = logf.Log.WithName(controllerName)
 
 // Add creates a new ServiceMeshMemberRoll Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	kialiReconciler := defaultKialiReconciler{Client: mgr.GetClient()}
+	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetRecorder(controllerName), newNamespaceReconciler, &kialiReconciler))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	reconciler := ReconcileMemberList{
-		ResourceManager:        common.ResourceManager{Client: mgr.GetClient(), Log: log},
-		scheme:                 mgr.GetScheme(),
-		newNamespaceReconciler: newNamespaceReconciler,
+func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, namespaceReconcilerFactory NamespaceReconcilerFactory, kialiReconciler KialiReconciler) *ReconcileMemberList {
+	return &ReconcileMemberList{
+		ResourceManager: common.ResourceManager{
+			Client:       cl,
+			PatchFactory: common.NewPatchFactory(cl),
+			Log:          log,
+		},
+		scheme:                     scheme,
+		eventRecorder:              eventRecorder,
+		namespaceReconcilerFactory: namespaceReconcilerFactory,
+		kialiReconciler:            kialiReconciler,
 	}
-	reconciler.reconcileKiali = reconciler.reconcileKialiInternal
-	return &reconciler
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -147,15 +155,18 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 var _ reconcile.Reconciler = &ReconcileMemberList{}
 
+type NamespaceReconcilerFactory func(cl client.Client, logger logr.Logger, meshNamespace string, meshVersion string, isCNIEnabled bool) (NamespaceReconciler, error)
+
 // ReconcileMemberList reconciles a ServiceMeshMemberRoll object
 type ReconcileMemberList struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	common.ResourceManager
-	scheme *runtime.Scheme
+	scheme        *runtime.Scheme
+	eventRecorder record.EventRecorder
 
-	newNamespaceReconciler func(cl client.Client, logger logr.Logger, meshNamespace string, meshVersion string, isCNIEnabled bool) (NamespaceReconciler, error)
-	reconcileKiali         func(kialiCRNamespace string, configuredMembers []string, reqLogger logr.Logger) error
+	namespaceReconcilerFactory NamespaceReconcilerFactory
+	kialiReconciler            KialiReconciler
 }
 
 // Reconcile reads that state of the cluster for a ServiceMeshMemberRoll object and makes changes based on the state read
@@ -207,8 +218,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, utilerrors.NewAggregate(nsErrors)
 		}
 
-		// Kiali is prohibited from seeing any namespace other than the control plane itself
-		err = r.reconcileKiali(instance.Namespace, []string{}, reqLogger)
+		err = r.kialiReconciler.reconcileKiali(instance.Namespace, []string{}, reqLogger)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -384,7 +394,7 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	// tell Kiali about all the namespaces in the mesh
-	kialiErr := r.reconcileKiali(instance.Namespace, instance.Status.ConfiguredMembers, reqLogger)
+	kialiErr := r.kialiReconciler.reconcileKiali(instance.Namespace, instance.Status.ConfiguredMembers, reqLogger)
 
 	if err != nil {
 		return reconcile.Result{}, err
@@ -401,7 +411,7 @@ func (r *ReconcileMemberList) findConfiguredNamespaces(meshNamespace string) (co
 
 func (r *ReconcileMemberList) reconcileNamespaces(namespacesToReconcile, namespacesToRemove sets.String, controlPlaneNamespace string, controlPlaneVersion string, reqLogger logr.Logger) (configuredMembers []string, err error, nsErrors []error) {
 	// create reconciler
-	reconciler, err := r.newNamespaceReconciler(r.Client, reqLogger, controlPlaneNamespace, controlPlaneVersion, common.IsCNIEnabled)
+	reconciler, err := r.namespaceReconcilerFactory(r.Client, reqLogger, controlPlaneNamespace, controlPlaneVersion, common.IsCNIEnabled)
 	if err != nil {
 		return nil, err, nil
 	}
@@ -436,7 +446,15 @@ func (r *ReconcileMemberList) reconcileNamespaces(namespacesToReconcile, namespa
 	return configuredMembers, nil, nsErrors
 }
 
-func (r *ReconcileMemberList) reconcileKialiInternal(kialiCRNamespace string, configuredMembers []string, reqLogger logr.Logger) error {
+type KialiReconciler interface {
+	reconcileKiali(kialiCRNamespace string, configuredMembers []string, reqLogger logr.Logger) error
+}
+
+type defaultKialiReconciler struct {
+	Client client.Client
+}
+
+func (r *defaultKialiReconciler) reconcileKiali(kialiCRNamespace string, configuredMembers []string, reqLogger logr.Logger) error {
 
 	reqLogger.Info("Attempting to get Kiali CR", "kialiCRNamespace", kialiCRNamespace)
 
