@@ -45,19 +45,19 @@ var log = logf.Log.WithName(controllerName)
 // Add creates a new ServiceMeshMember Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetRecorder(controllerName)))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) *MemberReconciler {
+func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder) *MemberReconciler {
 	return &MemberReconciler{
 		ResourceManager: common.ResourceManager{
-			Client:       mgr.GetClient(),
-			PatchFactory: common.NewPatchFactory(mgr.GetClient()),
+			Client:       cl,
+			PatchFactory: common.NewPatchFactory(cl),
 			Log:          log,
 		},
-		scheme:        mgr.GetScheme(),
-		eventRecorder: mgr.GetRecorder(controllerName),
+		scheme:        scheme,
+		eventRecorder: eventRecorder,
 	}
 }
 

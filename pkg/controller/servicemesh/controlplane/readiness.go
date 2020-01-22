@@ -43,7 +43,7 @@ func (r *ControlPlaneReconciler) updateReadinessStatus() (bool, error) {
 			Message: fmt.Sprintf("Error collecting ready state: %s", err),
 		}
 		r.Status.SetCondition(condition)
-		r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeWarning, eventReasonNotReady, condition.Message)
+		r.EventRecorder.Event(r.Instance, corev1.EventTypeWarning, eventReasonNotReady, condition.Message)
 		return true, err
 	}
 	unreadyComponents := make([]string, 0, len(notReadyState))
@@ -64,7 +64,7 @@ func (r *ControlPlaneReconciler) updateReadinessStatus() (bool, error) {
 				Message: "Some components are not fully available",
 			}
 			r.Status.SetCondition(condition)
-			r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeWarning, eventReasonNotReady, fmt.Sprintf("The following components are not fully available: %s", unreadyComponents))
+			r.EventRecorder.Event(r.Instance, corev1.EventTypeWarning, eventReasonNotReady, fmt.Sprintf("The following components are not fully available: %s", unreadyComponents))
 			updateStatus = true
 		}
 	} else {
@@ -76,7 +76,7 @@ func (r *ControlPlaneReconciler) updateReadinessStatus() (bool, error) {
 				Message: "All component deployments are Available",
 			}
 			r.Status.SetCondition(condition)
-			r.Manager.GetRecorder(controllerName).Event(r.Instance, corev1.EventTypeNormal, eventReasonReady, condition.Message)
+			r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReasonReady, condition.Message)
 			updateStatus = true
 		}
 	}

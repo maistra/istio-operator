@@ -357,7 +357,7 @@ func newMemberRoll() *maistra.ServiceMeshMemberRoll {
 func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker, *MemberReconciler) {
 	cl, enhancedTracker := test.CreateClient(clientObjects...)
 	fakeEventRecorder := &record.FakeRecorder{}
-	r := &MemberReconciler{ResourceManager: common.ResourceManager{Client: cl, PatchFactory: common.NewPatchFactory(cl), Log: log}, scheme: scheme.Scheme, eventRecorder: fakeEventRecorder}
+	r := newReconciler(cl, scheme.Scheme, fakeEventRecorder)
 	return cl, enhancedTracker, r
 }
 
