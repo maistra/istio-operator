@@ -7,16 +7,11 @@ metadata:
     app: istio
     chart: {{ template "istio.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.0.4
+    maistra-version: 1.0.5
     release: {{ .Release.Name }}
 spec:
   ingress:
   - from:
-    - namespaceSelector:
-        matchLabels:
-          "maistra.io/member-of": "{{ .Release.Namespace }}"
-  egress:
-  - to:
     - namespaceSelector:
         matchLabels:
           "maistra.io/member-of": "{{ .Release.Namespace }}"
@@ -33,7 +28,7 @@ metadata:
     app: istio
     chart: {{ template "istio.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.0.4
+    maistra-version: 1.0.5
     release: {{ .Release.Name }}
   annotations:
     "maistra.io/internal": "true"
@@ -55,7 +50,7 @@ metadata:
   labels:
     chart: {{ template "istio.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.0.4
+    maistra-version: 1.0.5
     release: {{ .Release.Name }}
 spec:
   podSelector:
