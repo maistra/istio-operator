@@ -539,35 +539,70 @@ func newNamespaceReconciler(client client.Client, logger logr.Logger, meshNamesp
 
 func (r *namespaceReconciler) initializeNetworkingStrategy() error {
 	// configure networks
-	clusterNetwork := &unstructured.Unstructured{}
-	clusterNetwork.SetAPIVersion("network.openshift.io/v1")
-	clusterNetwork.SetKind("ClusterNetwork")
-	r.networkingStrategy = &subnetStrategy{}
-	err := r.client.Get(context.TODO(), client.ObjectKey{Name: "default"}, clusterNetwork)
+	network := &unstructured.Unstructured{}
+	network.SetAPIVersion("config.openshift.io/v1")
+	network.SetKind("Network")
+	err := r.client.Get(context.TODO(), client.ObjectKey{Name: "cluster"}, network)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.logger.Info("default cluster network not defined, skipping network configuration")
+			r.logger.Info("network configuration not defined, skipping")
 			return nil
 		}
 		return err
 	}
-	networkPlugin, ok, err := unstructured.NestedString(clusterNetwork.UnstructuredContent(), "pluginName")
+	networkSpec, ok, err := unstructured.NestedMap(network.UnstructuredContent(), "spec")
 	if err != nil {
-		return pkgerrors.Wrap(err, "cluster network plugin not defined")
+		return pkgerrors.Wrap(err, "network spec not defined")
 	}
 	if ok {
-		switch networkPlugin {
-		case "redhat/openshift-ovs-subnet":
-			// nothing to do
-		case "redhat/openshift-ovs-networkpolicy":
-			r.networkingStrategy, err = newNetworkPolicyStrategy(r)
-		case "redhat/openshift-ovs-multitenant":
-			r.networkingStrategy, err = newMultitenantStrategy(r)
-		default:
-			return fmt.Errorf("unsupported cluster network plugin: %s", networkPlugin)
+		networkType, ok := networkSpec["networkType"]
+		if ok {
+			switch networkType {
+			case "OpenShiftSDN":
+				clusterNetwork := &unstructured.Unstructured{}
+				clusterNetwork.SetAPIVersion("network.openshift.io/v1")
+				clusterNetwork.SetKind("ClusterNetwork")
+				r.networkingStrategy = &subnetStrategy{}
+				err = r.client.Get(context.TODO(), client.ObjectKey{Name: "default"}, clusterNetwork)
+				if err != nil {
+					if errors.IsNotFound(err) {
+						r.logger.Info("default cluster network not defined, skipping network configuration")
+						return nil
+					}
+					return err
+				}
+				networkPlugin, ok, err := unstructured.NestedString(clusterNetwork.UnstructuredContent(), "pluginName")
+				if err != nil {
+					return pkgerrors.Wrap(err, "cluster network plugin not defined")
+				}
+				if ok {
+					switch networkPlugin {
+					case "redhat/openshift-ovs-subnet":
+						r.logger.Info("Network Strategy OpenShiftSDN:subnet")
+						// nothing to do
+					case "redhat/openshift-ovs-networkpolicy":
+						r.logger.Info("Network Strategy OpenShiftSDN:NetworkPolicy")
+						r.networkingStrategy, err = newNetworkPolicyStrategy(r)
+					case "redhat/openshift-ovs-multitenant":
+						r.logger.Info("Network Strategy OpenShiftSDN:MultiTenant")
+						r.networkingStrategy, err = newMultitenantStrategy(r)
+					default:
+						return fmt.Errorf("unsupported cluster network plugin: %s", networkPlugin)
+					}
+				} else {
+					r.logger.Info("cluster network plugin not defined, skipping network configuration")
+				}
+			case "Calico":
+				r.logger.Info("Network Strategy Calico:NetworkPolicy")
+				r.networkingStrategy, err = newNetworkPolicyStrategy(r)
+			default:
+				return fmt.Errorf("unsupported network type: %s", networkType)
+			}
+		} else {
+			r.logger.Info("networkType not defined, skipping network configuration")
 		}
 	} else {
-		r.logger.Info("cluster network plugin not defined, skipping network configuration")
+		r.logger.Info("network spec not defined, skipping network configuration")
 	}
 	return err
 }
