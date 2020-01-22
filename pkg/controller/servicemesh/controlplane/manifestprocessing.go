@@ -4,7 +4,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
-func (r *ControlPlaneReconciler) processComponentManifests(chartName string) (ready bool, err error) {
+func (r *ControlPlaneInstanceReconciler) processComponentManifests(chartName string) (ready bool, err error) {
 	r.lastComponent = ""
 	componentName := componentFromChartName(chartName)
 	origLogger := r.Log
