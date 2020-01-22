@@ -49,8 +49,8 @@ func Add(mgr manager.Manager) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, operatorNamespace string) *ReconcileControlPlane {
-	return &ReconcileControlPlane{
+func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, operatorNamespace string) *ControlPlaneReconciler {
+	return &ControlPlaneReconciler{
 		ResourceManager: common.ResourceManager{
 			Client:            cl,
 			PatchFactory:      common.NewPatchFactory(cl),
@@ -59,7 +59,7 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 		},
 		Scheme:        scheme,
 		EventRecorder: eventRecorder,
-		reconcilers:   map[string]*ControlPlaneReconciler{},
+		reconcilers:   map[string]*ControlPlaneInstanceReconciler{},
 	}
 }
 
@@ -146,23 +146,23 @@ var ownedResourcePredicates = predicate.Funcs{
 	},
 }
 
-var _ reconcile.Reconciler = &ReconcileControlPlane{}
+var _ reconcile.Reconciler = &ControlPlaneReconciler{}
 
-// ReconcileControlPlane reconciles a ServiceMeshControlPlane object
-type ReconcileControlPlane struct {
+// ControlPlaneReconciler reconciles a ServiceMeshControlPlane object
+type ControlPlaneReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	common.ResourceManager
 	Scheme        *runtime.Scheme
 	EventRecorder record.EventRecorder
 
-	reconcilers map[string]*ControlPlaneReconciler
+	reconcilers map[string]*ControlPlaneInstanceReconciler
 	mu          sync.Mutex
 }
 
 // Reconcile reads that state of the cluster for a ServiceMeshControlPlane object and makes changes based on the state read
 // and what is in the ServiceMeshControlPlane.Spec
-func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("ServiceMeshControlPlane", request)
 	reqLogger.Info("Processing ServiceMeshControlPlane")
 	defer func() {
@@ -288,7 +288,7 @@ func reconcilersMapKey(instance *v1.ServiceMeshControlPlane) string {
 	return fmt.Sprintf("%s/%s", instance.GetNamespace(), instance.GetName())
 }
 
-func (r *ReconcileControlPlane) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) *ControlPlaneReconciler {
+func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) *ControlPlaneInstanceReconciler {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -305,16 +305,16 @@ func (r *ReconcileControlPlane) getOrCreateReconciler(newInstance *v1.ServiceMes
 		}
 		return existing
 	}
-	newReconciler := &ControlPlaneReconciler{
-		ReconcileControlPlane: r,
-		Instance:              newInstance,
-		Status:                newInstance.Status.DeepCopy(),
+	newReconciler := &ControlPlaneInstanceReconciler{
+		ControlPlaneReconciler: r,
+		Instance:               newInstance,
+		Status:                 newInstance.Status.DeepCopy(),
 	}
 	r.reconcilers[key] = newReconciler
 	return newReconciler
 }
 
-func (r *ReconcileControlPlane) deleteReconciler(reconciler *ControlPlaneReconciler) {
+func (r *ControlPlaneReconciler) deleteReconciler(reconciler *ControlPlaneInstanceReconciler) {
 	if reconciler == nil {
 		return
 	}

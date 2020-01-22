@@ -11,7 +11,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
-func newTestReconciler() *ReconcileControlPlane {
+func newTestReconciler() *ControlPlaneReconciler {
 	return newReconciler(nil, scheme.Scheme, nil, "")
 }
 
@@ -73,10 +73,10 @@ var mergeTests = []mergeTestCases{
 }
 
 func TestGetSMCPTemplateWithSlashReturnsError(t *testing.T) {
-	reconcileControlPlane := newTestReconciler()
-	reconciler := reconcileControlPlane.getOrCreateReconciler(&v1.ServiceMeshControlPlane{})
+	reconciler := newTestReconciler()
+	instanceReconciler := reconciler.getOrCreateReconciler(&v1.ServiceMeshControlPlane{})
 
-	_, err := reconciler.getSMCPTemplate("/", common.DefaultMaistraVersion)
+	_, err := instanceReconciler.getSMCPTemplate("/", common.DefaultMaistraVersion)
 	if err == nil {
 		t.Fatalf("Allowed to access path outside of deployment directory")
 	}
@@ -94,10 +94,10 @@ func TestMerge(t *testing.T) {
 }
 
 func TestCyclicTemplate(t *testing.T) {
-	reconcileControlPlane := newTestReconciler()
-	reconciler := reconcileControlPlane.getOrCreateReconciler(&v1.ServiceMeshControlPlane{})
+	reconciler := newTestReconciler()
+	instanceReconciler := reconciler.getOrCreateReconciler(&v1.ServiceMeshControlPlane{})
 
-	_, err := reconciler.recursivelyApplyTemplates(v1.ControlPlaneSpec{Template: "visited"}, "", sets.NewString("visited"))
+	_, err := instanceReconciler.recursivelyApplyTemplates(v1.ControlPlaneSpec{Template: "visited"}, "", sets.NewString("visited"))
 	if err == nil {
 		t.Fatalf("Expected error to not be nil. Cyclic dependencies should not be allowed.")
 	}

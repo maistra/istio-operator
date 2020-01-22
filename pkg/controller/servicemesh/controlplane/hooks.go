@@ -16,16 +16,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *ControlPlaneReconciler) processNewComponent(name string, status *v1.ComponentStatus) error {
+func (r *ControlPlaneInstanceReconciler) processNewComponent(name string, status *v1.ComponentStatus) error {
 	return nil
 }
 
-func (r *ControlPlaneReconciler) processDeletedComponent(name string, status *v1.ComponentStatus) error {
+func (r *ControlPlaneInstanceReconciler) processDeletedComponent(name string, status *v1.ComponentStatus) error {
 	// nop
 	return nil
 }
 
-func (r *ControlPlaneReconciler) preprocessObject(object *unstructured.Unstructured) error {
+func (r *ControlPlaneInstanceReconciler) preprocessObject(object *unstructured.Unstructured) error {
 	// Add owner ref
 	if object.GetNamespace() == r.Instance.GetNamespace() {
 		object.SetOwnerReferences(r.ownerRefs)
@@ -51,15 +51,15 @@ func (r *ControlPlaneReconciler) preprocessObject(object *unstructured.Unstructu
 	return nil
 }
 
-func (r *ControlPlaneReconciler) processNewObject(object *unstructured.Unstructured) error {
+func (r *ControlPlaneInstanceReconciler) processNewObject(object *unstructured.Unstructured) error {
 	return nil
 }
 
-func (r *ControlPlaneReconciler) processDeletedObject(object *unstructured.Unstructured) error {
+func (r *ControlPlaneInstanceReconciler) processDeletedObject(object *unstructured.Unstructured) error {
 	return nil
 }
 
-func (r *ControlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructured) error {
+func (r *ControlPlaneInstanceReconciler) patchKialiConfig(object *unstructured.Unstructured) error {
 	r.Log.Info("patching kiali CR", object.GetKind(), object.GetName())
 
 	// get jaeger URL and enabled flags from Kiali CR
@@ -180,7 +180,7 @@ func (r *ControlPlaneReconciler) patchKialiConfig(object *unstructured.Unstructu
 	return nil
 }
 
-func (r *ControlPlaneReconciler) waitForWebhookCABundleInitialization(object *unstructured.Unstructured) error {
+func (r *ControlPlaneInstanceReconciler) waitForWebhookCABundleInitialization(object *unstructured.Unstructured) error {
 	name := object.GetName()
 	kind := object.GetKind()
 	r.Log.Info("waiting for webhook CABundle initialization", kind, name)

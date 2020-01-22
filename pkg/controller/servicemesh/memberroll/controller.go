@@ -43,8 +43,8 @@ func Add(mgr manager.Manager) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, namespaceReconcilerFactory NamespaceReconcilerFactory, kialiReconciler KialiReconciler) *ReconcileMemberList {
-	return &ReconcileMemberList{
+func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, namespaceReconcilerFactory NamespaceReconcilerFactory, kialiReconciler KialiReconciler) *MemberRollReconciler {
+	return &MemberRollReconciler{
 		ResourceManager: common.ResourceManager{
 			Client:       cl,
 			PatchFactory: common.NewPatchFactory(cl),
@@ -153,12 +153,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcileMemberList{}
+var _ reconcile.Reconciler = &MemberRollReconciler{}
 
 type NamespaceReconcilerFactory func(cl client.Client, logger logr.Logger, meshNamespace string, meshVersion string, isCNIEnabled bool) (NamespaceReconciler, error)
 
-// ReconcileMemberList reconciles a ServiceMeshMemberRoll object
-type ReconcileMemberList struct {
+// MemberRollReconciler reconciles a ServiceMeshMemberRoll object
+type MemberRollReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	common.ResourceManager
@@ -171,7 +171,7 @@ type ReconcileMemberList struct {
 
 // Reconcile reads that state of the cluster for a ServiceMeshMemberRoll object and makes changes based on the state read
 // and what is in the ServiceMeshMemberRoll.Spec
-func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("ServiceMeshMemberRoll", request)
 	reqLogger.Info("Processing ServiceMeshMemberRoll")
 
@@ -402,14 +402,14 @@ func (r *ReconcileMemberList) Reconcile(request reconcile.Request) (reconcile.Re
 	return reconcile.Result{}, kialiErr
 }
 
-func (r *ReconcileMemberList) findConfiguredNamespaces(meshNamespace string) (corev1.NamespaceList, error) {
+func (r *MemberRollReconciler) findConfiguredNamespaces(meshNamespace string) (corev1.NamespaceList, error) {
 	list := corev1.NamespaceList{}
 	labelSelector := map[string]string{common.MemberOfKey: meshNamespace}
 	err := r.Client.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(""), &list)
 	return list, err
 }
 
-func (r *ReconcileMemberList) reconcileNamespaces(namespacesToReconcile, namespacesToRemove sets.String, controlPlaneNamespace string, controlPlaneVersion string, reqLogger logr.Logger) (configuredMembers []string, err error, nsErrors []error) {
+func (r *MemberRollReconciler) reconcileNamespaces(namespacesToReconcile, namespacesToRemove sets.String, controlPlaneNamespace string, controlPlaneVersion string, reqLogger logr.Logger) (configuredMembers []string, err error, nsErrors []error) {
 	// create reconciler
 	reconciler, err := r.namespaceReconcilerFactory(r.Client, reqLogger, controlPlaneNamespace, controlPlaneVersion, common.IsCNIEnabled)
 	if err != nil {
@@ -507,7 +507,7 @@ func (r *defaultKialiReconciler) reconcileKiali(kialiCRNamespace string, configu
 	return nil
 }
 
-func (r *ReconcileMemberList) getAllNamespaces() (sets.String, error) {
+func (r *MemberRollReconciler) getAllNamespaces() (sets.String, error) {
 	namespaceList := &corev1.NamespaceList{}
 	err := r.Client.List(context.TODO(), nil, namespaceList)
 	if err != nil {

@@ -620,7 +620,7 @@ func TestClientReturnsErrorWhenRemovingFinalizer(t *testing.T) {
 	}
 }
 
-func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker, *ReconcileMemberList, *fakeNamespaceReconciler, *fakeKialiReconciler) {
+func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker, *MemberRollReconciler, *fakeNamespaceReconciler, *fakeKialiReconciler) {
 
 	cl, enhancedTracker := test.CreateClient(clientObjects...)
 
@@ -662,7 +662,7 @@ func (r *fakeNamespaceReconciler) removeNamespaceFromMesh(namespace string) erro
 	return r.delegate.removeNamespaceFromMesh(namespace)
 }
 
-func assertReconcileSucceeds(r *ReconcileMemberList, t *testing.T) {
+func assertReconcileSucceeds(r *MemberRollReconciler, t *testing.T) {
 	res, err := r.Reconcile(request)
 	if err != nil {
 		log.Error(err, "Reconcile failed")
@@ -673,7 +673,7 @@ func assertReconcileSucceeds(r *ReconcileMemberList, t *testing.T) {
 	}
 }
 
-func assertReconcileFails(r *ReconcileMemberList, t *testing.T) {
+func assertReconcileFails(r *MemberRollReconciler, t *testing.T) {
 	_, err := r.Reconcile(request)
 	if err == nil {
 		t.Fatal("Expected reconcile to fail, but it didn't")

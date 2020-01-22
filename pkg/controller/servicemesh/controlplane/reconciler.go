@@ -27,8 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-type ControlPlaneReconciler struct {
-	*ReconcileControlPlane
+type ControlPlaneInstanceReconciler struct {
+	*ControlPlaneReconciler
 	Instance       *v1.ServiceMeshControlPlane
 	Status         *v1.ControlPlaneStatus
 	ownerRefs      []metav1.OwnerReference
@@ -71,7 +71,7 @@ const (
 	eventReasonReady                   = "Ready"
 )
 
-func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error) {
+func (r *ControlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, err error) {
 	if r.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse {
 		r.initializeReconcileStatus()
 		err := r.PostStatus()
@@ -282,7 +282,7 @@ func (r *ControlPlaneReconciler) Reconcile() (result reconcile.Result, err error
 	return
 }
 
-func (r *ControlPlaneReconciler) pauseReconciliation(chartName string, err error) (v1.ConditionReason, string, error) {
+func (r *ControlPlaneInstanceReconciler) pauseReconciliation(chartName string, err error) (v1.ConditionReason, string, error) {
 	var eventReason string
 	var conditionReason v1.ConditionReason
 	var reconciliationMessage string
@@ -306,7 +306,7 @@ func (r *ControlPlaneReconciler) pauseReconciliation(chartName string, err error
 	return conditionReason, reconciliationMessage, errors.Wrapf(err, reconciliationMessage)
 }
 
-func (r *ControlPlaneReconciler) isUpdating() bool {
+func (r *ControlPlaneInstanceReconciler) isUpdating() bool {
 	return r.Instance.Status.ObservedGeneration != 0
 }
 
@@ -337,7 +337,7 @@ func mergeValues(base map[string]interface{}, input map[string]interface{}) map[
 	return base
 }
 
-func (r *ControlPlaneReconciler) getSMCPTemplate(name string, maistraVersion string) (v1.ControlPlaneSpec, error) {
+func (r *ControlPlaneInstanceReconciler) getSMCPTemplate(name string, maistraVersion string) (v1.ControlPlaneSpec, error) {
 	if strings.Contains(name, "/") {
 		return v1.ControlPlaneSpec{}, fmt.Errorf("template name contains invalid character '/'")
 	}
@@ -362,7 +362,7 @@ func (r *ControlPlaneReconciler) getSMCPTemplate(name string, maistraVersion str
 }
 
 //renderSMCPTemplates traverses and processes all of the references templates
-func (r *ControlPlaneReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneSpec, version string, visited sets.String) (v1.ControlPlaneSpec, error) {
+func (r *ControlPlaneInstanceReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneSpec, version string, visited sets.String) (v1.ControlPlaneSpec, error) {
 	if smcp.Template == "" {
 		return smcp, nil
 	}
@@ -390,7 +390,7 @@ func (r *ControlPlaneReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneS
 	return smcp, nil
 }
 
-func (r *ControlPlaneReconciler) applyTemplates(smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
+func (r *ControlPlaneInstanceReconciler) applyTemplates(smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
 	r.Log.Info("updating servicemeshcontrolplane with templates")
 	if smcpSpec.Template == "" {
 		smcpSpec.Template = smcpDefaultTemplate
@@ -403,7 +403,7 @@ func (r *ControlPlaneReconciler) applyTemplates(smcpSpec v1.ControlPlaneSpec) (v
 	return spec, err
 }
 
-func (r *ControlPlaneReconciler) validateSMCPSpec(spec v1.ControlPlaneSpec) error {
+func (r *ControlPlaneInstanceReconciler) validateSMCPSpec(spec v1.ControlPlaneSpec) error {
 	if spec.Istio == nil {
 		return fmt.Errorf("ServiceMeshControlPlane missing Istio section")
 	}
@@ -414,7 +414,7 @@ func (r *ControlPlaneReconciler) validateSMCPSpec(spec v1.ControlPlaneSpec) erro
 	return nil
 }
 
-func (r *ControlPlaneReconciler) renderCharts() error {
+func (r *ControlPlaneInstanceReconciler) renderCharts() error {
 	//Generate the spec
 	r.Status.LastAppliedConfiguration = r.Instance.Spec
 	if len(r.Status.LastAppliedConfiguration.Version) == 0 {
@@ -491,7 +491,7 @@ func (r *ControlPlaneReconciler) renderCharts() error {
 	return nil
 }
 
-func (r *ControlPlaneReconciler) PostStatus() error {
+func (r *ControlPlaneInstanceReconciler) PostStatus() error {
 	instance := &v1.ServiceMeshControlPlane{}
 	r.Log.Info("Posting status update", "conditions", r.Status.Conditions)
 	if err := r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); err == nil {
@@ -506,7 +506,7 @@ func (r *ControlPlaneReconciler) PostStatus() error {
 	return nil
 }
 
-func (r *ControlPlaneReconciler) postReconciliationStatus(reconciliationReason v1.ConditionReason, reconciliationMessage string, processingErr error) error {
+func (r *ControlPlaneInstanceReconciler) postReconciliationStatus(reconciliationReason v1.ConditionReason, reconciliationMessage string, processingErr error) error {
 	var reason string
 	if r.isUpdating() {
 		reason = eventReasonUpdating
@@ -532,7 +532,7 @@ func (r *ControlPlaneReconciler) postReconciliationStatus(reconciliationReason v
 	return r.PostStatus()
 }
 
-func (r *ControlPlaneReconciler) skipStatusUpdate() bool {
+func (r *ControlPlaneInstanceReconciler) skipStatusUpdate() bool {
 	for _, conditionType := range []v1.ConditionType{v1.ConditionTypeInstalled, v1.ConditionTypeReconciled, v1.ConditionTypeReady} {
 		if r.Status.GetCondition(conditionType).Status != r.Instance.Status.GetCondition(conditionType).Status {
 			return false
@@ -541,7 +541,7 @@ func (r *ControlPlaneReconciler) skipStatusUpdate() bool {
 	return true
 }
 
-func (r *ControlPlaneReconciler) initializeReconcileStatus() {
+func (r *ControlPlaneInstanceReconciler) initializeReconcileStatus() {
 	var readyMessage string
 	var eventReason string
 	var conditionReason v1.ConditionReason
