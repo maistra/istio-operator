@@ -1,0 +1,16 @@
+version: 2.1
+jobs:
+
+  build:
+    working_directory: /go/src/github.com/maistra/istio-operator
+    docker:
+      - image: circleci/golang:1.13.6
+    steps:
+      - checkout
+      - run: make clean compile test
+
+workflows:
+  version: 2.1
+  circleci_build:
+    jobs:
+      - build
