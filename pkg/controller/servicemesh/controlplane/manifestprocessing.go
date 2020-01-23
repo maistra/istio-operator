@@ -25,7 +25,7 @@ func (r *ControlPlaneInstanceReconciler) processComponentManifests(chartName str
 		r.Log.Info("component reconciliation complete")
 	}()
 
-	mp := common.NewManifestProcessor(r.ResourceManager, r.Instance.GetNamespace(), r.meshGeneration, r.Instance.GetNamespace(), r.preprocessObject, r.processNewObject)
+	mp := common.NewManifestProcessor(r.ControllerResources, r.Instance.GetNamespace(), r.meshGeneration, r.Instance.GetNamespace(), r.preprocessObject, r.processNewObject)
 	if err = mp.ProcessManifests(renderings, status.Resource); err != nil {
 		return
 	}

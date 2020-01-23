@@ -39,7 +39,7 @@ func Add(mgr manager.Manager) error {
 }
 
 func newReconciler(cl client.Client, scheme *runtime.Scheme) reconcile.Reconciler {
-	return &reconciler{ResourceManager: common.ResourceManager{Client: cl, Log: log}, scheme: scheme}
+	return &reconciler{ControllerResources: common.ControllerResources{Client: cl, Scheme: scheme, Log: log}}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -105,8 +105,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 // reconciles webhook configurations
 type reconciler struct {
-	common.ResourceManager
-	scheme *runtime.Scheme
+	common.ControllerResources
 }
 
 // Reconcile updates ClientConfigs of MutatingWebhookConfigurations to contain the CABundle

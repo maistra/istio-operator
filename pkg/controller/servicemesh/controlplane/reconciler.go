@@ -28,7 +28,7 @@ import (
 )
 
 type ControlPlaneInstanceReconciler struct {
-	*ControlPlaneReconciler
+	common.ControllerResources
 	Instance       *v1.ServiceMeshControlPlane
 	Status         *v1.ControlPlaneStatus
 	ownerRefs      []metav1.OwnerReference
