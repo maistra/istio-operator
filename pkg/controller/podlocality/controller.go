@@ -43,7 +43,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(cl client.Client, scheme *runtime.Scheme) reconcile.Reconciler {
-	return &PodLocalityReconciler{ResourceManager: common.ResourceManager{Client: cl, PatchFactory: common.NewPatchFactory(cl), Log: log}, scheme: scheme}
+	return &PodLocalityReconciler{ControllerResources: common.ControllerResources{Client: cl, PatchFactory: common.NewPatchFactory(cl), Log: log}, scheme: scheme}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -132,7 +132,7 @@ var _ reconcile.Reconciler = &PodLocalityReconciler{}
 type PodLocalityReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	common.ResourceManager
+	common.ControllerResources
 	scheme *runtime.Scheme
 }
 

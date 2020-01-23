@@ -51,13 +51,13 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder) *MemberReconciler {
 	return &MemberReconciler{
-		ResourceManager: common.ResourceManager{
-			Client:       cl,
-			PatchFactory: common.NewPatchFactory(cl),
-			Log:          log,
+		ControllerResources: common.ControllerResources{
+			Client:        cl,
+			Scheme:        scheme,
+			EventRecorder: eventRecorder,
+			PatchFactory:  common.NewPatchFactory(cl),
+			Log:           log,
 		},
-		scheme:        scheme,
-		eventRecorder: eventRecorder,
 	}
 }
 
@@ -152,11 +152,7 @@ var _ reconcile.Reconciler = &MemberReconciler{}
 
 // MemberReconciler reconciles ServiceMeshMember objects
 type MemberReconciler struct {
-	// This client, initialized using mgr.Client() above, is a split client
-	// that reads objects from the cache and writes to the apiserver
-	common.ResourceManager
-	scheme        *runtime.Scheme
-	eventRecorder record.EventRecorder
+	common.ControllerResources
 }
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
@@ -176,7 +172,7 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
-	mayContinue, err := common.HandleFinalization(r.finalizeMember, member, r.Client, r.eventRecorder, reqLogger)
+	mayContinue, err := common.HandleFinalization(r.finalizeMember, member, r.Client, r.EventRecorder, reqLogger)
 	if err != nil || !mayContinue {
 		return reconcile.Result{}, err
 	}
@@ -389,7 +385,7 @@ func (r *MemberReconciler) updateStatus(member *maistra.ServiceMeshMember, recon
 }
 
 func (r *MemberReconciler) recordEvent(member *maistra.ServiceMeshMember, eventType string, reason maistra.ConditionReason, message string) {
-	r.eventRecorder.Event(member, eventType, string(reason), message)
+	r.EventRecorder.Event(member, eventType, string(reason), message)
 }
 
 func boolToConditionStatus(b bool) core.ConditionStatus {

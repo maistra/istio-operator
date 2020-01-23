@@ -22,21 +22,21 @@ import (
 )
 
 type ManifestProcessor struct {
-	ResourceManager
+	ControllerResources
 	preprocessObject func(obj *unstructured.Unstructured) error
 	processNewObject func(obj *unstructured.Unstructured) error
 
 	appInstance, appVersion, owner string
 }
 
-func NewManifestProcessor(resourceManager ResourceManager, appInstance, appVersion, owner string, preprocessObjectFunc, postProcessObjectFunc func(obj *unstructured.Unstructured) error) *ManifestProcessor {
+func NewManifestProcessor(controllerResources ControllerResources, appInstance, appVersion, owner string, preprocessObjectFunc, postProcessObjectFunc func(obj *unstructured.Unstructured) error) *ManifestProcessor {
 	return &ManifestProcessor{
-		ResourceManager:  resourceManager,
-		preprocessObject: preprocessObjectFunc,
-		processNewObject: postProcessObjectFunc,
-		appInstance:      appInstance,
-		appVersion:       appVersion,
-		owner:            owner,
+		ControllerResources: controllerResources,
+		preprocessObject:    preprocessObjectFunc,
+		processNewObject:    postProcessObjectFunc,
+		appInstance:         appInstance,
+		appVersion:          appVersion,
+		owner:               owner,
 	}
 }
 

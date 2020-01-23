@@ -6,7 +6,9 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -16,8 +18,10 @@ import (
 
 var log = logf.Log.WithName("util")
 
-type ResourceManager struct {
+type ControllerResources struct {
 	Client            client.Client
+	Scheme            *runtime.Scheme
+	EventRecorder     record.EventRecorder
 	PatchFactory      *PatchFactory
 	Log               logr.Logger
 	OperatorNamespace string

@@ -48,15 +48,15 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, operatorNamespace string) *ControlPlaneReconciler {
 	return &ControlPlaneReconciler{
-		ResourceManager: common.ResourceManager{
+		ControllerResources: common.ControllerResources{
 			Client:            cl,
+			Scheme:            scheme,
+			EventRecorder:     eventRecorder,
 			PatchFactory:      common.NewPatchFactory(cl),
 			Log:               log,
 			OperatorNamespace: operatorNamespace,
 		},
-		Scheme:        scheme,
-		EventRecorder: eventRecorder,
-		reconcilers:   map[string]*ControlPlaneInstanceReconciler{},
+		reconcilers: map[string]*ControlPlaneInstanceReconciler{},
 	}
 }
 
@@ -149,9 +149,7 @@ var _ reconcile.Reconciler = &ControlPlaneReconciler{}
 type ControlPlaneReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	common.ResourceManager
-	Scheme        *runtime.Scheme
-	EventRecorder record.EventRecorder
+	common.ControllerResources
 
 	reconcilers map[string]*ControlPlaneInstanceReconciler
 	mu          sync.Mutex
@@ -240,9 +238,9 @@ func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMe
 		return existing
 	}
 	newReconciler := &ControlPlaneInstanceReconciler{
-		ControlPlaneReconciler: r,
-		Instance:               newInstance,
-		Status:                 newInstance.Status.DeepCopy(),
+		ControllerResources: r.ControllerResources,
+		Instance:            newInstance,
+		Status:              newInstance.Status.DeepCopy(),
 	}
 	r.reconcilers[key] = newReconciler
 	return newReconciler

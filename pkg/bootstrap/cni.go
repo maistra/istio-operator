@@ -40,14 +40,14 @@ func internalInstallCNI(cl client.Client) error {
 		return err
 	}
 
-	resourceManager := common.ResourceManager{
+	controllerResources := common.ControllerResources{
 		Client:            cl,
 		PatchFactory:      common.NewPatchFactory(cl),
 		Log:               log,
 		OperatorNamespace: operatorNamespace,
 	}
 
-	mp := common.NewManifestProcessor(resourceManager, "istio_cni", "TODO", "maistra-istio-operator", preProcessObject, postProcessObject)
+	mp := common.NewManifestProcessor(controllerResources, "istio_cni", "TODO", "maistra-istio-operator", preProcessObject, postProcessObject)
 	if err = mp.ProcessManifests(renderings["istio_cni"], "istio_cni"); err != nil {
 		return err
 	}

@@ -45,13 +45,13 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, namespaceReconcilerFactory NamespaceReconcilerFactory, kialiReconciler KialiReconciler) *MemberRollReconciler {
 	return &MemberRollReconciler{
-		ResourceManager: common.ResourceManager{
-			Client:       cl,
-			PatchFactory: common.NewPatchFactory(cl),
-			Log:          log,
+		ControllerResources: common.ControllerResources{
+			Client:        cl,
+			Scheme:        scheme,
+			EventRecorder: eventRecorder,
+			PatchFactory:  common.NewPatchFactory(cl),
+			Log:           log,
 		},
-		scheme:                     scheme,
-		eventRecorder:              eventRecorder,
 		namespaceReconcilerFactory: namespaceReconcilerFactory,
 		kialiReconciler:            kialiReconciler,
 	}
@@ -159,11 +159,7 @@ type NamespaceReconcilerFactory func(cl client.Client, logger logr.Logger, meshN
 
 // MemberRollReconciler reconciles a ServiceMeshMemberRoll object
 type MemberRollReconciler struct {
-	// This client, initialized using mgr.Client() above, is a split client
-	// that reads objects from the cache and writes to the apiserver
-	common.ResourceManager
-	scheme        *runtime.Scheme
-	eventRecorder record.EventRecorder
+	common.ControllerResources
 
 	namespaceReconcilerFactory NamespaceReconcilerFactory
 	kialiReconciler            KialiReconciler
