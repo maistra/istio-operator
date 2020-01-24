@@ -27,7 +27,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
-var log = logf.Log.WithName("controller_servicemeshcontrolplane")
+var log = logf.Log.WithName(controllerName)
 
 const (
 	controllerName = "servicemeshcontrolplane-controller"
