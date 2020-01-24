@@ -56,7 +56,7 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 			Log:               log,
 			OperatorNamespace: operatorNamespace,
 		},
-		reconcilers: map[string]*ControlPlaneInstanceReconciler{},
+		reconcilers: map[types.NamespacedName]ControlPlaneInstanceReconciler{},
 	}
 }
 
@@ -145,14 +145,24 @@ var ownedResourcePredicates = predicate.Funcs{
 
 var _ reconcile.Reconciler = &ControlPlaneReconciler{}
 
-// ControlPlaneReconciler reconciles a ServiceMeshControlPlane object
+// ControlPlaneReconciler handles reconciliation of ServiceMeshControlPlane
+// objects. It creates a ControlPlaneInstanceReconciler for each instance.
 type ControlPlaneReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	common.ControllerResources
 
-	reconcilers map[string]*ControlPlaneInstanceReconciler
+	reconcilers map[types.NamespacedName]ControlPlaneInstanceReconciler
 	mu          sync.Mutex
+}
+
+// ControlPlaneInstanceReconciler reconciles a specific instance of a ServiceMeshControlPlane
+type ControlPlaneInstanceReconciler interface {
+	Reconcile() (reconcile.Result, error)
+	UpdateReadiness() error
+	Delete() error
+	SetInstance(instance *v1.ServiceMeshControlPlane)
+	IsFinished() bool
 }
 
 // Reconcile reads that state of the cluster for a ServiceMeshControlPlane object and makes changes based on the state read
@@ -179,8 +189,9 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 
-	reconciler := r.getOrCreateReconciler(instance)
-	defer r.deleteReconciler(reconciler)
+	key, reconciler := r.getOrCreateReconciler(instance)
+	defer r.deleteReconcilerIfFinished(key, reconciler)
+
 	deleted := instance.GetDeletionTimestamp() != nil
 	finalizers := sets.NewString(instance.Finalizers...)
 
@@ -216,43 +227,27 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 	return reconciler.Reconcile()
 }
 
-func reconcilersMapKey(instance *v1.ServiceMeshControlPlane) string {
-	return fmt.Sprintf("%s/%s", instance.GetNamespace(), instance.GetName())
-}
-
-func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) *ControlPlaneInstanceReconciler {
+func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) (types.NamespacedName, ControlPlaneInstanceReconciler) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	key := reconcilersMapKey(newInstance)
-	if existing, ok := r.reconcilers[key]; ok {
-		oldInstance := existing.Instance
-		existing.Instance = newInstance
-		if existing.Instance.GetGeneration() != oldInstance.GetGeneration() {
-			// we need to regenerate the renderings
-			existing.renderings = nil
-			existing.lastComponent = ""
-			// reset reconcile status
-			existing.Status.SetCondition(v1.Condition{Type: v1.ConditionTypeReconciled, Status: v1.ConditionStatusUnknown})
-		}
-		return existing
+	key := common.ToNamespacedName(newInstance.ObjectMeta)
+	if reconciler, ok := r.reconcilers[key]; ok {
+		reconciler.SetInstance(newInstance)
+		return key, reconciler
 	}
-	newReconciler := &ControlPlaneInstanceReconciler{
-		ControllerResources: r.ControllerResources,
-		Instance:            newInstance,
-		Status:              newInstance.Status.DeepCopy(),
-	}
+	newReconciler := NewControlPlaneInstanceReconciler(r.ControllerResources, newInstance)
 	r.reconcilers[key] = newReconciler
-	return newReconciler
+	return key, newReconciler
 }
 
-func (r *ControlPlaneReconciler) deleteReconciler(reconciler *ControlPlaneInstanceReconciler) {
+func (r *ControlPlaneReconciler) deleteReconcilerIfFinished(key types.NamespacedName, reconciler ControlPlaneInstanceReconciler) {
 	if reconciler == nil {
 		return
 	}
-	if reconciler.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
+	if reconciler.IsFinished() {
 		r.mu.Lock()
 		defer r.mu.Unlock()
-		delete(r.reconcilers, reconcilersMapKey(reconciler.Instance))
+		delete(r.reconcilers, key)
 	}
 }

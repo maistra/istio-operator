@@ -70,7 +70,7 @@ var (
 	}
 )
 
-func (r *ControlPlaneInstanceReconciler) prune(generation string) error {
+func (r *controlPlaneInstanceReconciler) prune(generation string) error {
 	allErrors := []error{}
 	err := r.pruneResources(namespacedResources, generation, r.Instance.Namespace)
 	if err != nil {
@@ -87,7 +87,7 @@ func (r *ControlPlaneInstanceReconciler) prune(generation string) error {
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (r *ControlPlaneInstanceReconciler) pruneResources(gvks []schema.GroupVersionKind, instanceGeneration string, namespace string) error {
+func (r *controlPlaneInstanceReconciler) pruneResources(gvks []schema.GroupVersionKind, instanceGeneration string, namespace string) error {
 	allErrors := []error{}
 	labelSelector := map[string]string{common.OwnerKey: r.Instance.Namespace}
 	for _, gvk := range gvks {
