@@ -2,7 +2,6 @@ package controlplane
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"k8s.io/client-go/tools/record"
@@ -47,7 +46,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, operatorNamespace string) *ControlPlaneReconciler {
-	return &ControlPlaneReconciler{
+	reconciler := &ControlPlaneReconciler{
 		ControllerResources: common.ControllerResources{
 			Client:            cl,
 			Scheme:            scheme,
@@ -58,6 +57,8 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 		},
 		reconcilers: map[types.NamespacedName]ControlPlaneInstanceReconciler{},
 	}
+	reconciler.instanceReconcilerFactory = NewControlPlaneInstanceReconciler
+	return reconciler
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -154,6 +155,8 @@ type ControlPlaneReconciler struct {
 
 	reconcilers map[types.NamespacedName]ControlPlaneInstanceReconciler
 	mu          sync.Mutex
+
+	instanceReconcilerFactory func(common.ControllerResources, *v1.ServiceMeshControlPlane) ControlPlaneInstanceReconciler
 }
 
 // ControlPlaneInstanceReconciler reconciles a specific instance of a ServiceMeshControlPlane
@@ -215,16 +218,17 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 
-	if v1.CurrentReconciledVersion(instance.GetGeneration()) == instance.Status.GetReconciledVersion() &&
-		instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
-		// sync readiness state
+	if isFullyReconciled(instance) {
 		err := reconciler.UpdateReadiness()
 		return reconcile.Result{}, err
 	}
 
-	reqLogger.Info(fmt.Sprintf("Reconciling ServiceMeshControlPlane: %v", instance.Status.StatusType))
-
 	return reconciler.Reconcile()
+}
+
+func isFullyReconciled(instance *v1.ServiceMeshControlPlane) bool {
+	return v1.CurrentReconciledVersion(instance.GetGeneration()) == instance.Status.GetReconciledVersion() &&
+		instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue
 }
 
 func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) (types.NamespacedName, ControlPlaneInstanceReconciler) {
@@ -236,7 +240,7 @@ func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMe
 		reconciler.SetInstance(newInstance)
 		return key, reconciler
 	}
-	newReconciler := NewControlPlaneInstanceReconciler(r.ControllerResources, newInstance)
+	newReconciler := r.instanceReconcilerFactory(r.ControllerResources, newInstance)
 	r.reconcilers[key] = newReconciler
 	return key, newReconciler
 }

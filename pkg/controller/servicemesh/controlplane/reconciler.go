@@ -80,6 +80,7 @@ func NewControlPlaneInstanceReconciler(controllerResources common.ControllerReso
 }
 
 func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, err error) {
+	r.Log.Info(fmt.Sprintf("Reconciling ServiceMeshControlPlane: %v", r.Instance.Status.StatusType))
 	if r.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse {
 		r.initializeReconcileStatus()
 		err := r.PostStatus()
