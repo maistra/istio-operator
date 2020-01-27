@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	rootCertKey = "root-cert.pem"
+	RootCertKey = "root-cert.pem"
 )
 
 // GetRootCertFromSecret retrieves the root certificate from an Istio SA secret
@@ -26,13 +26,13 @@ func GetRootCertFromSecret(client client.Client, namespace string, name string) 
 	if err != nil {
 		return nil, err
 	}
-	caBundle, ok := secret.Data[rootCertKey]
+	caBundle, ok := secret.Data[RootCertKey]
 	if !ok {
 		return nil, fmt.Errorf(
 			"secret %s/%s does not contain root certificate under key %s",
 			namespace,
 			name,
-			rootCertKey,
+			RootCertKey,
 		)
 	}
 	return caBundle, nil
