@@ -219,7 +219,7 @@ func TestReconcileReconcilesAfterOperatorUpgradeFromV1_0(t *testing.T) {
 	roll.Spec.Members = []string{appNamespace}
 	roll.Status.ConfiguredMembers = []string{appNamespace}
 	controlPlane := markControlPlaneReconciled(newControlPlane(meshVersion1_0), meshVersion1_0, operatorVersionDefault)
-	namespace := newAppNamespace()
+	namespace := newNamespace(appNamespace)
 	common.SetLabel(namespace, common.MemberOfKey, controlPlaneNamespace)
 	meshRoleBinding := newMeshRoleBinding()
 	appRoleBinding := newMeshRoleBinding()
@@ -306,7 +306,7 @@ func TestReconcileReconcilesAddedMember(t *testing.T) {
 				}
 			}
 			roll.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
-			namespace := newAppNamespace()
+			namespace := newNamespace(appNamespace)
 			meshRoleBinding := newMeshRoleBinding()
 
 			cl, _, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace)
@@ -331,7 +331,7 @@ func TestReconcileFailsIfMemberRollUpdateFails(t *testing.T) {
 	addOwnerReference(roll)
 	roll.Spec.Members = []string{appNamespace}
 	controlPlane := markControlPlaneReconciled(newControlPlane(""), meshVersionDefault, operatorVersionDefault)
-	namespace := newAppNamespace()
+	namespace := newNamespace(appNamespace)
 
 	_, tracker, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace)
 	common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
@@ -348,7 +348,7 @@ func TestReconcileFailsIfKialiReconcileFails(t *testing.T) {
 	addOwnerReference(roll)
 	roll.Spec.Members = []string{appNamespace}
 	controlPlane := markControlPlaneReconciled(newControlPlane(""), meshVersionDefault, operatorVersionDefault)
-	namespace := newAppNamespace()
+	namespace := newNamespace(appNamespace)
 
 	_, _, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace)
 	common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
@@ -370,7 +370,7 @@ func TestReconcileReconcilesMemberIfNamespaceIsCreatedLater(t *testing.T) {
 	roll.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
 	roll.Status.MeshVersion = controlPlane.Status.AppliedVersion
 	meshRoleBinding := newMeshRoleBinding()
-	namespace := newAppNamespace()
+	namespace := newNamespace(appNamespace)
 
 	cl, _, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace, meshRoleBinding)
 	common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
@@ -398,7 +398,7 @@ func TestReconcileUpdatesMemberListWhenNamespaceIsDeleted(t *testing.T) {
 	roll.Spec.Members = []string{controlPlaneNamespace, appNamespace, appNamespace2}
 	roll.Status.ConfiguredMembers = []string{appNamespace, appNamespace2}
 	controlPlane := markControlPlaneReconciled(newControlPlane(""), meshVersionDefault, operatorVersionDefault)
-	namespace := newAppNamespace()
+	namespace := newNamespace(appNamespace)
 
 	cl, _, r, _, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace) // NOTE: no appNamespace2
 	common.IsCNIEnabled = true                                                                  // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
@@ -421,7 +421,7 @@ func TestReconcileDoesNotUpdateMemberRollWhenNothingToReconcile(t *testing.T) {
 	controlPlane.SetGeneration(2)
 	markControlPlaneReconciled(controlPlane, meshVersionDefault, operatorVersionDefault)
 
-	namespace := newAppNamespace()
+	namespace := newNamespace(appNamespace)
 	common.SetLabel(namespace, common.MemberOfKey, controlPlaneNamespace)
 
 	kialiCR := createKialiResource(controlPlaneNamespace, appNamespace)
@@ -444,7 +444,7 @@ func TestReconcileDoesNotUpdateMemberRollWhenNothingToReconcile(t *testing.T) {
 }
 
 func TestReconcileNamespacesIgnoresControlPlaneNamespace(t *testing.T) {
-	namespace := newAppNamespace()
+	namespace := newNamespace(appNamespace)
 
 	_, _, r, nsReconciler, _ := createClientAndReconciler(t, namespace)
 
@@ -462,6 +462,28 @@ func TestReconcileNamespacesIgnoresControlPlaneNamespace(t *testing.T) {
 	assertNamespaceReconcilerInvoked(t, nsReconciler, appNamespace) // NOTE: no controlPlaneNamespace
 	assertNamespaceRemoveInvoked(t, nsReconciler, appNamespace)     // NOTE: no controlPlaneNamespace
 	assert.DeepEquals(configuredMembers, []string{appNamespace}, "reconcileNamespaces returned an unexpected configuredMembers list", t)
+}
+
+func TestReconcileWorksWithMultipleNamespaces(t *testing.T) {
+	controlPlane := markControlPlaneReconciled(newControlPlane(""), meshVersionDefault, operatorVersionDefault)
+	roll := newDefaultMemberRoll()
+	addOwnerReference(roll)
+	roll.Spec.Members = []string{appNamespace, appNamespace2}
+	roll.ObjectMeta.Generation = 2
+	roll.Status.ObservedGeneration = 1
+	roll.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
+	roll.Status.MeshVersion = controlPlane.Status.AppliedVersion
+
+	cl, _, r, _, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, newNamespace(appNamespace))
+	assertReconcileSucceeds(r, t)
+	test.PanicOnError(cl.Create(context.TODO(), newNamespace(appNamespace2)))
+	assertReconcileSucceeds(r, t)
+
+	updatedRoll := test.GetUpdatedObject(cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	assert.StringArrayContains(updatedRoll.Status.ConfiguredMembers, appNamespace, "Expected Status.ConfiguredMembers to contain "+appNamespace, t)
+	assert.StringArrayContains(updatedRoll.Status.ConfiguredMembers, appNamespace2, "Expected Status.ConfiguredMembers to contain "+appNamespace2, t)
+	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
+	kialiReconciler.assertInvokedWith(t, appNamespace, appNamespace2)
 }
 
 func assertNamespaceReconcilerInvoked(t *testing.T, nsReconciler *fakeNamespaceReconciler, namespaces ...string) {
@@ -749,10 +771,10 @@ func markControlPlaneReconciled(controlPlane *maistra.ServiceMeshControlPlane, m
 	return controlPlane
 }
 
-func newAppNamespace() *core.Namespace {
+func newNamespace(name string) *core.Namespace {
 	namespace := &core.Namespace{
 		ObjectMeta: meta.ObjectMeta{
-			Name:   appNamespace,
+			Name:   name,
 			Labels: map[string]string{},
 		},
 	}

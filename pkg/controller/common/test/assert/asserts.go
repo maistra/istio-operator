@@ -50,3 +50,12 @@ func StringArrayNotEmpty(actual []string, message string, t *testing.T) {
 		t.Fatalf("%s. Actual: %v", message, actual)
 	}
 }
+
+func StringArrayContains(actual []string, containedString, message string, t *testing.T) {
+	for _, str := range actual {
+		if str == containedString {
+			return
+		}
+	}
+	t.Fatalf("%s: %s not found in %v", message, containedString, actual)
+}
