@@ -80,7 +80,7 @@ func TestMutationOfSpecControlPlaneRefIsRejected(t *testing.T) {
 
 func TestMemberWithFailedSubjectAccessReview(t *testing.T) {
 	validator, _, tracker := createMemberValidatorTestFixture()
-	tracker.AddReactor(createSubjectAccessReviewReactor(false, nil))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(false, nil))
 
 	member := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	response := validator.Handle(ctx, createCreateRequest(member))
@@ -89,7 +89,7 @@ func TestMemberWithFailedSubjectAccessReview(t *testing.T) {
 
 func TestValidMemberCreation(t *testing.T) {
 	validator, _, tracker := createMemberValidatorTestFixture()
-	tracker.AddReactor(createSubjectAccessReviewReactor(true, nil))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, nil))
 
 	member := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	response := validator.Handle(ctx, createCreateRequest(member))
@@ -99,7 +99,7 @@ func TestValidMemberCreation(t *testing.T) {
 func TestValidMemberUpdate(t *testing.T) {
 	oldMember := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	validator, _, tracker := createMemberValidatorTestFixture()
-	tracker.AddReactor(createSubjectAccessReviewReactor(true, nil))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, nil))
 
 	newMember := oldMember.DeepCopy()
 	newMember.Labels = map[string]string{
@@ -112,7 +112,7 @@ func TestValidMemberUpdate(t *testing.T) {
 
 func TestMemberValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
 	validator, _, tracker := createMemberValidatorTestFixture()
-	tracker.AddReactor(createSubjectAccessReviewReactor(true, fmt.Errorf("SAR check error")))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, fmt.Errorf("SAR check error")))
 
 	roll := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	response := validator.Handle(ctx, createCreateRequest(roll))
@@ -121,23 +121,20 @@ func TestMemberValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
 
 func TestMemberValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 	validator, _, tracker := createMemberValidatorTestFixture()
-	tracker.AddReactor(func(action clienttesting.Action) (handled bool, err error) {
-		if action.Matches("create", "subjectaccessreviews") {
-			createAction := action.(clienttesting.CreateAction)
-			sar := createAction.GetObject().(*authorizationv1.SubjectAccessReview)
-			assert.Equals(sar.Spec.User, userInfo.Username, "Unexpected User in SAR check", t)
-			assert.Equals(sar.Spec.UID, userInfo.UID, "Unexpected UID in SAR check", t)
-			assert.DeepEquals(sar.Spec.Groups, userInfo.Groups, "Unexpected Groups in SAR check", t)
-			assert.DeepEquals(sar.Spec.Extra, convertUserInfoExtra(userInfo.Extra), "Unexpected Extra in SAR check", t)
-			assert.Equals(sar.Spec.ResourceAttributes.Verb, "use", "Unexpected Verb in SAR check", t)
-			assert.Equals(sar.Spec.ResourceAttributes.Group, "maistra.io", "Unexpected resource Group in SAR check", t)
-			assert.Equals(sar.Spec.ResourceAttributes.Resource, "servicemeshcontrolplanes", "Unexpected Resource in SAR check", t)
-			assert.Equals(sar.Spec.ResourceAttributes.Name, "my-smcp", "Unexpected Namespace in SAR check", t)
-			assert.Equals(sar.Spec.ResourceAttributes.Namespace, "istio-system", "Unexpected Namespace in SAR check", t)
-			sar.Status.Allowed = true
-			return true, nil
-		}
-		return false, nil
+	tracker.AddReactor("create", "subjectaccessreviews", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+		createAction := action.(clienttesting.CreateAction)
+		sar := createAction.GetObject().(*authorizationv1.SubjectAccessReview)
+		assert.Equals(sar.Spec.User, userInfo.Username, "Unexpected User in SAR check", t)
+		assert.Equals(sar.Spec.UID, userInfo.UID, "Unexpected UID in SAR check", t)
+		assert.DeepEquals(sar.Spec.Groups, userInfo.Groups, "Unexpected Groups in SAR check", t)
+		assert.DeepEquals(sar.Spec.Extra, convertUserInfoExtra(userInfo.Extra), "Unexpected Extra in SAR check", t)
+		assert.Equals(sar.Spec.ResourceAttributes.Verb, "use", "Unexpected Verb in SAR check", t)
+		assert.Equals(sar.Spec.ResourceAttributes.Group, "maistra.io", "Unexpected resource Group in SAR check", t)
+		assert.Equals(sar.Spec.ResourceAttributes.Resource, "servicemeshcontrolplanes", "Unexpected Resource in SAR check", t)
+		assert.Equals(sar.Spec.ResourceAttributes.Name, "my-smcp", "Unexpected Namespace in SAR check", t)
+		assert.Equals(sar.Spec.ResourceAttributes.Namespace, "istio-system", "Unexpected Namespace in SAR check", t)
+		sar.Status.Allowed = true
+		return true, sar.DeepCopy(), nil
 	})
 
 	roll := newMember("default", "app-namespace", "my-smcp", "istio-system")
@@ -146,7 +143,7 @@ func TestMemberValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 
 func invokeMemberValidator(request atypes.Request) atypes.Response {
 	validator, _, tracker := createMemberValidatorTestFixture()
-	tracker.AddReactor(createSubjectAccessReviewReactor(true, nil))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, nil))
 	response := validator.Handle(ctx, request)
 	return response
 }

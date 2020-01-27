@@ -35,7 +35,7 @@ func Equals(actual interface{}, expected interface{}, message string, t *testing
 
 func DeepEquals(actual interface{}, expected interface{}, message string, t *testing.T) {
 	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("%s.\nExpected: %v\n  actual: %v", message, expected, actual)
+		t.Fatalf("%s.\nExpected: %#v\n  actual: %#v", message, expected, actual)
 	}
 }
 

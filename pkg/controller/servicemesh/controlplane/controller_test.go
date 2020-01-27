@@ -55,7 +55,7 @@ func TestReconcileFailsIfItCannotAddFinalizer(t *testing.T) {
 	controlPlane.Finalizers = []string{}
 
 	_, tracker, _, r := createClientAndReconciler(t, controlPlane)
-	tracker.AddReactor(test.ClientFailsOn("update", "servicemeshcontrolplanes"))
+	tracker.AddReactor("update", "servicemeshcontrolplanes", test.ClientFails())
 
 	assertReconcileFails(r, t)
 }
@@ -117,7 +117,7 @@ func TestReconcileDoesNothingWhenResourceIsNotFound(t *testing.T) {
 
 func TestReconcileFailsWhenGetResourceFails(t *testing.T) {
 	_, tracker, _, r := createClientAndReconciler(t)
-	tracker.AddReactor(test.ClientFailsOn("get", "servicemeshcontrolplanes"))
+	tracker.AddReactor("get", "servicemeshcontrolplanes", test.ClientFails())
 
 	assertReconcileFails(r, t)
 
