@@ -26,7 +26,7 @@ func (r *controlPlaneInstanceReconciler) UpdateReadiness() error {
 				return statusErr
 			}
 			// otherwise, we must log the status update error and return the original error
-			log.Error(statusErr, "Error updating status")
+			r.Log.Error(statusErr, "Error updating status")
 		}
 	}
 	return err

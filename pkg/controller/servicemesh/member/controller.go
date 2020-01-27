@@ -40,8 +40,6 @@ const (
 	maxStatusUpdateRetriesOnConflict = 3
 )
 
-var log = logf.Log.WithName(controllerName)
-
 // Add creates a new ServiceMeshMember Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
@@ -56,7 +54,7 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 			Scheme:        scheme,
 			EventRecorder: eventRecorder,
 			PatchFactory:  common.NewPatchFactory(cl),
-			Log:           log,
+			Log:           logf.Log.WithName(controllerName),
 		},
 	}
 }
@@ -96,7 +94,7 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 	// watch namespaces so we can create the SMMR when the control plane namespace is created
 	err = c.Watch(&source.Kind{Type: &core.Namespace{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(ns handler.MapObject) []reconcile.Request {
-			return getRequestsForMembersReferencing(ns.Meta.GetName(), mgr.GetClient())
+			return r.getRequestsForMembersReferencing(ns.Meta.GetName(), mgr.GetClient())
 		}),
 	}, predicate.Funcs{
 		UpdateFunc: func(_ event.UpdateEvent) bool {
@@ -119,7 +117,7 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 	// watch member rolls to revert any incompatible changes users make (e.g. user removes a member namespace, but the Member object is still there)
 	err = c.Watch(&source.Kind{Type: &maistra.ServiceMeshMemberRoll{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(smmr handler.MapObject) []reconcile.Request {
-			return getRequestsForMembersReferencing(smmr.Meta.GetNamespace(), mgr.GetClient())
+			return r.getRequestsForMembersReferencing(smmr.Meta.GetNamespace(), mgr.GetClient())
 		}),
 	})
 	if err != nil {
@@ -129,11 +127,11 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 	return nil
 }
 
-func getRequestsForMembersReferencing(ns string, cl client.Client) []reconcile.Request {
+func (r *MemberReconciler) getRequestsForMembersReferencing(ns string, cl client.Client) []reconcile.Request {
 	list := &maistra.ServiceMeshMemberList{}
 	err := cl.List(context.TODO(), client.MatchingField("spec.controlPlaneRef.namespace", ns), list)
 	if err != nil {
-		log.Error(err, "Could not list ServiceMeshMembers")
+		r.Log.Error(err, "Could not list ServiceMeshMembers")
 	}
 
 	var requests []reconcile.Request
@@ -158,7 +156,7 @@ type MemberReconciler struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("ServiceMeshMember", request)
+	reqLogger := r.Log.WithValues("ServiceMeshMember", request)
 	reqLogger.Info("Processing ServiceMeshMember")
 
 	member := &maistra.ServiceMeshMember{}

@@ -35,8 +35,6 @@ const (
 	IstioSidecarStatusAnnotation = "sidecar.istio.io/status"
 )
 
-var log = logf.Log.WithName(controllerName)
-
 // Add creates a new PodLocality Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
@@ -44,12 +42,16 @@ func Add(mgr manager.Manager) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(cl client.Client, scheme *runtime.Scheme) reconcile.Reconciler {
-	return &PodLocalityReconciler{ControllerResources: common.ControllerResources{Client: cl, PatchFactory: common.NewPatchFactory(cl), Log: log}, scheme: scheme}
+func newReconciler(cl client.Client, scheme *runtime.Scheme) *PodLocalityReconciler {
+	return &PodLocalityReconciler{ControllerResources: common.ControllerResources{
+		Client:       cl,
+		Scheme:       scheme,
+		PatchFactory: common.NewPatchFactory(cl),
+		Log:          logf.Log.WithName(controllerName)}}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
+func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 	// Create a new controller
 	c, err := controller.New(controllerName, mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -83,7 +85,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			list := &v1.PodList{}
 			err := mgr.GetClient().List(context.TODO(), client.MatchingField("spec.nodeName", a.Meta.GetName()), list)
 			if err != nil {
-				log.Error(err, "Could not list pods")
+				r.Log.Error(err, "Could not list pods")
 			}
 
 			var requests []reconcile.Request
@@ -135,13 +137,12 @@ type PodLocalityReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	common.ControllerResources
-	scheme *runtime.Scheme
 }
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	reqLogger := r.Log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Processing Pod")
 
 	// Fetch the Pod

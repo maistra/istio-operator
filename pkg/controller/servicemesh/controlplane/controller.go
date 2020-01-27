@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/go-logr/logr"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -25,8 +26,6 @@ import (
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
-
-var log = logf.Log.WithName(controllerName)
 
 const (
 	controllerName = "servicemeshcontrolplane-controller"
@@ -52,7 +51,7 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 			Scheme:            scheme,
 			EventRecorder:     eventRecorder,
 			PatchFactory:      common.NewPatchFactory(cl),
-			Log:               log,
+			Log:               logf.Log.WithName(controllerName),
 			OperatorNamespace: operatorNamespace,
 		},
 		reconcilers: map[types.NamespacedName]ControlPlaneInstanceReconciler{},
@@ -62,7 +61,7 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
+func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 	// Create a new controller
 	var c controller.Controller
 	var err error
@@ -111,7 +110,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 				}
 				smcpList := &v1.ServiceMeshControlPlaneList{}
 				if err := mgr.GetClient().List(context.TODO(), nil, smcpList); err != nil {
-					log.Error(err, "error listing ServiceMeshControlPlane objects in CNI DaemonSet watcher")
+					r.Log.Error(err, "error listing ServiceMeshControlPlane objects in CNI DaemonSet watcher")
 					return nil
 				}
 				requests := make([]reconcile.Request, 0, len(smcpList.Items))
@@ -171,10 +170,10 @@ type ControlPlaneInstanceReconciler interface {
 // Reconcile reads that state of the cluster for a ServiceMeshControlPlane object and makes changes based on the state read
 // and what is in the ServiceMeshControlPlane.Spec
 func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("ServiceMeshControlPlane", request)
-	reqLogger.Info("Processing ServiceMeshControlPlane")
+	log := r.Log.WithValues("ServiceMeshControlPlane", request)
+	log.Info("Processing ServiceMeshControlPlane")
 	defer func() {
-		reqLogger.Info("Completed ServiceMeshControlPlane processing")
+		log.Info("Completed ServiceMeshControlPlane processing")
 	}()
 
 	// Fetch the ServiceMeshControlPlane instance
@@ -185,14 +184,14 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			reqLogger.Info("ServiceMeshControlPlane deleted")
+			log.Info("ServiceMeshControlPlane deleted")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object
 		return reconcile.Result{}, err
 	}
 
-	key, reconciler := r.getOrCreateReconciler(instance)
+	key, reconciler := r.getOrCreateReconciler(instance, log)
 	defer r.deleteReconcilerIfFinished(key, reconciler)
 
 	deleted := instance.GetDeletionTimestamp() != nil
@@ -200,19 +199,19 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 
 	if deleted {
 		if !finalizers.Has(common.FinalizerName) {
-			reqLogger.Info("Deletion of ServiceMeshControlPlane complete")
+			log.Info("Deletion of ServiceMeshControlPlane complete")
 			return reconcile.Result{}, nil
 		}
 		err := reconciler.Delete()
 		return reconcile.Result{}, err
 	} else if !finalizers.Has(common.FinalizerName) {
-		reqLogger.V(1).Info("Adding finalizer", "finalizer", common.FinalizerName)
+		log.V(1).Info("Adding finalizer", "finalizer", common.FinalizerName)
 		finalizers.Insert(common.FinalizerName)
 		instance.SetFinalizers(finalizers.List())
 		// set default version if necessary
 		if len(instance.Spec.Version) == 0 {
 			instance.Status.AppliedVersion = common.DefaultMaistraVersion
-			reqLogger.V(1).Info("Initializing Version", "version", instance.Status.AppliedVersion)
+			log.V(1).Info("Initializing Version", "version", instance.Status.AppliedVersion)
 		}
 		err = r.Client.Update(context.TODO(), instance)
 		return reconcile.Result{}, err
@@ -231,7 +230,7 @@ func isFullyReconciled(instance *v1.ServiceMeshControlPlane) bool {
 		instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue
 }
 
-func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) (types.NamespacedName, ControlPlaneInstanceReconciler) {
+func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane, log logr.Logger) (types.NamespacedName, ControlPlaneInstanceReconciler) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -240,7 +239,7 @@ func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMe
 		reconciler.SetInstance(newInstance)
 		return key, reconciler
 	}
-	newReconciler := r.instanceReconcilerFactory(r.ControllerResources, newInstance)
+	newReconciler := r.instanceReconcilerFactory(r.ControllerResources.WithLog(log), newInstance)
 	r.reconcilers[key] = newReconciler
 	return key, newReconciler
 }

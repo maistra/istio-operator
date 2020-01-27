@@ -33,8 +33,6 @@ import (
 
 const controllerName = "servicemeshmemberroll-controller"
 
-var log = logf.Log.WithName(controllerName)
-
 // Add creates a new ServiceMeshMemberRoll Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
@@ -50,7 +48,7 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 			Scheme:        scheme,
 			EventRecorder: eventRecorder,
 			PatchFactory:  common.NewPatchFactory(cl),
-			Log:           log,
+			Log:           logf.Log.WithName(controllerName),
 		},
 		namespaceReconcilerFactory: namespaceReconcilerFactory,
 		kialiReconciler:            kialiReconciler,
@@ -58,7 +56,7 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
+func add(mgr manager.Manager, r *MemberRollReconciler) error {
 	// Create a new controller
 	c, err := controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.MemberRollReconcilers, Reconciler: r})
 	if err != nil {
@@ -86,7 +84,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			list := &v1.ServiceMeshMemberRollList{}
 			err := mgr.GetClient().List(context.TODO(), client.MatchingField("spec.members", ns.Meta.GetName()), list)
 			if err != nil {
-				log.Error(err, "Could not list ServiceMeshMemberRolls")
+				r.Log.Error(err, "Could not list ServiceMeshMemberRolls")
 			}
 
 			var requests []reconcile.Request
@@ -126,7 +124,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			list := &v1.ServiceMeshMemberRollList{}
 			err := mgr.GetClient().List(context.TODO(), client.InNamespace(smcpMap.Meta.GetNamespace()), list)
 			if err != nil {
-				log.Error(err, "Could not list ServiceMeshMemberRolls")
+				r.Log.Error(err, "Could not list ServiceMeshMemberRolls")
 			}
 
 			var requests []reconcile.Request
@@ -168,7 +166,7 @@ type MemberRollReconciler struct {
 // Reconcile reads that state of the cluster for a ServiceMeshMemberRoll object and makes changes based on the state read
 // and what is in the ServiceMeshMemberRoll.Spec
 func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("ServiceMeshMemberRoll", request)
+	reqLogger := r.Log.WithValues("ServiceMeshMemberRoll", request)
 	reqLogger.Info("Processing ServiceMeshMemberRoll")
 
 	defer func() {

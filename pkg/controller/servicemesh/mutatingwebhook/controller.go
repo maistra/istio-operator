@@ -27,8 +27,6 @@ import (
 const controllerName = "mutatingwebhook-controller"
 
 var (
-	log = logf.Log.WithName(controllerName)
-
 	serviceAccountSecretName = "istio.istio-sidecar-injector-service-account"
 
 	webhookConfigNamePrefix = "istio-sidecar-injector-"
@@ -41,7 +39,10 @@ func Add(mgr manager.Manager) error {
 }
 
 func newReconciler(cl client.Client, scheme *runtime.Scheme) *reconciler {
-	return &reconciler{ControllerResources: common.ControllerResources{Client: cl, Scheme: scheme, Log: log}}
+	return &reconciler{ControllerResources: common.ControllerResources{
+		Client: cl,
+		Scheme: scheme,
+		Log:    logf.Log.WithName(controllerName)}}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -113,13 +114,13 @@ type reconciler struct {
 // Reconcile updates ClientConfigs of MutatingWebhookConfigurations to contain the CABundle
 // from the respective Istio SA secret
 func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	logger := log.WithValues("WebhookConfig", request.Name)
+	logger := r.Log.WithValues("WebhookConfig", request.Name)
 	logger.Info("reconciling MutatingWebhookConfiguration")
 	// get current webhook config
 	currentConfig := &v1beta1.MutatingWebhookConfiguration{}
 	err := r.Client.Get(context.TODO(), request.NamespacedName, currentConfig)
 	if err != nil {
-		log.Info("MutatingWebhookConfiguration does not exist yet. No action taken")
+		r.Log.Info("MutatingWebhookConfiguration does not exist yet. No action taken")
 		return reconcile.Result{}, nil
 	}
 	namespace := request.Name[len(webhookConfigNamePrefix):]

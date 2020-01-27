@@ -169,7 +169,6 @@ func (r *fakeInstanceReconciler) IsFinished() bool {
 func assertReconcileSucceeds(r *ControlPlaneReconciler, t *testing.T) {
 	res, err := r.Reconcile(request)
 	if err != nil {
-		log.Error(err, "Reconcile failed")
 		t.Fatalf("Reconcile failed: %v", err)
 	}
 	if res.Requeue {
