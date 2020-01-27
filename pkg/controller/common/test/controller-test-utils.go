@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"k8s.io/kubernetes/pkg/apis/rbac"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	clienttesting "k8s.io/client-go/testing"
+	"k8s.io/kubernetes/pkg/apis/rbac"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/apis"
@@ -47,9 +46,9 @@ func CreateClient(clientObjects ...runtime.Object) (client.Client, *EnhancedTrac
 	s := GetScheme()
 	codecs := serializer.NewCodecFactory(s)
 	tracker := clienttesting.NewObjectTracker(s, codecs.UniversalDecoder())
-	enhancedTracker := NewEnhancedTracker(tracker)
-	cl := NewFakeClientWithSchemeAndTracker(s, &enhancedTracker, clientObjects...)
-	return cl, &enhancedTracker
+	enhancedTracker := NewEnhancedTracker(tracker, s)
+	cl := NewFakeClientWithSchemeAndTracker(s, enhancedTracker, clientObjects...)
+	return cl, enhancedTracker
 }
 
 func GetObject(ctx context.Context, cl client.Client, objectKey client.ObjectKey, into runtime.Object) runtime.Object {
@@ -127,47 +126,46 @@ func getNamespacedName(obj meta.ObjectMeta) types.NamespacedName {
 	return types.NamespacedName{Namespace: obj.Namespace, Name: obj.Name}
 }
 
-func ClientFailsOn(verb string, resource string) ReactFunc {
-	return func(action clienttesting.Action) (handled bool, err error) {
+func ClientFailsOn(verb string, resource string) clienttesting.ReactionFunc {
+	return func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 		if action.Matches(verb, resource) {
-			return true, fmt.Errorf("some error")
+			return true, nil, fmt.Errorf("some error")
 		}
-		return false, nil
+		return false, nil, nil
 	}
 }
 
-func ClientFails() ReactFunc {
-	return func(action clienttesting.Action) (handled bool, err error) {
-		return true, fmt.Errorf("some error")
+func ClientFails() clienttesting.ReactionFunc {
+	return func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+		return true, nil, fmt.Errorf("some error")
 	}
 }
 
-func On(verb string, resource string, reaction ReactFunc) ReactFunc {
-	return func(action clienttesting.Action) (handled bool, err error) {
-		if action.Matches(verb, resource) {
-			return reaction(action)
-		}
-		return false, nil
+func On(verb string, resource string, reaction clienttesting.ReactionFunc) clienttesting.Reactor {
+	return &clienttesting.SimpleReactor{
+		Verb:     verb,
+		Resource: resource,
+		Reaction: reaction,
 	}
 }
 
-func ClientReturnsNotFound(group, kind, name string) ReactFunc {
-	return func(action clienttesting.Action) (handled bool, err error) {
-		return true, apierrors.NewNotFound(schema.GroupResource{
+func ClientReturnsNotFound(group, kind, name string) clienttesting.ReactionFunc {
+	return func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+		return true, nil, apierrors.NewNotFound(schema.GroupResource{
 			Group:    group,
 			Resource: kind,
 		}, name)
 	}
 }
 
-func AttemptNumber(attempt int, reaction ReactFunc) ReactFunc {
+func AttemptNumber(attempt int, reaction clienttesting.ReactionFunc) clienttesting.ReactionFunc {
 	count := 0
-	return func(action clienttesting.Action) (handled bool, err error) {
+	return func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 		count++
 		if count == attempt {
 			return reaction(action)
 		}
-		return false, nil
+		return false, nil, nil
 	}
 }
 

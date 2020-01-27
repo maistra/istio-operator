@@ -23,6 +23,7 @@ import (
 	"os"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -44,7 +45,7 @@ var (
 )
 
 type fakeClient struct {
-	tracker    testing.ObjectTracker
+	*testing.Fake
 	scheme     *runtime.Scheme
 	serializer runtime.Serializer
 }
@@ -81,9 +82,14 @@ func NewFakeClientWithSchemeAndTracker(clientScheme *runtime.Scheme, tracker tes
 	}
 	// XXX: use a serialize that corresponds with the actual scheme being used
 	serializer := serializerjson.NewSerializer(serializerjson.DefaultMetaFactory, clientScheme, clientScheme, false)
+	var enhancedTracker *EnhancedTracker
+	var ok bool
+	if enhancedTracker, ok = tracker.(*EnhancedTracker); !ok {
+		enhancedTracker = NewEnhancedTracker(tracker, clientScheme)
+	}
 	return &fakeClient{
-		tracker: tracker,
-		scheme:  clientScheme,
+		Fake:       &enhancedTracker.Fake,
+		scheme:     clientScheme,
 		serializer: serializer,
 	}
 }
@@ -93,16 +99,14 @@ func (c *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.
 	if err != nil {
 		return err
 	}
-	o, err := c.tracker.Get(gvr, key.Namespace, key.Name)
+	o, err := c.Invokes(testing.NewGetAction(gvr, key.Namespace, key.Name), nil)
 	if err != nil {
 		return err
 	}
-	j, err := json.Marshal(o)
-	if err != nil {
-		return err
+	if o == nil {
+		return errors.NewNotFound(gvr.GroupResource(), key.Name)
 	}
-	_, _, err = c.serializer.Decode(j, nil, obj)
-	return err
+	return c.copyObject(o, obj)
 }
 
 func (c *fakeClient) List(ctx context.Context, opts *client.ListOptions, list runtime.Object) error {
@@ -127,7 +131,10 @@ func (c *fakeClient) List(ctx context.Context, opts *client.ListOptions, list ru
 	}
 
 	gvr, _ := meta.UnsafeGuessKindToResource(gvk)
-	o, err := c.tracker.List(gvr, gvk, ns)
+	o, err := c.Invokes(testing.NewListAction(gvr, gvk, ns, *opts.AsListOptions()), nil)
+	if o == nil {
+		return errors.NewInternalError(fmt.Errorf("no resource returned by Fake"))
+	}
 	if err != nil {
 		return err
 	}
@@ -172,7 +179,11 @@ func (c *fakeClient) Create(ctx context.Context, obj runtime.Object) error {
 	if err != nil {
 		return err
 	}
-	return c.tracker.Create(gvr, obj, accessor.GetNamespace())
+	o, err := c.Invokes(testing.NewCreateAction(gvr, accessor.GetNamespace(), obj), nil)
+	if err != nil {
+		return err
+	}
+	return c.copyObject(o, obj)
 }
 
 func (c *fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOptionFunc) error {
@@ -185,7 +196,8 @@ func (c *fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...cli
 		return err
 	}
 	//TODO: implement propagation
-	return c.tracker.Delete(gvr, accessor.GetNamespace(), accessor.GetName())
+	_, err = c.Invokes(testing.NewDeleteAction(gvr, accessor.GetNamespace(), accessor.GetName()), nil)
+	return err
 }
 
 func (c *fakeClient) Update(ctx context.Context, obj runtime.Object) error {
@@ -197,11 +209,27 @@ func (c *fakeClient) Update(ctx context.Context, obj runtime.Object) error {
 	if err != nil {
 		return err
 	}
-	return c.tracker.Update(gvr, obj, accessor.GetNamespace())
+	o, err := c.Invokes(testing.NewUpdateAction(gvr, accessor.GetNamespace(), obj), nil)
+	if err != nil {
+		return err
+	}
+	return c.copyObject(o, obj)
 }
 
 func (c *fakeClient) Status() client.StatusWriter {
 	return &fakeStatusWriter{client: c}
+}
+
+func (c *fakeClient) copyObject(source, target runtime.Object) error {
+	if source == nil {
+		return errors.NewInternalError(fmt.Errorf("no resource returned by fake"))
+	}
+	j, err := json.Marshal(source)
+	if err != nil {
+		return err
+	}
+	_, _, err = c.serializer.Decode(j, nil, target)
+	return err
 }
 
 func getGVRFromObject(obj runtime.Object, scheme *runtime.Scheme) (schema.GroupVersionResource, error) {
@@ -224,7 +252,9 @@ func getGVKFromList(list runtime.Object, scheme *runtime.Scheme) (schema.GroupVe
 	}
 
 	if !strings.HasSuffix(gvk.Kind, "List") {
-		return schema.GroupVersionKind{}, fmt.Errorf("non-list type %T (kind %q) passed as output", list, gvk)
+		// XXX: the real client does not produce this error. Revert if we should update our usage for listing.
+		//return schema.GroupVersionKind{}, fmt.Errorf("non-list type %T (kind %q) passed as output", list, gvk)
+		return gvk, nil
 	}
 	// we need the non-list GVK, so chop off the "List" from the end of the kind
 	gvk.Kind = gvk.Kind[:len(gvk.Kind)-4]
@@ -238,7 +268,19 @@ type fakeStatusWriter struct {
 func (sw *fakeStatusWriter) Update(ctx context.Context, obj runtime.Object) error {
 	// TODO(droot): This results in full update of the obj (spec + status). Need
 	// a way to update status field only.
-	return sw.client.Update(ctx, obj)
+	gvr, err := getGVRFromObject(obj, sw.client.scheme)
+	if err != nil {
+		return err
+	}
+	accessor, err := meta.Accessor(obj)
+	if err != nil {
+		return err
+	}
+	o, err := sw.client.Invokes(testing.NewUpdateSubresourceAction(gvr, "status", accessor.GetNamespace(), obj), nil)
+	if err != nil {
+		return err
+	}
+	return sw.client.copyObject(o, obj)
 }
 
 // from sigs.k8s.io/controller-runtime/pkg/internal/objectutil

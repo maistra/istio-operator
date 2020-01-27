@@ -100,14 +100,14 @@ func TestReconcileDoesNothingIfReferencedControlPlaneNamespaceDoesNotExist(t *te
 
 	_, tracker, r := createClientAndReconciler(t, member)
 
-	tracker.AddReactor(func(action clienttesting.Action) (handled bool, err error) {
+	tracker.AddReactor("get", "namespace", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 		if action.GetNamespace() == "nonexistent-ns" {
-			return true, apierrors.NewNotFound(schema.GroupResource{
+			return true, nil, apierrors.NewNotFound(schema.GroupResource{
 				Group:    "",
 				Resource: "Namespace",
 			}, action.GetNamespace())
 		}
-		return false, nil
+		return false, nil, nil
 	})
 
 	assertReconcileSucceeds(r, t)
@@ -120,14 +120,14 @@ func TestReconcileCreatesMemberRollWhenReferencedControlPlaneNamespaceIsCreated(
 	cl, tracker, r := createClientAndReconciler(t, member)
 
 	nsExists := false
-	tracker.AddReactor(func(action clienttesting.Action) (handled bool, err error) {
-		if action.Matches("create", "servicemeshmemberrolls") && action.GetNamespace() == controlPlaneNamespace && !nsExists {
-			return true, apierrors.NewNotFound(schema.GroupResource{
+	tracker.AddReactor("create", "servicemeshmemberrolls", func(action clienttesting.Action) (handled bool, obj runtime.Object, err error) {
+		if action.GetNamespace() == controlPlaneNamespace && !nsExists {
+			return true, nil, apierrors.NewNotFound(schema.GroupResource{
 				Group:    "",
 				Resource: "Namespace",
 			}, action.GetNamespace())
 		}
-		return false, nil
+		return false, nil, nil
 	})
 
 	assertReconcileSucceeds(r, t)
@@ -243,14 +243,11 @@ func TestReconcileWorksIfMembersRollIsDeletedExternallyWhenRemovingMember(t *tes
 	memberRoll.Spec.Members = []string{appNamespace}
 
 	_, tracker, r := createClientAndReconciler(t, member, memberRoll)
-	tracker.AddReactor(func(action clienttesting.Action) (handled bool, err error) {
-		if action.Matches("delete", "servicemeshmemberrolls") {
-			return true, apierrors.NewNotFound(schema.GroupResource{
-				Group:    maistra.APIGroup,
-				Resource: "ServiceMeshMemberRoll",
-			}, memberRollName)
-		}
-		return false, nil
+	tracker.AddReactor("delete", "servicemeshmemberrolls", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+		return true, nil, apierrors.NewNotFound(schema.GroupResource{
+			Group:    maistra.APIGroup,
+			Resource: "ServiceMeshMemberRoll",
+		}, memberRollName)
 	})
 
 	assertReconcileSucceeds(r, t)
@@ -275,7 +272,7 @@ func TestReconcileDoesNothingWhenMemberIsNotFound(t *testing.T) {
 
 func TestReconcileReturnsErrorIfItCanNotReadMember(t *testing.T) {
 	_, tracker, r := createClientAndReconciler(t)
-	tracker.AddReactor(test.ClientFailsOn("get", "servicemeshmembers"))
+	tracker.AddReactor("get", "servicemeshmembers", test.ClientFails())
 	assertReconcileFails(r, t)
 }
 
@@ -285,52 +282,52 @@ func TestReconcileReturnsErrorIfClientOperationFails(t *testing.T) {
 		memberRollExists          bool
 		memberRollCreatedManually bool
 		deletion                  bool
-		reactor                   test.ReactFunc
+		reactor                   clienttesting.Reactor
 	}{
 		{
 			name:    "get-member-fails",
-			reactor: test.ClientFailsOn("get", "servicemeshmembers"),
+			reactor: test.On("get", "servicemeshmembers", test.ClientFails()),
 		},
 		{
 			name:    "update-member-fails",
-			reactor: test.ClientFailsOn("update", "servicemeshmembers"),
+			reactor: test.On("update", "servicemeshmembers", test.ClientFails()),
 		},
 		{
 			name:    "get-member-roll-fails",
-			reactor: test.ClientFailsOn("get", "servicemeshmemberrolls"),
+			reactor: test.On("get", "servicemeshmemberrolls", test.ClientFails()),
 		},
 		{
 			name:    "create-member-roll-fails",
-			reactor: test.ClientFailsOn("create", "servicemeshmemberrolls"),
+			reactor: test.On("create", "servicemeshmemberrolls", test.ClientFails()),
 		},
 		{
 			name:             "update-member-roll-fails",
 			memberRollExists: true,
-			reactor:          test.ClientFailsOn("update", "servicemeshmemberrolls"),
+			reactor:          test.On("update", "servicemeshmemberrolls", test.ClientFails()),
 		},
 		{
 			name:     "get-member-roll-fails-during-delete",
 			deletion: true,
-			reactor:  test.ClientFailsOn("get", "servicemeshmemberrolls"),
+			reactor:  test.On("get", "servicemeshmemberrolls", test.ClientFails()),
 		},
 		{
 			name:                      "update-member-roll-fails-during-delete",
 			memberRollExists:          true,
 			memberRollCreatedManually: true,
 			deletion:                  true,
-			reactor:                   test.ClientFailsOn("update", "servicemeshmemberrolls"),
+			reactor:                   test.On("update", "servicemeshmemberrolls", test.ClientFails()),
 		},
 		{
 			name:             "delete-member-roll-fails-during-delete",
 			memberRollExists: true,
 			deletion:         true,
-			reactor:          test.ClientFailsOn("delete", "servicemeshmemberrolls"),
+			reactor:          test.On("delete", "servicemeshmemberrolls", test.ClientFails()),
 		},
 		{
 			name:             "update-member-fails-during-delete",
 			memberRollExists: true,
 			deletion:         true,
-			reactor:          test.ClientFailsOn("update", "servicemeshmembers"),
+			reactor:          test.On("update", "servicemeshmembers", test.ClientFails()),
 		},
 	}
 
@@ -358,7 +355,7 @@ func TestReconcileReturnsErrorIfClientOperationFails(t *testing.T) {
 			}
 
 			_, tracker, r := createClientAndReconciler(t, objects...)
-			tracker.AddReactor(tc.reactor)
+			tracker.AddReaction(tc.reactor)
 
 			assertReconcileFails(r, t)
 		})
