@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-func (r *ControlPlaneInstanceReconciler) patchHtpasswdSecret(object *unstructured.Unstructured) error {
+func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(object *unstructured.Unstructured) error {
 	var rawPassword, auth string
 
 	htSecret := &corev1.Secret{}
@@ -54,7 +54,7 @@ func (r *ControlPlaneInstanceReconciler) patchHtpasswdSecret(object *unstructure
 	return nil
 }
 
-func (r *ControlPlaneInstanceReconciler) getRawHtPasswd(object *unstructured.Unstructured) (string, error) {
+func (r *controlPlaneInstanceReconciler) getRawHtPasswd(object *unstructured.Unstructured) (string, error) {
 	htSecret := &corev1.Secret{}
 	err := r.Client.Get(context.TODO(), client.ObjectKey{Namespace: object.GetNamespace(), Name: "htpasswd"}, htSecret)
 	if err != nil {
@@ -65,7 +65,7 @@ func (r *ControlPlaneInstanceReconciler) getRawHtPasswd(object *unstructured.Uns
 	return string(htSecret.Data["rawPassword"]), nil
 }
 
-func (r *ControlPlaneInstanceReconciler) patchGrafanaConfig(object *unstructured.Unstructured) error {
+func (r *controlPlaneInstanceReconciler) patchGrafanaConfig(object *unstructured.Unstructured) error {
 	dsYaml, found, err := unstructured.NestedString(object.UnstructuredContent(), "data", "datasources.yaml")
 	if err != nil || !found {
 		r.Log.Info("skipping configuration of Grafana-Prometheus link: Could not find/retrieve datasources.yaml from Grafana ConfigMap")
