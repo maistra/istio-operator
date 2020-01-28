@@ -20,7 +20,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/types"
 )
 
-var log = logf.Log.WithName("controller_servicemeshvalidation")
+const componentName = "servicemesh-webhook-server"
+
+var log = logf.Log.WithName(componentName)
 
 type namespaceFilter string
 
@@ -33,10 +35,10 @@ func init() {
 
 // Add webhooks
 func Add(mgr manager.Manager) error {
-	log.Info("setting up webhook server")
+	log.Info("Setting up webhook server")
 	operatorNamespace := common.GetOperatorNamespace()
 	hookServer, err := webhook.NewServer(
-		"servicemesh-webhook-server",
+		componentName,
 		mgr,
 		webhook.ServerOptions{
 			Port:    11999,
@@ -56,7 +58,7 @@ func Add(mgr manager.Manager) error {
 		return err
 	}
 
-	log.Info("registering webhooks to the webhook server")
+	log.Info("Registering webhooks to the webhook server")
 	failurePolicy := arbeta1.Fail
 	return hookServer.Register(
 		&admission.Webhook{
