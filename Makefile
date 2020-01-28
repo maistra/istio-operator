@@ -31,7 +31,7 @@ OFFLINE_BUILD       ?= false
 GIT_UPSTREAM_REMOTE ?= $(shell git remote -v |grep --color=never ':Maistra/istio-operator\.git.*(fetch)' |grep --color=never -o '^[^[:space:]]*')
 
 ifeq "${GIT_UPSTREAM_REMOTE}" ""
-$(error Could not find git remote for Maistra/istio-operator)
+$(warning Could not find git remote for Maistra/istio-operator)
 endif
 
 ifeq "${COMMUNITY}" "true"
