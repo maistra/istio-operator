@@ -3,6 +3,7 @@ package memberroll
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
@@ -34,6 +35,9 @@ import (
 )
 
 const netAttachDefName = "istio-cni" // must match name of .conf file in multus.d
+
+const networkTypeOpenShiftSDN = "OpenShiftSDN"
+const networkTypeCalico = "Calico"
 
 var log = logf.Log.WithName("controller_servicemeshmemberroll")
 
@@ -557,8 +561,8 @@ func (r *namespaceReconciler) initializeNetworkingStrategy() error {
 	if ok {
 		networkType, ok := networkSpec["networkType"]
 		if ok {
-			switch networkType {
-			case "OpenShiftSDN":
+			switch strings.ToLower(fmt.Sprintf("%v", networkType)) {
+			case strings.ToLower(networkTypeOpenShiftSDN):
 				clusterNetwork := &unstructured.Unstructured{}
 				clusterNetwork.SetAPIVersion("network.openshift.io/v1")
 				clusterNetwork.SetKind("ClusterNetwork")
@@ -592,7 +596,7 @@ func (r *namespaceReconciler) initializeNetworkingStrategy() error {
 				} else {
 					r.logger.Info("cluster network plugin not defined, skipping network configuration")
 				}
-			case "Calico":
+			case strings.ToLower(networkTypeCalico):
 				r.logger.Info("Network Strategy Calico:NetworkPolicy")
 				r.networkingStrategy, err = newNetworkPolicyStrategy(r)
 			default:
