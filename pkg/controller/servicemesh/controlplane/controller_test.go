@@ -65,7 +65,6 @@ func TestReconcileDoesNothingIfResourceIsDeletedAndHasNoFinalizers(t *testing.T)
 	controlPlane.Finalizers = nil
 
 	_, tracker, _, r := createClientAndReconciler(t, controlPlane)
-	r.instanceReconcilerFactory = NewFakeInstanceReconciler
 	assertReconcileSucceeds(r, t)
 
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
