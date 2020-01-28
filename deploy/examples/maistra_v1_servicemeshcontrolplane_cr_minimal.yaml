@@ -45,8 +45,6 @@ spec:
         template: all-in-one
         # production strategy, utilizing elasticsearch
         #template: production-elasticsearch
-        # streaming strategy, utilizing elasticsearch
-        #template: streaming-elasticsearch
         # if required. only one instance may use agentStrategy=DaemonSet
         #agentStrategy: DaemonSet
 
