@@ -2,7 +2,6 @@ package controlplane
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"k8s.io/client-go/tools/record"
@@ -47,7 +46,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, operatorNamespace string) *ControlPlaneReconciler {
-	return &ControlPlaneReconciler{
+	reconciler := &ControlPlaneReconciler{
 		ControllerResources: common.ControllerResources{
 			Client:            cl,
 			Scheme:            scheme,
@@ -56,8 +55,10 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 			Log:               log,
 			OperatorNamespace: operatorNamespace,
 		},
-		reconcilers: map[string]*ControlPlaneInstanceReconciler{},
+		reconcilers: map[types.NamespacedName]ControlPlaneInstanceReconciler{},
 	}
+	reconciler.instanceReconcilerFactory = NewControlPlaneInstanceReconciler
+	return reconciler
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -145,14 +146,26 @@ var ownedResourcePredicates = predicate.Funcs{
 
 var _ reconcile.Reconciler = &ControlPlaneReconciler{}
 
-// ControlPlaneReconciler reconciles a ServiceMeshControlPlane object
+// ControlPlaneReconciler handles reconciliation of ServiceMeshControlPlane
+// objects. It creates a ControlPlaneInstanceReconciler for each instance.
 type ControlPlaneReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	common.ControllerResources
 
-	reconcilers map[string]*ControlPlaneInstanceReconciler
+	reconcilers map[types.NamespacedName]ControlPlaneInstanceReconciler
 	mu          sync.Mutex
+
+	instanceReconcilerFactory func(common.ControllerResources, *v1.ServiceMeshControlPlane) ControlPlaneInstanceReconciler
+}
+
+// ControlPlaneInstanceReconciler reconciles a specific instance of a ServiceMeshControlPlane
+type ControlPlaneInstanceReconciler interface {
+	Reconcile() (reconcile.Result, error)
+	UpdateReadiness() error
+	Delete() error
+	SetInstance(instance *v1.ServiceMeshControlPlane)
+	IsFinished() bool
 }
 
 // Reconcile reads that state of the cluster for a ServiceMeshControlPlane object and makes changes based on the state read
@@ -179,8 +192,9 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 
-	reconciler := r.getOrCreateReconciler(instance)
-	defer r.deleteReconciler(reconciler)
+	key, reconciler := r.getOrCreateReconciler(instance)
+	defer r.deleteReconcilerIfFinished(key, reconciler)
+
 	deleted := instance.GetDeletionTimestamp() != nil
 	finalizers := sets.NewString(instance.Finalizers...)
 
@@ -204,55 +218,40 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 
-	if v1.CurrentReconciledVersion(instance.GetGeneration()) == instance.Status.GetReconciledVersion() &&
-		instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
-		// sync readiness state
+	if isFullyReconciled(instance) {
 		err := reconciler.UpdateReadiness()
 		return reconcile.Result{}, err
 	}
 
-	reqLogger.Info(fmt.Sprintf("Reconciling ServiceMeshControlPlane: %v", instance.Status.StatusType))
-
 	return reconciler.Reconcile()
 }
 
-func reconcilersMapKey(instance *v1.ServiceMeshControlPlane) string {
-	return fmt.Sprintf("%s/%s", instance.GetNamespace(), instance.GetName())
+func isFullyReconciled(instance *v1.ServiceMeshControlPlane) bool {
+	return v1.CurrentReconciledVersion(instance.GetGeneration()) == instance.Status.GetReconciledVersion() &&
+		instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue
 }
 
-func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) *ControlPlaneInstanceReconciler {
+func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) (types.NamespacedName, ControlPlaneInstanceReconciler) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	key := reconcilersMapKey(newInstance)
-	if existing, ok := r.reconcilers[key]; ok {
-		oldInstance := existing.Instance
-		existing.Instance = newInstance
-		if existing.Instance.GetGeneration() != oldInstance.GetGeneration() {
-			// we need to regenerate the renderings
-			existing.renderings = nil
-			existing.lastComponent = ""
-			// reset reconcile status
-			existing.Status.SetCondition(v1.Condition{Type: v1.ConditionTypeReconciled, Status: v1.ConditionStatusUnknown})
-		}
-		return existing
+	key := common.ToNamespacedName(newInstance.ObjectMeta)
+	if reconciler, ok := r.reconcilers[key]; ok {
+		reconciler.SetInstance(newInstance)
+		return key, reconciler
 	}
-	newReconciler := &ControlPlaneInstanceReconciler{
-		ControllerResources: r.ControllerResources,
-		Instance:            newInstance,
-		Status:              newInstance.Status.DeepCopy(),
-	}
+	newReconciler := r.instanceReconcilerFactory(r.ControllerResources, newInstance)
 	r.reconcilers[key] = newReconciler
-	return newReconciler
+	return key, newReconciler
 }
 
-func (r *ControlPlaneReconciler) deleteReconciler(reconciler *ControlPlaneInstanceReconciler) {
+func (r *ControlPlaneReconciler) deleteReconcilerIfFinished(key types.NamespacedName, reconciler ControlPlaneInstanceReconciler) {
 	if reconciler == nil {
 		return
 	}
-	if reconciler.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue {
+	if reconciler.IsFinished() {
 		r.mu.Lock()
 		defer r.mu.Unlock()
-		delete(r.reconcilers, reconcilersMapKey(reconciler.Instance))
+		delete(r.reconcilers, key)
 	}
 }

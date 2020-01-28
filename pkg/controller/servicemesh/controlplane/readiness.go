@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-func (r *ControlPlaneInstanceReconciler) UpdateReadiness() error {
+func (r *controlPlaneInstanceReconciler) UpdateReadiness() error {
 	update, err := r.updateReadinessStatus()
 	if update && !r.skipStatusUpdate() {
 		statusErr := r.PostStatus()
@@ -32,7 +32,7 @@ func (r *ControlPlaneInstanceReconciler) UpdateReadiness() error {
 	return err
 }
 
-func (r *ControlPlaneInstanceReconciler) updateReadinessStatus() (bool, error) {
+func (r *controlPlaneInstanceReconciler) updateReadinessStatus() (bool, error) {
 	r.Log.Info("Updating ServiceMeshControlPlane readiness state")
 	notReadyState, err := r.calculateNotReadyState()
 	if err != nil {
@@ -84,7 +84,7 @@ func (r *ControlPlaneInstanceReconciler) updateReadinessStatus() (bool, error) {
 	return updateStatus, nil
 }
 
-func (r *ControlPlaneInstanceReconciler) calculateNotReadyState() (map[string]bool, error) {
+func (r *controlPlaneInstanceReconciler) calculateNotReadyState() (map[string]bool, error) {
 	var cniNotReady bool
 	notReadyState := map[string]bool{}
 	err := r.calculateNotReadyStateForType(appsv1.SchemeGroupVersion.WithKind("Deployment"), notReadyState, r.deploymentReady)
@@ -104,7 +104,7 @@ func (r *ControlPlaneInstanceReconciler) calculateNotReadyState() (map[string]bo
 	return notReadyState, err
 }
 
-func (r *ControlPlaneInstanceReconciler) calculateNotReadyStateForCNI() (bool, error) {
+func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForCNI() (bool, error) {
 	if !common.IsCNIEnabled {
 		return false, nil
 	}
@@ -123,7 +123,7 @@ func (r *ControlPlaneInstanceReconciler) calculateNotReadyStateForCNI() (bool, e
 	return false, nil
 }
 
-func (r *ControlPlaneInstanceReconciler) calculateNotReadyStateForType(gvk schema.GroupVersionKind, notReadyState map[string]bool, isReady func(*unstructured.Unstructured) bool) error {
+func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForType(gvk schema.GroupVersionKind, notReadyState map[string]bool, isReady func(*unstructured.Unstructured) bool) error {
 	resources, err := common.FetchOwnedResources(r.Client, gvk, r.Instance.GetNamespace(), r.Instance.GetNamespace())
 	if err != nil {
 		return err
@@ -139,7 +139,7 @@ func (r *ControlPlaneInstanceReconciler) calculateNotReadyStateForType(gvk schem
 	return nil
 }
 
-func (r *ControlPlaneInstanceReconciler) deploymentReady(deployment *unstructured.Unstructured) bool {
+func (r *controlPlaneInstanceReconciler) deploymentReady(deployment *unstructured.Unstructured) bool {
 	conditions, found, err := unstructured.NestedSlice(deployment.UnstructuredContent(), "status", "conditions")
 	if err != nil {
 		r.Log.Error(err, "error reading Deployment.Status", "Deployment", deployment.GetName())
@@ -164,7 +164,7 @@ func (r *ControlPlaneInstanceReconciler) deploymentReady(deployment *unstructure
 	return false
 }
 
-func (r *ControlPlaneInstanceReconciler) statefulSetReady(statefulSet *unstructured.Unstructured) bool {
+func (r *controlPlaneInstanceReconciler) statefulSetReady(statefulSet *unstructured.Unstructured) bool {
 	replicas, found, err := unstructured.NestedInt64(statefulSet.UnstructuredContent(), "status", "replicas")
 	if err != nil {
 		r.Log.Error(err, "error reading StatefulSet.Status", "StatefulSet", statefulSet.GetName())
@@ -186,7 +186,7 @@ func (r *ControlPlaneInstanceReconciler) statefulSetReady(statefulSet *unstructu
 	return readyReplicas >= replicas
 }
 
-func (r *ControlPlaneInstanceReconciler) daemonSetReady(daemonSet *unstructured.Unstructured) bool {
+func (r *controlPlaneInstanceReconciler) daemonSetReady(daemonSet *unstructured.Unstructured) bool {
 	unavailable, found, err := unstructured.NestedInt64(daemonSet.UnstructuredContent(), "status", "numberUnavailable")
 	if err != nil {
 		r.Log.Error(err, "error reading DaemonSet.Status", "DaemonSet", daemonSet.GetName())

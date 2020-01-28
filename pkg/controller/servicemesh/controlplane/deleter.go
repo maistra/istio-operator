@@ -14,7 +14,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/hacks"
 )
 
-func (r *ControlPlaneInstanceReconciler) Delete() error {
+func (r *controlPlaneInstanceReconciler) Delete() error {
 	reconciledCondition := r.Status.GetCondition(maistrav1.ConditionTypeReconciled)
 	if reconciledCondition.Status != maistrav1.ConditionStatusFalse || reconciledCondition.Reason != maistrav1.ConditionReasonDeleting {
 		r.Status.SetCondition(maistrav1.Condition{
