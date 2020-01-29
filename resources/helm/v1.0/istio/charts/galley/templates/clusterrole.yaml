@@ -6,7 +6,7 @@ metadata:
     app: {{ template "galley.name" . }}
     chart: {{ template "galley.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.0.5
+    maistra-version: 1.0.6
     release: {{ .Release.Name }}
 rules:
 - apiGroups: ["maistra.io"]
