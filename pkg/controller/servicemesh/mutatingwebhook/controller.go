@@ -38,7 +38,7 @@ func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme()))
 }
 
-func newReconciler(cl client.Client, scheme *runtime.Scheme) reconcile.Reconciler {
+func newReconciler(cl client.Client, scheme *runtime.Scheme) *reconciler {
 	return &reconciler{ControllerResources: common.ControllerResources{Client: cl, Scheme: scheme, Log: log}}
 }
 
