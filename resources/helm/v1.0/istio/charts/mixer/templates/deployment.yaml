@@ -328,7 +328,7 @@ metadata:
     app: istio-mixer
     chart: {{ template "mixer.chart" $ }}
     heritage: {{ $.Release.Service }}
-    maistra-version: 1.0.5
+    maistra-version: 1.0.6
     release: {{ $.Release.Name }}
     istio: mixer
 spec:
