@@ -67,7 +67,7 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 	// Create a new controller
 	var c controller.Controller
 	var err error
-	if c, err = controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.ControlPlaneReconcilers, Reconciler: r}); err != nil {
+	if c, err = controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.Options.ControlPlaneReconcilers, Reconciler: r}); err != nil {
 		return err
 	}
 

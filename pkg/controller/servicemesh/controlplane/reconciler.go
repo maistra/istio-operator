@@ -356,12 +356,12 @@ func (r *controlPlaneInstanceReconciler) getSMCPTemplate(name string, maistraVer
 		return v1.ControlPlaneSpec{}, fmt.Errorf("template name contains invalid character '/'")
 	}
 
-	templateContent, err := ioutil.ReadFile(path.Join(common.GetTemplatesDir(), name))
+	templateContent, err := ioutil.ReadFile(path.Join(common.Options.GetUserTemplatesDir(), name))
 	if err != nil {
 		//if we can't read from the user template path, try from the default path
 		//we use two paths because Kubernetes will not auto-update volume mounted
 		//configmaps mounted in directories with pre-existing content
-		defaultTemplateContent, defaultErr := ioutil.ReadFile(path.Join(common.GetDefaultTemplatesDir(maistraVersion), name))
+		defaultTemplateContent, defaultErr := ioutil.ReadFile(path.Join(common.Options.GetDefaultTemplatesDir(maistraVersion), name))
 		if defaultErr != nil {
 			return v1.ControlPlaneSpec{}, fmt.Errorf("template cannot be loaded from user or default directory. Error from user: %s. Error from default: %s", err, defaultErr)
 		}
@@ -479,13 +479,13 @@ func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context) error
 	var threeScaleRenderings map[string][]manifest.Manifest
 	log.Info("rendering helm charts")
 	log.V(2).Info("rendering Istio charts")
-	istioRenderings, _, err := common.RenderHelmChart(path.Join(common.GetHelmDir(r.Status.LastAppliedConfiguration.Version), "istio"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.Istio)
+	istioRenderings, _, err := common.RenderHelmChart(path.Join(common.Options.GetChartsDir(r.Status.LastAppliedConfiguration.Version), "istio"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.Istio)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
 	if isEnabled(r.Instance.Spec.ThreeScale) {
 		log.V(2).Info("rendering 3scale charts")
-		threeScaleRenderings, _, err = common.RenderHelmChart(path.Join(common.GetHelmDir(r.Status.LastAppliedConfiguration.Version), "maistra-threescale"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.ThreeScale)
+		threeScaleRenderings, _, err = common.RenderHelmChart(path.Join(common.Options.GetChartsDir(r.Status.LastAppliedConfiguration.Version), "maistra-threescale"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.ThreeScale)
 		if err != nil {
 			allErrors = append(allErrors, err)
 		}

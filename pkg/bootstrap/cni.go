@@ -34,7 +34,7 @@ func internalInstallCNI(ctx context.Context, cl client.Client) error {
 	// TODO: imagePullPolicy, resources
 
 	// always install the latest version of the CNI image
-	renderings, _, err := common.RenderHelmChart(path.Join(common.GetHelmDir(common.DefaultMaistraVersion), "istio_cni"), operatorNamespace, values)
+	renderings, _, err := common.RenderHelmChart(path.Join(common.Options.GetChartsDir(common.DefaultMaistraVersion), "istio_cni"), operatorNamespace, values)
 	if err != nil {
 		return err
 	}

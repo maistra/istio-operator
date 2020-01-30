@@ -60,7 +60,7 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 	ctx := common.NewContextWithLog(common.NewContext(), log)
 
 	// Create a new controller
-	c, err := controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.MemberRollReconcilers, Reconciler: r})
+	c, err := controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.Options.MemberRollReconcilers, Reconciler: r})
 	if err != nil {
 		return err
 	}
