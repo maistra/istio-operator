@@ -29,36 +29,53 @@ const (
 	LegacyMaistraVersion  = "v1.0"
 )
 
-var (
+type options struct {
 	// ResourceDir is the base dir to helm charts and templates files.
 	ResourceDir string
+	// ChartsDir is the base dir to helm charts.
+	ChartsDir string
+	// DefaultTemplatesDir is the base dir to default templates files.
+	DefaultTemplatesDir string
+	// TemplatesDir is the base dir to user supplied templates files.
+	UserTemplatesDir string
 
 	// Number of concurrent reconcilers for each controller
 	ControlPlaneReconcilers int
 	MemberRollReconcilers   int
 	MemberReconcilers       int
-)
+}
 
-// GetHelmDir returns the location of the Helm charts. Similar layout to istio.io/istio/install/kubernetes/helm.
-func GetHelmDir(maistraVersion string) string {
+var Options = &options{}
+
+// GetChartsDir returns the location of the Helm charts. Similar layout to istio.io/istio/install/kubernetes/helm.
+func (o *options) GetChartsDir(maistraVersion string) string {
 	if len(maistraVersion) == 0 {
 		maistraVersion = DefaultMaistraVersion
 	}
 	// FIXME: Should not be hardcoded when https://issues.jboss.org/browse/MAISTRA-766 is implemented
-	return path.Join(ResourceDir, "helm", maistraVersion)
+	if len(o.ChartsDir) == 0 {
+		return path.Join(o.ResourceDir, "helm", maistraVersion)
+	}
+	return path.Join(o.ChartsDir, maistraVersion)
 }
 
 // GetTemplatesDir returns the location of the Operator templates files
-func GetTemplatesDir() string {
-	return path.Join(ResourceDir, "templates")
+func (o *options) GetUserTemplatesDir() string {
+	if len(o.UserTemplatesDir) == 0 {
+		return path.Join(o.ResourceDir, "templates")
+	}
+	return o.UserTemplatesDir
 }
 
 // GetDefaultTemplatesDir returns the location of the Default Operator templates files
-func GetDefaultTemplatesDir(maistraVersion string) string {
+func (o *options) GetDefaultTemplatesDir(maistraVersion string) string {
 	if len(maistraVersion) == 0 {
 		maistraVersion = DefaultMaistraVersion
 	}
-	return path.Join(ResourceDir, "default-templates", maistraVersion)
+	if len(o.DefaultTemplatesDir) == 0 {
+		return path.Join(o.ResourceDir, "default-templates", maistraVersion)
+	}
+	return path.Join(o.DefaultTemplatesDir, maistraVersion)
 }
 
 // RenderHelmChart renders the helm charts, returning a map of rendered templates.
