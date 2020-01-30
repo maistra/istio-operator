@@ -24,8 +24,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+const controllerName = "mutatingwebhook-controller"
+
 var (
-	log = logf.Log.WithName("controller_mutatingwebhook")
+	log = logf.Log.WithName(controllerName)
 
 	serviceAccountSecretName = "istio.istio-sidecar-injector-service-account"
 
@@ -45,7 +47,7 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme) *reconciler {
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("mutatingwebhook-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New(controllerName, mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}

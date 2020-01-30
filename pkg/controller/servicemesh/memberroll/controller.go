@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const controllerName = "controller_servicemeshmemberroll"
+const controllerName = "servicemeshmemberroll-controller"
 
 var log = logf.Log.WithName(controllerName)
 
@@ -60,7 +60,7 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("servicemeshmemberroll-controller", mgr, controller.Options{MaxConcurrentReconciles: common.MemberRollReconcilers, Reconciler: r})
+	c, err := controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.MemberRollReconcilers, Reconciler: r})
 	if err != nil {
 		return err
 	}
