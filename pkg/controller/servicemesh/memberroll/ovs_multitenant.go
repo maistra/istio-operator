@@ -38,32 +38,32 @@ func newMultitenantStrategy(cl client.Client, baseLogger logr.Logger, meshNamesp
 	}, nil
 }
 
-func (s *multitenantStrategy) reconcileNamespaceInMesh(namespace string) error {
+func (s *multitenantStrategy) reconcileNamespaceInMesh(ctx context.Context, namespace string) error {
 	s.Log.Info("joining network to mesh", "Namespace", namespace)
-	return s.updateNetworkNamespace(namespace, networkapihelpers.JoinPodNetwork, s.meshNamespace)
+	return s.updateNetworkNamespace(ctx, namespace, networkapihelpers.JoinPodNetwork, s.meshNamespace)
 }
 
-func (s *multitenantStrategy) removeNamespaceFromMesh(namespace string) error {
+func (s *multitenantStrategy) removeNamespaceFromMesh(ctx context.Context, namespace string) error {
 	s.Log.Info("isolating network", "Namespace", namespace)
-	return s.updateNetworkNamespace(namespace, networkapihelpers.IsolatePodNetwork, "")
+	return s.updateNetworkNamespace(ctx, namespace, networkapihelpers.IsolatePodNetwork, "")
 }
 
 // adapted from github.com/openshift/oc/pkg/cli/admin/network/project_options.go#UpdatePodNetwork()
-func (s *multitenantStrategy) updateNetworkNamespace(namespace string, action networkapihelpers.PodNetworkAction, args string) error {
+func (s *multitenantStrategy) updateNetworkNamespace(ctx context.Context, namespace string, action networkapihelpers.PodNetworkAction, args string) error {
 	netns := &network.NetNamespace{}
-	err := s.Client.Get(context.TODO(), client.ObjectKey{Name: namespace}, netns)
+	err := s.Client.Get(ctx, client.ObjectKey{Name: namespace}, netns)
 	if err != nil {
 		return err
 	}
 	networkapihelpers.SetChangePodNetworkAnnotation(netns, action, args)
-	err = s.Client.Update(context.TODO(), netns)
+	err = s.Client.Update(ctx, netns)
 	if err != nil {
 		return err
 	}
 	// Validate SDN controller applied or rejected the intent
 	return wait.ExponentialBackoff(netNamespaceCheckBackOff, func() (bool, error) {
 		updatedNetNs := &network.NetNamespace{}
-		err := s.Client.Get(context.TODO(), client.ObjectKey{Name: namespace}, updatedNetNs)
+		err := s.Client.Get(ctx, client.ObjectKey{Name: namespace}, updatedNetNs)
 		if err != nil {
 			return false, err
 		}

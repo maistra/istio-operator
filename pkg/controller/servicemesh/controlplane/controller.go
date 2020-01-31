@@ -62,6 +62,8 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
+	ctx := common.NewContext()
+
 	// Create a new controller
 	var c controller.Controller
 	var err error
@@ -109,7 +111,7 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 					return nil
 				}
 				smcpList := &v1.ServiceMeshControlPlaneList{}
-				if err := mgr.GetClient().List(context.TODO(), nil, smcpList); err != nil {
+				if err := mgr.GetClient().List(ctx, nil, smcpList); err != nil {
 					r.Log.Error(err, "error listing ServiceMeshControlPlane objects in CNI DaemonSet watcher")
 					return nil
 				}
@@ -160,9 +162,9 @@ type ControlPlaneReconciler struct {
 
 // ControlPlaneInstanceReconciler reconciles a specific instance of a ServiceMeshControlPlane
 type ControlPlaneInstanceReconciler interface {
-	Reconcile() (reconcile.Result, error)
-	UpdateReadiness() error
-	Delete() error
+	Reconcile(ctx context.Context) (reconcile.Result, error)
+	UpdateReadiness(ctx context.Context) error
+	Delete(ctx context.Context) error
 	SetInstance(instance *v1.ServiceMeshControlPlane)
 	IsFinished() bool
 }
@@ -171,6 +173,8 @@ type ControlPlaneInstanceReconciler interface {
 // and what is in the ServiceMeshControlPlane.Spec
 func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	log := r.Log.WithValues("ServiceMeshControlPlane", request)
+	ctx := common.NewReconcileContext(log)
+
 	log.Info("Processing ServiceMeshControlPlane")
 	defer func() {
 		log.Info("Completed ServiceMeshControlPlane processing")
@@ -178,7 +182,7 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 
 	// Fetch the ServiceMeshControlPlane instance
 	instance := &v1.ServiceMeshControlPlane{}
-	err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.Client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) || errors.IsGone(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -202,7 +206,7 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 			log.Info("Deletion of ServiceMeshControlPlane complete")
 			return reconcile.Result{}, nil
 		}
-		err := reconciler.Delete()
+		err := reconciler.Delete(ctx)
 		return reconcile.Result{}, err
 	} else if !finalizers.Has(common.FinalizerName) {
 		log.V(1).Info("Adding finalizer", "finalizer", common.FinalizerName)
@@ -213,16 +217,16 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 			instance.Status.AppliedVersion = common.DefaultMaistraVersion
 			log.V(1).Info("Initializing Version", "version", instance.Status.AppliedVersion)
 		}
-		err = r.Client.Update(context.TODO(), instance)
+		err = r.Client.Update(ctx, instance)
 		return reconcile.Result{}, err
 	}
 
 	if isFullyReconciled(instance) {
-		err := reconciler.UpdateReadiness()
+		err := reconciler.UpdateReadiness(ctx)
 		return reconcile.Result{}, err
 	}
 
-	return reconciler.Reconcile()
+	return reconciler.Reconcile(ctx)
 }
 
 func isFullyReconciled(instance *v1.ServiceMeshControlPlane) bool {

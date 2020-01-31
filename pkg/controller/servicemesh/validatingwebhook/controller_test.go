@@ -1,6 +1,7 @@
 package validatingwebhook
 
 import (
+	"context"
 	"testing"
 
 	"k8s.io/api/admissionregistration/v1beta1"
@@ -17,6 +18,8 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
+
+var ctx = common.NewContextWithLog(context.Background(), logf.Log)
 
 const appNamespace = "app-namespace"
 
@@ -75,7 +78,7 @@ func TestReconcileUpdatesCABundle(t *testing.T) {
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
 
 	updatedConfig := &v1beta1.ValidatingWebhookConfiguration{}
-	test.GetUpdatedObject(cl, webhookConfig.ObjectMeta, updatedConfig)
+	test.GetUpdatedObject(ctx, cl, webhookConfig.ObjectMeta, updatedConfig)
 	assert.DeepEquals(updatedConfig.Webhooks[0].ClientConfig.CABundle, []byte("new-value"), "Expected Reconcile() to update the CABundle in the webhook configuration", t)
 }
 

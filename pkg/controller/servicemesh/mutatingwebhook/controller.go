@@ -1,7 +1,6 @@
 package mutatingwebhook
 
 import (
-	"context"
 	"strings"
 
 	"k8s.io/api/admissionregistration/v1beta1"
@@ -116,15 +115,17 @@ type reconciler struct {
 func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	logger := r.Log.WithValues("WebhookConfig", request.Name)
 	logger.Info("reconciling MutatingWebhookConfiguration")
+	ctx := common.NewReconcileContext(logger)
+
 	// get current webhook config
 	currentConfig := &v1beta1.MutatingWebhookConfiguration{}
-	err := r.Client.Get(context.TODO(), request.NamespacedName, currentConfig)
+	err := r.Client.Get(ctx, request.NamespacedName, currentConfig)
 	if err != nil {
 		r.Log.Info("MutatingWebhookConfiguration does not exist yet. No action taken")
 		return reconcile.Result{}, nil
 	}
 	namespace := request.Name[len(webhookConfigNamePrefix):]
-	caRoot, err := common.GetRootCertFromSecret(r.Client, namespace, serviceAccountSecretName)
+	caRoot, err := common.GetRootCertFromSecret(ctx, r.Client, namespace, serviceAccountSecretName)
 	if err != nil {
 		logger.Info("could not get secret: " + err.Error())
 		return reconcile.Result{}, nil
@@ -137,7 +138,7 @@ func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	}
 
 	if updated {
-		err := r.Client.Update(context.TODO(), newConfig)
+		err := r.Client.Update(ctx, newConfig)
 		if err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "failed to update CABundle")
 		}

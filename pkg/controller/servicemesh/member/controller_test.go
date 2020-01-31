@@ -24,6 +24,8 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
 
+var ctx = common.NewContextWithLog(context.Background(), logf.Log)
+
 const (
 	memberName            = "default"
 	memberRollName        = "default"
@@ -55,7 +57,7 @@ func TestReconcileAddsFinalizer(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedMember := test.GetUpdatedObject(cl, member.ObjectMeta, &maistra.ServiceMeshMember{}).(*maistra.ServiceMeshMember)
+	updatedMember := test.GetUpdatedObject(ctx, cl, member.ObjectMeta, &maistra.ServiceMeshMember{}).(*maistra.ServiceMeshMember)
 
 	assert.DeepEquals(updatedMember.GetFinalizers(), []string{common.FinalizerName}, "Invalid finalizers in SMM", t)
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
@@ -69,7 +71,7 @@ func TestReconcileAddsNamespaceToMemberRoll(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedMemberRoll := test.GetUpdatedObject(cl, memberRoll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedMemberRoll := test.GetUpdatedObject(ctx, cl, memberRoll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 	assert.DeepEquals(updatedMemberRoll.Spec.Members, []string{appNamespace}, "App namespace not found in SMMR members", t)
 }
 
@@ -80,9 +82,9 @@ func TestReconcileCreatesMemberRollIfNeeded(t *testing.T) {
 	assertReconcileSucceeds(r, t)
 
 	memberRollKey := types.NamespacedName{Namespace: controlPlaneNamespace, Name: common.MemberRollName}
-	test.AssertObjectExists(cl, memberRollKey, &maistra.ServiceMeshMemberRoll{}, "Expected reconcile to create the SMMR, but it didn't", t)
+	test.AssertObjectExists(ctx, cl, memberRollKey, &maistra.ServiceMeshMemberRoll{}, "Expected reconcile to create the SMMR, but it didn't", t)
 
-	memberRoll := test.GetObject(cl, memberRollKey, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	memberRoll := test.GetObject(ctx, cl, memberRollKey, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 
 	createdByAnnotation, annotationFound := memberRoll.Annotations[common.CreatedByKey]
 	if !annotationFound {
@@ -136,14 +138,14 @@ func TestReconcileCreatesMemberRollWhenReferencedControlPlaneNamespaceIsCreated(
 			Name: controlPlaneNamespace,
 		},
 	}
-	test.PanicOnError(cl.Create(context.TODO(), &ns))
+	test.PanicOnError(cl.Create(ctx, &ns))
 	nsExists = true
 
 	// check if the SMMR is created now that the namespace exists
 	assertReconcileSucceeds(r, t)
 
 	memberRollKey := types.NamespacedName{Namespace: controlPlaneNamespace, Name: common.MemberRollName}
-	test.AssertObjectExists(cl, memberRollKey, &maistra.ServiceMeshMemberRoll{}, "Expected reconcile to create the SMMR, but it didn't", t)
+	test.AssertObjectExists(ctx, cl, memberRollKey, &maistra.ServiceMeshMemberRoll{}, "Expected reconcile to create the SMMR, but it didn't", t)
 }
 
 func TestReconcileRemovesNamespaceFromMemberRollAndRemovesFinalizerFromMember(t *testing.T) {
@@ -156,10 +158,10 @@ func TestReconcileRemovesNamespaceFromMemberRollAndRemovesFinalizerFromMember(t 
 
 	assertReconcileSucceeds(r, t)
 
-	updatedMemberRoll := test.GetUpdatedObject(cl, memberRoll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedMemberRoll := test.GetUpdatedObject(ctx, cl, memberRoll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 	assert.StringArrayEmpty(updatedMemberRoll.Spec.Members, "Expected members list in SMMR to be empty", t)
 
-	updatedMember := test.GetUpdatedObject(cl, member.ObjectMeta, &maistra.ServiceMeshMember{}).(*maistra.ServiceMeshMember)
+	updatedMember := test.GetUpdatedObject(ctx, cl, member.ObjectMeta, &maistra.ServiceMeshMember{}).(*maistra.ServiceMeshMember)
 	assert.StringArrayEmpty(updatedMember.Finalizers, "Expected finalizers list in SMM to be empty", t)
 }
 
@@ -172,7 +174,7 @@ func TestReconcilePreservesOtherNamespacesInMembersRollWhenAddingMember(t *testi
 
 	assertReconcileSucceeds(r, t)
 
-	updatedMemberRoll := test.GetUpdatedObject(cl, memberRoll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedMemberRoll := test.GetUpdatedObject(ctx, cl, memberRoll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 	assert.DeepEquals(updatedMemberRoll.Spec.Members, []string{"other-ns-1", "other-ns-2", appNamespace}, "Unexpected members in SMMR", t)
 }
 
@@ -186,7 +188,7 @@ func TestReconcilePreservesOtherNamespacesInMembersRollWhenRemovingMember(t *tes
 
 	assertReconcileSucceeds(r, t)
 
-	updatedMemberRoll := test.GetUpdatedObject(cl, memberRoll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedMemberRoll := test.GetUpdatedObject(ctx, cl, memberRoll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 	assert.DeepEquals(updatedMemberRoll.Spec.Members, []string{"other-ns-1", "other-ns-2"}, "Unexpected members in SMMR", t)
 }
 
@@ -202,7 +204,7 @@ func TestReconcileDeletesMemberRollIfItHadCreatedIt(t *testing.T) {
 	cl, _, r := createClientAndReconciler(t, member, memberRoll)
 
 	assertReconcileSucceeds(r, t)
-	test.AssertNotFound(cl, types.NamespacedName{controlPlaneNamespace, common.MemberRollName}, &maistra.ServiceMeshMemberRoll{}, "Expected reconcile to delete the SMMR, but it didn't", t)
+	test.AssertNotFound(ctx, cl, types.NamespacedName{controlPlaneNamespace, common.MemberRollName}, &maistra.ServiceMeshMemberRoll{}, "Expected reconcile to delete the SMMR, but it didn't", t)
 }
 
 func TestReconcilePreservesMemberRollIfItCreatedItButUserManuallyAddedAnotherNamespace(t *testing.T) {
@@ -218,7 +220,7 @@ func TestReconcilePreservesMemberRollIfItCreatedItButUserManuallyAddedAnotherNam
 
 	assertReconcileSucceeds(r, t)
 
-	updatedMemberRoll := test.GetUpdatedObject(cl, memberRoll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedMemberRoll := test.GetUpdatedObject(ctx, cl, memberRoll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 	assert.DeepEquals(updatedMemberRoll.Spec.Members, []string{"other-ns-1"}, "Unexpected members in SMMR", t)
 }
 

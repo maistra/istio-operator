@@ -25,7 +25,7 @@ func (r *controlPlaneInstanceReconciler) processDeletedComponent(name string, st
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) preprocessObject(object *unstructured.Unstructured) error {
+func (r *controlPlaneInstanceReconciler) preprocessObject(ctx context.Context, object *unstructured.Unstructured) error {
 	// Add owner ref
 	if object.GetNamespace() == r.Instance.GetNamespace() {
 		object.SetOwnerReferences(r.ownerRefs)
@@ -38,28 +38,28 @@ func (r *controlPlaneInstanceReconciler) preprocessObject(object *unstructured.U
 
 	switch object.GetKind() {
 	case "Kiali":
-		return r.patchKialiConfig(object)
+		return r.patchKialiConfig(ctx, object)
 	case "ConfigMap":
 		if object.GetName() == "istio-grafana" {
-			return r.patchGrafanaConfig(object)
+			return r.patchGrafanaConfig(ctx, object)
 		}
 	case "Secret":
 		if object.GetName() == "htpasswd" {
-			return r.patchHtpasswdSecret(object)
+			return r.patchHtpasswdSecret(ctx, object)
 		}
 	}
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) processNewObject(object *unstructured.Unstructured) error {
+func (r *controlPlaneInstanceReconciler) processNewObject(ctx context.Context, object *unstructured.Unstructured) error {
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) processDeletedObject(object *unstructured.Unstructured) error {
+func (r *controlPlaneInstanceReconciler) processDeletedObject(ctx context.Context, object *unstructured.Unstructured) error {
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) patchKialiConfig(object *unstructured.Unstructured) error {
+func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, object *unstructured.Unstructured) error {
 	r.Log.Info("patching kiali CR", object.GetKind(), object.GetName())
 
 	// get jaeger URL and enabled flags from Kiali CR
@@ -79,7 +79,7 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(object *unstructured.U
 		jaegerRoute.SetAPIVersion("route.openshift.io/v1")
 		jaegerRoute.SetKind("Route")
 		// jaeger is the name of the Jaeger CR
-		err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "jaeger", Namespace: object.GetNamespace()}, jaegerRoute)
+		err = r.Client.Get(ctx, client.ObjectKey{Name: "jaeger", Namespace: object.GetNamespace()}, jaegerRoute)
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				r.Log.Error(err, "error retrieving jaeger route - will disable it in Kiali")
@@ -116,7 +116,7 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(object *unstructured.U
 		grafanaRoute := &unstructured.Unstructured{}
 		grafanaRoute.SetAPIVersion("route.openshift.io/v1")
 		grafanaRoute.SetKind("Route")
-		err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "grafana", Namespace: object.GetNamespace()}, grafanaRoute)
+		err = r.Client.Get(ctx, client.ObjectKey{Name: "grafana", Namespace: object.GetNamespace()}, grafanaRoute)
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				r.Log.Error(err, "error retrieving grafana route - will disable it in Kiali")
@@ -160,7 +160,7 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(object *unstructured.U
 		return fmt.Errorf("could not set grafana enabled flag in kiali CR: %s", err)
 	}
 
-	rawPassword, err := r.getRawHtPasswd(object)
+	rawPassword, err := r.getRawHtPasswd(ctx, object)
 	if err != nil {
 		return err
 	}
@@ -180,12 +180,12 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(object *unstructured.U
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) waitForWebhookCABundleInitialization(object *unstructured.Unstructured) error {
+func (r *controlPlaneInstanceReconciler) waitForWebhookCABundleInitialization(ctx context.Context, object *unstructured.Unstructured) error {
 	name := object.GetName()
 	kind := object.GetKind()
 	r.Log.Info("waiting for webhook CABundle initialization", kind, name)
 	err := wait.ExponentialBackoff(wait.Backoff{Duration: 6 * time.Second, Steps: 10, Factor: 1.1}, func() (bool, error) {
-		err := r.Client.Get(context.TODO(), client.ObjectKey{Name: name}, object)
+		err := r.Client.Get(ctx, client.ObjectKey{Name: name}, object)
 		if err == nil {
 			webhooks, found, _ := unstructured.NestedSlice(object.UnstructuredContent(), "webhooks")
 			if !found || len(webhooks) == 0 {

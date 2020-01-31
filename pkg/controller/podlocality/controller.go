@@ -1,7 +1,6 @@
 package podlocality
 
 import (
-	"context"
 	"fmt"
 
 	"k8s.io/api/core/v1"
@@ -52,6 +51,8 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme) *PodLocalityReconci
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r *PodLocalityReconciler) error {
+	ctx := common.NewContext()
+
 	// Create a new controller
 	c, err := controller.New(controllerName, mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -83,7 +84,7 @@ func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 	err = c.Watch(&source.Kind{Type: &v1.Node{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			list := &v1.PodList{}
-			err := mgr.GetClient().List(context.TODO(), client.MatchingField("spec.nodeName", a.Meta.GetName()), list)
+			err := mgr.GetClient().List(ctx, client.MatchingField("spec.nodeName", a.Meta.GetName()), list)
 			if err != nil {
 				r.Log.Error(err, "Could not list pods")
 			}
@@ -143,11 +144,12 @@ type PodLocalityReconciler struct {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := r.Log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	ctx := common.NewReconcileContext(reqLogger)
 	reqLogger.Info("Processing Pod")
 
 	// Fetch the Pod
 	pod := &v1.Pod{}
-	err := r.Client.Get(context.TODO(), request.NamespacedName, pod)
+	err := r.Client.Get(ctx, request.NamespacedName, pod)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -163,7 +165,7 @@ func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.
 	}
 
 	node := &v1.Node{}
-	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: pod.Spec.NodeName}, node)
+	err = r.Client.Get(ctx, client.ObjectKey{Name: pod.Spec.NodeName}, node)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -181,7 +183,7 @@ func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.
 	pod.Labels[NodeRegionLabel] = node.Labels[NodeRegionLabel]
 	pod.Labels[NodeZoneLabel] = node.Labels[NodeZoneLabel]
 
-	err = r.Client.Update(context.TODO(), pod)
+	err = r.Client.Update(ctx, pod)
 	if err != nil {
 		reqLogger.Info(fmt.Sprintf("Error updating pod's labels: %v", err))
 		return reconcile.Result{}, err

@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"context"
 	"path"
 	"sync"
 
@@ -15,12 +16,12 @@ var installCNITask sync.Once
 
 // InstallCNI makes sure all Istio CNI resources have been created.  CRDs are located from
 // files in controller.HelmDir/istio-init/files
-func InstallCNI(cl client.Client) error {
+func InstallCNI(ctx context.Context, cl client.Client) error {
 	// we should run through this each reconcile to make sure it's there
-	return internalInstallCNI(cl)
+	return internalInstallCNI(ctx, cl)
 }
 
-func internalInstallCNI(cl client.Client) error {
+func internalInstallCNI(ctx context.Context, cl client.Client) error {
 	log.Info("ensuring Istio CNI has been installed")
 
 	operatorNamespace := common.GetOperatorNamespace()
@@ -48,17 +49,17 @@ func internalInstallCNI(cl client.Client) error {
 	}
 
 	mp := common.NewManifestProcessor(controllerResources, "istio_cni", "TODO", "maistra-istio-operator", preProcessObject, postProcessObject)
-	if err = mp.ProcessManifests(renderings["istio_cni"], "istio_cni"); err != nil {
+	if err = mp.ProcessManifests(ctx, renderings["istio_cni"], "istio_cni"); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func preProcessObject(obj *unstructured.Unstructured) error {
+func preProcessObject(ctx context.Context, obj *unstructured.Unstructured) error {
 	return nil
 }
 
-func postProcessObject(obj *unstructured.Unstructured) error {
+func postProcessObject(ctx context.Context, obj *unstructured.Unstructured) error {
 	return nil
 }

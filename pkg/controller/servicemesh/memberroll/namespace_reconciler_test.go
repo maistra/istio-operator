@@ -15,8 +15,6 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
-
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 func TestReconcileNamespaceInMesh(t *testing.T) {
@@ -30,20 +28,20 @@ func TestReconcileNamespaceInMesh(t *testing.T) {
 
 	// check if namespace has member-of label
 	ns := &core.Namespace{}
-	test.GetObject(cl, types.NamespacedName{Name: appNamespace}, ns)
+	test.GetObject(ctx, cl, types.NamespacedName{Name: appNamespace}, ns)
 	assert.Equals(ns.Labels[common.MemberOfKey], controlPlaneNamespace, "Unexpected or missing member-of label in namespace", t)
 
 	// check if net-attach-def exists
 	netAttachDefName, _ := common.GetCNINetworkName(meshVersionDefault)
 	netAttachDef := newNetworkAttachmentDefinition()
-	err := cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: netAttachDefName}, netAttachDef)
+	err := cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: netAttachDefName}, netAttachDef)
 	if err != nil {
 		t.Fatalf("Couldn't get NetworkAttachmentDefinition from client: %v", err)
 	}
 
 	// check role bindings exist
 	roleBindings := rbac.RoleBindingList{}
-	err = cl.List(context.TODO(), client.InNamespace(appNamespace), &roleBindings)
+	err = cl.List(ctx, client.InNamespace(appNamespace), &roleBindings)
 	if err != nil {
 		t.Fatalf("Couldn't list RoleBindings: %v", err)
 	}
@@ -81,19 +79,19 @@ func TestRemoveNamespaceFromMesh(t *testing.T) {
 
 	// check that namespace no longer has member-of label
 	ns := &core.Namespace{}
-	test.GetObject(cl, types.NamespacedName{Name: appNamespace}, ns)
+	test.GetObject(ctx, cl, types.NamespacedName{Name: appNamespace}, ns)
 	_, found := ns.Labels[common.MemberOfKey]
 	assert.False(found, "Expected member-of label to be removed, but it is still present", t)
 
 	// check that net-attach-def was removed
 	netAttachDefName, _ := common.GetCNINetworkName(meshVersionDefault)
 	netAttachDef := newNetworkAttachmentDefinition()
-	err := cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: netAttachDefName}, netAttachDef)
+	err := cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: netAttachDefName}, netAttachDef)
 	assertNotFound(err, "Expected NetworkAttachmentDefinition to be deleted, but it is still present", t)
 
 	// check that role binding was removed
 	roleBinding := &rbac.RoleBinding{}
-	err = cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: meshRoleBinding.Name}, roleBinding)
+	err = cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: meshRoleBinding.Name}, roleBinding)
 	assertNotFound(err, "Expected RoleBinding to be deleted, but it is still present", t)
 
 	assert.DeepEquals(fakeNetworkStrategy.removedNamespaces, []string{appNamespace}, "Expected removeNamespaceFromMesh to invoke the networkStrategy with only the appNamespace, but it didn't", t)
@@ -113,7 +111,7 @@ func TestReconcileUpdatesModifiedRoleBindings(t *testing.T) {
 			Name: "alice",
 		},
 	}
-	err := cl.Update(context.TODO(), meshRoleBinding)
+	err := cl.Update(ctx, meshRoleBinding)
 	if err != nil {
 		t.Fatalf("Couldn't update meshRoleBinding: %v", err)
 	}
@@ -123,7 +121,7 @@ func TestReconcileUpdatesModifiedRoleBindings(t *testing.T) {
 
 	// check role bindings exist
 	roleBindings := rbac.RoleBindingList{}
-	err = cl.List(context.TODO(), client.InNamespace(appNamespace), &roleBindings)
+	err = cl.List(ctx, client.InNamespace(appNamespace), &roleBindings)
 	if err != nil {
 		t.Fatalf("Couldn't list RoleBindings: %v", err)
 	}
@@ -146,7 +144,7 @@ func TestReconcileDeletesObsoleteRoleBindings(t *testing.T) {
 	cl, _ := test.CreateClient(namespace, meshRoleBinding)
 	setupReconciledNamespace(t, cl, appNamespace)
 
-	err := cl.Delete(context.TODO(), meshRoleBinding)
+	err := cl.Delete(ctx, meshRoleBinding)
 	if err != nil {
 		t.Fatalf("Couldn't update meshRoleBinding: %v", err)
 	}
@@ -156,7 +154,7 @@ func TestReconcileDeletesObsoleteRoleBindings(t *testing.T) {
 
 	// check that role binding in app namespace has also been deleted
 	roleBindings := rbac.RoleBindingList{}
-	err = cl.List(context.TODO(), client.InNamespace(appNamespace), &roleBindings)
+	err = cl.List(ctx, client.InNamespace(appNamespace), &roleBindings)
 	if err != nil {
 		t.Fatalf("Couldn't list RoleBindings: %v", err)
 	}
@@ -188,12 +186,12 @@ func TestOtherResourcesArePreserved(t *testing.T) {
 
 	// 1a. check if other namespace labels were preserved
 	ns := &core.Namespace{}
-	test.GetObject(cl, types.NamespacedName{Name: appNamespace}, ns)
+	test.GetObject(ctx, cl, types.NamespacedName{Name: appNamespace}, ns)
 	assert.Equals(ns.Labels[otherLabelName], otherLabelValue, "Expected reconcileNamespaceInMesh to preserve other namespace labels, but it didn't", t)
 
 	// 1b. check if other NetworkAttachmentDefinitions were preserved
 	nad := newNetworkAttachmentDefinition()
-	err := cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: otherNetAttachDefNamme}, nad)
+	err := cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: otherNetAttachDefNamme}, nad)
 	if errors.IsNotFound(err) {
 		t.Fatalf("Expected reconcileNamespaceInMesh to preserve other NetworkAttachmentDefinition, but it deleted it")
 	} else if err != nil {
@@ -203,7 +201,7 @@ func TestOtherResourcesArePreserved(t *testing.T) {
 
 	// 1c. check if other RoleBindings were preserved
 	rb := &rbac.RoleBinding{}
-	err = cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: otherRoleBindingName}, rb)
+	err = cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: otherRoleBindingName}, rb)
 	if errors.IsNotFound(err) {
 		t.Fatalf("Expected reconcileNamespaceInMesh to preserve other RoleBinding, but it deleted it")
 	} else if err != nil {
@@ -216,12 +214,12 @@ func TestOtherResourcesArePreserved(t *testing.T) {
 
 	// 2a. check if other namespace labels were preserved
 	ns = &core.Namespace{}
-	test.GetObject(cl, types.NamespacedName{Name: appNamespace}, ns)
+	test.GetObject(ctx, cl, types.NamespacedName{Name: appNamespace}, ns)
 	assert.Equals(ns.Labels[otherLabelName], otherLabelValue, "Expected removeNamespaceFromMesh to preserve other namespace labels, but it didn't", t)
 
 	// 2b. check if other NetworkAttachmentDefinitions were preserved
 	nad = newNetworkAttachmentDefinition()
-	err = cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: otherNetAttachDefNamme}, nad)
+	err = cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: otherNetAttachDefNamme}, nad)
 	if errors.IsNotFound(err) {
 		t.Fatalf("Expected removeNamespaceFromMesh to preserve other NetworkAttachmentDefinition, but it deleted it")
 	} else if err != nil {
@@ -231,7 +229,7 @@ func TestOtherResourcesArePreserved(t *testing.T) {
 
 	// 2c. check if other RoleBindings were preserved
 	rb = &rbac.RoleBinding{}
-	err = cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: otherRoleBindingName}, rb)
+	err = cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: otherRoleBindingName}, rb)
 	if errors.IsNotFound(err) {
 		t.Fatalf("Expected removeNamespaceFromMesh to preserve other RoleBinding, but it deleted it")
 	} else if err != nil {
@@ -251,11 +249,11 @@ func newNetworkAttachmentDefinition() *unstructured.Unstructured {
 }
 
 func setupReconciledNamespace(t *testing.T, cl client.Client, namespace string) {
-	reconciler, err := newNamespaceReconciler(cl, logf.Log, controlPlaneNamespace, meshVersionDefault, true)
+	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, meshVersionDefault, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
-	err = reconciler.reconcileNamespaceInMesh(namespace)
+	err = reconciler.reconcileNamespaceInMesh(ctx, namespace)
 	if err != nil {
 		t.Fatalf("reconcileNamespaceInMesh returned an error: %v", err)
 	}
@@ -270,7 +268,7 @@ func assertNotFound(err error, message string, t *testing.T) {
 }
 
 func assertReconcileNamespaceSucceeds(t *testing.T, cl client.Client, networkStrategy NamespaceReconciler) {
-	reconciler, err := newNamespaceReconciler(cl, logf.Log, controlPlaneNamespace, meshVersionDefault, true)
+	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, meshVersionDefault, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
@@ -278,14 +276,14 @@ func assertReconcileNamespaceSucceeds(t *testing.T, cl client.Client, networkStr
 	// install fake network strategy
 	(reconciler.(*namespaceReconciler)).networkingStrategy = networkStrategy
 
-	err = reconciler.reconcileNamespaceInMesh(appNamespace)
+	err = reconciler.reconcileNamespaceInMesh(ctx, appNamespace)
 	if err != nil {
 		t.Fatalf("reconcileNamespaceInMesh returned an error: %v", err)
 	}
 }
 
 func assertRemoveNamespaceSucceeds(t *testing.T, cl client.Client, networkStrategy NamespaceReconciler) {
-	reconciler, err := newNamespaceReconciler(cl, logf.Log, controlPlaneNamespace, meshVersionDefault, true)
+	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, meshVersionDefault, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
@@ -293,18 +291,18 @@ func assertRemoveNamespaceSucceeds(t *testing.T, cl client.Client, networkStrate
 	// install fake network strategy
 	(reconciler.(*namespaceReconciler)).networkingStrategy = networkStrategy
 
-	err = reconciler.removeNamespaceFromMesh(appNamespace)
+	err = reconciler.removeNamespaceFromMesh(ctx, appNamespace)
 	if err != nil {
 		t.Fatalf("removeNamespaceFromMesh returned an error: %v", err)
 	}
 }
 
 func assertReconcileNamespaceFails(t *testing.T, cl client.Client) {
-	reconciler, err := newNamespaceReconciler(cl, logf.Log, controlPlaneNamespace, meshVersionDefault, true)
+	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, meshVersionDefault, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
-	err = reconciler.reconcileNamespaceInMesh(appNamespace)
+	err = reconciler.reconcileNamespaceInMesh(ctx, appNamespace)
 	if err == nil {
 		t.Fatal("Expected reconcileNamespaceInMesh to fail, but it didn't.")
 	}
@@ -315,12 +313,12 @@ type fakeNetworkStrategy struct {
 	removedNamespaces    []string
 }
 
-func (f *fakeNetworkStrategy) reconcileNamespaceInMesh(namespace string) error {
+func (f *fakeNetworkStrategy) reconcileNamespaceInMesh(ctx context.Context, namespace string) error {
 	f.reconciledNamespaces = append(f.reconciledNamespaces, namespace)
 	return nil
 }
 
-func (f *fakeNetworkStrategy) removeNamespaceFromMesh(namespace string) error {
+func (f *fakeNetworkStrategy) removeNamespaceFromMesh(ctx context.Context, namespace string) error {
 	f.removedNamespaces = append(f.removedNamespaces, namespace)
 	return nil
 }

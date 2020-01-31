@@ -23,13 +23,13 @@ import (
 
 type ManifestProcessor struct {
 	ControllerResources
-	preprocessObject func(obj *unstructured.Unstructured) error
-	processNewObject func(obj *unstructured.Unstructured) error
+	preprocessObject func(ctx context.Context, obj *unstructured.Unstructured) error
+	processNewObject func(ctx context.Context, obj *unstructured.Unstructured) error
 
 	appInstance, appVersion, owner string
 }
 
-func NewManifestProcessor(controllerResources ControllerResources, appInstance, appVersion, owner string, preprocessObjectFunc, postProcessObjectFunc func(obj *unstructured.Unstructured) error) *ManifestProcessor {
+func NewManifestProcessor(controllerResources ControllerResources, appInstance, appVersion, owner string, preprocessObjectFunc, postProcessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) error) *ManifestProcessor {
 	return &ManifestProcessor{
 		ControllerResources: controllerResources,
 		preprocessObject:    preprocessObjectFunc,
@@ -40,7 +40,7 @@ func NewManifestProcessor(controllerResources ControllerResources, appInstance, 
 	}
 }
 
-func (p *ManifestProcessor) ProcessManifests(manifests []manifest.Manifest, component string) error {
+func (p *ManifestProcessor) ProcessManifests(ctx context.Context, manifests []manifest.Manifest, component string) error {
 	allErrors := []error{}
 
 	origLogger := p.Log
@@ -68,7 +68,7 @@ func (p *ManifestProcessor) ProcessManifests(manifests []manifest.Manifest, comp
 				allErrors = append(allErrors, err)
 				continue
 			}
-			err = p.processObject(obj, component)
+			err = p.processObject(ctx, obj, component)
 			if err != nil {
 				allErrors = append(allErrors, err)
 			}
@@ -78,7 +78,7 @@ func (p *ManifestProcessor) ProcessManifests(manifests []manifest.Manifest, comp
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (p *ManifestProcessor) processObject(obj *unstructured.Unstructured, component string) error {
+func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured.Unstructured, component string) error {
 	origLogger := p.Log
 	defer func() { p.Log = origLogger }()
 
@@ -93,7 +93,7 @@ func (p *ManifestProcessor) processObject(obj *unstructured.Unstructured, compon
 			return err
 		}
 		for _, item := range list.Items {
-			err = p.processObject(&item, component)
+			err = p.processObject(ctx, &item, component)
 			if err != nil {
 				allErrors = append(allErrors, err)
 			}
@@ -105,7 +105,7 @@ func (p *ManifestProcessor) processObject(obj *unstructured.Unstructured, compon
 
 	p.Log.V(2).Info("beginning reconciliation of resource", "ResourceKey", key)
 
-	err := p.preprocessObject(obj)
+	err := p.preprocessObject(ctx, obj)
 	if err != nil {
 		p.Log.Error(err, "error preprocessing object")
 		return err
@@ -127,14 +127,14 @@ func (p *ManifestProcessor) processObject(obj *unstructured.Unstructured, compon
 
 	var patch Patch
 
-	err = p.Client.Get(context.TODO(), objectKey, receiver)
+	err = p.Client.Get(ctx, objectKey, receiver)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			p.Log.Info("creating resource")
-			err = p.Client.Create(context.TODO(), obj)
+			err = p.Client.Create(ctx, obj)
 			if err == nil {
 				// special handling
-				if err := p.processNewObject(obj); err != nil {
+				if err := p.processNewObject(ctx, obj); err != nil {
 					// just log for now
 					p.Log.Error(err, "error during postprocessing of new resource")
 				}
@@ -144,14 +144,14 @@ func (p *ManifestProcessor) processObject(obj *unstructured.Unstructured, compon
 		}
 	} else if patch, err = p.PatchFactory.CreatePatch(receiver, obj); err == nil && patch != nil {
 		p.Log.Info("updating existing resource")
-		_, err = patch.Apply()
+		_, err = patch.Apply(ctx)
 		if errors.IsInvalid(err) {
 			// patch was invalid, try delete/create
 			p.Log.Info("patch failed.  attempting to delete and recreate the resource")
-			if deleteErr := p.Client.Delete(context.TODO(), obj, client.PropagationPolicy(metav1.DeletePropagationBackground)); deleteErr == nil {
+			if deleteErr := p.Client.Delete(ctx, obj, client.PropagationPolicy(metav1.DeletePropagationBackground)); deleteErr == nil {
 				// we need to remove the resource version, which was updated by the patching process
 				obj.SetResourceVersion("")
-				if createErr := p.Client.Create(context.TODO(), obj); createErr == nil {
+				if createErr := p.Client.Create(ctx, obj); createErr == nil {
 					p.Log.Info("successfully recreated resource after patch failure")
 					err = nil
 				} else {

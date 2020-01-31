@@ -1,10 +1,12 @@
 package controlplane
 
 import (
+	"context"
+
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
-func (r *controlPlaneInstanceReconciler) processComponentManifests(chartName string) (ready bool, err error) {
+func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.Context, chartName string) (ready bool, err error) {
 	r.lastComponent = ""
 	componentName := componentFromChartName(chartName)
 	origLogger := r.Log
@@ -26,7 +28,7 @@ func (r *controlPlaneInstanceReconciler) processComponentManifests(chartName str
 	}()
 
 	mp := common.NewManifestProcessor(r.ControllerResources, r.Instance.GetNamespace(), r.meshGeneration, r.Instance.GetNamespace(), r.preprocessObject, r.processNewObject)
-	if err = mp.ProcessManifests(renderings, status.Resource); err != nil {
+	if err = mp.ProcessManifests(ctx, renderings, status.Resource); err != nil {
 		return
 	}
 	if err = r.processNewComponent(componentName, status); err != nil {
@@ -38,7 +40,7 @@ func (r *controlPlaneInstanceReconciler) processComponentManifests(chartName str
 	delete(r.renderings, chartName)
 
 	// for reentry into the reconcile loop, if not ready
-	if notReadyMap, readyErr := r.calculateNotReadyState(); readyErr == nil {
+	if notReadyMap, readyErr := r.calculateNotReadyState(ctx); readyErr == nil {
 		if notReadyMap[componentName] {
 			r.lastComponent = componentName
 		} else {

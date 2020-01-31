@@ -15,10 +15,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-func (r *controlPlaneInstanceReconciler) UpdateReadiness() error {
-	update, err := r.updateReadinessStatus()
+func (r *controlPlaneInstanceReconciler) UpdateReadiness(ctx context.Context) error {
+	update, err := r.updateReadinessStatus(ctx)
 	if update && !r.skipStatusUpdate() {
-		statusErr := r.PostStatus()
+		statusErr := r.PostStatus(ctx)
 		if statusErr != nil {
 			// original error is more important than the status update error
 			if err == nil {
@@ -32,9 +32,9 @@ func (r *controlPlaneInstanceReconciler) UpdateReadiness() error {
 	return err
 }
 
-func (r *controlPlaneInstanceReconciler) updateReadinessStatus() (bool, error) {
+func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Context) (bool, error) {
 	r.Log.Info("Updating ServiceMeshControlPlane readiness state")
-	notReadyState, err := r.calculateNotReadyState()
+	notReadyState, err := r.calculateNotReadyState(ctx)
 	if err != nil {
 		condition := v1.Condition{
 			Type:    v1.ConditionTypeReady,
@@ -84,27 +84,27 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus() (bool, error) {
 	return updateStatus, nil
 }
 
-func (r *controlPlaneInstanceReconciler) calculateNotReadyState() (map[string]bool, error) {
+func (r *controlPlaneInstanceReconciler) calculateNotReadyState(ctx context.Context) (map[string]bool, error) {
 	var cniNotReady bool
 	notReadyState := map[string]bool{}
-	err := r.calculateNotReadyStateForType(appsv1.SchemeGroupVersion.WithKind("Deployment"), notReadyState, r.deploymentReady)
+	err := r.calculateNotReadyStateForType(ctx, appsv1.SchemeGroupVersion.WithKind("Deployment"), notReadyState, r.deploymentReady)
 	if err != nil {
 		return notReadyState, err
 	}
-	err = r.calculateNotReadyStateForType(appsv1.SchemeGroupVersion.WithKind("StatefulSet"), notReadyState, r.statefulSetReady)
+	err = r.calculateNotReadyStateForType(ctx, appsv1.SchemeGroupVersion.WithKind("StatefulSet"), notReadyState, r.statefulSetReady)
 	if err != nil {
 		return notReadyState, err
 	}
-	err = r.calculateNotReadyStateForType(appsv1.SchemeGroupVersion.WithKind("DaemonSet"), notReadyState, r.daemonSetReady)
+	err = r.calculateNotReadyStateForType(ctx, appsv1.SchemeGroupVersion.WithKind("DaemonSet"), notReadyState, r.daemonSetReady)
 	if err != nil {
 		return notReadyState, err
 	}
-	cniNotReady, err = r.calculateNotReadyStateForCNI()
+	cniNotReady, err = r.calculateNotReadyStateForCNI(ctx)
 	notReadyState["cni"] = cniNotReady
 	return notReadyState, err
 }
 
-func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForCNI() (bool, error) {
+func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForCNI(ctx context.Context) (bool, error) {
 	if !common.IsCNIEnabled {
 		return false, nil
 	}
@@ -112,7 +112,7 @@ func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForCNI() (bool, e
 	daemonSets := &unstructured.UnstructuredList{}
 	daemonSets.SetGroupVersionKind(appsv1.SchemeGroupVersion.WithKind("DaemonSet"))
 	operatorNamespace := common.GetOperatorNamespace()
-	if err := r.Client.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(operatorNamespace), daemonSets); err != nil {
+	if err := r.Client.List(ctx, client.MatchingLabels(labelSelector).InNamespace(operatorNamespace), daemonSets); err != nil {
 		return true, err
 	}
 	for _, ds := range daemonSets.Items {
@@ -123,8 +123,8 @@ func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForCNI() (bool, e
 	return false, nil
 }
 
-func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForType(gvk schema.GroupVersionKind, notReadyState map[string]bool, isReady func(*unstructured.Unstructured) bool) error {
-	resources, err := common.FetchOwnedResources(r.Client, gvk, r.Instance.GetNamespace(), r.Instance.GetNamespace())
+func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForType(ctx context.Context, gvk schema.GroupVersionKind, notReadyState map[string]bool, isReady func(*unstructured.Unstructured) bool) error {
+	resources, err := common.FetchOwnedResources(ctx, r.Client, gvk, r.Instance.GetNamespace(), r.Instance.GetNamespace())
 	if err != nil {
 		return err
 	}

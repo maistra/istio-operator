@@ -37,6 +37,9 @@ type controlPlaneInstanceReconciler struct {
 	lastComponent  string
 }
 
+// ensure controlPlaneInstanceReconciler implements ControlPlaneInstanceReconciler
+var _ ControlPlaneInstanceReconciler = &controlPlaneInstanceReconciler{}
+
 // these components have to be installed in the specified order
 var orderedCharts = []string{
 	"istio", // core istio resources
@@ -79,11 +82,11 @@ func NewControlPlaneInstanceReconciler(controllerResources common.ControllerReso
 	}
 }
 
-func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, err error) {
+func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result reconcile.Result, err error) {
 	r.Log.Info(fmt.Sprintf("Reconciling ServiceMeshControlPlane: %v", r.Instance.Status.StatusType))
 	if r.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse {
 		r.initializeReconcileStatus()
-		err := r.PostStatus()
+		err := r.PostStatus(ctx)
 		return reconcile.Result{}, err // ensure that the new reconcile status is posted immediately. Reconciliation will resume when the status update comes back into the operator
 	}
 
@@ -95,7 +98,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 	reconciliationComplete := false
 	defer func() {
 		// this ensures we're updating status (if necessary) and recording events on exit
-		if statusErr := r.postReconciliationStatus(reconciliationReason, reconciliationMessage, err); statusErr != nil {
+		if statusErr := r.postReconciliationStatus(ctx, reconciliationReason, reconciliationMessage, err); statusErr != nil {
 			if err == nil {
 				err = statusErr
 			} else {
@@ -136,7 +139,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 		// which is all we're supporting atm.  if the scope expands to allow
 		// installing custom gateways, etc., we should revisit this.
 		namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: r.Instance.Namespace}}
-		err = r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Namespace}, namespace)
+		err = r.Client.Get(ctx, client.ObjectKey{Name: r.Instance.Namespace}, namespace)
 		if err == nil {
 			updateLabels := false
 			if namespace.Labels == nil {
@@ -155,7 +158,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 				updateLabels = true
 			}
 			if updateLabels {
-				err = r.Client.Update(context.TODO(), namespace)
+				err = r.Client.Update(ctx, namespace)
 			}
 		}
 		if err != nil {
@@ -189,7 +192,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 		r.meshGeneration = v1.CurrentReconciledVersion(r.Instance.GetGeneration())
 
 		// Ensure CRDs are installed
-		if err = bootstrap.InstallCRDs(r.Client); err != nil {
+		if err = bootstrap.InstallCRDs(ctx, r.Client); err != nil {
 			reconciliationReason = v1.ConditionReasonReconcileError
 			reconciliationMessage = "Failed to install/update Istio CRDs"
 			r.Log.Error(err, reconciliationMessage)
@@ -199,19 +202,19 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 		// Ensure Istio CNI is installed
 		if common.IsCNIEnabled {
 			r.lastComponent = "cni"
-			if err = bootstrap.InstallCNI(r.Client); err != nil {
+			if err = bootstrap.InstallCNI(ctx, r.Client); err != nil {
 				reconciliationReason = v1.ConditionReasonReconcileError
 				reconciliationMessage = "Failed to install/update Istio CNI"
 				r.Log.Error(err, reconciliationMessage)
 				return
-			} else if notReady, _ := r.calculateNotReadyStateForCNI(); notReady {
+			} else if notReady, _ := r.calculateNotReadyStateForCNI(ctx); notReady {
 				reconciliationReason = v1.ConditionReasonPausingInstall
 				reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", "cni")
 				return
 			}
 		}
 	} else if r.lastComponent != "" {
-		if notReadyMap, readinessErr := r.calculateNotReadyState(); readinessErr == nil {
+		if notReadyMap, readinessErr := r.calculateNotReadyState(ctx); readinessErr == nil {
 			// if we've already begun reconciling, make sure we weren't waiting for
 			// the last component to become ready
 			if notReady, ok := notReadyMap[r.lastComponent]; ok && notReady {
@@ -231,7 +234,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 
 	// create components
 	for _, chartName := range orderedCharts {
-		if ready, err = r.processComponentManifests(chartName); !ready {
+		if ready, err = r.processComponentManifests(ctx, chartName); !ready {
 			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(chartName, err)
 			return
 		}
@@ -242,7 +245,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 		if !strings.HasPrefix(key, "istio/") {
 			continue
 		}
-		if ready, err = r.processComponentManifests(key); !ready {
+		if ready, err = r.processComponentManifests(ctx, key); !ready {
 			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(key, err)
 			return
 		}
@@ -250,7 +253,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 
 	// install 3scale and any other components
 	for key := range r.renderings {
-		if ready, err = r.processComponentManifests(key); !ready {
+		if ready, err = r.processComponentManifests(ctx, key); !ready {
 			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(key, err)
 			return
 		}
@@ -262,7 +265,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 	reconciliationMessage = "Pruning obsolete resources"
 	r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReasonPruning, reconciliationMessage)
 	r.Log.Info(reconciliationMessage)
-	err = r.prune(r.meshGeneration)
+	err = r.prune(ctx, r.meshGeneration)
 	if err != nil {
 		reconciliationReason = v1.ConditionReasonReconcileError
 		reconciliationMessage = "Error pruning obsolete resources"
@@ -284,7 +287,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 	r.Status.AppliedVersion = r.Status.LastAppliedConfiguration.Version
 	updateReconcileStatus(&r.Status.StatusType, nil)
 
-	_, err = r.updateReadinessStatus() // this only updates the local object instance; it doesn't post the status update; postReconciliationStatus (called using defer) actually does that
+	_, err = r.updateReadinessStatus(ctx) // this only updates the local object instance; it doesn't post the status update; postReconciliationStatus (called using defer) actually does that
 
 	reconciliationComplete = true
 	r.Log.Info("Completed ServiceMeshControlPlane reconcilation")
@@ -500,12 +503,12 @@ func (r *controlPlaneInstanceReconciler) renderCharts() error {
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) PostStatus() error {
+func (r *controlPlaneInstanceReconciler) PostStatus(ctx context.Context) error {
 	instance := &v1.ServiceMeshControlPlane{}
 	r.Log.Info("Posting status update", "conditions", r.Status.Conditions)
-	if err := r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); err == nil {
+	if err := r.Client.Get(ctx, client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); err == nil {
 		instance.Status = *r.Status.DeepCopy()
-		if err = r.Client.Status().Update(context.TODO(), instance); err != nil && !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
+		if err = r.Client.Status().Update(ctx, instance); err != nil && !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
 			return errors.Wrap(err, "error updating ServiceMeshControlPlane status")
 		}
 	} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
@@ -515,7 +518,7 @@ func (r *controlPlaneInstanceReconciler) PostStatus() error {
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) postReconciliationStatus(reconciliationReason v1.ConditionReason, reconciliationMessage string, processingErr error) error {
+func (r *controlPlaneInstanceReconciler) postReconciliationStatus(ctx context.Context, reconciliationReason v1.ConditionReason, reconciliationMessage string, processingErr error) error {
 	var reason string
 	if r.isUpdating() {
 		reason = eventReasonUpdating
@@ -538,7 +541,7 @@ func (r *controlPlaneInstanceReconciler) postReconciliationStatus(reconciliation
 		return nil
 	}
 
-	return r.PostStatus()
+	return r.PostStatus(ctx)
 }
 
 func (r *controlPlaneInstanceReconciler) skipStatusUpdate() bool {

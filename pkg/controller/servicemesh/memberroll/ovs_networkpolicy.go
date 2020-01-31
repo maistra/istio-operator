@@ -24,7 +24,7 @@ type networkPolicyStrategy struct {
 
 var _ NamespaceReconciler = (*networkPolicyStrategy)(nil)
 
-func newNetworkPolicyStrategy(cl client.Client, baseLogger logr.Logger, meshNamespace string) (*networkPolicyStrategy, error) {
+func newNetworkPolicyStrategy(ctx context.Context, cl client.Client, baseLogger logr.Logger, meshNamespace string) (*networkPolicyStrategy, error) {
 	strategy := &networkPolicyStrategy{
 		ControllerResources: common.ControllerResources{
 			Client: cl,
@@ -35,7 +35,7 @@ func newNetworkPolicyStrategy(cl client.Client, baseLogger logr.Logger, meshName
 	}
 	strategy.networkPoliciesList = &networking.NetworkPolicyList{}
 	labelSelector := map[string]string{common.OwnerKey: strategy.meshNamespace}
-	err := cl.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(strategy.meshNamespace), strategy.networkPoliciesList)
+	err := cl.List(ctx, client.MatchingLabels(labelSelector).InNamespace(strategy.meshNamespace), strategy.networkPoliciesList)
 	if err != nil {
 		strategy.Log.Error(err, "error retrieving NetworkPolicy resources for mesh")
 		return nil, err
@@ -49,12 +49,12 @@ func newNetworkPolicyStrategy(cl client.Client, baseLogger logr.Logger, meshName
 	return strategy, nil
 }
 
-func (s *networkPolicyStrategy) reconcileNamespaceInMesh(namespace string) error {
+func (s *networkPolicyStrategy) reconcileNamespaceInMesh(ctx context.Context, namespace string) error {
 	logger := s.Log.WithValues("Namespace", namespace)
 
 	namespaceNetworkPolicies := &networking.NetworkPolicyList{}
 	labelSelector := map[string]string{common.MemberOfKey: s.meshNamespace}
-	err := s.Client.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(namespace), namespaceNetworkPolicies)
+	err := s.Client.List(ctx, client.MatchingLabels(labelSelector).InNamespace(namespace), namespaceNetworkPolicies)
 	if err != nil {
 		logger.Error(err, "error retrieving NetworkPolicy resources for namespace")
 		return err
@@ -81,7 +81,7 @@ func (s *networkPolicyStrategy) reconcileNamespaceInMesh(namespace string) error
 				Annotations: copyMap(meshNetworkPolicy.Annotations),
 			}
 			common.SetLabel(networkPolicy, common.MemberOfKey, s.meshNamespace)
-			err = s.Client.Create(context.TODO(), networkPolicy)
+			err = s.Client.Create(ctx, networkPolicy)
 			if err == nil {
 				addedNetworkPolicies.Insert(networkPolicyName)
 			} else {
@@ -102,7 +102,7 @@ func (s *networkPolicyStrategy) reconcileNamespaceInMesh(namespace string) error
 				Namespace: namespace,
 			},
 		}
-		err = s.Client.Delete(context.TODO(), networkPolicy, client.PropagationPolicy(meta.DeletePropagationForeground))
+		err = s.Client.Delete(ctx, networkPolicy, client.PropagationPolicy(meta.DeletePropagationForeground))
 		if err != nil && !(errors.IsNotFound(err) || errors.IsGone(err)) {
 			logger.Error(err, "error deleting NetworkPolicy", "NetworkPolicy", networkPolicyName)
 			allErrors = append(allErrors, err)
@@ -115,17 +115,17 @@ func (s *networkPolicyStrategy) reconcileNamespaceInMesh(namespace string) error
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (s *networkPolicyStrategy) removeNamespaceFromMesh(namespace string) error {
+func (s *networkPolicyStrategy) removeNamespaceFromMesh(ctx context.Context, namespace string) error {
 	allErrors := []error{}
 	logger := s.Log.WithValues("Namespace", namespace)
 
 	npList := &networking.NetworkPolicyList{}
 	labelSelector := map[string]string{common.MemberOfKey: s.meshNamespace}
-	err := s.Client.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(namespace), npList)
+	err := s.Client.List(ctx, client.MatchingLabels(labelSelector).InNamespace(namespace), npList)
 	if err == nil {
 		for _, np := range npList.Items {
 			logger.Info("deleting NetworkPolicy for mesh", "NetworkPolicy", np.GetName())
-			err = s.Client.Delete(context.TODO(), &np)
+			err = s.Client.Delete(ctx, &np)
 			if err != nil {
 				logger.Error(err, "error removing NetworkPolicy associated with mesh", "NetworkPolicy", np.GetName())
 				allErrors = append(allErrors, err)

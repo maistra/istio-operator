@@ -1,7 +1,6 @@
 package memberroll
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -33,7 +32,7 @@ func TestReconcileNamespaceInMeshAddsJoinActionToNetNamespaceObject(t *testing.T
 	go fakeNetNamespaceController.run(cl, t)
 
 	strategy := createAndConfigureMultitenantStrategy(cl, t)
-	assert.Success(strategy.reconcileNamespaceInMesh(appNamespace), "reconcileNamespaceInMesh", t)
+	assert.Success(strategy.reconcileNamespaceInMesh(ctx, appNamespace), "reconcileNamespaceInMesh", t)
 
 	assert.Equals(fakeNetNamespaceController.action, networkapihelpers.JoinPodNetwork, "Unexpected action in NetNamespace annotation", t)
 	assert.Equals(fakeNetNamespaceController.namespace, controlPlaneNamespace, "Unexpected namespace in NetNamespace annotation", t)
@@ -47,7 +46,7 @@ func TestRemoveNamespaceFromMeshAddsIsolateActionToNetNamespaceObject(t *testing
 	go fakeNetNamespaceController.run(cl, t)
 
 	strategy := createAndConfigureMultitenantStrategy(cl, t)
-	assert.Success(strategy.removeNamespaceFromMesh(appNamespace), "removeNamespaceFromMesh", t)
+	assert.Success(strategy.removeNamespaceFromMesh(ctx, appNamespace), "removeNamespaceFromMesh", t)
 
 	assert.Equals(fakeNetNamespaceController.action, networkapihelpers.IsolatePodNetwork, "Unexpected action in NetNamespace annotation", t)
 }
@@ -60,7 +59,7 @@ func TestReconcileNamespaceInMeshFailsIfNetNamespaceControllerDoesntProcessNetNa
 
 	strategy := createAndConfigureMultitenantStrategy(cl, t)
 
-	assert.Failure(strategy.reconcileNamespaceInMesh(appNamespace), "reconcileNamespaceInMesh", t)
+	assert.Failure(strategy.reconcileNamespaceInMesh(ctx, appNamespace), "reconcileNamespaceInMesh", t)
 }
 
 func TestRemoveNamespaceFromMeshFailsIfNetNAmespaceControllerDoesntProcessNetNamespaceInTime(t *testing.T) {
@@ -70,7 +69,7 @@ func TestRemoveNamespaceFromMeshFailsIfNetNAmespaceControllerDoesntProcessNetNam
 	// NOTE: this test doesn't run any fake NetNamespace controller
 
 	strategy := createAndConfigureMultitenantStrategy(cl, t)
-	assert.Failure(strategy.removeNamespaceFromMesh(appNamespace), "removeNamespaceFromMesh", t)
+	assert.Failure(strategy.removeNamespaceFromMesh(ctx, appNamespace), "removeNamespaceFromMesh", t)
 }
 
 func createAndConfigureMultitenantStrategy(cl client.Client, t *testing.T) *multitenantStrategy {
@@ -100,7 +99,7 @@ type fakeNetNamespaceController struct {
 func (c *fakeNetNamespaceController) run(cl client.Client, t *testing.T) {
 	err := wait.ExponentialBackoff(fastBackoff, func() (bool, error) {
 		netns := &network.NetNamespace{}
-		err := cl.Get(context.TODO(), types.NamespacedName{Name: appNamespace}, netns)
+		err := cl.Get(ctx, types.NamespacedName{Name: appNamespace}, netns)
 		if err != nil {
 			return false, err
 		}
@@ -115,7 +114,7 @@ func (c *fakeNetNamespaceController) run(cl client.Client, t *testing.T) {
 
 		networkapihelpers.DeleteChangePodNetworkAnnotation(netns)
 
-		err = cl.Update(context.TODO(), netns)
+		err = cl.Update(ctx, netns)
 		if err != nil {
 			return false, err
 		}

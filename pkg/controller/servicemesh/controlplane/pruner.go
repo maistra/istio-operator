@@ -70,30 +70,30 @@ var (
 	}
 )
 
-func (r *controlPlaneInstanceReconciler) prune(generation string) error {
+func (r *controlPlaneInstanceReconciler) prune(ctx context.Context, generation string) error {
 	allErrors := []error{}
-	err := r.pruneResources(namespacedResources, generation, r.Instance.Namespace)
+	err := r.pruneResources(ctx, namespacedResources, generation, r.Instance.Namespace)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
-	err = r.pruneResources(namespacedResources, generation, r.OperatorNamespace)
+	err = r.pruneResources(ctx, namespacedResources, generation, r.OperatorNamespace)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
-	err = r.pruneResources(nonNamespacedResources, generation, "")
+	err = r.pruneResources(ctx, nonNamespacedResources, generation, "")
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (r *controlPlaneInstanceReconciler) pruneResources(gvks []schema.GroupVersionKind, instanceGeneration string, namespace string) error {
+func (r *controlPlaneInstanceReconciler) pruneResources(ctx context.Context, gvks []schema.GroupVersionKind, instanceGeneration string, namespace string) error {
 	allErrors := []error{}
 	labelSelector := map[string]string{common.OwnerKey: r.Instance.Namespace}
 	for _, gvk := range gvks {
 		objects := &unstructured.UnstructuredList{}
 		objects.SetGroupVersionKind(gvk)
-		err := r.Client.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(namespace), objects)
+		err := r.Client.List(ctx, client.MatchingLabels(labelSelector).InNamespace(namespace), objects)
 		if err != nil {
 			if !meta.IsNoMatchError(err) && !errors.IsNotFound(err) {
 				r.Log.Error(err, "Error retrieving resources to prune", "type", gvk.String())
@@ -104,12 +104,12 @@ func (r *controlPlaneInstanceReconciler) pruneResources(gvks []schema.GroupVersi
 		for _, object := range objects.Items {
 			if generation, ok := common.GetAnnotation(&object, common.MeshGenerationKey); ok && generation != instanceGeneration {
 				r.Log.Info("pruning resource", "resource", v1.NewResourceKey(&object, &object))
-				err = r.Client.Delete(context.TODO(), &object, client.PropagationPolicy(metav1.DeletePropagationBackground))
+				err = r.Client.Delete(ctx, &object, client.PropagationPolicy(metav1.DeletePropagationBackground))
 				if err != nil && !errors.IsNotFound(err) {
 					r.Log.Error(err, "Error pruning resource", "resource", v1.NewResourceKey(&object, &object))
 					allErrors = append(allErrors, err)
 				} else {
-					r.processDeletedObject(&object)
+					r.processDeletedObject(ctx, &object)
 				}
 			}
 		}

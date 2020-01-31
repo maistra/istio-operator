@@ -14,11 +14,11 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(object *unstructured.Unstructured) error {
+func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context, object *unstructured.Unstructured) error {
 	var rawPassword, auth string
 
 	htSecret := &corev1.Secret{}
-	err := r.Client.Get(context.TODO(), client.ObjectKey{Namespace: object.GetNamespace(), Name: "htpasswd"}, htSecret)
+	err := r.Client.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: "htpasswd"}, htSecret)
 	if err == nil {
 		rawPassword = string(htSecret.Data["rawPassword"])
 		auth = string(htSecret.Data["auth"])
@@ -54,9 +54,9 @@ func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(object *unstructure
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) getRawHtPasswd(object *unstructured.Unstructured) (string, error) {
+func (r *controlPlaneInstanceReconciler) getRawHtPasswd(ctx context.Context, object *unstructured.Unstructured) (string, error) {
 	htSecret := &corev1.Secret{}
-	err := r.Client.Get(context.TODO(), client.ObjectKey{Namespace: object.GetNamespace(), Name: "htpasswd"}, htSecret)
+	err := r.Client.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: "htpasswd"}, htSecret)
 	if err != nil {
 		r.Log.Error(err, "error retrieving htpasswd Secret")
 		return "", err
@@ -65,7 +65,7 @@ func (r *controlPlaneInstanceReconciler) getRawHtPasswd(object *unstructured.Uns
 	return string(htSecret.Data["rawPassword"]), nil
 }
 
-func (r *controlPlaneInstanceReconciler) patchGrafanaConfig(object *unstructured.Unstructured) error {
+func (r *controlPlaneInstanceReconciler) patchGrafanaConfig(ctx context.Context, object *unstructured.Unstructured) error {
 	dsYaml, found, err := unstructured.NestedString(object.UnstructuredContent(), "data", "datasources.yaml")
 	if err != nil || !found {
 		r.Log.Info("skipping configuration of Grafana-Prometheus link: Could not find/retrieve datasources.yaml from Grafana ConfigMap")
@@ -74,7 +74,7 @@ func (r *controlPlaneInstanceReconciler) patchGrafanaConfig(object *unstructured
 
 	r.Log.Info("patching Grafana-Prometheus link", object.GetKind(), object.GetName())
 
-	rawPassword, err := r.getRawHtPasswd(object)
+	rawPassword, err := r.getRawHtPasswd(ctx, object)
 	if err != nil {
 		return err
 	}
