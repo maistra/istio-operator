@@ -1,9 +1,11 @@
 package member
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -107,6 +109,41 @@ func TestReconcileDoesNothingIfReferencedControlPlaneNamespaceDoesNotExist(t *te
 	})
 
 	assertReconcileSucceeds(r, t)
+}
+
+func TestReconcileCreatesMemberRollWhenReferencedControlPlaneNamespaceIsCreated(t *testing.T) {
+	member := newMember()
+	member.Spec.ControlPlaneRef.Namespace = controlPlaneNamespace
+
+	cl, tracker, r := createClientAndReconciler(t, member)
+
+	nsExists := false
+	tracker.AddReactor(func(action clienttesting.Action) (handled bool, err error) {
+		if action.Matches("create", "servicemeshmemberrolls") && action.GetNamespace() == controlPlaneNamespace && !nsExists {
+			return true, apierrors.NewNotFound(schema.GroupResource{
+				Group:    "",
+				Resource: "Namespace",
+			}, action.GetNamespace())
+		}
+		return false, nil
+	})
+
+	assertReconcileSucceeds(r, t)
+
+	// create the namespace
+	ns := v1.Namespace{
+		ObjectMeta: meta.ObjectMeta{
+			Name: controlPlaneNamespace,
+		},
+	}
+	test.PanicOnError(cl.Create(context.TODO(), &ns))
+	nsExists = true
+
+	// check if the SMMR is created now that the namespace exists
+	assertReconcileSucceeds(r, t)
+
+	memberRollKey := types.NamespacedName{Namespace: controlPlaneNamespace, Name: common.MemberRollName}
+	test.AssertObjectExists(cl, memberRollKey, &maistra.ServiceMeshMemberRoll{}, "Expected reconcile to create the SMMR, but it didn't", t)
 }
 
 func TestReconcileRemovesNamespaceFromMemberRollAndRemovesFinalizerFromMember(t *testing.T) {
