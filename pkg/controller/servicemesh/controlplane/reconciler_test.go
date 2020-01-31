@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/util/sets"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -94,7 +95,7 @@ func TestCyclicTemplate(t *testing.T) {
 
 func newTestReconciler() *controlPlaneInstanceReconciler {
 	reconciler := NewControlPlaneInstanceReconciler(
-		common.ControllerResources{Log: log.WithName("instanceReconciler")},
+		common.ControllerResources{Log: logf.Log.WithName("instanceReconciler")},
 		&maistrav1.ServiceMeshControlPlane{})
 	return reconciler.(*controlPlaneInstanceReconciler)
 }
