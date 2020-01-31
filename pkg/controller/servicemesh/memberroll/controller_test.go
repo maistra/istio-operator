@@ -448,7 +448,7 @@ func TestReconcileNamespacesIgnoresControlPlaneNamespace(t *testing.T) {
 
 	_, _, r, nsReconciler, _ := createClientAndReconciler(t, namespace)
 
-	reqLogger := log.WithValues("ServiceMeshMemberRoll", request)
+	reqLogger := logf.Log.WithName("testLog").WithValues("ServiceMeshMemberRoll", request)
 
 	namespaces := sets.NewString(controlPlaneNamespace, appNamespace)
 	configuredMembers, err, nsErrors := r.reconcileNamespaces(namespaces, namespaces, controlPlaneNamespace, meshVersionDefault, reqLogger)
@@ -665,7 +665,6 @@ func (r *fakeNamespaceReconciler) removeNamespaceFromMesh(namespace string) erro
 func assertReconcileSucceeds(r *MemberRollReconciler, t *testing.T) {
 	res, err := r.Reconcile(request)
 	if err != nil {
-		log.Error(err, "Reconcile failed")
 		t.Fatalf("Reconcile failed: %v", err)
 	}
 	if res.Requeue {

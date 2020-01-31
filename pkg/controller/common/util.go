@@ -13,10 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
-
-var log = logf.Log.WithName("util")
 
 type ControllerResources struct {
 	Client            client.Client
@@ -25,6 +22,17 @@ type ControllerResources struct {
 	PatchFactory      *PatchFactory
 	Log               logr.Logger
 	OperatorNamespace string
+}
+
+func (c *ControllerResources) WithLog(log logr.Logger) ControllerResources {
+	return ControllerResources{
+		Client:            c.Client,
+		Scheme:            c.Scheme,
+		EventRecorder:     c.EventRecorder,
+		PatchFactory:      c.PatchFactory,
+		Log:               log,
+		OperatorNamespace: c.OperatorNamespace,
+	}
 }
 
 func IndexOf(l []string, s string) int {
