@@ -20,7 +20,7 @@ import (
 )
 
 func TestReconcileNamespaceInMesh(t *testing.T) {
-	namespace := newAppNamespace()
+	namespace := newNamespace(appNamespace)
 	meshRoleBinding := newMeshRoleBinding()
 	meshRoleBindings := []*rbac.RoleBinding{meshRoleBinding}
 	cl, _ := test.CreateClient(namespace, meshRoleBinding)
@@ -61,7 +61,7 @@ func TestReconcileNamespaceInMesh(t *testing.T) {
 }
 
 func TestReconcileFailsIfNamespaceIsPartOfAnotherMesh(t *testing.T) {
-	namespace := newAppNamespace()
+	namespace := newNamespace(appNamespace)
 	namespace.Labels = map[string]string{
 		common.MemberOfKey: "other-control-plane",
 	}
@@ -71,7 +71,7 @@ func TestReconcileFailsIfNamespaceIsPartOfAnotherMesh(t *testing.T) {
 }
 
 func TestRemoveNamespaceFromMesh(t *testing.T) {
-	namespace := newAppNamespace()
+	namespace := newNamespace(appNamespace)
 	meshRoleBinding := newMeshRoleBinding()
 	cl, _ := test.CreateClient(namespace, meshRoleBinding)
 	setupReconciledNamespace(t, cl, appNamespace)
@@ -101,7 +101,7 @@ func TestRemoveNamespaceFromMesh(t *testing.T) {
 
 func TestReconcileUpdatesModifiedRoleBindings(t *testing.T) {
 	t.Skip("Not implemented yet")
-	namespace := newAppNamespace()
+	namespace := newNamespace(appNamespace)
 	meshRoleBinding := newMeshRoleBinding()
 	cl, _ := test.CreateClient(namespace, meshRoleBinding)
 	setupReconciledNamespace(t, cl, appNamespace)
@@ -140,7 +140,7 @@ func TestReconcileUpdatesModifiedRoleBindings(t *testing.T) {
 }
 
 func TestReconcileDeletesObsoleteRoleBindings(t *testing.T) {
-	namespace := newAppNamespace()
+	namespace := newNamespace(appNamespace)
 	meshRoleBinding := newMeshRoleBinding()
 
 	cl, _ := test.CreateClient(namespace, meshRoleBinding)
@@ -167,7 +167,7 @@ func TestReconcileDeletesObsoleteRoleBindings(t *testing.T) {
 func TestOtherResourcesArePreserved(t *testing.T) {
 	otherLabelName := "other-label"
 	otherLabelValue := "other-label-value"
-	namespace := newAppNamespace()
+	namespace := newNamespace(appNamespace)
 	namespace.Labels[otherLabelName] = otherLabelValue
 	meshRoleBinding := newMeshRoleBinding()
 
