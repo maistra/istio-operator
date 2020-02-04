@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/go-logr/logr"
 	errors2 "github.com/pkg/errors"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -53,14 +54,13 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 			Scheme:        scheme,
 			EventRecorder: eventRecorder,
 			PatchFactory:  common.NewPatchFactory(cl),
-			Log:           logf.Log.WithName(controllerName),
 		},
 	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r *MemberReconciler) error {
-	ctx := common.NewContext()
+	ctx := common.NewContextWithLog(common.NewContext(), createLogger())
 	// Create a new controller
 	c, err := controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.MemberReconcilers, Reconciler: r})
 	if err != nil {
@@ -128,10 +128,11 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 }
 
 func (r *MemberReconciler) getRequestsForMembersReferencing(ctx context.Context, ns string, cl client.Client) []reconcile.Request {
+	log := common.LogFromContext(ctx)
 	list := &maistra.ServiceMeshMemberList{}
 	err := cl.List(ctx, client.MatchingField("spec.controlPlaneRef.namespace", ns), list)
 	if err != nil {
-		r.Log.Error(err, "Could not list ServiceMeshMembers")
+		log.Error(err, "Could not list ServiceMeshMembers")
 	}
 
 	var requests []reconcile.Request
@@ -156,7 +157,7 @@ type MemberReconciler struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := r.Log.WithValues("ServiceMeshMember", request)
+	reqLogger := createLogger().WithValues("ServiceMeshMember", request)
 	ctx := common.NewReconcileContext(reqLogger)
 
 	reqLogger.Info("Processing ServiceMeshMember")
@@ -417,4 +418,11 @@ func contains(needle string, haystack []string) bool {
 		}
 	}
 	return false
+}
+
+// Don't use this function to obtain a logger. Get it by invoking
+// common.LogFromContext(ctx) to ensure that the logger has the
+// correct context info and logs it.
+func createLogger() logr.Logger {
+	return logf.Log.WithName(controllerName)
 }

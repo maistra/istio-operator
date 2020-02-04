@@ -28,23 +28,24 @@ var netNamespaceCheckBackOff = wait.Backoff{
 	Factor:   1.1,
 }
 
-func newMultitenantStrategy(cl client.Client, baseLogger logr.Logger, meshNamespace string) (*multitenantStrategy, error) {
+func newMultitenantStrategy(cl client.Client, meshNamespace string) (*multitenantStrategy, error) {
 	return &multitenantStrategy{
 		ControllerResources: common.ControllerResources{
 			Client: cl,
-			Log:    baseLogger.WithValues("NetworkStrategy", "Multitenant"),
 		},
 		meshNamespace: meshNamespace,
 	}, nil
 }
 
 func (s *multitenantStrategy) reconcileNamespaceInMesh(ctx context.Context, namespace string) error {
-	s.Log.Info("joining network to mesh", "Namespace", namespace)
+	log := s.getLogger(ctx)
+	log.Info("joining network to mesh")
 	return s.updateNetworkNamespace(ctx, namespace, networkapihelpers.JoinPodNetwork, s.meshNamespace)
 }
 
 func (s *multitenantStrategy) removeNamespaceFromMesh(ctx context.Context, namespace string) error {
-	s.Log.Info("isolating network", "Namespace", namespace)
+	log := s.getLogger(ctx)
+	log.Info("isolating network")
 	return s.updateNetworkNamespace(ctx, namespace, networkapihelpers.IsolatePodNetwork, "")
 }
 
@@ -74,4 +75,8 @@ func (s *multitenantStrategy) updateNetworkNamespace(ctx context.Context, namesp
 		// Pod network change not applied yet
 		return false, nil
 	})
+}
+
+func (s *multitenantStrategy) getLogger(ctx context.Context) logr.Logger {
+	return common.LogFromContext(ctx).WithValues("NetworkStrategy", "Multitenant")
 }

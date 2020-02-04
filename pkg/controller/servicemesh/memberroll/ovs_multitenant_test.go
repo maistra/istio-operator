@@ -11,8 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
@@ -75,7 +73,7 @@ func TestRemoveNamespaceFromMeshFailsIfNetNAmespaceControllerDoesntProcessNetNam
 func createAndConfigureMultitenantStrategy(cl client.Client, t *testing.T) *multitenantStrategy {
 	// override the backoff in ovs_multitenant.go to speed up tests
 	netNamespaceCheckBackOff = fastBackoff
-	strategy, err := newMultitenantStrategy(cl, logf.Log, controlPlaneNamespace)
+	strategy, err := newMultitenantStrategy(cl, controlPlaneNamespace)
 	if err != nil {
 		t.Fatalf("Error creating network strategy: %v", err)
 	}

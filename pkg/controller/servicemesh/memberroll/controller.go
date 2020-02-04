@@ -3,6 +3,7 @@ package memberroll
 import (
 	"context"
 
+	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
@@ -47,7 +48,6 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 			Scheme:        scheme,
 			EventRecorder: eventRecorder,
 			PatchFactory:  common.NewPatchFactory(cl),
-			Log:           logf.Log.WithName(controllerName),
 		},
 		namespaceReconcilerFactory: namespaceReconcilerFactory,
 		kialiReconciler:            kialiReconciler,
@@ -56,7 +56,8 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r *MemberRollReconciler) error {
-	ctx := common.NewContext()
+	log := createLogger()
+	ctx := common.NewContextWithLog(common.NewContext(), log)
 
 	// Create a new controller
 	c, err := controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.MemberRollReconcilers, Reconciler: r})
@@ -85,7 +86,7 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 			list := &v1.ServiceMeshMemberRollList{}
 			err := mgr.GetClient().List(ctx, client.MatchingField("spec.members", ns.Meta.GetName()), list)
 			if err != nil {
-				r.Log.Error(err, "Could not list ServiceMeshMemberRolls")
+				log.Error(err, "Could not list ServiceMeshMemberRolls")
 			}
 
 			var requests []reconcile.Request
@@ -125,7 +126,7 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 			list := &v1.ServiceMeshMemberRollList{}
 			err := mgr.GetClient().List(ctx, client.InNamespace(smcpMap.Meta.GetNamespace()), list)
 			if err != nil {
-				r.Log.Error(err, "Could not list ServiceMeshMemberRolls")
+				log.Error(err, "Could not list ServiceMeshMemberRolls")
 			}
 
 			var requests []reconcile.Request
@@ -167,7 +168,7 @@ type MemberRollReconciler struct {
 // Reconcile reads that state of the cluster for a ServiceMeshMemberRoll object and makes changes based on the state read
 // and what is in the ServiceMeshMemberRoll.Spec
 func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := r.Log.WithValues("ServiceMeshMemberRoll", request)
+	reqLogger := createLogger().WithValues("ServiceMeshMemberRoll", request)
 	ctx := common.NewReconcileContext(reqLogger)
 
 	reqLogger.Info("Processing ServiceMeshMemberRoll")
@@ -437,7 +438,7 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 		err = reconciler.reconcileNamespaceInMesh(ctx, ns)
 		if err != nil {
 			if errors.IsNotFound(err) || errors.IsGone(err) { // TODO: this check should be performed inside reconcileNamespaceInMesh
-				reqLogger.Info("namespace to configure with mesh is missing", "Namespace", ns)
+				reqLogger.Info("namespace to configure with mesh is missing", "namespace", ns)
 			} else {
 				nsErrors = append(nsErrors, err)
 			}
@@ -544,4 +545,11 @@ func nameSet(list runtime.Object) sets.String {
 		panic(err)
 	}
 	return set
+}
+
+// Don't use this function to obtain a logger. Get it by invoking
+// common.LogFromContext(ctx) to ensure that the logger has the
+// correct context info and logs it.
+func createLogger() logr.Logger {
+	return logf.Log.WithName(controllerName)
 }

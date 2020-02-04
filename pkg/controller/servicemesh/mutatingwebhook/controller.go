@@ -3,6 +3,7 @@ package mutatingwebhook
 import (
 	"strings"
 
+	"github.com/go-logr/logr"
 	"k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -40,8 +41,7 @@ func Add(mgr manager.Manager) error {
 func newReconciler(cl client.Client, scheme *runtime.Scheme) *reconciler {
 	return &reconciler{ControllerResources: common.ControllerResources{
 		Client: cl,
-		Scheme: scheme,
-		Log:    logf.Log.WithName(controllerName)}}
+		Scheme: scheme}}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -113,7 +113,7 @@ type reconciler struct {
 // Reconcile updates ClientConfigs of MutatingWebhookConfigurations to contain the CABundle
 // from the respective Istio SA secret
 func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	logger := r.Log.WithValues("WebhookConfig", request.Name)
+	logger := createLogger().WithValues("WebhookConfig", request.Name)
 	logger.Info("reconciling MutatingWebhookConfiguration")
 	ctx := common.NewReconcileContext(logger)
 
@@ -121,7 +121,7 @@ func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	currentConfig := &v1beta1.MutatingWebhookConfiguration{}
 	err := r.Client.Get(ctx, request.NamespacedName, currentConfig)
 	if err != nil {
-		r.Log.Info("MutatingWebhookConfiguration does not exist yet. No action taken")
+		logger.Info("MutatingWebhookConfiguration does not exist yet. No action taken")
 		return reconcile.Result{}, nil
 	}
 	namespace := request.Name[len(webhookConfigNamePrefix):]
@@ -148,4 +148,11 @@ func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 
 	logger.Info("Correct CABundle already present. Ignoring")
 	return reconcile.Result{}, nil
+}
+
+// Don't use this function to obtain a logger. Get it by invoking
+// common.LogFromContext(ctx) to ensure that the logger has the
+// correct context info and logs it.
+func createLogger() logr.Logger {
+	return logf.Log.WithName(controllerName)
 }

@@ -12,10 +12,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
+	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
 func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context, object *unstructured.Unstructured) error {
 	var rawPassword, auth string
+	log := common.LogFromContext(ctx)
 
 	htSecret := &corev1.Secret{}
 	err := r.Client.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: "htpasswd"}, htSecret)
@@ -23,11 +26,11 @@ func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context
 		rawPassword = string(htSecret.Data["rawPassword"])
 		auth = string(htSecret.Data["auth"])
 	} else {
-		r.Log.Info("Creating HTPasswd entry", object.GetKind(), object.GetName())
+		log.Info("Creating HTPasswd entry", object.GetKind(), object.GetName())
 
 		rawPassword, err = generatePassword(255)
 		if err != nil {
-			r.Log.Error(err, "failed to generate the HTPasswd password")
+			log.Error(err, "failed to generate the HTPasswd password")
 			return err
 		}
 		h := sha1.New()
@@ -41,13 +44,13 @@ func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context
 	// We store the raw password in order to be able to retrieve it below, when patching Grafana ConfigMap
 	err = unstructured.SetNestedField(object.UnstructuredContent(), b64Password, "data", "rawPassword")
 	if err != nil {
-		r.Log.Error(err, "failed to set htpasswd raw password")
+		log.Error(err, "failed to set htpasswd raw password")
 		return err
 	}
 
 	err = unstructured.SetNestedField(object.UnstructuredContent(), b64Auth, "data", "auth")
 	if err != nil {
-		r.Log.Error(err, "failed to set htpasswd auth entry")
+		log.Error(err, "failed to set htpasswd auth entry")
 		return err
 	}
 
@@ -55,10 +58,11 @@ func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context
 }
 
 func (r *controlPlaneInstanceReconciler) getRawHtPasswd(ctx context.Context, object *unstructured.Unstructured) (string, error) {
+	log := common.LogFromContext(ctx)
 	htSecret := &corev1.Secret{}
 	err := r.Client.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: "htpasswd"}, htSecret)
 	if err != nil {
-		r.Log.Error(err, "error retrieving htpasswd Secret")
+		log.Error(err, "error retrieving htpasswd Secret")
 		return "", err
 	}
 
@@ -66,13 +70,14 @@ func (r *controlPlaneInstanceReconciler) getRawHtPasswd(ctx context.Context, obj
 }
 
 func (r *controlPlaneInstanceReconciler) patchGrafanaConfig(ctx context.Context, object *unstructured.Unstructured) error {
+	log := common.LogFromContext(ctx)
 	dsYaml, found, err := unstructured.NestedString(object.UnstructuredContent(), "data", "datasources.yaml")
 	if err != nil || !found {
-		r.Log.Info("skipping configuration of Grafana-Prometheus link: Could not find/retrieve datasources.yaml from Grafana ConfigMap")
+		log.Info("skipping configuration of Grafana-Prometheus link: Could not find/retrieve datasources.yaml from Grafana ConfigMap")
 		return nil
 	}
 
-	r.Log.Info("patching Grafana-Prometheus link", object.GetKind(), object.GetName())
+	log.Info("patching Grafana-Prometheus link", object.GetKind(), object.GetName())
 
 	rawPassword, err := r.getRawHtPasswd(ctx, object)
 	if err != nil {
@@ -83,7 +88,7 @@ func (r *controlPlaneInstanceReconciler) patchGrafanaConfig(ctx context.Context,
 	dsYaml = re.ReplaceAllString(dsYaml, fmt.Sprintf("${1} %s\n", rawPassword))
 	err = unstructured.SetNestedField(object.UnstructuredContent(), dsYaml, "data", "datasources.yaml")
 	if err != nil {
-		r.Log.Error(err, "failed to set datasources.yaml")
+		log.Error(err, "failed to set datasources.yaml")
 		return err
 	}
 

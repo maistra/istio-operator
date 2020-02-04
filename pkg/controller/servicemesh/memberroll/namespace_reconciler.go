@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -31,11 +32,9 @@ type namespaceReconciler struct {
 }
 
 func newNamespaceReconciler(ctx context.Context, cl client.Client, meshNamespace string, meshVersion string, isCNIEnabled bool) (NamespaceReconciler, error) {
-	logger := common.LogFromContext(ctx)
 	reconciler := &namespaceReconciler{
 		ControllerResources: common.ControllerResources{
 			Client: cl,
-			Log:    logger.WithValues("MeshNamespace", meshNamespace),
 		},
 		meshNamespace:        meshNamespace,
 		meshVersion:          meshVersion,
@@ -43,6 +42,8 @@ func newNamespaceReconciler(ctx context.Context, cl client.Client, meshNamespace
 		roleBindingsList:     rbac.RoleBindingList{},
 		requiredRoleBindings: sets.NewString(),
 	}
+	logger := reconciler.getLogger(ctx)
+
 	err := reconciler.initializeNetworkingStrategy(ctx)
 	if err != nil {
 		return nil, err
@@ -51,7 +52,7 @@ func newNamespaceReconciler(ctx context.Context, cl client.Client, meshNamespace
 	labelSelector := map[string]string{common.OwnerKey: meshNamespace}
 	err = cl.List(ctx, client.MatchingLabels(labelSelector).InNamespace(meshNamespace), &reconciler.roleBindingsList)
 	if err != nil {
-		reconciler.Log.Error(err, "error retrieving RoleBinding resources for mesh")
+		logger.Error(err, "error retrieving RoleBinding resources for mesh")
 		return nil, pkgerrors.Wrap(err, "error retrieving RoleBinding resources for mesh")
 	}
 	for _, rb := range reconciler.roleBindingsList.Items {
@@ -61,6 +62,7 @@ func newNamespaceReconciler(ctx context.Context, cl client.Client, meshNamespace
 }
 
 func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) error {
+	log := common.LogFromContext(ctx)
 	// configure networks
 	clusterNetwork := &unstructured.Unstructured{}
 	clusterNetwork.SetAPIVersion("network.openshift.io/v1")
@@ -69,7 +71,7 @@ func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) 
 	err := r.Client.Get(ctx, client.ObjectKey{Name: "default"}, clusterNetwork)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			r.Log.Info("default cluster network not defined, skipping network configuration")
+			log.Info("default cluster network not defined, skipping network configuration")
 			return nil
 		}
 		return err
@@ -83,14 +85,14 @@ func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) 
 		case "redhat/openshift-ovs-subnet":
 			// nothing to do
 		case "redhat/openshift-ovs-networkpolicy":
-			r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.Log, r.meshNamespace)
+			r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
 		case "redhat/openshift-ovs-multitenant":
-			r.networkingStrategy, err = newMultitenantStrategy(r.Client, r.Log, r.meshNamespace)
+			r.networkingStrategy, err = newMultitenantStrategy(r.Client, r.meshNamespace)
 		default:
 			return fmt.Errorf("unsupported cluster network plugin: %s", networkPlugin)
 		}
 	} else {
-		r.Log.Info("cluster network plugin not defined, skipping network configuration")
+		log.Info("cluster network plugin not defined, skipping network configuration")
 	}
 	return err
 }
@@ -346,4 +348,8 @@ func (r *namespaceReconciler) removeNetworkAttachmentDefinition(ctx context.Cont
 		}
 	}
 	return utilerrors.NewAggregate(allErrors)
+}
+
+func (r *namespaceReconciler) getLogger(ctx context.Context) logr.Logger {
+	return common.LogFromContext(ctx).WithValues("MeshNamespace", r.meshNamespace)
 }

@@ -15,6 +15,8 @@ import (
 )
 
 func (r *controlPlaneInstanceReconciler) Delete(ctx context.Context) error {
+	log := common.LogFromContext(ctx)
+
 	reconciledCondition := r.Status.GetCondition(maistrav1.ConditionTypeReconciled)
 	if reconciledCondition.Status != maistrav1.ConditionStatusFalse || reconciledCondition.Reason != maistrav1.ConditionReasonDeleting {
 		r.Status.SetCondition(maistrav1.Condition{
@@ -34,7 +36,7 @@ func (r *controlPlaneInstanceReconciler) Delete(ctx context.Context) error {
 		return err // return regardless of error; deletion will continue when update event comes back into the operator
 	}
 
-	r.Log.Info("Deleting ServiceMeshControlPlane")
+	log.Info("Deleting ServiceMeshControlPlane")
 
 	r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReasonDeleting, "Deleting service mesh")
 	err := r.prune(ctx, "")
@@ -62,7 +64,7 @@ func (r *controlPlaneInstanceReconciler) Delete(ctx context.Context) error {
 		statusErr := r.PostStatus(ctx)
 		if statusErr != nil {
 			// we must return the original error, thus we can only log the status update error
-			r.Log.Error(statusErr, "Error updating status")
+			log.Error(statusErr, "Error updating status")
 		}
 		return err
 	}
@@ -74,8 +76,8 @@ func (r *controlPlaneInstanceReconciler) Delete(ctx context.Context) error {
 		finalizers.Delete(common.FinalizerName)
 		instance.SetFinalizers(finalizers.List())
 		if err := r.Client.Update(ctx, instance); err == nil {
-			r.Log.Info("Removed finalizer")
-			hacks.ReduceLikelihoodOfRepeatedReconciliation()
+			log.Info("Removed finalizer")
+			hacks.ReduceLikelihoodOfRepeatedReconciliation(ctx)
 		} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
 			r.EventRecorder.Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", err)) // TODO: this event probably isn't needed at all
 			return errors.Wrap(err, "Error removing ServiceMeshControlPlane finalizer")

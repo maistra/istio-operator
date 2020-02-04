@@ -9,22 +9,21 @@ import (
 func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.Context, chartName string) (ready bool, err error) {
 	r.lastComponent = ""
 	componentName := componentFromChartName(chartName)
-	origLogger := r.Log
-	r.Log = r.Log.WithValues("Component", componentName)
-	defer func() { r.Log = origLogger }()
+	log := common.LogFromContext(ctx).WithValues("Component", componentName)
+	ctx = common.NewContextWithLog(ctx, log)
 
 	renderings, hasRenderings := r.renderings[chartName]
 	if !hasRenderings {
-		r.Log.V(5).Info("no renderings for component")
+		log.V(5).Info("no renderings for component")
 		ready = true
 		return
 	}
 
-	r.Log.Info("reconciling component resources")
+	log.Info("reconciling component resources")
 	status := r.Status.FindComponentByName(componentName)
 	defer func() {
 		updateReconcileStatus(&status.StatusType, err)
-		r.Log.Info("component reconciliation complete")
+		log.Info("component reconciliation complete")
 	}()
 
 	mp := common.NewManifestProcessor(r.ControllerResources, r.Instance.GetNamespace(), r.meshGeneration, r.Instance.GetNamespace(), r.preprocessObject, r.processNewObject)
@@ -32,7 +31,7 @@ func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.C
 		return
 	}
 	if err = r.processNewComponent(componentName, status); err != nil {
-		r.Log.Error(err, "error during postprocessing of component")
+		log.Error(err, "error during postprocessing of component")
 		return
 	}
 

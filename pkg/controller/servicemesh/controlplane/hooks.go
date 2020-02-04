@@ -60,7 +60,8 @@ func (r *controlPlaneInstanceReconciler) processDeletedObject(ctx context.Contex
 }
 
 func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, object *unstructured.Unstructured) error {
-	r.Log.Info("patching kiali CR", object.GetKind(), object.GetName())
+	log := common.LogFromContext(ctx)
+	log.Info("patching kiali CR", object.GetKind(), object.GetName())
 
 	// get jaeger URL and enabled flags from Kiali CR
 	jaegerURL, found, err := unstructured.NestedString(object.UnstructuredContent(), "spec", "external_services", "tracing", "url")
@@ -74,7 +75,7 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, o
 
 	// if the user has not yet configured this, let's try to auto-detect it now.
 	if len(jaegerURL) == 0 && jaegerEnabled {
-		r.Log.Info("attempting to auto-detect jaeger for kiali")
+		log.Info("attempting to auto-detect jaeger for kiali")
 		jaegerRoute := &unstructured.Unstructured{}
 		jaegerRoute.SetAPIVersion("route.openshift.io/v1")
 		jaegerRoute.SetKind("Route")
@@ -82,7 +83,7 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, o
 		err = r.Client.Get(ctx, client.ObjectKey{Name: "jaeger", Namespace: object.GetNamespace()}, jaegerRoute)
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				r.Log.Error(err, "error retrieving jaeger route - will disable it in Kiali")
+				log.Error(err, "error retrieving jaeger route - will disable it in Kiali")
 				// we aren't going to return here - Jaeger is optional for Kiali; Kiali can still run without it
 			}
 			jaegerEnabled = false
@@ -112,14 +113,14 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, o
 
 	// if the user has not yet configured this, let's try to auto-detect it now.
 	if len(grafanaURL) == 0 && grafanaEnabled {
-		r.Log.Info("attempting to auto-detect grafana for kiali")
+		log.Info("attempting to auto-detect grafana for kiali")
 		grafanaRoute := &unstructured.Unstructured{}
 		grafanaRoute.SetAPIVersion("route.openshift.io/v1")
 		grafanaRoute.SetKind("Route")
 		err = r.Client.Get(ctx, client.ObjectKey{Name: "grafana", Namespace: object.GetNamespace()}, grafanaRoute)
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				r.Log.Error(err, "error retrieving grafana route - will disable it in Kiali")
+				log.Error(err, "error retrieving grafana route - will disable it in Kiali")
 				// we aren't going to return here - Grafana is optional for Kiali; Kiali can still run without it
 			}
 			grafanaEnabled = false
@@ -137,8 +138,8 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, o
 		}
 	}
 
-	r.Log.Info("new kiali jaeger settings", jaegerURL, jaegerEnabled)
-	r.Log.Info("new kiali grafana setting", grafanaURL, grafanaEnabled)
+	log.Info("new kiali jaeger settings", jaegerURL, jaegerEnabled)
+	log.Info("new kiali grafana setting", grafanaURL, grafanaEnabled)
 
 	err = unstructured.SetNestedField(object.UnstructuredContent(), jaegerURL, "spec", "external_services", "tracing", "url")
 	if err != nil {
@@ -181,9 +182,10 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, o
 }
 
 func (r *controlPlaneInstanceReconciler) waitForWebhookCABundleInitialization(ctx context.Context, object *unstructured.Unstructured) error {
+	log := common.LogFromContext(ctx)
 	name := object.GetName()
 	kind := object.GetKind()
-	r.Log.Info("waiting for webhook CABundle initialization", kind, name)
+	log.Info("waiting for webhook CABundle initialization", kind, name)
 	err := wait.ExponentialBackoff(wait.Backoff{Duration: 6 * time.Second, Steps: 10, Factor: 1.1}, func() (bool, error) {
 		err := r.Client.Get(ctx, client.ObjectKey{Name: name}, object)
 		if err == nil {
@@ -199,14 +201,14 @@ func (r *controlPlaneInstanceReconciler) waitForWebhookCABundleInitialization(ct
 			}
 			return true, nil
 		} else if errors.IsNotFound(err) {
-			r.Log.Error(nil, "attempting to wait on unknown webhook", kind, name)
+			log.Error(nil, "attempting to wait on unknown webhook", kind, name)
 			return true, nil
 		}
-		r.Log.Error(err, "error waiting for webhook CABundle to become initialized", object.GetKind(), name)
+		log.Error(err, "error waiting for webhook CABundle to become initialized", object.GetKind(), name)
 		return false, err
 	})
 	if err != nil {
-		r.Log.Error(nil, "webhook CABundle failed to become initialized in a timely manner", kind, name)
+		log.Error(nil, "webhook CABundle failed to become initialized in a timely manner", kind, name)
 	}
 	return nil
 }

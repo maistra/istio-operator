@@ -8,7 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -107,7 +106,7 @@ func setupNetworkPolicyReconciledNamespace(t *testing.T, cl client.Client, names
 }
 
 func createNetworkPolicyStrategy(cl client.Client, t *testing.T) *networkPolicyStrategy {
-	strategy, err := newNetworkPolicyStrategy(ctx, cl, logf.Log, controlPlaneNamespace)
+	strategy, err := newNetworkPolicyStrategy(ctx, cl, controlPlaneNamespace)
 	if err != nil {
 		t.Fatalf("Error creating network strategy: %v", err)
 	}

@@ -3,7 +3,9 @@ package validation
 import (
 	"fmt"
 
+	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	pkgtypes "k8s.io/apimachinery/pkg/types"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
@@ -133,4 +135,8 @@ func validationFailedResponse(httpStatusCode int32, reason metav1.StatusReason, 
 	response.Response.Result.Code = httpStatusCode
 	response.Response.Result.Message = message
 	return response
+}
+
+func toNamespacedName(req *admissionv1beta1.AdmissionRequest) pkgtypes.NamespacedName {
+	return pkgtypes.NamespacedName{req.Namespace, req.Name}
 }

@@ -3,6 +3,7 @@ package podlocality
 import (
 	"fmt"
 
+	"github.com/go-logr/logr"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,13 +46,13 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme) *PodLocalityReconci
 	return &PodLocalityReconciler{ControllerResources: common.ControllerResources{
 		Client:       cl,
 		Scheme:       scheme,
-		PatchFactory: common.NewPatchFactory(cl),
-		Log:          logf.Log.WithName(controllerName)}}
+		PatchFactory: common.NewPatchFactory(cl)}}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r *PodLocalityReconciler) error {
-	ctx := common.NewContext()
+	log := createLogger()
+	ctx := common.NewContextWithLog(common.NewContext(), log)
 
 	// Create a new controller
 	c, err := controller.New(controllerName, mgr, controller.Options{Reconciler: r})
@@ -86,7 +87,7 @@ func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 			list := &v1.PodList{}
 			err := mgr.GetClient().List(ctx, client.MatchingField("spec.nodeName", a.Meta.GetName()), list)
 			if err != nil {
-				r.Log.Error(err, "Could not list pods")
+				log.Error(err, "Could not list pods")
 			}
 
 			var requests []reconcile.Request
@@ -143,7 +144,7 @@ type PodLocalityReconciler struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := r.Log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	reqLogger := createLogger().WithValues("Pod", request)
 	ctx := common.NewReconcileContext(reqLogger)
 	reqLogger.Info("Processing Pod")
 
@@ -191,4 +192,11 @@ func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.
 
 	reqLogger.Info("Successfully added zone and region labels to pod.")
 	return reconcile.Result{}, nil
+}
+
+// Don't use this function to obtain a logger. Get it by invoking
+// common.LogFromContext(ctx) to ensure that the logger has the
+// correct context info and logs it.
+func createLogger() logr.Logger {
+	return logf.Log.WithName(controllerName)
 }

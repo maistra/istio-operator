@@ -4,12 +4,15 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 type ContextValueKey string
 
 var (
 	logContextKey ContextValueKey = "github.com/maistra/istio-operator/pkg/controller/common/logr.Logger"
+
+	fallBackLogger = logf.Log.WithName("FALLBACK-LOGGER")
 )
 
 // NewContext creates a new context without an associated Logger
@@ -33,7 +36,7 @@ func NewContextWithLog(ctx context.Context, logger logr.Logger) context.Context 
 func LogFromContext(ctx context.Context) logr.Logger {
 	logger, ok := ctx.Value(logContextKey).(logr.Logger)
 	if !ok {
-		panic("Could not get Logger from context")
+		return fallBackLogger
 	}
 	return logger
 }

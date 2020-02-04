@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"context"
 	"path"
-	"sync"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -11,8 +10,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
-
-var installCNITask sync.Once
 
 // InstallCNI makes sure all Istio CNI resources have been created.  CRDs are located from
 // files in controller.HelmDir/istio-init/files
@@ -22,6 +19,7 @@ func InstallCNI(ctx context.Context, cl client.Client) error {
 }
 
 func internalInstallCNI(ctx context.Context, cl client.Client) error {
+	log := common.LogFromContext(ctx)
 	log.Info("ensuring Istio CNI has been installed")
 
 	operatorNamespace := common.GetOperatorNamespace()
@@ -44,7 +42,6 @@ func internalInstallCNI(ctx context.Context, cl client.Client) error {
 	controllerResources := common.ControllerResources{
 		Client:            cl,
 		PatchFactory:      common.NewPatchFactory(cl),
-		Log:               log,
 		OperatorNamespace: operatorNamespace,
 	}
 

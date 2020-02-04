@@ -16,6 +16,7 @@ import (
 )
 
 func (r *controlPlaneInstanceReconciler) UpdateReadiness(ctx context.Context) error {
+	log := common.LogFromContext(ctx)
 	update, err := r.updateReadinessStatus(ctx)
 	if update && !r.skipStatusUpdate() {
 		statusErr := r.PostStatus(ctx)
@@ -26,14 +27,15 @@ func (r *controlPlaneInstanceReconciler) UpdateReadiness(ctx context.Context) er
 				return statusErr
 			}
 			// otherwise, we must log the status update error and return the original error
-			r.Log.Error(statusErr, "Error updating status")
+			log.Error(statusErr, "Error updating status")
 		}
 	}
 	return err
 }
 
 func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Context) (bool, error) {
-	r.Log.Info("Updating ServiceMeshControlPlane readiness state")
+	log := common.LogFromContext(ctx)
+	log.Info("Updating ServiceMeshControlPlane readiness state")
 	notReadyState, err := r.calculateNotReadyState(ctx)
 	if err != nil {
 		condition := v1.Condition{
@@ -49,7 +51,7 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 	unreadyComponents := make([]string, 0, len(notReadyState))
 	for component, notReady := range notReadyState {
 		if notReady {
-			r.Log.Info(fmt.Sprintf("%s resources are not fully available", component))
+			log.Info(fmt.Sprintf("%s resources are not fully available", component))
 			unreadyComponents = append(unreadyComponents, component)
 		}
 	}
@@ -116,33 +118,35 @@ func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForCNI(ctx contex
 		return true, err
 	}
 	for _, ds := range daemonSets.Items {
-		if !r.daemonSetReady(&ds) {
+		if !r.daemonSetReady(ctx, &ds) {
 			return true, nil
 		}
 	}
 	return false, nil
 }
 
-func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForType(ctx context.Context, gvk schema.GroupVersionKind, notReadyState map[string]bool, isReady func(*unstructured.Unstructured) bool) error {
+func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForType(ctx context.Context, gvk schema.GroupVersionKind, notReadyState map[string]bool, isReady func(context.Context, *unstructured.Unstructured) bool) error {
+	log := common.LogFromContext(ctx)
 	resources, err := common.FetchOwnedResources(ctx, r.Client, gvk, r.Instance.GetNamespace(), r.Instance.GetNamespace())
 	if err != nil {
 		return err
 	}
 	for _, resource := range resources.Items {
 		if component, ok := common.GetLabel(&resource, common.KubernetesAppComponentKey); ok {
-			notReadyState[component] = notReadyState[component] || !isReady(&resource)
+			notReadyState[component] = notReadyState[component] || !isReady(ctx, &resource)
 		} else {
 			// how do we have an owned resource with no component label?
-			r.Log.Error(nil, "skipping resource for readiness check: resource has no component label", gvk.Kind, resource.GetName())
+			log.Error(nil, "skipping resource for readiness check: resource has no component label", gvk.Kind, resource.GetName())
 		}
 	}
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) deploymentReady(deployment *unstructured.Unstructured) bool {
+func (r *controlPlaneInstanceReconciler) deploymentReady(ctx context.Context, deployment *unstructured.Unstructured) bool {
+	log := common.LogFromContext(ctx)
 	conditions, found, err := unstructured.NestedSlice(deployment.UnstructuredContent(), "status", "conditions")
 	if err != nil {
-		r.Log.Error(err, "error reading Deployment.Status", "Deployment", deployment.GetName())
+		log.Error(err, "error reading Deployment.Status", "Deployment", deployment.GetName())
 		return false
 	}
 	if !found {
@@ -157,17 +161,18 @@ func (r *controlPlaneInstanceReconciler) deploymentReady(deployment *unstructure
 				return conditionStatus == "True"
 			}
 		} else {
-			r.Log.Error(nil, "cannot convert Deployment condition")
+			log.Error(nil, "cannot convert Deployment condition")
 		}
 	}
 
 	return false
 }
 
-func (r *controlPlaneInstanceReconciler) statefulSetReady(statefulSet *unstructured.Unstructured) bool {
+func (r *controlPlaneInstanceReconciler) statefulSetReady(ctx context.Context, statefulSet *unstructured.Unstructured) bool {
+	log := common.LogFromContext(ctx)
 	replicas, found, err := unstructured.NestedInt64(statefulSet.UnstructuredContent(), "status", "replicas")
 	if err != nil {
-		r.Log.Error(err, "error reading StatefulSet.Status", "StatefulSet", statefulSet.GetName())
+		log.Error(err, "error reading StatefulSet.Status", "StatefulSet", statefulSet.GetName())
 		return false
 	}
 	if !found {
@@ -176,7 +181,7 @@ func (r *controlPlaneInstanceReconciler) statefulSetReady(statefulSet *unstructu
 
 	readyReplicas, found, err := unstructured.NestedInt64(statefulSet.UnstructuredContent(), "status", "readyReplicas")
 	if err != nil {
-		r.Log.Error(err, "error reading StatefulSet.Status", "StatefulSet", statefulSet.GetName())
+		log.Error(err, "error reading StatefulSet.Status", "StatefulSet", statefulSet.GetName())
 		return false
 	}
 	if !found {
@@ -186,10 +191,11 @@ func (r *controlPlaneInstanceReconciler) statefulSetReady(statefulSet *unstructu
 	return readyReplicas >= replicas
 }
 
-func (r *controlPlaneInstanceReconciler) daemonSetReady(daemonSet *unstructured.Unstructured) bool {
+func (r *controlPlaneInstanceReconciler) daemonSetReady(ctx context.Context, daemonSet *unstructured.Unstructured) bool {
+	log := common.LogFromContext(ctx)
 	unavailable, found, err := unstructured.NestedInt64(daemonSet.UnstructuredContent(), "status", "numberUnavailable")
 	if err != nil {
-		r.Log.Error(err, "error reading DaemonSet.Status", "DaemonSet", daemonSet.GetName())
+		log.Error(err, "error reading DaemonSet.Status", "DaemonSet", daemonSet.GetName())
 		return false
 	}
 

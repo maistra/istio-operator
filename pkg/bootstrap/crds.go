@@ -37,6 +37,7 @@ func InstallCRDs(ctx context.Context, cl client.Client) error {
 }
 
 func internalInstallCRDs(ctx context.Context, cl client.Client, err *error) {
+	log := common.LogFromContext(ctx)
 	log.Info("ensuring CRDs have been installed")
 	// Always install the latest set of CRDs
 	crdPath := path.Join(common.GetHelmDir(common.DefaultMaistraVersion), "istio-init/files")
@@ -90,6 +91,7 @@ func installCRDRole(ctx context.Context, cl client.Client) error {
 }
 
 func processCRDFile(ctx context.Context, cl client.Client, fileName string) error {
+	log := common.LogFromContext(ctx)
 	allErrors := []error{}
 	buf := &bytes.Buffer{}
 	file, err := os.Open(fileName)

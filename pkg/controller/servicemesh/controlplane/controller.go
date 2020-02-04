@@ -51,7 +51,6 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 			Scheme:            scheme,
 			EventRecorder:     eventRecorder,
 			PatchFactory:      common.NewPatchFactory(cl),
-			Log:               logf.Log.WithName(controllerName),
 			OperatorNamespace: operatorNamespace,
 		},
 		reconcilers: map[types.NamespacedName]ControlPlaneInstanceReconciler{},
@@ -62,7 +61,8 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
-	ctx := common.NewContext()
+	log := createLogger()
+	ctx := common.NewContextWithLog(common.NewContext(), log)
 
 	// Create a new controller
 	var c controller.Controller
@@ -112,7 +112,7 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 				}
 				smcpList := &v1.ServiceMeshControlPlaneList{}
 				if err := mgr.GetClient().List(ctx, nil, smcpList); err != nil {
-					r.Log.Error(err, "error listing ServiceMeshControlPlane objects in CNI DaemonSet watcher")
+					log.Error(err, "error listing ServiceMeshControlPlane objects in CNI DaemonSet watcher")
 					return nil
 				}
 				requests := make([]reconcile.Request, 0, len(smcpList.Items))
@@ -172,7 +172,7 @@ type ControlPlaneInstanceReconciler interface {
 // Reconcile reads that state of the cluster for a ServiceMeshControlPlane object and makes changes based on the state read
 // and what is in the ServiceMeshControlPlane.Spec
 func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	log := r.Log.WithValues("ServiceMeshControlPlane", request)
+	log := createLogger().WithValues("ServiceMeshControlPlane", request)
 	ctx := common.NewReconcileContext(log)
 
 	log.Info("Processing ServiceMeshControlPlane")
@@ -195,7 +195,7 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 
-	key, reconciler := r.getOrCreateReconciler(instance, log)
+	key, reconciler := r.getOrCreateReconciler(instance)
 	defer r.deleteReconcilerIfFinished(key, reconciler)
 
 	deleted := instance.GetDeletionTimestamp() != nil
@@ -234,7 +234,7 @@ func isFullyReconciled(instance *v1.ServiceMeshControlPlane) bool {
 		instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue
 }
 
-func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane, log logr.Logger) (types.NamespacedName, ControlPlaneInstanceReconciler) {
+func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) (types.NamespacedName, ControlPlaneInstanceReconciler) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -243,7 +243,7 @@ func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMe
 		reconciler.SetInstance(newInstance)
 		return key, reconciler
 	}
-	newReconciler := r.instanceReconcilerFactory(r.ControllerResources.WithLog(log), newInstance)
+	newReconciler := r.instanceReconcilerFactory(r.ControllerResources, newInstance)
 	r.reconcilers[key] = newReconciler
 	return key, newReconciler
 }
@@ -257,4 +257,11 @@ func (r *ControlPlaneReconciler) deleteReconcilerIfFinished(key types.Namespaced
 		defer r.mu.Unlock()
 		delete(r.reconcilers, key)
 	}
+}
+
+// Don't use this function to obtain a logger. Get it by invoking
+// common.LogFromContext(ctx) to ensure that the logger has the
+// correct context info and logs it.
+func createLogger() logr.Logger {
+	return logf.Log.WithName(controllerName)
 }
