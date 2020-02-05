@@ -146,19 +146,19 @@ func createCRD(ctx context.Context, cl client.Client, crd *unstructured.Unstruct
 	receiver.SetGroupVersionKind(crd.GroupVersionKind())
 	receiver.SetName(crd.GetName())
 	err := cl.Get(ctx, client.ObjectKey{Name: crd.GetName()}, receiver) // TODO: replace Unstructured with actual type
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("creating CRD")
-			err = cl.Create(ctx, crd)
+	if err == nil {
+		log.Info("CRD exists")
+		return nil
+	}
+	if errors.IsNotFound(err) {
+		log.Info("creating CRD")
+		err = cl.Create(ctx, crd)
 			err = hacks.WorkAroundTypeObjectProblemInCRDSchemas(ctx, err, cl, crd)
-			if err != nil {
-				log.Error(err, "error creating CRD")
-				return err
-			}
-		} else {
+		if err != nil {
+			log.Error(err, "error creating CRD")
 			return err
 		}
+		return nil
 	}
-	log.Info("CRD installed")
-	return nil
+	return err
 }
