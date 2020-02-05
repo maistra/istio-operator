@@ -93,55 +93,72 @@ func installCRDRole(ctx context.Context, cl client.Client) error {
 
 func processCRDFile(ctx context.Context, cl client.Client, fileName string) error {
 	log := common.LogFromContext(ctx)
-	allErrors := []error{}
-	buf := &bytes.Buffer{}
 	file, err := os.Open(fileName)
 	defer file.Close()
 	if err != nil {
 		return err
 	}
+
+	buf := &bytes.Buffer{}
 	_, err = buf.ReadFrom(file)
 	if err != nil {
 		return err
 	}
+
+	allErrors := []error{}
 	for index, raw := range releaseutil.SplitManifests(string(buf.Bytes())) {
-		rawJSON, err := yaml.YAMLToJSON([]byte(raw))
+		crd, err := decodeCRD(common.NewContextWithLog(ctx, log.WithValues("file", fileName, "index", index)), raw)
 		if err != nil {
-			log.Error(err, "unable to convert raw data to JSON", "file", fileName, "index", index)
 			allErrors = append(allErrors, err)
-			continue
-		}
-		obj := &unstructured.Unstructured{}
-		_, _, err = unstructured.UnstructuredJSONScheme.Decode(rawJSON, nil, obj)
-		if err != nil {
-			log.Error(err, "unable to decode object into Unstructured", "file", fileName, "index", index)
-			allErrors = append(allErrors, err)
-			continue
-		}
-		gvk := obj.GroupVersionKind()
-		if gk := gvk.GroupKind(); gk.String() != "CustomResourceDefinition.apiextensions.k8s.io" {
-			continue
-		}
-		receiver := &unstructured.Unstructured{}
-		receiver.SetGroupVersionKind(obj.GroupVersionKind())
-		receiver.SetName(obj.GetName())
-		err = cl.Get(ctx, client.ObjectKey{Name: obj.GetName()}, receiver)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				log.Info("creating CRD", "file", fileName, "index", index, "CRD", obj.GetName())
-				err = cl.Create(ctx, obj)
-				err = hacks.WorkAroundTypeObjectProblemInCRDSchemas(ctx, err, cl, obj)
-				if err != nil {
-					log.Error(err, "error creating CRD", "file", fileName, "index", index, "CRD", obj.GetName())
-					allErrors = append(allErrors, err)
-					continue
-				}
-			} else {
+		} else if crd != nil { // crd is nil when the object in the file isn't a CRD
+			err = createCRD(common.NewContextWithLog(ctx, log.WithValues("CRD", crd.GetName())), cl, crd)
+			if err != nil {
 				allErrors = append(allErrors, err)
-				continue
 			}
 		}
-		log.Info("CRD installed", "file", fileName, "index", index, "CRD", obj.GetName())
 	}
 	return utilerrors.NewAggregate(allErrors)
+}
+
+func decodeCRD(ctx context.Context, raw string) (*unstructured.Unstructured, error) {
+	log := common.LogFromContext(ctx)
+	rawJSON, err := yaml.YAMLToJSON([]byte(raw))
+	if err != nil {
+		log.Error(err, "unable to convert raw data to JSON")
+		return nil, err
+	}
+	obj := &unstructured.Unstructured{}
+	_, _, err = unstructured.UnstructuredJSONScheme.Decode(rawJSON, nil, obj)
+	if err != nil {
+		log.Error(err, "unable to decode object into Unstructured")
+		return nil, err
+	}
+	if obj.GroupVersionKind().GroupKind().String() == "CustomResourceDefinition.apiextensions.k8s.io" {
+		return obj, nil
+	} else {
+		return nil, nil
+	}
+}
+
+func createCRD(ctx context.Context, cl client.Client, crd *unstructured.Unstructured) error {
+	log := common.LogFromContext(ctx)
+	receiver := &unstructured.Unstructured{}
+	receiver.SetGroupVersionKind(crd.GroupVersionKind())
+	receiver.SetName(crd.GetName())
+	err := cl.Get(ctx, client.ObjectKey{Name: crd.GetName()}, receiver) // TODO: replace Unstructured with actual type
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("creating CRD")
+			err = cl.Create(ctx, crd)
+			err = hacks.WorkAroundTypeObjectProblemInCRDSchemas(ctx, err, cl, crd)
+			if err != nil {
+				log.Error(err, "error creating CRD")
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+	log.Info("CRD installed")
+	return nil
 }
