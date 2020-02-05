@@ -94,10 +94,10 @@ func installCRDRole(ctx context.Context, cl client.Client) error {
 func processCRDFile(ctx context.Context, cl client.Client, fileName string) error {
 	log := common.LogFromContext(ctx)
 	file, err := os.Open(fileName)
-	defer file.Close()
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	buf := &bytes.Buffer{}
 	_, err = buf.ReadFrom(file)
