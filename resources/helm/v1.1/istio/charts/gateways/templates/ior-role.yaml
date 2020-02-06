@@ -14,4 +14,7 @@ rules:
 - apiGroups: ["route.openshift.io"]
   resources: ["routes", "routes/custom-host"]
   verbs: ["get", "list", "watch", "create", "delete"]
+- apiGroups: [""]
+  resources: ["services", "pods"]
+  verbs: ["get", "list"]
 {{- end }}
