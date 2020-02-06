@@ -6,7 +6,7 @@ metadata:
     app: {{ template "sidecar-injector.name" . }}
     chart: {{ template "sidecar-injector.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.0.6
+    maistra-version: 1.0.7
     release: {{ .Release.Name }}
   annotations:
     "helm.sh/resource-policy": keep

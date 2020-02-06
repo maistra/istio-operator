@@ -7,7 +7,7 @@ metadata:
   labels:
     chart: {{ template "gateway.chart" $ }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.0.6
+    maistra-version: 1.0.7
     release: {{ .Release.Name }}
     {{- range $key, $val := (index .Values "istio-ingressgateway" "labels") }}
     {{ $key }}: {{ $val }}

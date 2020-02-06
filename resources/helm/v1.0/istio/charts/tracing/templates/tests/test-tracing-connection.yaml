@@ -7,7 +7,7 @@ metadata:
   labels:
     app: {{ .Values.provider }}-test
     chart: {{ template "tracing.chart" . }}
-    maistra-version: 1.0.6
+    maistra-version: 1.0.7
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
   annotations:
