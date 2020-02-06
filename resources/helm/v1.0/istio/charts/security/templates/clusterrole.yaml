@@ -6,7 +6,7 @@ metadata:
     app: {{ template "security.name" . }}
     chart: {{ template "security.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.0.4
+    maistra-version: 1.0.7
     release: {{ .Release.Name }}
 rules:
 - apiGroups: [""]
