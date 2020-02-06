@@ -1,6 +1,7 @@
 module github.com/maistra/istio-operator
 
 require (
+	github.com/Masterminds/semver v1.4.2
 	github.com/evanphx/json-patch v4.1.0+incompatible
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.1.0
@@ -9,6 +10,7 @@ require (
 	github.com/operator-framework/operator-sdk v0.10.1-0.20190917191403-5f663690a3bb
 	github.com/pkg/errors v0.8.1
 	github.com/spf13/pflag v1.0.3
+	gopkg.in/yaml.v2 v2.2.2
 	istio.io/api v0.0.0-20190917173507-9eb49cc4666a
 	k8s.io/api v0.0.0-20190612125737-db0771252981
 	k8s.io/apimachinery v0.0.0-20190612125636-6a5db36e93ad

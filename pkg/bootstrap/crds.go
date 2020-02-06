@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -25,38 +26,33 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var installCRDsTask sync.Once
+var crdMutex sync.Mutex // ensure two workers don't deploy CRDs at same time
 
 // InstallCRDs makes sure all CRDs have been installed.  CRDs are located from
 // files in controller.HelmDir/istio-init/files
-func InstallCRDs(ctx context.Context, cl client.Client) error {
+func InstallCRDs(ctx context.Context, cl client.Client, version string) error {
 	// we only try to install them once.  if there's an error, we should probably
 	// panic, as there's no way to recover.  for now, we just pass the error along.
-	var err error
-	installCRDsTask.Do(func() { internalInstallCRDs(ctx, cl, &err) })
-	return err
-}
+	crdMutex.Lock()
+	defer crdMutex.Unlock()
 
-func internalInstallCRDs(ctx context.Context, cl client.Client, err *error) {
 	log := common.LogFromContext(ctx)
-	log.Info("ensuring CRDs have been installed")
-	// Always install the latest set of CRDs
-	crdPath := path.Join(common.Options.GetChartsDir(common.DefaultMaistraVersion), "istio-init/files")
-	var crdDir os.FileInfo
-	crdDir, *err = os.Stat(crdPath)
-	if *err != nil || !crdDir.IsDir() {
-		*err = fmt.Errorf("Cannot locate any CRD files in %s", crdPath)
-		return
+	log.Info(fmt.Sprintf("ensuring %s CRDs are installed", version))
+	crdPath := path.Join(common.Options.GetChartsDir(version), "istio-init/files")
+	crdDir, err := os.Stat(crdPath)
+	if err != nil || !crdDir.IsDir() {
+		return fmt.Errorf("Cannot locate any CRD files in %s", crdPath)
 	}
-	*err = filepath.Walk(crdPath, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(crdPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return err
 		}
 		return processCRDFile(ctx, cl, path)
 	})
-	if *err == nil {
-		*err = installCRDRole(ctx, cl)
+	if err != nil {
+		return err
 	}
+	return installCRDRole(ctx, cl)
 }
 
 func installCRDRole(ctx context.Context, cl client.Client) error {
@@ -142,18 +138,57 @@ func decodeCRD(ctx context.Context, raw string) (*unstructured.Unstructured, err
 
 func createCRD(ctx context.Context, cl client.Client, crd *unstructured.Unstructured) error {
 	log := common.LogFromContext(ctx)
-	receiver := &unstructured.Unstructured{}
-	receiver.SetGroupVersionKind(crd.GroupVersionKind())
-	receiver.SetName(crd.GetName())
-	err := cl.Get(ctx, client.ObjectKey{Name: crd.GetName()}, receiver) // TODO: replace Unstructured with actual type
+	existingCrd := &unstructured.Unstructured{}
+	existingCrd.SetGroupVersionKind(crd.GroupVersionKind())
+	existingCrd.SetName(crd.GetName())
+	err := cl.Get(ctx, client.ObjectKey{Name: crd.GetName()}, existingCrd) // TODO: replace Unstructured with actual type
 	if err == nil {
-		log.Info("CRD exists")
+		newVersion, err := getMaistraVersion(crd)
+		if err != nil {
+			return fmt.Errorf("Could not determine version of new CRD %s: %v", crd.GetName(), err)
+		}
+		existingVersion, err := getMaistraVersion(existingCrd)
+		if err != nil {
+			log.Info("Could not determine version of existing CRD", "error", err)
+			existingVersion = nil
+		}
+		if existingVersion == nil || existingVersion.LessThan(newVersion) {
+			log.Info("CRD exists, but is old or has no version label. Replacing with newer version.")
+
+			patchedCrd, err := getPatchedCrd(existingCrd, crd)
+			if err != nil {
+				return err
+			}
+			if patchedCrd != nil { // patchedCrd is nil when the existing and new CRDs are identical
+				err = cl.Update(ctx, patchedCrd)
+				if hacks.IsTypeObjectProblemInCRDSchemas(err) {
+					err = hacks.RemoveTypeObjectFieldsFromCRDSchema(ctx, patchedCrd)
+					if err != nil {
+						return err
+					}
+					err = cl.Update(ctx, patchedCrd)
+				}
+				if err != nil {
+					log.Error(err, "error updating CRD")
+					return err
+				}
+			}
+
+		} else {
+			log.Info("CRD exists")
+		}
 		return nil
 	}
 	if errors.IsNotFound(err) {
 		log.Info("creating CRD")
 		err = cl.Create(ctx, crd)
-			err = hacks.WorkAroundTypeObjectProblemInCRDSchemas(ctx, err, cl, crd)
+		if hacks.IsTypeObjectProblemInCRDSchemas(err) {
+			err = hacks.RemoveTypeObjectFieldsFromCRDSchema(ctx, crd)
+			if err != nil {
+				return err
+			}
+			err = cl.Create(ctx, crd)
+		}
 		if err != nil {
 			log.Error(err, "error creating CRD")
 			return err
@@ -161,4 +196,19 @@ func createCRD(ctx context.Context, cl client.Client, crd *unstructured.Unstruct
 		return nil
 	}
 	return err
+}
+
+func getPatchedCrd(existingCrd *unstructured.Unstructured, crd *unstructured.Unstructured) (*unstructured.Unstructured, error) {
+	patchedCrd, err := common.GetPatchedObject(existingCrd, crd)
+	if err != nil || patchedCrd == nil {
+		return nil, err
+	}
+	if newUnstructured, ok := patchedCrd.(*unstructured.Unstructured); ok {
+		return newUnstructured, nil
+	}
+	return nil, fmt.Errorf("could not decode unstructured object:\n%v", patchedCrd)
+}
+
+func getMaistraVersion(crd *unstructured.Unstructured) (*semver.Version, error) {
+	return semver.NewVersion(crd.GetLabels()["maistra-version"])
 }
