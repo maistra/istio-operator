@@ -31,7 +31,9 @@ OFFLINE_BUILD       ?= false
 GIT_UPSTREAM_REMOTE ?= $(shell git remote -v |grep --color=never ':Maistra/istio-operator\.git.*(fetch)' |grep --color=never -o '^[^[:space:]]*')
 
 ifeq "${GIT_UPSTREAM_REMOTE}" ""
-$(warning Could not find git remote for Maistra/istio-operator)
+GIT_UPSTREAM_REMOTE = "ci-upstream"
+$(warning Could not find git remote for Maistra/istio-operator, adding as '${GIT_UPSTREAM_REMOTE}')
+$(shell git remote add ${GIT_UPSTREAM_REMOTE} git@github.com:Maistra/istio-operator.git)
 endif
 
 ifeq "${COMMUNITY}" "true"
@@ -125,6 +127,16 @@ generate-product-manifests:
 ################################################################################
 # resource generation
 ################################################################################
+.PHONY: gen
+gen: update-1.1-charts update-generated-code
+
+.PHONY: gen-check
+gen-check: gen check-clean-repo
+
+.PHONY: check-clean-repo
+check-clean-repo:
+	@if [[ -n $$(git status --porcelain) ]]; then git status; git diff; echo "ERROR: Some files need to be updated, please run 'make gen' and include any changed files in your PR"; exit 1;	fi
+
 .PHONY: generate-manifests
 generate-manifests: generate-community-manifests generate-product-manifests
 
