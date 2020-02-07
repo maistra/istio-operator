@@ -5,17 +5,15 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/helm/pkg/releaseutil"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 
 	"k8s.io/helm/pkg/manifest"
-	"k8s.io/helm/pkg/releaseutil"
-
 	"k8s.io/kubernetes/pkg/kubectl"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,50 +39,54 @@ func NewManifestProcessor(controllerResources ControllerResources, appInstance, 
 }
 
 func (p *ManifestProcessor) ProcessManifests(ctx context.Context, manifests []manifest.Manifest, component string) error {
+	log := LogFromContext(ctx)
+
 	allErrors := []error{}
-
-	origCtx := ctx
-	origLogger := LogFromContext(ctx)
 	for _, man := range manifests {
-		log := origLogger.WithValues("manifest", man.Name)
-		ctx = NewContextWithLog(origCtx, log)
-		if !strings.HasSuffix(man.Name, ".yaml") {
-			log.V(2).Info("Skipping rendering of manifest")
-			continue
-		}
-		log.V(2).Info("Processing resources from manifest")
-		// split the manifest into individual objects
-		objects := releaseutil.SplitManifests(man.Content)
-		for _, raw := range objects {
-			rawJSON, err := yaml.YAMLToJSON([]byte(raw))
-			if err != nil {
-				log.Error(err, "unable to convert raw data to JSON")
-				allErrors = append(allErrors, err)
-				continue
-			}
-			obj := &unstructured.Unstructured{}
-			_, _, err = unstructured.UnstructuredJSONScheme.Decode(rawJSON, nil, obj)
-			if err != nil {
-				log.Error(err, "unable to decode object into Unstructured")
-				allErrors = append(allErrors, err)
-				continue
-			}
-			err = p.processObject(ctx, obj, component)
-			if err != nil {
-				allErrors = append(allErrors, err)
-			}
-		}
+		childCtx := NewContextWithLog(ctx, log.WithValues("manifest", man.Name))
+		errs := p.ProcessManifest(childCtx, man, component)
+		allErrors = append(allErrors, errs...)
 	}
-
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured.Unstructured, component string) error {
-	origLogger := LogFromContext(ctx)
+func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Manifest, component string) []error {
+	log := LogFromContext(ctx)
+	if !strings.HasSuffix(man.Name, ".yaml") {
+		log.V(2).Info("Skipping rendering of manifest")
+		return nil
+	}
+	log.V(2).Info("Processing resources from manifest")
 
-	key := v1.NewResourceKey(obj, obj)
-	log := origLogger.WithValues("Resource", key)
-	ctx = NewContextWithLog(ctx, log)
+	allErrors := []error{}
+	// split the manifest into individual objects
+	objects := releaseutil.SplitManifests(man.Content)
+	for _, raw := range objects {
+		rawJSON, err := yaml.YAMLToJSON([]byte(raw))
+		if err != nil {
+			log.Error(err, "unable to convert raw data to JSON")
+			allErrors = append(allErrors, err)
+			continue
+		}
+		obj := &unstructured.Unstructured{}
+		_, _, err = unstructured.UnstructuredJSONScheme.Decode(rawJSON, nil, obj)
+		if err != nil {
+			log.Error(err, "unable to decode object into Unstructured")
+			allErrors = append(allErrors, err)
+			continue
+		}
+
+		childCtx := NewContextWithLog(ctx, log.WithValues("Resource", v1.NewResourceKey(obj, obj)))
+		err = p.processObject(childCtx, obj, component)
+		if err != nil {
+			allErrors = append(allErrors, err)
+		}
+	}
+	return allErrors
+}
+
+func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured.Unstructured, component string) error {
+	log := LogFromContext(ctx)
 
 	if obj.GetKind() == "List" {
 		allErrors := []error{}
@@ -94,7 +96,8 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 			return err
 		}
 		for _, item := range list.Items {
-			err = p.processObject(ctx, &item, component)
+			childCtx := NewContextWithLog(ctx, log.WithValues("Resource", v1.NewResourceKey(obj, obj)))
+			err = p.processObject(childCtx, &item, component)
 			if err != nil {
 				allErrors = append(allErrors, err)
 			}
@@ -104,7 +107,7 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 
 	p.addMetadata(obj, component)
 
-	log.V(2).Info("beginning reconciliation of resource", "ResourceKey", key)
+	log.V(2).Info("beginning reconciliation of resource")
 
 	err := p.preprocessObject(ctx, obj)
 	if err != nil {
@@ -117,7 +120,7 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 		log.Error(err, "error adding apply annotation to object")
 	}
 
-	receiver := key.ToUnstructured()
+	receiver := v1.NewResourceKey(obj, obj).ToUnstructured()
 	objectKey, err := client.ObjectKeyFromObject(receiver)
 	if err != nil {
 		log.Error(err, "client.ObjectKeyFromObject() failed for resource")
