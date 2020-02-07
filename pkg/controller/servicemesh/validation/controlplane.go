@@ -26,7 +26,8 @@ var _ inject.Client = (*controlPlaneValidator)(nil)
 var _ inject.Decoder = (*controlPlaneValidator)(nil)
 
 func (v *controlPlaneValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
-	logger := log.WithValues("Request.Namespace", req.AdmissionRequest.Namespace, "Request.Name", req.AdmissionRequest.Name).WithName("smcp-validator")
+	logger := log.WithName("smcp-validator").
+		WithValues("ServiceMeshControlPlane", toNamespacedName(req.AdmissionRequest))
 	smcp := &maistrav1.ServiceMeshControlPlane{}
 
 	err := v.decoder.Decode(req, smcp)

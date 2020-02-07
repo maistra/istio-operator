@@ -1,9 +1,9 @@
 package mutatingwebhook
 
 import (
-	"context"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -41,8 +41,7 @@ func Add(mgr manager.Manager) error {
 func newReconciler(cl client.Client, scheme *runtime.Scheme) *reconciler {
 	return &reconciler{ControllerResources: common.ControllerResources{
 		Client: cl,
-		Scheme: scheme,
-		Log:    logf.Log.WithName(controllerName)}}
+		Scheme: scheme}}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -114,17 +113,19 @@ type reconciler struct {
 // Reconcile updates ClientConfigs of MutatingWebhookConfigurations to contain the CABundle
 // from the respective Istio SA secret
 func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	logger := r.Log.WithValues("WebhookConfig", request.Name)
+	logger := createLogger().WithValues("WebhookConfig", request.Name)
 	logger.Info("reconciling MutatingWebhookConfiguration")
+	ctx := common.NewReconcileContext(logger)
+
 	// get current webhook config
 	currentConfig := &v1beta1.MutatingWebhookConfiguration{}
-	err := r.Client.Get(context.TODO(), request.NamespacedName, currentConfig)
+	err := r.Client.Get(ctx, request.NamespacedName, currentConfig)
 	if err != nil {
-		r.Log.Info("MutatingWebhookConfiguration does not exist yet. No action taken")
+		logger.Info("MutatingWebhookConfiguration does not exist yet. No action taken")
 		return reconcile.Result{}, nil
 	}
 	namespace := request.Name[len(webhookConfigNamePrefix):]
-	caRoot, err := common.GetRootCertFromSecret(r.Client, namespace, serviceAccountSecretName)
+	caRoot, err := common.GetRootCertFromSecret(ctx, r.Client, namespace, serviceAccountSecretName)
 	if err != nil {
 		logger.Info("could not get secret: " + err.Error())
 		return reconcile.Result{}, nil
@@ -137,7 +138,7 @@ func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	}
 
 	if updated {
-		err := r.Client.Update(context.TODO(), newConfig)
+		err := r.Client.Update(ctx, newConfig)
 		if err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "failed to update CABundle")
 		}
@@ -147,4 +148,11 @@ func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 
 	logger.Info("Correct CABundle already present. Ignoring")
 	return reconcile.Result{}, nil
+}
+
+// Don't use this function to obtain a logger. Get it by invoking
+// common.LogFromContext(ctx) to ensure that the logger has the
+// correct context info and logs it.
+func createLogger() logr.Logger {
+	return logf.Log.WithName(controllerName)
 }

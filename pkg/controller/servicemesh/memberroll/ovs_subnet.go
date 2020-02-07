@@ -1,14 +1,16 @@
 package memberroll
 
+import "context"
+
 type subnetStrategy struct {
 }
 
 var _ NamespaceReconciler = (*subnetStrategy)(nil)
 
-func (*subnetStrategy) reconcileNamespaceInMesh(namespace string) error {
+func (*subnetStrategy) reconcileNamespaceInMesh(ctx context.Context, namespace string) error {
 	return nil
 }
 
-func (*subnetStrategy) removeNamespaceFromMesh(namespace string) error {
+func (*subnetStrategy) removeNamespaceFromMesh(ctx context.Context, namespace string) error {
 	return nil
 }

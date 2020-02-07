@@ -1,9 +1,9 @@
 package podlocality
 
 import (
-	"context"
 	"fmt"
 
+	"github.com/go-logr/logr"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,12 +46,14 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme) *PodLocalityReconci
 	return &PodLocalityReconciler{ControllerResources: common.ControllerResources{
 		Client:       cl,
 		Scheme:       scheme,
-		PatchFactory: common.NewPatchFactory(cl),
-		Log:          logf.Log.WithName(controllerName)}}
+		PatchFactory: common.NewPatchFactory(cl)}}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r *PodLocalityReconciler) error {
+	log := createLogger()
+	ctx := common.NewContextWithLog(common.NewContext(), log)
+
 	// Create a new controller
 	c, err := controller.New(controllerName, mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -83,9 +85,9 @@ func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 	err = c.Watch(&source.Kind{Type: &v1.Node{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			list := &v1.PodList{}
-			err := mgr.GetClient().List(context.TODO(), client.MatchingField("spec.nodeName", a.Meta.GetName()), list)
+			err := mgr.GetClient().List(ctx, client.MatchingField("spec.nodeName", a.Meta.GetName()), list)
 			if err != nil {
-				r.Log.Error(err, "Could not list pods")
+				log.Error(err, "Could not list pods")
 			}
 
 			var requests []reconcile.Request
@@ -142,12 +144,13 @@ type PodLocalityReconciler struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := r.Log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	reqLogger := createLogger().WithValues("Pod", request)
+	ctx := common.NewReconcileContext(reqLogger)
 	reqLogger.Info("Processing Pod")
 
 	// Fetch the Pod
 	pod := &v1.Pod{}
-	err := r.Client.Get(context.TODO(), request.NamespacedName, pod)
+	err := r.Client.Get(ctx, request.NamespacedName, pod)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -163,7 +166,7 @@ func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.
 	}
 
 	node := &v1.Node{}
-	err = r.Client.Get(context.TODO(), client.ObjectKey{Name: pod.Spec.NodeName}, node)
+	err = r.Client.Get(ctx, client.ObjectKey{Name: pod.Spec.NodeName}, node)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -181,7 +184,7 @@ func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.
 	pod.Labels[NodeRegionLabel] = node.Labels[NodeRegionLabel]
 	pod.Labels[NodeZoneLabel] = node.Labels[NodeZoneLabel]
 
-	err = r.Client.Update(context.TODO(), pod)
+	err = r.Client.Update(ctx, pod)
 	if err != nil {
 		reqLogger.Info(fmt.Sprintf("Error updating pod's labels: %v", err))
 		return reconcile.Result{}, err
@@ -189,4 +192,11 @@ func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.
 
 	reqLogger.Info("Successfully added zone and region labels to pod.")
 	return reconcile.Result{}, nil
+}
+
+// Don't use this function to obtain a logger. Get it by invoking
+// common.LogFromContext(ctx) to ensure that the logger has the
+// correct context info and logs it.
+func createLogger() logr.Logger {
+	return logf.Log.WithName(controllerName)
 }

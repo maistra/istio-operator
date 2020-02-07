@@ -25,7 +25,7 @@ func (r *controlPlaneInstanceReconciler) processDeletedComponent(name string, st
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) preprocessObject(object *unstructured.Unstructured) error {
+func (r *controlPlaneInstanceReconciler) preprocessObject(ctx context.Context, object *unstructured.Unstructured) error {
 	// Add owner ref
 	if object.GetNamespace() == r.Instance.GetNamespace() {
 		object.SetOwnerReferences(r.ownerRefs)
@@ -38,29 +38,30 @@ func (r *controlPlaneInstanceReconciler) preprocessObject(object *unstructured.U
 
 	switch object.GetKind() {
 	case "Kiali":
-		return r.patchKialiConfig(object)
+		return r.patchKialiConfig(ctx, object)
 	case "ConfigMap":
 		if object.GetName() == "istio-grafana" {
-			return r.patchGrafanaConfig(object)
+			return r.patchGrafanaConfig(ctx, object)
 		}
 	case "Secret":
 		if object.GetName() == "htpasswd" {
-			return r.patchHtpasswdSecret(object)
+			return r.patchHtpasswdSecret(ctx, object)
 		}
 	}
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) processNewObject(object *unstructured.Unstructured) error {
+func (r *controlPlaneInstanceReconciler) processNewObject(ctx context.Context, object *unstructured.Unstructured) error {
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) processDeletedObject(object *unstructured.Unstructured) error {
+func (r *controlPlaneInstanceReconciler) processDeletedObject(ctx context.Context, object *unstructured.Unstructured) error {
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) patchKialiConfig(object *unstructured.Unstructured) error {
-	r.Log.Info("patching kiali CR", object.GetKind(), object.GetName())
+func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, object *unstructured.Unstructured) error {
+	log := common.LogFromContext(ctx)
+	log.Info("patching kiali CR", object.GetKind(), object.GetName())
 
 	// get jaeger URL and enabled flags from Kiali CR
 	jaegerURL, found, err := unstructured.NestedString(object.UnstructuredContent(), "spec", "external_services", "tracing", "url")
@@ -74,15 +75,15 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(object *unstructured.U
 
 	// if the user has not yet configured this, let's try to auto-detect it now.
 	if len(jaegerURL) == 0 && jaegerEnabled {
-		r.Log.Info("attempting to auto-detect jaeger for kiali")
+		log.Info("attempting to auto-detect jaeger for kiali")
 		jaegerRoute := &unstructured.Unstructured{}
 		jaegerRoute.SetAPIVersion("route.openshift.io/v1")
 		jaegerRoute.SetKind("Route")
 		// jaeger is the name of the Jaeger CR
-		err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "jaeger", Namespace: object.GetNamespace()}, jaegerRoute)
+		err = r.Client.Get(ctx, client.ObjectKey{Name: "jaeger", Namespace: object.GetNamespace()}, jaegerRoute)
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				r.Log.Error(err, "error retrieving jaeger route - will disable it in Kiali")
+				log.Error(err, "error retrieving jaeger route - will disable it in Kiali")
 				// we aren't going to return here - Jaeger is optional for Kiali; Kiali can still run without it
 			}
 			jaegerEnabled = false
@@ -112,14 +113,14 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(object *unstructured.U
 
 	// if the user has not yet configured this, let's try to auto-detect it now.
 	if len(grafanaURL) == 0 && grafanaEnabled {
-		r.Log.Info("attempting to auto-detect grafana for kiali")
+		log.Info("attempting to auto-detect grafana for kiali")
 		grafanaRoute := &unstructured.Unstructured{}
 		grafanaRoute.SetAPIVersion("route.openshift.io/v1")
 		grafanaRoute.SetKind("Route")
-		err = r.Client.Get(context.TODO(), client.ObjectKey{Name: "grafana", Namespace: object.GetNamespace()}, grafanaRoute)
+		err = r.Client.Get(ctx, client.ObjectKey{Name: "grafana", Namespace: object.GetNamespace()}, grafanaRoute)
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				r.Log.Error(err, "error retrieving grafana route - will disable it in Kiali")
+				log.Error(err, "error retrieving grafana route - will disable it in Kiali")
 				// we aren't going to return here - Grafana is optional for Kiali; Kiali can still run without it
 			}
 			grafanaEnabled = false
@@ -137,8 +138,8 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(object *unstructured.U
 		}
 	}
 
-	r.Log.Info("new kiali jaeger settings", jaegerURL, jaegerEnabled)
-	r.Log.Info("new kiali grafana setting", grafanaURL, grafanaEnabled)
+	log.Info("new kiali jaeger settings", jaegerURL, jaegerEnabled)
+	log.Info("new kiali grafana setting", grafanaURL, grafanaEnabled)
 
 	err = unstructured.SetNestedField(object.UnstructuredContent(), jaegerURL, "spec", "external_services", "tracing", "url")
 	if err != nil {
@@ -160,7 +161,7 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(object *unstructured.U
 		return fmt.Errorf("could not set grafana enabled flag in kiali CR: %s", err)
 	}
 
-	rawPassword, err := r.getRawHtPasswd(object)
+	rawPassword, err := r.getRawHtPasswd(ctx, object)
 	if err != nil {
 		return err
 	}
@@ -180,12 +181,13 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(object *unstructured.U
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) waitForWebhookCABundleInitialization(object *unstructured.Unstructured) error {
+func (r *controlPlaneInstanceReconciler) waitForWebhookCABundleInitialization(ctx context.Context, object *unstructured.Unstructured) error {
+	log := common.LogFromContext(ctx)
 	name := object.GetName()
 	kind := object.GetKind()
-	r.Log.Info("waiting for webhook CABundle initialization", kind, name)
+	log.Info("waiting for webhook CABundle initialization", kind, name)
 	err := wait.ExponentialBackoff(wait.Backoff{Duration: 6 * time.Second, Steps: 10, Factor: 1.1}, func() (bool, error) {
-		err := r.Client.Get(context.TODO(), client.ObjectKey{Name: name}, object)
+		err := r.Client.Get(ctx, client.ObjectKey{Name: name}, object)
 		if err == nil {
 			webhooks, found, _ := unstructured.NestedSlice(object.UnstructuredContent(), "webhooks")
 			if !found || len(webhooks) == 0 {
@@ -199,14 +201,14 @@ func (r *controlPlaneInstanceReconciler) waitForWebhookCABundleInitialization(ob
 			}
 			return true, nil
 		} else if errors.IsNotFound(err) {
-			r.Log.Error(nil, "attempting to wait on unknown webhook", kind, name)
+			log.Error(nil, "attempting to wait on unknown webhook", kind, name)
 			return true, nil
 		}
-		r.Log.Error(err, "error waiting for webhook CABundle to become initialized", object.GetKind(), name)
+		log.Error(err, "error waiting for webhook CABundle to become initialized", object.GetKind(), name)
 		return false, err
 	})
 	if err != nil {
-		r.Log.Error(nil, "webhook CABundle failed to become initialized in a timely manner", kind, name)
+		log.Error(nil, "webhook CABundle failed to become initialized in a timely manner", kind, name)
 	}
 	return nil
 }
