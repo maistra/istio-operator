@@ -14,7 +14,9 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/hacks"
 )
 
-func (r *controlPlaneInstanceReconciler) Delete() error {
+func (r *controlPlaneInstanceReconciler) Delete(ctx context.Context) error {
+	log := common.LogFromContext(ctx)
+
 	reconciledCondition := r.Status.GetCondition(maistrav1.ConditionTypeReconciled)
 	if reconciledCondition.Status != maistrav1.ConditionStatusFalse || reconciledCondition.Reason != maistrav1.ConditionReasonDeleting {
 		r.Status.SetCondition(maistrav1.Condition{
@@ -30,14 +32,14 @@ func (r *controlPlaneInstanceReconciler) Delete() error {
 			Message: "Deleting service mesh",
 		})
 
-		err := r.PostStatus()
+		err := r.PostStatus(ctx)
 		return err // return regardless of error; deletion will continue when update event comes back into the operator
 	}
 
-	r.Log.Info("Deleting ServiceMeshControlPlane")
+	log.Info("Deleting ServiceMeshControlPlane")
 
 	r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReasonDeleting, "Deleting service mesh")
-	err := r.prune("")
+	err := r.prune(ctx, "")
 	if err == nil {
 		r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReasonDeleted, "Successfully deleted service mesh resources")
 	} else {
@@ -59,23 +61,23 @@ func (r *controlPlaneInstanceReconciler) Delete() error {
 			Reason:  maistrav1.ConditionReasonDeletionError,
 			Message: fmt.Sprintf("Error deleting service mesh: %s", err),
 		})
-		statusErr := r.PostStatus()
+		statusErr := r.PostStatus(ctx)
 		if statusErr != nil {
 			// we must return the original error, thus we can only log the status update error
-			r.Log.Error(statusErr, "Error updating status")
+			log.Error(statusErr, "Error updating status")
 		}
 		return err
 	}
 
 	// get fresh SMCP from cache to minimize the chance of a conflict during update (the SMCP might have been updated during the execution of reconciler.Delete())
 	instance := &maistrav1.ServiceMeshControlPlane{}
-	if err := r.Client.Get(context.TODO(), common.ToNamespacedName(r.Instance.ObjectMeta), instance); err == nil {
+	if err := r.Client.Get(ctx, common.ToNamespacedName(r.Instance.ObjectMeta), instance); err == nil {
 		finalizers := sets.NewString(instance.Finalizers...)
 		finalizers.Delete(common.FinalizerName)
 		instance.SetFinalizers(finalizers.List())
-		if err := r.Client.Update(context.TODO(), instance); err == nil {
-			r.Log.Info("Removed finalizer")
-			hacks.ReduceLikelihoodOfRepeatedReconciliation()
+		if err := r.Client.Update(ctx, instance); err == nil {
+			log.Info("Removed finalizer")
+			hacks.ReduceLikelihoodOfRepeatedReconciliation(ctx)
 		} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
 			r.EventRecorder.Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", err)) // TODO: this event probably isn't needed at all
 			return errors.Wrap(err, "Error removing ServiceMeshControlPlane finalizer")

@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -29,7 +28,7 @@ func TestDeletedMemberRollIsAlwaysAllowed(t *testing.T) {
 	roll.DeletionTimestamp = now()
 
 	validator, _, _ := createMemberRollValidatorTestFixture(smcp)
-	response := validator.Handle(context.TODO(), createCreateRequest(roll))
+	response := validator.Handle(ctx, createCreateRequest(roll))
 	assert.True(response.Response.Allowed, "Expected validator to allow deleted ServiceMeshMemberRoll", t)
 }
 
@@ -38,7 +37,7 @@ func TestMemberRollOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
 	watchNamespace = "watched-namespace"
 	defer func() { watchNamespace = "" }()
 	validator, _, _ := createMemberRollValidatorTestFixture(smcp)
-	response := validator.Handle(context.TODO(), createCreateRequest(roll))
+	response := validator.Handle(ctx, createCreateRequest(roll))
 	assert.True(response.Response.Allowed, "Expected validator to allow ServiceMeshMemberRoll whose namespace isn't watched", t)
 }
 
@@ -46,7 +45,7 @@ func TestMemberRollWithWrongNameIsRejected(t *testing.T) {
 	roll := newMemberRoll("not-default", "istio-system")
 
 	validator, _, _ := createMemberRollValidatorTestFixture(smcp)
-	response := validator.Handle(context.TODO(), createCreateRequest(roll))
+	response := validator.Handle(ctx, createCreateRequest(roll))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMemberRoll with wrong name", t)
 }
 
@@ -54,7 +53,7 @@ func TestMemberRollIsRejectedWhenNoControlPlaneInNamespace(t *testing.T) {
 	roll := newMemberRoll("default", "istio-system")
 
 	validator, _, _ := createMemberRollValidatorTestFixture() // NOTE: no SMCP
-	response := validator.Handle(context.TODO(), createCreateRequest(roll))
+	response := validator.Handle(ctx, createCreateRequest(roll))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMemberRoll because no SMCP exists in the namespace", t)
 }
 
@@ -63,7 +62,7 @@ func TestMemberRollWithConflictingNamespaceIsRejected(t *testing.T) {
 	validator, _, _ := createMemberRollValidatorTestFixture(smcp, otherRoll)
 
 	roll := newMemberRoll("default", "istio-system", "already-in-another-roll")
-	response := validator.Handle(context.TODO(), createCreateRequest(roll))
+	response := validator.Handle(ctx, createCreateRequest(roll))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMemberRoll containing member contained in another ServiceMeshMemberRoll", t)
 }
 
@@ -71,7 +70,7 @@ func TestMemberRollWithControlPlaneNamespaceIsRejected(t *testing.T) {
 	validator, _, _ := createMemberRollValidatorTestFixture(smcp)
 
 	roll := newMemberRoll("default", "istio-system", "istio-system")
-	response := validator.Handle(context.TODO(), createCreateRequest(roll))
+	response := validator.Handle(ctx, createCreateRequest(roll))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMemberRoll containing control plane namespace as member", t)
 }
 
@@ -80,7 +79,7 @@ func TestMemberRollWithFailedSubjectAccessReview(t *testing.T) {
 	tracker.AddReactor(createSubjectAccessReviewReactor(false, nil))
 
 	roll := newMemberRoll("default", "istio-system", "app-namespace")
-	response := validator.Handle(context.TODO(), createCreateRequest(roll))
+	response := validator.Handle(ctx, createCreateRequest(roll))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMemberRoll due to failed SubjectAccessReview check", t)
 }
 
@@ -89,7 +88,7 @@ func TestValidMemberRoll(t *testing.T) {
 	tracker.AddReactor(createSubjectAccessReviewReactor(true, nil))
 
 	roll := newMemberRoll("default", "istio-system", "app-namespace")
-	response := validator.Handle(context.TODO(), createCreateRequest(roll))
+	response := validator.Handle(ctx, createCreateRequest(roll))
 	assert.True(response.Response.Allowed, "Expected validator to allow ServiceMeshMemberRoll", t)
 }
 
@@ -98,7 +97,7 @@ func TestMemberRollValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
 	tracker.AddReactor(createSubjectAccessReviewReactor(true, fmt.Errorf("SAR check error")))
 
 	roll := newMemberRoll("default", "istio-system", "app-namespace")
-	response := validator.Handle(context.TODO(), createCreateRequest(roll))
+	response := validator.Handle(ctx, createCreateRequest(roll))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMemberRoll due to SAR check error", t)
 }
 
@@ -112,7 +111,7 @@ func TestValidMemberRollUpdate(t *testing.T) {
 		"some-label": "some-label-value",
 	}
 
-	response := validator.Handle(context.TODO(), createUpdateRequest(oldRoll, newRoll))
+	response := validator.Handle(ctx, createUpdateRequest(oldRoll, newRoll))
 	assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshMemberRoll update", t)
 }
 
@@ -138,7 +137,7 @@ func TestMemberRollValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 	})
 
 	roll := newMemberRoll("default", "istio-system", "app-namespace")
-	_ = validator.Handle(context.TODO(), createCreateRequest(roll))
+	_ = validator.Handle(ctx, createCreateRequest(roll))
 }
 
 func createMemberRollValidatorTestFixture(clientObjects ...runtime.Object) (memberRollValidator, client.Client, *test.EnhancedTracker) {

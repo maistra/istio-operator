@@ -29,7 +29,7 @@ type PatchFactory struct {
 
 // Patch represents a "patch" for an object
 type Patch interface {
-	Apply() (*unstructured.Unstructured, error)
+	Apply(ctx context.Context) (*unstructured.Unstructured, error)
 }
 
 // NewPatchFactory creates a new PatchFactory
@@ -148,8 +148,8 @@ type basicPatch struct {
 	newObj runtime.Object
 }
 
-func (p *basicPatch) Apply() (*unstructured.Unstructured, error) {
-	if err := p.client.Update(context.TODO(), p.newObj); err != nil {
+func (p *basicPatch) Apply(ctx context.Context) (*unstructured.Unstructured, error) {
+	if err := p.client.Update(ctx, p.newObj); err != nil {
 		return nil, err
 	}
 	if newUnstructured, ok := p.newObj.(*unstructured.Unstructured); ok {

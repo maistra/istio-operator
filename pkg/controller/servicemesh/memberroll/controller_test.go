@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-logr/logr"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,7 +72,7 @@ func TestReconcileAddsFinalizer(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 	assert.DeepEquals(updatedRoll.GetFinalizers(), []string{common.FinalizerName}, "Unexpected finalizers in SMM", t)
 }
 
@@ -146,7 +145,7 @@ func TestReconcileAddsOwnerReference(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 	assert.Equals(len(updatedRoll.OwnerReferences), 1, "Expected SMMR to contain exactly one ownerReference", t)
 
 	expectedOwnerRef := meta.OwnerReference{
@@ -236,7 +235,7 @@ func TestReconcileReconcilesAfterOperatorUpgradeFromV1_0(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 	assert.DeepEquals(updatedRoll.Status.ConfiguredMembers, []string{appNamespace}, "Unexpected Status.ConfiguredMembers in SMMR", t)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 	assert.Equals(updatedRoll.Status.ServiceMeshReconciledVersion, controlPlane.Status.GetReconciledVersion(), "Unexpected Status.ServiceMeshReconciledVersion in SMMR", t)
@@ -314,7 +313,7 @@ func TestReconcileReconcilesAddedMember(t *testing.T) {
 
 			assertReconcileSucceeds(r, t)
 
-			updatedRoll := test.GetUpdatedObject(cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+			updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 			assert.DeepEquals(updatedRoll.Status.ConfiguredMembers, []string{appNamespace}, "Unexpected Status.ConfiguredMembers in SMMR", t)
 			assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 
@@ -377,7 +376,7 @@ func TestReconcileReconcilesMemberIfNamespaceIsCreatedLater(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 	assert.DeepEquals(updatedRoll.Status.ConfiguredMembers, []string{appNamespace}, "Unexpected Status.ConfiguredMembers in SMMR", t)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 
@@ -387,7 +386,7 @@ func TestReconcileReconcilesMemberIfNamespaceIsCreatedLater(t *testing.T) {
 
 	// invoke reconcile again to check if the Status.ServiceMeshGeneration field is updated
 	assertReconcileSucceeds(r, t)
-	updatedRoll = test.GetUpdatedObject(cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll = test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 	kialiReconciler.assertInvokedWith(t, appNamespace)
 }
@@ -405,7 +404,7 @@ func TestReconcileUpdatesMemberListWhenNamespaceIsDeleted(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 	assert.DeepEquals(updatedRoll.Status.ConfiguredMembers, []string{appNamespace}, "Unexpected Status.ConfiguredMembers in SMMR", t)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 	kialiReconciler.assertInvokedWith(t, appNamespace)
@@ -449,9 +448,10 @@ func TestReconcileNamespacesIgnoresControlPlaneNamespace(t *testing.T) {
 	_, _, r, nsReconciler, _ := createClientAndReconciler(t, namespace)
 
 	reqLogger := logf.Log.WithName("testLog").WithValues("ServiceMeshMemberRoll", request)
+	ctx := common.NewContextWithLog(ctx, reqLogger)
 
 	namespaces := sets.NewString(controlPlaneNamespace, appNamespace)
-	configuredMembers, err, nsErrors := r.reconcileNamespaces(namespaces, namespaces, controlPlaneNamespace, meshVersionDefault, reqLogger)
+	configuredMembers, err, nsErrors := r.reconcileNamespaces(ctx, namespaces, namespaces, controlPlaneNamespace, meshVersionDefault)
 	if err != nil {
 		t.Fatalf("reconcileNamespaces failed: %v", err)
 	}
@@ -479,7 +479,7 @@ func TestReconcileWorksWithMultipleNamespaces(t *testing.T) {
 	test.PanicOnError(cl.Create(context.TODO(), newNamespace(appNamespace2)))
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 	assert.StringArrayContains(updatedRoll.Status.ConfiguredMembers, appNamespace, "Expected Status.ConfiguredMembers to contain "+appNamespace, t)
 	assert.StringArrayContains(updatedRoll.Status.ConfiguredMembers, appNamespace2, "Expected Status.ConfiguredMembers to contain "+appNamespace2, t)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
@@ -515,7 +515,7 @@ func TestReconcileDoesNotAddControlPlaneNamespaceToMembers(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 	assert.StringArrayEmpty(updatedRoll.Status.ConfiguredMembers, "Expected Status.ConfiguredMembers in SMMR to be empty, but it wasn't.", t)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 	kialiReconciler.assertInvokedWith(t /* no namespaces */)
@@ -529,7 +529,7 @@ func TestReconcileRemovesFinalizerFromMemberRoll(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 	assert.StringArrayEmpty(updatedRoll.Finalizers, "Expected finalizers list in SMMR to be empty, but it wasn't", t)
 }
 
@@ -578,7 +578,7 @@ func TestReconcileHandlesDeletionProperly(t *testing.T) {
 
 			assertReconcileSucceeds(r, t)
 
-			updatedRoll := test.GetUpdatedObject(cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+			updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
 			assert.StringArrayEmpty(updatedRoll.Finalizers, "Expected finalizers list in SMMR to be empty, but it wasn't", t)
 
 			assertNamespaceRemoveInvoked(t, nsReconciler, tc.expectedRemovedNamespaces...)
@@ -662,8 +662,8 @@ type fakeNamespaceReconcilerFactory struct {
 	reconciler *fakeNamespaceReconciler
 }
 
-func (rf *fakeNamespaceReconcilerFactory) newReconciler(cl client.Client, logger logr.Logger, meshNamespace string, meshVersion string, isCNIEnabled bool) (NamespaceReconciler, error) {
-	delegate, err := newNamespaceReconciler(cl, logger, meshNamespace, meshVersion, isCNIEnabled)
+func (rf *fakeNamespaceReconcilerFactory) newReconciler(ctx context.Context, cl client.Client, meshNamespace string, meshVersion string, isCNIEnabled bool) (NamespaceReconciler, error) {
+	delegate, err := newNamespaceReconciler(ctx, cl, meshNamespace, meshVersion, isCNIEnabled)
 	rf.reconciler.delegate = delegate
 	return rf.reconciler, err
 }
@@ -674,14 +674,14 @@ type fakeNamespaceReconciler struct {
 	delegate             NamespaceReconciler
 }
 
-func (r *fakeNamespaceReconciler) reconcileNamespaceInMesh(namespace string) error {
+func (r *fakeNamespaceReconciler) reconcileNamespaceInMesh(ctx context.Context, namespace string) error {
 	r.reconciledNamespaces = append(r.reconciledNamespaces, namespace)
-	return r.delegate.reconcileNamespaceInMesh(namespace)
+	return r.delegate.reconcileNamespaceInMesh(ctx, namespace)
 }
 
-func (r *fakeNamespaceReconciler) removeNamespaceFromMesh(namespace string) error {
+func (r *fakeNamespaceReconciler) removeNamespaceFromMesh(ctx context.Context, namespace string) error {
 	r.removedNamespaces = append(r.removedNamespaces, namespace)
-	return r.delegate.removeNamespaceFromMesh(namespace)
+	return r.delegate.removeNamespaceFromMesh(ctx, namespace)
 }
 
 func assertReconcileSucceeds(r *MemberRollReconciler, t *testing.T) {
@@ -808,7 +808,7 @@ func newAppNamespaceRoleBinding() *rbac.RoleBinding {
 func assertNamespaceReconciled(t *testing.T, cl client.Client, namespace, meshNamespace string, meshNetAttachDefName string, meshRoleBindings []rbac.RoleBinding) {
 	// check if namespace has member-of label
 	ns := &core.Namespace{}
-	test.GetObject(cl, types.NamespacedName{Name: namespace}, ns)
+	test.GetObject(ctx, cl, types.NamespacedName{Name: namespace}, ns)
 	assert.Equals(ns.Labels[common.MemberOfKey], meshNamespace, "Unexpected or missing member-of label in namespace", t)
 
 	// check if net-attach-def exists
@@ -818,7 +818,7 @@ func assertNamespaceReconciled(t *testing.T, cl client.Client, namespace, meshNa
 		Version: "v1",
 		Kind:    "NetworkAttachmentDefinition",
 	})
-	err := cl.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: meshNetAttachDefName}, netAttachDef)
+	err := cl.Get(ctx, types.NamespacedName{Namespace: namespace, Name: meshNetAttachDefName}, netAttachDef)
 	if err != nil {
 		t.Fatalf("Couldn't get NetworkAttachmentDefinition from client: %v", err)
 	}
@@ -828,17 +828,17 @@ type fakeKialiReconciler struct {
 	reconcileKialiInvoked  bool
 	kialiConfiguredMembers []string
 	errorToReturn          error
-	delegate               func(kialiCRNamespace string, configuredMembers []string, reqLogger logr.Logger) error
+	delegate               func(ctx context.Context, kialiCRNamespace string, configuredMembers []string) error
 }
 
-func (f *fakeKialiReconciler) reconcileKiali(kialiCRNamespace string, configuredMembers []string, reqLogger logr.Logger) error {
+func (f *fakeKialiReconciler) reconcileKiali(ctx context.Context, kialiCRNamespace string, configuredMembers []string) error {
 	f.reconcileKialiInvoked = true
 	f.kialiConfiguredMembers = append([]string{}, configuredMembers...)
 	if f.errorToReturn != nil {
 		return f.errorToReturn
 	}
 	if f.delegate != nil {
-		return f.delegate(kialiCRNamespace, configuredMembers, reqLogger)
+		return f.delegate(ctx, kialiCRNamespace, configuredMembers)
 	}
 	return nil
 }

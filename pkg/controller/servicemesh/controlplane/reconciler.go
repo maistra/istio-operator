@@ -37,6 +37,9 @@ type controlPlaneInstanceReconciler struct {
 	lastComponent  string
 }
 
+// ensure controlPlaneInstanceReconciler implements ControlPlaneInstanceReconciler
+var _ ControlPlaneInstanceReconciler = &controlPlaneInstanceReconciler{}
+
 // these components have to be installed in the specified order
 var orderedCharts = []string{
 	"istio", // core istio resources
@@ -79,11 +82,12 @@ func NewControlPlaneInstanceReconciler(controllerResources common.ControllerReso
 	}
 }
 
-func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, err error) {
-	r.Log.Info(fmt.Sprintf("Reconciling ServiceMeshControlPlane: %v", r.Instance.Status.StatusType))
+func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result reconcile.Result, err error) {
+	log := common.LogFromContext(ctx)
+	log.Info("Reconciling ServiceMeshControlPlane", "Status", r.Instance.Status.StatusType)
 	if r.Status.GetCondition(v1.ConditionTypeReconciled).Status != v1.ConditionStatusFalse {
 		r.initializeReconcileStatus()
-		err := r.PostStatus()
+		err := r.PostStatus(ctx)
 		return reconcile.Result{}, err // ensure that the new reconcile status is posted immediately. Reconciliation will resume when the status update comes back into the operator
 	}
 
@@ -95,15 +99,15 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 	reconciliationComplete := false
 	defer func() {
 		// this ensures we're updating status (if necessary) and recording events on exit
-		if statusErr := r.postReconciliationStatus(reconciliationReason, reconciliationMessage, err); statusErr != nil {
+		if statusErr := r.postReconciliationStatus(ctx, reconciliationReason, reconciliationMessage, err); statusErr != nil {
 			if err == nil {
 				err = statusErr
 			} else {
-				r.Log.Error(statusErr, "Error posting reconciliation status")
+				log.Error(statusErr, "Error posting reconciliation status")
 			}
 		}
 		if reconciliationComplete {
-			hacks.ReduceLikelihoodOfRepeatedReconciliation()
+			hacks.ReduceLikelihoodOfRepeatedReconciliation(ctx)
 		}
 	}()
 
@@ -118,7 +122,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 		}()
 
 		// Render the templates
-		err = r.renderCharts()
+		err = r.renderCharts(ctx)
 		if err != nil {
 			// we can't progress here
 			reconciliationReason = v1.ConditionReasonReconcileError
@@ -136,7 +140,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 		// which is all we're supporting atm.  if the scope expands to allow
 		// installing custom gateways, etc., we should revisit this.
 		namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: r.Instance.Namespace}}
-		err = r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Namespace}, namespace)
+		err = r.Client.Get(ctx, client.ObjectKey{Name: r.Instance.Namespace}, namespace)
 		if err == nil {
 			updateLabels := false
 			if namespace.Labels == nil {
@@ -144,18 +148,18 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 			}
 			// make sure injection is disabled for the control plane
 			if label, ok := namespace.Labels["maistra.io/ignore-namespace"]; !ok || label != "ignore" {
-				r.Log.Info("Adding maistra.io/ignore-namespace=ignore label to Request.Namespace")
+				log.Info("Adding maistra.io/ignore-namespace=ignore label to Request.Namespace")
 				namespace.Labels["maistra.io/ignore-namespace"] = "ignore"
 				updateLabels = true
 			}
 			// make sure the member-of label is specified, so networking works correctly
 			if label, ok := namespace.Labels[common.MemberOfKey]; !ok || label != namespace.GetName() {
-				r.Log.Info(fmt.Sprintf("Adding %s label to Request.Namespace", common.MemberOfKey))
+				log.Info(fmt.Sprintf("Adding %s label to Request.Namespace", common.MemberOfKey))
 				namespace.Labels[common.MemberOfKey] = namespace.GetName()
 				updateLabels = true
 			}
 			if updateLabels {
-				err = r.Client.Update(context.TODO(), namespace)
+				err = r.Client.Update(ctx, namespace)
 			}
 		}
 		if err != nil {
@@ -189,34 +193,34 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 		r.meshGeneration = v1.CurrentReconciledVersion(r.Instance.GetGeneration())
 
 		// Ensure CRDs are installed
-		if err = bootstrap.InstallCRDs(r.Client); err != nil {
+		if err = bootstrap.InstallCRDs(ctx, r.Client); err != nil {
 			reconciliationReason = v1.ConditionReasonReconcileError
 			reconciliationMessage = "Failed to install/update Istio CRDs"
-			r.Log.Error(err, reconciliationMessage)
+			log.Error(err, reconciliationMessage)
 			return
 		}
 
 		// Ensure Istio CNI is installed
 		if common.IsCNIEnabled {
 			r.lastComponent = "cni"
-			if err = bootstrap.InstallCNI(r.Client); err != nil {
+			if err = bootstrap.InstallCNI(ctx, r.Client); err != nil {
 				reconciliationReason = v1.ConditionReasonReconcileError
 				reconciliationMessage = "Failed to install/update Istio CNI"
-				r.Log.Error(err, reconciliationMessage)
+				log.Error(err, reconciliationMessage)
 				return
-			} else if notReady, _ := r.calculateNotReadyStateForCNI(); notReady {
+			} else if notReady, _ := r.calculateNotReadyStateForCNI(ctx); notReady {
 				reconciliationReason = v1.ConditionReasonPausingInstall
 				reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", "cni")
 				return
 			}
 		}
 	} else if r.lastComponent != "" {
-		if notReadyMap, readinessErr := r.calculateNotReadyState(); readinessErr == nil {
+		if notReadyMap, readinessErr := r.calculateNotReadyState(ctx); readinessErr == nil {
 			// if we've already begun reconciling, make sure we weren't waiting for
 			// the last component to become ready
 			if notReady, ok := notReadyMap[r.lastComponent]; ok && notReady {
 				// last component has not become ready yet
-				r.Log.Info(fmt.Sprintf("Paused until %s becomes ready", r.lastComponent))
+				log.Info(fmt.Sprintf("Paused until %s becomes ready", r.lastComponent))
 				return
 			}
 		} else {
@@ -224,15 +228,15 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 			reconciliationReason = v1.ConditionReasonProbeError
 			reconciliationMessage = fmt.Sprintf("Error checking readiness of component %s", r.lastComponent)
 			err = errors.Wrap(readinessErr, reconciliationMessage)
-			r.Log.Error(err, reconciliationMessage)
+			log.Error(err, reconciliationMessage)
 			return
 		}
 	}
 
 	// create components
 	for _, chartName := range orderedCharts {
-		if ready, err = r.processComponentManifests(chartName); !ready {
-			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(chartName, err)
+		if ready, err = r.processComponentManifests(ctx, chartName); !ready {
+			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx, chartName, err)
 			return
 		}
 	}
@@ -242,16 +246,16 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 		if !strings.HasPrefix(key, "istio/") {
 			continue
 		}
-		if ready, err = r.processComponentManifests(key); !ready {
-			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(key, err)
+		if ready, err = r.processComponentManifests(ctx, key); !ready {
+			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx, key, err)
 			return
 		}
 	}
 
 	// install 3scale and any other components
 	for key := range r.renderings {
-		if ready, err = r.processComponentManifests(key); !ready {
-			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(key, err)
+		if ready, err = r.processComponentManifests(ctx, key); !ready {
+			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx, key, err)
 			return
 		}
 	}
@@ -261,8 +265,8 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 	// delete unseen components
 	reconciliationMessage = "Pruning obsolete resources"
 	r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReasonPruning, reconciliationMessage)
-	r.Log.Info(reconciliationMessage)
-	err = r.prune(r.meshGeneration)
+	log.Info(reconciliationMessage)
+	err = r.prune(ctx, r.meshGeneration)
 	if err != nil {
 		reconciliationReason = v1.ConditionReasonReconcileError
 		reconciliationMessage = "Error pruning obsolete resources"
@@ -284,14 +288,15 @@ func (r *controlPlaneInstanceReconciler) Reconcile() (result reconcile.Result, e
 	r.Status.AppliedVersion = r.Status.LastAppliedConfiguration.Version
 	updateReconcileStatus(&r.Status.StatusType, nil)
 
-	_, err = r.updateReadinessStatus() // this only updates the local object instance; it doesn't post the status update; postReconciliationStatus (called using defer) actually does that
+	_, err = r.updateReadinessStatus(ctx) // this only updates the local object instance; it doesn't post the status update; postReconciliationStatus (called using defer) actually does that
 
 	reconciliationComplete = true
-	r.Log.Info("Completed ServiceMeshControlPlane reconcilation")
+	log.Info("Completed ServiceMeshControlPlane reconcilation")
 	return
 }
 
-func (r *controlPlaneInstanceReconciler) pauseReconciliation(chartName string, err error) (v1.ConditionReason, string, error) {
+func (r *controlPlaneInstanceReconciler) pauseReconciliation(ctx context.Context, chartName string, err error) (v1.ConditionReason, string, error) {
+	log := common.LogFromContext(ctx)
 	var eventReason string
 	var conditionReason v1.ConditionReason
 	var reconciliationMessage string
@@ -306,11 +311,11 @@ func (r *controlPlaneInstanceReconciler) pauseReconciliation(chartName string, e
 	if err == nil {
 		reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
 		r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReason, reconciliationMessage)
-		r.Log.Info(reconciliationMessage)
+		log.Info(reconciliationMessage)
 	} else {
 		conditionReason = v1.ConditionReasonReconcileError
 		reconciliationMessage = fmt.Sprintf("Error processing component %s", componentName)
-		r.Log.Error(err, reconciliationMessage)
+		log.Error(err, reconciliationMessage)
 	}
 	return conditionReason, reconciliationMessage, errors.Wrapf(err, reconciliationMessage)
 }
@@ -371,11 +376,12 @@ func (r *controlPlaneInstanceReconciler) getSMCPTemplate(name string, maistraVer
 }
 
 //renderSMCPTemplates traverses and processes all of the references templates
-func (r *controlPlaneInstanceReconciler) recursivelyApplyTemplates(smcp v1.ControlPlaneSpec, version string, visited sets.String) (v1.ControlPlaneSpec, error) {
+func (r *controlPlaneInstanceReconciler) recursivelyApplyTemplates(ctx context.Context, smcp v1.ControlPlaneSpec, version string, visited sets.String) (v1.ControlPlaneSpec, error) {
+	log := common.LogFromContext(ctx)
 	if smcp.Template == "" {
 		return smcp, nil
 	}
-	r.Log.Info(fmt.Sprintf("processing smcp template %s", smcp.Template))
+	log.Info(fmt.Sprintf("processing smcp template %s", smcp.Template))
 
 	if visited.Has(smcp.Template) {
 		return smcp, fmt.Errorf("SMCP templates form cyclic dependency. Cannot proceed")
@@ -386,9 +392,9 @@ func (r *controlPlaneInstanceReconciler) recursivelyApplyTemplates(smcp v1.Contr
 		return smcp, err
 	}
 
-	template, err = r.recursivelyApplyTemplates(template, version, visited)
+	template, err = r.recursivelyApplyTemplates(ctx, template, version, visited)
 	if err != nil {
-		r.Log.Info(fmt.Sprintf("error rendering SMCP templates: %s\n", err))
+		log.Info(fmt.Sprintf("error rendering SMCP templates: %s\n", err))
 		return smcp, err
 	}
 
@@ -399,15 +405,16 @@ func (r *controlPlaneInstanceReconciler) recursivelyApplyTemplates(smcp v1.Contr
 	return smcp, nil
 }
 
-func (r *controlPlaneInstanceReconciler) applyTemplates(smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
-	r.Log.Info("updating servicemeshcontrolplane with templates")
+func (r *controlPlaneInstanceReconciler) applyTemplates(ctx context.Context, smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
+	log := common.LogFromContext(ctx)
+	log.Info("updating servicemeshcontrolplane with templates")
 	if smcpSpec.Template == "" {
 		smcpSpec.Template = smcpDefaultTemplate
-		r.Log.Info("No template provided. Using default")
+		log.Info("No template provided. Using default")
 	}
 
-	spec, err := r.recursivelyApplyTemplates(smcpSpec, smcpSpec.Version, sets.NewString())
-	r.Log.Info(fmt.Sprintf("finished updating ServiceMeshControlPlane: %+v", spec))
+	spec, err := r.recursivelyApplyTemplates(ctx, smcpSpec, smcpSpec.Version, sets.NewString())
+	log.Info("finished updating ServiceMeshControlPlane", "Spec", spec)
 
 	return spec, err
 }
@@ -423,7 +430,8 @@ func (r *controlPlaneInstanceReconciler) validateSMCPSpec(spec v1.ControlPlaneSp
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) renderCharts() error {
+func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context) error {
+	log := common.LogFromContext(ctx)
 	//Generate the spec
 	r.Status.LastAppliedConfiguration = r.Instance.Spec
 	if len(r.Status.LastAppliedConfiguration.Version) == 0 {
@@ -438,9 +446,9 @@ func (r *controlPlaneInstanceReconciler) renderCharts() error {
 		}
 	}
 
-	spec, err := r.applyTemplates(r.Status.LastAppliedConfiguration)
+	spec, err := r.applyTemplates(ctx, r.Status.LastAppliedConfiguration)
 	if err != nil {
-		r.Log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates")
+		log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates")
 
 		return err
 	}
@@ -469,14 +477,14 @@ func (r *controlPlaneInstanceReconciler) renderCharts() error {
 	//Render the charts
 	allErrors := []error{}
 	var threeScaleRenderings map[string][]manifest.Manifest
-	r.Log.Info("rendering helm charts")
-	r.Log.V(2).Info("rendering Istio charts")
+	log.Info("rendering helm charts")
+	log.V(2).Info("rendering Istio charts")
 	istioRenderings, _, err := common.RenderHelmChart(path.Join(common.GetHelmDir(r.Status.LastAppliedConfiguration.Version), "istio"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.Istio)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
 	if isEnabled(r.Instance.Spec.ThreeScale) {
-		r.Log.V(2).Info("rendering 3scale charts")
+		log.V(2).Info("rendering 3scale charts")
 		threeScaleRenderings, _, err = common.RenderHelmChart(path.Join(common.GetHelmDir(r.Status.LastAppliedConfiguration.Version), "maistra-threescale"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.ThreeScale)
 		if err != nil {
 			allErrors = append(allErrors, err)
@@ -500,12 +508,13 @@ func (r *controlPlaneInstanceReconciler) renderCharts() error {
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) PostStatus() error {
+func (r *controlPlaneInstanceReconciler) PostStatus(ctx context.Context) error {
+	log := common.LogFromContext(ctx)
 	instance := &v1.ServiceMeshControlPlane{}
-	r.Log.Info("Posting status update", "conditions", r.Status.Conditions)
-	if err := r.Client.Get(context.TODO(), client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); err == nil {
+	log.Info("Posting status update", "conditions", r.Status.Conditions)
+	if err := r.Client.Get(ctx, client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); err == nil {
 		instance.Status = *r.Status.DeepCopy()
-		if err = r.Client.Status().Update(context.TODO(), instance); err != nil && !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
+		if err = r.Client.Status().Update(ctx, instance); err != nil && !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
 			return errors.Wrap(err, "error updating ServiceMeshControlPlane status")
 		}
 	} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
@@ -515,7 +524,7 @@ func (r *controlPlaneInstanceReconciler) PostStatus() error {
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) postReconciliationStatus(reconciliationReason v1.ConditionReason, reconciliationMessage string, processingErr error) error {
+func (r *controlPlaneInstanceReconciler) postReconciliationStatus(ctx context.Context, reconciliationReason v1.ConditionReason, reconciliationMessage string, processingErr error) error {
 	var reason string
 	if r.isUpdating() {
 		reason = eventReasonUpdating
@@ -538,7 +547,7 @@ func (r *controlPlaneInstanceReconciler) postReconciliationStatus(reconciliation
 		return nil
 	}
 
-	return r.PostStatus()
+	return r.PostStatus(ctx)
 }
 
 func (r *controlPlaneInstanceReconciler) skipStatusUpdate() bool {

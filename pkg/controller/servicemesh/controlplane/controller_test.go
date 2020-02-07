@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -45,7 +46,7 @@ func TestReconcileAddsFinalizer(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedControlPlane := test.GetUpdatedObject(cl, controlPlane.ObjectMeta, &maistrav1.ServiceMeshControlPlane{}).(*maistrav1.ServiceMeshControlPlane)
+	updatedControlPlane := test.GetUpdatedObject(ctx, cl, controlPlane.ObjectMeta, &maistrav1.ServiceMeshControlPlane{}).(*maistrav1.ServiceMeshControlPlane)
 	assert.DeepEquals(updatedControlPlane.GetFinalizers(), []string{common.FinalizerName}, "Unexpected finalizers in SMM", t)
 }
 
@@ -144,17 +145,17 @@ func NewFakeInstanceReconciler(controllerResources common.ControllerResources, i
 	return instanceReconciler
 }
 
-func (r *fakeInstanceReconciler) Reconcile() (reconcile.Result, error) {
+func (r *fakeInstanceReconciler) Reconcile(ctx context.Context) (reconcile.Result, error) {
 	r.reconcileInvoked = true
 	return reconcile.Result{}, nil
 }
 
-func (r *fakeInstanceReconciler) UpdateReadiness() error {
+func (r *fakeInstanceReconciler) UpdateReadiness(ctx context.Context) error {
 	r.updateReadinessInvoked = true
 	return nil
 }
 
-func (r *fakeInstanceReconciler) Delete() error {
+func (r *fakeInstanceReconciler) Delete(ctx context.Context) error {
 	r.deleteInvoked = true
 	return nil
 }
