@@ -45,7 +45,7 @@ const (
 	operatorVersionDefault = operatorVersion1_1
 
 	cniNetwork1_0     = "istio-cni"
-	cniNetwork1_1     = "v1.1-istio-cni"
+	cniNetwork1_1     = "v1-1-istio-cni"
 	cniNetworkDefault = cniNetwork1_1
 )
 
