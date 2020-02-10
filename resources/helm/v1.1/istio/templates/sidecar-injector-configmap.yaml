@@ -22,12 +22,11 @@ data:
     neverInjectSelector:
 {{ toYaml .Values.sidecarInjectorWebhook.neverInjectSelector | trim | indent 6 }}
     template: |-
-    {{- if .Values.istio_cni.enabled }}
-      annotations:
-        k8s.v1.cni.cncf.io/networks: {{.Values.istio_cni.istio_cni_network}}
-    {{- end }}
 {{ .Files.Get "files/injection-template.yaml" | trim | indent 6 }}
     injectedAnnotations:
+    {{- if .Values.istio_cni.enabled }}
+      k8s.v1.cni.cncf.io/networks: {{.Values.istio_cni.istio_cni_network}}
+    {{- end }}
     {{- range $key, $val := .Values.sidecarInjectorWebhook.injectedAnnotations }}
       "{{ $key }}": "{{ $val }}"
     {{- end }}
