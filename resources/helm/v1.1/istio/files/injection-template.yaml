@@ -48,9 +48,7 @@ initContainers:
     capabilities:
       add:
       - NET_ADMIN
-    {{- if .Values.global.proxy.privileged }}
     privileged: true
-    {{- end }}
   restartPolicy: Always
 {{- end }}
 {{  end -}}
@@ -292,6 +290,12 @@ containers:
       - NET_ADMIN
     runAsGroup: 1337
     {{ else -}}
+    capabilities:
+      drop:
+      - KILL
+      - SETUID
+      - SETGID
+      - MKNOD
     {{ if .Values.global.sds.enabled }}
     runAsGroup: 1337
     {{- end }}

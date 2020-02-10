@@ -230,7 +230,7 @@ function patchSidecarInjector() {
     /- NET_ADMIN/,+3 {
       /{{/d
     }
-  }' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
+  }' ${HELM_DIR}/istio/files/injection-template.yaml
 
   # add annotation for Multus & Istio CNI
   sed -i -e 's/^\(.*template:.*\)$/\1\
@@ -241,13 +241,13 @@ function patchSidecarInjector() {
 
   # allow the sidecar injector to set the runAsUser ID dynamically
   # drop unneeded capabilities from sidecar container, so using the restricted SCC doesn't require the SCC admission controller to mutate the pod
-  sed -i -e 's/^\(.*runAsUser: 1337.*\)$/\
-          capabilities:\
-            drop:\
-            - KILL\
-            - SETUID\
-            - SETGID\
-            - MKNOD/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
+  sed -i -e '/^\(.*{{ if \.Values\.global\.sds\.enabled }}.*\)$/i\
+    capabilities:\
+      drop:\
+      - KILL\
+      - SETUID\
+      - SETGID\
+      - MKNOD' ${HELM_DIR}/istio/files/injection-template.yaml
 
   # - switch webhook ports to 8443
   # XXX: move upstream (add targetPort name)
