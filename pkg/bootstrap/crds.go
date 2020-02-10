@@ -12,6 +12,7 @@ import (
 	"github.com/ghodss/yaml"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/hacks"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -129,6 +130,7 @@ func processCRDFile(ctx context.Context, cl client.Client, fileName string) erro
 			if errors.IsNotFound(err) {
 				log.Info("creating CRD", "file", fileName, "index", index, "CRD", obj.GetName())
 				err = cl.Create(ctx, obj)
+				err = hacks.WorkAroundTypeObjectProblemInCRDSchemas(ctx, err, cl, obj)
 				if err != nil {
 					log.Error(err, "error creating CRD", "file", fileName, "index", index, "CRD", obj.GetName())
 					allErrors = append(allErrors, err)
