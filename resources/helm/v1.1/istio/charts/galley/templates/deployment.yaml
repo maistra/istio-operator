@@ -80,7 +80,7 @@ spec:
           - --webhook-name
           - istio-galley-{{ .Release.Namespace }}
           - --memberRollName=default
-          - --manageWebhookConfig=false
+          - --useOldPipeline=true
           - --validation-webhook-config-file
           - /etc/config/validatingwebhookconfiguration.yaml
           - --monitoringPort={{ .Values.global.monitoringPort }}
