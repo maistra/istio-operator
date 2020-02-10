@@ -24,7 +24,7 @@ var CNIImagePullSecrets []string
 var networkNameMap = map[string]string{
 	"":     "istio-cni",
 	"v1.0": "istio-cni",
-	"v1.1": "v1.1-istio-cni",
+	"v1.1": "v1-1-istio-cni",
 }
 
 var supportedVersions []string

@@ -27,7 +27,8 @@ var _ inject.Client = (*memberValidator)(nil)
 var _ inject.Decoder = (*memberValidator)(nil)
 
 func (v *memberValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
-	logger := log.WithValues("Request.Namespace", req.AdmissionRequest.Namespace, "Request.Name", req.AdmissionRequest.Name).WithName("smm-validator")
+	logger := log.WithName("smm-validator").
+		WithValues("ServiceMeshMember", toNamespacedName(req.AdmissionRequest))
 	smm := &maistrav1.ServiceMeshMember{}
 
 	err := v.decoder.Decode(req, smm)

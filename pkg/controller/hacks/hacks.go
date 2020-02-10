@@ -1,12 +1,11 @@
 package hacks
 
 import (
+	"context"
 	"time"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 )
-
-var log = logf.Log.WithName("hack")
 
 // ReduceLikelihoodOfRepeatedReconciliation simply performs a 2 second delay. Call this function after you post an
 // update to a resource if you want to reduce the likelihood of the reconcile() function being called again before
@@ -15,7 +14,8 @@ var log = logf.Log.WithName("hack")
 // allowing the watch event more time to come back and update the cache.
 //
 // For the complete explanation, see https://issues.jboss.org/projects/MAISTRA/issues/MAISTRA-830
-func ReduceLikelihoodOfRepeatedReconciliation() {
+func ReduceLikelihoodOfRepeatedReconciliation(ctx context.Context) {
+	log := common.LogFromContext(ctx)
 	log.Info("Waiting 2 seconds to give the cache a chance to sync after updating resource")
 	time.Sleep(2 * time.Second)
 }

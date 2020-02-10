@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -84,7 +83,7 @@ func TestMemberWithFailedSubjectAccessReview(t *testing.T) {
 	tracker.AddReactor(createSubjectAccessReviewReactor(false, nil))
 
 	member := newMember("default", "app-namespace", "my-smcp", "istio-system")
-	response := validator.Handle(context.TODO(), createCreateRequest(member))
+	response := validator.Handle(ctx, createCreateRequest(member))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMember due to failed SubjectAccessReview check", t)
 }
 
@@ -93,7 +92,7 @@ func TestValidMemberCreation(t *testing.T) {
 	tracker.AddReactor(createSubjectAccessReviewReactor(true, nil))
 
 	member := newMember("default", "app-namespace", "my-smcp", "istio-system")
-	response := validator.Handle(context.TODO(), createCreateRequest(member))
+	response := validator.Handle(ctx, createCreateRequest(member))
 	assert.True(response.Response.Allowed, "Expected validator to allow ServiceMeshMember", t)
 }
 
@@ -107,7 +106,7 @@ func TestValidMemberUpdate(t *testing.T) {
 		"some-label": "some-label-value",
 	}
 
-	response := validator.Handle(context.TODO(), createUpdateRequest(oldMember, newMember))
+	response := validator.Handle(ctx, createUpdateRequest(oldMember, newMember))
 	assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshMember update", t)
 }
 
@@ -116,7 +115,7 @@ func TestMemberValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
 	tracker.AddReactor(createSubjectAccessReviewReactor(true, fmt.Errorf("SAR check error")))
 
 	roll := newMember("default", "app-namespace", "my-smcp", "istio-system")
-	response := validator.Handle(context.TODO(), createCreateRequest(roll))
+	response := validator.Handle(ctx, createCreateRequest(roll))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMember due to SAR check error", t)
 }
 
@@ -142,13 +141,13 @@ func TestMemberValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 	})
 
 	roll := newMember("default", "app-namespace", "my-smcp", "istio-system")
-	_ = validator.Handle(context.TODO(), createCreateRequest(roll))
+	_ = validator.Handle(ctx, createCreateRequest(roll))
 }
 
 func invokeMemberValidator(request atypes.Request) atypes.Response {
 	validator, _, tracker := createMemberValidatorTestFixture()
 	tracker.AddReactor(createSubjectAccessReviewReactor(true, nil))
-	response := validator.Handle(context.TODO(), request)
+	response := validator.Handle(ctx, request)
 	return response
 }
 

@@ -17,9 +17,9 @@ var (
 )
 
 // GetRootCertFromSecret retrieves the root certificate from an Istio SA secret
-func GetRootCertFromSecret(client client.Client, namespace string, name string) ([]byte, error) {
+func GetRootCertFromSecret(ctx context.Context, client client.Client, namespace string, name string) ([]byte, error) {
 	secret := &corev1.Secret{}
-	err := client.Get(context.TODO(), types.NamespacedName{
+	err := client.Get(ctx, types.NamespacedName{
 		Namespace: namespace,
 		Name:      name,
 	}, secret)

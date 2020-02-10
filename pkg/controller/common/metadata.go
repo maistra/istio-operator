@@ -49,18 +49,18 @@ const (
 	MemberName = "default"
 )
 
-func FetchOwnedResources(kubeClient client.Client, gvk schema.GroupVersionKind, owner, namespace string) (*unstructured.UnstructuredList, error) {
+func FetchOwnedResources(ctx context.Context, kubeClient client.Client, gvk schema.GroupVersionKind, owner, namespace string) (*unstructured.UnstructuredList, error) {
 	labelSelector := map[string]string{OwnerKey: owner}
 	objects := &unstructured.UnstructuredList{}
 	objects.SetGroupVersionKind(gvk)
-	err := kubeClient.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(namespace), objects)
+	err := kubeClient.List(ctx, client.MatchingLabels(labelSelector).InNamespace(namespace), objects)
 	return objects, err
 }
 
-func FetchMeshResources(kubeClient client.Client, gvk schema.GroupVersionKind, mesh, namespace string) (*unstructured.UnstructuredList, error) {
+func FetchMeshResources(ctx context.Context, kubeClient client.Client, gvk schema.GroupVersionKind, mesh, namespace string) (*unstructured.UnstructuredList, error) {
 	labelSelector := map[string]string{MemberOfKey: mesh}
 	objects := &unstructured.UnstructuredList{}
 	objects.SetGroupVersionKind(gvk)
-	err := kubeClient.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(namespace), objects)
+	err := kubeClient.List(ctx, client.MatchingLabels(labelSelector).InNamespace(namespace), objects)
 	return objects, err
 }

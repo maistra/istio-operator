@@ -4,7 +4,6 @@ import (
 	"os"
 	"sync"
 
-	"github.com/go-logr/logr"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -20,19 +19,7 @@ type ControllerResources struct {
 	Scheme            *runtime.Scheme
 	EventRecorder     record.EventRecorder
 	PatchFactory      *PatchFactory
-	Log               logr.Logger
 	OperatorNamespace string
-}
-
-func (c *ControllerResources) WithLog(log logr.Logger) ControllerResources {
-	return ControllerResources{
-		Client:            c.Client,
-		Scheme:            c.Scheme,
-		EventRecorder:     c.EventRecorder,
-		PatchFactory:      c.PatchFactory,
-		Log:               log,
-		OperatorNamespace: c.OperatorNamespace,
-	}
 }
 
 func IndexOf(l []string, s string) int {

@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/util/sets"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -87,7 +86,7 @@ func TestMerge(t *testing.T) {
 
 func TestCyclicTemplate(t *testing.T) {
 	instanceReconciler := newTestReconciler()
-	_, err := instanceReconciler.recursivelyApplyTemplates(maistrav1.ControlPlaneSpec{Template: "visited"}, "", sets.NewString("visited"))
+	_, err := instanceReconciler.recursivelyApplyTemplates(ctx, maistrav1.ControlPlaneSpec{Template: "visited"}, "", sets.NewString("visited"))
 	if err == nil {
 		t.Fatalf("Expected error to not be nil. Cyclic dependencies should not be allowed.")
 	}
@@ -95,7 +94,7 @@ func TestCyclicTemplate(t *testing.T) {
 
 func newTestReconciler() *controlPlaneInstanceReconciler {
 	reconciler := NewControlPlaneInstanceReconciler(
-		common.ControllerResources{Log: logf.Log.WithName("instanceReconciler")},
+		common.ControllerResources{},
 		&maistrav1.ServiceMeshControlPlane{})
 	return reconciler.(*controlPlaneInstanceReconciler)
 }

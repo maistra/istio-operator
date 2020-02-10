@@ -15,10 +15,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-func (r *controlPlaneInstanceReconciler) UpdateReadiness() error {
-	update, err := r.updateReadinessStatus()
+func (r *controlPlaneInstanceReconciler) UpdateReadiness(ctx context.Context) error {
+	log := common.LogFromContext(ctx)
+	update, err := r.updateReadinessStatus(ctx)
 	if update && !r.skipStatusUpdate() {
-		statusErr := r.PostStatus()
+		statusErr := r.PostStatus(ctx)
 		if statusErr != nil {
 			// original error is more important than the status update error
 			if err == nil {
@@ -26,15 +27,16 @@ func (r *controlPlaneInstanceReconciler) UpdateReadiness() error {
 				return statusErr
 			}
 			// otherwise, we must log the status update error and return the original error
-			r.Log.Error(statusErr, "Error updating status")
+			log.Error(statusErr, "Error updating status")
 		}
 	}
 	return err
 }
 
-func (r *controlPlaneInstanceReconciler) updateReadinessStatus() (bool, error) {
-	r.Log.Info("Updating ServiceMeshControlPlane readiness state")
-	notReadyState, err := r.calculateNotReadyState()
+func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Context) (bool, error) {
+	log := common.LogFromContext(ctx)
+	log.Info("Updating ServiceMeshControlPlane readiness state")
+	notReadyState, err := r.calculateNotReadyState(ctx)
 	if err != nil {
 		condition := v1.Condition{
 			Type:    v1.ConditionTypeReady,
@@ -49,7 +51,7 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus() (bool, error) {
 	unreadyComponents := make([]string, 0, len(notReadyState))
 	for component, notReady := range notReadyState {
 		if notReady {
-			r.Log.Info(fmt.Sprintf("%s resources are not fully available", component))
+			log.Info(fmt.Sprintf("%s resources are not fully available", component))
 			unreadyComponents = append(unreadyComponents, component)
 		}
 	}
@@ -84,27 +86,27 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus() (bool, error) {
 	return updateStatus, nil
 }
 
-func (r *controlPlaneInstanceReconciler) calculateNotReadyState() (map[string]bool, error) {
+func (r *controlPlaneInstanceReconciler) calculateNotReadyState(ctx context.Context) (map[string]bool, error) {
 	var cniNotReady bool
 	notReadyState := map[string]bool{}
-	err := r.calculateNotReadyStateForType(appsv1.SchemeGroupVersion.WithKind("Deployment"), notReadyState, r.deploymentReady)
+	err := r.calculateNotReadyStateForType(ctx, appsv1.SchemeGroupVersion.WithKind("Deployment"), notReadyState, r.deploymentReady)
 	if err != nil {
 		return notReadyState, err
 	}
-	err = r.calculateNotReadyStateForType(appsv1.SchemeGroupVersion.WithKind("StatefulSet"), notReadyState, r.statefulSetReady)
+	err = r.calculateNotReadyStateForType(ctx, appsv1.SchemeGroupVersion.WithKind("StatefulSet"), notReadyState, r.statefulSetReady)
 	if err != nil {
 		return notReadyState, err
 	}
-	err = r.calculateNotReadyStateForType(appsv1.SchemeGroupVersion.WithKind("DaemonSet"), notReadyState, r.daemonSetReady)
+	err = r.calculateNotReadyStateForType(ctx, appsv1.SchemeGroupVersion.WithKind("DaemonSet"), notReadyState, r.daemonSetReady)
 	if err != nil {
 		return notReadyState, err
 	}
-	cniNotReady, err = r.calculateNotReadyStateForCNI()
+	cniNotReady, err = r.calculateNotReadyStateForCNI(ctx)
 	notReadyState["cni"] = cniNotReady
 	return notReadyState, err
 }
 
-func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForCNI() (bool, error) {
+func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForCNI(ctx context.Context) (bool, error) {
 	if !common.IsCNIEnabled {
 		return false, nil
 	}
@@ -112,37 +114,39 @@ func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForCNI() (bool, e
 	daemonSets := &unstructured.UnstructuredList{}
 	daemonSets.SetGroupVersionKind(appsv1.SchemeGroupVersion.WithKind("DaemonSet"))
 	operatorNamespace := common.GetOperatorNamespace()
-	if err := r.Client.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(operatorNamespace), daemonSets); err != nil {
+	if err := r.Client.List(ctx, client.MatchingLabels(labelSelector).InNamespace(operatorNamespace), daemonSets); err != nil {
 		return true, err
 	}
 	for _, ds := range daemonSets.Items {
-		if !r.daemonSetReady(&ds) {
+		if !r.daemonSetReady(ctx, &ds) {
 			return true, nil
 		}
 	}
 	return false, nil
 }
 
-func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForType(gvk schema.GroupVersionKind, notReadyState map[string]bool, isReady func(*unstructured.Unstructured) bool) error {
-	resources, err := common.FetchOwnedResources(r.Client, gvk, r.Instance.GetNamespace(), r.Instance.GetNamespace())
+func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForType(ctx context.Context, gvk schema.GroupVersionKind, notReadyState map[string]bool, isReady func(context.Context, *unstructured.Unstructured) bool) error {
+	log := common.LogFromContext(ctx)
+	resources, err := common.FetchOwnedResources(ctx, r.Client, gvk, r.Instance.GetNamespace(), r.Instance.GetNamespace())
 	if err != nil {
 		return err
 	}
 	for _, resource := range resources.Items {
 		if component, ok := common.GetLabel(&resource, common.KubernetesAppComponentKey); ok {
-			notReadyState[component] = notReadyState[component] || !isReady(&resource)
+			notReadyState[component] = notReadyState[component] || !isReady(ctx, &resource)
 		} else {
 			// how do we have an owned resource with no component label?
-			r.Log.Error(nil, "skipping resource for readiness check: resource has no component label", gvk.Kind, resource.GetName())
+			log.Error(nil, "skipping resource for readiness check: resource has no component label", gvk.Kind, resource.GetName())
 		}
 	}
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) deploymentReady(deployment *unstructured.Unstructured) bool {
+func (r *controlPlaneInstanceReconciler) deploymentReady(ctx context.Context, deployment *unstructured.Unstructured) bool {
+	log := common.LogFromContext(ctx)
 	conditions, found, err := unstructured.NestedSlice(deployment.UnstructuredContent(), "status", "conditions")
 	if err != nil {
-		r.Log.Error(err, "error reading Deployment.Status", "Deployment", deployment.GetName())
+		log.Error(err, "error reading Deployment.Status", "Deployment", deployment.GetName())
 		return false
 	}
 	if !found {
@@ -157,17 +161,18 @@ func (r *controlPlaneInstanceReconciler) deploymentReady(deployment *unstructure
 				return conditionStatus == "True"
 			}
 		} else {
-			r.Log.Error(nil, "cannot convert Deployment condition")
+			log.Error(nil, "cannot convert Deployment condition")
 		}
 	}
 
 	return false
 }
 
-func (r *controlPlaneInstanceReconciler) statefulSetReady(statefulSet *unstructured.Unstructured) bool {
+func (r *controlPlaneInstanceReconciler) statefulSetReady(ctx context.Context, statefulSet *unstructured.Unstructured) bool {
+	log := common.LogFromContext(ctx)
 	replicas, found, err := unstructured.NestedInt64(statefulSet.UnstructuredContent(), "status", "replicas")
 	if err != nil {
-		r.Log.Error(err, "error reading StatefulSet.Status", "StatefulSet", statefulSet.GetName())
+		log.Error(err, "error reading StatefulSet.Status", "StatefulSet", statefulSet.GetName())
 		return false
 	}
 	if !found {
@@ -176,7 +181,7 @@ func (r *controlPlaneInstanceReconciler) statefulSetReady(statefulSet *unstructu
 
 	readyReplicas, found, err := unstructured.NestedInt64(statefulSet.UnstructuredContent(), "status", "readyReplicas")
 	if err != nil {
-		r.Log.Error(err, "error reading StatefulSet.Status", "StatefulSet", statefulSet.GetName())
+		log.Error(err, "error reading StatefulSet.Status", "StatefulSet", statefulSet.GetName())
 		return false
 	}
 	if !found {
@@ -186,10 +191,11 @@ func (r *controlPlaneInstanceReconciler) statefulSetReady(statefulSet *unstructu
 	return readyReplicas >= replicas
 }
 
-func (r *controlPlaneInstanceReconciler) daemonSetReady(daemonSet *unstructured.Unstructured) bool {
+func (r *controlPlaneInstanceReconciler) daemonSetReady(ctx context.Context, daemonSet *unstructured.Unstructured) bool {
+	log := common.LogFromContext(ctx)
 	unavailable, found, err := unstructured.NestedInt64(daemonSet.UnstructuredContent(), "status", "numberUnavailable")
 	if err != nil {
-		r.Log.Error(err, "error reading DaemonSet.Status", "DaemonSet", daemonSet.GetName())
+		log.Error(err, "error reading DaemonSet.Status", "DaemonSet", daemonSet.GetName())
 		return false
 	}
 

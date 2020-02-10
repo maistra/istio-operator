@@ -129,7 +129,7 @@ function patchGalley() {
 \2- --webhook-name\
 \2- istio-galley-\{\{ .Release.Namespace \}\}\
 \2- --memberRollName=default\
-\2- --manageWebhookConfig=false\
+\2- --useOldPipeline=true\
 \1/
   }' \
          -e '/operatorManageWebhooks/,/{{- end }}/ {
@@ -258,7 +258,6 @@ function patchSidecarInjector() {
   # - disable management of webhook config
   # - add webhook port
   sed -i -e 's/^\(.*\)\(volumeMounts:.*\)$/\1  - --port=8443\
-\1  - --manageWebhookConfig=false\
 \1ports:\
 \1- name: webhook\
 \1  containerPort: 8443\

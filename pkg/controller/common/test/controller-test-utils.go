@@ -52,8 +52,8 @@ func CreateClient(clientObjects ...runtime.Object) (client.Client, *EnhancedTrac
 	return cl, &enhancedTracker
 }
 
-func GetObject(cl client.Client, objectKey client.ObjectKey, into runtime.Object) runtime.Object {
-	err := cl.Get(context.TODO(), objectKey, into)
+func GetObject(ctx context.Context, cl client.Client, objectKey client.ObjectKey, into runtime.Object) runtime.Object {
+	err := cl.Get(ctx, objectKey, into)
 	if err != nil {
 		// we don't expect any errors, since we're calling Get on a fake client, but let's panic if one does occur
 		panic(fmt.Sprintf("Unexpected error: %v", err))
@@ -61,8 +61,8 @@ func GetObject(cl client.Client, objectKey client.ObjectKey, into runtime.Object
 	return into
 }
 
-func GetUpdatedObject(cl client.Client, objectMeta meta.ObjectMeta, into runtime.Object) runtime.Object {
-	err := cl.Get(context.TODO(), getNamespacedName(objectMeta), into)
+func GetUpdatedObject(ctx context.Context, cl client.Client, objectMeta meta.ObjectMeta, into runtime.Object) runtime.Object {
+	err := cl.Get(ctx, getNamespacedName(objectMeta), into)
 	if err != nil {
 		// we don't expect any errors, since we're calling Get on a fake client, but let's panic if one does occur
 		panic(fmt.Sprintf("Unexpected error: %v", err))
@@ -70,8 +70,8 @@ func GetUpdatedObject(cl client.Client, objectMeta meta.ObjectMeta, into runtime
 	return into
 }
 
-func AssertObjectExists(cl client.Client, namespacedName types.NamespacedName, into runtime.Object, message string, t *testing.T) {
-	err := cl.Get(context.TODO(), namespacedName, into)
+func AssertObjectExists(ctx context.Context, cl client.Client, namespacedName types.NamespacedName, into runtime.Object, message string, t *testing.T) {
+	err := cl.Get(ctx, namespacedName, into)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			t.Fatal(message)
@@ -82,8 +82,8 @@ func AssertObjectExists(cl client.Client, namespacedName types.NamespacedName, i
 	}
 }
 
-func AssertNotFound(cl client.Client, namespacedName types.NamespacedName, into runtime.Object, message string, t *testing.T) {
-	err := cl.Get(context.TODO(), namespacedName, into)
+func AssertNotFound(ctx context.Context, cl client.Client, namespacedName types.NamespacedName, into runtime.Object, message string, t *testing.T) {
+	err := cl.Get(ctx, namespacedName, into)
 	if err == nil {
 		t.Fatal(message)
 	} else {

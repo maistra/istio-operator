@@ -28,15 +28,16 @@ var installCRDsTask sync.Once
 
 // InstallCRDs makes sure all CRDs have been installed.  CRDs are located from
 // files in controller.HelmDir/istio-init/files
-func InstallCRDs(cl client.Client) error {
+func InstallCRDs(ctx context.Context, cl client.Client) error {
 	// we only try to install them once.  if there's an error, we should probably
 	// panic, as there's no way to recover.  for now, we just pass the error along.
 	var err error
-	installCRDsTask.Do(func() { internalInstallCRDs(cl, &err) })
+	installCRDsTask.Do(func() { internalInstallCRDs(ctx, cl, &err) })
 	return err
 }
 
-func internalInstallCRDs(cl client.Client, err *error) {
+func internalInstallCRDs(ctx context.Context, cl client.Client, err *error) {
+	log := common.LogFromContext(ctx)
 	log.Info("ensuring CRDs have been installed")
 	// Always install the latest set of CRDs
 	crdPath := path.Join(common.GetHelmDir(common.DefaultMaistraVersion), "istio-init/files")
@@ -50,14 +51,14 @@ func internalInstallCRDs(cl client.Client, err *error) {
 		if err != nil || info.IsDir() {
 			return err
 		}
-		return processCRDFile(cl, path)
+		return processCRDFile(ctx, cl, path)
 	})
 	if *err == nil {
-		*err = installCRDRole(cl)
+		*err = installCRDRole(ctx, cl)
 	}
 }
 
-func installCRDRole(cl client.Client) error {
+func installCRDRole(ctx context.Context, cl client.Client) error {
 	crdRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "istio-admin",
@@ -80,16 +81,17 @@ func installCRDRole(cl client.Client) error {
 			},
 		},
 	}
-	if err := cl.Get(context.TODO(), client.ObjectKey{Name: crdRole.Name}, crdRole); err == nil {
+	if err := cl.Get(ctx, client.ObjectKey{Name: crdRole.Name}, crdRole); err == nil {
 		return nil
 	} else if errors.IsNotFound(err) {
-		return cl.Create(context.TODO(), crdRole)
+		return cl.Create(ctx, crdRole)
 	} else {
 		return err
 	}
 }
 
-func processCRDFile(cl client.Client, fileName string) error {
+func processCRDFile(ctx context.Context, cl client.Client, fileName string) error {
+	log := common.LogFromContext(ctx)
 	allErrors := []error{}
 	buf := &bytes.Buffer{}
 	file, err := os.Open(fileName)
@@ -122,11 +124,11 @@ func processCRDFile(cl client.Client, fileName string) error {
 		receiver := &unstructured.Unstructured{}
 		receiver.SetGroupVersionKind(obj.GroupVersionKind())
 		receiver.SetName(obj.GetName())
-		err = cl.Get(context.TODO(), client.ObjectKey{Name: obj.GetName()}, receiver)
+		err = cl.Get(ctx, client.ObjectKey{Name: obj.GetName()}, receiver)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				log.Info("creating CRD", "file", fileName, "index", index, "CRD", obj.GetName())
-				err = cl.Create(context.TODO(), obj)
+				err = cl.Create(ctx, obj)
 				if err != nil {
 					log.Error(err, "error creating CRD", "file", fileName, "index", index, "CRD", obj.GetName())
 					allErrors = append(allErrors, err)

@@ -24,37 +24,45 @@ type networkPolicyStrategy struct {
 
 var _ NamespaceReconciler = (*networkPolicyStrategy)(nil)
 
-func newNetworkPolicyStrategy(cl client.Client, baseLogger logr.Logger, meshNamespace string) (*networkPolicyStrategy, error) {
+func newNetworkPolicyStrategy(ctx context.Context, cl client.Client, meshNamespace string) (*networkPolicyStrategy, error) {
 	strategy := &networkPolicyStrategy{
 		ControllerResources: common.ControllerResources{
 			Client: cl,
-			Log:    baseLogger.WithValues("NetworkStrategy", "NetworkPolicy"),
 		},
 		meshNamespace:           meshNamespace,
 		requiredNetworkPolicies: sets.NewString(),
 	}
-	strategy.networkPoliciesList = &networking.NetworkPolicyList{}
-	labelSelector := map[string]string{common.OwnerKey: strategy.meshNamespace}
-	err := cl.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(strategy.meshNamespace), strategy.networkPoliciesList)
+	err := strategy.init(ctx, cl)
 	if err != nil {
-		strategy.Log.Error(err, "error retrieving NetworkPolicy resources for mesh")
 		return nil, err
-	}
-	for _, np := range strategy.networkPoliciesList.Items {
-		if _, ok := common.GetAnnotation(&np, common.InternalKey); ok {
-			continue
-		}
-		strategy.requiredNetworkPolicies.Insert(np.GetName())
 	}
 	return strategy, nil
 }
 
-func (s *networkPolicyStrategy) reconcileNamespaceInMesh(namespace string) error {
-	logger := s.Log.WithValues("Namespace", namespace)
+func (s *networkPolicyStrategy) init(ctx context.Context, cl client.Client) error {
+	log := s.getLogger(ctx)
+	s.networkPoliciesList = &networking.NetworkPolicyList{}
+	labelSelector := map[string]string{common.OwnerKey: s.meshNamespace}
+	err := cl.List(ctx, client.MatchingLabels(labelSelector).InNamespace(s.meshNamespace), s.networkPoliciesList)
+	if err != nil {
+		log.Error(err, "error retrieving NetworkPolicy resources for mesh")
+		return err
+	}
+	for _, np := range s.networkPoliciesList.Items {
+		if _, ok := common.GetAnnotation(&np, common.InternalKey); ok {
+			continue
+		}
+		s.requiredNetworkPolicies.Insert(np.GetName())
+	}
+	return nil
+}
+
+func (s *networkPolicyStrategy) reconcileNamespaceInMesh(ctx context.Context, namespace string) error {
+	logger := s.getLogger(ctx)
 
 	namespaceNetworkPolicies := &networking.NetworkPolicyList{}
 	labelSelector := map[string]string{common.MemberOfKey: s.meshNamespace}
-	err := s.Client.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(namespace), namespaceNetworkPolicies)
+	err := s.Client.List(ctx, client.MatchingLabels(labelSelector).InNamespace(namespace), namespaceNetworkPolicies)
 	if err != nil {
 		logger.Error(err, "error retrieving NetworkPolicy resources for namespace")
 		return err
@@ -81,7 +89,7 @@ func (s *networkPolicyStrategy) reconcileNamespaceInMesh(namespace string) error
 				Annotations: copyMap(meshNetworkPolicy.Annotations),
 			}
 			common.SetLabel(networkPolicy, common.MemberOfKey, s.meshNamespace)
-			err = s.Client.Create(context.TODO(), networkPolicy)
+			err = s.Client.Create(ctx, networkPolicy)
 			if err == nil {
 				addedNetworkPolicies.Insert(networkPolicyName)
 			} else {
@@ -102,7 +110,7 @@ func (s *networkPolicyStrategy) reconcileNamespaceInMesh(namespace string) error
 				Namespace: namespace,
 			},
 		}
-		err = s.Client.Delete(context.TODO(), networkPolicy, client.PropagationPolicy(meta.DeletePropagationForeground))
+		err = s.Client.Delete(ctx, networkPolicy, client.PropagationPolicy(meta.DeletePropagationForeground))
 		if err != nil && !(errors.IsNotFound(err) || errors.IsGone(err)) {
 			logger.Error(err, "error deleting NetworkPolicy", "NetworkPolicy", networkPolicyName)
 			allErrors = append(allErrors, err)
@@ -115,17 +123,17 @@ func (s *networkPolicyStrategy) reconcileNamespaceInMesh(namespace string) error
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (s *networkPolicyStrategy) removeNamespaceFromMesh(namespace string) error {
+func (s *networkPolicyStrategy) removeNamespaceFromMesh(ctx context.Context, namespace string) error {
 	allErrors := []error{}
-	logger := s.Log.WithValues("Namespace", namespace)
+	logger := s.getLogger(ctx)
 
 	npList := &networking.NetworkPolicyList{}
 	labelSelector := map[string]string{common.MemberOfKey: s.meshNamespace}
-	err := s.Client.List(context.TODO(), client.MatchingLabels(labelSelector).InNamespace(namespace), npList)
+	err := s.Client.List(ctx, client.MatchingLabels(labelSelector).InNamespace(namespace), npList)
 	if err == nil {
 		for _, np := range npList.Items {
 			logger.Info("deleting NetworkPolicy for mesh", "NetworkPolicy", np.GetName())
-			err = s.Client.Delete(context.TODO(), &np)
+			err = s.Client.Delete(ctx, &np)
 			if err != nil {
 				logger.Error(err, "error removing NetworkPolicy associated with mesh", "NetworkPolicy", np.GetName())
 				allErrors = append(allErrors, err)
@@ -136,6 +144,10 @@ func (s *networkPolicyStrategy) removeNamespaceFromMesh(namespace string) error 
 		allErrors = append(allErrors, err)
 	}
 	return utilerrors.NewAggregate(allErrors)
+}
+
+func (s *networkPolicyStrategy) getLogger(ctx context.Context) logr.Logger {
+	return common.LogFromContext(ctx).WithValues("NetworkStrategy", "NetworkPolicy")
 }
 
 func copyMap(in map[string]string) map[string]string {

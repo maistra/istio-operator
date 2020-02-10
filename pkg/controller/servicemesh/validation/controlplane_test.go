@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -20,7 +19,7 @@ func TestDeletedControlPlaneIsAlwaysAllowed(t *testing.T) {
 	controlPlane.DeletionTimestamp = now()
 
 	validator, _, _ := createControlPlaneValidatorTestFixture()
-	response := validator.Handle(context.TODO(), createCreateRequest(controlPlane))
+	response := validator.Handle(ctx, createCreateRequest(controlPlane))
 	assert.True(response.Response.Allowed, "Expected validator to allow deleted ServiceMeshControlPlane", t)
 }
 
@@ -29,7 +28,7 @@ func TestControlPlaneOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
 	watchNamespace = "watched-namespace"
 	defer func() { watchNamespace = "" }()
 	validator, _, _ := createControlPlaneValidatorTestFixture()
-	response := validator.Handle(context.TODO(), createCreateRequest(controlPlane))
+	response := validator.Handle(ctx, createCreateRequest(controlPlane))
 	assert.True(response.Response.Allowed, "Expected validator to allow ServiceMeshControlPlane whose namespace isn't watched", t)
 }
 
@@ -37,7 +36,7 @@ func TestControlPlaneWithIncorrectVersionIsRejected(t *testing.T) {
 	controlPlane := newControlPlane("my-smcp", "not-watched")
 	controlPlane.Spec.Version = "0.0"
 	validator, _, _ := createControlPlaneValidatorTestFixture()
-	response := validator.Handle(context.TODO(), createCreateRequest(controlPlane))
+	response := validator.Handle(ctx, createCreateRequest(controlPlane))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane with bad version", t)
 }
 
@@ -45,7 +44,7 @@ func TestOnlyOneControlPlaneIsAllowedPerNamespace(t *testing.T) {
 	controlPlane1 := newControlPlane("my-smcp", "istio-system")
 	validator, _, _ := createControlPlaneValidatorTestFixture(controlPlane1)
 	controlPlane2 := newControlPlane("my-smcp2", "istio-system")
-	response := validator.Handle(context.TODO(), createCreateRequest(controlPlane2))
+	response := validator.Handle(ctx, createCreateRequest(controlPlane2))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane with bad version", t)
 }
 
@@ -71,7 +70,7 @@ func TestValidControlPlane(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			validator, _, _ := createControlPlaneValidatorTestFixture()
-			response := validator.Handle(context.TODO(), createCreateRequest(tc.controlPlane))
+			response := validator.Handle(ctx, createCreateRequest(tc.controlPlane))
 			assert.True(response.Response.Allowed, "Expected validator to accept valid ServiceMeshControlPlane", t)
 		})
 	}
@@ -82,7 +81,7 @@ func TestUpdateOfValidControlPlane(t *testing.T) {
 	validator, _, _ := createControlPlaneValidatorTestFixture(oldControlPlane)
 
 	controlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v1.1")
-	response := validator.Handle(context.TODO(), createUpdateRequest(oldControlPlane, controlPlane))
+	response := validator.Handle(ctx, createUpdateRequest(oldControlPlane, controlPlane))
 	assert.True(response.Response.Allowed, "Expected validator to accept update of valid ServiceMeshControlPlane", t)
 }
 

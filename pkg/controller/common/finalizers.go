@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	errors2 "github.com/pkg/errors"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -17,9 +16,11 @@ import (
 
 const eventReasonFailedFinalizerRemoval = "FailedFinalizerRemoval"
 
-type FinalizerFunc func(runtime.Object, logr.Logger) (mayContinue bool, err error)
+type FinalizerFunc func(context.Context, runtime.Object) (mayContinue bool, err error)
 
-func HandleFinalization(finalizerFunc FinalizerFunc, obj runtime.Object, cl client.Client, eventRecorder record.EventRecorder, reqLogger logr.Logger) (continueReconciliation bool, err error) {
+func HandleFinalization(ctx context.Context, obj runtime.Object, finalizerFunc FinalizerFunc, cl client.Client, eventRecorder record.EventRecorder) (continueReconciliation bool, err error) {
+	reqLogger := LogFromContext(ctx)
+
 	oma, ok := obj.(meta.ObjectMetaAccessor)
 	if !ok {
 		panic("object does not implement ObjectMetaAccessor")
@@ -33,7 +34,7 @@ func HandleFinalization(finalizerFunc FinalizerFunc, obj runtime.Object, cl clie
 			return false, nil
 		}
 
-		continueReconciliation, err = finalizerFunc(obj, reqLogger)
+		continueReconciliation, err = finalizerFunc(ctx, obj)
 		if err != nil || !continueReconciliation {
 			return continueReconciliation, err
 		}
@@ -41,7 +42,7 @@ func HandleFinalization(finalizerFunc FinalizerFunc, obj runtime.Object, cl clie
 		reqLogger.Info(fmt.Sprintf("Removing finalizer from %s", obj.GetObjectKind().GroupVersionKind().Kind))
 		finalizers.Delete(FinalizerName)
 		objectMeta.SetFinalizers(finalizers.List())
-		err = cl.Update(context.TODO(), obj)
+		err = cl.Update(ctx, obj)
 		if err != nil {
 			if errors.IsNotFound(err) || errors.IsConflict(err) {
 				// We're reconciling a stale instance. If the object no longer exists, we're done. If there was a
@@ -60,7 +61,7 @@ func HandleFinalization(finalizerFunc FinalizerFunc, obj runtime.Object, cl clie
 		reqLogger.Info(fmt.Sprintf("Adding finalizer to %s", obj.GetObjectKind().GroupVersionKind().Kind))
 		finalizers.Insert(FinalizerName)
 		objectMeta.SetFinalizers(finalizers.List())
-		err = cl.Update(context.TODO(), obj)
+		err = cl.Update(ctx, obj)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				// Object was deleted manually before we could add the finalizer to it. This is not an error.

@@ -1,7 +1,6 @@
 package memberroll
 
 import (
-	"context"
 	"testing"
 
 	networking "k8s.io/api/networking/v1"
@@ -9,7 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -21,7 +19,7 @@ func TestMeshNetworkPolicyIsCopiedIntoAppNamespace(t *testing.T) {
 
 	cl, _ := test.CreateClient(meshNetworkPolicy)
 	strategy := createNetworkPolicyStrategy(cl, t)
-	assert.Success(strategy.reconcileNamespaceInMesh(appNamespace), "reconcileNamespaceInMesh", t)
+	assert.Success(strategy.reconcileNamespaceInMesh(ctx, appNamespace), "reconcileNamespaceInMesh", t)
 
 	nsNetworkPolicy := getNamespaceNetworkPolicy(cl, t)
 
@@ -40,17 +38,17 @@ func TestObsoleteMeshNetworkPolicyIsRemovedFromAppNamespace(t *testing.T) {
 
 	// a copy of the meshNetworkPolicy is now in the app namespace
 	// we now delete the meshNetworkPolicy from the mesh namespace
-	err := cl.Delete(context.TODO(), meshNetworkPolicy)
+	err := cl.Delete(ctx, meshNetworkPolicy)
 	if err != nil {
 		t.Fatalf("Couldn't delete NetworkPolicy: %v", err)
 	}
 
 	strategy := createNetworkPolicyStrategy(cl, t)
 	// this should remove the NetworkPolicy from the namespace
-	assert.Success(strategy.reconcileNamespaceInMesh(appNamespace), "reconcileNamespaceInMesh", t)
+	assert.Success(strategy.reconcileNamespaceInMesh(ctx, appNamespace), "reconcileNamespaceInMesh", t)
 
 	nsNetworkPolicy := &networking.NetworkPolicy{}
-	err = cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: "my-policy"}, nsNetworkPolicy)
+	err = cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: "my-policy"}, nsNetworkPolicy)
 	assertNotFound(err, "Expected NetworkPolicy to have been removed from app namespace, but it is still present", t)
 }
 
@@ -60,10 +58,10 @@ func TestInternalMeshNetworkPolicyIsNotCopiedIntoAppNamespace(t *testing.T) {
 
 	cl, _ := test.CreateClient(meshNetworkPolicy)
 	strategy := createNetworkPolicyStrategy(cl, t)
-	assert.Success(strategy.reconcileNamespaceInMesh(appNamespace), "reconcileNamespaceInMesh", t)
+	assert.Success(strategy.reconcileNamespaceInMesh(ctx, appNamespace), "reconcileNamespaceInMesh", t)
 
 	nsNetworkPolicy := &networking.NetworkPolicy{}
-	err := cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: "my-policy"}, nsNetworkPolicy)
+	err := cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: "my-policy"}, nsNetworkPolicy)
 	assertNotFound(err, "Expected NetworkPolicy to not be in the app namespace", t)
 }
 
@@ -82,20 +80,20 @@ func TestRemoveNamespaceInMeshRemovesTheCorrectNetworkPolicies(t *testing.T) {
 	// a copy of the mesh network policy is now in the app namespace
 
 	strategy := createNetworkPolicyStrategy(cl, t)
-	assert.Success(strategy.removeNamespaceFromMesh(appNamespace), "removeNamespaceFromMesh", t)
+	assert.Success(strategy.removeNamespaceFromMesh(ctx, appNamespace), "removeNamespaceFromMesh", t)
 
 	nsNetworkPolicy := &networking.NetworkPolicy{}
-	err := cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: "my-policy"}, nsNetworkPolicy)
+	err := cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: "my-policy"}, nsNetworkPolicy)
 	assertNotFound(err, "Expected NetworkPolicy to have been removed from app namespace, but it is still present", t)
 
 	nonMeshNamespacedName := types.NamespacedName{Namespace: appNamespace, Name: "policy-not-related-to-service-mesh"}
-	err = cl.Get(context.TODO(), nonMeshNamespacedName, nsNetworkPolicy)
-	test.AssertObjectExists(cl, nonMeshNamespacedName, nsNetworkPolicy, "Expected policy not related to service mesh to still be present, but it was removed", t)
+	err = cl.Get(ctx, nonMeshNamespacedName, nsNetworkPolicy)
+	test.AssertObjectExists(ctx, cl, nonMeshNamespacedName, nsNetworkPolicy, "Expected policy not related to service mesh to still be present, but it was removed", t)
 }
 
 func getNamespaceNetworkPolicy(cl client.Client, t *testing.T) *networking.NetworkPolicy {
 	nsNetworkPolicy := &networking.NetworkPolicy{}
-	err := cl.Get(context.TODO(), types.NamespacedName{Namespace: appNamespace, Name: "my-policy"}, nsNetworkPolicy)
+	err := cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: "my-policy"}, nsNetworkPolicy)
 	if err != nil {
 		t.Fatalf("Error getting NetworkPolicy in app namespace: %v", err)
 	}
@@ -104,11 +102,11 @@ func getNamespaceNetworkPolicy(cl client.Client, t *testing.T) *networking.Netwo
 
 func setupNetworkPolicyReconciledNamespace(t *testing.T, cl client.Client, namespace string) {
 	strategy := createNetworkPolicyStrategy(cl, t)
-	assert.Success(strategy.reconcileNamespaceInMesh(namespace), "reconcileNamespaceInMesh", t)
+	assert.Success(strategy.reconcileNamespaceInMesh(ctx, namespace), "reconcileNamespaceInMesh", t)
 }
 
 func createNetworkPolicyStrategy(cl client.Client, t *testing.T) *networkPolicyStrategy {
-	strategy, err := newNetworkPolicyStrategy(cl, logf.Log, controlPlaneNamespace)
+	strategy, err := newNetworkPolicyStrategy(ctx, cl, controlPlaneNamespace)
 	if err != nil {
 		t.Fatalf("Error creating network strategy: %v", err)
 	}
