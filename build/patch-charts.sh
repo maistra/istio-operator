@@ -233,10 +233,9 @@ function patchSidecarInjector() {
   }' ${HELM_DIR}/istio/files/injection-template.yaml
 
   # add annotation for Multus & Istio CNI
-  sed -i -e 's/^\(.*template:.*\)$/\1\
+  sed -i -e 's/^\(.*injectedAnnotations:.*\)$/\1\
     \{\{- if .Values.istio_cni.enabled \}\}\
-      annotations:\
-        k8s.v1.cni.cncf.io\/networks: \{\{.Values.istio_cni.istio_cni_network\}\}\
+      k8s.v1.cni.cncf.io\/networks: \{\{.Values.istio_cni.istio_cni_network\}\}\
     \{\{- end \}\}/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
 
   # allow the sidecar injector to set the runAsUser ID dynamically
