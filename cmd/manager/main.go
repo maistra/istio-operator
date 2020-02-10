@@ -23,7 +23,7 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	"github.com/operator-framework/operator-sdk/pkg/restmapper"
 	"github.com/spf13/pflag"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -49,12 +49,15 @@ func main() {
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
 	// number of concurrent reconciler for each controller
-	pflag.IntVar(&common.ControlPlaneReconcilers, "controlPlaneReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshControlPlane resources")
-	pflag.IntVar(&common.MemberRollReconcilers, "memberRollReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMemberRoll resources")
-	pflag.IntVar(&common.MemberReconcilers, "memberReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMember resources")
+	pflag.IntVar(&common.Options.ControlPlaneReconcilers, "controlPlaneReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshControlPlane resources")
+	pflag.IntVar(&common.Options.MemberRollReconcilers, "memberRollReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMemberRoll resources")
+	pflag.IntVar(&common.Options.MemberReconcilers, "memberReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMember resources")
 
 	// custom flags for istio operator
-	pflag.StringVar(&common.ResourceDir, "resourceDir", "/usr/local/share/istio-operator", "The location of the resources - helm charts, templates, etc.")
+	pflag.StringVar(&common.Options.ResourceDir, "resourceDir", "/usr/local/share/istio-operator", "The location of the resources - helm charts, templates, etc.")
+	pflag.StringVar(&common.Options.ChartsDir, "chartsDir", "", "The root location of the helm charts.")
+	pflag.StringVar(&common.Options.DefaultTemplatesDir, "defaultTemplatesDir", "", "The root location of the default templates.")
+	pflag.StringVar(&common.Options.UserTemplatesDir, "userTemplatesDir", "", "The root location of the user supplied templates.")
 
 	printVersion := false
 	pflag.BoolVar(&printVersion, "version", printVersion, "Prints version information and exits")

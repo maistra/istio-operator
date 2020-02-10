@@ -87,7 +87,7 @@ func TestReconcileReturnsErrorWhenUpdateFails(t *testing.T) {
 	secret := newSecret([]byte("new-value"))
 
 	_, tracker, r := createClientAndReconciler(t, webhookConfig, secret)
-	tracker.AddReactor(test.ClientFailsOn("update", "validatingwebhookconfigurations"))
+	tracker.AddReactor("update", "validatingwebhookconfigurations", test.ClientFails())
 	assertReconcileFails(r, t)
 }
 

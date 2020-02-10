@@ -45,7 +45,7 @@ const (
 	operatorVersionDefault = operatorVersion1_1
 
 	cniNetwork1_0     = "istio-cni"
-	cniNetwork1_1     = "v1.1-istio-cni"
+	cniNetwork1_1     = "v1-1-istio-cni"
 	cniNetworkDefault = cniNetwork1_1
 )
 
@@ -81,7 +81,7 @@ func TestReconcileFailsIfItCannotAddFinalizer(t *testing.T) {
 	roll.Finalizers = []string{}
 
 	_, tracker, r, _, _ := createClientAndReconciler(t, roll)
-	tracker.AddReactor(test.ClientFailsOn("update", "servicemeshmemberrolls"))
+	tracker.AddReactor("update", "servicemeshmemberrolls", test.ClientFails())
 	assertReconcileFails(r, t)
 }
 
@@ -104,7 +104,7 @@ func TestReconcileDoesNothingWhenMemberRollIsNotFound(t *testing.T) {
 
 func TestReconcileFailsWhenGetMemberRollFails(t *testing.T) {
 	_, tracker, r, _, _ := createClientAndReconciler(t)
-	tracker.AddReactor(test.ClientFailsOn("get", "servicemeshmemberrolls"))
+	tracker.AddReactor("get", "servicemeshmemberrolls", test.ClientFails())
 	assertReconcileFails(r, t)
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 }
@@ -112,7 +112,7 @@ func TestReconcileFailsWhenGetMemberRollFails(t *testing.T) {
 func TestReconcileFailsWhenListControlPlanesFails(t *testing.T) {
 	roll := newDefaultMemberRoll()
 	_, tracker, r, _, _ := createClientAndReconciler(t, roll)
-	tracker.AddReactor(test.ClientFailsOn("list", "servicemeshcontrolplanes"))
+	tracker.AddReactor("list", "servicemeshcontrolplanes", test.ClientFails())
 
 	assertReconcileFails(r, t)
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
@@ -163,7 +163,7 @@ func TestReconcileFailsIfAddingOwnerReferenceFails(t *testing.T) {
 	controlPlane := newControlPlane("")
 
 	_, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane)
-	tracker.AddReactor(test.ClientFailsOn("update", "servicemeshmemberrolls"))
+	tracker.AddReactor("update", "servicemeshmemberrolls", test.ClientFails())
 
 	assertReconcileFails(r, t)
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1) // we expect only the update that fails
@@ -206,7 +206,7 @@ func TestReconcileFailsIfListingNamespacesFails(t *testing.T) {
 	markControlPlaneReconciled(controlPlane, meshVersionDefault, operatorVersionDefault)
 
 	_, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane)
-	tracker.AddReactor(test.ClientFailsOn("list", "namespaces"))
+	tracker.AddReactor("list", "namespaces", test.ClientFails())
 
 	assertReconcileFails(r, t)
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
@@ -227,8 +227,8 @@ func TestReconcileReconcilesAfterOperatorUpgradeFromV1_0(t *testing.T) {
 	nad := createNAD(cniNetwork1_0, appNamespace, controlPlaneNamespace)
 
 	cl, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane, namespace, meshRoleBinding, appRoleBinding, nad)
-	tracker.AddReactor(assertNADNotDeleted(t))
-	tracker.AddReactor(assertRBNotCreated(t))
+	tracker.AddReactor("delete", "k8s.cni.cncf.io/v1, Resource=networkattachmentdefinitions", assertNADNotDeleted(t))
+	tracker.AddReactor("create", rbac.SchemeGroupVersion.WithResource("rolebindings").String(), assertRBNotCreated(t))
 	common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
 
 	assert.Equals(roll.Status.ServiceMeshReconciledVersion != controlPlane.Status.GetReconciledVersion(), true, "Unexpected Status.ServiceMeshReconciledVersion in SMMR already matches SMCP reconciled version", t)
@@ -334,7 +334,7 @@ func TestReconcileFailsIfMemberRollUpdateFails(t *testing.T) {
 
 	_, tracker, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace)
 	common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
-	tracker.AddReactor(test.ClientFailsOn("update", "servicemeshmemberrolls"))
+	tracker.AddReactor("update", "servicemeshmemberrolls", test.ClientFails())
 
 	assertReconcileFails(r, t)
 
@@ -594,7 +594,7 @@ func TestReconcileHandlesDeletionProperly(t *testing.T) {
 func TestClientReturnsErrorWhenRemovingFinalizer(t *testing.T) {
 	cases := []struct {
 		name                 string
-		reactor              test.ReactFunc
+		reactor              clienttesting.Reactor
 		successExpected      bool
 		expectedWriteActions int
 	}{
@@ -630,7 +630,7 @@ func TestClientReturnsErrorWhenRemovingFinalizer(t *testing.T) {
 			roll.DeletionTimestamp = &oneMinuteAgo
 
 			_, tracker, r, _, _ := createClientAndReconciler(t, roll)
-			tracker.AddReactor(tc.reactor)
+			tracker.AddReaction(tc.reactor)
 
 			if tc.successExpected {
 				assertReconcileSucceeds(r, t)
@@ -787,6 +787,7 @@ func newRoleBinding(namespace, name string) *rbac.RoleBinding {
 			Namespace: namespace,
 			Name:      name,
 		},
+		RoleRef: rbac.RoleRef{APIGroup: rbac.GroupName},
 	}
 }
 
@@ -865,21 +866,17 @@ func (f *fakeKialiReconciler) assertNotInvoked(t *testing.T) {
 	assert.False(f.reconcileKialiInvoked, "Expected reconcileKiali not to be invoked, but it was", t)
 }
 
-func assertRBNotCreated(t *testing.T) test.ReactFunc {
-	return func(action clienttesting.Action) (handled bool, err error) {
-		if action.Matches("create", rbac.SchemeGroupVersion.WithResource("rolebindings").String()) {
-			t.Errorf("Unexpected creation of RoleBinding")
-		}
-		return false, nil
+func assertRBNotCreated(t *testing.T) clienttesting.ReactionFunc {
+	return func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+		t.Errorf("Unexpected creation of RoleBinding")
+		return false, nil, nil
 	}
 }
 
-func assertNADNotDeleted(t *testing.T) test.ReactFunc {
-	return func(action clienttesting.Action) (handled bool, err error) {
-		if action.Matches("delete", "k8s.cni.cncf.io/v1, Resource=networkattachmentdefinitions") {
-			t.Errorf("Unexpected deletion of CNI NetworkAttachmentDefinition")
-		}
-		return false, nil
+func assertNADNotDeleted(t *testing.T) clienttesting.ReactionFunc {
+	return func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+		t.Errorf("Unexpected deletion of CNI NetworkAttachmentDefinition")
+		return false, nil, nil
 	}
 }
 

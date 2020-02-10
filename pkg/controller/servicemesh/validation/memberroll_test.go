@@ -76,7 +76,7 @@ func TestMemberRollWithControlPlaneNamespaceIsRejected(t *testing.T) {
 
 func TestMemberRollWithFailedSubjectAccessReview(t *testing.T) {
 	validator, _, tracker := createMemberRollValidatorTestFixture(smcp)
-	tracker.AddReactor(createSubjectAccessReviewReactor(false, nil))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(false, nil))
 
 	roll := newMemberRoll("default", "istio-system", "app-namespace")
 	response := validator.Handle(ctx, createCreateRequest(roll))
@@ -85,7 +85,7 @@ func TestMemberRollWithFailedSubjectAccessReview(t *testing.T) {
 
 func TestValidMemberRoll(t *testing.T) {
 	validator, _, tracker := createMemberRollValidatorTestFixture(smcp)
-	tracker.AddReactor(createSubjectAccessReviewReactor(true, nil))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, nil))
 
 	roll := newMemberRoll("default", "istio-system", "app-namespace")
 	response := validator.Handle(ctx, createCreateRequest(roll))
@@ -94,7 +94,7 @@ func TestValidMemberRoll(t *testing.T) {
 
 func TestMemberRollValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
 	validator, _, tracker := createMemberRollValidatorTestFixture(smcp)
-	tracker.AddReactor(createSubjectAccessReviewReactor(true, fmt.Errorf("SAR check error")))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, fmt.Errorf("SAR check error")))
 
 	roll := newMemberRoll("default", "istio-system", "app-namespace")
 	response := validator.Handle(ctx, createCreateRequest(roll))
@@ -104,7 +104,7 @@ func TestMemberRollValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
 func TestValidMemberRollUpdate(t *testing.T) {
 	oldRoll := newMemberRoll("default", "istio-system", "app-namespace1")
 	validator, _, tracker := createMemberRollValidatorTestFixture(smcp, oldRoll)
-	tracker.AddReactor(createSubjectAccessReviewReactor(true, nil))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, nil))
 
 	newRoll := oldRoll.DeepCopy()
 	newRoll.Labels = map[string]string{
@@ -117,23 +117,20 @@ func TestValidMemberRollUpdate(t *testing.T) {
 
 func TestMemberRollValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 	validator, _, tracker := createMemberRollValidatorTestFixture(smcp)
-	tracker.AddReactor(func(action clienttesting.Action) (handled bool, err error) {
-		if action.Matches("create", "subjectaccessreviews") {
-			createAction := action.(clienttesting.CreateAction)
-			sar := createAction.GetObject().(*authorizationv1.SubjectAccessReview)
-			assert.Equals(sar.Spec.User, userInfo.Username, "Unexpected User in SAR check", t)
-			assert.Equals(sar.Spec.UID, userInfo.UID, "Unexpected UID in SAR check", t)
-			assert.DeepEquals(sar.Spec.Groups, userInfo.Groups, "Unexpected Groups in SAR check", t)
-			assert.DeepEquals(sar.Spec.Extra, convertUserInfoExtra(userInfo.Extra), "Unexpected Extra in SAR check", t)
-			assert.Equals(sar.Spec.ResourceAttributes.Verb, "update", "Unexpected Verb in SAR check", t)
-			assert.Equals(sar.Spec.ResourceAttributes.Group, "", "Unexpected resource Group in SAR check", t)
-			assert.Equals(sar.Spec.ResourceAttributes.Resource, "pods", "Unexpected Resource in SAR check", t)
-			assert.Equals(sar.Spec.ResourceAttributes.Name, "", "Unexpected resource Name in SAR check", t)
-			assert.Equals(sar.Spec.ResourceAttributes.Namespace, "app-namespace", "Unexpected resource Namespace in SAR check", t)
-			sar.Status.Allowed = true
-			return true, nil
-		}
-		return false, nil
+	tracker.AddReactor("create", "subjectaccessreviews", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+		createAction := action.(clienttesting.CreateAction)
+		sar := createAction.GetObject().(*authorizationv1.SubjectAccessReview)
+		assert.Equals(sar.Spec.User, userInfo.Username, "Unexpected User in SAR check", t)
+		assert.Equals(sar.Spec.UID, userInfo.UID, "Unexpected UID in SAR check", t)
+		assert.DeepEquals(sar.Spec.Groups, userInfo.Groups, "Unexpected Groups in SAR check", t)
+		assert.DeepEquals(sar.Spec.Extra, convertUserInfoExtra(userInfo.Extra), "Unexpected Extra in SAR check", t)
+		assert.Equals(sar.Spec.ResourceAttributes.Verb, "update", "Unexpected Verb in SAR check", t)
+		assert.Equals(sar.Spec.ResourceAttributes.Group, "", "Unexpected resource Group in SAR check", t)
+		assert.Equals(sar.Spec.ResourceAttributes.Resource, "pods", "Unexpected Resource in SAR check", t)
+		assert.Equals(sar.Spec.ResourceAttributes.Name, "", "Unexpected resource Name in SAR check", t)
+		assert.Equals(sar.Spec.ResourceAttributes.Namespace, "app-namespace", "Unexpected resource Namespace in SAR check", t)
+		sar.Status.Allowed = true
+		return true, sar.DeepCopy(), nil
 	})
 
 	roll := newMemberRoll("default", "istio-system", "app-namespace")

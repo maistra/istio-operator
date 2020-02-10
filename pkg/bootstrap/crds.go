@@ -41,7 +41,7 @@ func internalInstallCRDs(ctx context.Context, cl client.Client, err *error) {
 	log := common.LogFromContext(ctx)
 	log.Info("ensuring CRDs have been installed")
 	// Always install the latest set of CRDs
-	crdPath := path.Join(common.GetHelmDir(common.DefaultMaistraVersion), "istio-init/files")
+	crdPath := path.Join(common.Options.GetChartsDir(common.DefaultMaistraVersion), "istio-init/files")
 	var crdDir os.FileInfo
 	crdDir, *err = os.Stat(crdPath)
 	if *err != nil || !crdDir.IsDir() {

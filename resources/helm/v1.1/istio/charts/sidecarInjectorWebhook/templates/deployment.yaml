@@ -56,7 +56,6 @@ spec:
             - --healthCheckFile=/tmp/health
             - --reconcileWebhookConfig=false
             - --port=8443
-            - --manageWebhookConfig=false
           ports:
           - name: webhook
             containerPort: 8443
