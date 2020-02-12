@@ -2,6 +2,7 @@ package memberroll
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
@@ -31,7 +32,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const controllerName = "servicemeshmemberroll-controller"
+const (
+	controllerName = "servicemeshmemberroll-controller"
+
+	statusAnnotationConfiguredMemberCount = "configuredMemberCount"
+)
 
 // Add creates a new ServiceMeshMemberRoll Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -400,6 +405,11 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			Message: "A namespace listed in .spec.members does not exist",
 		})
 	}
+
+	if instance.Status.Annotations == nil {
+		instance.Status.Annotations = map[string]string{}
+	}
+	instance.Status.Annotations[statusAnnotationConfiguredMemberCount] = fmt.Sprintf("%d/%d", len(instance.Status.ConfiguredMembers), requiredMembers.Len())
 
 	err = utilerrors.NewAggregate(nsErrors)
 	if err == nil {

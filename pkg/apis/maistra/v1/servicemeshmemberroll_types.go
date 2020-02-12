@@ -40,6 +40,8 @@ type ServiceMeshMemberRollSpec struct {
 
 // ServiceMeshMemberRollStatus contains the state last used to reconcile the list
 type ServiceMeshMemberRollStatus struct {
+	StatusBase `json:",inline"`
+
 	ObservedGeneration           int64    `json:"observedGeneration,omitempty"`
 	ServiceMeshGeneration        int64    `json:"meshGeneration,omitempty"`
 	ServiceMeshReconciledVersion string   `json:"meshReconciledVersion,omitempty"`
