@@ -10,6 +10,18 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
+type StatusBase struct {
+	// Annotations is an unstructured key value map used to store additional,
+	// usually redundant status information, such as the number of components
+	// deployed by the ServiceMeshControlPlane (number is redundant because
+	// you could just as easily count the elements in the ComponentStatus
+	// array). The reason to add this redundant information is to make it
+	// available to kubectl, which does not yet allow counting objects in
+	// JSONPath expressions.
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+}
+
 // StatusType represents the status for a control plane, component, or resource
 type StatusType struct {
 	Resource           string      `json:"resource,omitempty"`

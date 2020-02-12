@@ -46,6 +46,7 @@ type ServiceMeshControlPlaneRef struct {
 
 // ServiceMeshMemberStatus contains information on whether the Member has been reconciled or not
 type ServiceMeshMemberStatus struct {
+	StatusBase `json:",inline"`
 	// ObservedGeneration is the most recent generation observed by the controller.
 	ObservedGeneration int64 `json:"observedGeneration"`
 
