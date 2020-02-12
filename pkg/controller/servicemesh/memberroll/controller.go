@@ -385,6 +385,22 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, nil
 	}
 
+	if requiredMembers.Equal(sets.NewString(instance.Status.ConfiguredMembers...)) {
+		instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
+			Type:    v1.ConditionTypeMemberRollReady,
+			Status:  corev1.ConditionTrue,
+			Reason:  v1.ConditionReasonConfigured,
+			Message: "All namespaces have been configured successfully",
+		})
+	} else {
+		instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
+			Type:    v1.ConditionTypeMemberRollReady,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1.ConditionReasonNamespaceMissing,
+			Message: "A namespace listed in .spec.members does not exist",
+		})
+	}
+
 	err = utilerrors.NewAggregate(nsErrors)
 	if err == nil {
 		instance.Status.ObservedGeneration = instance.GetGeneration()
