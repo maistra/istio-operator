@@ -38,6 +38,8 @@ const (
 	eventReasonSuccessfulReconcile maistra.ConditionReason = "Reconciled"
 
 	maxStatusUpdateRetriesOnConflict = 3
+
+	statusAnnotationControlPlaneRef = "controlPlaneRef"
 )
 
 // Add creates a new ServiceMeshMember Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -262,6 +264,11 @@ func (r *MemberReconciler) reconcileMember(ctx context.Context, member *maistra.
 			r.recordEvent(member, core.EventTypeNormal, eventReasonSuccessfulReconcile, "Successfully added namespace to ServiceMeshMemberRoll")
 		}
 	}
+
+	if member.Status.Annotations == nil {
+		member.Status.Annotations = map[string]string{}
+	}
+	member.Status.Annotations[statusAnnotationControlPlaneRef] = member.Spec.ControlPlaneRef.String()
 
 	err = r.updateStatus(ctx, member, true, r.isNamespaceConfigured(memberRoll, member.Namespace), "", "")
 	return reconcile.Result{}, err

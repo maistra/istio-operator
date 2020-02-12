@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"fmt"
+
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -42,6 +44,10 @@ type ServiceMeshMemberSpec struct {
 type ServiceMeshControlPlaneRef struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
+}
+
+func (s ServiceMeshControlPlaneRef) String() string {
+	return fmt.Sprintf("%s%c%s", s.Namespace, '/', s.Name)
 }
 
 // ServiceMeshMemberStatus contains information on whether the Member has been reconciled or not
