@@ -16,12 +16,16 @@ spec:
     status: {}
   version: v1
   additionalPrinterColumns:
-  - JSONPath: .spec.controlPlaneRef.namespace
+  - name: Control Plane Namespace
     description: The ServiceMeshControlPlane's namespace that this namespace belongs
       to
-    name: Control Plane Namespace
     type: string
-  - JSONPath: .spec.controlPlaneRef.name
+    JSONPath: .spec.controlPlaneRef.namespace
+  - name: Control Plane
     description: The ServiceMeshControlPlane that this namespace belongs to
-    name: Control Plane
     type: string
+    JSONPath: .spec.controlPlaneRef.name
+  - name: Ready
+    description: Whether or not namespace is configured as a member of the mesh.
+    type: string
+    JSONPath: .status.conditions[?(@.type=="Ready")].status
