@@ -210,5 +210,9 @@ func getPatchedCrd(existingCrd *unstructured.Unstructured, crd *unstructured.Uns
 }
 
 func getMaistraVersion(crd *unstructured.Unstructured) (*semver.Version, error) {
-	return semver.NewVersion(crd.GetLabels()["maistra-version"])
+	versionLabel := crd.GetLabels()["maistra-version"]
+	if versionLabel == "" {
+		return nil, fmt.Errorf("Label maistra-version not found")
+	}
+	return semver.NewVersion(versionLabel)
 }

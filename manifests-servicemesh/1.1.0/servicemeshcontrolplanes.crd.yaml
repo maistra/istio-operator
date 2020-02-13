@@ -16,25 +16,30 @@ spec:
     status: {}
   version: v1
   additionalPrinterColumns:
-  - JSONPath: .status.conditions[?(@.type=="Ready")].status
-    name: Ready
+  - name: Ready
+    description: How many of the total number of member namespaces are
+      configured
+    type: string
+    JSONPath: '.status.annotations.readyComponentCount'
+  - JSONPath: .status.conditions[?(@.type=="Ready")].reason
+    name: Status
     description: Whether or not the control plane installation is up to date and ready
       to handle requests.
     type: string
-  - JSONPath: .status.conditions[?(@.type=="Ready")].message
-    name: Status
-    description: The status of the control plane installation.
+  - name: Template
+    description: The configuration template to use as the base.
+    type: string
+    JSONPath: .status.lastAppliedConfiguration.template
+  - name: Version
+    description: The actual current version of the control plane installation.
+    type: string
+    JSONPath: .status.lastAppliedConfiguration.version
+  - name: Age
+    description: The age of the object
+    type: date
+    JSONPath: .metadata.creationTimestamp
+  - name: Image HUB
+    description: The image hub used as the base for all component images.
     type: string
     priority: 1
-  - JSONPath: .status.conditions[?(@.type=="Reconciled")].status
-    name: Reconciled
-    description: Whether or not the control plane installation is up to date with
-      the latest version of this resource.
-    type: string
-    priority: 1
-  - JSONPath: .status.conditions[?(@.type=="Reconciled")].message
-    name: Reconciliation Status
-    description: The status of the reconciliation process, if the control plane is
-      not up to date with the latest version this resource.
-    type: string
-    priority: 1
+    JSONPath: .status.lastAppliedConfiguration.istio.global.hub
