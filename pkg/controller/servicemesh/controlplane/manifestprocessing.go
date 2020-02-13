@@ -15,8 +15,7 @@ func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.C
 	renderings, hasRenderings := r.renderings[chartName]
 	if !hasRenderings {
 		log.V(5).Info("no renderings for component")
-		ready = true
-		return
+		return true, nil
 	}
 
 	log.Info("reconciling component resources")
@@ -28,25 +27,26 @@ func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.C
 
 	mp := common.NewManifestProcessor(r.ControllerResources, r.Instance.GetNamespace(), r.meshGeneration, r.Instance.GetNamespace(), r.preprocessObject, r.processNewObject)
 	if err = mp.ProcessManifests(ctx, renderings, status.Resource); err != nil {
-		return
+		return false, err
 	}
 	if err = r.processNewComponent(componentName, status); err != nil {
 		log.Error(err, "error during postprocessing of component")
-		return
+		return false, err
 	}
 
 	// if we get here, the component has been successfully installed
 	delete(r.renderings, chartName)
 
 	// for reentry into the reconcile loop, if not ready
-	if notReadyMap, readyErr := r.calculateNotReadyState(ctx); readyErr == nil {
-		if notReadyMap[componentName] {
-			r.lastComponent = componentName
-		} else {
-			ready = true
-		}
-	} else {
-		err = readyErr
+	readinessMap, readyErr := r.calculateComponentReadiness(ctx)
+	if readyErr != nil {
+		return false, readyErr
 	}
-	return
+
+	ready, exists := readinessMap[componentName]
+	if exists && !ready {
+		r.lastComponent = componentName
+		return false, nil
+	}
+	return true, nil
 }

@@ -211,17 +211,17 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 				reconciliationMessage = "Failed to install/update Istio CNI"
 				log.Error(err, reconciliationMessage)
 				return
-			} else if notReady, _ := r.calculateNotReadyStateForCNI(ctx); notReady {
+			} else if ready, _ := r.isCNIReady(ctx); !ready {
 				reconciliationReason = v1.ConditionReasonPausingInstall
 				reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", "cni")
 				return
 			}
 		}
 	} else if r.lastComponent != "" {
-		if notReadyMap, readinessErr := r.calculateNotReadyState(ctx); readinessErr == nil {
+		if readinessMap, readinessErr := r.calculateComponentReadiness(ctx); readinessErr == nil {
 			// if we've already begun reconciling, make sure we weren't waiting for
 			// the last component to become ready
-			if notReady, ok := notReadyMap[r.lastComponent]; ok && notReady {
+			if ready, ok := readinessMap[r.lastComponent]; ok && !ready {
 				// last component has not become ready yet
 				log.Info(fmt.Sprintf("Paused until %s becomes ready", r.lastComponent))
 				return

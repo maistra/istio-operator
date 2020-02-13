@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -14,6 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+const statusAnnotationReadyComponentCount = "readyComponentCount"
 
 func (r *controlPlaneInstanceReconciler) UpdateReadiness(ctx context.Context) error {
 	log := common.LogFromContext(ctx)
@@ -36,7 +39,7 @@ func (r *controlPlaneInstanceReconciler) UpdateReadiness(ctx context.Context) er
 func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Context) (bool, error) {
 	log := common.LogFromContext(ctx)
 	log.Info("Updating ServiceMeshControlPlane readiness state")
-	notReadyState, err := r.calculateNotReadyState(ctx)
+	readinessMap, err := r.calculateComponentReadiness(ctx)
 	if err != nil {
 		condition := v1.Condition{
 			Type:    v1.ConditionTypeReady,
@@ -48,11 +51,15 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 		r.EventRecorder.Event(r.Instance, corev1.EventTypeWarning, eventReasonNotReady, condition.Message)
 		return true, err
 	}
-	unreadyComponents := make([]string, 0, len(notReadyState))
-	for component, notReady := range notReadyState {
-		if notReady {
+
+	readyComponents := sets.NewString()
+	unreadyComponents := sets.NewString()
+	for component, ready := range readinessMap {
+		if ready {
+			readyComponents.Insert(component)
+		} else {
 			log.Info(fmt.Sprintf("%s resources are not fully available", component))
-			unreadyComponents = append(unreadyComponents, component)
+			unreadyComponents.Insert(component)
 		}
 	}
 	readyCondition := r.Status.GetCondition(v1.ConditionTypeReady)
@@ -83,49 +90,53 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 		}
 	}
 
+	if r.Status.Annotations == nil {
+		r.Status.Annotations = map[string]string{}
+	}
+	r.Status.Annotations[statusAnnotationReadyComponentCount] = fmt.Sprintf("%d/%d", len(readyComponents), len(readinessMap))
+
 	return updateStatus, nil
 }
 
-func (r *controlPlaneInstanceReconciler) calculateNotReadyState(ctx context.Context) (map[string]bool, error) {
-	var cniNotReady bool
-	notReadyState := map[string]bool{}
-	err := r.calculateNotReadyStateForType(ctx, appsv1.SchemeGroupVersion.WithKind("Deployment"), notReadyState, r.deploymentReady)
-	if err != nil {
-		return notReadyState, err
+func (r *controlPlaneInstanceReconciler) calculateComponentReadiness(ctx context.Context) (map[string]bool, error) {
+	readinessMap := map[string]bool{}
+	typesToCheck := map[schema.GroupVersionKind]func(context.Context, *unstructured.Unstructured) bool{
+		appsv1.SchemeGroupVersion.WithKind("Deployment"):  r.deploymentReady,
+		appsv1.SchemeGroupVersion.WithKind("StatefulSet"): r.statefulSetReady,
+		appsv1.SchemeGroupVersion.WithKind("DaemonSet"):   r.daemonSetReady,
 	}
-	err = r.calculateNotReadyStateForType(ctx, appsv1.SchemeGroupVersion.WithKind("StatefulSet"), notReadyState, r.statefulSetReady)
-	if err != nil {
-		return notReadyState, err
+	for gvk, isReadyFunc := range typesToCheck {
+		err := r.calculateReadinessForType(ctx, gvk, readinessMap, isReadyFunc)
+		if err != nil {
+			return readinessMap, err
+		}
 	}
-	err = r.calculateNotReadyStateForType(ctx, appsv1.SchemeGroupVersion.WithKind("DaemonSet"), notReadyState, r.daemonSetReady)
-	if err != nil {
-		return notReadyState, err
-	}
-	cniNotReady, err = r.calculateNotReadyStateForCNI(ctx)
-	notReadyState["cni"] = cniNotReady
-	return notReadyState, err
+
+	cniReady, err := r.isCNIReady(ctx)
+	readinessMap["cni"] = cniReady
+	return readinessMap, err
 }
 
-func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForCNI(ctx context.Context) (bool, error) {
+func (r *controlPlaneInstanceReconciler) isCNIReady(ctx context.Context) (bool, error) {
 	if !r.cniConfig.Enabled {
-		return false, nil
+		return true, nil
 	}
 	labelSelector := map[string]string{"istio": "cni"}
 	daemonSets := &unstructured.UnstructuredList{}
 	daemonSets.SetGroupVersionKind(appsv1.SchemeGroupVersion.WithKind("DaemonSet"))
 	operatorNamespace := common.GetOperatorNamespace()
 	if err := r.Client.List(ctx, client.MatchingLabels(labelSelector).InNamespace(operatorNamespace), daemonSets); err != nil {
-		return true, err
+		return false, err
 	}
 	for _, ds := range daemonSets.Items {
 		if !r.daemonSetReady(ctx, &ds) {
-			return true, nil
+			return false, nil
 		}
 	}
-	return false, nil
+	return true, nil
 }
 
-func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForType(ctx context.Context, gvk schema.GroupVersionKind, notReadyState map[string]bool, isReady func(context.Context, *unstructured.Unstructured) bool) error {
+func (r *controlPlaneInstanceReconciler) calculateReadinessForType(ctx context.Context, gvk schema.GroupVersionKind, readinessMap map[string]bool, isReady func(context.Context, *unstructured.Unstructured) bool) error {
 	log := common.LogFromContext(ctx)
 	resources, err := common.FetchOwnedResources(ctx, r.Client, gvk, r.Instance.GetNamespace(), r.Instance.GetNamespace())
 	if err != nil {
@@ -133,7 +144,12 @@ func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForType(ctx conte
 	}
 	for _, resource := range resources.Items {
 		if component, ok := common.GetLabel(&resource, common.KubernetesAppComponentKey); ok {
-			notReadyState[component] = notReadyState[component] || !isReady(ctx, &resource)
+			componentReady := isReady(ctx, &resource)
+			if ready, exists := readinessMap[component]; exists {
+				readinessMap[component] = ready && componentReady
+			} else {
+				readinessMap[component] = componentReady
+			}
 		} else {
 			// how do we have an owned resource with no component label?
 			log.Error(nil, "skipping resource for readiness check: resource has no component label", gvk.Kind, resource.GetName())
