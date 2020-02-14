@@ -28,17 +28,17 @@ import (
 
 var crdMutex sync.Mutex // ensure two workers don't deploy CRDs at same time
 
-// InstallCRDs makes sure all CRDs have been installed.  CRDs are located from
-// files in controller.HelmDir/istio-init/files
-func InstallCRDs(ctx context.Context, cl client.Client, version string) error {
+// InstallCRDs makes sure all CRDs from the specified chartsDir have been
+// installed. CRDs are loaded from chartsDir/istio-init/files
+func InstallCRDs(ctx context.Context, cl client.Client, chartsDir string) error {
 	// we only try to install them once.  if there's an error, we should probably
 	// panic, as there's no way to recover.  for now, we just pass the error along.
 	crdMutex.Lock()
 	defer crdMutex.Unlock()
 
 	log := common.LogFromContext(ctx)
-	log.Info(fmt.Sprintf("ensuring %s CRDs are installed", version))
-	crdPath := path.Join(common.Options.GetChartsDir(version), "istio-init/files")
+	log.Info("ensuring CRDs are installed")
+	crdPath := path.Join(chartsDir, "istio-init", "files")
 	crdDir, err := os.Stat(crdPath)
 	if err != nil || !crdDir.IsDir() {
 		return fmt.Errorf("Cannot locate any CRD files in %s", crdPath)
