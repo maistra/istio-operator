@@ -14,16 +14,14 @@ import (
 
 // InitializeGlobals returns a function which initializes global variables used
 // by the system under test.  operatorNamespace is the namespace within which
-// the operator is installed.  cniEnabled is used to initialize
-// common.IsCNIEnabled.
-func InitializeGlobals(operatorNamespace string, cniEnabled bool) func() {
+// the operator is installed.
+func InitializeGlobals(operatorNamespace string) func() {
 	return func() {
 		// make sure globals are initialized for testing
 		os.Setenv("ISTIO_CNI_IMAGE_V1_0", "istio-cni-test-1_0")
 		os.Setenv("ISTIO_CNI_IMAGE_V1_1", "istio-cni-test-1_1")
 		os.Setenv("POD_NAMESPACE", operatorNamespace)
 		common.GetOperatorNamespace()
-		common.IsCNIEnabled = cniEnabled
 		if _, filename, _, ok := goruntime.Caller(0); ok {
 			common.Options.ResourceDir = path.Join(path.Dir(filename), "../../../../resources")
 			common.Options.ChartsDir = path.Join(common.Options.ResourceDir, "helm")
