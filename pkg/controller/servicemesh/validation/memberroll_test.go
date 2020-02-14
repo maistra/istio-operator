@@ -78,7 +78,7 @@ func TestMemberRollWithControlPlaneNamespaceIsRejected(t *testing.T) {
 
 func TestMemberRollWithFailedSubjectAccessReview(t *testing.T) {
 	validator, _, tracker := createMemberRollValidatorTestFixture(smcp)
-	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(false, nil))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(false, false, nil))
 
 	roll := newMemberRoll("default", "istio-system", "app-namespace")
 	response := validator.Handle(ctx, createCreateRequest(roll))
@@ -87,7 +87,7 @@ func TestMemberRollWithFailedSubjectAccessReview(t *testing.T) {
 
 func TestValidMemberRoll(t *testing.T) {
 	validator, _, tracker := createMemberRollValidatorTestFixture(smcp)
-	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, nil))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, true, nil))
 
 	roll := newMemberRoll("default", "istio-system", "app-namespace")
 	response := validator.Handle(ctx, createCreateRequest(roll))
@@ -118,16 +118,7 @@ func TestClusterScopedSARCheckSuffices(t *testing.T) {
 
 func TestNamespaceScopedSARCheckPerformedWhenClusterScopedReturnsFalse(t *testing.T) {
 	validator, _, tracker := createMemberRollValidatorTestFixture(smcp)
-	tracker.AddReactor("create", "subjectaccessreviews", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-		createAction := action.(clienttesting.CreateAction)
-		sar := createAction.GetObject().(*authorization.SubjectAccessReview)
-		if sar.Spec.ResourceAttributes.Namespace == "" {
-			sar.Status.Allowed = false
-		} else {
-			sar.Status.Allowed = true
-		}
-		return true, sar.DeepCopy(), nil
-	})
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(false, true, nil))
 
 	roll := newMemberRoll("default", "istio-system", "app-namespace")
 	response := validator.Handle(ctx, createCreateRequest(roll))
@@ -136,7 +127,7 @@ func TestNamespaceScopedSARCheckPerformedWhenClusterScopedReturnsFalse(t *testin
 
 func TestMemberRollValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
 	validator, _, tracker := createMemberRollValidatorTestFixture(smcp)
-	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, fmt.Errorf("SAR check error")))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(false, false, fmt.Errorf("SAR check error")))
 
 	roll := newMemberRoll("default", "istio-system", "app-namespace")
 	response := validator.Handle(ctx, createCreateRequest(roll))
@@ -144,15 +135,30 @@ func TestMemberRollValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
 	assert.Equals(response.Response.Result.Code, int32(http.StatusInternalServerError), "Unexpected result code", t)
 }
 
-func TestValidMemberRollUpdate(t *testing.T) {
+func TestSARCheckOnlyPerformedForNewlyAddedNamespacesOnUpdate(t *testing.T) {
 	oldRoll := newMemberRoll("default", "istio-system", "app-namespace1")
 	validator, _, tracker := createMemberRollValidatorTestFixture(smcp, oldRoll)
-	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, nil))
+	sarCheckNumber := 0
+	tracker.AddReactor("create", "subjectaccessreviews", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+		sarCheckNumber++
+		if sarCheckNumber > 2 {
+			t.Fatalf("More than two SAR checks were performed")
+		}
+
+		createAction := action.(clienttesting.CreateAction)
+		sar := createAction.GetObject().(*authorization.SubjectAccessReview)
+		if sar.Spec.ResourceAttributes.Namespace == "" {
+			sar.Status.Allowed = false
+			return true, sar.DeepCopy(), nil
+		}
+
+		assert.Equals(sar.Spec.ResourceAttributes.Namespace, "app-namespace2", "Unexpected namespace in SAR check", t)
+		sar.Status.Allowed = true
+		return true, sar.DeepCopy(), nil
+	})
 
 	newRoll := oldRoll.DeepCopy()
-	newRoll.Labels = map[string]string{
-		"some-label": "some-label-value",
-	}
+	newRoll.Spec.Members = append(newRoll.Spec.Members, "app-namespace2")
 
 	response := validator.Handle(ctx, createUpdateRequest(oldRoll, newRoll))
 	assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshMemberRoll update", t)
