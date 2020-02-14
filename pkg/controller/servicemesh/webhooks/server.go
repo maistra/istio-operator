@@ -7,6 +7,7 @@ import (
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	webhookcommon "github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/common"
+	"github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/mutation"
 	"github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/validation"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -35,6 +36,7 @@ func Add(mgr manager.Manager) error {
 			CertDir: "/tmp/cert",
 			BootstrapOptions: &webhook.BootstrapOptions{
 				ValidatingWebhookConfigName: fmt.Sprintf("%s.servicemesh-resources.maistra.io", operatorNamespace),
+				MutatingWebhookConfigName:   fmt.Sprintf("%s.servicemesh-resources.maistra.io", operatorNamespace),
 				Service: &webhook.Service{
 					Name:      "admission-controller",
 					Namespace: operatorNamespace,
@@ -72,6 +74,14 @@ func Add(mgr manager.Manager) error {
 			FailurePolicy: &failurePolicy,
 			Type:          types.WebhookTypeValidating,
 			Handlers:      []admission.Handler{validation.NewMemberRollValidator(namespaceFilter)},
+		},
+		&admission.Webhook{
+			Name:          "smmr.mutation.maistra.io",
+			Path:          "/mutate-smmr",
+			Rules:         rulesFor("servicemeshmemberrolls", arbeta1.Create, arbeta1.Update),
+			FailurePolicy: &failurePolicy,
+			Type:          types.WebhookTypeMutating,
+			Handlers:      []admission.Handler{mutation.NewMemberRollMutator(namespaceFilter)},
 		},
 		&admission.Webhook{
 			Name:          "smm.validation.maistra.io",

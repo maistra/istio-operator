@@ -133,7 +133,7 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 	return admission.ValidationResponse(true, "")
 }
 
-func (v *memberRollValidator) isUserAllowedToUpdatePods(ctx context.Context, req atypes.Request, member string) (bool, error) {
+func (v *MemberRollValidator) isUserAllowedToUpdatePods(ctx context.Context, req atypes.Request, member string) (bool, error) {
 	log := common.LogFromContext(ctx)
 	log.Info("Performing SAR check")
 	sar := &authorizationv1.SubjectAccessReview{
