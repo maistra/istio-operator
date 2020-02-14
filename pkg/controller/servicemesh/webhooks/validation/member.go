@@ -11,6 +11,7 @@ import (
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	webhookcommon "github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/common"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
@@ -23,13 +24,17 @@ type MemberValidator struct {
 	decoder atypes.Decoder
 }
 
+func NewMemberValidator() *MemberValidator {
+	return &MemberValidator{}
+}
+
 var _ admission.Handler = (*MemberValidator)(nil)
 var _ inject.Client = (*MemberValidator)(nil)
 var _ inject.Decoder = (*MemberValidator)(nil)
 
 func (v *MemberValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
 	logger := logf.Log.WithName("smm-validator").
-		WithValues("ServiceMeshMember", toNamespacedName(req.AdmissionRequest))
+		WithValues("ServiceMeshMember", webhookcommon.ToNamespacedName(req.AdmissionRequest))
 	smm := &maistrav1.ServiceMeshMember{}
 
 	err := v.decoder.Decode(req, smm)

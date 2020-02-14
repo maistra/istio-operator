@@ -12,6 +12,7 @@ import (
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	webhookcommon "github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/common"
 
 	authenticationv1 "k8s.io/api/authentication/v1"
 	authorizationv1 "k8s.io/api/authorization/v1"
@@ -23,8 +24,15 @@ import (
 )
 
 type MemberRollValidator struct {
-	client  client.Client
-	decoder atypes.Decoder
+	client          client.Client
+	decoder         atypes.Decoder
+	namespaceFilter webhookcommon.NamespaceFilter
+}
+
+func NewMemberRollValidator(namespaceFilter webhookcommon.NamespaceFilter) *MemberRollValidator {
+	return &MemberRollValidator{
+		namespaceFilter: namespaceFilter,
+	}
 }
 
 var _ admission.Handler = (*MemberRollValidator)(nil)
@@ -33,7 +41,7 @@ var _ inject.Decoder = (*MemberRollValidator)(nil)
 
 func (v *MemberRollValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
 	logger := logf.Log.WithName("smmr-validator").
-		WithValues("ServiceMeshMemberRoll", toNamespacedName(req.AdmissionRequest))
+		WithValues("ServiceMeshMemberRoll", webhookcommon.ToNamespacedName(req.AdmissionRequest))
 	smmr := &maistrav1.ServiceMeshMemberRoll{}
 
 	err := v.decoder.Decode(req, smmr)
@@ -43,7 +51,7 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 	}
 
 	// do we care about this object?
-	if !watchNamespace.watching(smmr.Namespace) {
+	if !v.namespaceFilter.Watching(smmr.Namespace) {
 		logger.Info(fmt.Sprintf("operator is not watching namespace '%s'", smmr.Namespace))
 		return admission.ValidationResponse(true, "")
 	} else if smmr.ObjectMeta.DeletionTimestamp != nil {

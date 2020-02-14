@@ -10,6 +10,7 @@ import (
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	webhookcommon "github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/common"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
@@ -18,8 +19,15 @@ import (
 )
 
 type ControlPlaneValidator struct {
-	client  client.Client
-	decoder atypes.Decoder
+	client          client.Client
+	decoder         atypes.Decoder
+	namespaceFilter webhookcommon.NamespaceFilter
+}
+
+func NewControlPlaneValidator(namespaceFilter webhookcommon.NamespaceFilter) *ControlPlaneValidator {
+	return &ControlPlaneValidator{
+		namespaceFilter: namespaceFilter,
+	}
 }
 
 var _ admission.Handler = (*ControlPlaneValidator)(nil)
@@ -28,7 +36,7 @@ var _ inject.Decoder = (*ControlPlaneValidator)(nil)
 
 func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
 	logger := logf.Log.WithName("smcp-validator").
-		WithValues("ServiceMeshControlPlane", toNamespacedName(req.AdmissionRequest))
+		WithValues("ServiceMeshControlPlane", webhookcommon.ToNamespacedName(req.AdmissionRequest))
 	smcp := &maistrav1.ServiceMeshControlPlane{}
 
 	err := v.decoder.Decode(req, smcp)
@@ -41,7 +49,7 @@ func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 	}
 
 	// do we care about this object?
-	if !watchNamespace.watching(smcp.Namespace) {
+	if !v.namespaceFilter.Watching(smcp.Namespace) {
 		logger.Info(fmt.Sprintf("operator is not watching namespace '%s'", smcp.Namespace))
 		return admission.ValidationResponse(true, "")
 	}
