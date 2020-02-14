@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -16,17 +17,17 @@ import (
 	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 )
 
-type controlPlaneValidator struct {
+type ControlPlaneValidator struct {
 	client  client.Client
 	decoder atypes.Decoder
 }
 
-var _ admission.Handler = (*controlPlaneValidator)(nil)
-var _ inject.Client = (*controlPlaneValidator)(nil)
-var _ inject.Decoder = (*controlPlaneValidator)(nil)
+var _ admission.Handler = (*ControlPlaneValidator)(nil)
+var _ inject.Client = (*ControlPlaneValidator)(nil)
+var _ inject.Decoder = (*ControlPlaneValidator)(nil)
 
-func (v *controlPlaneValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
-	logger := log.WithName("smcp-validator").
+func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
+	logger := logf.Log.WithName("smcp-validator").
 		WithValues("ServiceMeshControlPlane", toNamespacedName(req.AdmissionRequest))
 	smcp := &maistrav1.ServiceMeshControlPlane{}
 
@@ -72,13 +73,13 @@ func (v *controlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 }
 
 // InjectClient injects the client.
-func (v *controlPlaneValidator) InjectClient(c client.Client) error {
+func (v *ControlPlaneValidator) InjectClient(c client.Client) error {
 	v.client = c
 	return nil
 }
 
 // InjectDecoder injects the decoder.
-func (v *controlPlaneValidator) InjectDecoder(d atypes.Decoder) error {
+func (v *ControlPlaneValidator) InjectDecoder(d atypes.Decoder) error {
 	v.decoder = d
 	return nil
 }

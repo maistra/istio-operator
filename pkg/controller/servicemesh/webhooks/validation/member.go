@@ -7,6 +7,7 @@ import (
 
 	admissionv1 "k8s.io/api/admission/v1beta1"
 	authorizationv1 "k8s.io/api/authorization/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -17,17 +18,17 @@ import (
 	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 )
 
-type memberValidator struct {
+type MemberValidator struct {
 	client  client.Client
 	decoder atypes.Decoder
 }
 
-var _ admission.Handler = (*memberValidator)(nil)
-var _ inject.Client = (*memberValidator)(nil)
-var _ inject.Decoder = (*memberValidator)(nil)
+var _ admission.Handler = (*MemberValidator)(nil)
+var _ inject.Client = (*MemberValidator)(nil)
+var _ inject.Decoder = (*MemberValidator)(nil)
 
-func (v *memberValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
-	logger := log.WithName("smm-validator").
+func (v *MemberValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
+	logger := logf.Log.WithName("smm-validator").
 		WithValues("ServiceMeshMember", toNamespacedName(req.AdmissionRequest))
 	smm := &maistrav1.ServiceMeshMember{}
 
@@ -92,13 +93,13 @@ func (v *memberValidator) Handle(ctx context.Context, req atypes.Request) atypes
 }
 
 // InjectClient injects the client.
-func (v *memberValidator) InjectClient(c client.Client) error {
+func (v *MemberValidator) InjectClient(c client.Client) error {
 	v.client = c
 	return nil
 }
 
 // InjectDecoder injects the decoder.
-func (v *memberValidator) InjectDecoder(d atypes.Decoder) error {
+func (v *MemberValidator) InjectDecoder(d atypes.Decoder) error {
 	v.decoder = d
 	return nil
 }
