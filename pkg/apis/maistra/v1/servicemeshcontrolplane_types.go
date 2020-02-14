@@ -16,6 +16,8 @@ func init() {
 	SchemeBuilder.Register(&ServiceMeshControlPlane{}, &ServiceMeshControlPlaneList{})
 }
 
+const DefaultTemplate = "default"
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ServiceMeshControlPlane is the Schema for the controlplanes API
@@ -59,9 +61,16 @@ type HelmValuesType map[string]interface{}
 
 // ControlPlaneSpec represents the configuration for installing a control plane
 type ControlPlaneSpec struct {
-	//Template selects the template to use for default values
+	// Template selects the template to use for default values. Defaults to
+	// "default" when not set.
 	Template string `json:"template,omitempty"`
-	Version  string `json:"version,omitempty"`
+
+	// Version specifies what Maistra version of the control plane to install.
+	// When creating a new ServiceMeshControlPlane with an empty version, the
+	// admission webhook sets the version to the current version.
+	// Existing ServiceMeshControlPlanes with an empty version are treated as
+	// having the version set to "v1.0"
+	Version string `json:"version,omitempty"`
 
 	// NetworkType of the cluster.  Defaults to subnet.
 	NetworkType NetworkType    `json:"networkType,omitempty"`

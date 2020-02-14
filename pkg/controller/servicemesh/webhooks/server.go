@@ -68,6 +68,14 @@ func Add(mgr manager.Manager) error {
 			Handlers:      []admission.Handler{validation.NewControlPlaneValidator(namespaceFilter)},
 		},
 		&admission.Webhook{
+			Name:          "smcp.mutation.maistra.io",
+			Path:          "/mutate-smcp",
+			Rules:         rulesFor("servicemeshcontrolplanes", arbeta1.Create, arbeta1.Update),
+			FailurePolicy: &failurePolicy,
+			Type:          types.WebhookTypeMutating,
+			Handlers:      []admission.Handler{mutation.NewControlPlaneMutator(namespaceFilter)},
+		},
+		&admission.Webhook{
 			Name:          "smmr.validation.maistra.io",
 			Path:          "/validate-smmr",
 			Rules:         rulesFor("servicemeshmemberrolls", arbeta1.Create, arbeta1.Update),
