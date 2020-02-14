@@ -2,6 +2,7 @@ package validation
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 
 	authorizationv1 "k8s.io/api/authorization/v1"
@@ -80,7 +81,7 @@ func TestMutationOfSpecControlPlaneRefIsRejected(t *testing.T) {
 
 func TestMemberWithFailedSubjectAccessReview(t *testing.T) {
 	validator, _, tracker := createMemberValidatorTestFixture()
-	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(false, nil))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(false, false, nil))
 
 	member := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	response := validator.Handle(ctx, createCreateRequest(member))
@@ -89,7 +90,7 @@ func TestMemberWithFailedSubjectAccessReview(t *testing.T) {
 
 func TestValidMemberCreation(t *testing.T) {
 	validator, _, tracker := createMemberValidatorTestFixture()
-	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, nil))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, true, nil))
 
 	member := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	response := validator.Handle(ctx, createCreateRequest(member))
@@ -99,7 +100,7 @@ func TestValidMemberCreation(t *testing.T) {
 func TestValidMemberUpdate(t *testing.T) {
 	oldMember := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	validator, _, tracker := createMemberValidatorTestFixture()
-	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, nil))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, true, nil))
 
 	newMember := oldMember.DeepCopy()
 	newMember.Labels = map[string]string{
@@ -112,11 +113,12 @@ func TestValidMemberUpdate(t *testing.T) {
 
 func TestMemberValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
 	validator, _, tracker := createMemberValidatorTestFixture()
-	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, fmt.Errorf("SAR check error")))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, true, fmt.Errorf("SAR check error")))
 
 	roll := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	response := validator.Handle(ctx, createCreateRequest(roll))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMember due to SAR check error", t)
+	assert.Equals(response.Response.Result.Code, int32(http.StatusInternalServerError), "Unexpected result code", t)
 }
 
 func TestMemberValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
@@ -143,7 +145,7 @@ func TestMemberValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 
 func invokeMemberValidator(request atypes.Request) atypes.Response {
 	validator, _, tracker := createMemberValidatorTestFixture()
-	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, nil))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, true, nil))
 	response := validator.Handle(ctx, request)
 	return response
 }

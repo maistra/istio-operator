@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	admissionv1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -96,8 +97,20 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 		return admission.ErrorResponse(http.StatusInternalServerError, err)
 	}
 	if !allowed {
-		// check each namespace separately
-		for _, member := range smmr.Spec.Members {
+		// check each namespace separately, but only check newly added namespaces
+		namespacesToCheck := sets.NewString(smmr.Spec.Members...)
+
+		if req.AdmissionRequest.Operation == admissionv1.Update {
+			oldSmmr := &maistrav1.ServiceMeshMemberRoll{}
+			err := v.decoder.DecodeRaw(req.AdmissionRequest.OldObject, oldSmmr)
+			if err != nil {
+				logger.Error(err, "error decoding old object in admission request")
+				return admission.ErrorResponse(http.StatusBadRequest, err)
+			}
+			namespacesToCheck.Delete(oldSmmr.Spec.Members...)
+		}
+
+		for _, member := range namespacesToCheck.List() {
 			allowed, err := v.isUserAllowedToUpdatePods(common.NewContextWithLog(ctx, logger.WithValues("namespace", member)), req, member)
 			if err != nil {
 				return admission.ErrorResponse(http.StatusInternalServerError, err)
