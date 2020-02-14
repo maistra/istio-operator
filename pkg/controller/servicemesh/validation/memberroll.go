@@ -89,32 +89,51 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 		} else if smmr.Namespace == member {
 			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "mesh project/namespace cannot be listed as a member")
 		}
-		// verify user can access all smmr member namespaces
-		sar := &authorizationv1.SubjectAccessReview{
-			Spec: authorizationv1.SubjectAccessReviewSpec{
-				User:   req.AdmissionRequest.UserInfo.Username,
-				UID:    req.AdmissionRequest.UserInfo.UID,
-				Extra:  convertUserInfoExtra(req.AdmissionRequest.UserInfo.Extra),
-				Groups: req.AdmissionRequest.UserInfo.Groups,
-				ResourceAttributes: &authorizationv1.ResourceAttributes{
-					Verb:      "update",
-					Group:     "",
-					Resource:  "pods",
-					Namespace: member,
-				},
-			},
-		}
-		err = v.client.Create(ctx, sar)
-		if err != nil {
-			logger.Error(err, "error processing SubjectAccessReview")
-			return admission.ErrorResponse(http.StatusInternalServerError, err)
-		}
-		if !sar.Status.Allowed || sar.Status.Denied {
-			return validationFailedResponse(http.StatusForbidden, metav1.StatusReasonBadRequest, fmt.Sprintf("user '%s' does not have permission to access project/namespace '%s'", req.AdmissionRequest.UserInfo.Username, member))
+	}
+
+	allowed, err := v.isUserAllowedToUpdatePods(common.NewContextWithLog(ctx, logger.WithValues("namespace", "<all>")), req, "")
+	if err != nil {
+		return admission.ErrorResponse(http.StatusInternalServerError, err)
+	}
+	if !allowed {
+		// check each namespace separately
+		for _, member := range smmr.Spec.Members {
+			allowed, err := v.isUserAllowedToUpdatePods(common.NewContextWithLog(ctx, logger.WithValues("namespace", member)), req, member)
+			if err != nil {
+				return admission.ErrorResponse(http.StatusInternalServerError, err)
+			}
+			if !allowed {
+				return validationFailedResponse(http.StatusForbidden, metav1.StatusReasonBadRequest, fmt.Sprintf("user '%s' does not have permission to access project/namespace '%s'", req.AdmissionRequest.UserInfo.Username, member))
+			}
 		}
 	}
 
 	return admission.ValidationResponse(true, "")
+}
+
+func (v *memberRollValidator) isUserAllowedToUpdatePods(ctx context.Context, req atypes.Request, member string) (bool, error) {
+	log := common.LogFromContext(ctx)
+	log.Info("Performing SAR check")
+	sar := &authorizationv1.SubjectAccessReview{
+		Spec: authorizationv1.SubjectAccessReviewSpec{
+			User:   req.AdmissionRequest.UserInfo.Username,
+			UID:    req.AdmissionRequest.UserInfo.UID,
+			Extra:  convertUserInfoExtra(req.AdmissionRequest.UserInfo.Extra),
+			Groups: req.AdmissionRequest.UserInfo.Groups,
+			ResourceAttributes: &authorizationv1.ResourceAttributes{
+				Verb:      "update",
+				Group:     "",
+				Resource:  "pods",
+				Namespace: member,
+			},
+		},
+	}
+	err := v.client.Create(ctx, sar)
+	if err != nil {
+		log.Error(err, "error processing SubjectAccessReview")
+		return false, err
+	}
+	return sar.Status.Allowed && !sar.Status.Denied, nil
 }
 
 func convertUserInfoExtra(extra map[string]authenticationv1.ExtraValue) map[string]authorizationv1.ExtraValue {
