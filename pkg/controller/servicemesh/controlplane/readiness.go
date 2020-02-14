@@ -107,7 +107,7 @@ func (r *controlPlaneInstanceReconciler) calculateNotReadyState(ctx context.Cont
 }
 
 func (r *controlPlaneInstanceReconciler) calculateNotReadyStateForCNI(ctx context.Context) (bool, error) {
-	if !common.IsCNIEnabled {
+	if !r.cniConfig.Enabled {
 		return false, nil
 	}
 	labelSelector := map[string]string{"istio": "cni"}

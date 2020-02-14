@@ -37,11 +37,15 @@ const controllerName = "servicemeshmemberroll-controller"
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	kialiReconciler := defaultKialiReconciler{Client: mgr.GetClient()}
-	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetRecorder(controllerName), newNamespaceReconciler, &kialiReconciler))
+	cniConfig, err := common.InitCNIConfig(mgr)
+	if err != nil {
+		return err
+	}
+	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetRecorder(controllerName), newNamespaceReconciler, &kialiReconciler, cniConfig))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, namespaceReconcilerFactory NamespaceReconcilerFactory, kialiReconciler KialiReconciler) *MemberRollReconciler {
+func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, namespaceReconcilerFactory NamespaceReconcilerFactory, kialiReconciler KialiReconciler, cniConfig common.CNIConfig) *MemberRollReconciler {
 	return &MemberRollReconciler{
 		ControllerResources: common.ControllerResources{
 			Client:        cl,
@@ -49,6 +53,7 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 			EventRecorder: eventRecorder,
 			PatchFactory:  common.NewPatchFactory(cl),
 		},
+		cniConfig:                  cniConfig,
 		namespaceReconcilerFactory: namespaceReconcilerFactory,
 		kialiReconciler:            kialiReconciler,
 	}
@@ -160,6 +165,7 @@ type NamespaceReconcilerFactory func(ctx context.Context, cl client.Client, mesh
 // MemberRollReconciler reconciles a ServiceMeshMemberRoll object
 type MemberRollReconciler struct {
 	common.ControllerResources
+	cniConfig common.CNIConfig
 
 	namespaceReconcilerFactory NamespaceReconcilerFactory
 	kialiReconciler            KialiReconciler
@@ -412,7 +418,7 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 	configured := sets.NewString(namespacesToRemove.List()...)
 	configured.Delete(controlPlaneNamespace)
 	// create reconciler
-	reconciler, err := r.namespaceReconcilerFactory(ctx, r.Client, controlPlaneNamespace, controlPlaneVersion, common.IsCNIEnabled)
+	reconciler, err := r.namespaceReconcilerFactory(ctx, r.Client, controlPlaneNamespace, controlPlaneVersion, r.cniConfig.Enabled)
 	if err != nil {
 		return nil, err, nil
 	}

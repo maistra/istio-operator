@@ -35,16 +35,17 @@ const (
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	operatorNamespace := common.GetOperatorNamespace()
-	if err := common.InitCNIStatus(mgr); err != nil {
+	cniConfig, err := common.InitCNIConfig(mgr)
+	if err != nil {
 		return err
 	}
 
-	reconciler := newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetRecorder(controllerName), operatorNamespace)
+	reconciler := newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetRecorder(controllerName), operatorNamespace, cniConfig)
 	return add(mgr, reconciler)
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, operatorNamespace string) *ControlPlaneReconciler {
+func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, operatorNamespace string, cniConfig common.CNIConfig) *ControlPlaneReconciler {
 	reconciler := &ControlPlaneReconciler{
 		ControllerResources: common.ControllerResources{
 			Client:            cl,
@@ -53,6 +54,7 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 			PatchFactory:      common.NewPatchFactory(cl),
 			OperatorNamespace: operatorNamespace,
 		},
+		cniConfig:   cniConfig,
 		reconcilers: map[types.NamespacedName]ControlPlaneInstanceReconciler{},
 	}
 	reconciler.instanceReconcilerFactory = NewControlPlaneInstanceReconciler
@@ -153,11 +155,12 @@ type ControlPlaneReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	common.ControllerResources
+	cniConfig common.CNIConfig
 
 	reconcilers map[types.NamespacedName]ControlPlaneInstanceReconciler
 	mu          sync.Mutex
 
-	instanceReconcilerFactory func(common.ControllerResources, *v1.ServiceMeshControlPlane) ControlPlaneInstanceReconciler
+	instanceReconcilerFactory func(common.ControllerResources, *v1.ServiceMeshControlPlane, common.CNIConfig) ControlPlaneInstanceReconciler
 }
 
 // ControlPlaneInstanceReconciler reconciles a specific instance of a ServiceMeshControlPlane
@@ -243,7 +246,7 @@ func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMe
 		reconciler.SetInstance(newInstance)
 		return key, reconciler
 	}
-	newReconciler := r.instanceReconcilerFactory(r.ControllerResources, newInstance)
+	newReconciler := r.instanceReconcilerFactory(r.ControllerResources, newInstance, r.cniConfig)
 	r.reconcilers[key] = newReconciler
 	return key, newReconciler
 }
