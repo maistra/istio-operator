@@ -3,7 +3,10 @@ package webhooks
 import (
 	"fmt"
 
+	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
+
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	webhookcommon "github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/common"
 	"github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/validation"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -45,65 +48,51 @@ func Add(mgr manager.Manager) error {
 		return err
 	}
 
+	watchNamespaceStr, err := k8sutil.GetWatchNamespace()
+	if err != nil {
+		return err
+	}
+	namespaceFilter := webhookcommon.NamespaceFilter(watchNamespaceStr)
+
 	log.Info("Registering webhooks to the webhook server")
 	failurePolicy := arbeta1.Fail
 	return hookServer.Register(
 		&admission.Webhook{
-			Name: "smcp.validation.maistra.io",
-			Path: "/validate-smcp",
-			Rules: []arbeta1.RuleWithOperations{
-				{
-					Rule: arbeta1.Rule{
-						APIGroups:   []string{maistrav1.SchemeGroupVersion.Group},
-						APIVersions: []string{maistrav1.SchemeGroupVersion.Version},
-						Resources:   []string{"servicemeshcontrolplanes"},
-					},
-					Operations: []arbeta1.OperationType{arbeta1.Create, arbeta1.Update},
-				},
-			},
+			Name:          "smcp.validation.maistra.io",
+			Path:          "/validate-smcp",
+			Rules:         rulesFor("servicemeshcontrolplanes", arbeta1.Create, arbeta1.Update),
 			FailurePolicy: &failurePolicy,
 			Type:          types.WebhookTypeValidating,
-			Handlers: []admission.Handler{
-				&validation.ControlPlaneValidator{},
-			},
+			Handlers:      []admission.Handler{validation.NewControlPlaneValidator(namespaceFilter)},
 		},
 		&admission.Webhook{
-			Name: "smmr.validation.maistra.io",
-			Path: "/validate-smmr",
-			Rules: []arbeta1.RuleWithOperations{
-				{
-					Rule: arbeta1.Rule{
-						APIGroups:   []string{maistrav1.SchemeGroupVersion.Group},
-						APIVersions: []string{maistrav1.SchemeGroupVersion.Version},
-						Resources:   []string{"servicemeshmemberrolls"},
-					},
-					Operations: []arbeta1.OperationType{arbeta1.Create, arbeta1.Update},
-				},
-			},
+			Name:          "smmr.validation.maistra.io",
+			Path:          "/validate-smmr",
+			Rules:         rulesFor("servicemeshmemberrolls", arbeta1.Create, arbeta1.Update),
 			FailurePolicy: &failurePolicy,
 			Type:          types.WebhookTypeValidating,
-			Handlers: []admission.Handler{
-				&validation.MemberRollValidator{},
-			},
+			Handlers:      []admission.Handler{validation.NewMemberRollValidator(namespaceFilter)},
 		},
 		&admission.Webhook{
-			Name: "smm.validation.maistra.io",
-			Path: "/validate-smm",
-			Rules: []arbeta1.RuleWithOperations{
-				{
-					Rule: arbeta1.Rule{
-						APIGroups:   []string{maistrav1.SchemeGroupVersion.Group},
-						APIVersions: []string{maistrav1.SchemeGroupVersion.Version},
-						Resources:   []string{"servicemeshmembers"},
-					},
-					Operations: []arbeta1.OperationType{arbeta1.Create, arbeta1.Update},
-				},
-			},
+			Name:          "smm.validation.maistra.io",
+			Path:          "/validate-smm",
+			Rules:         rulesFor("servicemeshmembers", arbeta1.Create, arbeta1.Update),
 			FailurePolicy: &failurePolicy,
 			Type:          types.WebhookTypeValidating,
-			Handlers: []admission.Handler{
-				&validation.MemberValidator{},
-			},
+			Handlers:      []admission.Handler{validation.NewMemberValidator()},
 		},
 	)
+}
+
+func rulesFor(resource string, operations ...arbeta1.OperationType) []arbeta1.RuleWithOperations {
+	return []arbeta1.RuleWithOperations{
+		{
+			Rule: arbeta1.Rule{
+				APIGroups:   []string{maistrav1.SchemeGroupVersion.Group},
+				APIVersions: []string{maistrav1.SchemeGroupVersion.Version},
+				Resources:   []string{resource},
+			},
+			Operations: operations,
+		},
+	}
 }

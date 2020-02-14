@@ -36,9 +36,8 @@ func TestDeletedMemberRollIsAlwaysAllowed(t *testing.T) {
 
 func TestMemberRollOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
 	roll := newMemberRoll("not-default", "not-watched")
-	watchNamespace = "watched-namespace"
-	defer func() { watchNamespace = "" }()
 	validator, _, _ := createMemberRollValidatorTestFixture(smcp)
+	validator.namespaceFilter = "watched-namespace"
 	response := validator.Handle(ctx, createCreateRequest(roll))
 	assert.True(response.Response.Allowed, "Expected validator to allow ServiceMeshMemberRoll whose namespace isn't watched", t)
 }
@@ -186,13 +185,13 @@ func TestMemberRollValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 	_ = validator.Handle(ctx, createCreateRequest(roll))
 }
 
-func createMemberRollValidatorTestFixture(clientObjects ...runtime.Object) (MemberRollValidator, client.Client, *test.EnhancedTracker) {
+func createMemberRollValidatorTestFixture(clientObjects ...runtime.Object) (*MemberRollValidator, client.Client, *test.EnhancedTracker) {
 	cl, tracker := test.CreateClient(clientObjects...)
 	decoder, err := webhookadmission.NewDecoder(test.GetScheme())
 	if err != nil {
 		panic(fmt.Sprintf("Could not create decoder: %s", err))
 	}
-	validator := MemberRollValidator{}
+	validator := NewMemberRollValidator("")
 
 	err = validator.InjectClient(cl)
 	if err != nil {
