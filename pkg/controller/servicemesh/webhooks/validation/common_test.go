@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -10,8 +11,13 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clienttesting "k8s.io/client-go/testing"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
+
+	"github.com/maistra/istio-operator/pkg/controller/common"
 )
+
+var ctx = common.NewContextWithLog(context.Background(), logf.Log)
 
 var userInfo = authentication.UserInfo{
 	Username: "joe-user",

@@ -85,13 +85,13 @@ func TestUpdateOfValidControlPlane(t *testing.T) {
 	assert.True(response.Response.Allowed, "Expected validator to accept update of valid ServiceMeshControlPlane", t)
 }
 
-func createControlPlaneValidatorTestFixture(clientObjects ...runtime.Object) (controlPlaneValidator, client.Client, *test.EnhancedTracker) {
+func createControlPlaneValidatorTestFixture(clientObjects ...runtime.Object) (ControlPlaneValidator, client.Client, *test.EnhancedTracker) {
 	cl, tracker := test.CreateClient(clientObjects...)
 	decoder, err := webhookadmission.NewDecoder(test.GetScheme())
 	if err != nil {
 		panic(fmt.Sprintf("Could not create decoder: %s", err))
 	}
-	validator := controlPlaneValidator{}
+	validator := ControlPlaneValidator{}
 
 	err = validator.InjectClient(cl)
 	if err != nil {

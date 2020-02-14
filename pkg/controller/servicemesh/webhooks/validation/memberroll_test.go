@@ -186,13 +186,13 @@ func TestMemberRollValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 	_ = validator.Handle(ctx, createCreateRequest(roll))
 }
 
-func createMemberRollValidatorTestFixture(clientObjects ...runtime.Object) (memberRollValidator, client.Client, *test.EnhancedTracker) {
+func createMemberRollValidatorTestFixture(clientObjects ...runtime.Object) (MemberRollValidator, client.Client, *test.EnhancedTracker) {
 	cl, tracker := test.CreateClient(clientObjects...)
 	decoder, err := webhookadmission.NewDecoder(test.GetScheme())
 	if err != nil {
 		panic(fmt.Sprintf("Could not create decoder: %s", err))
 	}
-	validator := memberRollValidator{}
+	validator := MemberRollValidator{}
 
 	err = validator.InjectClient(cl)
 	if err != nil {
