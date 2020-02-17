@@ -28,6 +28,7 @@ var (
 		schema.GroupVersionKind{Group: "apps", Version: "v1beta1", Kind: "Deployment"},
 		schema.GroupVersionKind{Group: "apps", Version: "v1beta1", Kind: "StatefulSet"},
 		schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
+		schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "DaemonSet"},
 		schema.GroupVersionKind{Group: "extensions", Version: "v1beta1", Kind: "DaemonSet"},
 		schema.GroupVersionKind{Group: "extensions", Version: "v1beta1", Kind: "Deployment"},
 		schema.GroupVersionKind{Group: "extensions", Version: "v1beta1", Kind: "Ingress"},

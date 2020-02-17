@@ -173,6 +173,13 @@ function patchTemplates() {
 
   # Fix for MAISTRA-334, can be removed when we move to Istio-1.2
   sed -i '/match: (context.protocol == "http" || context.protocol == "grpc")/ s/$/ \&\& (match((request.useragent | "-"), "Prometheus*") == false)/' ${HELM_DIR}/istio/charts/mixer/templates/config.yaml
+
+  # MAISTRA-1079 Replace deprecated API's
+  find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl" |\
+    xargs sed -i \
+    -e '/apiVersion: extensions\/v1beta1/,/kind: Deployment/ { s|extensions/v1beta1|apps/v1| }' \
+    -e '/apiVersion: apps\/v1beta1/,/kind: Deployment/ { s|apps/v1beta1|apps/v1| }' \
+    -e 's|apiVersion: autoscaling/v2beta1|apiVersion: autoscaling/v1|'
 }
 
 # The following modifications are made to the generated helm template for the Kiali yaml file
