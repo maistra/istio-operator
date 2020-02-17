@@ -43,6 +43,12 @@ type options struct {
 	ControlPlaneReconcilers int
 	MemberRollReconcilers   int
 	MemberReconcilers       int
+
+	// The number of API requests the operator can make before throttling
+	Burst int
+
+	// Then maximum rate of API requests when throttling is active
+	QPS float32
 }
 
 var Options = &options{}
