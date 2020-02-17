@@ -2,8 +2,10 @@ package validation
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	admissionv1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,6 +42,11 @@ var _ inject.Client = (*MemberRollValidator)(nil)
 var _ inject.Decoder = (*MemberRollValidator)(nil)
 
 func (v *MemberRollValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
+	// use a self-imposed 3s time limit so that we can inform the user how to work
+	// around the issue when the webhook takes too long to complete
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
 	logger := logf.Log.WithName("smmr-validator").
 		WithValues("ServiceMeshMemberRoll", webhookcommon.ToNamespacedName(req.AdmissionRequest))
 	smmr := &maistrav1.ServiceMeshMemberRoll{}
@@ -122,6 +129,10 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 		for _, member := range namespacesToCheck.List() {
 			allowed, err := v.isUserAllowedToUpdatePods(common.NewContextWithLog(ctx, logger.WithValues("namespace", member)), req, member)
 			if err != nil {
+				if errors.Is(err, context.DeadlineExceeded) {
+					logger.Error(err, fmt.Sprintf("timeout while performing SAR checks for %d namespaces", len(namespacesToCheck)))
+					return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("too many namespaces in ServiceMeshMemberRoll; validating webhook couldn't perform the authorization checks for all namespaces; either try the operation again as a cluster admin, or add fewer namespaces in a single operation"))
+				}
 				return admission.ErrorResponse(http.StatusInternalServerError, err)
 			}
 			if !allowed {
@@ -152,7 +163,6 @@ func (v *MemberRollValidator) isUserAllowedToUpdatePods(ctx context.Context, req
 	}
 	err := v.client.Create(ctx, sar)
 	if err != nil {
-		log.Error(err, "error processing SubjectAccessReview")
 		return false, err
 	}
 	return sar.Status.Allowed && !sar.Status.Denied, nil
