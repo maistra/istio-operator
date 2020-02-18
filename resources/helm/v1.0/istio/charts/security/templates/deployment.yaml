@@ -1,5 +1,5 @@
 # istio CA watching all namespaces
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: istio-citadel
@@ -44,9 +44,6 @@ spec:
           image: "{{ .Values.global.hub }}/{{ .Values.image }}:{{ .Values.global.tag }}"
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           args:
-          {{- if .Values.global.sds.enabled }}
-            - --sds-enabled=true
-          {{- end }}
             - --append-dns-names=true
             - --grpc-port=8060
             - --grpc-hostname=citadel

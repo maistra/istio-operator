@@ -58,13 +58,8 @@
           {{- else }}
           - --trace_zipkin_url=http://zipkin:9411/api/v1/spans
           {{- end }}
-        env:
-        - name: POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.namespace
         {{- if .Values.env }}
+        env:
         {{- range $key, $val := .Values.env }}
         - name: {{ $key }}
           value: "{{ $val }}"
@@ -319,7 +314,7 @@
 {{- range $key, $spec := .Values }}
 {{- if or (eq $key "policy") (eq $key "telemetry") }}
 {{- if $spec.enabled }}
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: istio-{{ $key }}
