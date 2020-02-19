@@ -1,7 +1,7 @@
 {{- range $key, $spec := .Values }}
 {{- if ne $key "enabled" }}
 {{- if $spec.enabled }}
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ $key }}
@@ -9,7 +9,7 @@ metadata:
   labels:
     chart: {{ template "gateway.chart" $ }}
     heritage: {{ $.Release.Service }}
-    maistra-version: 1.0.7
+    maistra-version: 1.0.8
     release: {{ $.Release.Name }}
     {{- range $key, $val := $spec.labels }}
     {{ $key }}: {{ $val }}
