@@ -1,5 +1,5 @@
 packageName: servicemeshoperator
 channels:
 - name: "1.0"
-  currentCSV: servicemeshoperator.v1.0.7
+  currentCSV: servicemeshoperator.v1.0.8
 defaultChannel: "1.0"
