@@ -16,7 +16,6 @@ spec:
     matchLabels:
       istio: ingressgateway
   ingress:
-  - from:
-    - namespaceSelector: {}
+  - {}
 
 {{- end }}
