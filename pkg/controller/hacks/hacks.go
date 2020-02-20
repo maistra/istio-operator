@@ -2,11 +2,11 @@ package hacks
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
@@ -24,23 +24,26 @@ func ReduceLikelihoodOfRepeatedReconciliation(ctx context.Context) {
 	time.Sleep(2 * time.Second)
 }
 
-// WorkAroundTypeObjectProblemInCRDSchemas works around the problem where OpenShift 3.11 doesn't like "type: object"
+// RemoveTypeObjectFieldsFromCRDSchema works around the problem where OpenShift 3.11 doesn't like "type: object"
 // in CRD OpenAPI schemas. This function removes all occurrences from the schema.
-func WorkAroundTypeObjectProblemInCRDSchemas(ctx context.Context, err error, cl client.Client, crd *unstructured.Unstructured) error {
+func RemoveTypeObjectFieldsFromCRDSchema(ctx context.Context, crd *unstructured.Unstructured) error {
 	log := common.LogFromContext(ctx)
-	if err != nil && strings.Contains(err.Error(), "must only have \"properties\", \"required\" or \"description\" at the root if the status subresource is enabled") {
-		log.Info("The API server rejected the CRD. Removing type:object fields from the CRD schema and trying again.")
+	log.Info("The API server rejected the CRD. Removing type:object fields from the CRD schema and trying again.")
 
-		schema, found, err := unstructured.NestedFieldNoCopy(crd.UnstructuredContent(), "spec", "validation", "openAPIV3Schema")
-		if err != nil {
-			log.Error(err, "Could not remove type:object from CRD schema")
-			return err
-		} else if found {
-			removeTypeObjectField(schema)
-			return cl.Create(ctx, crd)
-		}
+	schema, found, err := unstructured.NestedFieldNoCopy(crd.UnstructuredContent(), "spec", "validation", "openAPIV3Schema")
+	if err != nil {
+		return fmt.Errorf("Could not remove type:object fields from CRD schema: %v", err.Error())
+	} else if !found {
+		return fmt.Errorf("Could not remove type:object fields from CRD schema as no spec.validation.openAPIV3Schema exists")
 	}
-	return err
+	removeTypeObjectField(schema)
+	return nil
+}
+
+// IsTypeObjectProblemInCRDSchemas returns true if the error provided is the error usually
+// returned by the API server when it doesn't like "type:object" fields in the CRD's OpenAPI Schema.
+func IsTypeObjectProblemInCRDSchemas(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "must only have \"properties\", \"required\" or \"description\" at the root if the status subresource is enabled")
 }
 
 func removeTypeObjectField(val interface{}) {

@@ -195,7 +195,8 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		r.meshGeneration = v1.CurrentReconciledVersion(r.Instance.GetGeneration())
 
 		// Ensure CRDs are installed
-		if err = bootstrap.InstallCRDs(ctx, r.Client); err != nil {
+		chartsDir := common.Options.GetChartsDir(r.Instance.Spec.Version)
+		if err = bootstrap.InstallCRDs(common.NewContextWithLog(ctx, log.WithValues("version", r.Instance.Spec.Version)), r.Client, chartsDir); err != nil {
 			reconciliationReason = v1.ConditionReasonReconcileError
 			reconciliationMessage = "Failed to install/update Istio CRDs"
 			log.Error(err, reconciliationMessage)
