@@ -13,12 +13,12 @@ import (
 
 // InstallCNI makes sure all Istio CNI resources have been created.  CRDs are located from
 // files in controller.HelmDir/istio-init/files
-func InstallCNI(ctx context.Context, cl client.Client) error {
+func InstallCNI(ctx context.Context, cl client.Client, config common.CNIConfig) error {
 	// we should run through this each reconcile to make sure it's there
-	return internalInstallCNI(ctx, cl)
+	return internalInstallCNI(ctx, cl, config)
 }
 
-func internalInstallCNI(ctx context.Context, cl client.Client) error {
+func internalInstallCNI(ctx context.Context, cl client.Client, config common.CNIConfig) error {
 	log := common.LogFromContext(ctx)
 	log.Info("ensuring Istio CNI has been installed")
 
@@ -27,10 +27,10 @@ func internalInstallCNI(ctx context.Context, cl client.Client) error {
 	log.Info("rendering Istio CNI chart")
 
 	values := make(map[string]interface{})
-	values["enabled"] = common.IsCNIEnabled
-	values["image_v1_0"] = common.CNIImageV1_0
-	values["image_v1_1"] = common.CNIImageV1_1
-	values["imagePullSecrets"] = common.CNIImagePullSecrets
+	values["enabled"] = config.Enabled
+	values["image_v1_0"] = config.ImageV1_0
+	values["image_v1_1"] = config.ImageV1_1
+	values["imagePullSecrets"] = config.ImagePullSecrets
 	// TODO: imagePullPolicy, resources
 
 	// always install the latest version of the CNI image

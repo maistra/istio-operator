@@ -95,6 +95,7 @@ func TestCyclicTemplate(t *testing.T) {
 func newTestReconciler() *controlPlaneInstanceReconciler {
 	reconciler := NewControlPlaneInstanceReconciler(
 		common.ControllerResources{},
-		&maistrav1.ServiceMeshControlPlane{})
+		&maistrav1.ServiceMeshControlPlane{},
+		common.CNIConfig{Enabled: true})
 	return reconciler.(*controlPlaneInstanceReconciler)
 }

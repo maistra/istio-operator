@@ -10,15 +10,21 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-// IsCNIEnabled tells whether this cluster supports CNI or not
-var IsCNIEnabled bool
+type CNIConfig struct {
+	// Enabled tells whether this cluster supports CNI or not
+	Enabled bool
 
-// CNIImage is the full image name that should be deployed through the Istio CNI DaemonSet
-var CNIImageV1_0 string
-var CNIImageV1_1 string
+	// ImageV1_0 is the full image name that should be deployed through the Istio
+	// CNI DaemonSet for v1.0
+	ImageV1_0 string
 
-// CNIImagePullSecrets is the list of image pull secret names for the Istio CNI DaemonSet
-var CNIImagePullSecrets []string
+	// ImageV1_1 is the full image name that should be deployed through the Istio
+	// CNI DaemonSet for v1.1
+	ImageV1_1 string
+
+	// ImagePullSecrets is the list of image pull secret names for the Istio CNI DaemonSet
+	ImagePullSecrets []string
+}
 
 // networkNameMap is a map of the CNI network name used by each version
 var networkNameMap = map[string]string{
@@ -48,8 +54,10 @@ func GetSupportedVersions() []string {
 	return supportedVersions
 }
 
-// InitCNIStatus initializes the CNI support variable
-func InitCNIStatus(m manager.Manager) error {
+// InitCNIConfig initializes the CNI support variable
+func InitCNIConfig(m manager.Manager) (CNIConfig, error) {
+	config := CNIConfig{}
+
 	_, err := m.GetRESTMapper().ResourcesFor(schema.GroupVersionResource{
 		Group:    "k8s.cni.cncf.io",
 		Version:  "v1",
@@ -57,27 +65,27 @@ func InitCNIStatus(m manager.Manager) error {
 	})
 
 	if err == nil {
-		IsCNIEnabled = true
+		config.Enabled = true
 
 		var ok bool
-		if CNIImageV1_0, ok = os.LookupEnv("ISTIO_CNI_IMAGE_V1_0"); !ok {
-			return fmt.Errorf("ISTIO_CNI_IMAGE_V1_0 environment variable not set")
+		if config.ImageV1_0, ok = os.LookupEnv("ISTIO_CNI_IMAGE_V1_0"); !ok {
+			return config, fmt.Errorf("ISTIO_CNI_IMAGE_V1_0 environment variable not set")
 		}
-		if CNIImageV1_1, ok = os.LookupEnv("ISTIO_CNI_IMAGE_V1_1"); !ok {
-			return fmt.Errorf("ISTIO_CNI_IMAGE_V1_1 environment variable not set")
+		if config.ImageV1_1, ok = os.LookupEnv("ISTIO_CNI_IMAGE_V1_1"); !ok {
+			return config, fmt.Errorf("ISTIO_CNI_IMAGE_V1_1 environment variable not set")
 		}
 
 		secret, _ := os.LookupEnv("ISTIO_CNI_IMAGE_PULL_SECRET")
 		if secret != "" {
-			CNIImagePullSecrets = append(CNIImagePullSecrets, secret)
+			config.ImagePullSecrets = append(config.ImagePullSecrets, secret)
 		}
 
 	} else if !meta.IsNoMatchError(err) {
-		return err
+		return config, err
 	}
 
 	log := logf.Log.WithName("controller_init")
-	log.Info(fmt.Sprintf("CNI is enabled for this installation: %v", IsCNIEnabled))
+	log.Info(fmt.Sprintf("CNI is enabled for this installation: %v", config.Enabled))
 
-	return nil
+	return config, nil
 }

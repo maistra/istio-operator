@@ -35,6 +35,7 @@ type controlPlaneInstanceReconciler struct {
 	meshGeneration string
 	renderings     map[string][]manifest.Manifest
 	lastComponent  string
+	cniConfig      common.CNIConfig
 }
 
 // ensure controlPlaneInstanceReconciler implements ControlPlaneInstanceReconciler
@@ -74,11 +75,12 @@ const (
 	eventReasonReady                   = "Ready"
 )
 
-func NewControlPlaneInstanceReconciler(controllerResources common.ControllerResources, newInstance *v1.ServiceMeshControlPlane) ControlPlaneInstanceReconciler {
+func NewControlPlaneInstanceReconciler(controllerResources common.ControllerResources, newInstance *v1.ServiceMeshControlPlane, cniConfig common.CNIConfig) ControlPlaneInstanceReconciler {
 	return &controlPlaneInstanceReconciler{
 		ControllerResources: controllerResources,
 		Instance:            newInstance,
 		Status:              newInstance.Status.DeepCopy(),
+		cniConfig:           cniConfig,
 	}
 }
 
@@ -202,9 +204,9 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		}
 
 		// Ensure Istio CNI is installed
-		if common.IsCNIEnabled {
+		if r.cniConfig.Enabled {
 			r.lastComponent = "cni"
-			if err = bootstrap.InstallCNI(ctx, r.Client); err != nil {
+			if err = bootstrap.InstallCNI(ctx, r.Client, r.cniConfig); err != nil {
 				reconciliationReason = v1.ConditionReasonReconcileError
 				reconciliationMessage = "Failed to install/update Istio CNI"
 				log.Error(err, reconciliationMessage)
@@ -469,7 +471,7 @@ func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context) error
 		CNIValues = make(map[string]interface{})
 		r.Status.LastAppliedConfiguration.Istio["istio_cni"] = CNIValues
 	}
-	CNIValues["enabled"] = common.IsCNIEnabled
+	CNIValues["enabled"] = r.cniConfig.Enabled
 	CNIValues["istio_cni_network"], ok = common.GetCNINetworkName(r.Status.LastAppliedConfiguration.Version)
 	if !ok {
 		return fmt.Errorf("unknown maistra version: %s", r.Status.LastAppliedConfiguration.Version)

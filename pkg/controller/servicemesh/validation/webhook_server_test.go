@@ -22,11 +22,15 @@ var userInfo = authentication.UserInfo{
 	},
 }
 
-func createSubjectAccessReviewReactor(allowed bool, errorToReturn error) func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+func createSubjectAccessReviewReactor(allowClusterScope, allowNamespaceScope bool, errorToReturn error) func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 	return func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 		createAction := action.(clienttesting.CreateAction)
 		sar := createAction.GetObject().(*authorization.SubjectAccessReview)
-		sar.Status.Allowed = allowed
+		if sar.Spec.ResourceAttributes.Namespace == "" {
+			sar.Status.Allowed = allowClusterScope
+		} else {
+			sar.Status.Allowed = allowNamespaceScope
+		}
 		return true, sar.DeepCopy(), errorToReturn
 	}
 }
