@@ -8,7 +8,7 @@ metadata:
     app: {{ template "grafana.name" . }}
     chart: {{ template "grafana.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.0.7
+    maistra-version: 1.0.8
     release: {{ .Release.Name }}
   annotations:
     "maistra.io/internal": "true"
