@@ -229,7 +229,6 @@ func TestReconcileReconcilesAfterOperatorUpgradeFromV1_0(t *testing.T) {
 	cl, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane, namespace, meshRoleBinding, appRoleBinding, nad)
 	tracker.AddReactor("delete", "k8s.cni.cncf.io/v1, Resource=networkattachmentdefinitions", assertNADNotDeleted(t))
 	tracker.AddReactor("create", rbac.SchemeGroupVersion.WithResource("rolebindings").String(), assertRBNotCreated(t))
-	common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
 
 	assert.Equals(roll.Status.ServiceMeshReconciledVersion != controlPlane.Status.GetReconciledVersion(), true, "Unexpected Status.ServiceMeshReconciledVersion in SMMR already matches SMCP reconciled version", t)
 
@@ -309,7 +308,6 @@ func TestReconcileReconcilesAddedMember(t *testing.T) {
 			meshRoleBinding := newMeshRoleBinding()
 
 			cl, _, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace)
-			common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
 
 			assertReconcileSucceeds(r, t)
 
@@ -333,7 +331,6 @@ func TestReconcileFailsIfMemberRollUpdateFails(t *testing.T) {
 	namespace := newNamespace(appNamespace)
 
 	_, tracker, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace)
-	common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
 	tracker.AddReactor("update", "servicemeshmemberrolls", test.ClientFails())
 
 	assertReconcileFails(r, t)
@@ -350,7 +347,6 @@ func TestReconcileFailsIfKialiReconcileFails(t *testing.T) {
 	namespace := newNamespace(appNamespace)
 
 	_, _, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace)
-	common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
 	kialiReconciler.errorToReturn = fmt.Errorf("error")
 
 	assertReconcileFails(r, t)
@@ -372,7 +368,6 @@ func TestReconcileReconcilesMemberIfNamespaceIsCreatedLater(t *testing.T) {
 	namespace := newNamespace(appNamespace)
 
 	cl, _, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace, meshRoleBinding)
-	common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
 
 	assertReconcileSucceeds(r, t)
 
@@ -400,7 +395,6 @@ func TestReconcileUpdatesMemberListWhenNamespaceIsDeleted(t *testing.T) {
 	namespace := newNamespace(appNamespace)
 
 	cl, _, r, _, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace) // NOTE: no appNamespace2
-	common.IsCNIEnabled = true                                                                  // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
 
 	assertReconcileSucceeds(r, t)
 
@@ -428,7 +422,6 @@ func TestReconcileDoesNotUpdateMemberRollWhenNothingToReconcile(t *testing.T) {
 	nad := createNAD(cniNetworkDefault, appNamespace, controlPlaneNamespace)
 
 	_, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane, namespace, nad, kialiCR)
-	common.IsCNIEnabled = true // TODO: this is a global variable; we should get rid of it, because we can't parallelize tests because of it
 
 	assertReconcileSucceeds(r, t)
 
@@ -652,8 +645,9 @@ func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (c
 
 	fakeEventRecorder := &record.FakeRecorder{}
 	kialiReconciler := &fakeKialiReconciler{}
+	cniConfig := common.CNIConfig{Enabled: true}
 
-	r := newReconciler(cl, scheme.Scheme, fakeEventRecorder, rf.newReconciler, kialiReconciler)
+	r := newReconciler(cl, scheme.Scheme, fakeEventRecorder, rf.newReconciler, kialiReconciler, cniConfig)
 
 	return cl, enhancedTracker, r, rf.reconciler, kialiReconciler
 }

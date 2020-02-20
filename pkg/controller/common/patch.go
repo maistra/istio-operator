@@ -39,7 +39,14 @@ func NewPatchFactory(k8sClient client.Client) *PatchFactory {
 
 // CreatePatch creates a patch based on the current and new versions of an object
 func (p *PatchFactory) CreatePatch(current, new runtime.Object) (Patch, error) {
-	patch := &basicPatch{client: p.client}
+	newObj, err := GetPatchedObject(current, new)
+	if err != nil || newObj == nil {
+		return nil, err
+	}
+	return &basicPatch{client: p.client, newObj: newObj}, nil
+}
+
+func GetPatchedObject(current, new runtime.Object) (runtime.Object, error) {
 	currentAccessor, err := meta.Accessor(current)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("cannot create object accessor for current object:\n%v", current))
@@ -110,7 +117,7 @@ func (p *PatchFactory) CreatePatch(current, new runtime.Object) (Patch, error) {
 		if reflect.DeepEqual(newObj, current) {
 			return nil, nil
 		}
-		patch.newObj = newObj
+		return newObj, nil
 	} else {
 		// XXX: if we fail to create a strategic patch, should we fall back to json merge patch?
 		// strategic merge patch
@@ -137,10 +144,8 @@ func (p *PatchFactory) CreatePatch(current, new runtime.Object) (Patch, error) {
 		if reflect.DeepEqual(newObj, current) {
 			return nil, nil
 		}
-		patch.newObj = newObj
+		return newObj, nil
 	}
-
-	return patch, nil
 }
 
 type basicPatch struct {

@@ -18,13 +18,12 @@ import (
 	. "github.com/maistra/istio-operator/pkg/controller/common/test"
 )
 
-
 func TestBootstrapping(t *testing.T) {
 	const (
-		operatorNamespace = "istio-operator"
+		operatorNamespace     = "istio-operator"
 		controlPlaneNamespace = "test"
-		smcpName = "test"
-		cniDaemonSetName = "istio-node"
+		smcpName              = "test"
+		cniDaemonSetName      = "istio-node"
 	)
 
 	if testing.Verbose() {
@@ -32,7 +31,7 @@ func TestBootstrapping(t *testing.T) {
 	}
 	RunControllerTestCases(t, ControllerTestCase{
 		Name:             "clean-install-cni-no-errors",
-		ConfigureGlobals: InitializeGlobals(operatorNamespace, false),
+		ConfigureGlobals: InitializeGlobals(operatorNamespace),
 		AddControllers:   []AddControllerFunc{Add},
 		Resources: []runtime.Object{
 			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: controlPlaneNamespace}},
@@ -73,7 +72,7 @@ func TestBootstrapping(t *testing.T) {
 				Reactors: []clienttesting.Reactor{
 					ReactTo("list").On("daemonsets").In(operatorNamespace).With(
 						SetDaemonSetStatus(cniDaemonSetName, appsv1.DaemonSetStatus{
-							NumberAvailable: 0,
+							NumberAvailable:   0,
 							NumberUnavailable: 3,
 						})),
 				},
@@ -84,7 +83,7 @@ func TestBootstrapping(t *testing.T) {
 }
 
 func SetDaemonSetStatus(name string, status appsv1.DaemonSetStatus) ReactionFunc {
-	return func (action clienttesting.Action, tracker clienttesting.ObjectTracker) (applied bool, handled bool, obj runtime.Object, err error) {
+	return func(action clienttesting.Action, tracker clienttesting.ObjectTracker) (applied bool, handled bool, obj runtime.Object, err error) {
 		applied = false
 		handled = false
 		if obj, err = tracker.Get(action.GetResource(), action.GetNamespace(), name); err != nil {

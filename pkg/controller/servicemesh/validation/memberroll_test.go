@@ -2,8 +2,10 @@ package validation
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 
+	authorization "k8s.io/api/authorization/v1"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -76,7 +78,7 @@ func TestMemberRollWithControlPlaneNamespaceIsRejected(t *testing.T) {
 
 func TestMemberRollWithFailedSubjectAccessReview(t *testing.T) {
 	validator, _, tracker := createMemberRollValidatorTestFixture(smcp)
-	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(false, nil))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(false, false, nil))
 
 	roll := newMemberRoll("default", "istio-system", "app-namespace")
 	response := validator.Handle(ctx, createCreateRequest(roll))
@@ -85,7 +87,38 @@ func TestMemberRollWithFailedSubjectAccessReview(t *testing.T) {
 
 func TestValidMemberRoll(t *testing.T) {
 	validator, _, tracker := createMemberRollValidatorTestFixture(smcp)
-	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, nil))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, true, nil))
+
+	roll := newMemberRoll("default", "istio-system", "app-namespace")
+	response := validator.Handle(ctx, createCreateRequest(roll))
+	assert.True(response.Response.Allowed, "Expected validator to allow ServiceMeshMemberRoll", t)
+}
+
+func TestClusterScopedSARCheckSuffices(t *testing.T) {
+	sarCheckCount := 0
+	validator, _, tracker := createMemberRollValidatorTestFixture(smcp)
+	tracker.AddReactor("create", "subjectaccessreviews", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+		sarCheckCount++
+		if sarCheckCount > 1 {
+			t.Fatalf("More than one SAR check was performed")
+		}
+
+		createAction := action.(clienttesting.CreateAction)
+		sar := createAction.GetObject().(*authorization.SubjectAccessReview)
+
+		assert.Equals(sar.Spec.ResourceAttributes.Namespace, "", "Unexpected namespace in SAR check", t)
+		sar.Status.Allowed = true
+		return true, sar.DeepCopy(), nil
+	})
+
+	roll := newMemberRoll("default", "istio-system", "app-namespace")
+	response := validator.Handle(ctx, createCreateRequest(roll))
+	assert.True(response.Response.Allowed, "Expected validator to allow ServiceMeshMemberRoll", t)
+}
+
+func TestNamespaceScopedSARCheckPerformedWhenClusterScopedReturnsFalse(t *testing.T) {
+	validator, _, tracker := createMemberRollValidatorTestFixture(smcp)
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(false, true, nil))
 
 	roll := newMemberRoll("default", "istio-system", "app-namespace")
 	response := validator.Handle(ctx, createCreateRequest(roll))
@@ -94,22 +127,38 @@ func TestValidMemberRoll(t *testing.T) {
 
 func TestMemberRollValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
 	validator, _, tracker := createMemberRollValidatorTestFixture(smcp)
-	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, fmt.Errorf("SAR check error")))
+	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(false, false, fmt.Errorf("SAR check error")))
 
 	roll := newMemberRoll("default", "istio-system", "app-namespace")
 	response := validator.Handle(ctx, createCreateRequest(roll))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMemberRoll due to SAR check error", t)
+	assert.Equals(response.Response.Result.Code, int32(http.StatusInternalServerError), "Unexpected result code", t)
 }
 
-func TestValidMemberRollUpdate(t *testing.T) {
+func TestSARCheckOnlyPerformedForNewlyAddedNamespacesOnUpdate(t *testing.T) {
 	oldRoll := newMemberRoll("default", "istio-system", "app-namespace1")
 	validator, _, tracker := createMemberRollValidatorTestFixture(smcp, oldRoll)
-	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, nil))
+	sarCheckNumber := 0
+	tracker.AddReactor("create", "subjectaccessreviews", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+		sarCheckNumber++
+		if sarCheckNumber > 2 {
+			t.Fatalf("More than two SAR checks were performed")
+		}
+
+		createAction := action.(clienttesting.CreateAction)
+		sar := createAction.GetObject().(*authorization.SubjectAccessReview)
+		if sar.Spec.ResourceAttributes.Namespace == "" {
+			sar.Status.Allowed = false
+			return true, sar.DeepCopy(), nil
+		}
+
+		assert.Equals(sar.Spec.ResourceAttributes.Namespace, "app-namespace2", "Unexpected namespace in SAR check", t)
+		sar.Status.Allowed = true
+		return true, sar.DeepCopy(), nil
+	})
 
 	newRoll := oldRoll.DeepCopy()
-	newRoll.Labels = map[string]string{
-		"some-label": "some-label-value",
-	}
+	newRoll.Spec.Members = append(newRoll.Spec.Members, "app-namespace2")
 
 	response := validator.Handle(ctx, createUpdateRequest(oldRoll, newRoll))
 	assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshMemberRoll update", t)
@@ -128,7 +177,7 @@ func TestMemberRollValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 		assert.Equals(sar.Spec.ResourceAttributes.Group, "", "Unexpected resource Group in SAR check", t)
 		assert.Equals(sar.Spec.ResourceAttributes.Resource, "pods", "Unexpected Resource in SAR check", t)
 		assert.Equals(sar.Spec.ResourceAttributes.Name, "", "Unexpected resource Name in SAR check", t)
-		assert.Equals(sar.Spec.ResourceAttributes.Namespace, "app-namespace", "Unexpected resource Namespace in SAR check", t)
+		assert.Equals(sar.Spec.ResourceAttributes.Namespace, "", "Unexpected resource Namespace in SAR check", t)
 		sar.Status.Allowed = true
 		return true, sar.DeepCopy(), nil
 	})

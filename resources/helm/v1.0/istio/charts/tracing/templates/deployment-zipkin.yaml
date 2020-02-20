@@ -1,6 +1,6 @@
 {{ if eq .Values.provider "zipkin" }}
 
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Release.Name }}-zipkin
@@ -8,7 +8,7 @@ metadata:
   labels:
     app: zipkin
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
-    maistra-version: 1.0.7
+    maistra-version: 1.0.8
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:

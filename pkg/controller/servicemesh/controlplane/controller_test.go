@@ -128,7 +128,7 @@ func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (c
 	cl, enhancedTracker := test.CreateClient(clientObjects...)
 	fakeEventRecorder := &record.FakeRecorder{}
 
-	r := newReconciler(cl, scheme.Scheme, fakeEventRecorder, "istio-operator")
+	r := newReconciler(cl, scheme.Scheme, fakeEventRecorder, "istio-operator", common.CNIConfig{Enabled: true})
 	r.instanceReconcilerFactory = NewFakeInstanceReconciler
 	instanceReconciler = &fakeInstanceReconciler{}
 	return cl, enhancedTracker, fakeEventRecorder, r
@@ -141,7 +141,7 @@ type fakeInstanceReconciler struct {
 	finished               bool
 }
 
-func NewFakeInstanceReconciler(controllerResources common.ControllerResources, instance *maistrav1.ServiceMeshControlPlane) ControlPlaneInstanceReconciler {
+func NewFakeInstanceReconciler(controllerResources common.ControllerResources, instance *maistrav1.ServiceMeshControlPlane, cniConfig common.CNIConfig) ControlPlaneInstanceReconciler {
 	return instanceReconciler
 }
 

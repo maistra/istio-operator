@@ -319,7 +319,7 @@
 {{- range $key, $spec := .Values }}
 {{- if or (eq $key "policy") (eq $key "telemetry") }}
 {{- if $spec.enabled }}
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: istio-{{ $key }}
@@ -328,7 +328,7 @@ metadata:
     app: istio-mixer
     chart: {{ template "mixer.chart" $ }}
     heritage: {{ $.Release.Service }}
-    maistra-version: 1.0.7
+    maistra-version: 1.0.8
     release: {{ $.Release.Name }}
     istio: mixer
 spec:

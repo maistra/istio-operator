@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -27,6 +28,9 @@ func GetScheme() *runtime.Scheme {
 		panic(fmt.Sprintf("Could not add to scheme: %v", err))
 	}
 	if err := rbac.AddToScheme(s); err != nil {
+		panic(fmt.Sprintf("Could not add to scheme: %v", err))
+	}
+	if err := apiextensionsv1beta1.AddToScheme(s); err != nil {
 		panic(fmt.Sprintf("Could not add to scheme: %v", err))
 	}
 	s.AddKnownTypeWithName(schema.GroupVersionKind{
