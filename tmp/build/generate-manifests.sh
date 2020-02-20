@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# to generate Maistra OLM metadata: MAISTRA_VERSION=1.0.6 REPLACES_CSV=1.0.5 tmp/build/generate-manifests.sh
-# to generate ServiceMesh OLM metadata: COMMUNITY=false MAISTRA_VERSION=1.0.7 REPLACES_CSV=1.0.6 tmp/build/generate-manifests.sh
+# to generate Maistra OLM metadata: MAISTRA_VERSION=1.0.8 REPLACES_CSV=1.0.6 tmp/build/generate-manifests.sh
+# to generate ServiceMesh OLM metadata: COMMUNITY=false MAISTRA_VERSION=1.0.8 REPLACES_CSV=1.0.7 tmp/build/generate-manifests.sh
 
 set -e
 
 COMMUNITY=${COMMUNITY:-"true"}
-: ${MAISTRA_VERSION:?"Need to set maistra version, e.g. 1.0.7"}
+: ${MAISTRA_VERSION:?"Need to set maistra version, e.g. 1.0.8"}
 if [[ ${COMMUNITY} == "true" ]]; then
   BUILD_TYPE="maistra"
   JAEGER_TEMPLATE="all-in-one"
