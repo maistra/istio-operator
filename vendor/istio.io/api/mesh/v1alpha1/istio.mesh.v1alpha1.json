@@ -37,6 +37,10 @@
             "description": "Disable policy checks by the Mixer service. Default is false, i.e. Mixer policy check is enabled by default.",
             "type": "boolean"
           },
+          "disableMixerHttpReports": {
+            "description": "Disable telemetry reporting by the Mixer service for HTTP traffic. Default is false (telemetry reporting via Mixer is enabled). This option provides a transition path for Istio extensibility v2.",
+            "type": "boolean"
+          },
           "policyCheckFailOpen": {
             "description": "Allow all traffic in cases when the Mixer policy service cannot be reached. Default is false which means the traffic is denied when the client is unable to connect to Mixer.",
             "type": "boolean"
@@ -143,9 +147,17 @@
             "type": "boolean"
           },
           "trustDomain": {
-            "description": "The trust domain corresponds to the trust root of a system. Refer to [SPIFFE-ID](https://github.com/spiffe/spiffe/blob/master/standards/SPIFFE-ID.md#21-trust-domain) Fallback to old identity format(without trust domain) if not set.",
+            "description": "The trust domain corresponds to the trust root of a system. Refer to [SPIFFE-ID](https://github.com/spiffe/spiffe/blob/master/standards/SPIFFE-ID.md#21-trust-domain)",
             "type": "string",
             "format": "string"
+          },
+          "trustDomainAliases": {
+            "description": "The trust domain aliases represent the aliases of `trust_domain`. For example, if we have ```yaml trustDomain: td1 trustDomainAliases: [\"td2\", \"td3\"] ``` Any service with the identity `td1/ns/foo/sa/a-service-account`, `td2/ns/foo/sa/a-service-account`, or `td3/ns/foo/sa/a-service-account` will be treated the same in the Istio mesh.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "string"
+            }
           },
           "defaultServiceExportTo": {
             "description": "The default value for the ServiceEntry.export_to field and services imported through container registry integrations, e.g. this applies to Kubernetes Service resources. The value is a list of namespace names and reserved namespace aliases. The allowed namespace aliases are: * - All Namespaces . - Current Namespace ~ - No Namespace",
@@ -204,6 +216,13 @@
             "description": "Name to be used while emitting statistics for outbound clusters. By default, Istio emits statistics with the pattern outbound|\u003cport\u003e|\u003csubsetname\u003e|\u003cservice-FQDN\u003e. For example outbound|8080|v2|reviews.prod.svc.cluster.local. This can be used to override that pattern.",
             "type": "string",
             "format": "string"
+          },
+          "certificates": {
+            "description": "Configure the provision of certificates.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/istio.mesh.v1alpha1.Certificate"
+            }
           }
         }
       },
@@ -213,24 +232,21 @@
           "OFF",
           "DEFAULT",
           "STRICT"
-        ],
-        "default": "OFF"
+        ]
       },
       "istio.mesh.v1alpha1.MeshConfig.AuthPolicy": {
         "type": "string",
         "enum": [
           "NONE",
           "MUTUAL_TLS"
-        ],
-        "default": "NONE"
+        ]
       },
       "istio.mesh.v1alpha1.MeshConfig.AccessLogEncoding": {
         "type": "string",
         "enum": [
           "TEXT",
           "JSON"
-        ],
-        "default": "TEXT"
+        ]
       },
       "istio.mesh.v1alpha1.ProxyConfig": {
         "description": "ProxyConfig defines variables for individual Envoy instances.",
@@ -357,6 +373,13 @@
           },
           "tlsSettings": {
             "$ref": "#/components/schemas/istio.networking.v1alpha3.TLSSettings"
+          },
+          "subscribedResources": {
+            "description": "Describes the source of configuration, if nothing is specified default is MCP",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/istio.mesh.v1alpha1.Resource"
+            }
           }
         }
       },
@@ -386,16 +409,40 @@
         "enum": [
           "DO_NOT_UPGRADE",
           "UPGRADE"
-        ],
-        "default": "DO_NOT_UPGRADE"
+        ]
+      },
+      "istio.mesh.v1alpha1.Certificate": {
+        "description": "Certificate configures the provision of a certificate and its key. Example 1: key and cert stored in a secret { secretName: galley-cert secretNamespace: istio-system dnsNames: - galley.istio-system.svc - galley.mydomain.com } Example 2: key and cert stored in a directory { dnsNames: - pilot.istio-system - pilot.istio-system.svc - pilot.mydomain.com }",
+        "type": "object",
+        "properties": {
+          "secretName": {
+            "description": "Name of the secret the certificate and its key will be stored into. If it is empty, it will not be stored into a secret. Instead, the certificate and its key will be stored into a hard-coded directory.",
+            "type": "string",
+            "format": "string"
+          },
+          "dnsNames": {
+            "description": "The DNS names for the certificate. A certificate may contain multiple DNS names.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "string"
+            }
+          }
+        }
       },
       "istio.mesh.v1alpha1.MeshConfig.OutboundTrafficPolicy.Mode": {
         "type": "string",
         "enum": [
           "REGISTRY_ONLY",
           "ALLOW_ANY"
-        ],
-        "default": "REGISTRY_ONLY"
+        ]
+      },
+      "istio.mesh.v1alpha1.Resource": {
+        "description": "Resource describes the source of configuration",
+        "type": "string",
+        "enum": [
+          "SERVICE_REGISTRY"
+        ]
       },
       "istio.mesh.v1alpha1.LocalityLoadBalancerSetting.Distribute": {
         "description": "Describes how traffic originating in the 'from' zone or sub-zone is distributed over a set of 'to' zones. Syntax for specifying a zone is {region}/{zone}/{sub-zone} and terminal wildcards are allowed on any segment of the specification. Examples: * - matches all localities us-west/* - all zones and sub-zones within the us-west region us-west/zone-1/* - all sub-zones within us-west/zone-1",
@@ -436,14 +483,14 @@
         "type": "object",
         "properties": {
           "endpoints": {
-            "description": "REQUIRED: The list of endpoints in the network (obtained through the constituent service registries or from CIDR ranges). All endpoints in the network are directly accessible to one another.",
+            "description": "The list of endpoints in the network (obtained through the constituent service registries or from CIDR ranges). All endpoints in the network are directly accessible to one another.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/istio.mesh.v1alpha1.Network.NetworkEndpoints"
             }
           },
           "gateways": {
-            "description": "REQUIRED: Set of gateways associated with the network.",
+            "description": "Set of gateways associated with the network.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/istio.mesh.v1alpha1.Network.IstioNetworkGateway"
@@ -473,7 +520,7 @@
             ],
             "properties": {
               "fromRegistry": {
-                "description": "Add all endpoints from the specified registry into this network. The names of the registries should correspond to the secret name that was used to configure the registry (Kubernetes multicluster) or supplied by MCP server.",
+                "description": "Add all endpoints from the specified registry into this network. The names of the registries should correspond to the kubeconfig file name inside the secret that was used to configure the registry (Kubernetes multicluster) or supplied by MCP server.",
                 "type": "string",
                 "format": "string"
               }
@@ -491,7 +538,7 @@
             ],
             "properties": {
               "port": {
-                "description": "REQUIRED: The port associated with the gateway.",
+                "description": "The port associated with the gateway.",
                 "type": "integer"
               },
               "locality": {
@@ -512,7 +559,7 @@
             ],
             "properties": {
               "port": {
-                "description": "REQUIRED: The port associated with the gateway.",
+                "description": "The port associated with the gateway.",
                 "type": "integer"
               },
               "address": {
@@ -534,7 +581,7 @@
         "type": "object",
         "properties": {
           "networks": {
-            "description": "REQUIRED: The set of networks inside this mesh. Each network should have a unique name and information about how to infer the endpoints in the network as well as the gateways associated with the network.",
+            "description": "The set of networks inside this mesh. Each network should have a unique name and information about how to infer the endpoints in the network as well as the gateways associated with the network.",
             "type": "object",
             "additionalProperties": {
               "$ref": "#/components/schemas/istio.mesh.v1alpha1.Network"
@@ -549,8 +596,7 @@
           "NONE",
           "MUTUAL_TLS",
           "INHERIT"
-        ],
-        "default": "NONE"
+        ]
       },
       "istio.mesh.v1alpha1.Tracing": {
         "description": "Tracing defines configuration for the tracing performed by Envoy instances.",
@@ -691,8 +737,7 @@
         "enum": [
           "REDIRECT",
           "TPROXY"
-        ],
-        "default": "REDIRECT"
+        ]
       },
       "istio.mesh.v1alpha1.RemoteService": {
         "type": "object",
@@ -766,15 +811,14 @@
         }
       },
       "istio.networking.v1alpha3.TLSSettings.TLSmode": {
-        "description": "REQUIRED: Indicates whether connections to this port should be secured using TLS. The value of this field determines how TLS is enforced.",
+        "description": "Indicates whether connections to this port should be secured using TLS. The value of this field determines how TLS is enforced.",
         "type": "string",
         "enum": [
           "DISABLE",
           "SIMPLE",
           "MUTUAL",
           "ISTIO_MUTUAL"
-        ],
-        "default": "DISABLE"
+        ]
       }
     }
   }

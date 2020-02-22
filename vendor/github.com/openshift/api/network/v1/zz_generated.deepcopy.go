@@ -20,12 +20,13 @@ func (in *ClusterNetwork) DeepCopyInto(out *ClusterNetwork) {
 	}
 	if in.VXLANPort != nil {
 		in, out := &in.VXLANPort, &out.VXLANPort
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(uint32)
-			**out = **in
-		}
+		*out = new(uint32)
+		**out = **in
+	}
+	if in.MTU != nil {
+		in, out := &in.MTU, &out.MTU
+		*out = new(uint32)
+		**out = **in
 	}
 	return
 }
@@ -68,7 +69,7 @@ func (in *ClusterNetworkEntry) DeepCopy() *ClusterNetworkEntry {
 func (in *ClusterNetworkList) DeepCopyInto(out *ClusterNetworkList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]ClusterNetwork, len(*in))
@@ -128,7 +129,7 @@ func (in *EgressNetworkPolicy) DeepCopyObject() runtime.Object {
 func (in *EgressNetworkPolicyList) DeepCopyInto(out *EgressNetworkPolicyList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]EgressNetworkPolicy, len(*in))
@@ -251,7 +252,7 @@ func (in *HostSubnet) DeepCopyObject() runtime.Object {
 func (in *HostSubnetList) DeepCopyInto(out *HostSubnetList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]HostSubnet, len(*in))
@@ -315,7 +316,7 @@ func (in *NetNamespace) DeepCopyObject() runtime.Object {
 func (in *NetNamespaceList) DeepCopyInto(out *NetNamespaceList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]NetNamespace, len(*in))
