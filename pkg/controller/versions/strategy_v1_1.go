@@ -96,7 +96,7 @@ func (v *versionStrategyV1_1) ValidateDowngrade(ctx context.Context, cl client.C
 	meshNamespaces := sets.NewString(smcp.GetNamespace())
 
 	memberNamespaces := &corev1.NamespaceList{}
-	if err := cl.List(ctx, client.MatchingLabels(map[string]string{common.MemberOfKey: smcp.GetNamespace()}), memberNamespaces); err != nil {
+	if err := cl.List(ctx, memberNamespaces, client.MatchingLabels(map[string]string{common.MemberOfKey: smcp.GetNamespace()})); err != nil {
 		return pkgerrors.Wrap(err, "error listing member namespaces")
 	}
 	for _, member := range memberNamespaces.Items {
@@ -114,7 +114,7 @@ func (v *versionStrategyV1_1) ValidateDowngrade(ctx context.Context, cl client.C
 	// Any VirtualService http entries use mirrorPercent attribute
 	virtualServices := &networkingv1alpha3.VirtualServiceList{}
 	// XXX: do we list all in the cluster, or list for each member namespace?
-	if err := cl.List(ctx, nil, virtualServices); err != nil {
+	if err := cl.List(ctx, virtualServices); err != nil {
 		if !meta.IsNoMatchError(err) && !errors.IsNotFound(err) {
 			return pkgerrors.Wrapf(err, "error listing %T resources", virtualServices)
 		}
@@ -139,7 +139,7 @@ func (v *versionStrategyV1_1) ValidateDowngrade(ctx context.Context, cl client.C
 	for _, list := range unsupportedNewResourcesV1_0 {
 		list = list.DeepCopyObject()
 		// XXX: do we list all in the cluster, or list for each member namespace?
-		if err := cl.List(ctx, nil, list); err != nil {
+		if err := cl.List(ctx, list); err != nil {
 			if !meta.IsNoMatchError(err) && !errors.IsNotFound(err) {
 				return pkgerrors.Wrapf(err, "error listing %T resources", list)
 			}
@@ -224,7 +224,7 @@ func (v *versionStrategyV1_1) ValidateUpgrade(ctx context.Context, cl client.Cli
 	for _, list := range unsupportedOldResourcesV1_1 {
 		list = list.DeepCopyObject()
 		// XXX: do we list all in the cluster, or list for each member namespace?
-		if err := cl.List(ctx, nil, list); err != nil {
+		if err := cl.List(ctx, list); err != nil {
 			if !meta.IsNoMatchError(err) && !errors.IsNotFound(err) {
 				return pkgerrors.Wrapf(err, "error listing %T resources", list)
 			}
@@ -246,7 +246,7 @@ func (v *versionStrategyV1_1) ValidateUpgrade(ctx context.Context, cl client.Cli
 	for namespace := range meshNamespaces {
 		memberServices := &corev1.ServiceList{}
 		// listing for each member namespace, as we expect a large number of services in the whole cluster
-		if err := cl.List(ctx, client.InNamespace(namespace), memberServices); err != nil {
+		if err := cl.List(ctx, memberServices, client.InNamespace(namespace)); err != nil {
 			return pkgerrors.Wrapf(err, "error listing Service resources in namespace %s", namespace)
 		}
 		for _, service := range memberServices.Items {

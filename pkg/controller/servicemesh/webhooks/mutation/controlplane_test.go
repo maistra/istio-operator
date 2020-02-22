@@ -7,7 +7,7 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -55,7 +55,7 @@ func TestVersionIsDefaultedToCurrentMaistraVersionOnCreate(t *testing.T) {
 
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
 	response := mutator.Handle(ctx, newCreateRequest(controlPlane))
-	expectedResponse := webhookadmission.PatchResponse(controlPlane, mutatedControlPlane)
+	expectedResponse := PatchResponse(toRawExtension(controlPlane), mutatedControlPlane)
 	assert.DeepEquals(response, expectedResponse, "Expected the response to set the version on create", t)
 }
 
@@ -92,7 +92,7 @@ func TestVersionIsDefaultedToOldSMCPVersionOnUpdate(t *testing.T) {
 
 			mutator, _, _ := createControlPlaneMutatorTestFixture(controlPlane)
 			response := mutator.Handle(ctx, newUpdateRequest(controlPlane, updatedControlPlane))
-			expectedResponse := webhookadmission.PatchResponse(controlPlane, mutatedControlPlane)
+			expectedResponse := PatchResponse(toRawExtension(controlPlane), mutatedControlPlane)
 			assert.DeepEquals(response, expectedResponse, "Expected the response to set the version to previously AppliedVersion on update", t)
 		})
 	}
@@ -108,7 +108,7 @@ func TestTemplateIsDefaultedOnCreate(t *testing.T) {
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
 
 	response := mutator.Handle(ctx, newCreateRequest(controlPlane))
-	expectedResponse := webhookadmission.PatchResponse(controlPlane, mutatedControlPlane)
+	expectedResponse := PatchResponse(toRawExtension(controlPlane), mutatedControlPlane)
 	assert.DeepEquals(response, expectedResponse, "Expected the response to set the template on create", t)
 }
 
@@ -124,13 +124,13 @@ func TestTemplateIsDefaultedOnUpdate(t *testing.T) {
 
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
 	response := mutator.Handle(ctx, newUpdateRequest(origControlPlane, updatedControlPlane))
-	expectedResponse := webhookadmission.PatchResponse(updatedControlPlane, mutatedControlPlane)
+	expectedResponse := PatchResponse(toRawExtension(updatedControlPlane), mutatedControlPlane)
 	assert.DeepEquals(response, expectedResponse, "Expected the response to set the template on update", t)
 }
 
 func createControlPlaneMutatorTestFixture(clientObjects ...runtime.Object) (*ControlPlaneMutator, client.Client, *test.EnhancedTracker) {
 	cl, tracker := test.CreateClient(clientObjects...)
-	decoder, err := webhookadmission.NewDecoder(test.GetScheme())
+	decoder, err := admission.NewDecoder(test.GetScheme())
 	if err != nil {
 		panic(fmt.Sprintf("Could not create decoder: %s", err))
 	}

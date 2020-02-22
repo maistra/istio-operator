@@ -41,7 +41,7 @@ func Add(mgr manager.Manager) error {
 		return err
 	}
 
-	reconciler := newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetRecorder(controllerName), operatorNamespace, cniConfig)
+	reconciler := newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetEventRecorderFor(controllerName), operatorNamespace, cniConfig)
 	return add(mgr, reconciler)
 }
 
@@ -113,7 +113,7 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 					return nil
 				}
 				smcpList := &v1.ServiceMeshControlPlaneList{}
-				if err := mgr.GetClient().List(ctx, nil, smcpList); err != nil {
+				if err := mgr.GetClient().List(ctx, smcpList); err != nil {
 					log.Error(err, "error listing ServiceMeshControlPlane objects in CNI DaemonSet watcher")
 					return nil
 				}

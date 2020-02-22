@@ -93,7 +93,7 @@ func (r *controlPlaneInstanceReconciler) pruneResources(ctx context.Context, gvk
 	for _, gvk := range gvks {
 		objects := &unstructured.UnstructuredList{}
 		objects.SetGroupVersionKind(gvk)
-		err := r.Client.List(ctx, client.MatchingLabels(labelSelector).InNamespace(namespace), objects)
+		err := r.Client.List(ctx, objects, client.InNamespace(namespace), client.MatchingLabels(labelSelector))
 		if err != nil {
 			if !meta.IsNoMatchError(err) && !errors.IsNotFound(err) {
 				log.Error(err, "Error retrieving resources to prune", "type", gvk.String())

@@ -56,7 +56,7 @@ func newNamespaceReconciler(ctx context.Context, cl client.Client, meshNamespace
 	}
 
 	labelSelector := map[string]string{common.OwnerKey: meshNamespace}
-	err = cl.List(ctx, client.MatchingLabels(labelSelector).InNamespace(meshNamespace), &reconciler.roleBindingsList)
+	err = cl.List(ctx, &reconciler.roleBindingsList, client.InNamespace(meshNamespace), client.MatchingLabels(labelSelector))
 	if err != nil {
 		logger.Error(err, "error retrieving RoleBinding resources for mesh")
 		return nil, pkgerrors.Wrap(err, "error retrieving RoleBinding resources for mesh")
@@ -159,7 +159,7 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(ctx context.Context, names
 	// delete role bindings
 	rbList := &rbac.RoleBindingList{}
 	labelSelector := map[string]string{common.OwnerKey: r.meshNamespace}
-	err = r.Client.List(ctx, client.MatchingLabels(labelSelector).InNamespace(namespace), rbList)
+	err = r.Client.List(ctx, rbList, client.InNamespace(namespace), client.MatchingLabels(labelSelector))
 	if err == nil {
 		for _, rb := range rbList.Items {
 			logger.Info("deleting RoleBinding for mesh ServiceAccount", "RoleBinding", rb.GetName())
@@ -273,7 +273,7 @@ func (r *namespaceReconciler) reconcileRoleBindings(ctx context.Context, namespa
 
 	namespaceRoleBindings := rbac.RoleBindingList{}
 	labelSelector := map[string]string{common.MemberOfKey: r.meshNamespace}
-	err := r.Client.List(ctx, client.InNamespace(namespace).MatchingLabels(labelSelector), &namespaceRoleBindings)
+	err := r.Client.List(ctx, &namespaceRoleBindings, client.MatchingLabels(labelSelector), client.InNamespace(namespace))
 	if err != nil {
 		reqLogger.Error(err, "error retrieving RoleBinding resources for namespace")
 		return err

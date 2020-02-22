@@ -45,7 +45,7 @@ const (
 // Add creates a new ServiceMeshMember Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetRecorder(controllerName)))
+	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetEventRecorderFor(controllerName)))
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -131,7 +131,7 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 func (r *MemberReconciler) getRequestsForMembersReferencing(ctx context.Context, ns string, cl client.Client) []reconcile.Request {
 	log := common.LogFromContext(ctx)
 	list := &maistra.ServiceMeshMemberList{}
-	err := cl.List(ctx, client.MatchingField("spec.controlPlaneRef.namespace", ns), list)
+	err := cl.List(ctx, list, client.MatchingField("spec.controlPlaneRef.namespace", ns))
 	if err != nil {
 		log.Error(err, "Could not list ServiceMeshMembers")
 	}

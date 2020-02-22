@@ -25,6 +25,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -109,15 +110,10 @@ func (c *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.
 	return c.copyObject(o, obj)
 }
 
-func (c *fakeClient) List(ctx context.Context, opts *client.ListOptions, list runtime.Object) error {
+func (c *fakeClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
 	gvk, err := getGVKFromList(list, c.scheme)
 	if err != nil {
-		// The old fake client required GVK info in Raw.TypeMeta, so check there
-		// before giving up
-		if opts == nil || opts.Raw == nil || opts.Raw.TypeMeta.APIVersion == "" || opts.Raw.TypeMeta.Kind == "" {
-			return err
-		}
-		gvk = opts.Raw.TypeMeta.GroupVersionKind()
+		return err
 	}
 
 	listGVK := schema.GroupVersionKind{
@@ -125,13 +121,17 @@ func (c *fakeClient) List(ctx context.Context, opts *client.ListOptions, list ru
 		Group:   gvk.Group,
 		Version: gvk.Version,
 	}
-	ns := ""
-	if opts != nil {
-		ns = opts.Namespace
-	}
+
+	listOpts := client.ListOptions{}
+	listOpts.ApplyOptions(opts)
+
+	ns := listOpts.Namespace
 
 	gvr, _ := meta.UnsafeGuessKindToResource(gvk)
-	o, err := c.Invokes(testing.NewListAction(gvr, gvk, ns, *opts.AsListOptions()), nil)
+	o, err := c.Invokes(testing.NewListAction(gvr, gvk, ns, *listOpts.AsListOptions()), nil)
+	if o == nil {
+		return errors.NewInternalError(fmt.Errorf("no resource returned by Fake"))
+	}
 	if err != nil {
 		return err
 	}
@@ -149,8 +149,8 @@ func (c *fakeClient) List(ctx context.Context, opts *client.ListOptions, list ru
 		return err
 	}
 
-	if opts != nil && opts.LabelSelector != nil {
-		return filterListItems(list, opts.LabelSelector)
+	if opts != nil && listOpts.LabelSelector != nil {
+		return filterListItems(list, listOpts.LabelSelector)
 	}
 	return nil
 }
@@ -171,7 +171,16 @@ func filterListItems(list runtime.Object, labSel labels.Selector) error {
 	return nil
 }
 
-func (c *fakeClient) Create(ctx context.Context, obj runtime.Object) error {
+func (c *fakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+	createOptions := &client.CreateOptions{}
+	createOptions.ApplyOptions(opts)
+
+	for _, dryRunOpt := range createOptions.DryRun {
+		if dryRunOpt == metav1.DryRunAll {
+			return nil
+		}
+	}
+
 	gvr, err := getGVRFromObject(obj, c.scheme)
 	if err != nil {
 		return err
@@ -187,7 +196,7 @@ func (c *fakeClient) Create(ctx context.Context, obj runtime.Object) error {
 	return c.copyObject(o, obj)
 }
 
-func (c *fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOptionFunc) error {
+func (c *fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
 	gvr, err := getGVRFromObject(obj, c.scheme)
 	if err != nil {
 		return err
@@ -201,7 +210,42 @@ func (c *fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...cli
 	return err
 }
 
-func (c *fakeClient) Update(ctx context.Context, obj runtime.Object) error {
+func (c *fakeClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+	return c.internalUpdate("", obj, opts...)
+}
+
+func (c *fakeClient) internalUpdate(subresource string, obj runtime.Object, opts ...client.UpdateOption) error {
+		gvr, err := getGVRFromObject(obj, c.scheme)
+	if err != nil {
+		return err
+	}
+	accessor, err := meta.Accessor(obj)
+	if err != nil {
+		return err
+	}
+	o, err := c.Invokes(testing.NewUpdateSubresourceAction(gvr, subresource, accessor.GetNamespace(), obj), nil)
+	if err != nil {
+		return err
+	}
+	return c.copyObject(o, obj)
+}
+
+// Patch patches the given obj in the Kubernetes cluster. obj must be a
+// struct pointer so that obj can be updated with the content returned by the Server.
+func (c *fakeClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+	return c.internalPatch("", obj, patch, opts...)
+}
+
+func (c *fakeClient) internalPatch(subresource string, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+		patchOptions := &client.PatchOptions{}
+	patchOptions.ApplyOptions(opts)
+
+	for _, dryRunOpt := range patchOptions.DryRun {
+		if dryRunOpt == metav1.DryRunAll {
+			return nil
+		}
+	}
+
 	gvr, err := getGVRFromObject(obj, c.scheme)
 	if err != nil {
 		return err
@@ -210,12 +254,76 @@ func (c *fakeClient) Update(ctx context.Context, obj runtime.Object) error {
 	if err != nil {
 		return err
 	}
-	o, err := c.Invokes(testing.NewUpdateAction(gvr, accessor.GetNamespace(), obj), nil)
+	data, err := patch.Data(obj)
 	if err != nil {
 		return err
 	}
-	return c.copyObject(o, obj)
+
+	o, err := c.Invokes(testing.NewPatchSubresourceAction(gvr, accessor.GetNamespace(), accessor.GetName(), patch.Type(), data, subresource), nil)
+	if err != nil {
+		return err
+	}
+
+	gvk, err := apiutil.GVKForObject(obj, c.scheme)
+	if err != nil {
+		return err
+	}
+	ta, err := meta.TypeAccessor(o)
+	if err != nil {
+		return err
+	}
+	ta.SetKind(gvk.Kind)
+	ta.SetAPIVersion(gvk.GroupVersion().String())
+
+	j, err := json.Marshal(o)
+	if err != nil {
+		return err
+	}
+	decoder := scheme.Codecs.UniversalDecoder()
+	_, _, err = decoder.Decode(j, nil, obj)
+	return err
 }
+
+// DeleteAllOf deletes all objects of the given type matching the given options.
+func (c *fakeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
+	gvk, err := apiutil.GVKForObject(obj, scheme.Scheme)
+	if err != nil {
+		return err
+	}
+
+	dcOptions := client.DeleteAllOfOptions{}
+	dcOptions.ApplyOptions(opts)
+
+	listOptions := client.ListOptions{
+		LabelSelector: dcOptions.LabelSelector,
+		Namespace: dcOptions.Namespace,
+		FieldSelector: dcOptions.FieldSelector,
+	}
+	gvr, _ := meta.UnsafeGuessKindToResource(gvk)
+	o, err := c.Invokes(testing.NewListAction(gvr, gvk, listOptions.Namespace, listOptions), nil)
+	if err != nil {
+		return err
+	}
+
+	objs, err := meta.ExtractList(o)
+	if err != nil {
+		return err
+	}
+	filteredObjs, err := FilterWithLabels(objs, dcOptions.LabelSelector)
+	if err != nil {
+		return err
+	}
+	for _, o := range filteredObjs {
+		accessor, err := meta.Accessor(o)
+		if err != nil {
+			return err
+		}
+		_, err = c.Invokes(testing.NewDeleteAction(gvr, accessor.GetNamespace(), accessor.GetName()), nil)
+		if err != nil {
+			return err
+		}
+	}
+	return nil}
 
 func (c *fakeClient) Status() client.StatusWriter {
 	return &fakeStatusWriter{client: c}
@@ -265,23 +373,19 @@ type fakeStatusWriter struct {
 	client *fakeClient
 }
 
-func (sw *fakeStatusWriter) Update(ctx context.Context, obj runtime.Object) error {
+func (sw *fakeStatusWriter) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
 	// TODO(droot): This results in full update of the obj (spec + status). Need
 	// a way to update status field only.
-	gvr, err := getGVRFromObject(obj, sw.client.scheme)
-	if err != nil {
-		return err
-	}
-	accessor, err := meta.Accessor(obj)
-	if err != nil {
-		return err
-	}
-	o, err := sw.client.Invokes(testing.NewUpdateSubresourceAction(gvr, "status", accessor.GetNamespace(), obj), nil)
-	if err != nil {
-		return err
-	}
-	return sw.client.copyObject(o, obj)
+	return sw.client.internalUpdate("status", obj, opts...)
 }
+
+// Patch patches the given object's subresource. obj must be a struct
+// pointer so that obj can be updated with the content returned by the
+// Server.
+func (sw *fakeStatusWriter) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+	return sw.client.internalPatch("status", obj, patch, opts...)
+}
+
 
 // from sigs.k8s.io/controller-runtime/pkg/internal/objectutil
 

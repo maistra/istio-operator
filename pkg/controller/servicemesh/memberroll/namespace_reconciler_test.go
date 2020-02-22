@@ -43,7 +43,7 @@ func TestReconcileNamespaceInMesh(t *testing.T) {
 
 	// check role bindings exist
 	roleBindings := rbac.RoleBindingList{}
-	err = cl.List(ctx, client.InNamespace(appNamespace), &roleBindings)
+	err = cl.List(ctx, &roleBindings, client.InNamespace(appNamespace))
 	if err != nil {
 		t.Fatalf("Couldn't list RoleBindings: %v", err)
 	}
@@ -123,7 +123,7 @@ func TestReconcileUpdatesModifiedRoleBindings(t *testing.T) {
 
 	// check role bindings exist
 	roleBindings := rbac.RoleBindingList{}
-	err = cl.List(ctx, client.InNamespace(appNamespace), &roleBindings)
+	err = cl.List(ctx, &roleBindings, client.InNamespace(appNamespace))
 	if err != nil {
 		t.Fatalf("Couldn't list RoleBindings: %v", err)
 	}
@@ -156,7 +156,7 @@ func TestReconcileDeletesObsoleteRoleBindings(t *testing.T) {
 
 	// check that role binding in app namespace has also been deleted
 	roleBindings := rbac.RoleBindingList{}
-	err = cl.List(ctx, client.InNamespace(appNamespace), &roleBindings)
+	err = cl.List(ctx, &roleBindings, client.InNamespace(appNamespace))
 	if err != nil {
 		t.Fatalf("Couldn't list RoleBindings: %v", err)
 	}

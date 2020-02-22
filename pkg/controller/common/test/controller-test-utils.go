@@ -75,6 +75,7 @@ func GetUpdatedObject(ctx context.Context, cl client.Client, objectMeta meta.Obj
 }
 
 func AssertObjectExists(ctx context.Context, cl client.Client, namespacedName types.NamespacedName, into runtime.Object, message string, t *testing.T) {
+	t.Helper()
 	err := cl.Get(ctx, namespacedName, into)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -87,6 +88,7 @@ func AssertObjectExists(ctx context.Context, cl client.Client, namespacedName ty
 }
 
 func AssertNotFound(ctx context.Context, cl client.Client, namespacedName types.NamespacedName, into runtime.Object, message string, t *testing.T) {
+	t.Helper()
 	err := cl.Get(ctx, namespacedName, into)
 	if err == nil {
 		t.Fatal(message)
@@ -101,6 +103,7 @@ func AssertNotFound(ctx context.Context, cl client.Client, namespacedName types.
 }
 
 func AssertNumberOfWriteActions(t *testing.T, actions []clienttesting.Action, expected int) {
+	t.Helper()
 	count := 0
 	for _, act := range actions {
 		if isWriteAction(act) {
@@ -116,10 +119,12 @@ func isWriteAction(action clienttesting.Action) bool {
 }
 
 func AssertNumberOfActions(t *testing.T, actions []clienttesting.Action, expected int) {
+	t.Helper()
 	assert.Equals(len(actions), expected, "Unexpected number of client actions", t)
 }
 
 func AssertGetAction(t *testing.T, action clienttesting.Action, objectMeta meta.ObjectMeta, obj runtime.Object) {
+	t.Helper()
 	assert.Equals(action.GetVerb(), "get", "Unexpected client action verb", t)
 
 	act := action.(clienttesting.GetAction)
