@@ -61,13 +61,13 @@ func (c *FakeCache) Get(ctx context.Context, key client.ObjectKey, obj runtime.O
 // List retrieves list of objects for a given namespace and list options. On a
 // successful call, Items field in the list will be populated with the
 // result returned from the server.
-func (c *FakeCache) List(ctx context.Context, opts *client.ListOptions, list runtime.Object) error {
-	return c.client.List(ctx, opts, list)
+func (c *FakeCache) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
+	return c.client.List(ctx, list, opts...)
 }
 
 // GetInformer fetches or constructs an informer for the given object that corresponds to a single
 // API kind and resource.
-func (c *FakeCache) GetInformer(obj runtime.Object) (toolscache.SharedIndexInformer, error) {
+func (c *FakeCache) GetInformer(obj runtime.Object) (cache.Informer, error) {
 	gvk, err := apiutil.GVKForObject(obj, c.scheme)
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (c *FakeCache) GetInformer(obj runtime.Object) (toolscache.SharedIndexInfor
 
 // GetInformerForKind is similar to GetInformer, except that it takes a group-version-kind, instead
 // of the underlying object.
-func (c *FakeCache) GetInformerForKind(gvk schema.GroupVersionKind) (toolscache.SharedIndexInformer, error) {
+func (c *FakeCache) GetInformerForKind(gvk schema.GroupVersionKind) (cache.Informer, error) {
 	obj, err := c.scheme.New(gvk)
 	if err != nil {
 		return nil, err
@@ -147,7 +147,7 @@ func (c *FakeCache) createListWatcher(gvk schema.GroupVersionKind) (*toolscache.
 	return &toolscache.ListWatch{
 		ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
 			res := listObj.DeepCopyObject()
-			c.client.List(context.TODO(), (&client.ListOptions{Raw: &opts}).InNamespace(c.namespace), res)
+			c.client.List(context.TODO(), res, &client.ListOptions{Namespace: c.namespace, Raw: &opts})
 			return res, err
 		},
 		// Setup the watch function
@@ -203,11 +203,11 @@ func (c *FakeCache) IndexField(obj runtime.Object, field string, extractValue cl
 	if err != nil {
 		return err
 	}
-	return indexByField(informer.GetIndexer(), field, extractValue)
+	return indexByField(informer, field, extractValue)
 }
 
 // adapted from sigs.k8s.io/controller-runtime/pkg/cache/informer_cache.go
-func indexByField(indexer toolscache.Indexer, field string, extractor client.IndexerFunc) error {
+func indexByField(indexer cache.Informer, field string, extractor client.IndexerFunc) error {
 	indexFunc := func(objRaw interface{}) ([]string, error) {
 		// TODO(directxman12): check if this is the correct type?
 		obj, isObj := objRaw.(runtime.Object)

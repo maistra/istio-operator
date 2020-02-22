@@ -87,7 +87,7 @@ func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 	err = c.Watch(&source.Kind{Type: &v1.Node{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			list := &v1.PodList{}
-			err := mgr.GetClient().List(ctx, client.MatchingField("spec.nodeName", a.Meta.GetName()), list)
+			err := mgr.GetClient().List(ctx, list, client.MatchingField("spec.nodeName", a.Meta.GetName()))
 			if err != nil {
 				log.Error(err, "Could not list pods")
 			}

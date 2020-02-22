@@ -12,7 +12,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -22,7 +21,7 @@ import (
 
 type ControlPlaneValidator struct {
 	client          client.Client
-	decoder         atypes.Decoder
+	decoder         *admission.Decoder
 	namespaceFilter webhookcommon.NamespaceFilter
 }
 
@@ -34,26 +33,26 @@ func NewControlPlaneValidator(namespaceFilter webhookcommon.NamespaceFilter) *Co
 
 var _ admission.Handler = (*ControlPlaneValidator)(nil)
 var _ inject.Client = (*ControlPlaneValidator)(nil)
-var _ inject.Decoder = (*ControlPlaneValidator)(nil)
+var _ admission.DecoderInjector = (*ControlPlaneValidator)(nil)
 
-func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
+func (v *ControlPlaneValidator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	logger := logf.Log.WithName("smcp-validator").
-		WithValues("ServiceMeshControlPlane", webhookcommon.ToNamespacedName(req.AdmissionRequest))
+		WithValues("ServiceMeshControlPlane", webhookcommon.ToNamespacedName(&req.AdmissionRequest))
 	smcp := &maistrav1.ServiceMeshControlPlane{}
 
 	err := v.decoder.Decode(req, smcp)
 	if err != nil {
 		logger.Error(err, "error decoding admission request")
-		return admission.ErrorResponse(http.StatusBadRequest, err)
+		return admission.Errored(http.StatusBadRequest, err)
 	} else if smcp.ObjectMeta.DeletionTimestamp != nil {
 		logger.Info("skipping deleted smcp resource")
-		return admission.ValidationResponse(true, "")
+		return admission.Allowed("")
 	}
 
 	// do we care about this object?
 	if !v.namespaceFilter.Watching(smcp.Namespace) {
 		logger.Info(fmt.Sprintf("operator is not watching namespace '%s'", smcp.Namespace))
-		return admission.ValidationResponse(true, "")
+		return admission.Allowed("")
 	}
 
 	if version, err := versions.ParseVersion(smcp.Spec.Version); err != nil {
@@ -67,10 +66,10 @@ func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 	}
 
 	smcpList := &maistrav1.ServiceMeshControlPlaneList{}
-	err = v.client.List(ctx, client.InNamespace(smcp.Namespace), smcpList)
+	err = v.client.List(ctx, smcpList, client.InNamespace(smcp.Namespace))
 	if err != nil {
 		logger.Error(err, "error listing smcp resources")
-		return admission.ErrorResponse(http.StatusInternalServerError, err)
+		return admission.Errored(http.StatusInternalServerError, err)
 	}
 
 	// verify single instance per namespace
@@ -84,7 +83,7 @@ func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 		err := v.decoder.DecodeRaw(req.AdmissionRequest.OldObject, oldsmcp)
 		if err != nil {
 			logger.Error(err, "error decoding admission request")
-			return admission.ErrorResponse(http.StatusBadRequest, err)
+			return admission.Errored(http.StatusBadRequest, err)
 		}
 
 		return v.validateUpdate(ctx, oldsmcp, smcp, logger)
@@ -104,7 +103,7 @@ func (v *ControlPlaneValidator) validateVersion(ctx context.Context, smcp *maist
 	return version.Strategy().Validate(ctx, v.client, smcp)
 }
 
-func (v *ControlPlaneValidator) validateUpdate(ctx context.Context, old, new *maistrav1.ServiceMeshControlPlane, logger logr.Logger) atypes.Response {
+func (v *ControlPlaneValidator) validateUpdate(ctx context.Context, old, new *maistrav1.ServiceMeshControlPlane, logger logr.Logger) admission.Response {
 	if old.Spec.Version == new.Spec.Version {
 		return admission.ValidationResponse(true, "")
 	}
@@ -112,12 +111,12 @@ func (v *ControlPlaneValidator) validateUpdate(ctx context.Context, old, new *ma
 	oldVersion, err := versions.ParseVersion(old.Spec.Version)
 	if err != nil {
 		logger.Error(err, "error parsing old resource version")
-		return admission.ErrorResponse(http.StatusInternalServerError, err)
+		return admission.Errored(http.StatusInternalServerError, err)
 	}
 	newVersion, err := versions.ParseVersion(new.Spec.Version)
 	if err != nil {
 		logger.Error(err, "error parsing new resource version")
-		return admission.ErrorResponse(http.StatusInternalServerError, err)
+		return admission.Errored(http.StatusInternalServerError, err)
 	}
 
 	// The logic used here is that we only verify upgrade/downgrade between adjacent versions
@@ -141,7 +140,7 @@ func (v *ControlPlaneValidator) validateUpdate(ctx context.Context, old, new *ma
 		}
 	}
 
-	return admission.ValidationResponse(true, "")
+	return admission.Allowed("")
 }
 
 // InjectClient injects the client.
@@ -151,7 +150,7 @@ func (v *ControlPlaneValidator) InjectClient(c client.Client) error {
 }
 
 // InjectDecoder injects the decoder.
-func (v *ControlPlaneValidator) InjectDecoder(d atypes.Decoder) error {
+func (v *ControlPlaneValidator) InjectDecoder(d *admission.Decoder) error {
 	v.decoder = d
 	return nil
 }

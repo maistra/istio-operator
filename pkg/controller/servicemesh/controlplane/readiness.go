@@ -152,8 +152,8 @@ func (r *controlPlaneInstanceReconciler) isCNIReady(ctx context.Context) (bool, 
 	labelSelector := map[string]string{"istio": "cni"}
 	daemonSets := &appsv1.DaemonSetList{}
 	operatorNamespace := common.GetOperatorNamespace()
-	if err := r.Client.List(ctx, client.MatchingLabels(labelSelector).InNamespace(operatorNamespace), daemonSets); err != nil {
-		return false, err
+	if err := r.Client.List(ctx, daemonSets, client.InNamespace(operatorNamespace), client.MatchingLabels(labelSelector)); err != nil {
+		return true, err
 	}
 	for _, ds := range daemonSets.Items {
 		if !r.daemonSetReady(&ds) {
@@ -168,7 +168,7 @@ func (r *controlPlaneInstanceReconciler) calculateReadinessForType(ctx context.C
 
 	meshNamespace := r.Instance.GetNamespace()
 	selector := map[string]string{common.OwnerKey: meshNamespace}
-	err := r.Client.List(ctx, client.InNamespace(meshNamespace).MatchingLabels(selector), list)
+	err := r.Client.List(ctx, list, client.InNamespace(meshNamespace), client.MatchingLabels(selector))
 	if err != nil {
 		return err
 	}

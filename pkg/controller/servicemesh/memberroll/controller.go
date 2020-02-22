@@ -46,7 +46,7 @@ func Add(mgr manager.Manager) error {
 	if err != nil {
 		return err
 	}
-	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetRecorder(controllerName), newNamespaceReconciler, &kialiReconciler, cniConfig))
+	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetEventRecorderFor(controllerName), newNamespaceReconciler, &kialiReconciler, cniConfig))
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -93,7 +93,7 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 	err = c.Watch(&source.Kind{Type: &corev1.Namespace{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(ns handler.MapObject) []reconcile.Request {
 			list := &v1.ServiceMeshMemberRollList{}
-			err := mgr.GetClient().List(ctx, client.MatchingField("spec.members", ns.Meta.GetName()), list)
+			err := mgr.GetClient().List(ctx, list, client.MatchingField("spec.members", ns.Meta.GetName()))
 			if err != nil {
 				log.Error(err, "Could not list ServiceMeshMemberRolls")
 			}
@@ -133,7 +133,7 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 				return nil
 			}
 			list := &v1.ServiceMeshMemberRollList{}
-			err := mgr.GetClient().List(ctx, client.InNamespace(smcpMap.Meta.GetNamespace()), list)
+			err := mgr.GetClient().List(ctx, list, client.InNamespace(smcpMap.Meta.GetNamespace()))
 			if err != nil {
 				log.Error(err, "Could not list ServiceMeshMemberRolls")
 			}
@@ -257,7 +257,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	reqLogger.Info("Reconciling ServiceMeshMemberRoll")
 
 	meshList := &v1.ServiceMeshControlPlaneList{}
-	err = r.Client.List(ctx, client.InNamespace(instance.Namespace), meshList)
+	err = r.Client.List(ctx, meshList, client.InNamespace(instance.Namespace))
 	if err != nil {
 		return reconcile.Result{}, pkgerrors.Wrap(err, "Error retrieving ServiceMeshControlPlane resources")
 	}
@@ -432,7 +432,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 func (r *MemberRollReconciler) findConfiguredNamespaces(ctx context.Context, meshNamespace string) (corev1.NamespaceList, error) {
 	list := corev1.NamespaceList{}
 	labelSelector := map[string]string{common.MemberOfKey: meshNamespace}
-	err := r.Client.List(ctx, client.MatchingLabels(labelSelector).InNamespace(""), &list)
+	err := r.Client.List(ctx, &list, client.MatchingLabels(labelSelector), client.InNamespace(""))
 	return list, err
 }
 
@@ -543,7 +543,7 @@ func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName
 
 func (r *MemberRollReconciler) getAllNamespaces(ctx context.Context) (sets.String, error) {
 	namespaceList := &corev1.NamespaceList{}
-	err := r.Client.List(ctx, nil, namespaceList)
+	err := r.Client.List(ctx, namespaceList)
 	if err != nil {
 		return nil, err
 	}
