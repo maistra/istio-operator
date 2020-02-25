@@ -21,11 +21,12 @@ IMAGE           ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}
 CONTAINER_CLI   ?= docker
 COMMUNITY       ?= true
 
-SOURCE_DIR        := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-RESOURCES_DIR     = ${SOURCE_DIR}/resources
-OUT_DIR           = ${SOURCE_DIR}/tmp/_output
-TEMPLATES_OUT_DIR = ${OUT_DIR}/resources/default-templates
-HELM_OUT_DIR      = ${OUT_DIR}/resources/helm
+SOURCE_DIR          := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+RESOURCES_DIR        = ${SOURCE_DIR}/resources
+OUT_DIR              = ${SOURCE_DIR}/tmp/_output
+TEMPLATES_OUT_DIR    = ${OUT_DIR}/resources/default-templates
+HELM_OUT_DIR         = ${OUT_DIR}/resources/helm
+OLM_MANIFEST_OUT_DIR = ${OUT_DIR}/manifests
 
 OFFLINE_BUILD       ?= false
 GIT_UPSTREAM_REMOTE ?= $(shell git remote -v |grep --color=never ':Maistra/istio-operator\.git.*(fetch)' |grep --color=never -o '^[^[:space:]]*')
@@ -41,6 +42,8 @@ BUILD_TYPE = maistra
 else
 BUILD_TYPE = servicemesh
 endif
+
+$(info   Building $(BUILD_TYPE) operator)
 
 export SOURCE_DIR OUT_DIR MAISTRA_BRANCH MAISTRA_VERSION VERSION COMMUNITY BUILD_TYPE
 
@@ -151,6 +154,12 @@ collect-charts: collect-1.0-charts collect-1.1-charts
 
 .PHONY: collect-templates
 collect-templates: collect-1.0-templates collect-1.1-templates
+
+.PHONY: collect-olm-manifests
+collect-olm-manifests:
+	rm -rf  ${OLM_MANIFEST_OUT_DIR}
+	mkdir -p ${OLM_MANIFEST_OUT_DIR}
+	cp -ra ${SOURCE_DIR}/manifests-${BUILD_TYPE}/* ${OLM_MANIFEST_OUT_DIR}
 
 .PHONY: collect-resources
 collect-resources: collect-templates collect-charts
