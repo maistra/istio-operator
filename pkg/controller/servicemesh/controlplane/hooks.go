@@ -44,8 +44,11 @@ func (r *controlPlaneInstanceReconciler) preprocessObject(ctx context.Context, o
 			return r.patchGrafanaConfig(ctx, object)
 		}
 	case "Secret":
-		if object.GetName() == "htpasswd" {
+		switch object.GetName() {
+		case "htpasswd":
 			return r.patchHtpasswdSecret(ctx, object)
+		case "prometheus-proxy", "grafana-proxy":
+			return r.patchProxySecret(ctx, object)
 		}
 	}
 	return nil
