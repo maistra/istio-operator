@@ -25,9 +25,8 @@ func TestDeletedControlPlaneIsAlwaysAllowed(t *testing.T) {
 
 func TestControlPlaneOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
 	controlPlane := newControlPlane("my-smcp", "not-watched")
-	watchNamespace = "watched-namespace"
-	defer func() { watchNamespace = "" }()
 	validator, _, _ := createControlPlaneValidatorTestFixture()
+	validator.namespaceFilter = "watched-namespace"
 	response := validator.Handle(ctx, createCreateRequest(controlPlane))
 	assert.True(response.Response.Allowed, "Expected validator to allow ServiceMeshControlPlane whose namespace isn't watched", t)
 }
@@ -85,13 +84,13 @@ func TestUpdateOfValidControlPlane(t *testing.T) {
 	assert.True(response.Response.Allowed, "Expected validator to accept update of valid ServiceMeshControlPlane", t)
 }
 
-func createControlPlaneValidatorTestFixture(clientObjects ...runtime.Object) (controlPlaneValidator, client.Client, *test.EnhancedTracker) {
+func createControlPlaneValidatorTestFixture(clientObjects ...runtime.Object) (*ControlPlaneValidator, client.Client, *test.EnhancedTracker) {
 	cl, tracker := test.CreateClient(clientObjects...)
 	decoder, err := webhookadmission.NewDecoder(test.GetScheme())
 	if err != nil {
 		panic(fmt.Sprintf("Could not create decoder: %s", err))
 	}
-	validator := controlPlaneValidator{}
+	validator := NewControlPlaneValidator("")
 
 	err = validator.InjectClient(cl)
 	if err != nil {

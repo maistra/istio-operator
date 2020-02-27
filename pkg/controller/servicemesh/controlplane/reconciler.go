@@ -57,8 +57,6 @@ var orderedCharts = []string{
 }
 
 const (
-	smcpDefaultTemplate = "default"
-
 	// Event reasons
 	eventReasonInstalling              = "Installing"
 	eventReasonPausingInstall          = "PausingInstall"
@@ -412,7 +410,7 @@ func (r *controlPlaneInstanceReconciler) applyTemplates(ctx context.Context, smc
 	log := common.LogFromContext(ctx)
 	log.Info("updating servicemeshcontrolplane with templates")
 	if smcpSpec.Template == "" {
-		smcpSpec.Template = smcpDefaultTemplate
+		smcpSpec.Template = v1.DefaultTemplate
 		log.Info("No template provided. Using default")
 	}
 
