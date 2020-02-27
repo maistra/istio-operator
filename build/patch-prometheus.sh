@@ -60,7 +60,7 @@ function prometheus_patch_deployment() {
 \1- --discovery.member-roll-namespace={{ .Release.Namespace }}/' \
   ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 
-  sed -i -r -e 's/.*image:.*prometheus.*$/{{- if contains "\/" .Values.image }}\
+  sed -i -r -e 's/.*image:.*"\{\{ \.Values\.hub \}\}\/\{\{ \.Values\.image \}\}\:\{\{ \.Values\.tag \}\}".*$/{{- if contains "\/" .Values.image }}\
           image: "{{ .Values.image }}"\
 {{- else }}\
           image: "{{ .Values.global.hub }}\/{{ .Values.image }}:{{ .Values.global.tag }}"\

@@ -78,7 +78,11 @@ spec:
           - -openshift-ca=/etc/pki/tls/cert.pem
           - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         - name: prometheus
-          image: "{{ .Values.hub }}/{{ .Values.image }}:{{ .Values.tag }}"
+{{- if contains "/" .Values.image }}
+          image: "{{ .Values.image }}"
+{{- else }}
+          image: "{{ .Values.global.hub }}/{{ .Values.image }}:{{ .Values.global.tag }}"
+{{- end }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           args:
             - '--storage.tsdb.retention={{ .Values.retention }}'
