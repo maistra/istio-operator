@@ -116,12 +116,12 @@ spec:
               value: "/host/etc/cni/multus/net.d"
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
-              value: "v1.1-istio-cni.conf"
+              value: "v1-1-istio-cni.conf"
             # Name of the kubeconfig file used by CNI agent
             - name: KUBECFG_FILE_NAME
-              value: "istio-cni.kubeconfig"
+              value: "v1-1-istio-cni.kubeconfig"
             - name: CNI_BINARIES_PREFIX
-              value: "v1.1-"
+              value: "v1-1-"
             # Deploy as a standalone CNI plugin instead of as chained
             - name: CHAINED_CNI_PLUGIN
               value: "false"

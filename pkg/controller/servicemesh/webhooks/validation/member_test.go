@@ -150,13 +150,13 @@ func invokeMemberValidator(request atypes.Request) atypes.Response {
 	return response
 }
 
-func createMemberValidatorTestFixture(clientObjects ...runtime.Object) (memberValidator, client.Client, *test.EnhancedTracker) {
+func createMemberValidatorTestFixture(clientObjects ...runtime.Object) (*MemberValidator, client.Client, *test.EnhancedTracker) {
 	cl, tracker := test.CreateClient(clientObjects...)
 	decoder, err := webhookadmission.NewDecoder(test.GetScheme())
 	if err != nil {
 		panic(fmt.Sprintf("Could not create decoder: %s", err))
 	}
-	validator := memberValidator{}
+	validator := NewMemberValidator()
 
 	err = validator.InjectClient(cl)
 	if err != nil {

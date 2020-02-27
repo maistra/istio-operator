@@ -129,7 +129,7 @@ function patchGalley() {
 \2- --webhook-name\
 \2- istio-galley-\{\{ .Release.Namespace \}\}\
 \2- --memberRollName=default\
-\2- --useOldPipeline=true\
+\2- --useOldProcessor=true\
 \1/
   }' \
          -e '/operatorManageWebhooks/,/{{- end }}/ {

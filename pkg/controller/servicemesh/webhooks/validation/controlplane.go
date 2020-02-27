@@ -6,9 +6,11 @@ import (
 	"net/http"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	webhookcommon "github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/common"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
@@ -16,18 +18,25 @@ import (
 	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 )
 
-type controlPlaneValidator struct {
-	client  client.Client
-	decoder atypes.Decoder
+type ControlPlaneValidator struct {
+	client          client.Client
+	decoder         atypes.Decoder
+	namespaceFilter webhookcommon.NamespaceFilter
 }
 
-var _ admission.Handler = (*controlPlaneValidator)(nil)
-var _ inject.Client = (*controlPlaneValidator)(nil)
-var _ inject.Decoder = (*controlPlaneValidator)(nil)
+func NewControlPlaneValidator(namespaceFilter webhookcommon.NamespaceFilter) *ControlPlaneValidator {
+	return &ControlPlaneValidator{
+		namespaceFilter: namespaceFilter,
+	}
+}
 
-func (v *controlPlaneValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
-	logger := log.WithName("smcp-validator").
-		WithValues("ServiceMeshControlPlane", toNamespacedName(req.AdmissionRequest))
+var _ admission.Handler = (*ControlPlaneValidator)(nil)
+var _ inject.Client = (*ControlPlaneValidator)(nil)
+var _ inject.Decoder = (*ControlPlaneValidator)(nil)
+
+func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
+	logger := logf.Log.WithName("smcp-validator").
+		WithValues("ServiceMeshControlPlane", webhookcommon.ToNamespacedName(req.AdmissionRequest))
 	smcp := &maistrav1.ServiceMeshControlPlane{}
 
 	err := v.decoder.Decode(req, smcp)
@@ -40,7 +49,7 @@ func (v *controlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 	}
 
 	// do we care about this object?
-	if !watchNamespace.watching(smcp.Namespace) {
+	if !v.namespaceFilter.Watching(smcp.Namespace) {
 		logger.Info(fmt.Sprintf("operator is not watching namespace '%s'", smcp.Namespace))
 		return admission.ValidationResponse(true, "")
 	}
@@ -72,13 +81,13 @@ func (v *controlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 }
 
 // InjectClient injects the client.
-func (v *controlPlaneValidator) InjectClient(c client.Client) error {
+func (v *ControlPlaneValidator) InjectClient(c client.Client) error {
 	v.client = c
 	return nil
 }
 
 // InjectDecoder injects the decoder.
-func (v *controlPlaneValidator) InjectDecoder(d atypes.Decoder) error {
+func (v *ControlPlaneValidator) InjectDecoder(d atypes.Decoder) error {
 	v.decoder = d
 	return nil
 }

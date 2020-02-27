@@ -8,9 +8,11 @@ import (
 	admissionv1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	webhookcommon "github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/common"
 
 	authenticationv1 "k8s.io/api/authentication/v1"
 	authorizationv1 "k8s.io/api/authorization/v1"
@@ -21,18 +23,25 @@ import (
 	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 )
 
-type memberRollValidator struct {
-	client  client.Client
-	decoder atypes.Decoder
+type MemberRollValidator struct {
+	client          client.Client
+	decoder         atypes.Decoder
+	namespaceFilter webhookcommon.NamespaceFilter
 }
 
-var _ admission.Handler = (*memberRollValidator)(nil)
-var _ inject.Client = (*memberRollValidator)(nil)
-var _ inject.Decoder = (*memberRollValidator)(nil)
+func NewMemberRollValidator(namespaceFilter webhookcommon.NamespaceFilter) *MemberRollValidator {
+	return &MemberRollValidator{
+		namespaceFilter: namespaceFilter,
+	}
+}
 
-func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
-	logger := log.WithName("smmr-validator").
-		WithValues("ServiceMeshMemberRoll", toNamespacedName(req.AdmissionRequest))
+var _ admission.Handler = (*MemberRollValidator)(nil)
+var _ inject.Client = (*MemberRollValidator)(nil)
+var _ inject.Decoder = (*MemberRollValidator)(nil)
+
+func (v *MemberRollValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
+	logger := logf.Log.WithName("smmr-validator").
+		WithValues("ServiceMeshMemberRoll", webhookcommon.ToNamespacedName(req.AdmissionRequest))
 	smmr := &maistrav1.ServiceMeshMemberRoll{}
 
 	err := v.decoder.Decode(req, smmr)
@@ -42,7 +51,7 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 	}
 
 	// do we care about this object?
-	if !watchNamespace.watching(smmr.Namespace) {
+	if !v.namespaceFilter.Watching(smmr.Namespace) {
 		logger.Info(fmt.Sprintf("operator is not watching namespace '%s'", smmr.Namespace))
 		return admission.ValidationResponse(true, "")
 	} else if smmr.ObjectMeta.DeletionTimestamp != nil {
@@ -124,7 +133,7 @@ func (v *memberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 	return admission.ValidationResponse(true, "")
 }
 
-func (v *memberRollValidator) isUserAllowedToUpdatePods(ctx context.Context, req atypes.Request, member string) (bool, error) {
+func (v *MemberRollValidator) isUserAllowedToUpdatePods(ctx context.Context, req atypes.Request, member string) (bool, error) {
 	log := common.LogFromContext(ctx)
 	log.Info("Performing SAR check")
 	sar := &authorizationv1.SubjectAccessReview{
@@ -158,13 +167,13 @@ func convertUserInfoExtra(extra map[string]authenticationv1.ExtraValue) map[stri
 }
 
 // InjectClient injects the client.
-func (v *memberRollValidator) InjectClient(c client.Client) error {
+func (v *MemberRollValidator) InjectClient(c client.Client) error {
 	v.client = c
 	return nil
 }
 
 // InjectDecoder injects the decoder.
-func (v *memberRollValidator) InjectDecoder(d atypes.Decoder) error {
+func (v *MemberRollValidator) InjectDecoder(d atypes.Decoder) error {
 	v.decoder = d
 	return nil
 }
