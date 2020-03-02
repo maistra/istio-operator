@@ -7,7 +7,7 @@ metadata:
     app: {{ template "sidecar-injector.name" . }}
     chart: {{ template "sidecar-injector.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.0.8
+    maistra-version: 1.0.9
     release: {{ .Release.Name }}
 webhooks:
   - name: sidecar-injector.istio.io
