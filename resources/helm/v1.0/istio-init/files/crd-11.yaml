@@ -6,7 +6,7 @@ metadata:
     app: mixer
     package: cloudwatch
     istio: mixer-adapter
-    maistra-version: 1.0.8
+    maistra-version: 1.0.9
     release: istio
   annotations:
     "helm.sh/resource-policy": keep
@@ -30,7 +30,7 @@ metadata:
     app: mixer
     package: dogstatsd
     istio: mixer-adapter
-    maistra-version: 1.0.8
+    maistra-version: 1.0.9
     release: istio
   annotations:
     "helm.sh/resource-policy": keep
@@ -54,7 +54,7 @@ metadata:
     app: istio-pilot
     chart: istio
     heritage: Tiller
-    maistra-version: 1.0.8
+    maistra-version: 1.0.9
     release: istio
   annotations:
     "helm.sh/resource-policy": keep
@@ -78,7 +78,7 @@ metadata:
     app: mixer
     package: zipkin
     istio: mixer-adapter
-    maistra-version: 1.0.8
+    maistra-version: 1.0.9
     release: istio
   annotations:
     "helm.sh/resource-policy": keep
