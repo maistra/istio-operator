@@ -38,6 +38,8 @@ const (
 	eventReasonSuccessfulReconcile maistra.ConditionReason = "Reconciled"
 
 	maxStatusUpdateRetriesOnConflict = 3
+
+	statusAnnotationControlPlaneRef = "controlPlaneRef"
 )
 
 // Add creates a new ServiceMeshMember Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -263,6 +265,11 @@ func (r *MemberReconciler) reconcileMember(ctx context.Context, member *maistra.
 		}
 	}
 
+	if member.Status.Annotations == nil {
+		member.Status.Annotations = map[string]string{}
+	}
+	member.Status.Annotations[statusAnnotationControlPlaneRef] = member.Spec.ControlPlaneRef.String()
+
 	err = r.updateStatus(ctx, member, true, r.isNamespaceConfigured(memberRoll, member.Namespace), "", "")
 	return reconcile.Result{}, err
 }
@@ -326,13 +333,13 @@ func (r *MemberReconciler) updateStatus(ctx context.Context, member *maistra.Ser
 	member.Status.ObservedGeneration = member.Generation
 	member.Status.SetCondition(maistra.ServiceMeshMemberCondition{
 		Type:    maistra.ConditionTypeMemberReconciled,
-		Status:  boolToConditionStatus(reconciled),
+		Status:  common.BoolToConditionStatus(reconciled),
 		Reason:  reason,
 		Message: message,
 	})
 	member.Status.SetCondition(maistra.ServiceMeshMemberCondition{
 		Type:    maistra.ConditionTypeMemberReady,
-		Status:  boolToConditionStatus(ready),
+		Status:  common.BoolToConditionStatus(ready),
 		Reason:  reason,
 		Message: message,
 	})
@@ -393,14 +400,6 @@ func (r *MemberReconciler) updateStatus(ctx context.Context, member *maistra.Ser
 
 func (r *MemberReconciler) recordEvent(member *maistra.ServiceMeshMember, eventType string, reason maistra.ConditionReason, message string) {
 	r.EventRecorder.Event(member, eventType, string(reason), message)
-}
-
-func boolToConditionStatus(b bool) core.ConditionStatus {
-	if b {
-		return core.ConditionTrue
-	} else {
-		return core.ConditionFalse
-	}
 }
 
 func getMemberRollKey(member *maistra.ServiceMeshMember) client.ObjectKey {

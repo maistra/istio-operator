@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
+	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -131,4 +132,12 @@ func GetOperatorNamespace() string {
 
 func ToNamespacedName(objectMeta metav1.ObjectMeta) types.NamespacedName {
 	return types.NamespacedName{objectMeta.Namespace, objectMeta.Name}
+}
+
+func BoolToConditionStatus(b bool) core.ConditionStatus {
+	if b {
+		return core.ConditionTrue
+	} else {
+		return core.ConditionFalse
+	}
 }

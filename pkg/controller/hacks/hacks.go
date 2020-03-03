@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
@@ -26,17 +26,14 @@ func ReduceLikelihoodOfRepeatedReconciliation(ctx context.Context) {
 
 // RemoveTypeObjectFieldsFromCRDSchema works around the problem where OpenShift 3.11 doesn't like "type: object"
 // in CRD OpenAPI schemas. This function removes all occurrences from the schema.
-func RemoveTypeObjectFieldsFromCRDSchema(ctx context.Context, crd *unstructured.Unstructured) error {
+func RemoveTypeObjectFieldsFromCRDSchema(ctx context.Context, crd *apiextensionsv1beta1.CustomResourceDefinition) error {
 	log := common.LogFromContext(ctx)
 	log.Info("The API server rejected the CRD. Removing type:object fields from the CRD schema and trying again.")
 
-	schema, found, err := unstructured.NestedFieldNoCopy(crd.UnstructuredContent(), "spec", "validation", "openAPIV3Schema")
-	if err != nil {
-		return fmt.Errorf("Could not remove type:object fields from CRD schema: %v", err.Error())
-	} else if !found {
+	if crd.Spec.Validation == nil || crd.Spec.Validation.OpenAPIV3Schema == nil {
 		return fmt.Errorf("Could not remove type:object fields from CRD schema as no spec.validation.openAPIV3Schema exists")
 	}
-	removeTypeObjectField(schema)
+	removeTypeObjectField(crd.Spec.Validation.OpenAPIV3Schema)
 	return nil
 }
 
@@ -46,17 +43,49 @@ func IsTypeObjectProblemInCRDSchemas(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "must only have \"properties\", \"required\" or \"description\" at the root if the status subresource is enabled")
 }
 
-func removeTypeObjectField(val interface{}) {
-	if m, isMap := val.(map[string]interface{}); isMap {
-		if m["type"] == "object" {
-			delete(m, "type")
-		}
-		for _, childVal := range m {
-			removeTypeObjectField(childVal)
-		}
-	} else if a, isArrayOfMap := val.([]map[string]interface{}); isArrayOfMap {
-		for i, _ := range a {
-			removeTypeObjectField(a[i])
-		}
+func removeTypeObjectField(schema *apiextensionsv1beta1.JSONSchemaProps) {
+	if schema == nil {
+		return
+	}
+
+	if schema.Type == "object" {
+		schema.Type = ""
+	}
+
+	removeTypeObjectFieldFromArray(schema.OneOf)
+	removeTypeObjectFieldFromArray(schema.AnyOf)
+	removeTypeObjectFieldFromArray(schema.AllOf)
+	removeTypeObjectFieldFromMap(schema.Properties)
+	removeTypeObjectFieldFromMap(schema.PatternProperties)
+	removeTypeObjectFieldFromMap(schema.Definitions)
+	removeTypeObjectField(schema.Not)
+
+	if schema.Items != nil {
+		removeTypeObjectField(schema.Items.Schema)
+		removeTypeObjectFieldFromArray(schema.Items.JSONSchemas)
+	}
+	if schema.AdditionalProperties != nil {
+		removeTypeObjectField(schema.AdditionalProperties.Schema)
+	}
+	if schema.AdditionalItems != nil {
+		removeTypeObjectField(schema.AdditionalItems.Schema)
+	}
+	for k, v := range schema.Dependencies {
+		removeTypeObjectField(v.Schema)
+		schema.Dependencies[k] = v
+	}
+}
+
+func removeTypeObjectFieldFromArray(array []apiextensionsv1beta1.JSONSchemaProps) {
+	for i, child := range array {
+		removeTypeObjectField(&child)
+		array[i] = child
+	}
+}
+
+func removeTypeObjectFieldFromMap(m map[string]apiextensionsv1beta1.JSONSchemaProps) {
+	for k, v := range m {
+		removeTypeObjectField(&v)
+		m[k] = v
 	}
 }

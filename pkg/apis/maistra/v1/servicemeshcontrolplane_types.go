@@ -41,6 +41,8 @@ type ServiceMeshControlPlaneList struct {
 
 // ControlPlaneStatus defines the observed state of ServiceMeshControlPlane
 type ControlPlaneStatus struct {
+	StatusBase `json:",inline"`
+
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	StatusType `json:",inline"`

@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"fmt"
+
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -44,8 +46,13 @@ type ServiceMeshControlPlaneRef struct {
 	Namespace string `json:"namespace"`
 }
 
+func (s ServiceMeshControlPlaneRef) String() string {
+	return fmt.Sprintf("%s%c%s", s.Namespace, '/', s.Name)
+}
+
 // ServiceMeshMemberStatus contains information on whether the Member has been reconciled or not
 type ServiceMeshMemberStatus struct {
+	StatusBase `json:",inline"`
 	// ObservedGeneration is the most recent generation observed by the controller.
 	ObservedGeneration int64 `json:"observedGeneration"`
 

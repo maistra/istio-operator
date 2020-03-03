@@ -134,10 +134,19 @@ func TestRemoveTypeObjectFromOpenAPISchema(t *testing.T) {
   validation:
     openAPIV3Schema:
       properties:
-        spec:
+        spec: 
           properties:
-            ingress:
+            simple:
               type: object
+            ingress:
+              type: array
+              items:
+              - type: object
+                properties:
+                  foo:
+                    type: object
+              additionalItems:
+                type: object
             egress:
               type: array
               items:
@@ -151,7 +160,40 @@ func TestRemoveTypeObjectFromOpenAPISchema(t *testing.T) {
                     properties:
                       protocol:
                         format: string
-                        type: string`
+                        type: string
+          patternProperties:
+            "^[A-Z]$":
+              type: object
+          allOf:
+          - type: object
+            properties:
+              foo: 
+                type: object
+          anyOf:
+          - type: object
+            properties:
+              foo: 
+                type: object
+          oneOf:
+          - type: object
+            properties:
+              foo: 
+                type: object
+          not:
+            type: object
+            properties:
+              foo: 
+                type: object
+      additionalProperties:
+        type: object 
+      definitions:
+        foo:
+          type: object 
+      dependencies:
+        foo:
+          type: object 
+
+`
 
 	testCases := []struct {
 		name        string
@@ -185,7 +227,7 @@ func TestRemoveTypeObjectFromOpenAPISchema(t *testing.T) {
 
 				if strings.Contains(string(yml), "type: object") {
 					crdRejected = true
-					return true, nil, fmt.Errorf("invalid CRD schema: must only have \"properties\", \"required\" or \"description\" at the root if the status subresource is enabled")
+					return true, nil, fmt.Errorf("invalid CRD schema: must only have \"properties\", \"required\" or \"description\" at the root if the status subresource is enabled\n%s", yml)
 				}
 				return false, nil, nil
 			}

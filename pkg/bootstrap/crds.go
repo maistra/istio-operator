@@ -11,6 +11,8 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/hacks"
@@ -18,7 +20,6 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	"k8s.io/helm/pkg/releaseutil"
@@ -116,14 +117,14 @@ func processCRDFile(ctx context.Context, cl client.Client, fileName string) erro
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func decodeCRD(ctx context.Context, raw string) (*unstructured.Unstructured, error) {
+func decodeCRD(ctx context.Context, raw string) (*apiextensionsv1beta1.CustomResourceDefinition, error) {
 	log := common.LogFromContext(ctx)
 	rawJSON, err := yaml.YAMLToJSON([]byte(raw))
 	if err != nil {
 		log.Error(err, "unable to convert raw data to JSON")
 		return nil, err
 	}
-	obj := &unstructured.Unstructured{}
+	obj := &apiextensionsv1beta1.CustomResourceDefinition{}
 	_, _, err = unstructured.UnstructuredJSONScheme.Decode(rawJSON, nil, obj)
 	if err != nil {
 		log.Error(err, "unable to decode object into Unstructured")
@@ -136,12 +137,11 @@ func decodeCRD(ctx context.Context, raw string) (*unstructured.Unstructured, err
 	}
 }
 
-func createCRD(ctx context.Context, cl client.Client, crd *unstructured.Unstructured) error {
+func createCRD(ctx context.Context, cl client.Client, crd *apiextensionsv1beta1.CustomResourceDefinition) error {
 	log := common.LogFromContext(ctx)
-	existingCrd := &unstructured.Unstructured{}
-	existingCrd.SetGroupVersionKind(crd.GroupVersionKind())
+	existingCrd := &apiextensionsv1beta1.CustomResourceDefinition{}
 	existingCrd.SetName(crd.GetName())
-	err := cl.Get(ctx, client.ObjectKey{Name: crd.GetName()}, existingCrd) // TODO: replace Unstructured with actual type
+	err := cl.Get(ctx, client.ObjectKey{Name: crd.GetName()}, existingCrd)
 	if err == nil {
 		newVersion, err := getMaistraVersion(crd)
 		if err != nil {
@@ -155,27 +155,22 @@ func createCRD(ctx context.Context, cl client.Client, crd *unstructured.Unstruct
 		if existingVersion == nil || existingVersion.LessThan(newVersion) {
 			log.Info("CRD exists, but is old or has no version label. Replacing with newer version.")
 
-			patchedCrd, err := getPatchedCrd(existingCrd, crd)
-			if err != nil {
-				return err
-			}
-			if patchedCrd != nil { // patchedCrd is nil when the existing and new CRDs are identical
-				err = cl.Update(ctx, patchedCrd)
-				if hacks.IsTypeObjectProblemInCRDSchemas(err) {
-					err = hacks.RemoveTypeObjectFieldsFromCRDSchema(ctx, patchedCrd)
-					if err != nil {
-						return err
-					}
-					err = cl.Update(ctx, patchedCrd)
-				}
+			crd.ResourceVersion = existingCrd.ResourceVersion
+			err = cl.Update(ctx, crd)
+			if hacks.IsTypeObjectProblemInCRDSchemas(err) {
+				err = hacks.RemoveTypeObjectFieldsFromCRDSchema(ctx, crd)
 				if err != nil {
-					log.Error(err, "error updating CRD")
 					return err
 				}
+				err = cl.Update(ctx, crd)
+			}
+			if err != nil {
+				log.Error(err, "error updating CRD")
+				return err
 			}
 
 		} else {
-			log.Info("CRD exists")
+			log.V(2).Info("CRD exists")
 		}
 		return nil
 	}
@@ -198,17 +193,10 @@ func createCRD(ctx context.Context, cl client.Client, crd *unstructured.Unstruct
 	return err
 }
 
-func getPatchedCrd(existingCrd *unstructured.Unstructured, crd *unstructured.Unstructured) (*unstructured.Unstructured, error) {
-	patchedCrd, err := common.GetPatchedObject(existingCrd, crd)
-	if err != nil || patchedCrd == nil {
-		return nil, err
+func getMaistraVersion(crd *apiextensionsv1beta1.CustomResourceDefinition) (*semver.Version, error) {
+	versionLabel := crd.Labels["maistra-version"]
+	if versionLabel == "" {
+		return nil, fmt.Errorf("Label maistra-version not found")
 	}
-	if newUnstructured, ok := patchedCrd.(*unstructured.Unstructured); ok {
-		return newUnstructured, nil
-	}
-	return nil, fmt.Errorf("could not decode unstructured object:\n%v", patchedCrd)
-}
-
-func getMaistraVersion(crd *unstructured.Unstructured) (*semver.Version, error) {
-	return semver.NewVersion(crd.GetLabels()["maistra-version"])
+	return semver.NewVersion(versionLabel)
 }
