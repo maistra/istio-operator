@@ -6,12 +6,6 @@ import (
 
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/tools/record"
-
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	"github.com/maistra/istio-operator/pkg/controller/common"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -20,7 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -30,6 +25,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/maistra/istio-operator/pkg/apis/maistra"
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
 const (
@@ -217,7 +216,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			return reconcile.Result{}, err
 		}
 
-		configuredMembers, err, nsErrors := r.reconcileNamespaces(ctx, nil, nameSet(&configuredNamespaces), instance.Namespace, common.DefaultMaistraVersion)
+		configuredMembers, err, nsErrors := r.reconcileNamespaces(ctx, nil, nameSet(&configuredNamespaces), instance.Namespace, maistra.DefaultVersion.String())
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -323,7 +322,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	meshVersion := mesh.Status.AppliedVersion
 	if len(meshVersion) == 0 {
-		meshVersion = common.LegacyMaistraVersion
+		meshVersion = maistra.LegacyVersion.String()
 	}
 
 	// this must be checked first to ensure the correct cni network is attached to the members

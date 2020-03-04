@@ -4,11 +4,11 @@ import (
 	"context"
 	"path"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/maistra/istio-operator/pkg/apis/maistra"
 	"github.com/maistra/istio-operator/pkg/controller/common"
-
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // InstallCNI makes sure all Istio CNI resources have been created.  CRDs are located from
@@ -34,7 +34,7 @@ func internalInstallCNI(ctx context.Context, cl client.Client, config common.CNI
 	// TODO: imagePullPolicy, resources
 
 	// always install the latest version of the CNI image
-	renderings, _, err := common.RenderHelmChart(path.Join(common.Options.GetChartsDir(common.DefaultMaistraVersion), "istio_cni"), operatorNamespace, values)
+	renderings, _, err := common.RenderHelmChart(path.Join(common.Options.GetChartsDir(maistra.DefaultVersion.String()), "istio_cni"), operatorNamespace, values)
 	if err != nil {
 		return err
 	}

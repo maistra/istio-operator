@@ -6,16 +6,15 @@ import (
 	"net/http"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-
-	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	"github.com/maistra/istio-operator/pkg/controller/common"
-	webhookcommon "github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/common"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
+
+	"github.com/maistra/istio-operator/pkg/apis/maistra"
+	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	webhookcommon "github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/common"
 )
 
 type ControlPlaneMutator struct {
@@ -60,10 +59,23 @@ func (v *ControlPlaneMutator) Handle(ctx context.Context, req atypes.Request) at
 	// on create we set the version to the current default version
 	// on update we leave the version intact to preserve the v1.0 version
 	// implied by the missing version field, which we added in version v1.1
-	if smcp.Spec.Version == "" && req.AdmissionRequest.Operation == admissionv1beta1.Create {
-		log.Info("Setting .spec.version to default value", "version", common.DefaultMaistraVersion)
-		newSmcp.Spec.Version = common.DefaultMaistraVersion
-		smcpMutated = true
+	if smcp.Spec.Version == "" {
+		switch req.AdmissionRequest.Operation {
+		case admissionv1beta1.Create:
+			log.Info("Setting .spec.version to default value", "version", maistra.DefaultVersion.String())
+			newSmcp.Spec.Version = maistra.DefaultVersion.String()
+			smcpMutated = true
+		case admissionv1beta1.Update:
+			if len(smcp.Status.AppliedVersion) == 0 {
+				// this must have been created before 1.1
+				newSmcp.Spec.Version = maistra.LegacyVersion.String()
+			} else {
+				// don't change the version
+				newSmcp.Spec.Version = smcp.Status.AppliedVersion
+			}
+			log.Info("Setting .spec.version to default value", "version", maistra.LegacyVersion.String())
+			smcpMutated = true
+		}
 	}
 
 	if smcp.Spec.Template == "" {

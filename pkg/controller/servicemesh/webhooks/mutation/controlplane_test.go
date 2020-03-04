@@ -9,8 +9,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/apis/maistra"
+	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
@@ -38,8 +38,8 @@ func TestControlPlaneOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
 
 func TestControlPlaneNoMutation(t *testing.T) {
 	controlPlane := newControlPlane("my-smcp", "istio-system")
-	controlPlane.Spec.Version = common.DefaultMaistraVersion
-	controlPlane.Spec.Template = maistra.DefaultTemplate
+	controlPlane.Spec.Version = maistra.DefaultVersion.String()
+	controlPlane.Spec.Template = maistrav1.DefaultTemplate
 
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
 	response := mutator.Handle(ctx, newCreateRequest(controlPlane))
@@ -51,7 +51,7 @@ func TestVersionIsDefaultedToCurrentMaistraVersionOnCreate(t *testing.T) {
 	controlPlane.Spec.Version = ""
 
 	mutatedControlPlane := controlPlane.DeepCopy()
-	mutatedControlPlane.Spec.Version = common.DefaultMaistraVersion
+	mutatedControlPlane.Spec.Version = maistra.DefaultVersion.String()
 
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
 	response := mutator.Handle(ctx, newCreateRequest(controlPlane))
@@ -59,18 +59,38 @@ func TestVersionIsDefaultedToCurrentMaistraVersionOnCreate(t *testing.T) {
 	assert.DeepEquals(response, expectedResponse, "Expected the response to set the version on create", t)
 }
 
-// Test if the webhook preserves the empty version on existing SMCPs that were
-// created prior to installing the 1.1 version of the operator.
-func TestVersionIsNotDefaultedOnUpdate(t *testing.T) {
+// Test if the webhook should default the version to the existing AppliedVersion on an update
+func TestVersionIsDefaultedToAppliedVersionOnUpdate(t *testing.T) {
+	controlPlane := newControlPlane("my-smcp", "istio-system")
+	controlPlane.Spec.Version = ""
+	controlPlane.Status.AppliedVersion = maistra.V1_1.String()
+
+	updatedControlPlane := controlPlane.DeepCopy()
+	updatedControlPlane.Labels = map[string]string{"newLabel": "newValue"}
+
+	mutatedControlPlane := controlPlane.DeepCopy()
+	mutatedControlPlane.Spec.Version = controlPlane.Status.AppliedVersion
+
+	mutator, _, _ := createControlPlaneMutatorTestFixture(controlPlane)
+	response := mutator.Handle(ctx, newUpdateRequest(controlPlane, updatedControlPlane))
+	expectedResponse := webhookadmission.PatchResponse(controlPlane, mutatedControlPlane)
+	assert.DeepEquals(response, expectedResponse, "Expected the response to set the version to previously AppliedVersion on update", t)
+}
+
+func TestVersionIsDefaultedToLegacyVersionOnUpdate(t *testing.T) {
 	controlPlane := newControlPlane("my-smcp", "istio-system")
 	controlPlane.Spec.Version = ""
 
 	updatedControlPlane := controlPlane.DeepCopy()
 	updatedControlPlane.Labels = map[string]string{"newLabel": "newValue"}
 
+	mutatedControlPlane := controlPlane.DeepCopy()
+	mutatedControlPlane.Spec.Version = maistra.LegacyVersion.String()
+
 	mutator, _, _ := createControlPlaneMutatorTestFixture(controlPlane)
 	response := mutator.Handle(ctx, newUpdateRequest(controlPlane, updatedControlPlane))
-	assert.DeepEquals(response, acceptWithNoMutation, "Expected mutator to accept ServiceMeshControlPlane without mutating version", t)
+	expectedResponse := webhookadmission.PatchResponse(controlPlane, mutatedControlPlane)
+	assert.DeepEquals(response, expectedResponse, "Expected the response to set the version to previously AppliedVersion on update", t)
 }
 
 func TestTemplateIsDefaultedOnCreate(t *testing.T) {
@@ -78,7 +98,7 @@ func TestTemplateIsDefaultedOnCreate(t *testing.T) {
 	controlPlane.Spec.Template = ""
 
 	mutatedControlPlane := controlPlane.DeepCopy()
-	mutatedControlPlane.Spec.Template = maistra.DefaultTemplate
+	mutatedControlPlane.Spec.Template = maistrav1.DefaultTemplate
 
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
 
@@ -95,7 +115,7 @@ func TestTemplateIsDefaultedOnUpdate(t *testing.T) {
 	updatedControlPlane.Labels = map[string]string{"newLabel": "newValue"}
 
 	mutatedControlPlane := updatedControlPlane.DeepCopy()
-	mutatedControlPlane.Spec.Template = maistra.DefaultTemplate
+	mutatedControlPlane.Spec.Template = maistrav1.DefaultTemplate
 
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
 	response := mutator.Handle(ctx, newUpdateRequest(origControlPlane, updatedControlPlane))
@@ -124,15 +144,15 @@ func createControlPlaneMutatorTestFixture(clientObjects ...runtime.Object) (*Con
 	return validator, cl, tracker
 }
 
-func newControlPlane(name, namespace string) *maistra.ServiceMeshControlPlane {
-	return &maistra.ServiceMeshControlPlane{
+func newControlPlane(name, namespace string) *maistrav1.ServiceMeshControlPlane {
+	return &maistrav1.ServiceMeshControlPlane{
 		ObjectMeta: meta.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: maistra.ControlPlaneSpec{
-			Version:  common.DefaultMaistraVersion,
-			Template: maistra.DefaultTemplate,
+		Spec: maistrav1.ControlPlaneSpec{
+			Version:  maistra.DefaultVersion.String(),
+			Template: maistrav1.DefaultTemplate,
 		},
 	}
 }

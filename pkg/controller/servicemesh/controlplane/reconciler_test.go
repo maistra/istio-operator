@@ -6,13 +6,14 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	"github.com/maistra/istio-operator/pkg/apis/maistra"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
 func TestGetSMCPTemplateWithSlashReturnsError(t *testing.T) {
 	instanceReconciler := newTestReconciler()
-	_, err := instanceReconciler.getSMCPTemplate("/", common.DefaultMaistraVersion)
+	_, err := instanceReconciler.getSMCPTemplate("/", maistra.DefaultVersion.String())
 	if err == nil {
 		t.Fatalf("Allowed to access path outside of deployment directory")
 	}

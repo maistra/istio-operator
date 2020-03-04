@@ -23,7 +23,8 @@ import (
 )
 
 func GetScheme() *runtime.Scheme {
-	s := scheme.Scheme
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
 	if err := apis.AddToScheme(s); err != nil {
 		panic(fmt.Sprintf("Could not add to scheme: %v", err))
 	}

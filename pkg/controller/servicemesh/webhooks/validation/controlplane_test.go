@@ -2,14 +2,21 @@ package validation
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 
 	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
@@ -280,9 +287,517 @@ func TestUpdateOfValidControlPlane(t *testing.T) {
 	assert.True(response.Response.Allowed, "Expected validator to accept update of valid ServiceMeshControlPlane", t)
 }
 
+func TestInvalidVersion(t *testing.T) {
+	validControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0")
+	invalidControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "InvalidVersion")
+	createValidator, _, _ := createControlPlaneValidatorTestFixture()
+	updateValidator, _, _ := createControlPlaneValidatorTestFixture(validControlPlane)
+	cases := []struct {
+		name      string
+		request   atypes.Request
+		validator *ControlPlaneValidator
+	}{
+		{
+			name:      "create",
+			request:   createCreateRequest(invalidControlPlane),
+			validator: createValidator,
+		},
+		{
+			name:      "update",
+			request:   createUpdateRequest(validControlPlane, invalidControlPlane),
+			validator: updateValidator,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			response := tc.validator.Handle(ctx, tc.request)
+			assert.False(response.Response.Allowed, "Expected validator to reject invalid ServiceMeshControlPlane", t)
+		})
+	}
+}
+
+func TestVersionValidation(t *testing.T) {
+	type subcase struct {
+		name      string
+		smcp      *maistra.ServiceMeshControlPlane
+		configure func(smcp *maistra.ServiceMeshControlPlane)
+		allowed   bool
+	}
+
+	cases := []struct {
+		name  string
+		cases []subcase
+	}{
+		{
+			name: "v1.0",
+			cases: []subcase{
+				{
+					name:      "valid",
+					smcp:      newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
+					configure: func(smcp *maistra.ServiceMeshControlPlane) {},
+					allowed:   true,
+				},
+				{
+					name: "global.proxy.alwaysInjectSelector=false",
+					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
+					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+						unstructured.SetNestedField(smcp.Spec.Istio, false, strings.Split("global.proxy.alwaysInjectSelector", ".")...)
+					},
+					allowed: true,
+				},
+				{
+					name: "global.proxy.alwaysInjectSelector=true",
+					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
+					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+						unstructured.SetNestedField(smcp.Spec.Istio, true, strings.Split("global.proxy.alwaysInjectSelector", ".")...)
+					},
+					allowed: false,
+				},
+				{
+					name: "global.proxy.neverInjectSelector=false",
+					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
+					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+						unstructured.SetNestedField(smcp.Spec.Istio, false, strings.Split("global.proxy.neverInjectSelector", ".")...)
+					},
+					allowed: true,
+				},
+				{
+					name: "global.proxy.neverInjectSelector=true",
+					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
+					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+						unstructured.SetNestedField(smcp.Spec.Istio, true, strings.Split("global.proxy.neverInjectSelector", ".")...)
+					},
+					allowed: false,
+				},
+				{
+					name: "global.proxy.envoyAccessLogService.enabled=false",
+					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
+					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+						unstructured.SetNestedField(smcp.Spec.Istio, false, strings.Split("global.proxy.envoyAccessLogService.enabled", ".")...)
+					},
+					allowed: true,
+				},
+				{
+					name: "global.proxy.envoyAccessLogService.enabled=true",
+					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
+					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+						unstructured.SetNestedField(smcp.Spec.Istio, true, strings.Split("global.proxy.envoyAccessLogService.enabled", ".")...)
+					},
+					allowed: false,
+				},
+				{
+					name: "telemetry.enabled=false, telemetry.v2.enabled=false",
+					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
+					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+						unstructured.SetNestedField(smcp.Spec.Istio, false, strings.Split("telemetry.enabled", ".")...)
+						unstructured.SetNestedField(smcp.Spec.Istio, false, strings.Split("telemetry.v2.enabled", ".")...)
+					},
+					allowed: true,
+				},
+				{
+					name: "telemetry.enabled=false, telemetry.v2.enabled=true",
+					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
+					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+						unstructured.SetNestedField(smcp.Spec.Istio, false, strings.Split("telemetry.enabled", ".")...)
+						unstructured.SetNestedField(smcp.Spec.Istio, true, strings.Split("telemetry.v2.enabled", ".")...)
+					},
+					allowed: true,
+				},
+				{
+					name: "telemetry.enabled=true, telemetry.v2.enabled=true",
+					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
+					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+						unstructured.SetNestedField(smcp.Spec.Istio, true, strings.Split("telemetry.enabled", ".")...)
+						unstructured.SetNestedField(smcp.Spec.Istio, true, strings.Split("telemetry.v2.enabled", ".")...)
+					},
+					allowed: false,
+				},
+			},
+		},
+		{
+			name: "v1.1",
+			cases: []subcase{
+				{
+					name:      "valid",
+					smcp:      newControlPlaneWithVersion("my-smcp", "istio-system", "v1.1"),
+					configure: func(smcp *maistra.ServiceMeshControlPlane) {},
+					allowed:   true,
+				},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, tc := range tc.cases {
+				t.Run(tc.name, func(t *testing.T) {
+					validator, _, _ := createControlPlaneValidatorTestFixture()
+					tc.configure(tc.smcp)
+					response := validator.Handle(ctx, createCreateRequest(tc.smcp))
+					if tc.allowed {
+						assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
+					} else {
+						assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane", t)
+						t.Logf("Validation Error: %s", response.Response.Result.Message)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestVersionUpgrade1_0To1_1(t *testing.T) {
+	v1_0ControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0")
+	v1_1ControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v1.1")
+	v1_0ControlPlane.SetUID("random-uid")
+	v1_1ControlPlane.SetUID("random-uid")
+	cases := []struct {
+		name      string
+		allowed   bool
+		resources []runtime.Object
+	}{
+		{
+			name:    "valid",
+			allowed: true,
+		},
+		{
+			name:    "unsupported-resource-other-namespace",
+			allowed: true,
+			resources: []runtime.Object{
+				newDummyResource("dummy-stdio", "other-namespace",
+					schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "stdio"},
+					nil,
+					nil),
+			},
+		},
+		{
+			name:    "unsupported-resource-controller-owned",
+			allowed: true,
+			resources: []runtime.Object{
+				newDummyResource("dummy-stdio", "istio-system",
+					schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "stdio"},
+					nil,
+					v1_0ControlPlane),
+			},
+		},
+		{
+			name:    "unsupported-resource",
+			allowed: false,
+			resources: []runtime.Object{
+				newDummyResource("dummy-stdio", "app-namespace",
+					schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "stdio"},
+					nil,
+					nil),
+			},
+		},
+		{
+			name:    "service-with-http-ports",
+			allowed: true,
+			resources: []runtime.Object{
+				&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-service",
+						Namespace: "app-namespace",
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							corev1.ServicePort{
+								Name: "http-test",
+								Port: 80,
+							},
+							corev1.ServicePort{
+								Name: "http2-test",
+								Port: 82,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:    "service-with-secure-http-port",
+			allowed: false,
+			resources: []runtime.Object{
+				&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-service",
+						Namespace: "app-namespace",
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							corev1.ServicePort{
+								Name: "http-test",
+								Port: 443,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:    "service-with-secure-http2-port",
+			allowed: false,
+			resources: []runtime.Object{
+				&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-service",
+						Namespace: "app-namespace",
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							corev1.ServicePort{
+								Name: "http2-test",
+								Port: 443,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			memberRoll := newMemberRoll("default", "istio-system", "app-namespace")
+			memberRoll.Status.ConfiguredMembers = append([]string{}, memberRoll.Spec.Members...)
+			resources := append(tc.resources,
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "istio-system",
+						Labels: map[string]string{
+							common.MemberOfKey: "istio-system",
+						},
+					},
+				},
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "app-namespace",
+						Labels: map[string]string{
+							common.MemberOfKey: "istio-system",
+						},
+					},
+				},
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "other-namespace",
+					},
+				},
+				memberRoll)
+			validator, _, _ := createControlPlaneValidatorTestFixture(resources...)
+			response := validator.Handle(ctx, createUpdateRequest(v1_0ControlPlane, v1_1ControlPlane))
+			if tc.allowed {
+				assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
+			} else {
+				assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane", t)
+				t.Logf("Validation Error: %s", response.Response.Result.Message)
+			}
+		})
+	}
+}
+
+func TestVersionDowngrade1_1To1_0(t *testing.T) {
+	v1_0ControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0")
+	v1_1ControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v1.1")
+	v1_0ControlPlane.SetUID("random-uid")
+	v1_1ControlPlane.SetUID("random-uid")
+	cases := []struct {
+		name            string
+		allowed         bool
+		namespaceLabels map[string]string
+		resources       []runtime.Object
+	}{
+		{
+			name:    "valid",
+			allowed: true,
+		},
+		{
+			name:    "unsupported-resource-other-namespace",
+			allowed: true,
+			resources: []runtime.Object{
+				newDummyResource("dummy-auth-policy", "other-namespace",
+					schema.GroupVersionKind{Group: "security.istio.io", Version: "v1beta1", Kind: "AuthorizationPolicy"},
+					nil,
+					nil),
+			},
+		},
+		{
+			name:    "unsupported-resource-controller-owned",
+			allowed: true,
+			resources: []runtime.Object{
+				newDummyResource("dummy-auth-policy", "istio-system",
+					schema.GroupVersionKind{Group: "security.istio.io", Version: "v1beta1", Kind: "AuthorizationPolicy"},
+					nil,
+					v1_1ControlPlane),
+			},
+		},
+		{
+			name:    "unsupported-resource",
+			allowed: false,
+			resources: []runtime.Object{
+				newDummyResource("dummy-auth-policy", "app-namespace",
+					schema.GroupVersionKind{Group: "security.istio.io", Version: "v1beta1", Kind: "AuthorizationPolicy"},
+					nil,
+					nil),
+			},
+		},
+		{
+			name:    "ca.istio.io/env-other-namespace",
+			allowed: true,
+			resources: []runtime.Object{
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "other-namespace",
+						Labels: map[string]string{
+							"ca.istio.io/env": "dummy",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:    "ca.istio.io/env-app-namespace",
+			allowed: false,
+			namespaceLabels: map[string]string{
+				"ca.istio.io/env": "dummy",
+			},
+		},
+		{
+			name:    "ca.istio.io/override-other-namespace",
+			allowed: true,
+			resources: []runtime.Object{
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "other-namespace",
+						Labels: map[string]string{
+							"ca.istio.io/override": "dummy",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:    "ca.istio.io/override-app-namespace",
+			allowed: false,
+			namespaceLabels: map[string]string{
+				"ca.istio.io/override": "dummy",
+			},
+		},
+		{
+			name:    "VirtualService-without-mirrorPercent",
+			allowed: true,
+			resources: []runtime.Object{
+				newDummyResource("dummy-virtual-service", "app-namespace",
+					schema.GroupVersionKind{Group: "networking.istio.io", Version: "v1alpha3", Kind: "VirtualService"},
+					map[string]interface{}{
+						"spec.http": []interface{}{
+							map[string]interface{}{
+								"name": "some-http",
+							},
+							map[string]interface{}{
+								"name": "some-other-http",
+							},
+						},
+					},
+					nil),
+			},
+		},
+		{
+			name:    "VirtualService-with-mirrorPercent-controller-owned",
+			allowed: true,
+			resources: []runtime.Object{
+				newDummyResource("dummy-virtual-service", "app-namespace",
+					schema.GroupVersionKind{Group: "networking.istio.io", Version: "v1alpha3", Kind: "VirtualService"},
+					map[string]interface{}{
+						"spec.http": []interface{}{
+							map[string]interface{}{
+								"name": "some-http",
+							},
+							map[string]interface{}{
+								"name":          "some-other-http",
+								"mirrorPercent": "50%",
+							},
+						},
+					},
+					v1_1ControlPlane),
+			},
+		},
+		{
+			name:    "VirtualService-with-mirrorPercent",
+			allowed: false,
+			resources: []runtime.Object{
+				newDummyResource("dummy-virtual-service", "app-namespace",
+					schema.GroupVersionKind{Group: "networking.istio.io", Version: "v1alpha3", Kind: "VirtualService"},
+					map[string]interface{}{
+						"spec.http": []interface{}{
+							map[string]interface{}{
+								"name": "some-http",
+							},
+							map[string]interface{}{
+								"name":          "some-other-http",
+								"mirrorPercent": "50%",
+							},
+						},
+					},
+					nil),
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			memberRoll := newMemberRoll("default", "istio-system", "app-namespace")
+			memberRoll.Status.ConfiguredMembers = append([]string{}, memberRoll.Spec.Members...)
+			memberNamespace := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "app-namespace",
+					Labels: map[string]string{
+						common.MemberOfKey: "istio-system",
+					},
+				},
+			}
+			for key, value := range tc.namespaceLabels {
+				memberNamespace.Labels[key] = value
+			}
+			resources := append(tc.resources,
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "istio-system",
+						Labels: map[string]string{
+							common.MemberOfKey: "istio-system",
+						},
+					},
+				},
+				memberNamespace,
+				memberRoll)
+			validator, _, _ := createControlPlaneValidatorTestFixture(resources...)
+			response := validator.Handle(ctx, createUpdateRequest(v1_1ControlPlane, v1_0ControlPlane))
+			if tc.allowed {
+				assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
+			} else {
+				assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane", t)
+				t.Logf("Validation Error: %s", response.Response.Result.Message)
+			}
+		})
+	}
+}
+
 func createControlPlaneValidatorTestFixture(clientObjects ...runtime.Object) (*ControlPlaneValidator, client.Client, *test.EnhancedTracker) {
 	cl, tracker := test.CreateClient(clientObjects...)
-	decoder, err := webhookadmission.NewDecoder(test.GetScheme())
+	s := tracker.Scheme
+	for _, gvk := range unsupportedNewResourcesV1_0 {
+		s.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
+		gvk.Kind = gvk.Kind + "List"
+		s.AddKnownTypeWithName(gvk, &unstructured.UnstructuredList{})
+	}
+	for _, gvk := range unsupportedOldResourcesV1_1 {
+		s.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
+		gvk.Kind = gvk.Kind + "List"
+		s.AddKnownTypeWithName(gvk, &unstructured.UnstructuredList{})
+	}
+	// Used with v1.1 downgrade check
+	gvk := schema.GroupVersionKind{Group: "networking.istio.io", Version: "v1alpha3", Kind: "VirtualService"}
+	s.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
+	gvk.Kind = gvk.Kind + "List"
+	s.AddKnownTypeWithName(gvk, &unstructured.UnstructuredList{})
+
+	decoder, err := webhookadmission.NewDecoder(s)
 	if err != nil {
 		panic(fmt.Sprintf("Could not create decoder: %s", err))
 	}
@@ -304,6 +819,7 @@ func createControlPlaneValidatorTestFixture(clientObjects ...runtime.Object) (*C
 func newControlPlaneWithVersion(name, namespace, version string) *maistra.ServiceMeshControlPlane {
 	controlPlane := newControlPlane(name, namespace)
 	controlPlane.Spec.Version = version
+	controlPlane.Spec.Istio = make(map[string]interface{})
 	return controlPlane
 }
 
@@ -315,4 +831,21 @@ func newControlPlane(name, namespace string) *maistra.ServiceMeshControlPlane {
 		},
 		Spec: maistra.ControlPlaneSpec{},
 	}
+}
+
+func newDummyResource(name string, namespace string, gvk schema.GroupVersionKind, values map[string]interface{}, owner *maistra.ServiceMeshControlPlane) runtime.Object {
+	obj := &unstructured.Unstructured{}
+	obj.SetName(name)
+	obj.SetNamespace(namespace)
+	obj.SetGroupVersionKind(gvk)
+	for path, value := range values {
+		unstructured.SetNestedField(obj.UnstructuredContent(), value, strings.Split(path, ".")...)
+	}
+	if owner != nil {
+		ownerRef := metav1.NewControllerRef(owner, maistra.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
+		obj.SetOwnerReferences([]metav1.OwnerReference{
+			*ownerRef,
+		})
+	}
+	return obj
 }
