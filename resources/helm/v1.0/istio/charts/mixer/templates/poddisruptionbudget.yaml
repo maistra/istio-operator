@@ -11,7 +11,7 @@ metadata:
     app: {{ $key }}
     chart: {{ template "mixer.chart" $ }}
     heritage: {{ $.Release.Service }}
-    maistra-version: 1.0.8
+    maistra-version: 1.0.9
     release: {{ $.Release.Name }}
     version: {{ $.Chart.Version }}
     istio: mixer
