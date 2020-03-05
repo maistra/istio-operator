@@ -17,10 +17,9 @@ spec:
   version: v1
   additionalPrinterColumns:
   - name: Ready
-    description: How many of the total number of member namespaces are
-      configured
+    description: How many of the total number of member namespaces are configured
     type: string
-    JSONPath: '.status.annotations.readyComponentCount'
+    JSONPath: .status.annotations.readyComponentCount
   - JSONPath: .status.conditions[?(@.type=="Reconciled")].reason
     name: Status
     description: Whether or not the control plane installation is up to date and ready
@@ -49,8 +48,7 @@ spec:
     priority: 1
     JSONPath: .status.lastAppliedConfiguration.istio.global.tag
   - name: Readiness status message
-    description: A human-readable description of the control plane component
-      readiness.
+    description: A human-readable description of the control plane component readiness.
     type: string
     priority: 1
     JSONPath: .status.conditions[?(@.type=="Ready")].message
