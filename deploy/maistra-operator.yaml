@@ -10,33 +10,57 @@ spec:
     plural: servicemeshcontrolplanes
     singular: servicemeshcontrolplane
     shortNames:
-      - smcp
+    - smcp
   scope: Namespaced
   subresources:
     status: {}
   version: v1
   additionalPrinterColumns:
-  - JSONPath: .status.conditions[?(@.type=="Ready")].status
-    name: Ready
-    description: Whether or not the control plane installation is up to date and ready to handle requests.
+  - name: Ready
+    description: How many of the total number of member namespaces are
+      configured
     type: string
-  - JSONPath: .status.conditions[?(@.type=="Ready")].message
-    name: Status
-    description: The status of the control plane installation.
+    JSONPath: .status.annotations.readyComponentCount
+  - name: Status
+    description: Whether or not the control plane installation is up to date and ready
+      to handle requests.
+    type: string
+    JSONPath: .status.conditions[?(@.type=="Reconciled")].reason
+  - name: Template
+    description: The configuration template to use as the base.
+    type: string
+    JSONPath: .status.lastAppliedConfiguration.template
+  - name: Version
+    description: The actual current version of the control plane installation.
+    type: string
+    JSONPath: .status.lastAppliedConfiguration.version
+  - name: Age
+    description: The age of the object
+    type: date
+    JSONPath: .metadata.creationTimestamp
+  - name: Image hub
+    description: The image hub used as the base for all component images.
     type: string
     priority: 1
-  - JSONPath: .status.conditions[?(@.type=="Reconciled")].status
-    name: Reconciled
-    description: Whether or not the control plane installation is up to date with the latest version of this resource.
+    JSONPath: .status.lastAppliedConfiguration.istio.global.hub
+  - name: Tag
+    description: The image tag used for all component images.
     type: string
     priority: 1
-  - JSONPath: .status.conditions[?(@.type=="Reconciled")].message
-    name: Reconciliation Status
-    description: The status of the reconciliation process, if the control plane is not up to date with the latest version this resource.
+    JSONPath: .status.lastAppliedConfiguration.istio.global.tag
+  - name: Readiness status message
+    description: A human-readable description of the control plane component
+      readiness.
     type: string
     priority: 1
+    JSONPath: .status.conditions[?(@.type=="Ready")].message
+  - name: Reconciliation Status message
+    description: The status of the reconciliation process, if the control plane is
+      not up to date with the latest version this resource.
+    type: string
+    priority: 1
+    JSONPath: .status.conditions[?(@.type=="Reconciled")].message
 ---
-
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
@@ -49,19 +73,32 @@ spec:
     plural: servicemeshmemberrolls
     singular: servicemeshmemberroll
     shortNames:
-      - smmr
+    - smmr
   scope: Namespaced
   subresources:
     status: {}
   version: v1
   additionalPrinterColumns:
-  - JSONPath: .spec.members
-    description: Namespaces that are members of this Control Plane
-    name: Members
+  - name: Ready
+    description: How many of the total number of member namespaces are
+      configured
     type: string
-
+    JSONPath: .status.annotations.configuredMemberCount
+  - name: Status
+    description: Whether all member namespaces have been configured or why
+      that's not the case
+    type: string
+    JSONPath: .status.conditions[?(@.type=="Ready")].reason
+  - name: Age
+    description: The age of the object
+    type: date
+    JSONPath: .metadata.creationTimestamp
+  - name: Members
+    description: Namespaces that are members of this Control Plane
+    priority: 1
+    type: string
+    JSONPath: .spec.members
 ---
-
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
@@ -74,21 +111,24 @@ spec:
     plural: servicemeshmembers
     singular: servicemeshmember
     shortNames:
-      - smm
+    - smm
   scope: Namespaced
   subresources:
     status: {}
   version: v1
   additionalPrinterColumns:
-  - JSONPath: .spec.controlPlaneRef.namespace
-    description: The ServiceMeshControlPlane's namespace that this namespace belongs to
-    name: "Control Plane Namespace"
+  - name: Control Plane
+    description: The ServiceMeshControlPlane this namespace belongs to
     type: string
-  - JSONPath: .spec.controlPlaneRef.name
-    description: The ServiceMeshControlPlane that this namespace belongs to
-    name: "Control Plane"
+    JSONPath: .status.annotations.controlPlaneRef
+  - name: Ready
+    description: Whether or not namespace is configured as a member of the mesh.
     type: string
-
+    JSONPath: .status.conditions[?(@.type=="Ready")].status
+  - name: Age
+    description: The age of the object
+    type: date
+    JSONPath: .metadata.creationTimestamp
 ---
 
 # create role that can be used to grant users permission to create smcp and smmr resources
