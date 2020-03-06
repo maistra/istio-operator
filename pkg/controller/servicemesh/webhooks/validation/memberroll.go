@@ -2,8 +2,11 @@ package validation
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"sync"
+	"time"
 
 	admissionv1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,6 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 )
+
+const maxConcurrentSARChecks = 5
 
 type MemberRollValidator struct {
 	client          client.Client
@@ -42,8 +47,13 @@ var _ inject.Decoder = (*MemberRollValidator)(nil)
 func (v *MemberRollValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
 	logger := logf.Log.WithName("smmr-validator").
 		WithValues("ServiceMeshMemberRoll", webhookcommon.ToNamespacedName(req.AdmissionRequest))
-	smmr := &maistrav1.ServiceMeshMemberRoll{}
 
+	// use a self-imposed 3s time limit so that we can inform the user how to work
+	// around the issue when the webhook takes too long to complete
+	ctx, cancel := context.WithTimeout(common.NewContextWithLog(ctx, logger), 3*time.Second)
+	defer cancel()
+
+	smmr := &maistrav1.ServiceMeshMemberRoll{}
 	err := v.decoder.Decode(req, smmr)
 	if err != nil {
 		logger.Error(err, "error decoding admission request")
@@ -103,34 +113,106 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 
 	allowed, err := v.isUserAllowedToUpdatePods(common.NewContextWithLog(ctx, logger.WithValues("namespace", "<all>")), req, "")
 	if err != nil {
+		logger.Error(err, fmt.Sprintf("error performing cluster-scoped SAR check"))
 		return admission.ErrorResponse(http.StatusInternalServerError, err)
 	}
 	if !allowed {
 		// check each namespace separately, but only check newly added namespaces
-		namespacesToCheck := sets.NewString(smmr.Spec.Members...)
-
-		if req.AdmissionRequest.Operation == admissionv1.Update {
-			oldSmmr := &maistrav1.ServiceMeshMemberRoll{}
-			err := v.decoder.DecodeRaw(req.AdmissionRequest.OldObject, oldSmmr)
-			if err != nil {
-				logger.Error(err, "error decoding old object in admission request")
-				return admission.ErrorResponse(http.StatusBadRequest, err)
-			}
-			namespacesToCheck.Delete(oldSmmr.Spec.Members...)
+		namespacesToCheck, err := v.findNewlyAddedNamespaces(smmr, req)
+		if err != nil {
+			return admission.ErrorResponse(http.StatusBadRequest, err)
 		}
 
-		for _, member := range namespacesToCheck.List() {
-			allowed, err := v.isUserAllowedToUpdatePods(common.NewContextWithLog(ctx, logger.WithValues("namespace", member)), req, member)
-			if err != nil {
-				return admission.ErrorResponse(http.StatusInternalServerError, err)
+		allowed, rejectedNamespaces, err := v.isUserAllowedToUpdatePodsInAllNamespaces(ctx, req, namespacesToCheck)
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("too many namespaces in ServiceMeshMemberRoll; validating webhook couldn't perform the authorization checks for all namespaces; either try the operation again as a cluster admin, or add fewer namespaces in a single operation"))
 			}
-			if !allowed {
-				return validationFailedResponse(http.StatusForbidden, metav1.StatusReasonBadRequest, fmt.Sprintf("user '%s' does not have permission to access project/namespace '%s'", req.AdmissionRequest.UserInfo.Username, member))
-			}
+			logger.Error(err, fmt.Sprintf("error performing SAR check each namespace"))
+			return admission.ErrorResponse(http.StatusInternalServerError, err)
+		}
+		if !allowed {
+			return validationFailedResponse(http.StatusForbidden, metav1.StatusReasonBadRequest, fmt.Sprintf("user '%s' does not have permission to access namespace(s): %s", req.AdmissionRequest.UserInfo.Username, rejectedNamespaces))
 		}
 	}
 
 	return admission.ValidationResponse(true, "")
+}
+
+func (v *MemberRollValidator) findNewlyAddedNamespaces(smmr *maistrav1.ServiceMeshMemberRoll, req atypes.Request) (sets.String, error) {
+	namespacesToCheck := sets.NewString(smmr.Spec.Members...)
+
+	if req.AdmissionRequest.Operation == admissionv1.Update {
+		oldSmmr := &maistrav1.ServiceMeshMemberRoll{}
+		err := v.decoder.DecodeRaw(req.AdmissionRequest.OldObject, oldSmmr)
+		if err != nil {
+			return nil, err
+		}
+		namespacesToCheck.Delete(oldSmmr.Spec.Members...)
+	}
+	return namespacesToCheck, nil
+}
+
+func (v *MemberRollValidator) isUserAllowedToUpdatePodsInAllNamespaces(ctx context.Context, req atypes.Request, namespacesToCheck sets.String) (bool, []string, error) {
+	numConcurrentSARChecks := min(len(namespacesToCheck), maxConcurrentSARChecks)
+
+	log := common.LogFromContext(ctx)
+	log.Info("Performing SAR check for each namespace", "namespaces", len(namespacesToCheck), "workers", numConcurrentSARChecks)
+
+	t := time.Now()
+	defer func() {
+		log.Info("SAR check completed", "duration", time.Now().Sub(t))
+	}()
+
+	in := make(chan string)
+	go func() {
+		defer close(in)
+		for _, ns := range namespacesToCheck.List() {
+			in <- ns
+		}
+	}()
+
+	out := make(chan result)
+	var wg sync.WaitGroup
+	wg.Add(numConcurrentSARChecks)
+	for i := 0; i < numConcurrentSARChecks; i++ {
+		go func() {
+			workerCtx := common.NewContextWithLogValues(ctx, "worker", i)
+			for ns := range in {
+				allowed, err := v.isUserAllowedToUpdatePods(common.NewContextWithLogValues(workerCtx, "namespace", ns), req, ns)
+				out <- result{namespace: ns, allowed: allowed, err: err}
+			}
+			wg.Done()
+		}()
+	}
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+
+	rejectedNamespaces := []string{}
+	for res := range out {
+		if res.err != nil {
+			return false, nil, res.err
+		}
+		if !res.allowed {
+			rejectedNamespaces = append(rejectedNamespaces, res.namespace)
+		}
+	}
+	return len(rejectedNamespaces) == 0, rejectedNamespaces, nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+type result struct {
+	namespace string
+	allowed   bool
+	err       error
 }
 
 func (v *MemberRollValidator) isUserAllowedToUpdatePods(ctx context.Context, req atypes.Request, member string) (bool, error) {
@@ -152,7 +234,6 @@ func (v *MemberRollValidator) isUserAllowedToUpdatePods(ctx context.Context, req
 	}
 	err := v.client.Create(ctx, sar)
 	if err != nil {
-		log.Error(err, "error processing SubjectAccessReview")
 		return false, err
 	}
 	return sar.Status.Allowed && !sar.Status.Denied, nil

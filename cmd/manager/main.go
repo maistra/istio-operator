@@ -53,6 +53,10 @@ func main() {
 	pflag.IntVar(&common.Options.MemberRollReconcilers, "memberRollReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMemberRoll resources")
 	pflag.IntVar(&common.Options.MemberReconcilers, "memberReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMember resources")
 
+	// flags to configure API request throttling
+	pflag.IntVar(&common.Options.Burst, "apiBurst", 50, "The number of API requests the operator can make before throttling is activated")
+	pflag.Float32Var(&common.Options.QPS, "apiQPS", 25, "The max rate of API requests when throttling is active")
+
 	// custom flags for istio operator
 	pflag.StringVar(&common.Options.ResourceDir, "resourceDir", "/usr/local/share/istio-operator", "The location of the resources - helm charts, templates, etc.")
 	pflag.StringVar(&common.Options.ChartsDir, "chartsDir", "", "The root location of the helm charts.")
@@ -88,6 +92,9 @@ func main() {
 		log.Error(err, "")
 		os.Exit(1)
 	}
+
+	cfg.Burst = common.Options.Burst
+	cfg.QPS = common.Options.QPS
 
 	ctx := context.Background()
 	// Become the leader before proceeding

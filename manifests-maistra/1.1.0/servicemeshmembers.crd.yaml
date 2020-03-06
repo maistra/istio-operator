@@ -17,7 +17,7 @@ spec:
   version: v1
   additionalPrinterColumns:
   - name: Control Plane
-    description: The ServiceMeshControlPlan this namespace belongs to
+    description: The ServiceMeshControlPlane this namespace belongs to
     type: string
     JSONPath: .status.annotations.controlPlaneRef
   - name: Ready
@@ -28,4 +28,3 @@ spec:
     description: The age of the object
     type: date
     JSONPath: .metadata.creationTimestamp
-

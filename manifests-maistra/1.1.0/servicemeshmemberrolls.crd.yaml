@@ -17,13 +17,12 @@ spec:
   version: v1
   additionalPrinterColumns:
   - name: Ready
-    description: How many of the total number of member namespaces are
-      configured
+    description: How many of the total number of member namespaces are configured
     type: string
-    JSONPath: '.status.annotations.configuredMemberCount'
+    JSONPath: .status.annotations.configuredMemberCount
   - name: Status
-    description: Whether all member namespaces have been configured or why
-      that's not the case
+    description: Whether all member namespaces have been configured or why that's
+      not the case
     type: string
     JSONPath: .status.conditions[?(@.type=="Ready")].reason
   - name: Age
