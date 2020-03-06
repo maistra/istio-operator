@@ -341,7 +341,7 @@ func TestVersionValidation(t *testing.T) {
 					name: "global.proxy.alwaysInjectSelector=false",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
 					configure: func(smcp *maistra.ServiceMeshControlPlane) {
-						unstructured.SetNestedField(smcp.Spec.Istio, false, strings.Split("global.proxy.alwaysInjectSelector", ".")...)
+						setNestedField(smcp.Spec.Istio, "global.proxy.alwaysInjectSelector", false)
 					},
 					allowed: true,
 				},
@@ -349,7 +349,7 @@ func TestVersionValidation(t *testing.T) {
 					name: "global.proxy.alwaysInjectSelector=true",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
 					configure: func(smcp *maistra.ServiceMeshControlPlane) {
-						unstructured.SetNestedField(smcp.Spec.Istio, true, strings.Split("global.proxy.alwaysInjectSelector", ".")...)
+						setNestedField(smcp.Spec.Istio, "global.proxy.alwaysInjectSelector", true)
 					},
 					allowed: false,
 				},
@@ -357,7 +357,7 @@ func TestVersionValidation(t *testing.T) {
 					name: "global.proxy.neverInjectSelector=false",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
 					configure: func(smcp *maistra.ServiceMeshControlPlane) {
-						unstructured.SetNestedField(smcp.Spec.Istio, false, strings.Split("global.proxy.neverInjectSelector", ".")...)
+						setNestedField(smcp.Spec.Istio, "global.proxy.neverInjectSelector", false)
 					},
 					allowed: true,
 				},
@@ -365,7 +365,7 @@ func TestVersionValidation(t *testing.T) {
 					name: "global.proxy.neverInjectSelector=true",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
 					configure: func(smcp *maistra.ServiceMeshControlPlane) {
-						unstructured.SetNestedField(smcp.Spec.Istio, true, strings.Split("global.proxy.neverInjectSelector", ".")...)
+						setNestedField(smcp.Spec.Istio, "global.proxy.neverInjectSelector", true)
 					},
 					allowed: false,
 				},
@@ -373,7 +373,7 @@ func TestVersionValidation(t *testing.T) {
 					name: "global.proxy.envoyAccessLogService.enabled=false",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
 					configure: func(smcp *maistra.ServiceMeshControlPlane) {
-						unstructured.SetNestedField(smcp.Spec.Istio, false, strings.Split("global.proxy.envoyAccessLogService.enabled", ".")...)
+						setNestedField(smcp.Spec.Istio, "global.proxy.envoyAccessLogService.enabled", false)
 					},
 					allowed: true,
 				},
@@ -381,7 +381,7 @@ func TestVersionValidation(t *testing.T) {
 					name: "global.proxy.envoyAccessLogService.enabled=true",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
 					configure: func(smcp *maistra.ServiceMeshControlPlane) {
-						unstructured.SetNestedField(smcp.Spec.Istio, true, strings.Split("global.proxy.envoyAccessLogService.enabled", ".")...)
+						setNestedField(smcp.Spec.Istio, "global.proxy.envoyAccessLogService.enabled", true)
 					},
 					allowed: false,
 				},
@@ -389,8 +389,8 @@ func TestVersionValidation(t *testing.T) {
 					name: "telemetry.enabled=false, telemetry.v2.enabled=false",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
 					configure: func(smcp *maistra.ServiceMeshControlPlane) {
-						unstructured.SetNestedField(smcp.Spec.Istio, false, strings.Split("telemetry.enabled", ".")...)
-						unstructured.SetNestedField(smcp.Spec.Istio, false, strings.Split("telemetry.v2.enabled", ".")...)
+						setNestedField(smcp.Spec.Istio, "telemetry.enabled", false)
+						setNestedField(smcp.Spec.Istio, "telemetry.v2.enabled", false)
 					},
 					allowed: true,
 				},
@@ -398,8 +398,8 @@ func TestVersionValidation(t *testing.T) {
 					name: "telemetry.enabled=false, telemetry.v2.enabled=true",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
 					configure: func(smcp *maistra.ServiceMeshControlPlane) {
-						unstructured.SetNestedField(smcp.Spec.Istio, false, strings.Split("telemetry.enabled", ".")...)
-						unstructured.SetNestedField(smcp.Spec.Istio, true, strings.Split("telemetry.v2.enabled", ".")...)
+						setNestedField(smcp.Spec.Istio, "telemetry.enabled", false)
+						setNestedField(smcp.Spec.Istio, "telemetry.v2.enabled", true)
 					},
 					allowed: true,
 				},
@@ -407,8 +407,8 @@ func TestVersionValidation(t *testing.T) {
 					name: "telemetry.enabled=true, telemetry.v2.enabled=true",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
 					configure: func(smcp *maistra.ServiceMeshControlPlane) {
-						unstructured.SetNestedField(smcp.Spec.Istio, true, strings.Split("telemetry.enabled", ".")...)
-						unstructured.SetNestedField(smcp.Spec.Istio, true, strings.Split("telemetry.v2.enabled", ".")...)
+						setNestedField(smcp.Spec.Istio, "telemetry.enabled", true)
+						setNestedField(smcp.Spec.Istio, "telemetry.v2.enabled", true)
 					},
 					allowed: false,
 				},
@@ -839,7 +839,7 @@ func newDummyResource(name string, namespace string, gvk schema.GroupVersionKind
 	obj.SetNamespace(namespace)
 	obj.SetGroupVersionKind(gvk)
 	for path, value := range values {
-		unstructured.SetNestedField(obj.UnstructuredContent(), value, strings.Split(path, ".")...)
+		setNestedField(obj.UnstructuredContent(), path, value)
 	}
 	if owner != nil {
 		ownerRef := metav1.NewControllerRef(owner, maistra.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
@@ -848,4 +848,8 @@ func newDummyResource(name string, namespace string, gvk schema.GroupVersionKind
 		})
 	}
 	return obj
+}
+
+func setNestedField(obj map[string]interface{}, path string, value interface{}) {
+    unstructured.SetNestedField(obj, value, strings.Split(path, ".")...)
 }

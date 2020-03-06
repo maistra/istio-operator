@@ -1,12 +1,14 @@
 package validation
 
 import (
+	"context"
+
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 )
 
-func (v *ControlPlaneValidator) validateV1_0(smcp *maistrav1.ServiceMeshControlPlane) error {
+func (v *ControlPlaneValidator) validateV1_0(ctx context.Context, smcp *maistrav1.ServiceMeshControlPlane) error {
 	var allErrors []error
 
 	// sidecarInjectorWebhook.alwaysInjectSelector is being used (values.yaml)

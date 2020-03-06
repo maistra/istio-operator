@@ -54,7 +54,6 @@ func (o *options) GetChartsDir(maistraVersion string) string {
 	if len(maistraVersion) == 0 {
 		maistraVersion = maistra.DefaultVersion.String()
 	}
-	// FIXME: Should not be hardcoded when https://issues.jboss.org/browse/MAISTRA-766 is implemented
 	if len(o.ChartsDir) == 0 {
 		return path.Join(o.ResourceDir, "helm", maistraVersion)
 	}

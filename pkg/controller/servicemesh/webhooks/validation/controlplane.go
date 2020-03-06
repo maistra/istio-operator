@@ -60,10 +60,9 @@ func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 	if len(smcp.Spec.Version) > 0 {
 		if version, err := maistra.ParseVersion(smcp.Spec.Version); err != nil {
 			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("invalid Version specified; supported versions are: %v", maistra.GetSupportedVersions()))
-		} else if err := v.validateVersion(smcp, version); err != nil {
+		} else if err := v.validateVersion(ctx, smcp, version); err != nil {
 			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, err.Error())
 		}
-
 	}
 
 	smcpList := &maistrav1.ServiceMeshControlPlaneList{}
@@ -141,21 +140,18 @@ func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 		if err != nil {
 			logger.Error(err, "error decoding admission request")
 			return admission.ErrorResponse(http.StatusBadRequest, err)
-		} else if oldsmcp.ObjectMeta.DeletionTimestamp != nil {
-			logger.Info("skipping deleted smcp resource")
-			return admission.ValidationResponse(true, "")
 		}
 
-		return v.validateUpdate(oldsmcp, smcp, logger)
+		return v.validateUpdate(ctx, oldsmcp, smcp, logger)
 	}
 
 	return admission.ValidationResponse(true, "")
 }
 
-func (v *ControlPlaneValidator) validateVersion(smcp *maistrav1.ServiceMeshControlPlane, version maistra.Version) error {
+func (v *ControlPlaneValidator) validateVersion(ctx context.Context, smcp *maistrav1.ServiceMeshControlPlane, version maistra.Version) error {
 	switch version.Version() {
 	case maistra.V1_0:
-		return v.validateV1_0(smcp)
+		return v.validateV1_0(ctx, smcp)
 	case maistra.V1_1:
 		return nil
 	default:
@@ -163,7 +159,7 @@ func (v *ControlPlaneValidator) validateVersion(smcp *maistrav1.ServiceMeshContr
 	}
 }
 
-func (v *ControlPlaneValidator) validateUpdate(old, new *maistrav1.ServiceMeshControlPlane, logger logr.Logger) atypes.Response {
+func (v *ControlPlaneValidator) validateUpdate(ctx context.Context, old, new *maistrav1.ServiceMeshControlPlane, logger logr.Logger) atypes.Response {
 	if old.Spec.Version == new.Spec.Version {
 		return admission.ValidationResponse(true, "")
 	}
@@ -188,13 +184,13 @@ func (v *ControlPlaneValidator) validateUpdate(old, new *maistrav1.ServiceMeshCo
 	// fails because feature X is no longer supported, but was added back in 1.3).
 	if oldVersion.Version() < newVersion.Version() {
 		for version := oldVersion.Version(); version < newVersion.Version(); version++ {
-			if err := v.validateUpgrade(version, old); err != nil {
+			if err := v.validateUpgrade(ctx, version, old); err != nil {
 				return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("cannot upgrade control plane from version %s to %s: %s", oldVersion.String(), newVersion.String(), err))
 			}
 		}
 	} else {
 		for version := oldVersion.Version(); version > newVersion.Version(); version-- {
-			if err := v.validateDowngrade(version, old); err != nil {
+			if err := v.validateDowngrade(ctx, version, old); err != nil {
 				return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("cannot downgrade control plane from version %s to %s: %s", oldVersion.String(), newVersion.String(), err))
 			}
 		}
@@ -203,19 +199,19 @@ func (v *ControlPlaneValidator) validateUpdate(old, new *maistrav1.ServiceMeshCo
 	return admission.ValidationResponse(true, "")
 }
 
-func (v *ControlPlaneValidator) validateUpgrade(currentVersion maistra.Version, smcp *maistrav1.ServiceMeshControlPlane) error {
+func (v *ControlPlaneValidator) validateUpgrade(ctx context.Context, currentVersion maistra.Version, smcp *maistrav1.ServiceMeshControlPlane) error {
 	switch currentVersion.Version() {
 	case maistra.V1_0:
-		return v.validateUpgradeFromV1_0(smcp)
+		return v.validateUpgradeFromV1_0(ctx, smcp)
 	default:
 		return fmt.Errorf("upgrade from version %s is not supported", currentVersion.String())
 	}
 }
 
-func (v *ControlPlaneValidator) validateDowngrade(currentVersion maistra.Version, smcp *maistrav1.ServiceMeshControlPlane) error {
+func (v *ControlPlaneValidator) validateDowngrade(ctx context.Context, currentVersion maistra.Version, smcp *maistrav1.ServiceMeshControlPlane) error {
 	switch currentVersion.Version() {
 	case maistra.V1_1:
-		return v.validateDowngradeFromV1_1(smcp)
+		return v.validateDowngradeFromV1_1(ctx, smcp)
 	default:
 		return fmt.Errorf("upgrade from version %s is not supported", currentVersion.String())
 	}

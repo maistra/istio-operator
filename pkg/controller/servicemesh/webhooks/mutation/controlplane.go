@@ -66,14 +66,8 @@ func (v *ControlPlaneMutator) Handle(ctx context.Context, req atypes.Request) at
 			newSmcp.Spec.Version = maistra.DefaultVersion.String()
 			smcpMutated = true
 		case admissionv1beta1.Update:
-			if len(smcp.Status.AppliedVersion) == 0 {
-				// this must have been created before 1.1
-				newSmcp.Spec.Version = maistra.LegacyVersion.String()
-			} else {
-				// don't change the version
-				newSmcp.Spec.Version = smcp.Status.AppliedVersion
-			}
-			log.Info("Setting .spec.version to default value", "version", maistra.LegacyVersion.String())
+			log.Info("Setting .spec.version to default value", "version", smcp.Spec.Version)
+			newSmcp.Spec.Version = smcp.Spec.Version
 			smcpMutated = true
 		}
 	}

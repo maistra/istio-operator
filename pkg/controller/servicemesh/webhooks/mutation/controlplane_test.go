@@ -59,38 +59,43 @@ func TestVersionIsDefaultedToCurrentMaistraVersionOnCreate(t *testing.T) {
 	assert.DeepEquals(response, expectedResponse, "Expected the response to set the version on create", t)
 }
 
-// Test if the webhook should default the version to the existing AppliedVersion on an update
-func TestVersionIsDefaultedToAppliedVersionOnUpdate(t *testing.T) {
-	controlPlane := newControlPlane("my-smcp", "istio-system")
-	controlPlane.Spec.Version = ""
-	controlPlane.Status.AppliedVersion = maistra.V1_1.String()
+// Test if the webhook defaults Version to the existing Version on an update
+func TestVersionIsDefaultedToOldSMCPVersionOnUpdate(t *testing.T) {
+	cases := []struct {
+		name    string
+		version string
+	}{
+		{
+			name:    "legacy-default",
+			version: "",
+		},
+		{
+			name:    "v1.0",
+			version: "v1.0",
+		},
+		{
+			name:    "v1.1",
+			version: "v1.1",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			controlPlane := newControlPlane("my-smcp", "istio-system")
+			controlPlane.Spec.Version = tc.version
 
-	updatedControlPlane := controlPlane.DeepCopy()
-	updatedControlPlane.Labels = map[string]string{"newLabel": "newValue"}
+			updatedControlPlane := controlPlane.DeepCopy()
+			updatedControlPlane.Spec.Version = ""
+			updatedControlPlane.Labels = map[string]string{"newLabel": "newValue"}
 
-	mutatedControlPlane := controlPlane.DeepCopy()
-	mutatedControlPlane.Spec.Version = controlPlane.Status.AppliedVersion
+			mutatedControlPlane := controlPlane.DeepCopy()
+			mutatedControlPlane.Spec.Version = controlPlane.Spec.Version
 
-	mutator, _, _ := createControlPlaneMutatorTestFixture(controlPlane)
-	response := mutator.Handle(ctx, newUpdateRequest(controlPlane, updatedControlPlane))
-	expectedResponse := webhookadmission.PatchResponse(controlPlane, mutatedControlPlane)
-	assert.DeepEquals(response, expectedResponse, "Expected the response to set the version to previously AppliedVersion on update", t)
-}
-
-func TestVersionIsDefaultedToLegacyVersionOnUpdate(t *testing.T) {
-	controlPlane := newControlPlane("my-smcp", "istio-system")
-	controlPlane.Spec.Version = ""
-
-	updatedControlPlane := controlPlane.DeepCopy()
-	updatedControlPlane.Labels = map[string]string{"newLabel": "newValue"}
-
-	mutatedControlPlane := controlPlane.DeepCopy()
-	mutatedControlPlane.Spec.Version = maistra.LegacyVersion.String()
-
-	mutator, _, _ := createControlPlaneMutatorTestFixture(controlPlane)
-	response := mutator.Handle(ctx, newUpdateRequest(controlPlane, updatedControlPlane))
-	expectedResponse := webhookadmission.PatchResponse(controlPlane, mutatedControlPlane)
-	assert.DeepEquals(response, expectedResponse, "Expected the response to set the version to previously AppliedVersion on update", t)
+			mutator, _, _ := createControlPlaneMutatorTestFixture(controlPlane)
+			response := mutator.Handle(ctx, newUpdateRequest(controlPlane, updatedControlPlane))
+			expectedResponse := webhookadmission.PatchResponse(controlPlane, mutatedControlPlane)
+			assert.DeepEquals(response, expectedResponse, "Expected the response to set the version to previously AppliedVersion on update", t)
+		})
+	}
 }
 
 func TestTemplateIsDefaultedOnCreate(t *testing.T) {

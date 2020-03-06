@@ -27,12 +27,12 @@ var (
 	}
 )
 
-func (v *ControlPlaneValidator) validateDowngradeFromV1_1(smcp *maistrav1.ServiceMeshControlPlane) error {
+func (v *ControlPlaneValidator) validateDowngradeFromV1_1(ctx context.Context, smcp *maistrav1.ServiceMeshControlPlane) error {
 	var allErrors []error
 	meshNamespaces := sets.NewString(smcp.GetNamespace())
 
 	memberNamespaces := &corev1.NamespaceList{}
-	if err := v.client.List(context.TODO(), client.MatchingLabels(map[string]string{common.MemberOfKey: smcp.GetNamespace()}), memberNamespaces); err != nil {
+	if err := v.client.List(ctx, client.MatchingLabels(map[string]string{common.MemberOfKey: smcp.GetNamespace()}), memberNamespaces); err != nil {
 		return pkgerrors.Wrap(err, "error listing member namespaces")
 	}
 	for _, member := range memberNamespaces.Items {
@@ -52,7 +52,7 @@ func (v *ControlPlaneValidator) validateDowngradeFromV1_1(smcp *maistrav1.Servic
 	virtualServices := &unstructured.UnstructuredList{}
 	virtualServices.SetGroupVersionKind(vsgvk)
 	// XXX: do we list all in the cluster, or list for each member namespace?
-	if err := v.client.List(context.TODO(), nil, virtualServices); err != nil {
+	if err := v.client.List(ctx, nil, virtualServices); err != nil {
 		if !meta.IsNoMatchError(err) && !errors.IsNotFound(err) {
 			return pkgerrors.Wrapf(err, "error listing %s resources", vsgvk.String())
 		}
@@ -78,7 +78,7 @@ func (v *ControlPlaneValidator) validateDowngradeFromV1_1(smcp *maistrav1.Servic
 		objects := &unstructured.UnstructuredList{}
 		objects.SetGroupVersionKind(gvk)
 		// XXX: do we list all in the cluster, or list for each member namespace?
-		if err := v.client.List(context.TODO(), nil, objects); err != nil {
+		if err := v.client.List(ctx, nil, objects); err != nil {
 			if !meta.IsNoMatchError(err) && !errors.IsNotFound(err) {
 				return pkgerrors.Wrapf(err, "error listing %s resources", gvk.String())
 			}

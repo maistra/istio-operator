@@ -62,7 +62,7 @@ var (
 	}
 )
 
-func (v *ControlPlaneValidator) validateUpgradeFromV1_0(smcp *maistrav1.ServiceMeshControlPlane) error {
+func (v *ControlPlaneValidator) validateUpgradeFromV1_0(ctx context.Context, smcp *maistrav1.ServiceMeshControlPlane) error {
 	var allErrors []error
 
 	meshNamespaces := sets.NewString(smcp.GetNamespace())
@@ -79,7 +79,7 @@ func (v *ControlPlaneValidator) validateUpgradeFromV1_0(smcp *maistrav1.ServiceM
 		objects := &unstructured.UnstructuredList{}
 		objects.SetGroupVersionKind(gvk)
 		// XXX: do we list all in the cluster, or list for each member namespace?
-		if err := v.client.List(context.TODO(), nil, objects); err != nil {
+		if err := v.client.List(ctx, nil, objects); err != nil {
 			if !meta.IsNoMatchError(err) && !errors.IsNotFound(err) {
 				return pkgerrors.Wrapf(err, "error listing %s resources", gvk.String())
 			}
@@ -101,7 +101,7 @@ func (v *ControlPlaneValidator) validateUpgradeFromV1_0(smcp *maistrav1.ServiceM
 	for namespace := range meshNamespaces {
 		memberServices := &corev1.ServiceList{}
 		// listing for each member namespace, as we expect a large number of services in the whole cluster
-		if err := v.client.List(context.TODO(), client.InNamespace(namespace), memberServices); err != nil {
+		if err := v.client.List(ctx, client.InNamespace(namespace), memberServices); err != nil {
 			return pkgerrors.Wrapf(err, "error listing Service resources in namespace %s", namespace)
 		}
 		for _, service := range memberServices.Items {
