@@ -3,6 +3,7 @@
 set -e
 
 : ${MAISTRA_VERSION:=1.1.0}
+: ${MAISTRA_REPO:=https://github.com/Maistra/istio}
 : ${MAISTRA_BRANCH:=maistra-1.1}
 
 : ${SOURCE_DIR:=$(pwd)}
@@ -17,7 +18,7 @@ PLATFORM=linux
 
 ISTIO_NAME=istio-${ISTIO_VERSION}
 ISTIO_FILE="${MAISTRA_BRANCH}.zip"
-ISTIO_URL="https://github.com/Maistra/istio/archive/${MAISTRA_BRANCH}.zip"
+ISTIO_URL="${MAISTRA_REPO}/archive/${MAISTRA_BRANCH}.zip"
 EXTRACT_CMD="unzip ${ISTIO_FILE} istio-${MAISTRA_BRANCH}/install/kubernetes/helm/*"
 RELEASE_DIR="${RELEASES_DIR}/${ISTIO_NAME}"
 
