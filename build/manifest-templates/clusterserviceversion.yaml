@@ -21,6 +21,7 @@ metadata:
           "kind": "ServiceMeshControlPlane",
           "metadata": {
             "name": "basic-install"
+            "namespace": "control-plane-namespace"
           },
           "spec": {
             "istio": {
@@ -65,12 +66,27 @@ metadata:
           "kind": "ServiceMeshMemberRoll",
           "metadata": {
             "name": "default"
+            "namespace": "control-plane-namespace"
           },
           "spec": {
             "members": [
               "your-project",
               "another-of-your-projects" 
             ]
+          }
+        },
+        {
+          "apiVersion": "maistra.io/v1",
+          "kind": "ServiceMeshMember",
+          "metadata": {
+            "name": "default"
+            "namespace": "application-namespace"
+          },
+          "spec": {
+            "controlPlaneRef": {
+              "name": "basic-install",
+              "namespace": "control-plane-namespace"
+            }
           }
         }
       ]
