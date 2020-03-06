@@ -302,19 +302,30 @@ containers:
     runAsUser: 1337
     {{- end }}
   resources:
-    {{ if or (isset .ObjectMeta.Annotations `sidecar.istio.io/proxyCPU`) (isset .ObjectMeta.Annotations `sidecar.istio.io/proxyMemory`) -}}
+  {{- if or (or (isset .ObjectMeta.Annotations `sidecar.istio.io/proxyCPU`) (isset .ObjectMeta.Annotations `sidecar.istio.io/proxyMemory`)) (or (isset .ObjectMeta.Annotations `sidecar.maistra.io/proxyCPULimit`) (isset .ObjectMeta.Annotations `sidecar.maistra.io/proxyMemoryLimit`)) -}}
+    {{- if or (isset .ObjectMeta.Annotations `sidecar.istio.io/proxyCPU`) (isset .ObjectMeta.Annotations `sidecar.istio.io/proxyMemory`) }}
     requests:
-      {{ if (isset .ObjectMeta.Annotations `sidecar.istio.io/proxyCPU`) -}}
+      {{- if (isset .ObjectMeta.Annotations `sidecar.istio.io/proxyCPU`) }}
       cpu: "{{ index .ObjectMeta.Annotations `sidecar.istio.io/proxyCPU` }}"
-      {{ end}}
-      {{ if (isset .ObjectMeta.Annotations `sidecar.istio.io/proxyMemory`) -}}
+      {{- end -}}
+      {{- if (isset .ObjectMeta.Annotations `sidecar.istio.io/proxyMemory`) }}
       memory: "{{ index .ObjectMeta.Annotations `sidecar.istio.io/proxyMemory` }}"
-      {{ end }}
-  {{ else -}}
-{{- if .Values.global.proxy.resources }}
+      {{- end -}}
+    {{- end -}}
+    {{- if or (isset .ObjectMeta.Annotations `sidecar.maistra.io/proxyCPULimit`) (isset .ObjectMeta.Annotations `sidecar.maistra.io/proxyMemoryLimit`) }}
+    limits:
+      {{- if (isset .ObjectMeta.Annotations `sidecar.maistra.io/proxyCPULimit`) }}
+      cpu: "{{ index .ObjectMeta.Annotations `sidecar.maistra.io/proxyCPULimit` }}"
+      {{- end -}}
+      {{- if (isset .ObjectMeta.Annotations `sidecar.maistra.io/proxyMemoryLimit`) }}
+      memory: "{{ index .ObjectMeta.Annotations `sidecar.maistra.io/proxyMemoryLimit` }}"
+      {{- end -}}
+    {{- end -}}
+  {{- else -}}
+    {{- if .Values.global.proxy.resources }}
     {{ toYaml .Values.global.proxy.resources | indent 4 }}
-{{- end }}
-  {{  end -}}
+    {{- end -}}
+  {{-  end }}
   volumeMounts:
   {{ if (isset .ObjectMeta.Annotations `sidecar.istio.io/bootstrapOverride`) }}
   - mountPath: /etc/istio/custom-bootstrap
