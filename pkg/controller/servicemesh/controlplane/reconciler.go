@@ -215,6 +215,14 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 				return
 			}
 		}
+
+		if err = r.reconcileRBAC(ctx); err != nil {
+			reconciliationReason = v1.ConditionReasonReconcileError
+			reconciliationMessage = "Failed to install/update Maistra RBAC resources"
+			log.Error(err, reconciliationMessage)
+			return
+		}
+
 	} else if r.lastComponent != "" {
 		if readinessMap, readinessErr := r.calculateComponentReadiness(ctx); readinessErr == nil {
 			// if we've already begun reconciling, make sure we weren't waiting for

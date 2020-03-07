@@ -19,6 +19,7 @@ metadata:
   name: mesh-users
   namespace: istio-system
 roleRef:
+  apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: mesh-user
 subjects:
