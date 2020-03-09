@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 function prometheus_patch_deployment() {
+  file=${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
   sed -i -e '/      containers:/ a\
           # OAuth proxy\
         - name: prometheus-proxy\
@@ -42,8 +43,8 @@ function prometheus_patch_deployment() {
           - -tls-cert=/etc/tls/private/tls.crt\
           - -tls-key=/etc/tls/private/tls.key\
           - -openshift-ca=/etc/pki/tls/cert.pem\
-          - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt' \
-      -e '/      volumes:/ a\
+          - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt' $file
+  sed -i -e '/      volumes:/ a\
       # OAuth proxy\
       - name: secret-prometheus-tls\
         secret:\
@@ -52,19 +53,18 @@ function prometheus_patch_deployment() {
       - name: secret-htpasswd\
         secret:\
           defaultMode: 420\
-          secretName: htpasswd' \
-      -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: prometheus\
-\1containers:\2/' \
-      -e 's/^\(.*\)\(- .--config.file.*\)$/\1\2\
+          secretName: htpasswd' $file
+  sed -i -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: prometheus\
+\1containers:\2/' $file
+  sed -i -e 's/^\(.*\)\(- .--config.file.*\)$/\1\2\
 \1- --discovery.member-roll-name=default\
-\1- --discovery.member-roll-namespace={{ .Release.Namespace }}/' \
-  ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+\1- --discovery.member-roll-namespace={{ .Release.Namespace }}/' $file
 
   sed -i -r -e 's/.*image:.*"\{\{ \.Values\.hub \}\}\/\{\{ \.Values\.image \}\}\:\{\{ \.Values\.tag \}\}".*$/{{- if contains "\/" .Values.image }}\
           image: "{{ .Values.image }}"\
 {{- else }}\
           image: "{{ .Values.global.hub }}\/{{ .Values.image }}:{{ .Values.global.tag }}"\
-{{- end }}/' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+{{- end }}/' $file
 
 	sed -i "/storage.tsdb.retention.*/a\ \ \ \ \ \ \ \ \ \ \ \ - \'--storage.tsdb.path=/prometheus\'" ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 
@@ -73,7 +73,7 @@ function prometheus_patch_deployment() {
   strategy:\
     rollingUpdate:\
       maxSurge: 25%\
-      maxUnavailable: 25%' ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+      maxUnavailable: 25%' $file
 }
 
 function prometheus_patch_service() {

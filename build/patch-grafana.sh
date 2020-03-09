@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 function grafana_patch_deployment() {
+  file=${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
   sed -i -e '/      containers:/ a\
           # OAuth proxy\
         - name: grafana-proxy\
@@ -42,8 +43,8 @@ function grafana_patch_deployment() {
           - -tls-cert=/etc/tls/private/tls.crt\
           - -tls-key=/etc/tls/private/tls.key\
           - -openshift-ca=/etc/pki/tls/cert.pem\
-          - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt' \
-      -e '/      volumes:/ a\
+          - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt' $file
+  sed -i -e '/      volumes:/ a\
       # OAuth proxy\
       - name: secret-grafana-tls\
         secret:\
@@ -52,11 +53,11 @@ function grafana_patch_deployment() {
       - name: secret-htpasswd\
         secret:\
           defaultMode: 420\
-          secretName: htpasswd' \
-      -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: grafana\
-\1containers:\2/' \
-      -e '/- if \.Values\.security\.enabled/,/- end/ { d }' \
-      -e 's/^\(\( *\)-.*GF_PATHS_DATA.*\)$/\2- name: GF_AUTH_BASIC_ENABLED\
+          secretName: htpasswd' $file
+  sed -i -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: grafana\
+\1containers:\2/' $file
+  sed -i -e '/- if \.Values\.security\.enabled/,/- end/ { d }' $file
+  sed -i -e 's/^\(\( *\)-.*GF_PATHS_DATA.*\)$/\2- name: GF_AUTH_BASIC_ENABLED\
 \2  value: "false"\
 \2- name: GF_AUTH_PROXY_ENABLED\
 \2  value: "true"\
@@ -70,18 +71,18 @@ function grafana_patch_deployment() {
 \2  value: X-Forwarded-User\
 \2- name: GF_USERS_AUTO_ASSIGN_ORG_ROLE\
 \2  value: Admin\
-\1/' \
-  -e 's+image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"+image: "{{ .Values.global.hub }}/{{.Values.image}}:{{ .Values.global.tag }}"+' \
-  ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
+\1/' $file
+  sed -i -e 's+image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"+image: "{{ .Values.global.hub }}/{{.Values.image}}:{{ .Values.global.tag }}"+' \
+  $file
 
-  sed -i -e '/securityContext/,/fsGroup/d' ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
+  sed -i -e '/securityContext/,/fsGroup/d' $file
 
   # Fix for MAISTRA-746, can be removed when we move to Istio-1.2
   sed -i -e '/^spec:/ a\
   strategy:\
     rollingUpdate:\
       maxSurge: 25%\
-      maxUnavailable: 25%' ${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
+      maxUnavailable: 25%' $file
 }
 
 function grafana_patch_service() {
@@ -99,20 +100,19 @@ function grafana_patch_misc() {
 }
 
 function grafana_patch_values() {
+  file=${HELM_DIR}/istio/charts/grafana/values.yaml
   # add annotations and enable ingress
-  sed -i \
-    -e 's|  annotations: {}|  annotations:\n    service.alpha.openshift.io/serving-cert-secret-name: grafana-tls|' \
-    -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' \
-    -e 's+http://prometheus:9090+https://prometheus:9090+' \
-    -e 's/\(\( *\)access: proxy\)/\1\
+  sed -i -e 's|  annotations: {}|  annotations:\n    service.alpha.openshift.io/serving-cert-secret-name: grafana-tls|' $file
+  sed -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' $file
+  sed -i -e 's+http://prometheus:9090+https://prometheus:9090+' $file
+  sed -i -e 's/\(\( *\)access: proxy\)/\1\
 \2basicAuth: true\
 \2basicAuthPassword: ""\
 \2basicAuthUser: internal\
-\2version: 1/' \
-    -e 's+^\(\( *\)timeInterval.*\)$+\1\
+\2version: 1/' $file
+  sed -i -e 's+^\(\( *\)timeInterval.*\)$+\1\
 \2# we should be using the CA cert in /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt\
-\2tlsSkipVerify: true+' \
-    ${HELM_DIR}/istio/charts/grafana/values.yaml
+\2tlsSkipVerify: true+' $file
 }
 
 function GrafanaPatch() {

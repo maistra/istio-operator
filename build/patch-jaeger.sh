@@ -4,7 +4,8 @@ function jaeger_patch_values() {
 	# update jaeger zipkin port name
   sed -i -e '/service:$/,/externalPort:/ {
     s/name:.*$/name: zipkin/
-	}' -e '/jaeger:$/,/^[^ 	]/ {
+	}' ${HELM_DIR}/istio/charts/tracing/values.yaml
+  sed -i -e '/jaeger:$/,/^[^ 	]/ {
           /jaeger:/a\
   # include elasticsearch to support default configurations\
   elasticsearch: {}

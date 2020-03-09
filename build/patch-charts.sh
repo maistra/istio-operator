@@ -60,20 +60,21 @@ function patchGalley() {
   # Webhooks are not namespaced!  we do this to ensure we're not setting owner references on them
   # add namespace selectors
   # remove define block
-  sed -i -e '/{{ define/d' \
-         -e '/{{- end/d' \
-         -e '/metadata:/,/webhooks:/ {
+  webhookconfig=${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml
+  sed -i -e '/{{ define/d' $webhookconfig
+  sed -i -e '/{{- end/d' $webhookconfig
+  sed -i -e '/metadata:/,/webhooks:/ {
                 /namespace:/d
                 /name:/s/istio-galley/istio-galley-\{\{ .Release.Namespace \}\}/
-              }' \
-         -e 's|\(\(^ *\)rules:\)|\2namespaceSelector:\
+              }' $webhookconfig
+  sed -i -e 's|\(\(^ *\)rules:\)|\2namespaceSelector:\
 \2  matchExpressions:\
 \2  - key: maistra.io/member-of\
 \2    operator: In\
 \2    values:\
 \2    - {{ .Release.Namespace }}\
-\1|' \
-         -e '/pilot.validation.istio.io/,/failurePolicy:/ {
+\1|' $webhookconfig
+  sed -i -e '/pilot.validation.istio.io/,/failurePolicy:/ {
               /failurePolicy/i\
       - operations:\
         - CREATE\
@@ -93,11 +94,11 @@ function patchGalley() {
         - "*"\
         resources:\
         - "*"
-          }' \
-         -e '/webhooks:/a\
+          }' $webhookconfig
+  sed -i -e '/webhooks:/a\
 \{\{- if .Values.global.configValidation \}\}
-' \
-    ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml
+' $webhookconfig
+
   echo '{{- end }}' >> ${HELM_DIR}/istio/charts/galley/templates/validatingwebhookconfiguration.yaml
 
   sed -i -e '/{{- if .*configValidation/,/{{- end/d' ${HELM_DIR}/istio/charts/galley/templates/configmap.yaml
@@ -111,11 +112,12 @@ function patchGalley() {
   # add name to webhook port (XXX: move upstream)
   # change the location of the healthCheckFile from /health to /tmp/health
   # add --validation-port=8443
+  deployment=${HELM_DIR}/istio/charts/galley/templates/deployment.yaml
   sed -i -e 's/^\(.*\)\- containerPort: 443.*$/\1- name: webhook\
-\1  containerPort: 8443/' \
-           -e 's/\/health/\/tmp\/health/' \
-           -e 's/^\(.*\)\(- --monitoringPort.*\)$/\1\2\
-\1- --validation-port=8443/' ${HELM_DIR}/istio/charts/galley/templates/deployment.yaml
+\1  containerPort: 8443/' $deployment
+  sed -i -e 's/\/health/\/tmp\/health/' $deployment
+  sed -i -e 's/^\(.*\)\(- --monitoringPort.*\)$/\1\2\
+\1- --validation-port=8443/' $deployment
 
   # multitenant
   sed -i -e '/operatorManageWebhooks/,/{{- end }}/ {
@@ -137,8 +139,8 @@ function patchGalley() {
 \2- --memberRollName=default\
 \2- --useOldProcessor=true\
 \1/
-  }' \
-         -e '/operatorManageWebhooks/,/{{- end }}/ {
+  }' ${HELM_DIR}/istio/charts/galley/templates/deployment.yaml
+  sed -i -e '/operatorManageWebhooks/,/{{- end }}/ {
                /false/!d
              }' ${HELM_DIR}/istio/charts/galley/templates/deployment.yaml
 }
@@ -154,8 +156,8 @@ function patchGateways() {
                   s/\(\(^ *\)- port: 443\)/\1\
 \2  targetPort: 8443/
                 }
-              }' \
-         -e '/istio-ingressgateway:/,/^[^ ]/ {
+              }' ${HELM_DIR}/istio/charts/gateways/values.yaml
+  sed -i -e '/istio-ingressgateway:/,/^[^ ]/ {
                 s/type:.*$/type: ClusterIP/
                 /ports:/,/meshExpansionPorts:/ {
                   /nodePort/ d
@@ -209,11 +211,12 @@ function patchSecurity() {
 function patchSidecarInjector() {
   echo "patching Sidecar Injector specific Helm charts"
   # Webhooks are not namespaced!  we do this to ensure we're not setting owner references on them
+  webhookconfig=${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhook.yaml
   sed -i -e '/metadata:/,/webhooks:/ {
                 /namespace:/d
                 /name:/s/istio-sidecar-injector/istio-sidecar-injector-\{\{ .Release.Namespace \}\}/
-              }' \
-         -e '/if .Values.enableNamespacesByDefault/,/{{- end/ {
+              }' $webhookconfig
+  sed -i -e '/if .Values.enableNamespacesByDefault/,/{{- end/ {
       /enableNamespacesByDefault/i\
       matchExpressions:\
       - key: maistra.io/member-of\
@@ -223,9 +226,9 @@ function patchSidecarInjector() {
       - key: maistra.io/ignore-namespace\
         operator: DoesNotExist
       d
-    }' \
-         -e '/operatorManageWebhooks/d' \
-         -e '/{{- end }}/d' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/mutatingwebhook.yaml
+    }' $webhookconfig
+  sed -i -e '/operatorManageWebhooks/d' $webhookconfig
+  sed -i -e '/{{- end }}/d' $webhookconfig
 
   # - change privileged value on istio-proxy injection configmap to false
   # setting the proper values will fix this:
@@ -266,8 +269,8 @@ function patchSidecarInjector() {
 \1ports:\
 \1- name: webhook\
 \1  containerPort: 8443\
-\1\2/' \
-         -e '/operatorManageWebhooks/,/{{- end }}/ {
+\1\2/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
+  sed -i -e '/operatorManageWebhooks/,/{{- end }}/ {
                /false/!d
             }' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
 
@@ -291,8 +294,8 @@ function patchPilot() {
       d
     }
     /apiGroups/!d
-  }' \
-         -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/pilot/templates/clusterrole.yaml
+  }' ${HELM_DIR}/istio/charts/pilot/templates/clusterrole.yaml
+  sed -i -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/pilot/templates/clusterrole.yaml
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/pilot/templates/clusterrolebinding.yaml
   sed -i -r -e 's/^(( *)- "?discovery"?)/\1\
 \2- --memberRollName=default\
@@ -346,8 +349,8 @@ function convertClusterToNamespaced() {
   # $2 - cluster kind
   # $3 - namespaced kind
   # $4 - dereference
-  sed -i -e 's/^\(\( *\)kind.*'$2'.*$\)/\2kind: '$3'/' \
-         -e '0,/name:/ s/^\(\(.*\)name:.*$\)/\1\
+  sed -i -e 's/^\(\( *\)kind.*'$2'.*$\)/\2kind: '$3'/' "${1}"
+  sed -i -e '0,/name:/ s/^\(\(.*\)name:.*$\)/\1\
 \2namespace: {{ '$4'.Release.Namespace }}/' "${1}"
 }
 
@@ -362,10 +365,9 @@ function removeUnsupportedCharts() {
   rm -rf ${HELM_DIR}/istio/charts/istiocoredns
   rm -rf ${HELM_DIR}/istio/charts/certmanager
 
-  sed -i -e '/name:.*nodeagent/,+2 d' \
-         -e '/name:.*servicegraph/,+2 d' \
-         -e '/name:.*istiocoredns/,+2 d' \
-         -e '/name:.*certmanager/,+2 d' ${HELM_DIR}/istio/requirements.yaml
+  sed -i -e '/name:.*nodeagent/,+2 d' ${HELM_DIR}/istio/requirements.yaml
+  sed -i -e '/name:.*istiocoredns/,+2 d' ${HELM_DIR}/istio/requirements.yaml
+  sed -i -e '/name:.*certmanager/,+2 d' ${HELM_DIR}/istio/requirements.yaml
 }
 
 copyOverlay
