@@ -12,7 +12,7 @@ metadata:
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: maistra/istio-ubi8-operator:1.1.0
-    createdAt: 2020-03-05T13:36:12CET
+    createdAt: 2020-03-06T16:24:30CET
     support: Red Hat, Inc. 
     alm-examples: |-
       [
@@ -21,6 +21,7 @@ metadata:
           "kind": "ServiceMeshControlPlane",
           "metadata": {
             "name": "basic-install"
+            "namespace": "control-plane-namespace"
           },
           "spec": {
             "istio": {
@@ -65,12 +66,27 @@ metadata:
           "kind": "ServiceMeshMemberRoll",
           "metadata": {
             "name": "default"
+            "namespace": "control-plane-namespace"
           },
           "spec": {
             "members": [
               "your-project",
               "another-of-your-projects" 
             ]
+          }
+        },
+        {
+          "apiVersion": "maistra.io/v1",
+          "kind": "ServiceMeshMember",
+          "metadata": {
+            "name": "default"
+            "namespace": "application-namespace"
+          },
+          "spec": {
+            "controlPlaneRef": {
+              "name": "basic-install",
+              "namespace": "control-plane-namespace"
+            }
           }
         }
       ]
@@ -335,9 +351,9 @@ spec:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
                   value: istio-operator
-                - name: ISTIO_CNI_V1_0_IMAGE
+                - name: ISTIO_CNI_IMAGE_V1_0
                   value: maistra/istio-cni-ubi8:1.0.0
-                - name: ISTIO_CNI_V1_1_IMAGE
+                - name: ISTIO_CNI_IMAGE_V1_1
                   value: maistra/istio-cni-ubi8:1.1.0
   customresourcedefinitions:
     required:
