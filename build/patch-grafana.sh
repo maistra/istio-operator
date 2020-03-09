@@ -2,7 +2,7 @@
 
 function grafana_patch_deployment() {
   file=${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
-  sed -i -e '/      containers:/ a\
+  sed_wrap -i -e '/      containers:/ a\
           # OAuth proxy\
         - name: grafana-proxy\
           image: {{ .Values.global.oauthproxy.hub }}/{{ .Values.global.oauthproxy.image }}:{{ .Values.global.oauthproxy.tag }}\
@@ -44,7 +44,7 @@ function grafana_patch_deployment() {
           - -tls-key=/etc/tls/private/tls.key\
           - -openshift-ca=/etc/pki/tls/cert.pem\
           - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt' $file
-  sed -i -e '/      volumes:/ a\
+  sed_wrap -i -e '/      volumes:/ a\
       # OAuth proxy\
       - name: secret-grafana-tls\
         secret:\
@@ -54,10 +54,10 @@ function grafana_patch_deployment() {
         secret:\
           defaultMode: 420\
           secretName: htpasswd' $file
-  sed -i -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: grafana\
+  sed_wrap -i -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: grafana\
 \1containers:\2/' $file
-  sed -i -e '/- if \.Values\.security\.enabled/,/- end/ { d }' $file
-  sed -i -e 's/^\(\( *\)-.*GF_PATHS_DATA.*\)$/\2- name: GF_AUTH_BASIC_ENABLED\
+  sed_wrap -i -e '/- if \.Values\.security\.enabled/,/- end/ { d }' $file
+  sed_wrap -i -e 's/^\(\( *\)-.*GF_PATHS_DATA.*\)$/\2- name: GF_AUTH_BASIC_ENABLED\
 \2  value: "false"\
 \2- name: GF_AUTH_PROXY_ENABLED\
 \2  value: "true"\
@@ -72,13 +72,13 @@ function grafana_patch_deployment() {
 \2- name: GF_USERS_AUTO_ASSIGN_ORG_ROLE\
 \2  value: Admin\
 \1/' $file
-  sed -i -e 's+image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"+image: "{{ .Values.global.hub }}/{{.Values.image}}:{{ .Values.global.tag }}"+' \
+  sed_wrap -i -e 's+image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"+image: "{{ .Values.global.hub }}/{{.Values.image}}:{{ .Values.global.tag }}"+' \
   $file
 
-  sed -i -e '/securityContext/,/fsGroup/d' $file
+  sed_wrap -i -e '/securityContext/,/fsGroup/d' $file
 
   # Fix for MAISTRA-746, can be removed when we move to Istio-1.2
-  sed -i -e '/^spec:/ a\
+  sed_wrap -i -e '/^spec:/ a\
   strategy:\
     rollingUpdate:\
       maxSurge: 25%\
@@ -86,7 +86,7 @@ function grafana_patch_deployment() {
 }
 
 function grafana_patch_service() {
-  sed -i -e 's/      targetPort: 3000/      targetPort: 3001/' ${HELM_DIR}/istio/charts/grafana/templates/service.yaml
+  sed_wrap -i -e 's/      targetPort: 3000/      targetPort: 3001/' ${HELM_DIR}/istio/charts/grafana/templates/service.yaml
 }
 
 function grafana_patch_misc() {
@@ -96,21 +96,21 @@ function grafana_patch_misc() {
   # - custom resources will be installed directly
   rm ${HELM_DIR}/istio/charts/grafana/templates/configmap-custom-resources.yaml
 
-  sed -i -e '/grafana-default.yaml.tpl/d' -e '/{{.*end.*}}/d' ${HELM_DIR}/istio/charts/grafana/templates/grafana-ports-mtls.yaml
+  sed_wrap -i -e '/grafana-default.yaml.tpl/d' -e '/{{.*end.*}}/d' ${HELM_DIR}/istio/charts/grafana/templates/grafana-ports-mtls.yaml
 }
 
 function grafana_patch_values() {
   file=${HELM_DIR}/istio/charts/grafana/values.yaml
   # add annotations and enable ingress
-  sed -i -e 's|  annotations: {}|  annotations:\n    service.alpha.openshift.io/serving-cert-secret-name: grafana-tls|' $file
-  sed -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' $file
-  sed -i -e 's+http://prometheus:9090+https://prometheus:9090+' $file
-  sed -i -e 's/\(\( *\)access: proxy\)/\1\
+  sed_wrap -i -e 's|  annotations: {}|  annotations:\n    service.alpha.openshift.io/serving-cert-secret-name: grafana-tls|' $file
+  sed_wrap -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' $file
+  sed_wrap -i -e 's+http://prometheus:9090+https://prometheus:9090+' $file
+  sed_wrap -i -e 's/\(\( *\)access: proxy\)/\1\
 \2basicAuth: true\
 \2basicAuthPassword: ""\
 \2basicAuthUser: internal\
 \2version: 1/' $file
-  sed -i -e 's+^\(\( *\)timeInterval.*\)$+\1\
+  sed_wrap -i -e 's+^\(\( *\)timeInterval.*\)$+\1\
 \2# we should be using the CA cert in /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt\
 \2tlsSkipVerify: true+' $file
 }

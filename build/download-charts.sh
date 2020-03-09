@@ -62,6 +62,13 @@ function retrieveIstioRelease() {
 }
 
 function sed() {
+  echo "ERROR: detected direct sed invocation"
+  echo "Please use sed_wrap. It is a wrapper around sed that fails when no changes have been detected."
+  echo "Failed call was: sed $@"
+  return 1
+}
+
+function sed_wrap() {
   for filename; do true; done # this retrieves the last argument
   echo "patching $filename"
   state=$(cat $filename)

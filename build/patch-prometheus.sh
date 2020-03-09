@@ -2,7 +2,7 @@
 
 function prometheus_patch_deployment() {
   file=${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
-  sed -i -e '/      containers:/ a\
+  sed_wrap -i -e '/      containers:/ a\
           # OAuth proxy\
         - name: prometheus-proxy\
           image: {{ .Values.global.oauthproxy.hub }}/{{ .Values.global.oauthproxy.image }}:{{ .Values.global.oauthproxy.tag }}\
@@ -44,7 +44,7 @@ function prometheus_patch_deployment() {
           - -tls-key=/etc/tls/private/tls.key\
           - -openshift-ca=/etc/pki/tls/cert.pem\
           - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt' $file
-  sed -i -e '/      volumes:/ a\
+  sed_wrap -i -e '/      volumes:/ a\
       # OAuth proxy\
       - name: secret-prometheus-tls\
         secret:\
@@ -54,22 +54,22 @@ function prometheus_patch_deployment() {
         secret:\
           defaultMode: 420\
           secretName: htpasswd' $file
-  sed -i -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: prometheus\
+  sed_wrap -i -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: prometheus\
 \1containers:\2/' $file
-  sed -i -e 's/^\(.*\)\(- .--config.file.*\)$/\1\2\
+  sed_wrap -i -e 's/^\(.*\)\(- .--config.file.*\)$/\1\2\
 \1- --discovery.member-roll-name=default\
 \1- --discovery.member-roll-namespace={{ .Release.Namespace }}/' $file
 
-  sed -i -r -e 's/.*image:.*"\{\{ \.Values\.hub \}\}\/\{\{ \.Values\.image \}\}\:\{\{ \.Values\.tag \}\}".*$/{{- if contains "\/" .Values.image }}\
+  sed_wrap -i -r -e 's/.*image:.*"\{\{ \.Values\.hub \}\}\/\{\{ \.Values\.image \}\}\:\{\{ \.Values\.tag \}\}".*$/{{- if contains "\/" .Values.image }}\
           image: "{{ .Values.image }}"\
 {{- else }}\
           image: "{{ .Values.global.hub }}\/{{ .Values.image }}:{{ .Values.global.tag }}"\
 {{- end }}/' $file
 
-	sed -i "/storage.tsdb.retention.*/a\ \ \ \ \ \ \ \ \ \ \ \ - \'--storage.tsdb.path=/prometheus\'" ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
+	sed_wrap -i "/storage.tsdb.retention.*/a\ \ \ \ \ \ \ \ \ \ \ \ - \'--storage.tsdb.path=/prometheus\'" ${HELM_DIR}/istio/charts/prometheus/templates/deployment.yaml
 
   # Fix for MAISTRA-746, can be removed when we move to Istio-1.2
-  sed -i -e '/^spec:/ a\
+  sed_wrap -i -e '/^spec:/ a\
   strategy:\
     rollingUpdate:\
       maxSurge: 25%\
@@ -77,25 +77,25 @@ function prometheus_patch_deployment() {
 }
 
 function prometheus_patch_service() {
-  sed -i -e '/port: 9090/ a\
+  sed_wrap -i -e '/port: 9090/ a\
     targetPort: 3001' ${HELM_DIR}/istio/charts/prometheus/templates/service.yaml
 }
 
 function prometheus_patch_values() {
   # TODO: currently, upstream does not include the image value, so we're inserting it here (and removing hub and tag to make this values.yaml consistent with the others
-  sed -i -e 's/hub:.*$/image: prometheus/g' \
+  sed_wrap -i -e 's/hub:.*$/image: prometheus/g' \
          -e '/tag:.*$/d' ${HELM_DIR}/istio/charts/prometheus/values.yaml
 }
 
 function prometheus_patch_service_account() {
-  sed -i -e '/name: prometheus/ a\
+  sed_wrap -i -e '/name: prometheus/ a\
   annotations:\
     serviceaccounts.openshift.io/oauth-redirectreference.primary: '\''{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"prometheus"}}'\'' '\
     ${HELM_DIR}/istio/charts/prometheus/templates/serviceaccount.yaml
 }
 
 function prometheus_patch_misc() {
-  sed -i -e '/nodes/d' \
+  sed_wrap -i -e '/nodes/d' \
          -e '/rules:/ a\
 - apiGroups: ["maistra.io"]\
 \  resources: ["servicemeshmemberrolls"]\
@@ -105,15 +105,15 @@ function prometheus_patch_misc() {
 }
 
 function prometheus_patch_configmap() {
-  sed -i -e "/job_name: 'kubernetes-apiservers'/,/^$/ c\
+  sed_wrap -i -e "/job_name: 'kubernetes-apiservers'/,/^$/ c\
 \    # config removed" ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml
-  sed -i -e "/job_name: 'kubernetes-nodes'/,/^$/ c\
+  sed_wrap -i -e "/job_name: 'kubernetes-nodes'/,/^$/ c\
 \    # config removed"  ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml
-  sed -i -e "/job_name: 'kubernetes-cadvisor'/,/^$/ c\
+  sed_wrap -i -e "/job_name: 'kubernetes-cadvisor'/,/^$/ c\
 \    # config removed" ${HELM_DIR}/istio/charts/prometheus/templates/configmap.yaml
 
   # MAISTRA-748: Exclude scraping of prometheus itself on the oauth port
-  sed -i -e '/job_name: '\''kubernetes-service-endpoints'\''/,/target_label: kubernetes_name$/ {
+  sed_wrap -i -e '/job_name: '\''kubernetes-service-endpoints'\''/,/target_label: kubernetes_name$/ {
     /target_label: kubernetes_name$/ a\
       - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_pod_container_port_number]\
         regex: prometheus;3001\
