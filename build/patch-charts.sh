@@ -31,13 +31,19 @@ function patchTemplates() {
   echo "patching Istio Helm charts"
 
   # - add a maistra-version label to all objects which have a release label
-  find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl" | \
-    xargs sed -i -e '/^metadata:/,/^[^ ]/ { s/^\(.*\)release:\(.*\)$/\1maistra-version: '${MAISTRA_VERSION}'\
-\1release:\2/ }'
+  for file in $(find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl" | xargs grep -Hl 'release: '); do
+    sed -i -e '/^metadata:/,/^[^ ]/ { s/^\(.*\)release:\(.*\)$/\1maistra-version: '${MAISTRA_VERSION}'\
+\1release:\2/ }' $file
+  done
 
   # MAISTRA-506 add a maistra-control-plane label for deployment specs
-  find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl" | xargs grep -Hl 'kind: Deployment' |\
-    xargs sed -i -e '/^spec:/,$ { /template:$/,$ { /metadata:$/,$ { /labels:$/,$ s/^\(.*\)release:\(.*Name\)\(.*\)$/\1maistra-control-plane:\2space }}\n\1release:\2\3/ } } }'
+  for file in $(find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl" | xargs grep -Hl '^kind: Deployment'); do
+    # ingress-gateway matches the find call but not the sed pattern. skip here, it's patched in patchGateways()
+    if [[ "$file" = "${HELM_DIR}/istio/charts/gateways/templates/deployment.yaml" ]]; then
+      continue
+    fi
+    sed -i -e '/^spec:/,$ { /template:$/,$ { /metadata:$/,$ { /labels:$/,$ s/^\(.*\)release:\(.*Name\)\(.*\)$/\1maistra-control-plane:\2space }}\n\1release:\2\3/ } } }' $file
+  done
 
   # - remove istio-multi service account
   rm ${HELM_DIR}/istio/templates/serviceaccount.yaml
