@@ -20,12 +20,12 @@ spec:
     description: How many of the total number of member namespaces are
       configured
     type: string
-    JSONPath: '.status.annotations.readyComponentCount'
-  - JSONPath: .status.conditions[?(@.type=="Reconciled")].reason
-    name: Status
+    JSONPath: .status.annotations.readyComponentCount
+  - name: Status
     description: Whether or not the control plane installation is up to date and ready
       to handle requests.
     type: string
+    JSONPath: .status.conditions[?(@.type=="Reconciled")].reason
   - name: Template
     description: The configuration template to use as the base.
     type: string
@@ -83,7 +83,7 @@ spec:
     description: How many of the total number of member namespaces are
       configured
     type: string
-    JSONPath: '.status.annotations.configuredMemberCount'
+    JSONPath: .status.annotations.configuredMemberCount
   - name: Status
     description: Whether all member namespaces have been configured or why
       that's not the case
@@ -439,7 +439,7 @@ spec:
             - name: OPERATOR_NAME
               value: istio-operator
             - name: ISTIO_CNI_IMAGE_V1_0
-              value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.0.4
+              value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.0.9
             - name: ISTIO_CNI_IMAGE_V1_1
               value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.1.0
 #            - name: ISTIO_CNI_IMAGE_PULL_SECRET

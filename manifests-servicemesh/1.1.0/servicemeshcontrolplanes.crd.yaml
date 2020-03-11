@@ -20,11 +20,11 @@ spec:
     description: How many of the total number of member namespaces are configured
     type: string
     JSONPath: .status.annotations.readyComponentCount
-  - JSONPath: .status.conditions[?(@.type=="Reconciled")].reason
-    name: Status
+  - name: Status
     description: Whether or not the control plane installation is up to date and ready
       to handle requests.
     type: string
+    JSONPath: .status.conditions[?(@.type=="Reconciled")].reason
   - name: Template
     description: The configuration template to use as the base.
     type: string
