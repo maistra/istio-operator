@@ -65,6 +65,10 @@ initContainers:
 {{- end }}
       drop:
       - ALL
+      - KILL
+      - MKNOD
+      - SETGID
+      - SETUID
     readOnlyRootFilesystem: false
   {{- if not $cniRepairEnabled }}
     runAsGroup: 0
@@ -327,6 +331,10 @@ containers:
       {{- end }}
       drop:
       - ALL
+      - KILL
+      - MKNOD
+      - SETGID
+      - SETUID
     privileged: {{ .Values.global.proxy.privileged }}
     readOnlyRootFilesystem: {{ not .Values.global.proxy.enableCoreDump }}
     runAsGroup: 1337
