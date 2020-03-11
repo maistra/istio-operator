@@ -130,6 +130,15 @@ function patchGalley() {
     d
   }' ${HELM_DIR}/istio/charts/galley/templates/clusterrole.yaml
   sed_wrap -i -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/galley/templates/clusterrole.yaml
+
+  # remove update permissions on namespaces/finalizers, these are only required when galley
+  # manages webhook configs
+  sed_wrap -i -e '/ingresses/,/update/ {
+    /apiGroups/d
+    /namespaces\/finalizers/d
+    /update/d
+  }' ${HELM_DIR}/istio/charts/galley/templates/clusterrole.yaml
+
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/galley/templates/clusterrolebinding.yaml
   sed_wrap -i -e '/--validation-webhook-config-file/ {
     s/^\(\( *\)- --validation-webhook-config-file\)/\2- --deployment-namespace\
