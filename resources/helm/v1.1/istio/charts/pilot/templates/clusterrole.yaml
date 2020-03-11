@@ -34,7 +34,7 @@ rules:
   resources: ["configmaps"]
   verbs: ["create", "get", "list", "watch", "update"]
 - apiGroups: [""]
-  resources: ["endpoints", "pods", "services", "namespaces", "secrets"]
+  resources: ["endpoints", "pods", "services", "namespaces"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
   resources: ["secrets"]

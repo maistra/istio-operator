@@ -247,16 +247,6 @@ function patchSidecarInjector() {
       k8s.v1.cni.cncf.io\/networks: \{\{.Values.istio_cni.istio_cni_network\}\}\
     \{\{- end \}\}/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
 
-  # allow the sidecar injector to set the runAsUser ID dynamically
-  # drop unneeded capabilities from sidecar container, so using the restricted SCC doesn't require the SCC admission controller to mutate the pod
-  sed_wrap -i -e '/^\(.*{{ if \.Values\.global\.sds\.enabled }}.*\)$/i\
-    capabilities:\
-      drop:\
-      - KILL\
-      - SETUID\
-      - SETGID\
-      - MKNOD' ${HELM_DIR}/istio/files/injection-template.yaml
-
   # - switch webhook ports to 8443
   # XXX: move upstream (add targetPort name)
   sed_wrap -i -e 's/^\(.*\)\(- port: 443.*\)$/\1\2\
