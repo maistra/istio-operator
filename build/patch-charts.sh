@@ -236,9 +236,8 @@ function patchSidecarInjector() {
   # global.proxy.enableCoreDump=false
   # however, we need to ensure privileged is set for istio_init
   sed_wrap -i -e '/- name: istio-init/,/- name: enable-core-dump/ {
-    /- NET_ADMIN/,+3 {
-      /{{/d
-    }
+    /privileged:/d
+    /allowPrivilegeEscalation:/d
   }' ${HELM_DIR}/istio/files/injection-template.yaml
 
   # add annotation for Multus & Istio CNI
