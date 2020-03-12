@@ -61,6 +61,18 @@ func (f *ActionVerifierFactory) IsSeen() ActionVerifier {
 		})
 }
 
+// VerifierTestFunc is used for testing an action, returning an error if the test failed.
+type VerifierTestFunc func (action clienttesting.Action) error
+
+// Passes returns an ActionVerifier that verifies the specified action has
+// occurred and the test passes.
+func (f *ActionVerifierFactory) Passes(test VerifierTestFunc) ActionVerifier {
+	return NewSimpleActionVerifier(f.Verb, f.Resource, f.Subresource, f.Namespace, f.Name,
+		func(action clienttesting.Action) (bool, error) {
+			return true, test(action)
+		})
+}
+
 // IsNotSeen returns an ActionVerifier that verifies the specified action has occurred.
 // This should be the last verifier in a list of verifiers, as it will wait for the
 // full timeout before returning success.

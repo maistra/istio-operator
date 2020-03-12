@@ -337,7 +337,6 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		instance.Status.ConfiguredMembers = newConfiguredMembers
 		instance.Status.ServiceMeshGeneration = mesh.Status.ObservedGeneration
 		instance.Status.ServiceMeshReconciledVersion = mesh.Status.GetReconciledVersion()
-		instance.Status.MeshVersion = meshVersion
 	} else if instance.Generation != instance.Status.ObservedGeneration { // member roll has been updated
 
 		reqLogger.Info("Reconciling new generation of ServiceMeshMemberRoll")
@@ -360,7 +359,6 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		instance.Status.ConfiguredMembers = newConfiguredMembers
 		instance.Status.ServiceMeshGeneration = mesh.Status.ObservedGeneration
 		instance.Status.ServiceMeshReconciledVersion = mesh.Status.GetReconciledVersion()
-		instance.Status.MeshVersion = meshVersion
 	} else if len(unconfiguredMembers) > 0 { // required namespace that was missing has been created
 		reqLogger.Info("Reconciling newly created namespaces associated with this ServiceMeshMemberRoll")
 
