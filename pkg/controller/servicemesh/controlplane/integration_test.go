@@ -3,18 +3,24 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	. "github.com/maistra/istio-operator/pkg/controller/common/test"
 )
 
@@ -29,7 +35,7 @@ func TestBootstrapping(t *testing.T) {
 	if testing.Verbose() {
 		logf.SetLogger(logf.ZapLogger(true))
 	}
-	RunControllerTestCases(t, ControllerTestCase{
+	RunControllerTestCase(t, ControllerTestCase{
 		Name:             "clean-install-cni-no-errors",
 		ConfigureGlobals: InitializeGlobals(operatorNamespace),
 		AddControllers:   []AddControllerFunc{Add},
@@ -54,9 +60,9 @@ func TestBootstrapping(t *testing.T) {
 				},
 				Verifier: &VerifyActions{
 					// add finalizer
-					Verify("update").On("servicemeshcontrolplanes").Named(smcpName).In(controlPlaneNamespace).IsSeen(),
+					Verify("update").On("servicemeshcontrolplanes").Named(smcpName).In(controlPlaneNamespace).Passes(FinalizerAddedTest(common.FinalizerName)),
 					// initialize status
-					Verify("update").On("servicemeshcontrolplanes/status").Named(smcpName).In(controlPlaneNamespace).IsSeen(),
+					Verify("update").On("servicemeshcontrolplanes/status").Named(smcpName).In(controlPlaneNamespace).Passes(initalStatusTest),
 					// verify that a CRD is installed
 					Verify("create").On("customresourcedefinitions").IsSeen(),
 					// verify that CNI is installed
@@ -101,4 +107,74 @@ func SetDaemonSetStatus(name string, status appsv1.DaemonSetStatus) ReactionFunc
 		err = tracker.Update(action.GetResource(), daemonSet, action.GetNamespace())
 		return
 	}
+}
+
+func FinalizerAddedTest(finalizer string) test.VerifierTestFunc {
+	return func(action clienttesting.Action) error {
+		switch realAction := action.(type) {
+		case clienttesting.UpdateAction:
+			obj := realAction.GetObject()
+			metaObj, err := meta.Accessor(obj)
+			if err != nil {
+				return errors.Wrapf(err, "FinalizerAddedTest for %s failed: could not convert resource to metav1.Object", finalizer)
+			}
+			if sets.NewString(metaObj.GetFinalizers()...).Has(finalizer) {
+				return nil
+			}
+			return fmt.Errorf("FinalizerAddedTest failed: object %s/%s is missing finalizer %s", metaObj.GetNamespace(), metaObj.GetName(), finalizer)
+		}
+		return fmt.Errorf("FinalizerAddedTest for %s failed: action is not an UpdateAction", finalizer)
+	}
+}
+
+func initalStatusTest(action clienttesting.Action) error {
+	switch realAction := action.(type) {
+	case clienttesting.UpdateAction:
+		obj := realAction.GetObject()
+		cp, ok := obj.(*maistrav1.ServiceMeshControlPlane)
+		if !ok {
+			return fmt.Errorf("InitialStatusTest failed: object being updated is not a ServiceMeshControlPlane")
+		}
+		actual := cp.Status.DeepCopy()
+		actual.LastAppliedConfiguration = maistrav1.ControlPlaneSpec{}
+		for index := range actual.Conditions {
+			actual.Conditions[index].LastTransitionTime = metav1.Time{}
+		}
+		expected := &maistrav1.ControlPlaneStatus{
+			StatusBase: maistrav1.StatusBase{
+				Annotations: map[string]string(nil),
+			},
+			StatusType: maistrav1.StatusType{
+				ObservedGeneration: 0,
+				Conditions: []maistrav1.Condition{
+					maistrav1.Condition{
+						Type:               "Installed",
+						Status:             "False",
+						Reason:             "ResourceCreated",
+						Message:            "Installing mesh generation 2",
+						LastTransitionTime: metav1.Time{},
+					},
+					maistrav1.Condition{
+						Type:               "Reconciled",
+						Status:             "False",
+						Reason:             "ResourceCreated",
+						Message:            "Installing mesh generation 2",
+						LastTransitionTime: metav1.Time{},
+					},
+					maistrav1.Condition{
+						Type:               "Ready",
+						Status:             "False",
+						Reason:             "ResourceCreated",
+						Message:            "Installing mesh generation 2",
+						LastTransitionTime: metav1.Time{},
+					},
+				},
+			},
+		}
+		if !reflect.DeepEqual(actual, expected) {
+			return fmt.Errorf("InitialStatusTest failed: updated status does not match expected status:\n\texpected: %#v\n\tactual: %#v", actual, expected)
+		}
+		return nil
+	}
+	return fmt.Errorf("InitialStatusTest for failed: action is not an UpdateAction")
 }

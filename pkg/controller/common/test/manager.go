@@ -251,6 +251,8 @@ func NewUpdateSimulator(tracker clienttesting.ObjectTracker) clienttesting.React
 		// XXX: update fields that would get modified by the api server on an update
 		accessor.SetResourceVersion(fmt.Sprintf("%d", rand.Int()))
 		if accessor.GetDeletionTimestamp() == nil && len(updateAction.GetSubresource()) == 0 {
+			// XXX: this should only be done if the .spec field actually changes.
+			// i don't think we should do this if finalizers, annotations, labels, etc. are updated
 			accessor.SetGeneration(accessor.GetGeneration() + 1)
 		}
 		err = tracker.Update(updateAction.GetResource(), obj, accessor.GetNamespace())
