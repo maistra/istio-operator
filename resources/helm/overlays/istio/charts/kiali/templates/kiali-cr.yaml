@@ -4,6 +4,7 @@ metadata:
   name: kiali
   namespace: {{ .Release.Namespace }}
 spec:
+  version: "v1.12"
   installation_tag: "Kiali [{{ .Release.Namespace }}]"
   istio_namespace: "{{ .Release.Namespace }}"
 
@@ -22,10 +23,6 @@ spec:
 {{- range .Values.global.imagePullSecrets }}
     - {{ . }}
 {{- end }}
-{{- end }}
-{{- if .Values.tag }}
-    image_version: "{{ .Values.tag }}"
-    version_label: "{{ .Values.tag }}"
 {{- end }}
 {{- if .Values.ingress }}
 {{- if .Values.ingress.enabled }}

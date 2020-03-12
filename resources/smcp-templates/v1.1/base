@@ -24,6 +24,9 @@ spec:
         imagePullPolicy: IfNotPresent
       defaultPodDisruptionBudget:
         enabled: false
+    istio_cni:
+      repair:
+        enabled: false
     security:
       # constrain resources for use in smaller environments
       resources:

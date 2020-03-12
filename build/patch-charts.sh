@@ -130,6 +130,15 @@ function patchGalley() {
     d
   }' ${HELM_DIR}/istio/charts/galley/templates/clusterrole.yaml
   sed_wrap -i -e 's/, *"nodes"//' ${HELM_DIR}/istio/charts/galley/templates/clusterrole.yaml
+
+  # remove update permissions on namespaces/finalizers, these are only required when galley
+  # manages webhook configs
+  sed_wrap -i -e '/ingresses/,/update/ {
+    /apiGroups/d
+    /namespaces\/finalizers/d
+    /update/d
+  }' ${HELM_DIR}/istio/charts/galley/templates/clusterrole.yaml
+
   convertClusterRoleBinding ${HELM_DIR}/istio/charts/galley/templates/clusterrolebinding.yaml
   sed_wrap -i -e '/--validation-webhook-config-file/ {
     s/^\(\( *\)- --validation-webhook-config-file\)/\2- --deployment-namespace\
@@ -236,9 +245,13 @@ function patchSidecarInjector() {
   # global.proxy.enableCoreDump=false
   # however, we need to ensure privileged is set for istio_init
   sed_wrap -i -e '/- name: istio-init/,/- name: enable-core-dump/ {
-    /- NET_ADMIN/,+3 {
-      /{{/d
-    }
+    /privileged:/d
+    /allowPrivilegeEscalation:/d
+    / *- ALL/a\
+      - KILL\
+      - MKNOD\
+      - SETGID\
+      - SETUID
   }' ${HELM_DIR}/istio/files/injection-template.yaml
 
   # add annotation for Multus & Istio CNI
@@ -247,15 +260,13 @@ function patchSidecarInjector() {
       k8s.v1.cni.cncf.io\/networks: \{\{.Values.istio_cni.istio_cni_network\}\}\
     \{\{- end \}\}/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
 
-  # allow the sidecar injector to set the runAsUser ID dynamically
-  # drop unneeded capabilities from sidecar container, so using the restricted SCC doesn't require the SCC admission controller to mutate the pod
-  sed_wrap -i -e '/^\(.*{{ if \.Values\.global\.sds\.enabled }}.*\)$/i\
-    capabilities:\
-      drop:\
+  sed_wrap -i -e '/- name: istio-proxy/,/resources:/ {
+    / *- ALL/a\
       - KILL\
-      - SETUID\
+      - MKNOD\
       - SETGID\
-      - MKNOD' ${HELM_DIR}/istio/files/injection-template.yaml
+      - SETUID
+  }' ${HELM_DIR}/istio/files/injection-template.yaml
 
   # - switch webhook ports to 8443
   # XXX: move upstream (add targetPort name)
