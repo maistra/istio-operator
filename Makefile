@@ -16,6 +16,7 @@
 
 MAISTRA_VERSION ?= 1.1.0
 MAISTRA_BRANCH  ?= maistra-1.1
+REPLACES_CSV    ?= 1.0.9
 VERSION         ?= development
 IMAGE           ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}
 CONTAINER_CLI   ?= docker
@@ -121,11 +122,11 @@ collect-1.1-templates:
 ################################################################################
 .PHONY: generate-community-manifests
 generate-community-manifests:
-	COMMUNITY=true ${SOURCE_DIR}/build/generate-manifests.sh
+	COMMUNITY=true REPLACES_CSV=${REPLACES_CSV} ${SOURCE_DIR}/build/generate-manifests.sh
 
 .PHONY: generate-product-manifests
 generate-product-manifests:
-	COMMUNITY=false ${SOURCE_DIR}/build/generate-manifests.sh
+	COMMUNITY=false REPLACES_CSV=${REPLACES_CSV} ${SOURCE_DIR}/build/generate-manifests.sh
 
 ################################################################################
 # resource generation
