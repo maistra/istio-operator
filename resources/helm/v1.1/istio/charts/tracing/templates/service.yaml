@@ -26,8 +26,8 @@ items:
   spec:
     type: {{ .Values.service.type }}
     ports:
-      - port: {{ .Values.service.externalPort }}
-        targetPort: 9411
+      - port: {{ .Values.zipkin.queryPort }}
+        targetPort: {{ .Values.zipkin.queryPort }}
         protocol: TCP
         name: {{ .Values.service.name }}
     selector:
