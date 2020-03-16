@@ -10,11 +10,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 
+	"github.com/maistra/istio-operator/pkg/apis/istio/simple"
+	configv1alpha2 "github.com/maistra/istio-operator/pkg/apis/istio/simple/config/v1alpha2"
+	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/simple/networking/v1alpha3"
+	securityv1beta1 "github.com/maistra/istio-operator/pkg/apis/istio/simple/security/v1beta1"
 	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -434,6 +437,11 @@ func TestVersionValidation(t *testing.T) {
 					tc.configure(tc.smcp)
 					response := validator.Handle(ctx, createCreateRequest(tc.smcp))
 					if tc.allowed {
+						defer func() {
+							if t.Failed() {
+								t.Logf("Unexpected validation Error: %s", response.Response.Result.Message)
+							}
+						}()
 						assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
 					} else {
 						assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane", t)
@@ -463,30 +471,57 @@ func TestVersionUpgrade1_0To1_1(t *testing.T) {
 			name:    "unsupported-resource-other-namespace",
 			allowed: true,
 			resources: []runtime.Object{
-				newDummyResource("dummy-stdio", "other-namespace",
-					schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "stdio"},
-					nil,
-					nil),
+				&configv1alpha2.Stdio{
+					Base: simple.Base{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: configv1alpha2.SchemeGroupVersion.String(),
+							Kind:       "stdio",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dummy-stdio",
+							Namespace: "other-namespace",
+						},
+					},
+				},
 			},
 		},
 		{
 			name:    "unsupported-resource-controller-owned",
 			allowed: true,
 			resources: []runtime.Object{
-				newDummyResource("dummy-stdio", "istio-system",
-					schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "stdio"},
-					nil,
-					v1_0ControlPlane),
+				&configv1alpha2.Stdio{
+					Base: simple.Base{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: configv1alpha2.SchemeGroupVersion.String(),
+							Kind:       "stdio",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dummy-stdio",
+							Namespace: "istio-system",
+							OwnerReferences: []metav1.OwnerReference{
+								*metav1.NewControllerRef(v1_0ControlPlane, maistra.SchemeGroupVersion.WithKind("ServiceMeshControlPlane")),
+							},
+						},
+					},
+				},
 			},
 		},
 		{
 			name:    "unsupported-resource",
 			allowed: false,
 			resources: []runtime.Object{
-				newDummyResource("dummy-stdio", "app-namespace",
-					schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "stdio"},
-					nil,
-					nil),
+				&configv1alpha2.Stdio{
+					Base: simple.Base{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: configv1alpha2.SchemeGroupVersion.String(),
+							Kind:       "stdio",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dummy-stdio",
+							Namespace: "app-namespace",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -632,6 +667,11 @@ func TestVersionUpgrade1_0To1_1(t *testing.T) {
 			validator, _, _ := createControlPlaneValidatorTestFixture(resources...)
 			response := validator.Handle(ctx, createUpdateRequest(v1_0ControlPlane, v1_1ControlPlane))
 			if tc.allowed {
+				defer func() {
+					if t.Failed() {
+						t.Logf("Unexpected validation Error: %s", response.Response.Result.Message)
+					}
+				}()
 				assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
 			} else {
 				assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane", t)
@@ -660,30 +700,57 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 			name:    "unsupported-resource-other-namespace",
 			allowed: true,
 			resources: []runtime.Object{
-				newDummyResource("dummy-auth-policy", "other-namespace",
-					schema.GroupVersionKind{Group: "security.istio.io", Version: "v1beta1", Kind: "AuthorizationPolicy"},
-					nil,
-					nil),
+				&securityv1beta1.AuthorizationPolicy{
+					Base: simple.Base{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: securityv1beta1.SchemeGroupVersion.String(),
+							Kind:       "AuthorizationPolicy",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dummy-auth-policy",
+							Namespace: "other-namespace",
+						},
+					},
+				},
 			},
 		},
 		{
 			name:    "unsupported-resource-controller-owned",
 			allowed: true,
 			resources: []runtime.Object{
-				newDummyResource("dummy-auth-policy", "istio-system",
-					schema.GroupVersionKind{Group: "security.istio.io", Version: "v1beta1", Kind: "AuthorizationPolicy"},
-					nil,
-					v1_1ControlPlane),
+				&securityv1beta1.AuthorizationPolicy{
+					Base: simple.Base{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: securityv1beta1.SchemeGroupVersion.String(),
+							Kind:       "AuthorizationPolicy",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dummy-auth-policy",
+							Namespace: "istio-system",
+							OwnerReferences: []metav1.OwnerReference{
+								*metav1.NewControllerRef(v1_1ControlPlane, maistra.SchemeGroupVersion.WithKind("ServiceMeshControlPlane")),
+							},
+						},
+					},
+				},
 			},
 		},
 		{
 			name:    "unsupported-resource",
 			allowed: false,
 			resources: []runtime.Object{
-				newDummyResource("dummy-auth-policy", "app-namespace",
-					schema.GroupVersionKind{Group: "security.istio.io", Version: "v1beta1", Kind: "AuthorizationPolicy"},
-					nil,
-					nil),
+				&securityv1beta1.AuthorizationPolicy{
+					Base: simple.Base{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: securityv1beta1.SchemeGroupVersion.String(),
+							Kind:       "AuthorizationPolicy",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dummy-auth-policy",
+							Namespace: "app-namespace",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -732,59 +799,89 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 			name:    "VirtualService-without-mirrorPercent",
 			allowed: true,
 			resources: []runtime.Object{
-				newDummyResource("dummy-virtual-service", "app-namespace",
-					schema.GroupVersionKind{Group: "networking.istio.io", Version: "v1alpha3", Kind: "VirtualService"},
-					map[string]interface{}{
-						"spec.http": []interface{}{
-							map[string]interface{}{
-								"name": "some-http",
-							},
-							map[string]interface{}{
-								"name": "some-other-http",
+				&networkingv1alpha3.VirtualService{
+					Base: simple.Base{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: networkingv1alpha3.SchemeGroupVersion.String(),
+							Kind:       "VirtualService",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dummy-virtual-service",
+							Namespace: "app-namespace",
+						},
+						Spec: map[string]interface{}{
+							"http": []interface{}{
+								map[string]interface{}{
+									"name": "some-http",
+								},
+								map[string]interface{}{
+									"name": "some-other-http",
+								},
 							},
 						},
 					},
-					nil),
+				},
 			},
 		},
 		{
 			name:    "VirtualService-with-mirrorPercent-controller-owned",
 			allowed: true,
 			resources: []runtime.Object{
-				newDummyResource("dummy-virtual-service", "app-namespace",
-					schema.GroupVersionKind{Group: "networking.istio.io", Version: "v1alpha3", Kind: "VirtualService"},
-					map[string]interface{}{
-						"spec.http": []interface{}{
-							map[string]interface{}{
-								"name": "some-http",
+				&networkingv1alpha3.VirtualService{
+					Base: simple.Base{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: networkingv1alpha3.SchemeGroupVersion.String(),
+							Kind:       "VirtualService",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dummy-virtual-service",
+							Namespace: "app-namespace",
+							OwnerReferences: []metav1.OwnerReference{
+								*metav1.NewControllerRef(v1_1ControlPlane, maistra.SchemeGroupVersion.WithKind("ServiceMeshControlPlane")),
 							},
-							map[string]interface{}{
-								"name":          "some-other-http",
-								"mirrorPercent": "50%",
+						},
+						Spec: map[string]interface{}{
+							"http": []interface{}{
+								map[string]interface{}{
+									"name": "some-http",
+								},
+								map[string]interface{}{
+									"name":          "some-other-http",
+									"mirrorPercent": "50%",
+								},
 							},
 						},
 					},
-					v1_1ControlPlane),
+				},
 			},
 		},
 		{
 			name:    "VirtualService-with-mirrorPercent",
 			allowed: false,
 			resources: []runtime.Object{
-				newDummyResource("dummy-virtual-service", "app-namespace",
-					schema.GroupVersionKind{Group: "networking.istio.io", Version: "v1alpha3", Kind: "VirtualService"},
-					map[string]interface{}{
-						"spec.http": []interface{}{
-							map[string]interface{}{
-								"name": "some-http",
-							},
-							map[string]interface{}{
-								"name":          "some-other-http",
-								"mirrorPercent": "50%",
+				&networkingv1alpha3.VirtualService{
+					Base: simple.Base{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: networkingv1alpha3.SchemeGroupVersion.String(),
+							Kind:       "VirtualService",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dummy-virtual-service",
+							Namespace: "app-namespace",
+						},
+						Spec: map[string]interface{}{
+							"http": []interface{}{
+								map[string]interface{}{
+									"name": "some-http",
+								},
+								map[string]interface{}{
+									"name":          "some-other-http",
+									"mirrorPercent": "50%",
+								},
 							},
 						},
 					},
-					nil),
+				},
 			},
 		},
 	}
@@ -829,21 +926,6 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 func createControlPlaneValidatorTestFixture(clientObjects ...runtime.Object) (*ControlPlaneValidator, client.Client, *test.EnhancedTracker) {
 	cl, tracker := test.CreateClient(clientObjects...)
 	s := tracker.Scheme
-	for _, gvk := range unsupportedNewResourcesV1_0 {
-		s.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
-		gvk.Kind = gvk.Kind + "List"
-		s.AddKnownTypeWithName(gvk, &unstructured.UnstructuredList{})
-	}
-	for _, gvk := range unsupportedOldResourcesV1_1 {
-		s.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
-		gvk.Kind = gvk.Kind + "List"
-		s.AddKnownTypeWithName(gvk, &unstructured.UnstructuredList{})
-	}
-	// Used with v1.1 downgrade check
-	gvk := schema.GroupVersionKind{Group: "networking.istio.io", Version: "v1alpha3", Kind: "VirtualService"}
-	s.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
-	gvk.Kind = gvk.Kind + "List"
-	s.AddKnownTypeWithName(gvk, &unstructured.UnstructuredList{})
 
 	decoder, err := webhookadmission.NewDecoder(s)
 	if err != nil {
@@ -881,23 +963,6 @@ func newControlPlane(name, namespace string) *maistra.ServiceMeshControlPlane {
 	}
 }
 
-func newDummyResource(name string, namespace string, gvk schema.GroupVersionKind, values map[string]interface{}, owner *maistra.ServiceMeshControlPlane) runtime.Object {
-	obj := &unstructured.Unstructured{}
-	obj.SetName(name)
-	obj.SetNamespace(namespace)
-	obj.SetGroupVersionKind(gvk)
-	for path, value := range values {
-		setNestedField(obj.UnstructuredContent(), path, value)
-	}
-	if owner != nil {
-		ownerRef := metav1.NewControllerRef(owner, maistra.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
-		obj.SetOwnerReferences([]metav1.OwnerReference{
-			*ownerRef,
-		})
-	}
-	return obj
-}
-
 func setNestedField(obj map[string]interface{}, path string, value interface{}) {
-    unstructured.SetNestedField(obj, value, strings.Split(path, ".")...)
+	unstructured.SetNestedField(obj, value, strings.Split(path, ".")...)
 }

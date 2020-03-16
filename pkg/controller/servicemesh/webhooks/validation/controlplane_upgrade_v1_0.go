@@ -10,55 +10,54 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	configv1alpha2 "github.com/maistra/istio-operator/pkg/apis/istio/simple/config/v1alpha2"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 )
 
 var (
 
 	// These are unsupported in v1.1
-	unsupportedOldResourcesV1_1 = []schema.GroupVersionKind{
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "HTTPAPISpecBinding"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "HTTPAPISpec"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "QuotaSpecBinding"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "QuotaSpec"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "bypass"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "circonus"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "denier"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "fluentd"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "kubernetesenv"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "listchecker"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "memquota"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "noop"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "opa"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "prometheus"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "rbac"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "redisquota"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "signalfx"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "solarwinds"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "stackdriver"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "statsd"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "stdio"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "apikey"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "authorization"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "checknothing"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "kubernetes"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "listentry"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "logentry"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "edge"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "metric"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "quota"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "reportnothing"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "tracespan"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "cloudwatch"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "dogstatsd"},
-		schema.GroupVersionKind{Group: "config.istio.io", Version: "v1alpha2", Kind: "zipkin"},
+	unsupportedOldResourcesV1_1 = []runtime.Object{
+		&configv1alpha2.HTTPAPISpecBindingList{},
+		&configv1alpha2.HTTPAPISpecList{},
+		&configv1alpha2.QuotaSpecBindingList{},
+		&configv1alpha2.QuotaSpecList{},
+		&configv1alpha2.BypassList{},
+		&configv1alpha2.CirconusList{},
+		&configv1alpha2.DenierList{},
+		&configv1alpha2.FluentdList{},
+		&configv1alpha2.KubernetesenvList{},
+		&configv1alpha2.ListcheckerList{},
+		&configv1alpha2.MemquotaList{},
+		&configv1alpha2.NoopList{},
+		&configv1alpha2.OpaList{},
+		&configv1alpha2.PrometheusList{},
+		&configv1alpha2.RbacList{},
+		&configv1alpha2.RedisquotaList{},
+		&configv1alpha2.SignalfxList{},
+		&configv1alpha2.SolarwindsList{},
+		&configv1alpha2.StackdriverList{},
+		&configv1alpha2.StatsdList{},
+		&configv1alpha2.StdioList{},
+		&configv1alpha2.ApikeyList{},
+		&configv1alpha2.AuthorizationList{},
+		&configv1alpha2.ChecknothingList{},
+		&configv1alpha2.KubernetesList{},
+		&configv1alpha2.ListentryList{},
+		&configv1alpha2.LogentryList{},
+		&configv1alpha2.EdgeList{},
+		&configv1alpha2.MetricList{},
+		&configv1alpha2.QuotaList{},
+		&configv1alpha2.ReportnothingList{},
+		&configv1alpha2.TracespanList{},
+		&configv1alpha2.CloudwatchList{},
+		&configv1alpha2.DogstatsdList{},
+		&configv1alpha2.ZipkinList{},
 	}
 )
 
@@ -75,23 +74,22 @@ func (v *ControlPlaneValidator) validateUpgradeFromV1_0(ctx context.Context, smc
 	meshNamespaces.Insert(smmr.Status.ConfiguredMembers...)
 
 	// return error if any deprecated mixer resources are being used
-	for _, gvk := range unsupportedOldResourcesV1_1 {
-		objects := &unstructured.UnstructuredList{}
-		objects.SetGroupVersionKind(gvk)
+	for _, list := range unsupportedOldResourcesV1_1 {
+		list = list.DeepCopyObject()
 		// XXX: do we list all in the cluster, or list for each member namespace?
-		if err := v.client.List(ctx, nil, objects); err != nil {
+		if err := v.client.List(ctx, nil, list); err != nil {
 			if !meta.IsNoMatchError(err) && !errors.IsNotFound(err) {
-				return pkgerrors.Wrapf(err, "error listing %s resources", gvk.String())
+				return pkgerrors.Wrapf(err, "error listing %T resources", list)
 			}
 		}
-		objects.EachListItem(func(obj runtime.Object) error {
+		meta.EachListItem(list, func(obj runtime.Object) error {
 			metaObj, err := meta.Accessor(obj)
 			if err != nil {
-				allErrors = append(allErrors, pkgerrors.Wrapf(err, "error accessing object metadata for %s resource", gvk.String()))
+				allErrors = append(allErrors, pkgerrors.Wrapf(err, "error accessing object metadata for %s resource", list.GetObjectKind().GroupVersionKind().String()))
 			}
 			// we only care about resources in this mesh, which aren't being managed by the operator directly
 			if meshNamespaces.Has(metaObj.GetNamespace()) && !metav1.IsControlledBy(metaObj, smcp) {
-				allErrors = append(allErrors, fmt.Errorf("%s/%s of type %s is not supported in newer version", metaObj.GetNamespace(), metaObj.GetName(), gvk.String()))
+				allErrors = append(allErrors, fmt.Errorf("%s/%s of type %s is not supported in newer version", metaObj.GetNamespace(), metaObj.GetName(), list.GetObjectKind().GroupVersionKind().String()))
 			}
 			return nil
 		})
