@@ -505,8 +505,16 @@ func TestVersionUpgrade1_0To1_1(t *testing.T) {
 								Port: 80,
 							},
 							corev1.ServicePort{
+								Name: "http",
+								Port: 81,
+							},
+							corev1.ServicePort{
 								Name: "http2-test",
 								Port: 82,
+							},
+							corev1.ServicePort{
+								Name: "http2",
+								Port: 84,
 							},
 						},
 					},
@@ -514,7 +522,7 @@ func TestVersionUpgrade1_0To1_1(t *testing.T) {
 			},
 		},
 		{
-			name:    "service-with-secure-http-port",
+			name:    "service-with-secure-http-prefixed-port",
 			allowed: false,
 			resources: []runtime.Object{
 				&corev1.Service{
@@ -534,7 +542,27 @@ func TestVersionUpgrade1_0To1_1(t *testing.T) {
 			},
 		},
 		{
-			name:    "service-with-secure-http2-port",
+			name:    "service-with-secure-http-port",
+			allowed: false,
+			resources: []runtime.Object{
+				&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-service",
+						Namespace: "app-namespace",
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							corev1.ServicePort{
+								Name: "http",
+								Port: 443,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:    "service-with-secure-http2-prefixed-port",
 			allowed: false,
 			resources: []runtime.Object{
 				&corev1.Service{
@@ -546,6 +574,26 @@ func TestVersionUpgrade1_0To1_1(t *testing.T) {
 						Ports: []corev1.ServicePort{
 							corev1.ServicePort{
 								Name: "http2-test",
+								Port: 443,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:    "service-with-secure-http2-port",
+			allowed: false,
+			resources: []runtime.Object{
+				&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-service",
+						Namespace: "app-namespace",
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							corev1.ServicePort{
+								Name: "http2",
 								Port: 443,
 							},
 						},

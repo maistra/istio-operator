@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	// These are unsupported in v1.1
+	// These are unsupported in v1.0
 	unsupportedNewResourcesV1_0 = []schema.GroupVersionKind{
 		schema.GroupVersionKind{Group: "security.istio.io", Version: "v1beta1", Kind: "AuthorizationPolicy"},
 	}

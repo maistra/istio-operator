@@ -106,7 +106,7 @@ func (v *ControlPlaneValidator) validateUpgradeFromV1_0(ctx context.Context, smc
 		}
 		for _, service := range memberServices.Items {
 			for _, port := range service.Spec.Ports {
-				if port.Port == 443 && (strings.HasPrefix(port.Name, "http-") || strings.HasPrefix(port.Name, "http2-")) {
+				if port.Port == 443 && (port.Name == "http" || port.Name == "http2" || strings.HasPrefix(port.Name, "http-") || strings.HasPrefix(port.Name, "http2-")) {
 					allErrors = append(allErrors, fmt.Errorf("Port 443 is not allowed for http/http2 protocols on Service %s/%s", service.Namespace, service.Name))
 				}
 			}
