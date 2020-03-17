@@ -67,7 +67,11 @@ spec:
         username: "internal"
         password: ""
       enabled: true
+{{- if .Values.jaegerInClusterURL }}
+      in_cluster_url: "{{ .Values.jaegerInClusterURL }}"
+{{- else }}
       in_cluster_url: "https://jaeger-query.{{ .Release.Namespace }}.svc"
+{{- end }}
       namespace: "{{ .Release.Namespace }}"
       service : ""
 {{- if .Values.dashboard }}

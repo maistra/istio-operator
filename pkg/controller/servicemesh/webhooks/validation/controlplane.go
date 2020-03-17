@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -74,6 +75,57 @@ func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 		if othercp.Namespace == namespace {
 			// verify single instance per namespace
 			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "only one service mesh may be installed per project/namespace")
+		}
+	}
+
+	// TODO: we should have generic accessors for the helm values
+	if globalValues, ok := smcp.Spec.Istio["global"].(map[string]interface{}); ok {
+		tracer := "zipkin"
+		if proxyValues, ok := globalValues["proxy"].(map[string]interface{}); ok {
+			if tracerValue, ok := proxyValues["tracer"].(string); ok {
+				tracer = tracerValue
+			}
+		}
+		if tracerValues, ok := globalValues["tracer"].(map[string]interface{}); ok {
+			if zipkinValues, ok := tracerValues["zipkin"].(map[string]interface{}); ok {
+				if address, ok := zipkinValues["address"].(string); ok {
+					// tracer must be "zipkin"
+					if tracer != "zipkin" {
+						return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "global.proxy.tracer must equal 'zipkin' if global.tracer.zipkin.address is set")
+					}
+					// if an address is set, it must point to the same namespace the SMCP resides in
+					addressParts := strings.Split(address, ".")
+					if len(addressParts) == 1 {
+						return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "global.tracer.zipkin.address must include a namespace")
+					} else if len(addressParts) > 1 {
+						namespace := addressParts[1]
+						if len(addressParts) == 2 {
+							// there might be a port :9411 or similar at the end. make sure to ignore for namespace comparison
+							namespacePortParts := strings.Split(namespace, ":")
+							namespace = namespacePortParts[0]
+						}
+						if namespace != smcp.GetObjectMeta().GetNamespace() {
+							return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "global.tracer.zipkin.address must point to a service in same namespace as SMCP")
+						}
+					}
+					// tracing.enabled must be false
+					if tracingValues, ok := smcp.Spec.Istio["tracing"].(map[string]interface{}); ok {
+						if enabled, ok := tracingValues["enabled"].(bool); ok {
+							if enabled {
+								return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "tracing.enabled must not be true if global.tracer.zipkin.address is set")
+							}
+						}
+					}
+					// kiali.jaegerInClusterURL must be set (if kiali is enabled)
+					if kialiValues, ok := smcp.Spec.Istio["kiali"].(map[string]interface{}); ok {
+						if enabled, ok := kialiValues["enabled"].(bool); ok && enabled {
+							if jaegerInClusterURL, ok := kialiValues["jaegerInClusterURL"].(string); !ok || jaegerInClusterURL == "" {
+								return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "kiali.jaegerInClusterURL must be defined if global.tracer.zipkin.address is set")
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 

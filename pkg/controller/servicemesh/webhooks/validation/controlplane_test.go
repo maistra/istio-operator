@@ -47,22 +47,210 @@ func TestOnlyOneControlPlaneIsAllowedPerNamespace(t *testing.T) {
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane with bad version", t)
 }
 
-func TestValidControlPlane(t *testing.T) {
+func TestControlPlaneValidation(t *testing.T) {
 	cases := []struct {
 		name         string
 		controlPlane *maistra.ServiceMeshControlPlane
+		valid        bool
 	}{
 		{
 			name:         "blank-version",
 			controlPlane: newControlPlane("my-smcp", "istio-system"),
+			valid:        true,
 		},
 		{
 			name:         "version-1.0",
 			controlPlane: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
+			valid:        true,
 		},
 		{
 			name:         "version-1.1",
 			controlPlane: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.1"),
+			valid:        true,
+		},
+		{
+			name: "jaeger-enabled-despite-external-uri",
+			controlPlane: &maistra.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistra.ControlPlaneSpec{
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"tracer": map[string]interface{}{
+								"zipkin": map[string]interface{}{
+									"address": "someservice",
+								},
+							},
+						},
+						"tracing": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "jaeger-external-uri-wrong-namespace",
+			controlPlane: &maistra.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistra.ControlPlaneSpec{
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"tracer": map[string]interface{}{
+								"zipkin": map[string]interface{}{
+									"address": "jaeger-query.othernamespace",
+								},
+							},
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "jaeger-external-uri-correct-namespace",
+			controlPlane: &maistra.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistra.ControlPlaneSpec{
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"tracer": map[string]interface{}{
+								"zipkin": map[string]interface{}{
+									"address": "jaeger-query.istio-system.svc.cluster.local",
+								},
+							},
+						},
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "jaeger-external-uri-no-namespace",
+			controlPlane: &maistra.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistra.ControlPlaneSpec{
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"tracer": map[string]interface{}{
+								"zipkin": map[string]interface{}{
+									"address": "jaeger-query",
+								},
+							},
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "zipkin-address-wrong-tracer",
+			controlPlane: &maistra.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistra.ControlPlaneSpec{
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"proxy": map[string]interface{}{
+								"tracer": "lightstep",
+							},
+							"tracer": map[string]interface{}{
+								"zipkin": map[string]interface{}{
+									"address": "jaeger-query.istio-system",
+								},
+							},
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "zipkin-address-but-tracing-enabled",
+			controlPlane: &maistra.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistra.ControlPlaneSpec{
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"tracer": map[string]interface{}{
+								"zipkin": map[string]interface{}{
+									"address": "jaeger-query.istio-system",
+								},
+							},
+						},
+						"tracing": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "zipkin-address-but-no-jaegerInClusterURL",
+			controlPlane: &maistra.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistra.ControlPlaneSpec{
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"tracer": map[string]interface{}{
+								"zipkin": map[string]interface{}{
+									"address": "jaeger-query.istio-system",
+								},
+							},
+						},
+						"kiali": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "zipkin-address-with-jaegerInClusterURL",
+			controlPlane: &maistra.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistra.ControlPlaneSpec{
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"tracer": map[string]interface{}{
+								"zipkin": map[string]interface{}{
+									"address": "jaeger-query.istio-system",
+								},
+							},
+						},
+						"kiali": map[string]interface{}{
+							"enabled":            true,
+							"jaegerInClusterURL": "jaeger-collector.istio-system",
+						},
+					},
+				},
+			},
+			valid: true,
 		},
 	}
 
@@ -70,7 +258,15 @@ func TestValidControlPlane(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			validator, _, _ := createControlPlaneValidatorTestFixture()
 			response := validator.Handle(ctx, createCreateRequest(tc.controlPlane))
-			assert.True(response.Response.Allowed, "Expected validator to accept valid ServiceMeshControlPlane", t)
+			if tc.valid {
+				var reason string
+				if response.Response.Result != nil {
+					reason = response.Response.Result.Message
+				}
+				assert.True(response.Response.Allowed, "Expected validator to accept valid ServiceMeshControlPlane, but rejected: "+reason, t)
+			} else {
+				assert.False(response.Response.Allowed, "Expected validator to reject invalid ServiceMeshControlPlane", t)
+			}
 		})
 	}
 }
