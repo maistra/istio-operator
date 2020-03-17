@@ -18,7 +18,8 @@ import (
 	configv1alpha2 "github.com/maistra/istio-operator/pkg/apis/istio/simple/config/v1alpha2"
 	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/simple/networking/v1alpha3"
 	securityv1beta1 "github.com/maistra/istio-operator/pkg/apis/istio/simple/security/v1beta1"
-	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/apis/maistra"
+	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
@@ -60,7 +61,7 @@ func TestOnlyOneControlPlaneIsAllowedPerNamespace(t *testing.T) {
 func TestControlPlaneValidation(t *testing.T) {
 	cases := []struct {
 		name         string
-		controlPlane *maistra.ServiceMeshControlPlane
+		controlPlane *maistrav1.ServiceMeshControlPlane
 		valid        bool
 	}{
 		{
@@ -80,12 +81,13 @@ func TestControlPlaneValidation(t *testing.T) {
 		},
 		{
 			name: "jaeger-enabled-despite-external-uri",
-			controlPlane: &maistra.ServiceMeshControlPlane{
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
 				ObjectMeta: meta.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
-				Spec: maistra.ControlPlaneSpec{
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -104,12 +106,13 @@ func TestControlPlaneValidation(t *testing.T) {
 		},
 		{
 			name: "jaeger-external-uri-wrong-namespace",
-			controlPlane: &maistra.ServiceMeshControlPlane{
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
 				ObjectMeta: meta.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
-				Spec: maistra.ControlPlaneSpec{
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -125,12 +128,13 @@ func TestControlPlaneValidation(t *testing.T) {
 		},
 		{
 			name: "jaeger-external-uri-correct-namespace",
-			controlPlane: &maistra.ServiceMeshControlPlane{
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
 				ObjectMeta: meta.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
-				Spec: maistra.ControlPlaneSpec{
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -146,12 +150,13 @@ func TestControlPlaneValidation(t *testing.T) {
 		},
 		{
 			name: "jaeger-external-uri-no-namespace",
-			controlPlane: &maistra.ServiceMeshControlPlane{
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
 				ObjectMeta: meta.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
-				Spec: maistra.ControlPlaneSpec{
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -167,12 +172,13 @@ func TestControlPlaneValidation(t *testing.T) {
 		},
 		{
 			name: "zipkin-address-wrong-tracer",
-			controlPlane: &maistra.ServiceMeshControlPlane{
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
 				ObjectMeta: meta.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
-				Spec: maistra.ControlPlaneSpec{
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"proxy": map[string]interface{}{
@@ -191,12 +197,13 @@ func TestControlPlaneValidation(t *testing.T) {
 		},
 		{
 			name: "zipkin-address-but-tracing-enabled",
-			controlPlane: &maistra.ServiceMeshControlPlane{
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
 				ObjectMeta: meta.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
-				Spec: maistra.ControlPlaneSpec{
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -214,13 +221,38 @@ func TestControlPlaneValidation(t *testing.T) {
 			valid: false,
 		},
 		{
-			name: "zipkin-address-but-no-jaegerInClusterURL",
-			controlPlane: &maistra.ServiceMeshControlPlane{
+			name: "zipkin-address-but-no-jaegerInClusterURL-v1.0",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
 				ObjectMeta: meta.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
-				Spec: maistra.ControlPlaneSpec{
+				Spec: maistrav1.ControlPlaneSpec{
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"tracer": map[string]interface{}{
+								"zipkin": map[string]interface{}{
+									"address": "jaeger-query.istio-system",
+								},
+							},
+						},
+						"kiali": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "zipkin-address-but-no-jaegerInClusterURL-v1.1",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -238,13 +270,39 @@ func TestControlPlaneValidation(t *testing.T) {
 			valid: false,
 		},
 		{
-			name: "zipkin-address-with-jaegerInClusterURL",
-			controlPlane: &maistra.ServiceMeshControlPlane{
+			name: "zipkin-address-with-jaegerInClusterURL-v1.0",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
 				ObjectMeta: meta.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
-				Spec: maistra.ControlPlaneSpec{
+				Spec: maistrav1.ControlPlaneSpec{
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"tracer": map[string]interface{}{
+								"zipkin": map[string]interface{}{
+									"address": "jaeger-query.istio-system",
+								},
+							},
+						},
+						"kiali": map[string]interface{}{
+							"enabled":            true,
+							"jaegerInClusterURL": "jaeger-collector.istio-system",
+						},
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "zipkin-address-with-jaegerInClusterURL-v1.1",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -322,8 +380,8 @@ func TestInvalidVersion(t *testing.T) {
 func TestVersionValidation(t *testing.T) {
 	type subcase struct {
 		name      string
-		smcp      *maistra.ServiceMeshControlPlane
-		configure func(smcp *maistra.ServiceMeshControlPlane)
+		smcp      *maistrav1.ServiceMeshControlPlane
+		configure func(smcp *maistrav1.ServiceMeshControlPlane)
 		allowed   bool
 	}
 
@@ -333,17 +391,19 @@ func TestVersionValidation(t *testing.T) {
 	}{
 		{
 			name: "v1.0",
+			// all these tests should be allowed, as we only perform 1.0
+			// validation when downgrading
 			cases: []subcase{
 				{
 					name:      "valid",
 					smcp:      newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
-					configure: func(smcp *maistra.ServiceMeshControlPlane) {},
+					configure: func(smcp *maistrav1.ServiceMeshControlPlane) {},
 					allowed:   true,
 				},
 				{
 					name: "global.proxy.alwaysInjectSelector=false",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
-					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+					configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
 						setNestedField(smcp.Spec.Istio, "global.proxy.alwaysInjectSelector", false)
 					},
 					allowed: true,
@@ -351,15 +411,15 @@ func TestVersionValidation(t *testing.T) {
 				{
 					name: "global.proxy.alwaysInjectSelector=true",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
-					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+					configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
 						setNestedField(smcp.Spec.Istio, "global.proxy.alwaysInjectSelector", true)
 					},
-					allowed: false,
+					allowed: true,
 				},
 				{
 					name: "global.proxy.neverInjectSelector=false",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
-					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+					configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
 						setNestedField(smcp.Spec.Istio, "global.proxy.neverInjectSelector", false)
 					},
 					allowed: true,
@@ -367,15 +427,15 @@ func TestVersionValidation(t *testing.T) {
 				{
 					name: "global.proxy.neverInjectSelector=true",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
-					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+					configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
 						setNestedField(smcp.Spec.Istio, "global.proxy.neverInjectSelector", true)
 					},
-					allowed: false,
+					allowed: true,
 				},
 				{
 					name: "global.proxy.envoyAccessLogService.enabled=false",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
-					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+					configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
 						setNestedField(smcp.Spec.Istio, "global.proxy.envoyAccessLogService.enabled", false)
 					},
 					allowed: true,
@@ -383,15 +443,15 @@ func TestVersionValidation(t *testing.T) {
 				{
 					name: "global.proxy.envoyAccessLogService.enabled=true",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
-					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+					configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
 						setNestedField(smcp.Spec.Istio, "global.proxy.envoyAccessLogService.enabled", true)
 					},
-					allowed: false,
+					allowed: true,
 				},
 				{
 					name: "telemetry.enabled=false, telemetry.v2.enabled=false",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
-					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+					configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
 						setNestedField(smcp.Spec.Istio, "telemetry.enabled", false)
 						setNestedField(smcp.Spec.Istio, "telemetry.v2.enabled", false)
 					},
@@ -400,7 +460,7 @@ func TestVersionValidation(t *testing.T) {
 				{
 					name: "telemetry.enabled=false, telemetry.v2.enabled=true",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
-					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+					configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
 						setNestedField(smcp.Spec.Istio, "telemetry.enabled", false)
 						setNestedField(smcp.Spec.Istio, "telemetry.v2.enabled", true)
 					},
@@ -409,11 +469,11 @@ func TestVersionValidation(t *testing.T) {
 				{
 					name: "telemetry.enabled=true, telemetry.v2.enabled=true",
 					smcp: newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0"),
-					configure: func(smcp *maistra.ServiceMeshControlPlane) {
+					configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
 						setNestedField(smcp.Spec.Istio, "telemetry.enabled", true)
 						setNestedField(smcp.Spec.Istio, "telemetry.v2.enabled", true)
 					},
-					allowed: false,
+					allowed: true,
 				},
 			},
 		},
@@ -423,7 +483,7 @@ func TestVersionValidation(t *testing.T) {
 				{
 					name:      "valid",
 					smcp:      newControlPlaneWithVersion("my-smcp", "istio-system", "v1.1"),
-					configure: func(smcp *maistra.ServiceMeshControlPlane) {},
+					configure: func(smcp *maistrav1.ServiceMeshControlPlane) {},
 					allowed:   true,
 				},
 			},
@@ -499,7 +559,7 @@ func TestVersionUpgrade1_0To1_1(t *testing.T) {
 							Name:      "dummy-stdio",
 							Namespace: "istio-system",
 							OwnerReferences: []metav1.OwnerReference{
-								*metav1.NewControllerRef(v1_0ControlPlane, maistra.SchemeGroupVersion.WithKind("ServiceMeshControlPlane")),
+								*metav1.NewControllerRef(v1_0ControlPlane, maistrav1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane")),
 							},
 						},
 					},
@@ -690,6 +750,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 		name            string
 		allowed         bool
 		namespaceLabels map[string]string
+		configure       func(smcp *maistrav1.ServiceMeshControlPlane)
 		resources       []runtime.Object
 	}{
 		{
@@ -728,7 +789,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 							Name:      "dummy-auth-policy",
 							Namespace: "istio-system",
 							OwnerReferences: []metav1.OwnerReference{
-								*metav1.NewControllerRef(v1_1ControlPlane, maistra.SchemeGroupVersion.WithKind("ServiceMeshControlPlane")),
+								*metav1.NewControllerRef(v1_1ControlPlane, maistrav1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane")),
 							},
 						},
 					},
@@ -837,7 +898,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 							Name:      "dummy-virtual-service",
 							Namespace: "app-namespace",
 							OwnerReferences: []metav1.OwnerReference{
-								*metav1.NewControllerRef(v1_1ControlPlane, maistra.SchemeGroupVersion.WithKind("ServiceMeshControlPlane")),
+								*metav1.NewControllerRef(v1_1ControlPlane, maistrav1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane")),
 							},
 						},
 						Spec: map[string]interface{}{
@@ -884,6 +945,81 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "global.proxy.alwaysInjectSelector=false",
+			configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
+				setNestedField(smcp.Spec.Istio, "global.proxy.alwaysInjectSelector", false)
+			},
+			allowed: true,
+		},
+{
+			name: "global.proxy.alwaysInjectSelector=true",
+			configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
+				setNestedField(smcp.Spec.Istio, "global.proxy.alwaysInjectSelector", true)
+			},
+			allowed: false,
+		},
+		{
+			name: "global.proxy.neverInjectSelector=false",
+			configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
+				setNestedField(smcp.Spec.Istio, "global.proxy.neverInjectSelector", false)
+			},
+			allowed: true,
+		},
+		{
+			name: "global.proxy.neverInjectSelector=true",
+			configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
+				setNestedField(smcp.Spec.Istio, "global.proxy.neverInjectSelector", true)
+			},
+			allowed: false,
+		},
+		{
+			name: "global.proxy.envoyAccessLogService.enabled=false",
+			configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
+				setNestedField(smcp.Spec.Istio, "global.proxy.envoyAccessLogService.enabled", false)
+			},
+			allowed: true,
+		},
+		{
+			name: "global.proxy.envoyAccessLogService.enabled=true",
+			configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
+				setNestedField(smcp.Spec.Istio, "global.proxy.envoyAccessLogService.enabled", true)
+			},
+			allowed: false,
+		},
+		{
+			name: "telemetry.enabled=false, telemetry.v2.enabled=false",
+			configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
+				setNestedField(smcp.Spec.Istio, "telemetry.enabled", false)
+				setNestedField(smcp.Spec.Istio, "telemetry.v2.enabled", false)
+			},
+			allowed: true,
+		},
+		{
+			name: "telemetry.enabled=false, telemetry.v2.enabled=true",
+			configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
+				setNestedField(smcp.Spec.Istio, "telemetry.enabled", false)
+				setNestedField(smcp.Spec.Istio, "telemetry.v2.enabled", true)
+			},
+			allowed: true,
+		},
+		{
+			name: "telemetry.enabled=true, telemetry.v2.enabled=true",
+			configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
+				setNestedField(smcp.Spec.Istio, "telemetry.enabled", true)
+				setNestedField(smcp.Spec.Istio, "telemetry.v2.enabled", true)
+			},
+			allowed: false,
+		},
+		{
+			name: "zipkin-address-with-jaegerInClusterURL-v1.1",
+			configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
+				setNestedField(smcp.Spec.Istio, "global.tracer.zipkin.address", "jaeger-query.istio-system")
+				setNestedField(smcp.Spec.Istio, "kiali.enabled", true)
+				setNestedField(smcp.Spec.Istio, "kiali.jaegerInClusterURL", "jaeger-collector.istio-system")
+			},
+			allowed: false,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -912,7 +1048,11 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 				memberNamespace,
 				memberRoll)
 			validator, _, _ := createControlPlaneValidatorTestFixture(resources...)
-			response := validator.Handle(ctx, createUpdateRequest(v1_1ControlPlane, v1_0ControlPlane))
+			oldsmcp := v1_1ControlPlane.DeepCopy()
+			if tc.configure != nil {
+				tc.configure(oldsmcp)
+			}
+			response := validator.Handle(ctx, createUpdateRequest(oldsmcp, v1_0ControlPlane))
 			if tc.allowed {
 				assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
 			} else {
@@ -946,20 +1086,20 @@ func createControlPlaneValidatorTestFixture(clientObjects ...runtime.Object) (*C
 	return validator, cl, tracker
 }
 
-func newControlPlaneWithVersion(name, namespace, version string) *maistra.ServiceMeshControlPlane {
+func newControlPlaneWithVersion(name, namespace, version string) *maistrav1.ServiceMeshControlPlane {
 	controlPlane := newControlPlane(name, namespace)
 	controlPlane.Spec.Version = version
 	controlPlane.Spec.Istio = make(map[string]interface{})
 	return controlPlane
 }
 
-func newControlPlane(name, namespace string) *maistra.ServiceMeshControlPlane {
-	return &maistra.ServiceMeshControlPlane{
+func newControlPlane(name, namespace string) *maistrav1.ServiceMeshControlPlane {
+	return &maistrav1.ServiceMeshControlPlane{
 		ObjectMeta: meta.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: maistra.ControlPlaneSpec{},
+		Spec: maistrav1.ControlPlaneSpec{},
 	}
 }
 

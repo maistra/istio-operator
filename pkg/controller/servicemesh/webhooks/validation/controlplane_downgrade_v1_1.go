@@ -94,5 +94,9 @@ func (v *ControlPlaneValidator) validateDowngradeFromV1_1(ctx context.Context, s
 		})
 	}
 
+	if err := v.validateV1_0(ctx, smcp); err != nil {
+		allErrors = append(allErrors, err)
+	}
+
 	return utilerrors.NewAggregate(allErrors)
 }

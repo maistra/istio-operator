@@ -52,7 +52,7 @@ var Options = &options{}
 // GetChartsDir returns the location of the Helm charts. Similar layout to istio.io/istio/install/kubernetes/helm.
 func (o *options) GetChartsDir(maistraVersion string) string {
 	if len(maistraVersion) == 0 {
-		maistraVersion = maistra.DefaultVersion.String()
+		maistraVersion = maistra.LegacyVersion.String()
 	}
 	if len(o.ChartsDir) == 0 {
 		return path.Join(o.ResourceDir, "helm", maistraVersion)
@@ -71,7 +71,7 @@ func (o *options) GetUserTemplatesDir() string {
 // GetDefaultTemplatesDir returns the location of the Default Operator templates files
 func (o *options) GetDefaultTemplatesDir(maistraVersion string) string {
 	if len(maistraVersion) == 0 {
-		maistraVersion = maistra.DefaultVersion.String()
+		maistraVersion = maistra.LegacyVersion.String()
 	}
 	if len(o.DefaultTemplatesDir) == 0 {
 		return path.Join(o.ResourceDir, "default-templates", maistraVersion)
