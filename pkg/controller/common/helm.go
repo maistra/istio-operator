@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -15,6 +14,8 @@ import (
 	"k8s.io/helm/pkg/renderutil"
 	"k8s.io/helm/pkg/tiller"
 	"k8s.io/helm/pkg/timeconv"
+
+	"github.com/maistra/istio-operator/pkg/apis/maistra"
 )
 
 func init() {
@@ -23,11 +24,6 @@ func init() {
 	// we want route before oauthclient before deployments
 	tiller.InstallOrder = append(tiller.InstallOrder[:serviceIndex], append([]string{"Route", "OAuthClient"}, tiller.InstallOrder[serviceIndex:]...)...)
 }
-
-const (
-	DefaultMaistraVersion = "v1.1"
-	LegacyMaistraVersion  = "v1.0"
-)
 
 type options struct {
 	// ResourceDir is the base dir to helm charts and templates files.
@@ -56,9 +52,8 @@ var Options = &options{}
 // GetChartsDir returns the location of the Helm charts. Similar layout to istio.io/istio/install/kubernetes/helm.
 func (o *options) GetChartsDir(maistraVersion string) string {
 	if len(maistraVersion) == 0 {
-		maistraVersion = DefaultMaistraVersion
+		maistraVersion = maistra.LegacyVersion.String()
 	}
-	// FIXME: Should not be hardcoded when https://issues.jboss.org/browse/MAISTRA-766 is implemented
 	if len(o.ChartsDir) == 0 {
 		return path.Join(o.ResourceDir, "helm", maistraVersion)
 	}
@@ -76,7 +71,7 @@ func (o *options) GetUserTemplatesDir() string {
 // GetDefaultTemplatesDir returns the location of the Default Operator templates files
 func (o *options) GetDefaultTemplatesDir(maistraVersion string) string {
 	if len(maistraVersion) == 0 {
-		maistraVersion = DefaultMaistraVersion
+		maistraVersion = maistra.LegacyVersion.String()
 	}
 	if len(o.DefaultTemplatesDir) == 0 {
 		return path.Join(o.ResourceDir, "default-templates", maistraVersion)

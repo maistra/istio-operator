@@ -114,7 +114,7 @@ func (c *fakeClient) List(ctx context.Context, opts *client.ListOptions, list ru
 	if err != nil {
 		// The old fake client required GVK info in Raw.TypeMeta, so check there
 		// before giving up
-		if opts.Raw == nil || opts.Raw.TypeMeta.APIVersion == "" || opts.Raw.TypeMeta.Kind == "" {
+		if opts == nil || opts.Raw == nil || opts.Raw.TypeMeta.APIVersion == "" || opts.Raw.TypeMeta.Kind == "" {
 			return err
 		}
 		gvk = opts.Raw.TypeMeta.GroupVersionKind()
@@ -132,11 +132,12 @@ func (c *fakeClient) List(ctx context.Context, opts *client.ListOptions, list ru
 
 	gvr, _ := meta.UnsafeGuessKindToResource(gvk)
 	o, err := c.Invokes(testing.NewListAction(gvr, gvk, ns, *opts.AsListOptions()), nil)
-	if o == nil {
-		return errors.NewInternalError(fmt.Errorf("no resource returned by Fake"))
-	}
 	if err != nil {
 		return err
+	}
+	if o == nil {
+		// no objects returned
+		return meta.SetList(list, nil)
 	}
 	j, err := json.Marshal(o)
 	if err != nil {

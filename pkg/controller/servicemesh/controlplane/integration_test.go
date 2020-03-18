@@ -47,6 +47,7 @@ func TestBootstrapping(t *testing.T) {
 					return mgr.GetClient().Create(context.TODO(), &maistrav1.ServiceMeshControlPlane{
 						ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
 						Spec: maistrav1.ControlPlaneSpec{
+							Version: "v1.1",
 							Template: "maistra",
 						},
 					})
@@ -76,7 +77,7 @@ func TestBootstrapping(t *testing.T) {
 							NumberUnavailable: 3,
 						})),
 				},
-				Timeout: 2 * time.Second,
+				Timeout: 5 * time.Second,
 			},
 		},
 	})

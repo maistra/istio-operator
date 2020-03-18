@@ -215,11 +215,6 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 		log.V(1).Info("Adding finalizer", "finalizer", common.FinalizerName)
 		finalizers.Insert(common.FinalizerName)
 		instance.SetFinalizers(finalizers.List())
-		// set default version if necessary
-		if len(instance.Spec.Version) == 0 {
-			instance.Status.AppliedVersion = common.DefaultMaistraVersion
-			log.V(1).Info("Initializing Version", "version", instance.Status.AppliedVersion)
-		}
 		err = r.Client.Update(ctx, instance)
 		return reconcile.Result{}, err
 	}

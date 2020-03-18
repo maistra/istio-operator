@@ -53,6 +53,7 @@ func RunControllerTestCases(t *testing.T, testCases ...ControllerTestCase) {
 				defer stop()
 				for _, event := range testCase.Events {
 					t.Run(event.Name, func(t *testing.T) {
+						t.Helper()
 						defer func() {
 							tracker.RemoveReaction(event.Verifier)
 							for _, assertion := range event.Assertions {

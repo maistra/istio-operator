@@ -260,6 +260,12 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - security.istio.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
   - jaegertracing.io
   resources:
   - jaegers

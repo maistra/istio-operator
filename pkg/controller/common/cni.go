@@ -8,6 +8,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+
+	"github.com/maistra/istio-operator/pkg/apis/maistra"
 )
 
 type CNIConfig struct {
@@ -27,31 +29,18 @@ type CNIConfig struct {
 }
 
 // networkNameMap is a map of the CNI network name used by each version
-var networkNameMap = map[string]string{
-	"":     "istio-cni",
-	"v1.0": "istio-cni",
-	"v1.1": "v1-1-istio-cni",
-}
-
-var supportedVersions []string
-
-func init() {
-	for key := range networkNameMap {
-		if len(key) > 0 {
-			supportedVersions = append(supportedVersions, key)
-		}
-	}
+var networkNameMap = map[maistra.Version]string{
+	maistra.UndefinedVersion: "istio-cni",
+	maistra.V1_0:             "istio-cni",
+	maistra.V1_1:             "v1-1-istio-cni",
 }
 
 // GetCNINetworkName returns the name of the CNI network used to configure routing rules for the mesh
 func GetCNINetworkName(maistraVersion string) (name string, ok bool) {
-	name, ok = networkNameMap[maistraVersion]
+	if v, err := maistra.ParseVersion(maistraVersion); err == nil {
+		name, ok = networkNameMap[v.Version()]
+	}
 	return
-}
-
-// GetSupportedVersions returns a list of versions supported by this operator
-func GetSupportedVersions() []string {
-	return supportedVersions
 }
 
 // InitCNIConfig initializes the CNI support variable

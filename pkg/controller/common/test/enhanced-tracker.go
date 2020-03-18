@@ -20,8 +20,8 @@ var dummyDefaultObject = &struct{ runtime.Object }{}
 type EnhancedTracker struct {
 	testing.Fake
 	testing.ObjectTracker
-	scheme  *runtime.Scheme
-	decoder runtime.Decoder
+	Scheme  *runtime.Scheme
+	Decoder runtime.Decoder
 }
 
 var _ testing.ObjectTracker = (*EnhancedTracker)(nil)
@@ -30,8 +30,8 @@ var _ testing.ObjectTracker = (*EnhancedTracker)(nil)
 func NewEnhancedTracker(delegate testing.ObjectTracker, scheme *runtime.Scheme) *EnhancedTracker {
 	tracker := &EnhancedTracker{
 		ObjectTracker: delegate,
-		scheme:        scheme,
-		decoder:       serializer.NewCodecFactory(scheme).UniversalDecoder(),
+		Scheme:        scheme,
+		Decoder:       serializer.NewCodecFactory(scheme).UniversalDecoder(),
 	}
 	tracker.Fake.AddReactor("*", "*", testing.ObjectReaction(tracker))
 	tracker.Fake.AddWatchReactor("*", func(action testing.Action) (handled bool, ret watch.Interface, err error) {
@@ -145,11 +145,11 @@ func (t *EnhancedTracker) PrependProxyReaction(reactors ...testing.ProxyReactor)
 func (t *EnhancedTracker) Create(gvr schema.GroupVersionResource, obj runtime.Object, ns string) (err error) {
 	if unstObj, ok := obj.(*unstructured.Unstructured); ok {
 		// reconstitute the object into its native form
-		if obj, err = ConvertToTypedIfKnown(unstObj, t.scheme, t.decoder); err != nil {
+		if obj, err = ConvertToTypedIfKnown(unstObj, t.Scheme, t.Decoder); err != nil {
 			return err
 		}
 	}
-	t.scheme.Default(obj)
+	t.Scheme.Default(obj)
 	return t.ObjectTracker.Create(gvr, obj, ns)
 }
 
@@ -160,7 +160,7 @@ func (t *EnhancedTracker) Create(gvr schema.GroupVersionResource, obj runtime.Ob
 func (t *EnhancedTracker) Update(gvr schema.GroupVersionResource, obj runtime.Object, ns string) (err error) {
 	if unstObj, ok := obj.(*unstructured.Unstructured); ok {
 		// reconstitute the object into its native form
-		if obj, err = ConvertToTypedIfKnown(unstObj, t.scheme, t.decoder); err != nil {
+		if obj, err = ConvertToTypedIfKnown(unstObj, t.Scheme, t.Decoder); err != nil {
 			return err
 		}
 	}

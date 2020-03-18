@@ -21,7 +21,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
-	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/apis/maistra"
+	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
@@ -72,7 +73,7 @@ func TestReconcileAddsFinalizer(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
 	assert.DeepEquals(updatedRoll.GetFinalizers(), []string{common.FinalizerName}, "Unexpected finalizers in SMM", t)
 }
 
@@ -145,11 +146,11 @@ func TestReconcileAddsOwnerReference(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
 	assert.Equals(len(updatedRoll.OwnerReferences), 1, "Expected SMMR to contain exactly one ownerReference", t)
 
 	expectedOwnerRef := meta.OwnerReference{
-		APIVersion: maistra.SchemeGroupVersion.String(),
+		APIVersion: maistrav1.SchemeGroupVersion.String(),
 		Kind:       "ServiceMeshControlPlane",
 		Name:       controlPlaneName,
 		UID:        controlPlaneUID,
@@ -186,10 +187,10 @@ func TestReconcileDoesNothingIfControlPlaneReconciledConditionIsNotTrue(t *testi
 	addOwnerReference(roll)
 	controlPlane := newControlPlane("")
 	controlPlane.Status.ObservedGeneration = 1
-	controlPlane.Status.Conditions = []maistra.Condition{
+	controlPlane.Status.Conditions = []maistrav1.Condition{
 		{
-			Type:   maistra.ConditionTypeReconciled,
-			Status: maistra.ConditionStatusFalse,
+			Type:   maistrav1.ConditionTypeReconciled,
+			Status: maistrav1.ConditionStatusFalse,
 		},
 	}
 
@@ -234,11 +235,11 @@ func TestReconcileReconcilesAfterOperatorUpgradeFromV1_0(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
 	assert.DeepEquals(updatedRoll.Status.ConfiguredMembers, []string{appNamespace}, "Unexpected Status.ConfiguredMembers in SMMR", t)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 	assert.Equals(updatedRoll.Status.ServiceMeshReconciledVersion, controlPlane.Status.GetReconciledVersion(), "Unexpected Status.ServiceMeshReconciledVersion in SMMR", t)
-	assert.Equals(updatedRoll.Status.MeshVersion, common.LegacyMaistraVersion, "MemberRoll.Status.MeshVersion should have been updated to v1.0 (from empty string)", t)
+	assert.Equals(updatedRoll.Status.MeshVersion, maistra.LegacyVersion.String(), "MemberRoll.Status.MeshVersion should have been updated to v1.0 (from empty string)", t)
 
 	meshNetAttachDefName := cniNetwork1_0
 	assertNamespaceReconciled(t, cl, appNamespace, controlPlaneNamespace, meshNetAttachDefName, []rbac.RoleBinding{*meshRoleBinding})
@@ -297,7 +298,7 @@ func TestReconcileReconcilesAddedMember(t *testing.T) {
 			controlPlane := markControlPlaneReconciled(newControlPlane(tc.meshVersion), tc.meshVersion, tc.operatorVersion)
 			if tc.upgradedOperator {
 				// need to reset the ServiceMeshReconciledVersion
-				roll.Status.ServiceMeshReconciledVersion = maistra.ComposeReconciledVersion(operatorVersion1_0, controlPlane.GetGeneration())
+				roll.Status.ServiceMeshReconciledVersion = maistrav1.ComposeReconciledVersion(operatorVersion1_0, controlPlane.GetGeneration())
 				if len(tc.meshVersion) == 0 {
 					// need to set the AppliedVersion to v1.0
 					controlPlane.Status.AppliedVersion = meshVersion1_0
@@ -311,7 +312,7 @@ func TestReconcileReconcilesAddedMember(t *testing.T) {
 
 			assertReconcileSucceeds(r, t)
 
-			updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+			updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
 			assert.DeepEquals(updatedRoll.Status.ConfiguredMembers, []string{appNamespace}, "Unexpected Status.ConfiguredMembers in SMMR", t)
 			assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 
@@ -371,17 +372,17 @@ func TestReconcileReconcilesMemberIfNamespaceIsCreatedLater(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
 	assert.DeepEquals(updatedRoll.Status.ConfiguredMembers, []string{appNamespace}, "Unexpected Status.ConfiguredMembers in SMMR", t)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 
 	assertNamespaceReconcilerInvoked(t, nsReconciler, appNamespace)
-	meshNetAttachDefName, _ := common.GetCNINetworkName(common.DefaultMaistraVersion)
+	meshNetAttachDefName, _ := common.GetCNINetworkName(maistra.DefaultVersion.String())
 	assertNamespaceReconciled(t, cl, appNamespace, controlPlaneNamespace, meshNetAttachDefName, []rbac.RoleBinding{*meshRoleBinding})
 
 	// invoke reconcile again to check if the Status.ServiceMeshGeneration field is updated
 	assertReconcileSucceeds(r, t)
-	updatedRoll = test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll = test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 	kialiReconciler.assertInvokedWith(t, appNamespace)
 }
@@ -398,7 +399,7 @@ func TestReconcileUpdatesMemberListWhenNamespaceIsDeleted(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
 	assert.DeepEquals(updatedRoll.Status.ConfiguredMembers, []string{appNamespace}, "Unexpected Status.ConfiguredMembers in SMMR", t)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 	kialiReconciler.assertInvokedWith(t, appNamespace)
@@ -426,9 +427,9 @@ func TestReconcileDoesNotUpdateMemberRollWhenNothingToReconcile(t *testing.T) {
 	assertReconcileSucceeds(r, t)
 
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
-	if updatedObj, err := tracker.Get(maistra.SchemeBuilder.GroupVersion.WithResource("servicemeshmemberrolls"), controlPlaneNamespace, "default"); err != nil {
+	if updatedObj, err := tracker.Get(maistrav1.SchemeBuilder.GroupVersion.WithResource("servicemeshmemberrolls"), controlPlaneNamespace, "default"); err != nil {
 		t.Errorf("Unexpected error retrieving updated ServiceMeshMemberRoll: %v", err)
-	} else if updatedRoll, ok := updatedObj.(*maistra.ServiceMeshMemberRoll); !ok {
+	} else if updatedRoll, ok := updatedObj.(*maistrav1.ServiceMeshMemberRoll); !ok {
 		t.Errorf("Unexpected error casting runtime.Object to ServiceMeshMemberRoll: %v", updatedObj)
 	} else if updatedRoll.Status.ServiceMeshReconciledVersion != controlPlane.Status.ReconciledVersion {
 		t.Errorf("ServiceMeshMemberRoll was not updated")
@@ -472,7 +473,7 @@ func TestReconcileWorksWithMultipleNamespaces(t *testing.T) {
 	test.PanicOnError(cl.Create(context.TODO(), newNamespace(appNamespace2)))
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
 	assert.StringArrayContains(updatedRoll.Status.ConfiguredMembers, appNamespace, "Expected Status.ConfiguredMembers to contain "+appNamespace, t)
 	assert.StringArrayContains(updatedRoll.Status.ConfiguredMembers, appNamespace2, "Expected Status.ConfiguredMembers to contain "+appNamespace2, t)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
@@ -508,7 +509,7 @@ func TestReconcileDoesNotAddControlPlaneNamespaceToMembers(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
 	assert.StringArrayEmpty(updatedRoll.Status.ConfiguredMembers, "Expected Status.ConfiguredMembers in SMMR to be empty, but it wasn't.", t)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 	kialiReconciler.assertInvokedWith(t /* no namespaces */)
@@ -522,7 +523,7 @@ func TestReconcileRemovesFinalizerFromMemberRoll(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
 	assert.StringArrayEmpty(updatedRoll.Finalizers, "Expected finalizers list in SMMR to be empty, but it wasn't", t)
 }
 
@@ -571,7 +572,7 @@ func TestReconcileHandlesDeletionProperly(t *testing.T) {
 
 			assertReconcileSucceeds(r, t)
 
-			updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistra.ServiceMeshMemberRoll{}).(*maistra.ServiceMeshMemberRoll)
+			updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
 			assert.StringArrayEmpty(updatedRoll.Finalizers, "Expected finalizers list in SMMR to be empty, but it wasn't", t)
 
 			assertNamespaceRemoveInvoked(t, nsReconciler, tc.expectedRemovedNamespaces...)
@@ -593,7 +594,7 @@ func TestClientReturnsErrorWhenRemovingFinalizer(t *testing.T) {
 	}{
 		{
 			name:                 "get-memberroll-returns-notfound",
-			reactor:              test.On("get", "servicemeshmemberrolls", test.AttemptNumber(2, test.ClientReturnsNotFound(maistra.APIGroup, "ServiceMeshMemberRoll", memberRollName))),
+			reactor:              test.On("get", "servicemeshmemberrolls", test.AttemptNumber(2, test.ClientReturnsNotFound(maistrav1.APIGroup, "ServiceMeshMemberRoll", memberRollName))),
 			successExpected:      true,
 			expectedWriteActions: 0,
 		},
@@ -605,7 +606,7 @@ func TestClientReturnsErrorWhenRemovingFinalizer(t *testing.T) {
 		},
 		{
 			name:                 "update-memberroll-returns-notfound",
-			reactor:              test.On("update", "servicemeshmemberrolls", test.ClientReturnsNotFound(maistra.APIGroup, "ServiceMeshMemberRoll", memberRollName)),
+			reactor:              test.On("update", "servicemeshmemberrolls", test.ClientReturnsNotFound(maistrav1.APIGroup, "ServiceMeshMemberRoll", memberRollName)),
 			successExpected:      true,
 			expectedWriteActions: 1,
 		},
@@ -695,12 +696,12 @@ func assertReconcileFails(r *MemberRollReconciler, t *testing.T) {
 	}
 }
 
-func newDefaultMemberRoll() *maistra.ServiceMeshMemberRoll {
+func newDefaultMemberRoll() *maistrav1.ServiceMeshMemberRoll {
 	return newMemberRoll(1, 1, 1, meshVersionDefault, operatorVersionDefault)
 }
 
-func newMemberRoll(generation int64, observedGeneration int64, observedMeshGeneration int64, meshVersion string, operatorVersion string) *maistra.ServiceMeshMemberRoll {
-	return &maistra.ServiceMeshMemberRoll{
+func newMemberRoll(generation int64, observedGeneration int64, observedMeshGeneration int64, meshVersion string, operatorVersion string) *maistrav1.ServiceMeshMemberRoll {
+	return &maistrav1.ServiceMeshMemberRoll{
 		ObjectMeta: meta.ObjectMeta{
 			Name:       memberRollName,
 			Namespace:  controlPlaneNamespace,
@@ -708,22 +709,22 @@ func newMemberRoll(generation int64, observedGeneration int64, observedMeshGener
 			Generation: generation,
 			UID:        memberRollUID,
 		},
-		Spec: maistra.ServiceMeshMemberRollSpec{
+		Spec: maistrav1.ServiceMeshMemberRollSpec{
 			Members: []string{},
 		},
-		Status: maistra.ServiceMeshMemberRollStatus{
+		Status: maistrav1.ServiceMeshMemberRollStatus{
 			ObservedGeneration:           observedGeneration,
 			ServiceMeshGeneration:        observedMeshGeneration,
-			ServiceMeshReconciledVersion: maistra.ComposeReconciledVersion(operatorVersion, observedMeshGeneration),
+			ServiceMeshReconciledVersion: maistrav1.ComposeReconciledVersion(operatorVersion, observedMeshGeneration),
 			MeshVersion:                  meshVersion,
 		},
 	}
 }
 
-func addOwnerReference(roll *maistra.ServiceMeshMemberRoll) *maistra.ServiceMeshMemberRoll {
+func addOwnerReference(roll *maistrav1.ServiceMeshMemberRoll) *maistrav1.ServiceMeshMemberRoll {
 	roll.OwnerReferences = []meta.OwnerReference{
 		{
-			APIVersion: maistra.SchemeGroupVersion.String(),
+			APIVersion: maistrav1.SchemeGroupVersion.String(),
 			Kind:       "ServiceMeshControlPlane",
 			Name:       controlPlaneName,
 			UID:        controlPlaneUID,
@@ -732,32 +733,32 @@ func addOwnerReference(roll *maistra.ServiceMeshMemberRoll) *maistra.ServiceMesh
 	return roll
 }
 
-func newControlPlane(version string) *maistra.ServiceMeshControlPlane {
-	return &maistra.ServiceMeshControlPlane{
+func newControlPlane(version string) *maistrav1.ServiceMeshControlPlane {
+	return &maistrav1.ServiceMeshControlPlane{
 		ObjectMeta: meta.ObjectMeta{
 			Name:       controlPlaneName,
 			Namespace:  controlPlaneNamespace,
 			UID:        controlPlaneUID,
 			Generation: 1,
 		},
-		Spec: maistra.ControlPlaneSpec{
+		Spec: maistrav1.ControlPlaneSpec{
 			Version: version,
 		},
 	}
 }
 
-func markControlPlaneReconciled(controlPlane *maistra.ServiceMeshControlPlane, meshVersion string, operatorVersion string) *maistra.ServiceMeshControlPlane {
+func markControlPlaneReconciled(controlPlane *maistrav1.ServiceMeshControlPlane, meshVersion string, operatorVersion string) *maistrav1.ServiceMeshControlPlane {
 	controlPlane.Status.ObservedGeneration = controlPlane.GetGeneration()
-	controlPlane.Status.Conditions = []maistra.Condition{
+	controlPlane.Status.Conditions = []maistrav1.Condition{
 		{
-			Type:   maistra.ConditionTypeReconciled,
-			Status: maistra.ConditionStatusTrue,
+			Type:   maistrav1.ConditionTypeReconciled,
+			Status: maistrav1.ConditionStatusTrue,
 		},
 	}
-	controlPlane.Status.ReconciledVersion = maistra.ComposeReconciledVersion(operatorVersion, controlPlane.GetGeneration())
+	controlPlane.Status.ReconciledVersion = maistrav1.ComposeReconciledVersion(operatorVersion, controlPlane.GetGeneration())
 	if len(controlPlane.Spec.Version) == 0 {
 		if operatorVersion != operatorVersion1_0 {
-			controlPlane.Status.AppliedVersion = common.DefaultMaistraVersion
+			controlPlane.Status.AppliedVersion = maistra.DefaultVersion.String()
 		}
 	} else {
 		controlPlane.Status.AppliedVersion = controlPlane.Spec.Version

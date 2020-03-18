@@ -9,22 +9,20 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/util/sets"
-
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	"github.com/maistra/istio-operator/pkg/bootstrap"
-	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/controller/hacks"
-
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/helm/pkg/manifest"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/maistra/istio-operator/pkg/apis/maistra"
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/bootstrap"
+	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/hacks"
 )
 
 type controlPlaneInstanceReconciler struct {
@@ -447,7 +445,7 @@ func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context) error
 		// initialize version
 		if len(r.Status.AppliedVersion) == 0 {
 			// this must be from a 1.0 operator
-			r.Status.LastAppliedConfiguration.Version = common.LegacyMaistraVersion
+			r.Status.LastAppliedConfiguration.Version = maistra.LegacyVersion.String()
 		} else {
 			// use the version that's already been applied
 			// users must manually upgrade their mesh version
