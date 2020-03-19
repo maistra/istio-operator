@@ -11,8 +11,8 @@ metadata:
     description: |-
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
 
-    containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.0.9
-    createdAt: 2020-03-18T00:18:26UTC
+    containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.0.10
+    createdAt: 2020-03-18T21:22:22PDT
     support: Red Hat, Inc. 
     alm-examples: |-
       [
@@ -327,7 +327,7 @@ spec:
                     medium: Memory
               containers:
                 - name: istio-operator
-                  image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.0.9
+                  image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.0.10
                   ports:
                     - containerPort: 11999
                       name: validation
@@ -348,7 +348,7 @@ spec:
                     - name: OPERATOR_NAME
                       value: istio-operator
                     - name: ISTIO_CNI_IMAGE
-                      value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.0.9
+                      value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.0.10
                   volumeMounts:
                     - name: discovery-cache
                       mountPath: /home/istio-operator/.kube/cache/discovery
