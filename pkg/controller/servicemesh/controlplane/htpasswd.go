@@ -95,6 +95,34 @@ func (r *controlPlaneInstanceReconciler) patchGrafanaConfig(ctx context.Context,
 	return nil
 }
 
+func (r *controlPlaneInstanceReconciler) patchProxySecret(ctx context.Context, object *unstructured.Unstructured) error {
+	var rawPassword string
+	log := common.LogFromContext(ctx)
+
+	proxySecret := &corev1.Secret{}
+	err := r.Client.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: object.GetName()}, proxySecret)
+	if err == nil {
+		rawPassword = string(proxySecret.Data["session_secret"])
+	} else {
+		log.Info("Creating session_secret", object.GetKind(), object.GetName())
+
+		rawPassword, err = generatePassword(255)
+		if err != nil {
+			log.Error(err, "failed to generate the session_secret password")
+			return err
+		}
+	}
+
+	b64Password := base64.StdEncoding.EncodeToString([]byte(rawPassword))
+	err = unstructured.SetNestedField(object.UnstructuredContent(), b64Password, "data", "session_secret")
+	if err != nil {
+		log.Error(err, "failed to set session_secret")
+		return err
+	}
+
+	return nil
+}
+
 func generatePassword(n int) (string, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
