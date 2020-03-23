@@ -26,7 +26,7 @@ import (
 type FakeManager struct {
 	manager.Manager
 	recorderProvider recorder.Provider
-	reconcileWG sync.WaitGroup
+	reconcileWG      sync.WaitGroup
 }
 
 var _ manager.Manager = (*FakeManager)(nil)
@@ -37,14 +37,19 @@ func StartManager(mgr manager.Manager, t *testing.T) func() {
 	t.Helper()
 	stopChannel := make(chan struct{})
 	startChannel := make(chan struct{})
+
 	go func() {
 		t.Helper()
+		t.Logf("starting manager.Manager")
 		if err := mgr.Start(stopChannel); err != nil {
 			t.Fatalf("Uexpected error returned from manager.Manager: %v", err)
 		}
-		t.Logf("manager stopped")
+		t.Logf("manager.Manager stopped cleanly")
 		close(startChannel)
 	}()
+
+	mgr.GetCache().WaitForCacheSync(stopChannel)
+	t.Logf("manager Cache synchronized")
 	return func() {
 		close(stopChannel)
 		select {
@@ -63,7 +68,7 @@ func NewManager(scheme *runtime.Scheme, tracker clienttesting.ObjectTracker, gro
 	return &FakeManager{
 		Manager:          delegate,
 		recorderProvider: NewRecorderProvider(scheme),
-		reconcileWG: sync.WaitGroup{},
+		reconcileWG:      sync.WaitGroup{},
 	}, nil
 }
 
@@ -251,11 +256,34 @@ func NewUpdateSimulator(tracker clienttesting.ObjectTracker) clienttesting.React
 		// XXX: update fields that would get modified by the api server on an update
 		accessor.SetResourceVersion(fmt.Sprintf("%d", rand.Int()))
 		if accessor.GetDeletionTimestamp() == nil && len(updateAction.GetSubresource()) == 0 {
-			// XXX: this should only be done if the .spec field actually changes.
-			// i don't think we should do this if finalizers, annotations, labels, etc. are updated
-			accessor.SetGeneration(accessor.GetGeneration() + 1)
+			existingObj, err := tracker.Get(action.GetResource(), accessor.GetNamespace(), accessor.GetName())
+			if err == nil && specChanged(obj, existingObj) {
+				// this should only be done if the .spec field actually changes.
+				accessor.SetGeneration(accessor.GetGeneration() + 1)
+			}
 		}
 		err = tracker.Update(updateAction.GetResource(), obj, accessor.GetNamespace())
 		return true, obj, err
 	})
+}
+
+func specChanged(new, old runtime.Object) (changed bool) {
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("panic'd checking spec fields")
+				changed = true
+			}
+		}()
+		newSpec := reflect.ValueOf(new).Elem().FieldByName("Spec")
+		oldSpec := reflect.ValueOf(old).Elem().FieldByName("Spec")
+		if newSpec.IsValid() {
+			if newSpec.CanInterface() {
+				changed = !reflect.DeepEqual(newSpec.Interface(), oldSpec.Interface())
+			} else {
+				changed = !reflect.DeepEqual(newSpec.Elem().Interface(), oldSpec.Elem().Interface)
+			}
+		}
+	}()
+	return
 }

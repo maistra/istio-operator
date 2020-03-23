@@ -58,7 +58,7 @@ func TestBootstrapping(t *testing.T) {
 						},
 					})
 				},
-				Verifier: &VerifyActions{
+				Verifier: VerifyActions(
 					// add finalizer
 					Verify("update").On("servicemeshcontrolplanes").Named(smcpName).In(controlPlaneNamespace).Passes(FinalizerAddedTest(common.FinalizerName)),
 					// initialize status
@@ -71,7 +71,7 @@ func TestBootstrapping(t *testing.T) {
 					Verify("list").On("daemonsets").In(operatorNamespace).IsSeen(),
 					// verify readiness check triggered daemon set creation
 					VerifyReadinessCheckOccurs(controlPlaneNamespace, operatorNamespace),
-				},
+				),
 				Assertions: ActionAssertions{
 					// verify proper number of CRDs is created
 					Assert("create").On("customresourcedefinitions").SeenCountIs(28),
@@ -83,7 +83,7 @@ func TestBootstrapping(t *testing.T) {
 							NumberUnavailable: 3,
 						})),
 				},
-				Timeout: 5 * time.Second,
+				Timeout: 10 * time.Second,
 			},
 		},
 	})
@@ -148,24 +148,24 @@ func initalStatusTest(action clienttesting.Action) error {
 				ObservedGeneration: 0,
 				Conditions: []maistrav1.Condition{
 					maistrav1.Condition{
-						Type:               "Installed",
-						Status:             "False",
-						Reason:             "ResourceCreated",
-						Message:            "Installing mesh generation 2",
+						Type:               maistrav1.ConditionTypeInstalled,
+						Status:             maistrav1.ConditionStatusFalse,
+						Reason:             maistrav1.ConditionReasonResourceCreated,
+						Message:            "Installing mesh generation 1",
 						LastTransitionTime: metav1.Time{},
 					},
 					maistrav1.Condition{
-						Type:               "Reconciled",
-						Status:             "False",
-						Reason:             "ResourceCreated",
-						Message:            "Installing mesh generation 2",
+						Type:               maistrav1.ConditionTypeReconciled,
+						Status:             maistrav1.ConditionStatusFalse,
+						Reason:             maistrav1.ConditionReasonResourceCreated,
+						Message:            "Installing mesh generation 1",
 						LastTransitionTime: metav1.Time{},
 					},
 					maistrav1.Condition{
-						Type:               "Ready",
-						Status:             "False",
-						Reason:             "ResourceCreated",
-						Message:            "Installing mesh generation 2",
+						Type:               maistrav1.ConditionTypeReady,
+						Status:             maistrav1.ConditionStatusFalse,
+						Reason:             maistrav1.ConditionReasonResourceCreated,
+						Message:            "Installing mesh generation 1",
 						LastTransitionTime: metav1.Time{},
 					},
 				},

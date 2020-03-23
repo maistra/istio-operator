@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
+	"reflect"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -558,12 +559,12 @@ func (r *controlPlaneInstanceReconciler) postReconciliationStatus(ctx context.Co
 }
 
 func (r *controlPlaneInstanceReconciler) skipStatusUpdate() bool {
-	for _, conditionType := range []v1.ConditionType{v1.ConditionTypeInstalled, v1.ConditionTypeReconciled, v1.ConditionTypeReady} {
-		if r.Status.GetCondition(conditionType).Status != r.Instance.Status.GetCondition(conditionType).Status {
-			return false
-		}
-	}
-	return true
+	// make sure we're using the same type in reflect.DeepEqual()
+	var currentStatus, existingStatus *v1.ControlPlaneStatus
+	currentStatus = r.Status
+	existingStatus = &r.Instance.Status
+	// only update status if it changed
+	return reflect.DeepEqual(currentStatus, existingStatus)
 }
 
 func (r *controlPlaneInstanceReconciler) initializeReconcileStatus() {
