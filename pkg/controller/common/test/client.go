@@ -225,12 +225,11 @@ func (c *fakeClient) copyObject(source, target runtime.Object) error {
 	if source == nil {
 		return errors.NewInternalError(fmt.Errorf("no resource returned by fake"))
 	}
-	j, err := json.Marshal(source)
+	j, err := runtime.Encode(c.serializer, source)
 	if err != nil {
 		return err
 	}
-	_, _, err = c.serializer.Decode(j, nil, target)
-	return err
+	return runtime.DecodeInto(c.serializer, j, target)
 }
 
 func getGVRFromObject(obj runtime.Object, scheme *runtime.Scheme) (schema.GroupVersionResource, error) {

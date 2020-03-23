@@ -102,27 +102,39 @@ type isReadyFunc func(runtime.Object) bool
 
 func (r *controlPlaneInstanceReconciler) calculateComponentReadiness(ctx context.Context) (map[string]bool, error) {
 	readinessMap := map[string]bool{}
-	typesToCheck := map[runtime.Object]isReadyFunc{
-		&appsv1.DeploymentList{}: func(obj runtime.Object) bool {
-			deployment := obj.(*appsv1.Deployment)
-			for _, condition := range deployment.Status.Conditions {
-				if condition.Type == appsv1.DeploymentAvailable {
-					return condition.Status == corev1.ConditionTrue
+	typesToCheck := []struct {
+		list  runtime.Object
+		ready isReadyFunc
+	}{
+		{
+			list: &appsv1.DeploymentList{},
+			ready: func(obj runtime.Object) bool {
+				deployment := obj.(*appsv1.Deployment)
+				for _, condition := range deployment.Status.Conditions {
+					if condition.Type == appsv1.DeploymentAvailable {
+						return condition.Status == corev1.ConditionTrue
+					}
 				}
-			}
-			return false
+				return false
+			},
 		},
-		&appsv1.StatefulSetList{}: func(obj runtime.Object) bool {
-			statefulSet := obj.(*appsv1.StatefulSet)
-			return statefulSet.Status.ReadyReplicas >= statefulSet.Status.Replicas
+		{
+			list: &appsv1.StatefulSetList{},
+			ready: func(obj runtime.Object) bool {
+				statefulSet := obj.(*appsv1.StatefulSet)
+				return statefulSet.Status.ReadyReplicas >= statefulSet.Status.Replicas
+			},
 		},
-		&appsv1.DaemonSetList{}: func(obj runtime.Object) bool {
-			daemonSet := obj.(*appsv1.DaemonSet)
-			return r.daemonSetReady(daemonSet)
+		{
+			list: &appsv1.DaemonSetList{},
+			ready: func(obj runtime.Object) bool {
+				daemonSet := obj.(*appsv1.DaemonSet)
+				return r.daemonSetReady(daemonSet)
+			},
 		},
 	}
-	for list, readyFunc := range typesToCheck {
-		err := r.calculateReadinessForType(ctx, list, readyFunc, readinessMap)
+	for _, check := range typesToCheck {
+		err := r.calculateReadinessForType(ctx, check.list, check.ready, readinessMap)
 		if err != nil {
 			return readinessMap, err
 		}
