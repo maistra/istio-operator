@@ -12,7 +12,7 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
 
     containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.1.0
-    createdAt: 2020-03-20T18:04:19MDT
+    createdAt: 2020-03-23T07:55:26MDT
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <1.1.0"
     alm-examples: |-
@@ -25,6 +25,7 @@ metadata:
             "namespace": "control-plane-namespace"
           },
           "spec": {
+            "version": "v1.1",
             "istio": {
               "gateways": {
                 "istio-egressgateway": {
@@ -437,9 +438,21 @@ spec:
         displayName: Control Plane Version
         path: version
         x-descriptors:
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:version'
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v1.1'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v1.0'
+      - description: Enable mTLS for communication between control plane components (galley, pilot, etc.)
+        displayName: Control Plane Security
+        path: istio.global.controlPlaneSecurityEnabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: Enable mTLS for communcation between services in the mesh
+        displayName: Data Plane Security
+        path: istio.global.mtls.enabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: Set to true to install Kiali
         displayName: Install Kiali
         path: istio.kiali.enabled
