@@ -19,6 +19,7 @@ import (
 )
 
 func TestBootstrapping(t *testing.T) {
+	t.Skip("https://issues.redhat.com/browse/MAISTRA-1224")
 	const (
 		operatorNamespace     = "istio-operator"
 		controlPlaneNamespace = "test"
