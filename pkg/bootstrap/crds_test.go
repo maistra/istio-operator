@@ -64,7 +64,7 @@ func TestNonCRDObjectsAreIgnored(t *testing.T) {
 	crdNames := extractNames(listCRDs(cl))
 	assert.DeepEquals(crdNames, sets.NewString("test"), "Unexpected CRDs", t)
 
-	test.AssertNumberOfWriteActions(t, tracker.Actions(), 2) // CRD and ClusterRole, but nothing else
+	test.AssertNumberOfWriteActions(t, tracker.Actions(), 4) // CRD and ClusterRole, but nothing else
 }
 
 func TestAdminClusterRoleIsCreated(t *testing.T) {
