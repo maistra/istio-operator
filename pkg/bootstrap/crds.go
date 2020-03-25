@@ -57,35 +57,71 @@ func InstallCRDs(ctx context.Context, cl client.Client, chartsDir string) error 
 }
 
 func installCRDRole(ctx context.Context, cl client.Client) error {
-	crdRole := &rbacv1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "istio-admin",
-			Labels: map[string]string{
-				"rbac.authorization.k8s.io/aggregate-to-admin": "true",
+	aggregateRoles := []struct {
+		role  string
+		verbs []string
+	}{
+		{
+			role:  "admin",
+			verbs: []string{rbacv1.VerbAll},
+		},
+		{
+			role: "edit",
+			verbs: []string{
+				"create",
+				"update",
+				"patch",
+				"delete",
 			},
 		},
-		Rules: []rbacv1.PolicyRule{
-			{
-				APIGroups: []string{
-					"config.istio.io",
-					"networking.istio.io",
-					"authentication.istio.io",
-					"rbac.istio.io",
-					"authentication.maistra.io",
-					"rbac.maistra.io",
+		{
+			role: "view",
+			verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		},
+	}
+	for _, role := range aggregateRoles {
+		crdRole := &rbacv1.ClusterRole{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: fmt.Sprintf("istio-%s", role.role),
+				Labels: map[string]string{
+					fmt.Sprintf("rbac.authorization.k8s.io/aggregate-to-%s", role.role) : "true",
 				},
-				Resources: []string{rbacv1.ResourceAll},
-				Verbs:     []string{rbacv1.VerbAll},
 			},
-		},
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{
+						"authentication.istio.io",
+						"config.istio.io",
+						"networking.istio.io",
+						"rbac.istio.io",
+						"security.istio.io",
+						"authentication.maistra.io",
+						"rbac.maistra.io",
+					},
+					Resources: []string{rbacv1.ResourceAll},
+					Verbs:     role.verbs,
+				},
+			},
+		}
+		existingRole := crdRole.DeepCopy()
+		if err := cl.Get(ctx, client.ObjectKey{Name: crdRole.Name}, existingRole); err == nil {
+			existingRole.Rules = crdRole.Rules
+			if err := cl.Update(ctx, existingRole); err != nil {
+				return err
+			}
+		} else if errors.IsNotFound(err) {
+			if err := cl.Create(ctx, crdRole); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
-	if err := cl.Get(ctx, client.ObjectKey{Name: crdRole.Name}, crdRole); err == nil {
-		return nil
-	} else if errors.IsNotFound(err) {
-		return cl.Create(ctx, crdRole)
-	} else {
-		return err
-	}
+	return nil
 }
 
 func processCRDFile(ctx context.Context, cl client.Client, fileName string) error {
