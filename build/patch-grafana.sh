@@ -28,6 +28,8 @@ function grafana_patch_deployment() {
             name: secret-grafana-tls\
           - mountPath: /etc/proxy/htpasswd\
             name: secret-htpasswd\
+          - mountPath: /etc/proxy/secrets\
+            name: secret-grafana-proxy\
           args:\
           - -provider=openshift\
           - -https-address=:3001\
@@ -39,7 +41,7 @@ function grafana_patch_deployment() {
           - '\''-openshift-sar={"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}'\''\
           - -client-secret-file=/var/run/secrets/kubernetes.io/serviceaccount/token\
           - -openshift-service-account=grafana\
-          - -cookie-secret=SECRET\
+          - -cookie-secret-file=/etc/proxy/secrets/session_secret\
           - -tls-cert=/etc/tls/private/tls.crt\
           - -tls-key=/etc/tls/private/tls.key\
           - -openshift-ca=/etc/pki/tls/cert.pem\
@@ -53,7 +55,11 @@ function grafana_patch_deployment() {
       - name: secret-htpasswd\
         secret:\
           defaultMode: 420\
-          secretName: htpasswd' $file
+          secretName: htpasswd\
+      - name: secret-grafana-proxy\
+        secret:\
+          defaultMode: 420\
+          secretName: grafana-proxy' $file
   sed_wrap -i -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: grafana\
 \1containers:\2/' $file
   sed_wrap -i -e '/- if \.Values\.security\.enabled/,/- end/ { d }' $file

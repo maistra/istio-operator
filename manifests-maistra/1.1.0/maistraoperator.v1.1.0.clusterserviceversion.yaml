@@ -12,7 +12,7 @@ metadata:
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: maistra/istio-ubi8-operator:1.1.0
-    createdAt: 2020-03-16T09:42:26MDT
+    createdAt: 2020-03-23T07:55:26MDT
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <1.1.0"
     alm-examples: |-
@@ -25,6 +25,7 @@ metadata:
             "namespace": "control-plane-namespace"
           },
           "spec": {
+            "version": "v1.1",
             "istio": {
               "gateways": {
                 "istio-egressgateway": {
@@ -94,9 +95,60 @@ metadata:
 spec:
   version: 1.1.0
   maturity: alpha
-  displayName: Red Hat OpenShift Service Mesh
+  displayName: Maistra Service Mesh
   description: |-
-    Red Hat OpenShift Service Mesh is a platform that provides behavioral insight and operational control over the service mesh, providing a uniform way to connect, secure, and monitor microservice applications. 
+    Maistra is a platform that provides behavioral insight and operational control over a service mesh, providing a uniform way to connect, secure, and monitor microservice applications.
+
+    ### Overview
+
+    Maistra Service Mesh, based on the open source [Istio](https://istio.io/) project, adds a transparent layer on existing
+    distributed applications without requiring any changes to the service code. You add Red Hat OpenShift Service Mesh
+    support to services by deploying a special sidecar proxy throughout your environment that intercepts all network
+    communication between microservices. You configure and manage the service mesh using the control plane features.
+
+    Maistra Service Mesh provides an easy way to create a network of deployed services that provides discovery,
+    load balancing, service-to-service authentication, failure recovery, metrics, and monitoring. A service mesh also
+    provides more complex operational functionality, including A/B testing, canary releases, rate limiting, access
+    control, and end-to-end authentication.
+
+    ### Core Capabilities
+
+    Maistra Service Mesh supports uniform application of a number of key capabilities across a network of services:
+
+    + **Traffic Management** - Control the flow of traffic and API calls between services, make calls more reliable,
+      and make the network more robust in the face of adverse conditions.
+
+    + **Service Identity and Security** - Provide services in the mesh with a verifiable identity and provide the
+      ability to protect service traffic as it flows over networks of varying degrees of trustworthiness.
+
+    + **Policy Enforcement** - Apply organizational policy to the interaction between services, ensure access policies
+      are enforced and resources are fairly distributed among consumers. Policy changes are made by configuring the
+      mesh, not by changing application code.
+
+    + **Telemetry** - Gain understanding of the dependencies between services and the nature and flow of traffic between
+      them, providing the ability to quickly identify issues.
+
+    ### Joining Projects Into a Mesh
+
+    Once an instance of Maistra Service Mesh has been installed, it will only exercise control over services within its own
+    project.  Other projects may be added into the mesh using one of two methods:
+
+    1. A **ServiceMeshMember** resource may be created in other projects to add those projects into the mesh.  The
+      **ServiceMeshMember** specifies a reference to the **ServiceMeshControlPlane** object that was used to install
+      the control plane.  The user creating the **ServiceMeshMember** resource must have permission to *use* the
+      **ServiceMeshControlPlane** object.  The adminstrator for the project containing the control plane can grant
+      individual users or groups the *use* permissions.
+    
+    2. A **ServiceMeshMemberRoll** resource may be created in the project containing the control plane.  This resource
+      contains a single *members* list of all the projects that should belong in the mesh.  The resource must be named
+      *default*.  The user creating the resource must have *edit* or *admin* permissions for all projects in the
+      *members* list.
+
+    ### More Information
+
+    * [Documentation](https://maistra.io/)
+    * [Bugs](https://issues.redhat.com/projects/MAISTRA)
+
   keywords: [ 'istio', 'maistra', 'servicemesh' ]
   maintainers:
   - name: Red Hat, OpenShift Service Mesh
@@ -376,53 +428,91 @@ spec:
       displayName: Jaeger
       description: A configuration file for a Jaeger installation.  
     owned:
-    - name: servicemeshmemberrolls.maistra.io
-      version: v1
-      kind: ServiceMeshMemberRoll
-      displayName: Istio Service Mesh Member Roll
-      description: A list of namespaces in Service Mesh
-    - name: servicemeshmembers.maistra.io
-      version: v1
-      kind: ServiceMeshMember
-      displayName: Istio Service Mesh Member
-      description: Marks the containing namespace as a member of the referenced Service Mesh
-      specDescriptors:
-      - JSONPath: .spec.controlPlaneRef.namespace
-        description: The namespace of the ServiceMeshControlPlane to which this namespace belongs
-        name: Control Plane Namespace
-        type: string
-      - JSONPath: .spec.controlPlaneRef.name
-        description: The name of the ServiceMeshControlPlane to which this namespace belongs
-        name: Control Plane
-        type: string
     - name: servicemeshcontrolplanes.maistra.io
       version: v1
       kind: ServiceMeshControlPlane
       displayName: Istio Service Mesh Control Plane
       description: An Istio control plane installation
       specDescriptors:
+      - description: Specify the version of control control plane you want to install
+        displayName: Control Plane Version
+        path: version
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:v1.1'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:v1.0'
+      - description: Enable mTLS for communication between control plane components (galley, pilot, etc.)
+        displayName: Control Plane Security
+        path: istio.global.controlPlaneSecurityEnabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: Enable mTLS for communcation between services in the mesh
+        displayName: Data Plane Security
+        path: istio.global.mtls.enabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: Set to true to install Kiali
         displayName: Install Kiali
         path: istio.kiali.enabled
         x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:visualization'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: Set to true to install Grafana
         displayName: Install Grafana
         path: istio.grafana.enabled
         x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:visualization'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: Set to false to disable tracing
-        displayName: Enable tracing
+        displayName: Install Jaeger
         path: istio.tracing.enabled
         x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:tracing'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: Set template to use when installing Jaeger
+        displayName: Jaeger template
+        path: istio.tracing.jaeger.template
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:tracing'
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldDependency:istio.tracing.enabled:true'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:all-in-one'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:production-elasticsearch'
       - description: Set to true to install the Istio 3Scale adapter
         displayName: Install 3Scale Adapter
         path: threeScale.enabled
         x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:API_Management'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
       - description: Limits describes the minimum/maximum amount of compute resources required/allowed
         displayName: Default Resource Requirements
         path: istio.global.defaultResources
         x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Resource_Requirements'
           - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+    - name: servicemeshmembers.maistra.io
+      version: v1
+      kind: ServiceMeshMember
+      displayName: Istio Service Mesh Member
+      description: Marks the containing namespace as a member of the referenced Service Mesh
+      specDescriptors:
+      - path: controlPlaneRef.namespace
+        description: The namespace of the ServiceMeshControlPlane to which this namespace belongs
+        displayName: Namespace
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Service_Mesh_Control_Plane'
+          - 'urn:alm:descriptor:io.kubernetes:Namespace'
+      - path: controlPlaneRef.name
+        description: The name of the ServiceMeshControlPlane to which this namespace belongs
+        displayName: Name
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Service_Mesh_Control_Plane'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+    - name: servicemeshmemberrolls.maistra.io
+      version: v1
+      kind: ServiceMeshMemberRoll
+      displayName: Istio Service Mesh Member Roll
+      description: A list of namespaces in Service Mesh
