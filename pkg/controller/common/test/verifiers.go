@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -35,22 +36,22 @@ type ActionVerifierFactory struct {
 // between resource an subresource, e.g. deployments/status.  Use "*" to match
 // all resources.
 func (f *ActionVerifierFactory) On(resource string) *ActionVerifierFactory {
-    f.AbstractActionFilter.On(resource)
-    return f
+	f.AbstractActionFilter.On(resource)
+	return f
 }
 
 // In initializes the namespace whithin which the created verifier should apply.
 // Use "*" to match all namespaces.
 func (f *ActionVerifierFactory) In(namespace string) *ActionVerifierFactory {
-    f.AbstractActionFilter.In(namespace)
-    return f
+	f.AbstractActionFilter.In(namespace)
+	return f
 }
 
 // Named initializes the name of the resource to which the created verifier
 // should apply.  Use "*" to match all names.
 func (f *ActionVerifierFactory) Named(name string) *ActionVerifierFactory {
-    f.AbstractActionFilter.Named(name)
-    return f
+	f.AbstractActionFilter.Named(name)
+	return f
 }
 
 // IsSeen returns an ActionVerifier that verifies the specified action has occurred.
@@ -61,32 +62,16 @@ func (f *ActionVerifierFactory) IsSeen() ActionVerifier {
 		})
 }
 
-// IsNotSeen returns an ActionVerifier that verifies the specified action has occurred.
-// This should be the last verifier in a list of verifiers, as it will wait for the
-// full timeout before returning success.
-func (f *ActionVerifierFactory) IsNotSeen() ActionVerifier {
-	verifier := &notSeenActionVerifier{SimpleActionVerifier: *NewSimpleActionVerifier(f.Verb, f.Resource, f.Subresource, f.Namespace, f.Name, nil)}
-	verifier.Verify = func(action clienttesting.Action) (bool, error) {
-		return true, fmt.Errorf("unexpected %s action occurred: %s", verifier.AbstractActionFilter.String(), action)
-	}
-	return verifier
-}
+// VerifierTestFunc is used for testing an action, returning an error if the test failed.
+type VerifierTestFunc func(action clienttesting.Action) error
 
-type notSeenActionVerifier struct {
-	SimpleActionVerifier
-}
-
-func (v *notSeenActionVerifier) Wait(timeout time.Duration) bool {
-	select {
-	case <-v.Notify:
-	case <-time.After(timeout):
-		// no error on a timeout
-	}
-	if !v.HasFired() {
-		v.fired = true
-		close(v.Notify)
-	}
-	return false
+// Passes returns an ActionVerifier that verifies the specified action has
+// occurred and the test passes.
+func (f *ActionVerifierFactory) Passes(test VerifierTestFunc) ActionVerifier {
+	return NewSimpleActionVerifier(f.Verb, f.Resource, f.Subresource, f.Namespace, f.Name,
+		func(action clienttesting.Action) (bool, error) {
+			return true, test(action)
+		})
 }
 
 /*
@@ -154,7 +139,7 @@ func (v *SimpleActionVerifier) React(action clienttesting.Action) (handled bool,
 		v.fired = true
 		defer close(v.Notify)
 		if err != nil {
-			v.t.Fatal(err)
+			v.t.Error(err)
 		}
 	}
 	return false, nil, nil
@@ -163,11 +148,17 @@ func (v *SimpleActionVerifier) React(action clienttesting.Action) (handled bool,
 // Wait until the verification has completed.  Returns true if it timed out waiting for verification.
 func (v *SimpleActionVerifier) Wait(timeout time.Duration) (timedout bool) {
 	v.t.Helper()
-	select {
-	case <-v.Notify:
-	case <-time.After(timeout):
-		v.t.Errorf("verify %s timed out", v.AbstractActionFilter.String())
-		return true
+	if timeout > 0 {
+		select {
+		case <-v.Notify:
+		case <-time.After(timeout):
+			v.t.Errorf("verify %s timed out", v.AbstractActionFilter.String())
+			return true
+		}
+	} else {
+		select {
+		case <-v.Notify:
+		}
 	}
 	return false
 }
@@ -183,28 +174,41 @@ func (v *SimpleActionVerifier) HasFired() bool {
 }
 
 // VerifyActions is a list of ActionVerifier objects which are applied in order.
-type VerifyActions []ActionVerifier
+func VerifyActions(verifiers ...ActionVerifier) ActionVerifier {
+	return &verifyActions{verifiers: verifiers}
+}
 
-var _ ActionVerifier = (*VerifyActions)(nil)
+type verifyActions struct {
+	mu sync.RWMutex
+	verifiers []ActionVerifier
+}
+
+var _ ActionVerifier = (*verifyActions)(nil)
 
 // Handles tests the head of the list to see if the action should be verified.
-func (v *VerifyActions) Handles(action clienttesting.Action) bool {
-	return len(*v) > 0 && (*v)[0].Handles(action)
+func (v *verifyActions) Handles(action clienttesting.Action) bool {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return len(v.verifiers) > 0 && v.verifiers[0].Handles(action)
 }
 
 // React verifies the action using the ActionVerifier at that head of the list.
-func (v *VerifyActions) React(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-	(*v)[0].React(action)
-	if (*v)[0].HasFired() {
-		*v = (*v)[1:]
+func (v *verifyActions) React(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.verifiers[0].React(action)
+	if v.verifiers[0].HasFired() {
+		v.verifiers = v.verifiers[1:]
 	}
 	return false, nil, nil
 }
 
 // Wait for all ActionVerifier elements in this list to complete.
-func (v *VerifyActions) Wait(timeout time.Duration) (timedout bool) {
+func (v *verifyActions) Wait(timeout time.Duration) (timedout bool) {
 	start := time.Now()
-	verifiers := (*v)[:]
+	v.mu.RLock()
+	verifiers := v.verifiers[:]
+	v.mu.RUnlock()
 	for _, verifier := range verifiers {
 		if timedout := verifier.Wait(timeout - time.Now().Sub(start)); timedout {
 			return true
@@ -214,13 +218,23 @@ func (v *VerifyActions) Wait(timeout time.Duration) (timedout bool) {
 }
 
 // InjectTestRunner injects the test runner into each ActionVerifier in the list.
-func (v *VerifyActions) InjectTestRunner(t *testing.T) {
-	for _, verifier := range *v {
+func (v *verifyActions) InjectTestRunner(t *testing.T) {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	for _, verifier := range v.verifiers {
 		verifier.InjectTestRunner(t)
 	}
 }
 
 // HasFired returns true if this verifier has fired
-func (v *VerifyActions) HasFired() bool {
-	return len(*v) == 0
+func (v *verifyActions) HasFired() bool {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return len(v.verifiers) == 0
+}
+
+func (v *verifyActions) String() string {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return fmt.Sprintf("verifyActions: %s", v.verifiers)
 }

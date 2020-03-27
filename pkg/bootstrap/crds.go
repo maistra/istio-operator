@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"sync"
 
 	"github.com/Masterminds/semver"
@@ -88,7 +89,7 @@ func installCRDRole(ctx context.Context, cl client.Client) error {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("istio-%s", role.role),
 				Labels: map[string]string{
-					fmt.Sprintf("rbac.authorization.k8s.io/aggregate-to-%s", role.role) : "true",
+					fmt.Sprintf("rbac.authorization.k8s.io/aggregate-to-%s", role.role): "true",
 				},
 			},
 			Rules: []rbacv1.PolicyRule{
@@ -109,12 +110,16 @@ func installCRDRole(ctx context.Context, cl client.Client) error {
 		}
 		existingRole := crdRole.DeepCopy()
 		if err := cl.Get(ctx, client.ObjectKey{Name: crdRole.Name}, existingRole); err == nil {
-			existingRole.Rules = crdRole.Rules
-			if err := cl.Update(ctx, existingRole); err != nil {
-				return err
+			if !reflect.DeepEqual(existingRole.Rules, crdRole.Rules) {
+				existingRole.Rules = crdRole.Rules
+				// We can ignore conflicts, as they should only occur if another reconcile is doing the same thing
+				if err := cl.Update(ctx, existingRole); err != nil && !errors.IsConflict(err) {
+					return err
+				}
 			}
 		} else if errors.IsNotFound(err) {
-			if err := cl.Create(ctx, crdRole); err != nil {
+			// We can ignore conflicts, as they should only occur if another reconcile is doing the same thing
+			if err := cl.Create(ctx, crdRole); err != nil && !errors.IsConflict(err) {
 				return err
 			}
 		} else {

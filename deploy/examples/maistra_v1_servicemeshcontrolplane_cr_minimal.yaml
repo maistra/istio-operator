@@ -4,7 +4,7 @@ metadata:
   name: minimal-install
 spec:
   # For a complete list of all options, see the docs at https://maistra-1-0.maistra.io/docs/installation/installation-options/
-
+  version: v1.0
   istio:
     gateways:
       istio-egressgateway:
