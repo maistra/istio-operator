@@ -302,7 +302,7 @@ func NewCreateSimulator(tracker clienttesting.ObjectTracker) clienttesting.React
 		if err != nil {
 			return true, nil, err
 		}
-		// XXX: initialize common fields
+		// initialize common fields
 		accessor.SetGeneration(1)
 		accessor.SetResourceVersion(fmt.Sprintf("%d", rand.Int()))
 		if len(accessor.GetSelfLink()) == 0 {
@@ -335,14 +335,14 @@ func NewDeleteSimulator(tracker clienttesting.ObjectTracker) clienttesting.React
 		if err != nil {
 			return true, nil, err
 		}
-		// XXX: correct deletion processing
+		// correct deletion processing
 		if len(accessor.GetFinalizers()) > 0 {
 			if accessor.GetDeletionTimestamp() == nil {
 				now := metav1.Now()
 				accessor.SetDeletionTimestamp(&now)
 				err = tracker.Update(deleteAction.GetResource(), obj, deleteAction.GetNamespace())
 			}
-			// not sure if this is correct, but the object is already marked for deletion, but still has finalizers registered
+			// XXX: not sure if this is correct, the object is already marked for deletion, but still has finalizers registered
 			return true, obj, err
 		}
 		err = tracker.Delete(deleteAction.GetResource(), accessor.GetNamespace(), accessor.GetName())
@@ -363,7 +363,7 @@ func NewUpdateSimulator(tracker clienttesting.ObjectTracker) clienttesting.React
 		if err != nil {
 			return true, nil, err
 		}
-		// XXX: update fields that would get modified by the api server on an update
+		// update fields that would get modified by the api server on an update
 		accessor.SetResourceVersion(fmt.Sprintf("%d", rand.Int()))
 		if accessor.GetDeletionTimestamp() == nil && len(updateAction.GetSubresource()) == 0 {
 			existingObj, err := tracker.Get(action.GetResource(), accessor.GetNamespace(), accessor.GetName())

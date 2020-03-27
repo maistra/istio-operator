@@ -17,7 +17,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/apis"
 )
 
-// RunControllerTestCases executes each test case using a new manager.Manager
+// RunControllerTestCase executes each test case using a new manager.Manager
 func RunControllerTestCase(t *testing.T, testCase ControllerTestCase) {
 	t.Helper()
 	utilruntime.ErrorHandlers = append(utilruntime.ErrorHandlers, func(err error) { t.Errorf("unhandled error occurred in k8s: %v", err) })
@@ -50,7 +50,11 @@ func RunControllerTestCase(t *testing.T, testCase ControllerTestCase) {
 		defer stop()
 		for _, event := range testCase.Events {
 			t.Run(event.Name, func(t *testing.T) {
+				extraneousActionFilter := &extraneousActionFailure{verifier: event.Verifier, t: t}
 				defer func() {
+					if event.AssertExtraneousActions {
+						tracker.RemoveReaction(extraneousActionFilter)
+					}
 					tracker.RemoveReaction(event.Verifier)
 					for _, assertion := range event.Assertions {
 						tracker.RemoveReaction(assertion)
@@ -67,8 +71,10 @@ func RunControllerTestCase(t *testing.T, testCase ControllerTestCase) {
 				}
 				// insert verifier.  this needs to be the first handler, as it verifies the event, but does not handle it
 				tracker.PrependReaction(event.Verifier)
-				// add failure for events occurring after validation should be complete
-				tracker.PrependReaction(&extraneousActionFailure{verifier: event.Verifier, t: t})
+				if event.AssertExtraneousActions {
+					// add failure for events occurring after validation should be complete
+					tracker.PrependReaction(extraneousActionFilter)
+				}
 				if err := event.Execute(mgr, tracker); err != nil {
 					t.Fatal(err)
 				}
@@ -79,7 +85,6 @@ func RunControllerTestCase(t *testing.T, testCase ControllerTestCase) {
 					for _, assertion := range event.Assertions {
 						assertion.Assert(t)
 					}
-					// TODO: verify that the reconcile queue is empty
 				}
 			})
 		}
