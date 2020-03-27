@@ -46,7 +46,6 @@ type ServiceMeshMemberRollStatus struct {
 	ServiceMeshGeneration        int64    `json:"meshGeneration,omitempty"`
 	ServiceMeshReconciledVersion string   `json:"meshReconciledVersion,omitempty"`
 	ConfiguredMembers            []string `json:"configuredMembers,omitempty"`
-	MeshVersion                  string   `json:"meshVersion,omitempty"`
 
 	// Represents the latest available observations of a ServiceMeshMemberRoll's current state.
 	Conditions []ServiceMeshMemberRollCondition `json:"conditions"`

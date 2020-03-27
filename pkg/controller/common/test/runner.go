@@ -18,78 +18,72 @@ import (
 )
 
 // RunControllerTestCases executes each test case using a new manager.Manager
-func RunControllerTestCases(t *testing.T, testCases ...ControllerTestCase) {
+func RunControllerTestCase(t *testing.T, testCase ControllerTestCase) {
 	t.Helper()
-	for _, testCase := range testCases {
-		t.Run(testCase.Name, func(t *testing.T) {
-			t.Helper()
-			utilruntime.ErrorHandlers = append(utilruntime.ErrorHandlers, func(err error) { t.Errorf("unhandled error occurred in k8s: %v", err) })
-			defer func() {
-				// XXX: this is pretty sketchy...
-				utilruntime.ErrorHandlers = utilruntime.ErrorHandlers[:len(utilruntime.ErrorHandlers)-1]
-			}()
-			if testCase.ConfigureGlobals != nil {
-				testCase.ConfigureGlobals()
-			}
-			mgr, tracker, err := NewManagerForControllerTest(testCase.GroupResources...)
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, resource := range testCase.Resources {
-				// XXX: should we use client.Create() or tracker.Add()?
-				// client.Create() has side effects, like adding creation time, resource version, etc.
-				if err := mgr.GetClient().Create(context.TODO(), resource); err != nil {
-					t.Fatal(err)
-				}
-			}
-			for _, addController := range testCase.AddControllers {
-				if err := addController(mgr); err != nil {
-					t.Fatal(err)
-				}
-			}
-			stop := StartManager(mgr, t)
-			func() {
-				t.Helper()
-				defer stop()
-				for _, event := range testCase.Events {
-					t.Run(event.Name, func(t *testing.T) {
-						t.Helper()
-						defer func() {
-							tracker.RemoveReaction(event.Verifier)
-							for _, assertion := range event.Assertions {
-								tracker.RemoveReaction(assertion)
-							}
-							tracker.RemoveReaction(event.Reactors...)
-						}()
-						// inject the test runner into the verifier
-						event.Verifier.InjectTestRunner(t)
-						// insert reactions.  these must come before any default reactions added for normal resource handling
-						tracker.PrependReaction(event.Reactors...)
-						// insert assertions.  these need to be before any reactors, as they do not actually handle events
-						for _, assertion := range event.Assertions {
-							tracker.PrependReaction(assertion)
-						}
-						// insert verifier.  this needs to be the first handler, as it verifies the event, but does not handle it
-						tracker.PrependReaction(event.Verifier)
-						// add failure for events occurring after validation should be complete
-						tracker.PrependReaction(&extraneousActionFailure{verifier: event.Verifier, t: t})
-						if err := event.Execute(mgr, tracker); err != nil {
-							t.Fatal(err)
-						}
-						if !event.Verifier.Wait(event.Timeout) {
-							// no need to process assertions if there was a problem with the event processing
-							// just need to wait for Reconcile() to complete before processing assertions
-							mgr.WaitForReconcileCompletion()
-							for _, assertion := range event.Assertions {
-								assertion.Assert(t)
-							}
-							// TODO: verify that the reconcile queue is empty
-						}
-					})
-				}
-			}()
-		})
+	utilruntime.ErrorHandlers = append(utilruntime.ErrorHandlers, func(err error) { t.Errorf("unhandled error occurred in k8s: %v", err) })
+	defer func() {
+		// XXX: this is pretty sketchy...
+		utilruntime.ErrorHandlers = utilruntime.ErrorHandlers[:len(utilruntime.ErrorHandlers)-1]
+	}()
+	if testCase.ConfigureGlobals != nil {
+		testCase.ConfigureGlobals()
 	}
+	mgr, tracker, err := NewManagerForControllerTest(testCase.GroupResources...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, resource := range testCase.Resources {
+		// XXX: should we use client.Create() or tracker.Add()?
+		// client.Create() has side effects, like adding creation time, resource version, etc.
+		if err := mgr.GetClient().Create(context.TODO(), resource); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, addController := range testCase.AddControllers {
+		if err := addController(mgr); err != nil {
+			t.Fatal(err)
+		}
+	}
+	stop := StartManager(mgr, t)
+	func() {
+		t.Helper()
+		defer stop()
+		for _, event := range testCase.Events {
+			t.Run(event.Name, func(t *testing.T) {
+				defer func() {
+					tracker.RemoveReaction(event.Verifier)
+					for _, assertion := range event.Assertions {
+						tracker.RemoveReaction(assertion)
+					}
+					tracker.RemoveReaction(event.Reactors...)
+				}()
+				// inject the test runner into the verifier
+				event.Verifier.InjectTestRunner(t)
+				// insert reactions.  these must come before any default reactions added for normal resource handling
+				tracker.PrependReaction(event.Reactors...)
+				// insert assertions.  these need to be before any reactors, as they do not actually handle events
+				for _, assertion := range event.Assertions {
+					tracker.PrependReaction(assertion)
+				}
+				// insert verifier.  this needs to be the first handler, as it verifies the event, but does not handle it
+				tracker.PrependReaction(event.Verifier)
+				// add failure for events occurring after validation should be complete
+				tracker.PrependReaction(&extraneousActionFailure{verifier: event.Verifier, t: t})
+				if err := event.Execute(mgr, tracker); err != nil {
+					t.Fatal(err)
+				}
+				if !event.Verifier.Wait(event.Timeout) {
+					// no need to process assertions if there was a problem with the event processing
+					// just need to wait for Reconcile() to complete before processing assertions
+					mgr.WaitForReconcileCompletion()
+					for _, assertion := range event.Assertions {
+						assertion.Assert(t)
+					}
+					// TODO: verify that the reconcile queue is empty
+				}
+			})
+		}
+	}()
 }
 
 // NewManagerForControllerTest creates a new FakeManager that can be used for running controller tests.
@@ -122,7 +116,7 @@ func NewManagerForControllerTest(groupResources ...*restmapper.APIGroupResources
 
 type extraneousActionFailure struct {
 	verifier ActionVerifier
-	t *testing.T
+	t        *testing.T
 }
 
 var _ clienttesting.Reactor = (*extraneousActionFailure)(nil)
@@ -131,6 +125,6 @@ func (r *extraneousActionFailure) Handles(action clienttesting.Action) bool {
 	return r.verifier.HasFired()
 }
 func (r *extraneousActionFailure) React(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-	r.t.Fatalf("unexpectect action ocurred: %#v", action)
+	r.t.Fatalf("unexpected action ocurred: %#v", action)
 	return true, nil, errors.NewServiceUnavailable("test processing complete")
 }

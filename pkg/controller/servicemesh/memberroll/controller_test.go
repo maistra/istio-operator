@@ -239,7 +239,6 @@ func TestReconcileReconcilesAfterOperatorUpgradeFromV1_0(t *testing.T) {
 	assert.DeepEquals(updatedRoll.Status.ConfiguredMembers, []string{appNamespace}, "Unexpected Status.ConfiguredMembers in SMMR", t)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 	assert.Equals(updatedRoll.Status.ServiceMeshReconciledVersion, controlPlane.Status.GetReconciledVersion(), "Unexpected Status.ServiceMeshReconciledVersion in SMMR", t)
-	assert.Equals(updatedRoll.Status.MeshVersion, maistra.LegacyVersion.String(), "MemberRoll.Status.MeshVersion should have been updated to v1.0 (from empty string)", t)
 
 	meshNetAttachDefName := cniNetwork1_0
 	assertNamespaceReconciled(t, cl, appNamespace, controlPlaneNamespace, meshNetAttachDefName, []rbac.RoleBinding{*meshRoleBinding})
@@ -364,7 +363,6 @@ func TestReconcileReconcilesMemberIfNamespaceIsCreatedLater(t *testing.T) {
 	roll.Status.ObservedGeneration = 2 // NOTE: generation 2 of the member roll has already been reconciled
 	controlPlane := markControlPlaneReconciled(newControlPlane(""), meshVersionDefault, operatorVersionDefault)
 	roll.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
-	roll.Status.MeshVersion = controlPlane.Status.AppliedVersion
 	meshRoleBinding := newMeshRoleBinding()
 	namespace := newNamespace(appNamespace)
 
@@ -466,7 +464,6 @@ func TestReconcileWorksWithMultipleNamespaces(t *testing.T) {
 	roll.ObjectMeta.Generation = 2
 	roll.Status.ObservedGeneration = 1
 	roll.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
-	roll.Status.MeshVersion = controlPlane.Status.AppliedVersion
 
 	cl, _, r, _, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, newNamespace(appNamespace))
 	assertReconcileSucceeds(r, t)
@@ -498,7 +495,6 @@ func TestReconcileDoesNotAddControlPlaneNamespaceToMembers(t *testing.T) {
 	roll.Status.ObservedGeneration = 1
 	controlPlane := markControlPlaneReconciled(newControlPlane(""), meshVersionDefault, operatorVersionDefault)
 	roll.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
-	roll.Status.MeshVersion = controlPlane.Status.AppliedVersion
 	namespace := &core.Namespace{
 		ObjectMeta: meta.ObjectMeta{
 			Name: controlPlaneNamespace,
@@ -716,7 +712,6 @@ func newMemberRoll(generation int64, observedGeneration int64, observedMeshGener
 			ObservedGeneration:           observedGeneration,
 			ServiceMeshGeneration:        observedMeshGeneration,
 			ServiceMeshReconciledVersion: maistrav1.ComposeReconciledVersion(operatorVersion, observedMeshGeneration),
-			MeshVersion:                  meshVersion,
 		},
 	}
 }

@@ -60,10 +60,10 @@ var CNIGroupResources = &restmapper.APIGroupResources{
 // control plane is installed.  operatorNamespace is the namespace within which
 // the operator is running.
 func VerifyReadinessCheckOccurs(controlPlaneNamespace, operatorNamespace string) test.ActionVerifier {
-	return &test.VerifyActions{
+	return test.VerifyActions(
 		test.Verify("list").On("deployments").In(controlPlaneNamespace).IsSeen(),
 		test.Verify("list").On("statefulsets").In(controlPlaneNamespace).IsSeen(),
 		test.Verify("list").On("daemonsets").In(controlPlaneNamespace).IsSeen(),
 		test.Verify("list").On("daemonsets").In(operatorNamespace).IsSeen(),
-	}
+	)
 }

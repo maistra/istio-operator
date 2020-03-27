@@ -3,6 +3,7 @@ package v1
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/maistra/istio-operator/pkg/version"
 
@@ -52,7 +53,7 @@ func (s *ControlPlaneStatus) FindComponentByName(name string) *ComponentStatus {
 
 // NewComponentStatus returns a new ComponentStatus object
 func NewComponentStatus() *ComponentStatus {
-	return &ComponentStatus{StatusType: NewStatus(), Resources: []*StatusType{}}
+	return &ComponentStatus{StatusType: NewStatus()}
 }
 
 // ComponentStatus represents the status of an object with children
@@ -179,7 +180,11 @@ func (s *StatusType) SetCondition(condition Condition) *StatusType {
 	if s == nil {
 		return nil
 	}
-	now := metav1.Now()
+	// These only get serialized out to the second.  This can break update
+	// skipping, as the time in the resource returned from the client may not
+	// match the time in our cached status during a reconcile.  We truncate here
+	// to save any problems down the line.
+	now := metav1.NewTime(time.Now().Truncate(time.Second))
 	for i := range s.Conditions {
 		if s.Conditions[i].Type == condition.Type {
 			if s.Conditions[i].Status != condition.Status {
