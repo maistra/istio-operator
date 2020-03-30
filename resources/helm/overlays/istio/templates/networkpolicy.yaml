@@ -63,3 +63,64 @@ spec:
     - namespaceSelector:
         matchLabels:
           network.openshift.io/policy-group: ingress
+
+# if users are running a custom Jaeger instance in the control plane namespace,
+# we need to make sure that it's accessible through its Route
+{{ if and (not .Values.tracing.enabled) (.Values.global.tracer.zipkin.address) }}
+---
+# This allows traffic for Routes to a Jaeger all-in-one instance in the control plane namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: istio-jaeger-ingress-all-in-one
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: jaeger
+    chart: {{ template "istio.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  annotations:
+    "maistra.io/internal": "true"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: jaeger
+      app.kubernetes.io/component: all-in-one
+      app.kubernetes.io/instance: jaeger
+      app.kubernetes.io/part-of: jaeger
+      app.kubernetes.io/managed-by: jaeger-operator
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          network.openshift.io/policy-group: ingress
+
+---
+
+# This allows traffic for Routes to a Jaeger production instance in the control plane namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: istio-jaeger-ingress-production
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: jaeger
+    chart: {{ template "istio.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  annotations:
+    "maistra.io/internal": "true"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: jaeger-query
+      app.kubernetes.io/component: query
+      app.kubernetes.io/instance: jaeger
+      app.kubernetes.io/part-of: jaeger
+      app.kubernetes.io/managed-by: jaeger-operator
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          network.openshift.io/policy-group: ingress
+{{ end }}

@@ -16,7 +16,7 @@
 
 MAISTRA_VERSION        ?= 1.1.0
 MAISTRA_BRANCH         ?= maistra-1.1
-REPLACES_PRODUCT_CSV   ?= 1.0.9
+REPLACES_PRODUCT_CSV   ?= 1.0.10
 REPLACES_COMMUNITY_CSV ?= 1.0.8
 VERSION                ?= development
 IMAGE                  ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}
