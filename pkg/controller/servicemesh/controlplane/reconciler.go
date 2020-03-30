@@ -293,7 +293,6 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 	}
 	r.Status.ObservedGeneration = r.Instance.GetGeneration()
 	r.Status.ReconciledVersion = r.meshGeneration
-	r.Status.AppliedVersion = r.Status.LastAppliedConfiguration.Version
 	updateReconcileStatus(&r.Status.StatusType, nil)
 
 	_, err = r.updateReadinessStatus(ctx) // this only updates the local object instance; it doesn't post the status update; postReconciliationStatus (called using defer) actually does that
@@ -443,15 +442,8 @@ func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context) error
 	//Generate the spec
 	r.Status.LastAppliedConfiguration = r.Instance.Spec
 	if len(r.Status.LastAppliedConfiguration.Version) == 0 {
-		// initialize version
-		if len(r.Status.AppliedVersion) == 0 {
-			// this must be from a 1.0 operator
-			r.Status.LastAppliedConfiguration.Version = maistra.LegacyVersion.String()
-		} else {
-			// use the version that's already been applied
-			// users must manually upgrade their mesh version
-			r.Status.LastAppliedConfiguration.Version = r.Status.AppliedVersion
-		}
+		// this must be from a 1.0 operator
+		r.Status.LastAppliedConfiguration.Version = maistra.LegacyVersion.String()
 	}
 
 	spec, err := r.applyTemplates(ctx, r.Status.LastAppliedConfiguration)
