@@ -442,15 +442,8 @@ func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context) error
 	//Generate the spec
 	r.Status.LastAppliedConfiguration = r.Instance.Spec
 	if len(r.Status.LastAppliedConfiguration.Version) == 0 {
-		// initialize version
-		if len(r.Instance.Spec.Version) == 0 {
-			// this must be from a 1.0 operator
-			r.Status.LastAppliedConfiguration.Version = maistra.LegacyVersion.String()
-		} else {
-			// use the version that's already been applied
-			// users must manually upgrade their mesh version
-			r.Status.LastAppliedConfiguration.Version = r.Instance.Spec.Version
-		}
+		// this must be from a 1.0 operator
+		r.Status.LastAppliedConfiguration.Version = maistra.LegacyVersion.String()
 	}
 
 	spec, err := r.applyTemplates(ctx, r.Status.LastAppliedConfiguration)
