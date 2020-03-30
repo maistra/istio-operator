@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"sync"
 	"testing"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,6 +15,7 @@ import (
 	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -26,7 +28,7 @@ import (
 type FakeManager struct {
 	manager.Manager
 	recorderProvider recorder.Provider
-	reconcileWG      sync.WaitGroup
+	requestTracker   requestTracker
 }
 
 var _ manager.Manager = (*FakeManager)(nil)
@@ -68,7 +70,7 @@ func NewManager(scheme *runtime.Scheme, tracker clienttesting.ObjectTracker, gro
 	return &FakeManager{
 		Manager:          delegate,
 		recorderProvider: NewRecorderProvider(scheme),
-		reconcileWG:      sync.WaitGroup{},
+		requestTracker:   requestTracker{cond: sync.NewCond(&sync.Mutex{})},
 	}, nil
 }
 
@@ -85,10 +87,13 @@ func (m *FakeManager) GetRecorder(name string) record.EventRecorder {
 func (m *FakeManager) Add(runnable manager.Runnable) error {
 	if controller, ok := runnable.(controller.Controller); ok {
 		value := reflect.ValueOf(controller)
-		doValue := value.Elem().FieldByName("Do")
-		if reconciler, ok := doValue.Elem().Interface().(reconcile.Reconciler); ok {
-			reconciler = &trackingReconciler{Reconciler: reconciler, wg: &m.reconcileWG}
-			doValue.Set(reflect.ValueOf(reconciler))
+		queueValue := value.Elem().FieldByName("Queue")
+		if !queueValue.IsValid() {
+			panic(fmt.Errorf("cannot hook controller.Queue"))
+		}
+		if q, ok := queueValue.Elem().Interface().(workqueue.RateLimitingInterface); ok {
+			tq := newTrackingQueue(q, &m.requestTracker)
+			queueValue.Set(reflect.ValueOf(tq))
 		}
 	}
 	return m.Manager.Add(runnable)
@@ -102,20 +107,125 @@ func (m *FakeManager) Add(runnable manager.Runnable) error {
 // have settled to an idle state.  There is a danger that controllers could
 // bounce events back and forth, causing this call to effectively hang.
 func (m *FakeManager) WaitForReconcileCompletion() {
-	m.reconcileWG.Wait()
+	m.requestTracker.Wait()
 }
 
-type trackingReconciler struct {
-	reconcile.Reconciler
-	wg *sync.WaitGroup
+type requestTracker struct {
+	cond  *sync.Cond
+	count int
 }
 
-func (r *trackingReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// XXX: should we introduce a condition variable that prevents entering a
-	// a new reconcile once a caller has begun waiting for completion?
-	r.wg.Add(1)
-	defer r.wg.Done()
-	return r.Reconciler.Reconcile(request)
+func (rt *requestTracker) Increment() {
+	rt.cond.L.Lock()
+	defer rt.cond.L.Unlock()
+	rt.count++
+}
+
+func (rt *requestTracker) Decrement() {
+	rt.cond.L.Lock()
+	defer rt.cond.L.Unlock()
+	rt.count--
+	if rt.count == 0 {
+		rt.cond.Broadcast()
+	}
+}
+
+func (rt *requestTracker) Wait() {
+	waiting := true
+	for waiting {
+		func() {
+			rt.cond.L.Lock()
+			defer rt.cond.L.Unlock()
+			if rt.count == 0 {
+				waiting = false
+			} else {
+				rt.cond.Wait()
+			}
+		}()
+	}
+}
+
+// trackingQueue is designed to increment message count when messages are added
+// and decrement message count when processing is completed.  Because the
+// standard workqueue doesn't add messages if they match ones already in the
+// queue and delays adding messages if they match ones already being processed,
+// we can't simply track Add()/Done(), and Len() will not include any messages
+// being deferred until processing is complete.  Because of this, we simply
+// wrap the queue and provide our own condition using in Add(), Get(), and
+// Done().  Doing this allows us to use Len() to appropriately increment or
+// decrement the counter.
+type trackingQueue struct {
+	workqueue.RateLimitingInterface
+	cond           *sync.Cond
+	requestTracker *requestTracker
+}
+
+func newTrackingQueue(q workqueue.RateLimitingInterface, requestTracker *requestTracker) *trackingQueue {
+	return &trackingQueue{
+		RateLimitingInterface: q,
+		requestTracker:        requestTracker,
+		cond:                  sync.NewCond(&sync.Mutex{}),
+	}
+}
+
+func (q *trackingQueue) Add(item interface{}) {
+	q.cond.L.Lock()
+	defer q.cond.L.Unlock()
+
+	oldLen := q.Len()
+	q.RateLimitingInterface.Add(item)
+
+	if oldLen != q.Len() {
+		// item was added to queue
+		q.requestTracker.Increment()
+		// notify processors
+		q.cond.Signal()
+	}
+	// else we don't need to notify because the item is already in the queue or
+	// will be added back when its processor calls Done()
+}
+
+func (q *trackingQueue) AddRateLimited(item interface{}) {
+	// No rate limiting for tests, i.e. no backoff, no delay.  we want tests to execute consistently.
+	q.Add(item)
+}
+
+func (q *trackingQueue) AddAfter(item interface{}, _ time.Duration) {
+	// No delays
+	q.Add(item)
+}
+
+func (q *trackingQueue) Get() (item interface{}, shutdown bool) {
+	q.cond.L.Lock()
+	defer q.cond.L.Unlock()
+	if q.Len() == 0 {
+		// wait for an item to appear on the queue
+		q.cond.Wait()
+	}
+	return q.RateLimitingInterface.Get()
+}
+
+func (q *trackingQueue) Done(item interface{}) {
+	q.cond.L.Lock()
+	defer q.cond.L.Unlock()
+
+	oldLen := q.Len()
+	q.RateLimitingInterface.Done(item)
+	if oldLen == q.Len() {
+		// If the length of the queue didn't change, the item was not added back
+		// onto the queue
+		q.requestTracker.Decrement()
+	} else {
+		// item was added back onto queue, notify processors
+		q.cond.Signal()
+	}
+}
+
+func (q *trackingQueue) Shutdown() {
+	q.cond.L.Lock()
+	defer q.cond.L.Unlock()
+	q.RateLimitingInterface.ShutDown()
+	q.cond.Broadcast()
 }
 
 // NewManagerOptions returns a set of options that create a "normal" manager for
@@ -192,7 +302,7 @@ func NewCreateSimulator(tracker clienttesting.ObjectTracker) clienttesting.React
 		if err != nil {
 			return true, nil, err
 		}
-		// XXX: initialize common fields
+		// initialize common fields
 		accessor.SetGeneration(1)
 		accessor.SetResourceVersion(fmt.Sprintf("%d", rand.Int()))
 		if len(accessor.GetSelfLink()) == 0 {
@@ -225,14 +335,14 @@ func NewDeleteSimulator(tracker clienttesting.ObjectTracker) clienttesting.React
 		if err != nil {
 			return true, nil, err
 		}
-		// XXX: correct deletion processing
+		// correct deletion processing
 		if len(accessor.GetFinalizers()) > 0 {
 			if accessor.GetDeletionTimestamp() == nil {
 				now := metav1.Now()
 				accessor.SetDeletionTimestamp(&now)
 				err = tracker.Update(deleteAction.GetResource(), obj, deleteAction.GetNamespace())
 			}
-			// not sure if this is correct, but the object is already marked for deletion, but still has finalizers registered
+			// XXX: not sure if this is correct, the object is already marked for deletion, but still has finalizers registered
 			return true, obj, err
 		}
 		err = tracker.Delete(deleteAction.GetResource(), accessor.GetNamespace(), accessor.GetName())
@@ -253,7 +363,7 @@ func NewUpdateSimulator(tracker clienttesting.ObjectTracker) clienttesting.React
 		if err != nil {
 			return true, nil, err
 		}
-		// XXX: update fields that would get modified by the api server on an update
+		// update fields that would get modified by the api server on an update
 		accessor.SetResourceVersion(fmt.Sprintf("%d", rand.Int()))
 		if accessor.GetDeletionTimestamp() == nil && len(updateAction.GetSubresource()) == 0 {
 			existingObj, err := tracker.Get(action.GetResource(), accessor.GetNamespace(), accessor.GetName())
