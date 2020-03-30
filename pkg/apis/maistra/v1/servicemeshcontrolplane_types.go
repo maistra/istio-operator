@@ -51,11 +51,6 @@ type ControlPlaneStatus struct {
 
 	//LastAppliedConfiguration lists the last appllied ServiceMeshControlPlane
 	LastAppliedConfiguration ControlPlaneSpec `json:"lastAppliedConfiguration"`
-
-	//AppliedVersion represents the version that was applied.  v1.0 did not have
-	// this field, so if it is unset, the AppliedVersion is v1.0 and should be
-	// initialized on a subsequent status udpate.
-	AppliedVersion string `json:"appliedVersion,omitempty"`
 }
 
 // HelmValuesType is typedef for Helm .Values

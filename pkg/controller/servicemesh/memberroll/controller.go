@@ -320,7 +320,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	// never include the mesh namespace in unconfigured list
 	delete(unconfiguredMembers, instance.Namespace)
 
-	meshVersion := mesh.Status.AppliedVersion
+	meshVersion := mesh.Spec.Version
 	if len(meshVersion) == 0 {
 		meshVersion = maistra.LegacyVersion.String()
 	}

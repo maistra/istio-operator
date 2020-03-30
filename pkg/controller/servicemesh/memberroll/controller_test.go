@@ -204,7 +204,7 @@ func TestReconcileFailsIfListingNamespacesFails(t *testing.T) {
 	roll := newDefaultMemberRoll()
 	addOwnerReference(roll)
 	controlPlane := newControlPlane("")
-	markControlPlaneReconciled(controlPlane, meshVersionDefault, operatorVersionDefault)
+	markControlPlaneReconciled(controlPlane, operatorVersionDefault)
 
 	_, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane)
 	tracker.AddReactor("list", "namespaces", test.ClientFails())
@@ -214,11 +214,11 @@ func TestReconcileFailsIfListingNamespacesFails(t *testing.T) {
 }
 
 func TestReconcileReconcilesAfterOperatorUpgradeFromV1_0(t *testing.T) {
-	roll := newMemberRoll(1, 1, 1, "", operatorVersion1_0)
+	roll := newMemberRoll(1, 1, 1, operatorVersion1_0)
 	addOwnerReference(roll)
 	roll.Spec.Members = []string{appNamespace}
 	roll.Status.ConfiguredMembers = []string{appNamespace}
-	controlPlane := markControlPlaneReconciled(newControlPlane(meshVersion1_0), meshVersion1_0, operatorVersionDefault)
+	controlPlane := markControlPlaneReconciled(newControlPlane(meshVersion1_0), operatorVersionDefault)
 	namespace := newNamespace(appNamespace)
 	common.SetLabel(namespace, common.MemberOfKey, controlPlaneNamespace)
 	meshRoleBinding := newMeshRoleBinding()
@@ -285,23 +285,19 @@ func TestReconcileReconcilesAddedMember(t *testing.T) {
 			name:                "default",
 			operatorVersion:     operatorVersionDefault,
 			meshVersion:         "",
-			expectedNetworkName: cniNetworkDefault,
+			expectedNetworkName: cniNetwork1_0,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			roll := newMemberRoll(2, 1, 1, tc.meshVersion, tc.operatorVersion)
+			roll := newMemberRoll(2, 1, 1, tc.operatorVersion)
 			addOwnerReference(roll)
 			roll.Spec.Members = []string{appNamespace}
-			controlPlane := markControlPlaneReconciled(newControlPlane(tc.meshVersion), tc.meshVersion, tc.operatorVersion)
+			controlPlane := markControlPlaneReconciled(newControlPlane(tc.meshVersion), tc.operatorVersion)
 			if tc.upgradedOperator {
 				// need to reset the ServiceMeshReconciledVersion
 				roll.Status.ServiceMeshReconciledVersion = maistrav1.ComposeReconciledVersion(operatorVersion1_0, controlPlane.GetGeneration())
-				if len(tc.meshVersion) == 0 {
-					// need to set the AppliedVersion to v1.0
-					controlPlane.Status.AppliedVersion = meshVersion1_0
-				}
 			}
 			roll.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
 			namespace := newNamespace(appNamespace)
@@ -324,10 +320,10 @@ func TestReconcileReconcilesAddedMember(t *testing.T) {
 }
 
 func TestReconcileFailsIfMemberRollUpdateFails(t *testing.T) {
-	roll := newMemberRoll(2, 1, 1, meshVersionDefault, operatorVersionDefault)
+	roll := newMemberRoll(2, 1, 1, operatorVersionDefault)
 	addOwnerReference(roll)
 	roll.Spec.Members = []string{appNamespace}
-	controlPlane := markControlPlaneReconciled(newControlPlane(""), meshVersionDefault, operatorVersionDefault)
+	controlPlane := markControlPlaneReconciled(newControlPlane(""), operatorVersionDefault)
 	namespace := newNamespace(appNamespace)
 
 	_, tracker, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace)
@@ -340,10 +336,10 @@ func TestReconcileFailsIfMemberRollUpdateFails(t *testing.T) {
 }
 
 func TestReconcileFailsIfKialiReconcileFails(t *testing.T) {
-	roll := newMemberRoll(2, 1, 1, meshVersionDefault, operatorVersionDefault)
+	roll := newMemberRoll(2, 1, 1, operatorVersionDefault)
 	addOwnerReference(roll)
 	roll.Spec.Members = []string{appNamespace}
-	controlPlane := markControlPlaneReconciled(newControlPlane(""), meshVersionDefault, operatorVersionDefault)
+	controlPlane := markControlPlaneReconciled(newControlPlane(""), operatorVersionDefault)
 	namespace := newNamespace(appNamespace)
 
 	_, _, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace)
@@ -361,7 +357,7 @@ func TestReconcileReconcilesMemberIfNamespaceIsCreatedLater(t *testing.T) {
 	roll.Spec.Members = []string{appNamespace}
 	roll.ObjectMeta.Generation = 2
 	roll.Status.ObservedGeneration = 2 // NOTE: generation 2 of the member roll has already been reconciled
-	controlPlane := markControlPlaneReconciled(newControlPlane(""), meshVersionDefault, operatorVersionDefault)
+	controlPlane := markControlPlaneReconciled(newControlPlane(""), operatorVersionDefault)
 	roll.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
 	meshRoleBinding := newMeshRoleBinding()
 	namespace := newNamespace(appNamespace)
@@ -375,7 +371,7 @@ func TestReconcileReconcilesMemberIfNamespaceIsCreatedLater(t *testing.T) {
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 
 	assertNamespaceReconcilerInvoked(t, nsReconciler, appNamespace)
-	meshNetAttachDefName, _ := common.GetCNINetworkName(maistra.DefaultVersion.String())
+	meshNetAttachDefName, _ := common.GetCNINetworkName(maistra.LegacyVersion.String())
 	assertNamespaceReconciled(t, cl, appNamespace, controlPlaneNamespace, meshNetAttachDefName, []rbac.RoleBinding{*meshRoleBinding})
 
 	// invoke reconcile again to check if the Status.ServiceMeshGeneration field is updated
@@ -386,11 +382,11 @@ func TestReconcileReconcilesMemberIfNamespaceIsCreatedLater(t *testing.T) {
 }
 
 func TestReconcileUpdatesMemberListWhenNamespaceIsDeleted(t *testing.T) {
-	roll := newMemberRoll(1, 1, 1, meshVersionDefault, operatorVersionDefault)
+	roll := newMemberRoll(1, 1, 1, operatorVersionDefault)
 	addOwnerReference(roll)
 	roll.Spec.Members = []string{controlPlaneNamespace, appNamespace, appNamespace2}
 	roll.Status.ConfiguredMembers = []string{appNamespace, appNamespace2}
-	controlPlane := markControlPlaneReconciled(newControlPlane(""), meshVersionDefault, operatorVersionDefault)
+	controlPlane := markControlPlaneReconciled(newControlPlane(""), operatorVersionDefault)
 	namespace := newNamespace(appNamespace)
 
 	cl, _, r, _, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace) // NOTE: no appNamespace2
@@ -404,14 +400,14 @@ func TestReconcileUpdatesMemberListWhenNamespaceIsDeleted(t *testing.T) {
 }
 
 func TestReconcileDoesNotUpdateMemberRollWhenNothingToReconcile(t *testing.T) {
-	roll := newMemberRoll(2, 2, 1, meshVersionDefault, operatorVersionDefault)
+	roll := newMemberRoll(2, 2, 1, operatorVersionDefault)
 	addOwnerReference(roll)
 	roll.Spec.Members = []string{appNamespace}
 	roll.Status.ConfiguredMembers = []string{appNamespace}
 
-	controlPlane := newControlPlane("")
+	controlPlane := newControlPlane(meshVersionDefault)
 	controlPlane.SetGeneration(2)
-	markControlPlaneReconciled(controlPlane, meshVersionDefault, operatorVersionDefault)
+	markControlPlaneReconciled(controlPlane, operatorVersionDefault)
 
 	namespace := newNamespace(appNamespace)
 	common.SetLabel(namespace, common.MemberOfKey, controlPlaneNamespace)
@@ -424,7 +420,8 @@ func TestReconcileDoesNotUpdateMemberRollWhenNothingToReconcile(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
+	actions := tracker.Actions()
+	test.AssertNumberOfWriteActions(t, actions, 1)
 	if updatedObj, err := tracker.Get(maistrav1.SchemeBuilder.GroupVersion.WithResource("servicemeshmemberrolls"), controlPlaneNamespace, "default"); err != nil {
 		t.Errorf("Unexpected error retrieving updated ServiceMeshMemberRoll: %v", err)
 	} else if updatedRoll, ok := updatedObj.(*maistrav1.ServiceMeshMemberRoll); !ok {
@@ -457,7 +454,7 @@ func TestReconcileNamespacesIgnoresControlPlaneNamespace(t *testing.T) {
 }
 
 func TestReconcileWorksWithMultipleNamespaces(t *testing.T) {
-	controlPlane := markControlPlaneReconciled(newControlPlane(""), meshVersionDefault, operatorVersionDefault)
+	controlPlane := markControlPlaneReconciled(newControlPlane(""), operatorVersionDefault)
 	roll := newDefaultMemberRoll()
 	addOwnerReference(roll)
 	roll.Spec.Members = []string{appNamespace, appNamespace2}
@@ -493,7 +490,7 @@ func TestReconcileDoesNotAddControlPlaneNamespaceToMembers(t *testing.T) {
 	roll.Spec.Members = []string{controlPlaneNamespace}
 	roll.ObjectMeta.Generation = 2
 	roll.Status.ObservedGeneration = 1
-	controlPlane := markControlPlaneReconciled(newControlPlane(""), meshVersionDefault, operatorVersionDefault)
+	controlPlane := markControlPlaneReconciled(newControlPlane(""), operatorVersionDefault)
 	roll.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
 	namespace := &core.Namespace{
 		ObjectMeta: meta.ObjectMeta{
@@ -693,10 +690,10 @@ func assertReconcileFails(r *MemberRollReconciler, t *testing.T) {
 }
 
 func newDefaultMemberRoll() *maistrav1.ServiceMeshMemberRoll {
-	return newMemberRoll(1, 1, 1, meshVersionDefault, operatorVersionDefault)
+	return newMemberRoll(1, 1, 1, operatorVersionDefault)
 }
 
-func newMemberRoll(generation int64, observedGeneration int64, observedMeshGeneration int64, meshVersion string, operatorVersion string) *maistrav1.ServiceMeshMemberRoll {
+func newMemberRoll(generation int64, observedGeneration int64, observedMeshGeneration int64, operatorVersion string) *maistrav1.ServiceMeshMemberRoll {
 	return &maistrav1.ServiceMeshMemberRoll{
 		ObjectMeta: meta.ObjectMeta{
 			Name:       memberRollName,
@@ -742,7 +739,7 @@ func newControlPlane(version string) *maistrav1.ServiceMeshControlPlane {
 	}
 }
 
-func markControlPlaneReconciled(controlPlane *maistrav1.ServiceMeshControlPlane, meshVersion string, operatorVersion string) *maistrav1.ServiceMeshControlPlane {
+func markControlPlaneReconciled(controlPlane *maistrav1.ServiceMeshControlPlane, operatorVersion string) *maistrav1.ServiceMeshControlPlane {
 	controlPlane.Status.ObservedGeneration = controlPlane.GetGeneration()
 	controlPlane.Status.Conditions = []maistrav1.Condition{
 		{
@@ -751,13 +748,6 @@ func markControlPlaneReconciled(controlPlane *maistrav1.ServiceMeshControlPlane,
 		},
 	}
 	controlPlane.Status.ReconciledVersion = maistrav1.ComposeReconciledVersion(operatorVersion, controlPlane.GetGeneration())
-	if len(controlPlane.Spec.Version) == 0 {
-		if operatorVersion != operatorVersion1_0 {
-			controlPlane.Status.AppliedVersion = maistra.DefaultVersion.String()
-		}
-	} else {
-		controlPlane.Status.AppliedVersion = controlPlane.Spec.Version
-	}
 	return controlPlane
 }
 
