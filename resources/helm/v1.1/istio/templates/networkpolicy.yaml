@@ -98,8 +98,6 @@ spec:
       app.kubernetes.io/part-of: jaeger
       app.kubernetes.io/managed-by: jaeger-operator
   ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          network.openshift.io/policy-group: ingress
+  - ports:
+    port: 8443
 {{ end }}
