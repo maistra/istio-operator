@@ -7,6 +7,7 @@ import (
 
 	admissionv1 "k8s.io/api/admission/v1beta1"
 	authorizationv1 "k8s.io/api/authorization/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -52,6 +53,10 @@ func (v *MemberValidator) Handle(ctx context.Context, req atypes.Request) atypes
 	// verify name == default
 	if common.MemberName != smm.Name {
 		return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("ServiceMeshMember must be named %q", common.MemberName))
+	}
+
+	if smm.Namespace == common.GetOperatorNamespace() {
+		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("namespace where operator is installed cannot be added to any mesh"))
 	}
 
 	if req.AdmissionRequest.Operation == admissionv1.Update {
