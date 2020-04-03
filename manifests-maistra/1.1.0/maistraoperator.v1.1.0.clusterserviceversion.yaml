@@ -12,7 +12,7 @@ metadata:
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: maistra/istio-ubi8-operator:1.1.0
-    createdAt: 2020-04-01T13:17:42MDT
+    createdAt: 2020-04-03T10:38:13MDT
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <1.1.0"
     alm-examples: |-
@@ -458,17 +458,6 @@ spec:
                 - name: ISTIO_CNI_IMAGE_V1_1
                   value: maistra/istio-cni-ubi8:1.1.0
   customresourcedefinitions:
-    required:
-    - name: kialis.kiali.io
-      version: v1alpha1
-      kind: Kiali
-      displayName: Kiali
-      description:  A configuration file for a Kiali installation.
-    - name: jaegers.jaegertracing.io
-      version: v1
-      kind: Jaeger
-      displayName: Jaeger
-      description: A configuration file for a Jaeger installation.  
     owned:
     - name: servicemeshcontrolplanes.maistra.io
       version: v1
