@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -62,6 +63,7 @@ func TestControlPlaneValidation(t *testing.T) {
 	cases := []struct {
 		name         string
 		controlPlane *maistrav1.ServiceMeshControlPlane
+		resources    []runtime.Object
 		valid        bool
 	}{
 		{
@@ -99,6 +101,13 @@ func TestControlPlaneValidation(t *testing.T) {
 						"tracing": map[string]interface{}{
 							"enabled": true,
 						},
+					},
+				},
+			},
+			resources: []runtime.Object{
+				&apiextensionsv1beta1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "jaegers.jaegertracing.io",
 					},
 				},
 			},
@@ -218,6 +227,13 @@ func TestControlPlaneValidation(t *testing.T) {
 					},
 				},
 			},
+			resources: []runtime.Object{
+				&apiextensionsv1beta1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "jaegers.jaegertracing.io",
+					},
+				},
+			},
 			valid: false,
 		},
 		{
@@ -239,6 +255,13 @@ func TestControlPlaneValidation(t *testing.T) {
 						"kiali": map[string]interface{}{
 							"enabled": true,
 						},
+					},
+				},
+			},
+			resources: []runtime.Object{
+				&apiextensionsv1beta1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "kialis.kiali.io",
 					},
 				},
 			},
@@ -267,6 +290,13 @@ func TestControlPlaneValidation(t *testing.T) {
 					},
 				},
 			},
+			resources: []runtime.Object{
+				&apiextensionsv1beta1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "kialis.kiali.io",
+					},
+				},
+			},
 			valid: false,
 		},
 		{
@@ -289,6 +319,13 @@ func TestControlPlaneValidation(t *testing.T) {
 							"enabled":            true,
 							"jaegerInClusterURL": "jaeger-collector.istio-system",
 						},
+					},
+				},
+			},
+			resources: []runtime.Object{
+				&apiextensionsv1beta1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "kialis.kiali.io",
 					},
 				},
 			},
@@ -318,13 +355,106 @@ func TestControlPlaneValidation(t *testing.T) {
 					},
 				},
 			},
+			resources: []runtime.Object{
+				&apiextensionsv1beta1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "kialis.kiali.io",
+					},
+				},
+			},
 			valid: true,
+		},
+		{
+			name: "tracing-with-jaeger",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
+					Istio: map[string]interface{}{
+						"tracing": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+			},
+			resources: []runtime.Object{
+				&apiextensionsv1beta1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "jaegers.jaegertracing.io",
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "tracing-with-no-jaeger",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
+					Istio: map[string]interface{}{
+						"tracing": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "kiali-with-kiali",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
+					Istio: map[string]interface{}{
+						"kiali": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+			},
+			resources: []runtime.Object{
+				&apiextensionsv1beta1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "kialis.kiali.io",
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "kiali-with-no-kiali",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
+					Istio: map[string]interface{}{
+						"kiali": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+			},
+			valid: false,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			validator, _, _ := createControlPlaneValidatorTestFixture()
+			validator, _, _ := createControlPlaneValidatorTestFixture(tc.resources...)
 			response := validator.Handle(ctx, createCreateRequest(tc.controlPlane))
 			if tc.valid {
 				var reason string
@@ -952,7 +1082,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 			},
 			allowed: true,
 		},
-{
+		{
 			name: "global.proxy.alwaysInjectSelector=true",
 			configure: func(smcp *maistrav1.ServiceMeshControlPlane) {
 				setNestedField(smcp.Spec.Istio, "global.proxy.alwaysInjectSelector", true)
