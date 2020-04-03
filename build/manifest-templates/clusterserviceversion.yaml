@@ -224,17 +224,6 @@ __CLUSTER_ROLE_RULES__
         spec:
 __DEPLOYMENT_SPEC__
   customresourcedefinitions:
-    required:
-    - name: kialis.kiali.io
-      version: v1alpha1
-      kind: Kiali
-      displayName: Kiali
-      description:  A configuration file for a Kiali installation.
-    - name: jaegers.jaegertracing.io
-      version: v1
-      kind: Jaeger
-      displayName: Jaeger
-      description: A configuration file for a Jaeger installation.  
     owned:
     - name: servicemeshcontrolplanes.maistra.io
       version: v1
