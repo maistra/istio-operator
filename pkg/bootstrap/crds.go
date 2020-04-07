@@ -112,14 +112,12 @@ func installCRDRole(ctx context.Context, cl client.Client) error {
 		if err := cl.Get(ctx, client.ObjectKey{Name: crdRole.Name}, existingRole); err == nil {
 			if !reflect.DeepEqual(existingRole.Rules, crdRole.Rules) {
 				existingRole.Rules = crdRole.Rules
-				// We can ignore conflicts, as they should only occur if another reconcile is doing the same thing
-				if err := cl.Update(ctx, existingRole); err != nil && !errors.IsConflict(err) {
+				if err := cl.Update(ctx, existingRole); err != nil {
 					return err
 				}
 			}
 		} else if errors.IsNotFound(err) {
-			// We can ignore conflicts, as they should only occur if another reconcile is doing the same thing
-			if err := cl.Create(ctx, crdRole); err != nil && !errors.IsConflict(err) {
+			if err := cl.Create(ctx, crdRole); err != nil {
 				return err
 			}
 		} else {
