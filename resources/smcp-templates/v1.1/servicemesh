@@ -29,7 +29,7 @@ spec:
       image: sidecar-injector-rhel8
     gateways:
       istio-ingressgateway:
-        ior_image: istio-ior-rhel8
+        ior_image: ior-rhel8
     prometheus:
       image: prometheus-rhel8
   threeScale:
