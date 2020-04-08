@@ -66,17 +66,6 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request)
 		return admission.Allowed("")
 	}
 
-	// is this mesh configured for multitenancy?
-	smcpList := &maistrav1.ServiceMeshControlPlaneList{}
-	err = v.client.List(ctx, smcpList, client.InNamespace(smmr.Namespace))
-	if err != nil {
-		logger.Error(err, "error listing smcp resources")
-		return admission.Errored(http.StatusInternalServerError, err)
-	}
-	if len(smcpList.Items) == 0 {
-		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("no service mesh is configured in namespace '%s'", smmr.Namespace))
-	}
-
 	// verify name == default
 	if common.MemberRollName != smmr.Name {
 		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("ServiceMeshMemberRoll must be named '%s'", common.MemberRollName))

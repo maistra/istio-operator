@@ -3,7 +3,6 @@ package validation
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"testing"
 
 	authorization "k8s.io/api/authorization/v1"
@@ -51,21 +50,12 @@ func TestMemberRollWithWrongNameIsRejected(t *testing.T) {
 	assert.False(response.Allowed, "Expected validator to reject ServiceMeshMemberRoll with wrong name", t)
 }
 
-func TestMemberRollIsRejectedWhenNoControlPlaneInNamespace(t *testing.T) {
+func TestMemberRollCreationAllowedWhenNoControlPlaneInNamespace(t *testing.T) {
 	roll := newMemberRoll("default", "istio-system")
 
 	validator, _, _ := createMemberRollValidatorTestFixture() // NOTE: no SMCP
 	response := validator.Handle(ctx, createCreateRequest(roll))
-	assert.False(response.Allowed, "Expected validator to reject ServiceMeshMemberRoll because no SMCP exists in the namespace", t)
-}
-
-func TestCreationOfMemberRollInOperatorNamespaceIsRejected(t *testing.T) {
-	test.PanicOnError(os.Setenv("POD_NAMESPACE", "openshift-operators")) // TODO: make it easier to set the namespace in tests
-	roll := newMemberRoll("default", "openshift-operators")
-
-	validator, _, _ := createMemberRollValidatorTestFixture()
-	response := validator.Handle(ctx, createCreateRequest(roll))
-	assert.False(response.Allowed, "Expected validator to reject creation of ServiceMeshMemberRoll in the operator namespace", t)
+	assert.True(response.Allowed, "Expected validator to allow ServiceMeshMemberRoll even when no SMCP exists in the namespace", t)
 }
 
 func TestMemberRollWithConflictingNamespaceIsRejected(t *testing.T) {
