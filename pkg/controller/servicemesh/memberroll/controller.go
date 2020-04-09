@@ -126,28 +126,16 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 	// watch control planes and trigger reconcile requests as they come and go
 	err = c.Watch(&source.Kind{Type: &v1.ServiceMeshControlPlane{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(smcpMap handler.MapObject) []reconcile.Request {
-			if smcp, ok := smcpMap.Object.(*v1.ServiceMeshControlPlane); !ok {
-				return nil
-			} else if installCondition := smcp.Status.GetCondition(v1.ConditionTypeReconciled); installCondition.Status != v1.ConditionStatusTrue {
-				// skip processing if the smcp is not fully reconciled (e.g. it's installing or updating)
-				return nil
-			}
-			list := &v1.ServiceMeshMemberRollList{}
-			err := mgr.GetClient().List(ctx, list, client.InNamespace(smcpMap.Meta.GetNamespace()))
+			namespacedName := types.NamespacedName{Name: common.MemberRollName, Namespace: smcpMap.Meta.GetNamespace()}
+			err := mgr.GetClient().Get(ctx, namespacedName, &v1.ServiceMeshMemberRoll{})
 			if err != nil {
-				log.Error(err, "Could not list ServiceMeshMemberRolls")
+				if !errors.IsNotFound(err) {
+					log.Error(err, "Could not list ServiceMeshMemberRolls")
+				}
+				return []reconcile.Request{}
 			}
 
-			var requests []reconcile.Request
-			for _, smmr := range list.Items {
-				requests = append(requests, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      smmr.Name,
-						Namespace: smmr.Namespace,
-					},
-				})
-			}
-			return requests
+			return []reconcile.Request{{NamespacedName: namespacedName}}
 		}),
 	}, predicate.Funcs{
 		DeleteFunc: func(_ event.DeleteEvent) bool {
@@ -265,23 +253,50 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if meshCount != 1 {
 		if meshCount > 0 {
 			reqLogger.Info("Skipping reconciliation of SMMR, because multiple ServiceMeshControlPlane resources exist in the project", "project", instance.Namespace)
+			instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
+				Type:    v1.ConditionTypeMemberRollReady,
+				Status:  corev1.ConditionFalse,
+				Reason:  v1.ConditionReasonMultipleSMCP,
+				Message: "Multiple ServiceMeshControlPlane resources exist in the namespace",
+			})
 		} else {
 			reqLogger.Info("Skipping reconciliation of SMMR, because no ServiceMeshControlPlane exists in the project.", "project", instance.Namespace)
+			instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
+				Type:    v1.ConditionTypeMemberRollReady,
+				Status:  corev1.ConditionFalse,
+				Reason:  v1.ConditionReasonSMCPMissing,
+				Message: "No ServiceMeshControlPlane exists in the namespace",
+			})
 		}
 		// when a control plane is created/deleted our watch will pick it up and issue a new reconcile event
-		return reconcile.Result{}, nil
+		err = r.updateStatus(ctx, instance)
+		return reconcile.Result{}, err
 	}
 
 	mesh := &meshList.Items[0]
 
 	if mesh.Status.ObservedGeneration == 0 {
 		reqLogger.Info("Initial service mesh installation has not completed")
+		instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
+			Type:    v1.ConditionTypeMemberRollReady,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1.ConditionReasonSMCPNotReconciled,
+			Message: "Initial service mesh installation has not completed",
+		})
 		// a new reconcile request will be issued when the control plane resource is updated
-		return reconcile.Result{}, nil
+		err = r.updateStatus(ctx, instance)
+		return reconcile.Result{}, err
 	} else if meshReconcileStatus := mesh.Status.GetCondition(v1.ConditionTypeReconciled); meshReconcileStatus.Status != v1.ConditionStatusTrue {
-		// a new reconcile request will be issued when the control plane resource is updated
 		reqLogger.Info("skipping reconciliation because mesh is not in a known good state")
-		return reconcile.Result{}, nil
+		instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
+			Type:    v1.ConditionTypeMemberRollReady,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1.ConditionReasonSMCPNotReconciled,
+			Message: "Service mesh installation is not in a known good state",
+		})
+		// a new reconcile request will be issued when the control plane resource is updated
+		err = r.updateStatus(ctx, instance)
+		return reconcile.Result{}, err
 	}
 
 	var newConfiguredMembers []string
@@ -382,21 +397,12 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		})
 	}
 
-	if instance.Status.Annotations == nil {
-		instance.Status.Annotations = map[string]string{}
-	}
-	instance.Status.Annotations[statusAnnotationConfiguredMemberCount] = fmt.Sprintf("%d/%d", len(instance.Status.ConfiguredMembers), requiredMembers.Len())
-
 	err = utilerrors.NewAggregate(nsErrors)
-	if err == nil {
-		instance.Status.ObservedGeneration = instance.GetGeneration()
-		err = r.Client.Status().Patch(ctx, instance, common.NewStatusPatch(instance.Status))
-		if err != nil {
-			reqLogger.Error(err, "error updating status for ServiceMeshMemberRoll")
-		}
-	} else {
+	if err != nil {
 		return reconcile.Result{}, err
 	}
+
+	err = r.updateStatus(ctx, instance)
 
 	// tell Kiali about all the namespaces in the mesh
 	kialiErr := r.kialiReconciler.reconcileKiali(ctx, instance.Namespace, instance.Status.ConfiguredMembers)
@@ -405,6 +411,22 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, kialiErr
+}
+
+func (r *MemberRollReconciler) updateStatus(ctx context.Context, instance *v1.ServiceMeshMemberRoll) error {
+	log := common.LogFromContext(ctx)
+
+	if instance.Status.Annotations == nil {
+		instance.Status.Annotations = map[string]string{}
+	}
+	instance.Status.Annotations[statusAnnotationConfiguredMemberCount] = fmt.Sprintf("%d/%d", len(instance.Status.ConfiguredMembers), len(instance.Spec.Members))
+	instance.Status.ObservedGeneration = instance.GetGeneration()
+
+	err := r.Client.Status().Patch(ctx, instance, common.NewStatusPatch(instance.Status))
+	if err != nil {
+		log.Error(err, "error updating status for ServiceMeshMemberRoll")
+	}
+	return err
 }
 
 func (r *MemberRollReconciler) findConfiguredNamespaces(ctx context.Context, meshNamespace string) (corev1.NamespaceList, error) {
