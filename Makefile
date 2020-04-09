@@ -83,6 +83,8 @@ endif
 .PHONY: update-1.0-charts
 update-1.0-charts: update-remote-maistra-1.0
 	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.0 -- ${SOURCE_DIR}/resources/helm/v1.0
+	git reset HEAD ${SOURCE_DIR}/resources/helm/v1.0
+	HELM_DIR=${RESOURCES_DIR}/helm/v1.0 ${SOURCE_DIR}/build/patch-container-image.sh
 
 .PHONY: update-1.0-templates
 update-1.0-templates:
@@ -109,6 +111,7 @@ collect-1.0-templates:
 .PHONY: update-1.1-charts
 update-1.1-charts:
 	HELM_DIR=${RESOURCES_DIR}/helm/v1.1 ISTIO_VERSION=1.1.0 ${SOURCE_DIR}/build/download-charts.sh
+	HELM_DIR=${RESOURCES_DIR}/helm/v1.1 ${SOURCE_DIR}/build/patch-container-image.sh
 
 .PHONY: collect-1.1-charts
 collect-1.1-charts:

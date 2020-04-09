@@ -10,8 +10,9 @@ spec:
       proxy_init:
         image: proxy-init-rhel7
       oauthproxy:
-        image: ose-oauth-proxy
-        hub: registry.redhat.io/openshift4
+        image: oauth-proxy
+        hub: image-registry.openshift-image-registry.svc:5000/openshift
+        tag: v4.4
     grafana:
       image: grafana-rhel8
     tracing:

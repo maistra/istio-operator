@@ -28,8 +28,8 @@ func internalInstallCNI(ctx context.Context, cl client.Client, config common.CNI
 
 	values := make(map[string]interface{})
 	values["enabled"] = config.Enabled
-	values["image_v1_0"] = config.ImageV1_0
-	values["image_v1_1"] = config.ImageV1_1
+	values["image_v1_0"] = common.Config.OLM.Images.V1_0.CNI
+	values["image_v1_1"] = common.Config.OLM.Images.V1_1.CNI
 	values["imagePullSecrets"] = config.ImagePullSecrets
 	// TODO: imagePullPolicy, resources
 

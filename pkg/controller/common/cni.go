@@ -16,14 +16,6 @@ type CNIConfig struct {
 	// Enabled tells whether this cluster supports CNI or not
 	Enabled bool
 
-	// ImageV1_0 is the full image name that should be deployed through the Istio
-	// CNI DaemonSet for v1.0
-	ImageV1_0 string
-
-	// ImageV1_1 is the full image name that should be deployed through the Istio
-	// CNI DaemonSet for v1.1
-	ImageV1_1 string
-
 	// ImagePullSecrets is the list of image pull secret names for the Istio CNI DaemonSet
 	ImagePullSecrets []string
 }
@@ -56,12 +48,11 @@ func InitCNIConfig(m manager.Manager) (CNIConfig, error) {
 	if err == nil {
 		config.Enabled = true
 
-		var ok bool
-		if config.ImageV1_0, ok = os.LookupEnv("ISTIO_CNI_IMAGE_V1_0"); !ok {
-			return config, fmt.Errorf("ISTIO_CNI_IMAGE_V1_0 environment variable not set")
+		if len(Config.OLM.Images.V1_0.CNI) == 0 {
+			return config, fmt.Errorf("configuration olm.relatedImage.v1_0.cni must be set")
 		}
-		if config.ImageV1_1, ok = os.LookupEnv("ISTIO_CNI_IMAGE_V1_1"); !ok {
-			return config, fmt.Errorf("ISTIO_CNI_IMAGE_V1_1 environment variable not set")
+		if len(Config.OLM.Images.V1_1.CNI) == 0 {
+			return config, fmt.Errorf("configuration olm.relatedImage.v1_1.cni must be set")
 		}
 
 		secret, _ := os.LookupEnv("ISTIO_CNI_IMAGE_PULL_SECRET")

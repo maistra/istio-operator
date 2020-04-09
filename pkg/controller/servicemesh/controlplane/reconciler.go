@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/helm/pkg/manifest"
@@ -412,6 +413,54 @@ func (r *controlPlaneInstanceReconciler) recursivelyApplyTemplates(ctx context.C
 	return smcp, nil
 }
 
+func (r *controlPlaneInstanceReconciler) applyDisconnectedSettings(ctx context.Context, smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
+	log := common.LogFromContext(ctx)
+	log.Info("updating image names for disconnected install")
+
+	version, err := maistra.ParseVersion(smcpSpec.Version)
+	if err != nil {
+		return smcpSpec, err
+	}
+	switch version {
+	case maistra.V1_0, maistra.UndefinedVersion:
+		updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_0.Citadel)
+		updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_0.Galley)
+		updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_0.Grafana)
+		updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_0.Mixer)
+		updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_0.Pilot)
+		updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_0.Prometheus)
+		updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_0.ProxyInit)
+		updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_0.ProxyV2)
+		updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_0.SidecarInjector)
+		updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_0.SidecarInjector)
+
+	case maistra.V1_1:
+		updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_1.Citadel)
+		updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_1.Galley)
+		updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_1.Grafana)
+		updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_1.Mixer)
+		updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_1.Pilot)
+		updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_1.Prometheus)
+		updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_1.ProxyInit)
+		updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_1.ProxyV2)
+		updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_1.SidecarInjector)
+		updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_0.SidecarInjector)
+
+		updateImageField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V1_1.IOR)
+
+	default:
+		return smcpSpec, fmt.Errorf("cannot apply disconnected install settings for unknown version %s", version)
+	}
+	return smcpSpec, err
+}
+
+func updateImageField(obj map[string]interface{}, path, value string) error {
+	if len(value) == 0 {
+		return nil
+	}
+	return unstructured.SetNestedField(obj, value, strings.Split(path, ".")...)
+}
+
 func (r *controlPlaneInstanceReconciler) applyTemplates(ctx context.Context, smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
 	log := common.LogFromContext(ctx)
 	log.Info("updating servicemeshcontrolplane with templates")
@@ -446,12 +495,31 @@ func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context) error
 		r.Status.LastAppliedConfiguration.Version = maistra.LegacyVersion.String()
 	}
 
+	applyDisconnectedSettings := true
+	if tag, _, _ := unstructured.NestedString(r.Instance.Spec.Istio, strings.Split("global.tag", ".")...); tag != "" {
+		// don't update anything
+		applyDisconnectedSettings = false
+	} else if hub, _, _ := unstructured.NestedString(r.Instance.Spec.Istio, strings.Split("global.hub", ".")...); hub != "" {
+		// don't update anything
+		applyDisconnectedSettings = false
+	}
+
 	spec, err := r.applyTemplates(ctx, r.Status.LastAppliedConfiguration)
 	if err != nil {
 		log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates")
 
 		return err
 	}
+
+	if applyDisconnectedSettings {
+		spec, err = r.applyDisconnectedSettings(ctx, spec)
+		if err != nil {
+			log.Error(err, "warning: failed to apply image names to support disconnected install")
+
+			return err
+		}
+	}
+
 	r.Status.LastAppliedConfiguration = spec
 
 	if err := r.validateSMCPSpec(r.Status.LastAppliedConfiguration); err != nil {
