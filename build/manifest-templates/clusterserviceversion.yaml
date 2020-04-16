@@ -25,7 +25,7 @@ metadata:
             "namespace": "control-plane-namespace"
           },
           "spec": {
-            "version": "v1.1",
+            "version": "v1.2",
             "istio": {
               "gateways": {
                 "istio-egressgateway": {
@@ -236,6 +236,7 @@ __DEPLOYMENT_SPEC__
         path: version
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:v1.2'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v1.1'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v1.0'
       - description: Enable mTLS for communication between control plane components (galley, pilot, etc.)

@@ -1,0 +1,23 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: prometheus
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: prometheus
+    chart: {{ template "prometheus.chart" . }}
+    heritage: {{ .Release.Service }}
+    maistra-version: 1.2.0
+    release: {{ .Release.Name }}
+  annotations:
+    {{- range $key, $value := .Values.ingress.annotations }}
+      {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  to:
+    kind: Service
+    name: prometheus
+  tls:
+    termination: reencrypt
+{{- end -}}

@@ -11,6 +11,8 @@ const (
 	V1_0
 	// V1_1 -> v1.1
 	V1_1
+	// V1_2 -> v1.2
+	V1_2
 	// Add new versions here, above lastKnownVersion. Remember to add a string mapping in init() below
 	lastKnownVersion version = iota - 1
 )
@@ -21,6 +23,7 @@ func init() {
 		UndefinedVersion: "",
 		V1_0:             "v1.0",
 		V1_1:             "v1.1",
+		V1_2:             "v1.2",
 	}
 
 	for v, str := range versionToString {

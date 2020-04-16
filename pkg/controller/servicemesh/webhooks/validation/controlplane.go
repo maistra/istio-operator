@@ -107,6 +107,8 @@ func (v *ControlPlaneValidator) validateVersion(ctx context.Context, smcp *maist
 		if err := v.validateV1_1(ctx, smcp); err != nil {
 			allErrors = append(allErrors, err)
 		}
+	case maistra.V1_2:
+		// TODO: any special validation
 	default:
 		allErrors = append(allErrors, fmt.Errorf("version %s is not supported", version.String()))
 	}
@@ -165,6 +167,9 @@ func (v *ControlPlaneValidator) validateUpgrade(ctx context.Context, currentVers
 	switch currentVersion.Version() {
 	case maistra.V1_0:
 		return v.validateUpgradeFromV1_0(ctx, smcp)
+	case maistra.V1_1:
+		// TODO: any custom upgrade validation
+		return nil
 	default:
 		return fmt.Errorf("upgrade from version %s is not supported", currentVersion.String())
 	}
@@ -174,6 +179,9 @@ func (v *ControlPlaneValidator) validateDowngrade(ctx context.Context, currentVe
 	switch currentVersion.Version() {
 	case maistra.V1_1:
 		return v.validateDowngradeFromV1_1(ctx, smcp)
+	case maistra.V1_2:
+		// TODO: any custom downgrade validation
+		return nil
 	default:
 		return fmt.Errorf("upgrade from version %s is not supported", currentVersion.String())
 	}

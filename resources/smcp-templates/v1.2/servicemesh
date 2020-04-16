@@ -1,0 +1,38 @@
+apiVersion: maistra.io/v1
+kind: ServiceMeshControlPlane
+spec:
+  template: base
+  istio:
+    global:
+      hub: registry.redhat.io/openshift-service-mesh
+      proxy:
+        image: proxyv2-rhel8
+      proxy_init:
+        image: proxy-init-rhel7
+      oauthproxy:
+        image: ose-oauth-proxy
+        hub: registry.redhat.io/openshift4
+    grafana:
+      image: grafana-rhel8
+    tracing:
+      jaeger:
+        template: all-in-one
+    galley:
+      image: galley-rhel8
+    mixer:
+      image: mixer-rhel8
+    pilot:
+      image: pilot-rhel8
+    security:
+      image: citadel-rhel8
+    sidecarInjectorWebhook:
+      image: sidecar-injector-rhel8
+    gateways:
+      istio-ingressgateway:
+        ior_image: ior-rhel8
+    prometheus:
+      image: prometheus-rhel8
+  threeScale:
+    hub: registry.redhat.io/openshift-service-mesh
+    image: 3scale-istio-adapter-rhel8
+    tag: 1.0.0

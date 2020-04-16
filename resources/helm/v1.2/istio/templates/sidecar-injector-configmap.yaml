@@ -1,0 +1,33 @@
+{{- if not .Values.global.omitSidecarInjectorConfigMap }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: istio-sidecar-injector
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "istio.name" . }}
+    chart: {{ template "istio.chart" . }}
+    heritage: {{ .Release.Service }}
+    maistra-version: 1.2.0
+    release: {{ .Release.Name }}
+    istio: sidecar-injector
+data:
+  values: |-
+    {{ .Values | toJson }}
+
+  config: |-
+    policy: {{ .Values.global.proxy.autoInject }}
+    alwaysInjectSelector:
+{{ toYaml .Values.sidecarInjectorWebhook.alwaysInjectSelector | trim | indent 6 }}
+    neverInjectSelector:
+{{ toYaml .Values.sidecarInjectorWebhook.neverInjectSelector | trim | indent 6 }}
+    template: |-
+{{ .Files.Get "files/injection-template.yaml" | trim | indent 6 }}
+    injectedAnnotations:
+    {{- if .Values.istio_cni.enabled }}
+      k8s.v1.cni.cncf.io/networks: {{.Values.istio_cni.istio_cni_network}}
+    {{- end }}
+    {{- range $key, $val := .Values.sidecarInjectorWebhook.injectedAnnotations }}
+      "{{ $key }}": "{{ $val }}"
+    {{- end }}
+{{- end }}
