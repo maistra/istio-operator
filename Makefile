@@ -23,6 +23,7 @@ IMAGE                  ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSIO
 CONTAINER_CLI          ?= docker
 COMMUNITY              ?= true
 TEST_TIMEOUT           ?= 5m
+TEST_FLAGS             ?=
 
 SOURCE_DIR          := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 RESOURCES_DIR        = ${SOURCE_DIR}/resources
@@ -69,7 +70,7 @@ compile:
 ################################################################################
 .PHONY: test
 test:
-	go test -v -timeout ${TEST_TIMEOUT} -mod=vendor ./...
+	go test -timeout ${TEST_TIMEOUT} -mod=vendor ${TEST_FLAGS} ./...
 
 ################################################################################
 # maistra v1.0
