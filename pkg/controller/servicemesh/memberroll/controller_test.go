@@ -137,39 +137,6 @@ func TestReconcileDoesNothingIfMultipleControlPlanesFound(t *testing.T) {
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 }
 
-func TestReconcileAddsOwnerReference(t *testing.T) {
-	roll := newDefaultMemberRoll()
-	roll.OwnerReferences = []meta.OwnerReference{}
-	controlPlane := newControlPlane("")
-
-	cl, _, r, _, _ := createClientAndReconciler(t, roll, controlPlane)
-
-	assertReconcileSucceeds(r, t)
-
-	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
-	assert.Equals(len(updatedRoll.OwnerReferences), 1, "Expected SMMR to contain exactly one ownerReference", t)
-
-	expectedOwnerRef := meta.OwnerReference{
-		APIVersion: maistrav1.SchemeGroupVersion.String(),
-		Kind:       "ServiceMeshControlPlane",
-		Name:       controlPlaneName,
-		UID:        controlPlaneUID,
-	}
-	assert.DeepEquals(updatedRoll.OwnerReferences[0], expectedOwnerRef, "Unexpected OwnerReference in SMMR", t)
-}
-
-func TestReconcileFailsIfAddingOwnerReferenceFails(t *testing.T) {
-	roll := newDefaultMemberRoll()
-	roll.OwnerReferences = []meta.OwnerReference{}
-	controlPlane := newControlPlane("")
-
-	_, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane)
-	tracker.AddReactor("update", "servicemeshmemberrolls", test.ClientFails())
-
-	assertReconcileFails(r, t)
-	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1) // we expect only the update that fails
-}
-
 func TestReconcileDoesNothingIfControlPlaneNotReconciledAtLeastOnce(t *testing.T) {
 	roll := newDefaultMemberRoll()
 	addOwnerReference(roll)
