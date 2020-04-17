@@ -82,8 +82,11 @@ endif
 
 .PHONY: update-1.0-charts
 update-1.0-charts: update-remote-maistra-1.0
-	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.0 -- ${SOURCE_DIR}/resources/helm/v1.0
-	git reset HEAD ${SOURCE_DIR}/resources/helm/v1.0
+	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.0 -- ${RESOURCES_DIR}/helm/v1.0
+	git reset HEAD -- ${RESOURCES_DIR}/helm/v1.0
+	find ${RESOURCES_DIR}/helm/v1.0/istio-init/ -name crd-certmanager-*.yaml -delete
+	rm -rf 	${RESOURCES_DIR}/helm/v1.0/istio-init/templates
+	rm ${RESOURCES_DIR}/helm/v1.0/istio/charts/tracing/templates/deployment-zipkin.yaml
 	HELM_DIR=${RESOURCES_DIR}/helm/v1.0 ${SOURCE_DIR}/build/patch-container-image.sh
 
 .PHONY: update-1.0-templates
@@ -111,6 +114,10 @@ collect-1.0-templates:
 .PHONY: update-1.1-charts
 update-1.1-charts:
 	HELM_DIR=${RESOURCES_DIR}/helm/v1.1 MAISTRA_VERSION=${MAISTRA_VERSION} MAISTRA_BRANCH=${MAISTRA_BRANCH} ${SOURCE_DIR}/build/download-charts.sh
+	find ${RESOURCES_DIR}/helm/v1.1/istio-init/ -name crd-certmanager-*.yaml -delete
+	rm -rf 	${RESOURCES_DIR}/helm/v1.1/istio-init/templates
+	find ${RESOURCES_DIR}/helm/v1.1/istio/charts/ -maxdepth 3 -mindepth 3 -name tests -a -type d | xargs -r rm -rf
+	rm ${RESOURCES_DIR}/helm/v1.1/istio/charts/tracing/templates/deployment-zipkin.yaml
 	HELM_DIR=${RESOURCES_DIR}/helm/v1.1 ${SOURCE_DIR}/build/patch-container-image.sh
 
 .PHONY: collect-1.1-charts

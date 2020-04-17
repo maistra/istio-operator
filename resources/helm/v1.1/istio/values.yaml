@@ -96,6 +96,7 @@ certmanager:
 #
 istio_cni:
   enabled: false
+  istio_cni_network: "istio-cni"
   repair:
     enabled: true
 
