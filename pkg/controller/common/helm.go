@@ -25,32 +25,22 @@ func init() {
 	tiller.InstallOrder = append(tiller.InstallOrder[:serviceIndex], append([]string{"Route", "OAuthClient"}, tiller.InstallOrder[serviceIndex:]...)...)
 }
 
-type options struct {
+// Rendering settings used during chart rendering
+type renderingOptions struct {
 	// ResourceDir is the base dir to helm charts and templates files.
-	ResourceDir string
+	ResourceDir string `json:"resourceDir,omitempty"`
 	// ChartsDir is the base dir to helm charts.
-	ChartsDir string
+	ChartsDir string `json:"chartsDir,omitempty"`
 	// DefaultTemplatesDir is the base dir to default templates files.
-	DefaultTemplatesDir string
+	DefaultTemplatesDir string `json:"defaultTemplatesDir,omitempty"`
 	// TemplatesDir is the base dir to user supplied templates files.
-	UserTemplatesDir string
-
-	// Number of concurrent reconcilers for each controller
-	ControlPlaneReconcilers int
-	MemberRollReconcilers   int
-	MemberReconcilers       int
-
-	// The number of API requests the operator can make before throttling
-	Burst int
-
-	// Then maximum rate of API requests when throttling is active
-	QPS float32
+	UserTemplatesDir string `json:"userTemplatesDir,omitempty"`
 }
 
-var Options = &options{}
+var Options = &Config.Rendering
 
 // GetChartsDir returns the location of the Helm charts. Similar layout to istio.io/istio/install/kubernetes/helm.
-func (o *options) GetChartsDir(maistraVersion string) string {
+func (o *renderingOptions) GetChartsDir(maistraVersion string) string {
 	if len(maistraVersion) == 0 {
 		maistraVersion = maistra.LegacyVersion.String()
 	}
@@ -61,7 +51,7 @@ func (o *options) GetChartsDir(maistraVersion string) string {
 }
 
 // GetTemplatesDir returns the location of the Operator templates files
-func (o *options) GetUserTemplatesDir() string {
+func (o *renderingOptions) GetUserTemplatesDir() string {
 	if len(o.UserTemplatesDir) == 0 {
 		return path.Join(o.ResourceDir, "templates")
 	}
@@ -69,7 +59,7 @@ func (o *options) GetUserTemplatesDir() string {
 }
 
 // GetDefaultTemplatesDir returns the location of the Default Operator templates files
-func (o *options) GetDefaultTemplatesDir(maistraVersion string) string {
+func (o *renderingOptions) GetDefaultTemplatesDir(maistraVersion string) string {
 	if len(maistraVersion) == 0 {
 		maistraVersion = maistra.LegacyVersion.String()
 	}
