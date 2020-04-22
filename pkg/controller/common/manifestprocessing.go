@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -64,7 +65,7 @@ func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Ma
 	for _, raw := range objects {
 		rawJSON, err := yaml.YAMLToJSON([]byte(raw))
 		if err != nil {
-			log.Error(err, "unable to convert raw data to JSON")
+			log.Error(err, fmt.Sprintf("unable to convert raw data to JSON: %s", raw))
 			allErrors = append(allErrors, err)
 			continue
 		}

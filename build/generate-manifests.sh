@@ -74,6 +74,15 @@ function generateCSV() {
      exit 1
   fi
 
+  RELATED_IMAGES=$(yq -s -y --indentless '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.metadata.annotations' ${DEPLOYMENT_FILE} | \
+    sed 's/olm\.relatedImage\.\([^:]*\): *\([^ ]*\)/- name: \1\
+  image: \2/' | \
+    sed 's/^/  /')
+  if [ "$RELATED_IMAGES" == "" ]; then
+     echo "generateCSV(): Operator deployment contains no olm.relatedImage annotations, please verify source yaml/path to the field."
+     exit 1
+  fi
+
   local csv_path=${BUNDLE_DIR}/${OPERATOR_NAME}.v${MAISTRA_VERSION}.clusterserviceversion.yaml
   cp ${MY_LOCATION}/manifest-templates/clusterserviceversion.yaml ${csv_path}
 
@@ -87,6 +96,10 @@ function generateCSV() {
   sed -i -e 's/__JAEGER_TEMPLATE__/'${JAEGER_TEMPLATE}'/' ${csv_path}
   sed -i -e 's/__DATE__/'$(date +%Y-%m-%dT%H:%M:%S%Z)'/g' ${csv_path}
   sed -i -e 's+__IMAGE_SRC__+'${IMAGE_SRC}'+g' ${csv_path}
+  sed -i -e '/__RELATED_IMAGES__/{
+    r '<(echo "$RELATED_IMAGES")'
+    d
+  }' ${csv_path}
   sed -i -e '/__CLUSTER_ROLE_RULES__/{
     s/__CLUSTER_ROLE_RULES__//
     r '<(echo "$CLUSTER_ROLE_RULES")'

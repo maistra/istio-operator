@@ -18,8 +18,9 @@ import (
 func InitializeGlobals(operatorNamespace string) func() {
 	return func() {
 		// make sure globals are initialized for testing
-		os.Setenv("ISTIO_CNI_IMAGE_V1_0", "istio-cni-test-1_0")
-		os.Setenv("ISTIO_CNI_IMAGE_V1_1", "istio-cni-test-1_1")
+		common.Config.OLM.Images.V1_0.CNI = "istio-cni-test-1_0"
+		common.Config.OLM.Images.V1_1.CNI = "istio-cni-test-1_1"
+		common.Config.OLM.Images.V1_2.CNI = "istio-cni-test-1_2"
 		os.Setenv("POD_NAMESPACE", operatorNamespace)
 		common.GetOperatorNamespace()
 		if _, filename, _, ok := goruntime.Caller(0); ok {

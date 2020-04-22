@@ -83,6 +83,8 @@ endif
 .PHONY: update-1.0-charts
 update-1.0-charts: update-remote-maistra-1.0
 	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.0 -- ${SOURCE_DIR}/resources/helm/v1.0
+	git reset HEAD ${SOURCE_DIR}/resources/helm/v1.0
+	HELM_DIR=${RESOURCES_DIR}/helm/v1.0 ${SOURCE_DIR}/build/patch-container-image.sh
 
 .PHONY: update-1.0-templates
 update-1.0-templates:
@@ -115,10 +117,12 @@ endif
 .PHONY: update-1.1-charts
 update-1.1-charts: update-remote-maistra-1.1
 	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.1 -- ${SOURCE_DIR}/resources/helm/v1.1
+	git reset HEAD ${SOURCE_DIR}/resources/helm/v1.1
 
 .PHONY: update-1.1-templates
 update-1.1-templates: update-remote-maistra-1.1
 	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.1 -- ${SOURCE_DIR}/resources/smcp-templates/v1.1
+	git reset HEAD ${SOURCE_DIR}/resources/smcp-templates/v1.1
 
 .PHONY: collect-1.1-charts
 collect-1.1-charts:
@@ -137,6 +141,7 @@ collect-1.1-templates:
 .PHONY: update-1.2-charts
 update-1.2-charts:
 	HELM_DIR=${RESOURCES_DIR}/helm/v1.2 ISTIO_VERSION=1.4.0 ${SOURCE_DIR}/build/download-charts.sh
+	HELM_DIR=${RESOURCES_DIR}/helm/v1.2 ${SOURCE_DIR}/build/patch-container-image.sh
 
 .PHONY: collect-1.2-charts
 collect-1.2-charts:
@@ -186,10 +191,10 @@ update-templates: update-1.0-templates update-1.1-templates
 # resource collection
 ################################################################################
 .PHONY: collect-charts
-collect-charts: collect-1.0-charts collect-1.1-charts
+collect-charts: collect-1.0-charts collect-1.1-charts collect-1.2-charts
 
 .PHONY: collect-templates
-collect-templates: collect-1.0-templates collect-1.1-templates
+collect-templates: collect-1.0-templates collect-1.1-templates collect-1.2-templates
 
 .PHONY: collect-olm-manifests
 collect-olm-manifests:

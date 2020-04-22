@@ -28,9 +28,13 @@ spec:
     spec:
       serviceAccountName: threescale-service-account
       containers:
-      - image: "{{ .Values.hub }}/{{ .Values.image }}:{{ .Values.tag }}"
+      - name: 3scale-istio-adapter
+{{- if contains "/" .Values.image }}
+        image: "{{ .Values.image }}"
+{{- else }}
+        image: "{{ .Values.hub }}/{{ .Values.image }}:{{ .Values.tag }}"
+{{- end }}
         imagePullPolicy: Always
-        name: 3scale-istio-adapter
         ports:
         - containerPort: {{ .Values.PARAM_THREESCALE_LISTEN_ADDR }}
           protocol: TCP
