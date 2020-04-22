@@ -30,7 +30,11 @@ spec:
     spec:
       serviceAccountName: threescale-service-account
       containers:
+{{- if contains "/" .Values.image }}
+      - image: "{{ .Values.image }}"
+{{- else }}
       - image: "{{ .Values.hub }}/{{ .Values.image }}:{{ .Values.tag }}"
+{{- end }}
         imagePullPolicy: Always
         name: 3scale-istio-adapter
         ports:
