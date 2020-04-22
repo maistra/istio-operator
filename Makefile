@@ -14,10 +14,10 @@
 
 -include Makefile.overrides
 
-MAISTRA_VERSION        ?= 1.1.0
-MAISTRA_BRANCH         ?= maistra-1.1
-REPLACES_PRODUCT_CSV   ?= 1.0.10
-REPLACES_COMMUNITY_CSV ?= 1.0.8
+MAISTRA_VERSION        ?= 1.2.0
+MAISTRA_BRANCH         ?= maistra-1.2
+REPLACES_PRODUCT_CSV   ?= 1.1.0
+REPLACES_COMMUNITY_CSV ?= 1.1.0
 VERSION                ?= development
 IMAGE                  ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}
 CONTAINER_CLI          ?= docker
@@ -106,9 +106,19 @@ collect-1.0-templates:
 ################################################################################
 # maistra v1.1
 ################################################################################
+.PHONY: update-remote-maistra-1.1
+update-remote-maistra-1.1:
+ifeq "${OFFLINE_BUILD}" "false"
+	git fetch ${GIT_UPSTREAM_REMOTE} maistra-1.1:maistra-1.1
+endif
+
 .PHONY: update-1.1-charts
-update-1.1-charts:
-	HELM_DIR=${RESOURCES_DIR}/helm/v1.1 ISTIO_VERSION=1.1.0 ${SOURCE_DIR}/build/download-charts.sh
+update-1.1-charts: update-remote-maistra-1.1
+	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.1 -- ${SOURCE_DIR}/resources/helm/v1.1
+
+.PHONY: update-1.1-templates
+update-1.1-templates: update-remote-maistra-1.1
+	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.1 -- ${SOURCE_DIR}/resources/smcp-templates/v1.1
 
 .PHONY: collect-1.1-charts
 collect-1.1-charts:
@@ -120,6 +130,24 @@ collect-1.1-templates:
 	mkdir -p ${TEMPLATES_OUT_DIR}/v1.1
 	cp ${RESOURCES_DIR}/smcp-templates/v1.1/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v1.1/default
 	cp ${RESOURCES_DIR}/smcp-templates/v1.1/base ${TEMPLATES_OUT_DIR}/v1.1
+
+################################################################################
+# maistra v1.2
+################################################################################
+.PHONY: update-1.2-charts
+update-1.2-charts:
+	HELM_DIR=${RESOURCES_DIR}/helm/v1.2 ISTIO_VERSION=1.4.0 ${SOURCE_DIR}/build/download-charts.sh
+
+.PHONY: collect-1.2-charts
+collect-1.2-charts:
+	mkdir -p ${HELM_OUT_DIR}
+	cp -rf ${RESOURCES_DIR}/helm/v1.2 ${HELM_OUT_DIR}
+
+.PHONY: collect-1.2-templates
+collect-1.2-templates:
+	mkdir -p ${TEMPLATES_OUT_DIR}/v1.2
+	cp ${RESOURCES_DIR}/smcp-templates/v1.2/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v1.2/default
+	cp ${RESOURCES_DIR}/smcp-templates/v1.2/base ${TEMPLATES_OUT_DIR}/v1.2
 
 ################################################################################
 # OLM manifest generation
@@ -136,7 +164,7 @@ generate-product-manifests:
 # resource generation
 ################################################################################
 .PHONY: gen
-gen: update-1.1-charts update-generated-code
+gen: update-1.2-charts update-generated-code
 
 .PHONY: gen-check
 gen-check: gen check-clean-repo
@@ -149,7 +177,10 @@ check-clean-repo:
 generate-manifests: generate-community-manifests generate-product-manifests
 
 .PHONY: update-charts
-update-charts: update-1.0-charts update-1.1-charts
+update-charts: update-1.0-charts update-1.1-charts update-1.2-charts
+
+.PHONY: update-templates
+update-templates: update-1.0-templates update-1.1-templates
 
 ################################################################################
 # resource collection
@@ -180,7 +211,7 @@ update-generated-code:
 # build target compiles and updates resources
 ################################################################################
 .PHONY: build
-build: update-generated-code update-charts compile
+build: update-generated-code update-charts update-templates compile
 
 ################################################################################
 # create image
