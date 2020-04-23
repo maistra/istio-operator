@@ -453,6 +453,7 @@ spec:
         olm.relatedImage.v1_1.proxy-init: docker.io/maistra/proxy-init-centos7:1.1.1
         olm.relatedImage.v1_1.proxyv2: docker.io/maistra/proxyv2-ubi8:1.1.1
         olm.relatedImage.v1_1.sidecar-injector: docker.io/maistra/sidecar-injector-ubi8:1.1.1
+        olm.relatedImage.v1_1.istio-operator: docker.io/maistra/istio-ubi8-operator:1.1.1
     spec:
       serviceAccountName: istio-operator
       containers:

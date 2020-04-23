@@ -12,7 +12,7 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
 
     containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.1.1
-    createdAt: 2020-04-22T11:38:49MDT
+    createdAt: 2020-04-23T19:50:45UTC
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <1.1.1"
     alm-examples: |-
@@ -259,6 +259,8 @@ spec:
     image: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.1.1
   - name: v1_1.sidecar-injector
     image: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.1.1
+  - name: v1_1.istio-operator
+    image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.1.1
   install:
     strategy: deployment
     spec:
@@ -508,6 +510,7 @@ spec:
                 olm.relatedImage.v1_1.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.1.1
                 olm.relatedImage.v1_1.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.1.1
                 olm.relatedImage.v1_1.sidecar-injector: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.1.1
+                olm.relatedImage.v1_1.istio-operator: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.1.1
             spec:
               serviceAccountName: istio-operator
               containers:

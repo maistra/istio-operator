@@ -12,7 +12,7 @@ metadata:
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: maistra/istio-ubi8-operator:1.1.1
-    createdAt: 2020-04-22T11:38:48MDT
+    createdAt: 2020-04-23T19:50:42UTC
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <1.1.1"
     alm-examples: |-
@@ -259,6 +259,8 @@ spec:
     image: docker.io/maistra/proxyv2-ubi8:1.1.1
   - name: v1_1.sidecar-injector
     image: docker.io/maistra/sidecar-injector-ubi8:1.1.1
+  - name: v1_1.istio-operator
+    image: docker.io/maistra/istio-ubi8-operator:1.1.1
   install:
     strategy: deployment
     spec:
@@ -508,6 +510,7 @@ spec:
                 olm.relatedImage.v1_1.proxy-init: docker.io/maistra/proxy-init-centos7:1.1.1
                 olm.relatedImage.v1_1.proxyv2: docker.io/maistra/proxyv2-ubi8:1.1.1
                 olm.relatedImage.v1_1.sidecar-injector: docker.io/maistra/sidecar-injector-ubi8:1.1.1
+                olm.relatedImage.v1_1.istio-operator: docker.io/maistra/istio-ubi8-operator:1.1.1
             spec:
               serviceAccountName: istio-operator
               containers:
