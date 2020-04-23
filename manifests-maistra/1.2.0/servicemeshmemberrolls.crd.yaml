@@ -3,34 +3,35 @@ kind: CustomResourceDefinition
 metadata:
   name: servicemeshmemberrolls.maistra.io
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.annotations.configuredMemberCount
+    description: How many of the total number of member namespaces are
+      configured
+    name: Ready
+    type: string
+  - JSONPath: .status.conditions[?(@.type=="Ready")].reason
+    description: Whether all member namespaces have been configured or why
+      that's not the case
+    name: Status
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    description: The age of the object
+    name: Age
+    type: date
+  - JSONPath: .spec.members
+    description: Namespaces that are members of this Control Plane
+    name: Members
+    priority: 1
+    type: string
   group: maistra.io
   names:
     kind: ServiceMeshMemberRoll
     listKind: ServiceMeshMemberRollList
     plural: servicemeshmemberrolls
-    singular: servicemeshmemberroll
     shortNames:
     - smmr
+    singular: servicemeshmemberroll
   scope: Namespaced
   subresources:
     status: {}
   version: v1
-  additionalPrinterColumns:
-  - name: Ready
-    description: How many of the total number of member namespaces are configured
-    type: string
-    JSONPath: .status.annotations.configuredMemberCount
-  - name: Status
-    description: Whether all member namespaces have been configured or why that's
-      not the case
-    type: string
-    JSONPath: .status.conditions[?(@.type=="Ready")].reason
-  - name: Age
-    description: The age of the object
-    type: date
-    JSONPath: .metadata.creationTimestamp
-  - name: Members
-    description: Namespaces that are members of this Control Plane
-    priority: 1
-    type: string
-    JSONPath: .spec.members

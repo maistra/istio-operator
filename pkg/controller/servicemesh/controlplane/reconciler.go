@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/helm/pkg/manifest"
@@ -396,8 +395,8 @@ func (r *controlPlaneInstanceReconciler) recursivelyApplyTemplates(ctx context.C
 
 	visited.Insert(smcp.Template)
 
-	smcp.Istio = mergeValues(smcp.Istio, template.Istio)
-	smcp.ThreeScale = mergeValues(smcp.ThreeScale, template.ThreeScale)
+	smcp.Istio = v1.NewHelmValues(mergeValues(smcp.Istio.GetContent(), template.Istio.GetContent()))
+	smcp.ThreeScale = v1.NewHelmValues(mergeValues(smcp.ThreeScale.GetContent(), template.ThreeScale.GetContent()))
 	return smcp, nil
 }
 
@@ -447,11 +446,11 @@ func (r *controlPlaneInstanceReconciler) updateOauthProxyConfig(ctx context.Cont
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) updateImageField(obj map[string]interface{}, path, value string) error {
+func (r *controlPlaneInstanceReconciler) updateImageField(helmValues *v1.HelmValues, path, value string) error {
 	if len(value) == 0 {
 		return nil
 	}
-	return unstructured.SetNestedField(obj, value, strings.Split(path, ".")...)
+	return helmValues.SetField(path, value)
 }
 
 func (r *controlPlaneInstanceReconciler) applyTemplates(ctx context.Context, smcpSpec v1.ControlPlaneSpec, version versions.Version) (v1.ControlPlaneSpec, error) {
@@ -463,10 +462,10 @@ func (r *controlPlaneInstanceReconciler) applyTemplates(ctx context.Context, smc
 	}
 
 	applyDisconnectedSettings := true
-	if tag, _, _ := unstructured.NestedString(r.Instance.Spec.Istio, strings.Split("global.tag", ".")...); tag != "" {
+	if tag, _, _ := r.Instance.Spec.Istio.GetString("global.tag"); tag != "" {
 		// don't update anything
 		applyDisconnectedSettings = false
-	} else if hub, _, _ := unstructured.NestedString(r.Instance.Spec.Istio, strings.Split("global.hub", ".")...); hub != "" {
+	} else if hub, _, _ := r.Instance.Spec.Istio.GetString("global.hub"); hub != "" {
 		// don't update anything
 		applyDisconnectedSettings = false
 	}
@@ -487,13 +486,13 @@ func (r *controlPlaneInstanceReconciler) applyTemplates(ctx context.Context, smc
 	return spec, err
 }
 
-func (r *controlPlaneInstanceReconciler) validateSMCPSpec(spec v1.ControlPlaneSpec) error {
+func (r *controlPlaneInstanceReconciler) validateSMCPSpec(spec v1.ControlPlaneSpec, basePath string) error {
 	if spec.Istio == nil {
-		return fmt.Errorf("ServiceMeshControlPlane missing Istio section")
+		return fmt.Errorf("ServiceMeshControlPlane missing %s.istio section", basePath)
 	}
 
-	if _, ok := spec.Istio["global"].(map[string]interface{}); !ok {
-		return fmt.Errorf("ServiceMeshControlPlane missing global section")
+	if _, ok, _ := spec.Istio.GetMap("global"); !ok {
+		return fmt.Errorf("ServiceMeshControlPlane missing %s.istio.global section", basePath)
 	}
 	return nil
 }
@@ -513,19 +512,22 @@ func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context, versi
 
 	r.Status.LastAppliedConfiguration = spec
 
-	if err := r.validateSMCPSpec(r.Status.LastAppliedConfiguration); err != nil {
+	if err := r.validateSMCPSpec(r.Status.LastAppliedConfiguration, "status.lastAppliedConfiguration"); err != nil {
 		return err
 	}
 
-	if globalValues, ok := r.Status.LastAppliedConfiguration.Istio["global"].(map[string]interface{}); ok {
+	if globalValues, ok, _ := r.Status.LastAppliedConfiguration.Istio.GetMap("global"); ok {
 		globalValues["operatorNamespace"] = r.OperatorNamespace
 	}
 
 	var CNIValues map[string]interface{}
 	var ok bool
-	if CNIValues, ok = r.Status.LastAppliedConfiguration.Istio["istio_cni"].(map[string]interface{}); !ok {
+	if CNIValues, ok, _ = r.Status.LastAppliedConfiguration.Istio.GetMap("istio_cni"); !ok {
 		CNIValues = make(map[string]interface{})
-		r.Status.LastAppliedConfiguration.Istio["istio_cni"] = CNIValues
+		err := r.Status.LastAppliedConfiguration.Istio.SetField("istio_cni", CNIValues)
+		if err != nil {
+			return fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni: %v", err)
+		}
 	}
 	CNIValues["enabled"] = r.cniConfig.Enabled
 	CNIValues["istio_cni_network"], ok = cni.GetNetworkName(version)
@@ -538,13 +540,13 @@ func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context, versi
 	var threeScaleRenderings map[string][]manifest.Manifest
 	log.Info("rendering helm charts")
 	log.V(2).Info("rendering Istio charts")
-	istioRenderings, _, err := helm.RenderChart(path.Join(helm.GetChartsDir(version), "istio"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.Istio)
+	istioRenderings, _, err := helm.RenderChart(path.Join(helm.GetChartsDir(version), "istio"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.Istio.GetContent())
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
 	if isEnabled(r.Instance.Spec.ThreeScale) {
 		log.V(2).Info("rendering 3scale charts")
-		threeScaleRenderings, _, err = helm.RenderChart(path.Join(helm.GetChartsDir(version), "maistra-threescale"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.ThreeScale)
+		threeScaleRenderings, _, err = helm.RenderChart(path.Join(helm.GetChartsDir(version), "maistra-threescale"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.ThreeScale.GetContent())
 		if err != nil {
 			allErrors = append(allErrors, err)
 		}
@@ -707,11 +709,9 @@ func componentFromChartName(chartName string) string {
 	return componentName
 }
 
-func isEnabled(spec v1.HelmValuesType) bool {
-	if enabledVal, ok := spec["enabled"]; ok {
-		if enabled, ok := enabledVal.(bool); ok {
-			return enabled
-		}
+func isEnabled(spec *v1.HelmValues) bool {
+	if enabled, found, _ := spec.GetBool("enabled"); found {
+		return enabled
 	}
 	return false
 }

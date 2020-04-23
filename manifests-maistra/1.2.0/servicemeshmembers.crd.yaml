@@ -3,28 +3,28 @@ kind: CustomResourceDefinition
 metadata:
   name: servicemeshmembers.maistra.io
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.annotations.controlPlaneRef
+    description: The ServiceMeshControlPlane this namespace belongs to
+    name: Control Plane
+    type: string
+  - JSONPath: .status.conditions[?(@.type=="Ready")].status
+    description: Whether or not namespace is configured as a member of the mesh.
+    name: Ready
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    description: The age of the object
+    name: Age
+    type: date
   group: maistra.io
   names:
     kind: ServiceMeshMember
     listKind: ServiceMeshMemberList
     plural: servicemeshmembers
-    singular: servicemeshmember
     shortNames:
     - smm
+    singular: servicemeshmember
   scope: Namespaced
   subresources:
     status: {}
   version: v1
-  additionalPrinterColumns:
-  - name: Control Plane
-    description: The ServiceMeshControlPlane this namespace belongs to
-    type: string
-    JSONPath: .status.annotations.controlPlaneRef
-  - name: Ready
-    description: Whether or not namespace is configured as a member of the mesh.
-    type: string
-    JSONPath: .status.conditions[?(@.type=="Ready")].status
-  - name: Age
-    description: The age of the object
-    type: date
-    JSONPath: .metadata.creationTimestamp
