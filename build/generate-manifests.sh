@@ -75,8 +75,8 @@ function generateCSV() {
   fi
 
   RELATED_IMAGES=$(yq -s -y --indentless '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.metadata.annotations' ${DEPLOYMENT_FILE} | \
-    sed 's/olm\.relatedImage\.\([^:]*\): *\([^ ]*\)/- name: \1\
-  image: \2/' | \
+    sed -n 's/olm\.relatedImage\.\([^:]*\): *\([^ ]*\)/- name: \1\
+  image: \2/p' | \
     sed 's/^/  /')
   if [ "$RELATED_IMAGES" == "" ]; then
      echo "generateCSV(): Operator deployment contains no olm.relatedImage annotations, please verify source yaml/path to the field."

@@ -5,6 +5,7 @@ require (
 	github.com/evanphx/json-patch v4.1.0+incompatible
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.1.0
+	github.com/magiconair/properties v1.8.1
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/openshift/api v3.9.1-0.20190322043348-8741ff068a47+incompatible
 	github.com/openshift/library-go v0.0.0-20190916131355-a00adb84bd57

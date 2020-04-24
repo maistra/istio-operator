@@ -322,6 +322,14 @@ rules:
   verbs:
   - get
 - apiGroups:
+  - image.openshift.io
+  resources:
+  - imagestreams
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - network.openshift.io
   resources:
   - netnamespaces
@@ -453,6 +461,11 @@ spec:
         olm.relatedImage.v1_1.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.1.1
         olm.relatedImage.v1_1.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.1.1
         olm.relatedImage.v1_1.sidecar-injector: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.1.1
+
+        oauth-proxy.query: "true"
+        oauth-proxy.namespace: openshift
+        oauth-proxy.name: oauth-proxy
+        oauth-proxy.tag: v4.4
     spec:
       serviceAccountName: istio-operator
       containers:

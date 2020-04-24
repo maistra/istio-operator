@@ -14,6 +14,7 @@ var Config = &config{}
 // config for the operator
 type config struct {
 	OLM        olm              `json:"olm,omitempty"`
+	OAuthProxy oauthProxy       `json:"oauth-proxy,omitempty"`
 	Rendering  renderingOptions `json:"rendering,omitempty"`
 	Controller controller       `json:"controller,omitempty"`
 }
@@ -58,6 +59,14 @@ type v1_1ImageNames struct {
 	ProxyInit       string `json:"proxy-init,omitempty"`
 	ProxyV2         string `json:"proxyv2,omitempty"`
 	SidecarInjector string `json:"sidecar-injector,omitempty"`
+}
+
+type oauthProxy struct {
+	Namespace string `json:"namespace,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Query     bool   `json:"query,omitempty"`
+	Tag       string `json:"tag,omitempty"`
+	Image     string `json:"-"`
 }
 
 // Controller configuration
@@ -110,12 +119,26 @@ func bindType(v *viper.Viper, val reflect.Value, path string, delimiter string, 
 		for i := 0; i < structType.NumField(); i++ {
 			field := structType.Field(i)
 			name := field.Name
-			tagName := strings.SplitN(field.Tag.Get("json"), ",", 2)[0]
+			tags := strings.Split(field.Tag.Get("json"), ",")
+			tagName := tags[0]
 			if tagName != "" {
 				name = tagName
 			}
+			if name == "-" && len(tags) == 1 {
+				// field is not serialized
+				continue
+			}
 			if len(path) > 0 {
-				name = fmt.Sprintf("%s%s%s", path, delimiter, name)
+				inlined := false
+				for _, tag := range tags {
+					if tag == "inline" {
+						inlined = true
+						break
+					}
+				}
+				if !inlined {
+					name = fmt.Sprintf("%s%s%s", path, delimiter, name)
+				}
 			}
 			err := bindType(v, val.Field(i), name, delimiter, replacer)
 			if err != nil {

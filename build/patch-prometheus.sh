@@ -5,7 +5,11 @@ function prometheus_patch_deployment() {
   sed_wrap -i -e '/      containers:/ a\
           # OAuth proxy\
         - name: prometheus-proxy\
+{{- if contains "/" .Values.global.oauthproxy.image }}\
+          image: {{ .Values.global.oauthproxy.image }}\
+{{- else }}\
           image: {{ .Values.global.oauthproxy.hub }}/{{ .Values.global.oauthproxy.image }}:{{ .Values.global.oauthproxy.tag }}\
+{{- end }}\
           imagePullPolicy: {{ .Values.global.oauthproxy.imagePullPolicy }}\
           ports:\
           - containerPort: 3001\

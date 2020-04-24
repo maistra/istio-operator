@@ -322,6 +322,14 @@ rules:
   verbs:
   - get
 - apiGroups:
+  - image.openshift.io
+  resources:
+  - imagestreams
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - network.openshift.io
   resources:
   - netnamespaces
