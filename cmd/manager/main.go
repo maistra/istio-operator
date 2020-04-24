@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	"github.com/magiconair/properties"
@@ -252,10 +252,13 @@ func patchProperties(file string) (map[string]interface{}, error) {
 	}
 	retVal := make(map[string]interface{})
 	for k, v := range props.Map() {
-		var err error
-		if retVal[k], err = strconv.Unquote(v); err != nil {
-			return nil, err
+		v = strings.TrimSpace(v)
+		if strings.HasPrefix(v, "\"") && strings.HasSuffix(v, "\"") {
+			// the properties reader will have already processed most special
+			// characters, so all we need to do is remove the leading and trailing quotes
+			v = v[1:len(v)-1]
 		}
+		retVal[k] = v
 	}
 	return retVal, nil
 }
