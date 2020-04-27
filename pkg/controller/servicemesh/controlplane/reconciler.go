@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	imagev1 "github.com/openshift/api/image/v1"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -423,52 +424,85 @@ func (r *controlPlaneInstanceReconciler) applyDisconnectedSettings(ctx context.C
 	}
 	switch version {
 	case maistra.V1_0, maistra.UndefinedVersion:
-		updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_0.Citadel)
-		updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_0.Galley)
-		updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_0.Grafana)
-		updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_0.Mixer)
-		updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_0.Pilot)
-		updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_0.Prometheus)
-		updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_0.ProxyInit)
-		updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_0.ProxyV2)
-		updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_0.SidecarInjector)
-		updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_0.SidecarInjector)
+		r.updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_0.Citadel)
+		r.updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_0.Galley)
+		r.updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_0.Grafana)
+		r.updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_0.Mixer)
+		r.updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_0.Pilot)
+		r.updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_0.Prometheus)
+		r.updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_0.ProxyInit)
+		r.updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_0.ProxyV2)
+		r.updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_0.SidecarInjector)
+		r.updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_0.ThreeScale)
 
 	case maistra.V1_1:
-		updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_1.Citadel)
-		updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_1.Galley)
-		updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_1.Grafana)
-		updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_1.Mixer)
-		updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_1.Pilot)
-		updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_1.Prometheus)
-		updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_1.ProxyInit)
-		updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_1.ProxyV2)
-		updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_1.SidecarInjector)
-		updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_1.SidecarInjector)
+		r.updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_1.Citadel)
+		r.updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_1.Galley)
+		r.updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_1.Grafana)
+		r.updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_1.Mixer)
+		r.updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_1.Pilot)
+		r.updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_1.Prometheus)
+		r.updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_1.ProxyInit)
+		r.updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_1.ProxyV2)
+		r.updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_1.SidecarInjector)
+		r.updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_1.ThreeScale)
 
-		updateImageField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V1_1.IOR)
+		r.updateImageField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V1_1.IOR)
 
 	case maistra.V1_2:
-		updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_2.Citadel)
-		updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_2.Galley)
-		updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_2.Grafana)
-		updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_2.Mixer)
-		updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_2.Pilot)
-		updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_2.Prometheus)
-		updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_2.ProxyInit)
-		updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_2.ProxyV2)
-		updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_2.SidecarInjector)
-		updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_2.SidecarInjector)
+		r.updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_2.Citadel)
+		r.updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_2.Galley)
+		r.updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_2.Grafana)
+		r.updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_2.Mixer)
+		r.updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_2.Pilot)
+		r.updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_2.Prometheus)
+		r.updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_2.ProxyInit)
+		r.updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_2.ProxyV2)
+		r.updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_2.SidecarInjector)
+		r.updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_2.ThreeScale)
 
-		updateImageField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V1_2.IOR)
+		r.updateImageField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V1_2.IOR)
 
 	default:
 		return smcpSpec, fmt.Errorf("cannot apply disconnected install settings for unknown version %s", version)
 	}
+	r.updateOauthProxyConfig(ctx, &smcpSpec)
 	return smcpSpec, err
 }
 
-func updateImageField(obj map[string]interface{}, path, value string) error {
+func (r *controlPlaneInstanceReconciler) updateOauthProxyConfig(ctx context.Context, smcpSpec *v1.ControlPlaneSpec) error {
+	if !common.Config.OAuthProxy.Query || len(common.Config.OAuthProxy.Name) == 0 || len(common.Config.OAuthProxy.Namespace) == 0 {
+		return nil
+	}
+	log := common.LogFromContext(ctx)
+	is := &imagev1.ImageStream{}
+	if err := r.Client.Get(ctx, client.ObjectKey{Namespace: common.Config.OAuthProxy.Namespace, Name: common.Config.OAuthProxy.Name}, is); err == nil {
+		if len(is.Status.DockerImageRepository) > 0 {
+			foundTag := false
+			for _, tag := range is.Spec.Tags {
+				if tag.Name == common.Config.OAuthProxy.Tag {
+					foundTag = true
+					common.Config.OAuthProxy.Image = fmt.Sprintf("%s:%s", is.Status.DockerImageRepository, common.Config.OAuthProxy.Tag)
+					break
+				}
+			}
+			if !foundTag {
+				log.Info(fmt.Sprintf("warning: could not find tag '%s' in ImageStream %s/%s", common.Config.OAuthProxy.Tag, common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
+			}
+		}
+	} else if !(apierrors.IsNotFound(err) || apierrors.IsGone(err)) {
+		log.Error(err, fmt.Sprintf("unexpected error retrieving ImageStream %s/%s", common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
+	}
+	if len(common.Config.OAuthProxy.Image) == 0 {
+		log.Info("global.oauthproxy.image will not be overridden")
+		return nil
+	}
+	log.Info(fmt.Sprintf("using '%s' for global.oauthproxy.image", common.Config.OAuthProxy.Image))
+	r.updateImageField(smcpSpec.Istio, "global.oauthproxy.image", common.Config.OAuthProxy.Image)
+	return nil
+}
+
+func (r *controlPlaneInstanceReconciler) updateImageField(obj map[string]interface{}, path, value string) error {
 	if len(value) == 0 {
 		return nil
 	}
@@ -483,7 +517,26 @@ func (r *controlPlaneInstanceReconciler) applyTemplates(ctx context.Context, smc
 		log.Info("No template provided. Using default")
 	}
 
+	applyDisconnectedSettings := true
+	if tag, _, _ := unstructured.NestedString(r.Instance.Spec.Istio, strings.Split("global.tag", ".")...); tag != "" {
+		// don't update anything
+		applyDisconnectedSettings = false
+	} else if hub, _, _ := unstructured.NestedString(r.Instance.Spec.Istio, strings.Split("global.hub", ".")...); hub != "" {
+		// don't update anything
+		applyDisconnectedSettings = false
+	}
+
 	spec, err := r.recursivelyApplyTemplates(ctx, smcpSpec, smcpSpec.Version, sets.NewString())
+
+	if applyDisconnectedSettings {
+		spec, err = r.applyDisconnectedSettings(ctx, spec)
+		if err != nil {
+			log.Error(err, "warning: failed to apply image names to support disconnected install")
+
+			return spec, err
+		}
+	}
+
 	log.Info("finished updating ServiceMeshControlPlane", "Spec", spec)
 
 	return spec, err
@@ -509,29 +562,11 @@ func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context) error
 		r.Status.LastAppliedConfiguration.Version = maistra.LegacyVersion.String()
 	}
 
-	applyDisconnectedSettings := true
-	if tag, _, _ := unstructured.NestedString(r.Instance.Spec.Istio, strings.Split("global.tag", ".")...); tag != "" {
-		// don't update anything
-		applyDisconnectedSettings = false
-	} else if hub, _, _ := unstructured.NestedString(r.Instance.Spec.Istio, strings.Split("global.hub", ".")...); hub != "" {
-		// don't update anything
-		applyDisconnectedSettings = false
-	}
-
 	spec, err := r.applyTemplates(ctx, r.Status.LastAppliedConfiguration)
 	if err != nil {
 		log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates")
 
 		return err
-	}
-
-	if applyDisconnectedSettings {
-		spec, err = r.applyDisconnectedSettings(ctx, spec)
-		if err != nil {
-			log.Error(err, "warning: failed to apply image names to support disconnected install")
-
-			return err
-		}
 	}
 
 	r.Status.LastAppliedConfiguration = spec
