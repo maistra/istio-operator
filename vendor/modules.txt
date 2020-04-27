@@ -193,6 +193,9 @@ github.com/modern-go/reflect2
 # github.com/opencontainers/go-digest v1.0.0-rc1
 github.com/opencontainers/go-digest
 # github.com/openshift/api v3.9.1-0.20190322043348-8741ff068a47+incompatible => github.com/openshift/api v3.9.1-0.20190322043348-8741ff068a47+incompatible
+github.com/openshift/api/image/docker10
+github.com/openshift/api/image/dockerpre012
+github.com/openshift/api/image/v1
 github.com/openshift/api/network/v1
 github.com/openshift/api/route/v1
 # github.com/openshift/library-go v0.0.0-20190916131355-a00adb84bd57 => github.com/openshift/library-go v0.0.0-20180828150415-0b8367a46798

@@ -240,6 +240,7 @@ func initializeConfiguration(configFile string) error {
 	}); err != nil {
 		return err
 	}
+	log.Info("configuration successfully initialized", "config", common.Config)
 	return nil
 }
 
