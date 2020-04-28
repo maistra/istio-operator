@@ -477,18 +477,20 @@ func (r *controlPlaneInstanceReconciler) updateOauthProxyConfig(ctx context.Cont
 	log := common.LogFromContext(ctx)
 	is := &imagev1.ImageStream{}
 	if err := r.Client.Get(ctx, client.ObjectKey{Namespace: common.Config.OAuthProxy.Namespace, Name: common.Config.OAuthProxy.Name}, is); err == nil {
-		if len(is.Status.DockerImageRepository) > 0 {
-			foundTag := false
-			for _, tag := range is.Spec.Tags {
-				if tag.Name == common.Config.OAuthProxy.Tag {
-					foundTag = true
-					common.Config.OAuthProxy.Image = fmt.Sprintf("%s:%s", is.Status.DockerImageRepository, common.Config.OAuthProxy.Tag)
-					break
+		foundTag := false
+		for _, tag := range is.Status.Tags {
+			if tag.Tag == common.Config.OAuthProxy.Tag {
+				foundTag = true
+				if len(tag.Items) > 0 && len(tag.Items[0].DockerImageReference) > 0 {
+					common.Config.OAuthProxy.Image = tag.Items[0].DockerImageReference
+				} else {
+					log.Info(fmt.Sprintf("warning: dockerImageReference not set for tag '%s' in ImageStream %s/%s", common.Config.OAuthProxy.Tag, common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
 				}
+				break
 			}
-			if !foundTag {
-				log.Info(fmt.Sprintf("warning: could not find tag '%s' in ImageStream %s/%s", common.Config.OAuthProxy.Tag, common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
-			}
+		}
+		if !foundTag {
+			log.Info(fmt.Sprintf("warning: could not find tag '%s' in ImageStream %s/%s", common.Config.OAuthProxy.Tag, common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
 		}
 	} else if !(apierrors.IsNotFound(err) || apierrors.IsGone(err)) {
 		log.Error(err, fmt.Sprintf("unexpected error retrieving ImageStream %s/%s", common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
