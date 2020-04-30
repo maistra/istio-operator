@@ -2,6 +2,7 @@ package common
 
 import (
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
@@ -11,6 +12,7 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -19,8 +21,13 @@ type ControllerResources struct {
 	Client            client.Client
 	Scheme            *runtime.Scheme
 	EventRecorder     record.EventRecorder
-	PatchFactory      *PatchFactory
 	OperatorNamespace string
+}
+
+// UpdateField updates a nested field at the specified path, e.g.
+// UpdateField(smcp.Spec.Istio, "global.proxy.image", "docker.io/maistra/proxyv2-ubi8:1.1.0")
+func UpdateField(obj map[string]interface{}, path string, value interface{}) error {
+	return unstructured.SetNestedField(obj, value, strings.Split(path, ".")...)
 }
 
 func IndexOf(l []string, s string) int {

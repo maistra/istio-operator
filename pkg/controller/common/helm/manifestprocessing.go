@@ -1,4 +1,4 @@
-package common
+package helm
 
 import (
 	"context"
@@ -10,25 +10,25 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/helm/pkg/manifest"
 	"k8s.io/helm/pkg/releaseutil"
+	"k8s.io/kubernetes/pkg/kubectl"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-
-	"k8s.io/helm/pkg/manifest"
-	"k8s.io/kubernetes/pkg/kubectl"
-
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
 type ManifestProcessor struct {
-	ControllerResources
+	common.ControllerResources
+	PatchFactory      *PatchFactory
 	preprocessObject func(ctx context.Context, obj *unstructured.Unstructured) error
 	processNewObject func(ctx context.Context, obj *unstructured.Unstructured) error
 
 	appInstance, appVersion, owner string
 }
 
-func NewManifestProcessor(controllerResources ControllerResources, appInstance, appVersion, owner string, preprocessObjectFunc, postProcessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) error) *ManifestProcessor {
+func NewManifestProcessor(controllerResources common.ControllerResources, patchFactory *PatchFactory, appInstance, appVersion, owner string, preprocessObjectFunc, postProcessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) error) *ManifestProcessor {
 	return &ManifestProcessor{
 		ControllerResources: controllerResources,
 		preprocessObject:    preprocessObjectFunc,
@@ -40,11 +40,11 @@ func NewManifestProcessor(controllerResources ControllerResources, appInstance, 
 }
 
 func (p *ManifestProcessor) ProcessManifests(ctx context.Context, manifests []manifest.Manifest, component string) error {
-	log := LogFromContext(ctx)
+	log := common.LogFromContext(ctx)
 
 	allErrors := []error{}
 	for _, man := range manifests {
-		childCtx := NewContextWithLog(ctx, log.WithValues("manifest", man.Name))
+		childCtx := common.NewContextWithLog(ctx, log.WithValues("manifest", man.Name))
 		errs := p.ProcessManifest(childCtx, man, component)
 		allErrors = append(allErrors, errs...)
 	}
@@ -52,7 +52,7 @@ func (p *ManifestProcessor) ProcessManifests(ctx context.Context, manifests []ma
 }
 
 func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Manifest, component string) []error {
-	log := LogFromContext(ctx)
+	log := common.LogFromContext(ctx)
 	if !strings.HasSuffix(man.Name, ".yaml") {
 		log.V(2).Info("Skipping rendering of manifest")
 		return nil
@@ -77,7 +77,7 @@ func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Ma
 			continue
 		}
 
-		childCtx := NewContextWithLog(ctx, log.WithValues("Resource", v1.NewResourceKey(obj, obj)))
+		childCtx := common.NewContextWithLog(ctx, log.WithValues("Resource", v1.NewResourceKey(obj, obj)))
 		err = p.processObject(childCtx, obj, component)
 		if err != nil {
 			allErrors = append(allErrors, err)
@@ -87,7 +87,7 @@ func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Ma
 }
 
 func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured.Unstructured, component string) error {
-	log := LogFromContext(ctx)
+	log := common.LogFromContext(ctx)
 
 	if obj.GetKind() == "List" {
 		allErrors := []error{}
@@ -97,7 +97,7 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 			return err
 		}
 		for _, item := range list.Items {
-			childCtx := NewContextWithLog(ctx, log.WithValues("Resource", v1.NewResourceKey(obj, obj)))
+			childCtx := common.NewContextWithLog(ctx, log.WithValues("Resource", v1.NewResourceKey(obj, obj)))
 			err = p.processObject(childCtx, &item, component)
 			if err != nil {
 				allErrors = append(allErrors, err)
@@ -177,15 +177,15 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 func (p *ManifestProcessor) addMetadata(obj *unstructured.Unstructured, component string) {
 	labels := map[string]string{
 		// add app labels
-		KubernetesAppNameKey:      component,
-		KubernetesAppInstanceKey:  p.appInstance,
-		KubernetesAppVersionKey:   p.appVersion,
-		KubernetesAppComponentKey: component,
-		KubernetesAppPartOfKey:    "istio",
-		KubernetesAppManagedByKey: "maistra-istio-operator",
+		common.KubernetesAppNameKey:      component,
+		common.KubernetesAppInstanceKey:  p.appInstance,
+		common.KubernetesAppVersionKey:   p.appVersion,
+		common.KubernetesAppComponentKey: component,
+		common.KubernetesAppPartOfKey:    "istio",
+		common.KubernetesAppManagedByKey: "maistra-istio-operator",
 		// legacy
 		// add owner label
-		OwnerKey: p.owner,
+		common.OwnerKey: p.owner,
 	}
-	SetLabels(obj, labels)
+	common.SetLabels(obj, labels)
 }

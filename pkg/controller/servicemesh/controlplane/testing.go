@@ -24,9 +24,9 @@ func InitializeGlobals(operatorNamespace string) func() {
 		os.Setenv("POD_NAMESPACE", operatorNamespace)
 		common.GetOperatorNamespace()
 		if _, filename, _, ok := goruntime.Caller(0); ok {
-			common.Options.ResourceDir = path.Join(path.Dir(filename), "../../../../resources")
-			common.Options.ChartsDir = path.Join(common.Options.ResourceDir, "helm")
-			common.Options.DefaultTemplatesDir = path.Join(common.Options.ResourceDir, "smcp-templates")
+			common.Config.Rendering.ResourceDir = path.Join(path.Dir(filename), "../../../../resources")
+			common.Config.Rendering.ChartsDir = path.Join(common.Config.Rendering.ResourceDir, "helm")
+			common.Config.Rendering.DefaultTemplatesDir = path.Join(common.Config.Rendering.ResourceDir, "smcp-templates")
 		} else {
 			panic("could not initialize common.ResourceDir")
 		}

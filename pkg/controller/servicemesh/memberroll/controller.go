@@ -26,9 +26,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 const (
@@ -41,7 +42,7 @@ const (
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	kialiReconciler := defaultKialiReconciler{Client: mgr.GetClient()}
-	cniConfig, err := common.InitCNIConfig(mgr)
+	cniConfig, err := cni.InitConfig(mgr)
 	if err != nil {
 		return err
 	}
@@ -49,13 +50,12 @@ func Add(mgr manager.Manager) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, namespaceReconcilerFactory NamespaceReconcilerFactory, kialiReconciler KialiReconciler, cniConfig common.CNIConfig) *MemberRollReconciler {
+func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, namespaceReconcilerFactory NamespaceReconcilerFactory, kialiReconciler KialiReconciler, cniConfig cni.Config) *MemberRollReconciler {
 	return &MemberRollReconciler{
 		ControllerResources: common.ControllerResources{
 			Client:        cl,
 			Scheme:        scheme,
 			EventRecorder: eventRecorder,
-			PatchFactory:  common.NewPatchFactory(cl),
 		},
 		cniConfig:                  cniConfig,
 		namespaceReconcilerFactory: namespaceReconcilerFactory,
@@ -164,12 +164,12 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 
 var _ reconcile.Reconciler = &MemberRollReconciler{}
 
-type NamespaceReconcilerFactory func(ctx context.Context, cl client.Client, meshNamespace string, meshVersion string, isCNIEnabled bool) (NamespaceReconciler, error)
+type NamespaceReconcilerFactory func(ctx context.Context, cl client.Client, meshNamespace string, meshVersion versions.Version, isCNIEnabled bool) (NamespaceReconciler, error)
 
 // MemberRollReconciler reconciles a ServiceMeshMemberRoll object
 type MemberRollReconciler struct {
 	common.ControllerResources
-	cniConfig common.CNIConfig
+	cniConfig cni.Config
 
 	namespaceReconcilerFactory NamespaceReconcilerFactory
 	kialiReconciler            KialiReconciler
@@ -216,7 +216,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			return reconcile.Result{}, err
 		}
 
-		configuredMembers, err, nsErrors := r.reconcileNamespaces(ctx, nil, nameSet(&configuredNamespaces), instance.Namespace, maistra.DefaultVersion.String())
+		configuredMembers, err, nsErrors := r.reconcileNamespaces(ctx, nil, nameSet(&configuredNamespaces), instance.Namespace, versions.DefaultVersion)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -320,9 +320,10 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	// never include the mesh namespace in unconfigured list
 	delete(unconfiguredMembers, instance.Namespace)
 
-	meshVersion := mesh.Spec.Version
-	if len(meshVersion) == 0 {
-		meshVersion = maistra.LegacyVersion.String()
+	meshVersion, err := versions.ParseVersion(mesh.Spec.Version)
+	if err != nil {
+		reqLogger.Error(err, fmt.Sprintf("unsupported mesh version: %s", mesh.Spec.Version))
+		return reconcile.Result{}, err
 	}
 
 	// this must be checked first to ensure the correct cni network is attached to the members
@@ -435,7 +436,7 @@ func (r *MemberRollReconciler) findConfiguredNamespaces(ctx context.Context, mes
 	return list, err
 }
 
-func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespacesToReconcile, namespacesToRemove sets.String, controlPlaneNamespace string, controlPlaneVersion string) (configuredMembers []string, err error, nsErrors []error) {
+func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespacesToReconcile, namespacesToRemove sets.String, controlPlaneNamespace string, controlPlaneVersion versions.Version) (configuredMembers []string, err error, nsErrors []error) {
 	reqLogger := common.LogFromContext(ctx)
 	// current configuredNamespaces are namespacesToRemove minus control plane namespace
 	configured := sets.NewString(namespacesToRemove.List()...)

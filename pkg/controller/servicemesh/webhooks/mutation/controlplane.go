@@ -12,9 +12,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	webhookcommon "github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/common"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 type ControlPlaneMutator struct {
@@ -62,8 +62,8 @@ func (v *ControlPlaneMutator) Handle(ctx context.Context, req atypes.Request) at
 	if smcp.Spec.Version == "" {
 		switch req.AdmissionRequest.Operation {
 		case admissionv1beta1.Create:
-			log.Info("Setting .spec.version to default value", "version", maistra.DefaultVersion.String())
-			newSmcp.Spec.Version = maistra.DefaultVersion.String()
+			log.Info("Setting .spec.version to default value", "version", versions.DefaultVersion.String())
+			newSmcp.Spec.Version = versions.DefaultVersion.String()
 			smcpMutated = true
 		case admissionv1beta1.Update:
 			log.Info("Setting .spec.version to default value", "version", smcp.Spec.Version)

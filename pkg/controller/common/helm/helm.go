@@ -1,4 +1,4 @@
-package common
+package helm
 
 import (
 	"encoding/json"
@@ -15,65 +15,46 @@ import (
 	"k8s.io/helm/pkg/tiller"
 	"k8s.io/helm/pkg/timeconv"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra"
+	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 func init() {
 	// inject OpenShift specific kinds into the ordering list
-	serviceIndex := IndexOf(tiller.InstallOrder, "Service")
+	serviceIndex := common.IndexOf(tiller.InstallOrder, "Service")
 	// we want route before oauthclient before deployments
 	tiller.InstallOrder = append(tiller.InstallOrder[:serviceIndex], append([]string{"Route", "OAuthClient"}, tiller.InstallOrder[serviceIndex:]...)...)
 }
 
-// Rendering settings used during chart rendering
-type renderingOptions struct {
-	// ResourceDir is the base dir to helm charts and templates files.
-	ResourceDir string `json:"resourceDir,omitempty"`
-	// ChartsDir is the base dir to helm charts.
-	ChartsDir string `json:"chartsDir,omitempty"`
-	// DefaultTemplatesDir is the base dir to default templates files.
-	DefaultTemplatesDir string `json:"defaultTemplatesDir,omitempty"`
-	// TemplatesDir is the base dir to user supplied templates files.
-	UserTemplatesDir string `json:"userTemplatesDir,omitempty"`
-}
-
-var Options = &Config.Rendering
-
 // GetChartsDir returns the location of the Helm charts. Similar layout to istio.io/istio/install/kubernetes/helm.
-func (o *renderingOptions) GetChartsDir(maistraVersion string) string {
-	if len(maistraVersion) == 0 {
-		maistraVersion = maistra.LegacyVersion.String()
+func GetChartsDir(maistraVersion versions.Version) string {
+	if len(common.Config.Rendering.ChartsDir) == 0 {
+		return path.Join(common.Config.Rendering.ResourceDir, "helm", maistraVersion.String())
 	}
-	if len(o.ChartsDir) == 0 {
-		return path.Join(o.ResourceDir, "helm", maistraVersion)
-	}
-	return path.Join(o.ChartsDir, maistraVersion)
+	return path.Join(common.Config.Rendering.ChartsDir, maistraVersion.String())
 }
 
 // GetTemplatesDir returns the location of the Operator templates files
-func (o *renderingOptions) GetUserTemplatesDir() string {
-	if len(o.UserTemplatesDir) == 0 {
-		return path.Join(o.ResourceDir, "templates")
+func GetUserTemplatesDir() string {
+	if len(common.Config.Rendering.UserTemplatesDir) == 0 {
+		return path.Join(common.Config.Rendering.ResourceDir, "templates")
 	}
-	return o.UserTemplatesDir
+	return common.Config.Rendering.UserTemplatesDir
 }
 
 // GetDefaultTemplatesDir returns the location of the Default Operator templates files
-func (o *renderingOptions) GetDefaultTemplatesDir(maistraVersion string) string {
-	if len(maistraVersion) == 0 {
-		maistraVersion = maistra.LegacyVersion.String()
+func GetDefaultTemplatesDir(maistraVersion versions.Version) string {
+	if len(common.Config.Rendering.DefaultTemplatesDir) == 0 {
+		return path.Join(common.Config.Rendering.ResourceDir, "default-templates", maistraVersion.String())
 	}
-	if len(o.DefaultTemplatesDir) == 0 {
-		return path.Join(o.ResourceDir, "default-templates", maistraVersion)
-	}
-	return path.Join(o.DefaultTemplatesDir, maistraVersion)
+	return path.Join(common.Config.Rendering.DefaultTemplatesDir, maistraVersion.String())
 }
 
-// RenderHelmChart renders the helm charts, returning a map of rendered templates.
+// RenderChart renders the helm charts, returning a map of rendered templates.
 // key names represent the chart from which the template was processed.  Subcharts
 // will be keyed as <root-name>/charts/<subchart-name>, e.g. istio/charts/galley.
 // The root chart would be simply, istio.
-func RenderHelmChart(chartPath string, namespace string, values interface{}) (map[string][]manifest.Manifest, map[string]interface{}, error) {
+func RenderChart(chartPath string, namespace string, values interface{}) (map[string][]manifest.Manifest, map[string]interface{}, error) {
 	rawVals, err := yaml.Marshal(values)
 	config := &chart.Config{Raw: string(rawVals), Values: map[string]*chart.Value{}}
 

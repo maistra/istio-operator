@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/helm"
 )
 
 func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.Context, chartName string) (ready bool, err error) {
@@ -25,7 +26,7 @@ func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.C
 		log.Info("component reconciliation complete")
 	}()
 
-	mp := common.NewManifestProcessor(r.ControllerResources, r.Instance.GetNamespace(), r.meshGeneration, r.Instance.GetNamespace(), r.preprocessObject, r.processNewObject)
+	mp := helm.NewManifestProcessor(r.ControllerResources, helm.NewPatchFactory(r.Client), r.Instance.GetNamespace(), r.meshGeneration, r.Instance.GetNamespace(), r.preprocessObject, r.processNewObject)
 	if err = mp.ProcessManifests(ctx, renderings, status.Resource); err != nil {
 		return false, err
 	}
