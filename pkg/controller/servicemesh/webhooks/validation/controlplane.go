@@ -146,13 +146,13 @@ func (v *ControlPlaneValidator) validateUpdate(ctx context.Context, old, new *ma
 	// fails because feature X is no longer supported, but was added back in 1.3).
 	if oldVersion.Version() < newVersion.Version() {
 		for version := oldVersion.Version(); version < newVersion.Version(); version++ {
-			if err := v.validateUpgrade(ctx, version, old); err != nil {
+			if err := v.validateUpgrade(ctx, version, new); err != nil {
 				return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("cannot upgrade control plane from version %s to %s: %s", oldVersion.String(), newVersion.String(), err))
 			}
 		}
 	} else {
 		for version := oldVersion.Version(); version > newVersion.Version(); version-- {
-			if err := v.validateDowngrade(ctx, version, old); err != nil {
+			if err := v.validateDowngrade(ctx, version, new); err != nil {
 				return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("cannot downgrade control plane from version %s to %s: %s", oldVersion.String(), newVersion.String(), err))
 			}
 		}
