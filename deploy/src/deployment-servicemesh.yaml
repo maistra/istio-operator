@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: istio-operator
+  namespace: istio-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: istio-operator
+  template:
+    metadata:
+      labels:
+        name: istio-operator
+      annotations:
+        olm.relatedImage.v1_0.3scale-istio-adapter: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
+        olm.relatedImage.v1_0.citadel: registry.redhat.io/openshift-service-mesh/citadel-rhel8:1.0.10
+        olm.relatedImage.v1_0.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.0.10
+        olm.relatedImage.v1_0.galley: registry.redhat.io/openshift-service-mesh/galley-rhel8:1.0.10
+        olm.relatedImage.v1_0.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:1.0.10
+        olm.relatedImage.v1_0.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:1.0.10
+        olm.relatedImage.v1_0.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:1.0.10
+        olm.relatedImage.v1_0.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:1.0.10
+        olm.relatedImage.v1_0.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.0.10
+        olm.relatedImage.v1_0.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.0.10
+        olm.relatedImage.v1_0.sidecar-injector: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.0.10
+
+        olm.relatedImage.v1_1.3scale-istio-adapter: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
+        olm.relatedImage.v1_1.citadel: registry.redhat.io/openshift-service-mesh/citadel-rhel8:1.1.1
+        olm.relatedImage.v1_1.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.1.1
+        olm.relatedImage.v1_1.galley: registry.redhat.io/openshift-service-mesh/galley-rhel8:1.1.1
+        olm.relatedImage.v1_1.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:1.1.1
+        olm.relatedImage.v1_1.ior: registry.redhat.io/openshift-service-mesh/ior-rhel8:1.1.1
+        olm.relatedImage.v1_1.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:1.1.1
+        olm.relatedImage.v1_1.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:1.1.1
+        olm.relatedImage.v1_1.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:1.1.1
+        olm.relatedImage.v1_1.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.1.1
+        olm.relatedImage.v1_1.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.1.1
+        olm.relatedImage.v1_1.sidecar-injector: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.1.1
+
+        olm.relatedImage.v1_2.3scale-istio-adapter: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
+        olm.relatedImage.v1_2.citadel: registry.redhat.io/openshift-service-mesh/citadel-rhel8:1.2.0
+        olm.relatedImage.v1_2.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.2.0
+        olm.relatedImage.v1_2.galley: registry.redhat.io/openshift-service-mesh/galley-rhel8:1.2.0
+        olm.relatedImage.v1_2.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:1.2.0
+        olm.relatedImage.v1_2.ior: registry.redhat.io/openshift-service-mesh/ior-rhel8:1.2.0
+        olm.relatedImage.v1_2.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:1.2.0
+        olm.relatedImage.v1_2.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:1.2.0
+        olm.relatedImage.v1_2.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:1.2.0
+        olm.relatedImage.v1_2.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.2.0
+        olm.relatedImage.v1_2.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.2.0
+        olm.relatedImage.v1_2.sidecar-injector: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.2.0
+
+        oauth-proxy.query: "true"
+        oauth-proxy.namespace: openshift
+        oauth-proxy.name: oauth-proxy
+        oauth-proxy.tag: v4.4
+    spec:
+      serviceAccountName: istio-operator
+      containers:
+      - name: istio-operator
+        image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.1.1
+        ports:
+        - containerPort: 11999
+          name: validation
+        - containerPort: 60000
+          name: metrics
+        command:
+        - istio-operator
+        - --config
+        - /etc/operator/olm/config.properties
+        imagePullPolicy: Always
+        env:
+        - name: WATCH_NAMESPACE
+          value: ""
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: OPERATOR_NAME
+          value: istio-operator
+#        - name: ISTIO_CNI_IMAGE_PULL_SECRET
+#          value: name-of-secret
+        volumeMounts:
+        - name: operator-olm-config
+          mountPath: /etc/operator/olm
+          readOnly: true
+        - name: webhook-tls-volume
+          readOnly: true
+          mountPath: /tmp/k8s-webhook-server/serving-certs
+      volumes:
+      - name: operator-olm-config
+        downwardAPI:
+          defaultMode: 420
+          items:
+          - fieldRef:
+              fieldPath: metadata.annotations
+            path: config.properties
+      - name: webhook-tls-volume
+        secret:
+          secretName: maistra-operator-serving-cert
+          optional: true # this won't be available until service-ca creates the secret
