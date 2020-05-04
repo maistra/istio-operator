@@ -9,7 +9,7 @@ import (
 )
 
 func errForEnabledValue(obj *v1.HelmValues, path string, disallowed bool) error {
-	val, ok, _ := obj.GetField(path)
+	val, ok, _ := obj.GetFieldNoCopy(path)
 	if ok {
 		switch typedVal := val.(type) {
 		case string:

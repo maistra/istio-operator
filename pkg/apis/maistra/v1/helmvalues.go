@@ -2,8 +2,9 @@ package v1
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // HelmValues is typedef for Helm .Values
@@ -23,61 +24,32 @@ func (h *HelmValues) GetContent() map[string]interface{} {
 	return h.data
 }
 
-func (h *HelmValues) GetField(path string) (interface{}, bool, error) {
+func (h *HelmValues) GetFieldNoCopy(path string) (interface{}, bool, error) {
 	if h == nil || h.data == nil {
 		return nil, false, nil
 	}
-
-	var val interface{} = h.data
-	fields := strings.Split(path, ".")
-	for i, field := range fields {
-		if m, ok := val.(map[string]interface{}); ok {
-			val, ok = m[field]
-			if !ok {
-				return nil, false, nil
-			}
-		} else {
-			return nil, false, fmt.Errorf("%v accessor error: %v is of the type %T, expected map[string]interface{}", strings.Join(fields[:i+1], "."), val, val)
-		}
-	}
-	return val, true, nil
+	return unstructured.NestedFieldNoCopy(h.data, strings.Split(path, ".")...)
 }
 
 func (h *HelmValues) GetBool(path string) (bool, bool, error) {
-	value, found, err := h.GetField(path)
-	if !found || err != nil {
-		return false, found, err
+	if h == nil || h.data == nil {
+		return false, false, nil
 	}
-	b, ok := value.(bool)
-	if !ok {
-		return false, false, fmt.Errorf("%v accessor error: %v is of the type %T, expected bool", path, value, value)
-	}
-	return b, true, nil
+	return unstructured.NestedBool(h.data, strings.Split(path, ".")...)
 }
 
 func (h *HelmValues) GetString(path string) (string, bool, error) {
-	value, found, err := h.GetField(path)
-	if !found || err != nil {
-		return "", found, err
+	if h == nil || h.data == nil {
+		return "", false, nil
 	}
-	s, ok := value.(string)
-	if !ok {
-		return "", false, fmt.Errorf("%v accessor error: %v is of the type %T, expected string", path, value, value)
-	}
-	return s, true, nil
-
+	return unstructured.NestedString(h.data, strings.Split(path, ".")...)
 }
 
 func (h *HelmValues) GetMap(path string) (map[string]interface{}, bool, error) {
-	value, found, err := h.GetField(path)
-	if !found || err != nil {
-		return nil, found, err
+	if h == nil || h.data == nil {
+		return nil, false, nil
 	}
-	m, ok := value.(map[string]interface{})
-	if !ok {
-		return nil, false, fmt.Errorf("%v accessor error: %v is of the type %T, expected map[string]interface{}", path, value, value)
-	}
-	return m, true, nil
+	return unstructured.NestedMap(h.data, strings.Split(path, ".")...)
 }
 
 func (h *HelmValues) SetField(path string, value interface{}) error {
@@ -87,23 +59,7 @@ func (h *HelmValues) SetField(path string, value interface{}) error {
 	if h.data == nil {
 		h.data = map[string]interface{}{}
 	}
-	m := h.data
-	fields := strings.Split(path, ".")
-	for i, field := range fields[:len(fields)-1] {
-		if val, ok := m[field]; ok {
-			if valMap, ok := val.(map[string]interface{}); ok {
-				m = valMap
-			} else {
-				return fmt.Errorf("value cannot be set because %v is not a map[string]interface{}", strings.Join(fields[:i+1], "."))
-			}
-		} else {
-			newVal := make(map[string]interface{})
-			m[field] = newVal
-			m = newVal
-		}
-	}
-	m[fields[len(fields)-1]] = value
-	return nil
+	return unstructured.SetNestedField(h.data, value, strings.Split(path, ".")...)
 }
 
 func (h *HelmValues) UnmarshalJSON(in []byte) error {
