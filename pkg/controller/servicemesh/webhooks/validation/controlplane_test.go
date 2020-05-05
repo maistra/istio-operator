@@ -19,11 +19,11 @@ import (
 	configv1alpha2 "github.com/maistra/istio-operator/pkg/apis/istio/simple/config/v1alpha2"
 	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/simple/networking/v1alpha3"
 	securityv1beta1 "github.com/maistra/istio-operator/pkg/apis/istio/simple/security/v1beta1"
-	"github.com/maistra/istio-operator/pkg/apis/maistra"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 func TestDeletedControlPlaneIsAlwaysAllowed(t *testing.T) {
@@ -96,7 +96,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -121,7 +121,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -143,7 +143,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -165,7 +165,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -187,7 +187,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"proxy": map[string]interface{}{
@@ -212,7 +212,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -261,7 +261,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -311,7 +311,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -1057,11 +1057,11 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 				memberNamespace,
 				memberRoll)
 			validator, _, _ := createControlPlaneValidatorTestFixture(resources...)
-			oldsmcp := v1_1ControlPlane.DeepCopy()
+			newsmcp := v1_0ControlPlane.DeepCopy()
 			if tc.configure != nil {
-				tc.configure(oldsmcp)
+				tc.configure(newsmcp)
 			}
-			response := validator.Handle(ctx, createUpdateRequest(oldsmcp, v1_0ControlPlane))
+			response := validator.Handle(ctx, createUpdateRequest(v1_1ControlPlane, newsmcp))
 			if tc.allowed {
 				assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
 			} else {

@@ -21,11 +21,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/bootstrap"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
+	"github.com/maistra/istio-operator/pkg/controller/common/helm"
 	"github.com/maistra/istio-operator/pkg/controller/hacks"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 type controlPlaneInstanceReconciler struct {
@@ -36,7 +38,7 @@ type controlPlaneInstanceReconciler struct {
 	meshGeneration string
 	renderings     map[string][]manifest.Manifest
 	lastComponent  string
-	cniConfig      common.CNIConfig
+	cniConfig      cni.Config
 }
 
 // ensure controlPlaneInstanceReconciler implements ControlPlaneInstanceReconciler
@@ -74,7 +76,7 @@ const (
 	eventReasonReady                   = "Ready"
 )
 
-func NewControlPlaneInstanceReconciler(controllerResources common.ControllerResources, newInstance *v1.ServiceMeshControlPlane, cniConfig common.CNIConfig) ControlPlaneInstanceReconciler {
+func NewControlPlaneInstanceReconciler(controllerResources common.ControllerResources, newInstance *v1.ServiceMeshControlPlane, cniConfig cni.Config) ControlPlaneInstanceReconciler {
 	return &controlPlaneInstanceReconciler{
 		ControllerResources: controllerResources,
 		Instance:            newInstance,
@@ -122,8 +124,15 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			}
 		}()
 
+		var version versions.Version
+		version, err = versions.ParseVersion(r.Instance.Spec.Version)
+		if err != nil {
+			log.Error(err, "invalid version specified")
+			return
+		}
+
 		// Render the templates
-		err = r.renderCharts(ctx)
+		err = r.renderCharts(ctx, version)
 		if err != nil {
 			// we can't progress here
 			reconciliationReason = v1.ConditionReasonReconcileError
@@ -194,7 +203,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		r.meshGeneration = v1.CurrentReconciledVersion(r.Instance.GetGeneration())
 
 		// Ensure CRDs are installed
-		chartsDir := common.Options.GetChartsDir(r.Instance.Spec.Version)
+		chartsDir := helm.GetChartsDir(version)
 		if err = bootstrap.InstallCRDs(common.NewContextWithLog(ctx, log.WithValues("version", r.Instance.Spec.Version)), r.Client, chartsDir); err != nil {
 			reconciliationReason = v1.ConditionReasonReconcileError
 			reconciliationMessage = "Failed to install/update Istio CRDs"
@@ -360,17 +369,17 @@ func mergeValues(base map[string]interface{}, input map[string]interface{}) map[
 	return base
 }
 
-func (r *controlPlaneInstanceReconciler) getSMCPTemplate(name string, maistraVersion string) (v1.ControlPlaneSpec, error) {
+func (r *controlPlaneInstanceReconciler) getSMCPTemplate(name string, maistraVersion versions.Version) (v1.ControlPlaneSpec, error) {
 	if strings.Contains(name, "/") {
 		return v1.ControlPlaneSpec{}, fmt.Errorf("template name contains invalid character '/'")
 	}
 
-	templateContent, err := ioutil.ReadFile(path.Join(common.Options.GetUserTemplatesDir(), name))
+	templateContent, err := ioutil.ReadFile(path.Join(helm.GetUserTemplatesDir(), name))
 	if err != nil {
 		//if we can't read from the user template path, try from the default path
 		//we use two paths because Kubernetes will not auto-update volume mounted
 		//configmaps mounted in directories with pre-existing content
-		defaultTemplateContent, defaultErr := ioutil.ReadFile(path.Join(common.Options.GetDefaultTemplatesDir(maistraVersion), name))
+		defaultTemplateContent, defaultErr := ioutil.ReadFile(path.Join(helm.GetDefaultTemplatesDir(maistraVersion), name))
 		if defaultErr != nil {
 			return v1.ControlPlaneSpec{}, fmt.Errorf("template cannot be loaded from user or default directory. Error from user: %s. Error from default: %s", err, defaultErr)
 		}
@@ -385,7 +394,7 @@ func (r *controlPlaneInstanceReconciler) getSMCPTemplate(name string, maistraVer
 }
 
 //renderSMCPTemplates traverses and processes all of the references templates
-func (r *controlPlaneInstanceReconciler) recursivelyApplyTemplates(ctx context.Context, smcp v1.ControlPlaneSpec, version string, visited sets.String) (v1.ControlPlaneSpec, error) {
+func (r *controlPlaneInstanceReconciler) recursivelyApplyTemplates(ctx context.Context, smcp v1.ControlPlaneSpec, version versions.Version, visited sets.String) (v1.ControlPlaneSpec, error) {
 	log := common.LogFromContext(ctx)
 	if smcp.Template == "" {
 		return smcp, nil
@@ -414,59 +423,15 @@ func (r *controlPlaneInstanceReconciler) recursivelyApplyTemplates(ctx context.C
 	return smcp, nil
 }
 
-func (r *controlPlaneInstanceReconciler) applyDisconnectedSettings(ctx context.Context, smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
+func (r *controlPlaneInstanceReconciler) applyDisconnectedSettings(ctx context.Context, smcpSpec v1.ControlPlaneSpec, version versions.Version) (v1.ControlPlaneSpec, error) {
 	log := common.LogFromContext(ctx)
 	log.Info("updating image names for disconnected install")
 
-	version, err := maistra.ParseVersion(smcpSpec.Version)
-	if err != nil {
+	var err error
+	if err = version.Strategy().SetImageValues(ctx, r.Client, &smcpSpec); err != nil {
 		return smcpSpec, err
 	}
-	switch version {
-	case maistra.V1_0, maistra.UndefinedVersion:
-		r.updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_0.Citadel)
-		r.updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_0.Galley)
-		r.updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_0.Grafana)
-		r.updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_0.Mixer)
-		r.updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_0.Pilot)
-		r.updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_0.Prometheus)
-		r.updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_0.ProxyInit)
-		r.updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_0.ProxyV2)
-		r.updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_0.SidecarInjector)
-		r.updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_0.ThreeScale)
-
-	case maistra.V1_1:
-		r.updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_1.Citadel)
-		r.updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_1.Galley)
-		r.updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_1.Grafana)
-		r.updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_1.Mixer)
-		r.updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_1.Pilot)
-		r.updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_1.Prometheus)
-		r.updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_1.ProxyInit)
-		r.updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_1.ProxyV2)
-		r.updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_1.SidecarInjector)
-		r.updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_1.ThreeScale)
-
-		r.updateImageField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V1_1.IOR)
-
-	case maistra.V1_2:
-		r.updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_2.Citadel)
-		r.updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_2.Galley)
-		r.updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_2.Grafana)
-		r.updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_2.Mixer)
-		r.updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_2.Pilot)
-		r.updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_2.Prometheus)
-		r.updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_2.ProxyInit)
-		r.updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_2.ProxyV2)
-		r.updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_2.SidecarInjector)
-		r.updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_2.ThreeScale)
-
-		r.updateImageField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V1_2.IOR)
-
-	default:
-		return smcpSpec, fmt.Errorf("cannot apply disconnected install settings for unknown version %s", version)
-	}
-	r.updateOauthProxyConfig(ctx, &smcpSpec)
+	err = r.updateOauthProxyConfig(ctx, &smcpSpec)
 	return smcpSpec, err
 }
 
@@ -511,7 +476,7 @@ func (r *controlPlaneInstanceReconciler) updateImageField(obj map[string]interfa
 	return unstructured.SetNestedField(obj, value, strings.Split(path, ".")...)
 }
 
-func (r *controlPlaneInstanceReconciler) applyTemplates(ctx context.Context, smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
+func (r *controlPlaneInstanceReconciler) applyTemplates(ctx context.Context, smcpSpec v1.ControlPlaneSpec, version versions.Version) (v1.ControlPlaneSpec, error) {
 	log := common.LogFromContext(ctx)
 	log.Info("updating servicemeshcontrolplane with templates")
 	if smcpSpec.Template == "" {
@@ -528,10 +493,10 @@ func (r *controlPlaneInstanceReconciler) applyTemplates(ctx context.Context, smc
 		applyDisconnectedSettings = false
 	}
 
-	spec, err := r.recursivelyApplyTemplates(ctx, smcpSpec, smcpSpec.Version, sets.NewString())
+	spec, err := r.recursivelyApplyTemplates(ctx, smcpSpec, version, sets.NewString())
 
 	if applyDisconnectedSettings {
-		spec, err = r.applyDisconnectedSettings(ctx, spec)
+		spec, err = r.applyDisconnectedSettings(ctx, spec, version)
 		if err != nil {
 			log.Error(err, "warning: failed to apply image names to support disconnected install")
 
@@ -555,16 +520,13 @@ func (r *controlPlaneInstanceReconciler) validateSMCPSpec(spec v1.ControlPlaneSp
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context) error {
+func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context, version versions.Version) error {
 	log := common.LogFromContext(ctx)
 	//Generate the spec
 	r.Status.LastAppliedConfiguration = r.Instance.Spec
-	if len(r.Status.LastAppliedConfiguration.Version) == 0 {
-		// this must be from a 1.0 operator
-		r.Status.LastAppliedConfiguration.Version = maistra.LegacyVersion.String()
-	}
+	r.Status.LastAppliedConfiguration.Version = version.String()
 
-	spec, err := r.applyTemplates(ctx, r.Status.LastAppliedConfiguration)
+	spec, err := r.applyTemplates(ctx, r.Status.LastAppliedConfiguration, version)
 	if err != nil {
 		log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates")
 
@@ -588,9 +550,9 @@ func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context) error
 		r.Status.LastAppliedConfiguration.Istio["istio_cni"] = CNIValues
 	}
 	CNIValues["enabled"] = r.cniConfig.Enabled
-	CNIValues["istio_cni_network"], ok = common.GetCNINetworkName(r.Status.LastAppliedConfiguration.Version)
+	CNIValues["istio_cni_network"], ok = cni.GetNetworkName(version)
 	if !ok {
-		return fmt.Errorf("unknown maistra version: %s", r.Status.LastAppliedConfiguration.Version)
+		return fmt.Errorf("unknown maistra version: %s", version)
 	}
 
 	//Render the charts
@@ -598,13 +560,13 @@ func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context) error
 	var threeScaleRenderings map[string][]manifest.Manifest
 	log.Info("rendering helm charts")
 	log.V(2).Info("rendering Istio charts")
-	istioRenderings, _, err := common.RenderHelmChart(path.Join(common.Options.GetChartsDir(r.Status.LastAppliedConfiguration.Version), "istio"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.Istio)
+	istioRenderings, _, err := helm.RenderChart(path.Join(helm.GetChartsDir(version), "istio"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.Istio)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
 	if isEnabled(r.Instance.Spec.ThreeScale) {
 		log.V(2).Info("rendering 3scale charts")
-		threeScaleRenderings, _, err = common.RenderHelmChart(path.Join(common.Options.GetChartsDir(r.Status.LastAppliedConfiguration.Version), "maistra-threescale"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.ThreeScale)
+		threeScaleRenderings, _, err = helm.RenderChart(path.Join(helm.GetChartsDir(version), "maistra-threescale"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.ThreeScale)
 		if err != nil {
 			allErrors = append(allErrors, err)
 		}

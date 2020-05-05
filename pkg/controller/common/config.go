@@ -87,6 +87,18 @@ type oauthProxy struct {
 	Image     string `json:"-"`
 }
 
+// Rendering settings used during chart rendering
+type renderingOptions struct {
+	// ResourceDir is the base dir to helm charts and templates files.
+	ResourceDir string `json:"resourceDir,omitempty"`
+	// ChartsDir is the base dir to helm charts.
+	ChartsDir string `json:"chartsDir,omitempty"`
+	// DefaultTemplatesDir is the base dir to default templates files.
+	DefaultTemplatesDir string `json:"defaultTemplatesDir,omitempty"`
+	// TemplatesDir is the base dir to user supplied templates files.
+	UserTemplatesDir string `json:"userTemplatesDir,omitempty"`
+}
+
 // Controller configuration
 type controller struct {
 	// Number of concurrent reconcilers for each controller

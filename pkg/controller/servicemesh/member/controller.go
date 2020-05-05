@@ -55,7 +55,6 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 			Client:        cl,
 			Scheme:        scheme,
 			EventRecorder: eventRecorder,
-			PatchFactory:  common.NewPatchFactory(cl),
 		},
 	}
 }

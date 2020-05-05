@@ -9,10 +9,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 func TestDeletedControlPlaneIsAlwaysAllowed(t *testing.T) {
@@ -38,7 +38,7 @@ func TestControlPlaneOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
 
 func TestControlPlaneNoMutation(t *testing.T) {
 	controlPlane := newControlPlane("my-smcp", "istio-system")
-	controlPlane.Spec.Version = maistra.DefaultVersion.String()
+	controlPlane.Spec.Version = versions.DefaultVersion.String()
 	controlPlane.Spec.Template = maistrav1.DefaultTemplate
 
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
@@ -51,7 +51,7 @@ func TestVersionIsDefaultedToCurrentMaistraVersionOnCreate(t *testing.T) {
 	controlPlane.Spec.Version = ""
 
 	mutatedControlPlane := controlPlane.DeepCopy()
-	mutatedControlPlane.Spec.Version = maistra.DefaultVersion.String()
+	mutatedControlPlane.Spec.Version = versions.DefaultVersion.String()
 
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
 	response := mutator.Handle(ctx, newCreateRequest(controlPlane))
@@ -156,7 +156,7 @@ func newControlPlane(name, namespace string) *maistrav1.ServiceMeshControlPlane 
 			Namespace: namespace,
 		},
 		Spec: maistrav1.ControlPlaneSpec{
-			Version:  maistra.DefaultVersion.String(),
+			Version:  versions.DefaultVersion.String(),
 			Template: maistrav1.DefaultTemplate,
 		},
 	}

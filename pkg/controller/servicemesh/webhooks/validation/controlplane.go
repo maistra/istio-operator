@@ -5,21 +5,19 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-logr/logr"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 
-	"github.com/go-logr/logr"
-
-	"github.com/maistra/istio-operator/pkg/apis/maistra"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	webhookcommon "github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/common"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 type ControlPlaneValidator struct {
@@ -58,8 +56,8 @@ func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 		return admission.ValidationResponse(true, "")
 	}
 
-	if version, err := maistra.ParseVersion(smcp.Spec.Version); err != nil {
-		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("invalid Version specified; supported versions are: %v", maistra.GetSupportedVersions()))
+	if version, err := versions.ParseVersion(smcp.Spec.Version); err != nil {
+		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("invalid Version specified; supported versions are: %v", versions.GetSupportedVersions()))
 	} else if err := v.validateVersion(ctx, smcp, version); err != nil {
 		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, err.Error())
 	}
@@ -95,23 +93,15 @@ func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 	return admission.ValidationResponse(true, "")
 }
 
-func (v *ControlPlaneValidator) validateVersion(ctx context.Context, smcp *maistrav1.ServiceMeshControlPlane, version maistra.Version) error {
-	var allErrors []error
+func (v *ControlPlaneValidator) validateVersion(ctx context.Context, smcp *maistrav1.ServiceMeshControlPlane, version versions.Version) error {
 	// version specific validation
 	switch version.Version() {
 	// UndefinedVersion defaults to legacy v1.0
-	case maistra.V1_0, maistra.UndefinedVersion:
+	case versions.V1_0:
 		// no validation existed in 1.0, so we won't validate
-	case maistra.V1_1:
-		if err := v.validateV1_1(ctx, smcp); err != nil {
-			allErrors = append(allErrors, err)
-		}
-	case maistra.V1_2:
-		// TODO: any special validation
-	default:
-		allErrors = append(allErrors, fmt.Errorf("version %s is not supported", version.String()))
+		return nil
 	}
-	return utilerrors.NewAggregate(allErrors)
+	return version.Strategy().Validate(ctx, v.client, smcp)
 }
 
 func (v *ControlPlaneValidator) validateUpdate(ctx context.Context, old, new *maistrav1.ServiceMeshControlPlane, logger logr.Logger) atypes.Response {
@@ -119,23 +109,15 @@ func (v *ControlPlaneValidator) validateUpdate(ctx context.Context, old, new *ma
 		return admission.ValidationResponse(true, "")
 	}
 
-	oldVersion, err := maistra.ParseVersion(old.Spec.Version)
+	oldVersion, err := versions.ParseVersion(old.Spec.Version)
 	if err != nil {
 		logger.Error(err, "error parsing old resource version")
 		return admission.ErrorResponse(http.StatusInternalServerError, err)
 	}
-	if oldVersion == maistra.UndefinedVersion {
-		// UndefinedVersion defaults to legacy v1.0
-		oldVersion = maistra.LegacyVersion
-	}
-	newVersion, err := maistra.ParseVersion(new.Spec.Version)
+	newVersion, err := versions.ParseVersion(new.Spec.Version)
 	if err != nil {
 		logger.Error(err, "error parsing new resource version")
 		return admission.ErrorResponse(http.StatusInternalServerError, err)
-	}
-	if newVersion == maistra.UndefinedVersion {
-		// UndefinedVersion defaults to legacy v1.0
-		newVersion = maistra.LegacyVersion
 	}
 
 	// The logic used here is that we only verify upgrade/downgrade between adjacent versions
@@ -146,50 +128,20 @@ func (v *ControlPlaneValidator) validateUpdate(ctx context.Context, old, new *ma
 	// was removed and subsequently reintroduced (e.g. validation from 1.0 -> 1.1
 	// fails because feature X is no longer supported, but was added back in 1.3).
 	if oldVersion.Version() < newVersion.Version() {
-		for version := oldVersion.Version(); version < newVersion.Version(); version++ {
-			if err := v.validateUpgrade(ctx, version, old); err != nil {
+		for version := oldVersion.Version() + 1; version <= newVersion.Version(); version++ {
+			if err := version.Strategy().ValidateUpgrade(ctx, v.client, new); err != nil {
 				return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("cannot upgrade control plane from version %s to %s: %s", oldVersion.String(), newVersion.String(), err))
 			}
 		}
 	} else {
 		for version := oldVersion.Version(); version > newVersion.Version(); version-- {
-			if err := v.validateDowngrade(ctx, version, old); err != nil {
+			if err := version.Strategy().ValidateDowngrade(ctx, v.client, new); err != nil {
 				return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("cannot downgrade control plane from version %s to %s: %s", oldVersion.String(), newVersion.String(), err))
 			}
 		}
 	}
 
 	return admission.ValidationResponse(true, "")
-}
-
-func (v *ControlPlaneValidator) validateUpgrade(ctx context.Context, currentVersion maistra.Version, smcp *maistrav1.ServiceMeshControlPlane) error {
-	switch currentVersion.Version() {
-	case maistra.V1_0:
-		return v.validateUpgradeFromV1_0(ctx, smcp)
-	case maistra.V1_1:
-		// TODO: any custom upgrade validation
-		return nil
-	default:
-		return fmt.Errorf("upgrade from version %s is not supported", currentVersion.String())
-	}
-}
-
-func (v *ControlPlaneValidator) validateDowngrade(ctx context.Context, currentVersion maistra.Version, smcp *maistrav1.ServiceMeshControlPlane) error {
-	switch currentVersion.Version() {
-	case maistra.V1_1:
-		return v.validateDowngradeFromV1_1(ctx, smcp)
-	case maistra.V1_2:
-		// TODO: any custom downgrade validation
-		return nil
-	default:
-		return fmt.Errorf("upgrade from version %s is not supported", currentVersion.String())
-	}
-}
-
-func (v *ControlPlaneValidator) getSMMR(smcp *maistrav1.ServiceMeshControlPlane) (*maistrav1.ServiceMeshMemberRoll, error) {
-	smmr := &maistrav1.ServiceMeshMemberRoll{}
-	err := v.client.Get(context.TODO(), client.ObjectKey{Namespace: smcp.GetNamespace(), Name: common.MemberRollName}, smmr)
-	return smmr, err
 }
 
 // InjectClient injects the client.

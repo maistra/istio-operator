@@ -13,8 +13,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 func TestReconcileNamespaceInMesh(t *testing.T) {
@@ -32,7 +34,7 @@ func TestReconcileNamespaceInMesh(t *testing.T) {
 	assert.Equals(ns.Labels[common.MemberOfKey], controlPlaneNamespace, "Unexpected or missing member-of label in namespace", t)
 
 	// check if net-attach-def exists
-	netAttachDefName, _ := common.GetCNINetworkName(meshVersionDefault)
+	netAttachDefName, _ := cni.GetNetworkName(versions.DefaultVersion)
 	netAttachDef := newNetworkAttachmentDefinition()
 	err := cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: netAttachDefName}, netAttachDef)
 	if err != nil {
@@ -84,7 +86,7 @@ func TestRemoveNamespaceFromMesh(t *testing.T) {
 	assert.False(found, "Expected member-of label to be removed, but it is still present", t)
 
 	// check that net-attach-def was removed
-	netAttachDefName, _ := common.GetCNINetworkName(meshVersionDefault)
+	netAttachDefName, _ := cni.GetNetworkName(versions.DefaultVersion)
 	netAttachDef := newNetworkAttachmentDefinition()
 	err := cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: netAttachDefName}, netAttachDef)
 	assertNotFound(err, "Expected NetworkAttachmentDefinition to be deleted, but it is still present", t)
@@ -249,7 +251,7 @@ func newNetworkAttachmentDefinition() *unstructured.Unstructured {
 }
 
 func setupReconciledNamespace(t *testing.T, cl client.Client, namespace string) {
-	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, meshVersionDefault, true)
+	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, versions.DefaultVersion, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
@@ -268,7 +270,7 @@ func assertNotFound(err error, message string, t *testing.T) {
 }
 
 func assertReconcileNamespaceSucceeds(t *testing.T, cl client.Client, networkStrategy NamespaceReconciler) {
-	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, meshVersionDefault, true)
+	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, versions.DefaultVersion, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
@@ -283,7 +285,7 @@ func assertReconcileNamespaceSucceeds(t *testing.T, cl client.Client, networkStr
 }
 
 func assertRemoveNamespaceSucceeds(t *testing.T, cl client.Client, networkStrategy NamespaceReconciler) {
-	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, meshVersionDefault, true)
+	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, versions.DefaultVersion, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
@@ -298,7 +300,7 @@ func assertRemoveNamespaceSucceeds(t *testing.T, cl client.Client, networkStrate
 }
 
 func assertReconcileNamespaceFails(t *testing.T, cl client.Client) {
-	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, meshVersionDefault, true)
+	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, versions.DefaultVersion, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}

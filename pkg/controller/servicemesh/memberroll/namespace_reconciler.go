@@ -11,6 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -28,14 +30,14 @@ const networkTypeCalico = "Calico"
 type namespaceReconciler struct {
 	common.ControllerResources
 	meshNamespace        string
-	meshVersion          string
+	meshVersion          versions.Version
 	isCNIEnabled         bool
 	networkingStrategy   NamespaceReconciler
 	roleBindingsList     rbac.RoleBindingList
 	requiredRoleBindings sets.String
 }
 
-func newNamespaceReconciler(ctx context.Context, cl client.Client, meshNamespace string, meshVersion string, isCNIEnabled bool) (NamespaceReconciler, error) {
+func newNamespaceReconciler(ctx context.Context, cl client.Client, meshNamespace string, meshVersion versions.Version, isCNIEnabled bool) (NamespaceReconciler, error) {
 	reconciler := &namespaceReconciler{
 		ControllerResources: common.ControllerResources{
 			Client: cl,
@@ -326,7 +328,7 @@ func (r *namespaceReconciler) reconcileRoleBindings(ctx context.Context, namespa
 }
 
 func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context, namespace string) error {
-	netAttachDefName, ok := common.GetCNINetworkName(r.meshVersion)
+	netAttachDefName, ok := cni.GetNetworkName(r.meshVersion)
 	if !ok {
 		return fmt.Errorf("unknown maistra version: %s", r.meshVersion)
 	}
