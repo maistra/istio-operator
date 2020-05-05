@@ -118,7 +118,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			if err != nil {
 				r.renderings = nil
 				r.lastComponent = ""
-				updateReconcileStatus(&r.Status.StatusType, err)
+				updateControlPlaneConditions(r.Status, err)
 			}
 		}()
 
@@ -295,7 +295,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 	}
 	r.Status.ObservedGeneration = r.Instance.GetGeneration()
 	r.Status.ReconciledVersion = r.meshGeneration
-	updateReconcileStatus(&r.Status.StatusType, nil)
+	updateControlPlaneConditions(r.Status, nil)
 
 	_, err = r.updateReadinessStatus(ctx) // this only updates the local object instance; it doesn't post the status update; postReconciliationStatus (called using defer) actually does that
 

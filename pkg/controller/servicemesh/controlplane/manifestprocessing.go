@@ -21,7 +21,7 @@ func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.C
 	log.Info("reconciling component resources")
 	status := r.Status.FindComponentByName(componentName)
 	defer func() {
-		updateReconcileStatus(&status.StatusType, err)
+		updateComponentConditions(status, err)
 		log.Info("component reconciliation complete")
 	}()
 
