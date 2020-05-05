@@ -69,20 +69,15 @@ func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 	}
 
 	smcpList := &maistrav1.ServiceMeshControlPlaneList{}
-	err = v.client.List(ctx, nil, smcpList)
+	err = v.client.List(ctx, client.InNamespace(smcp.Namespace), smcpList)
 	if err != nil {
 		logger.Error(err, "error listing smcp resources")
 		return admission.ErrorResponse(http.StatusInternalServerError, err)
 	}
 
-	for _, othercp := range smcpList.Items {
-		if othercp.Name == smcp.Name && othercp.Namespace == smcp.Namespace {
-			continue
-		}
-		if othercp.Namespace == smcp.Namespace {
-			// verify single instance per namespace
-			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "only one service mesh may be installed per project/namespace")
-		}
+	// verify single instance per namespace
+	if (len(smcpList.Items) == 1 && smcpList.Items[0].Name != smcp.Name) || len(smcpList.Items) > 1 {
+		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "only one service mesh may be installed per project/namespace")
 	}
 
 	if req.AdmissionRequest.Operation == admissionv1beta1.Update {
