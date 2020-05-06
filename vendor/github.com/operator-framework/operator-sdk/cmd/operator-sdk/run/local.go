@@ -21,6 +21,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 
@@ -76,6 +77,9 @@ func (c runLocalArgs) runGo() error {
 	absProjectPath := projutil.MustGetwd()
 	projectName := filepath.Base(absProjectPath)
 	outputBinName := filepath.Join(scaffold.BuildBinDir, projectName+"-local")
+	if runtime.GOOS == "windows" {
+		outputBinName += ".exe"
+	}
 	if err := c.buildLocal(outputBinName); err != nil {
 		return fmt.Errorf("failed to build operator to run locally: %v", err)
 	}
@@ -115,6 +119,13 @@ func (c runLocalArgs) runGo() error {
 		dc.Env = append(dc.Env, fmt.Sprintf("%v=%v", k8sutil.KubeConfigEnvVar, c.kubeconfig))
 	}
 	dc.Env = append(dc.Env, fmt.Sprintf("%v=%v", k8sutil.WatchNamespaceEnvVar, c.namespace))
+
+	// Set the ANSIBLE_ROLES_PATH
+	if c.ansibleOperatorFlags != nil && len(c.ansibleOperatorFlags.AnsibleRolesPath) > 0 {
+		log.Info(fmt.Sprintf("set the value %v for environment variable %v.", c.ansibleOperatorFlags.AnsibleRolesPath,
+			aoflags.AnsibleRolesPathEnvVar))
+		dc.Env = append(dc.Env, fmt.Sprintf("%v=%v", aoflags.AnsibleRolesPathEnvVar, c.ansibleOperatorFlags.AnsibleRolesPath))
+	}
 
 	if err := projutil.ExecCmd(dc); err != nil {
 		return fmt.Errorf("failed to run operator locally: %v", err)

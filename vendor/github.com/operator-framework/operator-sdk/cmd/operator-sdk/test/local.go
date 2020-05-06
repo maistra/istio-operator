@@ -48,11 +48,12 @@ type testLocalConfig struct {
 	goTestFlags        string
 	moleculeTestFlags  string
 	namespace          string
+	image              string
+	localOperatorFlags string
 	upLocal            bool
 	noSetup            bool
 	debug              bool
-	image              string
-	localOperatorFlags string
+	skipCleanupOnError bool
 }
 
 var tlConfig testLocalConfig
@@ -64,16 +65,27 @@ func newTestLocalCmd() *cobra.Command {
 		RunE:  testLocalFunc,
 	}
 	testCmd.Flags().StringVar(&tlConfig.kubeconfig, "kubeconfig", "", "Kubeconfig path")
-	testCmd.Flags().StringVar(&tlConfig.globalManPath, "global-manifest", "", "Path to manifest for Global resources (e.g. CRD manifests)")
-	testCmd.Flags().StringVar(&tlConfig.namespacedManPath, "namespaced-manifest", "", "Path to manifest for per-test, namespaced resources (e.g. RBAC and Operator manifest)")
-	testCmd.Flags().StringVar(&tlConfig.goTestFlags, "go-test-flags", "", "Additional flags to pass to go test")
-	testCmd.Flags().StringVar(&tlConfig.moleculeTestFlags, "molecule-test-flags", "", "Additional flags to pass to molecule test")
-	testCmd.Flags().StringVar(&tlConfig.namespace, "namespace", "", "If non-empty, single namespace to run tests in")
-	testCmd.Flags().BoolVar(&tlConfig.upLocal, "up-local", false, "Enable running operator locally with go run instead of as an image in the cluster")
+	testCmd.Flags().StringVar(&tlConfig.globalManPath, "global-manifest", "",
+		"Path to manifest for Global resources (e.g. CRD manifests)")
+	testCmd.Flags().StringVar(&tlConfig.namespacedManPath, "namespaced-manifest", "",
+		"Path to manifest for per-test, namespaced resources (e.g. RBAC and Operator manifest)")
+	testCmd.Flags().StringVar(&tlConfig.goTestFlags, "go-test-flags", "",
+		"Additional flags to pass to go test")
+	testCmd.Flags().StringVar(&tlConfig.moleculeTestFlags, "molecule-test-flags", "",
+		"Additional flags to pass to molecule test")
+	testCmd.Flags().StringVar(&tlConfig.namespace, "namespace", "",
+		"If non-empty, single namespace to run tests in")
+	testCmd.Flags().BoolVar(&tlConfig.upLocal, "up-local", false,
+		"Enable running operator locally with go run instead of as an image in the cluster")
 	testCmd.Flags().BoolVar(&tlConfig.noSetup, "no-setup", false, "Disable test resource creation")
 	testCmd.Flags().BoolVar(&tlConfig.debug, "debug", false, "Enable debug-level logging")
-	testCmd.Flags().StringVar(&tlConfig.image, "image", "", "Use a different operator image from the one specified in the namespaced manifest")
-	testCmd.Flags().StringVar(&tlConfig.localOperatorFlags, "local-operator-flags", "", "The flags that the operator needs (while using --up-local). Example: \"--flag1 value1 --flag2=value2\"")
+	testCmd.Flags().StringVar(&tlConfig.image, "image", "",
+		"Use a different operator image from the one specified in the namespaced manifest")
+	testCmd.Flags().StringVar(&tlConfig.localOperatorFlags, "local-operator-flags", "",
+		"The flags that the operator needs (while using --up-local). Example: \"--flag1 value1 --flag2=value2\"")
+	testCmd.Flags().BoolVar(&tlConfig.skipCleanupOnError, "skip-cleanup-error", false,
+		"If set as true, the cleanup function responsible to remove all artifacts "+
+			"will be skipped if an error is faced.")
 
 	return testCmd
 }
@@ -114,7 +126,8 @@ func testLocalGoFunc(cmd *cobra.Command, args []string) error {
 	}
 	if (tlConfig.noSetup && tlConfig.globalManPath != "") ||
 		(tlConfig.noSetup && tlConfig.namespacedManPath != "") {
-		return fmt.Errorf("the global-manifest and namespaced-manifest flags cannot be enabled at the same time as the no-setup flag")
+		return fmt.Errorf("the global-manifest and namespaced-manifest flags cannot be enabled" +
+			" at the same time as the no-setup flag")
 	}
 
 	if tlConfig.upLocal && tlConfig.namespace == "" {
@@ -123,7 +136,8 @@ func testLocalGoFunc(cmd *cobra.Command, args []string) error {
 
 	log.Info("Testing operator locally.")
 
-	// if no namespaced manifest path is given, combine deploy/service_account.yaml, deploy/role.yaml, deploy/role_binding.yaml and deploy/operator.yaml
+	// if no namespaced manifest path is given, combine deploy/service_account.yaml, deploy/role.yaml,
+	// deploy/role_binding.yaml and deploy/operator.yaml
 	if tlConfig.namespacedManPath == "" && !tlConfig.noSetup {
 		if !tlConfig.upLocal {
 			file, err := yamlutil.GenerateCombinedNamespacedManifest(scaffold.DeployDir)
@@ -217,6 +231,7 @@ func testLocalGoFunc(cmd *cobra.Command, args []string) error {
 			testArgs = append(testArgs, "-"+test.LocalOperatorArgs, tlConfig.localOperatorFlags)
 		}
 	}
+	testArgs = append(testArgs, fmt.Sprintf("-%s=%t", test.SkipCleanupOnErrorFlag, tlConfig.skipCleanupOnError))
 	opts := projutil.GoTestOptions{
 		GoCmdOptions: projutil.GoCmdOptions{
 			PackagePath: args[0] + "/...",
@@ -279,15 +294,17 @@ func replaceImage(manifestPath, image string) error {
 		if err != nil {
 			return err
 		}
-		dep := &appsv1.Deployment{}
+		var dep appsv1.Deployment
 		switch o := obj.(type) {
 		case *appsv1.Deployment:
-			dep = o
+			dep = *o
 		default:
-			return fmt.Errorf("error in replaceImage switch case; could not convert runtime.Object to deployment")
+			return fmt.Errorf("error in replaceImage switch case; could not convert runtime.Object" +
+				" to deployment")
 		}
 		if len(dep.Spec.Template.Spec.Containers) != 1 {
-			return fmt.Errorf("cannot use `image` flag on namespaced manifest containing more than 1 container in the operator deployment")
+			return fmt.Errorf("cannot use `image` flag on namespaced manifest containing more" +
+				" than 1 container in the operator deployment")
 		}
 		dep.Spec.Template.Spec.Containers[0].Image = image
 		updatedYamlSpec, err := yaml.Marshal(dep)

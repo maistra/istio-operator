@@ -36,5 +36,6 @@ func (e *Entrypoint) GetInput() (input.Input, error) {
 
 const entrypointTmpl = `#!/bin/bash -e
 
-exec ${OPERATOR} exec-entrypoint ansible --watches-file=/opt/ansible/watches.yaml $@
+cd $HOME
+exec ${OPERATOR} exec-entrypoint ansible --watches-file=$HOME/watches.yaml $@
 `
