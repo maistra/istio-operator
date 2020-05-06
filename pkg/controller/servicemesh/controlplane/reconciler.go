@@ -181,7 +181,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		}
 
 		// initialize new Status
-		componentStatuses := make([]*v1.ComponentStatus, 0, len(r.Status.ComponentStatus))
+		componentStatuses := make([]v1.ComponentStatus, 0, len(r.Status.ComponentStatus))
 		for _, chartName := range r.getChartsInInstallationOrder() {
 			componentName := componentFromChartName(chartName)
 			componentStatus := r.Status.FindComponentByName(componentName)
@@ -193,7 +193,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 				Type:   v1.ConditionTypeReconciled,
 				Status: v1.ConditionStatusFalse,
 			})
-			componentStatuses = append(componentStatuses, componentStatus)
+			componentStatuses = append(componentStatuses, *componentStatus)
 		}
 		r.Status.ComponentStatus = componentStatuses
 
