@@ -21,7 +21,7 @@ import (
 
 type ManifestProcessor struct {
 	common.ControllerResources
-	PatchFactory      *PatchFactory
+	PatchFactory     *PatchFactory
 	preprocessObject func(ctx context.Context, obj *unstructured.Unstructured) error
 	processNewObject func(ctx context.Context, obj *unstructured.Unstructured) error
 
@@ -31,6 +31,7 @@ type ManifestProcessor struct {
 func NewManifestProcessor(controllerResources common.ControllerResources, patchFactory *PatchFactory, appInstance, appVersion, owner string, preprocessObjectFunc, postProcessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) error) *ManifestProcessor {
 	return &ManifestProcessor{
 		ControllerResources: controllerResources,
+		PatchFactory:        patchFactory,
 		preprocessObject:    preprocessObjectFunc,
 		processNewObject:    postProcessObjectFunc,
 		appInstance:         appInstance,
