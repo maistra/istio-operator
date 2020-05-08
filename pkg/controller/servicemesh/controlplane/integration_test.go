@@ -47,7 +47,7 @@ func TestBootstrapping(t *testing.T) {
 			CNIGroupResources,
 		},
 		Events: []ControllerTestEvent{
-			ControllerTestEvent{
+			{
 				Name: "bootstrap-clean-install-cni-no-errors",
 				Execute: func(mgr *FakeManager, _ *EnhancedTracker) error {
 					return mgr.GetClient().Create(context.TODO(), &maistrav1.ServiceMeshControlPlane{
@@ -82,6 +82,60 @@ func TestBootstrapping(t *testing.T) {
 							NumberAvailable:   0,
 							NumberUnavailable: 3,
 						})),
+				},
+				Timeout: 10 * time.Second,
+			},
+		},
+	})
+}
+
+func TestInvalidTemplate(t *testing.T) {
+	const (
+		operatorNamespace     = "istio-operator"
+		controlPlaneNamespace = "test"
+		smcpName              = "test"
+		cniDaemonSetName      = "istio-node"
+	)
+
+	if testing.Verbose() {
+		logf.SetLogger(logf.ZapLogger(true))
+	}
+	RunControllerTestCase(t, ControllerTestCase{
+		Name:             "clean-install-cni-invalid-template",
+		ConfigureGlobals: InitializeGlobals(operatorNamespace),
+		AddControllers:   []AddControllerFunc{Add},
+		Resources: []runtime.Object{
+			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: controlPlaneNamespace}},
+			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorNamespace}},
+		},
+		GroupResources: []*restmapper.APIGroupResources{
+			CNIGroupResources,
+		},
+		Events: []ControllerTestEvent{
+			{
+				Name: "bootstrap-clean-install-cni-no-errors",
+				Execute: func(mgr *FakeManager, _ *EnhancedTracker) error {
+					return mgr.GetClient().Create(context.TODO(), &maistrav1.ServiceMeshControlPlane{
+						ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
+						Spec: maistrav1.ControlPlaneSpec{
+							Version: "v1.1",
+							Template: "bogus",
+						},
+					})
+				},
+				Verifier: VerifyActions(
+					// finalizer added
+					Verify("reconcile").On("results").Named(controllerName).Passes(ReconcileSucceeded(controlPlaneNamespace, smcpName)),
+					// initial status updated
+					Verify("reconcile").On("results").Named(controllerName).Passes(ReconcileSucceeded(controlPlaneNamespace, smcpName)),
+					// first real processing of smcp we expect an error when it tries to apply the templates
+					Verify("reconcile").On("results").Named(controllerName).Passes(ReconcileErrored(controlPlaneNamespace, smcpName)),
+					// and another processing after the status update, there should be no more reconciles after this
+					Verify("reconcile").On("results").Named(controllerName).Passes(ReconcileErrored(controlPlaneNamespace, smcpName)),
+				),
+				Assertions: ActionAssertions{
+				},
+				Reactors: []clienttesting.Reactor{
 				},
 				Timeout: 10 * time.Second,
 			},
@@ -147,21 +201,21 @@ func initalStatusTest(action clienttesting.Action) error {
 			StatusType: maistrav1.StatusType{
 				ObservedGeneration: 0,
 				Conditions: []maistrav1.Condition{
-					maistrav1.Condition{
+					{
 						Type:               maistrav1.ConditionTypeInstalled,
 						Status:             maistrav1.ConditionStatusFalse,
 						Reason:             maistrav1.ConditionReasonResourceCreated,
 						Message:            "Installing mesh generation 1",
 						LastTransitionTime: metav1.Time{},
 					},
-					maistrav1.Condition{
+					{
 						Type:               maistrav1.ConditionTypeReconciled,
 						Status:             maistrav1.ConditionStatusFalse,
 						Reason:             maistrav1.ConditionReasonResourceCreated,
 						Message:            "Installing mesh generation 1",
 						LastTransitionTime: metav1.Time{},
 					},
-					maistrav1.Condition{
+					{
 						Type:               maistrav1.ConditionTypeReady,
 						Status:             maistrav1.ConditionStatusFalse,
 						Reason:             maistrav1.ConditionReasonResourceCreated,
