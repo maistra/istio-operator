@@ -14,9 +14,9 @@
 
 -include Makefile.overrides
 
-MAISTRA_VERSION        ?= 1.1.1
-MAISTRA_BRANCH         ?= maistra-1.1
-REPLACES_PRODUCT_CSV   ?= 1.1.0
+MAISTRA_VERSION        ?= 1.1.2
+MAISTRA_BRANCH         ?= maistra-branch-1.1.2
+REPLACES_PRODUCT_CSV   ?= 1.1.1
 REPLACES_COMMUNITY_CSV ?= 1.1.0
 VERSION                ?= development
 IMAGE                  ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}
@@ -110,7 +110,7 @@ collect-1.0-templates:
 ################################################################################
 .PHONY: update-1.1-charts
 update-1.1-charts:
-	HELM_DIR=${RESOURCES_DIR}/helm/v1.1 ISTIO_VERSION=1.1.0 ${SOURCE_DIR}/build/download-charts.sh
+	HELM_DIR=${RESOURCES_DIR}/helm/v1.1 MAISTRA_VERSION=${MAISTRA_VERSION} MAISTRA_BRANCH=${MAISTRA_BRANCH} ${SOURCE_DIR}/build/download-charts.sh
 	HELM_DIR=${RESOURCES_DIR}/helm/v1.1 ${SOURCE_DIR}/build/patch-container-image.sh
 
 .PHONY: collect-1.1-charts
