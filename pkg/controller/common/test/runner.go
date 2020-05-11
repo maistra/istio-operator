@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"testing"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -50,6 +51,7 @@ func RunControllerTestCase(t *testing.T, testCase ControllerTestCase) {
 		defer stop()
 		for _, event := range testCase.Events {
 			t.Run(event.Name, func(t *testing.T) {
+				t.Helper()
 				extraneousActionFilter := &extraneousActionFailure{verifier: event.Verifier, t: t}
 				defer func() {
 					if event.AssertExtraneousActions {
@@ -78,12 +80,16 @@ func RunControllerTestCase(t *testing.T, testCase ControllerTestCase) {
 				if err := event.Execute(mgr, tracker); err != nil {
 					t.Fatal(err)
 				}
+				startTime := time.Now()
 				if !event.Verifier.Wait(event.Timeout) {
 					// no need to process assertions if there was a problem with the event processing
 					// just need to wait for Reconcile() to complete before processing assertions
-					mgr.WaitForReconcileCompletion()
-					for _, assertion := range event.Assertions {
-						assertion.Assert(t)
+					if !mgr.WaitForReconcileCompletion(event.Timeout - time.Since(startTime)) {
+						for _, assertion := range event.Assertions {
+							assertion.Assert(t)
+						}
+					} else {
+						t.Fatal("timed out waiting for empty reconciliation queue")
 					}
 				}
 			})
