@@ -422,37 +422,89 @@ func (r *controlPlaneInstanceReconciler) applyDisconnectedSettings(ctx context.C
 	if err != nil {
 		return smcpSpec, err
 	}
+
+	// these need to exist or we'll get errors trying to set the images
+	if smcpSpec.Istio == nil {
+		smcpSpec.Istio = make(v1.HelmValuesType)
+	}
+	if smcpSpec.ThreeScale == nil {
+		smcpSpec.ThreeScale = make(v1.HelmValuesType)
+	}
 	switch version {
 	case maistra.V1_0, maistra.UndefinedVersion:
-		r.updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_0.Citadel)
-		r.updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_0.Galley)
-		r.updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_0.Grafana)
-		r.updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_0.Mixer)
-		r.updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_0.Pilot)
-		r.updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_0.Prometheus)
-		r.updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_0.ProxyInit)
-		r.updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_0.ProxyV2)
-		r.updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_0.SidecarInjector)
-		r.updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_0.ThreeScale)
+		if err := r.updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_0.Citadel); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_0.Galley); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_0.Grafana); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_0.Mixer); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_0.Pilot); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_0.Prometheus); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_0.ProxyInit); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_0.ProxyV2); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_0.SidecarInjector); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_0.ThreeScale); err != nil {
+			return smcpSpec, err
+		}
 
 	case maistra.V1_1:
-		r.updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_1.Citadel)
-		r.updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_1.Galley)
-		r.updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_1.Grafana)
-		r.updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_1.Mixer)
-		r.updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_1.Pilot)
-		r.updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_1.Prometheus)
-		r.updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_1.ProxyInit)
-		r.updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_1.ProxyV2)
-		r.updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_1.SidecarInjector)
-		r.updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_1.ThreeScale)
+		if err := r.updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_1.Citadel); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_1.Galley); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_1.Grafana); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_1.Mixer); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_1.Pilot); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_1.Prometheus); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_1.ProxyInit); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_1.ProxyV2); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_1.SidecarInjector); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_1.ThreeScale); err != nil {
+			return smcpSpec, err
+		}
 
-		r.updateImageField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V1_1.IOR)
+		if err := r.updateImageField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V1_1.IOR); err != nil {
+			return smcpSpec, err
+		}
 
 	default:
 		return smcpSpec, fmt.Errorf("cannot apply disconnected install settings for unknown version %s", version)
 	}
-	r.updateOauthProxyConfig(ctx, &smcpSpec)
+	if err := r.updateOauthProxyConfig(ctx, &smcpSpec); err != nil {
+		return smcpSpec, err
+	}
 	return smcpSpec, err
 }
 
@@ -493,6 +545,9 @@ func (r *controlPlaneInstanceReconciler) updateOauthProxyConfig(ctx context.Cont
 func (r *controlPlaneInstanceReconciler) updateImageField(obj map[string]interface{}, path, value string) error {
 	if len(value) == 0 {
 		return nil
+	} else if obj == nil {
+		// prevent SIGSEGV
+		return fmt.Errorf("cannot set %s on nil value", path)
 	}
 	return unstructured.SetNestedField(obj, value, strings.Split(path, ".")...)
 }
@@ -516,12 +571,10 @@ func (r *controlPlaneInstanceReconciler) applyTemplates(ctx context.Context, smc
 
 	spec, err := r.recursivelyApplyTemplates(ctx, smcpSpec, smcpSpec.Version, sets.NewString())
 
-	if applyDisconnectedSettings {
+	if err == nil && applyDisconnectedSettings {
 		spec, err = r.applyDisconnectedSettings(ctx, spec)
 		if err != nil {
 			log.Error(err, "warning: failed to apply image names to support disconnected install")
-
-			return spec, err
 		}
 	}
 
@@ -625,7 +678,6 @@ func (r *controlPlaneInstanceReconciler) PostStatus(ctx context.Context) error {
 	} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
 		return errors.Wrap(err, "error getting ServiceMeshControlPlane prior to updating status")
 	}
-
 	return nil
 }
 

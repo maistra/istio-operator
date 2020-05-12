@@ -1048,11 +1048,11 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 				memberNamespace,
 				memberRoll)
 			validator, _, _ := createControlPlaneValidatorTestFixture(resources...)
-			oldsmcp := v1_1ControlPlane.DeepCopy()
+			newsmcp := v1_0ControlPlane.DeepCopy()
 			if tc.configure != nil {
-				tc.configure(oldsmcp)
+				tc.configure(newsmcp)
 			}
-			response := validator.Handle(ctx, createUpdateRequest(oldsmcp, v1_0ControlPlane))
+			response := validator.Handle(ctx, createUpdateRequest(v1_1ControlPlane, newsmcp))
 			if tc.allowed {
 				assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
 			} else {

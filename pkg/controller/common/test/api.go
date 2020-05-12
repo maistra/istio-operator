@@ -125,6 +125,8 @@ func (a *AbstractActionFilter) Handles(action clienttesting.Action) bool {
 		case clienttesting.UpdateAction:
 			accessor, err := meta.Accessor(typedAction.GetObject())
 			return a.Name == "*" || (err == nil && a.Name == accessor.GetName())
+		case ReconcileRequestAction:
+			return a.Name == "*" || a.Name == typedAction.GetName()
 		case clienttesting.DeleteAction:
 			return a.Name == "*" || a.Name == typedAction.GetName()
 		case clienttesting.GetAction:
