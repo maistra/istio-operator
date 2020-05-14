@@ -274,9 +274,13 @@ function patchSidecarInjector() {
 \1  targetPort: webhook/' ${HELM_DIR}/istio/charts/sidecarInjectorWebhook/templates/service.yaml
 
   # - switch webhook ports to 8443
+  # - add injectPodRedirectAnnot flag when enabled
   # - disable management of webhook config
   # - add webhook port
   sed_wrap -i -e 's/^\(.*\)\(volumeMounts:.*\)$/\1  - --port=8443\
+{{- if .Values.injectPodRedirectAnnot }}\
+\1  - --injectPodRedirectAnnot\
+{{- end }}\
 \1ports:\
 \1- name: webhook\
 \1  containerPort: 8443\
