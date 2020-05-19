@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"testing"
@@ -47,13 +48,13 @@ func TestBootstrapping(t *testing.T) {
 			CNIGroupResources,
 		},
 		Events: []ControllerTestEvent{
-			ControllerTestEvent{
+			{
 				Name: "bootstrap-clean-install-cni-no-errors",
 				Execute: func(mgr *FakeManager, _ *EnhancedTracker) error {
 					return mgr.GetClient().Create(context.TODO(), &maistrav1.ServiceMeshControlPlane{
 						ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
 						Spec: maistrav1.ControlPlaneSpec{
-							Version: "v1.1",
+							Version:  "v1.1",
 							Template: "maistra",
 						},
 					})
@@ -62,7 +63,7 @@ func TestBootstrapping(t *testing.T) {
 					// add finalizer
 					Verify("update").On("servicemeshcontrolplanes").Named(smcpName).In(controlPlaneNamespace).Passes(FinalizerAddedTest(common.FinalizerName)),
 					// initialize status
-					Verify("update").On("servicemeshcontrolplanes/status").Named(smcpName).In(controlPlaneNamespace).Passes(initalStatusTest),
+					Verify("patch").On("servicemeshcontrolplanes/status").Named(smcpName).In(controlPlaneNamespace).Passes(initalStatusTest),
 					// verify that a CRD is installed
 					Verify("create").On("customresourcedefinitions").IsSeen(),
 					// verify that CNI is installed
@@ -129,11 +130,11 @@ func FinalizerAddedTest(finalizer string) test.VerifierTestFunc {
 
 func initalStatusTest(action clienttesting.Action) error {
 	switch realAction := action.(type) {
-	case clienttesting.UpdateAction:
-		obj := realAction.GetObject()
-		cp, ok := obj.(*maistrav1.ServiceMeshControlPlane)
-		if !ok {
-			return fmt.Errorf("InitialStatusTest failed: object being updated is not a ServiceMeshControlPlane")
+	case clienttesting.PatchAction:
+		cp := &maistrav1.ServiceMeshControlPlane{}
+		err := json.Unmarshal(realAction.GetPatch(), cp)
+		if err != nil {
+			return fmt.Errorf("InitialStatusTest failed: could not unmarshal patch data")
 		}
 		actual := cp.Status.DeepCopy()
 		actual.LastAppliedConfiguration = maistrav1.ControlPlaneSpec{}
@@ -147,21 +148,21 @@ func initalStatusTest(action clienttesting.Action) error {
 			StatusType: maistrav1.StatusType{
 				ObservedGeneration: 0,
 				Conditions: []maistrav1.Condition{
-					maistrav1.Condition{
+					{
 						Type:               maistrav1.ConditionTypeInstalled,
 						Status:             maistrav1.ConditionStatusFalse,
 						Reason:             maistrav1.ConditionReasonResourceCreated,
 						Message:            "Installing mesh generation 1",
 						LastTransitionTime: metav1.Time{},
 					},
-					maistrav1.Condition{
+					{
 						Type:               maistrav1.ConditionTypeReconciled,
 						Status:             maistrav1.ConditionStatusFalse,
 						Reason:             maistrav1.ConditionReasonResourceCreated,
 						Message:            "Installing mesh generation 1",
 						LastTransitionTime: metav1.Time{},
 					},
-					maistrav1.Condition{
+					{
 						Type:               maistrav1.ConditionTypeReady,
 						Status:             maistrav1.ConditionStatusFalse,
 						Reason:             maistrav1.ConditionReasonResourceCreated,
@@ -176,5 +177,5 @@ func initalStatusTest(action clienttesting.Action) error {
 		}
 		return nil
 	}
-	return fmt.Errorf("InitialStatusTest for failed: action is not an UpdateAction")
+	return fmt.Errorf("InitialStatusTest for failed: action is not a PatchAction")
 }

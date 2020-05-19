@@ -7,9 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	errors2 "github.com/pkg/errors"
 	core "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
@@ -36,8 +34,6 @@ const (
 
 	eventReasonFailedReconcile     maistra.ConditionReason = "FailedReconcile"
 	eventReasonSuccessfulReconcile maistra.ConditionReason = "Reconciled"
-
-	maxStatusUpdateRetriesOnConflict = 3
 
 	statusAnnotationControlPlaneRef = "controlPlaneRef"
 )
@@ -328,7 +324,6 @@ func (r *MemberReconciler) reportError(ctx context.Context, member *maistra.Serv
 }
 
 func (r *MemberReconciler) updateStatus(ctx context.Context, member *maistra.ServiceMeshMember, reconciled, ready bool, reason maistra.ServiceMeshMemberConditionReason, message string) error {
-	reqLogger := common.LogFromContext(ctx)
 	member.Status.ObservedGeneration = member.Generation
 	member.Status.SetCondition(maistra.ServiceMeshMemberCondition{
 		Type:    maistra.ConditionTypeMemberReconciled,
@@ -343,58 +338,11 @@ func (r *MemberReconciler) updateStatus(ctx context.Context, member *maistra.Ser
 		Message: message,
 	})
 
-	// TODO: use Client().Status().Patch() and remove the retry code below after we upgrade to controller-runtime 0.2+
-	err := r.Client.Status().Update(ctx, member)
-	if err == nil {
-		return nil
+	err := r.Client.Status().Patch(ctx, member, common.NewStatusPatch(member.Status))
+	if err != nil && !errors.IsNotFound(err) {
+		return errors2.Wrapf(err, "Could not update status of ServiceMeshMember %s/%s", member.Namespace, member.Name)
 	}
-
-	// We only retry on conflict, because a retry will almost certainly succeed, since we first obtain a
-	// fresh instance of the object. We don't retry on any other errors, as it's likely that we'll get the
-	// same error again (plus, it's good to let the human operator know there was an error even if the
-	// retry would succeed).
-	converter := runtime.NewTestUnstructuredConverter(equality.Semantic)
-	for retry := 0; retry < maxStatusUpdateRetriesOnConflict; retry++ {
-		if errors.IsNotFound(err) {
-			// The Member has disappeared, which means it was deleted by someone. We shouldn't treat this as an error
-			// and we shouldn't retry.
-			reqLogger.Info("Couldn't update status, because ServiceMeshMember has been deleted")
-			return nil
-		} else if errors.IsConflict(err) {
-			reqLogger.Info("Ran into conflict when updating ServiceMeshMember's status. Retrying...")
-
-			// This controller owns the ServiceMeshMember's status and can thus always override it (no-one else should
-			// modify the status). We can't simply do a client.Get(), as that would again return the locally cached
-			// object, which means that the update may fail again. We thus need to fetch the object from the API
-			// server directly, update its status, and submit it back to the API Server. Hence the use of Unstructured.
-			freshMember := unstructured.Unstructured{}
-			freshMember.SetAPIVersion(maistra.SchemeGroupVersion.String())
-			freshMember.SetKind("ServiceMeshMember")
-
-			err = r.Client.Get(ctx, types.NamespacedName{member.Namespace, member.Name}, &freshMember)
-			if err != nil {
-				break
-			}
-
-			unstructuredStatus, err := converter.ToUnstructured(member.Status)
-			if err != nil {
-				break
-			}
-
-			err = unstructured.SetNestedField(freshMember.UnstructuredContent(), unstructuredStatus, "status")
-			if err != nil {
-				break
-			}
-
-			err = r.Client.Status().Update(ctx, &freshMember)
-			if err == nil {
-				return nil
-			}
-		} else {
-			break
-		}
-	}
-	return errors2.Wrapf(err, "Could not update status of ServiceMeshMember %s/%s", member.Namespace, member.Name)
+	return nil
 }
 
 func (r *MemberReconciler) recordEvent(member *maistra.ServiceMeshMember, eventType string, reason maistra.ConditionReason, message string) {

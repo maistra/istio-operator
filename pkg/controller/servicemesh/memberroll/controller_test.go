@@ -324,7 +324,7 @@ func TestReconcileFailsIfMemberRollUpdateFails(t *testing.T) {
 	namespace := newNamespace(appNamespace)
 
 	_, tracker, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace)
-	tracker.AddReactor("update", "servicemeshmemberrolls", test.ClientFails())
+	tracker.AddReactor("patch", "servicemeshmemberrolls", test.ClientFails())
 
 	assertReconcileFails(r, t)
 

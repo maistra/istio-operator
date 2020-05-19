@@ -290,7 +290,7 @@ func TestReconcileReturnsErrorIfClientOperationFails(t *testing.T) {
 		},
 		{
 			name:    "update-member-fails",
-			reactor: test.On("update", "servicemeshmembers", test.ClientFails()),
+			reactor: test.On("patch", "servicemeshmembers", test.ClientFails()),
 		},
 		{
 			name:    "get-member-roll-fails",

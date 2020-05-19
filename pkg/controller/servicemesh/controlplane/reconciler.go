@@ -595,7 +595,7 @@ func (r *controlPlaneInstanceReconciler) PostStatus(ctx context.Context) error {
 	log.Info("Posting status update", "conditions", r.Status.Conditions)
 	if err := r.Client.Get(ctx, client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); err == nil {
 		instance.Status = *r.Status.DeepCopy()
-		if err = r.Client.Status().Update(ctx, instance); err != nil && !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
+		if err = r.Client.Status().Patch(ctx, instance, common.NewStatusPatch(instance.Status)); err != nil && !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
 			return errors.Wrap(err, "error updating ServiceMeshControlPlane status")
 		}
 	} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
