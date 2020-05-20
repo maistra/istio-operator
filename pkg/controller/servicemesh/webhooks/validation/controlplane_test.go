@@ -13,17 +13,16 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 
 	"github.com/maistra/istio-operator/pkg/apis/istio/simple"
 	configv1alpha2 "github.com/maistra/istio-operator/pkg/apis/istio/simple/config/v1alpha2"
 	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/simple/networking/v1alpha3"
 	securityv1beta1 "github.com/maistra/istio-operator/pkg/apis/istio/simple/security/v1beta1"
-	"github.com/maistra/istio-operator/pkg/apis/maistra"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 func TestDeletedControlPlaneIsAlwaysAllowed(t *testing.T) {
@@ -32,7 +31,7 @@ func TestDeletedControlPlaneIsAlwaysAllowed(t *testing.T) {
 
 	validator, _, _ := createControlPlaneValidatorTestFixture()
 	response := validator.Handle(ctx, createCreateRequest(controlPlane))
-	assert.True(response.Response.Allowed, "Expected validator to allow deleted ServiceMeshControlPlane", t)
+	assert.True(response.Allowed, "Expected validator to allow deleted ServiceMeshControlPlane", t)
 }
 
 func TestControlPlaneOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
@@ -40,7 +39,7 @@ func TestControlPlaneOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
 	validator, _, _ := createControlPlaneValidatorTestFixture()
 	validator.namespaceFilter = "watched-namespace"
 	response := validator.Handle(ctx, createCreateRequest(controlPlane))
-	assert.True(response.Response.Allowed, "Expected validator to allow ServiceMeshControlPlane whose namespace isn't watched", t)
+	assert.True(response.Allowed, "Expected validator to allow ServiceMeshControlPlane whose namespace isn't watched", t)
 }
 
 func TestControlPlaneWithIncorrectVersionIsRejected(t *testing.T) {
@@ -48,7 +47,7 @@ func TestControlPlaneWithIncorrectVersionIsRejected(t *testing.T) {
 	controlPlane.Spec.Version = "0.0"
 	validator, _, _ := createControlPlaneValidatorTestFixture()
 	response := validator.Handle(ctx, createCreateRequest(controlPlane))
-	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane with bad version", t)
+	assert.False(response.Allowed, "Expected validator to reject ServiceMeshControlPlane with bad version", t)
 }
 
 func TestControlPlaneNotAllowedInOperatorNamespace(t *testing.T) {
@@ -56,7 +55,7 @@ func TestControlPlaneNotAllowedInOperatorNamespace(t *testing.T) {
 	controlPlane := newControlPlane("my-smcp", "openshift-operators")
 	validator, _, _ := createControlPlaneValidatorTestFixture()
 	response := validator.Handle(ctx, createCreateRequest(controlPlane))
-	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane in operator's namespace", t)
+	assert.False(response.Allowed, "Expected validator to reject ServiceMeshControlPlane in operator's namespace", t)
 }
 
 func TestOnlyOneControlPlaneIsAllowedPerNamespace(t *testing.T) {
@@ -64,7 +63,7 @@ func TestOnlyOneControlPlaneIsAllowedPerNamespace(t *testing.T) {
 	validator, _, _ := createControlPlaneValidatorTestFixture(controlPlane1)
 	controlPlane2 := newControlPlane("my-smcp2", "istio-system")
 	response := validator.Handle(ctx, createCreateRequest(controlPlane2))
-	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane with bad version", t)
+	assert.False(response.Allowed, "Expected validator to reject ServiceMeshControlPlane with bad version", t)
 }
 
 func TestControlPlaneValidation(t *testing.T) {
@@ -96,7 +95,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -121,7 +120,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -143,7 +142,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -165,7 +164,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -187,7 +186,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"proxy": map[string]interface{}{
@@ -212,7 +211,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -261,7 +260,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -311,7 +310,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Version: maistra.V1_1.String(),
+					Version: versions.V1_1.String(),
 					Istio: map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
@@ -337,12 +336,12 @@ func TestControlPlaneValidation(t *testing.T) {
 			response := validator.Handle(ctx, createCreateRequest(tc.controlPlane))
 			if tc.valid {
 				var reason string
-				if response.Response.Result != nil {
-					reason = response.Response.Result.Message
+				if response.Result != nil {
+					reason = response.Result.Message
 				}
-				assert.True(response.Response.Allowed, "Expected validator to accept valid ServiceMeshControlPlane, but rejected: "+reason, t)
+				assert.True(response.Allowed, "Expected validator to accept valid ServiceMeshControlPlane, but rejected: "+reason, t)
 			} else {
-				assert.False(response.Response.Allowed, "Expected validator to reject invalid ServiceMeshControlPlane", t)
+				assert.False(response.Allowed, "Expected validator to reject invalid ServiceMeshControlPlane", t)
 			}
 		})
 	}
@@ -354,7 +353,7 @@ func TestUpdateOfValidControlPlane(t *testing.T) {
 
 	controlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v1.1")
 	response := validator.Handle(ctx, createUpdateRequest(oldControlPlane, controlPlane))
-	assert.True(response.Response.Allowed, "Expected validator to accept update of valid ServiceMeshControlPlane", t)
+	assert.True(response.Allowed, "Expected validator to accept update of valid ServiceMeshControlPlane", t)
 }
 
 func TestInvalidVersion(t *testing.T) {
@@ -364,7 +363,7 @@ func TestInvalidVersion(t *testing.T) {
 	updateValidator, _, _ := createControlPlaneValidatorTestFixture(validControlPlane)
 	cases := []struct {
 		name      string
-		request   atypes.Request
+		request   webhookadmission.Request
 		validator *ControlPlaneValidator
 	}{
 		{
@@ -381,7 +380,7 @@ func TestInvalidVersion(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			response := tc.validator.Handle(ctx, tc.request)
-			assert.False(response.Response.Allowed, "Expected validator to reject invalid ServiceMeshControlPlane", t)
+			assert.False(response.Allowed, "Expected validator to reject invalid ServiceMeshControlPlane", t)
 		})
 	}
 }
@@ -508,13 +507,13 @@ func TestVersionValidation(t *testing.T) {
 					if tc.allowed {
 						defer func() {
 							if t.Failed() {
-								t.Logf("Unexpected validation Error: %s", response.Response.Result.Message)
+								t.Logf("Unexpected validation Error: %s", response.Result.Message)
 							}
 						}()
-						assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
+						assert.True(response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
 					} else {
-						assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane", t)
-						t.Logf("Validation Error: %s", response.Response.Result.Message)
+						assert.False(response.Allowed, "Expected validator to reject ServiceMeshControlPlane", t)
+						t.Logf("Validation Error: %s", response.Result.Message)
 					}
 				})
 			}
@@ -738,13 +737,13 @@ func TestVersionUpgrade1_0To1_1(t *testing.T) {
 			if tc.allowed {
 				defer func() {
 					if t.Failed() {
-						t.Logf("Unexpected validation Error: %s", response.Response.Result.Message)
+						t.Logf("Unexpected validation Error: %s", response.Result.Message)
 					}
 				}()
-				assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
+				assert.True(response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
 			} else {
-				assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane", t)
-				t.Logf("Validation Error: %s", response.Response.Result.Message)
+				assert.False(response.Allowed, "Expected validator to reject ServiceMeshControlPlane", t)
+				t.Logf("Validation Error: %s", response.Result.Message)
 			}
 		})
 	}
@@ -1057,16 +1056,16 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 				memberNamespace,
 				memberRoll)
 			validator, _, _ := createControlPlaneValidatorTestFixture(resources...)
-			oldsmcp := v1_1ControlPlane.DeepCopy()
+			newsmcp := v1_0ControlPlane.DeepCopy()
 			if tc.configure != nil {
-				tc.configure(oldsmcp)
+				tc.configure(newsmcp)
 			}
-			response := validator.Handle(ctx, createUpdateRequest(oldsmcp, v1_0ControlPlane))
+			response := validator.Handle(ctx, createUpdateRequest(v1_1ControlPlane, newsmcp))
 			if tc.allowed {
-				assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
+				assert.True(response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
 			} else {
-				assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane", t)
-				t.Logf("Validation Error: %s", response.Response.Result.Message)
+				assert.False(response.Allowed, "Expected validator to reject ServiceMeshControlPlane", t)
+				t.Logf("Validation Error: %s", response.Result.Message)
 			}
 		})
 	}

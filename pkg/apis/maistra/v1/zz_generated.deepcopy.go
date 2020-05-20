@@ -1442,7 +1442,7 @@ func (in *ServiceMeshControlPlane) DeepCopyObject() runtime.Object {
 func (in *ServiceMeshControlPlaneList) DeepCopyInto(out *ServiceMeshControlPlaneList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]ServiceMeshControlPlane, len(*in))
@@ -1536,7 +1536,7 @@ func (in *ServiceMeshMemberCondition) DeepCopy() *ServiceMeshMemberCondition {
 func (in *ServiceMeshMemberList) DeepCopyInto(out *ServiceMeshMemberList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]ServiceMeshMember, len(*in))
@@ -1614,7 +1614,7 @@ func (in *ServiceMeshMemberRollCondition) DeepCopy() *ServiceMeshMemberRollCondi
 func (in *ServiceMeshMemberRollList) DeepCopyInto(out *ServiceMeshMemberRollList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]ServiceMeshMemberRoll, len(*in))

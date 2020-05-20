@@ -7,7 +7,7 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -49,7 +49,7 @@ func TestControlPlaneNamespaceIsRemovedFromMembersList(t *testing.T) {
 
 	// check create
 	response := mutator.Handle(ctx, newCreateRequest(roll))
-	expectedResponse := webhookadmission.PatchResponse(roll, mutatedRoll)
+	expectedResponse := PatchResponse(toRawExtension(roll), mutatedRoll)
 	assert.DeepEquals(response, expectedResponse, "Unexpected response on create", t)
 
 	// check update
@@ -57,13 +57,13 @@ func TestControlPlaneNamespaceIsRemovedFromMembersList(t *testing.T) {
 	updatedRoll.Spec.Members = []string{"istio-system", "bookinfo", "istio-system", "hipster-shop", "istio-system"}
 
 	response = mutator.Handle(ctx, newUpdateRequest(roll, updatedRoll))
-	expectedResponse = webhookadmission.PatchResponse(updatedRoll, mutatedRoll)
+	expectedResponse = PatchResponse(toRawExtension(updatedRoll), mutatedRoll)
 	assert.DeepEquals(response, expectedResponse, "Unexpected response on update", t)
 }
 
 func createMemberRollMutatorFixture(clientObjects ...runtime.Object) (*MemberRollMutator, client.Client, *test.EnhancedTracker) {
 	cl, tracker := test.CreateClient(clientObjects...)
-	decoder, err := webhookadmission.NewDecoder(test.GetScheme())
+	decoder, err := admission.NewDecoder(test.GetScheme())
 	if err != nil {
 		panic(fmt.Sprintf("Could not create decoder: %s", err))
 	}

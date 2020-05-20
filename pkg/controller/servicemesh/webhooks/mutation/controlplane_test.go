@@ -7,12 +7,12 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 func TestDeletedControlPlaneIsAlwaysAllowed(t *testing.T) {
@@ -38,7 +38,7 @@ func TestControlPlaneOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
 
 func TestControlPlaneNoMutation(t *testing.T) {
 	controlPlane := newControlPlane("my-smcp", "istio-system")
-	controlPlane.Spec.Version = maistra.DefaultVersion.String()
+	controlPlane.Spec.Version = versions.DefaultVersion.String()
 	controlPlane.Spec.Template = maistrav1.DefaultTemplate
 
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
@@ -51,11 +51,11 @@ func TestVersionIsDefaultedToCurrentMaistraVersionOnCreate(t *testing.T) {
 	controlPlane.Spec.Version = ""
 
 	mutatedControlPlane := controlPlane.DeepCopy()
-	mutatedControlPlane.Spec.Version = maistra.DefaultVersion.String()
+	mutatedControlPlane.Spec.Version = versions.DefaultVersion.String()
 
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
 	response := mutator.Handle(ctx, newCreateRequest(controlPlane))
-	expectedResponse := webhookadmission.PatchResponse(controlPlane, mutatedControlPlane)
+	expectedResponse := PatchResponse(toRawExtension(controlPlane), mutatedControlPlane)
 	assert.DeepEquals(response, expectedResponse, "Expected the response to set the version on create", t)
 }
 
@@ -92,7 +92,7 @@ func TestVersionIsDefaultedToOldSMCPVersionOnUpdate(t *testing.T) {
 
 			mutator, _, _ := createControlPlaneMutatorTestFixture(controlPlane)
 			response := mutator.Handle(ctx, newUpdateRequest(controlPlane, updatedControlPlane))
-			expectedResponse := webhookadmission.PatchResponse(controlPlane, mutatedControlPlane)
+			expectedResponse := PatchResponse(toRawExtension(controlPlane), mutatedControlPlane)
 			assert.DeepEquals(response, expectedResponse, "Expected the response to set the version to previously AppliedVersion on update", t)
 		})
 	}
@@ -108,7 +108,7 @@ func TestTemplateIsDefaultedOnCreate(t *testing.T) {
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
 
 	response := mutator.Handle(ctx, newCreateRequest(controlPlane))
-	expectedResponse := webhookadmission.PatchResponse(controlPlane, mutatedControlPlane)
+	expectedResponse := PatchResponse(toRawExtension(controlPlane), mutatedControlPlane)
 	assert.DeepEquals(response, expectedResponse, "Expected the response to set the template on create", t)
 }
 
@@ -124,13 +124,13 @@ func TestTemplateIsDefaultedOnUpdate(t *testing.T) {
 
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
 	response := mutator.Handle(ctx, newUpdateRequest(origControlPlane, updatedControlPlane))
-	expectedResponse := webhookadmission.PatchResponse(updatedControlPlane, mutatedControlPlane)
+	expectedResponse := PatchResponse(toRawExtension(updatedControlPlane), mutatedControlPlane)
 	assert.DeepEquals(response, expectedResponse, "Expected the response to set the template on update", t)
 }
 
 func createControlPlaneMutatorTestFixture(clientObjects ...runtime.Object) (*ControlPlaneMutator, client.Client, *test.EnhancedTracker) {
 	cl, tracker := test.CreateClient(clientObjects...)
-	decoder, err := webhookadmission.NewDecoder(test.GetScheme())
+	decoder, err := admission.NewDecoder(test.GetScheme())
 	if err != nil {
 		panic(fmt.Sprintf("Could not create decoder: %s", err))
 	}
@@ -156,7 +156,7 @@ func newControlPlane(name, namespace string) *maistrav1.ServiceMeshControlPlane 
 			Namespace: namespace,
 		},
 		Spec: maistrav1.ControlPlaneSpec{
-			Version:  maistra.DefaultVersion.String(),
+			Version:  versions.DefaultVersion.String(),
 			Template: maistrav1.DefaultTemplate,
 		},
 	}

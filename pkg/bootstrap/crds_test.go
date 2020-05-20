@@ -272,7 +272,7 @@ func createTempDirectoryWithCRDFiles(crdFileContents ...string) (dirPath string)
 
 func listCRDs(cl client.Client) apiextensionsv1beta1.CustomResourceDefinitionList {
 	crdList := apiextensionsv1beta1.CustomResourceDefinitionList{}
-	err := cl.List(ctx, &client.ListOptions{}, &crdList)
+	err := cl.List(ctx, &crdList, &client.ListOptions{})
 	test.PanicOnError(err)
 	return crdList
 }

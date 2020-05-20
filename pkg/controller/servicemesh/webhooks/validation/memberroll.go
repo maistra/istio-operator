@@ -9,28 +9,25 @@ import (
 	"time"
 
 	admissionv1 "k8s.io/api/admission/v1beta1"
+	authenticationv1 "k8s.io/api/authentication/v1"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	webhookcommon "github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/common"
-
-	authenticationv1 "k8s.io/api/authentication/v1"
-	authorizationv1 "k8s.io/api/authorization/v1"
-
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 )
 
 const maxConcurrentSARChecks = 5
 
 type MemberRollValidator struct {
 	client          client.Client
-	decoder         atypes.Decoder
+	decoder         *admission.Decoder
 	namespaceFilter webhookcommon.NamespaceFilter
 }
 
@@ -42,11 +39,11 @@ func NewMemberRollValidator(namespaceFilter webhookcommon.NamespaceFilter) *Memb
 
 var _ admission.Handler = (*MemberRollValidator)(nil)
 var _ inject.Client = (*MemberRollValidator)(nil)
-var _ inject.Decoder = (*MemberRollValidator)(nil)
+var _ admission.DecoderInjector = (*MemberRollValidator)(nil)
 
-func (v *MemberRollValidator) Handle(ctx context.Context, req atypes.Request) atypes.Response {
+func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	logger := logf.Log.WithName("smmr-validator").
-		WithValues("ServiceMeshMemberRoll", webhookcommon.ToNamespacedName(req.AdmissionRequest))
+		WithValues("ServiceMeshMemberRoll", webhookcommon.ToNamespacedName(&req.AdmissionRequest))
 
 	// use a self-imposed 3s time limit so that we can inform the user how to work
 	// around the issue when the webhook takes too long to complete
@@ -57,24 +54,24 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 	err := v.decoder.Decode(req, smmr)
 	if err != nil {
 		logger.Error(err, "error decoding admission request")
-		return admission.ErrorResponse(http.StatusBadRequest, err)
+		return admission.Errored(http.StatusBadRequest, err)
 	}
 
 	// do we care about this object?
 	if !v.namespaceFilter.Watching(smmr.Namespace) {
 		logger.Info(fmt.Sprintf("operator is not watching namespace '%s'", smmr.Namespace))
-		return admission.ValidationResponse(true, "")
+		return admission.Allowed("")
 	} else if smmr.ObjectMeta.DeletionTimestamp != nil {
 		logger.Info("skipping deleted smmr resource")
-		return admission.ValidationResponse(true, "")
+		return admission.Allowed("")
 	}
 
 	// is this mesh configured for multitenancy?
 	smcpList := &maistrav1.ServiceMeshControlPlaneList{}
-	err = v.client.List(ctx, client.InNamespace(smmr.Namespace), smcpList)
+	err = v.client.List(ctx, smcpList, client.InNamespace(smmr.Namespace))
 	if err != nil {
 		logger.Error(err, "error listing smcp resources")
-		return admission.ErrorResponse(http.StatusInternalServerError, err)
+		return admission.Errored(http.StatusInternalServerError, err)
 	}
 	if len(smcpList.Items) == 0 {
 		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("no service mesh is configured in namespace '%s'", smmr.Namespace))
@@ -90,10 +87,10 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 	}
 
 	smmrList := &maistrav1.ServiceMeshMemberRollList{}
-	err = v.client.List(ctx, nil, smmrList)
+	err = v.client.List(ctx, smmrList)
 	if err != nil {
 		logger.Error(err, "error listing smmr resources")
-		return admission.ErrorResponse(http.StatusInternalServerError, err)
+		return admission.Errored(http.StatusInternalServerError, err)
 	}
 
 	// verify no duplicate members across all smmr resources
@@ -118,32 +115,32 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 	allowed, err := v.isUserAllowedToUpdatePods(common.NewContextWithLog(ctx, logger.WithValues("namespace", "<all>")), req, "")
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("error performing cluster-scoped SAR check"))
-		return admission.ErrorResponse(http.StatusInternalServerError, err)
+		return admission.Errored(http.StatusInternalServerError, err)
 	}
 	if !allowed {
 		// check each namespace separately, but only check newly added namespaces
 		namespacesToCheck, err := v.findNewlyAddedNamespaces(smmr, req)
 		if err != nil {
-			return admission.ErrorResponse(http.StatusBadRequest, err)
+			return admission.Errored(http.StatusBadRequest, err)
 		}
 
 		allowed, rejectedNamespaces, err := v.isUserAllowedToUpdatePodsInAllNamespaces(ctx, req, namespacesToCheck)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				return admission.ErrorResponse(http.StatusBadRequest, fmt.Errorf("too many namespaces in ServiceMeshMemberRoll; validating webhook couldn't perform the authorization checks for all namespaces; either try the operation again as a cluster admin, or add fewer namespaces in a single operation"))
+				return admission.Errored(http.StatusBadRequest, fmt.Errorf("too many namespaces in ServiceMeshMemberRoll; validating webhook couldn't perform the authorization checks for all namespaces; either try the operation again as a cluster admin, or add fewer namespaces in a single operation"))
 			}
 			logger.Error(err, fmt.Sprintf("error performing SAR check each namespace"))
-			return admission.ErrorResponse(http.StatusInternalServerError, err)
+			return admission.Errored(http.StatusInternalServerError, err)
 		}
 		if !allowed {
 			return validationFailedResponse(http.StatusForbidden, metav1.StatusReasonBadRequest, fmt.Sprintf("user '%s' does not have permission to access namespace(s): %s", req.AdmissionRequest.UserInfo.Username, rejectedNamespaces))
 		}
 	}
 
-	return admission.ValidationResponse(true, "")
+	return admission.Allowed("")
 }
 
-func (v *MemberRollValidator) findNewlyAddedNamespaces(smmr *maistrav1.ServiceMeshMemberRoll, req atypes.Request) (sets.String, error) {
+func (v *MemberRollValidator) findNewlyAddedNamespaces(smmr *maistrav1.ServiceMeshMemberRoll, req admission.Request) (sets.String, error) {
 	namespacesToCheck := sets.NewString(smmr.Spec.Members...)
 
 	if req.AdmissionRequest.Operation == admissionv1.Update {
@@ -157,7 +154,7 @@ func (v *MemberRollValidator) findNewlyAddedNamespaces(smmr *maistrav1.ServiceMe
 	return namespacesToCheck, nil
 }
 
-func (v *MemberRollValidator) isUserAllowedToUpdatePodsInAllNamespaces(ctx context.Context, req atypes.Request, namespacesToCheck sets.String) (bool, []string, error) {
+func (v *MemberRollValidator) isUserAllowedToUpdatePodsInAllNamespaces(ctx context.Context, req admission.Request, namespacesToCheck sets.String) (bool, []string, error) {
 	numConcurrentSARChecks := min(len(namespacesToCheck), maxConcurrentSARChecks)
 
 	log := common.LogFromContext(ctx)
@@ -219,7 +216,7 @@ type result struct {
 	err       error
 }
 
-func (v *MemberRollValidator) isUserAllowedToUpdatePods(ctx context.Context, req atypes.Request, member string) (bool, error) {
+func (v *MemberRollValidator) isUserAllowedToUpdatePods(ctx context.Context, req admission.Request, member string) (bool, error) {
 	log := common.LogFromContext(ctx)
 	log.Info("Performing SAR check")
 	sar := &authorizationv1.SubjectAccessReview{
@@ -258,7 +255,7 @@ func (v *MemberRollValidator) InjectClient(c client.Client) error {
 }
 
 // InjectDecoder injects the decoder.
-func (v *MemberRollValidator) InjectDecoder(d atypes.Decoder) error {
+func (v *MemberRollValidator) InjectDecoder(d *admission.Decoder) error {
 	v.decoder = d
 	return nil
 }

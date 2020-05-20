@@ -16,6 +16,8 @@ syntax = "proto3";
 
 package istio.mesh.v1alpha1;
 
+import "google/api/field_behavior.proto";
+
 option go_package="istio.io/api/mesh/v1alpha1";
 
 // Network provides information about the endpoints in a routable L3
@@ -51,17 +53,17 @@ message Network {
     string from_cidr = 1;
 
     // Add all endpoints from the specified registry into this network.
-    // The names of the registries should correspond to the secret name
-    // that was used to configure the registry (Kubernetes multicluster) or
-    // supplied by MCP server.
+    // The names of the registries should correspond to the kubeconfig file name
+    // inside the secret that was used to configure the registry (Kubernetes
+    // multicluster) or supplied by MCP server.
     string from_registry = 2;
     }
   }
 
-  // REQUIRED: The list of endpoints in the network (obtained through the
+  // The list of endpoints in the network (obtained through the
   // constituent service registries or from CIDR ranges). All endpoints in
   // the network are directly accessible to one another.
-  repeated NetworkEndpoints endpoints = 2;
+  repeated NetworkEndpoints endpoints = 2 [(google.api.field_behavior) = REQUIRED];
 
   // The gateway associated with this network. Traffic from remote networks
   // will arrive at the specified gateway:port. All incoming traffic must
@@ -81,15 +83,15 @@ message Network {
       string address = 2;
     }
 
-    // REQUIRED: The port associated with the gateway.
-    uint32 port = 3;
+    // The port associated with the gateway.
+    uint32 port = 3 [(google.api.field_behavior) = REQUIRED];
 
     // The locality associated with an explicitly specified gateway (i.e. ip)
     string locality = 4;
   }
 
-  // REQUIRED: Set of gateways associated with the network.
-  repeated IstioNetworkGateway gateways = 3;
+  // Set of gateways associated with the network.
+  repeated IstioNetworkGateway gateways = 3 [(google.api.field_behavior) = REQUIRED];
 }
 
 // MeshNetworks (config map) provides information about the set of networks
@@ -101,7 +103,7 @@ message Network {
 // networks:
 //   network1:
 //   - endpoints:
-//     - fromRegistry: registry1 #must match secret name in Kubernetes
+//     - fromRegistry: registry1 #must match kubeconfig name in Kubernetes secret
 //     - fromCidr: 192.168.100.0/22 #a VM network for example
 //     gateways:
 //     - registryServiceName: istio-ingressgateway.istio-system.svc.cluster.local
@@ -113,8 +115,8 @@ message Network {
 // ```
 //
 message MeshNetworks {
-  // REQUIRED: The set of networks inside this mesh. Each network should
+  // The set of networks inside this mesh. Each network should
   // have a unique name and information about how to infer the endpoints in
   // the network as well as the gateways associated with the network.
-  map<string, Network> networks = 1;
+  map<string, Network> networks = 1 [(google.api.field_behavior) = REQUIRED];
 }

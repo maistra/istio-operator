@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -43,10 +43,12 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(cl client.Client, scheme *runtime.Scheme) *PodLocalityReconciler {
-	return &PodLocalityReconciler{ControllerResources: common.ControllerResources{
-		Client:       cl,
-		Scheme:       scheme,
-		PatchFactory: common.NewPatchFactory(cl)}}
+	return &PodLocalityReconciler{
+		ControllerResources: common.ControllerResources{
+			Client: cl,
+			Scheme: scheme,
+		},
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -85,7 +87,7 @@ func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 	err = c.Watch(&source.Kind{Type: &v1.Node{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			list := &v1.PodList{}
-			err := mgr.GetClient().List(ctx, client.MatchingField("spec.nodeName", a.Meta.GetName()), list)
+			err := mgr.GetClient().List(ctx, list, client.MatchingField("spec.nodeName", a.Meta.GetName()))
 			if err != nil {
 				log.Error(err, "Could not list pods")
 			}

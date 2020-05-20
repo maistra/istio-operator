@@ -7,18 +7,20 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
+	"github.com/maistra/istio-operator/pkg/controller/common/helm"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 // InstallCNI makes sure all Istio CNI resources have been created.  CRDs are located from
 // files in controller.HelmDir/istio-init/files
-func InstallCNI(ctx context.Context, cl client.Client, config common.CNIConfig) error {
+func InstallCNI(ctx context.Context, cl client.Client, config cni.Config) error {
 	// we should run through this each reconcile to make sure it's there
 	return internalInstallCNI(ctx, cl, config)
 }
 
-func internalInstallCNI(ctx context.Context, cl client.Client, config common.CNIConfig) error {
+func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config) error {
 	log := common.LogFromContext(ctx)
 	log.Info("ensuring Istio CNI has been installed")
 
@@ -35,18 +37,17 @@ func internalInstallCNI(ctx context.Context, cl client.Client, config common.CNI
 	// TODO: imagePullPolicy, resources
 
 	// always install the latest version of the CNI image
-	renderings, _, err := common.RenderHelmChart(path.Join(common.Options.GetChartsDir(maistra.DefaultVersion.String()), "istio_cni"), operatorNamespace, values)
+	renderings, _, err := helm.RenderChart(path.Join(helm.GetChartsDir(versions.DefaultVersion), "istio_cni"), operatorNamespace, values)
 	if err != nil {
 		return err
 	}
 
 	controllerResources := common.ControllerResources{
 		Client:            cl,
-		PatchFactory:      common.NewPatchFactory(cl),
 		OperatorNamespace: operatorNamespace,
 	}
 
-	mp := common.NewManifestProcessor(controllerResources, "istio_cni", "TODO", "maistra-istio-operator", preProcessObject, postProcessObject)
+	mp := helm.NewManifestProcessor(controllerResources, helm.NewPatchFactory(cl), "istio_cni", "TODO", "maistra-istio-operator", preProcessObject, postProcessObject)
 	if err = mp.ProcessManifests(ctx, renderings["istio_cni"], "istio_cni"); err != nil {
 		return err
 	}

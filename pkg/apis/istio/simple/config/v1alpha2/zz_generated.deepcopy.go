@@ -37,7 +37,7 @@ func (in *Apikey) DeepCopyObject() runtime.Object {
 func (in *ApikeyList) DeepCopyInto(out *ApikeyList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Apikey, len(*in))
@@ -95,7 +95,7 @@ func (in *Authorization) DeepCopyObject() runtime.Object {
 func (in *AuthorizationList) DeepCopyInto(out *AuthorizationList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Authorization, len(*in))
@@ -153,7 +153,7 @@ func (in *Bypass) DeepCopyObject() runtime.Object {
 func (in *BypassList) DeepCopyInto(out *BypassList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Bypass, len(*in))
@@ -211,7 +211,7 @@ func (in *Checknothing) DeepCopyObject() runtime.Object {
 func (in *ChecknothingList) DeepCopyInto(out *ChecknothingList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Checknothing, len(*in))
@@ -269,7 +269,7 @@ func (in *Circonus) DeepCopyObject() runtime.Object {
 func (in *CirconusList) DeepCopyInto(out *CirconusList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Circonus, len(*in))
@@ -327,7 +327,7 @@ func (in *Cloudwatch) DeepCopyObject() runtime.Object {
 func (in *CloudwatchList) DeepCopyInto(out *CloudwatchList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Cloudwatch, len(*in))
@@ -385,7 +385,7 @@ func (in *Denier) DeepCopyObject() runtime.Object {
 func (in *DenierList) DeepCopyInto(out *DenierList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Denier, len(*in))
@@ -443,7 +443,7 @@ func (in *Dogstatsd) DeepCopyObject() runtime.Object {
 func (in *DogstatsdList) DeepCopyInto(out *DogstatsdList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Dogstatsd, len(*in))
@@ -501,7 +501,7 @@ func (in *Edge) DeepCopyObject() runtime.Object {
 func (in *EdgeList) DeepCopyInto(out *EdgeList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Edge, len(*in))
@@ -559,7 +559,7 @@ func (in *Fluentd) DeepCopyObject() runtime.Object {
 func (in *FluentdList) DeepCopyInto(out *FluentdList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Fluentd, len(*in))
@@ -642,7 +642,7 @@ func (in *HTTPAPISpecBinding) DeepCopyObject() runtime.Object {
 func (in *HTTPAPISpecBindingList) DeepCopyInto(out *HTTPAPISpecBindingList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]HTTPAPISpecBinding, len(*in))
@@ -675,7 +675,7 @@ func (in *HTTPAPISpecBindingList) DeepCopyObject() runtime.Object {
 func (in *HTTPAPISpecList) DeepCopyInto(out *HTTPAPISpecList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]HTTPAPISpec, len(*in))
@@ -733,7 +733,7 @@ func (in *Kubernetes) DeepCopyObject() runtime.Object {
 func (in *KubernetesList) DeepCopyInto(out *KubernetesList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Kubernetes, len(*in))
@@ -791,7 +791,7 @@ func (in *Kubernetesenv) DeepCopyObject() runtime.Object {
 func (in *KubernetesenvList) DeepCopyInto(out *KubernetesenvList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Kubernetesenv, len(*in))
@@ -849,7 +849,7 @@ func (in *Listchecker) DeepCopyObject() runtime.Object {
 func (in *ListcheckerList) DeepCopyInto(out *ListcheckerList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Listchecker, len(*in))
@@ -907,7 +907,7 @@ func (in *Listentry) DeepCopyObject() runtime.Object {
 func (in *ListentryList) DeepCopyInto(out *ListentryList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Listentry, len(*in))
@@ -965,7 +965,7 @@ func (in *Logentry) DeepCopyObject() runtime.Object {
 func (in *LogentryList) DeepCopyInto(out *LogentryList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Logentry, len(*in))
@@ -1023,7 +1023,7 @@ func (in *Memquota) DeepCopyObject() runtime.Object {
 func (in *MemquotaList) DeepCopyInto(out *MemquotaList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Memquota, len(*in))
@@ -1081,7 +1081,7 @@ func (in *Metric) DeepCopyObject() runtime.Object {
 func (in *MetricList) DeepCopyInto(out *MetricList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Metric, len(*in))
@@ -1139,7 +1139,7 @@ func (in *Noop) DeepCopyObject() runtime.Object {
 func (in *NoopList) DeepCopyInto(out *NoopList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Noop, len(*in))
@@ -1197,7 +1197,7 @@ func (in *Opa) DeepCopyObject() runtime.Object {
 func (in *OpaList) DeepCopyInto(out *OpaList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Opa, len(*in))
@@ -1255,7 +1255,7 @@ func (in *Prometheus) DeepCopyObject() runtime.Object {
 func (in *PrometheusList) DeepCopyInto(out *PrometheusList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Prometheus, len(*in))
@@ -1313,7 +1313,7 @@ func (in *Quota) DeepCopyObject() runtime.Object {
 func (in *QuotaList) DeepCopyInto(out *QuotaList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Quota, len(*in))
@@ -1396,7 +1396,7 @@ func (in *QuotaSpecBinding) DeepCopyObject() runtime.Object {
 func (in *QuotaSpecBindingList) DeepCopyInto(out *QuotaSpecBindingList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]QuotaSpecBinding, len(*in))
@@ -1429,7 +1429,7 @@ func (in *QuotaSpecBindingList) DeepCopyObject() runtime.Object {
 func (in *QuotaSpecList) DeepCopyInto(out *QuotaSpecList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]QuotaSpec, len(*in))
@@ -1487,7 +1487,7 @@ func (in *Rbac) DeepCopyObject() runtime.Object {
 func (in *RbacList) DeepCopyInto(out *RbacList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Rbac, len(*in))
@@ -1545,7 +1545,7 @@ func (in *Redisquota) DeepCopyObject() runtime.Object {
 func (in *RedisquotaList) DeepCopyInto(out *RedisquotaList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Redisquota, len(*in))
@@ -1603,7 +1603,7 @@ func (in *Reportnothing) DeepCopyObject() runtime.Object {
 func (in *ReportnothingList) DeepCopyInto(out *ReportnothingList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Reportnothing, len(*in))
@@ -1661,7 +1661,7 @@ func (in *Signalfx) DeepCopyObject() runtime.Object {
 func (in *SignalfxList) DeepCopyInto(out *SignalfxList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Signalfx, len(*in))
@@ -1719,7 +1719,7 @@ func (in *Solarwinds) DeepCopyObject() runtime.Object {
 func (in *SolarwindsList) DeepCopyInto(out *SolarwindsList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Solarwinds, len(*in))
@@ -1777,7 +1777,7 @@ func (in *Stackdriver) DeepCopyObject() runtime.Object {
 func (in *StackdriverList) DeepCopyInto(out *StackdriverList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Stackdriver, len(*in))
@@ -1835,7 +1835,7 @@ func (in *Statsd) DeepCopyObject() runtime.Object {
 func (in *StatsdList) DeepCopyInto(out *StatsdList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Statsd, len(*in))
@@ -1893,7 +1893,7 @@ func (in *Stdio) DeepCopyObject() runtime.Object {
 func (in *StdioList) DeepCopyInto(out *StdioList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Stdio, len(*in))
@@ -1951,7 +1951,7 @@ func (in *Tracespan) DeepCopyObject() runtime.Object {
 func (in *TracespanList) DeepCopyInto(out *TracespanList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Tracespan, len(*in))
@@ -2009,7 +2009,7 @@ func (in *Zipkin) DeepCopyObject() runtime.Object {
 func (in *ZipkinList) DeepCopyInto(out *ZipkinList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Zipkin, len(*in))

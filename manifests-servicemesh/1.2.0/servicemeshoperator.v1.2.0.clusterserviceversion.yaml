@@ -12,7 +12,7 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
 
     containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.1.1
-    createdAt: 2020-04-27T12:29:22MDT
+    createdAt: 2020-05-06T12:16:03MDT
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <1.2.0"
     alm-examples: |-
@@ -290,6 +290,19 @@ spec:
       - serviceAccountName: istio-operator
         rules:
 
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - servicemonitors
+          verbs:
+          - get
+          - create
+        - apiGroups:
+          - ''
+          resources:
+          - services/finalizers
+          verbs:
+          - '*'
         - apiGroups:
           - ''
           resources:
@@ -584,6 +597,9 @@ spec:
                 - name: operator-olm-config
                   mountPath: /etc/operator/olm
                   readOnly: true
+                - name: webhook-tls-volume
+                  readOnly: true
+                  mountPath: /tmp/k8s-webhook-server/serving-certs
               volumes:
               - name: operator-olm-config
                 downwardAPI:
@@ -592,6 +608,10 @@ spec:
                   - fieldRef:
                       fieldPath: metadata.annotations
                     path: config.properties
+              - name: webhook-tls-volume
+                secret:
+                  secretName: maistra-operator-serving-cert
+                  optional: true
   customresourcedefinitions:
     owned:
     - name: servicemeshcontrolplanes.maistra.io

@@ -53,7 +53,7 @@ func FetchOwnedResources(ctx context.Context, kubeClient client.Client, gvk sche
 	labelSelector := map[string]string{OwnerKey: owner}
 	objects := &unstructured.UnstructuredList{}
 	objects.SetGroupVersionKind(gvk)
-	err := kubeClient.List(ctx, client.MatchingLabels(labelSelector).InNamespace(namespace), objects)
+	err := kubeClient.List(ctx, objects, client.InNamespace(namespace), client.MatchingLabels(labelSelector))
 	return objects, err
 }
 
@@ -61,6 +61,6 @@ func FetchMeshResources(ctx context.Context, kubeClient client.Client, gvk schem
 	labelSelector := map[string]string{MemberOfKey: mesh}
 	objects := &unstructured.UnstructuredList{}
 	objects.SetGroupVersionKind(gvk)
-	err := kubeClient.List(ctx, client.MatchingLabels(labelSelector).InNamespace(namespace), objects)
+	err := kubeClient.List(ctx, objects, client.InNamespace(namespace), client.MatchingLabels(labelSelector))
 	return objects, err
 }
