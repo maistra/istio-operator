@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	goruntime "runtime"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -184,6 +185,9 @@ func (c *fakeClient) Create(ctx context.Context, obj runtime.Object) error {
 	if err != nil {
 		return err
 	}
+	// TODO: should this be part of ObjectTracker?
+	// yeild so watchers can do their thing
+	goruntime.Gosched()
 	return c.copyObject(o, obj)
 }
 
@@ -198,6 +202,9 @@ func (c *fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...cli
 	}
 	//TODO: implement propagation
 	_, err = c.Invokes(testing.NewDeleteAction(gvr, accessor.GetNamespace(), accessor.GetName()), nil)
+	// TODO: should this be part of ObjectTracker?
+	// yeild so watchers can do their thing
+	goruntime.Gosched()
 	return err
 }
 
@@ -214,6 +221,9 @@ func (c *fakeClient) Update(ctx context.Context, obj runtime.Object) error {
 	if err != nil {
 		return err
 	}
+	// TODO: should this be part of ObjectTracker?
+	// yeild so watchers can do their thing
+	goruntime.Gosched()
 	return c.copyObject(o, obj)
 }
 
@@ -280,6 +290,9 @@ func (sw *fakeStatusWriter) Update(ctx context.Context, obj runtime.Object) erro
 	if err != nil {
 		return err
 	}
+	// TODO: should this be part of ObjectTracker?
+	// yeild so watchers can do their thing
+	goruntime.Gosched()
 	return sw.client.copyObject(o, obj)
 }
 

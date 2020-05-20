@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	clienttesting "k8s.io/client-go/testing"
 )
@@ -72,6 +73,47 @@ func (f *ActionVerifierFactory) Passes(test VerifierTestFunc) ActionVerifier {
 		func(action clienttesting.Action) (bool, error) {
 			return true, test(action)
 		})
+}
+
+// ReconcileSucceeded creates a VerifierTestFunc that verifies a reconcile
+// succeeded for the named request
+func ReconcileSucceeded(namespace, name string) VerifierTestFunc {
+	return func(action clienttesting.Action) error {
+		if ra, ok := action.(ReconcileResultAction); ok {
+			requestNamespace := ra.GetReconcileRequest().Namespace
+			requestName := ra.GetReconcileRequest().Name
+			if requestNamespace == namespace && requestName == name {
+				var err error
+				if _, err = ra.GetReconcileResult(); err == nil {
+					return nil
+				}
+				return errors.Wrapf(err, "unexpected error from reconcile")
+			}
+			return fmt.Errorf("unexpected object for reconcile result. expected result for %s/%s, got result for %s/%s",
+				namespace, name, requestNamespace, requestName)
+		}
+		return fmt.Errorf("unexpected action.  expected ReconcileResultAction, got %T", action)
+	}
+}
+
+// ReconcileErrored creates a VerifierTestFunc that verifies a reconcile
+// returned an error for the named request
+func ReconcileErrored(namespace, name string) VerifierTestFunc {
+	return func(action clienttesting.Action) error {
+		if ra, ok := action.(ReconcileResultAction); ok {
+			requestNamespace := ra.GetReconcileRequest().Namespace
+			requestName := ra.GetReconcileRequest().Name
+			if requestNamespace == namespace && requestName == name {
+				if _, err := ra.GetReconcileResult(); err != nil {
+					return nil
+				}
+				return fmt.Errorf("reconcile succeeded, but an error was expected")
+			}
+			return fmt.Errorf("unexpected object for reconcile result. expected result for %s/%s, got result for %s/%s",
+				namespace, name, requestNamespace, requestName)
+		}
+		return fmt.Errorf("unexpected action.  expected ReconcileResultAction, got %T", action)
+	}
 }
 
 /*
@@ -179,7 +221,7 @@ func VerifyActions(verifiers ...ActionVerifier) ActionVerifier {
 }
 
 type verifyActions struct {
-	mu sync.RWMutex
+	mu        sync.RWMutex
 	verifiers []ActionVerifier
 }
 
@@ -210,7 +252,7 @@ func (v *verifyActions) Wait(timeout time.Duration) (timedout bool) {
 	verifiers := v.verifiers[:]
 	v.mu.RUnlock()
 	for _, verifier := range verifiers {
-		if timedout := verifier.Wait(timeout - time.Now().Sub(start)); timedout {
+		if timedout := verifier.Wait(timeout - time.Since(start)); timedout {
 			return true
 		}
 	}
