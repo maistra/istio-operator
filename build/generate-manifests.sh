@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
-# to generate Maistra OLM metadata: MAISTRA_VERSION=1.0.1 REPLACES_CSV=1.0.0 tmp/build/generate-manifests.sh
-# to generate ServiceMesh OLM metadata: COMMUNITY=false MAISTRA_VERSION=1.0.1 REPLACES_CSV=1.0.0 tmp/build/generate-manifests.sh
+# to generate Maistra OLM metadata: MAISTRA_VERSION=1.0.1 REPLACES_CSV=1.0.0 build/generate-manifests.sh
+# to generate ServiceMesh OLM metadata: COMMUNITY=false MAISTRA_VERSION=1.0.1 REPLACES_CSV=1.0.0 build/generate-manifests.sh
 
 set -e
 
 : ${COMMUNITY:-"true"}
 : ${MAISTRA_VERSION:?"Need to set maistra version, e.g. 1.0.1"}
+if [[ $MAISTRA_VERSION =~ ([0-9]+\.[0-9]+\.[0-9]+).* ]] ; then
+  MAISTRA_STRIPPED_VERSION=${BASH_REMATCH[1]}
+else
+  MAISTRA_STRIPPED_VERSION=${MAISTRA_VERSION}
+fi
+
 if [[ ${COMMUNITY} == "true" ]]; then
   BUILD_TYPE="maistra"
   JAEGER_TEMPLATE="all-in-one"
@@ -88,6 +94,7 @@ function generateCSV() {
 
   sed -i -e 's/__NAME__/'${OPERATOR_NAME}'/g' ${csv_path}
   sed -i -e 's/__VERSION__/'${MAISTRA_VERSION}'/g' ${csv_path}
+  sed -i -e 's/__STRIPPED_VERSION__/'${MAISTRA_STRIPPED_VERSION}'/g' ${csv_path}
   sed -i -e 's/__DISPLAY_NAME__/'"$DISPLAY_NAME"'/' ${csv_path}
   sed -i -e 's/__CSV_DESCRIPTION__/'"$CSV_DESCRIPTION"'/' ${csv_path}
   sed -i -e 's/__APP_DESCRIPTION__/'"$APP_DESCRIPTION"'/' ${csv_path}
