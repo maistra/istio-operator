@@ -147,7 +147,7 @@ func ClientFailsOn(verb string, resource string) clienttesting.ReactionFunc {
 
 func ClientFails() clienttesting.ReactionFunc {
 	return func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-		return true, nil, fmt.Errorf("some error")
+		return true, nil, fmt.Errorf("error on %s %v", action.GetVerb(), action.GetResource())
 	}
 }
 

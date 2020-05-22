@@ -129,15 +129,11 @@ func (c *fakeClient) List(ctx context.Context, list runtime.Object, opts ...clie
 
 	gvr, _ := meta.UnsafeGuessKindToResource(gvk)
 	o, err := c.Invokes(testing.NewListAction(gvr, gvk, ns, *listOpts.AsListOptions()), nil)
-	if o == nil {
-		return errors.NewInternalError(fmt.Errorf("no resource returned by Fake"))
-	}
 	if err != nil {
 		return err
 	}
 	if o == nil {
-		// no objects returned
-		return meta.SetList(list, nil)
+		return errors.NewInternalError(fmt.Errorf("no resource returned by Fake"))
 	}
 	j, err := json.Marshal(o)
 	if err != nil {

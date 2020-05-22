@@ -32,31 +32,27 @@ import (
 
 type controlPlaneInstanceReconciler struct {
 	common.ControllerResources
-	Instance       *v1.ServiceMeshControlPlane
-	Status         *v1.ControlPlaneStatus
-	ownerRefs      []metav1.OwnerReference
-	meshGeneration string
-	renderings     map[string][]manifest.Manifest
-	lastComponent  string
-	cniConfig      cni.Config
+	Instance          *v1.ServiceMeshControlPlane
+	Status            *v1.ControlPlaneStatus
+	ownerRefs         []metav1.OwnerReference
+	meshGeneration    string
+	renderings        map[string][]manifest.Manifest
+	waitForComponents sets.String
+	cniConfig         cni.Config
 }
 
 // ensure controlPlaneInstanceReconciler implements ControlPlaneInstanceReconciler
 var _ ControlPlaneInstanceReconciler = &controlPlaneInstanceReconciler{}
 
 // these components have to be installed in the specified order
-var orderedCharts = []string{
-	"istio", // core istio resources
-	"istio/charts/security",
-	"istio/charts/prometheus",
-	"istio/charts/tracing",
-	"istio/charts/galley",
-	"istio/charts/mixer",
-	"istio/charts/pilot",
-	"istio/charts/gateways",
-	"istio/charts/sidecarInjectorWebhook",
-	"istio/charts/grafana",
-	"istio/charts/kiali",
+var orderedCharts = [][]string{
+	{"istio"}, // core istio resources
+	{"istio/charts/security", "istio/charts/galley"}, // both are deployed at the same time because each is a dependency of the other
+	{"istio/charts/prometheus"},
+	{"istio/charts/tracing"},
+	{"istio/charts/mixer", "istio/charts/pilot", "istio/charts/gateways", "istio/charts/sidecarInjectorWebhook"},
+	{"istio/charts/grafana"},
+	{"istio/charts/kiali"},
 }
 
 const (
@@ -94,7 +90,6 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		return reconcile.Result{}, err // ensure that the new reconcile status is posted immediately. Reconciliation will resume when the status update comes back into the operator
 	}
 
-	var ready bool
 	// make sure status gets updated on exit
 	reconciledCondition := r.Status.GetCondition(v1.ConditionTypeReconciled)
 	reconciliationMessage := reconciledCondition.Message
@@ -118,7 +113,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		// error handling
 		defer func() {
 			if err != nil {
-				r.lastComponent = ""
+				r.waitForComponents = sets.NewString()
 				updateControlPlaneConditions(r.Status, err)
 			}
 		}()
@@ -181,18 +176,20 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 
 		// initialize new Status
 		componentStatuses := make([]v1.ComponentStatus, 0, len(r.Status.ComponentStatus))
-		for _, chartName := range r.getChartsInInstallationOrder() {
-			componentName := componentFromChartName(chartName)
-			componentStatus := r.Status.FindComponentByName(componentName)
-			if componentStatus == nil {
-				componentStatus = v1.NewComponentStatus()
-				componentStatus.Resource = componentName
+		for _, charts := range r.getChartsInInstallationOrder() {
+			for _, chartName := range charts {
+				componentName := componentFromChartName(chartName)
+				componentStatus := r.Status.FindComponentByName(componentName)
+				if componentStatus == nil {
+					componentStatus = v1.NewComponentStatus()
+					componentStatus.Resource = componentName
+				}
+				componentStatus.SetCondition(v1.Condition{
+					Type:   v1.ConditionTypeReconciled,
+					Status: v1.ConditionStatusFalse,
+				})
+				componentStatuses = append(componentStatuses, *componentStatus)
 			}
-			componentStatus.SetCondition(v1.Condition{
-				Type:   v1.ConditionTypeReconciled,
-				Status: v1.ConditionStatusFalse,
-			})
-			componentStatuses = append(componentStatuses, *componentStatus)
 		}
 		r.Status.ComponentStatus = componentStatuses
 
@@ -212,7 +209,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 
 		// Ensure Istio CNI is installed
 		if r.cniConfig.Enabled {
-			r.lastComponent = "cni"
+			r.waitForComponents = sets.NewString("cni")
 			if err = bootstrap.InstallCNI(ctx, r.Client, r.cniConfig); err != nil {
 				reconciliationReason = v1.ConditionReasonReconcileError
 				reconciliationMessage = "Failed to install/update Istio CNI"
@@ -232,30 +229,55 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			return
 		}
 
-	} else if r.lastComponent != "" {
-		if readinessMap, readinessErr := r.calculateComponentReadiness(ctx); readinessErr == nil {
-			// if we've already begun reconciling, make sure we weren't waiting for
-			// the last component to become ready
-			if ready, ok := readinessMap[r.lastComponent]; ok && !ready {
-				// last component has not become ready yet
-				log.Info(fmt.Sprintf("Paused until %s becomes ready", r.lastComponent))
-				return
-			}
-		} else {
+	} else if r.waitForComponents.Len() > 0 {
+		// if we've already begun reconciling, make sure we weren't waiting for
+		// the last component to become ready
+		readyComponents, _, readinessErr := r.calculateComponentReadiness(ctx)
+		if readinessErr != nil {
 			// error calculating readiness
 			reconciliationReason = v1.ConditionReasonProbeError
-			reconciliationMessage = fmt.Sprintf("Error checking readiness of component %s", r.lastComponent)
+			reconciliationMessage = "Error checking component readiness"
 			err = errors.Wrap(readinessErr, reconciliationMessage)
 			log.Error(err, reconciliationMessage)
+			return
+		}
+
+		r.waitForComponents.Delete(readyComponents.List()...)
+		if r.waitForComponents.Len() > 0 {
+			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx)
 			return
 		}
 	}
 
 	// create components
-	for _, key := range r.getChartsInInstallationOrder() {
-		if ready, err = r.processComponentManifests(ctx, key); !ready {
-			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx, key, err)
-			return
+	for _, charts := range r.getChartsInInstallationOrder() {
+		r.waitForComponents = sets.NewString()
+		for _, chart := range charts {
+			component := componentFromChartName(chart)
+			var hasReadiness bool
+			hasReadiness, err = r.processComponentManifests(ctx, chart)
+			if err != nil {
+				reconciliationReason = v1.ConditionReasonReconcileError
+				reconciliationMessage = fmt.Sprintf("Error processing component %s: %v", component, err)
+				return
+			}
+			if hasReadiness {
+				r.waitForComponents.Insert(component)
+			}
+		}
+
+		if r.waitForComponents.Len() > 0 {
+			readyComponents, _, readyErr := r.calculateComponentReadiness(ctx)
+			if readyErr != nil {
+				reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx)
+				return
+			}
+
+			r.waitForComponents.Delete(readyComponents.List()...)
+			if r.waitForComponents.Len() > 0 {
+				reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx)
+				return
+			}
 		}
 	}
 
@@ -291,11 +313,10 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 	return
 }
 
-func (r *controlPlaneInstanceReconciler) pauseReconciliation(ctx context.Context, chartName string, err error) (v1.ConditionReason, string, error) {
+func (r *controlPlaneInstanceReconciler) pauseReconciliation(ctx context.Context) (v1.ConditionReason, string, error) {
 	log := common.LogFromContext(ctx)
 	var eventReason string
 	var conditionReason v1.ConditionReason
-	var reconciliationMessage string
 	if r.isUpdating() {
 		eventReason = eventReasonPausingUpdate
 		conditionReason = v1.ConditionReasonPausingUpdate
@@ -303,17 +324,10 @@ func (r *controlPlaneInstanceReconciler) pauseReconciliation(ctx context.Context
 		eventReason = eventReasonPausingInstall
 		conditionReason = v1.ConditionReasonPausingInstall
 	}
-	componentName := componentFromChartName(chartName)
-	if err == nil {
-		reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", componentName)
-		r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReason, reconciliationMessage)
-		log.Info(reconciliationMessage)
-	} else {
-		conditionReason = v1.ConditionReasonReconcileError
-		reconciliationMessage = fmt.Sprintf("Error processing component %s", componentName)
-		log.Error(err, reconciliationMessage)
-	}
-	return conditionReason, reconciliationMessage, errors.Wrapf(err, reconciliationMessage)
+	reconciliationMessage := fmt.Sprintf("Paused until the following components become ready: %v", r.waitForComponents.List())
+	r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReason, reconciliationMessage)
+	log.Info(reconciliationMessage)
+	return conditionReason, reconciliationMessage, nil
 }
 
 func (r *controlPlaneInstanceReconciler) isUpdating() bool {
@@ -328,7 +342,7 @@ func mergeValues(base map[string]interface{}, input map[string]interface{}) map[
 	}
 
 	for key, value := range input {
-		//if the key doesn't already exist, add it
+		// if the key doesn't already exist, add it
 		if _, exists := base[key]; !exists {
 			base[key] = value
 			continue
@@ -658,7 +672,7 @@ func (r *controlPlaneInstanceReconciler) SetInstance(newInstance *v1.ServiceMesh
 	if newInstance.GetGeneration() != r.Instance.GetGeneration() {
 		// we need to regenerate the renderings
 		r.renderings = nil
-		r.lastComponent = ""
+		r.waitForComponents = sets.NewString()
 		// reset reconcile status
 		r.Status.SetCondition(v1.Condition{Type: v1.ConditionTypeReconciled, Status: v1.ConditionStatusUnknown})
 	}
@@ -673,22 +687,28 @@ func (r *controlPlaneInstanceReconciler) IsFinished() bool {
 // - keys in orderedCharts
 // - other istio components that have the "istio/" prefix
 // - 3scale and other components
-func (r *controlPlaneInstanceReconciler) getChartsInInstallationOrder() []string {
-	charts := make([]string, 0, len(r.renderings))
+func (r *controlPlaneInstanceReconciler) getChartsInInstallationOrder() [][]string {
+	charts := make([][]string, 0, len(r.renderings))
 	seen := sets.NewString()
 
 	// first install the charts listed in orderedCharts (but only if they appear in r.renderings)
-	for _, chart := range orderedCharts {
-		if _, found := r.renderings[chart]; found {
-			charts = append(charts, chart)
-			seen.Insert(chart)
+	for _, chartSet := range orderedCharts {
+		chartsToDeploy := make([]string, 0, len(chartSet))
+		for _, chart := range chartSet {
+			if _, found := r.renderings[chart]; found {
+				chartsToDeploy = append(chartsToDeploy, chart)
+				seen.Insert(chart)
+			}
+		}
+		if len(chartsToDeploy) > 0 {
+			charts = append(charts, chartsToDeploy)
 		}
 	}
 
 	// install other istio components that aren't listed in orderedCharts
 	for chart := range r.renderings {
 		if strings.HasPrefix(chart, "istio/") && !seen.Has(chart) {
-			charts = append(charts, chart)
+			charts = append(charts, []string{chart})
 			seen.Insert(chart)
 		}
 	}
@@ -696,7 +716,7 @@ func (r *controlPlaneInstanceReconciler) getChartsInInstallationOrder() []string
 	// install 3scale and any other components
 	for chart := range r.renderings {
 		if !seen.Has(chart) {
-			charts = append(charts, chart)
+			charts = append(charts, []string{chart})
 		}
 	}
 	return charts

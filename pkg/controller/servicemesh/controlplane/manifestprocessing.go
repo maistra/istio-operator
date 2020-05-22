@@ -7,8 +7,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common/helm"
 )
 
-func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.Context, chartName string) (ready bool, err error) {
-	r.lastComponent = ""
+func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.Context, chartName string) (hasReadiness bool, err error) {
 	componentName := componentFromChartName(chartName)
 	log := common.LogFromContext(ctx).WithValues("Component", componentName)
 	ctx = common.NewContextWithLog(ctx, log)
@@ -16,7 +15,7 @@ func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.C
 	renderings, hasRenderings := r.renderings[chartName]
 	if !hasRenderings {
 		log.V(5).Info("no renderings for component")
-		return true, nil
+		return false, nil
 	}
 
 	log.Info("reconciling component resources")
@@ -38,26 +37,10 @@ func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.C
 	// if we get here, the component has been successfully installed
 	delete(r.renderings, chartName)
 
-	checkReadiness := false
 	for _, rendering := range renderings {
 		if r.hasReadiness(rendering.Head.Kind) {
-			checkReadiness = true
-			break
+			return true, nil
 		}
 	}
-
-	if checkReadiness {
-		// for reentry into the reconcile loop, if not ready
-		readinessMap, readyErr := r.calculateComponentReadiness(ctx)
-		if readyErr != nil {
-			return false, readyErr
-		}
-
-		ready, exists := readinessMap[componentName]
-		if !exists || !ready {
-			r.lastComponent = componentName
-			return false, nil
-		}
-	}
-	return true, nil
+	return false, nil
 }
