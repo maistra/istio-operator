@@ -11,6 +11,7 @@ if [[ $MAISTRA_VERSION =~ ([0-9]+\.[0-9]+\.[0-9]+).* ]] ; then
 else
   MAISTRA_STRIPPED_VERSION=${MAISTRA_VERSION}
 fi
+MAISTRA_NAME_VERSION=${MAISTRA_VERSION//+/.}
 
 if [[ ${COMMUNITY} == "true" ]]; then
   BUILD_TYPE="maistra"
@@ -31,7 +32,7 @@ else
 fi
 : ${DEPLOYMENT_FILE:=deploy/${BUILD_TYPE}-operator.yaml}
 : ${MANIFESTS_DIR:=manifests-${BUILD_TYPE}}
-BUNDLE_DIR=${MANIFESTS_DIR}/${MAISTRA_VERSION}
+BUNDLE_DIR=${MANIFESTS_DIR}/${MAISTRA_NAME_VERSION}
 OPERATOR_NAME=${BUILD_TYPE}operator
 MY_LOCATION="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -95,6 +96,7 @@ function generateCSV() {
   sed -i -e 's/__NAME__/'${OPERATOR_NAME}'/g' ${csv_path}
   sed -i -e 's/__VERSION__/'${MAISTRA_VERSION}'/g' ${csv_path}
   sed -i -e 's/__STRIPPED_VERSION__/'${MAISTRA_STRIPPED_VERSION}'/g' ${csv_path}
+  sed -i -e 's/__NAME_VERSION__/'${MAISTRA_NAME_VERSION}'/g' ${csv_path}
   sed -i -e 's/__DISPLAY_NAME__/'"$DISPLAY_NAME"'/' ${csv_path}
   sed -i -e 's/__CSV_DESCRIPTION__/'"$CSV_DESCRIPTION"'/' ${csv_path}
   sed -i -e 's/__APP_DESCRIPTION__/'"$APP_DESCRIPTION"'/' ${csv_path}
@@ -127,6 +129,7 @@ function generatePackage() {
   cp ${MY_LOCATION}/manifest-templates/package.yaml ${package_path}
   sed -i -e 's/__NAME__/'${OPERATOR_NAME}'/g' ${package_path}
   sed -i -e 's/__VERSION__/'${MAISTRA_VERSION}'/g' ${package_path}
+  sed -i -e 's/__NAME_VERSION__/'${MAISTRA_NAME_VERSION}'/g' ${package_path}
 }
 
 checkDependencies
