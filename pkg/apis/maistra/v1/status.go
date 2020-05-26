@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -141,9 +142,15 @@ type Condition struct {
 	LastTransitionTime metav1.Time     `json:"lastTransitionTime,omitempty"`
 }
 
+var metadataVersion string = os.Getenv("METADATA_VERSION");
+
 // CurrentReconciledVersion returns a ReconciledVersion for this release of the operator
 func CurrentReconciledVersion(generation int64) string {
-	return ComposeReconciledVersion(version.Info.Version, generation)
+	if metadataVersion == "" {
+		return ComposeReconciledVersion(version.Info.Version, generation)
+	} else {
+		return ComposeReconciledVersion(metadataVersion, generation)
+	}
 }
 
 // ComposeReconciledVersion returns a string for use in ReconciledVersion fields
