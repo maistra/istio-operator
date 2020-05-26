@@ -93,6 +93,10 @@ function generateCSV() {
   local csv_path=${BUNDLE_DIR}/${OPERATOR_NAME}.v${MAISTRA_VERSION}.clusterserviceversion.yaml
   cp ${MY_LOCATION}/manifest-templates/clusterserviceversion.yaml ${csv_path}
 
+  sed -i -e '/__DEPLOYMENT_SPEC__/{
+    s/__DEPLOYMENT_SPEC__//
+    r '<(echo "$DEPLOYMENT_SPEC")'
+  }' ${csv_path}
   sed -i -e 's/__NAME__/'${OPERATOR_NAME}'/g' ${csv_path}
   sed -i -e 's/__VERSION__/'${MAISTRA_VERSION}'/g' ${csv_path}
   sed -i -e 's/__STRIPPED_VERSION__/'${MAISTRA_STRIPPED_VERSION}'/g' ${csv_path}
@@ -112,10 +116,6 @@ function generateCSV() {
   sed -i -e '/__CLUSTER_ROLE_RULES__/{
     s/__CLUSTER_ROLE_RULES__//
     r '<(echo "$CLUSTER_ROLE_RULES")'
-  }' ${csv_path}
-  sed -i -e '/__DEPLOYMENT_SPEC__/{
-    s/__DEPLOYMENT_SPEC__//
-    r '<(echo "$DEPLOYMENT_SPEC")'
   }' ${csv_path}
   if [ -z "$REPLACES_CSV" ]; then
     sed -i '/__REPLACES_CSV__/d' ${csv_path}
