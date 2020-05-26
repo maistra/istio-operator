@@ -412,7 +412,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	err = utilerrors.NewAggregate(nsErrors)
 	if err == nil {
 		instance.Status.ObservedGeneration = instance.GetGeneration()
-		err = r.Client.Status().Update(ctx, instance)
+		err = r.Client.Status().Patch(ctx, instance, common.NewStatusPatch(instance.Status))
 		if err != nil {
 			reqLogger.Error(err, "error updating status for ServiceMeshMemberRoll")
 		}
