@@ -488,7 +488,7 @@ spec:
 #            - name: ISTIO_CNI_IMAGE_PULL_SECRET
 #              value: name-of-secret
             - name: METADATA_VERSION
-              value: __VERSION__
+              value: __NAME_VERSION__
           volumeMounts:
           - name: operator-olm-config
             mountPath: /etc/operator/olm
