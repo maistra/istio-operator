@@ -100,12 +100,20 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 
 type isReadyFunc func(runtime.Object) bool
 
+// keep this in sync with kinds in calculateComponentReadiness()
+var kindsWithReadiness = sets.NewString("Deployment", "StatefulSet", "DaemonSet")
+
+func (r *controlPlaneInstanceReconciler) hasReadiness(kind string) bool {
+	return kindsWithReadiness.Has(kind)
+}
+
 func (r *controlPlaneInstanceReconciler) calculateComponentReadiness(ctx context.Context) (map[string]bool, error) {
 	readinessMap := map[string]bool{}
 	typesToCheck := []struct {
 		list  runtime.Object
 		ready isReadyFunc
 	}{
+		// keep this in sync with kindsWithReadiness
 		{
 			list: &appsv1.DeploymentList{},
 			ready: func(obj runtime.Object) bool {
