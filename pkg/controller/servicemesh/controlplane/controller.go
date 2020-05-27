@@ -25,6 +25,7 @@ import (
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 )
 
 const (
@@ -35,23 +36,22 @@ const (
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	operatorNamespace := common.GetOperatorNamespace()
-	cniConfig, err := common.InitCNIConfig(mgr)
+	cniConfig, err := cni.InitConfig(mgr)
 	if err != nil {
 		return err
 	}
 
-	reconciler := newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetRecorder(controllerName), operatorNamespace, cniConfig)
+	reconciler := newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetEventRecorderFor(controllerName), operatorNamespace, cniConfig)
 	return add(mgr, reconciler)
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, operatorNamespace string, cniConfig common.CNIConfig) *ControlPlaneReconciler {
+func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, operatorNamespace string, cniConfig cni.Config) *ControlPlaneReconciler {
 	reconciler := &ControlPlaneReconciler{
 		ControllerResources: common.ControllerResources{
 			Client:            cl,
 			Scheme:            scheme,
 			EventRecorder:     eventRecorder,
-			PatchFactory:      common.NewPatchFactory(cl),
 			OperatorNamespace: operatorNamespace,
 		},
 		cniConfig:   cniConfig,
@@ -114,7 +114,7 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 					return nil
 				}
 				smcpList := &v1.ServiceMeshControlPlaneList{}
-				if err := mgr.GetClient().List(ctx, nil, smcpList); err != nil {
+				if err := mgr.GetClient().List(ctx, smcpList); err != nil {
 					log.Error(err, "error listing ServiceMeshControlPlane objects in CNI DaemonSet watcher")
 					return nil
 				}
@@ -156,12 +156,12 @@ type ControlPlaneReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	common.ControllerResources
-	cniConfig common.CNIConfig
+	cniConfig cni.Config
 
 	reconcilers map[types.NamespacedName]ControlPlaneInstanceReconciler
 	mu          sync.Mutex
 
-	instanceReconcilerFactory func(common.ControllerResources, *v1.ServiceMeshControlPlane, common.CNIConfig) ControlPlaneInstanceReconciler
+	instanceReconcilerFactory func(common.ControllerResources, *v1.ServiceMeshControlPlane, cni.Config) ControlPlaneInstanceReconciler
 }
 
 // ControlPlaneInstanceReconciler reconciles a specific instance of a ServiceMeshControlPlane

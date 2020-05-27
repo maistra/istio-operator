@@ -9,32 +9,15 @@
       "istio.networking.v1alpha3.PortSelector": {
         "description": "PortSelector specifies the number of a port to be used for matching or selection for final routing.",
         "type": "object",
-        "oneOf": [
-          {
-            "required": [
-              "number"
-            ],
-            "properties": {
-              "number": {
-                "description": "Valid port number",
-                "type": "integer"
-              }
-            }
-          },
-          {
-            "required": [
-              "name"
-            ],
-            "properties": {
-              "name": {
-                "type": "string",
-                "format": "string"
-              }
-            }
+        "properties": {
+          "number": {
+            "description": "Valid port number",
+            "type": "integer"
           }
-        ]
+        }
       },
       "istio.networking.v1alpha3.VirtualService": {
+        "description": "Configuration affecting traffic routing.",
         "type": "object",
         "properties": {
           "exportTo": {
@@ -67,7 +50,7 @@
             }
           },
           "hosts": {
-            "description": "REQUIRED. The destination hosts to which traffic is being sent. Could be a DNS name with wildcard prefix or an IP address. Depending on the platform, short-names can also be used instead of a FQDN (i.e. has no dots in the name). In such a scenario, the FQDN of the host would be derived based on the underlying platform.",
+            "description": "The destination hosts to which traffic is being sent. Could be a DNS name with wildcard prefix or an IP address. Depending on the platform, short-names can also be used instead of a FQDN (i.e. has no dots in the name). In such a scenario, the FQDN of the host would be derived based on the underlying platform.",
             "type": "array",
             "items": {
               "type": "string",
@@ -195,7 +178,7 @@
             }
           },
           "match": {
-            "description": "REQUIRED. Match conditions to be satisfied for the rule to be activated. All conditions inside a single match block have AND semantics, while the list of match blocks have OR semantics. The rule is matched if any one of the match blocks succeed.",
+            "description": "Match conditions to be satisfied for the rule to be activated. All conditions inside a single match block have AND semantics, while the list of match blocks have OR semantics. The rule is matched if any one of the match blocks succeed.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/istio.networking.v1alpha3.TLSMatchAttributes"
@@ -224,11 +207,11 @@
         }
       },
       "istio.networking.v1alpha3.Destination": {
-        "description": "Destination indicates the network addressable service to which the request/connection will be sent after processing a routing rule. The destination.host should unambiguously refer to a service in the service registry. Istio's service registry is composed of all the services found in the platform's service registry (e.g., Kubernetes services, Consul services), as well as services declared through the [ServiceEntry](https://istio.io/docs/reference/config/networking/v1alpha3/service-entry/#ServiceEntry) resource.",
+        "description": "Destination indicates the network addressable service to which the request/connection will be sent after processing a routing rule. The destination.host should unambiguously refer to a service in the service registry. Istio's service registry is composed of all the services found in the platform's service registry (e.g., Kubernetes services, Consul services), as well as services declared through the [ServiceEntry](https://istio.io/docs/reference/config/networking/service-entry/#ServiceEntry) resource.",
         "type": "object",
         "properties": {
           "host": {
-            "description": "REQUIRED. The name of a service from the service registry. Service names are looked up from the platform's service registry (e.g., Kubernetes services, Consul services, etc.) and from the hosts declared by [ServiceEntry](https://istio.io/docs/reference/config/networking/v1alpha3/service-entry/#ServiceEntry). Traffic forwarded to destinations that are not found in either of the two, will be dropped.",
+            "description": "The name of a service from the service registry. Service names are looked up from the platform's service registry (e.g., Kubernetes services, Consul services, etc.) and from the hosts declared by [ServiceEntry](https://istio.io/docs/reference/config/networking/service-entry/#ServiceEntry). Traffic forwarded to destinations that are not found in either of the two, will be dropped.",
             "type": "string",
             "format": "string"
           },
@@ -282,6 +265,7 @@
             "$ref": "#/components/schemas/istio.networking.v1alpha3.StringMatch"
           },
           "sourceLabels": {
+            "description": "One or more labels that constrain the applicability of a rule to workloads with the given labels. If the VirtualService has a list of gateways specified at the top, it must include the reserved gateway `mesh` for this field to be applicable.",
             "type": "object",
             "additionalProperties": {
               "type": "string",
@@ -306,7 +290,7 @@
         "type": "object",
         "properties": {
           "weight": {
-            "description": "REQUIRED. The proportion of traffic to be forwarded to the service version. (0-100). Sum of weights across destinations SHOULD BE == 100. If there is only one destination in a rule, the weight value is assumed to be 100.",
+            "description": "The proportion of traffic to be forwarded to the service version. (0-100). Sum of weights across destinations SHOULD BE == 100. If there is only one destination in a rule, the weight value is assumed to be 100.",
             "type": "integer",
             "format": "int32"
           },
@@ -395,7 +379,7 @@
         "type": "object",
         "properties": {
           "attempts": {
-            "description": "REQUIRED. Number of retries for a given request. The interval between retries will be determined automatically (25ms+). Actual number of retries attempted depends on the httpReqTimeout.",
+            "description": "Number of retries for a given request. The interval between retries will be determined automatically (25ms+). Actual number of retries attempted depends on the httpReqTimeout.",
             "type": "integer",
             "format": "int32"
           },
@@ -404,7 +388,7 @@
             "type": "string"
           },
           "retryOn": {
-            "description": "Specifies the conditions under which retry takes place. One or more policies can be specified using a ‘,’ delimited list. See the [supported policies](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/router_filter#x-envoy-retry-grpc-on) and [here](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/router_filter#x-envoy-retry-grpc-on) for more details.",
+            "description": "Specifies the conditions under which retry takes place. One or more policies can be specified using a ‘,’ delimited list. See the [retry policies](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/router_filter#x-envoy-retry-on) and [gRPC retry policies](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/router_filter#x-envoy-retry-grpc-on) for more details.",
             "type": "string",
             "format": "string"
           }
@@ -549,7 +533,7 @@
             "format": "string"
           },
           "sniHosts": {
-            "description": "REQUIRED. SNI (server name indicator) to match on. Wildcard prefixes can be used in the SNI value, e.g., *.com will match foo.example.com as well as example.com. An SNI value must be a subset (i.e., fall within the domain) of the corresponding virtual serivce's hosts.",
+            "description": "SNI (server name indicator) to match on. Wildcard prefixes can be used in the SNI value, e.g., *.com will match foo.example.com as well as example.com. An SNI value must be a subset (i.e., fall within the domain) of the corresponding virtual serivce's hosts.",
             "type": "array",
             "items": {
               "type": "string",
@@ -563,7 +547,7 @@
         "type": "object",
         "properties": {
           "weight": {
-            "description": "REQUIRED. The proportion of traffic to be forwarded to the service version. If there is only one destination in a rule, all traffic will be routed to it irrespective of the weight.",
+            "description": "The proportion of traffic to be forwarded to the service version. If there is only one destination in a rule, all traffic will be routed to it irrespective of the weight.",
             "type": "integer",
             "format": "int32"
           },
@@ -672,7 +656,7 @@
                 "$ref": "#/components/schemas/istio.networking.v1alpha3.Percent"
               },
               "fixedDelay": {
-                "description": "REQUIRED. Add a fixed delay before forwarding the request. Format: 1h/1m/1s/1ms. MUST be \u003e=1ms.",
+                "description": "Add a fixed delay before forwarding the request. Format: 1h/1m/1s/1ms. MUST be \u003e=1ms.",
                 "type": "string"
               }
             }
@@ -717,7 +701,7 @@
                 "$ref": "#/components/schemas/istio.networking.v1alpha3.Percent"
               },
               "httpStatus": {
-                "description": "REQUIRED. HTTP status code to use to abort the Http request.",
+                "description": "HTTP status code to use to abort the Http request.",
                 "type": "integer",
                 "format": "int32"
               }

@@ -21,11 +21,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 const (
@@ -36,10 +37,6 @@ const (
 	controlPlaneName      = "my-mesh"
 	controlPlaneNamespace = "cp-namespace"
 	controlPlaneUID       = types.UID("2222")
-
-	meshVersion1_0     = "v1.0"
-	meshVersion1_1     = "v1.1"
-	meshVersionDefault = meshVersion1_1
 
 	operatorVersion1_0     = "1.0.0"
 	operatorVersion1_1     = "1.1.0"
@@ -137,39 +134,6 @@ func TestReconcileDoesNothingIfMultipleControlPlanesFound(t *testing.T) {
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 }
 
-func TestReconcileAddsOwnerReference(t *testing.T) {
-	roll := newDefaultMemberRoll()
-	roll.OwnerReferences = []meta.OwnerReference{}
-	controlPlane := newControlPlane("")
-
-	cl, _, r, _, _ := createClientAndReconciler(t, roll, controlPlane)
-
-	assertReconcileSucceeds(r, t)
-
-	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
-	assert.Equals(len(updatedRoll.OwnerReferences), 1, "Expected SMMR to contain exactly one ownerReference", t)
-
-	expectedOwnerRef := meta.OwnerReference{
-		APIVersion: maistrav1.SchemeGroupVersion.String(),
-		Kind:       "ServiceMeshControlPlane",
-		Name:       controlPlaneName,
-		UID:        controlPlaneUID,
-	}
-	assert.DeepEquals(updatedRoll.OwnerReferences[0], expectedOwnerRef, "Unexpected OwnerReference in SMMR", t)
-}
-
-func TestReconcileFailsIfAddingOwnerReferenceFails(t *testing.T) {
-	roll := newDefaultMemberRoll()
-	roll.OwnerReferences = []meta.OwnerReference{}
-	controlPlane := newControlPlane("")
-
-	_, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane)
-	tracker.AddReactor("update", "servicemeshmemberrolls", test.ClientFails())
-
-	assertReconcileFails(r, t)
-	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1) // we expect only the update that fails
-}
-
 func TestReconcileDoesNothingIfControlPlaneNotReconciledAtLeastOnce(t *testing.T) {
 	roll := newDefaultMemberRoll()
 	addOwnerReference(roll)
@@ -218,7 +182,7 @@ func TestReconcileReconcilesAfterOperatorUpgradeFromV1_0(t *testing.T) {
 	addOwnerReference(roll)
 	roll.Spec.Members = []string{appNamespace}
 	roll.Status.ConfiguredMembers = []string{appNamespace}
-	controlPlane := markControlPlaneReconciled(newControlPlane(meshVersion1_0), operatorVersionDefault)
+	controlPlane := markControlPlaneReconciled(newControlPlane(versions.V1_0.String()), operatorVersionDefault)
 	namespace := newNamespace(appNamespace)
 	common.SetLabel(namespace, common.MemberOfKey, controlPlaneNamespace)
 	meshRoleBinding := newMeshRoleBinding()
@@ -272,13 +236,13 @@ func TestReconcileReconcilesAddedMember(t *testing.T) {
 		{
 			name:                "v1.0-installed-with-v1.1",
 			operatorVersion:     operatorVersion1_1,
-			meshVersion:         meshVersion1_0,
+			meshVersion:         versions.V1_0.String(),
 			expectedNetworkName: cniNetwork1_0,
 		},
 		{
 			name:                "v1.1",
 			operatorVersion:     operatorVersion1_1,
-			meshVersion:         meshVersion1_1,
+			meshVersion:         versions.V1_1.String(),
 			expectedNetworkName: cniNetwork1_1,
 		},
 		{
@@ -327,7 +291,7 @@ func TestReconcileFailsIfMemberRollUpdateFails(t *testing.T) {
 	namespace := newNamespace(appNamespace)
 
 	_, tracker, r, nsReconciler, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, namespace)
-	tracker.AddReactor("update", "servicemeshmemberrolls", test.ClientFails())
+	tracker.AddReactor("patch", "servicemeshmemberrolls", test.ClientFails())
 
 	assertReconcileFails(r, t)
 
@@ -371,7 +335,7 @@ func TestReconcileReconcilesMemberIfNamespaceIsCreatedLater(t *testing.T) {
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 
 	assertNamespaceReconcilerInvoked(t, nsReconciler, appNamespace)
-	meshNetAttachDefName, _ := common.GetCNINetworkName(maistra.LegacyVersion.String())
+	meshNetAttachDefName, _ := cni.GetNetworkName(versions.LegacyVersion)
 	assertNamespaceReconciled(t, cl, appNamespace, controlPlaneNamespace, meshNetAttachDefName, []rbac.RoleBinding{*meshRoleBinding})
 
 	// invoke reconcile again to check if the Status.ServiceMeshGeneration field is updated
@@ -405,7 +369,7 @@ func TestReconcileDoesNotUpdateMemberRollWhenNothingToReconcile(t *testing.T) {
 	roll.Spec.Members = []string{appNamespace}
 	roll.Status.ConfiguredMembers = []string{appNamespace}
 
-	controlPlane := newControlPlane(meshVersionDefault)
+	controlPlane := newControlPlane(versions.DefaultVersion.String())
 	controlPlane.SetGeneration(2)
 	markControlPlaneReconciled(controlPlane, operatorVersionDefault)
 
@@ -440,7 +404,7 @@ func TestReconcileNamespacesIgnoresControlPlaneNamespace(t *testing.T) {
 	ctx := common.NewContextWithLog(ctx, reqLogger)
 
 	namespaces := sets.NewString(controlPlaneNamespace, appNamespace)
-	configuredMembers, err, nsErrors := r.reconcileNamespaces(ctx, namespaces, namespaces, controlPlaneNamespace, meshVersionDefault)
+	configuredMembers, err, nsErrors := r.reconcileNamespaces(ctx, namespaces, namespaces, controlPlaneNamespace, versions.DefaultVersion)
 	if err != nil {
 		t.Fatalf("reconcileNamespaces failed: %v", err)
 	}
@@ -639,7 +603,7 @@ func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (c
 
 	fakeEventRecorder := &record.FakeRecorder{}
 	kialiReconciler := &fakeKialiReconciler{}
-	cniConfig := common.CNIConfig{Enabled: true}
+	cniConfig := cni.Config{Enabled: true}
 
 	r := newReconciler(cl, scheme.Scheme, fakeEventRecorder, rf.newReconciler, kialiReconciler, cniConfig)
 
@@ -650,7 +614,7 @@ type fakeNamespaceReconcilerFactory struct {
 	reconciler *fakeNamespaceReconciler
 }
 
-func (rf *fakeNamespaceReconcilerFactory) newReconciler(ctx context.Context, cl client.Client, meshNamespace string, meshVersion string, isCNIEnabled bool) (NamespaceReconciler, error) {
+func (rf *fakeNamespaceReconcilerFactory) newReconciler(ctx context.Context, cl client.Client, meshNamespace string, meshVersion versions.Version, isCNIEnabled bool) (NamespaceReconciler, error) {
 	delegate, err := newNamespaceReconciler(ctx, cl, meshNamespace, meshVersion, isCNIEnabled)
 	rf.reconciler.delegate = delegate
 	return rf.reconciler, err

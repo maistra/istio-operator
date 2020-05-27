@@ -58,10 +58,6 @@ func (r *controlPlaneInstanceReconciler) processNewObject(ctx context.Context, o
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) processDeletedObject(ctx context.Context, object *unstructured.Unstructured) error {
-	return nil
-}
-
 func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, object *unstructured.Unstructured) error {
 	log := common.LogFromContext(ctx)
 	log.Info("patching kiali CR", object.GetKind(), object.GetName())

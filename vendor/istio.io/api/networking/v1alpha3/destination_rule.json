@@ -7,10 +7,11 @@
   "components": {
     "schemas": {
       "istio.networking.v1alpha3.DestinationRule": {
+        "description": "DestinationRule defines policies that apply to traffic intended for a service after routing has occurred.",
         "type": "object",
         "properties": {
           "host": {
-            "description": "REQUIRED. The name of a service from the service registry. Service names are looked up from the platform's service registry (e.g., Kubernetes services, Consul services, etc.) and from the hosts declared by [ServiceEntries](https://istio.io/docs/reference/config/networking/v1alpha3/service-entry/#ServiceEntry). Rules defined for services that do not exist in the service registry will be ignored.",
+            "description": "The name of a service from the service registry. Service names are looked up from the platform's service registry (e.g., Kubernetes services, Consul services, etc.) and from the hosts declared by [ServiceEntries](https://istio.io/docs/reference/config/networking/service-entry/#ServiceEntry). Rules defined for services that do not exist in the service registry will be ignored.",
             "type": "string",
             "format": "string"
           },
@@ -60,11 +61,11 @@
         }
       },
       "istio.networking.v1alpha3.Subset": {
-        "description": "A subset of endpoints of a service. Subsets can be used for scenarios like A/B testing, or routing to a specific version of a service. Refer to [VirtualService](https://istio.io/docs/reference/config/networking/v1alpha3/virtual-service/#VirtualService) documentation for examples of using subsets in these scenarios. In addition, traffic policies defined at the service-level can be overridden at a subset-level. The following rule uses a round robin load balancing policy for all traffic going to a subset named testversion that is composed of endpoints (e.g., pods) with labels (version:v3).",
+        "description": "A subset of endpoints of a service. Subsets can be used for scenarios like A/B testing, or routing to a specific version of a service. Refer to [VirtualService](https://istio.io/docs/reference/config/networking/virtual-service/#VirtualService) documentation for examples of using subsets in these scenarios. In addition, traffic policies defined at the service-level can be overridden at a subset-level. The following rule uses a round robin load balancing policy for all traffic going to a subset named testversion that is composed of endpoints (e.g., pods) with labels (version:v3).",
         "type": "object",
         "properties": {
           "name": {
-            "description": "REQUIRED. Name of the subset. The service name and the subset name can be used for traffic splitting in a route rule.",
+            "description": "Name of the subset. The service name and the subset name can be used for traffic splitting in a route rule.",
             "type": "string",
             "format": "string"
           },
@@ -128,7 +129,7 @@
             "type": "string"
           },
           "consecutiveErrors": {
-            "description": "Number of errors before a host is ejected from the connection pool. Defaults to 5. When the upstream host is accessed over HTTP, a 502, 503 or 504 return code qualifies as an error. When the upstream host is accessed over an opaque TCP connection, connect timeouts and connection error/failure events qualify as an error.",
+            "description": "Number of errors before a host is ejected from the connection pool. Defaults to 5. When the upstream host is accessed over HTTP, a 502, 503, or 504 return code qualifies as an error. When the upstream host is accessed over an opaque TCP connection, connect timeouts and connection error/failure events qualify as an error.",
             "type": "integer",
             "format": "int32"
           },
@@ -209,30 +210,12 @@
       "istio.networking.v1alpha3.PortSelector": {
         "description": "PortSelector specifies the number of a port to be used for matching or selection for final routing.",
         "type": "object",
-        "oneOf": [
-          {
-            "required": [
-              "number"
-            ],
-            "properties": {
-              "number": {
-                "description": "Valid port number",
-                "type": "integer"
-              }
-            }
-          },
-          {
-            "required": [
-              "name"
-            ],
-            "properties": {
-              "name": {
-                "type": "string",
-                "format": "string"
-              }
-            }
+        "properties": {
+          "number": {
+            "description": "Valid port number",
+            "type": "integer"
           }
-        ]
+        }
       },
       "istio.networking.v1alpha3.LoadBalancerSettings.SimpleLB": {
         "description": "Standard load balancing algorithms that require no tuning.",
@@ -242,8 +225,7 @@
           "LEAST_CONN",
           "RANDOM",
           "PASSTHROUGH"
-        ],
-        "default": "ROUND_ROBIN"
+        ]
       },
       "istio.networking.v1alpha3.LoadBalancerSettings.ConsistentHashLB": {
         "description": "Consistent Hash-based load balancing can be used to provide soft session affinity based on HTTP headers, cookies or other properties. This load balancing policy is applicable only for HTTP connections. The affinity to a particular destination host will be lost when one or more hosts are added/removed from the destination service.",
@@ -306,12 +288,12 @@
             "format": "string"
           },
           "name": {
-            "description": "REQUIRED. Name of the cookie.",
+            "description": "Name of the cookie.",
             "type": "string",
             "format": "string"
           },
           "ttl": {
-            "description": "REQUIRED. Lifetime of the cookie.",
+            "description": "Lifetime of the cookie.",
             "type": "string"
           }
         }
@@ -321,7 +303,7 @@
         "type": "object",
         "properties": {
           "maxConnections": {
-            "description": "Maximum number of HTTP1 /TCP connections to a destination host. Default 1024.",
+            "description": "Maximum number of HTTP1 /TCP connections to a destination host. Default 2^32-1.",
             "type": "integer",
             "format": "int32"
           },
@@ -339,12 +321,12 @@
         "type": "object",
         "properties": {
           "http1MaxPendingRequests": {
-            "description": "Maximum number of pending HTTP requests to a destination. Default 1024.",
+            "description": "Maximum number of pending HTTP requests to a destination. Default 2^32-1.",
             "type": "integer",
             "format": "int32"
           },
           "http2MaxRequests": {
-            "description": "Maximum number of requests to a backend. Default 1024.",
+            "description": "Maximum number of requests to a backend. Default 2^32-1.",
             "type": "integer",
             "format": "int32"
           },
@@ -354,7 +336,7 @@
             "format": "int32"
           },
           "maxRetries": {
-            "description": "Maximum number of retries that can be outstanding to all hosts in a cluster at a given time. Defaults to 1024.",
+            "description": "Maximum number of retries that can be outstanding to all hosts in a cluster at a given time. Defaults to 2^32-1.",
             "type": "integer",
             "format": "int32"
           },
@@ -392,8 +374,7 @@
           "DEFAULT",
           "DO_NOT_UPGRADE",
           "UPGRADE"
-        ],
-        "default": "DEFAULT"
+        ]
       },
       "istio.networking.v1alpha3.TLSSettings.TLSmode": {
         "description": "TLS connection mode",
@@ -403,8 +384,7 @@
           "SIMPLE",
           "MUTUAL",
           "ISTIO_MUTUAL"
-        ],
-        "default": "DISABLE"
+        ]
       }
     }
   }
