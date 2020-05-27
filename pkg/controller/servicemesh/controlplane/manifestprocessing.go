@@ -38,16 +38,26 @@ func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.C
 	// if we get here, the component has been successfully installed
 	delete(r.renderings, chartName)
 
-	// for reentry into the reconcile loop, if not ready
-	readinessMap, readyErr := r.calculateComponentReadiness(ctx)
-	if readyErr != nil {
-		return false, readyErr
+	checkReadiness := false
+	for _, rendering := range renderings {
+		if r.hasReadiness(rendering.Head.Kind) {
+			checkReadiness = true
+			break
+		}
 	}
 
-	ready, exists := readinessMap[componentName]
-	if exists && !ready {
-		r.lastComponent = componentName
-		return false, nil
+	if checkReadiness {
+		// for reentry into the reconcile loop, if not ready
+		readinessMap, readyErr := r.calculateComponentReadiness(ctx)
+		if readyErr != nil {
+			return false, readyErr
+		}
+
+		ready, exists := readinessMap[componentName]
+		if !exists || !ready {
+			r.lastComponent = componentName
+			return false, nil
+		}
 	}
 	return true, nil
 }
