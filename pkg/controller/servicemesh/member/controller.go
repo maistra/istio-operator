@@ -59,7 +59,8 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 func add(mgr manager.Manager, r *MemberReconciler) error {
 	ctx := common.NewContextWithLog(common.NewContext(), createLogger())
 	// Create a new controller
-	c, err := controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.Config.Controller.MemberReconcilers, Reconciler: r})
+	wrappedReconciler := common.NewConflictHandlingReconciler(r)
+	c, err := controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.Config.Controller.MemberReconcilers, Reconciler: wrappedReconciler})
 	if err != nil {
 		return err
 	}
@@ -206,18 +207,14 @@ func (r *MemberReconciler) reconcileMember(ctx context.Context, member *maistra.
 		err = r.Client.Create(ctx, memberRoll)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				errorMessage := "Could not create ServiceMeshMemberRoll, because the referenced namespace doesn't exist"
-				reqLogger.Info(errorMessage, "namespace", memberRoll.Namespace)
-				statusUpdateErr := r.reportError(ctx, member, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, errorMessage)
+				wrappedErr := errors2.Wrapf(err, "Could not create ServiceMeshMemberRoll, because the referenced namespace doesn't exist")
+				reqLogger.Info(wrappedErr.Error(), "namespace", memberRoll.Namespace)
+				statusUpdateErr := r.reportError(ctx, member, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, wrappedErr)
 				return reconcile.Result{}, statusUpdateErr
-			} else if errors.IsConflict(err) {
-				// local cache is stale; this isn't an error, so we shouldn't log it as such;
-				// instead, we stop reconciling and wait for the watch event to arrive and trigger another reconciliation
-				return reconcile.Result{}, nil
 			} else {
 				// we're dealing with a different type of error (either a validation error or an actual (e.g. I/O) error
 				wrappedErr := errors2.Wrapf(err, "Could not create ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-				_ = r.reportError(ctx, member, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, wrappedErr.Error())
+				_ = r.reportError(ctx, member, false, maistra.ConditionReasonMemberCannotCreateMemberRoll, wrappedErr)
 
 				// 400 Bad Request is returned by the validation webhook. This isn't a controller error, but a user error, so we shouldn't log it as such.
 				// This happens when the namespace is already a member of a different MemberRoll.
@@ -246,7 +243,7 @@ func (r *MemberReconciler) reconcileMember(ctx context.Context, member *maistra.
 				} else {
 					// we're dealing with either a validation error or an actual (e.g. I/O) error
 					wrappedErr := errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-					_ = r.reportError(ctx, member, false, maistra.ConditionReasonMemberCannotUpdateMemberRoll, wrappedErr.Error())
+					_ = r.reportError(ctx, member, false, maistra.ConditionReasonMemberCannotUpdateMemberRoll, wrappedErr)
 					if errors.IsBadRequest(err) {
 						reqLogger.Info(wrappedErr.Error())
 						return reconcile.Result{
@@ -293,20 +290,20 @@ func (r *MemberReconciler) finalizeMember(ctx context.Context, obj runtime.Objec
 			err = r.Client.Delete(ctx, memberRoll)     // TODO: need to add resourceVersion precondition to delete request (need newer apimachinery to do that)
 			if err != nil && !errors.IsNotFound(err) { // if NotFound, MemberRoll has been deleted, which is what we wanted. This means this is not an error, but a success.
 				err = errors2.Wrapf(err, "Could not delete ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-				_ = r.reportError(ctx, member, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotDeleteMemberRoll, err.Error())
+				_ = r.reportError(ctx, member, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotDeleteMemberRoll, err)
 				return false, err
 			}
 		} else {
 			reqLogger.Info("Removing ServiceMeshMember from ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll.ObjectMeta).String())
 			err = r.Client.Update(ctx, memberRoll)
 			if err != nil {
-				if errors.IsNotFound(err) || errors.IsConflict(err) {
+				if errors.IsNotFound(err) {
 					// local cache is stale; this isn't an error, so we shouldn't log it as such;
 					// instead, we stop reconciling and wait for the watch event to arrive and trigger another reconciliation
 					return false, nil
 				}
 				err = errors2.Wrapf(err, "Could not update ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
-				_ = r.reportError(ctx, member, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotUpdateMemberRoll, err.Error())
+				_ = r.reportError(ctx, member, r.isNamespaceConfigured(memberRoll, member.Namespace), maistra.ConditionReasonMemberCannotUpdateMemberRoll, err)
 				return false, err
 			}
 		}
@@ -318,9 +315,13 @@ func (r *MemberReconciler) isNamespaceConfigured(memberRoll *maistra.ServiceMesh
 	return sets.NewString(memberRoll.Status.ConfiguredMembers...).Has(namespace)
 }
 
-func (r *MemberReconciler) reportError(ctx context.Context, member *maistra.ServiceMeshMember, ready bool, reason maistra.ServiceMeshMemberConditionReason, message string) error {
-	r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, message)
-	return r.updateStatus(ctx, member, false, ready, reason, message)
+func (r *MemberReconciler) reportError(ctx context.Context, member *maistra.ServiceMeshMember, ready bool, reason maistra.ServiceMeshMemberConditionReason, err error) error {
+	if common.IsConflict(err) {
+		// we never record conflicts, because they aren't true errors
+		return nil
+	}
+	r.recordEvent(member, core.EventTypeWarning, eventReasonFailedReconcile, err.Error())
+	return r.updateStatus(ctx, member, false, ready, reason, err.Error())
 }
 
 func (r *MemberReconciler) updateStatus(ctx context.Context, member *maistra.ServiceMeshMember, reconciled, ready bool, reason maistra.ServiceMeshMemberConditionReason, message string) error {

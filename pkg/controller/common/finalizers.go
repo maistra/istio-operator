@@ -44,10 +44,8 @@ func HandleFinalization(ctx context.Context, obj runtime.Object, finalizerFunc F
 		objectMeta.SetFinalizers(finalizers.List())
 		err = cl.Update(ctx, obj)
 		if err != nil {
-			if errors.IsNotFound(err) || errors.IsConflict(err) {
-				// We're reconciling a stale instance. If the object no longer exists, we're done. If there was a
-				// conflict, we'll receive another watch event, which will trigger another reconciliation. We'll remove
-				// the finalizer then.
+			if errors.IsNotFound(err) {
+				// We're reconciling a stale instance. The object no longer exists, so we're done.
 				return false, nil
 			}
 			err = errors2.Wrapf(err, "Could not remove finalizer from %s/%s", objectMeta.GetNamespace(), objectMeta.GetName())
@@ -62,16 +60,9 @@ func HandleFinalization(ctx context.Context, obj runtime.Object, finalizerFunc F
 		finalizers.Insert(FinalizerName)
 		objectMeta.SetFinalizers(finalizers.List())
 		err = cl.Update(ctx, obj)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				// Object was deleted manually before we could add the finalizer to it. This is not an error.
-				return false, nil
-			} else if errors.IsConflict(err) {
-				// Object was created and immediately updated, before the controller was able to add the finalizer.
-				// The instance we're reconciling is stale, hence the Conflict error. When the update watch event
-				// arrives, another reconciliation will be triggered, which means we don't need to do anything here.
-				return false, nil
-			}
+		if errors.IsNotFound(err) {
+			// Object was deleted manually before we could add the finalizer to it. This is not an error.
+			return false, nil
 		}
 		return false, err
 	}

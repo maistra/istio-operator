@@ -5,6 +5,13 @@ import (
 	"testing"
 )
 
+func Nil(actual interface{}, message string, t *testing.T) {
+	t.Helper()
+	if actual != nil {
+		t.Fatalf("%s.\nExpected: nil\n  actual: %v", message, actual)
+	}
+}
+
 func True(actual bool, message string, t *testing.T) {
 	t.Helper()
 	if !actual {

@@ -66,10 +66,11 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 	log := createLogger()
 	ctx := common.NewContextWithLog(common.NewContext(), log)
 
+	wrappedReconciler := common.NewConflictHandlingReconciler(r)
 	// Create a new controller
 	var c controller.Controller
 	var err error
-	if c, err = controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.Config.Controller.ControlPlaneReconcilers, Reconciler: r}); err != nil {
+	if c, err = controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.Config.Controller.ControlPlaneReconcilers, Reconciler: wrappedReconciler}); err != nil {
 		return err
 	}
 
