@@ -3,6 +3,7 @@ package validation
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
 
 	authorizationv1 "k8s.io/api/authorization/v1"
@@ -10,8 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clienttesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 
 	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -23,7 +24,7 @@ func TestDeletedMemberIsAlwaysAllowed(t *testing.T) {
 	member.DeletionTimestamp = now()
 
 	response := invokeMemberValidator(createCreateRequest(member))
-	assert.True(response.Response.Allowed, "Expected validator to allow deleted ServiceMeshMember", t)
+	assert.True(response.Allowed, "Expected validator to allow deleted ServiceMeshMember", t)
 }
 
 func newMember(name, namespace, smcpName, smcpNamespace string) *maistra.ServiceMeshMember {
@@ -45,7 +46,15 @@ func TestMemberWithWrongNameIsRejected(t *testing.T) {
 	member := newMember("not-default", "app-namespace", "my-smcp", "istio-system")
 
 	response := invokeMemberValidator(createCreateRequest(member))
-	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMember with wrong name", t)
+	assert.False(response.Allowed, "Expected validator to reject ServiceMeshMember with wrong name", t)
+}
+
+func TestMemberInOperatorNamespaceIsRejected(t *testing.T) {
+	test.PanicOnError(os.Setenv("POD_NAMESPACE", "openshift-operators")) // TODO: make it easier to set the namespace in tests
+	member := newMember("default", "openshift-operators", "my-smcp", "istio-system")
+
+	response := invokeMemberValidator(createCreateRequest(member))
+	assert.False(response.Allowed, "Expected validator to reject creation of ServiceMeshMember in operator namespace", t)
 }
 
 func TestMutationOfSpecControlPlaneRefIsRejected(t *testing.T) {
@@ -74,7 +83,7 @@ func TestMutationOfSpecControlPlaneRefIsRejected(t *testing.T) {
 			tc.mutateMember(newMember)
 
 			response := invokeMemberValidator(createUpdateRequest(oldMember, newMember))
-			assert.False(response.Response.Allowed, "Expected validator to reject mutation of ServiceMeshMember.spec.controlPlaneRef", t)
+			assert.False(response.Allowed, "Expected validator to reject mutation of ServiceMeshMember.spec.controlPlaneRef", t)
 		})
 	}
 }
@@ -85,7 +94,7 @@ func TestMemberWithFailedSubjectAccessReview(t *testing.T) {
 
 	member := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	response := validator.Handle(ctx, createCreateRequest(member))
-	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMember due to failed SubjectAccessReview check", t)
+	assert.False(response.Allowed, "Expected validator to reject ServiceMeshMember due to failed SubjectAccessReview check", t)
 }
 
 func TestValidMemberCreation(t *testing.T) {
@@ -94,7 +103,7 @@ func TestValidMemberCreation(t *testing.T) {
 
 	member := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	response := validator.Handle(ctx, createCreateRequest(member))
-	assert.True(response.Response.Allowed, "Expected validator to allow ServiceMeshMember", t)
+	assert.True(response.Allowed, "Expected validator to allow ServiceMeshMember", t)
 }
 
 func TestValidMemberUpdate(t *testing.T) {
@@ -108,7 +117,7 @@ func TestValidMemberUpdate(t *testing.T) {
 	}
 
 	response := validator.Handle(ctx, createUpdateRequest(oldMember, newMember))
-	assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshMember update", t)
+	assert.True(response.Allowed, "Expected validator to accept ServiceMeshMember update", t)
 }
 
 func TestMemberValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
@@ -117,8 +126,8 @@ func TestMemberValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
 
 	roll := newMember("default", "app-namespace", "my-smcp", "istio-system")
 	response := validator.Handle(ctx, createCreateRequest(roll))
-	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMember due to SAR check error", t)
-	assert.Equals(response.Response.Result.Code, int32(http.StatusInternalServerError), "Unexpected result code", t)
+	assert.False(response.Allowed, "Expected validator to reject ServiceMeshMember due to SAR check error", t)
+	assert.Equals(response.Result.Code, int32(http.StatusInternalServerError), "Unexpected result code", t)
 }
 
 func TestMemberValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
@@ -143,7 +152,7 @@ func TestMemberValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 	_ = validator.Handle(ctx, createCreateRequest(roll))
 }
 
-func invokeMemberValidator(request atypes.Request) atypes.Response {
+func invokeMemberValidator(request admission.Request) admission.Response {
 	validator, _, tracker := createMemberValidatorTestFixture()
 	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, true, nil))
 	response := validator.Handle(ctx, request)

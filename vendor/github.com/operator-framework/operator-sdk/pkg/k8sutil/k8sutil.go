@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	discovery "k8s.io/client-go/discovery"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // ForceRunModeEnv indicates if the operator should be forced to run in either local
@@ -91,7 +91,8 @@ func GetOperatorName() (string, error) {
 // ResourceExists returns true if the given resource kind exists
 // in the given api groupversion
 func ResourceExists(dc discovery.DiscoveryInterface, apiGroupVersion, kind string) (bool, error) {
-	apiLists, err := dc.ServerResources()
+
+	_, apiLists, err := dc.ServerGroupsAndResources()
 	if err != nil {
 		return false, err
 	}
@@ -149,7 +150,7 @@ func GetGVKsFromAddToScheme(addToSchemeFunc func(*runtime.Scheme) error) ([]sche
 	}
 	schemeAllKnownTypes := s.AllKnownTypes()
 	ownGVKs := []schema.GroupVersionKind{}
-	for gvk, _ := range schemeAllKnownTypes {
+	for gvk := range schemeAllKnownTypes {
 		if !isKubeMetaKind(gvk.Kind) {
 			ownGVKs = append(ownGVKs, gvk)
 		}
@@ -160,6 +161,7 @@ func GetGVKsFromAddToScheme(addToSchemeFunc func(*runtime.Scheme) error) ([]sche
 
 func isKubeMetaKind(kind string) bool {
 	if strings.HasSuffix(kind, "List") ||
+		kind == "PatchOptions" ||
 		kind == "GetOptions" ||
 		kind == "DeleteOptions" ||
 		kind == "ExportOptions" ||

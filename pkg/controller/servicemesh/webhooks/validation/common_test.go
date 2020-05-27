@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 
-	admission "k8s.io/api/admission/v1beta1"
+	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	authentication "k8s.io/api/authentication/v1"
 	authorization "k8s.io/api/authorization/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clienttesting "k8s.io/client-go/testing"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 var ctx = common.NewContextWithLog(context.Background(), logf.Log)
@@ -41,10 +41,10 @@ func createSubjectAccessReviewReactor(allowClusterScope, allowNamespaceScope boo
 	}
 }
 
-func createCreateRequest(obj interface{}) atypes.Request {
-	request := atypes.Request{
-		AdmissionRequest: &admission.AdmissionRequest{
-			Operation: admission.Create,
+func createCreateRequest(obj interface{}) admission.Request {
+	request := admission.Request{
+		AdmissionRequest: admissionv1beta1.AdmissionRequest{
+			Operation: admissionv1beta1.Create,
 			Object:    toRawExtension(obj),
 			UserInfo:  userInfo,
 		},
@@ -52,10 +52,10 @@ func createCreateRequest(obj interface{}) atypes.Request {
 	return request
 }
 
-func createUpdateRequest(oldObj, newObj interface{}) atypes.Request {
-	request := atypes.Request{
-		AdmissionRequest: &admission.AdmissionRequest{
-			Operation: admission.Update,
+func createUpdateRequest(oldObj, newObj interface{}) admission.Request {
+	request := admission.Request{
+		AdmissionRequest: admissionv1beta1.AdmissionRequest{
+			Operation: admissionv1beta1.Update,
 			Object:    toRawExtension(newObj),
 			OldObject: toRawExtension(oldObj),
 			UserInfo:  userInfo,
@@ -64,10 +64,10 @@ func createUpdateRequest(oldObj, newObj interface{}) atypes.Request {
 	return request
 }
 
-func createDeleteRequest(obj interface{}) atypes.Request {
-	request := atypes.Request{
-		AdmissionRequest: &admission.AdmissionRequest{
-			Operation: admission.Delete,
+func createDeleteRequest(obj interface{}) admission.Request {
+	request := admission.Request{
+		AdmissionRequest: admissionv1beta1.AdmissionRequest{
+			Operation: admissionv1beta1.Delete,
 			Object:    toRawExtension(obj),
 			UserInfo:  userInfo,
 		},
@@ -76,13 +76,13 @@ func createDeleteRequest(obj interface{}) atypes.Request {
 }
 
 func toRawExtension(obj interface{}) runtime.RawExtension {
-	memberJson, err := json.Marshal(obj)
+	memberJSON, err := json.Marshal(obj)
 	if err != nil {
 		panic(fmt.Sprintf("Could not marshal object to JSON: %s", err))
 	}
 
 	return runtime.RawExtension{
-		Raw: memberJson,
+		Raw: memberJSON,
 	}
 }
 
