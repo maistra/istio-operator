@@ -15,6 +15,7 @@ import (
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
@@ -128,7 +129,7 @@ func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (c
 	cl, enhancedTracker := test.CreateClient(clientObjects...)
 	fakeEventRecorder := &record.FakeRecorder{}
 
-	r := newReconciler(cl, scheme.Scheme, fakeEventRecorder, "istio-operator", common.CNIConfig{Enabled: true})
+	r := newReconciler(cl, scheme.Scheme, fakeEventRecorder, "istio-operator", cni.Config{Enabled: true})
 	r.instanceReconcilerFactory = NewFakeInstanceReconciler
 	instanceReconciler = &fakeInstanceReconciler{}
 	return cl, enhancedTracker, fakeEventRecorder, r
@@ -141,7 +142,7 @@ type fakeInstanceReconciler struct {
 	finished               bool
 }
 
-func NewFakeInstanceReconciler(controllerResources common.ControllerResources, instance *maistrav1.ServiceMeshControlPlane, cniConfig common.CNIConfig) ControlPlaneInstanceReconciler {
+func NewFakeInstanceReconciler(controllerResources common.ControllerResources, instance *maistrav1.ServiceMeshControlPlane, cniConfig cni.Config) ControlPlaneInstanceReconciler {
 	return instanceReconciler
 }
 

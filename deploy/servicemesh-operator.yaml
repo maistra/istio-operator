@@ -161,6 +161,22 @@ kind: ClusterRole
 metadata:
   name: istio-operator
 rules:
+# operator-sdk rules
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - servicemonitors
+  verbs:
+  - "get"
+  - "create"
+- apiGroups:
+  - ""
+  resources:
+  - services/finalizers
+  verbs:
+  - '*'
+
+# operator rules for managing istio
 - apiGroups:
   - ""
   resources:
@@ -409,8 +425,10 @@ roleRef:
 apiVersion: v1
 kind: Service
 metadata:
-  name: admission-controller
+  name: maistra-admission-controller
   namespace: istio-operator
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: maistra-operator-serving-cert
 spec:
   ports:
   - port: 443
@@ -509,6 +527,9 @@ spec:
           - name: operator-olm-config
             mountPath: /etc/operator/olm
             readOnly: true
+          - name: webhook-tls-volume
+            readOnly: true
+            mountPath: /tmp/k8s-webhook-server/serving-certs
       volumes:
       - name: operator-olm-config
         downwardAPI:
@@ -517,3 +538,7 @@ spec:
           - fieldRef:
               fieldPath: metadata.annotations
             path: config.properties
+      - name: webhook-tls-volume
+        secret:
+          secretName: maistra-operator-serving-cert
+          optional: true # this won't be available until service-ca creates the secret

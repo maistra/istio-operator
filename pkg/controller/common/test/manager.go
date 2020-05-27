@@ -74,8 +74,8 @@ func NewManager(scheme *runtime.Scheme, tracker clienttesting.ObjectTracker, gro
 	}, nil
 }
 
-// GetRecorder returns a new EventRecorder for the provided name
-func (m *FakeManager) GetRecorder(name string) record.EventRecorder {
+// GetEventRecorderFor returns a new EventRecorder for the provided name
+func (m *FakeManager) GetEventRecorderFor(name string) record.EventRecorder {
 	return m.recorderProvider.GetEventRecorderFor(name)
 }
 
@@ -87,13 +87,13 @@ func (m *FakeManager) GetRecorder(name string) record.EventRecorder {
 func (m *FakeManager) Add(runnable manager.Runnable) error {
 	if controller, ok := runnable.(controller.Controller); ok {
 		value := reflect.ValueOf(controller)
-		queueValue := value.Elem().FieldByName("Queue")
+		queueValue := value.Elem().FieldByName("MakeQueue")
 		if !queueValue.IsValid() {
 			panic(fmt.Errorf("cannot hook controller.Queue"))
 		}
-		if q, ok := queueValue.Elem().Interface().(workqueue.RateLimitingInterface); ok {
-			tq := newTrackingQueue(q, &m.requestTracker)
-			queueValue.Set(reflect.ValueOf(tq))
+		if makeQ, ok := queueValue.Interface().(func() workqueue.RateLimitingInterface); ok {
+			makeQ = newTrackingQueue(makeQ, &m.requestTracker)
+			queueValue.Set(reflect.ValueOf(makeQ))
 		}
 	}
 	return m.Manager.Add(runnable)
@@ -160,11 +160,13 @@ type trackingQueue struct {
 	requestTracker *requestTracker
 }
 
-func newTrackingQueue(q workqueue.RateLimitingInterface, requestTracker *requestTracker) *trackingQueue {
-	return &trackingQueue{
-		RateLimitingInterface: q,
-		requestTracker:        requestTracker,
-		cond:                  sync.NewCond(&sync.Mutex{}),
+func newTrackingQueue(makeQ func() workqueue.RateLimitingInterface, requestTracker *requestTracker) func() workqueue.RateLimitingInterface {
+	return func() workqueue.RateLimitingInterface {
+		return &trackingQueue{
+			RateLimitingInterface: makeQ(),
+			requestTracker:        requestTracker,
+			cond:                  sync.NewCond(&sync.Mutex{}),
+		}
 	}
 }
 
@@ -262,7 +264,7 @@ func newClientFunc(clientScheme *runtime.Scheme, tracker clienttesting.ObjectTra
 	}
 }
 
-func newCacheFunc(tracker clienttesting.ObjectTracker) manager.NewCacheFunc {
+func newCacheFunc(tracker clienttesting.ObjectTracker) cache.NewCacheFunc {
 	return func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
 		return NewCache(opts, tracker)
 	}

@@ -13,11 +13,14 @@ import (
 )
 
 var (
-	RootCertKey = "root-cert.pem"
+	// IstioRootCertKey name of Secret entry Istio uses for the cert
+	IstioRootCertKey = "root-cert.pem"
+	// ServiceCARootCertKey name of Secret entry service-ca operator uses for the cert
+	ServiceCARootCertKey = "tls.crt"
 )
 
 // GetRootCertFromSecret retrieves the root certificate from an Istio SA secret
-func GetRootCertFromSecret(ctx context.Context, client client.Client, namespace string, name string) ([]byte, error) {
+func GetRootCertFromSecret(ctx context.Context, client client.Client, namespace string, name string, key string) ([]byte, error) {
 	secret := &corev1.Secret{}
 	err := client.Get(ctx, types.NamespacedName{
 		Namespace: namespace,
@@ -26,13 +29,13 @@ func GetRootCertFromSecret(ctx context.Context, client client.Client, namespace 
 	if err != nil {
 		return nil, err
 	}
-	caBundle, ok := secret.Data[RootCertKey]
+	caBundle, ok := secret.Data[key]
 	if !ok {
 		return nil, fmt.Errorf(
 			"secret %s/%s does not contain root certificate under key %s",
 			namespace,
 			name,
-			RootCertKey,
+			key,
 		)
 	}
 	return caBundle, nil
