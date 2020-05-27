@@ -15,6 +15,7 @@ import (
 	atypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 
 	"github.com/go-logr/logr"
+
 	"github.com/maistra/istio-operator/pkg/apis/maistra"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -63,6 +64,10 @@ func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, err.Error())
 	}
 
+	if smcp.Namespace == common.GetOperatorNamespace() {
+		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("service mesh may not be installed in the same project/namespace as the operator"))
+	}
+
 	smcpList := &maistrav1.ServiceMeshControlPlaneList{}
 	err = v.client.List(ctx, nil, smcpList)
 	if err != nil {
@@ -70,12 +75,11 @@ func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 		return admission.ErrorResponse(http.StatusInternalServerError, err)
 	}
 
-	namespace := smcp.Namespace
 	for _, othercp := range smcpList.Items {
 		if othercp.Name == smcp.Name && othercp.Namespace == smcp.Namespace {
 			continue
 		}
-		if othercp.Namespace == namespace {
+		if othercp.Namespace == smcp.Namespace {
 			// verify single instance per namespace
 			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "only one service mesh may be installed per project/namespace")
 		}
