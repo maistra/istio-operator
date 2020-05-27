@@ -9,7 +9,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -273,28 +272,6 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	mesh := &meshList.Items[0]
-
-	// verify owner reference, so member roll gets deleted with control plane
-	addOwner := true
-	for _, ownerRef := range instance.GetOwnerReferences() {
-		if ownerRef.UID == mesh.GetUID() {
-			addOwner = false
-			break
-		}
-	}
-	if addOwner {
-		// add owner reference to the mesh so we can clean up if the mesh gets deleted
-		reqLogger.Info("Adding OwnerReference to ServiceMeshMemberRoll")
-		owner := metav1.NewControllerRef(mesh, v1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
-		owner.Controller = nil
-		owner.BlockOwnerDeletion = nil
-		instance.SetOwnerReferences([]metav1.OwnerReference{*owner})
-		err = r.Client.Update(ctx, instance)
-		if err != nil {
-			return reconcile.Result{}, pkgerrors.Wrap(err, "error adding ownerReference to ServiceMeshMemberRoll")
-		}
-		return reconcile.Result{}, nil
-	}
 
 	if mesh.Status.ObservedGeneration == 0 {
 		reqLogger.Info("Initial service mesh installation has not completed")
