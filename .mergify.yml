@@ -14,6 +14,9 @@ pull_request_rules:
       merge:
         method: squash
         strict: smart
+      label:
+        remove:
+        - "ready to merge"
   - name: automatic merge (without squash) with strict when reviewed and not work in progress
     conditions:
       - '#approved-reviews-by>=2'
@@ -29,19 +32,34 @@ pull_request_rules:
       merge:
         method: rebase
         strict: smart
+      label:
+        remove:
+        - "ready to merge"
   - name: label work in progress PRs
     conditions:
       - label != "work in progress"
-      - title ~= '^WIP\b'
+      - title ~=^WIP\b
     actions:
       label:
         add:
-          - "work in progress"
+        - "work in progress"
+        remove:
+        - "ready to merge"
   - name: remove work in progress labels
     conditions:
       - label = "work in progress"
-      - title ~= '^(?!WIP\b)'
+      - title ~=^(?!WIP\b)
     actions:
       label:
         remove:
-          - "work in progress"
+        - "work in progress"
+  - name: label PRs that can be merged
+    conditions:
+    - '#approved-reviews-by>=2'
+    - '#review-requested=0'
+    - '#changes-requested-reviews-by=0'
+    - label != "work in progress"
+    actions:
+      label:
+        add:
+        - "ready to merge"
