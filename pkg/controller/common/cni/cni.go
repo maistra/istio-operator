@@ -23,9 +23,9 @@ type Config struct {
 
 // networkNameMap is a map of the CNI network name used by each version
 var networkNameMap = map[versions.Version]string{
-	versions.V1_0:             "istio-cni",
-	versions.V1_1:             "v1-1-istio-cni",
-	versions.V1_2:             "v1-1-istio-cni", // TODO: update once v1.2 is ready
+	versions.V1_0: "istio-cni",
+	versions.V1_1: "v1-1-istio-cni",
+	versions.V1_2: "v1-2-istio-cni",
 }
 
 // GetNetworkName returns the name of the CNI network used to configure routing rules for the mesh
