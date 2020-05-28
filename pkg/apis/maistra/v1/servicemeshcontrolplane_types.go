@@ -47,7 +47,7 @@ type ControlPlaneStatus struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	StatusType `json:",inline"`
 	// ComponentStatus represents the current status of the components
-	ComponentStatus []*ComponentStatus `json:"components"`
+	ComponentStatus []ComponentStatus `json:"components"`
 
 	//LastAppliedConfiguration lists the last appllied ServiceMeshControlPlane
 	LastAppliedConfiguration ControlPlaneSpec `json:"lastAppliedConfiguration"`

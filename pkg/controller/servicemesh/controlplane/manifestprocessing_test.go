@@ -22,7 +22,7 @@ func TestReadinessWhenCacheNotSynced(t *testing.T) {
 	controlPlane := newControlPlane()
 	controlPlane.Spec.Istio = maistrav1.HelmValuesType{}
 	controlPlane.Spec.Template = "maistra"
-	controlPlane.Status.ComponentStatus = []*maistrav1.ComponentStatus{
+	controlPlane.Status.ComponentStatus = []maistrav1.ComponentStatus{
 		{
 			StatusType: maistrav1.StatusType{
 				Resource:           "security",

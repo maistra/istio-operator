@@ -38,14 +38,14 @@ func NewStatus() StatusType {
 
 // NewControlPlaneStatus returns an initialized ControlPlaneStatus object
 func NewControlPlaneStatus() *ControlPlaneStatus {
-	return &ControlPlaneStatus{ComponentStatus: []*ComponentStatus{}}
+	return &ControlPlaneStatus{ComponentStatus: []ComponentStatus{}}
 }
 
 // FindComponentByName returns the status for a specific component
 func (s *ControlPlaneStatus) FindComponentByName(name string) *ComponentStatus {
-	for _, status := range s.ComponentStatus {
+	for i, status := range s.ComponentStatus {
 		if status.Resource == name {
-			return status
+			return &s.ComponentStatus[i]
 		}
 	}
 	return nil
