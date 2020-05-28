@@ -141,13 +141,9 @@ func (in *ControlPlaneStatus) DeepCopyInto(out *ControlPlaneStatus) {
 	in.StatusType.DeepCopyInto(&out.StatusType)
 	if in.ComponentStatus != nil {
 		in, out := &in.ComponentStatus, &out.ComponentStatus
-		*out = make([]*ComponentStatus, len(*in))
+		*out = make([]ComponentStatus, len(*in))
 		for i := range *in {
-			if (*in)[i] != nil {
-				in, out := &(*in)[i], &(*out)[i]
-				*out = new(ComponentStatus)
-				(*in).DeepCopyInto(*out)
-			}
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	in.LastAppliedConfiguration.DeepCopyInto(&out.LastAppliedConfiguration)
