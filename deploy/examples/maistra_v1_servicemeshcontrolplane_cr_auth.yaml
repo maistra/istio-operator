@@ -8,7 +8,7 @@ spec:
   # default values (i.e. no values will be specified for that element, not even
   # the defaults baked into the chart values.yaml).
 
-  # For a complete list of all options, see the docs at https://maistra-1-0.maistra.io/docs/installation/installation-options/
+  # For a complete list of all options, see the docs at https://maistra-1-2.maistra.io/docs/installation/installation-options/
 
   istio:
     global:
