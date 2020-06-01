@@ -32,7 +32,7 @@ const (
 	webhookServiceName = "maistra-admission-controller"
 )
 
-func createWebhookResources(mgr manager.Manager, log logr.Logger, operatorNamespace string) error {
+func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.Logger, operatorNamespace string) error {
 	cl, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme()})
 	if err != nil {
 		return pkgerrors.Wrap(err, "error creating k8s client")
@@ -115,17 +115,17 @@ func createWebhookResources(mgr manager.Manager, log logr.Logger, operatorNamesp
 		log.Info("error occured creating client for watching Maistra webhook Secret")
 		return nil
 	}
-	secretwatch, err := coreclient.Secrets(operatorNamespace).Watch(metav1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", webhookSecretName)})
+	secretwatch, err := coreclient.Secrets(operatorNamespace).Watch(ctx, metav1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", webhookSecretName)})
 	if err != nil {
 		log.Info("error occured creating watch for Maistra webhook Secret")
 		return nil
 	}
 	func() {
 		defer secretwatch.Stop()
-        log.Info("Waiting for Maistra webhook Secret to become available")
+		log.Info("Waiting for Maistra webhook Secret to become available")
 		select {
 		case <-secretwatch.ResultChan():
-            log.Info("Maistra webhook Secret is now ready")
+			log.Info("Maistra webhook Secret is now ready")
 		case <-time.After(30 * time.Second):
 			log.Info("timed out waiting for Maistra webhook Secret to become available")
 		}
@@ -165,8 +165,8 @@ func newValidatingWebhookConfiguration(namespace string) *arbeta1.ValidatingWebh
 		},
 		Webhooks: []arbeta1.ValidatingWebhook{
 			arbeta1.ValidatingWebhook{
-				Name: "smcp.validation.maistra.io",
-				Rules: rulesFor("servicemeshcontrolplanes", arbeta1.Create, arbeta1.Update),
+				Name:          "smcp.validation.maistra.io",
+				Rules:         rulesFor("servicemeshcontrolplanes", arbeta1.Create, arbeta1.Update),
 				FailurePolicy: &webhookFailurePolicy,
 				ClientConfig: arbeta1.WebhookClientConfig{
 					Service: &arbeta1.ServiceReference{
@@ -177,8 +177,8 @@ func newValidatingWebhookConfiguration(namespace string) *arbeta1.ValidatingWebh
 				},
 			},
 			arbeta1.ValidatingWebhook{
-				Name: "smmr.validation.maistra.io",
-				Rules: rulesFor("servicemeshmemberrolls", arbeta1.Create, arbeta1.Update),
+				Name:          "smmr.validation.maistra.io",
+				Rules:         rulesFor("servicemeshmemberrolls", arbeta1.Create, arbeta1.Update),
 				FailurePolicy: &webhookFailurePolicy,
 				ClientConfig: arbeta1.WebhookClientConfig{
 					Service: &arbeta1.ServiceReference{
@@ -189,8 +189,8 @@ func newValidatingWebhookConfiguration(namespace string) *arbeta1.ValidatingWebh
 				},
 			},
 			arbeta1.ValidatingWebhook{
-				Name: "smm.validation.maistra.io",
-				Rules: rulesFor("servicemeshmembers", arbeta1.Create, arbeta1.Update),
+				Name:          "smm.validation.maistra.io",
+				Rules:         rulesFor("servicemeshmembers", arbeta1.Create, arbeta1.Update),
 				FailurePolicy: &webhookFailurePolicy,
 				ClientConfig: arbeta1.WebhookClientConfig{
 					Service: &arbeta1.ServiceReference{
@@ -211,8 +211,8 @@ func newMutatingWebhookConfiguration(namespace string) *arbeta1.MutatingWebhookC
 		},
 		Webhooks: []arbeta1.MutatingWebhook{
 			arbeta1.MutatingWebhook{
-				Name: "smcp.mutation.maistra.io",
-				Rules: rulesFor("servicemeshcontrolplanes", arbeta1.Create, arbeta1.Update),
+				Name:          "smcp.mutation.maistra.io",
+				Rules:         rulesFor("servicemeshcontrolplanes", arbeta1.Create, arbeta1.Update),
 				FailurePolicy: &webhookFailurePolicy,
 				ClientConfig: arbeta1.WebhookClientConfig{
 					Service: &arbeta1.ServiceReference{
@@ -223,8 +223,8 @@ func newMutatingWebhookConfiguration(namespace string) *arbeta1.MutatingWebhookC
 				},
 			},
 			arbeta1.MutatingWebhook{
-				Name: "smmr.mutation.maistra.io",
-				Rules: rulesFor("servicemeshmemberrolls", arbeta1.Create, arbeta1.Update),
+				Name:          "smmr.mutation.maistra.io",
+				Rules:         rulesFor("servicemeshmemberrolls", arbeta1.Create, arbeta1.Update),
 				FailurePolicy: &webhookFailurePolicy,
 				ClientConfig: arbeta1.WebhookClientConfig{
 					Service: &arbeta1.ServiceReference{

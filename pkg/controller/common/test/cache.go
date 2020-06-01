@@ -67,7 +67,7 @@ func (c *FakeCache) List(ctx context.Context, list runtime.Object, opts ...clien
 
 // GetInformer fetches or constructs an informer for the given object that corresponds to a single
 // API kind and resource.
-func (c *FakeCache) GetInformer(obj runtime.Object) (cache.Informer, error) {
+func (c *FakeCache) GetInformer(ctx context.Context, obj runtime.Object) (cache.Informer, error) {
 	gvk, err := apiutil.GVKForObject(obj, c.scheme)
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (c *FakeCache) GetInformer(obj runtime.Object) (cache.Informer, error) {
 
 // GetInformerForKind is similar to GetInformer, except that it takes a group-version-kind, instead
 // of the underlying object.
-func (c *FakeCache) GetInformerForKind(gvk schema.GroupVersionKind) (cache.Informer, error) {
+func (c *FakeCache) GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind) (cache.Informer, error) {
 	obj, err := c.scheme.New(gvk)
 	if err != nil {
 		return nil, err
@@ -198,8 +198,8 @@ func (c *FakeCache) WaitForCacheSync(stop <-chan struct{}) bool {
 // compatibility with the Kubernetes API server, only return one key, and only use
 // fields that the API server supports.  Otherwise, you can return multiple keys,
 // and "equality" in the field selector means that at least one key matches the value.
-func (c *FakeCache) IndexField(obj runtime.Object, field string, extractValue client.IndexerFunc) error {
-	informer, err := c.GetInformer(obj)
+func (c *FakeCache) IndexField(ctx context.Context, obj runtime.Object, field string, extractValue client.IndexerFunc) error {
+	informer, err := c.GetInformer(ctx, obj)
 	if err != nil {
 		return err
 	}

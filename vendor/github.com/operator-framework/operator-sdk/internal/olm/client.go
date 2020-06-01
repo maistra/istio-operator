@@ -26,9 +26,7 @@ import (
 	"net/http"
 	"time"
 
-	olmresourceclient "github.com/operator-framework/operator-sdk/internal/olm/client"
-
-	olmapiv1alpha1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
+	olmapiv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -37,12 +35,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/rest"
+
+	olmresourceclient "github.com/operator-framework/operator-sdk/internal/olm/client"
 )
 
-var (
-	olmOperatorKey     = types.NamespacedName{Namespace: olmresourceclient.OLMNamespace, Name: "olm-operator"}
-	catalogOperatorKey = types.NamespacedName{Namespace: olmresourceclient.OLMNamespace, Name: "catalog-operator"}
-	packageServerKey   = types.NamespacedName{Namespace: olmresourceclient.OLMNamespace, Name: "packageserver"}
+const (
+	olmOperatorName     = "olm-operator"
+	catalogOperatorName = "catalog-operator"
+	packageServerName   = "packageserver"
 )
 
 type Client struct {
@@ -64,7 +64,8 @@ func ClientForConfig(cfg *rest.Config) (*Client, error) {
 	return c, nil
 }
 
-func (c Client) InstallVersion(ctx context.Context, version string) (*olmresourceclient.Status, error) {
+func (c Client) InstallVersion(ctx context.Context, namespace, version string) (*olmresourceclient.Status, error) {
+
 	resources, err := c.getResources(ctx, version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get resources: %v", err)
@@ -86,11 +87,13 @@ func (c Client) InstallVersion(ctx context.Context, version string) (*olmresourc
 	}
 
 	log.Print("Waiting for deployment/olm-operator rollout to complete")
+	olmOperatorKey := types.NamespacedName{Namespace: namespace, Name: olmOperatorName}
 	if err := c.DoRolloutWait(ctx, olmOperatorKey); err != nil {
 		return nil, fmt.Errorf("deployment/%s failed to rollout: %v", olmOperatorKey.Name, err)
 	}
 
 	log.Print("Waiting for deployment/catalog-operator rollout to complete")
+	catalogOperatorKey := types.NamespacedName{Namespace: namespace, Name: catalogOperatorName}
 	if err := c.DoRolloutWait(ctx, catalogOperatorKey); err != nil {
 		return nil, fmt.Errorf("deployment/%s failed to rollout: %v", catalogOperatorKey.Name, err)
 	}
@@ -117,6 +120,7 @@ func (c Client) InstallVersion(ctx context.Context, version string) (*olmresourc
 		}
 	}
 
+	packageServerKey := types.NamespacedName{Namespace: namespace, Name: packageServerName}
 	log.Printf("Waiting for deployment/%s rollout to complete", packageServerKey.Name)
 	if err := c.DoRolloutWait(ctx, packageServerKey); err != nil {
 		return nil, fmt.Errorf("deployment/%s failed to rollout: %v", packageServerKey.Name, err)
@@ -126,7 +130,7 @@ func (c Client) InstallVersion(ctx context.Context, version string) (*olmresourc
 	return &status, nil
 }
 
-func (c Client) UninstallVersion(ctx context.Context, version string) error {
+func (c Client) UninstallVersion(ctx context.Context, namespace, version string) error {
 	resources, err := c.getResources(ctx, version)
 	if err != nil {
 		return fmt.Errorf("failed to get resources: %v", err)
@@ -146,7 +150,7 @@ func (c Client) UninstallVersion(ctx context.Context, version string) error {
 	return nil
 }
 
-func (c Client) GetStatus(ctx context.Context, version string) (*olmresourceclient.Status, error) {
+func (c Client) GetStatus(ctx context.Context, namespace, version string) (*olmresourceclient.Status, error) {
 	resources, err := c.getResources(ctx, version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get resources: %v", err)

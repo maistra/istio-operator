@@ -146,9 +146,9 @@ func (r *controlPlaneInstanceReconciler) pruneAll(ctx context.Context, gvk schem
 
 	object := &unstructured.Unstructured{}
 	object.SetGroupVersionKind(gvk)
-	object.SetNamespace(namespace) // NOTE: client.InNamespace() DeleteAllOfOption isn't honored by DeleteAllOf, so we need to set the namespace here
 	err = r.Client.DeleteAllOf(ctx,
 		object,
+		client.InNamespace(namespace),
 		client.MatchingLabelsSelector{Selector: selector},
 		client.PropagationPolicy(metav1.DeletePropagationBackground))
 

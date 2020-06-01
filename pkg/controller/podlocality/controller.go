@@ -76,7 +76,7 @@ func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 		return err
 	}
 
-	err = mgr.GetFieldIndexer().IndexField(&v1.Pod{}, "spec.nodeName", func(obj apimachineryruntime.Object) []string {
+	err = mgr.GetFieldIndexer().IndexField(ctx, &v1.Pod{}, "spec.nodeName", func(obj apimachineryruntime.Object) []string {
 		pod := obj.(*v1.Pod)
 		return []string{pod.Spec.NodeName}
 	})

@@ -26,9 +26,12 @@ import (
 	"strings"
 	"time"
 
-	yaml "gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	// todo(camila): replace it for yaml "sigs.k8s.io/yaml"
+	// See that the unmarshaling JSON will be affected
+	yaml "gopkg.in/yaml.v3"
 
 	"github.com/operator-framework/operator-sdk/internal/util/projutil"
 )
@@ -51,8 +54,8 @@ type Watch struct {
 	WatchClusterScopedResources bool                      `yaml:"watchClusterScopedResources"`
 
 	// Not configurable via watches.yaml
-	MaxWorkers       int `yaml:"maxWorkers"`
-	AnsibleVerbosity int `yaml:"ansibleVerbosity"`
+	MaxWorkers       int `yaml:"-"`
+	AnsibleVerbosity int `yaml:"-"`
 }
 
 // Finalizer - Expose finalizer to be used by a user.
@@ -293,6 +296,7 @@ func Load(path string, maxWorkers, ansibleVerbosity int) ([]Watch, error) {
 		if _, ok := watchesMap[watch.GroupVersionKind]; ok {
 			return nil, fmt.Errorf("duplicate GVK: %v", watch.GroupVersionKind.String())
 		}
+
 		watchesMap[watch.GroupVersionKind] = true
 
 		err = watch.Validate()

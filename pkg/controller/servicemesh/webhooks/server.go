@@ -18,18 +18,19 @@ var log = logf.Log.WithName(componentName)
 
 var (
 	smcpValidatorServicePath = "/validate-smcp"
-	smcpMutatorServicePath = "/mutate-smcp"
+	smcpMutatorServicePath   = "/mutate-smcp"
 	smmrValidatorServicePath = "/validate-smmr"
-	smmrMutatorServicePath = "/mutate-smmr"
-	smmValidatorServicePath = "/validate-smm"
+	smmrMutatorServicePath   = "/mutate-smmr"
+	smmValidatorServicePath  = "/validate-smm"
 )
 
 // Add webhook handlers
 func Add(mgr manager.Manager) error {
+	ctx := common.NewContextWithLog(common.NewContext(), log)
 	log.Info("Configuring Maistra webhooks")
 
 	operatorNamespace := common.GetOperatorNamespace()
-	if err := createWebhookResources(mgr, log, operatorNamespace); err != nil {
+	if err := createWebhookResources(ctx, mgr, log, operatorNamespace); err != nil {
 		return err
 	}
 
@@ -68,4 +69,3 @@ func Add(mgr manager.Manager) error {
 
 	return nil
 }
-

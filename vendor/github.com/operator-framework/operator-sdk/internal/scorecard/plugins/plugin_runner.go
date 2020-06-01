@@ -31,13 +31,10 @@ import (
 	"github.com/operator-framework/api/pkg/validation"
 	"github.com/operator-framework/operator-sdk/internal/scaffold"
 	schelpers "github.com/operator-framework/operator-sdk/internal/scorecard/helpers"
-	k8sInternal "github.com/operator-framework/operator-sdk/internal/util/k8sutil"
-	"github.com/operator-framework/operator-sdk/internal/util/yamlutil"
+	internalk8sutil "github.com/operator-framework/operator-sdk/internal/util/k8sutil"
 	scapiv1alpha2 "github.com/operator-framework/operator-sdk/pkg/apis/scorecard/v1alpha2"
 
-	"github.com/ghodss/yaml"
-	olmapiv1alpha1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
-	olminstall "github.com/operator-framework/operator-lifecycle-manager/pkg/controller/install"
+	olmapiv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	extscheme "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme"
@@ -51,6 +48,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 )
 
 type PluginType int
@@ -96,7 +94,7 @@ func RunInternalPlugin(pluginType PluginType, config BasicAndOLMPluginConfig,
 
 	var tmpNamespaceVar string
 	var err error
-	kubeconfig, tmpNamespaceVar, err = k8sInternal.GetKubeconfigAndNamespace(config.Kubeconfig)
+	kubeconfig, tmpNamespaceVar, err = internalk8sutil.GetKubeconfigAndNamespace(config.Kubeconfig)
 	if err != nil {
 		return scapiv1alpha2.ScorecardOutput{}, fmt.Errorf("failed to build the kubeconfig: %v", err)
 	}
@@ -120,7 +118,6 @@ func RunInternalPlugin(pluginType PluginType, config BasicAndOLMPluginConfig,
 	// Extract operator manifests from the CSV if olm-deployed is set.
 	if config.OLMDeployed {
 		// Get deploymentName from the deployment manifest within the CSV.
-		var err error
 		deploymentName, err = getDeploymentName(csv.Spec.InstallStrategy)
 		if err != nil {
 			return scapiv1alpha2.ScorecardOutput{}, err
@@ -141,7 +138,7 @@ func RunInternalPlugin(pluginType PluginType, config BasicAndOLMPluginConfig,
 		// If no namespaced manifest path is given, combine
 		// deploy/{service_account,role.yaml,role_binding,operator}.yaml.
 		if config.NamespacedManifest == "" {
-			file, err := yamlutil.GenerateCombinedNamespacedManifest(scaffold.DeployDir)
+			file, err := internalk8sutil.GenerateCombinedNamespacedManifest(scaffold.DeployDir)
 			if err != nil {
 				return scapiv1alpha2.ScorecardOutput{}, err
 			}
@@ -159,7 +156,7 @@ func RunInternalPlugin(pluginType PluginType, config BasicAndOLMPluginConfig,
 			if config.CRDsDir == "" {
 				config.CRDsDir = filepath.Join(scaffold.DeployDir, "crds")
 			}
-			gMan, err := yamlutil.GenerateCombinedGlobalManifest(config.CRDsDir)
+			gMan, err := internalk8sutil.GenerateCombinedGlobalManifest(config.CRDsDir)
 			if err != nil {
 				return scapiv1alpha2.ScorecardOutput{}, err
 			}
@@ -298,16 +295,11 @@ func getCSV(csvManifest string, csv *olmapiv1alpha1.ClusterServiceVersion) error
 	return nil
 }
 
-func getDeploymentName(installStrategy olmapiv1alpha1.NamedInstallStrategy) (string, error) {
-	strategy, err := (&olminstall.StrategyResolver{}).UnmarshalStrategy(installStrategy)
-	if err != nil {
-		return "", err
+func getDeploymentName(strategy olmapiv1alpha1.NamedInstallStrategy) (string, error) {
+	if len(strategy.StrategySpec.DeploymentSpecs) == 0 {
+		return "", errors.New("no deployment specs in CSV")
 	}
-	stratDep, ok := strategy.(*olminstall.StrategyDetailsDeployment)
-	if !ok {
-		return "", fmt.Errorf("expected StrategyDetailsDeployment, got strategy of type %T", strategy)
-	}
-	return stratDep.DeploymentSpecs[0].Name, nil
+	return strategy.StrategySpec.DeploymentSpecs[0].Name, nil
 }
 
 func getCRFromCSV(currentCRMans []string, crJSONStr string, csvName string) ([]string, error) {
