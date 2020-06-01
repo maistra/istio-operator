@@ -81,7 +81,7 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 		return err
 	}
 
-	err = mgr.GetFieldIndexer().IndexField(&maistra.ServiceMeshMember{}, "spec.controlPlaneRef.namespace", func(obj runtime.Object) []string {
+	err = mgr.GetFieldIndexer().IndexField(ctx, &maistra.ServiceMeshMember{}, "spec.controlPlaneRef.namespace", func(obj runtime.Object) []string {
 		roll := obj.(*maistra.ServiceMeshMember)
 		return []string{roll.Spec.ControlPlaneRef.Namespace}
 	})

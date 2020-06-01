@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -109,5 +110,5 @@ func (c *patchedEventInterface) Search(scheme *runtime.Scheme, objOrRef runtime.
 		refUID = &stringRefUID
 	}
 	fieldSelector := c.GetFieldSelector(&ref.Name, &ref.Namespace, refKind, refUID)
-	return c.List(metav1.ListOptions{FieldSelector: fieldSelector.String()})
+	return c.List(context.TODO(), metav1.ListOptions{FieldSelector: fieldSelector.String()})
 }

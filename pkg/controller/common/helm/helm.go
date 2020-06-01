@@ -12,7 +12,6 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/renderutil"
-	"k8s.io/helm/pkg/tiller"
 	"k8s.io/helm/pkg/timeconv"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -21,9 +20,9 @@ import (
 
 func init() {
 	// inject OpenShift specific kinds into the ordering list
-	serviceIndex := common.IndexOf(tiller.InstallOrder, "Service")
+	serviceIndex := common.IndexOf(InstallOrder, "Service")
 	// we want route before oauthclient before deployments
-	tiller.InstallOrder = append(tiller.InstallOrder[:serviceIndex], append([]string{"Route", "OAuthClient"}, tiller.InstallOrder[serviceIndex:]...)...)
+	InstallOrder = append(InstallOrder[:serviceIndex], append([]string{"Route", "OAuthClient"}, InstallOrder[serviceIndex:]...)...)
 }
 
 // GetChartsDir returns the location of the Helm charts. Similar layout to istio.io/istio/install/kubernetes/helm.
@@ -114,7 +113,7 @@ func sortManifestsByChart(manifests []manifest.Manifest) map[string][]manifest.M
 		manifestsByChart[chartName] = append(manifestsByChart[chartName], chartManifest)
 	}
 	for key, value := range manifestsByChart {
-		manifestsByChart[key] = tiller.SortByKind(value)
+		manifestsByChart[key] = SortByKind(value)
 	}
 	return manifestsByChart
 }

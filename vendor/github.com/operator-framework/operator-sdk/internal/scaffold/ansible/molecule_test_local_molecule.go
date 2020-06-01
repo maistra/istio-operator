@@ -41,18 +41,14 @@ dependency:
   name: galaxy
 driver:
   name: docker
-lint:
-  name: yamllint
-  options:
-    config-data:
-      line-length:
-        max: 120
-
+lint: |
+  set -e
+  yamllint -d "{extends: relaxed, rules: {line-length: {max: 120}}}" .
 platforms:
   - name: kind-test-local
     groups:
       - k8s
-    image: bsycorp/kind:latest-${KUBE_VERSION:-1.16}
+    image: bsycorp/kind:latest-${KUBE_VERSION:-1.17}
     privileged: true
     override_command: false
     exposed_ports:
@@ -71,7 +67,7 @@ provisioner:
   inventory:
     group_vars:
       all:
-        namespace: ${TEST_NAMESPACE:-osdk-test}
+        namespace: ${TEST_OPERATOR_NAMESPACE:-osdk-test}
         kubeconfig_file: ${MOLECULE_EPHEMERAL_DIRECTORY}/kubeconfig
     host_vars:
       localhost:

@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	gencrd "github.com/operator-framework/operator-sdk/internal/generate/crd"
-	gen "github.com/operator-framework/operator-sdk/internal/generate/gen"
 	"github.com/operator-framework/operator-sdk/internal/scaffold"
 	"github.com/operator-framework/operator-sdk/internal/scaffold/input"
 	"github.com/operator-framework/operator-sdk/internal/util/projutil"
@@ -56,6 +55,8 @@ Generated CR  filename: <project-name>/deploy/crds/<full group>_<version>_<kind>
 	if err := crdCmd.MarkFlagRequired("kind"); err != nil {
 		log.Fatalf("Failed to mark `kind` flag for `add crd` subcommand as required")
 	}
+	crdCmd.Flags().StringVar(&crdVersion, "crd-version", gencrd.DefaultCRDVersion,
+		"CRD version to generate")
 	return crdCmd
 }
 
@@ -84,7 +85,7 @@ func crdFunc(cmd *cobra.Command, args []string) error {
 	// generate CR/CRD file
 	resource, err := scaffold.NewResource(apiVersion, kind)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
 
 	s := scaffold.Scaffold{}
@@ -95,20 +96,23 @@ func crdFunc(cmd *cobra.Command, args []string) error {
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("crd scaffold failed: %v", err)
+		log.Fatalf("CRD scaffold failed: %v", err)
 	}
 
 	// This command does not consider an APIs dir. Instead it adds a plain CRD
 	// for the provided resource. We can use NewCRDNonGo to get this behavior.
-	gcfg := gen.Config{}
-	crd := gencrd.NewCRDNonGo(gcfg, *resource)
+	crd := gencrd.Generator{
+		IsOperatorGo: false,
+		Resource:     *resource,
+		CRDVersion:   crdVersion,
+	}
 	if err := crd.Generate(); err != nil {
-		return fmt.Errorf("error generating CRD for %s: %w", resource, err)
+		log.Fatalf("Error generating CRD for %s: %v", resource, err)
 	}
 
 	// update deploy/role.yaml for the given resource r.
 	if err := scaffold.UpdateRoleForResource(resource, cfg.AbsProjectPath); err != nil {
-		return fmt.Errorf("failed to update the RBAC manifest for the resource (%v, %v): (%v)",
+		log.Fatalf("Failed to update the RBAC manifest for the resource (%v, %v): (%v)",
 			resource.APIVersion, resource.Kind, err)
 	}
 

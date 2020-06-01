@@ -15,8 +15,6 @@
 package add
 
 import (
-	"fmt"
-
 	"github.com/operator-framework/operator-sdk/internal/scaffold"
 	"github.com/operator-framework/operator-sdk/internal/scaffold/input"
 	"github.com/operator-framework/operator-sdk/internal/util/projutil"
@@ -25,7 +23,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var customAPIImport string
+var (
+	customAPIImport string
+	apiVersion      string
+	kind            string
+	crdVersion      string
+)
 
 //nolint:lll
 func newAddControllerCmd() *cobra.Command {
@@ -98,7 +101,7 @@ func controllerRun(cmd *cobra.Command, args []string) error {
 	// Create and validate new resource
 	r, err := scaffold.NewResource(apiVersion, kind)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
 
 	cfg := &input.Config{
@@ -112,7 +115,7 @@ func controllerRun(cmd *cobra.Command, args []string) error {
 		&scaffold.AddController{Resource: r},
 	)
 	if err != nil {
-		return fmt.Errorf("controller scaffold failed: %v", err)
+		log.Fatalf("Controller scaffold failed: %v", err)
 	}
 
 	log.Info("Controller generation complete.")

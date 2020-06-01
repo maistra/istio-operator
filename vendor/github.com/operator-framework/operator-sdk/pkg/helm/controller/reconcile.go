@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	rpb "helm.sh/helm/v3/pkg/release"
@@ -28,7 +29,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/operator-framework/operator-sdk/internal/util/diffutil"
@@ -93,38 +96,8 @@ func (r HelmOperatorReconciler) Reconcile(request reconcile.Request) (reconcile.
 	status := types.StatusFor(o)
 	log = log.WithValues("release", manager.ReleaseName())
 
-	deleted := o.GetDeletionTimestamp() != nil
-	pendingFinalizers := o.GetFinalizers()
-	if !deleted && !contains(pendingFinalizers, finalizer) {
-		log.V(1).Info("Adding finalizer", "finalizer", finalizer)
-		finalizers := append(pendingFinalizers, finalizer)
-		o.SetFinalizers(finalizers)
-		err = r.updateResource(o)
-
-		// Need to requeue because finalizer update does not change metadata.generation
-		return reconcile.Result{Requeue: true}, err
-	}
-
-	status.SetCondition(types.HelmAppCondition{
-		Type:   types.ConditionInitialized,
-		Status: types.StatusTrue,
-	})
-
-	if err := manager.Sync(context.TODO()); err != nil {
-		log.Error(err, "Failed to sync release")
-		status.SetCondition(types.HelmAppCondition{
-			Type:    types.ConditionIrreconcilable,
-			Status:  types.StatusTrue,
-			Reason:  types.ReasonReconcileError,
-			Message: err.Error(),
-		})
-		_ = r.updateResourceStatus(o, status)
-		return reconcile.Result{}, err
-	}
-	status.RemoveCondition(types.ConditionIrreconcilable)
-
-	if deleted {
-		if !contains(pendingFinalizers, finalizer) {
+	if o.GetDeletionTimestamp() != nil {
+		if !contains(o.GetFinalizers(), finalizer) {
 			log.Info("Resource is terminated, skipping reconciliation")
 			return reconcile.Result{}, nil
 		}
@@ -162,13 +135,7 @@ func (r HelmOperatorReconciler) Reconcile(request reconcile.Request) (reconcile.
 			return reconcile.Result{}, err
 		}
 
-		finalizers := []string{}
-		for _, pendingFinalizer := range pendingFinalizers {
-			if pendingFinalizer != finalizer {
-				finalizers = append(finalizers, pendingFinalizer)
-			}
-		}
-		o.SetFinalizers(finalizers)
+		controllerutil.RemoveFinalizer(o, finalizer)
 		if err := r.updateResource(o); err != nil {
 			log.Info("Failed to remove CR uninstall finalizer")
 			return reconcile.Result{}, err
@@ -185,6 +152,24 @@ func (r HelmOperatorReconciler) Reconcile(request reconcile.Request) (reconcile.
 
 		return reconcile.Result{}, nil
 	}
+
+	status.SetCondition(types.HelmAppCondition{
+		Type:   types.ConditionInitialized,
+		Status: types.StatusTrue,
+	})
+
+	if err := manager.Sync(context.TODO()); err != nil {
+		log.Error(err, "Failed to sync release")
+		status.SetCondition(types.HelmAppCondition{
+			Type:    types.ConditionIrreconcilable,
+			Status:  types.StatusTrue,
+			Reason:  types.ReasonReconcileError,
+			Message: err.Error(),
+		})
+		_ = r.updateResourceStatus(o, status)
+		return reconcile.Result{}, err
+	}
+	status.RemoveCondition(types.ConditionIrreconcilable)
 
 	if !manager.IsInstalled() {
 		for k, v := range r.OverrideValues {
@@ -204,6 +189,13 @@ func (r HelmOperatorReconciler) Reconcile(request reconcile.Request) (reconcile.
 			return reconcile.Result{}, err
 		}
 		status.RemoveCondition(types.ConditionReleaseFailed)
+
+		log.V(1).Info("Adding finalizer", "finalizer", finalizer)
+		controllerutil.AddFinalizer(o, finalizer)
+		if err := r.updateResource(o); err != nil {
+			log.Info("Failed to add CR uninstall finalizer")
+			return reconcile.Result{}, err
+		}
 
 		if r.releaseHook != nil {
 			if err := r.releaseHook(installedRelease); err != nil {
@@ -235,12 +227,22 @@ func (r HelmOperatorReconciler) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{RequeueAfter: r.ReconcilePeriod}, err
 	}
 
+	if !contains(o.GetFinalizers(), finalizer) {
+		log.V(1).Info("Adding finalizer", "finalizer", finalizer)
+		controllerutil.AddFinalizer(o, finalizer)
+		if err := r.updateResource(o); err != nil {
+			log.Info("Failed to add CR uninstall finalizer")
+			return reconcile.Result{}, err
+		}
+	}
+
 	if manager.IsUpdateRequired() {
 		for k, v := range r.OverrideValues {
 			r.EventRecorder.Eventf(o, "Warning", "OverrideValuesInUse",
 				"Chart value %q overridden to %q by operator's watches.yaml", k, v)
 		}
-		previousRelease, updatedRelease, err := manager.UpdateRelease(context.TODO())
+		force := hasHelmUpgradeForceAnnotation(o)
+		previousRelease, updatedRelease, err := manager.UpdateRelease(context.TODO(), release.ForceUpdate(force))
 		if err != nil {
 			log.Error(err, "Release failed")
 			status.SetCondition(types.HelmAppCondition{
@@ -261,7 +263,7 @@ func (r HelmOperatorReconciler) Reconcile(request reconcile.Request) (reconcile.
 			}
 		}
 
-		log.Info("Updated release")
+		log.Info("Updated release", "force", force)
 		if log.V(0).Enabled() {
 			fmt.Println(diffutil.Diff(previousRelease.Manifest, updatedRelease.Manifest))
 		}
@@ -322,13 +324,35 @@ func (r HelmOperatorReconciler) Reconcile(request reconcile.Request) (reconcile.
 	return reconcile.Result{RequeueAfter: r.ReconcilePeriod}, err
 }
 
+// returns the boolean representation of the annotation string
+// will return false if annotation is not set
+func hasHelmUpgradeForceAnnotation(o *unstructured.Unstructured) bool {
+	const helmUpgradeForceAnnotation = "helm.operator-sdk/upgrade-force"
+	force := o.GetAnnotations()[helmUpgradeForceAnnotation]
+	if force == "" {
+		return false
+	}
+	value := false
+	if i, err := strconv.ParseBool(force); err != nil {
+		log.Info("Could not parse annotation as a boolean",
+			"annotation", helmUpgradeForceAnnotation, "value informed", force)
+	} else {
+		value = i
+	}
+	return value
+}
+
 func (r HelmOperatorReconciler) updateResource(o runtime.Object) error {
-	return r.Client.Update(context.TODO(), o)
+	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		return r.Client.Update(context.TODO(), o)
+	})
 }
 
 func (r HelmOperatorReconciler) updateResourceStatus(o *unstructured.Unstructured, status *types.HelmAppStatus) error {
-	o.Object["status"] = status
-	return r.Client.Status().Update(context.TODO(), o)
+	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		o.Object["status"] = status
+		return r.Client.Status().Update(context.TODO(), o)
+	})
 }
 
 func (r HelmOperatorReconciler) waitForDeletion(o runtime.Object) error {

@@ -81,7 +81,7 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 	}
 
 	// TODO: should this be moved somewhere else?
-	err = mgr.GetFieldIndexer().IndexField(&v1.ServiceMeshMemberRoll{}, "spec.members", func(obj runtime.Object) []string {
+	err = mgr.GetFieldIndexer().IndexField(ctx, &v1.ServiceMeshMemberRoll{}, "spec.members", func(obj runtime.Object) []string {
 		roll := obj.(*v1.ServiceMeshMemberRoll)
 		return roll.Spec.Members
 	})

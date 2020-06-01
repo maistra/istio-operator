@@ -304,7 +304,9 @@ func (in *GatewayConfig) DeepCopyInto(out *GatewayConfig) {
 	if in.MeshExpansionPorts != nil {
 		in, out := &in.MeshExpansionPorts, &out.MeshExpansionPorts
 		*out = make([]corev1.ServicePort, len(*in))
-		copy(*out, *in)
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	if in.ServiceAnnotations != nil {
 		in, out := &in.ServiceAnnotations, &out.ServiceAnnotations
@@ -323,7 +325,9 @@ func (in *GatewayConfig) DeepCopyInto(out *GatewayConfig) {
 	if in.Ports != nil {
 		in, out := &in.Ports, &out.Ports
 		*out = make([]corev1.ServicePort, len(*in))
-		copy(*out, *in)
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	return
 }
