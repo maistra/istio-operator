@@ -172,7 +172,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 
 		// initialize new Status
 		componentStatuses := make([]*v1.ComponentStatus, 0, len(r.Status.ComponentStatus))
-		for chartName := range r.renderings {
+		for _, chartName := range r.getChartsInInstallationOrder() {
 			componentName := componentFromChartName(chartName)
 			componentStatus := r.Status.FindComponentByName(componentName)
 			if componentStatus == nil {
@@ -243,26 +243,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 	}
 
 	// create components
-	for _, chartName := range orderedCharts {
-		if ready, err = r.processComponentManifests(ctx, chartName); !ready {
-			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx, chartName, err)
-			return
-		}
-	}
-
-	// any other istio components
-	for key := range r.renderings {
-		if !strings.HasPrefix(key, "istio/") {
-			continue
-		}
-		if ready, err = r.processComponentManifests(ctx, key); !ready {
-			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx, key, err)
-			return
-		}
-	}
-
-	// install 3scale and any other components
-	for key := range r.renderings {
+	for _, key := range r.getChartsInInstallationOrder() {
 		if ready, err = r.processComponentManifests(ctx, key); !ready {
 			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx, key, err)
 			return
@@ -769,6 +750,39 @@ func (r *controlPlaneInstanceReconciler) SetInstance(newInstance *v1.ServiceMesh
 
 func (r *controlPlaneInstanceReconciler) IsFinished() bool {
 	return r.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue
+}
+
+// returns the keys from r.renderings in the order they need to be installed in:
+// - keys in orderedCharts
+// - other istio components that have the "istio/" prefix
+// - 3scale and other components
+func (r *controlPlaneInstanceReconciler) getChartsInInstallationOrder() []string {
+	charts := make([]string, 0, len(r.renderings))
+	seen := sets.NewString()
+
+	// first install the charts listed in orderedCharts (but only if they appear in r.renderings)
+	for _, chart := range orderedCharts {
+		if _, found := r.renderings[chart]; found {
+			charts = append(charts, chart)
+			seen.Insert(chart)
+		}
+	}
+
+	// install other istio components that aren't listed in orderedCharts
+	for chart := range r.renderings {
+		if strings.HasPrefix(chart, "istio/") && !seen.Has(chart) {
+			charts = append(charts, chart)
+			seen.Insert(chart)
+		}
+	}
+
+	// install 3scale and any other components
+	for chart := range r.renderings {
+		if !seen.Has(chart) {
+			charts = append(charts, chart)
+		}
+	}
+	return charts
 }
 
 func componentFromChartName(chartName string) string {
