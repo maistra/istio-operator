@@ -185,12 +185,12 @@ func (s *StatusType) SetCondition(condition Condition) *StatusType {
 	// match the time in our cached status during a reconcile.  We truncate here
 	// to save any problems down the line.
 	now := metav1.NewTime(time.Now().Truncate(time.Second))
-	for i := range s.Conditions {
-		if s.Conditions[i].Type == condition.Type {
-			if s.Conditions[i].Status != condition.Status {
+	for i, prevCondition := range s.Conditions {
+		if prevCondition.Type == condition.Type {
+			if prevCondition.Status != condition.Status {
 				condition.LastTransitionTime = now
 			} else {
-				condition.LastTransitionTime = s.Conditions[i].LastTransitionTime
+				condition.LastTransitionTime = prevCondition.LastTransitionTime
 			}
 			s.Conditions[i] = condition
 			return s
