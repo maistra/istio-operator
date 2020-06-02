@@ -92,10 +92,21 @@ spec:
   volumeMounts:
   - name: secret-htpasswd
     mountPath: /etc/proxy/htpasswd
+  - name: trusted-ca-bundle
+    mountPath: /etc/pki/ca-trust/extracted/pem/
+    readOnly: true
   volumes:
   - name: secret-htpasswd
     secret:
       secretName: htpasswd
+  - name: trusted-ca-bundle
+    configMap:
+      defaultMode: 420
+      items:
+        - key: ca-bundle.crt
+          path: tls-ca-bundle.pem
+      name: trusted-ca-bundle
+      optional: true
   resources:
 {{- if .Values.jaeger.resources }}
 {{ toYaml .Values.jaeger.resources | indent 4 }}
