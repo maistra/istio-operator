@@ -118,7 +118,6 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		// error handling
 		defer func() {
 			if err != nil {
-				r.renderings = nil
 				r.lastComponent = ""
 				updateControlPlaneConditions(r.Status, err)
 			}
