@@ -41,17 +41,10 @@ function checkDependencies() {
     echo "Please install yq package, e.g. 'pip install --user yq'"
     exit 1
   fi
-
-  if ! [ -x "$(command -v operator-sdk)" ]; then
-    echo "Please install operator-sdk package, e.g. 'brew install operator-sdk' or follow directions at https://github.com/operator-framework/operator-sdk/blob/master/doc/user/install-operator-sdk.md"
-    exit 1
-  fi
 }
 
 function generateCRDs() {
-# Switch to using the following command as soon as we upgrade operator-sdk to 0.17+
-#  go run -mod=vendor github.com/operator-framework/operator-sdk/cmd/operator-sdk generate crds --crd-version v1
-  operator-sdk generate crds --crd-version v1
+  go run -mod=vendor github.com/operator-framework/operator-sdk/cmd/operator-sdk generate crds --crd-version v1
   mv deploy/crds/maistra.io_servicemeshcontrolplanes_crd.yaml ${BUNDLE_DIR}/servicemeshcontrolplanes.crd.yaml
   mv deploy/crds/maistra.io_servicemeshmemberrolls_crd.yaml ${BUNDLE_DIR}/servicemeshmemberrolls.crd.yaml
   mv deploy/crds/maistra.io_servicemeshmembers_crd.yaml ${BUNDLE_DIR}/servicemeshmembers.crd.yaml
