@@ -39,6 +39,9 @@ function prometheus_patch_deployment() {
             name: secret-htpasswd\
           - mountPath: /etc/proxy/secrets\
             name: secret-prometheus-proxy\
+          - mountPath: /etc/pki/ca-trust/extracted/pem/\
+            name: trusted-ca-bundle\
+            readOnly: true\
           args:\
           - -provider=openshift\
           - -https-address=:3001\
@@ -68,7 +71,15 @@ function prometheus_patch_deployment() {
       - name: secret-prometheus-proxy\
         secret:\
           defaultMode: 420\
-          secretName: prometheus-proxy' $file
+          secretName: prometheus-proxy\
+      - name: trusted-ca-bundle\
+        configMap:\
+          defaultMode: 420\
+          items:\
+            - key: ca-bundle.crt\
+              path: tls-ca-bundle.pem\
+          name: trusted-ca-bundle\
+          optional: true' $file
   sed_wrap -i -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: prometheus\
 \1containers:\2/' $file
   sed_wrap -i -e 's/^\(.*\)\(- .--config.file.*\)$/\1\2\
