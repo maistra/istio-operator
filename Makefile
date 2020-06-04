@@ -33,7 +33,7 @@ HELM_OUT_DIR         = ${OUT_DIR}/resources/helm
 OLM_MANIFEST_OUT_DIR = ${OUT_DIR}/resources/manifests
 
 OFFLINE_BUILD       ?= false
-GIT_UPSTREAM_REMOTE ?= $(shell git remote -v |grep --color=never ':[Mm]aistra/istio-operator\.git.*(fetch)' |grep --color=never -o '^[^[:space:]]*')
+GIT_UPSTREAM_REMOTE ?= $(shell git remote -v |grep --color=never '[/:][Mm]aistra/istio-operator\.git.*(fetch)' |grep --color=never -o '^[^[:space:]]*')
 
 ifeq "${GIT_UPSTREAM_REMOTE}" ""
 GIT_UPSTREAM_REMOTE = "ci-upstream"
