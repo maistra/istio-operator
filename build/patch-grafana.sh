@@ -5,7 +5,11 @@ function grafana_patch_deployment() {
   sed_wrap -i -e '/      containers:/ a\
           # OAuth proxy\
         - name: grafana-proxy\
+{{- if contains "/" .Values.global.oauthproxy.image }}\
+          image: {{ .Values.global.oauthproxy.image }}\
+{{- else }}\
           image: {{ .Values.global.oauthproxy.hub }}/{{ .Values.global.oauthproxy.image }}:{{ .Values.global.oauthproxy.tag }}\
+{{- end }}\
           imagePullPolicy: {{ .Values.global.oauthproxy.imagePullPolicy }}\
           ports:\
           - containerPort: 3001\
@@ -20,7 +24,12 @@ function grafana_patch_deployment() {
               port: https\
               scheme: HTTPS\
             timeoutSeconds: 1\
-          resources: {}\
+          resources:\
+{{- if .Values.global.oauthproxy.resources }}\
+{{ toYaml .Values.global.oauthproxy.resources | indent 12 }}\
+{{- else }}\
+{{ toYaml .Values.global.defaultResources | indent 12 }}\
+{{- end }}\
           terminationMessagePath: /dev/termination-log\
           terminationMessagePolicy: File\
           volumeMounts:\
@@ -30,6 +39,9 @@ function grafana_patch_deployment() {
             name: secret-htpasswd\
           - mountPath: /etc/proxy/secrets\
             name: secret-grafana-proxy\
+          - mountPath: /etc/pki/ca-trust/extracted/pem/\
+            name: trusted-ca-bundle\
+            readOnly: true\
           args:\
           - -provider=openshift\
           - -https-address=:3001\
@@ -59,7 +71,15 @@ function grafana_patch_deployment() {
       - name: secret-grafana-proxy\
         secret:\
           defaultMode: 420\
-          secretName: grafana-proxy' $file
+          secretName: grafana-proxy\
+      - name: trusted-ca-bundle\
+        configMap:\
+          defaultMode: 420\
+          items:\
+            - key: ca-bundle.crt\
+              path: tls-ca-bundle.pem\
+          name: trusted-ca-bundle\
+          optional: true' $file
   sed_wrap -i -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: grafana\
 \1containers:\2/' $file
   sed_wrap -i -e '/- if \.Values\.security\.enabled/,/- end/ { d }' $file

@@ -2,6 +2,7 @@ package validation
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -49,6 +50,14 @@ func TestControlPlaneWithIncorrectVersionIsRejected(t *testing.T) {
 	validator, _, _ := createControlPlaneValidatorTestFixture()
 	response := validator.Handle(ctx, createCreateRequest(controlPlane))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane with bad version", t)
+}
+
+func TestControlPlaneNotAllowedInOperatorNamespace(t *testing.T) {
+	test.PanicOnError(os.Setenv("POD_NAMESPACE", "openshift-operators")) // TODO: make it easier to set the namespace in tests
+	controlPlane := newControlPlane("my-smcp", "openshift-operators")
+	validator, _, _ := createControlPlaneValidatorTestFixture()
+	response := validator.Handle(ctx, createCreateRequest(controlPlane))
+	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshControlPlane in operator's namespace", t)
 }
 
 func TestOnlyOneControlPlaneIsAllowedPerNamespace(t *testing.T) {
@@ -1178,11 +1187,11 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 				memberNamespace,
 				memberRoll)
 			validator, _, _ := createControlPlaneValidatorTestFixture(resources...)
-			oldsmcp := v1_1ControlPlane.DeepCopy()
+			newsmcp := v1_0ControlPlane.DeepCopy()
 			if tc.configure != nil {
-				tc.configure(oldsmcp)
+				tc.configure(newsmcp)
 			}
-			response := validator.Handle(ctx, createUpdateRequest(oldsmcp, v1_0ControlPlane))
+			response := validator.Handle(ctx, createUpdateRequest(v1_1ControlPlane, newsmcp))
 			if tc.allowed {
 				assert.True(response.Response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
 			} else {

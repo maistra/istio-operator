@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
@@ -27,6 +28,7 @@ import (
 // FakeManager is a manager that can be used for testing
 type FakeManager struct {
 	manager.Manager
+	ObjectTracker    *EnhancedTracker
 	recorderProvider recorder.Provider
 	requestTracker   requestTracker
 }
@@ -61,7 +63,7 @@ func StartManager(mgr manager.Manager, t *testing.T) func() {
 }
 
 // NewManager returns a new FakeManager that can be used for testing.
-func NewManager(scheme *runtime.Scheme, tracker clienttesting.ObjectTracker, groupResources ...*restmapper.APIGroupResources) (*FakeManager, error) {
+func NewManager(scheme *runtime.Scheme, tracker *EnhancedTracker, groupResources ...*restmapper.APIGroupResources) (*FakeManager, error) {
 	options := NewManagerOptions(scheme, tracker, groupResources...)
 	delegate, err := manager.New(&rest.Config{}, options)
 	if err != nil {
@@ -69,6 +71,7 @@ func NewManager(scheme *runtime.Scheme, tracker clienttesting.ObjectTracker, gro
 	}
 	return &FakeManager{
 		Manager:          delegate,
+		ObjectTracker:    tracker,
 		recorderProvider: NewRecorderProvider(scheme),
 		requestTracker:   requestTracker{cond: sync.NewCond(&sync.Mutex{})},
 	}, nil
@@ -95,8 +98,144 @@ func (m *FakeManager) Add(runnable manager.Runnable) error {
 			tq := newTrackingQueue(q, &m.requestTracker)
 			queueValue.Set(reflect.ValueOf(tq))
 		}
+		controllerName := value.Elem().FieldByName("Name").String()
+		doValue := value.Elem().FieldByName("Do")
+		if !doValue.IsValid() {
+			panic(fmt.Errorf("cannot hook controller.Do"))
+		}
+		if r, ok := doValue.Elem().Interface().(reconcile.Reconciler); ok {
+			r = &reconcilerWrapper{
+				Reconciler:     r,
+				manager:        m,
+				controllerName: controllerName,
+			}
+			doValue.Set(reflect.ValueOf(r))
+		}
 	}
 	return m.Manager.Add(runnable)
+}
+
+// ReconcileRequestAction is a Fake action that is sent before a request is sent
+// to a Reconciler.  This can be used to assert the generation of a request and
+// a Reactor can be used to prevent the request from being sent to the Reconciler
+// by handling the action and returning an error.
+type ReconcileRequestAction interface {
+	clienttesting.Action
+	// GetName returns the controller name
+	GetName() string
+	// GetReconcileRequest returns the reconcile.Request
+	GetReconcileRequest() reconcile.Request
+}
+
+// ReconcileResultAction is a Fake action that is sent when a result is received
+// from a Reconciler.  This can be used to assert the result of a reconcile and
+// a Reactor can be used to modify the error returned to the controller.
+type ReconcileResultAction interface {
+	ReconcileRequestAction
+	// GetReconcileResult returns the result of the reconcile
+	GetReconcileResult() (reconcile.Result, error)
+}
+
+// NewReconcileRequestAction returns a new ReconcileRequestAction.
+func NewReconcileRequestAction(controllerName string, req reconcile.Request) ReconcileRequestAction {
+	return &reconcileRequestAction{
+		ActionImpl: clienttesting.ActionImpl{
+			Resource: schema.GroupVersionResource{
+				Group:    "testing.reconciler",
+				Resource: "requests",
+				Version:  "v1",
+			},
+			Verb: "reconcile",
+		},
+		name: controllerName,
+		request: req,
+	}
+}
+
+// NewReconcileResultAction returns a new ReconcileResultAction.
+func NewReconcileResultAction(controllerName string, req reconcile.Request, result reconcile.Result, err error) ReconcileResultAction {
+	return &reconcileResultAction{
+		reconcileRequestAction: reconcileRequestAction{
+			ActionImpl: clienttesting.ActionImpl{
+				Resource: schema.GroupVersionResource{
+					Group:    "testing.reconciler",
+					Resource: "results",
+					Version:  "v1",
+				},
+				Verb: "reconcile",
+			},
+			name: controllerName,
+			request: req,
+		},
+		result: result,
+		err:    err,
+	}
+}
+
+type reconcileRequestAction struct {
+	clienttesting.ActionImpl
+	name    string
+	request reconcile.Request
+}
+
+var _ ReconcileRequestAction = (*reconcileRequestAction)(nil)
+
+func (r *reconcileRequestAction) GetName() string {
+	return r.name
+}
+
+func (r *reconcileRequestAction) GetReconcileRequest() reconcile.Request {
+	return r.request
+}
+
+func (r *reconcileRequestAction) DeepCopy() clienttesting.Action {
+	ret := *r
+	return &ret
+}
+
+type reconcileResultAction struct {
+	reconcileRequestAction
+	result  reconcile.Result
+	err     error
+}
+
+var _ ReconcileResultAction = (*reconcileResultAction)(nil)
+
+func (r *reconcileResultAction) GetName() string {
+	return r.name
+}
+
+func (r *reconcileResultAction) GetReconcileRequest() reconcile.Request {
+	return r.request
+}
+
+func (r *reconcileResultAction) GetReconcileResult() (reconcile.Result, error) {
+	return r.result, r.err
+}
+
+func (r *reconcileResultAction) DeepCopy() clienttesting.Action {
+	ret := *r
+	return &ret
+}
+
+type reconcilerWrapper struct {
+	reconcile.Reconciler
+	manager        *FakeManager
+	controllerName string
+}
+
+func (r *reconcilerWrapper) Reconcile(req reconcile.Request) (reconcile.Result, error) {
+	_, err := r.manager.ObjectTracker.Invokes(NewReconcileRequestAction(r.controllerName, req), nil)
+	// TODO: consider allowing the reactor to return a complete reconcile.Result and "real" error
+	if err != nil {
+		return reconcile.Result{}, nil
+	}
+	result, reconcileRrr := r.Reconciler.Reconcile(req)
+	_, err = r.manager.ObjectTracker.Invokes(NewReconcileResultAction(r.controllerName, req, result, reconcileRrr), nil)
+	// TODO: consider creating runtime.Object for request/result, allowing the result to be overridden
+	// currently, we do allow the caller to override the error
+	// by default, error returned by tracker will be nil, which prevents additional requests
+	return result, err
 }
 
 // WaitForReconcileCompletion waits for all active reconciliations to complete.
@@ -106,8 +245,18 @@ func (m *FakeManager) Add(runnable manager.Runnable) error {
 // a reconcilation by another.  This function will wait until the controllers
 // have settled to an idle state.  There is a danger that controllers could
 // bounce events back and forth, causing this call to effectively hang.
-func (m *FakeManager) WaitForReconcileCompletion() {
-	m.requestTracker.Wait()
+func (m *FakeManager) WaitForReconcileCompletion(timeout time.Duration) bool {
+	done := make(chan struct{})
+	go func() {
+		m.requestTracker.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return false
+	case <-time.After(timeout):
+		return true
+	}
 }
 
 type requestTracker struct {

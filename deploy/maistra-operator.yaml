@@ -316,6 +316,20 @@ rules:
   verbs:
   - get
 - apiGroups:
+  - config.openshift.io
+  resources:
+  - networks
+  verbs:
+  - get
+- apiGroups:
+  - image.openshift.io
+  resources:
+  - imagestreams
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - network.openshift.io
   resources:
   - netnamespaces
@@ -422,11 +436,36 @@ spec:
     metadata:
       labels:
         name: istio-operator
+      annotations:
+        olm.relatedImage.v1_0.3scale-istio-adapter: quay.io/3scale/3scale-istio-adapter:v1.0.0
+        olm.relatedImage.v1_0.citadel: docker.io/maistra/citadel-ubi8:1.0.8
+        olm.relatedImage.v1_0.cni: docker.io/maistra/istio-cni-ubi8:1.0.8
+        olm.relatedImage.v1_0.galley: docker.io/maistra/galley-ubi8:1.0.8
+        olm.relatedImage.v1_0.grafana: docker.io/maistra/grafana-ubi8:1.0.8
+        olm.relatedImage.v1_0.mixer: docker.io/maistra/mixer-ubi8:1.0.8
+        olm.relatedImage.v1_0.pilot: docker.io/maistra/pilot-ubi8:1.0.8
+        olm.relatedImage.v1_0.prometheus: docker.io/maistra/prometheus-ubi8:1.0.8
+        olm.relatedImage.v1_0.proxy-init: docker.io/maistra/proxy-init-centos7:1.0.8
+        olm.relatedImage.v1_0.proxyv2: docker.io/maistra/proxyv2-ubi8:1.0.8
+        olm.relatedImage.v1_0.sidecar-injector: docker.io/maistra/sidecar-injector-ubi8:1.0.8
+
+        olm.relatedImage.v1_1.3scale-istio-adapter: quay.io/3scale/3scale-istio-adapter:v1.0.0
+        olm.relatedImage.v1_1.citadel: docker.io/maistra/citadel-ubi8:1.1.1
+        olm.relatedImage.v1_1.cni: docker.io/maistra/istio-cni-ubi8:1.1.1
+        olm.relatedImage.v1_1.galley: docker.io/maistra/galley-ubi8:1.1.1
+        olm.relatedImage.v1_1.grafana: docker.io/maistra/grafana-ubi8:1.1.1
+        olm.relatedImage.v1_1.ior: docker.io/maistra/istio-ior-ubi8:1.1.1
+        olm.relatedImage.v1_1.mixer: docker.io/maistra/mixer-ubi8:1.1.1
+        olm.relatedImage.v1_1.pilot: docker.io/maistra/pilot-ubi8:1.1.1
+        olm.relatedImage.v1_1.prometheus: docker.io/maistra/prometheus-ubi8:1.1.1
+        olm.relatedImage.v1_1.proxy-init: docker.io/maistra/proxy-init-centos7:1.1.1
+        olm.relatedImage.v1_1.proxyv2: docker.io/maistra/proxyv2-ubi8:1.1.1
+        olm.relatedImage.v1_1.sidecar-injector: docker.io/maistra/sidecar-injector-ubi8:1.1.1
     spec:
       serviceAccountName: istio-operator
       containers:
         - name: istio-operator
-          image: maistra/istio-ubi8-operator:1.1.0
+          image: maistra/istio-ubi8-operator:1.1.1
           ports:
           - containerPort: 11999
             name: validation
@@ -434,6 +473,8 @@ spec:
             name: metrics
           command:
           - istio-operator
+          - --config
+          - /etc/operator/olm/config.properties
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
@@ -444,9 +485,19 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: istio-operator
-            - name: ISTIO_CNI_IMAGE_V1_0
-              value: maistra/istio-cni-ubi8:1.0.8
-            - name: ISTIO_CNI_IMAGE_V1_1
-              value: maistra/istio-cni-ubi8:1.1.0
 #            - name: ISTIO_CNI_IMAGE_PULL_SECRET
 #              value: name-of-secret
+            - name: METADATA_VERSION
+              value: __NAME_VERSION__
+          volumeMounts:
+          - name: operator-olm-config
+            mountPath: /etc/operator/olm
+            readOnly: true
+      volumes:
+      - name: operator-olm-config
+        downwardAPI:
+          defaultMode: 420
+          items:
+          - fieldRef:
+              fieldPath: metadata.annotations
+            path: config.properties

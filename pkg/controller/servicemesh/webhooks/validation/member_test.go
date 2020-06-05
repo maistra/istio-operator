@@ -3,6 +3,7 @@ package validation
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
 
 	authorizationv1 "k8s.io/api/authorization/v1"
@@ -46,6 +47,14 @@ func TestMemberWithWrongNameIsRejected(t *testing.T) {
 
 	response := invokeMemberValidator(createCreateRequest(member))
 	assert.False(response.Response.Allowed, "Expected validator to reject ServiceMeshMember with wrong name", t)
+}
+
+func TestMemberInOperatorNamespaceIsRejected(t *testing.T) {
+	test.PanicOnError(os.Setenv("POD_NAMESPACE", "openshift-operators")) // TODO: make it easier to set the namespace in tests
+	member := newMember("default", "openshift-operators", "my-smcp", "istio-system")
+
+	response := invokeMemberValidator(createCreateRequest(member))
+	assert.False(response.Response.Allowed, "Expected validator to reject creation of ServiceMeshMember in operator namespace", t)
 }
 
 func TestMutationOfSpecControlPlaneRefIsRejected(t *testing.T) {

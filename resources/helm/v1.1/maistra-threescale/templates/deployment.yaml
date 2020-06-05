@@ -5,7 +5,7 @@ metadata:
     app: 3scale-istio-adapter
     chart: {{ template "threescale.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.1.0
+    maistra-version: 1.1.2
     release: {{ .Release.Name }}
   name: 3scale-istio-adapter
   namespace: {{ .Release.Namespace }}
@@ -30,9 +30,13 @@ spec:
     spec:
       serviceAccountName: threescale-service-account
       containers:
-      - image: "{{ .Values.hub }}/{{ .Values.image }}:{{ .Values.tag }}"
+      - name: 3scale-istio-adapter
+{{- if contains "/" .Values.image }}
+        image: "{{ .Values.image }}"
+{{- else }}
+        image: "{{ .Values.hub }}/{{ .Values.image }}:{{ .Values.tag }}"
+{{- end }}
         imagePullPolicy: Always
-        name: 3scale-istio-adapter
         ports:
         - containerPort: {{ .Values.PARAM_THREESCALE_LISTEN_ADDR }}
           protocol: TCP

@@ -5,12 +5,14 @@ require (
 	github.com/evanphx/json-patch v4.1.0+incompatible
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.1.0
+	github.com/magiconair/properties v1.8.1
+	github.com/mitchellh/mapstructure v1.1.2
 	github.com/openshift/api v3.9.1-0.20190322043348-8741ff068a47+incompatible
 	github.com/openshift/library-go v0.0.0-20190916131355-a00adb84bd57
 	github.com/operator-framework/operator-sdk v0.10.1-0.20190917191403-5f663690a3bb
 	github.com/pkg/errors v0.8.1
 	github.com/spf13/pflag v1.0.3
-	gopkg.in/yaml.v2 v2.2.2
+	github.com/spf13/viper v1.6.3
 	istio.io/api v0.0.0-20190917173507-9eb49cc4666a
 	k8s.io/api v0.0.0-20190612125737-db0771252981
 	k8s.io/apiextensions-apiserver v0.0.0-20190228180357-d002e88f6236

@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -141,9 +142,15 @@ type Condition struct {
 	LastTransitionTime metav1.Time     `json:"lastTransitionTime,omitempty"`
 }
 
+var metadataVersion string = os.Getenv("METADATA_VERSION");
+
 // CurrentReconciledVersion returns a ReconciledVersion for this release of the operator
 func CurrentReconciledVersion(generation int64) string {
-	return ComposeReconciledVersion(version.Info.Version, generation)
+	if metadataVersion == "" {
+		return ComposeReconciledVersion(version.Info.Version, generation)
+	} else {
+		return ComposeReconciledVersion(metadataVersion, generation)
+	}
 }
 
 // ComposeReconciledVersion returns a string for use in ReconciledVersion fields
@@ -185,12 +192,12 @@ func (s *StatusType) SetCondition(condition Condition) *StatusType {
 	// match the time in our cached status during a reconcile.  We truncate here
 	// to save any problems down the line.
 	now := metav1.NewTime(time.Now().Truncate(time.Second))
-	for i := range s.Conditions {
-		if s.Conditions[i].Type == condition.Type {
-			if s.Conditions[i].Status != condition.Status {
+	for i, prevCondition := range s.Conditions {
+		if prevCondition.Type == condition.Type {
+			if prevCondition.Status != condition.Status {
 				condition.LastTransitionTime = now
 			} else {
-				condition.LastTransitionTime = s.Conditions[i].LastTransitionTime
+				condition.LastTransitionTime = prevCondition.LastTransitionTime
 			}
 			s.Conditions[i] = condition
 			return s

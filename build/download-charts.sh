@@ -2,7 +2,10 @@
 
 set -e
 
-: ${MAISTRA_VERSION:=1.1.0}
+# include sed_wrap
+source $(dirname ${BASH_SOURCE})/sed-wrapper.sh
+
+: ${MAISTRA_VERSION:=1.1.2}
 : ${MAISTRA_REPO:=https://github.com/Maistra/istio}
 : ${MAISTRA_BRANCH:=maistra-1.1}
 
@@ -59,26 +62,6 @@ function retrieveIstioRelease() {
       #  helm dep update
       #)
   )
-}
-
-function sed() {
-  echo "ERROR: detected direct sed invocation"
-  echo "Please use sed_wrap. It is a wrapper around sed that fails when no changes have been detected."
-  echo "Failed call was: sed $@"
-  return 1
-}
-
-function sed_wrap() {
-  for filename; do true; done # this retrieves the last argument
-  echo "patching $filename"
-  state=$(cat $filename)
-  command sed "$@"
-  difference=$(diff <(echo "${state}") <(cat ${filename}) || true )
-  if [[ -z "${difference}" ]]; then
-    echo "ERROR: nothing changed, sed seems to not have matched. Exiting"
-    echo "Failed call: sed $*"
-    return 10
-  fi
 }
 
 retrieveIstioRelease

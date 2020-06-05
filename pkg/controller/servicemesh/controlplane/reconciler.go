@@ -9,10 +9,12 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	imagev1 "github.com/openshift/api/image/v1"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/helm/pkg/manifest"
@@ -114,7 +116,6 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		// error handling
 		defer func() {
 			if err != nil {
-				r.renderings = nil
 				r.lastComponent = ""
 				updateReconcileStatus(&r.Status.StatusType, err)
 			}
@@ -171,7 +172,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 
 		// initialize new Status
 		componentStatuses := make([]*v1.ComponentStatus, 0, len(r.Status.ComponentStatus))
-		for chartName := range r.renderings {
+		for _, chartName := range r.getChartsInInstallationOrder() {
 			componentName := componentFromChartName(chartName)
 			componentStatus := r.Status.FindComponentByName(componentName)
 			if componentStatus == nil {
@@ -242,26 +243,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 	}
 
 	// create components
-	for _, chartName := range orderedCharts {
-		if ready, err = r.processComponentManifests(ctx, chartName); !ready {
-			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx, chartName, err)
-			return
-		}
-	}
-
-	// any other istio components
-	for key := range r.renderings {
-		if !strings.HasPrefix(key, "istio/") {
-			continue
-		}
-		if ready, err = r.processComponentManifests(ctx, key); !ready {
-			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx, key, err)
-			return
-		}
-	}
-
-	// install 3scale and any other components
-	for key := range r.renderings {
+	for _, key := range r.getChartsInInstallationOrder() {
 		if ready, err = r.processComponentManifests(ctx, key); !ready {
 			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx, key, err)
 			return
@@ -412,6 +394,144 @@ func (r *controlPlaneInstanceReconciler) recursivelyApplyTemplates(ctx context.C
 	return smcp, nil
 }
 
+func (r *controlPlaneInstanceReconciler) applyDisconnectedSettings(ctx context.Context, smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
+	log := common.LogFromContext(ctx)
+	log.Info("updating image names for disconnected install")
+
+	version, err := maistra.ParseVersion(smcpSpec.Version)
+	if err != nil {
+		return smcpSpec, err
+	}
+
+	// these need to exist or we'll get errors trying to set the images
+	if smcpSpec.Istio == nil {
+		smcpSpec.Istio = make(v1.HelmValuesType)
+	}
+	if smcpSpec.ThreeScale == nil {
+		smcpSpec.ThreeScale = make(v1.HelmValuesType)
+	}
+	switch version {
+	case maistra.V1_0, maistra.UndefinedVersion:
+		if err := r.updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_0.Citadel); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_0.Galley); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_0.Grafana); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_0.Mixer); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_0.Pilot); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_0.Prometheus); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_0.ProxyInit); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_0.ProxyV2); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_0.SidecarInjector); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_0.ThreeScale); err != nil {
+			return smcpSpec, err
+		}
+
+	case maistra.V1_1:
+		if err := r.updateImageField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_1.Citadel); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_1.Galley); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_1.Grafana); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_1.Mixer); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_1.Pilot); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_1.Prometheus); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_1.ProxyInit); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_1.ProxyV2); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_1.SidecarInjector); err != nil {
+			return smcpSpec, err
+		}
+		if err := r.updateImageField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_1.ThreeScale); err != nil {
+			return smcpSpec, err
+		}
+
+		if err := r.updateImageField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V1_1.IOR); err != nil {
+			return smcpSpec, err
+		}
+
+	default:
+		return smcpSpec, fmt.Errorf("cannot apply disconnected install settings for unknown version %s", version)
+	}
+	if err := r.updateOauthProxyConfig(ctx, &smcpSpec); err != nil {
+		return smcpSpec, err
+	}
+	return smcpSpec, err
+}
+
+func (r *controlPlaneInstanceReconciler) updateOauthProxyConfig(ctx context.Context, smcpSpec *v1.ControlPlaneSpec) error {
+	if !common.Config.OAuthProxy.Query || len(common.Config.OAuthProxy.Name) == 0 || len(common.Config.OAuthProxy.Namespace) == 0 {
+		return nil
+	}
+	log := common.LogFromContext(ctx)
+	is := &imagev1.ImageStream{}
+	if err := r.Client.Get(ctx, client.ObjectKey{Namespace: common.Config.OAuthProxy.Namespace, Name: common.Config.OAuthProxy.Name}, is); err == nil {
+		foundTag := false
+		for _, tag := range is.Status.Tags {
+			if tag.Tag == common.Config.OAuthProxy.Tag {
+				foundTag = true
+				if len(tag.Items) > 0 && len(tag.Items[0].DockerImageReference) > 0 {
+					common.Config.OAuthProxy.Image = tag.Items[0].DockerImageReference
+				} else {
+					log.Info(fmt.Sprintf("warning: dockerImageReference not set for tag '%s' in ImageStream %s/%s", common.Config.OAuthProxy.Tag, common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
+				}
+				break
+			}
+		}
+		if !foundTag {
+			log.Info(fmt.Sprintf("warning: could not find tag '%s' in ImageStream %s/%s", common.Config.OAuthProxy.Tag, common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
+		}
+	} else if !(apierrors.IsNotFound(err) || apierrors.IsGone(err)) {
+		log.Error(err, fmt.Sprintf("unexpected error retrieving ImageStream %s/%s", common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
+	}
+	if len(common.Config.OAuthProxy.Image) == 0 {
+		log.Info("global.oauthproxy.image will not be overridden")
+		return nil
+	}
+	log.Info(fmt.Sprintf("using '%s' for global.oauthproxy.image", common.Config.OAuthProxy.Image))
+	r.updateImageField(smcpSpec.Istio, "global.oauthproxy.image", common.Config.OAuthProxy.Image)
+	return nil
+}
+
+func (r *controlPlaneInstanceReconciler) updateImageField(obj map[string]interface{}, path, value string) error {
+	if len(value) == 0 {
+		return nil
+	} else if obj == nil {
+		// prevent SIGSEGV
+		return fmt.Errorf("cannot set %s on nil value", path)
+	}
+	return unstructured.SetNestedField(obj, value, strings.Split(path, ".")...)
+}
+
 func (r *controlPlaneInstanceReconciler) applyTemplates(ctx context.Context, smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
 	log := common.LogFromContext(ctx)
 	log.Info("updating servicemeshcontrolplane with templates")
@@ -420,7 +540,24 @@ func (r *controlPlaneInstanceReconciler) applyTemplates(ctx context.Context, smc
 		log.Info("No template provided. Using default")
 	}
 
+	applyDisconnectedSettings := true
+	if tag, _, _ := unstructured.NestedString(r.Instance.Spec.Istio, strings.Split("global.tag", ".")...); tag != "" {
+		// don't update anything
+		applyDisconnectedSettings = false
+	} else if hub, _, _ := unstructured.NestedString(r.Instance.Spec.Istio, strings.Split("global.hub", ".")...); hub != "" {
+		// don't update anything
+		applyDisconnectedSettings = false
+	}
+
 	spec, err := r.recursivelyApplyTemplates(ctx, smcpSpec, smcpSpec.Version, sets.NewString())
+
+	if err == nil && applyDisconnectedSettings {
+		spec, err = r.applyDisconnectedSettings(ctx, spec)
+		if err != nil {
+			log.Error(err, "warning: failed to apply image names to support disconnected install")
+		}
+	}
+
 	log.Info("finished updating ServiceMeshControlPlane", "Spec", spec)
 
 	return spec, err
@@ -452,6 +589,7 @@ func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context) error
 
 		return err
 	}
+
 	r.Status.LastAppliedConfiguration = spec
 
 	if err := r.validateSMCPSpec(r.Status.LastAppliedConfiguration); err != nil {
@@ -520,7 +658,6 @@ func (r *controlPlaneInstanceReconciler) PostStatus(ctx context.Context) error {
 	} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
 		return errors.Wrap(err, "error getting ServiceMeshControlPlane prior to updating status")
 	}
-
 	return nil
 }
 
@@ -613,6 +750,39 @@ func (r *controlPlaneInstanceReconciler) SetInstance(newInstance *v1.ServiceMesh
 
 func (r *controlPlaneInstanceReconciler) IsFinished() bool {
 	return r.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue
+}
+
+// returns the keys from r.renderings in the order they need to be installed in:
+// - keys in orderedCharts
+// - other istio components that have the "istio/" prefix
+// - 3scale and other components
+func (r *controlPlaneInstanceReconciler) getChartsInInstallationOrder() []string {
+	charts := make([]string, 0, len(r.renderings))
+	seen := sets.NewString()
+
+	// first install the charts listed in orderedCharts (but only if they appear in r.renderings)
+	for _, chart := range orderedCharts {
+		if _, found := r.renderings[chart]; found {
+			charts = append(charts, chart)
+			seen.Insert(chart)
+		}
+	}
+
+	// install other istio components that aren't listed in orderedCharts
+	for chart := range r.renderings {
+		if strings.HasPrefix(chart, "istio/") && !seen.Has(chart) {
+			charts = append(charts, chart)
+			seen.Insert(chart)
+		}
+	}
+
+	// install 3scale and any other components
+	for chart := range r.renderings {
+		if !seen.Has(chart) {
+			charts = append(charts, chart)
+		}
+	}
+	return charts
 }
 
 func componentFromChartName(chartName string) string {

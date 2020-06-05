@@ -14,11 +14,6 @@ spec:
     - namespaceSelector:
         matchLabels:
           "maistra.io/member-of": "{{ .Release.Namespace }}"
-  egress:
-  - to:
-    - namespaceSelector:
-        matchLabels:
-          "maistra.io/member-of": "{{ .Release.Namespace }}"
 
 ---
 

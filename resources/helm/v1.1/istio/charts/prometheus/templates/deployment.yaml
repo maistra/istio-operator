@@ -8,7 +8,7 @@ metadata:
     app: prometheus
     chart: {{ template "prometheus.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.1.0
+    maistra-version: 1.1.2
     release: {{ .Release.Name }}
 spec:
   strategy:
@@ -38,7 +38,11 @@ spec:
       containers:
           # OAuth proxy
         - name: prometheus-proxy
+{{- if contains "/" .Values.global.oauthproxy.image }}
+          image: {{ .Values.global.oauthproxy.image }}
+{{- else }}
           image: {{ .Values.global.oauthproxy.hub }}/{{ .Values.global.oauthproxy.image }}:{{ .Values.global.oauthproxy.tag }}
+{{- end }}
           imagePullPolicy: {{ .Values.global.oauthproxy.imagePullPolicy }}
           ports:
           - containerPort: 3001
@@ -53,7 +57,12 @@ spec:
               port: https
               scheme: HTTPS
             timeoutSeconds: 1
-          resources: {}
+          resources:
+{{- if .Values.global.oauthproxy.resources }}
+{{ toYaml .Values.global.oauthproxy.resources | indent 12 }}
+{{- else }}
+{{ toYaml .Values.global.defaultResources | indent 12 }}
+{{- end }}
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
           volumeMounts:
@@ -63,6 +72,9 @@ spec:
             name: secret-htpasswd
           - mountPath: /etc/proxy/secrets
             name: secret-prometheus-proxy
+          - mountPath: /etc/pki/ca-trust/extracted/pem/
+            name: trusted-ca-bundle
+            readOnly: true
           args:
           - -provider=openshift
           - -https-address=:3001
@@ -128,6 +140,14 @@ spec:
         secret:
           defaultMode: 420
           secretName: prometheus-proxy
+      - name: trusted-ca-bundle
+        configMap:
+          defaultMode: 420
+          items:
+            - key: ca-bundle.crt
+              path: tls-ca-bundle.pem
+          name: trusted-ca-bundle
+          optional: true
       - name: config-volume
         configMap:
           name: prometheus

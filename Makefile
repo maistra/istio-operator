@@ -14,10 +14,10 @@
 
 -include Makefile.overrides
 
-MAISTRA_VERSION        ?= 1.1.0
+MAISTRA_VERSION        ?= 1.1.2
 MAISTRA_BRANCH         ?= maistra-1.1
-REPLACES_PRODUCT_CSV   ?= 1.0.10
-REPLACES_COMMUNITY_CSV ?= 1.0.8
+REPLACES_PRODUCT_CSV   ?= 1.1.1
+REPLACES_COMMUNITY_CSV ?= 1.1.0
 VERSION                ?= development
 IMAGE                  ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}
 CONTAINER_CLI          ?= docker
@@ -32,7 +32,7 @@ HELM_OUT_DIR         = ${OUT_DIR}/resources/helm
 OLM_MANIFEST_OUT_DIR = ${OUT_DIR}/resources/manifests
 
 OFFLINE_BUILD       ?= false
-GIT_UPSTREAM_REMOTE ?= $(shell git remote -v |grep --color=never ':Maistra/istio-operator\.git.*(fetch)' |grep --color=never -o '^[^[:space:]]*')
+GIT_UPSTREAM_REMOTE ?= $(shell git remote -v |grep --color=never '[/:]Maistra/istio-operator\.git.*(fetch)' |grep --color=never -o '^[^[:space:]]*')
 
 ifeq "${GIT_UPSTREAM_REMOTE}" ""
 GIT_UPSTREAM_REMOTE = "ci-upstream"
@@ -83,6 +83,8 @@ endif
 .PHONY: update-1.0-charts
 update-1.0-charts: update-remote-maistra-1.0
 	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.0 -- ${SOURCE_DIR}/resources/helm/v1.0
+	git reset HEAD ${SOURCE_DIR}/resources/helm/v1.0
+	HELM_DIR=${RESOURCES_DIR}/helm/v1.0 ${SOURCE_DIR}/build/patch-container-image.sh
 
 .PHONY: update-1.0-templates
 update-1.0-templates:
@@ -108,7 +110,8 @@ collect-1.0-templates:
 ################################################################################
 .PHONY: update-1.1-charts
 update-1.1-charts:
-	HELM_DIR=${RESOURCES_DIR}/helm/v1.1 ISTIO_VERSION=1.1.0 ${SOURCE_DIR}/build/download-charts.sh
+	HELM_DIR=${RESOURCES_DIR}/helm/v1.1 MAISTRA_VERSION=${MAISTRA_VERSION} MAISTRA_BRANCH=${MAISTRA_BRANCH} ${SOURCE_DIR}/build/download-charts.sh
+	HELM_DIR=${RESOURCES_DIR}/helm/v1.1 ${SOURCE_DIR}/build/patch-container-image.sh
 
 .PHONY: collect-1.1-charts
 collect-1.1-charts:

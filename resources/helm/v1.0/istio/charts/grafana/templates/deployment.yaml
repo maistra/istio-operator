@@ -44,7 +44,11 @@ spec:
       containers:
           # OAuth proxy
         - name: grafana-proxy
+{{- if contains "/" .Values.global.oauthproxy.image }}
+          image: {{ .Values.global.oauthproxy.image }}
+{{- else }}
           image: {{ .Values.global.oauthproxy.hub }}/{{ .Values.global.oauthproxy.image }}:{{ .Values.global.oauthproxy.tag }}
+{{- end }}
           imagePullPolicy: {{ .Values.global.oauthproxy.imagePullPolicy }}
           ports:
           - containerPort: 3001
@@ -84,7 +88,11 @@ spec:
           - -openshift-ca=/etc/pki/tls/cert.pem
           - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.global.hub }}/{{.Values.image}}:{{ .Values.global.tag }}"
+{{- if contains "/" .Values.image }}
+          image: "{{ .Values.image }}"
+{{- else }}
+          image: "{{ .Values.global.hub }}/{{ .Values.image }}:{{ .Values.global.tag }}"
+{{- end }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           ports:
           - containerPort: 3000

@@ -3,6 +3,7 @@ package memberroll
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
@@ -20,6 +21,9 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+const networkTypeOpenShiftSDN = "OpenShiftSDN"
+const networkTypeCalico = "Calico"
 
 type namespaceReconciler struct {
 	common.ControllerResources
@@ -64,35 +68,70 @@ func newNamespaceReconciler(ctx context.Context, cl client.Client, meshNamespace
 func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) error {
 	log := common.LogFromContext(ctx)
 	// configure networks
-	clusterNetwork := &unstructured.Unstructured{}
-	clusterNetwork.SetAPIVersion("network.openshift.io/v1")
-	clusterNetwork.SetKind("ClusterNetwork")
+	network := &unstructured.Unstructured{}
+	network.SetAPIVersion("config.openshift.io/v1")
+	network.SetKind("Network")
 	r.networkingStrategy = &subnetStrategy{}
-	err := r.Client.Get(ctx, client.ObjectKey{Name: "default"}, clusterNetwork)
+	err := r.Client.Get(ctx, client.ObjectKey{Name: "cluster"}, network)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			log.Info("default cluster network not defined, skipping network configuration")
+			log.Info("network configuration not defined, skipping")
 			return nil
 		}
 		return err
 	}
-	networkPlugin, ok, err := unstructured.NestedString(clusterNetwork.UnstructuredContent(), "pluginName")
+	networkSpec, ok, err := unstructured.NestedMap(network.UnstructuredContent(), "spec")
 	if err != nil {
-		return pkgerrors.Wrap(err, "cluster network plugin not defined")
+		return pkgerrors.Wrap(err, "network spec not defined")
 	}
 	if ok {
-		switch networkPlugin {
-		case "redhat/openshift-ovs-subnet":
-			// nothing to do
-		case "redhat/openshift-ovs-networkpolicy":
-			r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
-		case "redhat/openshift-ovs-multitenant":
-			r.networkingStrategy, err = newMultitenantStrategy(r.Client, r.meshNamespace)
-		default:
-			return fmt.Errorf("unsupported cluster network plugin: %s", networkPlugin)
+		networkType, ok := networkSpec["networkType"]
+		if ok {
+			switch strings.ToLower(fmt.Sprintf("%v", networkType)) {
+			case strings.ToLower(networkTypeOpenShiftSDN):
+				clusterNetwork := &unstructured.Unstructured{}
+				clusterNetwork.SetAPIVersion("network.openshift.io/v1")
+				clusterNetwork.SetKind("ClusterNetwork")
+				err = r.Client.Get(ctx, client.ObjectKey{Name: "default"}, clusterNetwork)
+				if err != nil {
+					if apierrors.IsNotFound(err) {
+						log.Info("default cluster network not defined, skipping network configuration")
+						return nil
+					}
+					return err
+				}
+				networkPlugin, ok, err := unstructured.NestedString(clusterNetwork.UnstructuredContent(), "pluginName")
+				if err != nil {
+					return pkgerrors.Wrap(err, "cluster network plugin not defined")
+				}
+				if ok {
+					switch networkPlugin {
+					case "redhat/openshift-ovs-subnet":
+						log.Info("Network Strategy OpenShiftSDN:subnet")
+						// nothing to do
+					case "redhat/openshift-ovs-networkpolicy":
+						log.Info("Network Strategy OpenShiftSDN:NetworkPolicy")
+						r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
+					case "redhat/openshift-ovs-multitenant":
+						log.Info("Network Strategy OpenShiftSDN:MultiTenant")
+						r.networkingStrategy, err = newMultitenantStrategy(r.Client, r.meshNamespace)
+					default:
+						return fmt.Errorf("unsupported cluster network plugin: %s", networkPlugin)
+					}
+				} else {
+					log.Info("cluster network plugin not defined, skipping network configuration")
+				}
+			case strings.ToLower(networkTypeCalico):
+				log.Info("Network Strategy Calico:NetworkPolicy")
+				r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
+			default:
+				return fmt.Errorf("unsupported network type: %s", networkType)
+			}
+		} else {
+			log.Info("networkType not defined, skipping network configuration")
 		}
 	} else {
-		log.Info("cluster network plugin not defined, skipping network configuration")
+		log.Info("network spec not defined, skipping network configuration")
 	}
 	return err
 }

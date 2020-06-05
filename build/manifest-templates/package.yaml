@@ -1,5 +1,5 @@
 packageName: __NAME__
 channels:
 - name: "1.1"
-  currentCSV: __NAME__.v__VERSION__
+  currentCSV: __NAME__.v__NAME_VERSION__
 defaultChannel: "1.1"

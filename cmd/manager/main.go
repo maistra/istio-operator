@@ -5,17 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/client-go/rest"
-
-	"github.com/maistra/istio-operator/pkg/apis"
-	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	"github.com/maistra/istio-operator/pkg/controller"
-	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/version"
-
+	"github.com/magiconair/properties"
+	"github.com/mitchellh/mapstructure"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
@@ -23,12 +17,21 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	"github.com/operator-framework/operator-sdk/pkg/restmapper"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+
+	"github.com/maistra/istio-operator/pkg/apis"
+	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller"
+	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/version"
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -49,19 +52,23 @@ func main() {
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
 	// number of concurrent reconciler for each controller
-	pflag.IntVar(&common.Options.ControlPlaneReconcilers, "controlPlaneReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshControlPlane resources")
-	pflag.IntVar(&common.Options.MemberRollReconcilers, "memberRollReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMemberRoll resources")
-	pflag.IntVar(&common.Options.MemberReconcilers, "memberReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMember resources")
+	pflag.Int("controlPlaneReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshControlPlane resources")
+	pflag.Int("memberRollReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMemberRoll resources")
+	pflag.Int("memberReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMember resources")
 
 	// flags to configure API request throttling
-	pflag.IntVar(&common.Options.Burst, "apiBurst", 50, "The number of API requests the operator can make before throttling is activated")
-	pflag.Float32Var(&common.Options.QPS, "apiQPS", 25, "The max rate of API requests when throttling is active")
+	pflag.Int("apiBurst", 50, "The number of API requests the operator can make before throttling is activated")
+	pflag.Float32("apiQPS", 25, "The max rate of API requests when throttling is active")
 
 	// custom flags for istio operator
-	pflag.StringVar(&common.Options.ResourceDir, "resourceDir", "/usr/local/share/istio-operator", "The location of the resources - helm charts, templates, etc.")
-	pflag.StringVar(&common.Options.ChartsDir, "chartsDir", "", "The root location of the helm charts.")
-	pflag.StringVar(&common.Options.DefaultTemplatesDir, "defaultTemplatesDir", "", "The root location of the default templates.")
-	pflag.StringVar(&common.Options.UserTemplatesDir, "userTemplatesDir", "", "The root location of the user supplied templates.")
+	pflag.String("resourceDir", "/usr/local/share/istio-operator", "The location of the resources - helm charts, templates, etc.")
+	pflag.String("chartsDir", "", "The root location of the helm charts.")
+	pflag.String("defaultTemplatesDir", "", "The root location of the default templates.")
+	pflag.String("userTemplatesDir", "", "The root location of the user supplied templates.")
+
+	// config file
+	configFile := ""
+	pflag.StringVar(&configFile, "config", "/etc/istio-operator/config.properties", "The root location of the user supplied templates.")
 
 	printVersion := false
 	pflag.BoolVar(&printVersion, "version", printVersion, "Prints version information and exits")
@@ -80,6 +87,11 @@ func main() {
 
 	log.Info(fmt.Sprintf("Starting Istio Operator %s", version.Info))
 
+	if err := initializeConfiguration(configFile); err != nil {
+		log.Error(err, "error initializing operator configuration")
+		os.Exit(1)
+	}
+
 	namespace, err := k8sutil.GetWatchNamespace()
 	if err != nil {
 		log.Error(err, "Failed to get watch namespace")
@@ -93,8 +105,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	cfg.Burst = common.Options.Burst
-	cfg.QPS = common.Options.QPS
+	cfg.Burst = common.Config.Controller.APIBurst
+	cfg.QPS = common.Config.Controller.APIQPS
 
 	ctx := context.Background()
 	// Become the leader before proceeding
@@ -189,4 +201,65 @@ func serveCRMetrics(cfg *rest.Config) error {
 		return err
 	}
 	return nil
+}
+
+func initializeConfiguration(configFile string) error {
+	v, err := common.NewViper()
+	if err != nil {
+		return err
+	}
+
+	// map flags to config structure
+	// controller settings
+	v.RegisterAlias("controller.controlPlaneReconcilers", "controlPlaneReconcilers")
+	v.RegisterAlias("controller.memberRollReconcilers", "memberRollReconcilers")
+	v.RegisterAlias("controller.memberReconcilers", "memberReconcilers")
+	v.RegisterAlias("controller.apiBurst", "apiBurst")
+	v.RegisterAlias("controller.apiQPS", "apiQPS")
+
+	// rendering settings
+	v.RegisterAlias("rendering.resourceDir", "resourceDir")
+	v.RegisterAlias("rendering.chartsDir", "chartsDir")
+	v.RegisterAlias("rendering.defaultTemplatesDir", "defaultTemplatesDir")
+	v.RegisterAlias("rendering.userTemplatesDir", "userTemplatesDir")
+
+	v.BindPFlags(pflag.CommandLine)
+	v.AutomaticEnv()
+	props, err := patchProperties(configFile)
+	if err != nil {
+		return err
+	}
+	if err := v.MergeConfigMap(props); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return err
+		}
+	}
+
+	if err := v.Unmarshal(common.Config, func(dc *mapstructure.DecoderConfig) {
+		dc.TagName = "json"
+	}); err != nil {
+		return err
+	}
+	log.Info("configuration successfully initialized", "config", common.Config)
+	return nil
+}
+
+// downward api quotes values in the file (fmt.Sprintf("%q")), so we need to Unquote() them
+func patchProperties(file string) (map[string]interface{}, error) {
+	loader := properties.Loader{Encoding: properties.UTF8, IgnoreMissing: true, DisableExpansion: true}
+	props, err := loader.LoadFile(file)
+	if err != nil {
+		return nil, err
+	}
+	retVal := make(map[string]interface{})
+	for k, v := range props.Map() {
+		v = strings.TrimSpace(v)
+		if strings.HasPrefix(v, "\"") && strings.HasSuffix(v, "\"") {
+			// the properties reader will have already processed most special
+			// characters, so all we need to do is remove the leading and trailing quotes
+			v = v[1:len(v)-1]
+		}
+		retVal[k] = v
+	}
+	return retVal, nil
 }

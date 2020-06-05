@@ -64,7 +64,7 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 func add(mgr manager.Manager, r *MemberReconciler) error {
 	ctx := common.NewContextWithLog(common.NewContext(), createLogger())
 	// Create a new controller
-	c, err := controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.Options.MemberReconcilers, Reconciler: r})
+	c, err := controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.Config.Controller.MemberReconcilers, Reconciler: r})
 	if err != nil {
 		return err
 	}

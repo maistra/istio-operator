@@ -85,6 +85,10 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req atypes.Request) at
 		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("ServiceMeshMemberRoll must be named '%s'", common.MemberRollName))
 	}
 
+	if smmr.Namespace == common.GetOperatorNamespace() {
+		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("ServiceMeshMemberRoll may not be created in the same project/namespace as the operator"))
+	}
+
 	smmrList := &maistrav1.ServiceMeshMemberRollList{}
 	err = v.client.List(ctx, nil, smmrList)
 	if err != nil {
