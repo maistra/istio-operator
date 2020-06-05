@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
@@ -102,6 +105,21 @@ func (v *ControlPlaneValidator) Handle(ctx context.Context, req atypes.Request) 
 
 func (v *ControlPlaneValidator) validateVersion(ctx context.Context, smcp *maistrav1.ServiceMeshControlPlane, version maistra.Version) error {
 	var allErrors []error
+	// common validation
+	if enabled, ok, _ := unstructured.NestedBool(smcp.Spec.Istio, strings.Split("tracing.enabled", ".")...); ok && enabled {
+		// verify jaeger resource is installed
+		crd := &apiextensionsv1beta1.CustomResourceDefinition{}
+		if err := v.client.Get(ctx, client.ObjectKey{Name: "jaegers.jaegertracing.io"}, crd); err != nil {
+			allErrors = append(allErrors, fmt.Errorf("please install the Jaeger operator before enabling tracing"))
+		}
+	}
+	if enabled, ok, _ := unstructured.NestedBool(smcp.Spec.Istio, strings.Split("kiali.enabled", ".")...); ok && enabled {
+		// verify kiali resource is installed
+		crd := &apiextensionsv1beta1.CustomResourceDefinition{}
+		if err := v.client.Get(ctx, client.ObjectKey{Name: "kialis.kiali.io"}, crd); err != nil {
+			allErrors = append(allErrors, fmt.Errorf("please install the Kiali operator before enabling Kiali"))
+		}
+	}
 	// version specific validation
 	switch version.Version() {
 	// UndefinedVersion defaults to legacy v1.0
