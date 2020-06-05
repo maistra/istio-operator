@@ -256,7 +256,7 @@ function patchSidecarInjector() {
 
   # add annotation for Multus & Istio CNI
   sed_wrap -i -e 's/^\(.*injectedAnnotations:.*\)$/\1\
-    \{\{- if .Values.istio_cni.enabled \}\}\
+    \{\{- if and (.Values.istio_cni.enabled) (not .Values.sidecarInjectorWebhook.injectPodRedirectAnnot) \}\}\
       k8s.v1.cni.cncf.io\/networks: \{\{.Values.istio_cni.istio_cni_network\}\}\
     \{\{- end \}\}/' ${HELM_DIR}/istio/templates/sidecar-injector-configmap.yaml
 
