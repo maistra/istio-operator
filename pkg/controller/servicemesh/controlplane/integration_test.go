@@ -74,7 +74,7 @@ func TestBootstrapping(t *testing.T) {
 				),
 				Assertions: ActionAssertions{
 					// verify proper number of CRDs is created
-					Assert("create").On("customresourcedefinitions").SeenCountIs(28),
+					Assert("create").On("customresourcedefinitions").SeenCountIs(23),
 				},
 				Reactors: []clienttesting.Reactor{
 					ReactTo("list").On("daemonsets").In(operatorNamespace).With(
