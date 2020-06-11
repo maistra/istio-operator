@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	rbac "k8s.io/api/rbac/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	clienttesting "k8s.io/client-go/testing"
-	"k8s.io/kubernetes/pkg/apis/rbac"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/apis"
