@@ -119,10 +119,20 @@ func TestReconcileFailsWhenListControlPlanesFails(t *testing.T) {
 
 func TestReconcileDoesNothingIfControlPlaneMissing(t *testing.T) {
 	roll := newDefaultMemberRoll()
-	_, tracker, r, _, _ := createClientAndReconciler(t, roll)
+	cl, tracker, r, _, _ := createClientAndReconciler(t, roll)
 
 	assertReconcileSucceeds(r, t)
-	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
+	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
+
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
+	assertConditions(updatedRoll, []maistrav1.ServiceMeshMemberRollCondition{
+		{
+			Type:    maistrav1.ConditionTypeMemberRollReady,
+			Status:  core.ConditionFalse,
+			Reason:  maistrav1.ConditionReasonSMCPMissing,
+			Message: "No ServiceMeshControlPlane exists in the namespace",
+		},
+	}, t)
 }
 
 func TestReconcileDoesNothingIfMultipleControlPlanesFound(t *testing.T) {
@@ -130,9 +140,19 @@ func TestReconcileDoesNothingIfMultipleControlPlanesFound(t *testing.T) {
 	controlPlane1 := newControlPlane("")
 	controlPlane2 := newControlPlane("")
 	controlPlane2.Name = "my-mesh-2"
-	_, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane1, controlPlane2)
+	cl, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane1, controlPlane2)
 	assertReconcileSucceeds(r, t)
-	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
+	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
+
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
+	assertConditions(updatedRoll, []maistrav1.ServiceMeshMemberRollCondition{
+		{
+			Type:    maistrav1.ConditionTypeMemberRollReady,
+			Status:  core.ConditionFalse,
+			Reason:  maistrav1.ConditionReasonMultipleSMCP,
+			Message: "Multiple ServiceMeshControlPlane resources exist in the namespace",
+		},
+	}, t)
 }
 
 func TestReconcileDoesNothingIfControlPlaneNotReconciledAtLeastOnce(t *testing.T) {
@@ -141,10 +161,20 @@ func TestReconcileDoesNothingIfControlPlaneNotReconciledAtLeastOnce(t *testing.T
 	controlPlane := newControlPlane("")
 	controlPlane.Status.ObservedGeneration = 0
 
-	_, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane)
+	cl, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane)
 
 	assertReconcileSucceeds(r, t)
-	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
+	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
+
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
+	assertConditions(updatedRoll, []maistrav1.ServiceMeshMemberRollCondition{
+		{
+			Type:    maistrav1.ConditionTypeMemberRollReady,
+			Status:  core.ConditionFalse,
+			Reason:  maistrav1.ConditionReasonSMCPNotReconciled,
+			Message: "Initial service mesh installation has not completed",
+		},
+	}, t)
 }
 
 func TestReconcileDoesNothingIfControlPlaneReconciledConditionIsNotTrue(t *testing.T) {
@@ -159,10 +189,20 @@ func TestReconcileDoesNothingIfControlPlaneReconciledConditionIsNotTrue(t *testi
 		},
 	}
 
-	_, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane)
+	cl, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane)
 
 	assertReconcileSucceeds(r, t)
-	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
+	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
+
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
+	assertConditions(updatedRoll, []maistrav1.ServiceMeshMemberRollCondition{
+		{
+			Type:    maistrav1.ConditionTypeMemberRollReady,
+			Status:  core.ConditionFalse,
+			Reason:  maistrav1.ConditionReasonSMCPNotReconciled,
+			Message: "Service mesh installation is not in a known good state",
+		},
+	}, t)
 }
 
 func TestReconcileFailsIfListingNamespacesFails(t *testing.T) {
@@ -836,4 +876,18 @@ func createNAD(name, appNamespace, cpNamespace string) runtime.Object {
 	netAttachDef.SetName(name)
 	common.SetLabel(netAttachDef, common.MemberOfKey, cpNamespace)
 	return netAttachDef
+}
+
+func assertConditions(roll *maistrav1.ServiceMeshMemberRoll, expected []maistrav1.ServiceMeshMemberRollCondition, t *testing.T) {
+	assert.DeepEquals(removeTimestamps(roll.Status.Conditions), expected, "Unexpected Status.Conditions in SMMR", t)
+}
+
+func removeTimestamps(conditions []maistrav1.ServiceMeshMemberRollCondition) []maistrav1.ServiceMeshMemberRollCondition {
+	copies := make([]maistrav1.ServiceMeshMemberRollCondition, len(conditions))
+	for i, cond := range conditions {
+		condCopy := cond.DeepCopy()
+		condCopy.LastTransitionTime = meta.Time{}
+		copies[i] = *condCopy
+	}
+	return copies
 }

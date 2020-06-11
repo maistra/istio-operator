@@ -68,6 +68,12 @@ const (
 	ConditionReasonConfigured ServiceMeshMemberRollConditionReason = "Configured"
 	// ConditionReasonNamespaceMissing indicates that one of the namespaces to configure does not exist
 	ConditionReasonNamespaceMissing ServiceMeshMemberRollConditionReason = "ErrNamespaceMissing"
+	// ConditionReasonSMCPMissing indicates that the ServiceMeshControlPlane resource does not exist
+	ConditionReasonSMCPMissing ServiceMeshMemberRollConditionReason = "ErrSMCPMissing"
+	// ConditionReasonMultipleSMCP indicates that multiple ServiceMeshControlPlane resources exist in the namespace
+	ConditionReasonMultipleSMCP ServiceMeshMemberRollConditionReason = "ErrMultipleSMCPs"
+	// ConditionReasonSMCPNotReconciled indicates that reconciliation of the SMMR was skipped because the SMCP has not been reconciled
+	ConditionReasonSMCPNotReconciled ServiceMeshMemberRollConditionReason = "SMCPReconciling"
 )
 
 // Condition represents a specific condition on a resource
