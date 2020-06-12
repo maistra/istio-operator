@@ -286,8 +286,6 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 	r.Status.ReconciledVersion = r.meshGeneration
 	updateControlPlaneConditions(r.Status, nil)
 
-	_, err = r.updateReadinessStatus(ctx) // this only updates the local object instance; it doesn't post the status update; postReconciliationStatus (called using defer) actually does that
-
 	reconciliationComplete = true
 	log.Info("Completed ServiceMeshControlPlane reconcilation")
 	return
@@ -570,6 +568,10 @@ func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context, versi
 }
 
 func (r *controlPlaneInstanceReconciler) PostStatus(ctx context.Context) error {
+	// we should only post status if it has changed
+	if reflect.DeepEqual(r.Status, &r.Instance.Status) {
+		return nil
+	}
 	log := common.LogFromContext(ctx)
 	instance := &v1.ServiceMeshControlPlane{}
 	log.Info("Posting status update", "conditions", r.Status.Conditions)
@@ -586,6 +588,11 @@ func (r *controlPlaneInstanceReconciler) PostStatus(ctx context.Context) error {
 }
 
 func (r *controlPlaneInstanceReconciler) postReconciliationStatus(ctx context.Context, reconciliationReason v1.ConditionReason, reconciliationMessage string, processingErr error) error {
+	_, err := r.updateReadinessStatus(ctx)
+	if err != nil {
+		return err
+	}
+
 	var reason string
 	if r.isUpdating() {
 		reason = eventReasonUpdating
@@ -603,21 +610,7 @@ func (r *controlPlaneInstanceReconciler) postReconciliationStatus(ctx context.Co
 	}
 	r.Status.SetCondition(reconciledCondition)
 
-	// we should only post status updates if condition status has changed
-	if r.skipStatusUpdate() {
-		return nil
-	}
-
 	return r.PostStatus(ctx)
-}
-
-func (r *controlPlaneInstanceReconciler) skipStatusUpdate() bool {
-	// make sure we're using the same type in reflect.DeepEqual()
-	var currentStatus, existingStatus *v1.ControlPlaneStatus
-	currentStatus = r.Status
-	existingStatus = &r.Instance.Status
-	// only update status if it changed
-	return reflect.DeepEqual(currentStatus, existingStatus)
 }
 
 func (r *controlPlaneInstanceReconciler) initializeReconcileStatus() {

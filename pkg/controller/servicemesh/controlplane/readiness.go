@@ -21,7 +21,7 @@ const statusAnnotationReadyComponentCount = "readyComponentCount"
 func (r *controlPlaneInstanceReconciler) UpdateReadiness(ctx context.Context) error {
 	log := common.LogFromContext(ctx)
 	update, err := r.updateReadinessStatus(ctx)
-	if update && !r.skipStatusUpdate() {
+	if update {
 		statusErr := r.PostStatus(ctx)
 		if statusErr != nil {
 			// original error is more important than the status update error
@@ -93,7 +93,7 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 	if r.Status.Annotations == nil {
 		r.Status.Annotations = map[string]string{}
 	}
-	r.Status.Annotations[statusAnnotationReadyComponentCount] = fmt.Sprintf("%d/%d", len(readyComponents), len(readinessMap))
+	r.Status.Annotations[statusAnnotationReadyComponentCount] = fmt.Sprintf("%d/%d", len(readyComponents), len(r.Status.ComponentStatus))
 
 	return updateStatus, nil
 }
