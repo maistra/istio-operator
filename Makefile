@@ -14,7 +14,7 @@
 
 -include Makefile.overrides
 
-MAISTRA_VERSION        ?= 1.1.2
+MAISTRA_VERSION        ?= 1.1.3
 MAISTRA_BRANCH         ?= maistra-1.1
 REPLACES_PRODUCT_CSV   ?= 1.1.1
 REPLACES_COMMUNITY_CSV ?= 1.1.0
