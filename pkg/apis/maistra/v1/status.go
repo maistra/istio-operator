@@ -25,20 +25,14 @@ type StatusBase struct {
 
 // StatusType represents the status for a control plane, component, or resource
 type StatusType struct {
-	Resource           string      `json:"resource,omitempty"`
-	ObservedGeneration int64       `json:"observedGeneration,omitempty"`
-	ReconciledVersion  string      `json:"reconciledVersion,omitempty"`
-	Conditions         []Condition `json:"conditions,omitempty"`
+
+	// Represents the latest available observations of the object's current state.
+	Conditions []Condition `json:"conditions,omitempty"`
 }
 
 // NewStatus returns a new StatusType object
 func NewStatus() StatusType {
 	return StatusType{Conditions: make([]Condition, 0, 3)}
-}
-
-// NewControlPlaneStatus returns an initialized ControlPlaneStatus object
-func NewControlPlaneStatus() *ControlPlaneStatus {
-	return &ControlPlaneStatus{ComponentStatus: []ComponentStatus{}}
 }
 
 // FindComponentByName returns the status for a specific component
@@ -59,7 +53,13 @@ func NewComponentStatus() *ComponentStatus {
 // ComponentStatus represents the status of an object with children
 type ComponentStatus struct {
 	StatusType `json:",inline"`
-	Resources  []*StatusType `json:"children,omitempty"`
+
+	// The name of the component this status pertains to.
+	Resource string `json:"resource,omitempty"`
+
+	// TODO: can we remove this? it's not used anywhere
+	// The status of each resource that comprises this component.
+	Resources []*StatusType `json:"children,omitempty"`
 }
 
 // ConditionType represents the type of the condition.  Condition stages are:
@@ -132,13 +132,23 @@ const (
 	ConditionReasonDeleted ConditionReason = "Deleted"
 )
 
-// Condition represents a specific condition on a resource
+// A Condition represents a specific observation of the object's state.
 type Condition struct {
-	Type               ConditionType   `json:"type,omitempty"`
-	Status             ConditionStatus `json:"status,omitempty"`
-	Reason             ConditionReason `json:"reason,omitempty"`
-	Message            string          `json:"message,omitempty"`
-	LastTransitionTime metav1.Time     `json:"lastTransitionTime,omitempty"`
+
+	// The type of this condition.
+	Type ConditionType `json:"type,omitempty"`
+
+	// The status of this condition. Can be True, False or Unknown.
+	Status ConditionStatus `json:"status,omitempty"`
+
+	// Unique, single-word, CamelCase reason for the condition's last transition.
+	Reason ConditionReason `json:"reason,omitempty"`
+
+	// Human-readable message indicating details about the last transition.
+	Message string `json:"message,omitempty"`
+
+	// Last time the condition transitioned from one status to another.
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
 // CurrentReconciledVersion returns a ReconciledVersion for this release of the operator
@@ -149,17 +159,6 @@ func CurrentReconciledVersion(generation int64) string {
 // ComposeReconciledVersion returns a string for use in ReconciledVersion fields
 func ComposeReconciledVersion(operatorVersion string, generation int64) string {
 	return fmt.Sprintf("%s-%d", operatorVersion, generation)
-}
-
-// GetReconciledVersion returns the reconciled version, or a default for older resources
-func (s *StatusType) GetReconciledVersion() string {
-	if s == nil {
-		return ComposeReconciledVersion("0.0.0", 0)
-	}
-	if s.ReconciledVersion == "" {
-		return ComposeReconciledVersion("1.0.0", s.ObservedGeneration)
-	}
-	return s.ReconciledVersion
 }
 
 // GetCondition removes a condition for the list of conditions
@@ -241,26 +240,4 @@ func (key ResourceKey) ToUnstructured() *unstructured.Unstructured {
 	retval.SetAPIVersion(gvk[0])
 	retval.SetKind(gvk[1])
 	return retval
-}
-
-// FindResourcesOfKind returns all the specified kind.  Note, this does not account for group or version.
-func (s *ComponentStatus) FindResourcesOfKind(kind string) []*StatusType {
-	resources := []*StatusType{}
-	suffix := ",Kind=" + kind
-	for _, status := range s.Resources {
-		if strings.HasSuffix(status.Resource, suffix) {
-			resources = append(resources, status)
-		}
-	}
-	return resources
-}
-
-// FindResourceByKey returns the status for a specific child resource
-func (s *ComponentStatus) FindResourceByKey(key ResourceKey) *StatusType {
-	for _, status := range s.Resources {
-		if status.Resource == string(key) {
-			return status
-		}
-	}
-	return nil
 }

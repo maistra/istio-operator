@@ -3,9 +3,7 @@ package versions
 import (
 	"context"
 	"fmt"
-	"strings"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -57,7 +55,7 @@ func (v *versionStrategyV1_0) Validate(ctx context.Context, cl client.Client, sm
 
 	// kiali.jaegerInClusterURL is only supported in v1.1
 	if err := errForEnabledValue(smcp.Spec.Istio, "kiali.enabled", true); err != nil {
-		if jaegerInClusterURL, ok, _ := unstructured.NestedString(smcp.Spec.Istio, strings.Split("kiali.jaegerInClusterURL", ".")...); ok && len(jaegerInClusterURL) > 0 {
+		if jaegerInClusterURL, ok, _ := smcp.Spec.Istio.GetString("kiali.jaegerInClusterURL"); ok && len(jaegerInClusterURL) > 0 {
 			allErrors = append(allErrors, fmt.Errorf("kiali.jaegerInClusterURL is not supported on v1.0 control planes"))
 		}
 	}

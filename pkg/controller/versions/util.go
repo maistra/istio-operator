@@ -5,11 +5,11 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 )
 
-func errForEnabledValue(obj map[string]interface{}, path string, disallowed bool) error {
-	val, ok, _ := unstructured.NestedFieldNoCopy(obj, strings.Split(path, ".")...)
+func errForEnabledValue(obj *v1.HelmValues, path string, disallowed bool) error {
+	val, ok, _ := obj.GetFieldNoCopy(path)
 	if ok {
 		switch typedVal := val.(type) {
 		case string:
