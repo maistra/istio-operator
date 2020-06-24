@@ -39,7 +39,7 @@ func (r *controlPlaneInstanceReconciler) UpdateReadiness(ctx context.Context) er
 func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Context) (bool, error) {
 	log := common.LogFromContext(ctx)
 	log.Info("Updating ServiceMeshControlPlane readiness state")
-	readinessMap, err := r.calculateComponentReadiness(ctx)
+	readyComponents, unreadyComponents, err := r.calculateComponentReadiness(ctx)
 	if err != nil {
 		condition := v1.Condition{
 			Type:    v1.ConditionTypeReady,
@@ -52,16 +52,6 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 		return true, err
 	}
 
-	readyComponents := sets.NewString()
-	unreadyComponents := sets.NewString()
-	for component, ready := range readinessMap {
-		if ready {
-			readyComponents.Insert(component)
-		} else {
-			log.Info(fmt.Sprintf("%s resources are not fully available", component))
-			unreadyComponents.Insert(component)
-		}
-	}
 	readyCondition := r.Status.GetCondition(v1.ConditionTypeReady)
 	updateStatus := false
 	if len(unreadyComponents) > 0 {
@@ -93,7 +83,7 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 	if r.Status.Annotations == nil {
 		r.Status.Annotations = map[string]string{}
 	}
-	r.Status.Annotations[statusAnnotationReadyComponentCount] = fmt.Sprintf("%d/%d", len(readyComponents), len(r.Status.ComponentStatus))
+	r.Status.Annotations[statusAnnotationReadyComponentCount] = fmt.Sprintf("%d/%d", len(readyComponents), len(readyComponents)+len(unreadyComponents))
 
 	return updateStatus, nil
 }
@@ -107,7 +97,26 @@ func (r *controlPlaneInstanceReconciler) hasReadiness(kind string) bool {
 	return kindsWithReadiness.Has(kind)
 }
 
-func (r *controlPlaneInstanceReconciler) calculateComponentReadiness(ctx context.Context) (map[string]bool, error) {
+func (r *controlPlaneInstanceReconciler) calculateComponentReadiness(ctx context.Context) (readyComponents, unreadyComponents sets.String, err error) {
+	readyComponents = sets.NewString()
+	unreadyComponents = sets.NewString()
+
+	var readinessMap map[string]bool
+	readinessMap, err = r.calculateComponentReadinessMap(ctx)
+	if err != nil {
+		return
+	}
+	for component, ready := range readinessMap {
+		if ready {
+			readyComponents.Insert(component)
+		} else {
+			unreadyComponents.Insert(component)
+		}
+	}
+	return
+}
+
+func (r *controlPlaneInstanceReconciler) calculateComponentReadinessMap(ctx context.Context) (map[string]bool, error) {
 	readinessMap := map[string]bool{}
 	typesToCheck := []struct {
 		list  runtime.Object
