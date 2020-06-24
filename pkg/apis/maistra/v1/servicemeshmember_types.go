@@ -5,6 +5,8 @@ import (
 
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -81,7 +83,7 @@ func (s ServiceMeshControlPlaneRef) String() string {
 
 // ServiceMeshMemberStatus represents the current state of a ServiceMeshMember.
 type ServiceMeshMemberStatus struct {
-	StatusBase `json:",inline"`
+	status.StatusBase `json:",inline"`
 
 	// The generation observed by the controller during the most recent
 	// reconciliation. The information in the status pertains to this particular
@@ -95,7 +97,7 @@ type ServiceMeshMemberStatus struct {
 
 // ServiceMeshMemberConditionType represents the type of the condition.  Condition types are:
 // Reconciled, NamespaceConfigured
-type ServiceMeshMemberConditionType string
+type ServiceMeshMemberConditionType status.ConditionType
 
 const (
 	// ConditionTypeReconciled signifies whether or not the controller has

@@ -9,6 +9,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/hacks"
@@ -17,18 +18,18 @@ import (
 func (r *controlPlaneInstanceReconciler) Delete(ctx context.Context) error {
 	log := common.LogFromContext(ctx)
 
-	reconciledCondition := r.Status.GetCondition(maistrav1.ConditionTypeReconciled)
-	if reconciledCondition.Status != maistrav1.ConditionStatusFalse || reconciledCondition.Reason != maistrav1.ConditionReasonDeleting {
-		r.Status.SetCondition(maistrav1.Condition{
-			Type:    maistrav1.ConditionTypeReconciled,
-			Status:  maistrav1.ConditionStatusFalse,
-			Reason:  maistrav1.ConditionReasonDeleting,
+	reconciledCondition := r.Status.GetCondition(status.ConditionTypeReconciled)
+	if reconciledCondition.Status != status.ConditionStatusFalse || reconciledCondition.Reason != status.ConditionReasonDeleting {
+		r.Status.SetCondition(status.Condition{
+			Type:    status.ConditionTypeReconciled,
+			Status:  status.ConditionStatusFalse,
+			Reason:  status.ConditionReasonDeleting,
 			Message: "Deleting service mesh",
 		})
-		r.Status.SetCondition(maistrav1.Condition{
-			Type:    maistrav1.ConditionTypeReady,
-			Status:  maistrav1.ConditionStatusFalse,
-			Reason:  maistrav1.ConditionReasonDeleting,
+		r.Status.SetCondition(status.Condition{
+			Type:    status.ConditionTypeReady,
+			Status:  status.ConditionStatusFalse,
+			Reason:  status.ConditionReasonDeleting,
 			Message: "Deleting service mesh",
 		})
 
@@ -48,17 +49,17 @@ func (r *controlPlaneInstanceReconciler) Delete(ctx context.Context) error {
 
 	if err == nil {
 		// set reconcile status to true to ensure reconciler is deleted from the cache
-		r.Status.SetCondition(maistrav1.Condition{
-			Type:    maistrav1.ConditionTypeReconciled,
-			Status:  maistrav1.ConditionStatusTrue,
-			Reason:  maistrav1.ConditionReasonDeleted,
+		r.Status.SetCondition(status.Condition{
+			Type:    status.ConditionTypeReconciled,
+			Status:  status.ConditionStatusTrue,
+			Reason:  status.ConditionReasonDeleted,
 			Message: "Service mesh deleted",
 		})
 	} else {
-		r.Status.SetCondition(maistrav1.Condition{
-			Type:    maistrav1.ConditionTypeReconciled,
-			Status:  maistrav1.ConditionStatusFalse,
-			Reason:  maistrav1.ConditionReasonDeletionError,
+		r.Status.SetCondition(status.Condition{
+			Type:    status.ConditionTypeReconciled,
+			Status:  status.ConditionStatusFalse,
+			Reason:  status.ConditionReasonDeletionError,
 			Message: fmt.Sprintf("Error deleting service mesh: %s", err),
 		})
 		statusErr := r.PostStatus(ctx)

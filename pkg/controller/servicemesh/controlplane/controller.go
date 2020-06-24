@@ -23,6 +23,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
@@ -229,8 +230,8 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 }
 
 func isFullyReconciled(instance *v1.ServiceMeshControlPlane) bool {
-	return v1.CurrentReconciledVersion(instance.GetGeneration()) == instance.Status.GetReconciledVersion() &&
-		instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue
+	return status.CurrentReconciledVersion(instance.GetGeneration()) == instance.Status.GetReconciledVersion() &&
+		instance.Status.GetCondition(status.ConditionTypeReconciled).Status == status.ConditionStatusTrue
 }
 
 func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) (types.NamespacedName, ControlPlaneInstanceReconciler) {

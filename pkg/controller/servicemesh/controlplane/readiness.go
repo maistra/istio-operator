@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -41,10 +41,10 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 	log.Info("Updating ServiceMeshControlPlane readiness state")
 	readyComponents, unreadyComponents, err := r.calculateComponentReadiness(ctx)
 	if err != nil {
-		condition := v1.Condition{
-			Type:    v1.ConditionTypeReady,
-			Status:  v1.ConditionStatusUnknown,
-			Reason:  v1.ConditionReasonProbeError,
+		condition := status.Condition{
+			Type:    status.ConditionTypeReady,
+			Status:  status.ConditionStatusUnknown,
+			Reason:  status.ConditionReasonProbeError,
 			Message: fmt.Sprintf("Error collecting ready state: %s", err),
 		}
 		r.Status.SetCondition(condition)
@@ -52,14 +52,14 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 		return true, err
 	}
 
-	readyCondition := r.Status.GetCondition(v1.ConditionTypeReady)
+	readyCondition := r.Status.GetCondition(status.ConditionTypeReady)
 	updateStatus := false
 	if len(unreadyComponents) > 0 {
-		if readyCondition.Status != v1.ConditionStatusFalse {
-			condition := v1.Condition{
-				Type:    v1.ConditionTypeReady,
-				Status:  v1.ConditionStatusFalse,
-				Reason:  v1.ConditionReasonComponentsNotReady,
+		if readyCondition.Status != status.ConditionStatusFalse {
+			condition := status.Condition{
+				Type:    status.ConditionTypeReady,
+				Status:  status.ConditionStatusFalse,
+				Reason:  status.ConditionReasonComponentsNotReady,
 				Message: "Some components are not fully available",
 			}
 			r.Status.SetCondition(condition)
@@ -67,11 +67,11 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 			updateStatus = true
 		}
 	} else {
-		if readyCondition.Status != v1.ConditionStatusTrue {
-			condition := v1.Condition{
-				Type:    v1.ConditionTypeReady,
-				Status:  v1.ConditionStatusTrue,
-				Reason:  v1.ConditionReasonComponentsReady,
+		if readyCondition.Status != status.ConditionStatusTrue {
+			condition := status.Condition{
+				Type:    status.ConditionTypeReady,
+				Status:  status.ConditionStatusTrue,
+				Reason:  status.ConditionReasonComponentsReady,
 				Message: "All component deployments are Available",
 			}
 			r.Status.SetCondition(condition)

@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	"github.com/maistra/istio-operator/pkg/controller/common"
-
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -16,11 +15,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *controlPlaneInstanceReconciler) processNewComponent(name string, status *v1.ComponentStatus) error {
+func (r *controlPlaneInstanceReconciler) processNewComponent(name string, status *status.ComponentStatus) error {
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) processDeletedComponent(name string, status *v1.ComponentStatus) error {
+func (r *controlPlaneInstanceReconciler) processDeletedComponent(name string, status *status.ComponentStatus) error {
 	// nop
 	return nil
 }

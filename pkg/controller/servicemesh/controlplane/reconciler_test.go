@@ -22,6 +22,7 @@ import (
 
 	"k8s.io/client-go/kubernetes/scheme"
 
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
@@ -116,9 +117,9 @@ func TestInstallationErrorDoesNotUpdateLastTransitionTimeWhenNoStateTransitionOc
 	controlPlane := newControlPlane()
 	controlPlane.Spec.Istio = &maistrav1.HelmValues{}
 	controlPlane.Spec.Template = "maistra"
-	controlPlane.Status.SetCondition(maistrav1.Condition{
-		Type:               maistrav1.ConditionTypeReconciled,
-		Status:             maistrav1.ConditionStatusFalse,
+	controlPlane.Status.SetCondition(status.Condition{
+		Type:               status.ConditionTypeReconciled,
+		Status:             status.ConditionStatusFalse,
 		Reason:             "",
 		Message:            "",
 		LastTransitionTime: oneMinuteAgo,
@@ -245,20 +246,20 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 			citadelDeployment := assertDeploymentExists(cl, "istio-citadel", t)
 
 			// check if reconciledCondition indicates installation is paused and both galley and security are mentioned
-			assertReconciledConditionMatches(cl, smcp, maistrav1.ConditionReasonPausingInstall, "[galley security]", t)
+			assertReconciledConditionMatches(cl, smcp, status.ConditionReasonPausingInstall, "[galley security]", t)
 
 			markDeploymentAvailable(cl, galleyDeployment)
 
 			// run reconcile again to see if the Reconciled condition is updated
 			assertInstanceReconcilerSucceeds(r, t)
-			assertReconciledConditionMatches(cl, smcp, maistrav1.ConditionReasonPausingInstall, "[security]", t)
+			assertReconciledConditionMatches(cl, smcp, status.ConditionReasonPausingInstall, "[security]", t)
 
 			markDeploymentAvailable(cl, citadelDeployment)
 
 			// run reconcile again to see if the Reconciled condition is updated
 			assertInstanceReconcilerSucceeds(r, t)
 			assertDeploymentExists(cl, "prometheus", t)
-			assertReconciledConditionMatches(cl, smcp, maistrav1.ConditionReasonPausingInstall, "[prometheus]", t)
+			assertReconciledConditionMatches(cl, smcp, status.ConditionReasonPausingInstall, "[prometheus]", t)
 		})
 	}
 }
@@ -305,10 +306,10 @@ func assertInstanceReconcilerSucceeds(r ControlPlaneInstanceReconciler, t *testi
 	assert.Success(err, "Reconcile", t)
 }
 
-func assertReconciledConditionMatches(cl client.Client, smcp *maistrav1.ServiceMeshControlPlane, reason maistrav1.ConditionReason, messageSubstring string, t *testing.T) {
+func assertReconciledConditionMatches(cl client.Client, smcp *maistrav1.ServiceMeshControlPlane, reason status.ConditionReason, messageSubstring string, t *testing.T) {
 	t.Helper()
 	test.PanicOnError(cl.Get(ctx, common.ToNamespacedName(smcp.ObjectMeta), smcp))
-	reconciledCondition := smcp.Status.GetCondition(maistrav1.ConditionTypeReconciled)
+	reconciledCondition := smcp.Status.GetCondition(status.ConditionTypeReconciled)
 	assert.Equals(reconciledCondition.Reason, reason, "Unexpected reconciledCondition.Reason", t)
 	assert.True(
 		strings.Contains(reconciledCondition.Message, messageSubstring),

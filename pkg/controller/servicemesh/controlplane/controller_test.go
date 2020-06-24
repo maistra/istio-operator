@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
@@ -94,10 +95,10 @@ func TestReconcileInvokedWhenInstanceNotFullyReconciled(t *testing.T) {
 
 func TestUpdateReadinessInvokedWhenInstanceFullyReconciled(t *testing.T) {
 	controlPlane := newControlPlane()
-	controlPlane.Status.ReconciledVersion = maistrav1.CurrentReconciledVersion(controlPlane.Generation)
-	controlPlane.Status.Conditions = append(controlPlane.Status.Conditions, maistrav1.Condition{
-		Type:               maistrav1.ConditionTypeReconciled,
-		Status:             maistrav1.ConditionStatusTrue,
+	controlPlane.Status.ReconciledVersion = status.CurrentReconciledVersion(controlPlane.Generation)
+	controlPlane.Status.Conditions = append(controlPlane.Status.Conditions, status.Condition{
+		Type:               status.ConditionTypeReconciled,
+		Status:             status.ConditionStatusTrue,
 		Reason:             "",
 		Message:            "",
 		LastTransitionTime: oneMinuteAgo,

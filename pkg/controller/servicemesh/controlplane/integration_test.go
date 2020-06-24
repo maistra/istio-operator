@@ -19,6 +19,7 @@ import (
 	clienttesting "k8s.io/client-go/testing"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -142,29 +143,29 @@ func initalStatusTest(action clienttesting.Action) error {
 			actual.Conditions[index].LastTransitionTime = metav1.Time{}
 		}
 		expected := &maistrav1.ControlPlaneStatus{
-			StatusBase: maistrav1.StatusBase{
+			StatusBase: status.StatusBase{
 				Annotations: map[string]string(nil),
 			},
-			StatusType: maistrav1.StatusType{
-				Conditions: []maistrav1.Condition{
+			StatusType: status.StatusType{
+				Conditions: []status.Condition{
 					{
-						Type:               maistrav1.ConditionTypeInstalled,
-						Status:             maistrav1.ConditionStatusFalse,
-						Reason:             maistrav1.ConditionReasonResourceCreated,
+						Type:               status.ConditionTypeInstalled,
+						Status:             status.ConditionStatusFalse,
+						Reason:             status.ConditionReasonResourceCreated,
 						Message:            "Installing mesh generation 1",
 						LastTransitionTime: metav1.Time{},
 					},
 					{
-						Type:               maistrav1.ConditionTypeReconciled,
-						Status:             maistrav1.ConditionStatusFalse,
-						Reason:             maistrav1.ConditionReasonResourceCreated,
+						Type:               status.ConditionTypeReconciled,
+						Status:             status.ConditionStatusFalse,
+						Reason:             status.ConditionReasonResourceCreated,
 						Message:            "Installing mesh generation 1",
 						LastTransitionTime: metav1.Time{},
 					},
 					{
-						Type:               maistrav1.ConditionTypeReady,
-						Status:             maistrav1.ConditionStatusFalse,
-						Reason:             maistrav1.ConditionReasonResourceCreated,
+						Type:               status.ConditionTypeReady,
+						Status:             status.ConditionStatusFalse,
+						Reason:             status.ConditionReasonResourceCreated,
 						Message:            "Installing mesh generation 1",
 						LastTransitionTime: metav1.Time{},
 					},

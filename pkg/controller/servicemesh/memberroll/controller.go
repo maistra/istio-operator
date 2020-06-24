@@ -25,6 +25,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
@@ -286,7 +287,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		// a new reconcile request will be issued when the control plane resource is updated
 		err = r.updateStatus(ctx, instance)
 		return reconcile.Result{}, err
-	} else if meshReconcileStatus := mesh.Status.GetCondition(v1.ConditionTypeReconciled); meshReconcileStatus.Status != v1.ConditionStatusTrue {
+	} else if meshReconcileStatus := mesh.Status.GetCondition(status.ConditionTypeReconciled); meshReconcileStatus.Status != status.ConditionStatusTrue {
 		reqLogger.Info("skipping reconciliation because mesh is not in a known good state")
 		instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
 			Type:    v1.ConditionTypeMemberRollReady,

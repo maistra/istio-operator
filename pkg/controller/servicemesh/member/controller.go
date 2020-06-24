@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 
@@ -32,8 +33,8 @@ import (
 const (
 	controllerName = "servicemeshmember-controller"
 
-	eventReasonFailedReconcile     maistra.ConditionReason = "FailedReconcile"
-	eventReasonSuccessfulReconcile maistra.ConditionReason = "Reconciled"
+	eventReasonFailedReconcile     status.ConditionReason = "FailedReconcile"
+	eventReasonSuccessfulReconcile status.ConditionReason = "Reconciled"
 
 	statusAnnotationControlPlaneRef = "controlPlaneRef"
 )
@@ -346,7 +347,7 @@ func (r *MemberReconciler) updateStatus(ctx context.Context, member *maistra.Ser
 	return nil
 }
 
-func (r *MemberReconciler) recordEvent(member *maistra.ServiceMeshMember, eventType string, reason maistra.ConditionReason, message string) {
+func (r *MemberReconciler) recordEvent(member *maistra.ServiceMeshMember, eventType string, reason status.ConditionReason, message string) {
 	r.EventRecorder.Event(member, eventType, string(reason), message)
 }
 

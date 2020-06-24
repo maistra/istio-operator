@@ -1,59 +1,60 @@
 package controlplane
 
 import (
-	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 )
 
-func updateControlPlaneConditions(status *v1.ControlPlaneStatus, err error) {
-	updateConditions(&status.StatusType, err, "Successfully installed all mesh components")
+func updateControlPlaneConditions(s *v1.ControlPlaneStatus, err error) {
+	updateConditions(&s.StatusType, err, "Successfully installed all mesh components")
 }
 
-func updateComponentConditions(status *v1.ComponentStatus, err error) {
-	updateConditions(&status.StatusType, err, "Component installed successfully")
+func updateComponentConditions(s *status.ComponentStatus, err error) {
+	updateConditions(&s.StatusType, err, "Component installed successfully")
 }
 
-func updateConditions(status *v1.StatusType, err error, successfulInstallMessage string) {
-	installStatus := status.GetCondition(v1.ConditionTypeInstalled).Status // TODO: controller should never read the status to decide what to do
+func updateConditions(s *status.StatusType, err error, successfulInstallMessage string) {
+	installStatus := s.GetCondition(status.ConditionTypeInstalled).Status // TODO: controller should never read the status to decide what to do
 	if err == nil {
-		if installStatus != v1.ConditionStatusTrue {
-			status.SetCondition(v1.Condition{
-				Type:    v1.ConditionTypeInstalled,
-				Reason:  v1.ConditionReasonInstallSuccessful,
+		if installStatus != status.ConditionStatusTrue {
+			s.SetCondition(status.Condition{
+				Type:    status.ConditionTypeInstalled,
+				Reason:  status.ConditionReasonInstallSuccessful,
 				Message: successfulInstallMessage,
-				Status:  v1.ConditionStatusTrue,
+				Status:  status.ConditionStatusTrue,
 			})
-			status.SetCondition(v1.Condition{
-				Type:    v1.ConditionTypeReconciled,
-				Reason:  v1.ConditionReasonInstallSuccessful,
+			s.SetCondition(status.Condition{
+				Type:    status.ConditionTypeReconciled,
+				Reason:  status.ConditionReasonInstallSuccessful,
 				Message: successfulInstallMessage,
-				Status:  v1.ConditionStatusTrue,
+				Status:  status.ConditionStatusTrue,
 			})
 		} else {
-			status.SetCondition(v1.Condition{
-				Type:    v1.ConditionTypeReconciled,
-				Reason:  v1.ConditionReasonReconcileSuccessful,
+			s.SetCondition(status.Condition{
+				Type:    status.ConditionTypeReconciled,
+				Reason:  status.ConditionReasonReconcileSuccessful,
 				Message: "Successfully reconciled",
-				Status:  v1.ConditionStatusTrue,
+				Status:  status.ConditionStatusTrue,
 			})
 		}
-	} else if installStatus == v1.ConditionStatusUnknown {
-		status.SetCondition(v1.Condition{
-			Type:    v1.ConditionTypeInstalled,
-			Reason:  v1.ConditionReasonInstallError,
-			Status:  v1.ConditionStatusFalse,
+	} else if installStatus == status.ConditionStatusUnknown {
+		s.SetCondition(status.Condition{
+			Type:    status.ConditionTypeInstalled,
+			Reason:  status.ConditionReasonInstallError,
+			Status:  status.ConditionStatusFalse,
 			Message: err.Error(),
 		})
-		status.SetCondition(v1.Condition{
-			Type:    v1.ConditionTypeReconciled,
-			Reason:  v1.ConditionReasonInstallError,
-			Status:  v1.ConditionStatusFalse,
+		s.SetCondition(status.Condition{
+			Type:    status.ConditionTypeReconciled,
+			Reason:  status.ConditionReasonInstallError,
+			Status:  status.ConditionStatusFalse,
 			Message: err.Error(),
 		})
 	} else {
-		status.SetCondition(v1.Condition{
-			Type:    v1.ConditionTypeReconciled,
-			Reason:  v1.ConditionReasonReconcileError,
-			Status:  v1.ConditionStatusFalse,
+		s.SetCondition(status.Condition{
+			Type:    status.ConditionTypeReconciled,
+			Reason:  status.ConditionReasonReconcileError,
+			Status:  status.ConditionStatusFalse,
 			Message: err.Error(),
 		})
 	}

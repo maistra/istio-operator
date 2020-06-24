@@ -1,4 +1,4 @@
-package v1
+package status
 
 import (
 	"fmt"
@@ -35,8 +35,12 @@ func NewStatus() StatusType {
 	return StatusType{Conditions: make([]Condition, 0, 3)}
 }
 
+type ComponentStatusList struct {
+	ComponentStatus []ComponentStatus `json:"components"`
+}
+
 // FindComponentByName returns the status for a specific component
-func (s *ControlPlaneStatus) FindComponentByName(name string) *ComponentStatus {
+func (s *ComponentStatusList) FindComponentByName(name string) *ComponentStatus {
 	for i, status := range s.ComponentStatus {
 		if status.Resource == name {
 			return &s.ComponentStatus[i]

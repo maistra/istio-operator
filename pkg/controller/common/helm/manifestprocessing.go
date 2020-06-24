@@ -15,7 +15,7 @@ import (
 	kubectl "k8s.io/kubectl/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
@@ -78,7 +78,7 @@ func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Ma
 			continue
 		}
 
-		childCtx := common.NewContextWithLog(ctx, log.WithValues("Resource", v1.NewResourceKey(obj, obj)))
+		childCtx := common.NewContextWithLog(ctx, log.WithValues("Resource", status.NewResourceKey(obj, obj)))
 		err = p.processObject(childCtx, obj, component)
 		if err != nil {
 			allErrors = append(allErrors, err)
@@ -98,7 +98,7 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 			return err
 		}
 		for _, item := range list.Items {
-			childCtx := common.NewContextWithLog(ctx, log.WithValues("Resource", v1.NewResourceKey(obj, obj)))
+			childCtx := common.NewContextWithLog(ctx, log.WithValues("Resource", status.NewResourceKey(obj, obj)))
 			err = p.processObject(childCtx, &item, component)
 			if err != nil {
 				allErrors = append(allErrors, err)
@@ -122,7 +122,7 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 		log.Error(err, "error adding apply annotation to object")
 	}
 
-	receiver := v1.NewResourceKey(obj, obj).ToUnstructured()
+	receiver := status.NewResourceKey(obj, obj).ToUnstructured()
 	objectKey, err := client.ObjectKeyFromObject(receiver)
 	if err != nil {
 		log.Error(err, "client.ObjectKeyFromObject() failed for resource")
