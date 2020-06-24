@@ -47,9 +47,10 @@ var _ ControlPlaneInstanceReconciler = &controlPlaneInstanceReconciler{}
 // these components have to be installed in the specified order
 var orderedCharts = [][]string{
 	{"istio"}, // core istio resources
-	{"istio/charts/security", "istio/charts/galley"}, // both are deployed at the same time because each is a dependency of the other
+	{"istio/charts/security"},
 	{"istio/charts/prometheus"},
 	{"istio/charts/tracing"},
+	{"istio/charts/galley"},
 	{"istio/charts/mixer", "istio/charts/pilot", "istio/charts/gateways", "istio/charts/sidecarInjectorWebhook"},
 	{"istio/charts/grafana"},
 	{"istio/charts/kiali"},

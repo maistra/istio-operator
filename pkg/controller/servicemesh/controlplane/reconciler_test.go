@@ -203,6 +203,16 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+
+			originalOrderedCharts := orderedCharts
+			defer func() { orderedCharts = originalOrderedCharts }()
+
+			orderedCharts = [][]string{
+				{"istio"},
+				{"istio/charts/security", "istio/charts/galley"}, // both are to be deployed at the same time
+				{"istio/charts/prometheus"},
+			}
+
 			smcp := newControlPlane()
 			smcp.Spec.Istio = maistrav1.HelmValuesType{}
 			smcp.Spec.Template = "maistra"
