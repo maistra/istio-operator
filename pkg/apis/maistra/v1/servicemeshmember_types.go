@@ -14,15 +14,38 @@ func init() {
 	SchemeBuilder.Register(&ServiceMeshMember{}, &ServiceMeshMemberList{})
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// ServiceMeshMember is the Schema for the servicemeshmembers API
+// A ServiceMeshMember object marks the namespace in which it lives as a member
+// of the Service Mesh Control Plane referenced in the object.
+// The ServiceMeshMember object should be created in each application namespace
+// that must be part of the service mesh and must be named "default".
+//
+// When the ServiceMeshMember object is created, it causes the namespace to be
+// added to the ServiceMeshMemberRoll within the namespace of the
+// ServiceMeshControlPlane object the ServiceMeshMember references.
+//
+// To reference a ServiceMeshControlPlane, the user creating the ServiceMeshMember
+// object must have the "use" permission on the referenced ServiceMeshControlPlane
+// object. This permission is given via the mesh-users RoleBinding (and mesh-user
+// Role) in the namespace of the referenced ServiceMeshControlPlane object.
 // +k8s:openapi-gen=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:storageversion
+// +kubebuilder:resource:shortName=smm
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Control Plane",type="string",JSONPath=".status.annotations.controlPlaneRef",description="The ServiceMeshControlPlane this namespace belongs to"
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status",description="Whether or not namespace is configured as a member of the mesh."
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="The age of the object"
 type ServiceMeshMember struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ServiceMeshMemberSpec   `json:"spec,omitempty"`
+	// The desired state of this ServiceMeshMember.
+	// +kubebuilder:validation:Required
+	Spec ServiceMeshMemberSpec `json:"spec"`
+
+	// The current status of this ServiceMeshMember. This data may be out of
+	// date by some window of time.
+	// +optional
 	Status ServiceMeshMemberStatus `json:"status,omitempty"`
 }
 
@@ -35,14 +58,20 @@ type ServiceMeshMemberList struct {
 	Items           []ServiceMeshMember `json:"items"`
 }
 
-// ServiceMeshMemberSpec defines the members of the mesh
+// ServiceMeshMemberSpec defines the member of the mesh
 type ServiceMeshMemberSpec struct {
+
+	// A reference to the ServiceMeshControlPlane object.
 	ControlPlaneRef ServiceMeshControlPlaneRef `json:"controlPlaneRef"`
 }
 
 // ServiceMeshControlPlaneRef is a reference to a ServiceMeshControlPlane object
 type ServiceMeshControlPlaneRef struct {
-	Name      string `json:"name"`
+
+	// The name of the referenced ServiceMeshControlPlane object.
+	Name string `json:"name"`
+
+	// The namespace of the referenced ServiceMeshControlPlane object.
 	Namespace string `json:"namespace"`
 }
 
@@ -50,19 +79,23 @@ func (s ServiceMeshControlPlaneRef) String() string {
 	return fmt.Sprintf("%s%c%s", s.Namespace, '/', s.Name)
 }
 
-// ServiceMeshMemberStatus contains information on whether the Member has been reconciled or not
+// ServiceMeshMemberStatus represents the current state of a ServiceMeshMember.
 type ServiceMeshMemberStatus struct {
 	StatusBase `json:",inline"`
-	// ObservedGeneration is the most recent generation observed by the controller.
+
+	// The generation observed by the controller during the most recent
+	// reconciliation. The information in the status pertains to this particular
+	// generation of the object.
 	ObservedGeneration int64 `json:"observedGeneration"`
 
-	// Represents the latest available observations of a ServiceMeshMember's current state.
+	// Represents the latest available observations of a ServiceMeshMember's
+	// current state.
 	Conditions []ServiceMeshMemberCondition `json:"conditions"`
 }
 
 // ServiceMeshMemberConditionType represents the type of the condition.  Condition types are:
 // Reconciled, NamespaceConfigured
-type ServiceMeshMemberConditionType ConditionType
+type ServiceMeshMemberConditionType string
 
 const (
 	// ConditionTypeReconciled signifies whether or not the controller has

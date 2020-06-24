@@ -1,4 +1,4 @@
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: servicemeshcontrolplanes.maistra.io
@@ -8,53 +8,275 @@ spec:
     kind: ServiceMeshControlPlane
     listKind: ServiceMeshControlPlaneList
     plural: servicemeshcontrolplanes
-    singular: servicemeshcontrolplane
     shortNames:
     - smcp
+    singular: servicemeshcontrolplane
   scope: Namespaced
-  subresources:
-    status: {}
-  version: v1
-  additionalPrinterColumns:
-  - name: Ready
-    description: How many of the total number of member namespaces are configured
-    type: string
-    JSONPath: .status.annotations.readyComponentCount
-  - name: Status
-    description: Whether or not the control plane installation is up to date and ready
-      to handle requests.
-    type: string
-    JSONPath: .status.conditions[?(@.type=="Reconciled")].reason
-  - name: Template
-    description: The configuration template to use as the base.
-    type: string
-    JSONPath: .status.lastAppliedConfiguration.template
-  - name: Version
-    description: The actual current version of the control plane installation.
-    type: string
-    JSONPath: .status.lastAppliedConfiguration.version
-  - name: Age
-    description: The age of the object
-    type: date
-    JSONPath: .metadata.creationTimestamp
-  - name: Image hub
-    description: The image hub used as the base for all component images.
-    type: string
-    priority: 1
-    JSONPath: .status.lastAppliedConfiguration.istio.global.hub
-  - name: Tag
-    description: The image tag used for all component images.
-    type: string
-    priority: 1
-    JSONPath: .status.lastAppliedConfiguration.istio.global.tag
-  - name: Readiness status message
-    description: A human-readable description of the control plane component readiness.
-    type: string
-    priority: 1
-    JSONPath: .status.conditions[?(@.type=="Ready")].message
-  - name: Reconciliation Status message
-    description: The status of the reconciliation process, if the control plane is
-      not up to date with the latest version this resource.
-    type: string
-    priority: 1
-    JSONPath: .status.conditions[?(@.type=="Reconciled")].message
+  versions:
+  - additionalPrinterColumns:
+    - description: How many of the total number of components are ready
+      jsonPath: .status.annotations.readyComponentCount
+      name: Ready
+      type: string
+    - description: Whether or not the control plane installation is up to date and
+        ready to handle requests.
+      jsonPath: .status.conditions[?(@.type=="Ready")].reason
+      name: Status
+      type: string
+    - description: The configuration template to use as the base.
+      jsonPath: .status.lastAppliedConfiguration.template
+      name: Template
+      type: string
+    - description: The actual current version of the control plane installation.
+      jsonPath: .status.lastAppliedConfiguration.version
+      name: Version
+      type: string
+    - description: The age of the object
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - description: The image hub used as the base for all component images.
+      jsonPath: .status.lastAppliedConfiguration.istio.global.hub
+      name: Image HUB
+      priority: 1
+      type: string
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: ServiceMeshControlPlane represents a deployment of the service
+          mesh control plane. The control plane components are deployed in the namespace
+          in which the ServiceMeshControlPlane resides. The configuration options
+          for the components that comprise the control plane are specified in this
+          object.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: The specification of the desired state of this ServiceMeshControlPlane.
+              This includes the configuration options for all components that comprise
+              the control plane.
+            properties:
+              istio:
+                description: 'Specifies the Istio configuration options that are passed
+                  to Helm when the Istio charts are rendered. These options are usually
+                  populated from the template specified in the spec.template field,
+                  but individual values can be overridden here. More info: https://maistra.io/docs/installation/installation-options/'
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              networkType:
+                description: 'DEPRECATED: No longer used anywhere. Previously used
+                  to specify the NetworkType of the cluster. Defaults to "subnet".'
+                type: string
+              template:
+                description: Template selects the template to use for default values.
+                  Defaults to "default" when not set.
+                type: string
+              threeScale:
+                description: 'Specifies the 3Scale configuration options that are
+                  passed to Helm when the 3Scale charts are rendered. These values
+                  are usually populated from the template specified in the spec.template
+                  field, but individual values can be overridden here. More info:
+                  https://maistra.io/docs/installation/installation-options/#_3scale'
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              version:
+                description: Version specifies what Maistra version of the control
+                  plane to install. When creating a new ServiceMeshControlPlane with
+                  an empty version, the admission webhook sets the version to the
+                  latest version supported by the operator. Existing ServiceMeshControlPlanes
+                  with an empty version are treated as having the version set to "v1.0"
+                type: string
+            type: object
+          status:
+            description: The current status of this ServiceMeshControlPlane and the
+              components that comprise the control plane. This data may be out of
+              date by some window of time.
+            properties:
+              annotations:
+                additionalProperties:
+                  type: string
+                description: Annotations is an unstructured key value map used to
+                  store additional, usually redundant status information, such as
+                  the number of components deployed by the ServiceMeshControlPlane
+                  (number is redundant because you could just as easily count the
+                  elements in the ComponentStatus array). The reason to add this redundant
+                  information is to make it available to kubectl, which does not yet
+                  allow counting objects in JSONPath expressions.
+                type: object
+              components:
+                description: The list of components comprising the control plane and
+                  their statuses.
+                items:
+                  description: ComponentStatus represents the status of an object
+                    with children
+                  properties:
+                    children:
+                      description: 'TODO: can we remove this? it''s not used anywhere
+                        The status of each resource that comprises this component.'
+                      items:
+                        description: StatusType represents the status for a control
+                          plane, component, or resource
+                        properties:
+                          conditions:
+                            description: Represents the latest available observations
+                              of the object's current state.
+                            items:
+                              description: A Condition represents a specific observation
+                                of the object's state.
+                              properties:
+                                lastTransitionTime:
+                                  description: Last time the condition transitioned
+                                    from one status to another.
+                                  format: date-time
+                                  type: string
+                                message:
+                                  description: Human-readable message indicating details
+                                    about the last transition.
+                                  type: string
+                                reason:
+                                  description: Unique, single-word, CamelCase reason
+                                    for the condition's last transition.
+                                  type: string
+                                status:
+                                  description: The status of this condition. Can be
+                                    True, False or Unknown.
+                                  type: string
+                                type:
+                                  description: The type of this condition.
+                                  type: string
+                              type: object
+                            type: array
+                        type: object
+                      type: array
+                    conditions:
+                      description: Represents the latest available observations of
+                        the object's current state.
+                      items:
+                        description: A Condition represents a specific observation
+                          of the object's state.
+                        properties:
+                          lastTransitionTime:
+                            description: Last time the condition transitioned from
+                              one status to another.
+                            format: date-time
+                            type: string
+                          message:
+                            description: Human-readable message indicating details
+                              about the last transition.
+                            type: string
+                          reason:
+                            description: Unique, single-word, CamelCase reason for
+                              the condition's last transition.
+                            type: string
+                          status:
+                            description: The status of this condition. Can be True,
+                              False or Unknown.
+                            type: string
+                          type:
+                            description: The type of this condition.
+                            type: string
+                        type: object
+                      type: array
+                    resource:
+                      description: The name of the component this status pertains
+                        to.
+                      type: string
+                  type: object
+                nullable: true
+                type: array
+              conditions:
+                description: Represents the latest available observations of the object's
+                  current state.
+                items:
+                  description: A Condition represents a specific observation of the
+                    object's state.
+                  properties:
+                    lastTransitionTime:
+                      description: Last time the condition transitioned from one status
+                        to another.
+                      format: date-time
+                      type: string
+                    message:
+                      description: Human-readable message indicating details about
+                        the last transition.
+                      type: string
+                    reason:
+                      description: Unique, single-word, CamelCase reason for the condition's
+                        last transition.
+                      type: string
+                    status:
+                      description: The status of this condition. Can be True, False
+                        or Unknown.
+                      type: string
+                    type:
+                      description: The type of this condition.
+                      type: string
+                  type: object
+                type: array
+              lastAppliedConfiguration:
+                description: The full specification of the configuration options that
+                  were applied to the components of the control plane during the most
+                  recent reconciliation.
+                properties:
+                  istio:
+                    description: 'Specifies the Istio configuration options that are
+                      passed to Helm when the Istio charts are rendered. These options
+                      are usually populated from the template specified in the spec.template
+                      field, but individual values can be overridden here. More info:
+                      https://maistra.io/docs/installation/installation-options/'
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  networkType:
+                    description: 'DEPRECATED: No longer used anywhere. Previously
+                      used to specify the NetworkType of the cluster. Defaults to
+                      "subnet".'
+                    type: string
+                  template:
+                    description: Template selects the template to use for default
+                      values. Defaults to "default" when not set.
+                    type: string
+                  threeScale:
+                    description: 'Specifies the 3Scale configuration options that
+                      are passed to Helm when the 3Scale charts are rendered. These
+                      values are usually populated from the template specified in
+                      the spec.template field, but individual values can be overridden
+                      here. More info: https://maistra.io/docs/installation/installation-options/#_3scale'
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  version:
+                    description: Version specifies what Maistra version of the control
+                      plane to install. When creating a new ServiceMeshControlPlane
+                      with an empty version, the admission webhook sets the version
+                      to the latest version supported by the operator. Existing ServiceMeshControlPlanes
+                      with an empty version are treated as having the version set
+                      to "v1.0"
+                    type: string
+                type: object
+              observedGeneration:
+                description: The generation observed by the controller during the
+                  most recent reconciliation. The information in the status pertains
+                  to this particular generation of the object.
+                format: int64
+                type: integer
+              reconciledVersion:
+                description: The last version that was reconciled.
+                type: string
+            required:
+            - components
+            - lastAppliedConfiguration
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

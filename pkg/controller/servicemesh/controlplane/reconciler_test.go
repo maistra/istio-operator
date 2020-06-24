@@ -104,7 +104,7 @@ func TestCyclicTemplate(t *testing.T) {
 
 func TestInstallationErrorDoesNotUpdateLastTransitionTimeWhenNoStateTransitionOccurs(t *testing.T) {
 	controlPlane := newControlPlane()
-	controlPlane.Spec.Istio = maistrav1.HelmValuesType{}
+	controlPlane.Spec.Istio = &maistrav1.HelmValues{}
 	controlPlane.Spec.Template = "maistra"
 	controlPlane.Status.SetCondition(maistrav1.Condition{
 		Type:               maistrav1.ConditionTypeReconciled,

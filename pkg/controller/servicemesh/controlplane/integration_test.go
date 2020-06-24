@@ -146,7 +146,6 @@ func initalStatusTest(action clienttesting.Action) error {
 				Annotations: map[string]string(nil),
 			},
 			StatusType: maistrav1.StatusType{
-				ObservedGeneration: 0,
 				Conditions: []maistrav1.Condition{
 					{
 						Type:               maistrav1.ConditionTypeInstalled,
@@ -171,6 +170,7 @@ func initalStatusTest(action clienttesting.Action) error {
 					},
 				},
 			},
+			ObservedGeneration: 0,
 		}
 		if !reflect.DeepEqual(actual, expected) {
 			return fmt.Errorf("InitialStatusTest failed: updated status does not match expected status:\n\texpected: %#v\n\tactual: %#v", actual, expected)

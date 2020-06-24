@@ -47,8 +47,8 @@ func (v *versionStrategyV1_1) SetImageValues(ctx context.Context, cl client.Clie
 func (v *versionStrategyV1_1) Validate(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	var allErrors []error
 
-	if zipkinAddress, ok, _ := unstructured.NestedString(smcp.Spec.Istio, strings.Split("global.tracer.zipkin.address", ".")...); ok && len(zipkinAddress) > 0 {
-		tracer, ok, _ := unstructured.NestedString(smcp.Spec.Istio, strings.Split("global.proxy.tracer", ".")...)
+	if zipkinAddress, ok, _ := smcp.Spec.Istio.GetString("global.tracer.zipkin.address"); ok && len(zipkinAddress) > 0 {
+		tracer, ok, _ := smcp.Spec.Istio.GetString("global.proxy.tracer")
 		if ok && tracer != "zipkin" {
 			// tracer must be "zipkin"
 			allErrors = append(allErrors, fmt.Errorf("global.proxy.tracer must equal 'zipkin' if global.tracer.zipkin.address is set"))
@@ -75,7 +75,7 @@ func (v *versionStrategyV1_1) Validate(ctx context.Context, cl client.Client, sm
 		}
 
 		if err := errForEnabledValue(smcp.Spec.Istio, "kiali.enabled", true); err != nil {
-			if jaegerInClusterURL, ok, _ := unstructured.NestedString(smcp.Spec.Istio, strings.Split("kiali.jaegerInClusterURL", ".")...); !ok || len(jaegerInClusterURL) == 0 {
+			if jaegerInClusterURL, ok, _ := smcp.Spec.Istio.GetString("kiali.jaegerInClusterURL"); !ok || len(jaegerInClusterURL) == 0 {
 				allErrors = append(allErrors, fmt.Errorf("kiali.jaegerInClusterURL must be defined if global.tracer.zipkin.address is set"))
 			}
 		}

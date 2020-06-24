@@ -12,15 +12,31 @@ func init() {
 	SchemeBuilder.Register(&ServiceMeshMemberRoll{}, &ServiceMeshMemberRollList{})
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// ServiceMeshMemberRoll is the Schema for the servicemeshmemberrolls API
+// The ServiceMeshMemberRoll object configures which namespaces belong to a
+// service mesh. Only namespaces listed in the ServiceMeshMemberRoll will be
+// affected by the control plane. Any number of namespaces can be added, but a
+// namespace may not exist in more than one service mesh. The
+// ServiceMeshMemberRoll object must be created in the same namespace as
+// the ServiceMeshControlPlane object and must be named "default".
 // +k8s:openapi-gen=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:storageversion
+// +kubebuilder:resource:shortName=smmr
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.annotations.configuredMemberCount",description="How many of the total number of member namespaces are configured"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].reason",description="Whether all member namespaces have been configured or why that's not the case"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="The age of the object"
+// +kubebuilder:printcolumn:name="Members",type="string",JSONPath=".spec.members",description="Namespaces that are members of this Control Plane",priority=1
 type ServiceMeshMemberRoll struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ServiceMeshMemberRollSpec   `json:"spec,omitempty"`
+	// Specification of the desired list of members of the service mesh.
+	// +kubebuilder:validation:Required
+	Spec ServiceMeshMemberRollSpec `json:"spec,omitempty"`
+
+	// The current status of this ServiceMeshMemberRoll. This data may be out
+	// of date by some window of time.
 	Status ServiceMeshMemberRollStatus `json:"status,omitempty"`
 }
 
@@ -33,27 +49,50 @@ type ServiceMeshMemberRollList struct {
 	Items           []ServiceMeshMemberRoll `json:"items"`
 }
 
-// ServiceMeshMemberRollSpec defines the members of the mesh
+// ServiceMeshMemberRollSpec is the specification of the desired list of
+// members of the service mesh.
 type ServiceMeshMemberRollSpec struct {
+
+	//  List of namespaces that should be members of the service mesh.
+	// +optional
+	// +nullable
 	Members []string `json:"members,omitempty"`
 }
 
-// ServiceMeshMemberRollStatus contains the state last used to reconcile the list
+// ServiceMeshMemberRollStatus represents the current state of a ServiceMeshMemberRoll.
 type ServiceMeshMemberRollStatus struct {
 	StatusBase `json:",inline"`
 
-	ObservedGeneration           int64    `json:"observedGeneration,omitempty"`
-	ServiceMeshGeneration        int64    `json:"meshGeneration,omitempty"`
-	ServiceMeshReconciledVersion string   `json:"meshReconciledVersion,omitempty"`
-	ConfiguredMembers            []string `json:"configuredMembers,omitempty"`
+	// The generation observed by the controller during the most recent
+	// reconciliation. The information in the status pertains to this particular
+	// generation of the object.
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
-	// Represents the latest available observations of a ServiceMeshMemberRoll's current state.
+	// The generation of the ServiceMeshControlPlane object observed by the
+	// controller during the most recent reconciliation of this
+	// ServiceMeshMemberRoll.
+	ServiceMeshGeneration int64 `json:"meshGeneration,omitempty"`
+
+	// The reconciled version of the ServiceMeshControlPlane object observed by
+	// the controller during the most recent reconciliation of this
+	// ServiceMeshMemberRoll.
+	ServiceMeshReconciledVersion string `json:"meshReconciledVersion,omitempty"`
+
+	// List of namespaces that are configured as members of the service mesh.
+	// +optional
+	// +nullable
+	ConfiguredMembers []string `json:"configuredMembers,omitempty"`
+
+	// Represents the latest available observations of this ServiceMeshMemberRoll's
+	// current state.
+	// +optional
+	// +nullable
 	Conditions []ServiceMeshMemberRollCondition `json:"conditions"`
 }
 
 // ServiceMeshMemberRollConditionType represents the type of the condition.  Condition types are:
 // Reconciled, NamespaceConfigured
-type ServiceMeshMemberRollConditionType ConditionType
+type ServiceMeshMemberRollConditionType string
 
 const (
 	// ConditionTypeMemberRollReady signifies whether the namespace has been configured

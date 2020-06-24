@@ -20,15 +20,14 @@ import (
 
 func TestReadinessWhenCacheNotSynced(t *testing.T) {
 	controlPlane := newControlPlane()
-	controlPlane.Spec.Istio = maistrav1.HelmValuesType{}
+	controlPlane.Spec.Istio = &maistrav1.HelmValues{}
 	controlPlane.Spec.Template = "maistra"
 	controlPlane.Status.ComponentStatus = []maistrav1.ComponentStatus{
 		{
 			StatusType: maistrav1.StatusType{
-				Resource:           "security",
-				ObservedGeneration: 0,
-				Conditions:         nil,
+				Conditions: nil,
 			},
+			Resource: "security",
 		},
 	}
 

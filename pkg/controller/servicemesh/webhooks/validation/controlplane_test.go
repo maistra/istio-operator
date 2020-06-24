@@ -3,13 +3,11 @@ package validation
 import (
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -96,7 +94,7 @@ func TestControlPlaneValidation(t *testing.T) {
 				},
 				Spec: maistrav1.ControlPlaneSpec{
 					Version: versions.V1_1.String(),
-					Istio: map[string]interface{}{
+					Istio: maistrav1.NewHelmValues(map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
 								"zipkin": map[string]interface{}{
@@ -107,7 +105,7 @@ func TestControlPlaneValidation(t *testing.T) {
 						"tracing": map[string]interface{}{
 							"enabled": true,
 						},
-					},
+					}),
 				},
 			},
 			valid: false,
@@ -121,7 +119,7 @@ func TestControlPlaneValidation(t *testing.T) {
 				},
 				Spec: maistrav1.ControlPlaneSpec{
 					Version: versions.V1_1.String(),
-					Istio: map[string]interface{}{
+					Istio: maistrav1.NewHelmValues(map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
 								"zipkin": map[string]interface{}{
@@ -129,7 +127,7 @@ func TestControlPlaneValidation(t *testing.T) {
 								},
 							},
 						},
-					},
+					}),
 				},
 			},
 			valid: false,
@@ -143,7 +141,7 @@ func TestControlPlaneValidation(t *testing.T) {
 				},
 				Spec: maistrav1.ControlPlaneSpec{
 					Version: versions.V1_1.String(),
-					Istio: map[string]interface{}{
+					Istio: maistrav1.NewHelmValues(map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
 								"zipkin": map[string]interface{}{
@@ -151,7 +149,7 @@ func TestControlPlaneValidation(t *testing.T) {
 								},
 							},
 						},
-					},
+					}),
 				},
 			},
 			valid: true,
@@ -165,7 +163,7 @@ func TestControlPlaneValidation(t *testing.T) {
 				},
 				Spec: maistrav1.ControlPlaneSpec{
 					Version: versions.V1_1.String(),
-					Istio: map[string]interface{}{
+					Istio: maistrav1.NewHelmValues(map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
 								"zipkin": map[string]interface{}{
@@ -173,7 +171,7 @@ func TestControlPlaneValidation(t *testing.T) {
 								},
 							},
 						},
-					},
+					}),
 				},
 			},
 			valid: false,
@@ -187,7 +185,7 @@ func TestControlPlaneValidation(t *testing.T) {
 				},
 				Spec: maistrav1.ControlPlaneSpec{
 					Version: versions.V1_1.String(),
-					Istio: map[string]interface{}{
+					Istio: maistrav1.NewHelmValues(map[string]interface{}{
 						"global": map[string]interface{}{
 							"proxy": map[string]interface{}{
 								"tracer": "lightstep",
@@ -198,7 +196,7 @@ func TestControlPlaneValidation(t *testing.T) {
 								},
 							},
 						},
-					},
+					}),
 				},
 			},
 			valid: false,
@@ -212,7 +210,7 @@ func TestControlPlaneValidation(t *testing.T) {
 				},
 				Spec: maistrav1.ControlPlaneSpec{
 					Version: versions.V1_1.String(),
-					Istio: map[string]interface{}{
+					Istio: maistrav1.NewHelmValues(map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
 								"zipkin": map[string]interface{}{
@@ -223,7 +221,7 @@ func TestControlPlaneValidation(t *testing.T) {
 						"tracing": map[string]interface{}{
 							"enabled": true,
 						},
-					},
+					}),
 				},
 			},
 			valid: false,
@@ -236,7 +234,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Istio: map[string]interface{}{
+					Istio: maistrav1.NewHelmValues(map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
 								"zipkin": map[string]interface{}{
@@ -247,7 +245,7 @@ func TestControlPlaneValidation(t *testing.T) {
 						"kiali": map[string]interface{}{
 							"enabled": true,
 						},
-					},
+					}),
 				},
 			},
 			valid: true,
@@ -261,7 +259,7 @@ func TestControlPlaneValidation(t *testing.T) {
 				},
 				Spec: maistrav1.ControlPlaneSpec{
 					Version: versions.V1_1.String(),
-					Istio: map[string]interface{}{
+					Istio: maistrav1.NewHelmValues(map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
 								"zipkin": map[string]interface{}{
@@ -272,7 +270,7 @@ func TestControlPlaneValidation(t *testing.T) {
 						"kiali": map[string]interface{}{
 							"enabled": true,
 						},
-					},
+					}),
 				},
 			},
 			valid: false,
@@ -285,7 +283,7 @@ func TestControlPlaneValidation(t *testing.T) {
 					Namespace: "istio-system",
 				},
 				Spec: maistrav1.ControlPlaneSpec{
-					Istio: map[string]interface{}{
+					Istio: maistrav1.NewHelmValues(map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
 								"zipkin": map[string]interface{}{
@@ -297,7 +295,7 @@ func TestControlPlaneValidation(t *testing.T) {
 							"enabled":            true,
 							"jaegerInClusterURL": "jaeger-collector.istio-system",
 						},
-					},
+					}),
 				},
 			},
 			valid: true,
@@ -311,7 +309,7 @@ func TestControlPlaneValidation(t *testing.T) {
 				},
 				Spec: maistrav1.ControlPlaneSpec{
 					Version: versions.V1_1.String(),
-					Istio: map[string]interface{}{
+					Istio: maistrav1.NewHelmValues(map[string]interface{}{
 						"global": map[string]interface{}{
 							"tracer": map[string]interface{}{
 								"zipkin": map[string]interface{}{
@@ -323,7 +321,7 @@ func TestControlPlaneValidation(t *testing.T) {
 							"enabled":            true,
 							"jaegerInClusterURL": "jaeger-collector.istio-system",
 						},
-					},
+					}),
 				},
 			},
 			valid: true,
@@ -1097,7 +1095,7 @@ func createControlPlaneValidatorTestFixture(clientObjects ...runtime.Object) (*C
 func newControlPlaneWithVersion(name, namespace, version string) *maistrav1.ServiceMeshControlPlane {
 	controlPlane := newControlPlane(name, namespace)
 	controlPlane.Spec.Version = version
-	controlPlane.Spec.Istio = make(map[string]interface{})
+	controlPlane.Spec.Istio = maistrav1.NewHelmValues(make(map[string]interface{}))
 	return controlPlane
 }
 
@@ -1111,6 +1109,9 @@ func newControlPlane(name, namespace string) *maistrav1.ServiceMeshControlPlane 
 	}
 }
 
-func setNestedField(obj map[string]interface{}, path string, value interface{}) {
-	unstructured.SetNestedField(obj, value, strings.Split(path, ".")...)
+func setNestedField(helmValues *maistrav1.HelmValues, path string, value interface{}) {
+	err := helmValues.SetField(path, value)
+	if err != nil {
+		panic(err)
+	}
 }
