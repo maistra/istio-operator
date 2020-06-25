@@ -3,6 +3,7 @@ package v2
 import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -95,9 +96,11 @@ type PodRuntimeConfig struct {
 
 	// If specified, the pod's scheduling constraints
 	// +optional
-	// .Values.podAffinityLabelSelector, podAntiAffinityLabelSelector, nodeSelector
+	// .Values.podAntiAffinityLabelSelector, podAntiAffinityTermLabelSelector, nodeSelector
+	// NodeAffinity is not supported at this time
+	// PodAffinity is not supported at this time
 	// XXX: this is more descriptive than what is currently exposed (i.e. only pod affinities and nodeSelector)
-	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	Affinity *Affinity `json:"affinity,omitempty"`
 
 	// If specified, the pod will be dispatched by specified scheduler.
 	// If not specified, the pod will be dispatched by default scheduler.
@@ -119,8 +122,30 @@ type PodRuntimeConfig struct {
 	Containers map[string]ContainerConfig `json:"containers,omitempty"`
 }
 
+// Affinity is the structure used by Istio for specifying Pod affinity
+type Affinity struct {
+	PodAntiAffinity *PodAntiAffinity `json:"podAntiAffinity,omitempty"`
+}
+
+// PodAntiAffinity configures anti affinity for pod scheduling
+type PodAntiAffinity struct {
+	RequiredDuringScheduling  []PodAntiAffinityTerm `json:"requiredDuringScheduling,omitempty"`
+	PreferredDuringScheduling []PodAntiAffinityTerm `json:"preferredDuringScheduling,omitempty"`
+}
+
+type PodAntiAffinityTerm struct {
+	metav1.LabelSelectorRequirement `json:",inline"`
+	// This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching
+	// the labelSelector in the specified namespaces, where co-located is defined as running on a node
+	// whose value of the label with key topologyKey matches that of any node on which any of the
+	// selected pods is running.
+	// Empty topologyKey is not allowed.
+	TopologyKey string `json:"topologyKey"`
+}
+
 // ContainerConfig to be applied to containers in a pod, in a deployment
 type ContainerConfig struct {
+	Image            string                                 `json:"image,omitempty"`
 	ImagePullPolicy  corev1.PullPolicy                      `json:"imagePullPolicy,omitempty"`
 	ImagePullSecrets []corev1.LocalObjectReference          `json:"imagePullSecrets,omitempty"`
 	Resources        map[string]corev1.ResourceRequirements `json:"resources,omitempty"`

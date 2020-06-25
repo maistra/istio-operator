@@ -41,19 +41,7 @@ type MultiClusterConfig struct {
 // MeshExpansionConfig configures aspects related to mesh expansion
 type MeshExpansionConfig struct {
 	// .Values.global.meshExpansion.useILB, true if not null, otherwise uses ingress gateway
-	ILBGateway *ILBGatewayConfig `json:"ilbGateway,omitempty"`
-}
-
-// ILBGatewayConfig configures an internal load balancer gateway for use with mesh expansion.
-type ILBGatewayConfig struct {
-	// ports for ILB gateway are hard coded
-	// service type is hard-coded to LoadBalancer
-	// .Values.gateways.istio-ilbgateway service specific settings (ports, type, etc.)
-	Service GatewayServiceConfig `json:"service,omitempty"`
-	// .Values.gateways.istio-ilbgateway secretVolumes and configMapVolumes
-	Volumes []VolumeConfig `json:"volumes,omitempty"`
-	// .Values.gateways.istio-ilbgateway runtime details (resources, autoscaling, etc.)
-	Runtime ComponentRuntimeConfig `json:"runtime,omitempty"`
+	ILBGateway *GatewayConfig `json:"ilbGateway,omitempty"`
 }
 
 // MeshNetworkConfig configures mesh networks for a multi-cluster mesh.

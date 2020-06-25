@@ -8,7 +8,7 @@ type PolicyConfig struct {
 	// .Values.mixer.policy.enabled
 	Mixer *MixerPolicyConfig `json:"mixer,omitempty"`
 	// Remote mixer configuration (legacy, v1)
-	// .Values.mixer.policy.remotePolicyAddress
+	// .Values.global.remotePolicyAddress
 	Remote *RemotePolicyConfig `json:"remote,omitempty"`
 	// Istiod policy implementation (v2)
 	// XXX: is this the default policy config, i.e. what's used if mixer is not
@@ -42,7 +42,7 @@ type MixerPolicyConfig struct {
 	// Default is false which means the traffic is denied when the client is unable to connect to Mixer.
 	FailOpen bool `json:"failOpen,omitempty"`
 	// Runtime configures execution aspects of the mixer deployment/pod (e.g. resources)
-	Runtime *DeploymentRuntimeConfig `json:"runtime,omitempty"`
+	Runtime *ComponentRuntimeConfig `json:"runtime,omitempty"`
 	// Adapters configures available adapters.
 	Adapters *MixerPolicyAdaptersConfig `json:"adapters,omitempty"`
 }

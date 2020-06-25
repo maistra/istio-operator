@@ -10,7 +10,7 @@ type GatewaysConfig struct {
 	// works in conjunction with cluster.meshExpansion.ingress configuration
 	// (for enabling ILB gateway and mesh expansion ports)
 	// .Values.gateways.istio-ingressgateway
-	Ingress *GatewayConfig `json:"ingress,omitempty"`
+	Ingress *IngressGatewayConfig `json:"ingress,omitempty"`
 	// Egress configures the egress gateway for the mesh.
 	// .Values.gateways.istio-egressgateway
 	Egress *GatewayConfig `json:"egress,omitempty"`
@@ -57,6 +57,13 @@ type GatewayConfig struct {
 	// Runtime is used to configure execution parameters for the pod/containers
 	// e.g. resources, replicas, etc.
 	Runtime *ComponentRuntimeConfig `json:"runtime,omitempty"`
+	// XXX: do we need to support additionalContainers???
+}
+
+type IngressGatewayConfig struct {
+	GatewayConfig `json:",inline"`
+	// MeshExpansionPorts define the port set used with multi-cluster/mesh expansion
+	MeshExpansionPorts []corev1.ServicePort
 }
 
 // RouterModeType represents the router modes available.
@@ -79,17 +86,31 @@ type GatewayServiceConfig struct {
 }
 
 // VolumeConfig is used to specify volumes that should be mounted on the pod.
-// XXX: this may be overkill, as only ConfigMap and Secret volume types are
-// supported, and then mounts are only created for secret volumes.
 type VolumeConfig struct {
 	// Volume.Name maps to .Values.gateways.<gateway-name>.<type>.<type-name> (type-name is configMapName or secretName)
 	// .configVolumes -> .configMapName = volume.name
 	// .secretVolumes -> .secretName = volume.name
 	// Only ConfigMap and Secret fields are supported
-	Volume corev1.Volume `json:"volume,omitempty"`
+	Volume GatewayVolume `json:"volume,omitempty"`
 	// Mount.Name maps to .Values.gateways.<gateway-name>.<type>.name
 	// .configVolumes -> .name = mount.name, .mountPath = mount.mountPath
 	// .secretVolumes -> .name = mount.name, .mountPath = mount.mountPath
 	// Only Name and MountPath fields are supported
 	Mount corev1.VolumeMount `json:"volumeMount,omitempty"`
+}
+
+// GatewayVolume is a pared down version of corev1.Volume, which only supports
+// specifying ConfigMap and Secret volume types.
+type GatewayVolume struct {
+	// Volume's name.
+	// Must be a DNS_LABEL and unique within the pod.
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+	Name string `json:"name"`
+	// ConfigMap represents a configMap that should populate this volume
+	// +optional
+	ConfigMap *corev1.ConfigMapVolumeSource `json:"configMap,omitempty"`
+	// Secret represents a secret that should populate this volume.
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
+	// +optional
+	Secret *corev1.SecretVolumeSource `json:"secret,omitempty"`
 }

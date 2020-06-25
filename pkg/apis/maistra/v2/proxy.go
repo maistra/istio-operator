@@ -28,6 +28,9 @@ type ProxyConfig struct {
 
 // ProxyNetworkingConfig is used to configure networking aspects of the sidecar.
 type ProxyNetworkingConfig struct {
+	// ClusterDomain represents the domain for the cluster, defaults to cluster.local
+	// .Values.global.proxy.clusterDomain
+	ClusterDomain string  `json:"clusterDomain,omitempty"`
 	// maps to meshConfig.defaultConfig.connectionTimeout, defaults to 10s
 	// XXX: currently not exposed through values.yaml
 	ConnectionTimeout string `json:"connectionTimeout,omitempty"`
