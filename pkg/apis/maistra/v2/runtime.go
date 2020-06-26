@@ -145,10 +145,10 @@ type PodAntiAffinityTerm struct {
 
 // ContainerConfig to be applied to containers in a pod, in a deployment
 type ContainerConfig struct {
-	Image            string                                 `json:"image,omitempty"`
-	ImagePullPolicy  corev1.PullPolicy                      `json:"imagePullPolicy,omitempty"`
-	ImagePullSecrets []corev1.LocalObjectReference          `json:"imagePullSecrets,omitempty"`
-	Resources        map[string]corev1.ResourceRequirements `json:"resources,omitempty"`
+	Image            string                        `json:"image,omitempty"`
+	ImagePullPolicy  corev1.PullPolicy             `json:"imagePullPolicy,omitempty"`
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	Resources        *corev1.ResourceRequirements  `json:"resources,omitempty"`
 }
 
 // PodDisruptionBudget details

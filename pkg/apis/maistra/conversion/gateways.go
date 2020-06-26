@@ -137,7 +137,7 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 					return nil, err
 				}
 			}
-			if len(sdsContainer.Resources) > 0 {
+			if sdsContainer.Resources != nil {
 				if resourcesValues, err := toValues(sdsContainer.Resources); err == nil {
 					if err := setHelmValue(values, "sds.resources", resourcesValues); err != nil {
 						return nil, err
@@ -149,7 +149,7 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		}
 		// Proxy container specific config
 		if proxyContainer, ok := runtime.Pod.Containers["istio-proxy"]; ok {
-			if len(proxyContainer.Resources) > 0 {
+			if proxyContainer.Resources != nil {
 				if resourcesValues, err := toValues(proxyContainer.Resources); err == nil {
 					if err := setHelmValue(values, "resources", resourcesValues); err != nil {
 						return nil, err

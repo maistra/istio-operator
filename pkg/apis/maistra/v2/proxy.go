@@ -119,6 +119,9 @@ type ProxyInboundTrafficControlConfig struct {
 	// IncludedPorts to be routed through the sidecar. * or comma separated list of integers
 	// .Values.global.proxy.includeInboundPorts, defaults to * (all ports), overridden by traffic.sidecar.istio.io/includeInboundPorts
 	IncludedPorts []string `json:"includedPorts,omitempty"`
+	// ExcludedPorts to be routed around the sidecar.
+	// .Values.global.proxy.excludeInboundPorts, defaults to empty list, overridden by traffic.sidecar.istio.io/excludeInboundPorts
+	ExcludedPorts []string `json:"excludedPorts,omitempty"`
 }
 
 // ProxyOutboundTrafficControlConfig configure what outbound traffic is routed
@@ -197,7 +200,7 @@ type ProxyRuntimeConfig struct {
 	// Readiness configures the readiness probe behavior for the injected pod.
 	Readiness ProxyReadinessConfig `json:"readiness,omitempty"`
 	// Resources configures the resources on the sidecar container.
-	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // ProxyReadinessConfig configures the readiness probe for the sidecar.

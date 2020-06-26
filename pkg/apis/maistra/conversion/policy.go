@@ -85,7 +85,7 @@ func populateMixerPolicyValues(in *v2.ControlPlaneSpec, values map[string]interf
 					return err
 				}
 			}
-			if len(mixerContainer.Resources) > 0 {
+			if mixerContainer.Resources != nil {
 				if resourcesValues, err := toValues(mixerContainer.Resources); err == nil {
 					if err := setHelmValue(policyValues, "resources", resourcesValues); err != nil {
 						return err
@@ -97,7 +97,7 @@ func populateMixerPolicyValues(in *v2.ControlPlaneSpec, values map[string]interf
 		}
 		// Proxy container specific config
 		if proxyContainer, ok := runtime.Pod.Containers["istio-proxy"]; ok {
-			if len(proxyContainer.Resources) > 0 {
+			if proxyContainer.Resources != nil {
 				if resourcesValues, err := toValues(proxyContainer.Resources); err == nil {
 					if err := setHelmValue(policyValues, "resources", resourcesValues); err != nil {
 						return err
