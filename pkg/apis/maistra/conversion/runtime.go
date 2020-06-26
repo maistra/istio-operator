@@ -6,6 +6,48 @@ import (
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
+func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, values map[string]interface{}) error {
+	if runtime == nil {
+		return nil
+	}
+
+	if runtime.Defaults != nil {
+		container := runtime.Defaults.Container
+		if container != nil {
+			if container.ImagePullPolicy != "" {
+				if err := setHelmValue(values, "global.imagePullPolicy", container.ImagePullPolicy); err != nil {
+					return err
+				}
+			}
+			if len(container.ImagePullSecrets) > 0 {
+				if err := setHelmValue(values, "global.imagePullSecrets", container.ImagePullSecrets); err != nil {
+					return err
+				}
+			}
+			if container.ImageRegistry != "" {
+				if err := setHelmValue(values, "global.hub", container.ImageRegistry); err != nil {
+					return err
+				}
+			}
+			if container.ImageTag != "" {
+				if err := setHelmValue(values, "global.tag", container.ImageTag); err != nil {
+					return err
+				}
+			}
+			if container.Resources != nil {
+				if resourcesValues, err := toValues(container.Resources); err == nil {
+					if err := setHelmValue(values, "global.defaultResources", resourcesValues); err != nil {
+						return err
+					}
+				} else {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func populateRuntimeValues(runtime *v2.ComponentRuntimeConfig, values map[string]interface{}) error {
 	if runtime == nil {
 		runtime = &v2.ComponentRuntimeConfig{}

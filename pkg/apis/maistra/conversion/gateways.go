@@ -51,9 +51,61 @@ var (
 	}
 )
 
+func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
+	if in.Gateways == nil {
+		return setHelmValue(values, "gateways.enabled", false)
+	}
+
+	gateways := in.Gateways
+
+	if gateways.Ingress != nil {
+		if gatewayValues, err := gatewayConfigToValues(&gateways.Ingress.GatewayConfig); err == nil {
+			if len(gateways.Ingress.MeshExpansionPorts) > 0 {
+				if portsValue, err := toValues(gateways.Ingress.MeshExpansionPorts); err == nil {
+					if err := setHelmValue(gatewayValues, "meshExpansionPorts", portsValue); err != nil {
+						return err
+					}
+				} else {
+					return err
+				}
+			}
+			if err := setHelmValue(values, "gateways.istio-ingressgateway", gatewayValues); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	if gateways.Egress != nil {
+		if gatewayValues, err := gatewayConfigToValues(gateways.Egress); err == nil {
+			if err := setHelmValue(values, "gateways.istio-egressgateway", gatewayValues); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	for name, gateway := range gateways.AdditionalGateways {
+		if gatewayValues, err := gatewayConfigToValues(&gateway); err == nil {
+			if err := setHelmValue(values, "gateways."+name, gatewayValues); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+	return nil
+}
+
 // converts v2.GatewayConfig to values.yaml
 func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error) {
 	values := make(map[string]interface{})
+	if err := setHelmValue(values, "enabled", true); err != nil {
+		return nil, err
+	}
+
 	if in.Namespace != "" {
 		if err := setHelmValue(values, "namespace", in.Namespace); err != nil {
 			return nil, err
@@ -107,7 +159,7 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		}
 	}
 	if len(in.Service.Ports) > 0 {
-		if portsValue, err := toValues(in.Service.Ports); err != nil {
+		if portsValue, err := toValues(in.Service.Ports); err == nil {
 			if err := setHelmValue(values, "ports", portsValue); err != nil {
 				return nil, err
 			}
@@ -193,7 +245,7 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 			}
 		}
 	}
-    return values, nil
+	return values, nil
 }
 
 func expansionPortsForVersion(version string) ([]corev1.ServicePort, error) {
@@ -221,5 +273,4 @@ PortsLoop:
 			*in = append(*in, port)
 		}
 	}
-
 }

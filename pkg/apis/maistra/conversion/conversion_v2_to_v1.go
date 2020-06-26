@@ -24,12 +24,33 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 	}
 
 	// Cluster settings
+	// cluster must come first as it may modify other settings on the input (e.g. meshExpansionPorts)
 	if err := populateClusterValues(in, out.Istio); err != nil {
 		return err
 	}
 
 	// Policy
 	if err := populatePolicyValues(in, out.Istio); err != nil {
+		return err
+	}
+
+	// Proxy
+	if err := populateProxyValues(in, out.Istio); err != nil {
+		return err
+	}
+
+	// Security
+	if err := populateSecurityValues(in, out.Istio); err != nil {
+		return err
+	}
+
+	// Telemetry
+	if err := populateTelemetryValues(in, out.Istio); err != nil {
+		return err
+	}
+
+	// Gateways
+	if err := populateGatewaysValues(in, out.Istio); err != nil {
 		return err
 	}
 

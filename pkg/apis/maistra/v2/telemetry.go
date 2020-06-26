@@ -34,7 +34,7 @@ type MixerTelemetryConfig struct {
 	// Batching settings used when sending telemetry.
 	Batching TelemetryBatchingConfig `json:"batching,omitempty"`
 	// Runtime configuration to apply to the mixer telemetry deployment.
-	Runtime *DeploymentRuntimeConfig `json:"runtime,omitempty"`
+	Runtime *ComponentRuntimeConfig `json:"runtime,omitempty"`
 	// Adapters configures the adapters used by mixer telemetry.
 	Adapters *MixerTelemetryAdaptersConfig `json:"adapters,omitempty"`
 }
@@ -176,9 +176,11 @@ type MetadataExchangeConfig struct {
 type PrometheusFilterConfig struct {
 	// Scrape metrics from the pod if true.
 	// defaults to true
+	// .Values.meshConfig.enablePrometheusMerge
 	Scrape bool `json:"scrape,omitempty"`
 	// WASMEnabled for prometheus filter.
 	// Indicates whether to enable WebAssembly runtime for stats filter.
+	// .Values.telemetry.v2.prometheus.wasmEnabled
 	WASMEnabled bool `json:"wasmEnabled,omitempty"`
 }
 

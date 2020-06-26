@@ -37,15 +37,15 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 	}
 	// XXX: proxy.Networking.ConnectionTimeout is not exposed through values
 	switch proxy.Networking.Initialization.Type {
-	case v2.ProxyNetworkInitTypeCNI:
-		istio_cni := make(map[string]interface{})
-		if err := setHelmValue(istio_cni, "enabled", true); err != nil {
+	case v2.ProxyNetworkInitTypeCNI, "":
+		istioCNI := make(map[string]interface{})
+		if err := setHelmValue(istioCNI, "enabled", true); err != nil {
 			return err
 		}
 		cni := proxy.Networking.Initialization.CNI
 		if cni != nil && cni.Runtime != nil {
 			if cni.Runtime.PriorityClassName != "" {
-				if err := setHelmValue(istio_cni, "priorityClassName", cni.Runtime.PriorityClassName); err != nil {
+				if err := setHelmValue(istioCNI, "priorityClassName", cni.Runtime.PriorityClassName); err != nil {
 					return err
 				}
 			}
@@ -54,18 +54,18 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 				for _, secret := range cni.Runtime.ContainerConfig.ImagePullSecrets {
 					pullSecretsValues = append(pullSecretsValues, secret.Name)
 				}
-				if err := setHelmValue(istio_cni, "imagePullPolicy", pullSecretsValues); err != nil {
+				if err := setHelmValue(istioCNI, "imagePullPolicy", pullSecretsValues); err != nil {
 					return err
 				}
 			}
 			if cni.Runtime.ContainerConfig.ImagePullPolicy != "" {
-				if err := setHelmValue(istio_cni, "imagePullPolicy", string(cni.Runtime.ContainerConfig.ImagePullPolicy)); err != nil {
+				if err := setHelmValue(istioCNI, "imagePullPolicy", string(cni.Runtime.ContainerConfig.ImagePullPolicy)); err != nil {
 					return err
 				}
 			}
 			if cni.Runtime.ContainerConfig.Resources != nil {
 				if resourcesValues, err := toValues(cni.Runtime.ContainerConfig.Resources); err == nil {
-					if err := setHelmValue(istio_cni, "resources", resourcesValues); err != nil {
+					if err := setHelmValue(istioCNI, "resources", resourcesValues); err != nil {
 						return err
 					}
 				} else {
@@ -73,7 +73,7 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 				}
 			}
 		}
-		if err := setHelmValue(values, "istio_cni", istio_cni); err != nil {
+		if err := setHelmValue(values, "istio_cni", istioCNI); err != nil {
 			return err
 		}
 	case v2.ProxyNetworkInitTypeInitContainer:
@@ -154,6 +154,11 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 	// DNS
 	if len(proxy.Networking.DNS.SearchSuffixes) > 0 {
 		if err := setHelmValue(values, "global.podDNSSearchNamespaces", proxy.Networking.DNS.SearchSuffixes); err != nil {
+			return err
+		}
+	}
+	if proxy.Networking.DNS.RefreshRate != "" {
+		if err := setHelmValue(proxyValues, "dnsRefreshRate", proxy.Networking.DNS.RefreshRate); err != nil {
 			return err
 		}
 	}

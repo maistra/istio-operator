@@ -3,6 +3,7 @@ package v2
 // PolicyConfig configures policy aspects of the mesh.
 type PolicyConfig struct {
 	// Required, the policy implementation
+	// defaults to Istiod 1.6+, Mixer pre-1.6
 	Type PolicyType `json:"type,omitempty"`
 	// Mixer configuration (legacy, v1)
 	// .Values.mixer.policy.enabled

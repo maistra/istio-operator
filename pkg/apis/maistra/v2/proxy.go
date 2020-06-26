@@ -193,6 +193,10 @@ type ProxyDNSConfig struct {
 	//    - global
 	//    - "{{ valueOrDefault .DeploymentMeta.Namespace \"default\" }}.global"
 	SearchSuffixes []string `json:"searchSuffixes,omitempty"`
+    // RefreshRate configures the DNS refresh rate for Envoy cluster of type STRICT_DNS
+	// This must be given it terms of seconds. For example, 300s is valid but 5m is invalid.
+	// .Values.global.proxy.dnsRefreshRate, default 300s
+	RefreshRate string  `json:"searchSuffixes,omitempty"`
 }
 
 // ProxyRuntimeConfig customizes the runtime parameters of the sidecar container.

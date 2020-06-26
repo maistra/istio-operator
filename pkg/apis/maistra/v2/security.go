@@ -32,7 +32,6 @@ type TrustConfig struct {
 	//.Values.global.trustDomain, maps to trustDomain
 	// The trust domain corresponds to the trust root of a system.
 	// Refer to https://github.com/spiffe/spiffe/blob/master/standards/SPIFFE-ID.md#21-trust-domain
-	// XXX: can this be consolidated with clusterDomainSuffix?
 	Domain string `json:"domain,omitempty"`
 	// AdditionalDomains are additional SPIFFE trust domains that are accepted as trusted.
 	// .Values.global.trustDomainAliases, maps to trustDomainAliases
@@ -45,7 +44,6 @@ type TrustConfig struct {
 // used by the control plane.
 type CertificateAuthorityConfig struct {
 	// Type is the certificate authority to use.
-	// .Values.global.pilotCertProvider (istiod, kubernetes, custom)
 	Type CertificateAuthorityType `json:"type,omitempty"`
 	// Istiod is the configuration for Istio's internal certificate authority implementation.
 	// each of these produces a CAEndpoint, i.e. CA_ADDR
@@ -68,7 +66,6 @@ const (
 // certificate authority implementation.
 type IstiodCertificateAuthorityConfig struct {
 	// Type of certificate signer to use.
-	// .Values.global.jwtPolicy, local=first-party-jwt, external=third-party-jwt
 	Type IstioCertificateSignerType `json:"type,omitempty"`
 	// SelfSigned configures istiod to generate and use a self-signed certificate for the root.
 	SelfSigned *IstioSelfSignedCertificateSignerConfig `json:"selfSigned,omitempty"`
@@ -76,11 +73,13 @@ type IstiodCertificateAuthorityConfig struct {
 	PrivateKey *IstioPrivateKeyCertificateSignerConfig `json:"privateKey,omitempty"`
 	// WorkloadCertTTLDefault is the default TTL for generated workload
 	// certificates.  Used if not specified in CSR (<= 0)
-	// env DEFAULT_WORKLOAD_CERT_TTL
+	// env DEFAULT_WORKLOAD_CERT_TTL, 1.6
+	// --workload-cert-ttl, citadel, pre-1.6
 	// defaults to 24 hours
 	WorkloadCertTTLDefault string `json:"workloadCertTTLDefault,omitempty"`
 	// WorkloadCertTTLMax is the maximum TTL for generated workload certificates.
 	// env MAX_WORKLOAD_CERT_TTL
+	// --max-workload-cert-ttl, citadel, pre-1.6
 	// defaults to 90 days
 	WorkloadCertTTLMax string `json:"workloadCertTTLMax,omitempty"`
 }
@@ -113,7 +112,7 @@ type IstioSelfSignedCertificateSignerConfig struct {
 	// EnableJitter to use jitter for cert rotation
 	// env CITADEL_ENABLE_JITTER_FOR_ROOT_CERT_ROTATOR
 	// defaults to true
-	EnableJitter bool `json:"enableJitter,omitempty"`
+	EnableJitter *bool `json:"enableJitter,omitempty"`
 	// Org is the Org value in the certificate.
 	// XXX: currently uses TrustDomain.  I don't think this is configurable.
 	Org string `json:"org,omitempty"`
@@ -153,11 +152,11 @@ type IdentityConfig struct {
 	// Type is the type of identity tokens being used.
 	// .Values.global.jwtPolicy
 	Type IdentityConfigType `json:"type,omitempty"`
-	// Kubernetes configures istiod to use Kubernetes service account tokens to
-	// identify users.
+	// Kubernetes configures istiod to use default Kubernetes service account
+	// tokens to identify users.
 	Kubernetes *KubernetesIdentityConfig `json:"kubernetes,omitempty"`
 	// ThirdParty configures istiod to use a third-party token provider for
-	// identifying users.
+	// identifying users. (basically uses a custom audience, e.g. istio-ca)
 	ThirdParty *ThirdPartyIdentityConfig `json:"thirdParty,omitempty"`
 }
 
@@ -186,6 +185,7 @@ type ThirdPartyIdentityConfig struct {
 	TokenPath string `json:"tokenPath,omitempty"`
 	// Issuer is the URL of the issuer.
 	// env TOKEN_ISSUER, defaults to iss in specified token
+	// only supported in 1.6+
 	Issuer string `json:"issuer,omitempty"`
 	// Audience is the audience for whom the token is intended.
 	// env AUDIENCE
