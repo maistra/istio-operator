@@ -54,5 +54,15 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 		return err
 	}
 
+	// Runtime
+	if err := populateControlPlaneRuntimeValues(in.Runtime, out.Istio); err != nil {
+		return err
+	}
+
+	// Addons
+	if err := populateAddonsValues(in, out.Istio); err != nil {
+		return err
+	}
+
 	return nil
 }

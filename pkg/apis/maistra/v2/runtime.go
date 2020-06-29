@@ -61,7 +61,11 @@ type DeploymentRuntimeConfig struct {
 	// to be applied to this deployment.  Null indicates no auto scaling.
 	// .Values.*.autoscale* fields
 	AutoScaling *AutoScalerConfig `json:"autoScaling,omitempty"`
+}
 
+// CommonDeploymentRuntimeConfig represents deployment settings common to both
+// default and component specific settings
+type CommonDeploymentRuntimeConfig struct {
 	// .Values.global.podDisruptionBudget.enabled, if not null
 	// XXX: this is currently a global setting, not per component.  perhaps
 	// this should only be available on the defaults?
@@ -83,30 +87,34 @@ type AutoScalerConfig struct {
 
 // PodRuntimeConfig is used to customize pod configuration for a component
 type PodRuntimeConfig struct {
+	CommonPodRuntimeConfig `json:",inline"`
+
 	// Metadata allows additional annotations/labels to be applied to the pod
 	// .Values.*.podAnnotations
 	// XXX: currently, additional lables are not supported
 	Metadata MetadataConfig `json:"metadata,omitempty"`
-	// NodeSelector is a selector which must be true for the pod to fit on a node.
-	// Selector which must match a node's labels for the pod to be scheduled on that node.
-	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-	// +optional
-	// .Values.nodeSelector
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// If specified, the pod's scheduling constraints
 	// +optional
 	// .Values.podAntiAffinityLabelSelector, podAntiAffinityTermLabelSelector, nodeSelector
 	// NodeAffinity is not supported at this time
 	// PodAffinity is not supported at this time
-	// XXX: this is more descriptive than what is currently exposed (i.e. only pod affinities and nodeSelector)
 	Affinity *Affinity `json:"affinity,omitempty"`
 
-	// If specified, the pod will be dispatched by specified scheduler.
-	// If not specified, the pod will be dispatched by default scheduler.
+	// XXX: is it too cheesy to use 'default' name for defaults?  default would apply to all containers
+	// .Values.*.resource, imagePullPolicy, etc.
+	Containers map[string]ContainerConfig `json:"containers,omitempty"`
+}
+
+// CommonPodRuntimeConfig represents pod settings common to both defaults and
+// component specific configuration
+type CommonPodRuntimeConfig struct {
+	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	// Selector which must match a node's labels for the pod to be scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 	// +optional
-	// XXX: not currently supported
-	SchedulerName string `json:"schedulerName,omitempty"`
+	// .Values.nodeSelector
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// If specified, the pod's tolerations.
 	// +optional
@@ -116,13 +124,11 @@ type PodRuntimeConfig struct {
 	// .Values.global.priorityClassName
 	// XXX: currently, this is only a global setting.  maybe only allow setting in global runtime defaults?
 	PriorityClassName string `json:"priorityClassName,omitempty"`
-
-	// XXX: is it too cheesy to use 'default' name for defaults?  default would apply to all containers
-	// .Values.*.resource, imagePullPolicy, etc.
-	Containers map[string]ContainerConfig `json:"containers,omitempty"`
 }
 
 // Affinity is the structure used by Istio for specifying Pod affinity
+// XXX: istio does not support full corev1.Affinity settings, hence the special
+// types here.
 type Affinity struct {
 	PodAntiAffinity *PodAntiAffinity `json:"podAntiAffinity,omitempty"`
 }
@@ -133,6 +139,7 @@ type PodAntiAffinity struct {
 	PreferredDuringScheduling []PodAntiAffinityTerm `json:"preferredDuringScheduling,omitempty"`
 }
 
+// PodAntiAffinityTerm is a simplified version of corev1.PodAntiAffinityTerm
 type PodAntiAffinityTerm struct {
 	metav1.LabelSelectorRequirement `json:",inline"`
 	// This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching
@@ -145,7 +152,12 @@ type PodAntiAffinityTerm struct {
 
 // ContainerConfig to be applied to containers in a pod, in a deployment
 type ContainerConfig struct {
-	Image            string                        `json:"image,omitempty"`
+	CommonContainerConfig `jsone:",inline"`
+	Image                 string `json:"image,omitempty"`
+}
+// CommonContainerConfig represents container settings common to both defaults
+// and component specific configuration.
+type CommonContainerConfig struct {
 	ImageRegistry    string                        `json:"imageRegistry,omitempty"`
 	ImageTag         string                        `json:"imageTag,omitempty"`
 	ImagePullPolicy  corev1.PullPolicy             `json:"imagePullPolicy,omitempty"`
@@ -154,7 +166,7 @@ type ContainerConfig struct {
 }
 
 // PodDisruptionBudget details
-// XXX: currently not configurable (i.e. no values.yaml equivalent)
+// XXX: currently only configurable globally (i.e. no component values.yaml equivalent)
 type PodDisruptionBudget struct {
 	MinAvailable   *intstr.IntOrString `json:"minAvailable,omitempty"`
 	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
@@ -164,10 +176,12 @@ type PodDisruptionBudget struct {
 // control plane deployments/pods when no specific component overrides have been
 // specified.  These settings will be merged with component specific settings.
 type DefaultRuntimeConfig struct {
-	// Metadata to apply to all components.
-	Metadata MetadataConfig `json:"metadata,omitempty"`
+	// Deployment defaults
+	Deployment *CommonDeploymentRuntimeConfig `json:"deployment,omitempty"`
+	// Pod defaults
+	Pod *CommonPodRuntimeConfig `json:"pod,omitempty"`
 	// Container overrides to be merged with component specific overrides.
-	Container *ContainerConfig `json:"container,omitempty"`
+	Container *CommonContainerConfig `json:"container,omitempty"`
 }
 
 // MetadataConfig represents additional metadata to be applied to resources

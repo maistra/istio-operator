@@ -12,6 +12,47 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 	}
 
 	if runtime.Defaults != nil {
+		// defaultNodeSelector, defaultTolerations, defaultPodDisruptionBudget, priorityClassName
+		deployment := runtime.Defaults.Deployment
+		if deployment != nil {
+			if deployment.Disruption != nil {
+				if err := setHelmValue(values, "global.defaultPodDisruptionBudget.enabled", true); err != nil {
+					return err
+				}
+				if deployment.Disruption.MinAvailable != nil {
+					if err := setHelmValue(values, "global.defaultPodDisruptionBudget.minAvailable", deployment.Disruption.MinAvailable); err != nil {
+						return err
+					}
+				}
+				if deployment.Disruption.MaxUnavailable != nil {
+					if err := setHelmValue(values, "global.defaultPodDisruptionBudget.maxUnavailable", deployment.Disruption.MaxUnavailable); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		pod := runtime.Defaults.Pod
+		if pod != nil {
+			if len(pod.NodeSelector) > 0 {
+				if err := setHelmValue(values, "global.defaultNodeSelector", pod.NodeSelector); err != nil {
+					return err
+				}
+			}
+			if len(pod.Tolerations) > 0 {
+				if tolerations, err := toValues(pod.Tolerations); err == nil {
+					if err := setHelmValue(values, "global.defaultTolerations", tolerations); err != nil {
+						return err
+					}
+				} else {
+					return err
+				}
+			}
+			if pod.PriorityClassName != "" {
+				if err := setHelmValue(values, "global.priorityClassName", pod.PriorityClassName); err != nil {
+					return err
+				}
+			}
+		}
 		container := runtime.Defaults.Container
 		if container != nil {
 			if container.ImagePullPolicy != "" {
@@ -43,6 +84,43 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 					return err
 				}
 			}
+		}
+	}
+
+	if runtime.Citadel != nil {
+		citadelValues := make(map[string]interface{})
+		if err := populateRuntimeValues(runtime.Citadel, citadelValues); err == nil {
+			for key, value := range citadelValues {
+				if err := setHelmValue(values, "security."+key, value); err != nil {
+					return err
+				}
+			}
+		} else {
+			return err
+		}
+	}
+	if runtime.Galley != nil {
+		galleyValues := make(map[string]interface{})
+		if err := populateRuntimeValues(runtime.Galley, galleyValues); err == nil {
+			for key, value := range galleyValues {
+				if err := setHelmValue(values, "galley."+key, value); err != nil {
+					return err
+				}
+			}
+		} else {
+			return err
+		}
+	}
+	if runtime.Pilot != nil {
+		pilotValues := make(map[string]interface{})
+		if err := populateRuntimeValues(runtime.Pilot, pilotValues); err == nil {
+			for key, value := range pilotValues {
+				if err := setHelmValue(values, "pilot."+key, value); err != nil {
+					return err
+				}
+			}
+		} else {
+			return err
 		}
 	}
 	return nil
