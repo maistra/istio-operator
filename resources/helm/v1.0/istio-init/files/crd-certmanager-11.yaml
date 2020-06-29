@@ -6,7 +6,7 @@ metadata:
     app: certmanager
     chart: certmanager
     heritage: Tiller
-    maistra-version: 1.0.10
+    maistra-version: 1.0.11
     release: istio
   annotations:
     "helm.sh/resource-policy": keep
@@ -45,7 +45,7 @@ metadata:
     app: certmanager
     chart: certmanager
     heritage: Tiller
-    maistra-version: 1.0.10
+    maistra-version: 1.0.11
     release: istio
   annotations:
     "helm.sh/resource-policy": keep
