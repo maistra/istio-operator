@@ -214,7 +214,7 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 			}
 
 			smcp := newControlPlane()
-			smcp.Spec.Istio = maistrav1.HelmValuesType{}
+			smcp.Spec.Istio = &maistrav1.HelmValues{}
 			smcp.Spec.Template = "maistra"
 
 			cl, tracker, r := newReconcilerTestFixture(smcp)
