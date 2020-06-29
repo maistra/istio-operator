@@ -24,7 +24,7 @@ data:
     template: |-
 {{ .Files.Get "files/injection-template.yaml" | trim | indent 6 }}
     injectedAnnotations:
-    {{- if .Values.istio_cni.enabled }}
+    {{- if and (.Values.istio_cni.enabled) (not .Values.sidecarInjectorWebhook.injectPodRedirectAnnot) }}
       k8s.v1.cni.cncf.io/networks: {{.Values.istio_cni.istio_cni_network}}
     {{- end }}
     {{- range $key, $val := .Values.sidecarInjectorWebhook.injectedAnnotations }}
