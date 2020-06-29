@@ -6,7 +6,7 @@ metadata:
     app: prometheus
     chart: {{ template "prometheus.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.0.10
+    maistra-version: 1.0.11
     release: {{ .Release.Name }}
 rules:
 - apiGroups: ["maistra.io"]
