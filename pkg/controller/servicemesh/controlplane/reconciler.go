@@ -531,23 +531,23 @@ func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context, versi
 		return err
 	}
 
-	if globalValues, ok, _ := r.Status.LastAppliedConfiguration.Istio.GetMap("global"); ok {
-		globalValues["operatorNamespace"] = r.OperatorNamespace
+	err = r.Status.LastAppliedConfiguration.Istio.SetField("global.operatorNamespace", r.OperatorNamespace)
+	if err != nil {
+		return err
 	}
 
-	var CNIValues map[string]interface{}
-	var ok bool
-	if CNIValues, ok, _ = r.Status.LastAppliedConfiguration.Istio.GetMap("istio_cni"); !ok {
-		CNIValues = make(map[string]interface{})
-		err := r.Status.LastAppliedConfiguration.Istio.SetField("istio_cni", CNIValues)
-		if err != nil {
-			return fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni: %v", err)
-		}
+	err = r.Status.LastAppliedConfiguration.Istio.SetField("istio_cni.enabled", r.cniConfig.Enabled)
+	if err != nil {
+		return fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.enabled: %v", err)
 	}
-	CNIValues["enabled"] = r.cniConfig.Enabled
-	CNIValues["istio_cni_network"], ok = cni.GetNetworkName(version)
+
+	cniNetworkName, ok := cni.GetNetworkName(version)
 	if !ok {
 		return fmt.Errorf("unknown maistra version: %s", version)
+	}
+	err = r.Status.LastAppliedConfiguration.Istio.SetField("istio_cni.istio_cni_network", cniNetworkName)
+	if err != nil {
+		return fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.istio_cni_network: %v", err)
 	}
 
 	//Render the charts
