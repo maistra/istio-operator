@@ -362,7 +362,7 @@ spec:
           medium: Memory
       containers:
         - name: istio-operator
-          image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.0.10
+          image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.0.11
           ports:
           - containerPort: 11999
             name: validation
@@ -383,7 +383,7 @@ spec:
             - name: OPERATOR_NAME
               value: istio-operator
             - name: ISTIO_CNI_IMAGE
-              value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.0.10
+              value: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.0.11
 #            - name: ISTIO_CNI_IMAGE_PULL_SECRET
 #              value: name-of-secret
           volumeMounts:
