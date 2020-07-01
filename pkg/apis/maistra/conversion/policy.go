@@ -3,9 +3,10 @@ package conversion
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // XXX: Not all of the settings are mapped correctly, as there are differences
@@ -52,20 +53,28 @@ func populateMixerPolicyValues(in *v2.ControlPlaneSpec, istiod bool, values map[
 	if err := setHelmValue(policyValues, "enabled", true); err != nil {
 		return err
 	}
-	if err := setHelmValue(values, "global.disablePolicyChecks", !mixer.EnableChecks); err != nil {
-		return err
+	if mixer.EnableChecks != nil {
+		if err := setHelmValue(values, "global.disablePolicyChecks", !*mixer.EnableChecks); err != nil {
+			return err
+		}
 	}
-	if err := setHelmValue(values, "global.policyCheckFailOpen", mixer.FailOpen); err != nil {
-		return err
+	if mixer.FailOpen != nil {
+		if err := setHelmValue(values, "global.policyCheckFailOpen", *mixer.FailOpen); err != nil {
+			return err
+		}
 	}
 
 	if mixer.Adapters != nil {
 		adaptersValues := make(map[string]interface{})
-		if err := setHelmValue(adaptersValues, "useAdapterCRDs", mixer.Adapters.UseAdapterCRDs); err != nil {
-			return err
+		if mixer.Adapters.UseAdapterCRDs != nil {
+			if err := setHelmValue(adaptersValues, "useAdapterCRDs", *mixer.Adapters.UseAdapterCRDs); err != nil {
+				return err
+			}
 		}
-		if err := setHelmValue(adaptersValues, "kubernetesenv.enabled", mixer.Adapters.KubernetesEnv); err != nil {
-			return err
+		if mixer.Adapters.KubernetesEnv != nil {
+			if err := setHelmValue(adaptersValues, "kubernetesenv.enabled", *mixer.Adapters.KubernetesEnv); err != nil {
+				return err
+			}
 		}
 		if istiod {
 			if err := setHelmValue(policyValues, "adapters", adaptersValues); err != nil {
@@ -170,11 +179,15 @@ func populateRemotePolicyValues(in *v2.ControlPlaneSpec, values map[string]inter
 	if err := setHelmValue(values, "global.createRemoteSvcEndpoints", remote.CreateService); err != nil {
 		return err
 	}
-	if err := setHelmValue(values, "global.disablePolicyChecks", !remote.EnableChecks); err != nil {
-		return err
+	if remote.EnableChecks != nil {
+		if err := setHelmValue(values, "global.disablePolicyChecks", !*remote.EnableChecks); err != nil {
+			return err
+		}
 	}
-	if err := setHelmValue(values, "global.policyCheckFailOpen", remote.FailOpen); err != nil {
-		return err
+	if remote.FailOpen != nil {
+		if err := setHelmValue(values, "global.policyCheckFailOpen", *remote.FailOpen); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -189,9 +202,6 @@ func populateIstiodPolicyValues(in *v2.ControlPlaneSpec, values map[string]inter
 		return err
 	}
 	if err := setHelmValue(values, "mixer.policy.enabled", false); err != nil {
-		return err
-	}
-	if err := setHelmValue(values, "global.disablePolicyChecks", true); err != nil {
 		return err
 	}
 	return nil

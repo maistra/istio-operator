@@ -1,10 +1,28 @@
 package conversion
 
 import (
+	"fmt"
+	"strings"
+
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
-func populateLoggingValues(logging *v2.LoggingConfig, values map[string]interface{}) error {
+func populateControlPlaneLogging(logging *v2.LoggingConfig, values map[string]interface{}) error {
+	componentLevels := componentLogLevelsToString(logging.ComponentLevels)
+	if componentLevels != "" {
+		if err := setHelmValue(values, "global.logging.level", componentLevels); err != nil {
+			return err
+		}
+	}
+	if logging.LogAsJSON != nil {
+		if err := setHelmValue(values, "global.logAsJson", *logging.LogAsJSON); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func populateProxyLogging(logging *v2.ProxyLoggingConfig, values map[string]interface{}) error {
 	if logging == nil {
 		return nil
 	}
@@ -13,17 +31,19 @@ func populateLoggingValues(logging *v2.LoggingConfig, values map[string]interfac
 			return err
 		}
 	}
-	if len(logging.ComponentLevel) > 0 {
-		componentLogLevel := make(map[string]interface{})
-		for component, level := range logging.ComponentLevel {
-			if err := setHelmValue(componentLogLevel, string(component), string(level)); err != nil {
-				return err
-			}
-
+	componentLevels := componentLogLevelsToString(logging.ComponentLevels)
+	if componentLevels != "" {
+		if err := setHelmValue(values, "componentLogLevel", componentLevels); err != nil {
+			return err
 		}
-    }
-    
-    // XXX: LogAsJSON is a global :(
-
+	}
 	return nil
+}
+
+func componentLogLevelsToString(logLevels v2.ComponentLogLevels) string {
+	componentLogLevels := make([]string, 0, len(logLevels))
+	for component, level := range logLevels {
+		componentLogLevels = append(componentLogLevels, fmt.Sprintf("%s:%s", component, level))
+	}
+	return strings.Join(componentLogLevels, ",")
 }

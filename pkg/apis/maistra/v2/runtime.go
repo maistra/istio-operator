@@ -78,7 +78,7 @@ type AutoScalerConfig struct {
 	// +optional
 	MinReplicas *int32 `json:"minReplicas,omitempty"`
 	// upper limit for the number of pods that can be set by the autoscaler; cannot be smaller than MinReplicas.
-	MaxReplicas int32 `json:"maxReplicas"`
+	MaxReplicas *int32 `json:"maxReplicas"`
 	// target average CPU utilization (represented as a percentage of requested CPU) over all the pods;
 	// if not specified the default autoscaling policy will be used.
 	// +optional
@@ -155,6 +155,7 @@ type ContainerConfig struct {
 	CommonContainerConfig `jsone:",inline"`
 	Image                 string `json:"image,omitempty"`
 }
+
 // CommonContainerConfig represents container settings common to both defaults
 // and component specific configuration.
 type CommonContainerConfig struct {

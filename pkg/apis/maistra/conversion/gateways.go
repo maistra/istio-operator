@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	"github.com/maistra/istio-operator/pkg/controller/versions"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 const (
@@ -170,16 +171,15 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 
 	// Deployment specific settings
 	runtime := in.Runtime
-	if runtime == nil {
-		runtime = &v2.ComponentRuntimeConfig{}
-	}
 	if err := populateRuntimeValues(runtime, values); err != nil {
 		return nil, err
 	}
 
 	// gateway SDS
-	if err := setHelmValue(values, "sds.enable", in.EnableSDS); err != nil {
-		return nil, err
+	if in.EnableSDS != nil {
+		if err := setHelmValue(values, "sds.enable", *in.EnableSDS); err != nil {
+			return nil, err
+		}
 	}
 	if runtime.Pod.Containers != nil {
 		// SDS container specific config

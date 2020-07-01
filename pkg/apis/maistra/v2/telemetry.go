@@ -30,7 +30,7 @@ const (
 type MixerTelemetryConfig struct {
 	// SessionAffinity configures session affinity for sidecar telemetry connections.
 	// .Values.mixer.telemetry.sessionAffinityEnabled, maps to MeshConfig.sidecarToTelemetrySessionAffinity
-	SessionAffinity bool `json:"sessionAffinity,omitempty"`
+	SessionAffinity *bool `json:"sessionAffinity,omitempty"`
 	// Batching settings used when sending telemetry.
 	Batching TelemetryBatchingConfig `json:"batching,omitempty"`
 	// Runtime configuration to apply to the mixer telemetry deployment.
@@ -46,7 +46,7 @@ type TelemetryBatchingConfig struct {
 	// Set reportBatchMaxEntries to 0 to use the default batching behavior (i.e., every 100 requests).
 	// A positive value indicates the number of requests that are batched before telemetry data
 	// is sent to the mixer server
-	MaxEntries int32 `json:"maxEntries,omitempty"`
+	MaxEntries *int32 `json:"maxEntries,omitempty"`
 	// MaxTime represents the maximum amount of time to hold entries before sending them to mixer.
 	// .Values.mixer.telemetry.reportBatchMaxTime, maps to MeshConfig.reportBatchMaxTime
 	// Set reportBatchMaxTime to 0 to use the default batching behavior (i.e., every 1 second).
@@ -60,10 +60,10 @@ type MixerTelemetryAdaptersConfig struct {
 	// UseAdapterCRDs specifies whether or not mixer should support deprecated CRDs.
 	// .Values.mixer.adapters.useAdapterCRDs, removed in istio 1.4, defaults to false
 	// XXX: i think this can be removed completely
-	UseAdapterCRDs bool `json:"useAdapterCRDs,omitempty"`
+	UseAdapterCRDs *bool `json:"useAdapterCRDs,omitempty"`
 	// KubernetesEnv enables support for the kubernetesenv adapter.
 	// .Values.mixer.adapters.kubernetesenv.enabled, defaults to true
-	KubernetesEnv bool `json:"kubernetesenv,omitempty"`
+	KubernetesEnv *bool `json:"kubernetesenv,omitempty"`
 	// Stdio enables and configures the stdio adapter.
 	// .Values.mixer.adapters.stdio.enabled, defaults to false (null)
 	Stdio *MixerTelemetryStdioConfig `json:"stdio,omitempty"`

@@ -11,7 +11,7 @@ type ProxyConfig struct {
 	// only exposed through proxy settings and there was no separate logging for
 	// control plane components (e.g. pilot, mixer, etc.).
 	// e.g. .Values.global.proxy.logLevel
-	Logging LoggingConfig `json:"logging,omitempty"`
+	Logging ProxyLoggingConfig `json:"logging,omitempty"`
 	// Networking represents network settings to be configured for the sidecars.
 	Networking ProxyNetworkingConfig `json:"networking,omitempty"`
 	// Runtime is used to customize runtime configuration for the sidecar container.
@@ -23,7 +23,7 @@ type ProxyConfig struct {
 	// .Values.global.proxy.concurrency, maps to defaultConfig.concurrency
 	// XXX: removed in 1.7
 	// XXX: this is defaulted to 2 in our values.yaml, but should probably be 0
-	Concurrency int32 `json:"concurrency,omitempty"`
+	Concurrency *int32 `json:"concurrency,omitempty"`
 }
 
 // ProxyNetworkingConfig is used to configure networking aspects of the sidecar.
@@ -163,7 +163,7 @@ type ProxyNetworkProtocolConfig struct {
 	// .Values.global.proxy.protocolDetectionTimeout, maps to protocolDetectionTimeout
 	DetectionTimeout string `json:"detectionTimeout,omitempty"`
 	// Debug configures debugging capabilities for the connection.
-	Debug ProxyNetworkProtocolDebugConfig `json:"debug,omitempty"`
+	Debug *ProxyNetworkProtocolDebugConfig `json:"debug,omitempty"`
 }
 
 // ProxyNetworkProtocolDebugConfig specifies configuration for protocol debugging.

@@ -49,7 +49,7 @@ type GatewayConfig struct {
 	// EnableSDS for the gateway.
 	// .Values.gateways.<gateway-name>.sds.enabled
 	// XXX: I believe this is only applicable to ingress gateways
-	EnableSDS bool `json:"enableSDS,omitempty"`
+	EnableSDS *bool `json:"enableSDS,omitempty"`
 	// Volumes is used to configure additional Secret and ConfigMap volumes that
 	// should be mounted for the gateway's pod.
 	// .Values.gateways.<gateway-name>.secretVolumes, .Values.gateways.<gateway-name>.configMapVolumes

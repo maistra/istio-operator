@@ -11,10 +11,10 @@ type MutualTLSConfig struct {
 	// Auto configures the mesh to automatically detect whether or not mutual
 	// TLS is required for a specific connection.
 	// .Values.global.mtls.auto
-	Auto bool `json:"auto,omitempty"`
+	Auto *bool `json:"auto,omitempty"`
 	// Enable mutual TLS by default.
 	// .Values.global.mtls.enabled
-	Enable bool `json:"enable,omitempty"`
+	Enable *bool `json:"enable,omitempty"`
 	// Trust configures trust aspects associated with mutual TLS clients.
 	Trust TrustConfig `json:"trust,omitempty"`
 	// CertificateAuthority configures the certificate authority used by the
@@ -198,7 +198,7 @@ type ThirdPartyIdentityConfig struct {
 type ControlPlaneMTLSConfig struct {
 	// Enable mutual TLS for the control plane components.
 	// .Values.global.controlPlaneSecurityEnabled
-	Enable bool `json:"enable,omitempty"`
+	Enable *bool `json:"enable,omitempty"`
 	// CertProvider is the certificate authority used to generate the serving
 	// certificates for the control plane components.
 	// .Values.global.pilotCertProvider

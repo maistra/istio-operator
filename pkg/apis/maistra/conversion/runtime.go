@@ -246,17 +246,15 @@ func populateAutoscalingHelmValues(autoScalerConfg *v2.AutoScalerConfig, values 
 		if err := setHelmValue(values, "autoscaleEnabled", true); err != nil {
 			return err
 		}
-		if autoScalerConfg.MinReplicas == nil {
-			if err := setHelmValue(values, "autoscaleMin", 1); err != nil {
-				return err
-			}
-		} else {
+		if autoScalerConfg.MinReplicas != nil {
 			if err := setHelmValue(values, "autoscaleMin", *autoScalerConfg.MinReplicas); err != nil {
 				return err
 			}
 		}
-		if err := setHelmValue(values, "autoscaleMax", autoScalerConfg.MaxReplicas); err != nil {
-			return err
+		if autoScalerConfg.MaxReplicas != nil {
+			if err := setHelmValue(values, "autoscaleMax", *autoScalerConfg.MaxReplicas); err != nil {
+				return err
+			}
 		}
 		if autoScalerConfg.TargetCPUUtilizationPercentage != nil {
 			if err := setHelmValue(values, "cpu.targetAverageUtilization", *autoScalerConfg.TargetCPUUtilizationPercentage); err != nil {

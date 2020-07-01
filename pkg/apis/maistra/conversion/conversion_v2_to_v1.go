@@ -29,6 +29,11 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 		return err
 	}
 
+	// Logging
+	if err := populateControlPlaneLogging(in.Logging, out.Istio); err != nil {
+		return err
+	}
+
 	// Policy
 	if err := populatePolicyValues(in, out.Istio); err != nil {
 		return err
@@ -64,5 +69,10 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 		return err
 	}
 
+	return nil
+}
+
+func Convert_v2_ControlPlaneStatus_To_v1_ControlPlaneStatus(in *v2.ControlPlaneStatus, out *v1.ControlPlaneStatus, s conversion.Scope) error {
+	out = in.ControlPlaneStatus.DeepCopy()
 	return nil
 }

@@ -36,12 +36,12 @@ type MixerPolicyConfig struct {
 	// .Values.global.disablePolicyChecks | default "true" (false, inverted logic)
 	// Set the following variable to false to disable policy checks by the Mixer.
 	// Note that metrics will still be reported to the Mixer.
-	EnableChecks bool `json:"enableChecks,omitempty"`
+	EnableChecks *bool `json:"enableChecks,omitempty"`
 	// FailOpen configures policy checks to fail if mixer cannot be reached.
 	// .Values.global.policyCheckFailOpen, maps to MeshConfig.policyCheckFailOpen
 	// policyCheckFailOpen allows traffic in cases when the mixer policy service cannot be reached.
 	// Default is false which means the traffic is denied when the client is unable to connect to Mixer.
-	FailOpen bool `json:"failOpen,omitempty"`
+	FailOpen *bool `json:"failOpen,omitempty"`
 	// Runtime configures execution aspects of the mixer deployment/pod (e.g. resources)
 	Runtime *ComponentRuntimeConfig `json:"runtime,omitempty"`
 	// Adapters configures available adapters.
@@ -53,10 +53,10 @@ type MixerPolicyAdaptersConfig struct {
 	// UseAdapterCRDs configures mixer to support deprecated mixer CRDs.
 	// .Values.mixer.policy.adapters.useAdapterCRDs, removed in istio 1.4, defaults to false
 	// XXX: I don't think this should ever be used, as the CRDs were supported in istio 1.1, but removed entirely in 1.4
-	UseAdapterCRDs bool `json:"useAdapterCRDs,omitempty"`
+	UseAdapterCRDs *bool `json:"useAdapterCRDs,omitempty"`
 	// Kubernetesenv configures the use of the kubernetesenv adapter.
 	// .Values.mixer.policy.adapters.kubernetesenv.enabled, defaults to true
-	KubernetesEnv bool `json:"kubernetesenv,omitempty"`
+	KubernetesEnv *bool `json:"kubernetesenv,omitempty"`
 }
 
 // RemotePolicyConfig configures a remote mixer instance for policy
@@ -71,12 +71,12 @@ type RemotePolicyConfig struct {
 	// .Values.global.disablePolicyChecks | default "true" (false, inverted logic)
 	// Set the following variable to false to disable policy checks by the Mixer.
 	// Note that metrics will still be reported to the Mixer.
-	EnableChecks bool `json:"enableChecks,omitempty"`
+	EnableChecks *bool `json:"enableChecks,omitempty"`
 	// FailOpen configures policy checks to fail if mixer cannot be reached.
 	// .Values.global.policyCheckFailOpen, maps to MeshConfig.policyCheckFailOpen
 	// policyCheckFailOpen allows traffic in cases when the mixer policy service cannot be reached.
 	// Default is false which means the traffic is denied when the client is unable to connect to Mixer.
-	FailOpen bool `json:"failOpen,omitempty"`
+	FailOpen *bool `json:"failOpen,omitempty"`
 }
 
 // IstiodPolicyConfig configures policy aspects of istiod

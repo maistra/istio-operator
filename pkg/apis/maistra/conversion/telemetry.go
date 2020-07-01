@@ -3,9 +3,10 @@ package conversion
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 func populateTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
@@ -63,8 +64,10 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 		return err
 	}
 
-	if err := setHelmValue(v1TelemetryValues, "sessionAffinityEnabled", mixer.SessionAffinity); err != nil {
-		return err
+	if mixer.SessionAffinity != nil {
+		if err := setHelmValue(v1TelemetryValues, "sessionAffinityEnabled", *mixer.SessionAffinity); err != nil {
+			return err
+		}
 	}
 
 	if err := populateTelemetryBatchingValues(&mixer.Batching, v1TelemetryValues); err != nil {
@@ -73,11 +76,15 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 
 	if mixer.Adapters != nil {
 		adaptersValues := make(map[string]interface{})
-		if err := setHelmValue(adaptersValues, "useAdapterCRDs", mixer.Adapters.UseAdapterCRDs); err != nil {
-			return err
+		if mixer.Adapters.UseAdapterCRDs != nil {
+			if err := setHelmValue(adaptersValues, "useAdapterCRDs", *mixer.Adapters.UseAdapterCRDs); err != nil {
+				return err
+			}
 		}
-		if err := setHelmValue(adaptersValues, "kubernetesenv.enabled", mixer.Adapters.KubernetesEnv); err != nil {
-			return err
+		if mixer.Adapters.KubernetesEnv != nil {
+			if err := setHelmValue(adaptersValues, "kubernetesenv.enabled", *mixer.Adapters.KubernetesEnv); err != nil {
+				return err
+			}
 		}
 		if mixer.Adapters.Stdio == nil {
 			if err := setHelmValue(adaptersValues, "stdio.enabled", false); err != nil {
@@ -244,7 +251,10 @@ func populateTelemetryBatchingValues(in *v2.TelemetryBatchingConfig, values map[
 			return err
 		}
 	}
-	return setHelmValue(values, "mixer.telemetry.reportBatchMaxEntries", in.MaxEntries)
+	if in.MaxEntries != nil {
+		return setHelmValue(values, "mixer.telemetry.reportBatchMaxEntries", *in.MaxEntries)
+	}
+	return nil
 }
 
 func populateRemoteTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values map[string]interface{}) error {

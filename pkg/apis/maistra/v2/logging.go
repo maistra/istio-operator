@@ -1,19 +1,28 @@
 package v2
 
-// LoggingConfig configures logging for a component
+// LoggingConfig for control plane components
 type LoggingConfig struct {
+	// ComponentLevels configures log level for specific envoy components
+	// .Values.global.proxy.componentLogLevel, overridden by sidecar.istio.io/componentLogLevel
+	// map of <component>:<level>
+	ComponentLevels ComponentLogLevels `json:"componentLevels,omitempty"`
+	// LogAsJSON enables JSON logging
+	// .Values.global.logAsJson
+	LogAsJSON *bool `json:"logAsJSON,omitempty"`
+}
+
+// ProxyLoggingConfig configures logging for a component
+type ProxyLoggingConfig struct {
 	// Level the log level
 	// .Values.global.proxy.logLevel, overridden by sidecar.istio.io/logLevel
 	Level LogLevel `json:"level,omitempty"`
-	// ComponentLevel configures log level for specific envoy components
+	// ComponentLevels configures log level for specific envoy components
 	// .Values.global.proxy.componentLogLevel, overridden by sidecar.istio.io/componentLogLevel
 	// map of <component>:<level>
-	ComponentLevel map[EnvoyComponent]LogLevel `json:"componentLevel,omitempty"`
-	// LogAsJSON enables JSON logging
-	// .Values.global.logAsJson
-	LogAsJSON bool `json:"logAsJSON,omitempty"`
+	ComponentLevels ComponentLogLevels `json:"componentLevels,omitempty"`
 }
 
+type ComponentLogLevels map[EnvoyComponent]LogLevel
 // LogLevel represents the logging level
 type LogLevel string
 

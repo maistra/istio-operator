@@ -60,7 +60,7 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 				}
 			}
 
-			if meshNetworksValue, err := toValues(in.Cluster.MultiCluster.MeshNetworks); err != nil {
+			if meshNetworksValue, err := toValues(in.Cluster.MultiCluster.MeshNetworks); err == nil {
 				if err := setHelmValue(values, "global.meshNetworks", meshNetworksValue); err != nil {
                     return err
                 }
@@ -73,6 +73,9 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
                 return err
             }
 		} else {
+			if err := setHelmValue(values, "global.multiCluster.enabled", true); err != nil {
+                return err
+            }
 			// XXX: ingress and egress gateways must be configured if multicluster is enabled
 			if in.Gateways != nil {
 				if in.Gateways.Egress != nil {
@@ -113,6 +116,9 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 							if err := setHelmValue(values, "gateways.istio-ilbgateway.enabled", false); err != nil {
                                 return err
                             }
+							if err := setHelmValue(values, "global.meshExpansion.useILB", false); err != nil {
+                                return err
+                            }
 						} else {
 							if err := setHelmValue(values, "global.meshExpansion.useILB", true); err != nil {
                                 return err
@@ -120,9 +126,6 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 							addExpansionPorts(&in.Cluster.MeshExpansion.ILBGateway.Service.Ports, expansionPorts)
 							if ilbGatewayValues, err := gatewayConfigToValues(in.Cluster.MeshExpansion.ILBGateway); err == nil {
 								if err := setHelmValue(values, "gateways.istio-ilbgateway", ilbGatewayValues); err != nil {
-                                    return err
-                                }
-								if err := setHelmValue(values, "gateways.istio-ilbgateway.enabled", true); err != nil {
                                     return err
                                 }
 							} else {

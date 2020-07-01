@@ -15,17 +15,15 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 	proxyValues := make(map[string]interface{})
 
 	// General
-	if err := setHelmValue(proxyValues, "concurrency", proxy.Concurrency); err != nil {
-		return err
+	if proxy.Concurrency != nil {
+		if err := setHelmValue(proxyValues, "concurrency", *proxy.Concurrency); err != nil {
+			return err
+		}
 	}
 	// XXX: admin port is not configurable
 
 	// Logging
-	if err := populateLoggingValues(&proxy.Logging, proxyValues); err != nil {
-		return err
-	}
-	// special handling for LogAsJSON
-	if err := setHelmValue(values, "global.logAsJson", proxy.Logging.LogAsJSON); err != nil {
+	if err := populateProxyLogging(&proxy.Logging, proxyValues); err != nil {
 		return err
 	}
 
@@ -144,11 +142,13 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 			return err
 		}
 	}
-	if err := setHelmValue(values, "pilot.enableProtocolSniffingForInbound", proxy.Networking.Protocol.Debug.EnableInboundSniffing); err != nil {
-		return err
-	}
-	if err := setHelmValue(values, "pilot.enableProtocolSniffingForOutbound", proxy.Networking.Protocol.Debug.EnableOutboundSniffing); err != nil {
-		return err
+	if proxy.Networking.Protocol.Debug != nil {
+		if err := setHelmValue(values, "pilot.enableProtocolSniffingForInbound", proxy.Networking.Protocol.Debug.EnableInboundSniffing); err != nil {
+			return err
+		}
+		if err := setHelmValue(values, "pilot.enableProtocolSniffingForOutbound", proxy.Networking.Protocol.Debug.EnableOutboundSniffing); err != nil {
+			return err
+		}
 	}
 
 	// DNS

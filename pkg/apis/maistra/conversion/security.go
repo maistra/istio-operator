@@ -14,12 +14,15 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 	}
 
 	// General mutual TLS
-	if err := setHelmValue(values, "global.mtls.enabled", security.MutualTLS.Enable); err != nil {
-		return err
+	if security.MutualTLS.Enable != nil {
+		if err := setHelmValue(values, "global.mtls.enabled", *security.MutualTLS.Enable); err != nil {
+			return err
+		}
 	}
-
-	if err := setHelmValue(values, "global.mtls.auto", security.MutualTLS.Auto); err != nil {
-		return err
+	if security.MutualTLS.Auto != nil {
+		if err := setHelmValue(values, "global.mtls.auto", *security.MutualTLS.Auto); err != nil {
+			return err
+		}
 	}
 
 	// SPIFFE trust domain
@@ -176,8 +179,10 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 	}
 
 	// Control Plane Security
-	if err := setHelmValue(values, "global.controlPlaneSecurityEnabled", security.MutualTLS.ControlPlane.Enable); err != nil {
-		return err
+	if security.MutualTLS.ControlPlane.Enable != nil {
+		if err := setHelmValue(values, "global.controlPlaneSecurityEnabled", *security.MutualTLS.ControlPlane.Enable); err != nil {
+			return err
+		}
 	}
 	if security.MutualTLS.ControlPlane.CertProvider != "" {
 		if err := setHelmValue(values, "global.pilotCertProvider", string(security.MutualTLS.ControlPlane.CertProvider)); err != nil {
