@@ -17,9 +17,11 @@ type GrafanaInstallConfig struct {
 	// Config configures the behavior of the grafana installation
 	Config GrafanaConfig `json:"config,omitempty"`
 	// Service configures the k8s Service associated with the grafana installation
+	// XXX: grafana service config does not follow other addon components' structure
 	Service ComponentServiceConfig `json:"service,omitempty"`
 	// Persistence configures a PersistentVolume associated with the grafana installation
 	// .Values.grafana.persist, true if not null
+	// XXX: capacity is not supported in the charts, hard coded to 5Gi
 	Persistence *ComponentPersistenceConfig `json:"persistence,omitempty"`
 	// Runtime is used to customize the grafana deployment/pod
 	Runtime *ComponentRuntimeConfig `json:"runtime,omitempty"`

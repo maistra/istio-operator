@@ -60,14 +60,14 @@ const (
 type JaegerMemoryStorageConfig struct {
 	// MaxTraces to store
 	// .Values.tracing.jaeger.memory.max_traces, defaults to 100000
-	MaxTraces int64 `json:"maxTraces,omitempty"`
+	MaxTraces *int64 `json:"maxTraces,omitempty"`
 }
 
 // JaegerElasticsearchStorageConfig configures elasticsearch storage parameters for Jaeger
 type JaegerElasticsearchStorageConfig struct {
 	// NodeCount represents the number of elasticsearch nodes to create.
 	// .Values.tracing.jaeger.elasticsearch.nodeCount, defaults to 3
-	NodeCount int32 `json:"nodeCount,omitempty"`
+	NodeCount *int32 `json:"nodeCount,omitempty"`
 	// Storage represents storage configuration for elasticsearch.
 	// .Values.tracing.jaeger.elasticsearch.storage, raw yaml
 	// XXX: RawExtension?

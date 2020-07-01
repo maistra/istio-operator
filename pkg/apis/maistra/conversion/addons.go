@@ -10,8 +10,17 @@ func populateAddonsValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 	if in.Addons == nil {
 		return nil
 	}
+
+    // do kiali first, so it doesn't override any kiali.* settings added by other addons (e.g. prometheus, grafana, jaeger)
+    // XXX: not sure how important this is, as these settings should be updated as part of reconcilation
+	if in.Addons.Visualization.Kiali != nil {
+		if err := populateKialiAddonValues(in.Addons.Visualization.Kiali, values); err != nil {
+			return err
+		}
+	}
+
 	if in.Addons.Metrics.Prometheus != nil {
-		if err := populatePrometheusAddonValues(in.Addons.Metrics.Prometheus, values); err != nil {
+		if err := populatePrometheusAddonValues(in, values); err != nil {
 			return err
 		}
 	}
@@ -30,11 +39,34 @@ func populateAddonsValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 		}
 	}
 
-	if in.Addons.Visualization.Kiali != nil {
-		if err := populateKialiAddonValues(in.Addons.Visualization.Kiali, values); err != nil {
+	return nil
+}
+
+func populateAddonIngressValues(ingress *v2.ComponentIngressConfig, values map[string]interface{}) error {
+	if ingress != nil {
+		if err := setHelmValue(values, "enabled", true); err != nil {
 			return err
 		}
+		if ingress.ContextPath != "" {
+			if err := setHelmValue(values, "contextPath", ingress.ContextPath); err != nil {
+				return err
+			}
+		}
+		if len(ingress.Hosts) > 0 {
+			if err := setHelmValue(values, "hosts", ingress.Hosts); err != nil {
+				return err
+			}
+		}
+		if len(ingress.Metadata.Annotations) > 0 {
+			if err := setHelmValue(values, "annotations", ingress.Metadata.Annotations); err != nil {
+				return err
+			}
+		}
+		if len(ingress.TLS) > 0 {
+			if err := setHelmValue(values, "tls", ingress.TLS); err != nil {
+				return err
+			}
+		}
 	}
-
-	return nil
+    return nil
 }

@@ -33,13 +33,13 @@ type KialiConfig struct {
 type KialiDashboardConfig struct {
 	// ViewOnly configures view_only_mode for the dashboard
 	// .Values.kiali.dashboard.viewOnlyMode
-	ViewOnly bool `json:"viewOnly,omitempty"`
+	ViewOnly *bool `json:"viewOnly,omitempty"`
 	// XXX: should the user have a choice here, or should these be configured
 	// automatically if they are enabled for the control plane installation?
 	// Grafana endpoint will be configured based on Grafana configuration
-	EnableGrafana bool `json:"enableGrafana,omitempty"`
+	EnableGrafana *bool `json:"enableGrafana,omitempty"`
 	// Prometheus endpoint will be configured based on Prometheus configuration
-	EnablePrometheus bool `json:"enablePrometheus,omitempty"`
+	EnablePrometheus *bool `json:"enablePrometheus,omitempty"`
 	// Tracing endpoint will be configured based on Tracing configuration
-	EnableTracing bool `json:"enableTracing,omitempty"`
+	EnableTracing *bool `json:"enableTracing,omitempty"`
 }

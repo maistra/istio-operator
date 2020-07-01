@@ -128,58 +128,76 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 
 func populateRuntimeValues(runtime *v2.ComponentRuntimeConfig, values map[string]interface{}) error {
 	if runtime == nil {
-		runtime = &v2.ComponentRuntimeConfig{}
+		return nil
+	}
+	if err := populateDeploymentHelmValues(&runtime.Deployment, values); err != nil {
+		return err
+	}
+	if err := populatePodHelmValues(&runtime.Pod, values); err != nil {
+		return err
 	}
 	if err := populateAutoscalingHelmValues(runtime.Deployment.AutoScaling, values); err != nil {
 		return err
 	}
-	if runtime.Deployment.Replicas == nil {
+
+	return nil
+}
+
+func populateDeploymentHelmValues(deployment *v2.DeploymentRuntimeConfig, values map[string]interface{}) error {
+	if deployment == nil {
+		return nil
+	}
+	if deployment.Replicas == nil {
 		if err := setHelmValue(values, "replicaCount", 1); err != nil {
 			return err
 		}
 	} else {
-		if err := setHelmValue(values, "replicaCount", *runtime.Deployment.Replicas); err != nil {
+		if err := setHelmValue(values, "replicaCount", *deployment.Replicas); err != nil {
 			return err
 		}
 	}
 	// labels are populated from Service.Metadata.Labels
-	if runtime.Deployment.Strategy != nil && runtime.Deployment.Strategy.RollingUpdate != nil {
-		if runtime.Deployment.Strategy.RollingUpdate.MaxSurge != nil {
-			if err := setHelmValue(values, "rollingMaxSurge", *runtime.Deployment.Strategy.RollingUpdate.MaxSurge); err != nil {
+	if deployment.Strategy != nil && deployment.Strategy.RollingUpdate != nil {
+		if deployment.Strategy.RollingUpdate.MaxSurge != nil {
+			if err := setHelmValue(values, "rollingMaxSurge", *deployment.Strategy.RollingUpdate.MaxSurge); err != nil {
 				return err
 			}
 		}
-		if runtime.Deployment.Strategy.RollingUpdate.MaxUnavailable != nil {
-			if err := setHelmValue(values, "rollingMaxUnavailable", *runtime.Deployment.Strategy.RollingUpdate.MaxUnavailable); err != nil {
+		if deployment.Strategy.RollingUpdate.MaxUnavailable != nil {
+			if err := setHelmValue(values, "rollingMaxUnavailable", *deployment.Strategy.RollingUpdate.MaxUnavailable); err != nil {
 				return err
 			}
 		}
 	}
-	if len(runtime.Pod.Metadata.Annotations) > 0 {
-		if err := setHelmValue(values, "podAnnotations", runtime.Pod.Metadata.Annotations); err != nil {
+	return nil
+}
+
+func populatePodHelmValues(pod *v2.PodRuntimeConfig, values map[string]interface{}) error {
+	if len(pod.Metadata.Annotations) > 0 {
+		if err := setHelmValue(values, "podAnnotations", pod.Metadata.Annotations); err != nil {
 			return err
 		}
 	}
-	if runtime.Pod.PriorityClassName != "" {
+	if pod.PriorityClassName != "" {
 		// XXX: this is only available with global.priorityClassName
-		if err := setHelmValue(values, "priorityClassName", runtime.Pod.PriorityClassName); err != nil {
+		if err := setHelmValue(values, "priorityClassName", pod.PriorityClassName); err != nil {
 			return err
 		}
 	}
 
 	// Scheduling
-	if len(runtime.Pod.NodeSelector) > 0 {
-		if err := setHelmValue(values, "nodeSelector", runtime.Pod.NodeSelector); err != nil {
+	if len(pod.NodeSelector) > 0 {
+		if err := setHelmValue(values, "nodeSelector", pod.NodeSelector); err != nil {
 			return err
 		}
 	}
-	if runtime.Pod.Affinity != nil {
+	if pod.Affinity != nil {
 		// NodeAffinity is not supported, only NodeSelector may be used.
 		// PodAffinity is not supported.
-		if runtime.Pod.Affinity.PodAntiAffinity != nil {
-			if len(runtime.Pod.Affinity.PodAntiAffinity.RequiredDuringScheduling) > 0 {
+		if pod.Affinity.PodAntiAffinity != nil {
+			if len(pod.Affinity.PodAntiAffinity.RequiredDuringScheduling) > 0 {
 				podAntiAffinityLabelSelector := make([]map[string]string, 0)
-				for _, term := range runtime.Pod.Affinity.PodAntiAffinity.RequiredDuringScheduling {
+				for _, term := range pod.Affinity.PodAntiAffinity.RequiredDuringScheduling {
 					podAntiAffinityLabelSelector = append(podAntiAffinityLabelSelector, map[string]string{
 						"key":         term.Key,
 						"operator":    string(term.Operator),
@@ -191,9 +209,9 @@ func populateRuntimeValues(runtime *v2.ComponentRuntimeConfig, values map[string
 					return err
 				}
 			}
-			if len(runtime.Pod.Affinity.PodAntiAffinity.PreferredDuringScheduling) > 0 {
+			if len(pod.Affinity.PodAntiAffinity.PreferredDuringScheduling) > 0 {
 				podAntiAffinityTermLabelSelector := make([]map[string]string, 0)
-				for _, term := range runtime.Pod.Affinity.PodAntiAffinity.PreferredDuringScheduling {
+				for _, term := range pod.Affinity.PodAntiAffinity.PreferredDuringScheduling {
 					podAntiAffinityTermLabelSelector = append(podAntiAffinityTermLabelSelector, map[string]string{
 						"key":         term.Key,
 						"operator":    string(term.Operator),
@@ -207,8 +225,8 @@ func populateRuntimeValues(runtime *v2.ComponentRuntimeConfig, values map[string
 			}
 		}
 	}
-	if len(runtime.Pod.Tolerations) > 0 {
-		if tolerations, err := toValues(runtime.Pod.Tolerations); err == nil {
+	if len(pod.Tolerations) > 0 {
+		if tolerations, err := toValues(pod.Tolerations); err == nil {
 			if err := setHelmValue(values, "tolerations", tolerations); err != nil {
 				return err
 			}
@@ -216,7 +234,6 @@ func populateRuntimeValues(runtime *v2.ComponentRuntimeConfig, values map[string
 			return err
 		}
 	}
-
 	return nil
 }
 

@@ -224,8 +224,8 @@ type ComponentIngressConfig struct {
 type ComponentPersistenceConfig struct {
 	// StorageClassName for the PersistentVolume
 	StorageClassName string `json:"storageClassName,omitempty"`
-	// AccessModes for the PersistentVolume
-	AccessModes []corev1.PersistentVolumeAccessMode `json:"accessModes,omitempty"`
+	// AccessMode for the PersistentVolume
+	AccessMode corev1.PersistentVolumeAccessMode `json:"accessMode,omitempty"`
 	// Capacity to request for the PersistentVolume
 	Capacity corev1.ResourceList `json:"capacity,omitempty"`
 }
