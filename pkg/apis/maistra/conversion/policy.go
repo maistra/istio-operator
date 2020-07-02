@@ -194,10 +194,6 @@ func populateRemotePolicyValues(in *v2.ControlPlaneSpec, values map[string]inter
 }
 
 func populateIstiodPolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
-	istiod := in.Policy.Istiod
-	if istiod == nil {
-		istiod = &v2.IstiodPolicyConfig{}
-	}
 	if err := setHelmValue(values, "mixer.enabled", false); err != nil {
 		return err
 	}

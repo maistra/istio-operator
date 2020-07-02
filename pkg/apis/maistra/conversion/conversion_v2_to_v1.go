@@ -73,6 +73,6 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 }
 
 func Convert_v2_ControlPlaneStatus_To_v1_ControlPlaneStatus(in *v2.ControlPlaneStatus, out *v1.ControlPlaneStatus, s conversion.Scope) error {
-	out = in.ControlPlaneStatus.DeepCopy()
+	in.ControlPlaneStatus.DeepCopyInto(out)
 	return nil
 }
