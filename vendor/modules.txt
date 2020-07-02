@@ -232,7 +232,6 @@ github.com/gobwas/glob/util/runes
 github.com/gobwas/glob/util/strings
 # github.com/gogo/protobuf v1.3.1
 github.com/gogo/protobuf/gogoproto
-github.com/gogo/protobuf/jsonpb
 github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/protoc-gen-gogo/descriptor
 github.com/gogo/protobuf/sortkeys
@@ -748,11 +747,6 @@ helm.sh/helm/v3/pkg/storage
 helm.sh/helm/v3/pkg/storage/driver
 helm.sh/helm/v3/pkg/strvals
 helm.sh/helm/v3/pkg/time
-# istio.io/api v0.0.0-20200218013118-7fd43ea7fc2b => istio.io/api v0.0.0-20191111210003-35e06ef8d838
-istio.io/api/mesh/v1alpha1
-istio.io/api/networking/v1alpha3
-# istio.io/gogo-genproto v0.0.0-20190930162913-45029607206a
-istio.io/gogo-genproto/googleapis/google/api
 # k8s.io/api v0.18.3
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1

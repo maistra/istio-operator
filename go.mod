@@ -23,7 +23,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.6.3
-	istio.io/api v0.0.0-20200218013118-7fd43ea7fc2b
+	istio.io/api v0.0.0-20200218013118-7fd43ea7fc2b // indirect
 	k8s.io/api v0.18.3
 	k8s.io/apiextensions-apiserver v0.18.3
 	k8s.io/apimachinery v0.18.3
@@ -32,6 +32,7 @@ require (
 	k8s.io/helm v2.16.7+incompatible
 	k8s.io/kubectl v0.18.3
 	sigs.k8s.io/controller-runtime v0.6.0
+	sigs.k8s.io/yaml v1.2.0
 )
 
 replace github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309 // Required by Helm

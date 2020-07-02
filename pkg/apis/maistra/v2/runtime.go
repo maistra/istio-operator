@@ -164,7 +164,7 @@ type PodAntiAffinityTerm struct {
 
 // ContainerConfig to be applied to containers in a pod, in a deployment
 type ContainerConfig struct {
-	CommonContainerConfig `jsone:",inline"`
+	CommonContainerConfig `json:",inline"`
 	// +optional
 	Image                 string `json:"image,omitempty"`
 }

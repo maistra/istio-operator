@@ -97,10 +97,10 @@ spec:
                     status:
                       type: string
                     type:
+                      $ref: '#/definitions/github.com~1maistra~1istio-operator~1pkg~1apis~1maistra~1status~0ConditionType'
                       description: 'ServiceMeshMemberRollConditionType represents
                         the type of the condition.  Condition types are: Reconciled,
                         NamespaceConfigured'
-                      type: string
                   type: object
                 nullable: true
                 type: array
