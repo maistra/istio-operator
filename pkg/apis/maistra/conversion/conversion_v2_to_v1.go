@@ -19,55 +19,55 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 	in = in.DeepCopy()
 
 	// Initialize output
-	if out.Istio == nil {
-		out.Istio = make(map[string]interface{})
-	}
+	values := make(map[string]interface{})
 
 	// Cluster settings
 	// cluster must come first as it may modify other settings on the input (e.g. meshExpansionPorts)
-	if err := populateClusterValues(in, out.Istio); err != nil {
+	if err := populateClusterValues(in, values); err != nil {
 		return err
 	}
 
 	// Logging
-	if err := populateControlPlaneLogging(in.Logging, out.Istio); err != nil {
+	if err := populateControlPlaneLogging(in.Logging, values); err != nil {
 		return err
 	}
 
 	// Policy
-	if err := populatePolicyValues(in, out.Istio); err != nil {
+	if err := populatePolicyValues(in, values); err != nil {
 		return err
 	}
 
 	// Proxy
-	if err := populateProxyValues(in, out.Istio); err != nil {
+	if err := populateProxyValues(in, values); err != nil {
 		return err
 	}
 
 	// Security
-	if err := populateSecurityValues(in, out.Istio); err != nil {
+	if err := populateSecurityValues(in, values); err != nil {
 		return err
 	}
 
 	// Telemetry
-	if err := populateTelemetryValues(in, out.Istio); err != nil {
+	if err := populateTelemetryValues(in, values); err != nil {
 		return err
 	}
 
 	// Gateways
-	if err := populateGatewaysValues(in, out.Istio); err != nil {
+	if err := populateGatewaysValues(in, values); err != nil {
 		return err
 	}
 
 	// Runtime
-	if err := populateControlPlaneRuntimeValues(in.Runtime, out.Istio); err != nil {
+	if err := populateControlPlaneRuntimeValues(in.Runtime, values); err != nil {
 		return err
 	}
 
 	// Addons
-	if err := populateAddonsValues(in, out.Istio); err != nil {
+	if err := populateAddonsValues(in, values); err != nil {
 		return err
 	}
+
+	out.Istio = v1.NewHelmValues(values)
 
 	return nil
 }
