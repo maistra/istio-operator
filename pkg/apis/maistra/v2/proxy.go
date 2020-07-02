@@ -11,18 +11,23 @@ type ProxyConfig struct {
 	// only exposed through proxy settings and there was no separate logging for
 	// control plane components (e.g. pilot, mixer, etc.).
 	// e.g. .Values.global.proxy.logLevel
+	// +optional
 	Logging ProxyLoggingConfig `json:"logging,omitempty"`
 	// Networking represents network settings to be configured for the sidecars.
+	// +optional
 	Networking ProxyNetworkingConfig `json:"networking,omitempty"`
 	// Runtime is used to customize runtime configuration for the sidecar container.
+	// +optional
 	Runtime ProxyRuntimeConfig `json:"runtime,omitempty"`
 	// AdminPort configures the admin port exposed by the sidecar.
 	// maps to defaultConfig.proxyAdminPort, defaults to 15000
+	// +optional
 	AdminPort int32 `json:"adminPort,omitempty"`
 	// Concurrency configures the number of threads that should be run by the sidecar.
 	// .Values.global.proxy.concurrency, maps to defaultConfig.concurrency
 	// XXX: removed in 1.7
 	// XXX: this is defaulted to 2 in our values.yaml, but should probably be 0
+	// +optional
 	Concurrency *int32 `json:"concurrency,omitempty"`
 }
 
@@ -30,18 +35,24 @@ type ProxyConfig struct {
 type ProxyNetworkingConfig struct {
 	// ClusterDomain represents the domain for the cluster, defaults to cluster.local
 	// .Values.global.proxy.clusterDomain
+	// +optional
 	ClusterDomain string  `json:"clusterDomain,omitempty"`
 	// maps to meshConfig.defaultConfig.connectionTimeout, defaults to 10s
 	// XXX: currently not exposed through values.yaml
+	// +optional
 	ConnectionTimeout string `json:"connectionTimeout,omitempty"`
 	// Initialization is used to specify how the pod's networking through the
 	// proxy is initialized.  This configures the use of CNI or an init container.
+	// +optional
 	Initialization ProxyNetworkInitConfig `json:"initialization,omitempty"`
 	// TrafficControl configures what network traffic is routed through the proxy.
+	// +optional
 	TrafficControl ProxyTrafficControlConfig `json:"trafficControl,omitempty"`
 	// Protocol configures how the sidecar works with applicaiton protocols.
+	// +optional
 	Protocol ProxyNetworkProtocolConfig `json:"protocol,omitempty"`
 	// DNS configures aspects of the sidecar's usage of DNS
+	// +optional
 	DNS ProxyDNSConfig `json:"protocol,omitempty"`
 }
 
@@ -52,10 +63,12 @@ type ProxyNetworkInitConfig struct {
 	Type ProxyNetworkInitType `json:"type,omitempty"`
 	// CNI configures the use of CNI for initializing the pod's networking.
 	// istio_cni.enabled = true, if CNI is used
+	// +optional
 	CNI *ProxyCNIConfig `json:"cni,omitempty"`
 	// InitContainer configures the use of a pod init container for initializing
 	// the pod's networking.
 	// istio_cni.enabled = false, if InitContainer is used
+	// +optional
 	InitContainer *ProxyInitContainerConfig `json:"initContainer,omitempty"`
 }
 
@@ -72,20 +85,24 @@ const (
 // ProxyCNIConfig configures CNI for network initialization
 type ProxyCNIConfig struct {
 	// Runtime configures customization of the CNI containers (e.g. resources)
+	// +optional
 	Runtime *ProxyCNIRuntimeConfig `json:"runtime,omitempty"`
 }
 
 // ProxyCNIRuntimeConfig configures execution aspects fo the CNI containers
 type ProxyCNIRuntimeConfig struct {
 	// ContainerConfig customizes things like resources, etc.
+	// +optional
 	ContainerConfig `json:",inline"`
 	// PriorityClassName configures the priority class name for the pods.
+	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
 // ProxyInitContainerConfig configures execution aspects for the init container
 type ProxyInitContainerConfig struct {
 	// Runtime configures customization of the init container (e.g. resources)
+	// +optional
 	Runtime *ContainerConfig `json:"runtime,omitempty"`
 }
 
@@ -94,8 +111,10 @@ type ProxyInitContainerConfig struct {
 type ProxyTrafficControlConfig struct {
 	// Inbound configures what inbound traffic is routed through the sidecar
 	// traffic.sidecar.istio.io/includeInboundPorts defaults to * (all ports)
+	// +optional
 	Inbound ProxyInboundTrafficControlConfig `json:"inbound,omitempty"`
 	// Outbound configures what outbound traffic is routed through the sidecar.
+	// +optional
 	Outbound ProxyOutboundTrafficControlConfig `json:"outbound,omitempty"`
 }
 
@@ -115,12 +134,15 @@ type ProxyInboundTrafficControlConfig struct {
 	// InterceptionMode specifies how traffic is directed through the sidecar.
 	// maps to meshConfig.defaultConfig.interceptionMode, overridden by sidecar.istio.io/interceptionMode
 	// XXX: currently not configurable through values.yaml
+	// +optional
 	InterceptionMode ProxyNetworkInterceptionMode `json:"interceptionMode,omitempty"`
 	// IncludedPorts to be routed through the sidecar. * or comma separated list of integers
 	// .Values.global.proxy.includeInboundPorts, defaults to * (all ports), overridden by traffic.sidecar.istio.io/includeInboundPorts
+	// +optional
 	IncludedPorts []string `json:"includedPorts,omitempty"`
 	// ExcludedPorts to be routed around the sidecar.
 	// .Values.global.proxy.excludeInboundPorts, defaults to empty list, overridden by traffic.sidecar.istio.io/excludeInboundPorts
+	// +optional
 	ExcludedPorts []string `json:"excludedPorts,omitempty"`
 }
 
@@ -130,17 +152,21 @@ type ProxyOutboundTrafficControlConfig struct {
 	// IncludedIPRanges specifies which outbound IP ranges should be routed through the sidecar.
 	// .Values.global.proxy.includeIPRanges, overridden by traffic.sidecar.istio.io/includeOutboundIPRanges
 	// * or comma separated list of CIDR
+	// +optional
 	IncludedIPRanges []string `json:"includedIPRanges,omitempty"`
 	// ExcludedIPRanges specifies which outbound IP ranges should _not_ be routed through the sidecar.
 	// .Values.global.proxy.excludeIPRanges, overridden by traffic.sidecar.istio.io/excludeOutboundIPRanges
 	// * or comma separated list of CIDR
+	// +optional
 	ExcludedIPRanges []string `json:"excludedIPRanges,omitempty"`
 	// ExcludedPorts specifies which outbound ports should _not_ be routed through the sidecar.
 	// .Values.global.proxy.excludeOutboundPorts, overridden by traffic.sidecar.istio.io/excludeOutboundPorts
 	// comma separated list of integers
+	// +optional
 	ExcludedPorts []int32 `json:"excludedPorts,omitempty"`
 	// Policy specifies what outbound traffic is allowed through the sidecar.
 	// .Values.global.outboundTrafficPolicy.mode
+	// +optional
 	Policy ProxyOutboundTrafficPolicy `json:"policy,omitempty"`
 }
 
@@ -161,8 +187,10 @@ type ProxyNetworkProtocolConfig struct {
 	// DetectionTimeout specifies how much time the sidecar will spend determining
 	// the protocol being used for the connection before reverting to raw TCP.
 	// .Values.global.proxy.protocolDetectionTimeout, maps to protocolDetectionTimeout
+	// +optional
 	DetectionTimeout string `json:"detectionTimeout,omitempty"`
 	// Debug configures debugging capabilities for the connection.
+	// +optional
 	Debug *ProxyNetworkProtocolDebugConfig `json:"debug,omitempty"`
 }
 
@@ -170,9 +198,11 @@ type ProxyNetworkProtocolConfig struct {
 type ProxyNetworkProtocolDebugConfig struct {
 	// EnableInboundSniffing enables protocol sniffing on inbound traffic.
 	// .Values.pilot.enableProtocolSniffingForInbound
+	// +optional
 	EnableInboundSniffing bool `json:"enableInboudSniffing,omitempty"`
 	// EnableOutboundSniffing enables protocol sniffing on outbound traffic.
 	// .Values.pilot.enableProtocolSniffingForOutbound
+	// +optional
 	EnableOutboundSniffing bool `json:"enableOutboundSniffing,omitempty"`
 }
 
@@ -192,18 +222,22 @@ type ProxyDNSConfig struct {
 	//    podDNSSearchNamespaces:
 	//    - global
 	//    - "{{ valueOrDefault .DeploymentMeta.Namespace \"default\" }}.global"
+	// +optional
 	SearchSuffixes []string `json:"searchSuffixes,omitempty"`
     // RefreshRate configures the DNS refresh rate for Envoy cluster of type STRICT_DNS
 	// This must be given it terms of seconds. For example, 300s is valid but 5m is invalid.
 	// .Values.global.proxy.dnsRefreshRate, default 300s
+	// +optional
 	RefreshRate string  `json:"searchSuffixes,omitempty"`
 }
 
 // ProxyRuntimeConfig customizes the runtime parameters of the sidecar container.
 type ProxyRuntimeConfig struct {
 	// Readiness configures the readiness probe behavior for the injected pod.
+	// +optional
 	Readiness ProxyReadinessConfig `json:"readiness,omitempty"`
 	// Resources configures the resources on the sidecar container.
+	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
@@ -213,19 +247,24 @@ type ProxyReadinessConfig struct {
 	// rewrite application container probes to be routed through the sidecar.
 	// .Values.sidecarInjectorWebhook.rewriteAppHTTPProbe, defaults to false
 	// rewrite probes for application pods to route through sidecar
+	// +optional
 	RewriteApplicationProbes bool `json:"rewriteApplicationProbes,omitempty"`
 	// StatusPort specifies the port number to be used for status.
 	// .Values.global.proxy.statusPort, overridden by status.sidecar.istio.io/port, defaults to 15020
 	// Default port for Pilot agent health checks. A value of 0 will disable health checking.
 	// XXX: this has no affect on which port is actually used for status.
+	// +optional
 	StatusPort int32 `json:"statusPort,omitempty"`
 	// InitialDelaySeconds specifies the initial delay for the readiness probe
 	// .Values.global.proxy.readinessInitialDelaySeconds, overridden by readiness.status.sidecar.istio.io/initialDelaySeconds, defaults to 1
+	// +optional
 	InitialDelaySeconds int32 `json:"initialDelaySeconds,omitempty"`
 	// PeriodSeconds specifies the period over which the probe is checked.
 	// .Values.global.proxy.readinessPeriodSeconds, overridden by readiness.status.sidecar.istio.io/periodSeconds, defaults to 2
+	// +optional
 	PeriodSeconds int32 `json:"periodSeconds,omitempty"`
 	// FailureThreshold represents the number of consecutive failures before the container is marked as not ready.
 	// .Values.global.proxy.readinessFailureThreshold, overridden by readiness.status.sidecar.istio.io/failureThreshold, defaults to 30
+	// +optional
 	FailureThreshold int32 `json:"failureThreshold,omitempty"`
 }

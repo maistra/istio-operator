@@ -5,9 +5,11 @@ type LoggingConfig struct {
 	// ComponentLevels configures log level for specific envoy components
 	// .Values.global.proxy.componentLogLevel, overridden by sidecar.istio.io/componentLogLevel
 	// map of <component>:<level>
+	// +optional
 	ComponentLevels ComponentLogLevels `json:"componentLevels,omitempty"`
 	// LogAsJSON enables JSON logging
 	// .Values.global.logAsJson
+	// +optional
 	LogAsJSON *bool `json:"logAsJSON,omitempty"`
 }
 
@@ -15,10 +17,12 @@ type LoggingConfig struct {
 type ProxyLoggingConfig struct {
 	// Level the log level
 	// .Values.global.proxy.logLevel, overridden by sidecar.istio.io/logLevel
+	// +optional
 	Level LogLevel `json:"level,omitempty"`
 	// ComponentLevels configures log level for specific envoy components
 	// .Values.global.proxy.componentLogLevel, overridden by sidecar.istio.io/componentLogLevel
 	// map of <component>:<level>
+	// +optional
 	ComponentLevels ComponentLogLevels `json:"componentLevels,omitempty"`
 }
 

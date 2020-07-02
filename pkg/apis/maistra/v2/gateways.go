@@ -10,12 +10,15 @@ type GatewaysConfig struct {
 	// works in conjunction with cluster.meshExpansion.ingress configuration
 	// (for enabling ILB gateway and mesh expansion ports)
 	// .Values.gateways.istio-ingressgateway
+	// +optional
 	Ingress *IngressGatewayConfig `json:"ingress,omitempty"`
 	// Egress configures the egress gateway for the mesh.
 	// .Values.gateways.istio-egressgateway
+	// +optional
 	Egress *GatewayConfig `json:"egress,omitempty"`
 	// Other user defined gateways
 	// .Values.gateways.<key>
+	// +optional
 	AdditionalGateways map[string]GatewayConfig `json:"additional,omitempty"`
 }
 
@@ -29,6 +32,7 @@ type GatewayConfig struct {
 	// XXX: for the standard gateways, it might be possible that related
 	// resources could be installed in control plane namespace instead of the
 	// gateway namespace.  not sure if this is a problem or not.
+	// +optional
 	Namespace string `json:"namespace,omitempty"`
 	// Service configures the service associated with the gateway, e.g. port
 	// mappings, service type, annotations/labels, etc.
@@ -37,25 +41,31 @@ type GatewayConfig struct {
 	// .Values.gateways.<gateway-name>.serviceAnnotations,
 	// .Values.gateways.<gateway-name>.serviceLabels
 	// XXX: currently there is no distinction between labels and serviceLabels
+	// +optional
 	Service GatewayServiceConfig `json:"service,omitempty"`
 	// The router mode to be used by the gateway.
 	// .Values.gateways.<gateway-name>.env.ISTIO_META_ROUTER_MODE, defaults to sni-dnat
+	// +optional
 	RouterMode RouterModeType `json:"routerMode,omitempty"`
 	// RequestedNetworkView is a list of networks whose services should be made
 	// available to the gateway.  This is used primarily for mesh expansion/multi-cluster.
 	// .Values.gateways.<gateway-name>.env.ISTIO_META_REQUESTED_NETWORK_VIEW env, defaults to empty list
 	// XXX: I think this is only applicable to egress gateways
+	// +optional
 	RequestedNetworkView []string `json:"requestedNetworkView,omitempty"`
 	// EnableSDS for the gateway.
 	// .Values.gateways.<gateway-name>.sds.enabled
 	// XXX: I believe this is only applicable to ingress gateways
+	// +optional
 	EnableSDS *bool `json:"enableSDS,omitempty"`
 	// Volumes is used to configure additional Secret and ConfigMap volumes that
 	// should be mounted for the gateway's pod.
 	// .Values.gateways.<gateway-name>.secretVolumes, .Values.gateways.<gateway-name>.configMapVolumes
+	// +optional
 	Volumes []VolumeConfig `json:"volumes,omitempty"`
 	// Runtime is used to configure execution parameters for the pod/containers
 	// e.g. resources, replicas, etc.
+	// +optional
 	Runtime *ComponentRuntimeConfig `json:"runtime,omitempty"`
 	// XXX: do we need to support additionalContainers???
 }
@@ -63,6 +73,7 @@ type GatewayConfig struct {
 type IngressGatewayConfig struct {
 	GatewayConfig `json:",inline"`
 	// MeshExpansionPorts define the port set used with multi-cluster/mesh expansion
+	// +optional
 	MeshExpansionPorts []corev1.ServicePort `json:"meshExpansionPorts,omitempty"`
 }
 
@@ -80,8 +91,10 @@ const (
 type GatewayServiceConfig struct {
 	// XXX: selector is ignored
 	// Service details used to configure the gateway's Service resource
+	// +optional
 	corev1.ServiceSpec `json:",inline"`
 	// metadata to be applied to the gateway's service (annotations and labels)
+	// +optional
 	Metadata MetadataConfig `json:"metadata,omitempty"`
 }
 

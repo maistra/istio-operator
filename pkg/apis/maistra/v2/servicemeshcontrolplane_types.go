@@ -48,36 +48,47 @@ type ControlPlaneSpec struct {
 
 	// Template selects the template to use for default values. Defaults to
 	// "default" when not set.
+	// +optional
 	Template string `json:"template,omitempty"`
 	// Version specifies what Maistra version of the control plane to install.
 	// When creating a new ServiceMeshControlPlane with an empty version, the
 	// admission webhook sets the version to the current version.
 	// Existing ServiceMeshControlPlanes with an empty version are treated as
 	// having the version set to "v1.0"
+	// +optional
 	Version string `json:"version,omitempty"`
 	// Cluster is the general configuration of the cluster (cluster name,
 	// network name, multi-cluster, mesh expansion, etc.)
+	// +optional
 	Cluster *ControlPlaneClusterConfig `json:"cluster,omitempty"`
 	// Logging represents the logging configuration for the control plane components
 	// XXX: Should this be separate from Proxy.Logging?
+	// +optional
 	Logging *LoggingConfig `json:"logging,omitempty"`
 	// Policy configures policy checking for the control plane.
 	// .Values.policy.enabled, true if not null
+	// +optional
 	Policy *PolicyConfig `json:"policy,omitempty"`
 	// Proxy configures the default behavior for sidecars.  Many values were
 	// previously exposed through .Values.global.proxy
+	// +optional
 	Proxy *ProxyConfig `json:"proxy,omitempty"`
 	// Security configures aspects of security for the control plane.
+	// +optional
 	Security *SecurityConfig `json:"security,omitempty"`
 	// Telemetry configures telemetry for the mesh.
 	// .Values.mixer.telemetry.enabled, true if not null.  1.6, .Values.telemetry.enabled
+	// +optional
 	Telemetry *TelemetryConfig `json:"telemetry,omitempty"`
 	// Gateways configures gateways for the mesh
 	// .Values.gateways.*
+	// +optional
 	Gateways *GatewaysConfig `json:"gateways,omitempty"`
 	// Runtime configuration for pilot (and galley, etc., pre 1.2)
+	// +optional
 	Runtime *ControlPlaneRuntimeConfig `json:"runtime,omitempty"`
 	// Addons is used to configure additional features beyond core control plane
 	// components, e.g. visualization, metric storage, etc.
+	// +optional
 	Addons *AddonsConfig `json:"addons,omitempty"`
 }

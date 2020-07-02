@@ -3,6 +3,7 @@ package v2
 // SecurityConfig specifies security aspects of the control plane.
 type SecurityConfig struct {
 	// MutualTLS configures mutual TLS for the control plane and mesh
+	// +optional
 	MutualTLS MutualTLSConfig `json:"mutualTLS,omitempty"`
 }
 
@@ -11,18 +12,24 @@ type MutualTLSConfig struct {
 	// Auto configures the mesh to automatically detect whether or not mutual
 	// TLS is required for a specific connection.
 	// .Values.global.mtls.auto
+	// +optional
 	Auto *bool `json:"auto,omitempty"`
 	// Enable mutual TLS by default.
 	// .Values.global.mtls.enabled
+	// +optional
 	Enable *bool `json:"enable,omitempty"`
 	// Trust configures trust aspects associated with mutual TLS clients.
+	// +optional
 	Trust TrustConfig `json:"trust,omitempty"`
 	// CertificateAuthority configures the certificate authority used by the
 	// control plane to create and sign client certs and server keys.
+	// +optional
 	CertificateAuthority CertificateAuthorityConfig `json:"certificateAuthority,omitempty"`
 	// Identity configures the types of user tokens used by clients.
+	// +optional
 	Identity IdentityConfig `json:"identity,omitempty"`
 	// ControlPlane configures mutual TLS for control plane communication.
+	// +optional
 	ControlPlane ControlPlaneMTLSConfig `json:"controlPlane,omitempty"`
 }
 
@@ -32,11 +39,13 @@ type TrustConfig struct {
 	//.Values.global.trustDomain, maps to trustDomain
 	// The trust domain corresponds to the trust root of a system.
 	// Refer to https://github.com/spiffe/spiffe/blob/master/standards/SPIFFE-ID.md#21-trust-domain
+	// +optional
 	Domain string `json:"domain,omitempty"`
 	// AdditionalDomains are additional SPIFFE trust domains that are accepted as trusted.
 	// .Values.global.trustDomainAliases, maps to trustDomainAliases
 	//  Any service with the identity "td1/ns/foo/sa/a-service-account", "td2/ns/foo/sa/a-service-account",
 	//  or "td3/ns/foo/sa/a-service-account" will be treated the same in the Istio mesh.
+	// +optional
 	AdditionalDomains []string `json:"additionalDomains,omitempty"`
 }
 
@@ -47,8 +56,10 @@ type CertificateAuthorityConfig struct {
 	Type CertificateAuthorityType `json:"type,omitempty"`
 	// Istiod is the configuration for Istio's internal certificate authority implementation.
 	// each of these produces a CAEndpoint, i.e. CA_ADDR
+	// +optional
 	Istiod *IstiodCertificateAuthorityConfig `json:"istiod,omitempty"`
 	// Custom is the configuration for a custom certificate authority.
+	// +optional
 	Custom *CustomCertificateAuthorityConfig `json:"custom,omitempty"`
 }
 
@@ -68,19 +79,23 @@ type IstiodCertificateAuthorityConfig struct {
 	// Type of certificate signer to use.
 	Type IstioCertificateSignerType `json:"type,omitempty"`
 	// SelfSigned configures istiod to generate and use a self-signed certificate for the root.
+	// +optional
 	SelfSigned *IstioSelfSignedCertificateSignerConfig `json:"selfSigned,omitempty"`
 	// PrivateKey configures istiod to use a user specified private key/cert when signing certificates.
+	// +optional
 	PrivateKey *IstioPrivateKeyCertificateSignerConfig `json:"privateKey,omitempty"`
 	// WorkloadCertTTLDefault is the default TTL for generated workload
 	// certificates.  Used if not specified in CSR (<= 0)
 	// env DEFAULT_WORKLOAD_CERT_TTL, 1.6
 	// --workload-cert-ttl, citadel, pre-1.6
 	// defaults to 24 hours
+	// +optional
 	WorkloadCertTTLDefault string `json:"workloadCertTTLDefault,omitempty"`
 	// WorkloadCertTTLMax is the maximum TTL for generated workload certificates.
 	// env MAX_WORKLOAD_CERT_TTL
 	// --max-workload-cert-ttl, citadel, pre-1.6
 	// defaults to 90 days
+	// +optional
 	WorkloadCertTTLMax string `json:"workloadCertTTLMax,omitempty"`
 }
 
@@ -100,21 +115,26 @@ type IstioSelfSignedCertificateSignerConfig struct {
 	// TTL for self-signed root certificate
 	// env CITADEL_SELF_SIGNED_CA_CERT_TTL
 	// default is 10 years
+	// +optional
 	TTL string `json:"ttl,omitempty"`
 	// GracePeriod percentile for self-signed cert
 	// env CITADEL_SELF_SIGNED_ROOT_CERT_GRACE_PERIOD_PERCENTILE
 	// default is 20%
+	// +optional
 	GracePeriod string `json:"gracePeriod,omitempty"`
 	// CheckPeriod is the interval with which certificate is checked for rotation
 	// env CITADEL_SELF_SIGNED_ROOT_CERT_CHECK_INTERVAL
 	// default is 1 hour, zero or negative value disables cert rotation
+	// +optional
 	CheckPeriod string `json:"checkPeriod,omitempty"`
 	// EnableJitter to use jitter for cert rotation
 	// env CITADEL_ENABLE_JITTER_FOR_ROOT_CERT_ROTATOR
 	// defaults to true
+	// +optional
 	EnableJitter *bool `json:"enableJitter,omitempty"`
 	// Org is the Org value in the certificate.
 	// XXX: currently uses TrustDomain.  I don't think this is configurable.
+	// +optional
 	Org string `json:"org,omitempty"`
 }
 
@@ -123,18 +143,24 @@ type IstioSelfSignedCertificateSignerConfig struct {
 // XXX: nothing in here is currently configurable, except RootCADir
 type IstioPrivateKeyCertificateSignerConfig struct {
 	// hard coded to use a secret named cacerts
+	// +optional
 	EncryptionSecret string `json:"encryptionSecret,omitempty"`
 	// ROOT_CA_DIR, defaults to /etc/cacerts
 	// Mount directory for encryption secret
 	// XXX: currently, not configurable in the charts
+	// +optional
 	RootCADir string `json:"rootCADir,omitempty"`
 	// hard coded to ca-key.pem
+	// +optional
 	SigningKeyFile string `json:"signingKeyFile,omitempty"`
 	// hard coded to ca-cert.pem
+	// +optional
 	SigningCertFile string `json:"signingCertFile,omitempty"`
 	// hard coded to root-cert.pem
+	// +optional
 	RootCertFile string `json:"rootCertFile,omitempty"`
 	// hard coded to cert-chain.pem
+	// +optional
 	CertChainFile string `json:"certChainFile,omitempty"`
 }
 
@@ -154,9 +180,11 @@ type IdentityConfig struct {
 	Type IdentityConfigType `json:"type,omitempty"`
 	// Kubernetes configures istiod to use default Kubernetes service account
 	// tokens to identify users.
+	// +optional
 	Kubernetes *KubernetesIdentityConfig `json:"kubernetes,omitempty"`
 	// ThirdParty configures istiod to use a third-party token provider for
 	// identifying users. (basically uses a custom audience, e.g. istio-ca)
+	// +optional
 	ThirdParty *ThirdPartyIdentityConfig `json:"thirdParty,omitempty"`
 }
 
@@ -182,14 +210,17 @@ type ThirdPartyIdentityConfig struct {
 	// default /var/run/secrets/tokens/istio-token
 	// XXX: projects service account token with specified audience (istio-ca)
 	// XXX: not configurable
+	// +optional
 	TokenPath string `json:"tokenPath,omitempty"`
 	// Issuer is the URL of the issuer.
 	// env TOKEN_ISSUER, defaults to iss in specified token
 	// only supported in 1.6+
+	// +optional
 	Issuer string `json:"issuer,omitempty"`
 	// Audience is the audience for whom the token is intended.
 	// env AUDIENCE
 	// .Values.global.sds.token.aud, defaults to istio-ca
+	// +optional
 	Audience string `json:"audience,omitempty"`
 }
 
@@ -198,11 +229,13 @@ type ThirdPartyIdentityConfig struct {
 type ControlPlaneMTLSConfig struct {
 	// Enable mutual TLS for the control plane components.
 	// .Values.global.controlPlaneSecurityEnabled
+	// +optional
 	Enable *bool `json:"enable,omitempty"`
 	// CertProvider is the certificate authority used to generate the serving
 	// certificates for the control plane components.
 	// .Values.global.pilotCertProvider
 	// Provider used to generate serving certs for istiod (pilot)
+	// +optional
 	CertProvider ControlPlaneCertProviderType `json:"certProvider,omitempty"`
 }
 

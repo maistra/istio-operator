@@ -3,10 +3,13 @@ package v2
 // AddonsConfig configures additional features for use with the mesh
 type AddonsConfig struct {
 	// Metrics configures metrics storage solutions for the mesh.
+	// +optional
 	Metrics MetricsAddonsConfig `json:"metrics,omitempty"`
 	// Tracing configures tracing solutions used with the mesh.
+	// +optional
 	Tracing TracingConfig `json:"tracing,omitempty"`
 	// Visualization configures visualization solutions used with the mesh
+	// +optional
 	Visualization VisualizationAddonsConfig `json:"visualization,omitempty"`
 }
 
@@ -16,6 +19,7 @@ type MetricsAddonsConfig struct {
 	// .Values.prometheus.enabled, true if not null
 	// implies other settings related to prometheus, e.g. .Values.telemetry.v2.prometheus.enabled,
 	// .Values.kiali.prometheusAddr, etc.
+	// +optional
 	Prometheus *PrometheusAddonConfig `json:"prometheus,omitempty"`
 }
 
@@ -28,6 +32,7 @@ type TracingConfig struct {
 	// .Values.tracing.jaeger.enabled, true if not null
 	// implies other settings related to tracing, e.g. .Values.global.tracer.zipkin.address,
 	// .Values.kiali.dashboard.jaegerURL, etc.
+	// +optional
 	Jaeger *JaegerTracerConfig `json:"jaeger,omitempty"`
 	//Zipkin      *ZipkinTracerConfig
 	//Lightstep   *LightstepTracerConfig
@@ -52,8 +57,10 @@ const (
 type VisualizationAddonsConfig struct {
 	// Grafana configures a grafana instance to use with the mesh
 	// .Values.grafana.enabled, true if not null
+	// +optional
 	Grafana *GrafanaAddonConfig `json:"grafana,omitempty"`
 	// Kiali configures a kiali instance to use with the mesh
 	// .Values.kiali.enabled, true if not null
+	// +optional
 	Kiali *KialiAddonConfig `json:"kiali,omitempty"`
 }

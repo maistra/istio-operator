@@ -3,16 +3,20 @@ package v2
 // ControlPlaneClusterConfig configures aspects related to clustering.
 type ControlPlaneClusterConfig struct {
 	// .Values.global.multiCluster.clusterName, defaults to Kubernetes
+	// +optional
 	Name string `json:"name,omitempty"`
 	// .Values.global.network
 	// XXX: not sure what the difference is between this and cluster name
+	// +optional
 	Network string `json:"network,omitempty"`
 	// .Values.global.multiCluster.enabled, if not null
+	// +optional
 	MultiCluster *MultiClusterConfig `json:"multiCluster,omitempty"`
 	// .Values.global.meshExpansion.enabled, if not null
 	// XXX: it's not clear whether or not there is any overlap with MultiCluster,
 	// i.e. does MultiCluster require mesh expansion ports to be configured on
 	// the ingress gateway?
+	// +optional
 	MeshExpansion *MeshExpansionConfig `json:"meshExpansion,omitempty"`
 }
 
@@ -26,6 +30,7 @@ type MultiClusterConfig struct {
 	// .Values.global.k8sIngress.gatewayName will match the ingress gateway
 	// .Values.global.k8sIngress.enableHttps will be true if gateway service exposes port 443
 	// XXX: not sure whether or not this is specific to multicluster, mesh expansion, or both
+	// +optional
 	Ingress bool `json:"ingress,omitempty"`
 	// .Values.global.meshNetworks
 	// XXX: if non-empty, local cluster network should be configured as:
@@ -35,12 +40,14 @@ type MultiClusterConfig struct {
 	//      gateways:
 	//      - service: <ingress-gateway-service-name>
 	//        port: 443 # mtls port
+	// +optional
 	MeshNetworks map[string]MeshNetworkConfig `json:"meshNetworks,omitempty"`
 }
 
 // MeshExpansionConfig configures aspects related to mesh expansion
 type MeshExpansionConfig struct {
 	// .Values.global.meshExpansion.useILB, true if not null, otherwise uses ingress gateway
+	// +optional
 	ILBGateway *GatewayConfig `json:"ilbGateway,omitempty"`
 }
 
@@ -53,14 +60,19 @@ type MeshNetworkConfig struct {
 // MeshEndpointConfig specifies the endpoint of a mesh network.  Only one of
 // FromRegistry or FromCIDR may be specified
 type MeshEndpointConfig struct {
+	// +optional
 	FromRegistry string `json:"fromRegistry,omitempty"`
+	// +optional
 	FromCIDR     string `json:"fromCIDR,omitempty"`
 }
 
 // MeshGatewayConfig specifies the gateway which should be used for accessing
 // the network
 type MeshGatewayConfig struct {
+	// +optional
 	Service string `json:"service,omitempty"`
+	// +optional
 	Address string `json:"address,omitempty"`
+	// +optional
 	Port    int32  `json:"port,omitempty"`
 }
