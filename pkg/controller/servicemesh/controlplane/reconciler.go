@@ -22,6 +22,7 @@ import (
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/bootstrap"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
@@ -32,8 +33,8 @@ import (
 
 type controlPlaneInstanceReconciler struct {
 	common.ControllerResources
-	Instance          *v1.ServiceMeshControlPlane
-	Status            *v1.ControlPlaneStatus
+	Instance          *v2.ServiceMeshControlPlane
+	Status            *v2.ControlPlaneStatus
 	ownerRefs         []metav1.OwnerReference
 	meshGeneration    string
 	renderings        map[string][]manifest.Manifest
@@ -73,7 +74,7 @@ const (
 	eventReasonReady                   = "Ready"
 )
 
-func NewControlPlaneInstanceReconciler(controllerResources common.ControllerResources, newInstance *v1.ServiceMeshControlPlane, cniConfig cni.Config) ControlPlaneInstanceReconciler {
+func NewControlPlaneInstanceReconciler(controllerResources common.ControllerResources, newInstance *v2.ServiceMeshControlPlane, cniConfig cni.Config) ControlPlaneInstanceReconciler {
 	return &controlPlaneInstanceReconciler{
 		ControllerResources: controllerResources,
 		Instance:            newInstance,
@@ -195,7 +196,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		r.Status.ComponentStatus = componentStatuses
 
 		// initialize common data
-		owner := metav1.NewControllerRef(r.Instance, v1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
+		owner := metav1.NewControllerRef(r.Instance, v2.SchemeGroupVersion.WithKind("ServiceMeshControlPlane"))
 		r.ownerRefs = []metav1.OwnerReference{*owner}
 		r.meshGeneration = status.CurrentReconciledVersion(r.Instance.GetGeneration())
 
@@ -478,10 +479,10 @@ func (r *controlPlaneInstanceReconciler) applyTemplates(ctx context.Context, smc
 	}
 
 	applyDisconnectedSettings := true
-	if tag, _, _ := r.Instance.Spec.Istio.GetString("global.tag"); tag != "" {
+	if tag, _, _ := smcpSpec.Istio.GetString("global.tag"); tag != "" {
 		// don't update anything
 		applyDisconnectedSettings = false
-	} else if hub, _, _ := r.Instance.Spec.Istio.GetString("global.hub"); hub != "" {
+	} else if hub, _, _ := smcpSpec.Istio.GetString("global.hub"); hub != "" {
 		// don't update anything
 		applyDisconnectedSettings = false
 	}
@@ -516,7 +517,11 @@ func (r *controlPlaneInstanceReconciler) validateSMCPSpec(spec v1.ControlPlaneSp
 func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context, version versions.Version) error {
 	log := common.LogFromContext(ctx)
 	//Generate the spec
-	r.Status.LastAppliedConfiguration = r.Instance.Spec
+	v1spec := v1.ControlPlaneSpec{}
+	if err := r.Scheme.Convert(&r.Instance.Spec, &v1spec, nil); err != nil {
+		return err
+	}
+	r.Status.LastAppliedConfiguration = v1spec
 	r.Status.LastAppliedConfiguration.Version = version.String()
 
 	spec, err := r.applyTemplates(ctx, r.Status.LastAppliedConfiguration, version)
@@ -560,7 +565,7 @@ func (r *controlPlaneInstanceReconciler) renderCharts(ctx context.Context, versi
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
-	if isEnabled(r.Instance.Spec.ThreeScale) {
+	if isEnabled(r.Status.LastAppliedConfiguration.ThreeScale) {
 		log.V(2).Info("rendering 3scale charts")
 		threeScaleRenderings, _, err = helm.RenderChart(path.Join(helm.GetChartsDir(version), "maistra-threescale"), r.Instance.GetNamespace(), r.Status.LastAppliedConfiguration.ThreeScale.GetContent())
 		if err != nil {
@@ -591,7 +596,7 @@ func (r *controlPlaneInstanceReconciler) PostStatus(ctx context.Context) error {
 		return nil
 	}
 	log := common.LogFromContext(ctx)
-	instance := &v1.ServiceMeshControlPlane{}
+	instance := &v2.ServiceMeshControlPlane{}
 	log.Info("Posting status update", "conditions", r.Status.Conditions)
 	if err := r.Client.Get(ctx, client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); err == nil {
 		instance.Status = *r.Status.DeepCopy()
@@ -672,7 +677,7 @@ func (r *controlPlaneInstanceReconciler) initializeReconcileStatus() {
 	})
 }
 
-func (r *controlPlaneInstanceReconciler) SetInstance(newInstance *v1.ServiceMeshControlPlane) {
+func (r *controlPlaneInstanceReconciler) SetInstance(newInstance *v2.ServiceMeshControlPlane) {
 	if newInstance.GetGeneration() != r.Instance.GetGeneration() {
 		// we need to regenerate the renderings
 		r.renderings = nil

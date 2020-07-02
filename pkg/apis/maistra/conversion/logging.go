@@ -8,6 +8,9 @@ import (
 )
 
 func populateControlPlaneLogging(logging *v2.LoggingConfig, values map[string]interface{}) error {
+	if logging == nil {
+		return nil
+	}
 	componentLevels := componentLogLevelsToString(logging.ComponentLevels)
 	if componentLevels != "" {
 		if err := setHelmValue(values, "global.logging.level", componentLevels); err != nil {

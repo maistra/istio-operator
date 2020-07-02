@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
-	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -48,7 +48,7 @@ func TestReconcileAddsFinalizer(t *testing.T) {
 
 	assertReconcileSucceeds(r, t)
 
-	updatedControlPlane := test.GetUpdatedObject(ctx, cl, controlPlane.ObjectMeta, &maistrav1.ServiceMeshControlPlane{}).(*maistrav1.ServiceMeshControlPlane)
+	updatedControlPlane := test.GetUpdatedObject(ctx, cl, controlPlane.ObjectMeta, &maistrav2.ServiceMeshControlPlane{}).(*maistrav2.ServiceMeshControlPlane)
 	assert.DeepEquals(updatedControlPlane.GetFinalizers(), []string{common.FinalizerName}, "Unexpected finalizers in SMM", t)
 }
 
@@ -143,7 +143,7 @@ type fakeInstanceReconciler struct {
 	finished               bool
 }
 
-func NewFakeInstanceReconciler(controllerResources common.ControllerResources, instance *maistrav1.ServiceMeshControlPlane, cniConfig cni.Config) ControlPlaneInstanceReconciler {
+func NewFakeInstanceReconciler(controllerResources common.ControllerResources, instance *maistrav2.ServiceMeshControlPlane, cniConfig cni.Config) ControlPlaneInstanceReconciler {
 	return instanceReconciler
 }
 
@@ -162,7 +162,7 @@ func (r *fakeInstanceReconciler) Delete(ctx context.Context) error {
 	return nil
 }
 
-func (r *fakeInstanceReconciler) SetInstance(instance *maistrav1.ServiceMeshControlPlane) {
+func (r *fakeInstanceReconciler) SetInstance(instance *maistrav2.ServiceMeshControlPlane) {
 }
 
 func (r *fakeInstanceReconciler) IsFinished() bool {
@@ -186,8 +186,8 @@ func assertReconcileFails(r *ControlPlaneReconciler, t *testing.T) {
 	}
 }
 
-func newControlPlane() *maistrav1.ServiceMeshControlPlane {
-	return &maistrav1.ServiceMeshControlPlane{
+func newControlPlane() *maistrav2.ServiceMeshControlPlane {
+	return &maistrav2.ServiceMeshControlPlane{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:       controlPlaneName,
 			Namespace:  controlPlaneNamespace,
@@ -195,7 +195,7 @@ func newControlPlane() *maistrav1.ServiceMeshControlPlane {
 			Generation: 1,
 			UID:        controlPlaneUID,
 		},
-		Spec:   maistrav1.ControlPlaneSpec{},
-		Status: maistrav1.ControlPlaneStatus{},
+		Spec:   maistrav2.ControlPlaneSpec{},
+		Status: maistrav2.ControlPlaneStatus{},
 	}
 }

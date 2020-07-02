@@ -20,10 +20,9 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"k8s.io/client-go/kubernetes/scheme"
-
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -115,7 +114,6 @@ func TestCyclicTemplate(t *testing.T) {
 
 func TestInstallationErrorDoesNotUpdateLastTransitionTimeWhenNoStateTransitionOccurs(t *testing.T) {
 	controlPlane := newControlPlane()
-	controlPlane.Spec.Istio = &maistrav1.HelmValues{}
 	controlPlane.Spec.Template = "maistra"
 	controlPlane.Status.SetCondition(status.Condition{
 		Type:               status.ConditionTypeReconciled,
@@ -137,7 +135,7 @@ func TestInstallationErrorDoesNotUpdateLastTransitionTimeWhenNoStateTransitionOc
 	assertInstanceReconcilerFails(r, t)
 
 	// remember the SMCP status at this point
-	updatedControlPlane := &maistrav1.ServiceMeshControlPlane{}
+	updatedControlPlane := &maistrav2.ServiceMeshControlPlane{}
 	test.PanicOnError(cl.Get(ctx, common.ToNamespacedName(controlPlane.ObjectMeta), updatedControlPlane))
 	initialStatus := updatedControlPlane.Status.DeepCopy()
 
@@ -215,7 +213,6 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 			}
 
 			smcp := newControlPlane()
-			smcp.Spec.Istio = &maistrav1.HelmValues{}
 			smcp.Spec.Template = "maistra"
 
 			cl, tracker, r := newReconcilerTestFixture(smcp)
@@ -276,7 +273,7 @@ func assertDeploymentExists(cl client.Client, name string, t *testing.T) *appsv1
 	return deploy
 }
 
-func newReconcilerTestFixture(smcp *maistrav1.ServiceMeshControlPlane) (client.Client, *test.EnhancedTracker, ControlPlaneInstanceReconciler) {
+func newReconcilerTestFixture(smcp *maistrav2.ServiceMeshControlPlane) (client.Client, *test.EnhancedTracker, ControlPlaneInstanceReconciler) {
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{Name: controlPlaneNamespace},
 	}
@@ -290,7 +287,7 @@ func newReconcilerTestFixture(smcp *maistrav1.ServiceMeshControlPlane) (client.C
 	r := NewControlPlaneInstanceReconciler(
 		common.ControllerResources{
 			Client:            cl,
-			Scheme:            scheme.Scheme,
+			Scheme:            tracker.Scheme,
 			EventRecorder:     fakeEventRecorder,
 			OperatorNamespace: operatorNamespace,
 		},
@@ -306,7 +303,7 @@ func assertInstanceReconcilerSucceeds(r ControlPlaneInstanceReconciler, t *testi
 	assert.Success(err, "Reconcile", t)
 }
 
-func assertReconciledConditionMatches(cl client.Client, smcp *maistrav1.ServiceMeshControlPlane, reason status.ConditionReason, messageSubstring string, t *testing.T) {
+func assertReconciledConditionMatches(cl client.Client, smcp *maistrav2.ServiceMeshControlPlane, reason status.ConditionReason, messageSubstring string, t *testing.T) {
 	t.Helper()
 	test.PanicOnError(cl.Get(ctx, common.ToNamespacedName(smcp.ObjectMeta), smcp))
 	reconciledCondition := smcp.Status.GetCondition(status.ConditionTypeReconciled)
@@ -329,7 +326,7 @@ func markDeploymentAvailable(cl client.Client, deployment *appsv1.Deployment) {
 func newTestReconciler() *controlPlaneInstanceReconciler {
 	reconciler := NewControlPlaneInstanceReconciler(
 		common.ControllerResources{},
-		&maistrav1.ServiceMeshControlPlane{},
+		&maistrav2.ServiceMeshControlPlane{},
 		cni.Config{Enabled: true})
 	return reconciler.(*controlPlaneInstanceReconciler)
 }

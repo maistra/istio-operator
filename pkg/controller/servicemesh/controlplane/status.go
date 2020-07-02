@@ -2,10 +2,10 @@ package controlplane
 
 import (
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
-func updateControlPlaneConditions(s *v1.ControlPlaneStatus, err error) {
+func updateControlPlaneConditions(s *v2.ControlPlaneStatus, err error) {
 	updateConditions(&s.StatusType, err, "Successfully installed all mesh components")
 }
 
