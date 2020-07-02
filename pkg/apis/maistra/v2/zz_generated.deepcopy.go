@@ -575,11 +575,6 @@ func (in *DeploymentRuntimeConfig) DeepCopyInto(out *DeploymentRuntimeConfig) {
 		*out = new(appsv1.DeploymentStrategy)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.RevisionHistoryLimit != nil {
-		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
-		*out = new(int32)
-		**out = **in
-	}
 	if in.AutoScaling != nil {
 		in, out := &in.AutoScaling, &out.AutoScaling
 		*out = new(AutoScalerConfig)

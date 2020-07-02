@@ -47,22 +47,22 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 					return err
 				}
 			}
-			if len(cni.Runtime.ContainerConfig.ImagePullSecrets) > 0 {
+			if len(cni.Runtime.ImagePullSecrets) > 0 {
 				pullSecretsValues := make([]string, 0)
-				for _, secret := range cni.Runtime.ContainerConfig.ImagePullSecrets {
+				for _, secret := range cni.Runtime.ImagePullSecrets {
 					pullSecretsValues = append(pullSecretsValues, secret.Name)
 				}
-				if err := setHelmValue(istioCNI, "imagePullPolicy", pullSecretsValues); err != nil {
+				if err := setHelmValue(istioCNI, "imagePullSecrets", pullSecretsValues); err != nil {
 					return err
 				}
 			}
-			if cni.Runtime.ContainerConfig.ImagePullPolicy != "" {
-				if err := setHelmValue(istioCNI, "imagePullPolicy", string(cni.Runtime.ContainerConfig.ImagePullPolicy)); err != nil {
+			if cni.Runtime.ImagePullPolicy != "" {
+				if err := setHelmValue(istioCNI, "imagePullPolicy", string(cni.Runtime.ImagePullPolicy)); err != nil {
 					return err
 				}
 			}
-			if cni.Runtime.ContainerConfig.Resources != nil {
-				if resourcesValues, err := toValues(cni.Runtime.ContainerConfig.Resources); err == nil {
+			if cni.Runtime.Resources != nil {
+				if resourcesValues, err := toValues(cni.Runtime.Resources); err == nil {
 					if err := setHelmValue(istioCNI, "resources", resourcesValues); err != nil {
 						return err
 					}

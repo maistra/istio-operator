@@ -26,6 +26,7 @@ type ControlPlaneRuntimeConfig struct {
 
 // ComponentRuntimeConfig allows for partial customization of a component's
 // runtime configuration (Deployment, PodTemplate, auto scaling, pod disruption, etc.)
+// XXX: not sure if this needs a separate Container field for component container defaults, e.g. image name, etc.
 type ComponentRuntimeConfig struct {
 	// Deployment specific overrides
 	Deployment DeploymentRuntimeConfig `json:"deployment,omitempty"`
@@ -50,12 +51,6 @@ type DeploymentRuntimeConfig struct {
 	// +patchStrategy=retainKeys
 	// .Values.*.rollingMaxSurge, rollingMaxUnavailable, etc.
 	Strategy *appsv1.DeploymentStrategy `json:"strategy,omitempty" patchStrategy:"retainKeys"`
-
-	// The number of old ReplicaSets to retain to allow rollback.
-	// This is a pointer to distinguish between explicit zero and not specified.
-	// Defaults to 10.
-	// +optional
-	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 
 	// Autoscaling specifies the configuration for a HorizontalPodAutoscaler
 	// to be applied to this deployment.  Null indicates no auto scaling.

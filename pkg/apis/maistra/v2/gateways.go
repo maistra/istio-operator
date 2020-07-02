@@ -63,7 +63,7 @@ type GatewayConfig struct {
 type IngressGatewayConfig struct {
 	GatewayConfig `json:",inline"`
 	// MeshExpansionPorts define the port set used with multi-cluster/mesh expansion
-	MeshExpansionPorts []corev1.ServicePort
+	MeshExpansionPorts []corev1.ServicePort `json:"meshExpansionPorts,omitempty"`
 }
 
 // RouterModeType represents the router modes available.
