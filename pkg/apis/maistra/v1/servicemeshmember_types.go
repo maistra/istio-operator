@@ -97,7 +97,7 @@ type ServiceMeshMemberStatus struct {
 
 // ServiceMeshMemberConditionType represents the type of the condition.  Condition types are:
 // Reconciled, NamespaceConfigured
-type ServiceMeshMemberConditionType status.ConditionType
+type ServiceMeshMemberConditionType string
 
 const (
 	// ConditionTypeReconciled signifies whether or not the controller has

@@ -22,7 +22,6 @@ const DefaultTemplate = "default"
 // the ServiceMeshControlPlane resides. The configuration options for the
 // components that comprise the control plane are specified in this object.
 // +k8s:openapi-gen=true
-// +kubebuilder:storageversion
 // +kubebuilder:resource:shortName=smcp
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.annotations.readyComponentCount",description="How many of the total number of components are ready"

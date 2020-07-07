@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 
 	"github.com/maistra/istio-operator/pkg/apis"
+	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/version"
@@ -218,10 +219,15 @@ func serveCRMetrics(cfg *rest.Config, operatorNs string) error {
 	// The function below returns a list of filtered operator/CR specific GVKs. For more control, override the GVK list below
 	// with your own custom logic. Note that if you are adding third party API schemas, probably you will need to
 	// customize this implementation to avoid permissions issues.
-	filteredGVK, err := k8sutil.GetGVKsFromAddToScheme(apis.AddToScheme)
+	filteredGVK, err := k8sutil.GetGVKsFromAddToScheme(maistrav1.SchemeBuilder.AddToScheme)
 	if err != nil {
 		return err
 	}
+	filteredV2GVK, err := k8sutil.GetGVKsFromAddToScheme(maistrav1.SchemeBuilder.AddToScheme)
+	if err != nil {
+		return err
+	}
+	filteredGVK = append(filteredGVK, filteredV2GVK...)
 
 	// The metrics will be generated from the namespaces which are returned here.
 	// NOTE that passing nil or an empty list of namespaces in GenerateAndServeCRMetrics will result in an error.

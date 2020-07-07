@@ -94,7 +94,7 @@ type ServiceMeshMemberRollStatus struct {
 
 // ServiceMeshMemberRollConditionType represents the type of the condition.  Condition types are:
 // Reconciled, NamespaceConfigured
-type ServiceMeshMemberRollConditionType status.ConditionType
+type ServiceMeshMemberRollConditionType string
 
 const (
 	// ConditionTypeMemberRollReady signifies whether the namespace has been configured

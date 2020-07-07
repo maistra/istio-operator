@@ -113,11 +113,11 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		}
 	}
 	if in.RouterMode == "" {
-		if err := setHelmValue(values, "env.ISTIO_META_ROUTER_MODE", v2.RouterModeTypeSNIDNAT); err != nil {
+		if err := setHelmValue(values, "env.ISTIO_META_ROUTER_MODE", string(v2.RouterModeTypeSNIDNAT)); err != nil {
 			return nil, err
 		}
 	} else {
-		if err := setHelmValue(values, "env.ISTIO_META_ROUTER_MODE", in.RouterMode); err != nil {
+		if err := setHelmValue(values, "env.ISTIO_META_ROUTER_MODE", string(in.RouterMode)); err != nil {
 			return nil, err
 		}
 	}
@@ -140,7 +140,7 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		}
 	}
 	if in.Service.ExternalTrafficPolicy != "" {
-		if err := setHelmValue(values, "externalTrafficPolicy", in.Service.ExternalTrafficPolicy); err != nil {
+		if err := setHelmValue(values, "externalTrafficPolicy", string(in.Service.ExternalTrafficPolicy)); err != nil {
 			return nil, err
 		}
 	}
@@ -150,7 +150,7 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		}
 	}
 	if in.Service.Type != "" {
-		if err := setHelmValue(values, "type", in.Service.Type); err != nil {
+		if err := setHelmValue(values, "type", string(in.Service.Type)); err != nil {
 			return nil, err
 		}
 	}
@@ -169,45 +169,48 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		}
 	}
 
-	// Deployment specific settings
-	runtime := in.Runtime
-	if err := populateRuntimeValues(runtime, values); err != nil {
-		return nil, err
-	}
-
 	// gateway SDS
 	if in.EnableSDS != nil {
 		if err := setHelmValue(values, "sds.enable", *in.EnableSDS); err != nil {
 			return nil, err
 		}
 	}
-	if runtime.Pod.Containers != nil {
-		// SDS container specific config
-		if sdsContainer, ok := runtime.Pod.Containers["ingress-sds"]; ok {
-			if sdsContainer.Image != "" {
-				if err := setHelmValue(values, "sds.image", sdsContainer.Image); err != nil {
-					return nil, err
-				}
-			}
-			if sdsContainer.Resources != nil {
-				if resourcesValues, err := toValues(sdsContainer.Resources); err == nil {
-					if err := setHelmValue(values, "sds.resources", resourcesValues); err != nil {
-						return nil, err
-					}
-				} else {
-					return nil, err
-				}
-			}
+
+	// Deployment specific settings
+	if in.Runtime != nil {
+		runtime := in.Runtime
+		if err := populateRuntimeValues(runtime, values); err != nil {
+			return nil, err
 		}
-		// Proxy container specific config
-		if proxyContainer, ok := runtime.Pod.Containers["istio-proxy"]; ok {
-			if proxyContainer.Resources != nil {
-				if resourcesValues, err := toValues(proxyContainer.Resources); err == nil {
-					if err := setHelmValue(values, "resources", resourcesValues); err != nil {
+
+		if runtime.Pod.Containers != nil {
+			// SDS container specific config
+			if sdsContainer, ok := runtime.Pod.Containers["ingress-sds"]; ok {
+				if sdsContainer.Image != "" {
+					if err := setHelmValue(values, "sds.image", sdsContainer.Image); err != nil {
 						return nil, err
 					}
-				} else {
-					return nil, err
+				}
+				if sdsContainer.Resources != nil {
+					if resourcesValues, err := toValues(sdsContainer.Resources); err == nil {
+						if err := setHelmValue(values, "sds.resources", resourcesValues); err != nil {
+							return nil, err
+						}
+					} else {
+						return nil, err
+					}
+				}
+			}
+			// Proxy container specific config
+			if proxyContainer, ok := runtime.Pod.Containers["istio-proxy"]; ok {
+				if proxyContainer.Resources != nil {
+					if resourcesValues, err := toValues(proxyContainer.Resources); err == nil {
+						if err := setHelmValue(values, "resources", resourcesValues); err != nil {
+							return nil, err
+						}
+					} else {
+						return nil, err
+					}
 				}
 			}
 		}

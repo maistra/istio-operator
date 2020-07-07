@@ -15,9 +15,14 @@ func init() {
 // ServiceMeshControlPlane is the Schema for the controlplanes API
 // +k8s:openapi-gen=true
 // +kubebuilder:storageversion
-// +kubebuilder:subresource:status
-// +kubebuilder:resource:path=servicemeshcontrolplanes,scope=Namespaced
 // +kubebuilder:resource:shortName=smcp
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.annotations.readyComponentCount",description="How many of the total number of components are ready"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].reason",description="Whether or not the control plane installation is up to date and ready to handle requests."
+// +kubebuilder:printcolumn:name="Template",type="string",JSONPath=".status.lastAppliedConfiguration.template",description="The configuration template to use as the base."
+// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".status.lastAppliedConfiguration.version",description="The actual current version of the control plane installation."
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="The age of the object"
+// +kubebuilder:printcolumn:name="Image HUB",type="string",JSONPath=".status.lastAppliedConfiguration.istio.global.hub",description="The image hub used as the base for all component images.",priority=1
 type ServiceMeshControlPlane struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

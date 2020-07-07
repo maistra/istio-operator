@@ -275,10 +275,37 @@ spec:
             type: object
         type: object
     served: true
-    storage: true
+    storage: false
     subresources:
       status: {}
-  - name: v2
+  - additionalPrinterColumns:
+    - description: How many of the total number of components are ready
+      jsonPath: .status.annotations.readyComponentCount
+      name: Ready
+      type: string
+    - description: Whether or not the control plane installation is up to date and
+        ready to handle requests.
+      jsonPath: .status.conditions[?(@.type=="Ready")].reason
+      name: Status
+      type: string
+    - description: The configuration template to use as the base.
+      jsonPath: .status.lastAppliedConfiguration.template
+      name: Template
+      type: string
+    - description: The actual current version of the control plane installation.
+      jsonPath: .status.lastAppliedConfiguration.version
+      name: Version
+      type: string
+    - description: The age of the object
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - description: The image hub used as the base for all component images.
+      jsonPath: .status.lastAppliedConfiguration.istio.global.hub
+      name: Image HUB
+      priority: 1
+      type: string
+    name: v2
     schema:
       openAPIV3Schema:
         description: ServiceMeshControlPlane is the Schema for the controlplanes API
@@ -9233,10 +9260,10 @@ spec:
                     status:
                       type: string
                     type:
-                      $ref: '#/definitions/github.com~1maistra~1istio-operator~1pkg~1apis~1maistra~1status~0ConditionType'
                       description: 'ServiceMeshMemberRollConditionType represents
                         the type of the condition.  Condition types are: Reconciled,
                         NamespaceConfigured'
+                      type: string
                   type: object
                 nullable: true
                 type: array
@@ -9380,9 +9407,9 @@ spec:
                     status:
                       type: string
                     type:
-                      $ref: '#/definitions/github.com~1maistra~1istio-operator~1pkg~1apis~1maistra~1status~0ConditionType'
                       description: 'ServiceMeshMemberConditionType represents the
                         type of the condition.  Condition types are: Reconciled, NamespaceConfigured'
+                      type: string
                   type: object
                 type: array
               observedGeneration:
