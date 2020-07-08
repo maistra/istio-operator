@@ -3,6 +3,7 @@ package v2
 // GrafanaAddonConfig configures a grafana instance for use with the mesh. Only
 // one of install or address may be specified
 type GrafanaAddonConfig struct {
+	Enablement `json:",inline"`
 	// Install a new grafana instance and manage with control plane
 	// +optional
 	Install *GrafanaInstallConfig `json:"install,omitempty"`

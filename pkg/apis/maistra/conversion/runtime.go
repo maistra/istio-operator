@@ -39,9 +39,15 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 				}
 			}
 			if len(pod.Tolerations) > 0 {
-				if tolerations, err := toValues(pod.Tolerations); err == nil {
-					if err := setHelmValue(values, "global.defaultTolerations", tolerations); err != nil {
-						return err
+				untypedSlice := make([]interface{}, len(pod.Tolerations))
+				for index, toleration := range pod.Tolerations {
+					untypedSlice[index] = toleration
+				}
+				if tolerations, err := sliceToValues(untypedSlice); err == nil {
+					if len(tolerations) > 0 {
+						if err := setHelmValue(values, "global.defaultTolerations", tolerations); err != nil {
+							return err
+						}
 					}
 				} else {
 					return err
@@ -81,8 +87,10 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 			}
 			if container.Resources != nil {
 				if resourcesValues, err := toValues(container.Resources); err == nil {
-					if err := setHelmValue(values, "global.defaultResources", resourcesValues); err != nil {
-						return err
+					if len(resourcesValues) > 0 {
+						if err := setHelmValue(values, "global.defaultResources", resourcesValues); err != nil {
+							return err
+						}
 					}
 				} else {
 					return err
@@ -209,8 +217,10 @@ func populatePodHelmValues(pod *v2.PodRuntimeConfig, values map[string]interface
 						"topologyKey": term.TopologyKey,
 					})
 				}
-				if err := setHelmValue(values, "podAntiAffinityLabelSelector", podAntiAffinityLabelSelector); err != nil {
-					return err
+				if len(podAntiAffinityLabelSelector) > 0 {
+					if err := setHelmValue(values, "podAntiAffinityLabelSelector", podAntiAffinityLabelSelector); err != nil {
+						return err
+					}
 				}
 			}
 			if len(pod.Affinity.PodAntiAffinity.PreferredDuringScheduling) > 0 {
@@ -223,16 +233,24 @@ func populatePodHelmValues(pod *v2.PodRuntimeConfig, values map[string]interface
 						"topologyKey": term.TopologyKey,
 					})
 				}
-				if err := setHelmValue(values, "podAntiAffinityTermLabelSelector", podAntiAffinityTermLabelSelector); err != nil {
-					return err
+				if len(podAntiAffinityTermLabelSelector) > 0 {
+					if err := setHelmValue(values, "podAntiAffinityTermLabelSelector", podAntiAffinityTermLabelSelector); err != nil {
+						return err
+					}
 				}
 			}
 		}
 	}
 	if len(pod.Tolerations) > 0 {
-		if tolerations, err := toValues(pod.Tolerations); err == nil {
-			if err := setHelmValue(values, "tolerations", tolerations); err != nil {
-				return err
+		untypedSlice := make([]interface{}, len(pod.Tolerations))
+		for index, toleration := range pod.Tolerations {
+			untypedSlice[index] = toleration
+		}
+		if tolerations, err := sliceToValues(untypedSlice); err == nil {
+			if len(tolerations) > 0 {
+				if err := setHelmValue(values, "tolerations", tolerations); err != nil {
+					return err
+				}
 			}
 		} else {
 			return err

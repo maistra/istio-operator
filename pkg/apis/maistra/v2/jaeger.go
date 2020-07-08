@@ -101,6 +101,7 @@ type JaegerElasticsearchStorageConfig struct {
 // JaegerIngressConfig configures k8s Ingress or OpenShift Route for exposing
 // Jaeger services.
 type JaegerIngressConfig struct {
+	Enablement `json:",inline"`
 	// Metadata represents addtional annotations/labels to be applied to the ingress/route.
 	// +optional
 	Metadata MetadataConfig `json:"metadata,omitempty"`

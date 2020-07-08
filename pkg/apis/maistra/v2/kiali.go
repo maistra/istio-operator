@@ -2,6 +2,7 @@ package v2
 
 // KialiAddonConfig is used to configure a kiali instance for use with the mesh
 type KialiAddonConfig struct {
+	Enablement `json:",inline"`
 	// Name of Kiali CR, Namespace must match control plane namespace
 	Name string `json:"name,omitempty"`
 	// Install a Kiali resource if the named Kiali resource is not present.

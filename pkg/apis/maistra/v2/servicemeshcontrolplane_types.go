@@ -97,3 +97,9 @@ type ControlPlaneSpec struct {
 	// +optional
 	Addons *AddonsConfig `json:"addons,omitempty"`
 }
+
+// Enablement is a common definition for features that can be enabled
+type Enablement struct {
+	// Enabled specifies whether or not this feature is enabled
+	Enabled bool `json:"enabled,omitempty"`
+}

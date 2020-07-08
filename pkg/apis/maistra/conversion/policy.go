@@ -15,6 +15,9 @@ import (
 func populatePolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
 	// Cluster settings
 	if in.Policy == nil {
+		return nil
+	}
+	if in.Policy.Type == v2.PolicyTypeNone {
 		return setHelmBoolValue(values, "mixer.policy.enabled", false)
 	}
 
@@ -76,13 +79,15 @@ func populateMixerPolicyValues(in *v2.ControlPlaneSpec, istiod bool, values map[
 				return err
 			}
 		}
-		if istiod {
-			if err := setHelmValue(policyValues, "adapters", adaptersValues); err != nil {
-				return err
-			}
-		} else {
-			if err := setHelmValue(values, "mixer.adapters", adaptersValues); err != nil {
-				return err
+		if len(adaptersValues) > 0 {
+			if istiod {
+				if err := setHelmValue(policyValues, "adapters", adaptersValues); err != nil {
+					return err
+				}
+			} else {
+				if err := setHelmValue(values, "mixer.adapters", adaptersValues); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -112,8 +117,10 @@ func populateMixerPolicyValues(in *v2.ControlPlaneSpec, istiod bool, values map[
 				}
 				if mixerContainer.Resources != nil {
 					if resourcesValues, err := toValues(mixerContainer.Resources); err == nil {
-						if err := setHelmValue(policyValues, "resources", resourcesValues); err != nil {
-							return err
+						if len(resourcesValues) > 0 {
+							if err := setHelmValue(policyValues, "resources", resourcesValues); err != nil {
+								return err
+							}
 						}
 					} else {
 						return err
@@ -150,8 +157,10 @@ func populateMixerPolicyValues(in *v2.ControlPlaneSpec, istiod bool, values map[
 	}
 
 	// set the policy values
-	if err := setHelmValue(values, "mixer.policy", policyValues); err != nil {
-		return err
+	if len(policyValues) > 0 {
+		if err := setHelmValue(values, "mixer.policy", policyValues); err != nil {
+			return err
+		}
 	}
 
 	return nil

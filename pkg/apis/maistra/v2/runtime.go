@@ -235,6 +235,7 @@ type ComponentServiceConfig struct {
 // ComponentIngressConfig is used to customize a k8s Ingress or OpenShift Route
 // for the service associated with a component.
 type ComponentIngressConfig struct {
+	Enablement `json:",inline"`
 	// Metadata represents additional metadata to be applied to the ingress/route.
 	// +optional
 	Metadata MetadataConfig `json:"metadata,omitempty"`
@@ -255,6 +256,7 @@ type ComponentIngressConfig struct {
 
 // ComponentPersistenceConfig is used to configure persistance for a component.
 type ComponentPersistenceConfig struct {
+	Enablement `json:",inline"`
 	// StorageClassName for the PersistentVolume
 	// +optional
 	StorageClassName string `json:"storageClassName,omitempty"`

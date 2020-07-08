@@ -6,6 +6,9 @@ import (
 
 func populateKialiAddonValues(kiali *v2.KialiAddonConfig, values map[string]interface{}) error {
 	if kiali == nil {
+		return nil
+	}
+	if !kiali.Enabled {
 		return setHelmBoolValue(values, "kiali.enabled", false)
 	}
 	if kiali.Install == nil {
@@ -41,15 +44,15 @@ func populateKialiAddonValues(kiali *v2.KialiAddonConfig, values map[string]inte
 			return err
 		}
 	}
-	if kiali.Install.Service.Ingress != nil {
-		ingressValues := make(map[string]interface{})
-		if err := populateAddonIngressValues(kiali.Install.Service.Ingress, ingressValues); err == nil {
+	ingressValues := make(map[string]interface{})
+	if err := populateAddonIngressValues(kiali.Install.Service.Ingress, ingressValues); err == nil {
+		if len(ingressValues) > 0 {
 			if err := setHelmValue(kialiValues, "ingress", ingressValues); err != nil {
 				return err
 			}
-		} else {
-			return err
 		}
+	} else {
+		return err
 	}
 
 	if kiali.Install.Runtime != nil {
@@ -82,8 +85,10 @@ func populateKialiAddonValues(kiali *v2.KialiAddonConfig, values map[string]inte
 		}
 	}
 
-	if err := setHelmValue(values, "kiali", kialiValues); err != nil {
-		return err
+	if len(kialiValues) > 0 {
+		if err := setHelmValue(values, "kiali", kialiValues); err != nil {
+			return err
+		}
 	}
 	return nil
 }

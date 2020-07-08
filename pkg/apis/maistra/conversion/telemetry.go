@@ -14,6 +14,9 @@ func populateTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interfac
 
 	telemetry := in.Telemetry
 	if telemetry == nil {
+		return nil
+	}
+	if telemetry.Type == v2.TelemetryTypeNone {
 		if istiod {
 			return setHelmBoolValue(values, "telemetry.enabled", false)
 		}
@@ -149,14 +152,16 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 				}
 			}
 		}
-		if err := setHelmValue(values, "mixer.adapters", adaptersValues); err != nil {
-			return err
+		if len(adaptersValues) > 0 {
+			if err := setHelmValue(values, "mixer.adapters", adaptersValues); err != nil {
+				return err
+			}
 		}
 	}
 
 	// Deployment specific settings
-	runtime := mixer.Runtime
-	if runtime != nil {
+	if mixer.Runtime != nil {
+		runtime := mixer.Runtime
 		if err := populateRuntimeValues(runtime, v1TelemetryValues); err != nil {
 			return err
 		}
@@ -179,8 +184,10 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 				}
 				if mixerContainer.Resources != nil {
 					if resourcesValues, err := toValues(mixerContainer.Resources); err == nil {
-						if err := setHelmValue(v1TelemetryValues, "resources", resourcesValues); err != nil {
-							return err
+						if len(resourcesValues) > 0 {
+							if err := setHelmValue(v1TelemetryValues, "resources", resourcesValues); err != nil {
+								return err
+							}
 						}
 					} else {
 						return err
@@ -232,12 +239,16 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 		if err := setHelmValue(values, "telemetry", v2TelemetryValues); err != nil {
 			return err
 		}
-		if err := setHelmValue(values, "mixer.telemetry", v1TelemetryValues); err != nil {
-			return err
+		if len(v1TelemetryValues) > 0 {
+			if err := setHelmValue(values, "mixer.telemetry", v1TelemetryValues); err != nil {
+				return err
+			}
 		}
 	} else {
-		if err := setHelmValue(values, "mixer.telemetry", v1TelemetryValues); err != nil {
-			return err
+		if len(v1TelemetryValues) > 0 {
+			if err := setHelmValue(values, "mixer.telemetry", v1TelemetryValues); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -300,12 +311,16 @@ func populateRemoteTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values 
 		if err := setHelmValue(values, "telemetry", v2TelemetryValues); err != nil {
 			return err
 		}
-		if err := setHelmValue(values, "mixer.telemetry", v1TelemetryValues); err != nil {
-			return err
+		if len(v1TelemetryValues) > 0 {
+			if err := setHelmValue(values, "mixer.telemetry", v1TelemetryValues); err != nil {
+				return err
+			}
 		}
 	} else {
-		if err := setHelmValue(values, "mixer.telemetry", v1TelemetryValues); err != nil {
-			return err
+		if len(v1TelemetryValues) > 0 {
+			if err := setHelmValue(values, "mixer.telemetry", v1TelemetryValues); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -385,8 +400,10 @@ func populateIstiodTelemetryValues(in *v2.ControlPlaneSpec, values map[string]in
 	}
 
 	// set the telemetry values
-	if err := setHelmValue(values, "telemetry", telemetryValues); err != nil {
-		return err
+	if len(telemetryValues) > 0 {
+		if err := setHelmValue(values, "telemetry", telemetryValues); err != nil {
+			return err
+		}
 	}
 
 	return nil

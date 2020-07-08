@@ -60,41 +60,71 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 	gateways := in.Gateways
 
 	if gateways.Ingress != nil {
-		if gatewayValues, err := gatewayConfigToValues(&gateways.Ingress.GatewayConfig); err == nil {
-			if len(gateways.Ingress.MeshExpansionPorts) > 0 {
-				if portsValue, err := toValues(gateways.Ingress.MeshExpansionPorts); err == nil {
-					if err := setHelmValue(gatewayValues, "meshExpansionPorts", portsValue); err != nil {
+		if gateways.Ingress.Enabled {
+			if gatewayValues, err := gatewayConfigToValues(&gateways.Ingress.GatewayConfig); err == nil {
+				if len(gateways.Ingress.MeshExpansionPorts) > 0 {
+					untypedSlice := make([]interface{}, len(gateways.Ingress.MeshExpansionPorts))
+					for index, port := range gateways.Ingress.MeshExpansionPorts {
+						untypedSlice[index] = port
+					}
+					if portsValue, err := sliceToValues(untypedSlice); err == nil {
+						if len(portsValue) > 0 {
+							if err := setHelmValue(gatewayValues, "meshExpansionPorts", portsValue); err != nil {
+								return err
+							}
+						}
+					} else {
 						return err
 					}
-				} else {
-					return err
 				}
-			}
-			if err := setHelmValue(values, "gateways.istio-ingressgateway", gatewayValues); err != nil {
+				if len(gatewayValues) > 0 {
+					if err := setHelmValue(values, "gateways.istio-ingressgateway", gatewayValues); err != nil {
+						return err
+					}
+				}
+			} else {
 				return err
 			}
 		} else {
-			return err
+			if err := setHelmBoolValue(values, "gateways.istio-ingressgateway.enabled", false); err != nil {
+				return err
+			}
 		}
 	}
 
 	if gateways.Egress != nil {
-		if gatewayValues, err := gatewayConfigToValues(gateways.Egress); err == nil {
-			if err := setHelmValue(values, "gateways.istio-egressgateway", gatewayValues); err != nil {
+		if gateways.Egress.Enabled {
+			if gatewayValues, err := gatewayConfigToValues(gateways.Egress); err == nil {
+				if len(gatewayValues) > 0 {
+					if err := setHelmValue(values, "gateways.istio-egressgateway", gatewayValues); err != nil {
+						return err
+					}
+				}
+			} else {
 				return err
 			}
 		} else {
-			return err
+			if err := setHelmBoolValue(values, "gateways.istio-egressgateway.enabled", false); err != nil {
+				return err
+			}
 		}
 	}
 
 	for name, gateway := range gateways.AdditionalGateways {
-		if gatewayValues, err := gatewayConfigToValues(&gateway); err == nil {
-			if err := setHelmValue(values, "gateways."+name, gatewayValues); err != nil {
+		if gateway.Enabled {
+			if gatewayValues, err := gatewayConfigToValues(&gateway); err == nil {
+				if len(gatewayValues) > 0 {
+					if err := setHelmValue(values, "gateways."+name, gatewayValues); err != nil {
+						return err
+					}
+				}
+			} else {
 				return err
 			}
 		} else {
-			return err
+			if err := setHelmBoolValue(values, "gateways."+name+".enabled", false); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -160,9 +190,15 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		}
 	}
 	if len(in.Service.Ports) > 0 {
-		if portsValue, err := toValues(in.Service.Ports); err == nil {
-			if err := setHelmValue(values, "ports", portsValue); err != nil {
-				return nil, err
+		untypedSlice := make([]interface{}, len(in.Service.Ports))
+		for index, port := range in.Service.Ports {
+			untypedSlice[index] = port
+		}
+		if portsValue, err := sliceToValues(untypedSlice); err == nil {
+			if len(portsValue) > 0 {
+				if err := setHelmValue(values, "ports", portsValue); err != nil {
+					return nil, err
+				}
 			}
 		} else {
 			return nil, err
@@ -193,8 +229,10 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 				}
 				if sdsContainer.Resources != nil {
 					if resourcesValues, err := toValues(sdsContainer.Resources); err == nil {
-						if err := setHelmValue(values, "sds.resources", resourcesValues); err != nil {
-							return nil, err
+						if len(resourcesValues) > 0 {
+							if err := setHelmValue(values, "sds.resources", resourcesValues); err != nil {
+								return nil, err
+							}
 						}
 					} else {
 						return nil, err
@@ -205,8 +243,10 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 			if proxyContainer, ok := runtime.Pod.Containers["istio-proxy"]; ok {
 				if proxyContainer.Resources != nil {
 					if resourcesValues, err := toValues(proxyContainer.Resources); err == nil {
-						if err := setHelmValue(values, "resources", resourcesValues); err != nil {
-							return nil, err
+						if len(resourcesValues) > 0 {
+							if err := setHelmValue(values, "resources", resourcesValues); err != nil {
+								return nil, err
+							}
 						}
 					} else {
 						return nil, err

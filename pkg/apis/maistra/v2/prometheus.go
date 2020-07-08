@@ -3,6 +3,7 @@ package v2
 // PrometheusAddonConfig configures a prometheus instance to be used by the
 // control plane.  Only one of Install or Address may be specified
 type PrometheusAddonConfig struct {
+	Enablement `json:",inline"`
 	// Install configuration if not using an existing prometheus installation.
 	// +optional
 	Install *PrometheusInstallConfig `json:"install,omitempty"`

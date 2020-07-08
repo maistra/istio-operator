@@ -20,6 +20,8 @@ type TelemetryConfig struct {
 type TelemetryType string
 
 const (
+	// TelemetryTypeNone disables telemetry
+	TelemetryTypeNone TelemetryType = "None"
 	// TelemetryTypeMixer represents mixer telemetry, v1
 	TelemetryTypeMixer TelemetryType = "Mixer"
 	// TelemetryTypeRemote represents remote mixer telemetry server, v1

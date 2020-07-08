@@ -31,13 +31,13 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 		hasNetworkName := len(in.Cluster.Network) > 0
 		if hasClusterName {
 			if err := setHelmStringValue(values, "global.multiCluster.clusterName", in.Cluster.Name); err != nil {
-                return err
-            }
+				return err
+			}
 		}
 		if hasNetworkName {
 			if err := setHelmStringValue(values, "global.network", in.Cluster.Network); err != nil {
-                return err
-            }
+				return err
+			}
 		}
 		if hasClusterName && hasNetworkName {
 			// Configure local mesh network, if not defined
@@ -61,21 +61,23 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 			}
 
 			if meshNetworksValue, err := toValues(in.Cluster.MultiCluster.MeshNetworks); err == nil {
-				if err := setHelmValue(values, "global.meshNetworks", meshNetworksValue); err != nil {
-                    return err
-                }
+				if len(meshNetworksValue) > 0 {
+					if err := setHelmValue(values, "global.meshNetworks", meshNetworksValue); err != nil {
+						return err
+					}
+				}
 			} else {
 				return err
 			}
 		}
 		if in.Cluster.MultiCluster == nil {
 			if err := setHelmBoolValue(values, "global.multiCluster.enabled", false); err != nil {
-                return err
-            }
+				return err
+			}
 		} else {
 			if err := setHelmBoolValue(values, "global.multiCluster.enabled", true); err != nil {
-                return err
-            }
+				return err
+			}
 			// XXX: ingress and egress gateways must be configured if multicluster is enabled
 			if in.Gateways != nil {
 				if in.Gateways.Egress != nil {
@@ -93,8 +95,8 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 				if in.Gateways.Ingress != nil {
 					if in.Cluster.MultiCluster.Ingress {
 						if err := setHelmBoolValue(values, "global.k8sIngress.enabled", true); err != nil {
-                            return err
-                        }
+							return err
+						}
 						hasHTTPS := false
 						for _, port := range in.Gateways.Ingress.Service.Ports {
 							if port.Port == 443 {
@@ -103,31 +105,31 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 							}
 						}
 						if err := setHelmBoolValue(values, "global.k8sIngress.enabled", hasHTTPS); err != nil {
-                            return err
-                        }
+							return err
+						}
 					}
 					// meshExpansion is always enabled for multi-cluster
 					if err := setHelmBoolValue(values, "global.meshExpansion.enabled", true); err != nil {
-                        return err
-                    }
+						return err
+					}
 					if expansionPorts, err := expansionPortsForVersion(in.Version); err != nil {
-						if in.Cluster.MeshExpansion == nil || in.Cluster.MeshExpansion.ILBGateway == nil {
+						if in.Cluster.MeshExpansion == nil || in.Cluster.MeshExpansion.ILBGateway == nil || !in.Cluster.MeshExpansion.ILBGateway.Enabled {
 							addExpansionPorts(&in.Gateways.Ingress.MeshExpansionPorts, expansionPorts)
 							if err := setHelmBoolValue(values, "gateways.istio-ilbgateway.enabled", false); err != nil {
-                                return err
-                            }
+								return err
+							}
 							if err := setHelmBoolValue(values, "global.meshExpansion.useILB", false); err != nil {
-                                return err
-                            }
+								return err
+							}
 						} else {
 							if err := setHelmBoolValue(values, "global.meshExpansion.useILB", true); err != nil {
-                                return err
-                            }
+								return err
+							}
 							addExpansionPorts(&in.Cluster.MeshExpansion.ILBGateway.Service.Ports, expansionPorts)
 							if ilbGatewayValues, err := gatewayConfigToValues(in.Cluster.MeshExpansion.ILBGateway); err == nil {
 								if err := setHelmValue(values, "gateways.istio-ilbgateway", ilbGatewayValues); err != nil {
-                                    return err
-                                }
+									return err
+								}
 							} else {
 								return err
 							}
@@ -156,13 +158,13 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 				}
 			}
 		}
-    }
-    
-    // non-configurable defaults
-    // XXX: not sure if this is version specific, i.e. does it apply to istio 1.6?
-    if err := setHelmBoolValue(values, "global.useMCP", true); err != nil {
-        return err
-    }
+	}
+
+	// non-configurable defaults
+	// XXX: not sure if this is version specific, i.e. does it apply to istio 1.6?
+	if err := setHelmBoolValue(values, "global.useMCP", true); err != nil {
+		return err
+	}
 
 	return nil
 }

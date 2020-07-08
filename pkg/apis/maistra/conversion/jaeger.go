@@ -6,7 +6,13 @@ import (
 
 func populateJaegerAddonValues(jaeger *v2.JaegerTracerConfig, values map[string]interface{}) error {
 	if jaeger == nil {
-		return setHelmBoolValue(values, "tracing.enabled", false)
+		if err := setHelmStringValue(values, "global.proxy.tracer", "jaeger"); err != nil {
+			return err
+		}
+		if err := setHelmStringValue(values, "tracing.provider", "jaeger"); err != nil {
+			return err
+		}
+		return nil
 	}
 	if jaeger.Install == nil {
 		// XXX: not sure if this is correct. we don't want the charts processed,
@@ -93,12 +99,14 @@ func populateJaegerAddonValues(jaeger *v2.JaegerTracerConfig, values map[string]
 	}
 
 	if jaeger.Install.Ingress != nil {
-		if err := setHelmBoolValue(tracingValues, "ingress.enabled", true); err != nil {
+		if err := setHelmBoolValue(tracingValues, "ingress.enabled", jaeger.Install.Ingress.Enabled); err != nil {
 			return err
 		}
-		if len(jaeger.Install.Ingress.Metadata.Annotations) > 0 {
-			if err := setHelmMapValue(tracingValues, "ingress.annotations", jaeger.Install.Ingress.Metadata.Annotations); err != nil {
-				return err
+		if jaeger.Install.Ingress.Enabled {
+			if len(jaeger.Install.Ingress.Metadata.Annotations) > 0 {
+				if err := setHelmMapValue(tracingValues, "ingress.annotations", jaeger.Install.Ingress.Metadata.Annotations); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -119,8 +127,10 @@ func populateJaegerAddonValues(jaeger *v2.JaegerTracerConfig, values map[string]
 		if runtime.Pod.Containers != nil {
 			if defaultResources, ok := jaeger.Install.Runtime.Pod.Containers["default"]; ok {
 				if resourcesValues, err := toValues(defaultResources); err == nil {
-					if err := setHelmValue(jaegerValues, "resources", resourcesValues); err != nil {
-						return err
+					if len(resourcesValues) > 0 {
+						if err := setHelmValue(jaegerValues, "resources", resourcesValues); err != nil {
+							return err
+						}
 					}
 				} else {
 					return err
@@ -129,11 +139,15 @@ func populateJaegerAddonValues(jaeger *v2.JaegerTracerConfig, values map[string]
 		}
 	}
 
-	if err := setHelmValue(tracingValues, "jaeger", jaegerValues); err != nil {
-		return err
+	if len(jaegerValues) > 0 {
+		if err := setHelmValue(tracingValues, "jaeger", jaegerValues); err != nil {
+			return err
+		}
 	}
-	if err := setHelmValue(values, "tracing", tracingValues); err != nil {
-		return err
+	if len(tracingValues) > 0 {
+		if err := setHelmValue(values, "tracing", tracingValues); err != nil {
+			return err
+		}
 	}
 
 	return nil

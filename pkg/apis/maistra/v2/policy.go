@@ -24,6 +24,9 @@ type PolicyConfig struct {
 type PolicyType string
 
 const (
+	// PolicyTypeNone represents disabling of policy
+	// XXX: note, this doesn't appear to affect Istio 1.6, i.e. no different than Istiod setting
+	PolicyTypeNone PolicyType = "None"
 	// PolicyTypeMixer represents mixer, v1 implementation
 	PolicyTypeMixer PolicyType = "Mixer"
 	// PolicyTypeRemote represents remote mixer, v1 implementation

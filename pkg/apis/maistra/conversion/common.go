@@ -17,6 +17,15 @@ func toValues(in interface{}) (map[string]interface{}, error) {
 	return out, err
 }
 
+func sliceToValues(in []interface{}) ([]interface{}, error) {
+	out := make([]interface{}, len(in))
+	bytes, err := yaml.Marshal(in)
+	if err == nil {
+		err = yaml.Unmarshal(bytes, out, nil)
+	}
+	return out, err
+}
+
 func setHelmValue(obj map[string]interface{}, path string, value interface{}) error {
 	return unstructured.SetNestedField(obj, value, strings.Split(path, ".")...)
 }

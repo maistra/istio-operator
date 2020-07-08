@@ -8,6 +8,9 @@ import (
 func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
 	prometheus := in.Addons.Metrics.Prometheus
 	if prometheus == nil {
+		return nil
+	}
+	if !prometheus.Enabled {
 		return setHelmBoolValue(values, "prometheus.enabled", false)
 	}
 	if prometheus.Address != nil {
@@ -56,22 +59,28 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 		}
 	}
 	if prometheus.Install.Service.NodePort != nil {
-		if err := setHelmBoolValue(prometheusValues, "service.nodePort.enabled", true); err != nil {
-			return err
-		}
-		if err := setHelmIntValue(prometheusValues, "service.nodePort.port", int64(*prometheus.Install.Service.NodePort)); err != nil {
-			return err
-		}
-	}
-	if prometheus.Install.Service.Ingress != nil {
-		ingressValues := make(map[string]interface{})
-		if err := populateAddonIngressValues(prometheus.Install.Service.Ingress, ingressValues); err == nil {
-			if err := setHelmValue(prometheusValues, "ingress", ingressValues); err != nil {
+		if *prometheus.Install.Service.NodePort == 0 {
+			if err := setHelmBoolValue(prometheusValues, "service.nodePort.enabled", false); err != nil {
 				return err
 			}
 		} else {
-			return err
+			if err := setHelmBoolValue(prometheusValues, "service.nodePort.enabled", true); err != nil {
+				return err
+			}
+			if err := setHelmIntValue(prometheusValues, "service.nodePort.port", int64(*prometheus.Install.Service.NodePort)); err != nil {
+				return err
+			}
 		}
+	}
+	ingressValues := make(map[string]interface{})
+	if err := populateAddonIngressValues(prometheus.Install.Service.Ingress, ingressValues); err == nil {
+		if len(ingressValues) > 0 {
+			if err := setHelmValue(prometheusValues, "ingress", ingressValues); err != nil {
+				return err
+			}
+		}
+	} else {
+		return err
 	}
 
 	if len(prometheusValues) > 0 {

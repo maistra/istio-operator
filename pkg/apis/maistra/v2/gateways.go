@@ -26,6 +26,7 @@ type GatewaysConfig struct {
 // XXX: should standard istio secrets be configured automatically, i.e. should
 // the user be forced to add these manually?
 type GatewayConfig struct {
+	Enablement `json:",inline"`
 	// Namespace is the namespace within which the gateway will be installed,
 	// defaults to control plane namespace.
 	// .Values.gateways.<gateway-name>.namespace

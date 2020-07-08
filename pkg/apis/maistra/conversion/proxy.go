@@ -63,8 +63,10 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 			}
 			if cni.Runtime.Resources != nil {
 				if resourcesValues, err := toValues(cni.Runtime.Resources); err == nil {
-					if err := setHelmValue(istioCNI, "resources", resourcesValues); err != nil {
-						return err
+					if len(resourcesValues) > 0 {
+						if err := setHelmValue(istioCNI, "resources", resourcesValues); err != nil {
+							return err
+						}
 					}
 				} else {
 					return err
@@ -87,8 +89,10 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 			}
 			if container.Resources != nil {
 				if resourcesValues, err := toValues(container.Resources); err == nil {
-					if err := setHelmValue(values, "global.proxy_init.resources", resourcesValues); err != nil {
-						return err
+					if len(resourcesValues) > 0 {
+						if err := setHelmValue(values, "global.proxy_init.resources", resourcesValues); err != nil {
+							return err
+						}
 					}
 				} else {
 					return err
@@ -166,8 +170,10 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 	// Runtime
 	if proxy.Runtime.Resources != nil {
 		if resourcesValues, err := toValues(proxy.Runtime.Resources); err == nil {
-			if err := setHelmValue(proxyValues, "resources", resourcesValues); err != nil {
-				return err
+			if len(resourcesValues) > 0 {
+				if err := setHelmValue(proxyValues, "resources", resourcesValues); err != nil {
+					return err
+				}
 			}
 		} else {
 			return err
@@ -199,8 +205,10 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 	}
 
 	// set proxy values
-	if err := setHelmValue(values, "global.proxy", proxyValues); err != nil {
-		return err
+	if len(proxyValues) > 0 {
+		if err := setHelmValue(values, "global.proxy", proxyValues); err != nil {
+			return err
+		}
 	}
 
 	return nil

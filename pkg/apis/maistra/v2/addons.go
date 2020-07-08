@@ -44,6 +44,8 @@ type TracingConfig struct {
 type TracerType string
 
 const (
+	// TracerTypeNone is used to represent no tracer
+	TracerTypeNone TracerType = "None"
 	// TracerTypeJaeger is used to represent Jaeger as the tracer
 	TracerTypeJaeger TracerType = "Jaeger"
 	// TracerTypeZipkin      TracerType = "Zipkin"
