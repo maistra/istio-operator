@@ -8,41 +8,41 @@ import (
 func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
 	prometheus := in.Addons.Metrics.Prometheus
 	if prometheus == nil {
-		return setHelmValue(values, "prometheus.enabled", false)
+		return setHelmBoolValue(values, "prometheus.enabled", false)
 	}
 	if prometheus.Address != nil {
 		// XXX: not sure if this is correct. we don't want the charts processed,
 		// but telemetry might be configured incorrectly
-		if err := setHelmValue(values, "prometheus.enabled", false); err != nil {
+		if err := setHelmBoolValue(values, "prometheus.enabled", false); err != nil {
 			return err
 		}
-		return setHelmValue(values, "kiali.prometheusAddr", *prometheus.Address)
+		return setHelmStringValue(values, "kiali.prometheusAddr", *prometheus.Address)
 	} else if prometheus.Install == nil {
 		// XXX: not sure if this is correct. we don't want the charts processed,
 		// but telemetry might be configured incorrectly
-		return setHelmValue(values, "prometheus.enabled", false)
+		return setHelmBoolValue(values, "prometheus.enabled", false)
 	}
 	prometheusValues := make(map[string]interface{})
-	if err := setHelmValue(prometheusValues, "enabled", true); err != nil {
+	if err := setHelmBoolValue(prometheusValues, "enabled", true); err != nil {
 		return err
 	}
 	if prometheus.Install.Config.Retention != "" {
-		if err := setHelmValue(prometheusValues, "retention", prometheus.Install.Config.Retention); err != nil {
+		if err := setHelmStringValue(prometheusValues, "retention", prometheus.Install.Config.Retention); err != nil {
 			return err
 		}
 	}
 	if prometheus.Install.Config.ScrapeInterval != "" {
-		if err := setHelmValue(prometheusValues, "scrapeInterval", prometheus.Install.Config.ScrapeInterval); err != nil {
+		if err := setHelmStringValue(prometheusValues, "scrapeInterval", prometheus.Install.Config.ScrapeInterval); err != nil {
 			return err
 		}
 	}
 	if prometheus.Install.UseTLS != nil {
 		if in.Version == "" || in.Version == versions.V1_0.String() || in.Version == versions.V1_1.String() {
-			if err := setHelmValue(prometheusValues, "security.enabled", *prometheus.Install.UseTLS); err != nil {
+			if err := setHelmBoolValue(prometheusValues, "security.enabled", *prometheus.Install.UseTLS); err != nil {
 				return err
 			}
 		} else {
-			if err := setHelmValue(prometheusValues, "provisionPrometheusCert", *prometheus.Install.UseTLS); err != nil {
+			if err := setHelmBoolValue(prometheusValues, "provisionPrometheusCert", *prometheus.Install.UseTLS); err != nil {
 				return err
 			}
 		}
@@ -51,15 +51,15 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 		return err
 	}
 	if len(prometheus.Install.Service.Metadata.Annotations) > 0 {
-		if err := setHelmValue(prometheusValues, "service.annotations", prometheus.Install.Service.Metadata.Annotations); err != nil {
+		if err := setHelmMapValue(prometheusValues, "service.annotations", prometheus.Install.Service.Metadata.Annotations); err != nil {
 			return err
 		}
 	}
 	if prometheus.Install.Service.NodePort != nil {
-		if err := setHelmValue(prometheusValues, "service.nodePort.enabled", true); err != nil {
+		if err := setHelmBoolValue(prometheusValues, "service.nodePort.enabled", true); err != nil {
 			return err
 		}
-		if err := setHelmValue(prometheusValues, "service.nodePort.port", *prometheus.Install.Service.NodePort); err != nil {
+		if err := setHelmIntValue(prometheusValues, "service.nodePort.port", int64(*prometheus.Install.Service.NodePort)); err != nil {
 			return err
 		}
 	}

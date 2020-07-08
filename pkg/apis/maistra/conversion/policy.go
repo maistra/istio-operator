@@ -15,7 +15,7 @@ import (
 func populatePolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
 	// Cluster settings
 	if in.Policy == nil {
-		return setHelmValue(values, "mixer.policy.enabled", false)
+		return setHelmBoolValue(values, "mixer.policy.enabled", false)
 	}
 
 	istiod := !(in.Version == "" || in.Version == versions.V1_0.String() || in.Version == versions.V1_1.String())
@@ -34,7 +34,7 @@ func populatePolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 	case v2.PolicyTypeIstiod:
 		return populateIstiodPolicyValues(in, values)
 	}
-	setHelmValue(values, "mixer.policy.enabled", false)
+	setHelmBoolValue(values, "mixer.policy.enabled", false)
 	return fmt.Errorf("Unknown policy type: %s", in.Policy.Type)
 }
 
@@ -45,21 +45,21 @@ func populateMixerPolicyValues(in *v2.ControlPlaneSpec, istiod bool, values map[
 	}
 
 	// Make sure mixer is enabled
-	if err := setHelmValue(values, "mixer.enabled", true); err != nil {
+	if err := setHelmBoolValue(values, "mixer.enabled", true); err != nil {
 		return err
 	}
 
 	policyValues := make(map[string]interface{})
-	if err := setHelmValue(policyValues, "enabled", true); err != nil {
+	if err := setHelmBoolValue(policyValues, "enabled", true); err != nil {
 		return err
 	}
 	if mixer.EnableChecks != nil {
-		if err := setHelmValue(values, "global.disablePolicyChecks", !*mixer.EnableChecks); err != nil {
+		if err := setHelmBoolValue(values, "global.disablePolicyChecks", !*mixer.EnableChecks); err != nil {
 			return err
 		}
 	}
 	if mixer.FailOpen != nil {
-		if err := setHelmValue(values, "global.policyCheckFailOpen", *mixer.FailOpen); err != nil {
+		if err := setHelmBoolValue(values, "global.policyCheckFailOpen", *mixer.FailOpen); err != nil {
 			return err
 		}
 	}
@@ -67,12 +67,12 @@ func populateMixerPolicyValues(in *v2.ControlPlaneSpec, istiod bool, values map[
 	if mixer.Adapters != nil {
 		adaptersValues := make(map[string]interface{})
 		if mixer.Adapters.UseAdapterCRDs != nil {
-			if err := setHelmValue(adaptersValues, "useAdapterCRDs", *mixer.Adapters.UseAdapterCRDs); err != nil {
+			if err := setHelmBoolValue(adaptersValues, "useAdapterCRDs", *mixer.Adapters.UseAdapterCRDs); err != nil {
 				return err
 			}
 		}
 		if mixer.Adapters.KubernetesEnv != nil {
-			if err := setHelmValue(adaptersValues, "kubernetesenv.enabled", *mixer.Adapters.KubernetesEnv); err != nil {
+			if err := setHelmBoolValue(adaptersValues, "kubernetesenv.enabled", *mixer.Adapters.KubernetesEnv); err != nil {
 				return err
 			}
 		}
@@ -89,36 +89,35 @@ func populateMixerPolicyValues(in *v2.ControlPlaneSpec, istiod bool, values map[
 
 	// Deployment specific settings
 	runtime := mixer.Runtime
-	if runtime == nil {
-		runtime = &v2.ComponentRuntimeConfig{}
-	}
-	if err := populateRuntimeValues(runtime, policyValues); err != nil {
-		return err
-	}
+	if runtime != nil {
+		if err := populateRuntimeValues(runtime, policyValues); err != nil {
+			return err
+		}
 
-	// set image and resources
-	if runtime.Pod.Containers != nil {
-		// Mixer container specific config
-		if mixerContainer, ok := runtime.Pod.Containers["mixer"]; ok {
-			if mixerContainer.Image != "" {
-				if istiod {
-					if err := setHelmValue(policyValues, "image", mixerContainer.Image); err != nil {
-						return err
-					}
-				} else {
-					// XXX: this applies to both policy and telemetry in pre 1.6
-					if err := setHelmValue(values, "mixer.image", mixerContainer.Image); err != nil {
-						return err
+		// set image and resources
+		if runtime.Pod.Containers != nil {
+			// Mixer container specific config
+			if mixerContainer, ok := runtime.Pod.Containers["mixer"]; ok {
+				if mixerContainer.Image != "" {
+					if istiod {
+						if err := setHelmStringValue(policyValues, "image", mixerContainer.Image); err != nil {
+							return err
+						}
+					} else {
+						// XXX: this applies to both policy and telemetry in pre 1.6
+						if err := setHelmStringValue(values, "mixer.image", mixerContainer.Image); err != nil {
+							return err
+						}
 					}
 				}
-			}
-			if mixerContainer.Resources != nil {
-				if resourcesValues, err := toValues(mixerContainer.Resources); err == nil {
-					if err := setHelmValue(policyValues, "resources", resourcesValues); err != nil {
+				if mixerContainer.Resources != nil {
+					if resourcesValues, err := toValues(mixerContainer.Resources); err == nil {
+						if err := setHelmValue(policyValues, "resources", resourcesValues); err != nil {
+							return err
+						}
+					} else {
 						return err
 					}
-				} else {
-					return err
 				}
 			}
 		}
@@ -165,27 +164,27 @@ func populateRemotePolicyValues(in *v2.ControlPlaneSpec, values map[string]inter
 	}
 
 	// Make sure mixer is disabled
-	if err := setHelmValue(values, "mixer.enabled", false); err != nil {
+	if err := setHelmBoolValue(values, "mixer.enabled", false); err != nil {
 		return err
 	}
-	if err := setHelmValue(values, "mixer.policy.enabled", true); err != nil {
+	if err := setHelmBoolValue(values, "mixer.policy.enabled", true); err != nil {
 		return err
 	}
 
-	if err := setHelmValue(values, "global.remotePolicyAddress", remote.Address); err != nil {
+	if err := setHelmStringValue(values, "global.remotePolicyAddress", remote.Address); err != nil {
 		return err
 	}
 	// XXX: this applies to both policy and telemetry
-	if err := setHelmValue(values, "global.createRemoteSvcEndpoints", remote.CreateService); err != nil {
+	if err := setHelmBoolValue(values, "global.createRemoteSvcEndpoints", remote.CreateService); err != nil {
 		return err
 	}
 	if remote.EnableChecks != nil {
-		if err := setHelmValue(values, "global.disablePolicyChecks", !*remote.EnableChecks); err != nil {
+		if err := setHelmBoolValue(values, "global.disablePolicyChecks", !*remote.EnableChecks); err != nil {
 			return err
 		}
 	}
 	if remote.FailOpen != nil {
-		if err := setHelmValue(values, "global.policyCheckFailOpen", *remote.FailOpen); err != nil {
+		if err := setHelmBoolValue(values, "global.policyCheckFailOpen", *remote.FailOpen); err != nil {
 			return err
 		}
 	}
@@ -194,10 +193,10 @@ func populateRemotePolicyValues(in *v2.ControlPlaneSpec, values map[string]inter
 }
 
 func populateIstiodPolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
-	if err := setHelmValue(values, "mixer.enabled", false); err != nil {
+	if err := setHelmBoolValue(values, "mixer.enabled", false); err != nil {
 		return err
 	}
-	if err := setHelmValue(values, "mixer.policy.enabled", false); err != nil {
+	if err := setHelmBoolValue(values, "mixer.policy.enabled", false); err != nil {
 		return err
 	}
 	return nil

@@ -15,24 +15,24 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 
 	// General mutual TLS
 	if security.MutualTLS.Enable != nil {
-		if err := setHelmValue(values, "global.mtls.enabled", *security.MutualTLS.Enable); err != nil {
+		if err := setHelmBoolValue(values, "global.mtls.enabled", *security.MutualTLS.Enable); err != nil {
 			return err
 		}
 	}
 	if security.MutualTLS.Auto != nil {
-		if err := setHelmValue(values, "global.mtls.auto", *security.MutualTLS.Auto); err != nil {
+		if err := setHelmBoolValue(values, "global.mtls.auto", *security.MutualTLS.Auto); err != nil {
 			return err
 		}
 	}
 
 	// SPIFFE trust domain
 	if security.MutualTLS.Trust.Domain != "" {
-		if err := setHelmValue(values, "global.trustDomain", security.MutualTLS.Trust.Domain); err != nil {
+		if err := setHelmStringValue(values, "global.trustDomain", security.MutualTLS.Trust.Domain); err != nil {
 			return err
 		}
 	}
 	if len(security.MutualTLS.Trust.AdditionalDomains) > 0 {
-		if err := setHelmValue(values, "global.trustDomainAliases", security.MutualTLS.Trust.AdditionalDomains); err != nil {
+		if err := setHelmSliceValue(values, "global.trustDomainAliases", security.MutualTLS.Trust.AdditionalDomains); err != nil {
 			return err
 		}
 	}
@@ -46,7 +46,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			// use self-signed as default
 			// this is for pre-1.6.  1.6+ is configured based on the presence
 			// of a mounted root cert/key in $ROOT_CA_DIR/ca-key.pem, /etc/cacerts/ca-key.pem by default
-			if err := setHelmValue(values, "security.selfSigned", true); err != nil {
+			if err := setHelmBoolValue(values, "security.selfSigned", true); err != nil {
 				return err
 			}
 			break
@@ -54,19 +54,19 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 		if in.Version == versions.V1_2.String() {
 			// configure pilot (istiod) settings
 			if istiod.WorkloadCertTTLDefault != "" {
-				if err := setHelmValue(values, "pilot.env.DEFAULT_WORKLOAD_CERT_TTL", istiod.WorkloadCertTTLDefault); err != nil {
+				if err := setHelmStringValue(values, "pilot.env.DEFAULT_WORKLOAD_CERT_TTL", istiod.WorkloadCertTTLDefault); err != nil {
 					return err
 				}
 			}
 			if istiod.WorkloadCertTTLMax != "" {
-				if err := setHelmValue(values, "pilot.env.MAX_WORKLOAD_CERT_TTL", istiod.WorkloadCertTTLMax); err != nil {
+				if err := setHelmStringValue(values, "pilot.env.MAX_WORKLOAD_CERT_TTL", istiod.WorkloadCertTTLMax); err != nil {
 					return err
 				}
 			}
 		} else {
 			// configure security (citadel) settings
 			if istiod.WorkloadCertTTLDefault != "" {
-				if err := setHelmValue(values, "security.workloadCertTtl", istiod.WorkloadCertTTLDefault); err != nil {
+				if err := setHelmStringValue(values, "security.workloadCertTtl", istiod.WorkloadCertTTLDefault); err != nil {
 					return err
 				}
 			}
@@ -74,7 +74,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 		}
 		switch istiod.Type {
 		case v2.IstioCertificateSignerTypePrivateKey:
-			if err := setHelmValue(values, "security.selfSigned", false); err != nil {
+			if err := setHelmBoolValue(values, "security.selfSigned", false); err != nil {
 				return err
 			}
 			pksigner := istiod.PrivateKey
@@ -86,7 +86,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			if in.Version == versions.V1_2.String() {
 				// configure pilot (istiod) settings
 				if pksigner.RootCADir != "" {
-					if err := setHelmValue(values, "pilot.env.ROOT_CA_DIR", pksigner.RootCADir); err != nil {
+					if err := setHelmStringValue(values, "pilot.env.ROOT_CA_DIR", pksigner.RootCADir); err != nil {
 						return err
 					}
 				}
@@ -96,7 +96,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				// XXX: nothing here is currently configurable for pre-1.6
 			}
 		case v2.IstioCertificateSignerTypeSelfSigned, "":
-			if err := setHelmValue(values, "security.selfSigned", true); err != nil {
+			if err := setHelmBoolValue(values, "security.selfSigned", true); err != nil {
 				return err
 			}
 			selfSigned := istiod.SelfSigned
@@ -111,22 +111,22 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				componentRoot = "security"
 			}
 			if selfSigned.TTL != "" {
-				if err := setHelmValue(values, componentRoot+".env.CITADEL_SELF_SIGNED_CA_CERT_TTL", selfSigned.TTL); err != nil {
+				if err := setHelmStringValue(values, componentRoot+".env.CITADEL_SELF_SIGNED_CA_CERT_TTL", selfSigned.TTL); err != nil {
 					return err
 				}
 			}
 			if selfSigned.GracePeriod != "" {
-				if err := setHelmValue(values, componentRoot+".env.CITADEL_SELF_SIGNED_ROOT_CERT_GRACE_PERIOD_PERCENTILE", selfSigned.GracePeriod); err != nil {
+				if err := setHelmStringValue(values, componentRoot+".env.CITADEL_SELF_SIGNED_ROOT_CERT_GRACE_PERIOD_PERCENTILE", selfSigned.GracePeriod); err != nil {
 					return err
 				}
 			}
 			if selfSigned.CheckPeriod != "" {
-				if err := setHelmValue(values, componentRoot+".env.CITADEL_SELF_SIGNED_ROOT_CERT_CHECK_INTERVAL", selfSigned.CheckPeriod); err != nil {
+				if err := setHelmStringValue(values, componentRoot+".env.CITADEL_SELF_SIGNED_ROOT_CERT_CHECK_INTERVAL", selfSigned.CheckPeriod); err != nil {
 					return err
 				}
 			}
 			if selfSigned.EnableJitter != nil {
-				if err := setHelmValue(values, componentRoot+".env.CITADEL_ENABLE_JITTER_FOR_ROOT_CERT_ROTATOR", *selfSigned.EnableJitter); err != nil {
+				if err := setHelmBoolValue(values, componentRoot+".env.CITADEL_ENABLE_JITTER_FOR_ROOT_CERT_ROTATOR", *selfSigned.EnableJitter); err != nil {
 					return err
 				}
 			}
@@ -139,7 +139,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 		if custom == nil {
 			return fmt.Errorf("No configuration specified for Custom CertificateAuthority")
 		}
-		if err := setHelmValue(values, "global.caAddress", custom.Address); err != nil {
+		if err := setHelmStringValue(values, "global.caAddress", custom.Address); err != nil {
 			return err
 		}
 	default:
@@ -149,11 +149,11 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 	// Identity
 	switch security.MutualTLS.Identity.Type {
 	case v2.IdentityConfigTypeKubernetes:
-		if err := setHelmValue(values, "global.jwtPolicy", "first-party-jwt"); err != nil {
+		if err := setHelmStringValue(values, "global.jwtPolicy", "first-party-jwt"); err != nil {
 			return err
 		}
 	case v2.IdentityConfigTypeThirdParty, "":
-		if err := setHelmValue(values, "global.jwtPolicy", "third-party-jwt"); err != nil {
+		if err := setHelmStringValue(values, "global.jwtPolicy", "third-party-jwt"); err != nil {
 			return err
 		}
 		tpi := security.MutualTLS.Identity.ThirdParty
@@ -164,12 +164,12 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 		}
 		if tpi.Issuer != "" {
 			// XXX: only supported in 1.6+
-			if err := setHelmValue(values, "pilot.env.TOKEN_ISSUER", tpi.Issuer); err != nil {
+			if err := setHelmStringValue(values, "pilot.env.TOKEN_ISSUER", tpi.Issuer); err != nil {
 				return err
 			}
 		}
 		if tpi.Audience != "" {
-			if err := setHelmValue(values, "global.sds.token.aud", tpi.Audience); err != nil {
+			if err := setHelmStringValue(values, "global.sds.token.aud", tpi.Audience); err != nil {
 				return err
 			}
 		}
@@ -180,12 +180,12 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 
 	// Control Plane Security
 	if security.MutualTLS.ControlPlane.Enable != nil {
-		if err := setHelmValue(values, "global.controlPlaneSecurityEnabled", *security.MutualTLS.ControlPlane.Enable); err != nil {
+		if err := setHelmBoolValue(values, "global.controlPlaneSecurityEnabled", *security.MutualTLS.ControlPlane.Enable); err != nil {
 			return err
 		}
 	}
 	if security.MutualTLS.ControlPlane.CertProvider != "" {
-		if err := setHelmValue(values, "global.pilotCertProvider", string(security.MutualTLS.ControlPlane.CertProvider)); err != nil {
+		if err := setHelmStringValue(values, "global.pilotCertProvider", string(security.MutualTLS.ControlPlane.CertProvider)); err != nil {
 			return err
 		}
 	}

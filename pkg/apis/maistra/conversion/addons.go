@@ -44,26 +44,26 @@ func populateAddonsValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 
 func populateAddonIngressValues(ingress *v2.ComponentIngressConfig, values map[string]interface{}) error {
 	if ingress != nil {
-		if err := setHelmValue(values, "enabled", true); err != nil {
+		if err := setHelmBoolValue(values, "enabled", true); err != nil {
 			return err
 		}
 		if ingress.ContextPath != "" {
-			if err := setHelmValue(values, "contextPath", ingress.ContextPath); err != nil {
+			if err := setHelmStringValue(values, "contextPath", ingress.ContextPath); err != nil {
 				return err
 			}
 		}
 		if len(ingress.Hosts) > 0 {
-			if err := setHelmValue(values, "hosts", ingress.Hosts); err != nil {
+			if err := setHelmSliceValue(values, "hosts", ingress.Hosts); err != nil {
 				return err
 			}
 		}
 		if len(ingress.Metadata.Annotations) > 0 {
-			if err := setHelmValue(values, "annotations", ingress.Metadata.Annotations); err != nil {
+			if err := setHelmMapValue(values, "annotations", ingress.Metadata.Annotations); err != nil {
 				return err
 			}
 		}
 		if len(ingress.TLS) > 0 {
-			if err := setHelmValue(values, "tls", ingress.TLS); err != nil {
+			if err := setHelmMapValue(values, "tls", ingress.TLS); err != nil {
 				return err
 			}
 		}

@@ -13,12 +13,12 @@ func populateControlPlaneLogging(logging *v2.LoggingConfig, values map[string]in
 	}
 	componentLevels := componentLogLevelsToString(logging.ComponentLevels)
 	if componentLevels != "" {
-		if err := setHelmValue(values, "global.logging.level", componentLevels); err != nil {
+		if err := setHelmStringValue(values, "global.logging.level", componentLevels); err != nil {
 			return err
 		}
 	}
 	if logging.LogAsJSON != nil {
-		if err := setHelmValue(values, "global.logAsJson", *logging.LogAsJSON); err != nil {
+		if err := setHelmBoolValue(values, "global.logAsJson", *logging.LogAsJSON); err != nil {
 			return err
 		}
 	}
@@ -30,13 +30,13 @@ func populateProxyLogging(logging *v2.ProxyLoggingConfig, values map[string]inte
 		return nil
 	}
 	if logging.Level != "" {
-		if err := setHelmValue(values, "logLevel", string(logging.Level)); err != nil {
+		if err := setHelmStringValue(values, "logLevel", string(logging.Level)); err != nil {
 			return err
 		}
 	}
 	componentLevels := componentLogLevelsToString(logging.ComponentLevels)
 	if componentLevels != "" {
-		if err := setHelmValue(values, "componentLogLevel", componentLevels); err != nil {
+		if err := setHelmStringValue(values, "componentLogLevel", componentLevels); err != nil {
 			return err
 		}
 	}

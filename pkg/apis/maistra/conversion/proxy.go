@@ -16,7 +16,7 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 
 	// General
 	if proxy.Concurrency != nil {
-		if err := setHelmValue(proxyValues, "concurrency", *proxy.Concurrency); err != nil {
+		if err := setHelmIntValue(proxyValues, "concurrency", int64(*proxy.Concurrency)); err != nil {
 			return err
 		}
 	}
@@ -29,7 +29,7 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 
 	// Networking
 	if proxy.Networking.ClusterDomain != "" {
-		if err := setHelmValue(proxyValues, "clusterDomain", proxy.Networking.ClusterDomain); err != nil {
+		if err := setHelmStringValue(proxyValues, "clusterDomain", proxy.Networking.ClusterDomain); err != nil {
 			return err
 		}
 	}
@@ -37,13 +37,13 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 	switch proxy.Networking.Initialization.Type {
 	case v2.ProxyNetworkInitTypeCNI, "":
 		istioCNI := make(map[string]interface{})
-		if err := setHelmValue(istioCNI, "enabled", true); err != nil {
+		if err := setHelmBoolValue(istioCNI, "enabled", true); err != nil {
 			return err
 		}
 		cni := proxy.Networking.Initialization.CNI
 		if cni != nil && cni.Runtime != nil {
 			if cni.Runtime.PriorityClassName != "" {
-				if err := setHelmValue(istioCNI, "priorityClassName", cni.Runtime.PriorityClassName); err != nil {
+				if err := setHelmStringValue(istioCNI, "priorityClassName", cni.Runtime.PriorityClassName); err != nil {
 					return err
 				}
 			}
@@ -52,12 +52,12 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 				for _, secret := range cni.Runtime.ImagePullSecrets {
 					pullSecretsValues = append(pullSecretsValues, secret.Name)
 				}
-				if err := setHelmValue(istioCNI, "imagePullSecrets", pullSecretsValues); err != nil {
+				if err := setHelmSliceValue(istioCNI, "imagePullSecrets", pullSecretsValues); err != nil {
 					return err
 				}
 			}
 			if cni.Runtime.ImagePullPolicy != "" {
-				if err := setHelmValue(istioCNI, "imagePullPolicy", string(cni.Runtime.ImagePullPolicy)); err != nil {
+				if err := setHelmStringValue(istioCNI, "imagePullPolicy", string(cni.Runtime.ImagePullPolicy)); err != nil {
 					return err
 				}
 			}
@@ -75,13 +75,13 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 			return err
 		}
 	case v2.ProxyNetworkInitTypeInitContainer:
-		if err := setHelmValue(values, "istio_cni.enabled", false); err != nil {
+		if err := setHelmBoolValue(values, "istio_cni.enabled", false); err != nil {
 			return err
 		}
 		if proxy.Networking.Initialization.InitContainer != nil && proxy.Networking.Initialization.InitContainer.Runtime != nil {
 			container := proxy.Networking.Initialization.InitContainer.Runtime
 			if container.Image != "" {
-				if err := setHelmValue(values, "global.proxy_init.image", container.Image); err != nil {
+				if err := setHelmStringValue(values, "global.proxy_init.image", container.Image); err != nil {
 					return err
 				}
 			}
@@ -101,23 +101,23 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 	// Inbound
 	// XXX: interceptionMode is not configurable through values.yaml
 	if len(proxy.Networking.TrafficControl.Inbound.IncludedPorts) > 0 {
-		if err := setHelmValue(proxyValues, "includeInboundPorts", strings.Join(proxy.Networking.TrafficControl.Inbound.IncludedPorts, ",")); err != nil {
+		if err := setHelmStringValue(proxyValues, "includeInboundPorts", strings.Join(proxy.Networking.TrafficControl.Inbound.IncludedPorts, ",")); err != nil {
 			return err
 		}
 	}
 	if len(proxy.Networking.TrafficControl.Inbound.ExcludedPorts) > 0 {
-		if err := setHelmValue(proxyValues, "excludeInboundPorts", strings.Join(proxy.Networking.TrafficControl.Inbound.ExcludedPorts, ",")); err != nil {
+		if err := setHelmStringValue(proxyValues, "excludeInboundPorts", strings.Join(proxy.Networking.TrafficControl.Inbound.ExcludedPorts, ",")); err != nil {
 			return err
 		}
 	}
 	// Outbound
 	if len(proxy.Networking.TrafficControl.Outbound.IncludedIPRanges) > 0 {
-		if err := setHelmValue(proxyValues, "includeIPRanges", strings.Join(proxy.Networking.TrafficControl.Outbound.IncludedIPRanges, ",")); err != nil {
+		if err := setHelmStringValue(proxyValues, "includeIPRanges", strings.Join(proxy.Networking.TrafficControl.Outbound.IncludedIPRanges, ",")); err != nil {
 			return err
 		}
 	}
 	if len(proxy.Networking.TrafficControl.Outbound.ExcludedIPRanges) > 0 {
-		if err := setHelmValue(proxyValues, "excludeIPRanges", strings.Join(proxy.Networking.TrafficControl.Outbound.ExcludedIPRanges, ",")); err != nil {
+		if err := setHelmStringValue(proxyValues, "excludeIPRanges", strings.Join(proxy.Networking.TrafficControl.Outbound.ExcludedIPRanges, ",")); err != nil {
 			return err
 		}
 	}
@@ -126,39 +126,39 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 		for index, port := range proxy.Networking.TrafficControl.Outbound.ExcludedPorts {
 			excludedPorts[index] = strconv.FormatInt(int64(port), 10)
 		}
-		if err := setHelmValue(proxyValues, "excludeOutboundPorts", strings.Join(excludedPorts, ",")); err != nil {
+		if err := setHelmStringValue(proxyValues, "excludeOutboundPorts", strings.Join(excludedPorts, ",")); err != nil {
 			return err
 		}
 	}
 	if proxy.Networking.TrafficControl.Outbound.Policy != "" {
-		if err := setHelmValue(values, "global.outboundTrafficPolicy.mode", string(proxy.Networking.TrafficControl.Outbound.Policy)); err != nil {
+		if err := setHelmStringValue(values, "global.outboundTrafficPolicy.mode", string(proxy.Networking.TrafficControl.Outbound.Policy)); err != nil {
 			return err
 		}
 	}
 
 	// Protocol
 	if proxy.Networking.Protocol.DetectionTimeout != "" {
-		if err := setHelmValue(proxyValues, "protocolDetectionTimeout", proxy.Networking.Protocol.DetectionTimeout); err != nil {
+		if err := setHelmStringValue(proxyValues, "protocolDetectionTimeout", proxy.Networking.Protocol.DetectionTimeout); err != nil {
 			return err
 		}
 	}
 	if proxy.Networking.Protocol.Debug != nil {
-		if err := setHelmValue(values, "pilot.enableProtocolSniffingForInbound", proxy.Networking.Protocol.Debug.EnableInboundSniffing); err != nil {
+		if err := setHelmBoolValue(values, "pilot.enableProtocolSniffingForInbound", proxy.Networking.Protocol.Debug.EnableInboundSniffing); err != nil {
 			return err
 		}
-		if err := setHelmValue(values, "pilot.enableProtocolSniffingForOutbound", proxy.Networking.Protocol.Debug.EnableOutboundSniffing); err != nil {
+		if err := setHelmBoolValue(values, "pilot.enableProtocolSniffingForOutbound", proxy.Networking.Protocol.Debug.EnableOutboundSniffing); err != nil {
 			return err
 		}
 	}
 
 	// DNS
 	if len(proxy.Networking.DNS.SearchSuffixes) > 0 {
-		if err := setHelmValue(values, "global.podDNSSearchNamespaces", proxy.Networking.DNS.SearchSuffixes); err != nil {
+		if err := setHelmSliceValue(values, "global.podDNSSearchNamespaces", proxy.Networking.DNS.SearchSuffixes); err != nil {
 			return err
 		}
 	}
 	if proxy.Networking.DNS.RefreshRate != "" {
-		if err := setHelmValue(proxyValues, "dnsRefreshRate", proxy.Networking.DNS.RefreshRate); err != nil {
+		if err := setHelmStringValue(proxyValues, "dnsRefreshRate", proxy.Networking.DNS.RefreshRate); err != nil {
 			return err
 		}
 	}
@@ -175,25 +175,25 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 	}
 	// Readiness
 	if proxy.Runtime.Readiness.StatusPort > 0 {
-		if err := setHelmValue(proxyValues, "statusPort", proxy.Runtime.Readiness.StatusPort); err != nil {
+		if err := setHelmIntValue(proxyValues, "statusPort", int64(proxy.Runtime.Readiness.StatusPort)); err != nil {
 			return err
 		}
 		if proxy.Runtime.Readiness.InitialDelaySeconds > 0 {
-			if err := setHelmValue(proxyValues, "readinessInitialDelaySeconds", proxy.Runtime.Readiness.InitialDelaySeconds); err != nil {
+			if err := setHelmIntValue(proxyValues, "readinessInitialDelaySeconds", int64(proxy.Runtime.Readiness.InitialDelaySeconds)); err != nil {
 				return err
 			}
 		}
 		if proxy.Runtime.Readiness.PeriodSeconds > 0 {
-			if err := setHelmValue(proxyValues, "readinessPeriodSeconds", proxy.Runtime.Readiness.PeriodSeconds); err != nil {
+			if err := setHelmIntValue(proxyValues, "readinessPeriodSeconds", int64(proxy.Runtime.Readiness.PeriodSeconds)); err != nil {
 				return err
 			}
 		}
 		if proxy.Runtime.Readiness.FailureThreshold > 0 {
-			if err := setHelmValue(proxyValues, "readinessFailureThreshold", proxy.Runtime.Readiness.FailureThreshold); err != nil {
+			if err := setHelmIntValue(proxyValues, "readinessFailureThreshold", int64(proxy.Runtime.Readiness.FailureThreshold)); err != nil {
 				return err
 			}
 		}
-		if err := setHelmValue(values, "sidecarInjectorWebhook.rewriteAppHTTPProbe", proxy.Runtime.Readiness.RewriteApplicationProbes); err != nil {
+		if err := setHelmBoolValue(values, "sidecarInjectorWebhook.rewriteAppHTTPProbe", proxy.Runtime.Readiness.RewriteApplicationProbes); err != nil {
 			return err
 		}
 	}

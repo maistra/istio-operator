@@ -54,7 +54,7 @@ var (
 
 func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
 	if in.Gateways == nil {
-		return setHelmValue(values, "gateways.enabled", false)
+		return setHelmBoolValue(values, "gateways.enabled", false)
 	}
 
 	gateways := in.Gateways
@@ -103,59 +103,59 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 // converts v2.GatewayConfig to values.yaml
 func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error) {
 	values := make(map[string]interface{})
-	if err := setHelmValue(values, "enabled", true); err != nil {
+	if err := setHelmBoolValue(values, "enabled", true); err != nil {
 		return nil, err
 	}
 
 	if in.Namespace != "" {
-		if err := setHelmValue(values, "namespace", in.Namespace); err != nil {
+		if err := setHelmStringValue(values, "namespace", in.Namespace); err != nil {
 			return nil, err
 		}
 	}
 	if in.RouterMode == "" {
-		if err := setHelmValue(values, "env.ISTIO_META_ROUTER_MODE", string(v2.RouterModeTypeSNIDNAT)); err != nil {
+		if err := setHelmStringValue(values, "env.ISTIO_META_ROUTER_MODE", string(v2.RouterModeTypeSNIDNAT)); err != nil {
 			return nil, err
 		}
 	} else {
-		if err := setHelmValue(values, "env.ISTIO_META_ROUTER_MODE", string(in.RouterMode)); err != nil {
+		if err := setHelmStringValue(values, "env.ISTIO_META_ROUTER_MODE", string(in.RouterMode)); err != nil {
 			return nil, err
 		}
 	}
 
 	if len(in.RequestedNetworkView) > 0 {
-		if err := setHelmValue(values, "env.ISTIO_META_REQUESTED_NETWORK_VIEW", fmt.Sprintf("\"%s\"", strings.Join(in.RequestedNetworkView, ","))); err != nil {
+		if err := setHelmStringValue(values, "env.ISTIO_META_REQUESTED_NETWORK_VIEW", fmt.Sprintf("\"%s\"", strings.Join(in.RequestedNetworkView, ","))); err != nil {
 			return nil, err
 		}
 	}
 
 	// Service specific settings
 	if in.Service.LoadBalancerIP != "" {
-		if err := setHelmValue(values, "loadBalancerIP", in.Service.LoadBalancerIP); err != nil {
+		if err := setHelmStringValue(values, "loadBalancerIP", in.Service.LoadBalancerIP); err != nil {
 			return nil, err
 		}
 	}
 	if len(in.Service.LoadBalancerSourceRanges) > 0 {
-		if err := setHelmValue(values, "loadBalancerSourceRanges", in.Service.LoadBalancerSourceRanges); err != nil {
+		if err := setHelmSliceValue(values, "loadBalancerSourceRanges", in.Service.LoadBalancerSourceRanges); err != nil {
 			return nil, err
 		}
 	}
 	if in.Service.ExternalTrafficPolicy != "" {
-		if err := setHelmValue(values, "externalTrafficPolicy", string(in.Service.ExternalTrafficPolicy)); err != nil {
+		if err := setHelmStringValue(values, "externalTrafficPolicy", string(in.Service.ExternalTrafficPolicy)); err != nil {
 			return nil, err
 		}
 	}
 	if len(in.Service.ExternalIPs) > 0 {
-		if err := setHelmValue(values, "externalIPs", in.Service.ExternalIPs); err != nil {
+		if err := setHelmSliceValue(values, "externalIPs", in.Service.ExternalIPs); err != nil {
 			return nil, err
 		}
 	}
 	if in.Service.Type != "" {
-		if err := setHelmValue(values, "type", string(in.Service.Type)); err != nil {
+		if err := setHelmStringValue(values, "type", string(in.Service.Type)); err != nil {
 			return nil, err
 		}
 	}
 	if len(in.Service.Metadata.Labels) > 0 {
-		if err := setHelmValue(values, "labels", in.Service.Metadata.Labels); err != nil {
+		if err := setHelmMapValue(values, "labels", in.Service.Metadata.Labels); err != nil {
 			return nil, err
 		}
 	}
@@ -171,7 +171,7 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 
 	// gateway SDS
 	if in.EnableSDS != nil {
-		if err := setHelmValue(values, "sds.enable", *in.EnableSDS); err != nil {
+		if err := setHelmBoolValue(values, "sds.enable", *in.EnableSDS); err != nil {
 			return nil, err
 		}
 	}
@@ -187,7 +187,7 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 			// SDS container specific config
 			if sdsContainer, ok := runtime.Pod.Containers["ingress-sds"]; ok {
 				if sdsContainer.Image != "" {
-					if err := setHelmValue(values, "sds.image", sdsContainer.Image); err != nil {
+					if err := setHelmStringValue(values, "sds.image", sdsContainer.Image); err != nil {
 						return nil, err
 					}
 				}

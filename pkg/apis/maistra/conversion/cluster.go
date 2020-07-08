@@ -30,12 +30,12 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 		hasClusterName := len(in.Cluster.Name) > 0
 		hasNetworkName := len(in.Cluster.Network) > 0
 		if hasClusterName {
-			if err := setHelmValue(values, "global.multiCluster.clusterName", in.Cluster.Name); err != nil {
+			if err := setHelmStringValue(values, "global.multiCluster.clusterName", in.Cluster.Name); err != nil {
                 return err
             }
 		}
 		if hasNetworkName {
-			if err := setHelmValue(values, "global.network", in.Cluster.Network); err != nil {
+			if err := setHelmStringValue(values, "global.network", in.Cluster.Network); err != nil {
                 return err
             }
 		}
@@ -69,11 +69,11 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 			}
 		}
 		if in.Cluster.MultiCluster == nil {
-			if err := setHelmValue(values, "global.multiCluster.enabled", false); err != nil {
+			if err := setHelmBoolValue(values, "global.multiCluster.enabled", false); err != nil {
                 return err
             }
 		} else {
-			if err := setHelmValue(values, "global.multiCluster.enabled", true); err != nil {
+			if err := setHelmBoolValue(values, "global.multiCluster.enabled", true); err != nil {
                 return err
             }
 			// XXX: ingress and egress gateways must be configured if multicluster is enabled
@@ -92,7 +92,7 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 				}
 				if in.Gateways.Ingress != nil {
 					if in.Cluster.MultiCluster.Ingress {
-						if err := setHelmValue(values, "global.k8sIngress.enabled", true); err != nil {
+						if err := setHelmBoolValue(values, "global.k8sIngress.enabled", true); err != nil {
                             return err
                         }
 						hasHTTPS := false
@@ -102,25 +102,25 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 								break
 							}
 						}
-						if err := setHelmValue(values, "global.k8sIngress.enabled", hasHTTPS); err != nil {
+						if err := setHelmBoolValue(values, "global.k8sIngress.enabled", hasHTTPS); err != nil {
                             return err
                         }
 					}
 					// meshExpansion is always enabled for multi-cluster
-					if err := setHelmValue(values, "global.meshExpansion.enabled", true); err != nil {
+					if err := setHelmBoolValue(values, "global.meshExpansion.enabled", true); err != nil {
                         return err
                     }
 					if expansionPorts, err := expansionPortsForVersion(in.Version); err != nil {
 						if in.Cluster.MeshExpansion == nil || in.Cluster.MeshExpansion.ILBGateway == nil {
 							addExpansionPorts(&in.Gateways.Ingress.MeshExpansionPorts, expansionPorts)
-							if err := setHelmValue(values, "gateways.istio-ilbgateway.enabled", false); err != nil {
+							if err := setHelmBoolValue(values, "gateways.istio-ilbgateway.enabled", false); err != nil {
                                 return err
                             }
-							if err := setHelmValue(values, "global.meshExpansion.useILB", false); err != nil {
+							if err := setHelmBoolValue(values, "global.meshExpansion.useILB", false); err != nil {
                                 return err
                             }
 						} else {
-							if err := setHelmValue(values, "global.meshExpansion.useILB", true); err != nil {
+							if err := setHelmBoolValue(values, "global.meshExpansion.useILB", true); err != nil {
                                 return err
                             }
 							addExpansionPorts(&in.Cluster.MeshExpansion.ILBGateway.Service.Ports, expansionPorts)
@@ -160,7 +160,7 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
     
     // non-configurable defaults
     // XXX: not sure if this is version specific, i.e. does it apply to istio 1.6?
-    if err := setHelmValue(values, "global.useMCP", true); err != nil {
+    if err := setHelmBoolValue(values, "global.useMCP", true); err != nil {
         return err
     }
 

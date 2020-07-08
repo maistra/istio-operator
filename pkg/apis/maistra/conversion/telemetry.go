@@ -15,9 +15,9 @@ func populateTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interfac
 	telemetry := in.Telemetry
 	if telemetry == nil {
 		if istiod {
-			return setHelmValue(values, "telemetry.enabled", false)
+			return setHelmBoolValue(values, "telemetry.enabled", false)
 		}
-		return setHelmValue(values, "mixer.telemetry.enabled", false)
+		return setHelmBoolValue(values, "mixer.telemetry.enabled", false)
 	}
 
 	if telemetry.Type == "" {
@@ -37,9 +37,9 @@ func populateTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interfac
 	}
 
 	if istiod {
-		return setHelmValue(values, "telemetry.enabled", false)
+		return setHelmBoolValue(values, "telemetry.enabled", false)
 	}
-	setHelmValue(values, "mixer.telemetry.enabled", false)
+	setHelmBoolValue(values, "mixer.telemetry.enabled", false)
 	return fmt.Errorf("Unknown telemetry type: %s", telemetry.Type)
 }
 
@@ -50,7 +50,7 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 	}
 
 	// Make sure mixer is enabled
-	if err := setHelmValue(values, "mixer.enabled", true); err != nil {
+	if err := setHelmBoolValue(values, "mixer.enabled", true); err != nil {
 		return err
 	}
 
@@ -60,12 +60,12 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 	}
 
 	v1TelemetryValues := make(map[string]interface{})
-	if err := setHelmValue(v1TelemetryValues, "enabled", true); err != nil {
+	if err := setHelmBoolValue(v1TelemetryValues, "enabled", true); err != nil {
 		return err
 	}
 
 	if mixer.SessionAffinity != nil {
-		if err := setHelmValue(v1TelemetryValues, "sessionAffinityEnabled", *mixer.SessionAffinity); err != nil {
+		if err := setHelmBoolValue(v1TelemetryValues, "sessionAffinityEnabled", *mixer.SessionAffinity); err != nil {
 			return err
 		}
 	}
@@ -77,74 +77,74 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 	if mixer.Adapters != nil {
 		adaptersValues := make(map[string]interface{})
 		if mixer.Adapters.UseAdapterCRDs != nil {
-			if err := setHelmValue(adaptersValues, "useAdapterCRDs", *mixer.Adapters.UseAdapterCRDs); err != nil {
+			if err := setHelmBoolValue(adaptersValues, "useAdapterCRDs", *mixer.Adapters.UseAdapterCRDs); err != nil {
 				return err
 			}
 		}
 		if mixer.Adapters.KubernetesEnv != nil {
-			if err := setHelmValue(adaptersValues, "kubernetesenv.enabled", *mixer.Adapters.KubernetesEnv); err != nil {
+			if err := setHelmBoolValue(adaptersValues, "kubernetesenv.enabled", *mixer.Adapters.KubernetesEnv); err != nil {
 				return err
 			}
 		}
 		if mixer.Adapters.Stdio == nil {
-			if err := setHelmValue(adaptersValues, "stdio.enabled", false); err != nil {
+			if err := setHelmBoolValue(adaptersValues, "stdio.enabled", false); err != nil {
 				return err
 			}
 		} else {
-			if err := setHelmValue(adaptersValues, "stdio.enabled", true); err != nil {
+			if err := setHelmBoolValue(adaptersValues, "stdio.enabled", true); err != nil {
 				return err
 			}
-			if err := setHelmValue(adaptersValues, "stdio.outputAsJson", mixer.Adapters.Stdio.OutputAsJSON); err != nil {
+			if err := setHelmBoolValue(adaptersValues, "stdio.outputAsJson", mixer.Adapters.Stdio.OutputAsJSON); err != nil {
 				return err
 			}
 		}
 		if mixer.Adapters.Prometheus == nil {
-			if err := setHelmValue(adaptersValues, "prometheus.enabled", false); err != nil {
+			if err := setHelmBoolValue(adaptersValues, "prometheus.enabled", false); err != nil {
 				return err
 			}
 		} else {
-			if err := setHelmValue(adaptersValues, "prometheus.enabled", true); err != nil {
+			if err := setHelmBoolValue(adaptersValues, "prometheus.enabled", true); err != nil {
 				return err
 			}
 			if mixer.Adapters.Prometheus.MetricsExpiryDuration != "" {
-				if err := setHelmValue(adaptersValues, "prometheus.metricsExpiryDuration", mixer.Adapters.Prometheus.MetricsExpiryDuration); err != nil {
+				if err := setHelmStringValue(adaptersValues, "prometheus.metricsExpiryDuration", mixer.Adapters.Prometheus.MetricsExpiryDuration); err != nil {
 					return err
 				}
 			}
 		}
 		if mixer.Adapters.Stackdriver == nil {
-			if err := setHelmValue(adaptersValues, "stackdriver.enabled", false); err != nil {
+			if err := setHelmBoolValue(adaptersValues, "stackdriver.enabled", false); err != nil {
 				return err
 			}
 		} else {
 			stackdriver := mixer.Adapters.Stackdriver
-			if err := setHelmValue(adaptersValues, "stackdriver.enabled", true); err != nil {
+			if err := setHelmBoolValue(adaptersValues, "stackdriver.enabled", true); err != nil {
 				return err
 			}
-			if err := setHelmValue(adaptersValues, "stackdriver.contextGraph.enabled", stackdriver.EnableContextGraph); err != nil {
+			if err := setHelmBoolValue(adaptersValues, "stackdriver.contextGraph.enabled", stackdriver.EnableContextGraph); err != nil {
 				return err
 			}
-			if err := setHelmValue(adaptersValues, "stackdriver.logging.enabled", stackdriver.EnableLogging); err != nil {
+			if err := setHelmBoolValue(adaptersValues, "stackdriver.logging.enabled", stackdriver.EnableLogging); err != nil {
 				return err
 			}
-			if err := setHelmValue(adaptersValues, "stackdriver.metrics.enabled", stackdriver.EnableMetrics); err != nil {
+			if err := setHelmBoolValue(adaptersValues, "stackdriver.metrics.enabled", stackdriver.EnableMetrics); err != nil {
 				return err
 			}
 			if stackdriver.Auth != nil {
 				auth := stackdriver.Auth
-				if err := setHelmValue(adaptersValues, "stackdriver.auth.appCredentials", auth.AppCredentials); err != nil {
+				if err := setHelmBoolValue(adaptersValues, "stackdriver.auth.appCredentials", auth.AppCredentials); err != nil {
 					return err
 				}
-				if err := setHelmValue(adaptersValues, "stackdriver.auth.apiKey", auth.APIKey); err != nil {
+				if err := setHelmStringValue(adaptersValues, "stackdriver.auth.apiKey", auth.APIKey); err != nil {
 					return err
 				}
-				if err := setHelmValue(adaptersValues, "stackdriver.auth.serviceAccountPath", auth.ServiceAccountPath); err != nil {
+				if err := setHelmStringValue(adaptersValues, "stackdriver.auth.serviceAccountPath", auth.ServiceAccountPath); err != nil {
 					return err
 				}
 			}
 			if stackdriver.Tracer != nil {
 				tracer := mixer.Adapters.Stackdriver.Tracer
-				if err := setHelmValue(adaptersValues, "stackdriver.tracer.sampleProbability", tracer.SampleProbability); err != nil {
+				if err := setHelmIntValue(adaptersValues, "stackdriver.tracer.sampleProbability", int64(tracer.SampleProbability)); err != nil {
 					return err
 				}
 			}
@@ -156,36 +156,35 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 
 	// Deployment specific settings
 	runtime := mixer.Runtime
-	if runtime == nil {
-		runtime = &v2.ComponentRuntimeConfig{}
-	}
-	if err := populateRuntimeValues(runtime, v1TelemetryValues); err != nil {
-		return err
-	}
+	if runtime != nil {
+		if err := populateRuntimeValues(runtime, v1TelemetryValues); err != nil {
+			return err
+		}
 
-	// set image and resources
-	if runtime.Pod.Containers != nil {
-		// Mixer container specific config
-		if mixerContainer, ok := runtime.Pod.Containers["mixer"]; ok {
-			if mixerContainer.Image != "" {
-				if istiod {
-					if err := setHelmValue(v1TelemetryValues, "image", mixerContainer.Image); err != nil {
-						return err
-					}
-				} else {
-					// XXX: this applies to both policy and telemetry in pre 1.6
-					if err := setHelmValue(values, "mixer.image", mixerContainer.Image); err != nil {
-						return err
+		// set image and resources
+		if runtime.Pod.Containers != nil {
+			// Mixer container specific config
+			if mixerContainer, ok := runtime.Pod.Containers["mixer"]; ok {
+				if mixerContainer.Image != "" {
+					if istiod {
+						if err := setHelmStringValue(v1TelemetryValues, "image", mixerContainer.Image); err != nil {
+							return err
+						}
+					} else {
+						// XXX: this applies to both policy and telemetry in pre 1.6
+						if err := setHelmStringValue(values, "mixer.image", mixerContainer.Image); err != nil {
+							return err
+						}
 					}
 				}
-			}
-			if mixerContainer.Resources != nil {
-				if resourcesValues, err := toValues(mixerContainer.Resources); err == nil {
-					if err := setHelmValue(v1TelemetryValues, "resources", resourcesValues); err != nil {
+				if mixerContainer.Resources != nil {
+					if resourcesValues, err := toValues(mixerContainer.Resources); err == nil {
+						if err := setHelmValue(v1TelemetryValues, "resources", resourcesValues); err != nil {
+							return err
+						}
+					} else {
 						return err
 					}
-				} else {
-					return err
 				}
 			}
 		}
@@ -220,13 +219,13 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 	// set the telemetry values
 	if istiod {
 		v2TelemetryValues := make(map[string]interface{})
-		if err := setHelmValue(v2TelemetryValues, "enabled", true); err != nil {
+		if err := setHelmBoolValue(v2TelemetryValues, "enabled", true); err != nil {
 			return err
 		}
-		if err := setHelmValue(v2TelemetryValues, "v1.enabled", true); err != nil {
+		if err := setHelmBoolValue(v2TelemetryValues, "v1.enabled", true); err != nil {
 			return err
 		}
-		if err := setHelmValue(v2TelemetryValues, "v2.enabled", false); err != nil {
+		if err := setHelmBoolValue(v2TelemetryValues, "v2.enabled", false); err != nil {
 			return err
 		}
 
@@ -247,12 +246,12 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 
 func populateTelemetryBatchingValues(in *v2.TelemetryBatchingConfig, values map[string]interface{}) error {
 	if in.MaxTime != "" {
-		if err := setHelmValue(values, "mixer.telemetry.reportBatchMaxTime", in.MaxTime); err != nil {
+		if err := setHelmStringValue(values, "mixer.telemetry.reportBatchMaxTime", in.MaxTime); err != nil {
 			return err
 		}
 	}
 	if in.MaxEntries != nil {
-		return setHelmValue(values, "mixer.telemetry.reportBatchMaxEntries", *in.MaxEntries)
+		return setHelmIntValue(values, "mixer.telemetry.reportBatchMaxEntries", int64(*in.MaxEntries))
 	}
 	return nil
 }
@@ -264,20 +263,20 @@ func populateRemoteTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values 
 	}
 
 	// Make sure mixer is disabled
-	if err := setHelmValue(values, "mixer.enabled", false); err != nil {
+	if err := setHelmBoolValue(values, "mixer.enabled", false); err != nil {
 		return err
 	}
 
-	if err := setHelmValue(values, "global.remoteTelemetryAddress", remote.Address); err != nil {
+	if err := setHelmStringValue(values, "global.remoteTelemetryAddress", remote.Address); err != nil {
 		return err
 	}
 	// XXX: this applies to both policy and telemetry
-	if err := setHelmValue(values, "global.createRemoteSvcEndpoints", remote.CreateService); err != nil {
+	if err := setHelmBoolValue(values, "global.createRemoteSvcEndpoints", remote.CreateService); err != nil {
 		return err
 	}
 
 	v1TelemetryValues := make(map[string]interface{})
-	if err := setHelmValue(v1TelemetryValues, "enabled", true); err != nil {
+	if err := setHelmBoolValue(v1TelemetryValues, "enabled", true); err != nil {
 		return err
 	}
 
@@ -288,13 +287,13 @@ func populateRemoteTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values 
 	// set the telemetry values
 	if istiod {
 		v2TelemetryValues := make(map[string]interface{})
-		if err := setHelmValue(v2TelemetryValues, "enabled", true); err != nil {
+		if err := setHelmBoolValue(v2TelemetryValues, "enabled", true); err != nil {
 			return err
 		}
-		if err := setHelmValue(v2TelemetryValues, "v1.enabled", true); err != nil {
+		if err := setHelmBoolValue(v2TelemetryValues, "v1.enabled", true); err != nil {
 			return err
 		}
-		if err := setHelmValue(v2TelemetryValues, "v2.enabled", false); err != nil {
+		if err := setHelmBoolValue(v2TelemetryValues, "v2.enabled", false); err != nil {
 			return err
 		}
 
@@ -320,67 +319,67 @@ func populateIstiodTelemetryValues(in *v2.ControlPlaneSpec, values map[string]in
 	}
 
 	// Make sure mixer is disabled
-	if err := setHelmValue(values, "mixer.enabled", false); err != nil {
+	if err := setHelmBoolValue(values, "mixer.enabled", false); err != nil {
 		return err
 	}
 
 	telemetryValues := make(map[string]interface{})
-	if err := setHelmValue(telemetryValues, "v1.enabled", false); err != nil {
+	if err := setHelmBoolValue(telemetryValues, "v1.enabled", false); err != nil {
 		return err
 	}
-	if err := setHelmValue(telemetryValues, "v2.enabled", true); err != nil {
+	if err := setHelmBoolValue(telemetryValues, "v2.enabled", true); err != nil {
 		return err
 	}
 
 	// Adapters
 	if istiod.MetadataExchange != nil {
 		me := istiod.MetadataExchange
-		if err := setHelmValue(telemetryValues, "v2.metadataExchange.wasmEnabled", me.WASMEnabled); err != nil {
+		if err := setHelmBoolValue(telemetryValues, "v2.metadataExchange.wasmEnabled", me.WASMEnabled); err != nil {
 			return err
 		}
 	}
 
 	if istiod.PrometheusFilter != nil {
 		prometheus := istiod.PrometheusFilter
-		if err := setHelmValue(telemetryValues, "v2.prometheus.enabled", true); err != nil {
+		if err := setHelmBoolValue(telemetryValues, "v2.prometheus.enabled", true); err != nil {
 			return err
 		}
-		if err := setHelmValue(telemetryValues, "v2.prometheus.wasmEnabled", prometheus.WASMEnabled); err != nil {
+		if err := setHelmBoolValue(telemetryValues, "v2.prometheus.wasmEnabled", prometheus.WASMEnabled); err != nil {
 			return err
 		}
-		if err := setHelmValue(values, "meshConfig.enablePrometheusMerge", prometheus.Scrape); err != nil {
+		if err := setHelmBoolValue(values, "meshConfig.enablePrometheusMerge", prometheus.Scrape); err != nil {
 			return err
 		}
 	}
 
 	if istiod.StackDriverFilter != nil {
 		stackdriver := istiod.StackDriverFilter
-		if err := setHelmValue(telemetryValues, "v2.stackdriver.enabled", true); err != nil {
+		if err := setHelmBoolValue(telemetryValues, "v2.stackdriver.enabled", true); err != nil {
 			return err
 		}
-		if err := setHelmValue(telemetryValues, "v2.stackdriver.logging", stackdriver.Logging); err != nil {
+		if err := setHelmBoolValue(telemetryValues, "v2.stackdriver.logging", stackdriver.Logging); err != nil {
 			return err
 		}
-		if err := setHelmValue(telemetryValues, "v2.stackdriver.monitoring", stackdriver.Monitoring); err != nil {
+		if err := setHelmBoolValue(telemetryValues, "v2.stackdriver.monitoring", stackdriver.Monitoring); err != nil {
 			return err
 		}
-		if err := setHelmValue(telemetryValues, "v2.stackdriver.topology", stackdriver.Topology); err != nil {
+		if err := setHelmBoolValue(telemetryValues, "v2.stackdriver.topology", stackdriver.Topology); err != nil {
 			return err
 		}
-		if err := setHelmValue(telemetryValues, "v2.stackdriver.disableOutbound", stackdriver.DisableOutbound); err != nil {
+		if err := setHelmBoolValue(telemetryValues, "v2.stackdriver.disableOutbound", stackdriver.DisableOutbound); err != nil {
 			return err
 		}
-		if err := setHelmValue(telemetryValues, "v2.stackdriver.configOverride", stackdriver.ConfigOverride); err != nil {
+		if err := setHelmMapValue(telemetryValues, "v2.stackdriver.configOverride", stackdriver.ConfigOverride); err != nil {
 			return err
 		}
 	}
 
 	if istiod.AccessLogTelemetryFilter != nil {
 		accessLog := istiod.AccessLogTelemetryFilter
-		if err := setHelmValue(telemetryValues, "v2.accessLogPolicy.enabled", true); err != nil {
+		if err := setHelmBoolValue(telemetryValues, "v2.accessLogPolicy.enabled", true); err != nil {
 			return err
 		}
-		if err := setHelmValue(telemetryValues, "v2.accessLogPolicy.logWindowDuration", accessLog.LogWindoDuration); err != nil {
+		if err := setHelmStringValue(telemetryValues, "v2.accessLogPolicy.logWindowDuration", accessLog.LogWindoDuration); err != nil {
 			return err
 		}
 	}
