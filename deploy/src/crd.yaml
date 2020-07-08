@@ -348,6 +348,10 @@ spec:
                               to do anything to configure credentials for accessing
                               the prometheus server?'
                             type: string
+                          enabled:
+                            description: Enabled specifies whether or not this feature
+                              is enabled
+                            type: boolean
                           install:
                             description: Install configuration if not using an existing
                               prometheus installation.
@@ -780,6 +784,10 @@ spec:
                                         description: ContextPath represents the context
                                           path to the service.
                                         type: string
+                                      enabled:
+                                        description: Enabled specifies whether or
+                                          not this feature is enabled
+                                        type: boolean
                                       hosts:
                                         description: 'Hosts represents a list of host
                                           names to configure.  Note, OpenShift route
@@ -1234,6 +1242,10 @@ spec:
                                   Route for Jaeger services .Values.tracing.jaeger.ingress.enabled,
                                   false if null
                                 properties:
+                                  enabled:
+                                    description: Enabled specifies whether or not
+                                      this feature is enabled
+                                    type: boolean
                                   metadata:
                                     description: Metadata represents addtional annotations/labels
                                       to be applied to the ingress/route.
@@ -1668,6 +1680,10 @@ spec:
                             description: Address is the address of an existing grafana
                               installation implies .Values.kiali.dashboard.grafanaURL
                             type: string
+                          enabled:
+                            description: Enabled specifies whether or not this feature
+                              is enabled
+                            type: boolean
                           install:
                             description: Install a new grafana instance and manage
                               with control plane
@@ -1711,6 +1727,10 @@ spec:
                                       x-kubernetes-int-or-string: true
                                     description: Capacity to request for the PersistentVolume
                                     type: object
+                                  enabled:
+                                    description: Enabled specifies whether or not
+                                      this feature is enabled
+                                    type: boolean
                                   storageClassName:
                                     description: StorageClassName for the PersistentVolume
                                     type: string
@@ -2148,6 +2168,10 @@ spec:
                                         description: ContextPath represents the context
                                           path to the service.
                                         type: string
+                                      enabled:
+                                        description: Enabled specifies whether or
+                                          not this feature is enabled
+                                        type: boolean
                                       hosts:
                                         description: 'Hosts represents a list of host
                                           names to configure.  Note, OpenShift route
@@ -2206,6 +2230,10 @@ spec:
                         description: Kiali configures a kiali instance to use with
                           the mesh .Values.kiali.enabled, true if not null
                         properties:
+                          enabled:
+                            description: Enabled specifies whether or not this feature
+                              is enabled
+                            type: boolean
                           install:
                             description: Install a Kiali resource if the named Kiali
                               resource is not present.
@@ -2650,6 +2678,10 @@ spec:
                                         description: ContextPath represents the context
                                           path to the service.
                                         type: string
+                                      enabled:
+                                        description: Enabled specifies whether or
+                                          not this feature is enabled
+                                        type: boolean
                                       hosts:
                                         description: 'Hosts represents a list of host
                                           names to configure.  Note, OpenShift route
@@ -2727,6 +2759,10 @@ spec:
                           enableSDS:
                             description: 'EnableSDS for the gateway. .Values.gateways.<gateway-name>.sds.enabled
                               XXX: I believe this is only applicable to ingress gateways'
+                            type: boolean
+                          enabled:
+                            description: Enabled specifies whether or not this feature
+                              is enabled
                             type: boolean
                           namespace:
                             description: 'Namespace is the namespace within which
@@ -3664,6 +3700,10 @@ spec:
                           description: 'EnableSDS for the gateway. .Values.gateways.<gateway-name>.sds.enabled
                             XXX: I believe this is only applicable to ingress gateways'
                           type: boolean
+                        enabled:
+                          description: Enabled specifies whether or not this feature
+                            is enabled
+                          type: boolean
                         namespace:
                           description: 'Namespace is the namespace within which the
                             gateway will be installed, defaults to control plane namespace.
@@ -4520,6 +4560,10 @@ spec:
                         description: 'EnableSDS for the gateway. .Values.gateways.<gateway-name>.sds.enabled
                           XXX: I believe this is only applicable to ingress gateways'
                         type: boolean
+                      enabled:
+                        description: Enabled specifies whether or not this feature
+                          is enabled
+                        type: boolean
                       namespace:
                         description: 'Namespace is the namespace within which the
                           gateway will be installed, defaults to control plane namespace.
@@ -5353,6 +5397,10 @@ spec:
                       enableSDS:
                         description: 'EnableSDS for the gateway. .Values.gateways.<gateway-name>.sds.enabled
                           XXX: I believe this is only applicable to ingress gateways'
+                        type: boolean
+                      enabled:
+                        description: Enabled specifies whether or not this feature
+                          is enabled
                         type: boolean
                       meshExpansionPorts:
                         description: MeshExpansionPorts define the port set used with
