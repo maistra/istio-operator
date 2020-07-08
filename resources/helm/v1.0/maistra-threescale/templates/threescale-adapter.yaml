@@ -9,7 +9,7 @@ metadata:
     app: 3scale-istio-adapter
     chart: {{ template "threescale.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.0.10
+    maistra-version: 1.0.11
     release: {{ .Release.Name }}
 spec:
   description:
