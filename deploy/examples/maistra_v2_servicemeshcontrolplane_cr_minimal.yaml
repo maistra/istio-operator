@@ -1,0 +1,32 @@
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+metadata:
+  name: minimal-install
+spec:
+  version: v1.1
+  addOns:
+    tracing:
+      # change to Jaeger to enable tracing
+      type: None
+      jaeger:
+        name: jaeger
+        install: {}
+    visualization:
+      grafana:
+        enabled: false
+      kiali:
+        enabled: false
+        name: kiali
+        install: {}
+
+---
+
+apiVersion: maistra.io/v1
+kind: ServiceMeshMemberRoll
+metadata:
+  name: default
+spec:
+  members:
+  # a list of namespaces that should be joined into the service mesh
+  # for example, to add the bookinfo namespace
+  #- bookinfo
