@@ -15,7 +15,7 @@
 -include Makefile.overrides
 
 MAISTRA_VERSION        ?= 1.2.0
-MAISTRA_BRANCH         ?= maistra-1.2
+MAISTRA_BRANCH         ?= maistra-2.0
 REPLACES_PRODUCT_CSV   ?= 1.1.0
 REPLACES_COMMUNITY_CSV ?= 1.1.0
 VERSION                ?= development
@@ -141,8 +141,7 @@ collect-1.1-templates:
 ################################################################################
 .PHONY: update-1.2-charts
 update-1.2-charts:
-	HELM_DIR=${RESOURCES_DIR}/helm/v1.2 ISTIO_VERSION=1.4.0 ${SOURCE_DIR}/build/download-charts.sh
-	HELM_DIR=${RESOURCES_DIR}/helm/v1.2 ${SOURCE_DIR}/build/patch-container-image.sh
+	HELM_DIR=${RESOURCES_DIR}/helm/v1.2 ISTIO_VERSION=1.6.0 ${SOURCE_DIR}/build/download-charts.sh
 
 .PHONY: collect-1.2-charts
 collect-1.2-charts:

@@ -1,0 +1,23 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: grafana
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: 1.2.0
+    app: {{ template "grafana.name" . }}
+    chart: {{ template "grafana.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  annotations:
+    {{- range $key, $value := .Values.ingress.annotations }}
+      {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  to:
+    kind: Service
+    name: grafana
+  tls:
+    termination: reencrypt
+{{- end -}}

@@ -3,10 +3,10 @@ kind: ClusterRoleBinding
 metadata:
   name: istio-citadel-mesh-{{ .Release.Namespace }}
   labels:
+    maistra-version: 1.2.0
     app: {{ template "security.name" . }}
     chart: {{ template "security.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.2.0
     release: {{ .Release.Name }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io

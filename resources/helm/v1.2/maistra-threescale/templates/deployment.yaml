@@ -2,10 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
+    maistra-version: 1.2.0
     app: 3scale-istio-adapter
     chart: {{ template "threescale.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.2.0
     release: {{ .Release.Name }}
   name: 3scale-istio-adapter
   namespace: {{ .Release.Namespace }}
@@ -22,10 +22,10 @@ spec:
   template:
     metadata:
       labels:
+        maistra-control-plane: {{ .Release.Namespace }}
         app: 3scale-istio-adapter
         chart: {{ template "threescale.chart" . }}
         heritage: {{ .Release.Service }}
-        maistra-control-plane: {{ .Release.Namespace }}
         release: {{ .Release.Name }}
     spec:
       serviceAccountName: threescale-service-account

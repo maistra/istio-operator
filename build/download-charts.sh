@@ -23,7 +23,7 @@ ISTIO_NAME=istio-${ISTIO_VERSION}
 ISTIO_FILE="${MAISTRA_BRANCH}.zip"
 ISTIO_URL="${MAISTRA_REPO}/archive/${MAISTRA_BRANCH}.zip"
 EXTRACT_DIR="${MAISTRA_REPO##*/}-${MAISTRA_BRANCH}"
-EXTRACT_CMD="unzip ${ISTIO_FILE} ${EXTRACT_DIR}/install/kubernetes/helm/*"
+EXTRACT_CMD="unzip ${ISTIO_FILE} ${EXTRACT_DIR}/manifests/charts/*"
 RELEASE_DIR="${RELEASES_DIR}/${ISTIO_NAME}"
 
 ISTIO_NAME=${ISTIO_NAME//./-}
@@ -56,7 +56,7 @@ function retrieveIstioRelease() {
       cd "${RELEASES_DIR}"
       rm -rf ${EXTRACT_DIR}
       ${EXTRACT_CMD}
-      cp -rf ${EXTRACT_DIR}/install/kubernetes/helm/* ${HELM_DIR}/
+      cp -rf ${EXTRACT_DIR}/manifests/charts/* ${HELM_DIR}/
       #(
       #  cd "${HELM_DIR}/istio"
       #  helm dep update
@@ -71,5 +71,5 @@ source $(dirname ${BASH_SOURCE})/patch-charts.sh
 (
   cd "${RELEASES_DIR}"
   echo "producing diff file for charts: $(pwd)/chart-diffs.diff"
-  diff -uNr ${EXTRACT_DIR}/install/kubernetes/helm/ ${HELM_DIR}/ > chart-diffs.diff || [ $? -eq 1 ]
+  diff -uNr ${EXTRACT_DIR}/manifests/charts/ ${HELM_DIR}/ > chart-diffs.diff || [ $? -eq 1 ]
 )
