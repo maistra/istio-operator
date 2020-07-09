@@ -99,14 +99,14 @@ func populateJaegerAddonValues(jaeger *v2.JaegerTracerConfig, values map[string]
 	}
 
 	if jaeger.Install.Ingress != nil {
-		if err := setHelmBoolValue(tracingValues, "ingress.enabled", jaeger.Install.Ingress.Enabled); err != nil {
-			return err
+		if jaeger.Install.Ingress.Enabled != nil {
+			if err := setHelmBoolValue(tracingValues, "ingress.enabled", *jaeger.Install.Ingress.Enabled); err != nil {
+				return err
+			}
 		}
-		if jaeger.Install.Ingress.Enabled {
-			if len(jaeger.Install.Ingress.Metadata.Annotations) > 0 {
-				if err := setHelmMapValue(tracingValues, "ingress.annotations", jaeger.Install.Ingress.Metadata.Annotations); err != nil {
-					return err
-				}
+		if len(jaeger.Install.Ingress.Metadata.Annotations) > 0 {
+			if err := setHelmMapValue(tracingValues, "ingress.annotations", jaeger.Install.Ingress.Metadata.Annotations); err != nil {
+				return err
 			}
 		}
 	}

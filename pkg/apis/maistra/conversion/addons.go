@@ -26,7 +26,9 @@ func populateAddonsValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 	}
 	switch in.Addons.Tracing.Type {
 	case v2.TracerTypeNone:
-		return setHelmBoolValue(values, "tracing.enabled", false)
+		if err := setHelmBoolValue(values, "tracing.enabled", false); err != nil {
+			return err
+		}
 	case v2.TracerTypeJaeger:
 		if err := populateJaegerAddonValues(in.Addons.Tracing.Jaeger, values); err != nil {
 			return err
@@ -48,8 +50,13 @@ func populateAddonIngressValues(ingress *v2.ComponentIngressConfig, values map[s
 	if ingress == nil {
 		return nil
 	}
-	if !ingress.Enabled {
-		return setHelmBoolValue(values, "enabled", false)
+	if ingress.Enabled != nil {
+		if err := setHelmBoolValue(values, "enabled", *ingress.Enabled); err != nil {
+			return err
+		}
+		if !*ingress.Enabled {
+			return nil
+		}
 	}
 
 	if err := setHelmBoolValue(values, "enabled", true); err != nil {

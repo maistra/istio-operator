@@ -10,7 +10,7 @@ spec:
       auto: true
       controlPlane:
         enable: true
-  addOns:
+  addons:
     tracing:
       # change to None to disable tracing
       type: Jaeger
@@ -21,9 +21,10 @@ spec:
     visualization:
       grafana:
         enabled: true
+        install: {}
       kiali:
-        enabled: true
         name: kiali
+        enabled: true
         # we want maistra to create the kiali resource
         install: {}
 

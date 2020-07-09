@@ -8,10 +8,8 @@ func populateKialiAddonValues(kiali *v2.KialiAddonConfig, values map[string]inte
 	if kiali == nil {
 		return nil
 	}
-	if !kiali.Enabled {
-		return setHelmBoolValue(values, "kiali.enabled", false)
-	}
 	if kiali.Install == nil {
+		// we don't want to process the charts
 		if err := setHelmBoolValue(values, "kiali.enabled", false); err != nil {
 			return err
 		}
@@ -19,8 +17,10 @@ func populateKialiAddonValues(kiali *v2.KialiAddonConfig, values map[string]inte
 	}
 
 	kialiValues := make(map[string]interface{})
-	if err := setHelmBoolValue(kialiValues, "enabled", true); err != nil {
-		return err
+	if kiali.Enabled != nil {
+		if err := setHelmBoolValue(kialiValues, "enabled", *kiali.Enabled); err != nil {
+			return err
+		}
 	}
 
 	dashboardConfig := kiali.Install.Config.Dashboard

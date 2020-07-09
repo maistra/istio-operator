@@ -10,9 +10,6 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 	if prometheus == nil {
 		return nil
 	}
-	if !prometheus.Enabled {
-		return setHelmBoolValue(values, "prometheus.enabled", false)
-	}
 	if prometheus.Address != nil {
 		// XXX: not sure if this is correct. we don't want the charts processed,
 		// but telemetry might be configured incorrectly
@@ -26,8 +23,10 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 		return setHelmBoolValue(values, "prometheus.enabled", false)
 	}
 	prometheusValues := make(map[string]interface{})
-	if err := setHelmBoolValue(prometheusValues, "enabled", true); err != nil {
-		return err
+	if prometheus.Enabled != nil {
+		if err := setHelmBoolValue(prometheusValues, "enabled", *prometheus.Enabled); err != nil {
+			return err
+		}
 	}
 	if prometheus.Install.Config.Retention != "" {
 		if err := setHelmStringValue(prometheusValues, "retention", prometheus.Install.Config.Retention); err != nil {

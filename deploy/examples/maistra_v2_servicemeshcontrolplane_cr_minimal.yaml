@@ -4,7 +4,7 @@ metadata:
   name: minimal-install
 spec:
   version: v1.1
-  addOns:
+  addons:
     tracing:
       # change to Jaeger to enable tracing
       type: None
@@ -14,9 +14,10 @@ spec:
     visualization:
       grafana:
         enabled: false
+        install: {}
       kiali:
-        enabled: false
         name: kiali
+        enabled: false
         install: {}
 
 ---

@@ -8,9 +8,6 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 	if grafana == nil {
 		return nil
 	}
-	if !grafana.Enabled {
-		return setHelmBoolValue(values, "grafana.enabled", false)
-	}
 
 	if grafana.Address != nil {
 		if err := setHelmBoolValue(values, "grafana.enabled", false); err != nil {
@@ -18,11 +15,14 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 		}
 		return setHelmStringValue(values, "kiali.dashboard.grafanaURL", *grafana.Address)
 	} else if grafana.Install == nil {
-		return nil
+		// we don't want to process the charts
+		return setHelmBoolValue(values, "grafana.enabled", false)
 	}
 	grafanaValues := make(map[string]interface{})
-	if err := setHelmBoolValue(grafanaValues, "enabled", true); err != nil {
-		return err
+	if grafana.Enabled != nil {
+		if err := setHelmBoolValue(grafanaValues, "enabled", *grafana.Enabled); err != nil {
+			return err
+		}
 	}
 	if len(grafana.Install.Config.Env) > 0 {
 		if err := setHelmMapValue(grafanaValues, "env", grafana.Install.Config.Env); err != nil {
@@ -35,30 +35,30 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 		}
 	}
 	if grafana.Install.Persistence != nil {
-		if err := setHelmBoolValue(grafanaValues, "persist", grafana.Install.Persistence.Enabled); err != nil {
-			return err
+		if grafana.Install.Persistence.Enabled != nil {
+			if err := setHelmBoolValue(grafanaValues, "persist", *grafana.Install.Persistence.Enabled); err != nil {
+				return err
+			}
 		}
-		if grafana.Install.Persistence.Enabled {
-			if grafana.Install.Persistence.StorageClassName != "" {
-				if err := setHelmStringValue(grafanaValues, "storageClassName", grafana.Install.Persistence.StorageClassName); err != nil {
-					return err
-				}
+		if grafana.Install.Persistence.StorageClassName != "" {
+			if err := setHelmStringValue(grafanaValues, "storageClassName", grafana.Install.Persistence.StorageClassName); err != nil {
+				return err
 			}
-			if grafana.Install.Persistence.AccessMode != "" {
-				if err := setHelmStringValue(grafanaValues, "accessMode", string(grafana.Install.Persistence.AccessMode)); err != nil {
-					return err
-				}
+		}
+		if grafana.Install.Persistence.AccessMode != "" {
+			if err := setHelmStringValue(grafanaValues, "accessMode", string(grafana.Install.Persistence.AccessMode)); err != nil {
+				return err
 			}
-			if len(grafana.Install.Persistence.Capacity) > 0 {
-				if capacityValues, err := toValues(grafana.Install.Persistence.Capacity); err == nil {
-					if len(capacityValues) > 0 {
-						if err := setHelmValue(grafanaValues, "storageCapacity", capacityValues); err != nil {
-							return err
-						}
+		}
+		if len(grafana.Install.Persistence.Capacity) > 0 {
+			if capacityValues, err := toValues(grafana.Install.Persistence.Capacity); err == nil {
+				if len(capacityValues) > 0 {
+					if err := setHelmValue(grafanaValues, "storageCapacity", capacityValues); err != nil {
+						return err
 					}
-				} else {
-					return err
 				}
+			} else {
+				return err
 			}
 		}
 	}

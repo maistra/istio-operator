@@ -113,7 +113,8 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 						return err
 					}
 					if expansionPorts, err := expansionPortsForVersion(in.Version); err != nil {
-						if in.Cluster.MeshExpansion == nil || in.Cluster.MeshExpansion.ILBGateway == nil || !in.Cluster.MeshExpansion.ILBGateway.Enabled {
+						if in.Cluster.MeshExpansion == nil || in.Cluster.MeshExpansion.ILBGateway == nil ||
+							in.Cluster.MeshExpansion.ILBGateway.Enabled == nil || !*in.Cluster.MeshExpansion.ILBGateway.Enabled {
 							addExpansionPorts(&in.Gateways.Ingress.MeshExpansionPorts, expansionPorts)
 							if err := setHelmBoolValue(values, "gateways.istio-ilbgateway.enabled", false); err != nil {
 								return err

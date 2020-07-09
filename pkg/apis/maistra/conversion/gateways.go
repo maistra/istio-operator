@@ -54,77 +54,63 @@ var (
 
 func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
 	if in.Gateways == nil {
-		return setHelmBoolValue(values, "gateways.enabled", false)
+		return nil
+	}
+
+	if err := setHelmBoolValue(values, "gateways.enabled", true); err != nil {
+		return err
 	}
 
 	gateways := in.Gateways
 
 	if gateways.Ingress != nil {
-		if gateways.Ingress.Enabled {
-			if gatewayValues, err := gatewayConfigToValues(&gateways.Ingress.GatewayConfig); err == nil {
-				if len(gateways.Ingress.MeshExpansionPorts) > 0 {
-					untypedSlice := make([]interface{}, len(gateways.Ingress.MeshExpansionPorts))
-					for index, port := range gateways.Ingress.MeshExpansionPorts {
-						untypedSlice[index] = port
-					}
-					if portsValue, err := sliceToValues(untypedSlice); err == nil {
-						if len(portsValue) > 0 {
-							if err := setHelmValue(gatewayValues, "meshExpansionPorts", portsValue); err != nil {
-								return err
-							}
+		if gatewayValues, err := gatewayConfigToValues(&gateways.Ingress.GatewayConfig); err == nil {
+			if len(gateways.Ingress.MeshExpansionPorts) > 0 {
+				untypedSlice := make([]interface{}, len(gateways.Ingress.MeshExpansionPorts))
+				for index, port := range gateways.Ingress.MeshExpansionPorts {
+					untypedSlice[index] = port
+				}
+				if portsValue, err := sliceToValues(untypedSlice); err == nil {
+					if len(portsValue) > 0 {
+						if err := setHelmValue(gatewayValues, "meshExpansionPorts", portsValue); err != nil {
+							return err
 						}
-					} else {
-						return err
 					}
+				} else {
+					return err
 				}
-				if len(gatewayValues) > 0 {
-					if err := setHelmValue(values, "gateways.istio-ingressgateway", gatewayValues); err != nil {
-						return err
-					}
+			}
+			if len(gatewayValues) > 0 {
+				if err := setHelmValue(values, "gateways.istio-ingressgateway", gatewayValues); err != nil {
+					return err
 				}
-			} else {
-				return err
 			}
 		} else {
-			if err := setHelmBoolValue(values, "gateways.istio-ingressgateway.enabled", false); err != nil {
-				return err
-			}
+			return err
 		}
 	}
 
 	if gateways.Egress != nil {
-		if gateways.Egress.Enabled {
-			if gatewayValues, err := gatewayConfigToValues(gateways.Egress); err == nil {
-				if len(gatewayValues) > 0 {
-					if err := setHelmValue(values, "gateways.istio-egressgateway", gatewayValues); err != nil {
-						return err
-					}
+		if gatewayValues, err := gatewayConfigToValues(gateways.Egress); err == nil {
+			if len(gatewayValues) > 0 {
+				if err := setHelmValue(values, "gateways.istio-egressgateway", gatewayValues); err != nil {
+					return err
 				}
-			} else {
-				return err
 			}
 		} else {
-			if err := setHelmBoolValue(values, "gateways.istio-egressgateway.enabled", false); err != nil {
-				return err
-			}
+			return err
 		}
 	}
 
 	for name, gateway := range gateways.AdditionalGateways {
-		if gateway.Enabled {
-			if gatewayValues, err := gatewayConfigToValues(&gateway); err == nil {
-				if len(gatewayValues) > 0 {
-					if err := setHelmValue(values, "gateways."+name, gatewayValues); err != nil {
-						return err
-					}
+		if gatewayValues, err := gatewayConfigToValues(&gateway); err == nil {
+			if len(gatewayValues) > 0 {
+				if err := setHelmValue(values, "gateways."+name, gatewayValues); err != nil {
+					return err
 				}
-			} else {
-				return err
 			}
 		} else {
-			if err := setHelmBoolValue(values, "gateways."+name+".enabled", false); err != nil {
-				return err
-			}
+			return err
 		}
 	}
 	return nil
@@ -133,8 +119,10 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 // converts v2.GatewayConfig to values.yaml
 func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error) {
 	values := make(map[string]interface{})
-	if err := setHelmBoolValue(values, "enabled", true); err != nil {
-		return nil, err
+	if in.Enabled != nil {
+		if err := setHelmBoolValue(values, "enabled", *in.Enabled); err != nil {
+			return nil, err
+		}
 	}
 
 	if in.Namespace != "" {
