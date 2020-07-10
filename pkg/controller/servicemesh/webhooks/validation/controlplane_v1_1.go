@@ -5,13 +5,17 @@ import (
 	"fmt"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
 func (v *ControlPlaneValidator) validateV1_1(ctx context.Context, smcp *maistrav1.ServiceMeshControlPlane) error {
+	logger := logf.Log.WithName("smcp-validator")
 	var allErrors []error
 
 	if zipkinAddress, ok, _ := unstructured.NestedString(smcp.Spec.Istio, strings.Split("global.tracer.zipkin.address", ".")...); ok && len(zipkinAddress) > 0 {
@@ -45,6 +49,22 @@ func (v *ControlPlaneValidator) validateV1_1(ctx context.Context, smcp *maistrav
 			if jaegerInClusterURL, ok, _ := unstructured.NestedString(smcp.Spec.Istio, strings.Split("kiali.jaegerInClusterURL", ".")...); !ok || len(jaegerInClusterURL) == 0 {
 				allErrors = append(allErrors, fmt.Errorf("kiali.jaegerInClusterURL must be defined if global.tracer.zipkin.address is set"))
 			}
+		}
+	}
+
+	smmr, err := v.getSMMR(smcp)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			// log error, but don't fail validation: we'll just assume that the control plane namespace is the only namespace for now
+			logger.Error(err, "failed to retrieve SMMR for SMCP")
+			smmr = nil
+		}
+	}
+
+	meshNamespaces := common.GetMeshNamespaces(smcp, smmr)
+	for _, gateway := range getMapKeys(smcp.Spec.Istio, "gateways") {
+		if err := errForStringValue(smcp.Spec.Istio, "gateways."+gateway+".namespace", meshNamespaces); err != nil {
+			allErrors = append(allErrors, fmt.Errorf("%v: namespace must be part of the mesh", err))
 		}
 	}
 

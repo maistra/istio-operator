@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8s.io/client-go/kubernetes/scheme"
 
@@ -169,6 +171,181 @@ func TestInstallationErrorDoesNotUpdateLastTransitionTimeWhenNoStateTransitionOc
 	newStatus := &updatedControlPlane.Status
 
 	assert.DeepEquals(newStatus, initialStatus, "didn't expect SMCP status to be updated", t)
+}
+
+type customSetup func(client.Client, *test.EnhancedTracker)
+
+func TestManifestValidation(t *testing.T) {
+	testCases := []struct {
+		name         string
+		controlPlane *maistrav1.ServiceMeshControlPlane
+		memberRoll   *maistrav1.ServiceMeshMemberRoll
+		setupFn      customSetup
+		errorMessage string
+	}{
+		{
+			name: "error getting smmr",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: newControlPlane().ObjectMeta,
+				Spec: maistrav1.ControlPlaneSpec{
+					Template: "maistra",
+					Version:  "v1.1",
+					Istio: map[string]interface{}{
+						"gateways": map[string]interface{}{
+							"istio-ingressgateway": map[string]interface{}{
+								"namespace": "somewhere",
+							},
+						},
+					},
+				},
+				Status: maistrav1.ControlPlaneStatus{},
+			},
+			memberRoll: &maistrav1.ServiceMeshMemberRoll{},
+			setupFn: func(cl client.Client, tracker *test.EnhancedTracker) {
+				tracker.AddReactor("get", "servicemeshmemberrolls", test.ClientFails())
+			},
+			errorMessage: "some error",
+		},
+		{
+			name: "gateways outside of mesh",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: newControlPlane().ObjectMeta,
+				Spec: maistrav1.ControlPlaneSpec{
+					Template: "maistra",
+					Version:  "v1.1",
+					Istio: map[string]interface{}{
+						"gateways": map[string]interface{}{
+							"another-gateway": map[string]interface{}{
+								"enabled":   "true",
+								"namespace": "b",
+								"labels":    map[string]interface{}{},
+							},
+							"istio-ingressgateway": map[string]interface{}{
+								"namespace": "c",
+							},
+							"istio-egressgateway": map[string]interface{}{
+								"namespace": "d",
+							},
+						},
+					},
+				},
+				Status: maistrav1.ControlPlaneStatus{},
+			},
+			memberRoll: &maistrav1.ServiceMeshMemberRoll{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default",
+					Namespace: controlPlaneNamespace,
+				},
+				Spec: maistrav1.ServiceMeshMemberRollSpec{
+					Members: []string{
+						"a",
+					},
+				},
+				Status: maistrav1.ServiceMeshMemberRollStatus{
+					ConfiguredMembers: []string{
+						"a",
+					},
+				},
+			},
+			errorMessage: "namespace of manifest c/istio-ingressgateway not in mesh",
+		},
+		{
+			name: "valid namespaces",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: newControlPlane().ObjectMeta,
+				Spec: maistrav1.ControlPlaneSpec{
+					Template: "maistra",
+					Version:  "v1.1",
+					Istio: map[string]interface{}{
+						"gateways": map[string]interface{}{
+							"istio-ingressgateway": map[string]interface{}{
+								"namespace": "a",
+							},
+							"istio-egressgateway": map[string]interface{}{
+								"namespace": "c",
+							},
+						},
+					},
+				},
+				Status: maistrav1.ControlPlaneStatus{},
+			},
+			memberRoll: &maistrav1.ServiceMeshMemberRoll{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default",
+					Namespace: controlPlaneNamespace,
+				},
+				Spec: maistrav1.ServiceMeshMemberRollSpec{
+					Members: []string{
+						"a",
+						"c",
+					},
+				},
+				Status: maistrav1.ServiceMeshMemberRollStatus{
+					ConfiguredMembers: []string{
+						"a",
+						"c",
+					},
+				},
+			},
+		},
+	}
+
+	operatorNamespace := "istio-operator"
+	InitializeGlobals(operatorNamespace)()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.controlPlane.Status.SetCondition(maistrav1.Condition{
+				Type:               maistrav1.ConditionTypeReconciled,
+				Status:             maistrav1.ConditionStatusFalse,
+				Reason:             "",
+				Message:            "",
+				LastTransitionTime: oneMinuteAgo,
+			})
+
+			namespace := &v1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{Name: tc.controlPlane.Namespace},
+			}
+
+			cl, tracker := test.CreateClient(tc.controlPlane, tc.memberRoll, namespace)
+			fakeEventRecorder := &record.FakeRecorder{}
+
+			r := NewControlPlaneInstanceReconciler(
+				common.ControllerResources{
+					Client:            cl,
+					Scheme:            scheme.Scheme,
+					EventRecorder:     fakeEventRecorder,
+					PatchFactory:      common.NewPatchFactory(cl),
+					OperatorNamespace: operatorNamespace,
+				},
+				tc.controlPlane,
+				common.CNIConfig{Enabled: true})
+
+			if tc.setupFn != nil {
+				tc.setupFn(cl, tracker)
+			}
+			// run initial reconcile to update the SMCP status
+			_, err := r.Reconcile(ctx)
+
+			if tc.errorMessage != "" {
+				if err == nil {
+					t.Fatal(tc.name, "-", "Expected reconcile to fail, but it didn't")
+				}
+
+				updatedControlPlane := &maistrav1.ServiceMeshControlPlane{}
+				test.PanicOnError(cl.Get(ctx, common.ToNamespacedName(tc.controlPlane.ObjectMeta), updatedControlPlane))
+				newStatus := &updatedControlPlane.Status
+
+				assert.True(strings.Contains(newStatus.GetCondition(maistrav1.ConditionTypeReconciled).Message, tc.errorMessage), "Expected reconciliation error: "+tc.errorMessage+", but got:"+newStatus.GetCondition(maistrav1.ConditionTypeReconciled).Message, t)
+			} else {
+				if err != nil {
+					t.Fatal(tc.name, "-", "Expected no errors, but got error: ", err)
+				}
+			}
+		})
+
+	}
+
 }
 
 func newTestReconciler() *controlPlaneInstanceReconciler {

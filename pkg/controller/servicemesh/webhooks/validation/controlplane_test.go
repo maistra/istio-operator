@@ -459,6 +459,88 @@ func TestControlPlaneValidation(t *testing.T) {
 			},
 			valid: false,
 		},
+		{
+			name: "gateway-outside-mesh",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
+					Istio: map[string]interface{}{
+						"gateways": map[string]interface{}{
+							"istio-ingressgateway": map[string]interface{}{
+								"namespace": "outside",
+							},
+							"istio-egressgateway": map[string]interface{}{
+								"namespace": "inside",
+							},
+						},
+					},
+				},
+			},
+			resources: []runtime.Object{
+				&maistrav1.ServiceMeshMemberRoll{
+					ObjectMeta: meta.ObjectMeta{
+						Name:      "default",
+						Namespace: "istio-system",
+					},
+					Spec: maistrav1.ServiceMeshMemberRollSpec{
+						Members: []string{
+							"inside",
+						},
+					},
+					Status: maistrav1.ServiceMeshMemberRollStatus{
+						ConfiguredMembers: []string{
+							"inside",
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "gateway-inside-mesh",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
+					Istio: map[string]interface{}{
+						"gateways": map[string]interface{}{
+							"istio-ingressgateway": map[string]interface{}{
+								"namespace": "inside",
+							},
+							"istio-egressgateway": map[string]interface{}{
+								"namespace": "inside",
+							},
+						},
+					},
+				},
+			},
+			resources: []runtime.Object{
+				&maistrav1.ServiceMeshMemberRoll{
+					ObjectMeta: meta.ObjectMeta{
+						Name:      "default",
+						Namespace: "istio-system",
+					},
+					Spec: maistrav1.ServiceMeshMemberRollSpec{
+						Members: []string{
+							"inside",
+						},
+					},
+					Status: maistrav1.ServiceMeshMemberRollStatus{
+						ConfiguredMembers: []string{
+							"inside",
+						},
+					},
+				},
+			},
+			valid: true,
+		},
 	}
 
 	for _, tc := range cases {
