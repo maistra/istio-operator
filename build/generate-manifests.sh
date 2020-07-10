@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# to generate Maistra OLM metadata: MAISTRA_VERSION=1.0.1 REPLACES_CSV=1.0.0 build/generate-manifests.sh
-# to generate ServiceMesh OLM metadata: COMMUNITY=false MAISTRA_VERSION=1.0.1 REPLACES_CSV=1.0.0 build/generate-manifests.sh
+# to generate Maistra OLM metadata: COMMUNITY=true MAISTRA_VERSION=1.1.3 REPLACES_CSV=1.1.1 build/generate-manifests.sh
+# to generate ServiceMesh OLM metadata: COMMUNITY=false MAISTRA_VERSION=1.1.4+2 REPLACES_CSV=1.1.4 build/generate-manifests.sh
 
 set -e
 
@@ -12,6 +12,7 @@ else
   MAISTRA_STRIPPED_VERSION=${MAISTRA_VERSION}
 fi
 MAISTRA_NAME_VERSION=${MAISTRA_VERSION//+/.}
+REPLACES_CSV=${REPLACES_CSV//+/.}
 
 if [[ ${COMMUNITY} == "true" ]]; then
   BUILD_TYPE="maistra"
