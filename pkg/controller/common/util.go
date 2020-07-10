@@ -8,6 +8,7 @@ import (
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -146,4 +147,16 @@ func BoolToConditionStatus(b bool) core.ConditionStatus {
 	} else {
 		return core.ConditionFalse
 	}
+}
+
+// GetMeshNamespaces returns all namespaces that are part of a mesh.
+func GetMeshNamespaces(controlPlaneNamespace string, smmr *v1.ServiceMeshMemberRoll) sets.String {
+	if controlPlaneNamespace == "" {
+		return sets.NewString()
+	}
+	meshNamespaces := sets.NewString(controlPlaneNamespace)
+	if smmr != nil {
+		meshNamespaces.Insert(smmr.Status.ConfiguredMembers...)
+	}
+	return meshNamespaces
 }
