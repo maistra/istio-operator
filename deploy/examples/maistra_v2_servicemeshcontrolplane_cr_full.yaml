@@ -1,0 +1,35 @@
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+metadata:
+  name: full-install
+spec:
+  version: v1.1
+  addons:
+    tracing:
+      # change to None to disable tracing
+      type: Jaeger
+      jaeger:
+        name: jaeger
+        # we want maistra to create the jaeger resource
+        install: {}
+    visualization:
+      grafana:
+        enabled: true
+        install: {}
+      kiali:
+        name: kiali
+        enabled: true
+        # we want maistra to create the kiali resource
+        install: {}
+
+---
+
+apiVersion: maistra.io/v1
+kind: ServiceMeshMemberRoll
+metadata:
+  name: default
+spec:
+  members:
+  # a list of namespaces that should be joined into the service mesh
+  # for example, to add the bookinfo namespace
+  #- bookinfo

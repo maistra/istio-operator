@@ -23,7 +23,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 )
@@ -75,7 +76,7 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 	}
 
 	// Watch for changes to primary resource ServiceMeshControlPlane
-	if err = c.Watch(&source.Kind{Type: &v1.ServiceMeshControlPlane{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err = c.Watch(&source.Kind{Type: &v2.ServiceMeshControlPlane{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
@@ -83,7 +84,7 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 	if err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}},
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
-			OwnerType:    &v1.ServiceMeshControlPlane{},
+			OwnerType:    &v2.ServiceMeshControlPlane{},
 		},
 		ownedResourcePredicates); err != nil {
 		return err
@@ -91,7 +92,7 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 	if err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}},
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
-			OwnerType:    &v1.ServiceMeshControlPlane{},
+			OwnerType:    &v2.ServiceMeshControlPlane{},
 		},
 		ownedResourcePredicates); err != nil {
 		return err
@@ -99,7 +100,7 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 	if err = c.Watch(&source.Kind{Type: &appsv1.DaemonSet{}},
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
-			OwnerType:    &v1.ServiceMeshControlPlane{},
+			OwnerType:    &v2.ServiceMeshControlPlane{},
 		},
 		ownedResourcePredicates); err != nil {
 		return err
@@ -113,7 +114,7 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 				if obj.Meta.GetNamespace() != operatorNamespace {
 					return nil
 				}
-				smcpList := &v1.ServiceMeshControlPlaneList{}
+				smcpList := &v2.ServiceMeshControlPlaneList{}
 				if err := mgr.GetClient().List(ctx, smcpList); err != nil {
 					log.Error(err, "error listing ServiceMeshControlPlane objects in CNI DaemonSet watcher")
 					return nil
@@ -161,7 +162,7 @@ type ControlPlaneReconciler struct {
 	reconcilers map[types.NamespacedName]ControlPlaneInstanceReconciler
 	mu          sync.Mutex
 
-	instanceReconcilerFactory func(common.ControllerResources, *v1.ServiceMeshControlPlane, cni.Config) ControlPlaneInstanceReconciler
+	instanceReconcilerFactory func(common.ControllerResources, *v2.ServiceMeshControlPlane, cni.Config) ControlPlaneInstanceReconciler
 }
 
 // ControlPlaneInstanceReconciler reconciles a specific instance of a ServiceMeshControlPlane
@@ -169,7 +170,7 @@ type ControlPlaneInstanceReconciler interface {
 	Reconcile(ctx context.Context) (reconcile.Result, error)
 	UpdateReadiness(ctx context.Context) error
 	Delete(ctx context.Context) error
-	SetInstance(instance *v1.ServiceMeshControlPlane)
+	SetInstance(instance *v2.ServiceMeshControlPlane)
 	IsFinished() bool
 }
 
@@ -185,7 +186,7 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 	}()
 
 	// Fetch the ServiceMeshControlPlane instance
-	instance := &v1.ServiceMeshControlPlane{}
+	instance := &v2.ServiceMeshControlPlane{}
 	err := r.Client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) || errors.IsGone(err) {
@@ -228,12 +229,12 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 	return reconciler.Reconcile(ctx)
 }
 
-func isFullyReconciled(instance *v1.ServiceMeshControlPlane) bool {
-	return v1.CurrentReconciledVersion(instance.GetGeneration()) == instance.Status.GetReconciledVersion() &&
-		instance.Status.GetCondition(v1.ConditionTypeReconciled).Status == v1.ConditionStatusTrue
+func isFullyReconciled(instance *v2.ServiceMeshControlPlane) bool {
+	return status.CurrentReconciledVersion(instance.GetGeneration()) == instance.Status.GetReconciledVersion() &&
+		instance.Status.GetCondition(status.ConditionTypeReconciled).Status == status.ConditionStatusTrue
 }
 
-func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v1.ServiceMeshControlPlane) (types.NamespacedName, ControlPlaneInstanceReconciler) {
+func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v2.ServiceMeshControlPlane) (types.NamespacedName, ControlPlaneInstanceReconciler) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

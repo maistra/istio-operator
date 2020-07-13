@@ -11,7 +11,7 @@ import (
 	"k8s.io/helm/pkg/manifest"
 	"k8s.io/helm/pkg/releaseutil"
 
-	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -20,11 +20,10 @@ import (
 
 func TestReadinessWhenCacheNotSynced(t *testing.T) {
 	controlPlane := newControlPlane()
-	controlPlane.Spec.Istio = &maistrav1.HelmValues{}
 	controlPlane.Spec.Template = "maistra"
-	controlPlane.Status.ComponentStatus = []maistrav1.ComponentStatus{
+	controlPlane.Status.ComponentStatus = []status.ComponentStatus{
 		{
-			StatusType: maistrav1.StatusType{
+			StatusType: status.StatusType{
 				Conditions: nil,
 			},
 			Resource: "security",

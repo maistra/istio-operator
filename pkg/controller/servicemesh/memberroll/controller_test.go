@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
@@ -182,10 +183,10 @@ func TestReconcileDoesNothingIfControlPlaneReconciledConditionIsNotTrue(t *testi
 	addOwnerReference(roll)
 	controlPlane := newControlPlane("")
 	controlPlane.Status.ObservedGeneration = 1
-	controlPlane.Status.Conditions = []maistrav1.Condition{
+	controlPlane.Status.Conditions = []status.Condition{
 		{
-			Type:   maistrav1.ConditionTypeReconciled,
-			Status: maistrav1.ConditionStatusFalse,
+			Type:   status.ConditionTypeReconciled,
+			Status: status.ConditionStatusFalse,
 		},
 	}
 
@@ -302,7 +303,7 @@ func TestReconcileReconcilesAddedMember(t *testing.T) {
 			controlPlane := markControlPlaneReconciled(newControlPlane(tc.meshVersion), tc.operatorVersion)
 			if tc.upgradedOperator {
 				// need to reset the ServiceMeshReconciledVersion
-				roll.Status.ServiceMeshReconciledVersion = maistrav1.ComposeReconciledVersion(operatorVersion1_0, controlPlane.GetGeneration())
+				roll.Status.ServiceMeshReconciledVersion = status.ComposeReconciledVersion(operatorVersion1_0, controlPlane.GetGeneration())
 			}
 			roll.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
 			namespace := newNamespace(appNamespace)
@@ -713,7 +714,7 @@ func newMemberRoll(generation int64, observedGeneration int64, observedMeshGener
 		Status: maistrav1.ServiceMeshMemberRollStatus{
 			ObservedGeneration:           observedGeneration,
 			ServiceMeshGeneration:        observedMeshGeneration,
-			ServiceMeshReconciledVersion: maistrav1.ComposeReconciledVersion(operatorVersion, observedMeshGeneration),
+			ServiceMeshReconciledVersion: status.ComposeReconciledVersion(operatorVersion, observedMeshGeneration),
 		},
 	}
 }
@@ -746,13 +747,13 @@ func newControlPlane(version string) *maistrav1.ServiceMeshControlPlane {
 
 func markControlPlaneReconciled(controlPlane *maistrav1.ServiceMeshControlPlane, operatorVersion string) *maistrav1.ServiceMeshControlPlane {
 	controlPlane.Status.ObservedGeneration = controlPlane.GetGeneration()
-	controlPlane.Status.Conditions = []maistrav1.Condition{
+	controlPlane.Status.Conditions = []status.Condition{
 		{
-			Type:   maistrav1.ConditionTypeReconciled,
-			Status: maistrav1.ConditionStatusTrue,
+			Type:   status.ConditionTypeReconciled,
+			Status: status.ConditionStatusTrue,
 		},
 	}
-	controlPlane.Status.ReconciledVersion = maistrav1.ComposeReconciledVersion(operatorVersion, controlPlane.GetGeneration())
+	controlPlane.Status.ReconciledVersion = status.ComposeReconciledVersion(operatorVersion, controlPlane.GetGeneration())
 	return controlPlane
 }
 
