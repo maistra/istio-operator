@@ -1,0 +1,19 @@
+{{- if and .Values.createMeshPolicy (not .Values.global.mtls.enabled) }}
+# Authentication policy to enable permissive mode for all services (that have sidecar) in the mesh.
+apiVersion: authentication.maistra.io/v1
+kind: ServiceMeshPolicy
+metadata:
+  name: "default"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: 1.2.0
+    app: {{ template "security.name" . }}
+    chart: {{ template "security.chart" . }}
+    heritage: {{ .Release.Service }}
+    maistra-version: 1.1.4
+    release: {{ .Release.Name }}
+spec:
+  peers:
+  - mtls:
+      mode: PERMISSIVE
+{{- end }}

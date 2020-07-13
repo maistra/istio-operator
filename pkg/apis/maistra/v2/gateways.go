@@ -6,20 +6,24 @@ import (
 
 // GatewaysConfig configures gateways for the mesh
 type GatewaysConfig struct {
-	// Ingress configures the ingress gateway for the mesh
+	// ClusterIngress configures the istio-ingressgateway for the mesh
 	// works in conjunction with cluster.meshExpansion.ingress configuration
 	// (for enabling ILB gateway and mesh expansion ports)
 	// .Values.gateways.istio-ingressgateway
 	// +optional
-	Ingress *IngressGatewayConfig `json:"ingress,omitempty"`
-	// Egress configures the egress gateway for the mesh.
+	ClusterIngress *IstioIngressGatewayConfig `json:"ingress,omitempty"`
+	// ClusterEgress configures the istio-egressgateway for the mesh.
 	// .Values.gateways.istio-egressgateway
 	// +optional
-	Egress *GatewayConfig `json:"egress,omitempty"`
-	// Other user defined gateways
+	ClusterEgress *EgressGatewayConfig `json:"egress,omitempty"`
+	// Other user defined ingress gateways
 	// .Values.gateways.<key>
 	// +optional
-	AdditionalGateways map[string]GatewayConfig `json:"additional,omitempty"`
+	IngressGateways map[string]IngressGatewayConfig `json:"additionalIngress,omitempty"`
+	// Other user defined egress gateways
+	// .Values.gateways.<key>
+	// +optional
+	EgressGateways map[string]EgressGatewayConfig `json:"additionalEgress,omitempty"`
 }
 
 // GatewayConfig represents the configuration for a gateway
@@ -48,17 +52,6 @@ type GatewayConfig struct {
 	// .Values.gateways.<gateway-name>.env.ISTIO_META_ROUTER_MODE, defaults to sni-dnat
 	// +optional
 	RouterMode RouterModeType `json:"routerMode,omitempty"`
-	// RequestedNetworkView is a list of networks whose services should be made
-	// available to the gateway.  This is used primarily for mesh expansion/multi-cluster.
-	// .Values.gateways.<gateway-name>.env.ISTIO_META_REQUESTED_NETWORK_VIEW env, defaults to empty list
-	// XXX: I think this is only applicable to egress gateways
-	// +optional
-	RequestedNetworkView []string `json:"requestedNetworkView,omitempty"`
-	// EnableSDS for the gateway.
-	// .Values.gateways.<gateway-name>.sds.enabled
-	// XXX: I believe this is only applicable to ingress gateways
-	// +optional
-	EnableSDS *bool `json:"enableSDS,omitempty"`
 	// Volumes is used to configure additional Secret and ConfigMap volumes that
 	// should be mounted for the gateway's pod.
 	// .Values.gateways.<gateway-name>.secretVolumes, .Values.gateways.<gateway-name>.configMapVolumes
@@ -71,8 +64,27 @@ type GatewayConfig struct {
 	// XXX: do we need to support additionalContainers???
 }
 
+type EgressGatewayConfig struct {
+	GatewayConfig `json:",inline"`
+	// RequestedNetworkView is a list of networks whose services should be made
+	// available to the gateway.  This is used primarily for mesh expansion/multi-cluster.
+	// .Values.gateways.<gateway-name>.env.ISTIO_META_REQUESTED_NETWORK_VIEW env, defaults to empty list
+	// XXX: I think this is only applicable to egress gateways
+	// +optional
+	RequestedNetworkView []string `json:"requestedNetworkView,omitempty"`
+}
+
 type IngressGatewayConfig struct {
 	GatewayConfig `json:",inline"`
+	// EnableSDS for the gateway.
+	// .Values.gateways.<gateway-name>.sds.enabled
+	// XXX: I believe this is only applicable to ingress gateways
+	// +optional
+	EnableSDS *bool `json:"enableSDS,omitempty"`
+}
+
+type IstioIngressGatewayConfig struct {
+	IngressGatewayConfig `json:",inline"`
 	// MeshExpansionPorts define the port set used with multi-cluster/mesh expansion
 	// +optional
 	MeshExpansionPorts []corev1.ServicePort `json:"meshExpansionPorts,omitempty"`
