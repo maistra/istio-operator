@@ -86,6 +86,8 @@ update-1.0-charts: update-remote-maistra-1.0
 	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.0 -- ${SOURCE_DIR}/resources/helm/v1.0
 	git reset HEAD ${SOURCE_DIR}/resources/helm/v1.0
 	HELM_DIR=${RESOURCES_DIR}/helm/v1.0 ${SOURCE_DIR}/build/patch-container-image.sh
+	find ${RESOURCES_DIR}/helm/v1.0/istio-init/files/ -maxdepth 1 -name "*.crd.yaml" -delete
+	CRD_DIR=${RESOURCES_DIR}/helm/v1.0/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
 
 .PHONY: update-1.0-templates
 update-1.0-templates:
@@ -119,6 +121,8 @@ endif
 update-1.1-charts: update-remote-maistra-1.1
 	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.1 -- ${SOURCE_DIR}/resources/helm/v1.1
 	git reset HEAD ${SOURCE_DIR}/resources/helm/v1.1
+	find ${RESOURCES_DIR}/helm/v1.1/istio-init/files/ -maxdepth 1 -name "*.crd.yaml" -delete
+	CRD_DIR=${RESOURCES_DIR}/helm/v1.1/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
 
 .PHONY: update-1.1-templates
 update-1.1-templates: update-remote-maistra-1.1
@@ -142,6 +146,8 @@ collect-1.1-templates:
 .PHONY: update-1.2-charts
 update-1.2-charts:
 	HELM_DIR=${RESOURCES_DIR}/helm/v1.2 ISTIO_VERSION=1.6.0 ${SOURCE_DIR}/build/download-charts.sh
+	find ${RESOURCES_DIR}/helm/v1.2/istio-init/files/ -maxdepth 1 -name "*.crd.yaml" -delete
+	CRD_DIR=${RESOURCES_DIR}/helm/v1.2/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
 
 .PHONY: collect-1.2-charts
 collect-1.2-charts:
@@ -153,6 +159,7 @@ collect-1.2-templates:
 	mkdir -p ${TEMPLATES_OUT_DIR}/v1.2
 	cp ${RESOURCES_DIR}/smcp-templates/v1.2/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v1.2/default
 	cp ${RESOURCES_DIR}/smcp-templates/v1.2/base ${TEMPLATES_OUT_DIR}/v1.2
+
 
 ################################################################################
 # OLM manifest generation
@@ -169,7 +176,7 @@ generate-product-manifests:
 # resource generation
 ################################################################################
 .PHONY: gen
-gen: update-1.2-charts update-generated-code
+gen: update-charts update-generated-code
 
 .PHONY: gen-check
 gen-check: gen check-clean-repo

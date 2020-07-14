@@ -60,6 +60,10 @@ function patchTemplates() {
 
   # - nuke unnecessary files from base
   rm -rf ${HELM_DIR}/base/templates ${HELM_DIR}/base/files ${HELM_DIR}/base/crds/crd-operator.yaml
+
+  # rename base/crds to istio-init/files
+  mv ${HELM_DIR}/base ${HELM_DIR}/istio-init
+  mv ${HELM_DIR}/istio-init/crds ${HELM_DIR}/istio-init/files
 }
 
 function patchGalley() {

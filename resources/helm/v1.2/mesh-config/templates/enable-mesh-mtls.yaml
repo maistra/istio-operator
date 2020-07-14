@@ -4,8 +4,8 @@
 # a separated yaml file so that customer can enable mTLS independent from installation.
 
 # Authentication policy to enable mutual TLS for all services (that have sidecar) in the mesh.
-apiVersion: authentication.maistra.io/v1
-kind: ServiceMeshPolicy
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
 metadata:
   name: "default"
   namespace: {{ .Release.Namespace }}
@@ -16,8 +16,8 @@ metadata:
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
 spec:
-  peers:
-  - mtls: {}
+  mtls:
+    mode: STRICT
 ---
 # Corresponding destination rule to configure client side to use mutual TLS when talking to
 # any service (host) in the mesh.
