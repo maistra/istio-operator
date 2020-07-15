@@ -5,6 +5,9 @@ import (
 	"fmt"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	"github.com/maistra/istio-operator/pkg/controller/common"
+	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -31,9 +34,16 @@ func init() {
 
 	versionToStrategy = map[version]VersionStrategy{
 		InvalidVersion: &invalidVersionStrategy{InvalidVersion},
-		V1_0:           &versionStrategyV1_0{V1_0},
-		V1_1:           &versionStrategyV1_1{V1_1},
+		V1_0:           &versionStrategyV1_0{version: V1_0},
+		V1_1:           &versionStrategyV1_1{version: V1_1},
 		V1_2:           &versionStrategyV1_2{V1_2},
+	}
+
+	versionToCNINetwork = map[version]string{
+		InvalidVersion: "",
+		V1_0:           "istio-cni",
+		V1_1:           "v1-1-istio-cni",
+		V1_2:           "v1-2-istio-cni",
 	}
 
 	for v, str := range versionToString {
@@ -69,16 +79,31 @@ type Version interface {
 	Compare(other Version) int
 	// Strategy provides a customizations specific to this version.
 	Strategy() VersionStrategy
+	GetChartsDir() string
+	GetUserTemplatesDir() string
+	GetDefaultTemplatesDir() string
+	GetCNINetworkName() string
+}
+
+// ValidationStrategy is an interface used by the validating webhook for validating SMCP resources.
+type ValidationStrategy interface {
+	Validate(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error
+	ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error
+	ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error
+}
+
+// RenderingStrategy is an interface used by the reconciler to manage rendering of charts.
+type RenderingStrategy interface {
+	SetImageValues(ctx context.Context, cr *common.ControllerResources, smcp *v1.ControlPlaneSpec) error
+	Render(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error)
 }
 
 // VersionStrategy provides encapsulates customization required for a particular
 // version.
 type VersionStrategy interface {
 	Version
-	SetImageValues(ctx context.Context, cl client.Client, smcp *v1.ControlPlaneSpec) error
-	Validate(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error
-	ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error
-	ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error
+	RenderingStrategy
+	ValidationStrategy
 }
 
 // GetSupportedVersions returns a list of versions supported by this operator
@@ -112,6 +137,13 @@ func (v version) Strategy() VersionStrategy {
 	panic(fmt.Sprintf("invalid version: %d", v))
 }
 
+func (v version) GetCNINetworkName() string {
+	if network, ok := versionToCNINetwork[v]; ok {
+		return network
+	}
+	panic(fmt.Sprintf("invalid version: %d", v))
+}
+
 // ParseVersion returns a version for the specified string
 func ParseVersion(str string) (Version, error) {
 	if v, ok := stringToVersion[str]; ok {
@@ -126,7 +158,7 @@ type nilVersionStrategy struct {
 
 var _ VersionStrategy = (*nilVersionStrategy)(nil)
 
-func (v *nilVersionStrategy) SetImageValues(ctx context.Context, cl client.Client, smcp *v1.ControlPlaneSpec) error {
+func (v *nilVersionStrategy) SetImageValues(ctx context.Context, cr *common.ControllerResources, smcp *v1.ControlPlaneSpec) error {
 	return nil
 }
 func (v *nilVersionStrategy) Validate(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
@@ -139,13 +171,17 @@ func (v *nilVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Clie
 	return nil
 }
 
+func (v *nilVersionStrategy) Render(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
+	return nil, fmt.Errorf("nil version does not support rendering")
+}
+
 type invalidVersionStrategy struct {
 	version
 }
 
 var _ VersionStrategy = (*invalidVersionStrategy)(nil)
 
-func (v *invalidVersionStrategy) SetImageValues(ctx context.Context, cl client.Client, smcp *v1.ControlPlaneSpec) error {
+func (v *invalidVersionStrategy) SetImageValues(ctx context.Context, cr *common.ControllerResources, smcp *v1.ControlPlaneSpec) error {
 	return fmt.Errorf("invalid version: %s", v.version)
 }
 func (v *invalidVersionStrategy) Validate(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
@@ -158,7 +194,12 @@ func (v *invalidVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.
 	return fmt.Errorf("invalid version: %s", v.version)
 }
 
+func (v *invalidVersionStrategy) Render(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
+	return nil, fmt.Errorf("invalid version: %s", v.version)
+}
+
 var versionToString = make(map[version]string)
+var versionToCNINetwork = make(map[version]string)
 var versionToStrategy = make(map[version]VersionStrategy)
 var stringToVersion = make(map[string]version)
 var supportedVersions []Version

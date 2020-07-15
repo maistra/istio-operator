@@ -13,7 +13,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
@@ -34,7 +33,7 @@ func TestReconcileNamespaceInMesh(t *testing.T) {
 	assert.Equals(ns.Labels[common.MemberOfKey], controlPlaneNamespace, "Unexpected or missing member-of label in namespace", t)
 
 	// check if net-attach-def exists
-	netAttachDefName, _ := cni.GetNetworkName(versions.DefaultVersion)
+	netAttachDefName := versions.DefaultVersion.GetCNINetworkName()
 	netAttachDef := newNetworkAttachmentDefinition()
 	err := cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: netAttachDefName}, netAttachDef)
 	if err != nil {
@@ -86,7 +85,7 @@ func TestRemoveNamespaceFromMesh(t *testing.T) {
 	assert.False(found, "Expected member-of label to be removed, but it is still present", t)
 
 	// check that net-attach-def was removed
-	netAttachDefName, _ := cni.GetNetworkName(versions.DefaultVersion)
+	netAttachDefName := versions.DefaultVersion.GetCNINetworkName()
 	netAttachDef := newNetworkAttachmentDefinition()
 	err := cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: netAttachDefName}, netAttachDef)
 	assertNotFound(err, "Expected NetworkAttachmentDefinition to be deleted, but it is still present", t)
