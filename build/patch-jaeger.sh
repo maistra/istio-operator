@@ -7,8 +7,10 @@ function jaeger_patch_values() {
 	}' ${HELM_DIR}/istio-telemetry/tracing/values.yaml
   sed_wrap -i -e '/jaeger:$/,/^[^ 	]/ {
           /jaeger:/a\
-  # include elasticsearch to support default configurations\
-  elasticsearch: {}
+    # include elasticsearch to support default configurations\
+    elasticsearch: {}\
+    install: true\
+    resourceName: jaeger
           /hub:/d
           /tag:/d
         }' ${HELM_DIR}/istio-telemetry/tracing/values.yaml
@@ -16,6 +18,8 @@ function jaeger_patch_values() {
 
 function jaeger_remove_files() {
   rm -f ${HELM_DIR}/istio-telemetry/tracing/templates/deployment-jaeger.yaml
+  rm -f ${HELM_DIR}/istio-telemetry/tracing/templates/deployment-zipkin.yaml
+  rm -f ${HELM_DIR}/istio-telemetry/tracing/templates/deployment-opencensus.yaml
   rm -f ${HELM_DIR}/istio-telemetry/tracing/templates/service-jaeger.yaml
   rm -f ${HELM_DIR}/istio-telemetry/tracing/templates/ingress.yaml
   rm -f ${HELM_DIR}/istio-telemetry/tracing/templates/pvc.yaml

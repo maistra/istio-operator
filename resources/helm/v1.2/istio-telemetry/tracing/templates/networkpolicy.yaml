@@ -16,14 +16,12 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-  {{ if eq .Values.jaeger.template "all-in-one"}}
-      app.kubernetes.io/name: jaeger
+  {{- if eq .Values.jaeger.template "all-in-one"}}
       app.kubernetes.io/component: all-in-one
-  {{ else }}
-      app.kubernetes.io/name: jaeger-query
-      app.kubernetes.io/component: query
-  {{ end }}
-      app.kubernetes.io/instance: jaeger
+  {{- else }}
+      app.kubernetes.io/component: collector
+  {{- end }}
+      app.kubernetes.io/instance: {{ default .Values.jaeger.resourceName "jaeger" }}
       app.kubernetes.io/part-of: jaeger
       app.kubernetes.io/managed-by: jaeger-operator
   ingress:

@@ -13,7 +13,12 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: jaeger-collector
+  {{- if eq .Values.jaeger.template "all-in-one"}}
+      app.kubernetes.io/component: all-in-one
+  {{- else }}
+      app.kubernetes.io/component: collector
+  {{- end }}
+      app.kubernetes.io/instance: {{ default .Values.jaeger.resourceName "jaeger" }}
   mtls:
     mode: DISABLED
 ---
@@ -32,23 +37,6 @@ spec:
   trafficPolicy:
     tls:
       mode: DISABLE
----
-apiVersion: security.istio.io/v1beta1
-kind: PeerAuthentication
-metadata:
-  name: disable-mtls-zipkin
-  namespace: {{ .Release.Namespace }}
-  labels:
-    app: {{ .Values.provider }}
-    chart: {{ template "tracing.chart" . }}
-    heritage: {{ .Release.Service }}
-    release: {{ .Release.Name }}
-spec:
-  selector:
-    matchLabels:
-      app: zipkin
-  mtls:
-    mode: DISABLED
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule

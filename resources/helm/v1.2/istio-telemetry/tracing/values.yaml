@@ -33,8 +33,10 @@ tracing:
 
 
   jaeger:
-  # include elasticsearch to support default configurations
-  elasticsearch: {}
+    # include elasticsearch to support default configurations
+    elasticsearch: {}
+    install: true
+    resourceName: jaeger
     image: all-in-one
     memory:
       max_traces: 50000

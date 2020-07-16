@@ -1,8 +1,8 @@
-{{ if and (eq .Values.provider "jaeger") (eq .Values.jaeger.template "all-in-one") }}
+{{ if and (eq .Values.provider "jaeger") (eq .Values.jaeger.template "all-in-one") .Values.jaeger.install }}
 apiVersion: jaegertracing.io/v1
 kind: "Jaeger"
 metadata:
-  name: "jaeger"
+  name: {{ default .Values.jaeger.resourceName "jaeger" }}
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 1.2.0

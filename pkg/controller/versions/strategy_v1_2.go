@@ -5,15 +5,19 @@ import (
 	"fmt"
 	"path"
 
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/controller/common/helm"
+	pkgerrors "github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/gengo/examples/set-gen/sets"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/helm"
 )
 
 const (
@@ -168,6 +172,34 @@ func (v *versionStrategyV1_2) Render(ctx context.Context, cr *common.ControllerR
 	err = spec.Istio.SetField("istio_cni.istio_cni_network", v.GetCNINetworkName())
 	if err != nil {
 		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.istio_cni_network: %v", err)
+	}
+
+	// XXX: using values.yaml settings, as things may have been overridden in profiles/templates
+	if isComponentEnabled(spec.Istio, v2_0ChartMapping[TracingChart].enabledField) {
+		// if we're not installing the jaeger resource, we need to determine what has been installed,
+		// so control plane rules are created correctly
+		if provider, _, _ := spec.Istio.GetString("tracing.provider"); provider == "jaeger" {
+			if install, _, _ := spec.Istio.GetBool("tracing.jaeger.install"); !install {
+				jaegerResource, _, _ := spec.Istio.GetString("tracing.jaeger.resourceName")
+				if jaegerResource == "" {
+					jaegerResource = "jaeger"
+				}
+				jaeger := &unstructured.Unstructured{}
+				jaeger.SetGroupVersionKind(schema.GroupVersionKind{Group: "jaegertracing.io", Kind: "Jaeger", Version: "v1"})
+				jaeger.SetName(jaegerResource)
+				jaeger.SetNamespace(smcp.GetNamespace())
+				if err := cr.Client.Get(ctx, client.ObjectKey{Name: jaeger.GetName(), Namespace: jaeger.GetNamespace()}, jaeger); err == nil {
+					if strategy, _, _ := unstructured.NestedString(jaeger.UnstructuredContent(), "spec", "strategy"); strategy == "" || strategy == "allInOne" {
+						spec.Istio.SetField("tracing.jaeger.template", "all-in-one")
+					} else {
+						// we just want it to not be all-in-one.  see the charts
+						spec.Istio.SetField("tracing.jaeger.template", "production-elasticsearch")
+					}
+				} else if !(errors.IsNotFound(err) || errors.IsGone(err)) {
+					return nil, pkgerrors.Wrapf(err, "error retrieving jaeger resource \"%s/%s\"", smcp.GetNamespace(), jaegerResource)
+				}
+			}
+		}
 	}
 
 	//Render the charts

@@ -16,9 +16,9 @@ items:
     namespace: {{ .Release.Namespace }}
     labels:
       app: {{ .Values.provider }}
-{{ if eq .Values.provider "jaeger" }}
+{{- if eq .Values.provider "jaeger" }}
       jaeger-infra: zipkin-service
-{{ end }}
+{{- end }}
       chart: {{ template "tracing.chart" . }}
       heritage: {{ .Release.Service }}
       release: {{ .Release.Name }}
@@ -30,17 +30,15 @@ items:
         protocol: TCP
         name: {{ .Values.service.name }}
     selector:
-{{ if eq .Values.provider "jaeger" }}
-  {{ if eq .Values.jaeger.template "all-in-one"}}
-      app.kubernetes.io/name: jaeger
+{{- if eq .Values.provider "jaeger" }}
+  {{- if eq .Values.jaeger.template "all-in-one"}}
       app.kubernetes.io/component: all-in-one
-  {{ else }}
-      app.kubernetes.io/name: jaeger-collector
+  {{- else }}
       app.kubernetes.io/component: collector
-  {{ end }}
-      app.kubernetes.io/instance: jaeger
+  {{- end }}
+      app.kubernetes.io/instance: {{ default .Values.jaeger.resourceName "jaeger" }}
       app.kubernetes.io/part-of: jaeger
       app.kubernetes.io/managed-by: jaeger-operator
-{{ else }}
+{{- else }}
       app: {{ .Values.provider }}
-{{ end }}
+{{- end }}
