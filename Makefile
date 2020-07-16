@@ -14,10 +14,10 @@
 
 -include Makefile.overrides
 
-MAISTRA_VERSION        ?= 1.2.0
+MAISTRA_VERSION        ?= 2.0.0
 MAISTRA_BRANCH         ?= maistra-2.0
-REPLACES_PRODUCT_CSV   ?= 1.1.0
-REPLACES_COMMUNITY_CSV ?= 1.1.0
+REPLACES_PRODUCT_CSV   ?= 1.1.4
+REPLACES_COMMUNITY_CSV ?= 1.1.8
 VERSION                ?= development
 IMAGE                  ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}
 CONTAINER_CLI          ?= docker
@@ -141,24 +141,24 @@ collect-1.1-templates:
 	cp ${RESOURCES_DIR}/smcp-templates/v1.1/base ${TEMPLATES_OUT_DIR}/v1.1
 
 ################################################################################
-# maistra v1.2
+# maistra v2.0
 ################################################################################
-.PHONY: update-1.2-charts
-update-1.2-charts:
-	HELM_DIR=${RESOURCES_DIR}/helm/v1.2 ISTIO_VERSION=1.6.0 ${SOURCE_DIR}/build/download-charts.sh
-	find ${RESOURCES_DIR}/helm/v1.2/istio-init/files/ -maxdepth 1 -name "*.crd.yaml" -delete
-	CRD_DIR=${RESOURCES_DIR}/helm/v1.2/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
+.PHONY: update-2.0-charts
+update-2.0-charts:
+	HELM_DIR=${RESOURCES_DIR}/helm/v2.0 ISTIO_VERSION=1.6.0 ${SOURCE_DIR}/build/download-charts.sh
+	find ${RESOURCES_DIR}/helm/v2.0/istio-init/files/ -maxdepth 1 -name "*.crd.yaml" -delete
+	CRD_DIR=${RESOURCES_DIR}/helm/v2.0/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
 
-.PHONY: collect-1.2-charts
-collect-1.2-charts:
+.PHONY: collect-2.0-charts
+collect-2.0-charts:
 	mkdir -p ${HELM_OUT_DIR}
-	cp -rf ${RESOURCES_DIR}/helm/v1.2 ${HELM_OUT_DIR}
+	cp -rf ${RESOURCES_DIR}/helm/v2.0 ${HELM_OUT_DIR}
 
-.PHONY: collect-1.2-templates
-collect-1.2-templates:
-	mkdir -p ${TEMPLATES_OUT_DIR}/v1.2
-	cp ${RESOURCES_DIR}/smcp-templates/v1.2/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v1.2/default
-	cp ${RESOURCES_DIR}/smcp-templates/v1.2/base ${TEMPLATES_OUT_DIR}/v1.2
+.PHONY: collect-2.0-templates
+collect-2.0-templates:
+	mkdir -p ${TEMPLATES_OUT_DIR}/v2.0
+	cp ${RESOURCES_DIR}/smcp-templates/v2.0/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v2.0/default
+	cp ${RESOURCES_DIR}/smcp-templates/v2.0/base ${TEMPLATES_OUT_DIR}/v2.0
 
 
 ################################################################################
@@ -189,7 +189,7 @@ check-clean-repo:
 generate-manifests: generate-community-manifests generate-product-manifests
 
 .PHONY: update-charts
-update-charts: update-1.0-charts update-1.1-charts update-1.2-charts
+update-charts: update-1.0-charts update-1.1-charts update-2.0-charts
 
 .PHONY: update-templates
 update-templates: update-1.0-templates update-1.1-templates
@@ -198,10 +198,10 @@ update-templates: update-1.0-templates update-1.1-templates
 # resource collection
 ################################################################################
 .PHONY: collect-charts
-collect-charts: collect-1.0-charts collect-1.1-charts collect-1.2-charts
+collect-charts: collect-1.0-charts collect-1.1-charts collect-2.0-charts
 
 .PHONY: collect-templates
-collect-templates: collect-1.0-templates collect-1.1-templates collect-1.2-templates
+collect-templates: collect-1.0-templates collect-1.1-templates collect-2.0-templates
 
 .PHONY: collect-olm-manifests
 collect-olm-manifests:

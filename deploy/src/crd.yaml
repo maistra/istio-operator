@@ -7903,7 +7903,7 @@ spec:
                 type: object
               runtime:
                 description: Runtime configuration for pilot (and galley, etc., pre
-                  1.2)
+                  2.0)
                 properties:
                   citadel:
                     description: Citadel configures overrides for citadel deployment/pods

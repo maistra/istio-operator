@@ -18,8 +18,8 @@ const (
 	V1_0
 	// V1_1 -> v1.1
 	V1_1
-	// V1_2 -> v1.2
-	V1_2
+	// V2_0 -> v2.0
+	V2_0
 	// Add new versions here, above lastKnownVersion. Remember to add a string mapping in init() below
 	lastKnownVersion version = iota - 1
 )
@@ -29,21 +29,21 @@ func init() {
 		InvalidVersion: "InvalidVersion",
 		V1_0:           "v1.0",
 		V1_1:           "v1.1",
-		V1_2:           "v1.2",
+		V2_0:           "v2.0",
 	}
 
 	versionToStrategy = map[version]VersionStrategy{
 		InvalidVersion: &invalidVersionStrategy{InvalidVersion},
 		V1_0:           &versionStrategyV1_0{version: V1_0},
 		V1_1:           &versionStrategyV1_1{version: V1_1},
-		V1_2:           &versionStrategyV1_2{V1_2},
+		V2_0:           &versionStrategyV2_0{V2_0},
 	}
 
 	versionToCNINetwork = map[version]string{
 		InvalidVersion: "",
 		V1_0:           "istio-cni",
 		V1_1:           "v1-1-istio-cni",
-		V1_2:           "v1-2-istio-cni",
+		V2_0:           "v2-0-istio-cni",
 	}
 
 	for v, str := range versionToString {

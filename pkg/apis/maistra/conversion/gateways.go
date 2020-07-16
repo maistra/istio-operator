@@ -336,7 +336,7 @@ func expansionPortsForVersion(version string) ([]corev1.ServicePort, error) {
 		fallthrough
 	case versions.V1_1.String():
 		return meshExpansionPortsV11, nil
-	case versions.V1_2.String():
+	case versions.V2_0.String():
 		return meshExpansionPortsV20, nil
 	default:
 		return nil, fmt.Errorf("cannot convert for unknown version: %s", version)

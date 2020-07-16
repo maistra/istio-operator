@@ -28,7 +28,7 @@ type olm struct {
 type images struct {
 	V1_0 v1_0ImageNames `json:"v1_0,omitempty"`
 	V1_1 v1_1ImageNames `json:"v1_1,omitempty"`
-	V2_0 v2_0ImageNames `json:"v1_2,omitempty"`
+	V2_0 v2_0ImageNames `json:"v2_0,omitempty"`
 }
 
 // V1_0ImageNames used by deployments
