@@ -18,16 +18,10 @@ spec:
     tracing:
       jaeger:
         template: all-in-one
-    galley:
-      image: galley-rhel8
     mixer:
       image: mixer-rhel8
     pilot:
       image: pilot-rhel8
-    security:
-      image: citadel-rhel8
-    sidecarInjectorWebhook:
-      image: sidecar-injector-rhel8
     gateways:
       istio-ingressgateway:
         ior_image: ior-rhel8

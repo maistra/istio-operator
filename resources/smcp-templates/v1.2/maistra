@@ -13,8 +13,6 @@ spec:
       oauthproxy:
         image: origin-oauth-proxy
         hub: quay.io/openshift
-    galley:
-      image: galley-ubi8
     grafana:
       image: grafana-ubi8
     tracing:
@@ -24,10 +22,6 @@ spec:
       image: mixer-ubi8
     pilot:
       image: pilot-ubi8
-    security:
-      image: citadel-ubi8
-    sidecarInjectorWebhook:
-      image: sidecar-injector-ubi8
     gateways:
       istio-ingressgateway:
         ior_image: istio-ior-ubi8

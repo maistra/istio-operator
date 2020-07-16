@@ -216,3 +216,9 @@ func isEnabled(spec *v1.HelmValues) bool {
 	return false
 }
 
+func isComponentEnabled(spec *v1.HelmValues, path string) bool {
+	if enabled, found, _ := spec.GetBool(path + ".enabled"); found {
+		return enabled
+	}
+	return false
+}

@@ -31,8 +31,12 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 		return nil, err
 	}
 
-	if err := rs.validateSMCPSpec(spec, "status.lastAppliedConfiguration"); err != nil {
-		return nil, err
+	if spec.Istio == nil {
+		spec.Istio = v1.NewHelmValues(nil)
+	}
+
+	if spec.ThreeScale == nil {
+		spec.ThreeScale = v1.NewHelmValues(nil)
 	}
 
 	err = spec.Istio.SetField("global.operatorNamespace", common.GetOperatorNamespace())
@@ -77,15 +81,4 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 		renderings[key] = value
 	}
 	return renderings, nil
-}
-
-func (rs *v1xRenderingStrategy) validateSMCPSpec(spec v1.ControlPlaneSpec, basePath string) error {
-	if spec.Istio == nil {
-		return fmt.Errorf("ServiceMeshControlPlane missing %s.istio section", basePath)
-	}
-
-	if _, ok, _ := spec.Istio.GetMap("global"); !ok {
-		return fmt.Errorf("ServiceMeshControlPlane missing %s.istio.global section", basePath)
-	}
-	return nil
 }

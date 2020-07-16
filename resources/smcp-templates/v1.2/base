@@ -27,20 +27,6 @@ spec:
     istio_cni:
       repair:
         enabled: false
-    security:
-      # constrain resources for use in smaller environments
-      resources:
-        requests:
-          cpu: 10m
-          memory: 128Mi
-        limits:
-    galley:
-      # constrain resources for use in smaller environments
-      resources:
-        requests:
-          cpu: 10m
-          memory: 128Mi
-        limits:
     pilot:
       resources:
         requests:

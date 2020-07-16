@@ -81,6 +81,9 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 				}
 			}
 			if len(gatewayValues) > 0 {
+				if err := setHelmValue(gatewayValues, "name", "istio-ingressgateway"); err != nil {
+					return err
+				}
 				if err := setHelmValue(values, "gateways.istio-ingressgateway", gatewayValues); err != nil {
 					return err
 				}
@@ -93,6 +96,9 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 	if gateways.ClusterEgress != nil {
 		if gatewayValues, err := gatewayEgressConfigToValues(gateways.ClusterEgress); err == nil {
 			if len(gatewayValues) > 0 {
+				if err := setHelmValue(gatewayValues, "name", "istio-egressgateway"); err != nil {
+					return err
+				}
 				if err := setHelmValue(values, "gateways.istio-egressgateway", gatewayValues); err != nil {
 					return err
 				}
@@ -105,6 +111,9 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 	for name, gateway := range gateways.IngressGateways {
 		if gatewayValues, err := gatewayIngressConfigToValues(&gateway); err == nil {
 			if len(gatewayValues) > 0 {
+				if err := setHelmValue(gatewayValues, "name", name); err != nil {
+					return err
+				}
 				if err := setHelmValue(values, "gateways."+name, gatewayValues); err != nil {
 					return err
 				}
@@ -117,6 +126,9 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 	for name, gateway := range gateways.EgressGateways {
 		if gatewayValues, err := gatewayEgressConfigToValues(&gateway); err == nil {
 			if len(gatewayValues) > 0 {
+				if err := setHelmValue(gatewayValues, "name", name); err != nil {
+					return err
+				}
 				if err := setHelmValue(values, "gateways."+name, gatewayValues); err != nil {
 					return err
 				}
