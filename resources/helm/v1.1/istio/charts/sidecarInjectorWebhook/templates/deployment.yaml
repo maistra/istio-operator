@@ -7,7 +7,7 @@ metadata:
     app: {{ template "sidecar-injector.name" . }}
     chart: {{ template "sidecar-injector.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.1.4
+    maistra-version: 1.1.5
     release: {{ .Release.Name }}
     istio: sidecar-injector
 spec:
@@ -55,6 +55,17 @@ spec:
             - --healthCheckInterval=2s
             - --healthCheckFile=/tmp/health
             - --reconcileWebhookConfig=false
+          env:
+{{- if .Values.global.tls }}
+{{- if .Values.global.tls.minProtocolVersion }}
+          - name: TLS_MIN_PROTOCOL_VERSION
+            value: {{ .Values.global.tls.minProtocolVersion }}
+{{- end }}
+{{- if .Values.global.tls.maxProtocolVersion }}
+          - name: TLS_MAX_PROTOCOL_VERSION
+            value: {{ .Values.global.tls.maxProtocolVersion }}
+{{- end }}
+{{- end }}
             - --port=8443
 {{- if .Values.injectPodRedirectAnnot }}
             - --injectPodRedirectAnnot

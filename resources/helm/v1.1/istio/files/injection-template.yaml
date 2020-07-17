@@ -312,6 +312,12 @@ containers:
     value: "{{ .ProxyConfig.GetTracing.GetStackdriver.GetMaxNumberOfMessageEvents.Value }}"
   {{- end }}
   {{- end }}
+{{- if isset .ObjectMeta.Annotations `sidecar.maistra.io/proxyEnv` }}
+{{- range $key, $value := fromJSON (index .ObjectMeta.Annotations `sidecar.maistra.io/proxyEnv`) }}
+  - name: {{ $key }}
+    value: "{{ $value }}"
+{{- end }}
+{{- end }}
   imagePullPolicy: {{ .Values.global.imagePullPolicy }}
   {{ if ne (annotation .ObjectMeta `status.sidecar.istio.io/port` (valueOrDefault .Values.global.proxy.statusPort 0 )) `0` }}
   readinessProbe:
@@ -460,11 +466,7 @@ dnsConfig:
 {{- end }}
 podRedirectAnnot:
 {{- if and (.Values.istio_cni.enabled) (ne .Values.istio_cni.istio_cni_network "") }}
-{{ if isset .ObjectMeta.Annotations `k8s.v1.cni.cncf.io/networks` }}
-   k8s.v1.cni.cncf.io/networks: "{{ index .ObjectMeta.Annotations `k8s.v1.cni.cncf.io/networks`}}, {{.Values.istio_cni.istio_cni_network}}"
-{{- else }}
-   k8s.v1.cni.cncf.io/networks: "{{ .Values.istio_cni.istio_cni_network }}"
-{{- end }}
+   k8s.v1.cni.cncf.io/networks: '{{ appendMultusNetwork (index .ObjectMeta.Annotations `k8s.v1.cni.cncf.io/networks`) .Values.istio_cni.istio_cni_network }}'
 {{- end }}
    sidecar.istio.io/interceptionMode: "{{ annotation .ObjectMeta `sidecar.istio.io/interceptionMode` .ProxyConfig.InterceptionMode }}"
    traffic.sidecar.istio.io/includeOutboundIPRanges: "{{ annotation .ObjectMeta `traffic.sidecar.istio.io/includeOutboundIPRanges` .Values.global.proxy.includeIPRanges }}"
