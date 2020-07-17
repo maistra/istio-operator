@@ -40,18 +40,6 @@ type controlPlaneInstanceReconciler struct {
 // ensure controlPlaneInstanceReconciler implements ControlPlaneInstanceReconciler
 var _ ControlPlaneInstanceReconciler = &controlPlaneInstanceReconciler{}
 
-// these components have to be installed in the specified order
-var orderedCharts = [][]string{
-	{"istio"}, // core istio resources
-	{"istio/charts/security"},
-	{"istio/charts/prometheus"},
-	{"istio/charts/tracing"},
-	{"istio/charts/galley"},
-	{"istio/charts/mixer", "istio/charts/pilot", "istio/charts/gateways", "istio/charts/sidecarInjectorWebhook"},
-	{"istio/charts/grafana"},
-	{"istio/charts/kiali"},
-}
-
 const (
 	// Event reasons
 	eventReasonInstalling              = "Installing"
@@ -106,7 +94,14 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		}
 	}()
 
-	if r.renderings == nil {
+	var version versions.Version
+	version, err = versions.ParseVersion(r.Instance.Spec.Version)
+	if err != nil {
+		log.Error(err, "invalid version specified")
+		return
+	}
+
+if r.renderings == nil {
 		// error handling
 		defer func() {
 			if err != nil {
@@ -114,13 +109,6 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 				updateControlPlaneConditions(r.Status, err)
 			}
 		}()
-
-		var version versions.Version
-		version, err = versions.ParseVersion(r.Instance.Spec.Version)
-		if err != nil {
-			log.Error(err, "invalid version specified")
-			return
-		}
 
 		// Render the templates
 		r.renderings, err = version.Strategy().Render(ctx, &r.ControllerResources, r.Instance)
@@ -131,6 +119,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			err = errors.Wrap(err, reconciliationMessage)
 			return
 		}
+		r.Status.LastAppliedConfiguration = r.Instance.Status.LastAppliedConfiguration
 
 		// install istio
 
@@ -173,7 +162,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 
 		// initialize new Status
 		componentStatuses := make([]status.ComponentStatus, 0, len(r.Status.ComponentStatus))
-		for _, charts := range r.getChartsInInstallationOrder() {
+		for _, charts := range r.getChartsInInstallationOrder(version.Strategy().GetChartInstallOrder()) {
 			for _, chartName := range charts {
 				componentName := componentFromChartName(chartName)
 				componentStatus := r.Status.FindComponentByName(componentName)
@@ -247,7 +236,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 	}
 
 	// create components
-	for _, charts := range r.getChartsInInstallationOrder() {
+	for _, charts := range r.getChartsInInstallationOrder(version.Strategy().GetChartInstallOrder()) {
 		r.waitForComponents = sets.NewString()
 		for _, chart := range charts {
 			component := componentFromChartName(chart)
@@ -448,7 +437,7 @@ func (r *controlPlaneInstanceReconciler) IsFinished() bool {
 // - keys in orderedCharts
 // - other istio components that have the "istio/" prefix
 // - 3scale and other components
-func (r *controlPlaneInstanceReconciler) getChartsInInstallationOrder() [][]string {
+func (r *controlPlaneInstanceReconciler) getChartsInInstallationOrder(orderedCharts [][]string) [][]string {
 	charts := make([][]string, 0, len(r.renderings))
 	seen := sets.NewString()
 

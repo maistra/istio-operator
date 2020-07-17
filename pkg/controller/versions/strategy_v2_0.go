@@ -98,8 +98,8 @@ var specialCharts = sets.NewString(GatewayIngressChart, GatewayEgressChart, Thre
 var v2_0ChartOrder = [][]string{
 	{DiscoveryChart},
 	{MeshConfigChart},
-	{MixerPolicyChart},
-	{TelemetryCommonChart, PrometheusChart, MixerTelemetryChart, TracingChart},
+	{PrometheusChart},
+	{MixerPolicyChart, TelemetryCommonChart, MixerTelemetryChart, TracingChart},
 	{GrafanaChart},
 	{KialiChart},
 	{ThreeScaleChart},
@@ -139,22 +139,29 @@ func (v *versionStrategyV2_0) ValidateUpgrade(ctx context.Context, cl client.Cli
 	return nil
 }
 
+func (v *versionStrategyV2_0) GetChartInstallOrder() [][]string {
+	return v2_0ChartOrder
+}
+
 func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
 	log := common.LogFromContext(ctx)
 	//Generate the spec
 	// XXX: we should apply v2 templates first, then convert to values.yaml (v1)
 	v1spec := &v1.ControlPlaneSpec{}
-	if err := cr.Scheme.Convert(&smcp.Spec, &v1spec, nil); err != nil {
+	if err := cr.Scheme.Convert(&smcp.Spec, v1spec, nil); err != nil {
 		return nil, err
 	}
 	v1spec.Version = v.String()
 
-	spec, err := v.applyTemplates(ctx, cr, *v1spec)
+	var err error
+	smcp.Status.LastAppliedConfiguration, err = v.applyTemplates(ctx, cr, *v1spec)
 	if err != nil {
 		log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates")
 
 		return nil, err
 	}
+
+	spec := &smcp.Status.LastAppliedConfiguration
 
 	if spec.Istio == nil {
 		spec.Istio = v1.NewHelmValues(nil)

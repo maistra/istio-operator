@@ -19,17 +19,20 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 	log := common.LogFromContext(ctx)
 	//Generate the spec
 	v1spec := &v1.ControlPlaneSpec{}
-	if err := cr.Scheme.Convert(&smcp.Spec, &v1spec, nil); err != nil {
+	if err := cr.Scheme.Convert(&smcp.Spec, v1spec, nil); err != nil {
 		return nil, err
 	}
 	v1spec.Version = v.String()
 
-	spec, err := v.applyTemplates(ctx, cr, *v1spec)
+	var err error
+	smcp.Status.LastAppliedConfiguration, err = v.applyTemplates(ctx, cr, *v1spec)
 	if err != nil {
 		log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates")
 
 		return nil, err
 	}
+
+	spec := &smcp.Status.LastAppliedConfiguration
 
 	if spec.Istio == nil {
 		spec.Istio = v1.NewHelmValues(nil)

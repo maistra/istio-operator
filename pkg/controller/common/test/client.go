@@ -296,7 +296,7 @@ func (c *fakeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts .
 		FieldSelector: dcOptions.FieldSelector,
 	}
 	gvr, _ := meta.UnsafeGuessKindToResource(gvk)
-	o, err := c.Invokes(testing.NewListAction(gvr, gvk, listOptions.Namespace, listOptions), nil)
+	o, err := c.Invokes(testing.NewListAction(gvr, gvk, listOptions.Namespace, *listOptions.AsListOptions()), nil)
 	if err != nil {
 		return err
 	}

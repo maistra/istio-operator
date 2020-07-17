@@ -13,6 +13,18 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
+// these components have to be installed in the specified order
+var v1_0ChartOrder = [][]string{
+	{"istio"}, // core istio resources
+	{"istio/charts/security"},
+	{"istio/charts/prometheus"},
+	{"istio/charts/tracing"},
+	{"istio/charts/galley"},
+	{"istio/charts/mixer", "istio/charts/pilot", "istio/charts/gateways", "istio/charts/sidecarInjectorWebhook"},
+	{"istio/charts/grafana"},
+	{"istio/charts/kiali"},
+}
+
 type versionStrategyV1_0 struct {
 	version
 	renderImpl v1xRenderingStrategy
@@ -74,6 +86,10 @@ func (v *versionStrategyV1_0) ValidateDowngrade(ctx context.Context, cl client.C
 func (v *versionStrategyV1_0) ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	// nothing to upgrade from
 	return nil
+}
+
+func (v *versionStrategyV1_0) GetChartInstallOrder() [][]string {
+	return v1_0ChartOrder
 }
 
 func (v *versionStrategyV1_0) Render(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {

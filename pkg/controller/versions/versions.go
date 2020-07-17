@@ -94,6 +94,7 @@ type ValidationStrategy interface {
 
 // RenderingStrategy is an interface used by the reconciler to manage rendering of charts.
 type RenderingStrategy interface {
+	GetChartInstallOrder() [][]string
 	SetImageValues(ctx context.Context, cr *common.ControllerResources, smcp *v1.ControlPlaneSpec) error
 	Render(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error)
 }
@@ -170,7 +171,9 @@ func (v *nilVersionStrategy) ValidateDowngrade(ctx context.Context, cl client.Cl
 func (v *nilVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	return nil
 }
-
+func (v *nilVersionStrategy) GetChartInstallOrder() [][]string {
+	return nil
+}
 func (v *nilVersionStrategy) Render(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
 	return nil, fmt.Errorf("nil version does not support rendering")
 }
@@ -192,6 +195,9 @@ func (v *invalidVersionStrategy) ValidateDowngrade(ctx context.Context, cl clien
 }
 func (v *invalidVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	return fmt.Errorf("invalid version: %s", v.version)
+}
+func (v *invalidVersionStrategy) GetChartInstallOrder() [][]string {
+	return nil
 }
 
 func (v *invalidVersionStrategy) Render(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
