@@ -384,7 +384,7 @@ func populateIstiodTelemetryValues(in *v2.ControlPlaneSpec, values map[string]in
 		if err := setHelmBoolValue(telemetryValues, "v2.stackdriver.disableOutbound", stackdriver.DisableOutbound); err != nil {
 			return err
 		}
-		if err := setHelmMapValue(telemetryValues, "v2.stackdriver.configOverride", stackdriver.ConfigOverride); err != nil {
+		if err := setHelmStringMapValue(telemetryValues, "v2.stackdriver.configOverride", stackdriver.ConfigOverride); err != nil {
 			return err
 		}
 	}

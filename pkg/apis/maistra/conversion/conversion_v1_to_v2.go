@@ -9,6 +9,15 @@ import (
 
 // Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec converts a v1 ControlPlaneSpec to its v2 equivalent.
 func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec, out *v2.ControlPlaneSpec, s conversion.Scope) error {
+	values := in.Istio.GetContent()
+	if err := populateGatewaysConfig(values, out.Gateways); err != nil {
+		return err
+	}
+
+	if err := populateAddonsConfig(values, out.Addons); err != nil {
+		return err
+	}
+
 	return nil
 }
 

@@ -32,7 +32,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 		}
 	}
 	if len(security.MutualTLS.Trust.AdditionalDomains) > 0 {
-		if err := setHelmSliceValue(values, "global.trustDomainAliases", security.MutualTLS.Trust.AdditionalDomains); err != nil {
+		if err := setHelmStringSliceValue(values, "global.trustDomainAliases", security.MutualTLS.Trust.AdditionalDomains); err != nil {
 			return err
 		}
 	}

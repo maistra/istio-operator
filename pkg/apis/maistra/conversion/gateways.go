@@ -171,7 +171,7 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		}
 	}
 	if len(in.Service.LoadBalancerSourceRanges) > 0 {
-		if err := setHelmSliceValue(values, "loadBalancerSourceRanges", in.Service.LoadBalancerSourceRanges); err != nil {
+		if err := setHelmStringSliceValue(values, "loadBalancerSourceRanges", in.Service.LoadBalancerSourceRanges); err != nil {
 			return nil, err
 		}
 	}
@@ -181,7 +181,7 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		}
 	}
 	if len(in.Service.ExternalIPs) > 0 {
-		if err := setHelmSliceValue(values, "externalIPs", in.Service.ExternalIPs); err != nil {
+		if err := setHelmStringSliceValue(values, "externalIPs", in.Service.ExternalIPs); err != nil {
 			return nil, err
 		}
 	}
@@ -191,7 +191,7 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		}
 	}
 	if len(in.Service.Metadata.Labels) > 0 {
-		if err := setHelmMapValue(values, "labels", in.Service.Metadata.Labels); err != nil {
+		if err := setHelmStringMapValue(values, "labels", in.Service.Metadata.Labels); err != nil {
 			return nil, err
 		}
 	}
@@ -326,6 +326,62 @@ func gatewayIngressConfigToValues(in *v2.IngressGatewayConfig) (map[string]inter
 	}
 
 	return values, nil
+}
+
+func populateGatewaysConfig(in map[string]interface{}, out *v2.GatewaysConfig) error {
+	gateways, ok := in["gateways"].(map[string]interface{})
+	if ok {
+		for name, gateway := range gateways {
+			gc := v2.GatewayConfig{}
+			gatewayMap, ok := gateway.(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("Failed to parse gateway.%s: cannot cast to map[string]interface{}", name)
+			}
+
+			gatewayValuesToConfig(gatewayMap, &gc)
+			// Put it in the correct bucket
+			if name == "istio-ingressgateway" {
+				igc := &v2.IngressGatewayConfig{
+					GatewayConfig: gc,
+				}
+
+				// TODO: igc.MeshExpansionPorts
+				out.Ingress = igc
+			} else if name == "istio-egressgateway" {
+				out.Egress = &gc
+			} else {
+				out.AdditionalGateways[name] = gc
+			}
+
+		}
+	}
+	return nil
+}
+
+func gatewayValuesToConfig(in map[string]interface{}, out *v2.GatewayConfig) error {
+	out.Enabled = getHelmBoolValue(in, "enabled")
+	out.Namespace = getHelmStringValue(in, "namespace")
+	out.RequestedNetworkView = strings.Split(getHelmStringValue(in, "env.ISTIO_META_REQUESTED_NETWORK_VIEW"), ",")
+	if routerMode := getHelmStringValue(in, "env.ISTIO_META_ROUTER_MODE"); routerMode != "" {
+		out.RouterMode = v2.RouterModeType(routerMode)
+	} else {
+		out.RouterMode = v2.RouterModeTypeSNIDNAT
+	}
+
+	out.EnableSDS = getHelmBoolValue(in, "sds.enabled")
+
+	// Service-specific config
+	out.Service = v2.GatewayServiceConfig{}
+	out.Service.LoadBalancerIP = getHelmStringValue(in, "loadBalancerIP")
+	out.Service.LoadBalancerSourceRanges = getHelmStringSliceValue(in, "loadBalancerSourceRanges")
+	if externalTrafficPolicy := getHelmStringValue(in, "externalTrafficPolicy"); externalTrafficPolicy != "" {
+		out.Service.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyType(externalTrafficPolicy)
+	} else {
+		out.Service.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
+	}
+	out.Service.ExternalIPs = getHelmStringSliceValue(in, "externalIPs")
+	out.Service.Metadata.Labels = getHelmStringMapValue(in, "labels")
+	return nil
 }
 
 func expansionPortsForVersion(version string) ([]corev1.ServicePort, error) {

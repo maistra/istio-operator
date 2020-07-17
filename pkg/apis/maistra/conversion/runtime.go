@@ -34,7 +34,7 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 		pod := runtime.Defaults.Pod
 		if pod != nil {
 			if len(pod.NodeSelector) > 0 {
-				if err := setHelmMapValue(values, "global.defaultNodeSelector", pod.NodeSelector); err != nil {
+				if err := setHelmStringMapValue(values, "global.defaultNodeSelector", pod.NodeSelector); err != nil {
 					return err
 				}
 			}
@@ -71,7 +71,7 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 				for _, secret := range container.ImagePullSecrets {
 					pullSecretsValues = append(pullSecretsValues, secret.Name)
 				}
-				if err := setHelmSliceValue(values, "global.imagePullSecrets", pullSecretsValues); err != nil {
+				if err := setHelmStringSliceValue(values, "global.imagePullSecrets", pullSecretsValues); err != nil {
 					return err
 				}
 			}
@@ -186,7 +186,7 @@ func populateDeploymentHelmValues(deployment *v2.DeploymentRuntimeConfig, values
 
 func populatePodHelmValues(pod *v2.PodRuntimeConfig, values map[string]interface{}) error {
 	if len(pod.Metadata.Annotations) > 0 {
-		if err := setHelmMapValue(values, "podAnnotations", pod.Metadata.Annotations); err != nil {
+		if err := setHelmStringMapValue(values, "podAnnotations", pod.Metadata.Annotations); err != nil {
 			return err
 		}
 	}
@@ -199,7 +199,7 @@ func populatePodHelmValues(pod *v2.PodRuntimeConfig, values map[string]interface
 
 	// Scheduling
 	if len(pod.NodeSelector) > 0 {
-		if err := setHelmMapValue(values, "nodeSelector", pod.NodeSelector); err != nil {
+		if err := setHelmStringMapValue(values, "nodeSelector", pod.NodeSelector); err != nil {
 			return err
 		}
 	}

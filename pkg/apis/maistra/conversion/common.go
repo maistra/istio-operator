@@ -42,10 +42,53 @@ func setHelmBoolValue(obj map[string]interface{}, path string, value bool) error
 	return setHelmValue(obj, path, value)
 }
 
-func setHelmSliceValue(obj map[string]interface{}, path string, value []string) error {
+func setHelmStringSliceValue(obj map[string]interface{}, path string, value []string) error {
 	return setHelmValue(obj, path, value)
 }
 
-func setHelmMapValue(obj map[string]interface{}, path string, value map[string]string) error {
+func setHelmStringMapValue(obj map[string]interface{}, path string, value map[string]string) error {
 	return setHelmValue(obj, path, value)
+}
+
+func getHelmBoolValue(obj map[string]interface{}, path string) *bool {
+	val, found, err := unstructured.NestedFieldCopy(obj, strings.Split(path, ".")...)
+	if !found || err != nil {
+		return nil
+	} else if valString := val.(string); strings.ToLower(valString) == "true" {
+		ret := true
+		return &ret
+	} else {
+		ret := false
+		return &ret
+	}
+}
+
+func getHelmStringValue(obj map[string]interface{}, path string) string {
+	val, found, err := unstructured.NestedFieldCopy(obj, strings.Split(path, ".")...)
+	if !found || err != nil {
+		return ""
+	} else if valString, ok := val.(string); ok {
+		return valString
+	}
+	return ""
+}
+
+func getHelmStringSliceValue(obj map[string]interface{}, path string) []string {
+	val, found, err := unstructured.NestedFieldCopy(obj, strings.Split(path, ".")...)
+	if !found || err != nil {
+		return nil
+	} else if valString, ok := val.([]string); ok {
+		return valString
+	}
+	return nil
+}
+
+func getHelmStringMapValue(obj map[string]interface{}, path string) map[string]string {
+	val, found, err := unstructured.NestedFieldCopy(obj, strings.Split(path, ".")...)
+	if !found || err != nil {
+		return nil
+	} else if mapVal, ok := val.(map[string]string); ok {
+		return mapVal
+	}
+	return nil
 }

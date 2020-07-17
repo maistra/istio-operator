@@ -52,7 +52,7 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 				for _, secret := range cni.Runtime.ImagePullSecrets {
 					pullSecretsValues = append(pullSecretsValues, secret.Name)
 				}
-				if err := setHelmSliceValue(istioCNI, "imagePullSecrets", pullSecretsValues); err != nil {
+				if err := setHelmStringSliceValue(istioCNI, "imagePullSecrets", pullSecretsValues); err != nil {
 					return err
 				}
 			}
@@ -157,7 +157,7 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 
 	// DNS
 	if len(proxy.Networking.DNS.SearchSuffixes) > 0 {
-		if err := setHelmSliceValue(values, "global.podDNSSearchNamespaces", proxy.Networking.DNS.SearchSuffixes); err != nil {
+		if err := setHelmStringSliceValue(values, "global.podDNSSearchNamespaces", proxy.Networking.DNS.SearchSuffixes); err != nil {
 			return err
 		}
 	}

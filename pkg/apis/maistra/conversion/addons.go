@@ -71,19 +71,26 @@ func populateAddonIngressValues(ingress *v2.ComponentIngressConfig, values map[s
 		}
 	}
 	if len(ingress.Hosts) > 0 {
-		if err := setHelmSliceValue(values, "hosts", ingress.Hosts); err != nil {
+		if err := setHelmStringSliceValue(values, "hosts", ingress.Hosts); err != nil {
 			return err
 		}
 	}
 	if len(ingress.Metadata.Annotations) > 0 {
-		if err := setHelmMapValue(values, "annotations", ingress.Metadata.Annotations); err != nil {
+		if err := setHelmStringMapValue(values, "annotations", ingress.Metadata.Annotations); err != nil {
 			return err
 		}
 	}
 	if len(ingress.TLS) > 0 {
-		if err := setHelmMapValue(values, "tls", ingress.TLS); err != nil {
+		if err := setHelmStringMapValue(values, "tls", ingress.TLS); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func populateAddonsConfig(in map[string]interface{}, out *v2.AddonsConfig) error {
+	if err := populateGrafanaAddonConfig(in, out); err != nil {
+		return err
 	}
 	return nil
 }

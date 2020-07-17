@@ -71,17 +71,17 @@ func populateJaegerAddonValues(jaeger *v2.JaegerTracerConfig, values map[string]
 				}
 			}
 			if len(jaeger.Install.Config.Storage.Elasticsearch.Storage) > 0 {
-				if err := setHelmMapValue(jaegerValues, "elasticsearch.storage", jaeger.Install.Config.Storage.Elasticsearch.Storage); err != nil {
+				if err := setHelmStringMapValue(jaegerValues, "elasticsearch.storage", jaeger.Install.Config.Storage.Elasticsearch.Storage); err != nil {
 					return err
 				}
 			}
 			if len(jaeger.Install.Config.Storage.Elasticsearch.RedundancyPolicy) > 0 {
-				if err := setHelmMapValue(jaegerValues, "elasticsearch.redundancyPolicy", jaeger.Install.Config.Storage.Elasticsearch.RedundancyPolicy); err != nil {
+				if err := setHelmStringMapValue(jaegerValues, "elasticsearch.redundancyPolicy", jaeger.Install.Config.Storage.Elasticsearch.RedundancyPolicy); err != nil {
 					return err
 				}
 			}
 			if len(jaeger.Install.Config.Storage.Elasticsearch.IndexCleaner) > 0 {
-				if err := setHelmMapValue(jaegerValues, "elasticsearch.esIndexCleaner", jaeger.Install.Config.Storage.Elasticsearch.IndexCleaner); err != nil {
+				if err := setHelmStringMapValue(jaegerValues, "elasticsearch.esIndexCleaner", jaeger.Install.Config.Storage.Elasticsearch.IndexCleaner); err != nil {
 					return err
 				}
 			}
@@ -107,7 +107,7 @@ func populateJaegerAddonValues(jaeger *v2.JaegerTracerConfig, values map[string]
 			}
 		}
 		if len(jaeger.Install.Ingress.Metadata.Annotations) > 0 {
-			if err := setHelmMapValue(tracingValues, "ingress.annotations", jaeger.Install.Ingress.Metadata.Annotations); err != nil {
+			if err := setHelmStringMapValue(tracingValues, "ingress.annotations", jaeger.Install.Ingress.Metadata.Annotations); err != nil {
 				return err
 			}
 		}

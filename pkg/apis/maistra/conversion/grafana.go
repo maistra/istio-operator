@@ -1,6 +1,8 @@
 package conversion
 
 import (
+	corev1 "k8s.io/api/core/v1"
+
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
@@ -25,12 +27,12 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 		}
 	}
 	if len(grafana.Install.Config.Env) > 0 {
-		if err := setHelmMapValue(grafanaValues, "env", grafana.Install.Config.Env); err != nil {
+		if err := setHelmStringMapValue(grafanaValues, "env", grafana.Install.Config.Env); err != nil {
 			return err
 		}
 	}
 	if len(grafana.Install.Config.EnvSecrets) > 0 {
-		if err := setHelmMapValue(grafanaValues, "envSecrets", grafana.Install.Config.EnvSecrets); err != nil {
+		if err := setHelmStringMapValue(grafanaValues, "envSecrets", grafana.Install.Config.EnvSecrets); err != nil {
 			return err
 		}
 	}
@@ -76,7 +78,7 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 	}
 	// XXX: skipping most service settings for now
 	if len(grafana.Install.Service.Metadata.Annotations) > 0 {
-		if err := setHelmMapValue(grafanaValues, "service.annotations", grafana.Install.Service.Metadata.Annotations); err != nil {
+		if err := setHelmStringMapValue(grafanaValues, "service.annotations", grafana.Install.Service.Metadata.Annotations); err != nil {
 			return err
 		}
 	}
@@ -110,6 +112,56 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 			return err
 		}
 	}
+
+	return nil
+}
+
+func populateGrafanaAddonConfig(in map[string]interface{}, out *v2.AddonsConfig) error {
+	if out.Visualization.Grafana == nil {
+		out.Visualization.Grafana = &v2.GrafanaAddonConfig{}
+	}
+	out.Visualization.Grafana.Enabled = getHelmBoolValue(in, "grafana.enabled")
+
+	if !*out.Visualization.Grafana.Enabled {
+		out.Visualization.Grafana.Install = nil
+
+		// XXX: Not entirely sure here. Should we still set this if we install grafana?
+		// 		I opted for only setting when not installing
+		if address := getHelmStringValue(in, "kiali.dashboard.grafanaURL"); address != "" {
+			out.Visualization.Grafana.Address = &address
+		}
+		return nil
+	}
+
+	if out.Visualization.Grafana.Install == nil {
+		out.Visualization.Grafana.Install = &v2.GrafanaInstallConfig{
+			Config:      v2.GrafanaConfig{},
+			Persistence: &v2.ComponentPersistenceConfig{},
+			Service:     v2.ComponentServiceConfig{},
+		}
+	}
+	out.Visualization.Grafana.Install.Config.Env = getHelmStringMapValue(in, "grafana.env")
+	out.Visualization.Grafana.Install.Config.EnvSecrets = getHelmStringMapValue(in, "grafana.envSecrets")
+
+	out.Visualization.Grafana.Install.Persistence.Enabled = getHelmBoolValue(in, "grafana.persist")
+	out.Visualization.Grafana.Install.Persistence.StorageClassName = getHelmStringValue(in, "grafana.storageClassName")
+	out.Visualization.Grafana.Install.Persistence.AccessMode = corev1.PersistentVolumeAccessMode(getHelmStringValue(in, "grafana.accessMode"))
+
+	// XXX: in the v2->v1 conversions there's grafana.storageCapacity, but I couldn't find that in the charts?!
+
+	// XXX: still missing: ingress service settings
+
+	out.Visualization.Grafana.Install.Service.Metadata.Annotations = getHelmStringMapValue(in, "grafana.service.annotations")
+
+	// XXX: I'm a bit confused by the fact that sometimes, ConfigGroup == nil means disabled, and sometimes we have explicit Enablement switches
+	if grafanaSecurityEnabled := getHelmBoolValue(in, "grafana.security.enabled"); *grafanaSecurityEnabled {
+		out.Visualization.Grafana.Install.Security = &v2.GrafanaSecurityConfig{}
+		out.Visualization.Grafana.Install.Security.SecretName = getHelmStringValue(in, "grafana.security.secretName")
+		out.Visualization.Grafana.Install.Security.UsernameKey = getHelmStringValue(in, "grafana.security.usernameKey")
+		out.Visualization.Grafana.Install.Security.PassphraseKey = getHelmStringValue(in, "grafana.security.passphraseKey")
+	}
+
+	// XXX: Still missing runtime
 
 	return nil
 }

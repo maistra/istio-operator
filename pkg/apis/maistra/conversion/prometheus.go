@@ -53,7 +53,7 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 		return err
 	}
 	if len(prometheus.Install.Service.Metadata.Annotations) > 0 {
-		if err := setHelmMapValue(prometheusValues, "service.annotations", prometheus.Install.Service.Metadata.Annotations); err != nil {
+		if err := setHelmStringMapValue(prometheusValues, "service.annotations", prometheus.Install.Service.Metadata.Annotations); err != nil {
 			return err
 		}
 	}
