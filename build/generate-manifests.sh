@@ -91,6 +91,7 @@ function generateCSV() {
      exit 1
   fi
 
+  ICON=$(cat ${MY_LOCATION}/manifest-templates/${BUILD_TYPE}_rgb_icon_default_128px.png | base64 | sed -e 's+^+      +')
   local csv_path=${BUNDLE_DIR}/${OPERATOR_NAME}.v${MAISTRA_VERSION}.clusterserviceversion.yaml
   cp ${MY_LOCATION}/manifest-templates/clusterserviceversion.yaml ${csv_path}
 
@@ -117,6 +118,10 @@ function generateCSV() {
   sed -i -e '/__CLUSTER_ROLE_RULES__/{
     s/__CLUSTER_ROLE_RULES__//
     r '<(echo "$CLUSTER_ROLE_RULES")'
+  }' ${csv_path}
+  sed -i -e '/__ICON__/{
+    s/__ICON__//
+    r '<(echo "$ICON")'
   }' ${csv_path}
   if [ -z "$REPLACES_CSV" ]; then
     sed -i '/__REPLACES_CSV__/d' ${csv_path}

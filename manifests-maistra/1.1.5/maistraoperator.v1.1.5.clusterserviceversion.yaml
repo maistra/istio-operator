@@ -12,7 +12,7 @@ metadata:
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: maistra/istio-ubi8-operator:1.1.5
-    createdAt: 2020-07-17T22:32:46UTC
+    createdAt: 2020-07-17T23:13:01UTC
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <1.1.5"
     alm-examples: |-
