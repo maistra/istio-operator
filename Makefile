@@ -33,12 +33,12 @@ HELM_OUT_DIR         = ${OUT_DIR}/resources/helm
 OLM_MANIFEST_OUT_DIR = ${OUT_DIR}/resources/manifests
 
 OFFLINE_BUILD       ?= false
-GIT_UPSTREAM_REMOTE ?= $(shell git remote -v |grep --color=never ':Maistra/istio-operator\.git.*(fetch)' |grep --color=never -o '^[^[:space:]]*')
+GIT_UPSTREAM_REMOTE ?= $(shell git remote -v |grep --color=never ':[Mm]aistra/istio-operator\.git.*(fetch)' |grep --color=never -o '^[^[:space:]]*')
 
 ifeq "${GIT_UPSTREAM_REMOTE}" ""
 GIT_UPSTREAM_REMOTE = "ci-upstream"
-$(warning Could not find git remote for Maistra/istio-operator, adding as '${GIT_UPSTREAM_REMOTE}')
-$(shell git remote add ${GIT_UPSTREAM_REMOTE} git@github.com:Maistra/istio-operator.git)
+$(warning Could not find git remote for maistra/istio-operator, adding as '${GIT_UPSTREAM_REMOTE}')
+$(shell git remote add ${GIT_UPSTREAM_REMOTE} https://github.com/maistra/istio-operator.git)
 endif
 
 ifeq "${COMMUNITY}" "true"
@@ -91,7 +91,7 @@ update-1.0-charts: update-remote-maistra-1.0
 
 .PHONY: update-1.0-templates
 update-1.0-templates:
-	curl -L https://github.com/Maistra/istio-operator/archive/maistra-1.0.tar.gz | tar -xzvC ${SOURCE_DIR}/resources/smcp-templates/v1.0 --strip-components 3 */deploy/smcp-templates
+	curl -L https://github.com/maistra/istio-operator/archive/maistra-1.0.tar.gz | tar -xzvC ${SOURCE_DIR}/resources/smcp-templates/v1.0 --strip-components 3 */deploy/smcp-templates
 # XXX: for now, the templates for maistra-1.0 are stored in ./deploy/smcp-templates, so the following won't work
 #update-1.0-templates: update-remote-maistra-1.0
 #	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.0 -- ${SOURCE_DIR}/resources/smcp-templates/v1.0
