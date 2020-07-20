@@ -14,22 +14,37 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	configv1alpha2 "github.com/maistra/istio-operator/pkg/apis/istio/simple/config/v1alpha2"
 	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/simple/networking/v1alpha3"
 	securityv1beta1 "github.com/maistra/istio-operator/pkg/apis/istio/simple/security/v1beta1"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
+// these components have to be installed in the specified order
+var v1_1ChartOrder = [][]string{
+	{"istio"}, // core istio resources
+	{"istio/charts/security"},
+	{"istio/charts/prometheus"},
+	{"istio/charts/tracing"},
+	{"istio/charts/galley"},
+	{"istio/charts/mixer", "istio/charts/pilot", "istio/charts/gateways", "istio/charts/sidecarInjectorWebhook"},
+	{"istio/charts/grafana"},
+	{"istio/charts/kiali"},
+}
+
 type versionStrategyV1_1 struct {
 	version
+	renderImpl v1xRenderingStrategy
 }
 
 var _ VersionStrategy = (*versionStrategyV1_1)(nil)
 
-func (v *versionStrategyV1_1) SetImageValues(ctx context.Context, cl client.Client, smcpSpec *v1.ControlPlaneSpec) error {
+func (v *versionStrategyV1_1) SetImageValues(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec) error {
 	common.UpdateField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_1.Citadel)
 	common.UpdateField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_1.Galley)
 	common.UpdateField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_1.Grafana)
@@ -259,4 +274,12 @@ func (v *versionStrategyV1_1) ValidateUpgrade(ctx context.Context, cl client.Cli
 	}
 
 	return utilerrors.NewAggregate(allErrors)
+}
+
+func (v *versionStrategyV1_1) GetChartInstallOrder() [][]string {
+	return v1_1ChartOrder
+}
+
+func (v *versionStrategyV1_1) Render(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
+	return v.renderImpl.render(ctx, v.version, cr, smcp)
 }

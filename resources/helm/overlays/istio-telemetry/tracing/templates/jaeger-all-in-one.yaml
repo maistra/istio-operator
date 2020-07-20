@@ -1,0 +1,84 @@
+{{ if and (eq .Values.provider "jaeger") (eq .Values.jaeger.template "all-in-one") .Values.jaeger.install }}
+apiVersion: jaegertracing.io/v1
+kind: "Jaeger"
+metadata:
+  name: {{ default .Values.jaeger.resourceName "jaeger" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    chart: {{ template "tracing.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+spec:
+  strategy: allInOne
+
+  allInOne:
+    {{- if and .Values.jaeger.hub .Values.jaeger.tag .Values.jaeger.allInOneImage }}
+    image: {{ .Values.jaeger.hub }}/{{ .Values.jaeger.allInOneImage }}:{{ .Values.jaeger.tag }}
+    {{- end }}
+    options:
+      log-level: debug
+      query:
+        base-path: /
+    annotations:
+      {{- range $key, $value := .Values.jaeger.annotations }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
+
+  agent:
+    {{- if and .Values.jaeger.hub .Values.jaeger.tag .Values.jaeger.agentImage }}
+    image: {{ .Values.jaeger.hub }}/{{ .Values.jaeger.agentImage }}:{{ .Values.jaeger.tag }}
+    {{- end }}
+    annotations:
+      {{- range $key, $value := .Values.jaeger.annotations }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
+
+  storage:
+    options:
+      memory:
+        {{- if .Values.jaeger.memory.max_traces }}
+        max-traces: {{ .Values.jaeger.memory.max_traces }}
+        {{- else }}
+        max-traces: 100000
+        {{- end }}
+
+  ingress:
+    enabled: {{ .Values.ingress.enabled }}
+    # XXX: should this be parameterized?
+    security: oauth-proxy
+    annotations:
+      {{- range $key, $value := .Values.ingress.annotations }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
+    openshift:
+      sar: '{"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}'
+      htpasswdFile: /etc/proxy/htpasswd/auth
+
+  volumeMounts:
+  - name: secret-htpasswd
+    mountPath: /etc/proxy/htpasswd
+  - name: trusted-ca-bundle
+    mountPath: /etc/pki/ca-trust/extracted/pem/
+    readOnly: true
+  volumes:
+  - name: secret-htpasswd
+    secret:
+      secretName: htpasswd
+  - name: trusted-ca-bundle
+    configMap:
+      defaultMode: 420
+      items:
+        - key: ca-bundle.crt
+          path: tls-ca-bundle.pem
+      name: trusted-ca-bundle
+      optional: true
+  resources:
+{{- if .Values.jaeger.resources }}
+{{ toYaml .Values.jaeger.resources | indent 4 }}
+{{- else }}
+{{ toYaml .Values.global.defaultResources | indent 4 }}
+{{- end }}
+  affinity:
+  {{- include "nodeaffinity" . | indent 2 }}
+
+{{ end }}

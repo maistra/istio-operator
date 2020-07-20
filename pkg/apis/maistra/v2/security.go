@@ -184,6 +184,7 @@ type IdentityConfig struct {
 	Kubernetes *KubernetesIdentityConfig `json:"kubernetes,omitempty"`
 	// ThirdParty configures istiod to use a third-party token provider for
 	// identifying users. (basically uses a custom audience, e.g. istio-ca)
+	// XXX: this is only supported on OCP 4.4+
 	// +optional
 	ThirdParty *ThirdPartyIdentityConfig `json:"thirdParty,omitempty"`
 }

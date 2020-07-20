@@ -5,29 +5,30 @@ import (
 )
 
 func populateJaegerAddonValues(jaeger *v2.JaegerTracerConfig, values map[string]interface{}) error {
+	if err := setHelmStringValue(values, "global.proxy.tracer", "jaeger"); err != nil {
+		return err
+	}
+	if err := setHelmStringValue(values, "tracing.provider", "jaeger"); err != nil {
+		return err
+	}
+
 	if jaeger == nil {
-		if err := setHelmStringValue(values, "global.proxy.tracer", "jaeger"); err != nil {
-			return err
-		}
-		if err := setHelmStringValue(values, "tracing.provider", "jaeger"); err != nil {
-			return err
-		}
 		return nil
 	}
+
+	if err := setHelmBoolValue(values, "tracing.enabled", true); err != nil {
+		return err
+	}
+	if err := setHelmStringValue(values, "tracing.jaeger.resourceName", jaeger.Name); err != nil {
+		return err
+	}
+
 	if jaeger.Install == nil {
-		// XXX: not sure if this is correct. we don't want the charts processed,
-		// but other aspects might not be configured correctly
-		if err := setHelmBoolValue(values, "tracing.enabled", false); err != nil {
-			return err
-		}
-		if err := setHelmStringValue(values, "global.proxy.tracer", "jaeger"); err != nil {
-			return err
-		}
-		if err := setHelmStringValue(values, "tracing.provider", "jaeger"); err != nil {
+		// XXX: do we need to be setting global.tracer.zipkin.address?
+		if err := setHelmBoolValue(values, "tracing.jaeger.install", false); err != nil {
 			return err
 		}
 		return nil
-		// XXX: do we need to be setting global.tracer.zipkin.address?
 	}
 
 	tracingValues := make(map[string]interface{})
@@ -36,7 +37,8 @@ func populateJaegerAddonValues(jaeger *v2.JaegerTracerConfig, values map[string]
 	if err := setHelmStringValue(tracingValues, "provider", "jaeger"); err != nil {
 		return err
 	}
-	if err := setHelmBoolValue(tracingValues, "enabled", true); err != nil {
+
+	if err := setHelmBoolValue(jaegerValues, "install", true); err != nil {
 		return err
 	}
 

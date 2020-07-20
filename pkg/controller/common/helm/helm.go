@@ -3,7 +3,6 @@ package helm
 import (
 	"encoding/json"
 	"fmt"
-	"path"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -15,7 +14,6 @@ import (
 	"k8s.io/helm/pkg/timeconv"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 func init() {
@@ -23,30 +21,6 @@ func init() {
 	serviceIndex := common.IndexOf(InstallOrder, "Service")
 	// we want route before oauthclient before deployments
 	InstallOrder = append(InstallOrder[:serviceIndex], append([]string{"Route", "OAuthClient"}, InstallOrder[serviceIndex:]...)...)
-}
-
-// GetChartsDir returns the location of the Helm charts. Similar layout to istio.io/istio/install/kubernetes/helm.
-func GetChartsDir(maistraVersion versions.Version) string {
-	if len(common.Config.Rendering.ChartsDir) == 0 {
-		return path.Join(common.Config.Rendering.ResourceDir, "helm", maistraVersion.String())
-	}
-	return path.Join(common.Config.Rendering.ChartsDir, maistraVersion.String())
-}
-
-// GetTemplatesDir returns the location of the Operator templates files
-func GetUserTemplatesDir() string {
-	if len(common.Config.Rendering.UserTemplatesDir) == 0 {
-		return path.Join(common.Config.Rendering.ResourceDir, "templates")
-	}
-	return common.Config.Rendering.UserTemplatesDir
-}
-
-// GetDefaultTemplatesDir returns the location of the Default Operator templates files
-func GetDefaultTemplatesDir(maistraVersion versions.Version) string {
-	if len(common.Config.Rendering.DefaultTemplatesDir) == 0 {
-		return path.Join(common.Config.Rendering.ResourceDir, "default-templates", maistraVersion.String())
-	}
-	return path.Join(common.Config.Rendering.DefaultTemplatesDir, maistraVersion.String())
 }
 
 // RenderChart renders the helm charts, returning a map of rendered templates.

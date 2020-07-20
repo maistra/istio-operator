@@ -1,0 +1,30 @@
+{{- if (eq .Values.provider "jaeger") }}
+# This is to support routes on ocp 3.11 installs
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: istio-jaeger-ingress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Values.provider }}
+    chart: {{ template "tracing.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  annotations:
+    "maistra.io/internal": "true"
+spec:
+  podSelector:
+    matchLabels:
+  {{- if eq .Values.jaeger.template "all-in-one"}}
+      app.kubernetes.io/component: all-in-one
+  {{- else }}
+      app.kubernetes.io/component: collector
+  {{- end }}
+      app.kubernetes.io/instance: {{ default .Values.jaeger.resourceName "jaeger" }}
+      app.kubernetes.io/part-of: jaeger
+      app.kubernetes.io/managed-by: jaeger-operator
+  ingress:
+  - ports:
+    port: 8443
+
+{{- end }}

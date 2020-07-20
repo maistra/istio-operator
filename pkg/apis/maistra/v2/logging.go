@@ -26,6 +26,7 @@ type ProxyLoggingConfig struct {
 	ComponentLevels ComponentLogLevels `json:"componentLevels,omitempty"`
 }
 
+// ComponentLogLevels represent various logging levels, e.g. trace, debug, etc.
 type ComponentLogLevels map[EnvoyComponent]LogLevel
 // LogLevel represents the logging level
 type LogLevel string

@@ -80,25 +80,25 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 			}
 			// XXX: ingress and egress gateways must be configured if multicluster is enabled
 			if in.Gateways != nil {
-				if in.Gateways.Egress != nil {
+				if in.Gateways.ClusterEgress != nil {
 					foundExternal := false
-					for _, network := range in.Gateways.Egress.RequestedNetworkView {
+					for _, network := range in.Gateways.ClusterEgress.RequestedNetworkView {
 						if network == "external" {
 							foundExternal = true
 							break
 						}
 					}
 					if !foundExternal {
-						in.Gateways.Egress.RequestedNetworkView = append(in.Gateways.Egress.RequestedNetworkView, "external")
+						in.Gateways.ClusterEgress.RequestedNetworkView = append(in.Gateways.ClusterEgress.RequestedNetworkView, "external")
 					}
 				}
-				if in.Gateways.Ingress != nil {
+				if in.Gateways.ClusterIngress != nil {
 					if in.Cluster.MultiCluster.Ingress {
 						if err := setHelmBoolValue(values, "global.k8sIngress.enabled", true); err != nil {
 							return err
 						}
 						hasHTTPS := false
-						for _, port := range in.Gateways.Ingress.Service.Ports {
+						for _, port := range in.Gateways.ClusterIngress.Service.Ports {
 							if port.Port == 443 {
 								hasHTTPS = true
 								break
@@ -115,7 +115,7 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 					if expansionPorts, err := expansionPortsForVersion(in.Version); err != nil {
 						if in.Cluster.MeshExpansion == nil || in.Cluster.MeshExpansion.ILBGateway == nil ||
 							in.Cluster.MeshExpansion.ILBGateway.Enabled == nil || !*in.Cluster.MeshExpansion.ILBGateway.Enabled {
-							addExpansionPorts(&in.Gateways.Ingress.MeshExpansionPorts, expansionPorts)
+							addExpansionPorts(&in.Gateways.ClusterIngress.MeshExpansionPorts, expansionPorts)
 							if err := setHelmBoolValue(values, "gateways.istio-ilbgateway.enabled", false); err != nil {
 								return err
 							}

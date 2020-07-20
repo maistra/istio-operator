@@ -51,7 +51,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			}
 			break
 		}
-		if in.Version == versions.V1_2.String() {
+		if in.Version == versions.V2_0.String() {
 			// configure pilot (istiod) settings
 			if istiod.WorkloadCertTTLDefault != "" {
 				if err := setHelmStringValue(values, "pilot.env.DEFAULT_WORKLOAD_CERT_TTL", istiod.WorkloadCertTTLDefault); err != nil {
@@ -83,7 +83,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				// let it use its defaults
 				break
 			}
-			if in.Version == versions.V1_2.String() {
+			if in.Version == versions.V2_0.String() {
 				// configure pilot (istiod) settings
 				if pksigner.RootCADir != "" {
 					if err := setHelmStringValue(values, "pilot.env.ROOT_CA_DIR", pksigner.RootCADir); err != nil {

@@ -144,8 +144,8 @@ spec:
               cpu: 10m
               memory: 100Mi
 {{- end }}
-        - name: install-cni-v1-2
-          image: "{{ .Values.image_v1_2 }}"
+        - name: install-cni-v2-0
+          image: "{{ .Values.image_v2_0 }}"
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           command: ["/install-cni.sh"]
           env:
@@ -157,12 +157,12 @@ spec:
               value: "/host/etc/cni/multus/net.d"
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
-              value: "v1-2-istio-cni.conf"
+              value: "v2-0-istio-cni.conf"
             # Name of the kubeconfig file used by CNI agent
             - name: KUBECFG_FILE_NAME
-              value: "v1-2-istio-cni.kubeconfig"
+              value: "v2-0-istio-cni.kubeconfig"
             - name: CNI_BINARIES_PREFIX
-              value: "v1-2-"
+              value: "v2-0-"
             # Deploy as a standalone CNI plugin instead of as chained
             - name: CHAINED_CNI_PLUGIN
               value: "false"
@@ -171,7 +171,7 @@ spec:
               valueFrom:
                 configMapKeyRef:
                   name: istio-cni-config
-                  key: cni_network_config_v1_2
+                  key: cni_network_config_v2_0
           volumeMounts:
             - mountPath: /host/opt/cni/bin
               name: cni-bin-dir

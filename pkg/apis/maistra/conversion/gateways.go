@@ -63,11 +63,11 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 
 	gateways := in.Gateways
 
-	if gateways.Ingress != nil {
-		if gatewayValues, err := gatewayConfigToValues(&gateways.Ingress.GatewayConfig); err == nil {
-			if len(gateways.Ingress.MeshExpansionPorts) > 0 {
-				untypedSlice := make([]interface{}, len(gateways.Ingress.MeshExpansionPorts))
-				for index, port := range gateways.Ingress.MeshExpansionPorts {
+	if gateways.ClusterIngress != nil {
+		if gatewayValues, err := gatewayIngressConfigToValues(&gateways.ClusterIngress.IngressGatewayConfig); err == nil {
+			if len(gateways.ClusterIngress.MeshExpansionPorts) > 0 {
+				untypedSlice := make([]interface{}, len(gateways.ClusterIngress.MeshExpansionPorts))
+				for index, port := range gateways.ClusterIngress.MeshExpansionPorts {
 					untypedSlice[index] = port
 				}
 				if portsValue, err := sliceToValues(untypedSlice); err == nil {
@@ -81,6 +81,9 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 				}
 			}
 			if len(gatewayValues) > 0 {
+				if err := setHelmValue(gatewayValues, "name", "istio-ingressgateway"); err != nil {
+					return err
+				}
 				if err := setHelmValue(values, "gateways.istio-ingressgateway", gatewayValues); err != nil {
 					return err
 				}
@@ -90,9 +93,12 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 		}
 	}
 
-	if gateways.Egress != nil {
-		if gatewayValues, err := gatewayConfigToValues(gateways.Egress); err == nil {
+	if gateways.ClusterEgress != nil {
+		if gatewayValues, err := gatewayEgressConfigToValues(gateways.ClusterEgress); err == nil {
 			if len(gatewayValues) > 0 {
+				if err := setHelmValue(gatewayValues, "name", "istio-egressgateway"); err != nil {
+					return err
+				}
 				if err := setHelmValue(values, "gateways.istio-egressgateway", gatewayValues); err != nil {
 					return err
 				}
@@ -102,9 +108,27 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 		}
 	}
 
-	for name, gateway := range gateways.AdditionalGateways {
-		if gatewayValues, err := gatewayConfigToValues(&gateway); err == nil {
+	for name, gateway := range gateways.IngressGateways {
+		if gatewayValues, err := gatewayIngressConfigToValues(&gateway); err == nil {
 			if len(gatewayValues) > 0 {
+				if err := setHelmValue(gatewayValues, "name", name); err != nil {
+					return err
+				}
+				if err := setHelmValue(values, "gateways."+name, gatewayValues); err != nil {
+					return err
+				}
+			}
+		} else {
+			return err
+		}
+	}
+
+	for name, gateway := range gateways.EgressGateways {
+		if gatewayValues, err := gatewayEgressConfigToValues(&gateway); err == nil {
+			if len(gatewayValues) > 0 {
+				if err := setHelmValue(gatewayValues, "name", name); err != nil {
+					return err
+				}
 				if err := setHelmValue(values, "gateways."+name, gatewayValues); err != nil {
 					return err
 				}
@@ -136,12 +160,6 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		}
 	} else {
 		if err := setHelmStringValue(values, "env.ISTIO_META_ROUTER_MODE", string(in.RouterMode)); err != nil {
-			return nil, err
-		}
-	}
-
-	if len(in.RequestedNetworkView) > 0 {
-		if err := setHelmStringValue(values, "env.ISTIO_META_REQUESTED_NETWORK_VIEW", fmt.Sprintf("\"%s\"", strings.Join(in.RequestedNetworkView, ","))); err != nil {
 			return nil, err
 		}
 	}
@@ -193,13 +211,6 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		}
 	}
 
-	// gateway SDS
-	if in.EnableSDS != nil {
-		if err := setHelmBoolValue(values, "sds.enable", *in.EnableSDS); err != nil {
-			return nil, err
-		}
-	}
-
 	// Deployment specific settings
 	if in.Runtime != nil {
 		runtime := in.Runtime
@@ -208,25 +219,6 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		}
 
 		if runtime.Pod.Containers != nil {
-			// SDS container specific config
-			if sdsContainer, ok := runtime.Pod.Containers["ingress-sds"]; ok {
-				if sdsContainer.Image != "" {
-					if err := setHelmStringValue(values, "sds.image", sdsContainer.Image); err != nil {
-						return nil, err
-					}
-				}
-				if sdsContainer.Resources != nil {
-					if resourcesValues, err := toValues(sdsContainer.Resources); err == nil {
-						if len(resourcesValues) > 0 {
-							if err := setHelmValue(values, "sds.resources", resourcesValues); err != nil {
-								return nil, err
-							}
-						}
-					} else {
-						return nil, err
-					}
-				}
-			}
 			// Proxy container specific config
 			if proxyContainer, ok := runtime.Pod.Containers["istio-proxy"]; ok {
 				if proxyContainer.Resources != nil {
@@ -279,6 +271,63 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 	return values, nil
 }
 
+func gatewayEgressConfigToValues(in *v2.EgressGatewayConfig) (map[string]interface{}, error) {
+	values, err := gatewayConfigToValues(&in.GatewayConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(in.RequestedNetworkView) > 0 {
+		if err := setHelmStringValue(values, "env.ISTIO_META_REQUESTED_NETWORK_VIEW", fmt.Sprintf("\"%s\"", strings.Join(in.RequestedNetworkView, ","))); err != nil {
+			return nil, err
+		}
+	}
+
+	return values, nil
+}
+
+func gatewayIngressConfigToValues(in *v2.IngressGatewayConfig) (map[string]interface{}, error) {
+	values, err := gatewayConfigToValues(&in.GatewayConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	// gateway SDS
+	if in.EnableSDS != nil {
+		if err := setHelmBoolValue(values, "sds.enable", *in.EnableSDS); err != nil {
+			return nil, err
+		}
+	}
+
+	if in.Runtime != nil {
+		runtime := in.Runtime
+
+		if runtime.Pod.Containers != nil {
+			// SDS container specific config
+			if sdsContainer, ok := runtime.Pod.Containers["ingress-sds"]; ok {
+				if sdsContainer.Image != "" {
+					if err := setHelmStringValue(values, "sds.image", sdsContainer.Image); err != nil {
+						return nil, err
+					}
+				}
+				if sdsContainer.Resources != nil {
+					if resourcesValues, err := toValues(sdsContainer.Resources); err == nil {
+						if len(resourcesValues) > 0 {
+							if err := setHelmValue(values, "sds.resources", resourcesValues); err != nil {
+								return nil, err
+							}
+						}
+					} else {
+						return nil, err
+					}
+				}
+			}
+		}
+	}
+
+	return values, nil
+}
+
 func expansionPortsForVersion(version string) ([]corev1.ServicePort, error) {
 	switch version {
 	case "":
@@ -287,7 +336,7 @@ func expansionPortsForVersion(version string) ([]corev1.ServicePort, error) {
 		fallthrough
 	case versions.V1_1.String():
 		return meshExpansionPortsV11, nil
-	case versions.V1_2.String():
+	case versions.V2_0.String():
 		return meshExpansionPortsV20, nil
 	default:
 		return nil, fmt.Errorf("cannot convert for unknown version: %s", version)

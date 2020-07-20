@@ -290,8 +290,10 @@ spec:
           port: 443
           targetPort: 8443
       # requestedNetworkView: [external] set automatically if multi-cluster is enabled
-    additional:
-      some-gateway: {}
+    additionalIngress:
+      some-other-ingress-gateway: {}
+    additionalEgress:
+      some-other-egress-gateway: {}
 
   runtime:
     # component specific overrides
