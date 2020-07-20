@@ -11,7 +11,7 @@ type GatewaysConfig struct {
 	// (for enabling ILB gateway and mesh expansion ports)
 	// .Values.gateways.istio-ingressgateway
 	// +optional
-	ClusterIngress *IstioIngressGatewayConfig `json:"ingress,omitempty"`
+	ClusterIngress *ClusterIngressGatewayConfig `json:"ingress,omitempty"`
 	// ClusterEgress configures the istio-egressgateway for the mesh.
 	// .Values.gateways.istio-egressgateway
 	// +optional
@@ -64,6 +64,7 @@ type GatewayConfig struct {
 	// XXX: do we need to support additionalContainers???
 }
 
+// EgressGatewayConfig represents gateway configuration for egress
 type EgressGatewayConfig struct {
 	GatewayConfig `json:",inline"`
 	// RequestedNetworkView is a list of networks whose services should be made
@@ -74,6 +75,7 @@ type EgressGatewayConfig struct {
 	RequestedNetworkView []string `json:"requestedNetworkView,omitempty"`
 }
 
+// IngressGatewayConfig represents gateway configuration for ingress
 type IngressGatewayConfig struct {
 	GatewayConfig `json:",inline"`
 	// EnableSDS for the gateway.
@@ -83,7 +85,8 @@ type IngressGatewayConfig struct {
 	EnableSDS *bool `json:"enableSDS,omitempty"`
 }
 
-type IstioIngressGatewayConfig struct {
+// ClusterIngressGatewayConfig represents gateway configuration for cluster ingress
+type ClusterIngressGatewayConfig struct {
 	IngressGatewayConfig `json:",inline"`
 	// MeshExpansionPorts define the port set used with multi-cluster/mesh expansion
 	// +optional
