@@ -135,6 +135,9 @@ function patchGalley() {
 \            value: ""
       /INJECTION_WEBHOOK_CONFIG_NAME|ISTIOD_ADDR/! d
     }' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
+  echo '
+base:
+  validationURL: ""' >> ${HELM_DIR}/global.yaml
 }
 
 function patchGateways() {

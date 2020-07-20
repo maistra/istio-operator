@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/ghodss/yaml"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/gengo/examples/set-gen/sets"
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -209,6 +211,17 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 		}
 	}
 
+	// Read in global.yaml
+	values, err := chartutil.ReadValuesFile(path.Join(v.GetChartsDir(), "global.yaml"))
+	if err != nil {
+		return nil, fmt.Errorf("error reading global.yaml file")
+	}
+	values.MergeInto(spec.Istio.GetContent())
+	if log.V(5).Enabled() {
+		rawValues, _ := yaml.Marshal(values)
+		log.V(5).Info(fmt.Sprintf("rendering values:\n%s", string(rawValues)))
+	}
+
 	//Render the charts
 	allErrors := []error{}
 	renderings := make(map[string][]manifest.Manifest)
@@ -219,7 +232,7 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 		}
 		if chartDetails.enabledField == "" || isComponentEnabled(spec.Istio, chartDetails.enabledField) {
 			log.V(2).Info(fmt.Sprintf("rendering %s chart", name))
-			if chartRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), v2_0ChartMapping[name].path), smcp.GetNamespace(), spec.Istio.GetContent()); err == nil {
+			if chartRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), v2_0ChartMapping[name].path), smcp.GetNamespace(), values); err == nil {
 				renderings[name] = chartRenderings[name]
 			} else {
 				allErrors = append(allErrors, err)
@@ -230,44 +243,46 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 	}
 
 	log.V(2).Info("rendering gateways charts")
-	if origGateways, _, err := spec.Istio.DeepCopy().GetMap("gateways"); err == nil {
-		log.V(2).Info("rendering ingress gateway chart for istio-ingressgateway")
-		if ingressRenderings, _, err := v.renderIngressGateway("istio-ingressgateway", smcp.GetNamespace(), origGateways, spec.Istio); err == nil {
-			renderings[GatewayIngressChart] = ingressRenderings[GatewayIngressChart]
-		} else {
-			allErrors = append(allErrors, err)
-		}
-		log.V(2).Info("rendering egress gateway chart for istio-egressgateway")
-		if egressRenderings, _, err := v.renderEgressGateway("istio-egressgateway", smcp.GetNamespace(), origGateways, spec.Istio); err == nil {
-			renderings[GatewayEgressChart] = egressRenderings[GatewayEgressChart]
-		} else {
-			allErrors = append(allErrors, err)
-		}
-		if smcp.Spec.Gateways != nil {
-			for name, gateway := range smcp.Spec.Gateways.IngressGateways {
-				if gateway.Enabled == nil || !*gateway.Enabled {
-					continue
+	if origGateways, ok := values.AsMap()["gateways"]; ok {
+		if origGatewaysMap, ok := origGateways.(map[string]interface{}); ok {
+			log.V(2).Info("rendering ingress gateway chart for istio-ingressgateway")
+			if ingressRenderings, _, err := v.renderIngressGateway("istio-ingressgateway", smcp.GetNamespace(), origGatewaysMap, v1.NewHelmValues(values)); err == nil {
+				renderings[GatewayIngressChart] = ingressRenderings[GatewayIngressChart]
+			} else {
+				allErrors = append(allErrors, err)
+			}
+			log.V(2).Info("rendering egress gateway chart for istio-egressgateway")
+			if egressRenderings, _, err := v.renderEgressGateway("istio-egressgateway", smcp.GetNamespace(), origGatewaysMap, v1.NewHelmValues(values)); err == nil {
+				renderings[GatewayEgressChart] = egressRenderings[GatewayEgressChart]
+			} else {
+				allErrors = append(allErrors, err)
+			}
+			if smcp.Spec.Gateways != nil {
+				for name, gateway := range smcp.Spec.Gateways.IngressGateways {
+					if gateway.Enabled == nil || !*gateway.Enabled {
+						continue
+					}
+					log.V(2).Info(fmt.Sprintf("rendering ingress gateway chart for %s", name))
+					if ingressRenderings, _, err := v.renderIngressGateway(name, smcp.GetNamespace(), origGatewaysMap, v1.NewHelmValues(values)); err == nil {
+						renderings[GatewayIngressChart] = append(renderings[GatewayIngressChart], ingressRenderings[GatewayIngressChart]...)
+					} else {
+						allErrors = append(allErrors, err)
+					}
 				}
-				log.V(2).Info(fmt.Sprintf("rendering ingress gateway chart for %s", name))
-				if ingressRenderings, _, err := v.renderIngressGateway(name, smcp.GetNamespace(), origGateways, spec.Istio); err == nil {
-					renderings[GatewayIngressChart] = append(renderings[GatewayIngressChart], ingressRenderings[GatewayIngressChart]...)
-				} else {
-					allErrors = append(allErrors, err)
+				for name, gateway := range smcp.Spec.Gateways.EgressGateways {
+					if gateway.Enabled == nil || !*gateway.Enabled {
+						continue
+					}
+					log.V(2).Info(fmt.Sprintf("rendering egress gateway chart for %s", name))
+					if egressRenderings, _, err := v.renderEgressGateway(name, smcp.GetNamespace(), origGatewaysMap, v1.NewHelmValues(values)); err == nil {
+						renderings[GatewayEgressChart] = append(renderings[GatewayEgressChart], egressRenderings[GatewayEgressChart]...)
+					} else {
+						allErrors = append(allErrors, err)
+					}
 				}
 			}
-			for name, gateway := range smcp.Spec.Gateways.EgressGateways {
-				if gateway.Enabled == nil || !*gateway.Enabled {
-					continue
-				}
-				log.V(2).Info(fmt.Sprintf("rendering egress gateway chart for %s", name))
-				if egressRenderings, _, err := v.renderEgressGateway(name, smcp.GetNamespace(), origGateways, spec.Istio); err == nil {
-					renderings[GatewayEgressChart] = append(renderings[GatewayEgressChart], egressRenderings[GatewayEgressChart]...)
-				} else {
-					allErrors = append(allErrors, err)
-				}
-			}
+			v1.NewHelmValues(values).SetField("gateways", origGateways)
 		}
-		spec.Istio.SetField("gateways", origGateways)
 	} else {
 		allErrors = append(allErrors, fmt.Errorf("error retrieving values for gateways charts"))
 	}

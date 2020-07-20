@@ -39,37 +39,6 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 				return err
 			}
 		}
-		if hasClusterName && hasNetworkName {
-			// Configure local mesh network, if not defined
-			if _, ok := in.Cluster.MultiCluster.MeshNetworks[in.Cluster.Network]; !ok {
-				// XXX: do we need to make sure ingress gateways is configured and includes port 443?
-				in.Cluster.MultiCluster.MeshNetworks[in.Cluster.Network] = v2.MeshNetworkConfig{
-					Endpoints: []v2.MeshEndpointConfig{
-						{
-							FromRegistry: in.Cluster.Name,
-						},
-					},
-					Gateways: []v2.MeshGatewayConfig{
-						{
-							// XXX: should we check to see if ilb gateway is being used instead?
-							// XXX: this should be the gateway namespace or the control plane namespace
-							Service: fmt.Sprintf("istio-ingressgateway.%s.svc.%s", namespace, clusterDomain),
-							Port:    443,
-						},
-					},
-				}
-			}
-
-			if meshNetworksValue, err := toValues(in.Cluster.MultiCluster.MeshNetworks); err == nil {
-				if len(meshNetworksValue) > 0 {
-					if err := setHelmValue(values, "global.meshNetworks", meshNetworksValue); err != nil {
-						return err
-					}
-				}
-			} else {
-				return err
-			}
-		}
 		if in.Cluster.MultiCluster == nil {
 			if err := setHelmBoolValue(values, "global.multiCluster.enabled", false); err != nil {
 				return err
@@ -78,6 +47,38 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 			if err := setHelmBoolValue(values, "global.multiCluster.enabled", true); err != nil {
 				return err
 			}
+			if hasClusterName && hasNetworkName {
+				// Configure local mesh network, if not defined
+				if _, ok := in.Cluster.MultiCluster.MeshNetworks[in.Cluster.Network]; !ok {
+					// XXX: do we need to make sure ingress gateways is configured and includes port 443?
+					in.Cluster.MultiCluster.MeshNetworks[in.Cluster.Network] = v2.MeshNetworkConfig{
+						Endpoints: []v2.MeshEndpointConfig{
+							{
+								FromRegistry: in.Cluster.Name,
+							},
+						},
+						Gateways: []v2.MeshGatewayConfig{
+							{
+								// XXX: should we check to see if ilb gateway is being used instead?
+								// XXX: this should be the gateway namespace or the control plane namespace
+								Service: fmt.Sprintf("istio-ingressgateway.%s.svc.%s", namespace, clusterDomain),
+								Port:    443,
+							},
+						},
+					}
+				}
+
+				if meshNetworksValue, err := toValues(in.Cluster.MultiCluster.MeshNetworks); err == nil {
+					if len(meshNetworksValue) > 0 {
+						if err := setHelmValue(values, "global.meshNetworks", meshNetworksValue); err != nil {
+							return err
+						}
+					}
+				} else {
+					return err
+				}
+			}
+
 			// XXX: ingress and egress gateways must be configured if multicluster is enabled
 			if in.Gateways != nil {
 				if in.Gateways.ClusterEgress != nil {
