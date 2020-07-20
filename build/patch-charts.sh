@@ -121,12 +121,20 @@ function patchGalley() {
     resources: ["servicemeshmemberrolls"]
     verbs: ["get", "list", "watch"]' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e 's/, *"nodes"//' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
+  sed_wrap -i -e '/- apiGroups:.*admissionregistration\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
+  sed_wrap -i -e '/- apiGroups:.*certificates\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
 
   convertClusterRoleBinding ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrolebinding.yaml
   sed_wrap -i -e '/- "discovery"/ a\
           - --memberRollName=default\
           - --useOldProcessor=true\
           - --podLocalitySource=pod' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
+  # disable webhook config updates
+  sed_wrap -i -r -e '/INJECTION_WEBHOOK_CONFIG_NAME/,/ISTIOD_ADDR/ {
+      /INJECTION_WEBHOOK_CONFIG_NAME/a\
+\            value: ""
+      /INJECTION_WEBHOOK_CONFIG_NAME|ISTIOD_ADDR/! d
+    }' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
 }
 
 function patchGateways() {
