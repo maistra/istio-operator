@@ -146,9 +146,14 @@ function patchGalley() {
   sed_wrap -i -e '/{{- if eq .Values.revision ""}}/,/{{- end }}/d' $deployment
 
   # multitenant
-  echo '  - apiGroups: ["maistra.io"]
+  echo '
+  # Maistra specific
+  - apiGroups: ["maistra.io"]
     resources: ["servicemeshmemberrolls"]
-    verbs: ["get", "list", "watch"]' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["route.openshift.io"]
+    resources: ["routes", "routes/custom-host"]
+    verbs: ["get", "list", "watch", "create", "delete", "update"]' >> ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e 's/, *"nodes"//' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e '/- apiGroups:.*admissionregistration\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e '/- apiGroups:.*certificates\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
@@ -179,6 +184,16 @@ base:
 \      app: istiod\
 \      istio.io/rev: {{ .Values.revision | default "default" }}' \
     $deployment
+
+  # IOR
+  sed_wrap -i -e '/env:/ a\
+{{- $iorEnabled := "true" }}\
+{{- $gateway := index .Values "gateways" "istio-ingressgateway" }}\
+{{- if or (not .Values.gateways.enabled) (not $gateway) (not $gateway.ior_enabled) }}\
+{{- $iorEnabled = "false" }}\
+{{- end }}\
+          - name: ENABLE_IOR\
+            value: "{{ $iorEnabled }}"' "${deployment}"
 }
 
 function patchGateways() {
@@ -189,21 +204,6 @@ function patchGateways() {
 \1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml
   sed_wrap -i -e 's/\(^ *\)- containerPort: {{ $val.targetPort | default $val.port }}/\1- name: {{ $val.name }}\
 \1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
-}
-
-function patchSecurity() {
-  echo "patching Security specific Helm charts"
-
-  # now make sure they're available
-  # XXX: need to copy these over from 1.1 and migrate to AuthorizationPolicy
-  #sed_wrap -i -e 's/define "security-default\.yaml\.tpl"/if and .Values.createMeshPolicy .Values.global.mtls.enabled/' ${HELM_DIR}/istio/charts/security/templates/enable-mesh-mtls.yaml
-  #sed_wrap -i -e 's/define "security-permissive\.yaml\.tpl"/if and .Values.createMeshPolicy (not .Values.global.mtls.enabled)/' ${HELM_DIR}/istio/charts/security/templates/enable-mesh-permissive.yaml
-
-  # multitenant
-  echo '  # Maistra specific
-  - apiGroups: ["maistra.io"]
-    resources: ["servicemeshmemberrolls"]
-    verbs: ["get", "list", "watch"]' >> ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
 }
 
 function patchSidecarInjector() {
@@ -357,7 +357,6 @@ patchTemplates
 
 patchGalley
 patchGateways
-patchSecurity
 patchSidecarInjector
 patchMixer
 patchKialiTemplate
