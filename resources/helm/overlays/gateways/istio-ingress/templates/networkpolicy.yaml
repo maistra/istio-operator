@@ -1,13 +1,11 @@
-{{- if (index .Values "istio-ingressgateway" "enabled") }}
+{{- if and (index .Values "gateways" "istio-ingressgateway" "enabled") (eq (index .Values "gateways" "istio-ingressgateway" "name") "istio-ingressgateway") }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: istio-ingressgateway
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ index .Values "istio-ingressgateway" "labels" "istio" }}
-    chart: {{ template "gateway.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: {{ index .Values "gateways" "istio-ingressgateway" "labels" "istio" }}
     release: {{ .Release.Name }}
   annotations:
     "maistra.io/internal": "true"

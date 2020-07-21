@@ -1,4 +1,4 @@
-{{- if and .Values.createMeshPolicy (not .Values.global.mtls.enabled) }}
+{{- if (not .Values.global.mtls.enabled) }}
 # Authentication policy to enable permissive mode for all services (that have sidecar) in the mesh.
 apiVersion: security.istio.io/v1beta1
 kind: PeerAuthentication
@@ -6,9 +6,7 @@ metadata:
   name: "default"
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ template "security.name" . }}
-    chart: {{ template "security.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: istio
     release: {{ .Release.Name }}
 spec:
   mtls:

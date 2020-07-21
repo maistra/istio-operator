@@ -1,4 +1,4 @@
-{{- if .Values.ingress.enabled -}}
+{{- if .Values.grafana.ingress.enabled -}}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -6,12 +6,10 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
-    app: {{ template "grafana.name" . }}
-    chart: {{ template "grafana.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: grafana
     release: {{ .Release.Name }}
   annotations:
-    {{- range $key, $value := .Values.ingress.annotations }}
+    {{- range $key, $value := .Values.grafana.ingress.annotations }}
       {{ $key }}: {{ $value | quote }}
     {{- end }}
 spec:

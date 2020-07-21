@@ -1,4 +1,4 @@
-{{- if (eq .Values.provider "jaeger") }}
+{{- if (eq .Values.tracing.provider "jaeger") }}
 # This is to support routes on ocp 3.11 installs
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -7,21 +7,19 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
-    app: {{ .Values.provider }}
-    chart: {{ template "tracing.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: {{ .Values.tracing.provider }}
     release: {{ .Release.Name }}
   annotations:
     "maistra.io/internal": "true"
 spec:
   podSelector:
     matchLabels:
-  {{- if eq .Values.jaeger.template "all-in-one"}}
+  {{- if eq .Values.tracing.jaeger.template "all-in-one"}}
       app.kubernetes.io/component: all-in-one
   {{- else }}
       app.kubernetes.io/component: collector
   {{- end }}
-      app.kubernetes.io/instance: {{ default .Values.jaeger.resourceName "jaeger" }}
+      app.kubernetes.io/instance: {{ default .Values.tracing.jaeger.resourceName "jaeger" }}
       app.kubernetes.io/part-of: jaeger
       app.kubernetes.io/managed-by: jaeger-operator
   ingress:

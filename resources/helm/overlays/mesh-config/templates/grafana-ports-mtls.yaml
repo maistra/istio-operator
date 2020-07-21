@@ -5,9 +5,7 @@ metadata:
   name: grafana-ports-mtls-disabled
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ template "grafana.name" . }}
-    chart: {{ template "grafana.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: istio
     release: {{ .Release.Name }}
 spec:
   selector:

@@ -5,8 +5,6 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: istio
-    chart: {{ template "istio.chart" . }}
-    heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
 spec:
   ingress:
@@ -25,8 +23,6 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: istio
-    chart: {{ template "istio.chart" . }}
-    heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
   annotations:
     "maistra.io/internal": "true"
@@ -46,8 +42,7 @@ metadata:
   name: istio-expose-route
   namespace: {{ .Release.Namespace }}
   labels:
-    chart: {{ template "istio.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: istio
     release: {{ .Release.Name }}
 spec:
   podSelector:
@@ -71,8 +66,6 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: jaeger
-    chart: {{ template "istio.chart" . }}
-    heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
   annotations:
     "maistra.io/internal": "true"

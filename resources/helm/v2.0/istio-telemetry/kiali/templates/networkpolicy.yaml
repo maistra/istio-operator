@@ -6,9 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
-    app: {{ template "kiali.name" . }}
-    chart: {{ template "kiali.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: kiali
     release: {{ .Release.Name }}
   annotations:
     "maistra.io/internal": "true"

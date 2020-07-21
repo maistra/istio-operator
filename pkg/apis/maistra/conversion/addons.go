@@ -29,6 +29,9 @@ func populateAddonsValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 		if err := setHelmBoolValue(values, "tracing.enabled", false); err != nil {
 			return err
 		}
+		if err := setHelmStringValue(values, "tracing.provider", ""); err != nil {
+			return err
+		}
 	case v2.TracerTypeJaeger:
 		if err := populateJaegerAddonValues(in.Addons.Tracing.Jaeger, values); err != nil {
 			return err

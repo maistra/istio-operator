@@ -1,4 +1,4 @@
-{{- if and (.Values.enabled) (index .Values "istio-ingressgateway" "enabled") }}
+{{- if and (.Values.gateways.enabled) (index .Values "gateways" "istio-ingressgateway" "enabled") }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -6,10 +6,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
-    chart: {{ template "gateway.chart" $ }}
-    heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
-    {{- range $key, $val := (index .Values "istio-ingressgateway" "labels") }}
+    {{- range $key, $val := (index .Values "gateways" "istio-ingressgateway" "labels") }}
     {{ $key }}: {{ $val }}
     {{- end }}
 spec:

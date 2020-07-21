@@ -1,4 +1,4 @@
-{{- if and .Values.createMeshPolicy .Values.global.mtls.enabled }}
+{{- if .Values.global.mtls.enabled }}
 # These policy and destination rules effectively enable mTLS for all services in the mesh. For now,
 # they are added to Istio installation yaml for backward compatible. In future, they should be in
 # a separated yaml file so that customer can enable mTLS independent from installation.
@@ -10,9 +10,7 @@ metadata:
   name: "default"
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ template "security.name" . }}
-    chart: {{ template "security.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: istio
     release: {{ .Release.Name }}
 spec:
   mtls:
@@ -26,9 +24,7 @@ metadata:
   name: "default"
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ template "security.name" . }}
-    chart: {{ template "security.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: istio
     release: {{ .Release.Name }}
 spec:
   host: "*.local"
@@ -48,9 +44,7 @@ metadata:
   name: "api-server"
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ template "security.name" . }}
-    chart: {{ template "security.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: istio
     release: {{ .Release.Name }}
 spec:
   host: "kubernetes.default.svc.{{ .Values.global.proxy.clusterDomain }}"

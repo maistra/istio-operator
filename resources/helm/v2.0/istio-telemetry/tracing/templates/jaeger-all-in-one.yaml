@@ -1,54 +1,53 @@
-{{ if and (eq .Values.provider "jaeger") (eq .Values.jaeger.template "all-in-one") .Values.jaeger.install }}
+{{ if and (eq .Values.tracing.provider "jaeger") (eq .Values.tracing.jaeger.template "all-in-one") .Values.tracing.jaeger.install }}
 apiVersion: jaegertracing.io/v1
 kind: "Jaeger"
 metadata:
-  name: {{ default .Values.jaeger.resourceName "jaeger" }}
+  name: {{ default .Values.tracing.jaeger.resourceName "jaeger" }}
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
-    chart: {{ template "tracing.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: {{ .Values.tracing.provider }}
     release: {{ .Release.Name }}
 spec:
   strategy: allInOne
 
   allInOne:
-    {{- if and .Values.jaeger.hub .Values.jaeger.tag .Values.jaeger.allInOneImage }}
-    image: {{ .Values.jaeger.hub }}/{{ .Values.jaeger.allInOneImage }}:{{ .Values.jaeger.tag }}
+    {{- if and .Values.tracing.jaeger.hub .Values.tracing.jaeger.tag .Values.tracing.jaeger.allInOneImage }}
+    image: {{ .Values.tracing.jaeger.hub }}/{{ .Values.tracing.jaeger.allInOneImage }}:{{ .Values.tracing.jaeger.tag }}
     {{- end }}
     options:
       log-level: debug
       query:
         base-path: /
     annotations:
-      {{- range $key, $value := .Values.jaeger.annotations }}
+      {{- range $key, $value := .Values.tracing.jaeger.annotations }}
         {{ $key }}: {{ $value | quote }}
       {{- end }}
 
   agent:
-    {{- if and .Values.jaeger.hub .Values.jaeger.tag .Values.jaeger.agentImage }}
-    image: {{ .Values.jaeger.hub }}/{{ .Values.jaeger.agentImage }}:{{ .Values.jaeger.tag }}
+    {{- if and .Values.tracing.jaeger.hub .Values.tracing.jaeger.tag .Values.tracing.jaeger.agentImage }}
+    image: {{ .Values.tracing.jaeger.hub }}/{{ .Values.tracing.jaeger.agentImage }}:{{ .Values.tracing.jaeger.tag }}
     {{- end }}
     annotations:
-      {{- range $key, $value := .Values.jaeger.annotations }}
+      {{- range $key, $value := .Values.tracing.jaeger.annotations }}
         {{ $key }}: {{ $value | quote }}
       {{- end }}
 
   storage:
     options:
       memory:
-        {{- if .Values.jaeger.memory.max_traces }}
-        max-traces: {{ .Values.jaeger.memory.max_traces }}
+        {{- if .Values.tracing.jaeger.memory.max_traces }}
+        max-traces: {{ .Values.tracing.jaeger.memory.max_traces }}
         {{- else }}
         max-traces: 100000
         {{- end }}
 
   ingress:
-    enabled: {{ .Values.ingress.enabled }}
+    enabled: {{ .Values.tracing.ingress.enabled }}
     # XXX: should this be parameterized?
     security: oauth-proxy
     annotations:
-      {{- range $key, $value := .Values.ingress.annotations }}
+      {{- range $key, $value := .Values.tracing.ingress.annotations }}
         {{ $key }}: {{ $value | quote }}
       {{- end }}
     openshift:
@@ -74,8 +73,8 @@ spec:
       name: trusted-ca-bundle
       optional: true
   resources:
-{{- if .Values.jaeger.resources }}
-{{ toYaml .Values.jaeger.resources | indent 4 }}
+{{- if .Values.tracing.jaeger.resources }}
+{{ toYaml .Values.tracing.jaeger.resources | indent 4 }}
 {{- else }}
 {{ toYaml .Values.global.defaultResources | indent 4 }}
 {{- end }}

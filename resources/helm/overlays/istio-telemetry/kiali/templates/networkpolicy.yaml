@@ -5,9 +5,7 @@ metadata:
   name: istio-kiali-ingress
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ template "kiali.name" . }}
-    chart: {{ template "kiali.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: kiali
     release: {{ .Release.Name }}
   annotations:
     "maistra.io/internal": "true"
