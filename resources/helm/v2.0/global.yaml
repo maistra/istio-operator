@@ -573,3 +573,6 @@ meshConfig:
         sni:               # example: tracer.somedomain
         subjectAltNames: []
         # - tracer.somedomain
+
+base:
+  validationURL: ""

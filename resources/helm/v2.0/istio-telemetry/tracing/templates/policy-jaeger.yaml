@@ -1,4 +1,4 @@
-{{ if eq .Values.provider "jaeger" }}
+{{ if eq .Values.tracing.provider "jaeger" }}
 
 apiVersion: authentication.istio.io/v1alpha1
 kind: Policy
@@ -7,9 +7,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
-    app: {{ .Values.provider }}
-    chart: {{ template "tracing.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: {{ .Values.tracing.provider }}
     release: {{ .Release.Name }}
 spec:
   targets:
@@ -22,9 +20,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
-    app: {{ .Values.provider }}
-    chart: {{ template "tracing.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: {{ .Values.tracing.provider }}
     release: {{ .Release.Name }}
 spec:
   host: jaeger-collector
@@ -39,9 +35,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
-    app: {{ .Values.provider }}
-    chart: {{ template "tracing.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: {{ .Values.tracing.provider }}
     release: {{ .Release.Name }}
 spec:
   targets:
@@ -54,9 +48,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
-    app: {{ .Values.provider }}
-    chart: {{ template "tracing.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: {{ .Values.tracing.provider }}
     release: {{ .Release.Name }}
 spec:
   host: zipkin

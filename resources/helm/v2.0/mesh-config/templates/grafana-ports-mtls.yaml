@@ -6,9 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
-    app: {{ template "grafana.name" . }}
-    chart: {{ template "grafana.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: istio
     release: {{ .Release.Name }}
 spec:
   selector:

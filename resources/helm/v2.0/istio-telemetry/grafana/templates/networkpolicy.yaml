@@ -6,9 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
-    app: {{ template "grafana.name" . }}
-    chart: {{ template "grafana.chart" . }}
-    heritage: {{ .Release.Service }}
+    app: grafana
     release: {{ .Release.Name }}
   annotations:
     "maistra.io/internal": "true"
