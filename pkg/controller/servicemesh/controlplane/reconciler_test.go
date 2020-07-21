@@ -131,7 +131,7 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 					Type: maistrav2.TelemetryTypeNone,
 				},
 				Gateways: &maistrav2.GatewaysConfig{
-					ClusterIngress: &maistrav2.IstioIngressGatewayConfig{
+					ClusterIngress: &maistrav2.ClusterIngressGatewayConfig{
 						IngressGatewayConfig: maistrav2.IngressGatewayConfig{
 							GatewayConfig: maistrav2.GatewayConfig{
 								Enablement: maistrav2.Enablement{Enabled: &disabled},
