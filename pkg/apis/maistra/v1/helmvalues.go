@@ -48,6 +48,27 @@ func (h *HelmValues) GetString(path string) (string, bool, error) {
 	return unstructured.NestedString(h.data, strings.Split(path, ".")...)
 }
 
+func (h *HelmValues) GetInt64(path string) (int64, bool, error) {
+	if h == nil || h.data == nil {
+		return 0, false, nil
+	}
+	return unstructured.NestedInt64(h.data, strings.Split(path, ".")...)
+}
+
+func (h *HelmValues) GetStringSlice(path string) ([]string, bool, error) {
+	if h == nil || h.data == nil {
+		return nil, false, nil
+	}
+	return unstructured.NestedStringSlice(h.data, strings.Split(path, ".")...)
+}
+
+func (h *HelmValues) GetSlice(path string) ([]interface{}, bool, error) {
+	if h == nil || h.data == nil {
+		return nil, false, nil
+	}
+	return unstructured.NestedSlice(h.data, strings.Split(path, ".")...)
+}
+
 func (h *HelmValues) GetMap(path string) (map[string]interface{}, bool, error) {
 	if h == nil || h.data == nil {
 		return nil, false, nil

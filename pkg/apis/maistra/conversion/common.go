@@ -17,6 +17,14 @@ func toValues(in interface{}) (map[string]interface{}, error) {
 	return out, err
 }
 
+func fromValues(in interface{}, out interface{}) error {
+	inYAML, err := yaml.Marshal(in)
+	if err != nil {
+		return err
+	}
+	return yaml.Unmarshal(inYAML, out)
+}
+
 func sliceToValues(in []interface{}) ([]interface{}, error) {
 	out := make([]interface{}, len(in))
 	bytes, err := yaml.Marshal(in)

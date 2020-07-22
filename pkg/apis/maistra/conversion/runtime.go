@@ -1,8 +1,15 @@
 package conversion
 
 import (
+	"fmt"
 	"strings"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
@@ -206,37 +213,19 @@ func populatePodHelmValues(pod *v2.PodRuntimeConfig, values map[string]interface
 	if pod.Affinity != nil {
 		// NodeAffinity is not supported, only NodeSelector may be used.
 		// PodAffinity is not supported.
-		if pod.Affinity.PodAntiAffinity != nil {
-			if len(pod.Affinity.PodAntiAffinity.RequiredDuringScheduling) > 0 {
-				podAntiAffinityLabelSelector := make([]interface{}, 0)
-				for _, term := range pod.Affinity.PodAntiAffinity.RequiredDuringScheduling {
-					podAntiAffinityLabelSelector = append(podAntiAffinityLabelSelector, map[string]string{
-						"key":         term.Key,
-						"operator":    string(term.Operator),
-						"values":      strings.Join(term.Values, ","),
-						"topologyKey": term.TopologyKey,
-					})
-				}
-				if len(podAntiAffinityLabelSelector) > 0 {
-					if err := setHelmValue(values, "podAntiAffinityLabelSelector", podAntiAffinityLabelSelector); err != nil {
-						return err
-					}
+		if len(pod.Affinity.PodAntiAffinity.RequiredDuringScheduling) > 0 {
+			podAntiAffinityLabelSelector := convertAntiAffinityTermsToHelmValues(pod.Affinity.PodAntiAffinity.RequiredDuringScheduling)
+			if len(podAntiAffinityLabelSelector) > 0 {
+				if err := setHelmValue(values, "podAntiAffinityLabelSelector", podAntiAffinityLabelSelector); err != nil {
+					return err
 				}
 			}
-			if len(pod.Affinity.PodAntiAffinity.PreferredDuringScheduling) > 0 {
-				podAntiAffinityTermLabelSelector := make([]interface{}, 0)
-				for _, term := range pod.Affinity.PodAntiAffinity.PreferredDuringScheduling {
-					podAntiAffinityTermLabelSelector = append(podAntiAffinityTermLabelSelector, map[string]string{
-						"key":         term.Key,
-						"operator":    string(term.Operator),
-						"values":      strings.Join(term.Values, ","),
-						"topologyKey": term.TopologyKey,
-					})
-				}
-				if len(podAntiAffinityTermLabelSelector) > 0 {
-					if err := setHelmValue(values, "podAntiAffinityTermLabelSelector", podAntiAffinityTermLabelSelector); err != nil {
-						return err
-					}
+		}
+		if len(pod.Affinity.PodAntiAffinity.PreferredDuringScheduling) > 0 {
+			podAntiAffinityTermLabelSelector := convertAntiAffinityTermsToHelmValues(pod.Affinity.PodAntiAffinity.PreferredDuringScheduling)
+			if len(podAntiAffinityTermLabelSelector) > 0 {
+				if err := setHelmValue(values, "podAntiAffinityTermLabelSelector", podAntiAffinityTermLabelSelector); err != nil {
+					return err
 				}
 			}
 		}
@@ -257,6 +246,19 @@ func populatePodHelmValues(pod *v2.PodRuntimeConfig, values map[string]interface
 		}
 	}
 	return nil
+}
+
+func convertAntiAffinityTermsToHelmValues(terms []v2.PodAntiAffinityTerm) []interface{} {
+	termsValues := make([]interface{}, 0)
+	for _, term := range terms {
+		termsValues = append(termsValues, map[string]interface{}{
+			"key":         term.Key,
+			"operator":    string(term.Operator),
+			"values":      strings.Join(term.Values, ","),
+			"topologyKey": term.TopologyKey,
+		})
+	}
+	return termsValues
 }
 
 func populateAutoscalingHelmValues(autoScalerConfg *v2.AutoScalerConfig, values map[string]interface{}) error {
@@ -283,6 +285,204 @@ func populateAutoscalingHelmValues(autoScalerConfg *v2.AutoScalerConfig, values 
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+func runtimeValuesToComponentRuntimeConfig(in *v1.HelmValues, out *v2.ComponentRuntimeConfig) error {
+	if err := runtimeValuesToDeploymentRuntimeConfig(in, &out.Deployment); err != nil {
+		return err
+	}
+	if err := runtimeValuesToPodRuntimeConfig(in, &out.Pod); err != nil {
+		return err
+	}
+	if err := runtimeValuesToAutoscalingConfig(in, &out.Deployment); err != nil {
+		return err
+	}
+	return nil
+}
+
+func runtimeValuesToDeploymentRuntimeConfig(in *v1.HelmValues, out *v2.DeploymentRuntimeConfig) error {
+	if replicaCount, ok, err := in.GetInt64("replicaCount"); ok {
+		replicas := int32(replicaCount)
+		out.Replicas = &replicas
+	} else if err != nil {
+		return err
+	}
+	rollingUpdate := &appsv1.RollingUpdateDeployment{}
+	setRollingUpdate := false
+	if rollingMaxSurgeString, ok, err := in.GetString("rollingMaxSurge"); ok {
+		maxSurge := intstr.FromString(rollingMaxSurgeString)
+		rollingUpdate.MaxSurge = &maxSurge
+		setRollingUpdate = true
+	} else if err != nil {
+		if rollingMaxSurgeInt, ok, err := in.GetInt64("rollingMaxSurge"); ok {
+			maxSurge := intstr.FromInt(int(rollingMaxSurgeInt))
+			rollingUpdate.MaxSurge = &maxSurge
+			setRollingUpdate = true
+		} else if err != nil {
+			return err
+		}
+	}
+	if rollingMaxUnavailableString, ok, err := in.GetString("rollingMaxUnavailable"); ok {
+		maxUnavailable := intstr.FromString(rollingMaxUnavailableString)
+		rollingUpdate.MaxUnavailable = &maxUnavailable
+		setRollingUpdate = true
+	} else if err != nil {
+		if rollingMaxUnavailableInt, ok, err := in.GetInt64("rollingMaxUnavailable"); ok {
+			maxUnavailable := intstr.FromInt(int(rollingMaxUnavailableInt))
+			rollingUpdate.MaxUnavailable = &maxUnavailable
+			setRollingUpdate = true
+		} else if err != nil {
+			return err
+		}
+	}
+	if setRollingUpdate {
+		out.Strategy = &appsv1.DeploymentStrategy{
+			RollingUpdate: rollingUpdate,
+		}
+	}
+	return nil
+}
+
+func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig) error {
+	if rawAnnotations, ok, err := in.GetMap("podAnnotations"); ok {
+		out.Metadata.Annotations = make(map[string]string)
+		for key, value := range rawAnnotations {
+			if stringValue, ok := value.(string); ok {
+				out.Metadata.Annotations[key] = stringValue
+			} else {
+				return fmt.Errorf("non string value in podAnnotations definition")
+			}
+		}
+	} else if err != nil {
+		return err
+	}
+	if priorityClassName, ok, err := in.GetString("priorityClassName"); ok {
+		out.PriorityClassName = priorityClassName
+	} else if err != nil {
+		return err
+	}
+
+	// Scheduling
+	if priorityClassName, ok, err := in.GetString("priorityClassName"); ok {
+		out.PriorityClassName = priorityClassName
+	} else if err != nil {
+		return err
+	}
+	if rawSelector, ok, err := in.GetMap("nodeSelector"); ok {
+		out.NodeSelector = make(map[string]string)
+		for key, value := range rawSelector {
+			if stringValue, ok := value.(string); ok {
+				out.NodeSelector[key] = stringValue
+			} else {
+				return fmt.Errorf("non string value in nodeSelector definition")
+			}
+		}
+	} else if err != nil {
+		return err
+	}
+	if rawAntiAffinityLabelSelector, ok, err := in.GetSlice("podAntiAffinityLabelSelector"); ok {
+		if out.Affinity == nil {
+			out.Affinity = &v2.Affinity{}
+		}
+		for _, rawSelector := range rawAntiAffinityLabelSelector {
+			if selectorValues, ok := rawSelector.(map[string]interface{}); ok {
+				term := v2.PodAntiAffinityTerm{}
+				if err := affinityTermValuesToAntiAffinityTerm(v1.NewHelmValues(selectorValues), &term); err != nil {
+					return err
+				}
+				out.Affinity.PodAntiAffinity.RequiredDuringScheduling = append(out.Affinity.PodAntiAffinity.RequiredDuringScheduling, term)
+			} else {
+				return fmt.Errorf("could not cast podAntiAffinityLabelSelector value to map[string]interface{}")
+			}
+		}
+	} else if err != nil {
+		return err
+	}
+	if rawAntiAffinityLabelSelector, ok, err := in.GetSlice("podAntiAffinityTermLabelSelector"); ok {
+		if out.Affinity == nil {
+			out.Affinity = &v2.Affinity{}
+		}
+		for _, rawSelector := range rawAntiAffinityLabelSelector {
+			if selectorValues, ok := rawSelector.(map[string]interface{}); ok {
+				term := v2.PodAntiAffinityTerm{}
+				if err := affinityTermValuesToAntiAffinityTerm(v1.NewHelmValues(selectorValues), &term); err != nil {
+					return err
+				}
+				out.Affinity.PodAntiAffinity.RequiredDuringScheduling = append(out.Affinity.PodAntiAffinity.RequiredDuringScheduling, term)
+			} else {
+				return fmt.Errorf("could not cast podAntiAffinityTermLabelSelector value to map[string]interface{}")
+			}
+		}
+	} else if err != nil {
+		return err
+	}
+	if tolerationsValues, ok, err := in.GetSlice("tolerations"); ok {
+		for _, tolerationValues := range tolerationsValues {
+			toleration := corev1.Toleration{}
+			if err := fromValues(tolerationValues, &toleration); err != nil {
+				return err
+			}
+			out.Tolerations = append(out.Tolerations, toleration)
+		}
+	} else if err != nil {
+		return err
+	}
+	return nil
+}
+
+func affinityTermValuesToAntiAffinityTerm(in *v1.HelmValues, out *v2.PodAntiAffinityTerm) error {
+	term := v2.PodAntiAffinityTerm{}
+	if key, ok, err := in.GetString("key"); ok {
+		term.Key = key
+	} else if err != nil {
+		return err
+	}
+	if operator, ok, err := in.GetString("operator"); ok {
+		term.Operator = metav1.LabelSelectorOperator(operator)
+	} else if err != nil {
+		return err
+	}
+	if topologyKey, ok, err := in.GetString("topologyKey"); ok {
+		term.TopologyKey = topologyKey
+	} else if err != nil {
+		return err
+	}
+	if values, ok, err := in.GetString("values"); ok {
+		term.Values = strings.Split(values, ",")
+	} else if err != nil {
+		return err
+	}
+	return nil
+}
+
+func runtimeValuesToAutoscalingConfig(in *v1.HelmValues, out *v2.DeploymentRuntimeConfig) error {
+	if enabled, ok, err := in.GetBool("autoscaleEnabled"); ok {
+		if !enabled {
+			return nil
+		}
+	} else if err != nil {
+		return err
+	}
+	autoScaling := v2.AutoScalerConfig{}
+	if minReplicas64, ok, err := in.GetInt64("autoscaleMin"); ok {
+		minReplicas := int32(minReplicas64)
+		autoScaling.MinReplicas = &minReplicas
+	} else if err != nil {
+		return err
+	}
+	if maxReplicas64, ok, err := in.GetInt64("autoscaleMax"); ok {
+		maxReplicas := int32(maxReplicas64)
+		autoScaling.MaxReplicas = &maxReplicas
+	} else if err != nil {
+		return err
+	}
+	if cpuUtilization64, ok, err := in.GetInt64("cpu.targetAverageUtilization"); ok {
+		cpuUtilization := int32(cpuUtilization64)
+		autoScaling.TargetCPUUtilizationPercentage = &cpuUtilization
+	} else if err != nil {
+		return err
 	}
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
@@ -241,17 +242,17 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		configVolumes := make([]map[string]string, 0)
 		secretVolumes := make([]map[string]string, 0)
 		for _, volume := range in.Volumes {
-			if volume.Volume.ConfigMap != nil {
-				configVolumes = append(configVolumes, map[string]string{
-					"name":          volume.Mount.Name,
-					"configMapName": volume.Volume.Name,
-					"mountPath":     volume.Mount.MountPath,
-				})
-			} else if volume.Volume.Secret != nil {
+			if volume.Volume.Secret != nil {
 				secretVolumes = append(secretVolumes, map[string]string{
 					"name":       volume.Mount.Name,
 					"secretName": volume.Volume.Name,
 					"mountPath":  volume.Mount.MountPath,
+				})
+			} else if volume.Volume.ConfigMap != nil {
+				configVolumes = append(configVolumes, map[string]string{
+					"name":          volume.Mount.Name,
+					"configMapName": volume.Volume.Name,
+					"mountPath":     volume.Mount.MountPath,
 				})
 			} else {
 				// XXX: ignore misconfigured volumes?
@@ -278,7 +279,7 @@ func gatewayEgressConfigToValues(in *v2.EgressGatewayConfig) (map[string]interfa
 	}
 
 	if len(in.RequestedNetworkView) > 0 {
-		if err := setHelmStringValue(values, "env.ISTIO_META_REQUESTED_NETWORK_VIEW", fmt.Sprintf("\"%s\"", strings.Join(in.RequestedNetworkView, ","))); err != nil {
+		if err := setHelmStringValue(values, "env.ISTIO_META_REQUESTED_NETWORK_VIEW", strings.Join(in.RequestedNetworkView, ",")); err != nil {
 			return nil, err
 		}
 	}
@@ -337,50 +338,195 @@ func populateGatewaysConfig(in map[string]interface{}, out *v2.GatewaysConfig) e
 			if !ok {
 				return fmt.Errorf("Failed to parse gateway.%s: cannot cast to map[string]interface{}", name)
 			}
-
-			gatewayValuesToConfig(gatewayMap, &gc)
-			// Put it in the correct bucket
-			if name == "istio-ingressgateway" {
-				igc := &v2.IngressGatewayConfig{
-					GatewayConfig: gc,
-				}
-
-				// TODO: igc.MeshExpansionPorts
-				out.Ingress = igc
-			} else if name == "istio-egressgateway" {
-				out.Egress = &gc
-			} else {
-				out.AdditionalGateways[name] = gc
+			gatewayValues := v1.NewHelmValues(gatewayMap)
+			if err := gatewayValuesToConfig(gatewayValues, &gc); err != nil {
+				return err
 			}
 
+			// egress only
+			if networkView, ok, err := gatewayValues.GetString("env.ISTIO_META_REQUESTED_NETWORK_VIEW"); ok {
+				egressGateway := v2.EgressGatewayConfig{
+					GatewayConfig:        gc,
+					RequestedNetworkView: strings.Split(networkView, ","),
+				}
+				if name == "istio-egressgateway" {
+					out.ClusterEgress = &egressGateway
+				} else {
+					out.EgressGateways[name] = egressGateway
+				}
+			} else if err != nil {
+				return err
+			} else {
+				// assume ingress gateway
+				ingressGateway := v2.IngressGatewayConfig{
+					GatewayConfig: gc,
+				}
+				if enableSDS, ok, err := gatewayValues.GetBool("sds.enabled"); ok {
+					ingressGateway.EnableSDS = &enableSDS
+				} else if err != nil {
+					return err
+				}
+				sdsContainerConfig := v2.ContainerConfig{}
+				setSDSContainerConfig := false
+				if sdsImage, ok, err := gatewayValues.GetString("sds.image"); ok {
+					sdsContainerConfig.Image = sdsImage
+					setSDSContainerConfig = true
+				} else if err != nil {
+					return err
+				}
+				if resourcesValues, ok, err := gatewayValues.GetMap("sds.resources"); ok {
+					resources := &corev1.ResourceRequirements{}
+					if err := fromValues(resourcesValues, resources); err != nil {
+						return err
+					}
+					sdsContainerConfig.Resources = resources
+					setSDSContainerConfig = true
+				} else if err != nil {
+					return err
+				}
+				if setSDSContainerConfig {
+					ingressGateway.Runtime.Pod.Containers["ingress-sds"] = sdsContainerConfig
+				}
+				if name == "istio-ingressgateway" {
+					clusterIngress := v2.ClusterIngressGatewayConfig{
+						IngressGatewayConfig: ingressGateway,
+					}
+					out.ClusterIngress = &clusterIngress
+				} else {
+					out.IngressGateways[name] = ingressGateway
+				}
+			}
 		}
 	}
 	return nil
 }
 
-func gatewayValuesToConfig(in map[string]interface{}, out *v2.GatewayConfig) error {
-	out.Enabled = getHelmBoolValue(in, "enabled")
-	out.Namespace = getHelmStringValue(in, "namespace")
-	out.RequestedNetworkView = strings.Split(getHelmStringValue(in, "env.ISTIO_META_REQUESTED_NETWORK_VIEW"), ",")
-	if routerMode := getHelmStringValue(in, "env.ISTIO_META_ROUTER_MODE"); routerMode != "" {
-		out.RouterMode = v2.RouterModeType(routerMode)
-	} else {
-		out.RouterMode = v2.RouterModeTypeSNIDNAT
+func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
+	gatewayConfig := v2.GatewayConfig{}
+	if enabled, ok, err := in.GetBool("enabled"); ok {
+		gatewayConfig.Enabled = &enabled
+	} else if err != nil {
+		return err
 	}
-
-	out.EnableSDS = getHelmBoolValue(in, "sds.enabled")
+	if namespace, ok, err := in.GetString("namespace"); ok {
+		gatewayConfig.Namespace = namespace
+	} else if err != nil {
+		return err
+	}
+	// env.ISTIO_META_ROUTER_MODE
+	if routerMode, ok, err := in.GetString("env.ISTIO_META_ROUTER_MODE"); ok {
+		gatewayConfig.RouterMode = v2.RouterModeType(routerMode)
+	} else if err != nil {
+		return err
+	}
 
 	// Service-specific config
-	out.Service = v2.GatewayServiceConfig{}
-	out.Service.LoadBalancerIP = getHelmStringValue(in, "loadBalancerIP")
-	out.Service.LoadBalancerSourceRanges = getHelmStringSliceValue(in, "loadBalancerSourceRanges")
-	if externalTrafficPolicy := getHelmStringValue(in, "externalTrafficPolicy"); externalTrafficPolicy != "" {
-		out.Service.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyType(externalTrafficPolicy)
-	} else {
-		out.Service.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
+	gatewayConfig.Service = v2.GatewayServiceConfig{}
+	if err := fromValues(in.GetContent(), &gatewayConfig.Service); err != nil {
+		return err
 	}
-	out.Service.ExternalIPs = getHelmStringSliceValue(in, "externalIPs")
-	out.Service.Metadata.Labels = getHelmStringMapValue(in, "labels")
+
+	if rawLabels, ok, err := in.GetMap("labels"); ok {
+		labels := make(map[string]string)
+		for key, value := range rawLabels {
+			if stringValue, ok := value.(string); ok {
+				labels[key] = stringValue
+			} else {
+				return fmt.Errorf("non string value in labels definition")
+			}
+		}
+		gatewayConfig.Service.Metadata.Labels = labels
+	} else if err != nil {
+		return err
+	}
+
+	// volumes
+	if secretVolumes, ok, err := in.GetSlice("secretVolumes"); ok {
+		for _, rawSecretVolume := range secretVolumes {
+			if secretVolume, ok := rawSecretVolume.(map[string]interface{}); ok {
+				volumeValues := v1.NewHelmValues(secretVolume)
+				volume := v2.VolumeConfig{
+					Volume: v2.GatewayVolume{
+						Secret: &corev1.SecretVolumeSource{},
+					},
+				}
+				if name, ok, err := volumeValues.GetString("name"); ok {
+					volume.Mount.Name = name
+				} else if err != nil {
+					return err
+				}
+				if secretName, ok, err := volumeValues.GetString("secretName"); ok {
+					volume.Volume.Name = secretName
+				} else if err != nil {
+					return err
+				}
+				if mountPath, ok, err := volumeValues.GetString("mountPath"); ok {
+					volume.Mount.MountPath = mountPath
+				} else if err != nil {
+					return err
+				}
+				gatewayConfig.Volumes = append(out.Volumes, volume)
+			} else {
+				return fmt.Errorf("could not cast secretVolume entry to map[string]interface{}")
+			}
+		}
+	} else if err != nil {
+		return err
+	}
+	if configVolumes, ok, err := in.GetSlice("configVolumes"); ok {
+		for _, rawConfigVolume := range configVolumes {
+			if configVolume, ok := rawConfigVolume.(map[string]interface{}); ok {
+				volumeValues := v1.NewHelmValues(configVolume)
+				volume := v2.VolumeConfig{
+					Volume: v2.GatewayVolume{
+						ConfigMap: &corev1.ConfigMapVolumeSource{},
+					},
+				}
+				if name, ok, err := volumeValues.GetString("name"); ok {
+					volume.Mount.Name = name
+				} else if err != nil {
+					return err
+				}
+				if configMapName, ok, err := volumeValues.GetString("configMapName"); ok {
+					volume.Volume.Name = configMapName
+				} else if err != nil {
+					return err
+				}
+				if mountPath, ok, err := volumeValues.GetString("mountPath"); ok {
+					volume.Mount.MountPath = mountPath
+				} else if err != nil {
+					return err
+				}
+				gatewayConfig.Volumes = append(out.Volumes, volume)
+			} else {
+				return fmt.Errorf("could not cast secretVolume entry to map[string]interface{}")
+			}
+		}
+	} else if err != nil {
+		return err
+	}
+
+	// runtime
+	gatewayConfig.Runtime = &v2.ComponentRuntimeConfig{}
+	if err := runtimeValuesToComponentRuntimeConfig(in, gatewayConfig.Runtime); err != nil {
+		return err
+	}
+
+	// container settings
+	if resourcesValues, ok, err := in.GetMap("resources"); ok {
+		resources := &corev1.ResourceRequirements{}
+		if err := fromValues(resourcesValues, resources); err != nil {
+			return err
+		}
+		gatewayConfig.Runtime.Pod.Containers["istio-proxy"] = v2.ContainerConfig{
+			CommonContainerConfig: v2.CommonContainerConfig{
+				Resources: resources,
+			},
+		}
+	} else if err != nil {
+		return err
+	}
+
 	return nil
 }
 

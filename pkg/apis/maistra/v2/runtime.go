@@ -139,7 +139,7 @@ type CommonPodRuntimeConfig struct {
 // types here.
 type Affinity struct {
 	// +optional
-	PodAntiAffinity *PodAntiAffinity `json:"podAntiAffinity,omitempty"`
+	PodAntiAffinity PodAntiAffinity `json:"podAntiAffinity,omitempty"`
 }
 
 // PodAntiAffinity configures anti affinity for pod scheduling
