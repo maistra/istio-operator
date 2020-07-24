@@ -289,25 +289,34 @@ func populateAutoscalingHelmValues(autoScalerConfg *v2.AutoScalerConfig, values 
 	return nil
 }
 
-func runtimeValuesToComponentRuntimeConfig(in *v1.HelmValues, out *v2.ComponentRuntimeConfig) error {
-	if err := runtimeValuesToDeploymentRuntimeConfig(in, &out.Deployment); err != nil {
-		return err
+func runtimeValuesToComponentRuntimeConfig(in *v1.HelmValues, out *v2.ComponentRuntimeConfig) (bool, error) {
+	setValues := false
+	if applied, err := runtimeValuesToDeploymentRuntimeConfig(in, &out.Deployment); err == nil {
+		setValues = setValues || applied
+	} else {
+		return false, err
 	}
-	if err := runtimeValuesToPodRuntimeConfig(in, &out.Pod); err != nil {
-		return err
+	if applied, err := runtimeValuesToPodRuntimeConfig(in, &out.Pod); err == nil {
+		setValues = setValues || applied
+	} else {
+		return false, err
 	}
-	if err := runtimeValuesToAutoscalingConfig(in, &out.Deployment); err != nil {
-		return err
+	if applied, err := runtimeValuesToAutoscalingConfig(in, &out.Deployment); err == nil {
+		setValues = setValues || applied
+	} else {
+		return false, err
 	}
-	return nil
+	return setValues, nil
 }
 
-func runtimeValuesToDeploymentRuntimeConfig(in *v1.HelmValues, out *v2.DeploymentRuntimeConfig) error {
+func runtimeValuesToDeploymentRuntimeConfig(in *v1.HelmValues, out *v2.DeploymentRuntimeConfig) (bool, error) {
+	setValues := false
 	if replicaCount, ok, err := in.GetInt64("replicaCount"); ok {
 		replicas := int32(replicaCount)
 		out.Replicas = &replicas
+		setValues = true
 	} else if err != nil {
-		return err
+		return false, err
 	}
 	rollingUpdate := &appsv1.RollingUpdateDeployment{}
 	setRollingUpdate := false
@@ -321,7 +330,7 @@ func runtimeValuesToDeploymentRuntimeConfig(in *v1.HelmValues, out *v2.Deploymen
 			rollingUpdate.MaxSurge = &maxSurge
 			setRollingUpdate = true
 		} else if err != nil {
-			return err
+			return false, err
 		}
 	}
 	if rollingMaxUnavailableString, ok, err := in.GetString("rollingMaxUnavailable"); ok {
@@ -334,55 +343,50 @@ func runtimeValuesToDeploymentRuntimeConfig(in *v1.HelmValues, out *v2.Deploymen
 			rollingUpdate.MaxUnavailable = &maxUnavailable
 			setRollingUpdate = true
 		} else if err != nil {
-			return err
+			return false, err
 		}
 	}
 	if setRollingUpdate {
 		out.Strategy = &appsv1.DeploymentStrategy{
 			RollingUpdate: rollingUpdate,
 		}
+		setValues = true
 	}
-	return nil
+	return setValues, nil
 }
 
-func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig) error {
-	if rawAnnotations, ok, err := in.GetMap("podAnnotations"); ok {
-		out.Metadata.Annotations = make(map[string]string)
-		for key, value := range rawAnnotations {
-			if stringValue, ok := value.(string); ok {
-				out.Metadata.Annotations[key] = stringValue
-			} else {
-				return fmt.Errorf("non string value in podAnnotations definition")
-			}
+func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig) (bool, error) {
+	setValues := false
+	if rawAnnotations, ok, err := in.GetMap("podAnnotations"); ok && len(rawAnnotations) > 0 {
+		if err := setMetadataAnnotations(rawAnnotations, &out.Metadata); err != nil {
+			return false, err
 		}
+		setValues = true
 	} else if err != nil {
-		return err
+		return false, err
 	}
 	if priorityClassName, ok, err := in.GetString("priorityClassName"); ok {
 		out.PriorityClassName = priorityClassName
+		setValues = true
 	} else if err != nil {
-		return err
+		return false, err
 	}
 
 	// Scheduling
-	if priorityClassName, ok, err := in.GetString("priorityClassName"); ok {
-		out.PriorityClassName = priorityClassName
-	} else if err != nil {
-		return err
-	}
-	if rawSelector, ok, err := in.GetMap("nodeSelector"); ok {
+	if rawSelector, ok, err := in.GetMap("nodeSelector"); ok && len(rawSelector) > 0 {
 		out.NodeSelector = make(map[string]string)
 		for key, value := range rawSelector {
 			if stringValue, ok := value.(string); ok {
 				out.NodeSelector[key] = stringValue
 			} else {
-				return fmt.Errorf("non string value in nodeSelector definition")
+				return false, fmt.Errorf("non string value in nodeSelector definition")
 			}
 		}
+		setValues = true
 	} else if err != nil {
-		return err
+		return false, err
 	}
-	if rawAntiAffinityLabelSelector, ok, err := in.GetSlice("podAntiAffinityLabelSelector"); ok {
+	if rawAntiAffinityLabelSelector, ok, err := in.GetSlice("podAntiAffinityLabelSelector"); ok && len(rawAntiAffinityLabelSelector) > 0 {
 		if out.Affinity == nil {
 			out.Affinity = &v2.Affinity{}
 		}
@@ -390,17 +394,18 @@ func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig
 			if selectorValues, ok := rawSelector.(map[string]interface{}); ok {
 				term := v2.PodAntiAffinityTerm{}
 				if err := affinityTermValuesToAntiAffinityTerm(v1.NewHelmValues(selectorValues), &term); err != nil {
-					return err
+					return false, err
 				}
 				out.Affinity.PodAntiAffinity.RequiredDuringScheduling = append(out.Affinity.PodAntiAffinity.RequiredDuringScheduling, term)
 			} else {
-				return fmt.Errorf("could not cast podAntiAffinityLabelSelector value to map[string]interface{}")
+				return false, fmt.Errorf("could not cast podAntiAffinityLabelSelector value to map[string]interface{}")
 			}
 		}
+		setValues = true
 	} else if err != nil {
-		return err
+		return false, err
 	}
-	if rawAntiAffinityLabelSelector, ok, err := in.GetSlice("podAntiAffinityTermLabelSelector"); ok {
+	if rawAntiAffinityLabelSelector, ok, err := in.GetSlice("podAntiAffinityTermLabelSelector"); ok && len(rawAntiAffinityLabelSelector) > 0 {
 		if out.Affinity == nil {
 			out.Affinity = &v2.Affinity{}
 		}
@@ -408,28 +413,30 @@ func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig
 			if selectorValues, ok := rawSelector.(map[string]interface{}); ok {
 				term := v2.PodAntiAffinityTerm{}
 				if err := affinityTermValuesToAntiAffinityTerm(v1.NewHelmValues(selectorValues), &term); err != nil {
-					return err
+					return false, err
 				}
 				out.Affinity.PodAntiAffinity.RequiredDuringScheduling = append(out.Affinity.PodAntiAffinity.RequiredDuringScheduling, term)
 			} else {
-				return fmt.Errorf("could not cast podAntiAffinityTermLabelSelector value to map[string]interface{}")
+				return false, fmt.Errorf("could not cast podAntiAffinityTermLabelSelector value to map[string]interface{}")
 			}
 		}
+		setValues = true
 	} else if err != nil {
-		return err
+		return false, err
 	}
-	if tolerationsValues, ok, err := in.GetSlice("tolerations"); ok {
+	if tolerationsValues, ok, err := in.GetSlice("tolerations"); ok && len(tolerationsValues) > 0 {
 		for _, tolerationValues := range tolerationsValues {
 			toleration := corev1.Toleration{}
 			if err := fromValues(tolerationValues, &toleration); err != nil {
-				return err
+				return false, err
 			}
 			out.Tolerations = append(out.Tolerations, toleration)
 		}
+		setValues = true
 	} else if err != nil {
-		return err
+		return false, err
 	}
-	return nil
+	return setValues, nil
 }
 
 func affinityTermValuesToAntiAffinityTerm(in *v1.HelmValues, out *v2.PodAntiAffinityTerm) error {
@@ -457,32 +464,267 @@ func affinityTermValuesToAntiAffinityTerm(in *v1.HelmValues, out *v2.PodAntiAffi
 	return nil
 }
 
-func runtimeValuesToAutoscalingConfig(in *v1.HelmValues, out *v2.DeploymentRuntimeConfig) error {
+func runtimeValuesToAutoscalingConfig(in *v1.HelmValues, out *v2.DeploymentRuntimeConfig) (bool, error) {
 	if enabled, ok, err := in.GetBool("autoscaleEnabled"); ok {
 		if !enabled {
-			return nil
+			return false, nil
 		}
 	} else if err != nil {
-		return err
+		return false, err
 	}
-	autoScaling := v2.AutoScalerConfig{}
+	autoScaling := &v2.AutoScalerConfig{}
+	setValues := false
 	if minReplicas64, ok, err := in.GetInt64("autoscaleMin"); ok {
 		minReplicas := int32(minReplicas64)
 		autoScaling.MinReplicas = &minReplicas
+		setValues = true
 	} else if err != nil {
-		return err
+		return false, err
 	}
 	if maxReplicas64, ok, err := in.GetInt64("autoscaleMax"); ok {
 		maxReplicas := int32(maxReplicas64)
 		autoScaling.MaxReplicas = &maxReplicas
+		setValues = true
 	} else if err != nil {
-		return err
+		return false, err
 	}
 	if cpuUtilization64, ok, err := in.GetInt64("cpu.targetAverageUtilization"); ok {
 		cpuUtilization := int32(cpuUtilization64)
 		autoScaling.TargetCPUUtilizationPercentage = &cpuUtilization
+		setValues = true
 	} else if err != nil {
-		return err
+		return false, err
 	}
-	return nil
+	if setValues {
+		out.AutoScaling = autoScaling
+	}
+	return setValues, nil
+}
+
+func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) (bool, error) {
+	rawGlobalValues, ok, err := in.GetMap("global")
+	if err != nil {
+		return false, err
+	} else if !ok || len(rawGlobalValues) == 0 {
+		return false, nil
+	}
+	globalValues := v1.NewHelmValues(rawGlobalValues)
+	runtime := &v2.ControlPlaneRuntimeConfig{}
+	setRuntime := false
+
+	defaults := &v2.DefaultRuntimeConfig{}
+	setDefaults := false
+
+	if rawPDBValues, ok, err := globalValues.GetMap("defaultPodDisruptionBudget"); ok && len(rawPDBValues) > 0 {
+		pdbValues := v1.NewHelmValues(rawPDBValues)
+		if pdbEnabled, ok, err := pdbValues.GetBool("enabled"); ok && pdbEnabled {
+			defaults.Deployment = &v2.CommonDeploymentRuntimeConfig{
+				Disruption: &v2.PodDisruptionBudget{},
+			}
+			setDefaults = true
+			if err := fromValues(pdbValues, defaults.Deployment.Disruption); err != nil {
+				return false, err
+			}
+		} else if err != nil {
+			return false, err
+		}
+	} else if err != nil {
+		return false, err
+	}
+
+	pod := &v2.CommonPodRuntimeConfig{}
+	setPod := false
+	if nodeSelector, ok, err := globalValues.GetMap("defaultNodeSelector"); ok && len(nodeSelector) > 0 {
+		pod.NodeSelector = make(map[string]string)
+		setPod = true
+		if err := fromValues(nodeSelector, pod.NodeSelector); err != nil {
+			return false, err
+		}
+	} else if err != nil {
+		return false, err
+	}
+	if tolerations, ok, err := globalValues.GetSlice("defaultTolerations"); ok && len(tolerations) > 0 {
+		pod.Tolerations = make([]corev1.Toleration, len(tolerations))
+		setPod = true
+		for index, tolerationValues := range tolerations {
+			if err := fromValues(tolerationValues, &pod.Tolerations[index]); err != nil {
+				return false, err
+			}
+		}
+	} else if err != nil {
+		return false, err
+	}
+	if priorityClassName, ok, err := globalValues.GetString("priorityClassName"); ok {
+		pod.PriorityClassName = priorityClassName
+		setPod = true
+	} else if err != nil {
+		return false, err
+	}
+
+	if setPod {
+		defaults.Pod = pod
+		setDefaults = true
+	}
+
+	container := &v2.CommonContainerConfig{}
+	if applied, err := populateCommonContainerConfig(globalValues, container); err != nil {
+		return false, err
+	} else if applied {
+		defaults.Container = container
+		setDefaults = true
+	}
+	// global resources use a different key
+	if resourcesValues, ok, err := globalValues.GetMap("defaultResources"); ok && len(resourcesValues) > 0 {
+		container.Resources = &corev1.ResourceRequirements{}
+		if err := fromValues(resourcesValues, container.Resources); err != nil {
+			return false, err
+		}
+		if defaults.Container == nil {
+			defaults.Container = container
+		}
+		setDefaults = true
+	} else if err != nil {
+		return false, err
+	}
+
+	if securityValues, ok, err := in.GetMap("security"); ok {
+		runtime.Citadel = &v2.ComponentRuntimeConfig{}
+		if applied, err := runtimeValuesToComponentRuntimeConfig(v1.NewHelmValues(securityValues), runtime.Citadel); err == nil {
+			setRuntime = setRuntime || applied
+		} else {
+			return false, err
+		}
+	} else if err != nil {
+		return false, err
+	}
+	if galleyValues, ok, err := in.GetMap("galley"); ok {
+		runtime.Galley = &v2.ComponentRuntimeConfig{}
+		if applied, err := runtimeValuesToComponentRuntimeConfig(v1.NewHelmValues(galleyValues), runtime.Galley); err == nil {
+			setRuntime = setRuntime || applied
+		} else {
+			return false, err
+		}
+	} else if err != nil {
+		return false, err
+	}
+	if pilotValues, ok, err := in.GetMap("pilot"); ok {
+		runtime.Pilot = &v2.ComponentRuntimeConfig{}
+		if applied, err := runtimeValuesToComponentRuntimeConfig(v1.NewHelmValues(pilotValues), runtime.Pilot); err == nil {
+			setRuntime = setRuntime || applied
+		} else {
+			return false, err
+		}
+	} else if err != nil {
+		return false, err
+	}
+
+	if setDefaults {
+		runtime.Defaults = defaults
+		setRuntime = true
+	}
+
+	if setRuntime {
+		out.Runtime = runtime
+	}
+
+	return setRuntime, nil
+}
+
+func populateContainerConfig(in *v1.HelmValues, out *v2.ContainerConfig) (bool, error) {
+	setContainer := false
+	if image, ok, err := in.GetString("image"); ok {
+		out.Image = image
+		setContainer = true
+	} else if err != nil {
+		return false, err
+	}
+	if applied, err := populateCommonContainerConfig(in, &out.CommonContainerConfig); err == nil {
+		setContainer = setContainer || applied
+	} else {
+		return false, err
+	}
+	return setContainer, nil
+}
+
+func populateCommonContainerConfig(in *v1.HelmValues, out *v2.CommonContainerConfig) (bool, error) {
+	setContainer := false
+	if imagePullPolicy, ok, err := in.GetString("imagePullPolicy"); ok {
+		out.ImagePullPolicy = corev1.PullPolicy(imagePullPolicy)
+		setContainer = true
+	} else if err != nil {
+		return false, err
+	}
+	if imagePullSecrets, ok, err := in.GetStringSlice("imagePullSecrets"); ok && len(imagePullSecrets) > 0 {
+		out.ImagePullSecrets = make([]corev1.LocalObjectReference, len(imagePullSecrets))
+		setContainer = true
+		for index, pullSecret := range imagePullSecrets {
+			out.ImagePullSecrets[index].Name = pullSecret
+		}
+	} else if err != nil {
+		return false, err
+	}
+	if hub, ok, err := in.GetString("hub"); ok {
+		out.ImageRegistry = hub
+		setContainer = true
+	} else if err != nil {
+		return false, err
+	}
+	if tag, ok, err := in.GetString("tag"); ok {
+		out.ImageTag = tag
+		setContainer = true
+	} else if err != nil {
+		return false, err
+	}
+	if resourcesValues, ok, err := in.GetMap("resources"); ok && len(resourcesValues) > 0 {
+		out.Resources = &corev1.ResourceRequirements{}
+		if err := fromValues(resourcesValues, out.Resources); err != nil {
+			return false, err
+		}
+		setContainer = true
+	} else if err != nil {
+		return false, err
+	}
+
+	return setContainer, nil
+}
+
+func populateComponentServiceConfig(in *v1.HelmValues, out *v2.ComponentServiceConfig) (bool, error) {
+	setValues := false
+	if rawAnnotations, ok, err := in.GetMap("service.annotations"); ok && len(rawAnnotations) > 0 {
+		if err := setMetadataAnnotations(rawAnnotations, &out.Metadata); err != nil {
+			return false, err
+		}
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+	if enabled, ok, err := in.GetBool("service.nodePort.enabled"); ok {
+		if enabled {
+			nodePort := int32(0)
+			out.NodePort = &nodePort
+			setValues = true
+		} else if rawNodePort, ok, err := in.GetInt64("service.nodePort.port"); ok {
+			nodePort := int32(rawNodePort)
+			out.NodePort = &nodePort
+			setValues = true
+		} else if err != nil {
+			return false, err
+		}
+	} else if err != nil {
+		return false, err
+	}
+	if rawIngressValues, ok, err := in.GetMap("ingress"); ok && len(rawIngressValues) > 0 {
+		ingressValues := v1.NewHelmValues(rawIngressValues)
+		ingress := &v2.ComponentIngressConfig{}
+		if applied, err := populateAddonIngressConfig(ingressValues, ingress); err != nil {
+			return false, err
+		} else if applied {
+			out.Ingress = ingress
+			setValues = true
+		}
+	} else if err != nil {
+		return false, err
+	}
+
+	return setValues, nil
 }

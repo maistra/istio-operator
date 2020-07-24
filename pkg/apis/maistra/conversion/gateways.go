@@ -329,15 +329,19 @@ func gatewayIngressConfigToValues(in *v2.IngressGatewayConfig) (map[string]inter
 	return values, nil
 }
 
-func populateGatewaysConfig(in map[string]interface{}, out *v2.GatewaysConfig) error {
-	gateways, ok := in["gateways"].(map[string]interface{})
-	if ok {
+func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
+	gatewaysConfig := &v2.GatewaysConfig{}
+	setGatewaysConfig := false
+	if gateways, ok, err := in.GetMap("gateways"); ok {
 		for name, gateway := range gateways {
 			gc := v2.GatewayConfig{}
 			gatewayMap, ok := gateway.(map[string]interface{})
 			if !ok {
 				return fmt.Errorf("Failed to parse gateway.%s: cannot cast to map[string]interface{}", name)
+			} else if len(gatewayMap) == 0 {
+				continue
 			}
+			setGatewaysConfig = true
 			gatewayValues := v1.NewHelmValues(gatewayMap)
 			if err := gatewayValuesToConfig(gatewayValues, &gc); err != nil {
 				return err
@@ -350,9 +354,9 @@ func populateGatewaysConfig(in map[string]interface{}, out *v2.GatewaysConfig) e
 					RequestedNetworkView: strings.Split(networkView, ","),
 				}
 				if name == "istio-egressgateway" {
-					out.ClusterEgress = &egressGateway
+					gatewaysConfig.ClusterEgress = &egressGateway
 				} else {
-					out.EgressGateways[name] = egressGateway
+					gatewaysConfig.EgressGateways[name] = egressGateway
 				}
 			} else if err != nil {
 				return err
@@ -361,81 +365,72 @@ func populateGatewaysConfig(in map[string]interface{}, out *v2.GatewaysConfig) e
 				ingressGateway := v2.IngressGatewayConfig{
 					GatewayConfig: gc,
 				}
-				if enableSDS, ok, err := gatewayValues.GetBool("sds.enabled"); ok {
-					ingressGateway.EnableSDS = &enableSDS
-				} else if err != nil {
-					return err
-				}
-				sdsContainerConfig := v2.ContainerConfig{}
-				setSDSContainerConfig := false
-				if sdsImage, ok, err := gatewayValues.GetString("sds.image"); ok {
-					sdsContainerConfig.Image = sdsImage
-					setSDSContainerConfig = true
-				} else if err != nil {
-					return err
-				}
-				if resourcesValues, ok, err := gatewayValues.GetMap("sds.resources"); ok {
-					resources := &corev1.ResourceRequirements{}
-					if err := fromValues(resourcesValues, resources); err != nil {
+				if rawSDSValues, ok, err := gatewayValues.GetMap("sds"); ok && len(rawSDSValues) > 0 {
+					sdsValues := v1.NewHelmValues(rawSDSValues)
+					if enableSDS, ok, err := sdsValues.GetBool("enabled"); ok {
+						ingressGateway.EnableSDS = &enableSDS
+					} else if err != nil {
 						return err
 					}
-					sdsContainerConfig.Resources = resources
-					setSDSContainerConfig = true
+					sdsContainerConfig := v2.ContainerConfig{}
+					if applied, err := populateContainerConfig(sdsValues, &sdsContainerConfig); err != nil {
+						return err
+					} else if applied {
+						if ingressGateway.Runtime.Pod.Containers == nil {
+							ingressGateway.Runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
+						}
+						ingressGateway.Runtime.Pod.Containers["ingress-sds"] = sdsContainerConfig
+					}
 				} else if err != nil {
 					return err
-				}
-				if setSDSContainerConfig {
-					ingressGateway.Runtime.Pod.Containers["ingress-sds"] = sdsContainerConfig
 				}
 				if name == "istio-ingressgateway" {
 					clusterIngress := v2.ClusterIngressGatewayConfig{
 						IngressGatewayConfig: ingressGateway,
 					}
-					out.ClusterIngress = &clusterIngress
+					gatewaysConfig.ClusterIngress = &clusterIngress
 				} else {
-					out.IngressGateways[name] = ingressGateway
+					gatewaysConfig.IngressGateways[name] = ingressGateway
 				}
 			}
 		}
+	} else if err != nil {
+		return err
+	}
+	if setGatewaysConfig {
+		out.Gateways = gatewaysConfig
 	}
 	return nil
 }
 
 func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
-	gatewayConfig := v2.GatewayConfig{}
 	if enabled, ok, err := in.GetBool("enabled"); ok {
-		gatewayConfig.Enabled = &enabled
+		out.Enabled = &enabled
 	} else if err != nil {
 		return err
 	}
 	if namespace, ok, err := in.GetString("namespace"); ok {
-		gatewayConfig.Namespace = namespace
+		out.Namespace = namespace
 	} else if err != nil {
 		return err
 	}
 	// env.ISTIO_META_ROUTER_MODE
 	if routerMode, ok, err := in.GetString("env.ISTIO_META_ROUTER_MODE"); ok {
-		gatewayConfig.RouterMode = v2.RouterModeType(routerMode)
+		out.RouterMode = v2.RouterModeType(routerMode)
 	} else if err != nil {
 		return err
 	}
 
 	// Service-specific config
-	gatewayConfig.Service = v2.GatewayServiceConfig{}
-	if err := fromValues(in.GetContent(), &gatewayConfig.Service); err != nil {
+	out.Service = v2.GatewayServiceConfig{}
+	if err := fromValues(in.GetContent(), &out.Service); err != nil {
 		return err
 	}
 
 	if rawLabels, ok, err := in.GetMap("labels"); ok {
-		labels := make(map[string]string)
-		for key, value := range rawLabels {
-			if stringValue, ok := value.(string); ok {
-				labels[key] = stringValue
-			} else {
-				return fmt.Errorf("non string value in labels definition")
-			}
+		if err := setMetadataLabels(rawLabels, &out.Service.Metadata); err != nil {
+			return err
 		}
-		gatewayConfig.Service.Metadata.Labels = labels
 	} else if err != nil {
 		return err
 	}
@@ -465,7 +460,7 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 				} else if err != nil {
 					return err
 				}
-				gatewayConfig.Volumes = append(out.Volumes, volume)
+				out.Volumes = append(out.Volumes, volume)
 			} else {
 				return fmt.Errorf("could not cast secretVolume entry to map[string]interface{}")
 			}
@@ -497,7 +492,7 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 				} else if err != nil {
 					return err
 				}
-				gatewayConfig.Volumes = append(out.Volumes, volume)
+				out.Volumes = append(out.Volumes, volume)
 			} else {
 				return fmt.Errorf("could not cast secretVolume entry to map[string]interface{}")
 			}
@@ -507,24 +502,21 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 	}
 
 	// runtime
-	gatewayConfig.Runtime = &v2.ComponentRuntimeConfig{}
-	if err := runtimeValuesToComponentRuntimeConfig(in, gatewayConfig.Runtime); err != nil {
+	runtime := &v2.ComponentRuntimeConfig{}
+	if applied, err := runtimeValuesToComponentRuntimeConfig(in, runtime); err != nil {
 		return err
+	} else if applied {
+		out.Runtime = runtime
 	}
 
 	// container settings
-	if resourcesValues, ok, err := in.GetMap("resources"); ok {
-		resources := &corev1.ResourceRequirements{}
-		if err := fromValues(resourcesValues, resources); err != nil {
-			return err
-		}
-		gatewayConfig.Runtime.Pod.Containers["istio-proxy"] = v2.ContainerConfig{
-			CommonContainerConfig: v2.CommonContainerConfig{
-				Resources: resources,
-			},
-		}
-	} else if err != nil {
+	container := v2.ContainerConfig{}
+	if applied, err := populateContainerConfig(in, &container); err != nil {
 		return err
+	} else if applied {
+		out.Runtime.Pod.Containers = map[string]v2.ContainerConfig{
+			"istio-proxy": container,
+		}
 	}
 
 	return nil

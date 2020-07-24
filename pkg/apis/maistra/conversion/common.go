@@ -1,11 +1,41 @@
 package conversion
 
 import (
+	"fmt"
 	"strings"
 
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/yaml"
 )
+
+func setMetadataLabels(labels map[string]interface{}, out *v2.MetadataConfig) error {
+	if len(labels) > 0 {
+		out.Labels = make(map[string]string)
+		for key, value := range labels {
+			if stringValue, ok := value.(string); ok {
+				out.Labels[key] = stringValue
+			} else {
+				return fmt.Errorf("error casting label value to string")
+			}
+		}
+	}
+	return nil
+}
+
+func setMetadataAnnotations(annotations map[string]interface{}, out *v2.MetadataConfig) error {
+	if len(annotations) > 0 {
+		out.Annotations = make(map[string]string)
+		for key, value := range annotations {
+			if stringValue, ok := value.(string); ok {
+				out.Annotations[key] = stringValue
+			} else {
+				return fmt.Errorf("error casting annotation value to string")
+			}
+		}
+	}
+	return nil
+}
 
 // toValues converts in to a generic values.yaml format
 func toValues(in interface{}) (map[string]interface{}, error) {

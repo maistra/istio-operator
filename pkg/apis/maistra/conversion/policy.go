@@ -5,6 +5,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
@@ -209,4 +210,188 @@ func populateIstiodPolicyValues(in *v2.ControlPlaneSpec, values map[string]inter
 		return err
 	}
 	return nil
+}
+
+func populatePolicyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
+	// figure out what we're installing
+	if mixerPolicyEnabled, ok, err := in.GetBool("mixer.policy.enabled"); ok && mixerPolicyEnabled {
+		// installing some form of mixer based policy
+		if mixerEnabled, ok, err := in.GetBool("mixer.enabled"); ok && mixerEnabled {
+			// installing mixer policy
+			out.Policy = &v2.PolicyConfig{
+				Type: v2.PolicyTypeMixer,
+			}
+			config := &v2.MixerPolicyConfig{}
+			if applied, err := populateMixerPolicyConfig(in, config); err != nil {
+				return err
+			} else if applied {
+				out.Policy.Mixer = config
+			}
+			return nil
+		} else if err != nil {
+			return err
+		}
+		// using remote mixer policy
+		out.Policy = &v2.PolicyConfig{
+			Type: v2.PolicyTypeRemote,
+		}
+		config := &v2.RemotePolicyConfig{}
+		if applied, err := populateRemotePolicyConfig(in, config); err != nil {
+			return err
+		} else if applied {
+			out.Policy.Remote = config
+		}
+		return nil
+	} else if err != nil {
+		return err
+	} // else maybe using istiod?
+
+	return nil
+}
+
+func populateMixerPolicyConfig(in *v1.HelmValues, out *v2.MixerPolicyConfig) (bool, error) {
+	setValues := false
+
+	rawMixerValues, ok, err := in.GetMap("mixer")
+	if err != nil {
+		return false, err
+	} else if !ok || len(rawMixerValues) == 0 {
+		rawMixerValues = make(map[string]interface{})
+	}
+	mixerValues := v1.NewHelmValues(rawMixerValues)
+
+	rawPolicyValues, ok, err := mixerValues.GetMap("policy")
+	if err != nil {
+		return false, err
+	} else if !ok || len(rawPolicyValues) == 0 {
+		rawPolicyValues = make(map[string]interface{})
+	}
+	policyValues := v1.NewHelmValues(rawPolicyValues)
+
+	if disablePolicyChecks, ok, err := in.GetBool("global.disablePolicyChecks"); ok {
+		enablePolicyChecks := !disablePolicyChecks
+		out.EnableChecks = &enablePolicyChecks
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+	if policyCheckFailOpen, ok, err := in.GetBool("global.policyCheckFailOpen"); ok {
+		out.FailOpen = &policyCheckFailOpen
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+
+	var adaptersValues *v1.HelmValues
+	// check policy first, as mixer values are used with telemetry
+	if rawAdaptersValues, ok, err := policyValues.GetMap("adapters"); ok {
+		adaptersValues = v1.NewHelmValues(rawAdaptersValues)
+	} else if err != nil {
+		return false, err
+	} else if rawAdaptersValues, ok, err := mixerValues.GetMap("adapters"); ok {
+		adaptersValues = v1.NewHelmValues(rawAdaptersValues)
+	} else if err != nil {
+		return false, err
+	}
+
+	if adaptersValues != nil {
+		adapters := &v2.MixerPolicyAdaptersConfig{}
+		setAdapters := false
+		if useAdapterCRDs, ok, err := adaptersValues.GetBool("useAdapterCRDs"); ok {
+			adapters.UseAdapterCRDs = &useAdapterCRDs
+			setAdapters = true
+		} else if err != nil {
+			return false, err
+		}
+		if kubernetesenv, ok, err := adaptersValues.GetBool("kubernetesenv.enabled"); ok {
+			adapters.KubernetesEnv = &kubernetesenv
+			setAdapters = true
+		} else if err != nil {
+			return false, err
+		}
+		if setAdapters {
+			out.Adapters = adapters
+			setValues = true
+		}
+	}
+
+	// Deployment specific settings
+	runtime := &v2.ComponentRuntimeConfig{}
+	// istiod
+	if applied, err := runtimeValuesToComponentRuntimeConfig(policyValues, runtime); err != nil {
+		return false, err
+	} else if applied {
+		out.Runtime = runtime
+		setValues = true
+	}
+	// non-istiod (this will just overwrite whatever was previously written)
+	if applied, err := runtimeValuesToComponentRuntimeConfig(mixerValues, runtime); err != nil {
+		return false, err
+	} else if applied {
+		out.Runtime = runtime
+		setValues = true
+	}
+
+	// Container
+	container := v2.ContainerConfig{}
+	// non-istiod
+	if applied, err := populateContainerConfig(mixerValues, &container); err != nil {
+		return false, nil
+	} else if applied {
+		if out.Runtime == nil {
+			out.Runtime = runtime
+			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
+		} else if runtime.Pod.Containers == nil {
+			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
+		}
+		out.Runtime.Pod.Containers["mixer"] = container
+		setValues = true
+	}
+	// istiod (this will just overwrite whatever was previously written)
+	if applied, err := populateContainerConfig(policyValues, &container); err != nil {
+		return false, nil
+	} else if applied {
+		if out.Runtime == nil {
+			out.Runtime = runtime
+			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
+		} else if runtime.Pod.Containers == nil {
+			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
+		}
+		out.Runtime.Pod.Containers["mixer"] = container
+		setValues = true
+	}
+
+	return setValues, nil
+}
+
+func populateRemotePolicyConfig(in *v1.HelmValues, out *v2.RemotePolicyConfig) (bool, error) {
+	setValues := false
+
+	if remotePolicyAddress, ok, err := in.GetString("global.remotePolicyAddress"); ok {
+		out.Address = remotePolicyAddress
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+	if createRemoteSvcEndpoints, ok, err := in.GetBool("global.createRemoteSvcEndpoints"); ok {
+		out.CreateService = createRemoteSvcEndpoints
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+	if disablePolicyChecks, ok, err := in.GetBool("global.disablePolicyChecks"); ok {
+		enableChecks := !disablePolicyChecks
+		out.EnableChecks = &enableChecks
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+	if policyCheckFailOpen, ok, err := in.GetBool("global.policyCheckFailOpen"); ok {
+		out.FailOpen = &policyCheckFailOpen
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+
+	return setValues, nil
 }

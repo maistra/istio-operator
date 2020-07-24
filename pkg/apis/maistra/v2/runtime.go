@@ -1,6 +1,7 @@
 package v2
 
 import (
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -251,19 +252,19 @@ type ComponentIngressConfig struct {
 	// TLS is used to configure TLS for the Ingress/Route
 	// XXX: should this be something like RawExtension, as the configuration differs between Route and Ingress?
 	// +optional
-	TLS map[string]string `json:"tls,omitempty"`
+	TLS *v1.HelmValues `json:"tls,omitempty"`
 }
 
 // ComponentPersistenceConfig is used to configure persistance for a component.
 type ComponentPersistenceConfig struct {
 	Enablement `json:",inline"`
-	// StorageClassName for the PersistentVolume
+	// StorageClassName for the PersistentVolumeClaim
 	// +optional
 	StorageClassName string `json:"storageClassName,omitempty"`
-	// AccessMode for the PersistentVolume
+	// AccessMode for the PersistentVolumeClaim
 	// +optional
 	AccessMode corev1.PersistentVolumeAccessMode `json:"accessMode,omitempty"`
-	// Capacity to request for the PersistentVolume
+	// Resources to request for the PersistentVolumeClaim
 	// +optional
-	Capacity corev1.ResourceList `json:"capacity,omitempty"`
+	Resources *corev1.ResourceRequirements `json:"capacity,omitempty"`
 }

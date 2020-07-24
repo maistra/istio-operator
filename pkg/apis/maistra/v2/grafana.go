@@ -58,6 +58,7 @@ type GrafanaConfig struct {
 
 // GrafanaSecurityConfig is used to secure access to grafana
 type GrafanaSecurityConfig struct {
+	Enablement `json:",inline"`
 	// SecretName is the name of a secret containing the username/password that
 	// should be used to access grafana.
 	// +optional

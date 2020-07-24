@@ -3,6 +3,7 @@ package conversion
 import (
 	"fmt"
 
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
@@ -191,4 +192,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 	}
 
 	return nil
+}
+
+func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 }

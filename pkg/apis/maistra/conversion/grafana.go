@@ -1,8 +1,11 @@
 package conversion
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
@@ -11,15 +14,18 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 		return nil
 	}
 
-	if grafana.Address != nil {
+	// Install takes precedence
+	if grafana.Install == nil {
+		// we don't want to process the charts
 		if err := setHelmBoolValue(values, "grafana.enabled", false); err != nil {
 			return err
 		}
-		return setHelmStringValue(values, "kiali.dashboard.grafanaURL", *grafana.Address)
-	} else if grafana.Install == nil {
-		// we don't want to process the charts
-		return setHelmBoolValue(values, "grafana.enabled", false)
+		if grafana.Address != nil {
+			return setHelmStringValue(values, "kiali.dashboard.grafanaURL", *grafana.Address)
+		}
+		return nil
 	}
+
 	grafanaValues := make(map[string]interface{})
 	if grafana.Enabled != nil {
 		if err := setHelmBoolValue(grafanaValues, "enabled", *grafana.Enabled); err != nil {
@@ -52,10 +58,10 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 				return err
 			}
 		}
-		if len(grafana.Install.Persistence.Capacity) > 0 {
-			if capacityValues, err := toValues(grafana.Install.Persistence.Capacity); err == nil {
-				if len(capacityValues) > 0 {
-					if err := setHelmValue(grafanaValues, "storageCapacity", capacityValues); err != nil {
+		if grafana.Install.Persistence.Resources != nil {
+			if resourcesValues, err := toValues(grafana.Install.Persistence.Resources); err == nil {
+				if len(resourcesValues) > 0 {
+					if err := setHelmValue(values, "persistenceResources", resourcesValues); err != nil {
 						return err
 					}
 				}
@@ -83,8 +89,10 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 		}
 	}
 	if grafana.Install.Security != nil {
-		if err := setHelmBoolValue(grafanaValues, "security.enabled", true); err != nil {
-			return err
+		if grafana.Install.Security.Enabled != nil {
+			if err := setHelmBoolValue(grafanaValues, "security.enabled", *grafana.Install.Security.Enabled); err != nil {
+				return err
+			}
 		}
 		if grafana.Install.Security.SecretName != "" {
 			if err := setHelmStringValue(grafanaValues, "security.secretName", grafana.Install.Security.SecretName); err != nil {
@@ -116,52 +124,145 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 	return nil
 }
 
-func populateGrafanaAddonConfig(in map[string]interface{}, out *v2.AddonsConfig) error {
-	if out.Visualization.Grafana == nil {
-		out.Visualization.Grafana = &v2.GrafanaAddonConfig{}
-	}
-	out.Visualization.Grafana.Enabled = getHelmBoolValue(in, "grafana.enabled")
-
-	if !*out.Visualization.Grafana.Enabled {
-		out.Visualization.Grafana.Install = nil
-
-		// XXX: Not entirely sure here. Should we still set this if we install grafana?
-		// 		I opted for only setting when not installing
-		if address := getHelmStringValue(in, "kiali.dashboard.grafanaURL"); address != "" {
-			out.Visualization.Grafana.Address = &address
+func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
+	rawGrafanaValues, ok, err := in.GetMap("grafana")
+	if err != nil {
+		return err
+	} else if !ok || len(rawGrafanaValues) == 0 {
+		// nothing to do
+		// check to see if grafana.Address should be set
+		if address, ok, err := in.GetString("kiali.dashboard.grafanaURL"); ok {
+			// If grafana URL is set, assume we're using an existing grafana install
+			out.Visualization.Grafana = &v2.GrafanaAddonConfig{
+				Address: &address,
+			}
+		} else if err != nil {
+			return err
 		}
 		return nil
 	}
 
-	if out.Visualization.Grafana.Install == nil {
-		out.Visualization.Grafana.Install = &v2.GrafanaInstallConfig{
-			Config:      v2.GrafanaConfig{},
-			Persistence: &v2.ComponentPersistenceConfig{},
-			Service:     v2.ComponentServiceConfig{},
+	if out.Visualization.Grafana == nil {
+		out.Visualization.Grafana = &v2.GrafanaAddonConfig{}
+	}
+	grafana := out.Visualization.Grafana
+	grafanaValues := v1.NewHelmValues(rawGrafanaValues)
+	if enabled, ok, err := grafanaValues.GetBool("enabled"); ok {
+		grafana.Enabled = &enabled
+	} else if err != nil {
+		return err
+	}
+
+	if address, ok, err := in.GetString("kiali.dashboard.grafanaURL"); ok {
+		// If grafana URL is set, assume we're using an existing grafana install
+		grafana.Address = &address
+		grafana.Install = nil
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	grafana.Install = &v2.GrafanaInstallConfig{}
+
+	if rawEnv, ok, err := grafanaValues.GetMap("env"); ok {
+		grafana.Install.Config.Env = make(map[string]string)
+		for key, value := range rawEnv {
+			if stringValue, ok := value.(string); ok {
+				grafana.Install.Config.Env[key] = stringValue
+			} else {
+				fmt.Errorf("error casting env value to string")
+			}
 		}
+	} else if err != nil {
+		return err
 	}
-	out.Visualization.Grafana.Install.Config.Env = getHelmStringMapValue(in, "grafana.env")
-	out.Visualization.Grafana.Install.Config.EnvSecrets = getHelmStringMapValue(in, "grafana.envSecrets")
-
-	out.Visualization.Grafana.Install.Persistence.Enabled = getHelmBoolValue(in, "grafana.persist")
-	out.Visualization.Grafana.Install.Persistence.StorageClassName = getHelmStringValue(in, "grafana.storageClassName")
-	out.Visualization.Grafana.Install.Persistence.AccessMode = corev1.PersistentVolumeAccessMode(getHelmStringValue(in, "grafana.accessMode"))
-
-	// XXX: in the v2->v1 conversions there's grafana.storageCapacity, but I couldn't find that in the charts?!
-
-	// XXX: still missing: ingress service settings
-
-	out.Visualization.Grafana.Install.Service.Metadata.Annotations = getHelmStringMapValue(in, "grafana.service.annotations")
-
-	// XXX: I'm a bit confused by the fact that sometimes, ConfigGroup == nil means disabled, and sometimes we have explicit Enablement switches
-	if grafanaSecurityEnabled := getHelmBoolValue(in, "grafana.security.enabled"); *grafanaSecurityEnabled {
-		out.Visualization.Grafana.Install.Security = &v2.GrafanaSecurityConfig{}
-		out.Visualization.Grafana.Install.Security.SecretName = getHelmStringValue(in, "grafana.security.secretName")
-		out.Visualization.Grafana.Install.Security.UsernameKey = getHelmStringValue(in, "grafana.security.usernameKey")
-		out.Visualization.Grafana.Install.Security.PassphraseKey = getHelmStringValue(in, "grafana.security.passphraseKey")
+	if rawEnv, ok, err := grafanaValues.GetMap("envSecrets"); ok {
+		grafana.Install.Config.EnvSecrets = make(map[string]string)
+		for key, value := range rawEnv {
+			if stringValue, ok := value.(string); ok {
+				grafana.Install.Config.EnvSecrets[key] = stringValue
+			} else {
+				fmt.Errorf("error casting envSecrets value to string")
+			}
+		}
+	} else if err != nil {
+		return err
 	}
 
-	// XXX: Still missing runtime
+	persistenceConfig := v2.ComponentPersistenceConfig{}
+	setPersistenceConfig := false
+	if enabled, ok, err := grafanaValues.GetBool("persist"); ok {
+		persistenceConfig.Enabled = &enabled
+		setPersistenceConfig = true
+	} else if err != nil {
+		return err
+	}
+	if stoargeClassName, ok, err := grafanaValues.GetString("storageClassName"); ok {
+		persistenceConfig.StorageClassName = stoargeClassName
+		setPersistenceConfig = true
+	} else if err != nil {
+		return err
+	}
+	if accessMode, ok, err := grafanaValues.GetString("accessMode"); ok {
+		persistenceConfig.AccessMode = corev1.PersistentVolumeAccessMode(accessMode)
+		setPersistenceConfig = true
+	} else if err != nil {
+		return err
+	}
+	if resourcesValues, ok, err := grafanaValues.GetMap("persistenceResources"); ok {
+		resources := &corev1.ResourceRequirements{}
+		if err := fromValues(resourcesValues, resources); err != nil {
+			return err
+		}
+		persistenceConfig.Resources = resources
+		setPersistenceConfig = true
+	} else if err != nil {
+		return err
+	}
+	if setPersistenceConfig {
+		grafana.Install.Persistence = &persistenceConfig
+	}
+
+	if _, err := populateComponentServiceConfig(grafanaValues, &grafana.Install.Service); err != nil {
+		return err
+	}
+
+	securityConfig := v2.GrafanaSecurityConfig{}
+	setSecurityConfig := false
+	if enabled, ok, err := grafanaValues.GetBool("security.enabled"); ok {
+		securityConfig.Enabled = &enabled
+		setSecurityConfig = true
+	} else if err != nil {
+		return err
+	}
+	if secretName, ok, err := grafanaValues.GetString("security.secretName"); ok {
+		securityConfig.SecretName = secretName
+		setSecurityConfig = true
+	} else if err != nil {
+		return err
+	}
+	if usernameKey, ok, err := grafanaValues.GetString("security.usernameKey"); ok {
+		securityConfig.UsernameKey = usernameKey
+		setSecurityConfig = true
+	} else if err != nil {
+		return err
+	}
+	if passphraseKey, ok, err := grafanaValues.GetString("security.passphraseKey"); ok {
+		securityConfig.PassphraseKey = passphraseKey
+		setSecurityConfig = true
+	} else if err != nil {
+		return err
+	}
+	if setSecurityConfig {
+		grafana.Install.Security = &securityConfig
+	}
+
+	runtime := &v2.ComponentRuntimeConfig{}
+	if applied, err := runtimeValuesToComponentRuntimeConfig(in, runtime); err != nil {
+		return err
+	} else if applied {
+		grafana.Install.Runtime = runtime
+	}
 
 	return nil
 }

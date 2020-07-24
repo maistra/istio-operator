@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
@@ -212,4 +213,7 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 	}
 
 	return nil
+}
+
+func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 }

@@ -9,12 +9,49 @@ import (
 
 // Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec converts a v1 ControlPlaneSpec to its v2 equivalent.
 func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec, out *v2.ControlPlaneSpec, s conversion.Scope) error {
-	values := in.Istio.GetContent()
-	if err := populateGatewaysConfig(values, out.Gateways); err != nil {
+
+	// Cluster settings
+	if err := populateClusterConfig(in.Istio, out); err != nil {
 		return err
 	}
 
-	if err := populateAddonsConfig(values, out.Addons); err != nil {
+	// Logging
+	if err := populateControlPlaneLoggingConfig(in.Istio, out); err != nil {
+		return err
+	}
+
+	// Policy
+	if err := populatePolicyConfig(in.Istio, out); err != nil {
+		return err
+	}
+
+	// Proxy
+	if err := populateProxyConfig(in.Istio, out); err != nil {
+		return err
+	}
+
+	// Security
+	if err := populateSecurityConfig(in.Istio, out); err != nil {
+		return err
+	}
+
+	// Telemetry
+	if err := populateTelemetryConfig(in.Istio, out); err != nil {
+		return err
+	}
+
+	// Gateways
+	if err := populateGatewaysConfig(in.Istio, out); err != nil {
+		return err
+	}
+
+	// Runtime
+	if _, err := populateControlPlaneRuntimeConfig(in.Istio, out); err != nil {
+		return err
+	}
+
+	// Addons
+	if err := populateAddonsConfig(in.Istio, out); err != nil {
 		return err
 	}
 

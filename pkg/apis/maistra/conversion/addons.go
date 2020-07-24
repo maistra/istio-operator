@@ -3,6 +3,7 @@ package conversion
 import (
 	"fmt"
 
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
@@ -80,17 +81,73 @@ func populateAddonIngressValues(ingress *v2.ComponentIngressConfig, values map[s
 			return err
 		}
 	}
-	if len(ingress.TLS) > 0 {
-		if err := setHelmStringMapValue(values, "tls", ingress.TLS); err != nil {
+	if len(ingress.TLS.GetContent()) > 0 {
+		if err := setHelmValue(values, "tls", ingress.TLS.GetContent()); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func populateAddonsConfig(in map[string]interface{}, out *v2.AddonsConfig) error {
-	if err := populateGrafanaAddonConfig(in, out); err != nil {
+func populateAddonsConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
+	addonsConfig := &v2.AddonsConfig{}
+	if err := populateKialiAddonConfig(in, addonsConfig); err != nil {
 		return err
 	}
+	if err := populatePrometheusAddonConfig(in, addonsConfig); err != nil {
+		return err
+	}
+	if err := populateTracingAddonConfig(in, addonsConfig); err != nil {
+		return err
+	}
+	if err := populateGrafanaAddonConfig(in, addonsConfig); err != nil {
+		return err
+	}
+
+	if addonsConfig.Metrics.Prometheus != nil || addonsConfig.Tracing.Jaeger != nil ||
+		addonsConfig.Visualization.Grafana != nil || addonsConfig.Visualization.Kiali != nil {
+		out.Addons = addonsConfig
+	}
 	return nil
+}
+
+func populateAddonIngressConfig(in *v1.HelmValues, out *v2.ComponentIngressConfig) (bool, error) {
+	setValues := false
+	if enabled, ok, err := in.GetBool("enabled"); ok {
+		out.Enabled = &enabled
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+
+	if contextPath, ok, err := in.GetString("contextPath"); ok {
+		out.ContextPath = contextPath
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+	if hosts, ok, err := in.GetStringSlice("hosts"); ok {
+		out.Hosts = append([]string{}, hosts...)
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+
+	if rawAnnotations, ok, err := in.GetMap("annotations"); ok && len(rawAnnotations) > 0 {
+		if err := setMetadataAnnotations(rawAnnotations, &out.Metadata); err != nil {
+			return false, err
+		}
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+
+	if tls, ok, err := in.GetMap("tls"); ok && len(tls) > 0 {
+		out.TLS = v1.NewHelmValues(tls)
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+
+	return setValues, nil
 }
