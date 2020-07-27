@@ -439,8 +439,7 @@ func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig
 	return setValues, nil
 }
 
-func affinityTermValuesToAntiAffinityTerm(in *v1.HelmValues, out *v2.PodAntiAffinityTerm) error {
-	term := v2.PodAntiAffinityTerm{}
+func affinityTermValuesToAntiAffinityTerm(in *v1.HelmValues, term *v2.PodAntiAffinityTerm) error {
 	if key, ok, err := in.GetString("key"); ok {
 		term.Key = key
 	} else if err != nil {

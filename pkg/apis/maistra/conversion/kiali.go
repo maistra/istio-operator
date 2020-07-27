@@ -107,7 +107,7 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 	}
 	kialiValues := v1.NewHelmValues(rawKialiValues)
 
-	kiali := v2.KialiAddonConfig{}
+	kiali := &v2.KialiAddonConfig{}
 
 	if name, ok, err := kialiValues.GetString("resourceName"); err != nil {
 		return err
@@ -126,7 +126,7 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 	install := &v2.KialiInstallConfig{}
 	// for v1, there's no way to disable install, so always create install
 	setInstall := true
-	dashboardConfig := install.Config.Dashboard
+	dashboardConfig := &install.Config.Dashboard
 
 	if viewOnlyMode, ok, err := kialiValues.GetBool("dashboard.viewOnlyMode"); ok {
 		dashboardConfig.ViewOnly = &viewOnlyMode
@@ -182,6 +182,8 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 	if setInstall {
 		kiali.Install = install
 	}
+
+	out.Visualization.Kiali = kiali
 
 	return nil
 }

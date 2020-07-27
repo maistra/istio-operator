@@ -170,6 +170,8 @@ func populateTracingAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 		if out.Tracing.Type, err = tracerTypeFromString(tracer); err != nil {
 			return err
 		}
+	} else if err != nil {
+		return err
 	} else {
 		out.Tracing.Type = v2.TracerTypeNone
 	}
@@ -187,6 +189,8 @@ func populateJaegerAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 	rawTracingValues, ok, err := in.GetMap("tracing")
 	if err != nil {
 		return err
+	} else if !ok || len(rawTracingValues) == 0 {
+		return nil
 	}
 	tracingValues := v1.NewHelmValues(rawTracingValues)
 	rawJaegerValues, ok, err := tracingValues.GetMap("jaeger")
