@@ -541,6 +541,126 @@ func TestControlPlaneValidation(t *testing.T) {
 			},
 			valid: true,
 		},
+		{
+			name: "cipher-suite-missing-http2",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"tls": map[string]interface{}{
+								"cipherSuite": "TLS_DHE_RSA_WITH_AES_128_CBC_SHA, TLS_DHE_RSA_WITH_AES_256_CBC_SHA",
+							},
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "cipher-suite-including-http2",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"tls": map[string]interface{}{
+								"cipherSuite": "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, TLS_DHE_RSA_WITH_AES_128_CBC_SHA, TLS_DHE_RSA_WITH_AES_256_CBC_SHA",
+							},
+						},
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "cipher-suite-unrecognised",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"tls": map[string]interface{}{
+								"cipherSuite": "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, TLS_UNRECOGNISED",
+							},
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "cipher-suite-good-after-bad",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"tls": map[string]interface{}{
+								"cipherSuite": "TLS_DHE_RSA_WITH_AES_128_CBC_SHA, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+							},
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "ecdh-curves",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"tls": map[string]interface{}{
+								"ecdhCurves": "CurveP256, CurveP384, CurveP521, X25519",
+							},
+						},
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "ecdh-curves-unrecognised",
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav1.ControlPlaneSpec{
+					Version: maistra.V1_1.String(),
+					Istio: map[string]interface{}{
+						"global": map[string]interface{}{
+							"tls": map[string]interface{}{
+								"ecdhCurves": "CurveP256, CurveP384, CurveP521, X25519, UNRECOGNISED",
+							},
+						},
+					},
+				},
+			},
+			valid: false,
+		},
 	}
 
 	for _, tc := range cases {
@@ -555,6 +675,7 @@ func TestControlPlaneValidation(t *testing.T) {
 				assert.True(response.Response.Allowed, "Expected validator to accept valid ServiceMeshControlPlane, but rejected: "+reason, t)
 			} else {
 				assert.False(response.Response.Allowed, "Expected validator to reject invalid ServiceMeshControlPlane", t)
+				t.Logf("Validation Error: %s", response.Response.Result.Message)
 			}
 		})
 	}
