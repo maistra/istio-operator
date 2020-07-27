@@ -88,3 +88,20 @@ func populateControlPlaneLoggingConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 
 	return nil
 }
+
+func populateProxyLoggingConfig(proxyValues *v1.HelmValues, logging *v2.ProxyLoggingConfig) (bool, error) {
+	setLogging := false
+	if level, ok, err := proxyValues.GetString("logLevel"); ok {
+		logging.Level = v2.LogLevel(level)
+		setLogging = true
+	} else if err != nil {
+		return false, err
+	}
+	if componentLevels, ok, err := proxyValues.GetString("componentLogLevel"); ok && len(componentLevels) > 0 {
+		logging.ComponentLevels = componentLogLevelsFromString(componentLevels)
+		setLogging = true
+	} else if err != nil {
+		return false, err
+	}
+	return setLogging, nil
+}

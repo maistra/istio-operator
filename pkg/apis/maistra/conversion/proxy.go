@@ -6,6 +6,7 @@ import (
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
@@ -216,4 +217,221 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 }
 
 func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
+	proxy := &v2.ProxyConfig{}
+	setProxy := false
+	rawProxyValues, ok, err := in.GetMap("proxy")
+	if err != nil {
+		return err
+	} else if !ok || len(rawProxyValues) == 0 {
+		rawProxyValues = make(map[string]interface{})
+	}
+	proxyValues := v1.NewHelmValues(rawProxyValues)
+
+	// General
+	if rawConcurrency, ok, err := proxyValues.GetInt64("concurrency"); ok {
+		concurrency := int32(rawConcurrency)
+		proxy.Concurrency = &concurrency
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+
+	// Logging
+	if applied, err := populateProxyLoggingConfig(proxyValues, &proxy.Logging); err != nil {
+		return err
+	} else if applied {
+		setProxy = true
+	}
+
+	// Networking
+	if clusterDomain, ok, err := proxyValues.GetString("clusterDomain"); ok {
+		proxy.Networking.ClusterDomain = clusterDomain
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+
+	if rawIstioCNI, _, err := in.GetMap("istio_cni"); err == nil {
+		istioCNI := v1.NewHelmValues(rawIstioCNI)
+		if cniEnabled, ok, err := istioCNI.GetBool("enabled"); err != nil {
+			return err
+		} else if !ok || cniEnabled {
+			// cni enabled (default is cni)
+			cniConfig := &v2.ProxyCNIConfig{
+				Runtime: &v2.ProxyCNIRuntimeConfig{},
+			}
+			setCNI := false
+			if priorityClassName, ok, err := istioCNI.GetString("priorityClassName"); ok {
+				cniConfig.Runtime.PriorityClassName = priorityClassName
+				setCNI = true
+			} else if err != nil {
+				return err
+			}
+			if applied, err := populateContainerConfig(istioCNI, &cniConfig.Runtime.ContainerConfig); err != nil {
+				return err
+			} else if applied {
+				setCNI = true
+			}
+			if setCNI {
+				proxy.Networking.Initialization.Type = v2.ProxyNetworkInitTypeCNI
+				proxy.Networking.Initialization.CNI = cniConfig
+				setProxy = true
+			}
+		} else if rawProxyInit, ok, err := in.GetMap("global.proxy_init"); ok && len(rawProxyInit) > 0 {
+			// user must explicitly disable cni (although, operator is hard coded
+			// to use it, so this should really only configure runtime details
+			// for the container)
+			proxyInitConfig := &v2.ProxyInitContainerConfig{
+				Runtime: &v2.ContainerConfig{},
+			}
+			if applied, err := populateContainerConfig(v1.NewHelmValues(rawProxyInit), proxyInitConfig.Runtime); err != nil {
+				return err
+			} else if applied {
+				proxy.Networking.Initialization.Type = v2.ProxyNetworkInitTypeInitContainer
+				proxy.Networking.Initialization.InitContainer = proxyInitConfig
+				setProxy = true
+			}
+		} else if err != nil {
+			return err
+		}
+	} else {
+		return err
+	}
+
+	// Traffic Control
+	// Inbound
+	if includeInboundPorts, ok, err := proxyValues.GetString("includeInboundPorts"); ok && includeInboundPorts != "" {
+		proxy.Networking.TrafficControl.Inbound.IncludedPorts = strings.Split(includeInboundPorts, ",")
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+	if excludeInboundPorts, ok, err := proxyValues.GetString("excludeInboundPorts"); ok && excludeInboundPorts != "" {
+		proxy.Networking.TrafficControl.Inbound.ExcludedPorts = strings.Split(excludeInboundPorts, ",")
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+	// Outbound
+	if includeIPRanges, ok, err := proxyValues.GetString("includeIPRanges"); ok && includeIPRanges != "" {
+		proxy.Networking.TrafficControl.Outbound.IncludedIPRanges = strings.Split(includeIPRanges, ",")
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+	if excludeIPRanges, ok, err := proxyValues.GetString("excludeIPRanges"); ok && excludeIPRanges != "" {
+		proxy.Networking.TrafficControl.Outbound.ExcludedIPRanges = strings.Split(excludeIPRanges, ",")
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+	if excludeOutboundPorts, ok, err := proxyValues.GetString("excludeOutboundPorts"); ok && excludeOutboundPorts != "" {
+		portSlice := strings.Split(excludeOutboundPorts, ",")
+		proxy.Networking.TrafficControl.Outbound.ExcludedPorts = make([]int32, len(portSlice))
+		for index, port := range portSlice {
+			intPort, err := strconv.ParseInt(port, 10, 32)
+			if err != nil {
+				return err
+			}
+			proxy.Networking.TrafficControl.Outbound.ExcludedPorts[index] = int32(intPort)
+		}
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+	if outboundTrafficPolicy, ok, err := in.GetString("global.outboundTrafficPolicy.mode"); ok && outboundTrafficPolicy != "" {
+		proxy.Networking.TrafficControl.Outbound.Policy = v2.ProxyOutboundTrafficPolicy(outboundTrafficPolicy)
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+
+	// Protocol
+	if protocolDetectionTimeout, ok, err := proxyValues.GetString("protocolDetectionTimeout"); ok && protocolDetectionTimeout != "" {
+		proxy.Networking.Protocol.DetectionTimeout = protocolDetectionTimeout
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+	// Protocol Debug
+	protocolDebugConfig := &v2.ProxyNetworkProtocolDebugConfig{}
+	setProtocolDebug := false
+	if enableProtocolSniffingForInbound, ok, err := in.GetBool("pilot.enableProtocolSniffingForInbound"); ok {
+		protocolDebugConfig.EnableInboundSniffing = enableProtocolSniffingForInbound
+		setProtocolDebug = true
+	} else if err != nil {
+		return err
+	}
+	if enableProtocolSniffingForOutbound, ok, err := in.GetBool("pilot.enableProtocolSniffingForOutbound"); ok {
+		protocolDebugConfig.EnableOutboundSniffing = enableProtocolSniffingForOutbound
+		setProtocolDebug = true
+	} else if err != nil {
+		return err
+	}
+	if setProtocolDebug {
+		proxy.Networking.Protocol.Debug = protocolDebugConfig
+		setProxy = true
+	}
+
+	// DNS
+	if podDNSSearchNamespaces, ok, err := in.GetStringSlice("global.podDNSSearchNamespaces"); ok && len(podDNSSearchNamespaces) > 0 {
+		proxy.Networking.DNS.SearchSuffixes = podDNSSearchNamespaces
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+	if dnsRefreshRate, ok, err := proxyValues.GetString("dnsRefreshRate"); ok && dnsRefreshRate != "" {
+		proxy.Networking.DNS.RefreshRate = dnsRefreshRate
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+
+	// Runtime
+	if resourcesValues, ok, err := proxyValues.GetMap("resources"); ok && len(resourcesValues) > 0 {
+		proxy.Runtime.Resources = &corev1.ResourceRequirements{}
+		if err := fromValues(resourcesValues, proxy.Runtime.Resources); err != nil {
+			return err
+		}
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+	// Readiness
+	if statusPort, ok, err := proxyValues.GetInt64("statusPort"); ok && statusPort > 0 {
+		proxy.Runtime.Readiness.StatusPort = int32(statusPort)
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+	if readinessInitialDelaySeconds, ok, err := proxyValues.GetInt64("readinessInitialDelaySeconds"); ok && readinessInitialDelaySeconds > 0 {
+		proxy.Runtime.Readiness.InitialDelaySeconds = int32(readinessInitialDelaySeconds)
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+	if readinessPeriodSeconds, ok, err := proxyValues.GetInt64("readinessPeriodSeconds"); ok && readinessPeriodSeconds > 0 {
+		proxy.Runtime.Readiness.PeriodSeconds = int32(readinessPeriodSeconds)
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+	if readinessFailureThreshold, ok, err := proxyValues.GetInt64("readinessFailureThreshold"); ok && readinessFailureThreshold > 0 {
+		proxy.Runtime.Readiness.FailureThreshold = int32(readinessFailureThreshold)
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+	if rewriteAppHTTPProbe, ok, err := in.GetBool("sidecarInjectorWebhook.rewriteAppHTTPProbe"); ok {
+		proxy.Runtime.Readiness.RewriteApplicationProbes = rewriteAppHTTPProbe
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+
+	if setProxy {
+		out.Proxy = proxy
+	}
+
+	return nil
 }

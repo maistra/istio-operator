@@ -170,7 +170,7 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 			if stringValue, ok := value.(string); ok {
 				grafana.Install.Config.Env[key] = stringValue
 			} else {
-				fmt.Errorf("error casting env value to string")
+				return fmt.Errorf("error casting env value to string")
 			}
 		}
 	} else if err != nil {
@@ -182,7 +182,7 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 			if stringValue, ok := value.(string); ok {
 				grafana.Install.Config.EnvSecrets[key] = stringValue
 			} else {
-				fmt.Errorf("error casting envSecrets value to string")
+				return fmt.Errorf("error casting envSecrets value to string")
 			}
 		}
 	} else if err != nil {

@@ -2,6 +2,7 @@ package conversion
 
 import (
 	"fmt"
+	"strings"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -186,7 +187,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 		}
 	}
 	if security.MutualTLS.ControlPlane.CertProvider != "" {
-		if err := setHelmStringValue(values, "global.pilotCertProvider", string(security.MutualTLS.ControlPlane.CertProvider)); err != nil {
+		if err := setHelmStringValue(values, "global.pilotCertProvider", strings.ToLower(string(security.MutualTLS.ControlPlane.CertProvider))); err != nil {
 			return err
 		}
 	}
@@ -195,4 +196,222 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 }
 
 func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
+	security := &v2.SecurityConfig{}
+	setSecurity := false
+
+	// General mutual TLS
+	if mtlsEnabled, ok, err := in.GetBool("global.mtls.enabled"); ok {
+		security.MutualTLS.Enable = &mtlsEnabled
+		setSecurity = true
+	} else if err != nil {
+		return err
+	}
+	if autoMtlsEnabled, ok, err := in.GetBool("global.mtls.auto"); ok {
+		security.MutualTLS.Auto = &autoMtlsEnabled
+		setSecurity = true
+	} else if err != nil {
+		return err
+	}
+
+	// SPIFFE trust domain
+	if trustDomain, ok, err := in.GetString("global.trustDomain"); ok {
+		security.MutualTLS.Trust.Domain = trustDomain
+		setSecurity = true
+	} else if err != nil {
+		return err
+	}
+	if trustDomainAliases, ok, err := in.GetStringSlice("global.trustDomainAliases"); ok {
+		security.MutualTLS.Trust.AdditionalDomains = trustDomainAliases
+		setSecurity = true
+	} else if err != nil {
+		return err
+	}
+
+	// CA
+	if selfSigned, ok, err := in.GetBool("security.selfSigned"); ok {
+		security.MutualTLS.CertificateAuthority = v2.CertificateAuthorityConfig{
+			Type:   v2.CertificateAuthorityTypeIstiod,
+			Istiod: &v2.IstiodCertificateAuthorityConfig{},
+		}
+		setSecurity = true
+		if selfSigned {
+			security.MutualTLS.CertificateAuthority.Istiod.Type = v2.IstioCertificateSignerTypeSelfSigned
+			selfSignedConfig := &v2.IstioSelfSignedCertificateSignerConfig{}
+			setSelfSigned := false
+			if ttl, ok, err := in.GetString("pilot.env.CITADEL_SELF_SIGNED_CA_CERT_TTL"); ok {
+				selfSignedConfig.TTL = ttl
+				setSelfSigned = true
+			} else if err != nil {
+				return err
+			} else if ttl, ok, err := in.GetString("security.env.CITADEL_SELF_SIGNED_CA_CERT_TTL"); ok {
+				selfSignedConfig.TTL = ttl
+				setSelfSigned = true
+			} else if err != nil {
+				return err
+			}
+			if gracePeriod, ok, err := in.GetString("pilot.env.CITADEL_SELF_SIGNED_ROOT_CERT_GRACE_PERIOD_PERCENTILE"); ok {
+				selfSignedConfig.GracePeriod = gracePeriod
+				setSelfSigned = true
+			} else if err != nil {
+				return err
+			} else if gracePeriod, ok, err := in.GetString("security.env.CITADEL_SELF_SIGNED_ROOT_CERT_GRACE_PERIOD_PERCENTILE"); ok {
+				selfSignedConfig.GracePeriod = gracePeriod
+				setSelfSigned = true
+			} else if err != nil {
+				return err
+			}
+			if checkPeriod, ok, err := in.GetString("pilot.env.CITADEL_SELF_SIGNED_ROOT_CERT_CHECK_INTERVAL"); ok {
+				selfSignedConfig.CheckPeriod = checkPeriod
+				setSelfSigned = true
+			} else if err != nil {
+				return err
+			} else if checkPeriod, ok, err := in.GetString("security.env.CITADEL_SELF_SIGNED_ROOT_CERT_CHECK_INTERVAL"); ok {
+				selfSignedConfig.CheckPeriod = checkPeriod
+				setSelfSigned = true
+			} else if err != nil {
+				return err
+			}
+			if enableJitter, ok, err := in.GetBool("pilot.env.CITADEL_ENABLE_JITTER_FOR_ROOT_CERT_ROTATOR"); ok {
+				selfSignedConfig.EnableJitter = &enableJitter
+				setSelfSigned = true
+			} else if err != nil {
+				return err
+			} else if enableJitter, ok, err := in.GetBool("security.env.CITADEL_ENABLE_JITTER_FOR_ROOT_CERT_ROTATOR"); ok {
+				selfSignedConfig.EnableJitter = &enableJitter
+				setSelfSigned = true
+			} else if err != nil {
+				return err
+			}
+			if setSelfSigned {
+				security.MutualTLS.CertificateAuthority.Istiod.SelfSigned = selfSignedConfig
+			}
+		} else {
+			security.MutualTLS.CertificateAuthority.Istiod.Type = v2.IstioCertificateSignerTypePrivateKey
+			if rootCADir, ok, err := in.GetString("pilot.env.ROOT_CA_DIR"); ok {
+				security.MutualTLS.CertificateAuthority.Istiod.PrivateKey = &v2.IstioPrivateKeyCertificateSignerConfig{
+					RootCADir: rootCADir,
+				}
+			} else if err != nil {
+				return err
+			}
+		}
+		if workloadCertTTLDefault, ok, err := in.GetString("pilot.env.DEFAULT_WORKLOAD_CERT_TTL"); ok {
+			security.MutualTLS.CertificateAuthority.Istiod.WorkloadCertTTLDefault = workloadCertTTLDefault
+			if workloadCertTTLMax, ok, err := in.GetString("pilot.env.MAX_WORKLOAD_CERT_TTL"); ok {
+				security.MutualTLS.CertificateAuthority.Istiod.WorkloadCertTTLMax = workloadCertTTLMax
+			} else if err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		} else if workloadCertTTLDefault, ok, err := in.GetString("security.workloadCertTtl"); ok {
+			security.MutualTLS.CertificateAuthority.Istiod.WorkloadCertTTLDefault = workloadCertTTLDefault
+		} else if err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	} else if caAddress, ok, err := in.GetString("global.caAddress"); ok && caAddress != "" {
+		security.MutualTLS.CertificateAuthority = v2.CertificateAuthorityConfig{
+			Type: v2.CertificateAuthorityTypeCustom,
+			Custom: &v2.CustomCertificateAuthorityConfig{
+				Address: caAddress,
+			},
+		}
+		setSecurity = true
+	} else if err != nil {
+		return err
+	} else {
+		// not using custom ca and selfSigned is not defined
+		// leave CertificateAuthority field unset
+	}
+
+	// Identity
+	if jwtPolicy, ok, err := in.GetString("global.jwtPolicy"); ok {
+		if identityType, err := getIdentityTypeFromJWTPolicy(jwtPolicy); err == nil {
+			switch identityType {
+			case v2.IdentityConfigTypeKubernetes:
+				setSecurity = true
+				security.MutualTLS.Identity.Type = v2.IdentityConfigTypeKubernetes
+			case v2.IdentityConfigTypeThirdParty:
+				setSecurity = true
+				security.MutualTLS.Identity.Type = v2.IdentityConfigTypeThirdParty
+				thirdPartyConfig := &v2.ThirdPartyIdentityConfig{}
+				setThirdParty := false
+				if issuer, ok, err := in.GetString("pilot.env.TOKEN_ISSUER"); ok {
+					thirdPartyConfig.Issuer = issuer
+					setThirdParty = true
+					setSecurity = true
+				} else if err != nil {
+					return err
+				}
+				if audience, ok, err := in.GetString("global.sds.token.aud"); ok {
+					thirdPartyConfig.Audience = audience
+					setThirdParty = true
+					setSecurity = true
+				} else if err != nil {
+					return err
+				}
+				if setThirdParty {
+					security.MutualTLS.Identity.ThirdParty = thirdPartyConfig
+				}
+			}
+		} else {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
+	// Control Plane Security
+	if controlPlaneSecurityEnabled, ok, err := in.GetBool("global.controlPlaneSecurityEnabled"); ok {
+		security.MutualTLS.ControlPlane.Enable = &controlPlaneSecurityEnabled
+		setSecurity = true
+	} else if err != nil {
+		return err
+	}
+	if pilotCertProvider, ok, err := in.GetString("global.pilotCertProvider"); ok {
+		if pilotCertProviderType, err := getPilotCertProviderType(pilotCertProvider); err == nil {
+			if pilotCertProviderType != "" {
+				security.MutualTLS.ControlPlane.CertProvider = pilotCertProviderType
+				setSecurity = true
+			}
+		} else {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
+	if setSecurity {
+		out.Security = security
+	}
+
+	return nil
+}
+
+func getIdentityTypeFromJWTPolicy(jwtPolicy string) (v2.IdentityConfigType, error) {
+	switch jwtPolicy {
+	case "first-party-jwt":
+		return v2.IdentityConfigTypeKubernetes, nil
+	case "third-party-jwt":
+		return v2.IdentityConfigTypeThirdParty, nil
+	case "":
+		return "", nil
+	}
+	return "", fmt.Errorf("unknown jwtPolicy specified: %s", jwtPolicy)
+}
+
+func getPilotCertProviderType(pilotCertProvider string) (v2.ControlPlaneCertProviderType, error) {
+	switch strings.ToLower(pilotCertProvider) {
+	case "istiod":
+		return v2.ControlPlaneCertProviderTypeIstiod, nil
+	case "kubernetes":
+		return v2.ControlPlaneCertProviderTypeKubernetes, nil
+	case "custom":
+		return v2.ControlPlaneCertProviderTypeCustom, nil
+	case "":
+		return "", nil
+	}
+	return "", fmt.Errorf("unknown pilotCertProvider specified: %s", pilotCertProvider)
 }
