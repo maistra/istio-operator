@@ -39,15 +39,21 @@ func setMetadataAnnotations(annotations map[string]interface{}, out *v2.Metadata
 
 // toValues converts in to a generic values.yaml format
 func toValues(in interface{}) (map[string]interface{}, error) {
+	if in == nil {
+		return nil, nil
+	}
 	out := make(map[string]interface{})
 	bytes, err := yaml.Marshal(in)
 	if err == nil {
-		err = yaml.Unmarshal(bytes, out, nil)
+		err = yaml.Unmarshal(bytes, &out)
 	}
 	return out, err
 }
 
 func fromValues(in interface{}, out interface{}) error {
+	if in == nil {
+		return nil
+	}
 	inYAML, err := yaml.Marshal(in)
 	if err != nil {
 		return err
@@ -59,7 +65,7 @@ func sliceToValues(in []interface{}) ([]interface{}, error) {
 	out := make([]interface{}, len(in))
 	bytes, err := yaml.Marshal(in)
 	if err == nil {
-		err = yaml.Unmarshal(bytes, out, nil)
+		err = yaml.Unmarshal(bytes, &out)
 	}
 	return out, err
 }
@@ -81,11 +87,23 @@ func setHelmBoolValue(obj map[string]interface{}, path string, value bool) error
 }
 
 func setHelmStringSliceValue(obj map[string]interface{}, path string, value []string) error {
-	return setHelmValue(obj, path, value)
+	vallen := len(value)
+	if vallen == 0 {
+		return nil
+	}
+	rawval := make([]interface{}, vallen)
+	for index, val := range value {
+		rawval[index] = val
+	}
+	return setHelmValue(obj, path, rawval)
 }
 
 func setHelmStringMapValue(obj map[string]interface{}, path string, value map[string]string) error {
-	return setHelmValue(obj, path, value)
+	rawValue, err := toValues(value)
+	if err != nil {
+		return err
+	}
+	return setHelmValue(obj, path, rawValue)
 }
 
 func getHelmBoolValue(obj map[string]interface{}, path string) *bool {

@@ -27,13 +27,25 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 					return err
 				}
 				if deployment.Disruption.MinAvailable != nil {
-					if err := setHelmStringValue(values, "global.defaultPodDisruptionBudget.minAvailable", deployment.Disruption.MinAvailable.String()); err != nil {
-						return err
+					if deployment.Disruption.MinAvailable.Type == intstr.Int {
+						if err := setHelmIntValue(values, "global.defaultPodDisruptionBudget.minAvailable", int64(deployment.Disruption.MinAvailable.IntValue())); err != nil {
+							return err
+						}
+					} else {
+						if err := setHelmStringValue(values, "global.defaultPodDisruptionBudget.minAvailable", deployment.Disruption.MinAvailable.String()); err != nil {
+							return err
+						}
 					}
 				}
 				if deployment.Disruption.MaxUnavailable != nil {
-					if err := setHelmStringValue(values, "global.defaultPodDisruptionBudget.maxUnavailable", deployment.Disruption.MaxUnavailable.String()); err != nil {
-						return err
+					if deployment.Disruption.MaxUnavailable.Type == intstr.Int {
+						if err := setHelmIntValue(values, "global.defaultPodDisruptionBudget.maxUnavailable", int64(deployment.Disruption.MaxUnavailable.IntValue())); err != nil {
+							return err
+						}
+					} else {
+						if err := setHelmStringValue(values, "global.defaultPodDisruptionBudget.maxUnavailable", deployment.Disruption.MaxUnavailable.String()); err != nil {
+							return err
+						}
 					}
 				}
 			}
@@ -109,6 +121,9 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 	if runtime.Citadel != nil {
 		citadelValues := make(map[string]interface{})
 		if err := populateRuntimeValues(runtime.Citadel, citadelValues); err == nil {
+			if err := populateDefaultContainerValues(runtime.Citadel.Pod.Containers, citadelValues); err != nil {
+				return err
+			}
 			for key, value := range citadelValues {
 				if err := setHelmValue(values, "security."+key, value); err != nil {
 					return err
@@ -121,6 +136,9 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 	if runtime.Galley != nil {
 		galleyValues := make(map[string]interface{})
 		if err := populateRuntimeValues(runtime.Galley, galleyValues); err == nil {
+			if err := populateDefaultContainerValues(runtime.Galley.Pod.Containers, galleyValues); err != nil {
+				return err
+			}
 			for key, value := range galleyValues {
 				if err := setHelmValue(values, "galley."+key, value); err != nil {
 					return err
@@ -133,6 +151,9 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 	if runtime.Pilot != nil {
 		pilotValues := make(map[string]interface{})
 		if err := populateRuntimeValues(runtime.Pilot, pilotValues); err == nil {
+			if err := populateDefaultContainerValues(runtime.Pilot.Pod.Containers, pilotValues); err != nil {
+				return err
+			}
 			for key, value := range pilotValues {
 				if err := setHelmValue(values, "pilot."+key, value); err != nil {
 					return err
@@ -141,6 +162,16 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 		} else {
 			return err
 		}
+	}
+	return nil
+}
+
+func populateDefaultContainerValues(containers map[string]v2.ContainerConfig, values map[string]interface{}) error {
+	if containers == nil {
+		return nil
+	}
+	if defaultContainer, ok := containers["default"]; ok {
+		return populateContainerConfigValues(&defaultContainer, values)
 	}
 	return nil
 }
@@ -166,11 +197,7 @@ func populateDeploymentHelmValues(deployment *v2.DeploymentRuntimeConfig, values
 	if deployment == nil {
 		return nil
 	}
-	if deployment.Replicas == nil {
-		if err := setHelmIntValue(values, "replicaCount", 1); err != nil {
-			return err
-		}
-	} else {
+	if deployment.Replicas != nil {
 		if err := setHelmIntValue(values, "replicaCount", int64(*deployment.Replicas)); err != nil {
 			return err
 		}
@@ -178,13 +205,25 @@ func populateDeploymentHelmValues(deployment *v2.DeploymentRuntimeConfig, values
 	// labels are populated from Service.Metadata.Labels
 	if deployment.Strategy != nil && deployment.Strategy.RollingUpdate != nil {
 		if deployment.Strategy.RollingUpdate.MaxSurge != nil {
-			if err := setHelmStringValue(values, "rollingMaxSurge", deployment.Strategy.RollingUpdate.MaxSurge.String()); err != nil {
-				return err
+			if deployment.Strategy.RollingUpdate.MaxSurge.Type == intstr.Int {
+				if err := setHelmIntValue(values, "rollingMaxSurge", int64(deployment.Strategy.RollingUpdate.MaxSurge.IntValue())); err != nil {
+					return err
+				}
+			} else {
+				if err := setHelmStringValue(values, "rollingMaxSurge", deployment.Strategy.RollingUpdate.MaxSurge.String()); err != nil {
+					return err
+				}
 			}
 		}
 		if deployment.Strategy.RollingUpdate.MaxUnavailable != nil {
-			if err := setHelmStringValue(values, "rollingMaxUnavailable", deployment.Strategy.RollingUpdate.MaxUnavailable.String()); err != nil {
-				return err
+			if deployment.Strategy.RollingUpdate.MaxUnavailable.Type == intstr.Int {
+				if err := setHelmIntValue(values, "rollingMaxUnavailable", int64(deployment.Strategy.RollingUpdate.MaxUnavailable.IntValue())); err != nil {
+					return err
+				}
+			} else {
+				if err := setHelmStringValue(values, "rollingMaxUnavailable", deployment.Strategy.RollingUpdate.MaxUnavailable.String()); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -194,6 +233,11 @@ func populateDeploymentHelmValues(deployment *v2.DeploymentRuntimeConfig, values
 func populatePodHelmValues(pod *v2.PodRuntimeConfig, values map[string]interface{}) error {
 	if len(pod.Metadata.Annotations) > 0 {
 		if err := setHelmStringMapValue(values, "podAnnotations", pod.Metadata.Annotations); err != nil {
+			return err
+		}
+	}
+	if len(pod.Metadata.Labels) > 0 {
+		if err := setHelmStringMapValue(values, "podLabels", pod.Metadata.Labels); err != nil {
 			return err
 		}
 	}
@@ -289,6 +333,54 @@ func populateAutoscalingHelmValues(autoScalerConfg *v2.AutoScalerConfig, values 
 	return nil
 }
 
+func populateContainerConfigValues(containerConfig *v2.ContainerConfig, values map[string]interface{}) error {
+	if containerConfig == nil {
+		return nil
+	}
+	if containerConfig.ImagePullPolicy != "" {
+		if err := setHelmStringValue(values, "imagePullPolicy", string(containerConfig.ImagePullPolicy)); err != nil {
+			return err
+		}
+	}
+	if len(containerConfig.ImagePullSecrets) > 0 {
+		pullSecretsValues := make([]string, 0)
+		for _, secret := range containerConfig.ImagePullSecrets {
+			pullSecretsValues = append(pullSecretsValues, secret.Name)
+		}
+		if err := setHelmStringSliceValue(values, "imagePullSecrets", pullSecretsValues); err != nil {
+			return err
+		}
+	}
+	if containerConfig.ImageRegistry != "" {
+		if err := setHelmStringValue(values, "hub", containerConfig.ImageRegistry); err != nil {
+			return err
+		}
+	}
+	if containerConfig.Image != "" {
+		if err := setHelmStringValue(values, "image", containerConfig.Image); err != nil {
+			return err
+		}
+	}
+	if containerConfig.ImageTag != "" {
+		if err := setHelmStringValue(values, "tag", containerConfig.ImageTag); err != nil {
+			return err
+		}
+	}
+	if containerConfig.Resources != nil {
+		if resourcesValues, err := toValues(containerConfig.Resources); err == nil {
+			if len(resourcesValues) > 0 {
+				if err := setHelmValue(values, "resources", resourcesValues); err != nil {
+					return err
+				}
+			}
+		} else {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func runtimeValuesToComponentRuntimeConfig(in *v1.HelmValues, out *v2.ComponentRuntimeConfig) (bool, error) {
 	setValues := false
 	if applied, err := runtimeValuesToDeploymentRuntimeConfig(in, &out.Deployment); err == nil {
@@ -365,6 +457,14 @@ func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig
 	} else if err != nil {
 		return false, err
 	}
+	if rawLabels, ok, err := in.GetMap("podLabels"); ok && len(rawLabels) > 0 {
+		if err := setMetadataLabels(rawLabels, &out.Metadata); err != nil {
+			return false, err
+		}
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
 	if priorityClassName, ok, err := in.GetString("priorityClassName"); ok {
 		out.PriorityClassName = priorityClassName
 		setValues = true
@@ -415,7 +515,7 @@ func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig
 				if err := affinityTermValuesToAntiAffinityTerm(v1.NewHelmValues(selectorValues), &term); err != nil {
 					return false, err
 				}
-				out.Affinity.PodAntiAffinity.RequiredDuringScheduling = append(out.Affinity.PodAntiAffinity.RequiredDuringScheduling, term)
+				out.Affinity.PodAntiAffinity.PreferredDuringScheduling = append(out.Affinity.PodAntiAffinity.PreferredDuringScheduling, term)
 			} else {
 				return false, fmt.Errorf("could not cast podAntiAffinityTermLabelSelector value to map[string]interface{}")
 			}
@@ -466,7 +566,8 @@ func affinityTermValuesToAntiAffinityTerm(in *v1.HelmValues, term *v2.PodAntiAff
 func runtimeValuesToAutoscalingConfig(in *v1.HelmValues, out *v2.DeploymentRuntimeConfig) (bool, error) {
 	if enabled, ok, err := in.GetBool("autoscaleEnabled"); ok {
 		if !enabled {
-			return false, nil
+			// return true to support round-tripping
+			return true, nil
 		}
 	} else if err != nil {
 		return false, err
@@ -536,7 +637,7 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 	if nodeSelector, ok, err := globalValues.GetMap("defaultNodeSelector"); ok && len(nodeSelector) > 0 {
 		pod.NodeSelector = make(map[string]string)
 		setPod = true
-		if err := fromValues(nodeSelector, pod.NodeSelector); err != nil {
+		if err := fromValues(nodeSelector, &pod.NodeSelector); err != nil {
 			return false, err
 		}
 	} else if err != nil {
@@ -587,31 +688,64 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 	}
 
 	if securityValues, ok, err := in.GetMap("security"); ok {
-		runtime.Citadel = &v2.ComponentRuntimeConfig{}
-		if applied, err := runtimeValuesToComponentRuntimeConfig(v1.NewHelmValues(securityValues), runtime.Citadel); err == nil {
-			setRuntime = setRuntime || applied
-		} else {
+		citadelConfig := &v2.ComponentRuntimeConfig{}
+		if applied, err := runtimeValuesToComponentRuntimeConfig(v1.NewHelmValues(securityValues), citadelConfig); err != nil {
 			return false, err
+		} else if applied {
+			runtime.Citadel = citadelConfig
+			setRuntime = true
+		}
+		defaultContainerConfig := v2.ContainerConfig{}
+		if applied, err := populateContainerConfig(v1.NewHelmValues(securityValues), &defaultContainerConfig); err != nil {
+			return false, err
+		} else if applied {
+			citadelConfig.Pod.Containers = map[string]v2.ContainerConfig{
+				"default": defaultContainerConfig,
+			}
+			runtime.Citadel = citadelConfig
+			setRuntime = true
 		}
 	} else if err != nil {
 		return false, err
 	}
 	if galleyValues, ok, err := in.GetMap("galley"); ok {
-		runtime.Galley = &v2.ComponentRuntimeConfig{}
-		if applied, err := runtimeValuesToComponentRuntimeConfig(v1.NewHelmValues(galleyValues), runtime.Galley); err == nil {
-			setRuntime = setRuntime || applied
-		} else {
+		galleyConfig := &v2.ComponentRuntimeConfig{}
+		if applied, err := runtimeValuesToComponentRuntimeConfig(v1.NewHelmValues(galleyValues), galleyConfig); err != nil {
 			return false, err
+		} else if applied {
+			runtime.Galley = galleyConfig
+			setRuntime = true
+		}
+		defaultContainerConfig := v2.ContainerConfig{}
+		if applied, err := populateContainerConfig(v1.NewHelmValues(galleyValues), &defaultContainerConfig); err != nil {
+			return false, err
+		} else if applied {
+			galleyConfig.Pod.Containers = map[string]v2.ContainerConfig{
+				"default": defaultContainerConfig,
+			}
+			runtime.Galley = galleyConfig
+			setRuntime = true
 		}
 	} else if err != nil {
 		return false, err
 	}
 	if pilotValues, ok, err := in.GetMap("pilot"); ok {
-		runtime.Pilot = &v2.ComponentRuntimeConfig{}
-		if applied, err := runtimeValuesToComponentRuntimeConfig(v1.NewHelmValues(pilotValues), runtime.Pilot); err == nil {
-			setRuntime = setRuntime || applied
-		} else {
+		pilotConfig := &v2.ComponentRuntimeConfig{}
+		if applied, err := runtimeValuesToComponentRuntimeConfig(v1.NewHelmValues(pilotValues), pilotConfig); err != nil {
 			return false, err
+		} else if applied {
+			runtime.Pilot = pilotConfig
+			setRuntime = true
+		}
+		defaultContainerConfig := v2.ContainerConfig{}
+		if applied, err := populateContainerConfig(v1.NewHelmValues(pilotValues), &defaultContainerConfig); err != nil {
+			return false, err
+		} else if applied {
+			pilotConfig.Pod.Containers = map[string]v2.ContainerConfig{
+				"default": defaultContainerConfig,
+			}
+			runtime.Pilot = pilotConfig
+			setRuntime = true
 		}
 	} else if err != nil {
 		return false, err

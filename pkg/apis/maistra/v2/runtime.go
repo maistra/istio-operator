@@ -45,9 +45,6 @@ type ComponentRuntimeConfig struct {
 // resource, including additional labels/annotations, replica count, autoscaling,
 // rollout strategy, etc.
 type DeploymentRuntimeConfig struct {
-	// Metadata specifies additional labels and annotations to be applied to the deployment
-	// +optional
-	Metadata MetadataConfig `json:"metadata,omitempty"`
 	// Number of desired pods. This is a pointer to distinguish between explicit
 	// zero and not specified. Defaults to 1.
 	// +optional
@@ -139,6 +136,7 @@ type CommonPodRuntimeConfig struct {
 // XXX: istio does not support full corev1.Affinity settings, hence the special
 // types here.
 type Affinity struct {
+	// XXX: use corev1.PodAntiAffinity instead, the only things not supported are namespaces and weighting
 	// +optional
 	PodAntiAffinity PodAntiAffinity `json:"podAntiAffinity,omitempty"`
 }

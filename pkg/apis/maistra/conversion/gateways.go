@@ -81,13 +81,11 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 					return err
 				}
 			}
-			if len(gatewayValues) > 0 {
-				if err := setHelmValue(gatewayValues, "name", "istio-ingressgateway"); err != nil {
-					return err
-				}
-				if err := setHelmValue(values, "gateways.istio-ingressgateway", gatewayValues); err != nil {
-					return err
-				}
+			if err := setHelmValue(gatewayValues, "name", "istio-ingressgateway"); err != nil {
+				return err
+			}
+			if err := setHelmValue(values, "gateways.istio-ingressgateway", gatewayValues); err != nil {
+				return err
 			}
 		} else {
 			return err
@@ -155,11 +153,7 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 			return nil, err
 		}
 	}
-	if in.RouterMode == "" {
-		if err := setHelmStringValue(values, "env.ISTIO_META_ROUTER_MODE", string(v2.RouterModeTypeSNIDNAT)); err != nil {
-			return nil, err
-		}
-	} else {
+	if in.RouterMode != "" {
 		if err := setHelmStringValue(values, "env.ISTIO_META_ROUTER_MODE", string(in.RouterMode)); err != nil {
 			return nil, err
 		}
@@ -196,6 +190,11 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 			return nil, err
 		}
 	}
+	if len(in.Service.Metadata.Annotations) > 0 {
+		if err := setHelmStringMapValue(values, "annotations", in.Service.Metadata.Annotations); err != nil {
+			return nil, err
+		}
+	}
 	if len(in.Service.Ports) > 0 {
 		untypedSlice := make([]interface{}, len(in.Service.Ports))
 		for index, port := range in.Service.Ports {
@@ -222,16 +221,8 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		if runtime.Pod.Containers != nil {
 			// Proxy container specific config
 			if proxyContainer, ok := runtime.Pod.Containers["istio-proxy"]; ok {
-				if proxyContainer.Resources != nil {
-					if resourcesValues, err := toValues(proxyContainer.Resources); err == nil {
-						if len(resourcesValues) > 0 {
-							if err := setHelmValue(values, "resources", resourcesValues); err != nil {
-								return nil, err
-							}
-						}
-					} else {
-						return nil, err
-					}
+				if err := populateContainerConfigValues(&proxyContainer, values); err != nil {
+					return nil, err
 				}
 			}
 		}
@@ -239,19 +230,19 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 
 	// Additional volumes
 	if len(in.Volumes) > 0 {
-		configVolumes := make([]map[string]string, 0)
-		secretVolumes := make([]map[string]string, 0)
+		configVolumes := make([]interface{}, 0)
+		secretVolumes := make([]interface{}, 0)
 		for _, volume := range in.Volumes {
 			if volume.Volume.Secret != nil {
-				secretVolumes = append(secretVolumes, map[string]string{
+				secretVolumes = append(secretVolumes, map[string]interface{}{
 					"name":       volume.Mount.Name,
-					"secretName": volume.Volume.Name,
+					"secretName": volume.Volume.Secret.SecretName,
 					"mountPath":  volume.Mount.MountPath,
 				})
 			} else if volume.Volume.ConfigMap != nil {
-				configVolumes = append(configVolumes, map[string]string{
+				configVolumes = append(configVolumes, map[string]interface{}{
 					"name":          volume.Mount.Name,
-					"configMapName": volume.Volume.Name,
+					"configMapName": volume.Volume.ConfigMap.Name,
 					"mountPath":     volume.Mount.MountPath,
 				})
 			} else {
@@ -278,10 +269,9 @@ func gatewayEgressConfigToValues(in *v2.EgressGatewayConfig) (map[string]interfa
 		return nil, err
 	}
 
-	if len(in.RequestedNetworkView) > 0 {
-		if err := setHelmStringValue(values, "env.ISTIO_META_REQUESTED_NETWORK_VIEW", strings.Join(in.RequestedNetworkView, ",")); err != nil {
-			return nil, err
-		}
+	// Always set this to allow round-tripping
+	if err := setHelmStringValue(values, "env.ISTIO_META_REQUESTED_NETWORK_VIEW", strings.Join(in.RequestedNetworkView, ",")); err != nil {
+		return nil, err
 	}
 
 	return values, nil
@@ -294,46 +284,42 @@ func gatewayIngressConfigToValues(in *v2.IngressGatewayConfig) (map[string]inter
 	}
 
 	// gateway SDS
+	sdsValues := make(map[string]interface{})
 	if in.EnableSDS != nil {
-		if err := setHelmBoolValue(values, "sds.enable", *in.EnableSDS); err != nil {
+		if err := setHelmBoolValue(sdsValues, "enabled", *in.EnableSDS); err != nil {
 			return nil, err
 		}
 	}
-
 	if in.Runtime != nil {
 		runtime := in.Runtime
-
 		if runtime.Pod.Containers != nil {
 			// SDS container specific config
 			if sdsContainer, ok := runtime.Pod.Containers["ingress-sds"]; ok {
-				if sdsContainer.Image != "" {
-					if err := setHelmStringValue(values, "sds.image", sdsContainer.Image); err != nil {
-						return nil, err
-					}
-				}
-				if sdsContainer.Resources != nil {
-					if resourcesValues, err := toValues(sdsContainer.Resources); err == nil {
-						if len(resourcesValues) > 0 {
-							if err := setHelmValue(values, "sds.resources", resourcesValues); err != nil {
-								return nil, err
-							}
-						}
-					} else {
-						return nil, err
-					}
+				if err := populateContainerConfigValues(&sdsContainer, sdsValues); err != nil {
+					return nil, err
 				}
 			}
 		}
+	}
+	if len(sdsValues) > 0 {
+		setHelmValue(values, "sds", sdsValues)
 	}
 
 	return values, nil
 }
 
 func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
-	gatewaysConfig := &v2.GatewaysConfig{}
+	gatewaysConfig := &v2.GatewaysConfig{
+		EgressGateways:  make(map[string]v2.EgressGatewayConfig),
+		IngressGateways: make(map[string]v2.IngressGatewayConfig),
+	}
 	setGatewaysConfig := false
 	if gateways, ok, err := in.GetMap("gateways"); ok {
 		for name, gateway := range gateways {
+			if name == "enabled" {
+				setGatewaysConfig = true
+				continue
+			}
 			gc := v2.GatewayConfig{}
 			gatewayMap, ok := gateway.(map[string]interface{})
 			if !ok {
@@ -348,10 +334,16 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 			}
 
 			// egress only
-			if networkView, ok, err := gatewayValues.GetString("env.ISTIO_META_REQUESTED_NETWORK_VIEW"); ok {
+			if rawNetworkView, ok, err := gatewayValues.GetString("env.ISTIO_META_REQUESTED_NETWORK_VIEW"); ok {
+				var networkView []string
+				if rawNetworkView == "" {
+					networkView = make([]string, 0)
+				} else {
+					networkView = strings.Split(rawNetworkView, ",")
+				}
 				egressGateway := v2.EgressGatewayConfig{
 					GatewayConfig:        gc,
-					RequestedNetworkView: strings.Split(networkView, ","),
+					RequestedNetworkView: networkView,
 				}
 				if name == "istio-egressgateway" {
 					gatewaysConfig.ClusterEgress = &egressGateway
@@ -376,7 +368,13 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 					if applied, err := populateContainerConfig(sdsValues, &sdsContainerConfig); err != nil {
 						return err
 					} else if applied {
-						if ingressGateway.Runtime.Pod.Containers == nil {
+						if ingressGateway.Runtime == nil {
+							ingressGateway.Runtime = &v2.ComponentRuntimeConfig{
+								Pod: v2.PodRuntimeConfig{
+									Containers: make(map[string]v2.ContainerConfig),
+								},
+							}
+						} else if ingressGateway.Runtime.Pod.Containers == nil {
 							ingressGateway.Runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
 						}
 						ingressGateway.Runtime.Pod.Containers["ingress-sds"] = sdsContainerConfig
@@ -398,6 +396,12 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 		return err
 	}
 	if setGatewaysConfig {
+		if len(gatewaysConfig.EgressGateways) == 0 {
+			gatewaysConfig.EgressGateways = nil
+		}
+		if len(gatewaysConfig.IngressGateways) == 0 {
+			gatewaysConfig.IngressGateways = nil
+		}
 		out.Gateways = gatewaysConfig
 	}
 	return nil
@@ -434,6 +438,13 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 	} else if err != nil {
 		return err
 	}
+	if rawAnnotations, ok, err := in.GetMap("annotations"); ok {
+		if err := setMetadataAnnotations(rawAnnotations, &out.Service.Metadata); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
 
 	// volumes
 	if secretVolumes, ok, err := in.GetSlice("secretVolumes"); ok {
@@ -451,7 +462,7 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 					return err
 				}
 				if secretName, ok, err := volumeValues.GetString("secretName"); ok {
-					volume.Volume.Name = secretName
+					volume.Volume.Secret.SecretName = secretName
 				} else if err != nil {
 					return err
 				}
@@ -483,7 +494,7 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 					return err
 				}
 				if configMapName, ok, err := volumeValues.GetString("configMapName"); ok {
-					volume.Volume.Name = configMapName
+					volume.Volume.ConfigMap.Name = configMapName
 				} else if err != nil {
 					return err
 				}
@@ -514,6 +525,9 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 	if applied, err := populateContainerConfig(in, &container); err != nil {
 		return err
 	} else if applied {
+		if out.Runtime == nil {
+			out.Runtime = &v2.ComponentRuntimeConfig{}
+		}
 		out.Runtime.Pod.Containers = map[string]v2.ContainerConfig{
 			"istio-proxy": container,
 		}

@@ -1,10 +1,10 @@
 package v1
 
 import (
-	"encoding/json"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/util/json"
 )
 
 // HelmValues is typedef for Helm .Values
@@ -100,6 +100,7 @@ func (h *HelmValues) MarshalJSON() ([]byte, error) {
 
 func (in *HelmValues) DeepCopyInto(out *HelmValues) {
 	*out = HelmValues{}
+	
 	data, err := json.Marshal(in)
 	if err != nil {
 		// panic ???
