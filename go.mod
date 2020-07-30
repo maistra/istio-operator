@@ -13,6 +13,8 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.6.3
+	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899 // indirect
+	golang.org/x/text v0.3.3 // indirect
 	istio.io/api v0.0.0-20190917173507-9eb49cc4666a
 	k8s.io/api v0.0.0-20190612125737-db0771252981
 	k8s.io/apiextensions-apiserver v0.0.0-20190228180357-d002e88f6236
