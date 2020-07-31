@@ -12,7 +12,7 @@ import (
 
 var loggingTestCases = []conversionTestCase{
 	{
-		name: "defaults." + versions.V2_0.String(),
+		name: "nil." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 		},
@@ -34,7 +34,7 @@ var loggingTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "empty." + versions.V2_0.String(),
+		name: "defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Logging: &v2.LoggingConfig{},

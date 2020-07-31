@@ -18,9 +18,6 @@ func populatePolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 	if in.Policy == nil {
 		return nil
 	}
-	if in.Policy.Type == v2.PolicyTypeNone {
-		return setHelmBoolValue(values, "mixer.policy.enabled", false)
-	}
 
 	istiod := !(in.Version == "" || in.Version == versions.V1_0.String() || in.Version == versions.V1_1.String())
 	if in.Policy.Type == "" {
@@ -30,6 +27,15 @@ func populatePolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 			in.Policy.Type = v2.PolicyTypeMixer
 		}
 	}
+
+	if err := setHelmStringValue(values, "policy.implementation", string(in.Policy.Type)); err != nil {
+		return nil
+	}
+
+	if in.Policy.Type == v2.PolicyTypeNone {
+		return setHelmBoolValue(values, "mixer.policy.enabled", false)
+	}
+
 	switch in.Policy.Type {
 	case v2.PolicyTypeMixer:
 		return populateMixerPolicyValues(in, istiod, values)
@@ -104,37 +110,22 @@ func populateMixerPolicyValues(in *v2.ControlPlaneSpec, istiod bool, values map[
 		if runtime.Pod.Containers != nil {
 			// Mixer container specific config
 			if mixerContainer, ok := runtime.Pod.Containers["mixer"]; ok {
-				if mixerContainer.Image != "" {
-					if istiod {
-						if err := setHelmStringValue(policyValues, "image", mixerContainer.Image); err != nil {
-							return err
-						}
-					} else {
-						// XXX: this applies to both policy and telemetry in pre 1.6
-						if err := setHelmStringValue(values, "mixer.image", mixerContainer.Image); err != nil {
-							return err
-						}
-					}
-				}
-				if mixerContainer.Resources != nil {
-					if resourcesValues, err := toValues(mixerContainer.Resources); err == nil {
-						if len(resourcesValues) > 0 {
-							if err := setHelmValue(policyValues, "resources", resourcesValues); err != nil {
-								return err
-							}
-						}
-					} else {
-						return err
-					}
+				if err := populateContainerConfigValues(&mixerContainer, policyValues); err != nil {
+					return err
 				}
 			}
 		}
 	}
 
 	if !istiod {
-		// move podAnnotations, nodeSelector, podAntiAffinityLabelSelector, and
+		// move image, podAnnotations, nodeSelector, podAntiAffinityLabelSelector, and
 		// podAntiAffinityTermLabelSelector from mixer.policy to mixer for v1.0 and v1.1
 		// Note, these may overwrite settings specified in telemetry
+		if image, found, _ := unstructured.NestedString(policyValues, "image"); found {
+			if err := setHelmValue(values, "mixer.image", image); err != nil {
+				return err
+			}
+		}
 		if podAnnotations, found, _ := unstructured.NestedFieldCopy(policyValues, "podAnnotations"); found {
 			if err := setHelmValue(values, "mixer.podAnnotations", podAnnotations); err != nil {
 				return err
@@ -212,39 +203,89 @@ func populateIstiodPolicyValues(in *v2.ControlPlaneSpec, values map[string]inter
 	return nil
 }
 
-func populatePolicyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
-	// figure out what we're installing
-	if mixerPolicyEnabled, ok, err := in.GetBool("mixer.policy.enabled"); ok && mixerPolicyEnabled {
-		// installing some form of mixer based policy
-		if mixerEnabled, ok, err := in.GetBool("mixer.enabled"); ok && mixerEnabled {
-			// installing mixer policy
-			out.Policy = &v2.PolicyConfig{
-				Type: v2.PolicyTypeMixer,
-			}
-			config := &v2.MixerPolicyConfig{}
-			if applied, err := populateMixerPolicyConfig(in, config); err != nil {
+func populatePolicyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version versions.Version) error {
+	var policyType v2.PolicyType
+	if policyTypeStr, ok, err := in.GetString("policy.implementation"); ok && policyTypeStr != "" {
+		switch v2.PolicyType(policyTypeStr) {
+		case v2.PolicyTypeIstiod:
+			policyType = v2.PolicyTypeIstiod
+		case v2.PolicyTypeMixer:
+			policyType = v2.PolicyTypeMixer
+		case v2.PolicyTypeRemote:
+			policyType = v2.PolicyTypeRemote
+		case v2.PolicyTypeNone:
+			policyType = v2.PolicyTypeNone
+		default:
+			return fmt.Errorf("unkown policy.implementation specified: %s", policyTypeStr)
+		}
+	} else if err != nil {
+		return err
+	} else {
+		// figure out what we're installing
+		if mixerPolicyEnabled, mixerPolicyEnabledSet, err := in.GetBool("mixer.policy.enabled"); err == nil {
+			// installing some form of mixer based policy
+			if mixerEnabled, mixerEnabledSet, err := in.GetBool("mixer.enabled"); err == nil {
+				if !mixerEnabledSet || !mixerPolicyEnabledSet {
+					// assume no policy to configure
+					return nil
+				}
+				if mixerEnabled {
+					if mixerPolicyEnabled {
+						// installing mixer policy
+						policyType = v2.PolicyTypeMixer
+					} else {
+						// mixer policy disabled
+						policyType = v2.PolicyTypeNone
+					}
+				} else if mixerPolicyEnabled {
+					// using remote mixer policy
+					policyType = v2.PolicyTypeRemote
+				} else {
+					switch version {
+					case versions.V1_0, versions.V1_1:
+						// policy disabled
+						policyType = v2.PolicyTypeNone
+					case versions.V2_0:
+						// assume istiod
+						policyType = v2.PolicyTypeIstiod
+					default:
+						return fmt.Errorf("unknown version: %s", version.String())
+					}
+				}
+			} else {
 				return err
-			} else if applied {
-				out.Policy.Mixer = config
 			}
-			return nil
-		} else if err != nil {
+		} else {
 			return err
 		}
-		// using remote mixer policy
-		out.Policy = &v2.PolicyConfig{
-			Type: v2.PolicyTypeRemote,
+	}
+
+	if policyType == "" {
+		return fmt.Errorf("Could not determine policy type")
+	}
+	out.Policy = &v2.PolicyConfig{
+		Type: policyType,
+	}
+	switch policyType {
+	case v2.PolicyTypeIstiod:
+		// no configuration to set
+	case v2.PolicyTypeMixer:
+		config := &v2.MixerPolicyConfig{}
+		if applied, err := populateMixerPolicyConfig(in, config); err != nil {
+			return err
+		} else if applied {
+			out.Policy.Mixer = config
 		}
+	case v2.PolicyTypeRemote:
 		config := &v2.RemotePolicyConfig{}
 		if applied, err := populateRemotePolicyConfig(in, config); err != nil {
 			return err
 		} else if applied {
 			out.Policy.Remote = config
 		}
-		return nil
-	} else if err != nil {
-		return err
-	} // else maybe using istiod?
+	case v2.PolicyTypeNone:
+		// no configuration to set
+	}
 
 	return nil
 }

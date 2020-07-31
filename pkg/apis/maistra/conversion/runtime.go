@@ -489,6 +489,9 @@ func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig
 	if rawAntiAffinityLabelSelector, ok, err := in.GetSlice("podAntiAffinityLabelSelector"); ok && len(rawAntiAffinityLabelSelector) > 0 {
 		if out.Affinity == nil {
 			out.Affinity = &v2.Affinity{}
+		} else {
+			// clear this out
+			out.Affinity.PodAntiAffinity.RequiredDuringScheduling = nil
 		}
 		for _, rawSelector := range rawAntiAffinityLabelSelector {
 			if selectorValues, ok := rawSelector.(map[string]interface{}); ok {
@@ -508,6 +511,9 @@ func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig
 	if rawAntiAffinityLabelSelector, ok, err := in.GetSlice("podAntiAffinityTermLabelSelector"); ok && len(rawAntiAffinityLabelSelector) > 0 {
 		if out.Affinity == nil {
 			out.Affinity = &v2.Affinity{}
+		} else {
+			// clear this out
+			out.Affinity.PodAntiAffinity.PreferredDuringScheduling = nil
 		}
 		for _, rawSelector := range rawAntiAffinityLabelSelector {
 			if selectorValues, ok := rawSelector.(map[string]interface{}); ok {

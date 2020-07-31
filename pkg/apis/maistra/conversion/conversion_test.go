@@ -50,6 +50,10 @@ func TestCompleteLoggingConversionFromV2(t *testing.T) {
 	runTestCasesFromV2(loggingTestCases, t)
 }
 
+func TestCompletePolicyConversionFromV2(t *testing.T) {
+	runTestCasesFromV2(policyTestCases, t)
+}
+
 func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 	t.Helper()
 	for _, tc := range testCases {

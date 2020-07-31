@@ -1906,11 +1906,6 @@ func (in *PolicyConfig) DeepCopyInto(out *PolicyConfig) {
 		*out = new(RemotePolicyConfig)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Istiod != nil {
-		in, out := &in.Istiod, &out.Istiod
-		*out = new(IstiodPolicyConfig)
-		**out = **in
-	}
 	return
 }
 

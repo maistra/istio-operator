@@ -15,7 +15,7 @@ import (
 
 var clusterTestCases = []conversionTestCase{
 	{
-		name: "defaults." + versions.V1_0.String(),
+		name: "nil." + versions.V1_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_0.String(),
 		},
@@ -38,7 +38,7 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "defaults." + versions.V1_1.String(),
+		name: "nil." + versions.V1_1.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 		},
@@ -61,7 +61,7 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "defaults." + versions.V2_0.String(),
+		name: "nil." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 		},

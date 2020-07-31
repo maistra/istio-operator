@@ -17,7 +17,7 @@ import (
 
 var runtimeTestCases = []conversionTestCase{
 	{
-		name: "defaults." + versions.V2_0.String(),
+		name: "nil." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 		},
@@ -40,7 +40,7 @@ var runtimeTestCases = []conversionTestCase{
 	},
 	{
 		// XXX: round-trip fails
-		name: "empty." + versions.V2_0.String(),
+		name: "defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{},
@@ -273,7 +273,7 @@ var runtimeTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "citadel.empty." + versions.V2_0.String(),
+		name: "citadel.defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{
@@ -562,7 +562,7 @@ var runtimeTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "galley.empty." + versions.V2_0.String(),
+		name: "galley.defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{
@@ -851,7 +851,7 @@ var runtimeTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "pilot.empty." + versions.V2_0.String(),
+		name: "pilot.defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{

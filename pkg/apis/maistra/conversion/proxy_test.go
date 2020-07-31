@@ -19,7 +19,7 @@ var (
 
 var proxyTestCases = []conversionTestCase{
 	{
-		name: "defaults." + versions.V2_0.String(),
+		name: "nil." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 		},
@@ -42,7 +42,7 @@ var proxyTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "empty." + versions.V2_0.String(),
+		name: "defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy:   &v2.ProxyConfig{},
@@ -246,7 +246,7 @@ var proxyTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "networking.init.empty." + versions.V2_0.String(),
+		name: "networking.init.defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
@@ -410,7 +410,7 @@ var proxyTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "networking.protocol.empty." + versions.V2_0.String(),
+		name: "networking.protocol.defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
@@ -473,7 +473,7 @@ var proxyTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "networking.protocol.debug.empty." + versions.V2_0.String(),
+		name: "networking.protocol.debug.defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
@@ -544,7 +544,7 @@ var proxyTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "networking.traffic.empty." + versions.V2_0.String(),
+		name: "networking.traffic.defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{

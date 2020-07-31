@@ -5,11 +5,16 @@ import (
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 // Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec converts a v1 ControlPlaneSpec to its v2 equivalent.
 func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec, out *v2.ControlPlaneSpec, s conversion.Scope) error {
 
+	version, versionErr := versions.ParseVersion(in.Version)
+	if versionErr != nil {
+		return versionErr
+	}
 	if err := autoConvert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in, out, s); err != nil {
 		return err
 	}
@@ -25,7 +30,7 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 	}
 
 	// Policy
-	if err := populatePolicyConfig(in.Istio, out); err != nil {
+	if err := populatePolicyConfig(in.Istio, out, version); err != nil {
 		return err
 	}
 

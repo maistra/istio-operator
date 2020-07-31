@@ -13,11 +13,6 @@ type PolicyConfig struct {
 	// .Values.global.remotePolicyAddress
 	// +optional
 	Remote *RemotePolicyConfig `json:"remote,omitempty"`
-	// Istiod policy implementation (v2)
-	// XXX: is this the default policy config, i.e. what's used if mixer is not
-	// being used?  Does this need to be explicit?
-	// +optional
-	Istiod *IstiodPolicyConfig `json:"istiod,omitempty"`
 }
 
 // PolicyType represents the type of policy implementation used by the mesh.
