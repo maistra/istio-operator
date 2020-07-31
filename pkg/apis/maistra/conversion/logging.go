@@ -2,6 +2,7 @@ package conversion
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -49,6 +50,7 @@ func componentLogLevelsToString(logLevels v2.ComponentLogLevels) string {
 	for component, level := range logLevels {
 		componentLogLevels = append(componentLogLevels, fmt.Sprintf("%s:%s", component, level))
 	}
+	sort.Strings(componentLogLevels)
 	return strings.Join(componentLogLevels, ",")
 }
 

@@ -42,6 +42,14 @@ func TestCompleteRuntimeConversionFromV2(t *testing.T) {
 	runTestCasesFromV2(runtimeTestCases, t)
 }
 
+func TestCompleteProxyConversionFromV2(t *testing.T) {
+	runTestCasesFromV2(proxyTestCases, t)
+}
+
+func TestCompleteLoggingConversionFromV2(t *testing.T) {
+	runTestCasesFromV2(loggingTestCases, t)
+}
+
 func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 	t.Helper()
 	for _, tc := range testCases {
@@ -59,7 +67,8 @@ func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 				t.Errorf("unexpected output converting v2 to values:\n\texpected:\n%#v\n\tgot:\n%#v", istio, smcpv1.Spec.Istio.GetContent())
 			}
 			newsmcpv2 := &v2.ServiceMeshControlPlane{}
-			smcpv1 = smcpv1.DeepCopy()
+			// use expected data
+			smcpv1.Spec.Istio = v1.NewHelmValues(istio).DeepCopy()
 			if err := Convert_v1_ServiceMeshControlPlane_To_v2_ServiceMeshControlPlane(smcpv1, newsmcpv2, nil); err != nil {
 				t.Fatalf("error converting from values: %s", err)
 			}
@@ -78,14 +87,14 @@ func mergeMaps(source, target map[string]interface{}) {
 			if targetmap, ok := targetvalue.(map[string]interface{}); ok {
 				if valmap, ok := val.(map[string]interface{}); ok {
 					mergeMaps(valmap, targetmap)
+					continue
 				} else {
-					panic(fmt.Sprintf("can only merge map types: key=%v, value=:%v", key, targetvalue))
+					panic(fmt.Sprintf("trying to merge non-map into map: key=%v, value=:%v", key, val))
 				}
-			} else {
-				panic(fmt.Sprintf("can only merge map types: key=%v, value=:%v", key, val))
+			} else if _, ok := val.(map[string]interface{}); ok {
+				panic(fmt.Sprintf("trying to merge map into non-map: key=%v, value=:%v", key, targetvalue))
 			}
-		} else {
-			target[key] = val
 		}
+		target[key] = val
 	}
 }

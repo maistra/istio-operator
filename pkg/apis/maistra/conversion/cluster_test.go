@@ -1409,7 +1409,8 @@ func TestClusterConversionFromV2(t *testing.T) {
 				t.Errorf("unexpected output converting v2 to values:\n\texpected:\n%#v\n\tgot:\n%#v", tc.isolatedIstio.GetContent(), helmValues.GetContent())
 			}
 			specv2 := &v2.ControlPlaneSpec{}
-			helmValues = helmValues.DeepCopy()
+			// use expected values
+			helmValues = tc.isolatedIstio.DeepCopy()
 			mergeMaps(tc.completeIstio.DeepCopy().GetContent(), helmValues.GetContent())
 			if err := populateClusterConfig(helmValues.DeepCopy(), specv2); err != nil {
 				t.Fatalf("error converting from values: %s", err)

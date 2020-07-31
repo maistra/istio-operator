@@ -1,12 +1,10 @@
 package conversion
 
 import (
-	"strconv"
 	"strings"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	corev1 "k8s.io/api/core/v1"
 )
 
 func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
@@ -23,6 +21,11 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 		}
 	}
 	// XXX: admin port is not configurable
+	if proxy.AdminPort > 0 {
+		if err := setHelmIntValue(proxyValues, "adminPort", int64(proxy.AdminPort)); err != nil {
+			return err
+		}
+	}
 
 	// Logging
 	if err := populateProxyLogging(&proxy.Logging, proxyValues); err != nil {
@@ -36,46 +39,14 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 		}
 	}
 	// XXX: proxy.Networking.ConnectionTimeout is not exposed through values
-	switch proxy.Networking.Initialization.Type {
-	case v2.ProxyNetworkInitTypeCNI, "":
-		istioCNI := make(map[string]interface{})
-		if err := setHelmBoolValue(istioCNI, "enabled", true); err != nil {
+	if proxy.Networking.ConnectionTimeout != "" {
+		if err := setHelmStringValue(proxyValues, "connectionTimeout", proxy.Networking.ConnectionTimeout); err != nil {
 			return err
 		}
-		cni := proxy.Networking.Initialization.CNI
-		if cni != nil && cni.Runtime != nil {
-			if cni.Runtime.PriorityClassName != "" {
-				if err := setHelmStringValue(istioCNI, "priorityClassName", cni.Runtime.PriorityClassName); err != nil {
-					return err
-				}
-			}
-			if len(cni.Runtime.ImagePullSecrets) > 0 {
-				pullSecretsValues := make([]string, 0)
-				for _, secret := range cni.Runtime.ImagePullSecrets {
-					pullSecretsValues = append(pullSecretsValues, secret.Name)
-				}
-				if err := setHelmStringSliceValue(istioCNI, "imagePullSecrets", pullSecretsValues); err != nil {
-					return err
-				}
-			}
-			if cni.Runtime.ImagePullPolicy != "" {
-				if err := setHelmStringValue(istioCNI, "imagePullPolicy", string(cni.Runtime.ImagePullPolicy)); err != nil {
-					return err
-				}
-			}
-			if cni.Runtime.Resources != nil {
-				if resourcesValues, err := toValues(cni.Runtime.Resources); err == nil {
-					if len(resourcesValues) > 0 {
-						if err := setHelmValue(istioCNI, "resources", resourcesValues); err != nil {
-							return err
-						}
-					}
-				} else {
-					return err
-				}
-			}
-		}
-		if err := setHelmValue(values, "istio_cni", istioCNI); err != nil {
+	}
+	switch proxy.Networking.Initialization.Type {
+	case v2.ProxyNetworkInitTypeCNI, "":
+		if err := setHelmBoolValue(values, "istio_cni.enabled", true); err != nil {
 			return err
 		}
 	case v2.ProxyNetworkInitTypeInitContainer:
@@ -84,19 +55,9 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 		}
 		if proxy.Networking.Initialization.InitContainer != nil && proxy.Networking.Initialization.InitContainer.Runtime != nil {
 			container := proxy.Networking.Initialization.InitContainer.Runtime
-			if container.Image != "" {
-				if err := setHelmStringValue(values, "global.proxy_init.image", container.Image); err != nil {
-					return err
-				}
-			}
-			if container.Resources != nil {
-				if resourcesValues, err := toValues(container.Resources); err == nil {
-					if len(resourcesValues) > 0 {
-						if err := setHelmValue(values, "global.proxy_init.resources", resourcesValues); err != nil {
-							return err
-						}
-					}
-				} else {
+			initValues := make(map[string]interface{})
+			if err := populateContainerConfigValues(container, initValues); err == nil {
+				if err := setHelmValue(values, "global.proxy_init", initValues); err != nil {
 					return err
 				}
 			}
@@ -105,34 +66,38 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 
 	// Traffic Control
 	// Inbound
-	// XXX: interceptionMode is not configurable through values.yaml
+	// XXX: InterceptionMode is not configurable through values.yaml
+	if proxy.Networking.TrafficControl.Inbound.InterceptionMode != "" {
+		if err := setHelmStringValue(proxyValues, "interceptionMode", string(proxy.Networking.TrafficControl.Inbound.InterceptionMode)); err != nil {
+			return err
+		}
+	}
+	// includeInboundPorts="" is a valid value == IncludedPorts([]string{""})
 	if len(proxy.Networking.TrafficControl.Inbound.IncludedPorts) > 0 {
 		if err := setHelmStringValue(proxyValues, "includeInboundPorts", strings.Join(proxy.Networking.TrafficControl.Inbound.IncludedPorts, ",")); err != nil {
 			return err
 		}
 	}
-	if len(proxy.Networking.TrafficControl.Inbound.ExcludedPorts) > 0 {
-		if err := setHelmStringValue(proxyValues, "excludeInboundPorts", strings.Join(proxy.Networking.TrafficControl.Inbound.ExcludedPorts, ",")); err != nil {
+	if proxy.Networking.TrafficControl.Inbound.ExcludedPorts != nil {
+		if err := setHelmStringValue(proxyValues, "excludeInboundPorts", int32SliceToString(proxy.Networking.TrafficControl.Inbound.ExcludedPorts)); err != nil {
 			return err
 		}
 	}
 	// Outbound
+	// includeIPRanges="" is a valid value == IncludedIPRanges([]string{""})
+	// XXX: verify this
 	if len(proxy.Networking.TrafficControl.Outbound.IncludedIPRanges) > 0 {
 		if err := setHelmStringValue(proxyValues, "includeIPRanges", strings.Join(proxy.Networking.TrafficControl.Outbound.IncludedIPRanges, ",")); err != nil {
 			return err
 		}
 	}
-	if len(proxy.Networking.TrafficControl.Outbound.ExcludedIPRanges) > 0 {
+	if proxy.Networking.TrafficControl.Outbound.ExcludedIPRanges != nil {
 		if err := setHelmStringValue(proxyValues, "excludeIPRanges", strings.Join(proxy.Networking.TrafficControl.Outbound.ExcludedIPRanges, ",")); err != nil {
 			return err
 		}
 	}
-	if len(proxy.Networking.TrafficControl.Outbound.ExcludedPorts) > 0 {
-		excludedPorts := make([]string, len(proxy.Networking.TrafficControl.Outbound.ExcludedPorts))
-		for index, port := range proxy.Networking.TrafficControl.Outbound.ExcludedPorts {
-			excludedPorts[index] = strconv.FormatInt(int64(port), 10)
-		}
-		if err := setHelmStringValue(proxyValues, "excludeOutboundPorts", strings.Join(excludedPorts, ",")); err != nil {
+	if proxy.Networking.TrafficControl.Outbound.ExcludedPorts != nil {
+		if err := setHelmStringValue(proxyValues, "excludeOutboundPorts", int32SliceToString(proxy.Networking.TrafficControl.Outbound.ExcludedPorts)); err != nil {
 			return err
 		}
 	}
@@ -158,7 +123,7 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 	}
 
 	// DNS
-	if len(proxy.Networking.DNS.SearchSuffixes) > 0 {
+	if proxy.Networking.DNS.SearchSuffixes != nil {
 		if err := setHelmStringSliceValue(values, "global.podDNSSearchNamespaces", proxy.Networking.DNS.SearchSuffixes); err != nil {
 			return err
 		}
@@ -170,14 +135,8 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 	}
 
 	// Runtime
-	if proxy.Runtime.Resources != nil {
-		if resourcesValues, err := toValues(proxy.Runtime.Resources); err == nil {
-			if len(resourcesValues) > 0 {
-				if err := setHelmValue(proxyValues, "resources", resourcesValues); err != nil {
-					return err
-				}
-			}
-		} else {
+	if proxy.Runtime.Container != nil {
+		if err := populateContainerConfigValues(proxy.Runtime.Container, proxyValues); err != nil {
 			return err
 		}
 	}
@@ -219,7 +178,7 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	proxy := &v2.ProxyConfig{}
 	setProxy := false
-	rawProxyValues, ok, err := in.GetMap("proxy")
+	rawProxyValues, ok, err := in.GetMap("global.proxy")
 	if err != nil {
 		return err
 	} else if !ok || len(rawProxyValues) == 0 {
@@ -231,6 +190,12 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	if rawConcurrency, ok, err := proxyValues.GetInt64("concurrency"); ok {
 		concurrency := int32(rawConcurrency)
 		proxy.Concurrency = &concurrency
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+	if adminPort, ok, err := proxyValues.GetInt64("adminPort"); ok && adminPort > 0 {
+		proxy.AdminPort = int32(adminPort)
 		setProxy = true
 	} else if err != nil {
 		return err
@@ -250,46 +215,32 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	} else if err != nil {
 		return err
 	}
+	if connectionTimeout, ok, err := proxyValues.GetString("connectionTimeout"); ok {
+		proxy.Networking.ConnectionTimeout = connectionTimeout
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
 
 	if rawIstioCNI, _, err := in.GetMap("istio_cni"); err == nil {
 		istioCNI := v1.NewHelmValues(rawIstioCNI)
-		if cniEnabled, ok, err := istioCNI.GetBool("enabled"); err != nil {
-			return err
-		} else if !ok || cniEnabled {
-			// cni enabled (default is cni)
-			cniConfig := &v2.ProxyCNIConfig{
-				Runtime: &v2.ProxyCNIRuntimeConfig{},
-			}
-			setCNI := false
-			if priorityClassName, ok, err := istioCNI.GetString("priorityClassName"); ok {
-				cniConfig.Runtime.PriorityClassName = priorityClassName
-				setCNI = true
+		if cniEnabled, ok, err := istioCNI.GetBool("enabled"); ok && !cniEnabled {
+			proxy.Networking.Initialization.Type = v2.ProxyNetworkInitTypeInitContainer
+			setProxy = true
+			if rawProxyInit, ok, err := in.GetMap("global.proxy_init"); ok && len(rawProxyInit) > 0 {
+				// user must explicitly disable cni (although, operator is hard coded
+				// to use it, so this should really only configure runtime details
+				// for the container)
+				proxyInitConfig := &v2.ProxyInitContainerConfig{
+					Runtime: &v2.ContainerConfig{},
+				}
+				if applied, err := populateContainerConfig(v1.NewHelmValues(rawProxyInit), proxyInitConfig.Runtime); err != nil {
+					return err
+				} else if applied {
+					proxy.Networking.Initialization.InitContainer = proxyInitConfig
+				}
 			} else if err != nil {
 				return err
-			}
-			if applied, err := populateContainerConfig(istioCNI, &cniConfig.Runtime.ContainerConfig); err != nil {
-				return err
-			} else if applied {
-				setCNI = true
-			}
-			if setCNI {
-				proxy.Networking.Initialization.Type = v2.ProxyNetworkInitTypeCNI
-				proxy.Networking.Initialization.CNI = cniConfig
-				setProxy = true
-			}
-		} else if rawProxyInit, ok, err := in.GetMap("global.proxy_init"); ok && len(rawProxyInit) > 0 {
-			// user must explicitly disable cni (although, operator is hard coded
-			// to use it, so this should really only configure runtime details
-			// for the container)
-			proxyInitConfig := &v2.ProxyInitContainerConfig{
-				Runtime: &v2.ContainerConfig{},
-			}
-			if applied, err := populateContainerConfig(v1.NewHelmValues(rawProxyInit), proxyInitConfig.Runtime); err != nil {
-				return err
-			} else if applied {
-				proxy.Networking.Initialization.Type = v2.ProxyNetworkInitTypeInitContainer
-				proxy.Networking.Initialization.InitContainer = proxyInitConfig
-				setProxy = true
 			}
 		} else if err != nil {
 			return err
@@ -300,40 +251,49 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 
 	// Traffic Control
 	// Inbound
-	if includeInboundPorts, ok, err := proxyValues.GetString("includeInboundPorts"); ok && includeInboundPorts != "" {
+	// XXX: InterceptionMode is not configurable through values.yaml
+	if interceptionMode, ok, err := proxyValues.GetString("interceptionMode"); ok && interceptionMode != "" {
+		proxy.Networking.TrafficControl.Inbound.InterceptionMode = v2.ProxyNetworkInterceptionMode(interceptionMode)
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+	if includeInboundPorts, ok, err := proxyValues.GetString("includeInboundPorts"); ok {
 		proxy.Networking.TrafficControl.Inbound.IncludedPorts = strings.Split(includeInboundPorts, ",")
 		setProxy = true
 	} else if err != nil {
 		return err
 	}
-	if excludeInboundPorts, ok, err := proxyValues.GetString("excludeInboundPorts"); ok && excludeInboundPorts != "" {
-		proxy.Networking.TrafficControl.Inbound.ExcludedPorts = strings.Split(excludeInboundPorts, ",")
+	if excludeInboundPorts, ok, err := proxyValues.GetString("excludeInboundPorts"); ok {
+		if proxy.Networking.TrafficControl.Inbound.ExcludedPorts, err = stringToInt32Slice(excludeInboundPorts); err != nil {
+			return err
+		}
 		setProxy = true
 	} else if err != nil {
 		return err
 	}
 	// Outbound
-	if includeIPRanges, ok, err := proxyValues.GetString("includeIPRanges"); ok && includeIPRanges != "" {
+	if includeIPRanges, ok, err := proxyValues.GetString("includeIPRanges"); ok {
 		proxy.Networking.TrafficControl.Outbound.IncludedIPRanges = strings.Split(includeIPRanges, ",")
 		setProxy = true
 	} else if err != nil {
 		return err
 	}
-	if excludeIPRanges, ok, err := proxyValues.GetString("excludeIPRanges"); ok && excludeIPRanges != "" {
-		proxy.Networking.TrafficControl.Outbound.ExcludedIPRanges = strings.Split(excludeIPRanges, ",")
+	if excludeIPRanges, ok, err := proxyValues.GetString("excludeIPRanges"); ok {
+		var ipRangeSlice []string
+		if excludeIPRanges == "" {
+			ipRangeSlice = make([]string, 0)
+		} else {
+			ipRangeSlice = strings.Split(excludeIPRanges, ",")
+		}
+		proxy.Networking.TrafficControl.Outbound.ExcludedIPRanges = ipRangeSlice
 		setProxy = true
 	} else if err != nil {
 		return err
 	}
-	if excludeOutboundPorts, ok, err := proxyValues.GetString("excludeOutboundPorts"); ok && excludeOutboundPorts != "" {
-		portSlice := strings.Split(excludeOutboundPorts, ",")
-		proxy.Networking.TrafficControl.Outbound.ExcludedPorts = make([]int32, len(portSlice))
-		for index, port := range portSlice {
-			intPort, err := strconv.ParseInt(port, 10, 32)
-			if err != nil {
-				return err
-			}
-			proxy.Networking.TrafficControl.Outbound.ExcludedPorts[index] = int32(intPort)
+	if excludeOutboundPorts, ok, err := proxyValues.GetString("excludeOutboundPorts"); ok {
+		if proxy.Networking.TrafficControl.Outbound.ExcludedPorts, err = stringToInt32Slice(excludeOutboundPorts); err != nil {
+			return err
 		}
 		setProxy = true
 	} else if err != nil {
@@ -374,7 +334,7 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	}
 
 	// DNS
-	if podDNSSearchNamespaces, ok, err := in.GetStringSlice("global.podDNSSearchNamespaces"); ok && len(podDNSSearchNamespaces) > 0 {
+	if podDNSSearchNamespaces, ok, err := in.GetStringSlice("global.podDNSSearchNamespaces"); ok {
 		proxy.Networking.DNS.SearchSuffixes = podDNSSearchNamespaces
 		setProxy = true
 	} else if err != nil {
@@ -388,14 +348,12 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	}
 
 	// Runtime
-	if resourcesValues, ok, err := proxyValues.GetMap("resources"); ok && len(resourcesValues) > 0 {
-		proxy.Runtime.Resources = &corev1.ResourceRequirements{}
-		if err := fromValues(resourcesValues, proxy.Runtime.Resources); err != nil {
-			return err
-		}
-		setProxy = true
-	} else if err != nil {
+	container := &v2.ContainerConfig{}
+	if applied, err := populateContainerConfig(proxyValues, container); err != nil {
 		return err
+	} else if applied {
+		proxy.Runtime.Container = container
+		setProxy = true
 	}
 	// Readiness
 	if statusPort, ok, err := proxyValues.GetInt64("statusPort"); ok && statusPort > 0 {

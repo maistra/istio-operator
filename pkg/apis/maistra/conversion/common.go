@@ -2,6 +2,7 @@ package conversion
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -70,6 +71,30 @@ func sliceToValues(in []interface{}) ([]interface{}, error) {
 	return out, err
 }
 
+func stringToInt32Slice(in string) ([]int32, error) {
+	if in == "" {
+		return make([]int32, 0), nil
+	}
+	inslice := strings.Split(in, ",")
+	out := make([]int32, len(inslice))
+	for index, strval := range inslice {
+		intval, err := strconv.ParseInt(strval, 10, 32)
+		if err != nil {
+			return nil, err
+		}
+		out[index] = int32(intval)
+	}
+	return out, nil
+}
+
+func int32SliceToString(in []int32) string {
+	strslice := make([]string, len(in))
+	for index, intval := range in {
+		strslice[index] = strconv.FormatInt(int64(intval), 10)
+	}
+	return strings.Join(strslice, ",")
+}
+
 func setHelmValue(obj map[string]interface{}, path string, value interface{}) error {
 	return unstructured.SetNestedField(obj, value, strings.Split(path, ".")...)
 }
@@ -88,9 +113,6 @@ func setHelmBoolValue(obj map[string]interface{}, path string, value bool) error
 
 func setHelmStringSliceValue(obj map[string]interface{}, path string, value []string) error {
 	vallen := len(value)
-	if vallen == 0 {
-		return nil
-	}
 	rawval := make([]interface{}, vallen)
 	for index, val := range value {
 		rawval[index] = val
