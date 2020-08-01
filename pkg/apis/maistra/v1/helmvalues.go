@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"fmt"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -73,7 +74,17 @@ func (h *HelmValues) GetMap(path string) (map[string]interface{}, bool, error) {
 	if h == nil || h.data == nil {
 		return nil, false, nil
 	}
-	return unstructured.NestedMap(h.data, strings.Split(path, ".")...)
+	rawval, ok, err := unstructured.NestedFieldCopy(h.data, strings.Split(path, ".")...)
+	if ok {
+		if rawval == nil {
+			return nil, ok, err
+		}
+		if mapval, ok := rawval.(map[string]interface{}); ok {
+			return mapval, ok, err
+		}
+		return nil, false, fmt.Errorf("%v accessor error: %v is of the type %T, expected map[string]interface{}", path, rawval, rawval)
+	}
+	return nil, ok, err
 }
 
 func (h *HelmValues) SetField(path string, value interface{}) error {
@@ -100,7 +111,7 @@ func (h *HelmValues) MarshalJSON() ([]byte, error) {
 
 func (in *HelmValues) DeepCopyInto(out *HelmValues) {
 	*out = HelmValues{}
-	
+
 	data, err := json.Marshal(in)
 	if err != nil {
 		// panic ???

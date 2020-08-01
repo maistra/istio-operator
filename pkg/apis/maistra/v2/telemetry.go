@@ -239,10 +239,10 @@ type StackDriverFilterConfig struct {
 
 // AccessLogTelemetryFilterConfig for v2 telemetry.
 type AccessLogTelemetryFilterConfig struct {
-	// LogWindoDuration configures the log window duration for access logs.
+	// LogWindowDuration configures the log window duration for access logs.
 	// defaults to 43200s
 	// To reduce the number of successful logs, default log window duration is
 	// set to 12 hours.
 	// +optional
-	LogWindoDuration string `json:"logWindowDuration,omitempty"`
+	LogWindowDuration string `json:"logWindowDuration,omitempty"`
 }

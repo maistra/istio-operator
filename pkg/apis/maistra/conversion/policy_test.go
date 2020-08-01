@@ -139,6 +139,40 @@ var policyTestCases = []conversionTestCase{
 		}),
 	},
 	{
+		name: "none." + versions.V1_1.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V1_1.String(),
+			Policy: &v2.PolicyConfig{
+				Type: v2.PolicyTypeNone,
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"mixer": map[string]interface{}{
+				"policy": map[string]interface{}{
+					"enabled": false,
+				},
+			},
+			"policy": map[string]interface{}{
+				"implementation": "None",
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+			"istio_cni": map[string]interface{}{
+				"enabled": true,
+			},
+		}),
+	},
+	{
 		name: "istiod.defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),

@@ -45,7 +45,7 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 	}
 
 	// Telemetry
-	if err := populateTelemetryConfig(in.Istio, out); err != nil {
+	if err := populateTelemetryConfig(in.Istio, out, version); err != nil {
 		return err
 	}
 

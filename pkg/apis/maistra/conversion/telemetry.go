@@ -11,26 +11,39 @@ import (
 )
 
 func populateTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
-	istiod := !(in.Version == "" || in.Version == versions.V1_0.String() || in.Version == versions.V1_1.String())
-
 	telemetry := in.Telemetry
 	if telemetry == nil {
 		return nil
 	}
+
+	istiod := !(in.Version == "" || in.Version == versions.V1_0.String() || in.Version == versions.V1_1.String())
+	if in.Telemetry.Type == "" {
+		if istiod {
+			in.Telemetry.Type = v2.TelemetryTypeIstiod
+		} else {
+			in.Telemetry.Type = v2.TelemetryTypeMixer
+		}
+	}
+
+	if err := setHelmStringValue(values, "telemetry.implementation", string(in.Telemetry.Type)); err != nil {
+		return nil
+	}
+
 	if telemetry.Type == v2.TelemetryTypeNone {
 		if istiod {
-			return setHelmBoolValue(values, "telemetry.enabled", false)
+			if err := setHelmBoolValue(values, "telemetry.enabled", false); err != nil {
+				return err
+			}
+			if err := setHelmBoolValue(values, "telemetry.v1.enabled", false); err != nil {
+				return err
+			}
+			if err := setHelmBoolValue(values, "telemetry.v2.enabled", false); err != nil {
+				return err
+			}
 		}
 		return setHelmBoolValue(values, "mixer.telemetry.enabled", false)
 	}
 
-	if telemetry.Type == "" {
-		if istiod {
-			telemetry.Type = v2.TelemetryTypeIstiod
-		} else {
-			telemetry.Type = v2.TelemetryTypeMixer
-		}
-	}
 	switch telemetry.Type {
 	case v2.TelemetryTypeMixer:
 		return populateMixerTelemetryValues(in, istiod, values)
@@ -156,8 +169,8 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 	}
 
 	// Deployment specific settings
-	if mixer.Runtime != nil {
-		runtime := mixer.Runtime
+	runtime := mixer.Runtime
+	if runtime != nil {
 		if err := populateRuntimeValues(runtime, v1TelemetryValues); err != nil {
 			return err
 		}
@@ -166,37 +179,22 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 		if runtime.Pod.Containers != nil {
 			// Mixer container specific config
 			if mixerContainer, ok := runtime.Pod.Containers["mixer"]; ok {
-				if mixerContainer.Image != "" {
-					if istiod {
-						if err := setHelmStringValue(v1TelemetryValues, "image", mixerContainer.Image); err != nil {
-							return err
-						}
-					} else {
-						// XXX: this applies to both policy and telemetry in pre 1.6
-						if err := setHelmStringValue(values, "mixer.image", mixerContainer.Image); err != nil {
-							return err
-						}
-					}
-				}
-				if mixerContainer.Resources != nil {
-					if resourcesValues, err := toValues(mixerContainer.Resources); err == nil {
-						if len(resourcesValues) > 0 {
-							if err := setHelmValue(v1TelemetryValues, "resources", resourcesValues); err != nil {
-								return err
-							}
-						}
-					} else {
-						return err
-					}
+				if err := populateContainerConfigValues(&mixerContainer, v1TelemetryValues); err != nil {
+					return err
 				}
 			}
 		}
 	}
 
 	if !istiod {
-		// move podAnnotations, nodeSelector, podAntiAffinityLabelSelector, and
+		// move image, podAnnotations, nodeSelector, podAntiAffinityLabelSelector, and
 		// podAntiAffinityTermLabelSelector from mixer.telemetry to mixer for v1.0 and v1.1
 		// Note, these may overwrite settings specified in policy
+		if image, found, _ := unstructured.NestedString(v1TelemetryValues, "image"); found {
+			if err := setHelmValue(values, "mixer.image", image); err != nil {
+				return err
+			}
+		}
 		if podAnnotations, found, _ := unstructured.NestedFieldCopy(v1TelemetryValues, "podAnnotations"); found {
 			if err := setHelmValue(values, "mixer.podAnnotations", podAnnotations); err != nil {
 				return err
@@ -221,7 +219,16 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 
 	// set the telemetry values
 	if istiod {
-		v2TelemetryValues := make(map[string]interface{})
+		var v2TelemetryValues map[string]interface{}
+		if rawTelemetryValues, ok, err := unstructured.NestedFieldNoCopy(values, "telemetry"); ok {
+			if v2TelemetryValues, ok = rawTelemetryValues.(map[string]interface{}); !ok {
+				v2TelemetryValues = make(map[string]interface{})
+			}
+		} else if err != nil {
+			return nil
+		} else {
+			v2TelemetryValues = make(map[string]interface{})
+		}
 		if err := setHelmBoolValue(v2TelemetryValues, "enabled", true); err != nil {
 			return err
 		}
@@ -293,7 +300,16 @@ func populateRemoteTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values 
 
 	// set the telemetry values
 	if istiod {
-		v2TelemetryValues := make(map[string]interface{})
+		var v2TelemetryValues map[string]interface{}
+		if rawTelemetryValues, ok, err := unstructured.NestedFieldNoCopy(values, "telemetry"); ok {
+			if v2TelemetryValues, ok = rawTelemetryValues.(map[string]interface{}); !ok {
+				v2TelemetryValues = make(map[string]interface{})
+			}
+		} else if err != nil {
+			return nil
+		} else {
+			v2TelemetryValues = make(map[string]interface{})
+		}
 		if err := setHelmBoolValue(v2TelemetryValues, "enabled", true); err != nil {
 			return err
 		}
@@ -334,7 +350,19 @@ func populateIstiodTelemetryValues(in *v2.ControlPlaneSpec, values map[string]in
 		return err
 	}
 
-	telemetryValues := make(map[string]interface{})
+	var telemetryValues map[string]interface{}
+	if rawTelemetryValues, ok, err := unstructured.NestedFieldNoCopy(values, "telemetry"); ok {
+		if telemetryValues, ok = rawTelemetryValues.(map[string]interface{}); !ok {
+			telemetryValues = make(map[string]interface{})
+		}
+	} else if err != nil {
+		return nil
+	} else {
+		telemetryValues = make(map[string]interface{})
+	}
+	if err := setHelmBoolValue(telemetryValues, "enabled", true); err != nil {
+		return err
+	}
 	if err := setHelmBoolValue(telemetryValues, "v1.enabled", false); err != nil {
 		return err
 	}
@@ -390,7 +418,7 @@ func populateIstiodTelemetryValues(in *v2.ControlPlaneSpec, values map[string]in
 		if err := setHelmBoolValue(telemetryValues, "v2.accessLogPolicy.enabled", true); err != nil {
 			return err
 		}
-		if err := setHelmStringValue(telemetryValues, "v2.accessLogPolicy.logWindowDuration", accessLog.LogWindoDuration); err != nil {
+		if err := setHelmStringValue(telemetryValues, "v2.accessLogPolicy.logWindowDuration", accessLog.LogWindowDuration); err != nil {
 			return err
 		}
 	}
@@ -405,51 +433,101 @@ func populateIstiodTelemetryValues(in *v2.ControlPlaneSpec, values map[string]in
 	return nil
 }
 
-func populateTelemetryConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
-	// figure out what we're installing
-	if mixerTelemetryEnabled, ok, err := in.GetBool("mixer.telemetry.enabled"); ok && mixerTelemetryEnabled {
-		// installing some form of mixer based policy
-		if mixerEnabled, ok, err := in.GetBool("mixer.enabled"); ok && mixerEnabled {
-			// installing mixer policy
-			out.Telemetry = &v2.TelemetryConfig{
-				Type: v2.TelemetryTypeMixer,
-			}
-			config := &v2.MixerTelemetryConfig{}
-			if applied, err := populateMixerTelemetryConfig(in, config); err != nil {
-				return err
-			} else if applied {
-				out.Telemetry.Mixer = config
-			}
-			return nil
-		} else if err != nil {
-			return err
+func populateTelemetryConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version versions.Version) error {
+	var telemetryType v2.TelemetryType
+	if telemetryTypeStr, ok, err := in.GetString("telemetry.implementation"); ok && telemetryTypeStr != "" {
+		switch v2.TelemetryType(telemetryTypeStr) {
+		case v2.TelemetryTypeIstiod:
+			telemetryType = v2.TelemetryTypeIstiod
+		case v2.TelemetryTypeMixer:
+			telemetryType = v2.TelemetryTypeMixer
+		case v2.TelemetryTypeRemote:
+			telemetryType = v2.TelemetryTypeRemote
+		case v2.TelemetryTypeNone:
+			telemetryType = v2.TelemetryTypeNone
+		default:
+			return fmt.Errorf("unkown telemetry.implementation specified: %s", telemetryTypeStr)
 		}
-		// using remote mixer policy
-		out.Telemetry = &v2.TelemetryConfig{
-			Type: v2.TelemetryTypeRemote,
-		}
-		config := &v2.RemoteTelemetryConfig{}
-		if applied, err := populateRemoteTelemetryConfig(in, config); err != nil {
-			return err
-		} else if applied {
-			out.Telemetry.Remote = config
-		}
-		return nil
 	} else if err != nil {
 		return err
-	} else if v2Enabled, ok, err := in.GetBool("telemetry.v2.enabled"); ok && v2Enabled {
-		out.Telemetry = &v2.TelemetryConfig{
-			Type: v2.TelemetryTypeIstiod,
+	} else {
+		// figure out what we're installing
+		if v2Enabled, v2EnabledSet, err := in.GetBool("telemetry.v2.enabled"); v2EnabledSet && v2Enabled {
+			telemetryType = v2.TelemetryTypeIstiod
+		} else if err != nil {
+			return err
+		} else if mixerTelemetryEnabled, mixerTelemetryEnabledSet, err := in.GetBool("mixer.telemetry.enabled"); err == nil {
+			// installing some form of mixer based telemetry
+			if mixerEnabled, mixerEnabledSet, err := in.GetBool("mixer.enabled"); err == nil {
+				if !mixerEnabledSet || !mixerTelemetryEnabledSet {
+					// assume no telemetry to configure
+					return nil
+				}
+				if mixerEnabled {
+					if mixerTelemetryEnabled {
+						// installing mixer telemetry
+						telemetryType = v2.TelemetryTypeMixer
+					} else {
+						// mixer telemetry disabled
+						telemetryType = v2.TelemetryTypeNone
+					}
+				} else if mixerTelemetryEnabled {
+					// using remote mixer telemetry
+					telemetryType = v2.TelemetryTypeRemote
+				} else {
+					switch version {
+					case versions.V1_0, versions.V1_1:
+						// telemetry disabled
+						telemetryType = v2.TelemetryTypeNone
+					case versions.V2_0:
+						if v2EnabledSet {
+							telemetryType = v2.TelemetryTypeNone
+						} else {
+							telemetryType = v2.TelemetryTypeIstiod
+						}
+					default:
+						return fmt.Errorf("unknown version: %s", version.String())
+					}
+				}
+			} else {
+				return err
+			}
+		} else {
+			return err
 		}
+	}
+	if telemetryType == "" {
+		return fmt.Errorf("Could not determine policy type")
+	}
+
+	out.Telemetry = &v2.TelemetryConfig{
+		Type: telemetryType,
+	}
+	switch telemetryType {
+	case v2.TelemetryTypeIstiod:
 		config := &v2.IstiodTelemetryConfig{}
 		if applied, err := populateIstiodTelemetryConfig(in, config); err != nil {
 			return err
 		} else if applied {
 			out.Telemetry.Istiod = config
 		}
-	} else if err != nil {
-		return err
-	} // else no telemtry config
+	case v2.TelemetryTypeMixer:
+		config := &v2.MixerTelemetryConfig{}
+		if applied, err := populateMixerTelemetryConfig(in, config); err != nil {
+			return err
+		} else if applied {
+			out.Telemetry.Mixer = config
+		}
+	case v2.TelemetryTypeRemote:
+		config := &v2.RemoteTelemetryConfig{}
+		if applied, err := populateRemoteTelemetryConfig(in, config); err != nil {
+			return err
+		} else if applied {
+			out.Telemetry.Remote = config
+		}
+	case v2.TelemetryTypeNone:
+		// no configuration to set
+	}
 
 	return nil
 }
@@ -544,7 +622,7 @@ func populateMixerTelemetryConfig(in *v1.HelmValues, out *v2.MixerTelemetryConfi
 				return false, err
 			}
 			if metrics, ok, err := adaptersValues.GetBool("stackdriver.metrics.enabled"); ok {
-				adapters.Stackdriver.EnableLogging = metrics
+				adapters.Stackdriver.EnableMetrics = metrics
 			} else if err != nil {
 				return false, err
 			}
@@ -658,8 +736,8 @@ func populateTelemetryBatchingConfig(in *v1.HelmValues, out *v2.TelemetryBatchin
 func populateRemoteTelemetryConfig(in *v1.HelmValues, out *v2.RemoteTelemetryConfig) (bool, error) {
 	setValues := false
 
-	if remotePolicyAddress, ok, err := in.GetString("global.remoteTelemetryAddress"); ok {
-		out.Address = remotePolicyAddress
+	if remoteTelemetryAddress, ok, err := in.GetString("global.remoteTelemetryAddress"); ok {
+		out.Address = remoteTelemetryAddress
 		setValues = true
 	} else if err != nil {
 		return false, err
@@ -767,7 +845,7 @@ func populateIstiodTelemetryConfig(in *v1.HelmValues, out *v2.IstiodTelemetryCon
 		out.AccessLogTelemetryFilter = &v2.AccessLogTelemetryFilterConfig{}
 		setValues = true
 		if logWindowDuration, ok, err := telemetryValues.GetString("v2.accessLogPolicy.logWindowDuration"); ok {
-			out.AccessLogTelemetryFilter.LogWindoDuration = logWindowDuration
+			out.AccessLogTelemetryFilter.LogWindowDuration = logWindowDuration
 		} else if err != nil {
 			return false, err
 		}
