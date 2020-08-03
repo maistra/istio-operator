@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
 
@@ -62,7 +63,15 @@ func TestCompleteSecurityConversionFromV2(t *testing.T) {
 	runTestCasesFromV2(securityTestCases, t)
 }
 
+func TestCompletePrometheusConversionFromV2(t *testing.T) {
+	runTestCasesFromV2(prometheusTestCases, t)
+}
+
 func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
+	scheme := runtime.NewScheme()
+	v1.SchemeBuilder.AddToScheme(scheme)
+	v2.SchemeBuilder.AddToScheme(scheme)
+	localSchemeBuilder.AddToScheme(scheme)
 	t.Helper()
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -70,7 +79,8 @@ func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 			smcpv2 := &v2.ServiceMeshControlPlane{
 				Spec: *tc.spec.DeepCopy(),
 			}
-			if err := Convert_v2_ServiceMeshControlPlane_To_v1_ServiceMeshControlPlane(smcpv2, smcpv1, nil); err != nil {
+
+			if err := scheme.Convert(smcpv2, smcpv1, nil); err != nil {
 				t.Fatalf("error converting to values: %s", err)
 			}
 			istio := tc.isolatedIstio.DeepCopy().GetContent()
@@ -81,7 +91,7 @@ func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 			newsmcpv2 := &v2.ServiceMeshControlPlane{}
 			// use expected data
 			smcpv1.Spec.Istio = v1.NewHelmValues(istio).DeepCopy()
-			if err := Convert_v1_ServiceMeshControlPlane_To_v2_ServiceMeshControlPlane(smcpv1, newsmcpv2, nil); err != nil {
+			if err := scheme.Convert(smcpv1, newsmcpv2, nil); err != nil {
 				t.Fatalf("error converting from values: %s", err)
 			}
 			if !reflect.DeepEqual(smcpv2, newsmcpv2) {

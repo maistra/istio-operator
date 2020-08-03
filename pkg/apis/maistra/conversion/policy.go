@@ -377,7 +377,7 @@ func populateMixerPolicyConfig(in *v1.HelmValues, out *v2.MixerPolicyConfig) (bo
 	container := v2.ContainerConfig{}
 	// non-istiod
 	if applied, err := populateContainerConfig(mixerValues, &container); err != nil {
-		return false, nil
+		return false, err
 	} else if applied {
 		if out.Runtime == nil {
 			out.Runtime = runtime
@@ -390,7 +390,7 @@ func populateMixerPolicyConfig(in *v1.HelmValues, out *v2.MixerPolicyConfig) (bo
 	}
 	// istiod (this will just overwrite whatever was previously written)
 	if applied, err := populateContainerConfig(policyValues, &container); err != nil {
-		return false, nil
+		return false, err
 	} else if applied {
 		if out.Runtime == nil {
 			out.Runtime = runtime

@@ -37,6 +37,8 @@ func populateAddonsValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 		if err := populateJaegerAddonValues(in.Addons.Tracing.Jaeger, values); err != nil {
 			return err
 		}
+	case "":
+		// nothing to do
 	default:
 		return fmt.Errorf("Unknown tracer type: %s", in.Addons.Tracing.Type)
 	}
@@ -63,9 +65,6 @@ func populateAddonIngressValues(ingress *v2.ComponentIngressConfig, values map[s
 		}
 	}
 
-	if err := setHelmBoolValue(values, "enabled", true); err != nil {
-		return err
-	}
 	if ingress.ContextPath != "" {
 		if err := setHelmStringValue(values, "contextPath", ingress.ContextPath); err != nil {
 			return err
@@ -78,6 +77,11 @@ func populateAddonIngressValues(ingress *v2.ComponentIngressConfig, values map[s
 	}
 	if len(ingress.Metadata.Annotations) > 0 {
 		if err := setHelmStringMapValue(values, "annotations", ingress.Metadata.Annotations); err != nil {
+			return err
+		}
+	}
+	if len(ingress.Metadata.Labels) > 0 {
+		if err := setHelmStringMapValue(values, "labels", ingress.Metadata.Labels); err != nil {
 			return err
 		}
 	}
@@ -135,6 +139,15 @@ func populateAddonIngressConfig(in *v1.HelmValues, out *v2.ComponentIngressConfi
 
 	if rawAnnotations, ok, err := in.GetMap("annotations"); ok && len(rawAnnotations) > 0 {
 		if err := setMetadataAnnotations(rawAnnotations, &out.Metadata); err != nil {
+			return false, err
+		}
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+
+	if rawLabels, ok, err := in.GetMap("labels"); ok && len(rawLabels) > 0 {
+		if err := setMetadataLabels(rawLabels, &out.Metadata); err != nil {
 			return false, err
 		}
 		setValues = true

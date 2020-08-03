@@ -172,14 +172,14 @@ func populateTracingAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 		}
 	} else if err != nil {
 		return err
-	} else {
-		out.Tracing.Type = v2.TracerTypeNone
 	}
 
 	switch out.Tracing.Type {
 	case v2.TracerTypeJaeger:
 		return populateJaegerAddonConfig(in, out)
 	case v2.TracerTypeNone:
+		return nil
+	case "":
 		return nil
 	}
 	return fmt.Errorf("unknown tracer type: %s", out.Tracing.Type)
@@ -330,7 +330,7 @@ func tracerTypeFromString(tracer string) (v2.TracerType, error) {
 	switch strings.ToLower(tracer) {
 	case strings.ToLower(string(v2.TracerTypeJaeger)):
 		return v2.TracerTypeJaeger, nil
-	case "":
+	case strings.ToLower(string(v2.TracerTypeNone)):
 		return v2.TracerTypeNone, nil
 	}
 	return v2.TracerTypeNone, fmt.Errorf("unknown tracer type %s", tracer)

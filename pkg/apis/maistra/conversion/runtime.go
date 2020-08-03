@@ -827,6 +827,44 @@ func populateCommonContainerConfig(in *v1.HelmValues, out *v2.CommonContainerCon
 	return setContainer, nil
 }
 
+func populateComponentServiceValues(serviceConfig *v2.ComponentServiceConfig, values map[string]interface{}) error {
+	if len(serviceConfig.Metadata.Annotations) > 0 {
+		if err := setHelmStringMapValue(values, "service.annotations", serviceConfig.Metadata.Annotations); err != nil {
+			return err
+		}
+	}
+	if len(serviceConfig.Metadata.Labels) > 0 {
+		if err := setHelmStringMapValue(values, "service.labels", serviceConfig.Metadata.Labels); err != nil {
+			return err
+		}
+	}
+	if serviceConfig.NodePort != nil {
+		if *serviceConfig.NodePort == 0 {
+			if err := setHelmBoolValue(values, "service.nodePort.enabled", false); err != nil {
+				return err
+			}
+		} else {
+			if err := setHelmBoolValue(values, "service.nodePort.enabled", true); err != nil {
+				return err
+			}
+			if err := setHelmIntValue(values, "service.nodePort.port", int64(*serviceConfig.NodePort)); err != nil {
+				return err
+			}
+		}
+	}
+	ingressValues := make(map[string]interface{})
+	if err := populateAddonIngressValues(serviceConfig.Ingress, ingressValues); err == nil {
+		if len(ingressValues) > 0 {
+			if err := setHelmValue(values, "ingress", ingressValues); err != nil {
+				return err
+			}
+		}
+	} else {
+		return err
+	}
+	return nil
+}
+
 func populateComponentServiceConfig(in *v1.HelmValues, out *v2.ComponentServiceConfig) (bool, error) {
 	setValues := false
 	if rawAnnotations, ok, err := in.GetMap("service.annotations"); ok && len(rawAnnotations) > 0 {
@@ -837,8 +875,16 @@ func populateComponentServiceConfig(in *v1.HelmValues, out *v2.ComponentServiceC
 	} else if err != nil {
 		return false, err
 	}
+	if rawLabels, ok, err := in.GetMap("service.labels"); ok && len(rawLabels) > 0 {
+		if err := setMetadataLabels(rawLabels, &out.Metadata); err != nil {
+			return false, err
+		}
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
 	if enabled, ok, err := in.GetBool("service.nodePort.enabled"); ok {
-		if enabled {
+		if !enabled {
 			nodePort := int32(0)
 			out.NodePort = &nodePort
 			setValues = true

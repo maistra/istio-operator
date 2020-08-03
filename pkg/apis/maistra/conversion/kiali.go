@@ -104,6 +104,8 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 		return err
 	} else if !ok || len(rawKialiValues) == 0 {
 		return nil
+	} else if _, promAddrExists := rawKialiValues["prometheusAddr"]; promAddrExists && len(rawKialiValues) == 1 {
+		return nil
 	}
 	kialiValues := v1.NewHelmValues(rawKialiValues)
 

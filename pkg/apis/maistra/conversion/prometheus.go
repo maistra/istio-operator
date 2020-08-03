@@ -6,30 +6,34 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
-func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
+func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]interface{}) (reterr error) {
 	prometheus := in.Addons.Metrics.Prometheus
 	if prometheus == nil {
 		return nil
 	}
-	// install takes precedence
-	if prometheus.Install == nil {
-		// XXX: not sure if this is correct. we don't want the charts processed,
-		// but telemetry might be configured incorrectly
-		if err := setHelmBoolValue(values, "prometheus.enabled", false); err != nil {
-			return err
-		}
-		if prometheus.Address != nil {
-			return setHelmStringValue(values, "kiali.prometheusAddr", *prometheus.Address)
-		}
-		return nil
-	}
-
 	prometheusValues := make(map[string]interface{})
 	if prometheus.Enabled != nil {
 		if err := setHelmBoolValue(prometheusValues, "enabled", *prometheus.Enabled); err != nil {
 			return err
 		}
 	}
+	defer func() {
+		if len(prometheusValues) > 0 {
+			if err := setHelmValue(values, "prometheus", prometheusValues); err != nil {
+				if reterr == nil {
+					reterr = err
+				}
+			}
+		}
+	}()
+	// install takes precedence
+	if prometheus.Install == nil {
+		if prometheus.Address != nil {
+			return setHelmStringValue(values, "kiali.prometheusAddr", *prometheus.Address)
+		}
+		return nil
+	}
+
 	if prometheus.Install.Config.Retention != "" {
 		if err := setHelmStringValue(prometheusValues, "retention", prometheus.Install.Config.Retention); err != nil {
 			return err
@@ -51,44 +55,26 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 			}
 		}
 	}
-	if err := populateRuntimeValues(prometheus.Install.Runtime, prometheusValues); err != nil {
-		return err
-	}
-	if len(prometheus.Install.Service.Metadata.Annotations) > 0 {
-		if err := setHelmStringMapValue(prometheusValues, "service.annotations", prometheus.Install.Service.Metadata.Annotations); err != nil {
+	// Deployment specific settings
+	runtime := prometheus.Install.Runtime
+	if runtime != nil {
+		if err := populateRuntimeValues(runtime, prometheusValues); err != nil {
 			return err
 		}
-	}
-	if prometheus.Install.Service.NodePort != nil {
-		if *prometheus.Install.Service.NodePort == 0 {
-			if err := setHelmBoolValue(prometheusValues, "service.nodePort.enabled", false); err != nil {
-				return err
-			}
-		} else {
-			if err := setHelmBoolValue(prometheusValues, "service.nodePort.enabled", true); err != nil {
-				return err
-			}
-			if err := setHelmIntValue(prometheusValues, "service.nodePort.port", int64(*prometheus.Install.Service.NodePort)); err != nil {
-				return err
+
+		// set image and resources
+		if runtime.Pod.Containers != nil {
+			if container, ok := runtime.Pod.Containers["prometheus"]; ok {
+				if err := populateContainerConfigValues(&container, prometheusValues); err != nil {
+					return err
+				}
 			}
 		}
 	}
-	ingressValues := make(map[string]interface{})
-	if err := populateAddonIngressValues(prometheus.Install.Service.Ingress, ingressValues); err == nil {
-		if len(ingressValues) > 0 {
-			if err := setHelmValue(prometheusValues, "ingress", ingressValues); err != nil {
-				return err
-			}
-		}
-	} else {
+	if err := populateComponentServiceValues(&prometheus.Install.Service, prometheusValues); err != nil {
 		return err
 	}
 
-	if len(prometheusValues) > 0 {
-		if err := setHelmValue(values, "prometheus", prometheusValues); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -123,8 +109,7 @@ func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) erro
 	}
 
 	install := &v2.PrometheusInstallConfig{}
-	// for v1, there's no way to disable install, so always create install
-	setInstall := true
+	setInstall := false
 
 	if retention, ok, err := prometheusValues.GetString("retention"); ok {
 		install.Config.Retention = retention
@@ -158,6 +143,20 @@ func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) erro
 		return err
 	} else if applied {
 		install.Runtime = runtime
+		setInstall = true
+	}
+	container := v2.ContainerConfig{}
+	// non-istiod
+	if applied, err := populateContainerConfig(prometheusValues, &container); err != nil {
+		return err
+	} else if applied {
+		if install.Runtime == nil {
+			install.Runtime = runtime
+			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
+		} else if runtime.Pod.Containers == nil {
+			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
+		}
+		install.Runtime.Pod.Containers["prometheus"] = container
 		setInstall = true
 	}
 
