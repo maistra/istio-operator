@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 function grafana_patch_deployment() {
-  file=${HELM_DIR}/istio/charts/grafana/templates/deployment.yaml
+  file=${HELM_DIR}/istio-telemetry/grafana/templates/deployment.yaml
   sed_wrap -i -e '/      containers:/ a\
           # OAuth proxy\
         - name: grafana-proxy\
@@ -82,7 +82,7 @@ function grafana_patch_deployment() {
           optional: true' $file
   sed_wrap -i -e 's/^\(.*\)containers:\(.*\)$/\1serviceAccountName: grafana\
 \1containers:\2/' $file
-  sed_wrap -i -e '/- if \.Values\.security\.enabled/,/- end/ { d }' $file
+  sed_wrap -i -e '/- if .*\.security\.enabled/,/- end/ { d }' $file
   sed_wrap -i -e 's/^\(\( *\)-.*GF_PATHS_DATA.*\)$/\2- name: GF_AUTH_BASIC_ENABLED\
 \2  value: "false"\
 \2- name: GF_AUTH_PROXY_ENABLED\
@@ -98,8 +98,11 @@ function grafana_patch_deployment() {
 \2- name: GF_USERS_AUTO_ASSIGN_ORG_ROLE\
 \2  value: Admin\
 \1/' $file
-  sed_wrap -i -e 's+image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"+image: "{{ .Values.global.hub }}/{{.Values.image}}:{{ .Values.global.tag }}"+' \
-  $file
+  sed_wrap -i -e 's+^ *image: "{{ .*\.image\.repository }}:{{ .*\.image\.tag }}"+{{- if contains "\/" .Values.grafana.image }}\
+          image: "{{ .Values.grafana.image }}"\
+{{- else }}\
+          image: "{{ .Values.global.hub }}\/{{ .Values.grafana.image }}:{{ .Values.global.tag }}"\
+{{- end }}+' $file
 
   sed_wrap -i -e '/securityContext/,/fsGroup/d' $file
 
@@ -112,21 +115,11 @@ function grafana_patch_deployment() {
 }
 
 function grafana_patch_service() {
-  sed_wrap -i -e 's/      targetPort: 3000/      targetPort: 3001/' ${HELM_DIR}/istio/charts/grafana/templates/service.yaml
-}
-
-function grafana_patch_misc() {
-  # - remove the extraneous create custom resources job
-  rm ${HELM_DIR}/istio/charts/grafana/templates/create-custom-resources-job.yaml
-
-  # - custom resources will be installed directly
-  rm ${HELM_DIR}/istio/charts/grafana/templates/configmap-custom-resources.yaml
-
-  sed_wrap -i -e '/grafana-default.yaml.tpl/d' -e '/{{.*end.*}}/d' ${HELM_DIR}/istio/charts/grafana/templates/grafana-ports-mtls.yaml
+  sed_wrap -i -e 's/      targetPort: 3000/      targetPort: 3001/' ${HELM_DIR}/istio-telemetry/grafana/templates/service.yaml
 }
 
 function grafana_patch_values() {
-  file=${HELM_DIR}/istio/charts/grafana/values.yaml
+  file=${HELM_DIR}/istio-telemetry/grafana/values.yaml
   # add annotations and enable ingress
   sed_wrap -i -e 's|  annotations: {}|  annotations:\n    service.alpha.openshift.io/serving-cert-secret-name: grafana-tls|' $file
   sed_wrap -i -e '/ingress:/,/enabled/ { s/enabled: .*$/enabled: true/ }' $file
@@ -147,7 +140,6 @@ function GrafanaPatch() {
   grafana_patch_deployment
 	grafana_patch_values
   grafana_patch_service
-  grafana_patch_misc
 }
 
 GrafanaPatch

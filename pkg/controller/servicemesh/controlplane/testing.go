@@ -20,7 +20,7 @@ func InitializeGlobals(operatorNamespace string) func() {
 		// make sure globals are initialized for testing
 		common.Config.OLM.Images.V1_0.CNI = "istio-cni-test-1_0"
 		common.Config.OLM.Images.V1_1.CNI = "istio-cni-test-1_1"
-		common.Config.OLM.Images.V1_2.CNI = "istio-cni-test-1_2"
+		common.Config.OLM.Images.V2_0.CNI = "istio-cni-test-2_0"
 		os.Setenv("POD_NAMESPACE", operatorNamespace)
 		common.GetOperatorNamespace()
 		if _, filename, _, ok := goruntime.Caller(0); ok {

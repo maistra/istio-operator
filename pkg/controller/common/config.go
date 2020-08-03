@@ -28,7 +28,7 @@ type olm struct {
 type images struct {
 	V1_0 v1_0ImageNames `json:"v1_0,omitempty"`
 	V1_1 v1_1ImageNames `json:"v1_1,omitempty"`
-	V1_2 v1_2ImageNames `json:"v1_2,omitempty"`
+	V2_0 v2_0ImageNames `json:"v2_0,omitempty"`
 }
 
 // V1_0ImageNames used by deployments
@@ -62,21 +62,17 @@ type v1_1ImageNames struct {
 	SidecarInjector string `json:"sidecar-injector,omitempty"`
 }
 
-
-// V1_2ImageNames used by deployments
-type v1_2ImageNames struct {
-	ThreeScale      string `json:"3scale-istio-adapter,omitempty"`
-	Citadel         string `json:"citadel,omitempty"`
-	CNI             string `json:"cni,omitempty"`
-	Galley          string `json:"galley,omitempty"`
-	Grafana         string `json:"grafana,omitempty"`
-	IOR             string `json:"ior,omitempty"`
-	Mixer           string `json:"mixer,omitempty"`
-	Pilot           string `json:"pilot,omitempty"`
-	Prometheus      string `json:"prometheus,omitempty"`
-	ProxyInit       string `json:"proxy-init,omitempty"`
-	ProxyV2         string `json:"proxyv2,omitempty"`
-	SidecarInjector string `json:"sidecar-injector,omitempty"`
+// V2_0ImageNames used by deployments
+type v2_0ImageNames struct {
+	ThreeScale string `json:"3scale-istio-adapter,omitempty"`
+	CNI        string `json:"cni,omitempty"`
+	Grafana    string `json:"grafana,omitempty"`
+	IOR        string `json:"ior,omitempty"`
+	Mixer      string `json:"mixer,omitempty"`
+	Pilot      string `json:"pilot,omitempty"`
+	Prometheus string `json:"prometheus,omitempty"`
+	ProxyInit  string `json:"proxy-init,omitempty"`
+	ProxyV2    string `json:"proxyv2,omitempty"`
 }
 
 type oauthProxy struct {

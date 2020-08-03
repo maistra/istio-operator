@@ -1,0 +1,19 @@
+{{- if and (.Values.gateways.enabled) (index .Values "gateways" "istio-ingressgateway" "enabled") }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: istio-ingressgateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: 2.0.0
+    release: {{ .Release.Name }}
+    {{- range $key, $val := (index .Values "gateways" "istio-ingressgateway" "labels") }}
+    {{ $key }}: {{ $val }}
+    {{- end }}
+spec:
+  to:
+    kind: Service
+    name: istio-ingressgateway
+  port:
+    targetPort: 8080
+{{- end }}

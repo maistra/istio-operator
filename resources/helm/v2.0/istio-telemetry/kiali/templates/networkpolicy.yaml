@@ -1,0 +1,19 @@
+# This is to support routes on ocp 3.11 installs
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: istio-kiali-ingress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: 2.0.0
+    app: kiali
+    release: {{ .Release.Name }}
+  annotations:
+    "maistra.io/internal": "true"
+spec:
+  podSelector:
+    matchLabels:
+      app: kiali
+  ingress:
+  - ports:
+    port: 20001

@@ -45,8 +45,8 @@ const (
 
 	cniNetwork1_0     = "istio-cni"
 	cniNetwork1_1     = "v1-1-istio-cni"
-	cniNetwork1_2     = "v1-2-istio-cni"
-	cniNetworkDefault = cniNetwork1_2
+	cniNetwork2_0     = "v2-0-istio-cni"
+	cniNetworkDefault = cniNetwork2_0
 )
 
 var (
@@ -377,7 +377,7 @@ func TestReconcileReconcilesMemberIfNamespaceIsCreatedLater(t *testing.T) {
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 
 	assertNamespaceReconcilerInvoked(t, nsReconciler, appNamespace)
-	meshNetAttachDefName, _ := cni.GetNetworkName(versions.LegacyVersion)
+	meshNetAttachDefName := versions.LegacyVersion.GetCNINetworkName()
 	assertNamespaceReconciled(t, cl, appNamespace, controlPlaneNamespace, meshNetAttachDefName, []rbac.RoleBinding{*meshRoleBinding})
 
 	// invoke reconcile again to check if the Status.ServiceMeshGeneration field is updated

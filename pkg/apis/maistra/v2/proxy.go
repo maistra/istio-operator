@@ -53,7 +53,7 @@ type ProxyNetworkingConfig struct {
 	Protocol ProxyNetworkProtocolConfig `json:"protocol,omitempty"`
 	// DNS configures aspects of the sidecar's usage of DNS
 	// +optional
-	DNS ProxyDNSConfig `json:"protocol,omitempty"`
+	DNS ProxyDNSConfig `json:"dns,omitempty"`
 }
 
 // ProxyNetworkInitConfig is used to configure how the pod's networking through
@@ -228,7 +228,7 @@ type ProxyDNSConfig struct {
 	// This must be given it terms of seconds. For example, 300s is valid but 5m is invalid.
 	// .Values.global.proxy.dnsRefreshRate, default 300s
 	// +optional
-	RefreshRate string  `json:"searchSuffixes,omitempty"`
+	RefreshRate string  `json:"refreshRate,omitempty"`
 }
 
 // ProxyRuntimeConfig customizes the runtime parameters of the sidecar container.

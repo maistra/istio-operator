@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -17,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
@@ -25,6 +28,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	. "github.com/maistra/istio-operator/pkg/controller/common/test"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 func TestBootstrapping(t *testing.T) {
@@ -35,61 +39,89 @@ func TestBootstrapping(t *testing.T) {
 		cniDaemonSetName      = "istio-node"
 	)
 
-	if testing.Verbose() {
-		logf.SetLogger(logf.ZapLogger(true))
-	}
-	RunControllerTestCase(t, ControllerTestCase{
-		Name:             "clean-install-cni-no-errors",
-		ConfigureGlobals: InitializeGlobals(operatorNamespace),
-		AddControllers:   []AddControllerFunc{Add},
-		Resources: []runtime.Object{
-			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: controlPlaneNamespace}},
-			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorNamespace}},
-		},
-		GroupResources: []*restmapper.APIGroupResources{
-			CNIGroupResources,
-		},
-		Events: []ControllerTestEvent{
-			{
-				Name: "bootstrap-clean-install-cni-no-errors",
-				Execute: func(mgr *FakeManager, _ *EnhancedTracker) error {
-					return mgr.GetClient().Create(context.TODO(), &maistrav2.ServiceMeshControlPlane{
-						ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
-						Spec: maistrav2.ControlPlaneSpec{
-							Version:  "v1.1",
-							Template: "maistra",
-						},
-					})
+	var testCases = []struct {
+		name     string
+		smcp     *maistrav2.ServiceMeshControlPlane
+		crdCount int
+	}{
+		{
+			name: "v1.1",
+			smcp: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version:  versions.V1_1.String(),
+					Template: "maistra",
 				},
-				Verifier: VerifyActions(
-					// add finalizer
-					Verify("update").On("servicemeshcontrolplanes").Named(smcpName).In(controlPlaneNamespace).Passes(FinalizerAddedTest(common.FinalizerName)),
-					// initialize status
-					Verify("patch").On("servicemeshcontrolplanes/status").Named(smcpName).In(controlPlaneNamespace).Passes(initalStatusTest),
-					// verify that a CRD is installed
-					Verify("create").On("customresourcedefinitions").IsSeen(),
-					// verify that CNI is installed
-					Verify("create").On("daemonsets").Named(cniDaemonSetName).In(operatorNamespace).IsSeen(),
-					// verify CNI readiness check during reconcile
-					Verify("list").On("daemonsets").In(operatorNamespace).IsSeen(),
-					// verify readiness check triggered daemon set creation
-					VerifyReadinessCheckOccurs(controlPlaneNamespace, operatorNamespace),
-				),
-				Assertions: ActionAssertions{
-					// verify proper number of CRDs is created
-					Assert("create").On("customresourcedefinitions").SeenCountIs(28),
-				},
-				Reactors: []clienttesting.Reactor{
-					ReactTo("list").On("daemonsets").In(operatorNamespace).With(
-						SetDaemonSetStatus(cniDaemonSetName, appsv1.DaemonSetStatus{
-							NumberAvailable:   0,
-							NumberUnavailable: 3,
-						})),
-				},
-				Timeout: 10 * time.Second,
 			},
+			crdCount: 23,
 		},
-	})
+		{
+			name: "v2.0",
+			smcp: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version:  versions.V2_0.String(),
+					Template: "maistra",
+				},
+			},
+			crdCount: 24,
+		},
+	}
+
+	if testing.Verbose() {
+		logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(os.Stderr), zap.Level(zapcore.Level(-5))))
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			RunControllerTestCase(t, ControllerTestCase{
+				Name:             "clean-install-cni-no-errors",
+				ConfigureGlobals: InitializeGlobals(operatorNamespace),
+				AddControllers:   []AddControllerFunc{Add},
+				Resources: []runtime.Object{
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: controlPlaneNamespace}},
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorNamespace}},
+				},
+				GroupResources: []*restmapper.APIGroupResources{
+					CNIGroupResources,
+				},
+				Events: []ControllerTestEvent{
+					{
+						Name: "bootstrap-clean-install-cni-no-errors",
+						Execute: func(mgr *FakeManager, _ *EnhancedTracker) error {
+							return mgr.GetClient().Create(context.TODO(), tc.smcp)
+						},
+						Verifier: VerifyActions(
+							// add finalizer
+							Verify("update").On("servicemeshcontrolplanes").Named(smcpName).In(controlPlaneNamespace).Passes(FinalizerAddedTest(common.FinalizerName)),
+							// initialize status
+							Verify("patch").On("servicemeshcontrolplanes/status").Named(smcpName).In(controlPlaneNamespace).Passes(initalStatusTest),
+							// verify that a CRD is installed
+							Verify("create").On("customresourcedefinitions").IsSeen(),
+							// verify that CNI is installed
+							Verify("create").On("daemonsets").Named(cniDaemonSetName).In(operatorNamespace).IsSeen(),
+							// verify CNI readiness check during reconcile
+							Verify("list").On("daemonsets").In(operatorNamespace).IsSeen(),
+							// verify readiness check triggered daemon set creation
+							VerifyReadinessCheckOccurs(controlPlaneNamespace, operatorNamespace),
+						),
+						Assertions: ActionAssertions{
+							// verify proper number of CRDs is created
+							Assert("create").On("customresourcedefinitions").SeenCountIs(tc.crdCount),
+						},
+						Reactors: []clienttesting.Reactor{
+							ReactTo("list").On("daemonsets").In(operatorNamespace).With(
+								SetDaemonSetStatus(cniDaemonSetName, appsv1.DaemonSetStatus{
+									NumberAvailable:   0,
+									NumberUnavailable: 3,
+								})),
+						},
+						Timeout: 10 * time.Second,
+					},
+				},
+			})
+		})
+	}
 }
 
 func SetDaemonSetStatus(name string, status appsv1.DaemonSetStatus) ReactionFunc {

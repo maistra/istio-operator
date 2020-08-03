@@ -3,7 +3,6 @@ package controlplane
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -16,13 +15,11 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/sets"
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
-	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
@@ -30,88 +27,6 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
-
-func TestGetSMCPTemplateWithSlashReturnsError(t *testing.T) {
-	instanceReconciler := newTestReconciler()
-	_, err := instanceReconciler.getSMCPTemplate("/", versions.DefaultVersion)
-	if err == nil {
-		t.Fatalf("Allowed to access path outside of deployment directory")
-	}
-}
-
-func TestMerge(t *testing.T) {
-	var testCases = []struct {
-		name           string
-		base           map[string]interface{}
-		input          map[string]interface{}
-		expectedResult map[string]interface{}
-	}{
-		{
-			name: "input should not override base base",
-			base: map[string]interface{}{
-				"a": 1,
-			},
-			input: map[string]interface{}{
-				"a": 2,
-			},
-			expectedResult: map[string]interface{}{
-				"a": 1,
-			},
-		},
-		{
-			name: "maps should be merged",
-			base: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": 1,
-				},
-			},
-			input: map[string]interface{}{
-				"a": map[string]interface{}{
-					"c": 2,
-				},
-			},
-			expectedResult: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": 1,
-					"c": 2,
-				},
-			},
-		},
-		{
-			name:           "nil values return empty map",
-			base:           nil,
-			input:          nil,
-			expectedResult: map[string]interface{}{},
-		},
-		{
-			name: "input on empty base returns input",
-			base: nil,
-			input: map[string]interface{}{
-				"a": 3,
-			},
-			expectedResult: map[string]interface{}{
-				"a": 3,
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			result := mergeValues(tc.base, tc.input)
-			if !reflect.DeepEqual(result, tc.expectedResult) {
-				t.Fatalf("test: %s expected: %+v got: %+v", tc.name, tc.expectedResult, result)
-			}
-		})
-	}
-}
-
-func TestCyclicTemplate(t *testing.T) {
-	instanceReconciler := newTestReconciler()
-	_, err := instanceReconciler.recursivelyApplyTemplates(ctx, maistrav1.ControlPlaneSpec{Template: "visited"}, versions.DefaultVersion, sets.NewString("visited"))
-	if err == nil {
-		t.Fatalf("Expected error to not be nil. Cyclic dependencies should not be allowed.")
-	}
-}
 
 func TestInstallationErrorDoesNotUpdateLastTransitionTimeWhenNoStateTransitionOccurs(t *testing.T) {
 	controlPlane := newControlPlane()
@@ -353,7 +268,7 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 				&clienttesting.SimpleReactor{Verb: "create", Resource: "deployments", Reaction: func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 					create := action.(clienttesting.CreateAction)
 					deploy := create.GetObject().(*unstructured.Unstructured)
-					if deploy.GetName() == "istio-citadel" {
+					if deploy.GetName() == "istio-pilot" {
 						return test.ClientFails()(action)
 					}
 					return false, nil, nil
@@ -373,22 +288,62 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			originalOrderedCharts := orderedCharts
-			defer func() { orderedCharts = originalOrderedCharts }()
-
-			orderedCharts = [][]string{
-				{"istio"},
-				{"istio/charts/security", "istio/charts/galley"}, // both are to be deployed at the same time
-				{"istio/charts/prometheus"},
-			}
-
+			disabled := false
+			enabled := true
 			smcp := newControlPlane()
-			smcp.Spec.Template = "maistra"
+			smcp.Spec = maistrav2.ControlPlaneSpec{
+				Template: "maistra",
+				Version:  versions.V1_1.String(),
+				Policy: &maistrav2.PolicyConfig{
+					Type: maistrav2.PolicyTypeNone,
+				},
+				Telemetry: &maistrav2.TelemetryConfig{
+					Type: maistrav2.TelemetryTypeNone,
+				},
+				Gateways: &maistrav2.GatewaysConfig{
+					ClusterIngress: &maistrav2.ClusterIngressGatewayConfig{
+						IngressGatewayConfig: maistrav2.IngressGatewayConfig{
+							GatewayConfig: maistrav2.GatewayConfig{
+								Enablement: maistrav2.Enablement{Enabled: &disabled},
+							},
+						},
+					},
+					ClusterEgress: &maistrav2.EgressGatewayConfig{
+						GatewayConfig: maistrav2.GatewayConfig{
+							Enablement: maistrav2.Enablement{Enabled: &disabled},
+						},
+					},
+				},
+				Addons: &maistrav2.AddonsConfig{
+					Metrics: maistrav2.MetricsAddonsConfig{
+						Prometheus: &maistrav2.PrometheusAddonConfig{
+							Enablement: maistrav2.Enablement{Enabled: &disabled},
+						},
+					},
+					Tracing: maistrav2.TracingConfig{Type: maistrav2.TracerTypeNone},
+					Visualization: maistrav2.VisualizationAddonsConfig{
+						Grafana: &maistrav2.GrafanaAddonConfig{
+							Enablement: maistrav2.Enablement{Enabled: &enabled},
+							Install: &maistrav2.GrafanaInstallConfig{},
+						},
+						Kiali: &maistrav2.KialiAddonConfig{
+							Enablement: maistrav2.Enablement{Enabled: &disabled},
+						},
+					},
+				},
+			}
 
 			cl, tracker, r := newReconcilerTestFixture(smcp)
 
 			// run initial reconcile to initialize reconcile status
 			assertInstanceReconcilerSucceeds(r, t)
+			assertInstanceReconcilerSucceeds(r, t)
+			securityDeployment := assertDeploymentExists(cl, "istio-citadel", t)
+			markDeploymentAvailable(cl, securityDeployment)
+			assertInstanceReconcilerSucceeds(r, t)
+			galleyDeployment := assertDeploymentExists(cl, "istio-galley", t)
+			markDeploymentAvailable(cl, galleyDeployment)
+
 
 			if tc.reactorsForFirstReconcile != nil {
 				tracker.AddReaction(tc.reactorsForFirstReconcile...)
@@ -409,24 +364,24 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 			assertInstanceReconcilerSucceeds(r, t)
 
 			// check that both galley and citadel deployments have been created
-			galleyDeployment := assertDeploymentExists(cl, "istio-galley", t)
-			citadelDeployment := assertDeploymentExists(cl, "istio-citadel", t)
+			pilotDeployment := assertDeploymentExists(cl, "istio-pilot", t)
+			sidecarInjectorWebhookDeployment := assertDeploymentExists(cl, "istio-sidecar-injector", t)
 
 			// check if reconciledCondition indicates installation is paused and both galley and security are mentioned
-			assertReconciledConditionMatches(cl, smcp, status.ConditionReasonPausingInstall, "[galley security]", t)
+			assertReconciledConditionMatches(cl, smcp, status.ConditionReasonPausingInstall, "[pilot sidecarInjectorWebhook]", t)
 
-			markDeploymentAvailable(cl, galleyDeployment)
-
-			// run reconcile again to see if the Reconciled condition is updated
-			assertInstanceReconcilerSucceeds(r, t)
-			assertReconciledConditionMatches(cl, smcp, status.ConditionReasonPausingInstall, "[security]", t)
-
-			markDeploymentAvailable(cl, citadelDeployment)
+			markDeploymentAvailable(cl, pilotDeployment)
 
 			// run reconcile again to see if the Reconciled condition is updated
 			assertInstanceReconcilerSucceeds(r, t)
-			assertDeploymentExists(cl, "prometheus", t)
-			assertReconciledConditionMatches(cl, smcp, status.ConditionReasonPausingInstall, "[prometheus]", t)
+			assertReconciledConditionMatches(cl, smcp, status.ConditionReasonPausingInstall, "[sidecarInjectorWebhook]", t)
+
+			markDeploymentAvailable(cl, sidecarInjectorWebhookDeployment)
+
+			// run reconcile again to see if the Reconciled condition is updated
+			assertInstanceReconcilerSucceeds(r, t)
+			assertDeploymentExists(cl, "grafana", t)
+			assertReconciledConditionMatches(cl, smcp, status.ConditionReasonPausingInstall, "[grafana]", t)
 		})
 	}
 }

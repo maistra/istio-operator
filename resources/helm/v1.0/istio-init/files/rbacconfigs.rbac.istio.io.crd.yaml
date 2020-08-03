@@ -1,0 +1,25 @@
+kind: CustomResourceDefinition
+apiVersion: apiextensions.k8s.io/v1beta1
+metadata:
+  name: rbacconfigs.rbac.istio.io
+  labels:
+    app: mixer
+    package: istio.io.mixer
+    istio: rbac
+    chart: istio
+    heritage: Tiller
+    maistra-version: 1.0.11
+    release: istio
+  annotations:
+    "helm.sh/resource-policy": keep
+spec:
+  group: rbac.istio.io
+  names:
+    kind: RbacConfig
+    plural: rbacconfigs
+    singular: rbacconfig
+    categories:
+    - istio-io
+    - rbac-istio-io
+  scope: Namespaced
+  version: v1alpha1

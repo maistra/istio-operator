@@ -14,6 +14,9 @@ type HelmValues struct {
 }
 
 func NewHelmValues(values map[string]interface{}) *HelmValues {
+	if values == nil {
+		values = make(map[string]interface{})
+	}
 	return &HelmValues{data: values}
 }
 

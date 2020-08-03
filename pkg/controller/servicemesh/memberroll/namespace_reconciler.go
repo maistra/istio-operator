@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 
 	core "k8s.io/api/core/v1"
@@ -328,10 +327,7 @@ func (r *namespaceReconciler) reconcileRoleBindings(ctx context.Context, namespa
 }
 
 func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context, namespace string) error {
-	netAttachDefName, ok := cni.GetNetworkName(r.meshVersion)
-	if !ok {
-		return fmt.Errorf("unknown maistra version: %s", r.meshVersion)
-	}
+	netAttachDefName := r.meshVersion.GetCNINetworkName()
 
 	nadList, err := common.FetchMeshResources(ctx, r.Client, schema.GroupVersionKind{
 		Group:   "k8s.cni.cncf.io",

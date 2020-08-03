@@ -89,7 +89,7 @@ type ControlPlaneSpec struct {
 	// .Values.gateways.*
 	// +optional
 	Gateways *GatewaysConfig `json:"gateways,omitempty"`
-	// Runtime configuration for pilot (and galley, etc., pre 1.2)
+	// Runtime configuration for pilot (and galley, etc., pre 2.0)
 	// +optional
 	Runtime *ControlPlaneRuntimeConfig `json:"runtime,omitempty"`
 	// Addons is used to configure additional features beyond core control plane

@@ -2756,10 +2756,6 @@ spec:
                         description: .Values.global.meshExpansion.useILB, true if
                           not null, otherwise uses ingress gateway
                         properties:
-                          enableSDS:
-                            description: 'EnableSDS for the gateway. .Values.gateways.<gateway-name>.sds.enabled
-                              XXX: I believe this is only applicable to ingress gateways'
-                            type: boolean
                           enabled:
                             description: Enabled specifies whether or not this feature
                               is enabled
@@ -2773,16 +2769,6 @@ spec:
                               plane namespace instead of the gateway namespace.  not
                               sure if this is a problem or not.'
                             type: string
-                          requestedNetworkView:
-                            description: 'RequestedNetworkView is a list of networks
-                              whose services should be made available to the gateway.  This
-                              is used primarily for mesh expansion/multi-cluster.
-                              .Values.gateways.<gateway-name>.env.ISTIO_META_REQUESTED_NETWORK_VIEW
-                              env, defaults to empty list XXX: I think this is only
-                              applicable to egress gateways'
-                            items:
-                              type: string
-                            type: array
                           routerMode:
                             description: The router mode to be used by the gateway.
                               .Values.gateways.<gateway-name>.env.ISTIO_META_ROUTER_MODE,
@@ -3689,17 +3675,9 @@ spec:
               gateways:
                 description: Gateways configures gateways for the mesh .Values.gateways.*
                 properties:
-                  additional:
+                  additionalEgress:
                     additionalProperties:
-                      description: 'GatewayConfig represents the configuration for
-                        a gateway XXX: should standard istio secrets be configured
-                        automatically, i.e. should the user be forced to add these
-                        manually?'
                       properties:
-                        enableSDS:
-                          description: 'EnableSDS for the gateway. .Values.gateways.<gateway-name>.sds.enabled
-                            XXX: I believe this is only applicable to ingress gateways'
-                          type: boolean
                         enabled:
                           description: Enabled specifies whether or not this feature
                             is enabled
@@ -4550,16 +4528,862 @@ spec:
                             type: object
                           type: array
                       type: object
-                    description: Other user defined gateways .Values.gateways.<key>
+                    description: Other user defined egress gateways .Values.gateways.<key>
+                    type: object
+                  additionalIngress:
+                    additionalProperties:
+                      properties:
+                        enableSDS:
+                          description: 'EnableSDS for the gateway. .Values.gateways.<gateway-name>.sds.enabled
+                            XXX: I believe this is only applicable to ingress gateways'
+                          type: boolean
+                        enabled:
+                          description: Enabled specifies whether or not this feature
+                            is enabled
+                          type: boolean
+                        namespace:
+                          description: 'Namespace is the namespace within which the
+                            gateway will be installed, defaults to control plane namespace.
+                            .Values.gateways.<gateway-name>.namespace XXX: for the
+                            standard gateways, it might be possible that related resources
+                            could be installed in control plane namespace instead
+                            of the gateway namespace.  not sure if this is a problem
+                            or not.'
+                          type: string
+                        routerMode:
+                          description: The router mode to be used by the gateway.
+                            .Values.gateways.<gateway-name>.env.ISTIO_META_ROUTER_MODE,
+                            defaults to sni-dnat
+                          type: string
+                        runtime:
+                          description: Runtime is used to configure execution parameters
+                            for the pod/containers e.g. resources, replicas, etc.
+                          properties:
+                            deployment:
+                              description: Deployment specific overrides
+                              properties:
+                                autoScaling:
+                                  description: Autoscaling specifies the configuration
+                                    for a HorizontalPodAutoscaler to be applied to
+                                    this deployment.  Null indicates no auto scaling.
+                                    .Values.*.autoscale* fields
+                                  properties:
+                                    maxReplicas:
+                                      description: upper limit for the number of pods
+                                        that can be set by the autoscaler; cannot
+                                        be smaller than MinReplicas.
+                                      format: int32
+                                      type: integer
+                                    minReplicas:
+                                      description: lower limit for the number of pods
+                                        that can be set by the autoscaler, default
+                                        1.
+                                      format: int32
+                                      type: integer
+                                    targetCPUUtilizationPercentage:
+                                      description: target average CPU utilization
+                                        (represented as a percentage of requested
+                                        CPU) over all the pods; if not specified the
+                                        default autoscaling policy will be used.
+                                      format: int32
+                                      type: integer
+                                  type: object
+                                metadata:
+                                  description: Metadata specifies additional labels
+                                    and annotations to be applied to the deployment
+                                  properties:
+                                    annotations:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                    labels:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                  type: object
+                                replicas:
+                                  description: Number of desired pods. This is a pointer
+                                    to distinguish between explicit zero and not specified.
+                                    Defaults to 1. .Values.*.replicaCount
+                                  format: int32
+                                  type: integer
+                                strategy:
+                                  description: The deployment strategy to use to replace
+                                    existing pods with new ones. .Values.*.rollingMaxSurge,
+                                    rollingMaxUnavailable, etc.
+                                  properties:
+                                    rollingUpdate:
+                                      description: 'Rolling update config params.
+                                        Present only if DeploymentStrategyType = RollingUpdate.
+                                        --- TODO: Update this to follow our convention
+                                        for oneOf, whatever we decide it to be.'
+                                      properties:
+                                        maxSurge:
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          description: 'The maximum number of pods
+                                            that can be scheduled above the desired
+                                            number of pods. Value can be an absolute
+                                            number (ex: 5) or a percentage of desired
+                                            pods (ex: 10%). This can not be 0 if MaxUnavailable
+                                            is 0. Absolute number is calculated from
+                                            percentage by rounding up. Defaults to
+                                            25%. Example: when this is set to 30%,
+                                            the new ReplicaSet can be scaled up immediately
+                                            when the rolling update starts, such that
+                                            the total number of old and new pods do
+                                            not exceed 130% of desired pods. Once
+                                            old pods have been killed, new ReplicaSet
+                                            can be scaled up further, ensuring that
+                                            total number of pods running at any time
+                                            during the update is at most 130% of desired
+                                            pods.'
+                                          x-kubernetes-int-or-string: true
+                                        maxUnavailable:
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          description: 'The maximum number of pods
+                                            that can be unavailable during the update.
+                                            Value can be an absolute number (ex: 5)
+                                            or a percentage of desired pods (ex: 10%).
+                                            Absolute number is calculated from percentage
+                                            by rounding down. This can not be 0 if
+                                            MaxSurge is 0. Defaults to 25%. Example:
+                                            when this is set to 30%, the old ReplicaSet
+                                            can be scaled down to 70% of desired pods
+                                            immediately when the rolling update starts.
+                                            Once new pods are ready, old ReplicaSet
+                                            can be scaled down further, followed by
+                                            scaling up the new ReplicaSet, ensuring
+                                            that the total number of pods available
+                                            at all times during the update is at least
+                                            70% of desired pods.'
+                                          x-kubernetes-int-or-string: true
+                                      type: object
+                                    type:
+                                      description: Type of deployment. Can be "Recreate"
+                                        or "RollingUpdate". Default is RollingUpdate.
+                                      type: string
+                                  type: object
+                              type: object
+                            pod:
+                              description: Pod specific overrides
+                              properties:
+                                affinity:
+                                  description: If specified, the pod's scheduling
+                                    constraints .Values.podAntiAffinityLabelSelector,
+                                    podAntiAffinityTermLabelSelector, nodeSelector
+                                    NodeAffinity is not supported at this time PodAffinity
+                                    is not supported at this time
+                                  properties:
+                                    podAntiAffinity:
+                                      description: PodAntiAffinity configures anti
+                                        affinity for pod scheduling
+                                      properties:
+                                        preferredDuringScheduling:
+                                          items:
+                                            description: PodAntiAffinityTerm is a
+                                              simplified version of corev1.PodAntiAffinityTerm
+                                            properties:
+                                              key:
+                                                description: key is the label key
+                                                  that the selector applies to.
+                                                type: string
+                                              operator:
+                                                description: operator represents a
+                                                  key's relationship to a set of values.
+                                                  Valid operators are In, NotIn, Exists
+                                                  and DoesNotExist.
+                                                type: string
+                                              topologyKey:
+                                                description: This pod should be co-located
+                                                  (affinity) or not co-located (anti-affinity)
+                                                  with the pods matching the labelSelector
+                                                  in the specified namespaces, where
+                                                  co-located is defined as running
+                                                  on a node whose value of the label
+                                                  with key topologyKey matches that
+                                                  of any node on which any of the
+                                                  selected pods is running. Empty
+                                                  topologyKey is not allowed.
+                                                type: string
+                                              values:
+                                                description: values is an array of
+                                                  string values. If the operator is
+                                                  In or NotIn, the values array must
+                                                  be non-empty. If the operator is
+                                                  Exists or DoesNotExist, the values
+                                                  array must be empty. This array
+                                                  is replaced during a strategic merge
+                                                  patch.
+                                                items:
+                                                  type: string
+                                                type: array
+                                            required:
+                                            - key
+                                            - operator
+                                            type: object
+                                          type: array
+                                        requiredDuringScheduling:
+                                          items:
+                                            description: PodAntiAffinityTerm is a
+                                              simplified version of corev1.PodAntiAffinityTerm
+                                            properties:
+                                              key:
+                                                description: key is the label key
+                                                  that the selector applies to.
+                                                type: string
+                                              operator:
+                                                description: operator represents a
+                                                  key's relationship to a set of values.
+                                                  Valid operators are In, NotIn, Exists
+                                                  and DoesNotExist.
+                                                type: string
+                                              topologyKey:
+                                                description: This pod should be co-located
+                                                  (affinity) or not co-located (anti-affinity)
+                                                  with the pods matching the labelSelector
+                                                  in the specified namespaces, where
+                                                  co-located is defined as running
+                                                  on a node whose value of the label
+                                                  with key topologyKey matches that
+                                                  of any node on which any of the
+                                                  selected pods is running. Empty
+                                                  topologyKey is not allowed.
+                                                type: string
+                                              values:
+                                                description: values is an array of
+                                                  string values. If the operator is
+                                                  In or NotIn, the values array must
+                                                  be non-empty. If the operator is
+                                                  Exists or DoesNotExist, the values
+                                                  array must be empty. This array
+                                                  is replaced during a strategic merge
+                                                  patch.
+                                                items:
+                                                  type: string
+                                                type: array
+                                            required:
+                                            - key
+                                            - operator
+                                            type: object
+                                          type: array
+                                      type: object
+                                  type: object
+                                containers:
+                                  additionalProperties:
+                                    description: ContainerConfig to be applied to
+                                      containers in a pod, in a deployment
+                                    properties:
+                                      image:
+                                        type: string
+                                      imagePullPolicy:
+                                        description: PullPolicy describes a policy
+                                          for if/when to pull a container image
+                                        type: string
+                                      imagePullSecrets:
+                                        items:
+                                          description: LocalObjectReference contains
+                                            enough information to let you locate the
+                                            referenced object inside the same namespace.
+                                          properties:
+                                            name:
+                                              description: 'Name of the referent.
+                                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                                TODO: Add other useful fields. apiVersion,
+                                                kind, uid?'
+                                              type: string
+                                          type: object
+                                        type: array
+                                      imageRegistry:
+                                        type: string
+                                      imageTag:
+                                        type: string
+                                      resources:
+                                        description: ResourceRequirements describes
+                                          the compute resource requirements.
+                                        properties:
+                                          limits:
+                                            additionalProperties:
+                                              anyOf:
+                                              - type: integer
+                                              - type: string
+                                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                              x-kubernetes-int-or-string: true
+                                            description: 'Limits describes the maximum
+                                              amount of compute resources allowed.
+                                              More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                            type: object
+                                          requests:
+                                            additionalProperties:
+                                              anyOf:
+                                              - type: integer
+                                              - type: string
+                                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                              x-kubernetes-int-or-string: true
+                                            description: 'Requests describes the minimum
+                                              amount of compute resources required.
+                                              If Requests is omitted for a container,
+                                              it defaults to Limits if that is explicitly
+                                              specified, otherwise to an implementation-defined
+                                              value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                            type: object
+                                        type: object
+                                    type: object
+                                  description: 'XXX: is it too cheesy to use ''default''
+                                    name for defaults?  default would apply to all
+                                    containers .Values.*.resource, imagePullPolicy,
+                                    etc.'
+                                  type: object
+                                metadata:
+                                  description: 'Metadata allows additional annotations/labels
+                                    to be applied to the pod .Values.*.podAnnotations
+                                    XXX: currently, additional lables are not supported'
+                                  properties:
+                                    annotations:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                    labels:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                  type: object
+                                nodeSelector:
+                                  additionalProperties:
+                                    type: string
+                                  description: 'NodeSelector is a selector which must
+                                    be true for the pod to fit on a node. Selector
+                                    which must match a node''s labels for the pod
+                                    to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+                                    .Values.nodeSelector'
+                                  type: object
+                                priorityClassName:
+                                  description: '.Values.global.priorityClassName XXX:
+                                    currently, this is only a global setting.  maybe
+                                    only allow setting in global runtime defaults?'
+                                  type: string
+                                tolerations:
+                                  description: If specified, the pod's tolerations.
+                                    .Values.tolerations
+                                  items:
+                                    description: The pod this Toleration is attached
+                                      to tolerates any taint that matches the triple
+                                      <key,value,effect> using the matching operator
+                                      <operator>.
+                                    properties:
+                                      effect:
+                                        description: Effect indicates the taint effect
+                                          to match. Empty means match all taint effects.
+                                          When specified, allowed values are NoSchedule,
+                                          PreferNoSchedule and NoExecute.
+                                        type: string
+                                      key:
+                                        description: Key is the taint key that the
+                                          toleration applies to. Empty means match
+                                          all taint keys. If the key is empty, operator
+                                          must be Exists; this combination means to
+                                          match all values and all keys.
+                                        type: string
+                                      operator:
+                                        description: Operator represents a key's relationship
+                                          to the value. Valid operators are Exists
+                                          and Equal. Defaults to Equal. Exists is
+                                          equivalent to wildcard for value, so that
+                                          a pod can tolerate all taints of a particular
+                                          category.
+                                        type: string
+                                      tolerationSeconds:
+                                        description: TolerationSeconds represents
+                                          the period of time the toleration (which
+                                          must be of effect NoExecute, otherwise this
+                                          field is ignored) tolerates the taint. By
+                                          default, it is not set, which means tolerate
+                                          the taint forever (do not evict). Zero and
+                                          negative values will be treated as 0 (evict
+                                          immediately) by the system.
+                                        format: int64
+                                        type: integer
+                                      value:
+                                        description: Value is the taint value the
+                                          toleration matches to. If the operator is
+                                          Exists, the value should be empty, otherwise
+                                          just a regular string.
+                                        type: string
+                                    type: object
+                                  type: array
+                              type: object
+                          type: object
+                        service:
+                          description: 'Service configures the service associated
+                            with the gateway, e.g. port mappings, service type, annotations/labels,
+                            etc. .Values.gateways.<gateway-name>.ports, .Values.gateways.<gateway-name>.type,
+                            .Values.gateways.<gateway-name>.loadBalancerIP, .Values.gateways.<gateway-name>.serviceAnnotations,
+                            .Values.gateways.<gateway-name>.serviceLabels XXX: currently
+                            there is no distinction between labels and serviceLabels'
+                          properties:
+                            clusterIP:
+                              description: 'clusterIP is the IP address of the service
+                                and is usually assigned randomly by the master. If
+                                an address is specified manually and is not in use
+                                by others, it will be allocated to the service; otherwise,
+                                creation of the service will fail. This field can
+                                not be changed through updates. Valid values are "None",
+                                empty string (""), or a valid IP address. "None" can
+                                be specified for headless services when proxying is
+                                not required. Only applies to types ClusterIP, NodePort,
+                                and LoadBalancer. Ignored if type is ExternalName.
+                                More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
+                              type: string
+                            externalIPs:
+                              description: externalIPs is a list of IP addresses for
+                                which nodes in the cluster will also accept traffic
+                                for this service.  These IPs are not managed by Kubernetes.  The
+                                user is responsible for ensuring that traffic arrives
+                                at a node with this IP.  A common example is external
+                                load-balancers that are not part of the Kubernetes
+                                system.
+                              items:
+                                type: string
+                              type: array
+                            externalName:
+                              description: externalName is the external reference
+                                that kubedns or equivalent will return as a CNAME
+                                record for this service. No proxying will be involved.
+                                Must be a valid RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
+                                and requires Type to be ExternalName.
+                              type: string
+                            externalTrafficPolicy:
+                              description: externalTrafficPolicy denotes if this Service
+                                desires to route external traffic to node-local or
+                                cluster-wide endpoints. "Local" preserves the client
+                                source IP and avoids a second hop for LoadBalancer
+                                and Nodeport type services, but risks potentially
+                                imbalanced traffic spreading. "Cluster" obscures the
+                                client source IP and may cause a second hop to another
+                                node, but should have good overall load-spreading.
+                              type: string
+                            healthCheckNodePort:
+                              description: healthCheckNodePort specifies the healthcheck
+                                nodePort for the service. If not specified, HealthCheckNodePort
+                                is created by the service api backend with the allocated
+                                nodePort. Will use user-specified nodePort value if
+                                specified by the client. Only effects when Type is
+                                set to LoadBalancer and ExternalTrafficPolicy is set
+                                to Local.
+                              format: int32
+                              type: integer
+                            ipFamily:
+                              description: ipFamily specifies whether this Service
+                                has a preference for a particular IP family (e.g.
+                                IPv4 vs. IPv6).  If a specific IP family is requested,
+                                the clusterIP field will be allocated from that family,
+                                if it is available in the cluster.  If no IP family
+                                is requested, the cluster's primary IP family will
+                                be used. Other IP fields (loadBalancerIP, loadBalancerSourceRanges,
+                                externalIPs) and controllers which allocate external
+                                load-balancers should use the same IP family.  Endpoints
+                                for this Service will be of this family.  This field
+                                is immutable after creation. Assigning a ServiceIPFamily
+                                not available in the cluster (e.g. IPv6 in IPv4 only
+                                cluster) is an error condition and will fail during
+                                clusterIP assignment.
+                              type: string
+                            loadBalancerIP:
+                              description: 'Only applies to Service Type: LoadBalancer
+                                LoadBalancer will get created with the IP specified
+                                in this field. This feature depends on whether the
+                                underlying cloud-provider supports specifying the
+                                loadBalancerIP when a load balancer is created. This
+                                field will be ignored if the cloud-provider does not
+                                support the feature.'
+                              type: string
+                            loadBalancerSourceRanges:
+                              description: 'If specified and supported by the platform,
+                                this will restrict traffic through the cloud-provider
+                                load-balancer will be restricted to the specified
+                                client IPs. This field will be ignored if the cloud-provider
+                                does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/'
+                              items:
+                                type: string
+                              type: array
+                            metadata:
+                              description: metadata to be applied to the gateway's
+                                service (annotations and labels)
+                              properties:
+                                annotations:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                labels:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                              type: object
+                            ports:
+                              description: 'The list of ports that are exposed by
+                                this service. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
+                              items:
+                                description: ServicePort contains information on service's
+                                  port.
+                                properties:
+                                  appProtocol:
+                                    description: The application protocol for this
+                                      port. This field follows standard Kubernetes
+                                      label syntax. Un-prefixed names are reserved
+                                      for IANA standard service names (as per RFC-6335
+                                      and http://www.iana.org/assignments/service-names).
+                                      Non-standard protocols should use prefixed names
+                                      such as mycompany.com/my-custom-protocol. Field
+                                      can be enabled with ServiceAppProtocol feature
+                                      gate.
+                                    type: string
+                                  name:
+                                    description: The name of this port within the
+                                      service. This must be a DNS_LABEL. All ports
+                                      within a ServiceSpec must have unique names.
+                                      When considering the endpoints for a Service,
+                                      this must match the 'name' field in the EndpointPort.
+                                      Optional if only one ServicePort is defined
+                                      on this service.
+                                    type: string
+                                  nodePort:
+                                    description: 'The port on each node on which this
+                                      service is exposed when type=NodePort or LoadBalancer.
+                                      Usually assigned by the system. If specified,
+                                      it will be allocated to the service if unused
+                                      or else creation of the service will fail. Default
+                                      is to auto-allocate a port if the ServiceType
+                                      of this Service requires one. More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport'
+                                    format: int32
+                                    type: integer
+                                  port:
+                                    description: The port that will be exposed by
+                                      this service.
+                                    format: int32
+                                    type: integer
+                                  protocol:
+                                    description: The IP protocol for this port. Supports
+                                      "TCP", "UDP", and "SCTP". Default is TCP.
+                                    type: string
+                                  targetPort:
+                                    anyOf:
+                                    - type: integer
+                                    - type: string
+                                    description: 'Number or name of the port to access
+                                      on the pods targeted by the service. Number
+                                      must be in the range 1 to 65535. Name must be
+                                      an IANA_SVC_NAME. If this is a string, it will
+                                      be looked up as a named port in the target Pod''s
+                                      container ports. If this is not specified, the
+                                      value of the ''port'' field is used (an identity
+                                      map). This field is ignored for services with
+                                      clusterIP=None, and should be omitted or set
+                                      equal to the ''port'' field. More info: https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service'
+                                    x-kubernetes-int-or-string: true
+                                required:
+                                - port
+                                type: object
+                              type: array
+                              x-kubernetes-list-map-keys:
+                              - port
+                              - protocol
+                              x-kubernetes-list-type: map
+                            publishNotReadyAddresses:
+                              description: publishNotReadyAddresses, when set to true,
+                                indicates that DNS implementations must publish the
+                                notReadyAddresses of subsets for the Endpoints associated
+                                with the Service. The default value is false. The
+                                primary use case for setting this field is to use
+                                a StatefulSet's Headless Service to propagate SRV
+                                records for its Pods without respect to their readiness
+                                for purpose of peer discovery.
+                              type: boolean
+                            selector:
+                              additionalProperties:
+                                type: string
+                              description: 'Route service traffic to pods with label
+                                keys and values matching this selector. If empty or
+                                not present, the service is assumed to have an external
+                                process managing its endpoints, which Kubernetes will
+                                not modify. Only applies to types ClusterIP, NodePort,
+                                and LoadBalancer. Ignored if type is ExternalName.
+                                More info: https://kubernetes.io/docs/concepts/services-networking/service/'
+                              type: object
+                            sessionAffinity:
+                              description: 'Supports "ClientIP" and "None". Used to
+                                maintain session affinity. Enable client IP based
+                                session affinity. Must be ClientIP or None. Defaults
+                                to None. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
+                              type: string
+                            sessionAffinityConfig:
+                              description: sessionAffinityConfig contains the configurations
+                                of session affinity.
+                              properties:
+                                clientIP:
+                                  description: clientIP contains the configurations
+                                    of Client IP based session affinity.
+                                  properties:
+                                    timeoutSeconds:
+                                      description: timeoutSeconds specifies the seconds
+                                        of ClientIP type session sticky time. The
+                                        value must be >0 && <=86400(for 1 day) if
+                                        ServiceAffinity == "ClientIP". Default value
+                                        is 10800(for 3 hours).
+                                      format: int32
+                                      type: integer
+                                  type: object
+                              type: object
+                            topologyKeys:
+                              description: topologyKeys is a preference-order list
+                                of topology keys which implementations of services
+                                should use to preferentially sort endpoints when accessing
+                                this Service, it can not be used at the same time
+                                as externalTrafficPolicy=Local. Topology keys must
+                                be valid label keys and at most 16 keys may be specified.
+                                Endpoints are chosen based on the first topology key
+                                with available backends. If this field is specified
+                                and all entries have no backends that match the topology
+                                of the client, the service has no backends for that
+                                client and connections should fail. The special value
+                                "*" may be used to mean "any topology". This catch-all
+                                value, if used, only makes sense as the last value
+                                in the list. If this is not specified or empty, no
+                                topology constraints will be applied.
+                              items:
+                                type: string
+                              type: array
+                            type:
+                              description: 'type determines how the Service is exposed.
+                                Defaults to ClusterIP. Valid options are ExternalName,
+                                ClusterIP, NodePort, and LoadBalancer. "ExternalName"
+                                maps to the specified externalName. "ClusterIP" allocates
+                                a cluster-internal IP address for load-balancing to
+                                endpoints. Endpoints are determined by the selector
+                                or if that is not specified, by manual construction
+                                of an Endpoints object. If clusterIP is "None", no
+                                virtual IP is allocated and the endpoints are published
+                                as a set of endpoints rather than a stable IP. "NodePort"
+                                builds on ClusterIP and allocates a port on every
+                                node which routes to the clusterIP. "LoadBalancer"
+                                builds on NodePort and creates an external load-balancer
+                                (if supported in the current cloud) which routes to
+                                the clusterIP. More info: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types'
+                              type: string
+                          type: object
+                        volumes:
+                          description: Volumes is used to configure additional Secret
+                            and ConfigMap volumes that should be mounted for the gateway's
+                            pod. .Values.gateways.<gateway-name>.secretVolumes, .Values.gateways.<gateway-name>.configMapVolumes
+                          items:
+                            description: VolumeConfig is used to specify volumes that
+                              should be mounted on the pod.
+                            properties:
+                              volume:
+                                description: Volume.Name maps to .Values.gateways.<gateway-name>.<type>.<type-name>
+                                  (type-name is configMapName or secretName) .configVolumes
+                                  -> .configMapName = volume.name .secretVolumes ->
+                                  .secretName = volume.name Only ConfigMap and Secret
+                                  fields are supported
+                                properties:
+                                  configMap:
+                                    description: ConfigMap represents a configMap
+                                      that should populate this volume
+                                    properties:
+                                      defaultMode:
+                                        description: 'Optional: mode bits to use on
+                                          created files by default. Must be a value
+                                          between 0 and 0777. Defaults to 0644. Directories
+                                          within the path are not affected by this
+                                          setting. This might be in conflict with
+                                          other options that affect the file mode,
+                                          like fsGroup, and the result can be other
+                                          mode bits set.'
+                                        format: int32
+                                        type: integer
+                                      items:
+                                        description: If unspecified, each key-value
+                                          pair in the Data field of the referenced
+                                          ConfigMap will be projected into the volume
+                                          as a file whose name is the key and content
+                                          is the value. If specified, the listed keys
+                                          will be projected into the specified paths,
+                                          and unlisted keys will not be present. If
+                                          a key is specified which is not present
+                                          in the ConfigMap, the volume setup will
+                                          error unless it is marked optional. Paths
+                                          must be relative and may not contain the
+                                          '..' path or start with '..'.
+                                        items:
+                                          description: Maps a string key to a path
+                                            within a volume.
+                                          properties:
+                                            key:
+                                              description: The key to project.
+                                              type: string
+                                            mode:
+                                              description: 'Optional: mode bits to
+                                                use on this file, must be a value
+                                                between 0 and 0777. If not specified,
+                                                the volume defaultMode will be used.
+                                                This might be in conflict with other
+                                                options that affect the file mode,
+                                                like fsGroup, and the result can be
+                                                other mode bits set.'
+                                              format: int32
+                                              type: integer
+                                            path:
+                                              description: The relative path of the
+                                                file to map the key to. May not be
+                                                an absolute path. May not contain
+                                                the path element '..'. May not start
+                                                with the string '..'.
+                                              type: string
+                                          required:
+                                          - key
+                                          - path
+                                          type: object
+                                        type: array
+                                      name:
+                                        description: 'Name of the referent. More info:
+                                          https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          TODO: Add other useful fields. apiVersion,
+                                          kind, uid?'
+                                        type: string
+                                      optional:
+                                        description: Specify whether the ConfigMap
+                                          or its keys must be defined
+                                        type: boolean
+                                    type: object
+                                  name:
+                                    description: 'Volume''s name. Must be a DNS_LABEL
+                                      and unique within the pod. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                    type: string
+                                  secret:
+                                    description: 'Secret represents a secret that
+                                      should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
+                                    properties:
+                                      defaultMode:
+                                        description: 'Optional: mode bits to use on
+                                          created files by default. Must be a value
+                                          between 0 and 0777. Defaults to 0644. Directories
+                                          within the path are not affected by this
+                                          setting. This might be in conflict with
+                                          other options that affect the file mode,
+                                          like fsGroup, and the result can be other
+                                          mode bits set.'
+                                        format: int32
+                                        type: integer
+                                      items:
+                                        description: If unspecified, each key-value
+                                          pair in the Data field of the referenced
+                                          Secret will be projected into the volume
+                                          as a file whose name is the key and content
+                                          is the value. If specified, the listed keys
+                                          will be projected into the specified paths,
+                                          and unlisted keys will not be present. If
+                                          a key is specified which is not present
+                                          in the Secret, the volume setup will error
+                                          unless it is marked optional. Paths must
+                                          be relative and may not contain the '..'
+                                          path or start with '..'.
+                                        items:
+                                          description: Maps a string key to a path
+                                            within a volume.
+                                          properties:
+                                            key:
+                                              description: The key to project.
+                                              type: string
+                                            mode:
+                                              description: 'Optional: mode bits to
+                                                use on this file, must be a value
+                                                between 0 and 0777. If not specified,
+                                                the volume defaultMode will be used.
+                                                This might be in conflict with other
+                                                options that affect the file mode,
+                                                like fsGroup, and the result can be
+                                                other mode bits set.'
+                                              format: int32
+                                              type: integer
+                                            path:
+                                              description: The relative path of the
+                                                file to map the key to. May not be
+                                                an absolute path. May not contain
+                                                the path element '..'. May not start
+                                                with the string '..'.
+                                              type: string
+                                          required:
+                                          - key
+                                          - path
+                                          type: object
+                                        type: array
+                                      optional:
+                                        description: Specify whether the Secret or
+                                          its keys must be defined
+                                        type: boolean
+                                      secretName:
+                                        description: 'Name of the secret in the pod''s
+                                          namespace to use. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
+                                        type: string
+                                    type: object
+                                required:
+                                - name
+                                type: object
+                              volumeMount:
+                                description: Mount.Name maps to .Values.gateways.<gateway-name>.<type>.name
+                                  .configVolumes -> .name = mount.name, .mountPath
+                                  = mount.mountPath .secretVolumes -> .name = mount.name,
+                                  .mountPath = mount.mountPath Only Name and MountPath
+                                  fields are supported
+                                properties:
+                                  mountPath:
+                                    description: Path within the container at which
+                                      the volume should be mounted.  Must not contain
+                                      ':'.
+                                    type: string
+                                  mountPropagation:
+                                    description: mountPropagation determines how mounts
+                                      are propagated from the host to container and
+                                      the other way around. When not set, MountPropagationNone
+                                      is used. This field is beta in 1.10.
+                                    type: string
+                                  name:
+                                    description: This must match the Name of a Volume.
+                                    type: string
+                                  readOnly:
+                                    description: Mounted read-only if true, read-write
+                                      otherwise (false or unspecified). Defaults to
+                                      false.
+                                    type: boolean
+                                  subPath:
+                                    description: Path within the volume from which
+                                      the container's volume should be mounted. Defaults
+                                      to "" (volume's root).
+                                    type: string
+                                  subPathExpr:
+                                    description: Expanded path within the volume from
+                                      which the container's volume should be mounted.
+                                      Behaves similarly to SubPath but environment
+                                      variable references $(VAR_NAME) are expanded
+                                      using the container's environment. Defaults
+                                      to "" (volume's root). SubPathExpr and SubPath
+                                      are mutually exclusive.
+                                    type: string
+                                required:
+                                - mountPath
+                                - name
+                                type: object
+                            type: object
+                          type: array
+                      type: object
+                    description: Other user defined ingress gateways .Values.gateways.<key>
                     type: object
                   egress:
-                    description: Egress configures the egress gateway for the mesh.
-                      .Values.gateways.istio-egressgateway
+                    description: ClusterEgress configures the istio-egressgateway
+                      for the mesh. .Values.gateways.istio-egressgateway
                     properties:
-                      enableSDS:
-                        description: 'EnableSDS for the gateway. .Values.gateways.<gateway-name>.sds.enabled
-                          XXX: I believe this is only applicable to ingress gateways'
-                        type: boolean
                       enabled:
                         description: Enabled specifies whether or not this feature
                           is enabled
@@ -5390,9 +6214,10 @@ spec:
                         type: array
                     type: object
                   ingress:
-                    description: Ingress configures the ingress gateway for the mesh
-                      works in conjunction with cluster.meshExpansion.ingress configuration
-                      (for enabling ILB gateway and mesh expansion ports) .Values.gateways.istio-ingressgateway
+                    description: ClusterIngress configures the istio-ingressgateway
+                      for the mesh works in conjunction with cluster.meshExpansion.ingress
+                      configuration (for enabling ILB gateway and mesh expansion ports)
+                      .Values.gateways.istio-ingressgateway
                     properties:
                       enableSDS:
                         description: 'EnableSDS for the gateway. .Values.gateways.<gateway-name>.sds.enabled
@@ -5470,15 +6295,6 @@ spec:
                           be installed in control plane namespace instead of the gateway
                           namespace.  not sure if this is a problem or not.'
                         type: string
-                      requestedNetworkView:
-                        description: 'RequestedNetworkView is a list of networks whose
-                          services should be made available to the gateway.  This
-                          is used primarily for mesh expansion/multi-cluster. .Values.gateways.<gateway-name>.env.ISTIO_META_REQUESTED_NETWORK_VIEW
-                          env, defaults to empty list XXX: I think this is only applicable
-                          to egress gateways'
-                        items:
-                          type: string
-                        type: array
                       routerMode:
                         description: The router mode to be used by the gateway. .Values.gateways.<gateway-name>.env.ISTIO_META_ROUTER_MODE,
                           defaults to sni-dnat
@@ -7087,7 +7903,7 @@ spec:
                 type: object
               runtime:
                 description: Runtime configuration for pilot (and galley, etc., pre
-                  1.2)
+                  2.0)
                 properties:
                   citadel:
                     description: Citadel configures overrides for citadel deployment/pods
@@ -8389,9 +9205,10 @@ spec:
                               Kubernetes service account tokens to identify users.
                             type: object
                           thirdParty:
-                            description: ThirdParty configures istiod to use a third-party
+                            description: 'ThirdParty configures istiod to use a third-party
                               token provider for identifying users. (basically uses
-                              a custom audience, e.g. istio-ca)
+                              a custom audience, e.g. istio-ca) XXX: this is only
+                              supported on OCP 4.4+'
                             properties:
                               audience:
                                 description: Audience is the audience for whom the
