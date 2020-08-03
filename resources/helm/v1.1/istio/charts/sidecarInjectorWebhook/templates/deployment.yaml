@@ -46,15 +46,6 @@ spec:
           image: "{{ .Values.global.hub }}/{{ .Values.image }}:{{ .Values.global.tag }}"
 {{- end }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
-          args:
-            - --caCertFile=/etc/istio/certs/root-cert.pem
-            - --tlsCertFile=/etc/istio/certs/cert-chain.pem
-            - --tlsKeyFile=/etc/istio/certs/key.pem
-            - --injectConfig=/etc/istio/inject/config
-            - --meshConfig=/etc/istio/config/mesh
-            - --healthCheckInterval=2s
-            - --healthCheckFile=/tmp/health
-            - --reconcileWebhookConfig=false
 {{- if .Values.global.tls }}
 {{- if or .Values.global.tls.minProtocolVersion .Values.global.tls.maxProtocolVersion }}
           env:
@@ -66,8 +57,25 @@ spec:
           - name: TLS_MAX_PROTOCOL_VERSION
             value: {{ .Values.global.tls.maxProtocolVersion }}
 {{- end }}
+{{- if .Values.global.tls.cipherSuites }}
+          - name: TLS_CIPHER_SUITES
+            value: {{ .Values.global.tls.cipherSuites }}
+{{- end }}
+{{- if .Values.global.tls.ecdhCurves }}
+          - name: TLS_ECDH_CURVES
+            value: {{ .Values.global.tls.ecdhCurves }}
 {{- end }}
 {{- end }}
+{{- end }}
+          args:
+            - --caCertFile=/etc/istio/certs/root-cert.pem
+            - --tlsCertFile=/etc/istio/certs/cert-chain.pem
+            - --tlsKeyFile=/etc/istio/certs/key.pem
+            - --injectConfig=/etc/istio/inject/config
+            - --meshConfig=/etc/istio/config/mesh
+            - --healthCheckInterval=2s
+            - --healthCheckFile=/tmp/health
+            - --reconcileWebhookConfig=false
             - --port=8443
 {{- if .Values.injectPodRedirectAnnot }}
             - --injectPodRedirectAnnot
