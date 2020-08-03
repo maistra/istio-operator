@@ -33,7 +33,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			return err
 		}
 	}
-	if len(security.MutualTLS.Trust.AdditionalDomains) > 0 {
+	if security.MutualTLS.Trust.AdditionalDomains != nil {
 		if err := setHelmStringSliceValue(values, "global.trustDomainAliases", security.MutualTLS.Trust.AdditionalDomains); err != nil {
 			return err
 		}
@@ -41,16 +41,12 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 
 	// CA
 	switch security.MutualTLS.CertificateAuthority.Type {
-	case v2.CertificateAuthorityTypeIstiod, "":
+	case v2.CertificateAuthorityTypeIstiod:
 		istiod := security.MutualTLS.CertificateAuthority.Istiod
+		if err := setHelmStringValue(values, "pilot.ca.implementation", string(security.MutualTLS.CertificateAuthority.Type)); err != nil {
+			return err
+		}
 		if istiod == nil {
-			// XXX: maybe log a warning?
-			// use self-signed as default
-			// this is for pre-1.6.  1.6+ is configured based on the presence
-			// of a mounted root cert/key in $ROOT_CA_DIR/ca-key.pem, /etc/cacerts/ca-key.pem by default
-			if err := setHelmBoolValue(values, "security.selfSigned", true); err != nil {
-				return err
-			}
 			break
 		}
 		if in.Version == versions.V2_0.String() {
@@ -97,7 +93,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				// configure security (citadel) settings
 				// XXX: nothing here is currently configurable for pre-1.6
 			}
-		case v2.IstioCertificateSignerTypeSelfSigned, "":
+		case v2.IstioCertificateSignerTypeSelfSigned:
 			if err := setHelmBoolValue(values, "security.selfSigned", true); err != nil {
 				return err
 			}
@@ -133,17 +129,24 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				}
 			}
 			// XXX: selfSigned.Org is not supported
+		case "":
+		// don't configure any pilot ca settings
 		default:
 			return fmt.Errorf("unknown Istiod certificate signer type: %s", istiod.Type)
 		}
 	case v2.CertificateAuthorityTypeCustom:
 		custom := security.MutualTLS.CertificateAuthority.Custom
+		if err := setHelmStringValue(values, "pilot.ca.implementation", string(security.MutualTLS.CertificateAuthority.Type)); err != nil {
+			return err
+		}
 		if custom == nil {
-			return fmt.Errorf("No configuration specified for Custom CertificateAuthority")
+			break
 		}
 		if err := setHelmStringValue(values, "global.caAddress", custom.Address); err != nil {
 			return err
 		}
+	case "":
+		// don't configure any ca settings
 	default:
 		return fmt.Errorf("unknown CertificateAuthority type: %s", security.MutualTLS.CertificateAuthority.Type)
 	}
@@ -154,7 +157,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 		if err := setHelmStringValue(values, "global.jwtPolicy", "first-party-jwt"); err != nil {
 			return err
 		}
-	case v2.IdentityConfigTypeThirdParty, "":
+	case v2.IdentityConfigTypeThirdParty:
 		if err := setHelmStringValue(values, "global.jwtPolicy", "third-party-jwt"); err != nil {
 			return err
 		}
@@ -176,6 +179,8 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			}
 		}
 		// XXX: TokenPath is not currently supported
+	case "":
+		// don't configure any identity settings
 	default:
 		return fmt.Errorf("unknown Identity type: %s", security.MutualTLS.Identity.Type)
 	}
@@ -228,14 +233,36 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	}
 
 	// CA
+	var caType v2.CertificateAuthorityType
+	var istiodCAType v2.IstioCertificateSignerType
+	if caImplementation, ok, err := in.GetString("pilot.ca.implementation"); ok && caImplementation != "" {
+		caType = v2.CertificateAuthorityType(caImplementation)
+	} else if err != nil {
+		return err
+	}
 	if selfSigned, ok, err := in.GetBool("security.selfSigned"); ok {
+		if caType == "" {
+			caType = v2.CertificateAuthorityTypeIstiod
+		}
+		if selfSigned {
+			istiodCAType = v2.IstioCertificateSignerTypeSelfSigned
+		} else {
+			istiodCAType = v2.IstioCertificateSignerTypePrivateKey
+		}
+	} else if err != nil {
+		return err
+	}
+	switch caType {
+	case v2.CertificateAuthorityTypeIstiod:
+		setSecurity = true
 		security.MutualTLS.CertificateAuthority = v2.CertificateAuthorityConfig{
 			Type:   v2.CertificateAuthorityTypeIstiod,
 			Istiod: &v2.IstiodCertificateAuthorityConfig{},
 		}
-		setSecurity = true
-		if selfSigned {
-			security.MutualTLS.CertificateAuthority.Istiod.Type = v2.IstioCertificateSignerTypeSelfSigned
+		istiod := security.MutualTLS.CertificateAuthority.Istiod
+		switch istiodCAType {
+		case v2.IstioCertificateSignerTypeSelfSigned:
+			istiod.Type = v2.IstioCertificateSignerTypeSelfSigned
 			selfSignedConfig := &v2.IstioSelfSignedCertificateSignerConfig{}
 			setSelfSigned := false
 			if ttl, ok, err := in.GetString("pilot.env.CITADEL_SELF_SIGNED_CA_CERT_TTL"); ok {
@@ -283,12 +310,12 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 				return err
 			}
 			if setSelfSigned {
-				security.MutualTLS.CertificateAuthority.Istiod.SelfSigned = selfSignedConfig
+				istiod.SelfSigned = selfSignedConfig
 			}
-		} else {
-			security.MutualTLS.CertificateAuthority.Istiod.Type = v2.IstioCertificateSignerTypePrivateKey
+		case v2.IstioCertificateSignerTypePrivateKey:
+			istiod.Type = v2.IstioCertificateSignerTypePrivateKey
 			if rootCADir, ok, err := in.GetString("pilot.env.ROOT_CA_DIR"); ok {
-				security.MutualTLS.CertificateAuthority.Istiod.PrivateKey = &v2.IstioPrivateKeyCertificateSignerConfig{
+				istiod.PrivateKey = &v2.IstioPrivateKeyCertificateSignerConfig{
 					RootCADir: rootCADir,
 				}
 			} else if err != nil {
@@ -296,34 +323,32 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 			}
 		}
 		if workloadCertTTLDefault, ok, err := in.GetString("pilot.env.DEFAULT_WORKLOAD_CERT_TTL"); ok {
-			security.MutualTLS.CertificateAuthority.Istiod.WorkloadCertTTLDefault = workloadCertTTLDefault
-			if workloadCertTTLMax, ok, err := in.GetString("pilot.env.MAX_WORKLOAD_CERT_TTL"); ok {
-				security.MutualTLS.CertificateAuthority.Istiod.WorkloadCertTTLMax = workloadCertTTLMax
-			} else if err != nil {
-				return err
-			}
+			istiod.WorkloadCertTTLDefault = workloadCertTTLDefault
 		} else if err != nil {
 			return err
 		} else if workloadCertTTLDefault, ok, err := in.GetString("security.workloadCertTtl"); ok {
-			security.MutualTLS.CertificateAuthority.Istiod.WorkloadCertTTLDefault = workloadCertTTLDefault
+			istiod.WorkloadCertTTLDefault = workloadCertTTLDefault
 		} else if err != nil {
 			return err
 		}
-	} else if err != nil {
-		return err
-	} else if caAddress, ok, err := in.GetString("global.caAddress"); ok && caAddress != "" {
-		security.MutualTLS.CertificateAuthority = v2.CertificateAuthorityConfig{
-			Type: v2.CertificateAuthorityTypeCustom,
-			Custom: &v2.CustomCertificateAuthorityConfig{
-				Address: caAddress,
-			},
+		if workloadCertTTLMax, ok, err := in.GetString("pilot.env.MAX_WORKLOAD_CERT_TTL"); ok {
+			istiod.WorkloadCertTTLMax = workloadCertTTLMax
+		} else if err != nil {
+			return err
 		}
-		setSecurity = true
-	} else if err != nil {
-		return err
-	} else {
-		// not using custom ca and selfSigned is not defined
-		// leave CertificateAuthority field unset
+	case v2.CertificateAuthorityTypeCustom:
+		security.MutualTLS.CertificateAuthority = v2.CertificateAuthorityConfig{
+			Type:   v2.CertificateAuthorityTypeCustom,
+			Custom: &v2.CustomCertificateAuthorityConfig{},
+		}
+		if caAddress, ok, err := in.GetString("global.caAddress"); ok {
+			security.MutualTLS.CertificateAuthority.Custom.Address = caAddress
+			setSecurity = true
+		} else if err != nil {
+			return err
+		}
+	case "":
+		// don't configure CA
 	}
 
 	// Identity

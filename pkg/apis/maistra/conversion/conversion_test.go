@@ -54,6 +54,14 @@ func TestCompletePolicyConversionFromV2(t *testing.T) {
 	runTestCasesFromV2(policyTestCases, t)
 }
 
+func TestCompleteTelemetryConversionFromV2(t *testing.T) {
+	runTestCasesFromV2(telemetryTestCases, t)
+}
+
+func TestCompleteSecurityConversionFromV2(t *testing.T) {
+	runTestCasesFromV2(securityTestCases, t)
+}
+
 func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 	t.Helper()
 	for _, tc := range testCases {
