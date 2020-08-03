@@ -7,10 +7,12 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -101,7 +103,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		return
 	}
 
-if r.renderings == nil {
+	if r.renderings == nil {
 		// error handling
 		defer func() {
 			if err != nil {
@@ -235,6 +237,16 @@ if r.renderings == nil {
 		}
 	}
 
+	// validate generated manifests
+	// this has to be done always before applying because the memberroll might have changed
+	err = r.validateManifests(ctx)
+	if err != nil {
+		reconciliationReason = status.ConditionReasonReconcileError
+		reconciliationMessage = "Error validating generated manifests"
+		err = errors.Wrap(err, reconciliationMessage)
+		return
+	}
+
 	// create components
 	for _, charts := range r.getChartsInInstallationOrder(version.Strategy().GetChartInstallOrder()) {
 		r.waitForComponents = sets.NewString()
@@ -327,6 +339,55 @@ func (r *controlPlaneInstanceReconciler) validateSMCPSpec(spec v1.ControlPlaneSp
 
 	if _, ok, _ := spec.Istio.GetMap("global"); !ok {
 		return fmt.Errorf("ServiceMeshControlPlane missing %s.istio.global section", basePath)
+	}
+	return nil
+}
+
+func (r *controlPlaneInstanceReconciler) validateManifests(ctx context.Context) error {
+	log := common.LogFromContext(ctx)
+	allErrors := []error{}
+	// validate resource namespaces
+	smmr := &v1.ServiceMeshMemberRoll{}
+	var smmrRetrievalError error
+	if smmrRetrievalError = r.Client.Get(context.TODO(), client.ObjectKey{Namespace: r.Instance.GetNamespace(), Name: common.MemberRollName}, smmr); smmrRetrievalError != nil {
+		if !apierrors.IsNotFound(smmrRetrievalError) {
+			// log error, but don't fail validation just yet: we'll just assume that the control plane namespace is the only namespace for now
+			// if we end up failing validation because of this assumption, we'll return this error
+			log.Error(smmrRetrievalError, "failed to retrieve SMMR for SMCP")
+			smmr = nil
+		}
+	}
+	meshNamespaces := common.GetMeshNamespaces(r.Instance.GetNamespace(), smmr)
+	for _, manifestList := range r.renderings {
+		for _, manifestBundle := range manifestList {
+			for _, manifest := range strings.Split(manifestBundle.Content, "---") {
+				obj := map[string]interface{}{}
+				err := yaml.Unmarshal([]byte(manifest), &obj)
+				if err != nil || obj == nil {
+					continue
+				}
+				metadata, ok := obj["metadata"].(map[string]interface{})
+				if !ok {
+					// if it doesn't have a metadata section, ignore
+					continue
+				}
+				objNs, ok := metadata["namespace"].(string)
+				if !ok {
+					// if namespace is not set, ignore
+					continue
+				}
+				if !meshNamespaces.Has(objNs) {
+					allErrors = append(allErrors, fmt.Errorf("%s: namespace of manifest %s/%s not in mesh", manifestBundle.Name, metadata["namespace"], metadata["name"]))
+				}
+			}
+		}
+	}
+	if len(allErrors) > 0 {
+		// if validation fails because we couldn't Get() the SMMR, return that error
+		if smmrRetrievalError != nil {
+			return smmrRetrievalError
+		}
+		return utilerrors.NewAggregate(allErrors)
 	}
 	return nil
 }
@@ -476,4 +537,3 @@ func componentFromChartName(chartName string) string {
 	_, componentName := path.Split(chartName)
 	return componentName
 }
-
