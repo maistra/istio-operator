@@ -16,18 +16,18 @@ import (
 )
 
 var (
-	prometheusTestAddress  = "prometheus.other-namespace.svc.cluster.local:9000"
-	prometheusTestNodePort = int32(12345)
+	grafanaTestAddress  = "grafana.other-namespace.svc.cluster.local:3001"
+	grafanaTestNodePort = int32(12345)
 )
 
-var prometheusTestCases = []conversionTestCase{
+var grafanaTestCases = []conversionTestCase{
 	{
 		name: "nil." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: nil,
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: nil,
 				},
 			},
 		},
@@ -53,8 +53,8 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{},
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{},
 				},
 			},
 		},
@@ -80,8 +80,8 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
 						Enablement: v2.Enablement{
 							Enabled: &featureEnabled,
 						},
@@ -90,7 +90,7 @@ var prometheusTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"prometheus": map[string]interface{}{
+			"grafana": map[string]interface{}{
 				"enabled": true,
 			},
 		}),
@@ -115,16 +115,18 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Address: &prometheusTestAddress,
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Address: &grafanaTestAddress,
 					},
 				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"kiali": map[string]interface{}{
-				"prometheusAddr": "prometheus.other-namespace.svc.cluster.local:9000",
+				"dashboard": map[string]interface{}{
+					"grafanaURL": "grafana.other-namespace.svc.cluster.local:3001",
+				},
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -148,9 +150,9 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{},
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Install: &v2.GrafanaInstallConfig{},
 					},
 				},
 			},
@@ -173,17 +175,20 @@ var prometheusTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "install.misc." + versions.V2_0.String(),
+		name: "install.env." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{
-							UseTLS: &featureEnabled,
-							Config: v2.PrometheusConfig{
-								Retention:      "6h",
-								ScrapeInterval: "15s",
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Install: &v2.GrafanaInstallConfig{
+							Config: v2.GrafanaConfig{
+								Env: map[string]string{
+									"GF_SMTP_ENABLED": "true",
+								},
+								EnvSecrets: map[string]string{
+									"GF_SMTP_USER": "grafana-secrets",
+								},
 							},
 						},
 					},
@@ -191,10 +196,13 @@ var prometheusTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"prometheus": map[string]interface{}{
-				"provisionPrometheusCert": true,
-				"retention":               "6h",
-				"scrapeInterval":          "15s",
+			"grafana": map[string]interface{}{
+				"env": map[string]interface{}{
+					"GF_SMTP_ENABLED": "true",
+				},
+				"envSecrets": map[string]interface{}{
+					"GF_SMTP_USER": "grafana-secrets",
+				},
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -214,17 +222,50 @@ var prometheusTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "install.misc." + versions.V1_1.String(),
+		name: "install.persistence.defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
-			Version: versions.V1_1.String(),
+			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{
-							UseTLS: &featureEnabled,
-							Config: v2.PrometheusConfig{
-								Retention:      "6h",
-								ScrapeInterval: "15s",
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Install: &v2.GrafanaInstallConfig{
+							Persistence: &v2.ComponentPersistenceConfig{},
+						},
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+			"istio_cni": map[string]interface{}{
+				"enabled": true,
+			},
+		}),
+	},
+	{
+		name: "install.persistence.simple." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Addons: &v2.AddonsConfig{
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Install: &v2.GrafanaInstallConfig{
+							Persistence: &v2.ComponentPersistenceConfig{
+								Enablement: v2.Enablement{
+									Enabled: &featureEnabled,
+								},
+								AccessMode:       corev1.ReadWriteOnce,
+								StorageClassName: "standarad",
 							},
 						},
 					},
@@ -232,12 +273,172 @@ var prometheusTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"prometheus": map[string]interface{}{
-				"security": map[string]interface{}{
-					"enabled": true,
+			"grafana": map[string]interface{}{
+				"accessMode":       "ReadWriteOnce",
+				"persist":          true,
+				"storageClassName": "standarad",
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
 				},
-				"retention":      "6h",
-				"scrapeInterval": "15s",
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+			"istio_cni": map[string]interface{}{
+				"enabled": true,
+			},
+		}),
+	},
+	{
+		name: "install.persistence.resources.defaults." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Addons: &v2.AddonsConfig{
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Install: &v2.GrafanaInstallConfig{
+							Persistence: &v2.ComponentPersistenceConfig{
+								Resources: &corev1.ResourceRequirements{},
+							},
+						},
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+			"istio_cni": map[string]interface{}{
+				"enabled": true,
+			},
+		}),
+	},
+	{
+		name: "install.persistence.resources.values." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Addons: &v2.AddonsConfig{
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Install: &v2.GrafanaInstallConfig{
+							Persistence: &v2.ComponentPersistenceConfig{
+								Resources: &corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										corev1.ResourceStorage: resource.MustParse("5Gi"),
+									},
+									Limits: corev1.ResourceList{
+										corev1.ResourceStorage: resource.MustParse("25Gi"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"grafana": map[string]interface{}{
+				"persistenceResources": map[string]interface{}{
+					"limits": map[string]interface{}{
+						"storage": "25Gi",
+					},
+					"requests": map[string]interface{}{
+						"storage": "5Gi",
+					},
+				},
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+			"istio_cni": map[string]interface{}{
+				"enabled": true,
+			},
+		}),
+	},
+	{
+		name: "install.security.defaults." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Addons: &v2.AddonsConfig{
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Install: &v2.GrafanaInstallConfig{
+							Security: &v2.GrafanaSecurityConfig{},
+						},
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+			"istio_cni": map[string]interface{}{
+				"enabled": true,
+			},
+		}),
+	},
+	{
+		name: "install.security.full." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Addons: &v2.AddonsConfig{
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Install: &v2.GrafanaInstallConfig{
+							Security: &v2.GrafanaSecurityConfig{
+								Enablement: v2.Enablement{
+									Enabled: &featureEnabled,
+								},
+								PassphraseKey: "passphrase",
+								SecretName:    "htpasswd",
+								UsernameKey:   "username",
+							},
+						},
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"grafana": map[string]interface{}{
+				"security": map[string]interface{}{
+					"enabled":       true,
+					"passphraseKey": "passphrase",
+					"secretName":    "htpasswd",
+					"usernameKey":   "username",
+				},
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -261,9 +462,9 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Install: &v2.GrafanaInstallConfig{
 							Service: v2.ComponentServiceConfig{
 								Metadata: v2.MetadataConfig{
 									Annotations: map[string]string{
@@ -280,7 +481,7 @@ var prometheusTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"prometheus": map[string]interface{}{
+			"grafana": map[string]interface{}{
 				"service": map[string]interface{}{
 					"annotations": map[string]interface{}{
 						"some-service-annotation": "service-annotation-value",
@@ -312,9 +513,9 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Install: &v2.GrafanaInstallConfig{
 							Service: v2.ComponentServiceConfig{
 								Ingress: &v2.ComponentIngressConfig{},
 							},
@@ -345,17 +546,17 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Install: &v2.GrafanaInstallConfig{
 							Service: v2.ComponentServiceConfig{
 								Ingress: &v2.ComponentIngressConfig{
 									Enablement: v2.Enablement{
 										Enabled: &featureEnabled,
 									},
-									ContextPath: "/prometheus",
+									ContextPath: "/grafana",
 									Hosts: []string{
-										"prometheus.example.com",
+										"grafana.example.com",
 									},
 									Metadata: v2.MetadataConfig{
 										Annotations: map[string]string{
@@ -376,10 +577,10 @@ var prometheusTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"prometheus": map[string]interface{}{
+			"grafana": map[string]interface{}{
 				"ingress": map[string]interface{}{
 					"enabled":     true,
-					"contextPath": "/prometheus",
+					"contextPath": "/grafana",
 					"annotations": map[string]interface{}{
 						"ingress-annotation": "ingress-annotation-value",
 					},
@@ -387,7 +588,7 @@ var prometheusTestCases = []conversionTestCase{
 						"ingress-label": "ingress-label-value",
 					},
 					"hosts": []interface{}{
-						"prometheus.example.com",
+						"grafana.example.com",
 					},
 					"tls": map[string]interface{}{
 						"termination": "reencrypt",
@@ -416,9 +617,9 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Install: &v2.GrafanaInstallConfig{
 							Service: v2.ComponentServiceConfig{
 								NodePort: &prometheusTestNodePort,
 							},
@@ -428,7 +629,7 @@ var prometheusTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"prometheus": map[string]interface{}{
+			"grafana": map[string]interface{}{
 				"service": map[string]interface{}{
 					"nodePort": map[string]interface{}{
 						"enabled": true,
@@ -458,9 +659,9 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Install: &v2.GrafanaInstallConfig{
 							Runtime: &v2.ComponentRuntimeConfig{},
 						},
 					},
@@ -468,7 +669,7 @@ var prometheusTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"prometheus": map[string]interface{}{
+			"grafana": map[string]interface{}{
 				"autoscaleEnabled": false,
 			},
 		}),
@@ -493,9 +694,9 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Install: &v2.GrafanaInstallConfig{
 							Runtime: &v2.ComponentRuntimeConfig{
 								Deployment: v2.DeploymentRuntimeConfig{
 									Replicas: &replicaCount2,
@@ -561,7 +762,7 @@ var prometheusTestCases = []conversionTestCase{
 										},
 									},
 									Containers: map[string]v2.ContainerConfig{
-										"prometheus": {
+										"grafana": {
 											CommonContainerConfig: v2.CommonContainerConfig{
 												ImageRegistry:   "custom-registry",
 												ImageTag:        "test",
@@ -582,7 +783,7 @@ var prometheusTestCases = []conversionTestCase{
 													},
 												},
 											},
-											Image: "custom-prometheus",
+											Image: "custom-grafana",
 										},
 									},
 								},
@@ -593,7 +794,7 @@ var prometheusTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"prometheus": map[string]interface{}{
+			"grafana": map[string]interface{}{
 				"autoscaleEnabled":      false,
 				"replicaCount":          2,
 				"rollingMaxSurge":       1,
@@ -638,7 +839,7 @@ var prometheusTestCases = []conversionTestCase{
 					"some-pod-label": "pod-label-value",
 				},
 				"hub":             "custom-registry",
-				"image":           "custom-prometheus",
+				"image":           "custom-grafana",
 				"tag":             "test",
 				"imagePullPolicy": "Always",
 				"imagePullSecrets": []interface{}{
@@ -677,9 +878,9 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{
+				Visualization: v2.VisualizationAddonsConfig{
+					Grafana: &v2.GrafanaAddonConfig{
+						Install: &v2.GrafanaInstallConfig{
 							Runtime: &v2.ComponentRuntimeConfig{
 								Deployment: v2.DeploymentRuntimeConfig{
 									Replicas: &replicaCount2,
@@ -702,7 +903,7 @@ var prometheusTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"prometheus": map[string]interface{}{
+			"grafana": map[string]interface{}{
 				"autoscaleEnabled": true,
 				"autoscaleMax":     5,
 				"autoscaleMin":     1,
@@ -732,8 +933,8 @@ var prometheusTestCases = []conversionTestCase{
 	},
 }
 
-func TestPrometheusConversionFromV2(t *testing.T) {
-	for _, tc := range prometheusTestCases {
+func TestGrafanaConversionFromV2(t *testing.T) {
+	for _, tc := range grafanaTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			specCopy := tc.spec.DeepCopy()
 			helmValues := v1.NewHelmValues(make(map[string]interface{}))

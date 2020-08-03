@@ -18,9 +18,9 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 		}
 	}
 	defer func() {
-		if len(prometheusValues) > 0 {
-			if err := setHelmValue(values, "prometheus", prometheusValues); err != nil {
-				if reterr == nil {
+		if reterr == nil {
+			if len(prometheusValues) > 0 {
+				if err := setHelmValue(values, "prometheus", prometheusValues); err != nil {
 					reterr = err
 				}
 			}

@@ -104,10 +104,22 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 		return err
 	} else if !ok || len(rawKialiValues) == 0 {
 		return nil
-	} else if _, promAddrExists := rawKialiValues["prometheusAddr"]; promAddrExists && len(rawKialiValues) == 1 {
+	}
+
+	// remove values not configured through kiali addon
+	kialiValues := v1.NewHelmValues(rawKialiValues).DeepCopy()
+	delete(kialiValues.GetContent(), "prometheusAddr")
+	if dashboardValues, ok, err := kialiValues.GetMap("dashboard"); ok {
+		delete(dashboardValues, "grafanaURL")
+		if len(dashboardValues) == 0 {
+			delete(kialiValues.GetContent(), "dashboard")
+		}
+	} else if err != nil {
 		return nil
 	}
-	kialiValues := v1.NewHelmValues(rawKialiValues)
+	if len(kialiValues.GetContent()) == 0 {
+		return nil
+	}
 
 	kiali := &v2.KialiAddonConfig{}
 

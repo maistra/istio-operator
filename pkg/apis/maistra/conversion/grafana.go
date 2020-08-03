@@ -9,20 +9,8 @@ import (
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
-func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[string]interface{}) error {
+func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[string]interface{}) (reterr error) {
 	if grafana == nil {
-		return nil
-	}
-
-	// Install takes precedence
-	if grafana.Install == nil {
-		// we don't want to process the charts
-		if err := setHelmBoolValue(values, "grafana.enabled", false); err != nil {
-			return err
-		}
-		if grafana.Address != nil {
-			return setHelmStringValue(values, "kiali.dashboard.grafanaURL", *grafana.Address)
-		}
 		return nil
 	}
 
@@ -32,6 +20,25 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 			return err
 		}
 	}
+	defer func() {
+		if reterr == nil {
+			if len(grafanaValues) > 0 {
+				if err := setHelmValue(values, "grafana", grafanaValues); err != nil {
+					reterr = err
+				}
+			}
+		}
+	}()
+
+	// Install takes precedence
+	if grafana.Install == nil {
+		// we don't want to process the charts
+		if grafana.Address != nil {
+			return setHelmStringValue(values, "kiali.dashboard.grafanaURL", *grafana.Address)
+		}
+		return nil
+	}
+
 	if len(grafana.Install.Config.Env) > 0 {
 		if err := setHelmStringMapValue(grafanaValues, "env", grafana.Install.Config.Env); err != nil {
 			return err
@@ -61,7 +68,7 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 		if grafana.Install.Persistence.Resources != nil {
 			if resourcesValues, err := toValues(grafana.Install.Persistence.Resources); err == nil {
 				if len(resourcesValues) > 0 {
-					if err := setHelmValue(values, "persistenceResources", resourcesValues); err != nil {
+					if err := setHelmValue(grafanaValues, "persistenceResources", resourcesValues); err != nil {
 						return err
 					}
 				}
@@ -70,23 +77,8 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 			}
 		}
 	}
-	if grafana.Install.Service.Ingress != nil {
-		ingressValues := make(map[string]interface{})
-		if err := populateAddonIngressValues(grafana.Install.Service.Ingress, ingressValues); err == nil {
-			if len(ingressValues) > 0 {
-				if err := setHelmValue(grafanaValues, "ingress", ingressValues); err != nil {
-					return err
-				}
-			}
-		} else {
-			return err
-		}
-	}
-	// XXX: skipping most service settings for now
-	if len(grafana.Install.Service.Metadata.Annotations) > 0 {
-		if err := setHelmStringMapValue(grafanaValues, "service.annotations", grafana.Install.Service.Metadata.Annotations); err != nil {
-			return err
-		}
+	if err := populateComponentServiceValues(&grafana.Install.Service, grafanaValues); err != nil {
+		return err
 	}
 	if grafana.Install.Security != nil {
 		if grafana.Install.Security.Enabled != nil {
@@ -111,13 +103,19 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 		}
 	}
 
-	if err := populateRuntimeValues(grafana.Install.Runtime, grafanaValues); err != nil {
-		return err
-	}
-
-	if len(grafanaValues) > 0 {
-		if err := setHelmValue(values, "grafana", grafanaValues); err != nil {
+	runtime := grafana.Install.Runtime
+	if runtime != nil {
+		if err := populateRuntimeValues(runtime, grafanaValues); err != nil {
 			return err
+		}
+
+		// set image and resources
+		if runtime.Pod.Containers != nil {
+			if container, ok := runtime.Pod.Containers["grafana"]; ok {
+				if err := populateContainerConfigValues(&container, grafanaValues); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -162,13 +160,15 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 		return err
 	}
 
-	grafana.Install = &v2.GrafanaInstallConfig{}
+	install := &v2.GrafanaInstallConfig{}
+	setInstall := false
 
 	if rawEnv, ok, err := grafanaValues.GetMap("env"); ok {
-		grafana.Install.Config.Env = make(map[string]string)
+		setInstall = true
+		install.Config.Env = make(map[string]string)
 		for key, value := range rawEnv {
 			if stringValue, ok := value.(string); ok {
-				grafana.Install.Config.Env[key] = stringValue
+				install.Config.Env[key] = stringValue
 			} else {
 				return fmt.Errorf("error casting env value to string")
 			}
@@ -177,10 +177,11 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 		return err
 	}
 	if rawEnv, ok, err := grafanaValues.GetMap("envSecrets"); ok {
-		grafana.Install.Config.EnvSecrets = make(map[string]string)
+		setInstall = true
+		install.Config.EnvSecrets = make(map[string]string)
 		for key, value := range rawEnv {
 			if stringValue, ok := value.(string); ok {
-				grafana.Install.Config.EnvSecrets[key] = stringValue
+				install.Config.EnvSecrets[key] = stringValue
 			} else {
 				return fmt.Errorf("error casting envSecrets value to string")
 			}
@@ -220,11 +221,14 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 		return err
 	}
 	if setPersistenceConfig {
-		grafana.Install.Persistence = &persistenceConfig
+		install.Persistence = &persistenceConfig
+		setInstall = true
 	}
 
-	if _, err := populateComponentServiceConfig(grafanaValues, &grafana.Install.Service); err != nil {
+	if applied, err := populateComponentServiceConfig(grafanaValues, &install.Service); err != nil {
 		return err
+	} else if applied {
+		setInstall = true
 	}
 
 	securityConfig := v2.GrafanaSecurityConfig{}
@@ -254,14 +258,34 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 		return err
 	}
 	if setSecurityConfig {
-		grafana.Install.Security = &securityConfig
+		install.Security = &securityConfig
+		setInstall = true
 	}
 
 	runtime := &v2.ComponentRuntimeConfig{}
-	if applied, err := runtimeValuesToComponentRuntimeConfig(in, runtime); err != nil {
+	if applied, err := runtimeValuesToComponentRuntimeConfig(grafanaValues, runtime); err != nil {
 		return err
 	} else if applied {
-		grafana.Install.Runtime = runtime
+		install.Runtime = runtime
+		setInstall = true
+	}
+	container := v2.ContainerConfig{}
+	// non-istiod
+	if applied, err := populateContainerConfig(grafanaValues, &container); err != nil {
+		return err
+	} else if applied {
+		if install.Runtime == nil {
+			install.Runtime = runtime
+			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
+		} else if runtime.Pod.Containers == nil {
+			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
+		}
+		install.Runtime.Pod.Containers["grafana"] = container
+		setInstall = true
+	}
+
+	if setInstall {
+		grafana.Install = install
 	}
 
 	return nil
