@@ -42,7 +42,6 @@ spec:
   external_services:
     grafana:
       auth:
-        ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
         type: "basic"
         use_kiali_token: false
         username: "internal"
@@ -56,7 +55,6 @@ spec:
 {{- end }}
     prometheus:
       auth:
-        ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
         type: "basic"
         use_kiali_token: false
         username: "internal"
@@ -64,7 +62,6 @@ spec:
       url: "https://prometheus.{{ .Release.Namespace }}.svc:9090"
     tracing:
       auth:
-        ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
         type: "basic"
         use_kiali_token: false
         username: "internal"
