@@ -690,11 +690,10 @@ func populateMixerTelemetryConfig(in *v1.HelmValues, out *v2.MixerTelemetryConfi
 	} else if applied {
 		if out.Runtime == nil {
 			out.Runtime = runtime
-			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
-		} else if runtime.Pod.Containers == nil {
-			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
 		}
-		out.Runtime.Pod.Containers["mixer"] = container
+		runtime.Pod.Containers = map[string]v2.ContainerConfig{
+			"mixer": container,
+		}
 		setValues = true
 	}
 	// istiod (this will just overwrite whatever was previously written)

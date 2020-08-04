@@ -16,18 +16,17 @@ import (
 )
 
 var (
-	grafanaTestAddress  = "grafana.other-namespace.svc.cluster.local:3001"
-	grafanaTestNodePort = int32(12345)
+	kialiTestNodePort = int32(12345)
 )
 
-var grafanaTestCases = []conversionTestCase{
+var kialiTestCases = []conversionTestCase{
 	{
 		name: "nil." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
 				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: nil,
+					Kiali: nil,
 				},
 			},
 		},
@@ -54,7 +53,7 @@ var grafanaTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
 				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{},
+					Kiali: &v2.KialiAddonConfig{},
 				},
 			},
 		},
@@ -76,57 +75,24 @@ var grafanaTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "enablement." + versions.V2_0.String(),
+		name: "simple." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
 				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
+					Kiali: &v2.KialiAddonConfig{
 						Enablement: v2.Enablement{
 							Enabled: &featureEnabled,
 						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"grafana": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
-	},
-	{
-		name: "existing." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Address: &grafanaTestAddress,
+						Name: "my-kiali",
 					},
 				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"kiali": map[string]interface{}{
-				"dashboard": map[string]interface{}{
-					"grafanaURL": "grafana.other-namespace.svc.cluster.local:3001",
-				},
+				"enabled":      true,
+				"resourceName": "my-kiali",
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -151,13 +117,18 @@ var grafanaTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
 				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{},
+					Kiali: &v2.KialiAddonConfig{
+						Name:    "my-kiali",
+						Install: &v2.KialiInstallConfig{},
 					},
 				},
 			},
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"kiali": map[string]interface{}{
+				"resourceName": "my-kiali",
+			},
+		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"useMCP": true,
@@ -175,19 +146,20 @@ var grafanaTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "install.env." + versions.V2_0.String(),
+		name: "install.config.simple." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
 				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Config: v2.GrafanaConfig{
-								Env: map[string]string{
-									"GF_SMTP_ENABLED": "true",
-								},
-								EnvSecrets: map[string]string{
-									"GF_SMTP_USER": "grafana-secrets",
+					Kiali: &v2.KialiAddonConfig{
+						Name: "my-kiali",
+						Install: &v2.KialiInstallConfig{
+							Config: v2.KialiConfig{
+								Dashboard: v2.KialiDashboardConfig{
+									EnableGrafana:    &featureEnabled,
+									EnablePrometheus: &featureEnabled,
+									EnableTracing:    &featureDisabled,
+									ViewOnly:         &featureEnabled,
 								},
 							},
 						},
@@ -196,248 +168,13 @@ var grafanaTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"grafana": map[string]interface{}{
-				"env": map[string]interface{}{
-					"GF_SMTP_ENABLED": "true",
-				},
-				"envSecrets": map[string]interface{}{
-					"GF_SMTP_USER": "grafana-secrets",
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
-	},
-	{
-		name: "install.persistence.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Persistence: &v2.ComponentPersistenceConfig{},
-						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
-	},
-	{
-		name: "install.persistence.simple." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Persistence: &v2.ComponentPersistenceConfig{
-								Enablement: v2.Enablement{
-									Enabled: &featureEnabled,
-								},
-								AccessMode:       corev1.ReadWriteOnce,
-								StorageClassName: "standarad",
-							},
-						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"grafana": map[string]interface{}{
-				"accessMode":       "ReadWriteOnce",
-				"persist":          true,
-				"storageClassName": "standarad",
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
-	},
-	{
-		name: "install.persistence.resources.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Persistence: &v2.ComponentPersistenceConfig{
-								Resources: &corev1.ResourceRequirements{},
-							},
-						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
-	},
-	{
-		name: "install.persistence.resources.values." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Persistence: &v2.ComponentPersistenceConfig{
-								Resources: &corev1.ResourceRequirements{
-									Requests: corev1.ResourceList{
-										corev1.ResourceStorage: resource.MustParse("5Gi"),
-									},
-									Limits: corev1.ResourceList{
-										corev1.ResourceStorage: resource.MustParse("25Gi"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"grafana": map[string]interface{}{
-				"persistenceResources": map[string]interface{}{
-					"limits": map[string]interface{}{
-						"storage": "25Gi",
-					},
-					"requests": map[string]interface{}{
-						"storage": "5Gi",
-					},
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
-	},
-	{
-		name: "install.security.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Security: &v2.GrafanaSecurityConfig{},
-						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
-	},
-	{
-		name: "install.security.full." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Security: &v2.GrafanaSecurityConfig{
-								Enablement: v2.Enablement{
-									Enabled: &featureEnabled,
-								},
-								PassphraseKey: "passphrase",
-								SecretName:    "htpasswd",
-								UsernameKey:   "username",
-							},
-						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"grafana": map[string]interface{}{
-				"security": map[string]interface{}{
-					"enabled":       true,
-					"passphraseKey": "passphrase",
-					"secretName":    "htpasswd",
-					"usernameKey":   "username",
+			"kiali": map[string]interface{}{
+				"resourceName": "my-kiali",
+				"dashboard": map[string]interface{}{
+					"enableGrafana":    true,
+					"enablePrometheus": true,
+					"enableTracing":    false,
+					"viewOnlyMode":     true,
 				},
 			},
 		}),
@@ -463,8 +200,9 @@ var grafanaTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
 				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Name: "my-kiali",
+						Install: &v2.KialiInstallConfig{
 							Service: v2.ComponentServiceConfig{
 								Metadata: v2.MetadataConfig{
 									Annotations: map[string]string{
@@ -481,7 +219,8 @@ var grafanaTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"grafana": map[string]interface{}{
+			"kiali": map[string]interface{}{
+				"resourceName": "my-kiali",
 				"service": map[string]interface{}{
 					"annotations": map[string]interface{}{
 						"some-service-annotation": "service-annotation-value",
@@ -514,8 +253,9 @@ var grafanaTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
 				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Name: "my-kiali",
+						Install: &v2.KialiInstallConfig{
 							Service: v2.ComponentServiceConfig{
 								Ingress: &v2.ComponentIngressConfig{},
 							},
@@ -524,7 +264,11 @@ var grafanaTestCases = []conversionTestCase{
 				},
 			},
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"kiali": map[string]interface{}{
+				"resourceName": "my-kiali",
+			},
+		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"useMCP": true,
@@ -547,16 +291,17 @@ var grafanaTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
 				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Name: "my-kiali",
+						Install: &v2.KialiInstallConfig{
 							Service: v2.ComponentServiceConfig{
 								Ingress: &v2.ComponentIngressConfig{
 									Enablement: v2.Enablement{
 										Enabled: &featureEnabled,
 									},
-									ContextPath: "/grafana",
+									ContextPath: "/kiali",
 									Hosts: []string{
-										"grafana.example.com",
+										"kiali.example.com",
 									},
 									Metadata: v2.MetadataConfig{
 										Annotations: map[string]string{
@@ -577,10 +322,11 @@ var grafanaTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"grafana": map[string]interface{}{
+			"kiali": map[string]interface{}{
+				"resourceName": "my-kiali",
 				"ingress": map[string]interface{}{
 					"enabled":     true,
-					"contextPath": "/grafana",
+					"contextPath": "/kiali",
 					"annotations": map[string]interface{}{
 						"ingress-annotation": "ingress-annotation-value",
 					},
@@ -588,7 +334,7 @@ var grafanaTestCases = []conversionTestCase{
 						"ingress-label": "ingress-label-value",
 					},
 					"hosts": []interface{}{
-						"grafana.example.com",
+						"kiali.example.com",
 					},
 					"tls": map[string]interface{}{
 						"termination": "reencrypt",
@@ -618,10 +364,11 @@ var grafanaTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
 				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Name: "my-kiali",
+						Install: &v2.KialiInstallConfig{
 							Service: v2.ComponentServiceConfig{
-								NodePort: &grafanaTestNodePort,
+								NodePort: &kialiTestNodePort,
 							},
 						},
 					},
@@ -629,7 +376,8 @@ var grafanaTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"grafana": map[string]interface{}{
+			"kiali": map[string]interface{}{
+				"resourceName": "my-kiali",
 				"service": map[string]interface{}{
 					"nodePort": map[string]interface{}{
 						"enabled": true,
@@ -660,8 +408,9 @@ var grafanaTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
 				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Name: "my-kiali",
+						Install: &v2.KialiInstallConfig{
 							Runtime: &v2.ComponentRuntimeConfig{},
 						},
 					},
@@ -669,7 +418,8 @@ var grafanaTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"grafana": map[string]interface{}{
+			"kiali": map[string]interface{}{
+				"resourceName":     "my-kiali",
 				"autoscaleEnabled": false,
 			},
 		}),
@@ -695,8 +445,8 @@ var grafanaTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
 				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Install: &v2.KialiInstallConfig{
 							Runtime: &v2.ComponentRuntimeConfig{
 								Deployment: v2.DeploymentRuntimeConfig{
 									Replicas: &replicaCount2,
@@ -762,7 +512,7 @@ var grafanaTestCases = []conversionTestCase{
 										},
 									},
 									Containers: map[string]v2.ContainerConfig{
-										"grafana": {
+										"kiali": {
 											CommonContainerConfig: v2.CommonContainerConfig{
 												ImageRegistry:   "custom-registry",
 												ImageTag:        "test",
@@ -783,7 +533,7 @@ var grafanaTestCases = []conversionTestCase{
 													},
 												},
 											},
-											Image: "custom-grafana",
+											Image: "custom-kiali",
 										},
 									},
 								},
@@ -794,7 +544,7 @@ var grafanaTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"grafana": map[string]interface{}{
+			"kiali": map[string]interface{}{
 				"autoscaleEnabled":      false,
 				"replicaCount":          2,
 				"rollingMaxSurge":       1,
@@ -839,7 +589,7 @@ var grafanaTestCases = []conversionTestCase{
 					"some-pod-label": "pod-label-value",
 				},
 				"hub":             "custom-registry",
-				"image":           "custom-grafana",
+				"image":           "custom-kiali",
 				"tag":             "test",
 				"imagePullPolicy": "Always",
 				"imagePullSecrets": []interface{}{
@@ -879,8 +629,8 @@ var grafanaTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
 				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Install: &v2.KialiInstallConfig{
 							Runtime: &v2.ComponentRuntimeConfig{
 								Deployment: v2.DeploymentRuntimeConfig{
 									Replicas: &replicaCount2,
@@ -903,7 +653,7 @@ var grafanaTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"grafana": map[string]interface{}{
+			"kiali": map[string]interface{}{
 				"autoscaleEnabled": true,
 				"autoscaleMax":     5,
 				"autoscaleMin":     1,
@@ -933,8 +683,8 @@ var grafanaTestCases = []conversionTestCase{
 	},
 }
 
-func TestGrafanaConversionFromV2(t *testing.T) {
-	for _, tc := range grafanaTestCases {
+func TestKialiConversionFromV2(t *testing.T) {
+	for _, tc := range kialiTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			specCopy := tc.spec.DeepCopy()
 			helmValues := v1.NewHelmValues(make(map[string]interface{}))

@@ -71,6 +71,10 @@ func TestCompleteGrafanaConversionFromV2(t *testing.T) {
 	runTestCasesFromV2(grafanaTestCases, t)
 }
 
+func TestCompleteKialiConversionFromV2(t *testing.T) {
+	runTestCasesFromV2(kialiTestCases, t)
+}
+
 func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 	scheme := runtime.NewScheme()
 	v1.SchemeBuilder.AddToScheme(scheme)

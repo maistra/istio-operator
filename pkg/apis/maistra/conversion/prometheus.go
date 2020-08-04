@@ -152,11 +152,10 @@ func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) erro
 	} else if applied {
 		if install.Runtime == nil {
 			install.Runtime = runtime
-			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
-		} else if runtime.Pod.Containers == nil {
-			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
 		}
-		install.Runtime.Pod.Containers["prometheus"] = container
+		install.Runtime.Pod.Containers = map[string]v2.ContainerConfig{
+			"prometheus": container,
+		}
 		setInstall = true
 	}
 

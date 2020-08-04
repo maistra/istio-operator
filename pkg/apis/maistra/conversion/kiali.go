@@ -5,27 +5,34 @@ import (
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
-func populateKialiAddonValues(kiali *v2.KialiAddonConfig, values map[string]interface{}) error {
+func populateKialiAddonValues(kiali *v2.KialiAddonConfig, values map[string]interface{}) (reterr error) {
 	if kiali == nil {
-		return nil
-	}
-	if err := setHelmStringValue(values, "kiali.resourceName", kiali.Name); err != nil {
-		return err
-	}
-
-	if kiali.Install == nil {
-		// we don't want to process the charts
-		if err := setHelmBoolValue(values, "kiali.enabled", false); err != nil {
-			return err
-		}
 		return nil
 	}
 
 	kialiValues := make(map[string]interface{})
+	if kiali.Name != "" {
+		if err := setHelmStringValue(kialiValues, "resourceName", kiali.Name); err != nil {
+			return err
+		}
+	}
 	if kiali.Enabled != nil {
 		if err := setHelmBoolValue(kialiValues, "enabled", *kiali.Enabled); err != nil {
 			return err
 		}
+	}
+	defer func() {
+		if reterr == nil {
+			if len(kialiValues) > 0 {
+				if err := setHelmValue(values, "kiali", kialiValues); err != nil {
+					reterr = err
+				}
+			}
+		}
+	}()
+
+	if kiali.Install == nil {
+		return nil
 	}
 
 	dashboardConfig := kiali.Install.Config.Dashboard
@@ -49,52 +56,26 @@ func populateKialiAddonValues(kiali *v2.KialiAddonConfig, values map[string]inte
 			return err
 		}
 	}
-	ingressValues := make(map[string]interface{})
-	if err := populateAddonIngressValues(kiali.Install.Service.Ingress, ingressValues); err == nil {
-		if len(ingressValues) > 0 {
-			if err := setHelmValue(kialiValues, "ingress", ingressValues); err != nil {
-				return err
-			}
-		}
-	} else {
+	if err := populateComponentServiceValues(&kiali.Install.Service, kialiValues); err != nil {
 		return err
 	}
 
-	if kiali.Install.Runtime != nil {
-		runtime := kiali.Install.Runtime
+	runtime := kiali.Install.Runtime
+	if runtime != nil {
 		if err := populateRuntimeValues(runtime, kialiValues); err != nil {
 			return err
 		}
 
-		if kialiContainer, ok := runtime.Pod.Containers["kiali"]; ok {
-			if kialiContainer.Image != "" {
-				if err := setHelmStringValue(kialiValues, "image", kialiContainer.Image); err != nil {
-					return err
-				}
-			}
-			if kialiContainer.ImageRegistry != "" {
-				if err := setHelmStringValue(kialiValues, "hub", kialiContainer.ImageRegistry); err != nil {
-					return err
-				}
-			}
-			if kialiContainer.ImageTag != "" {
-				if err := setHelmStringValue(kialiValues, "tag", kialiContainer.ImageTag); err != nil {
-					return err
-				}
-			}
-			if kialiContainer.ImagePullPolicy != "" {
-				if err := setHelmStringValue(kialiValues, "imagePullPolicy", string(kialiContainer.ImagePullPolicy)); err != nil {
+		// set image and resources
+		if runtime.Pod.Containers != nil {
+			if container, ok := runtime.Pod.Containers["kiali"]; ok {
+				if err := populateContainerConfigValues(&container, kialiValues); err != nil {
 					return err
 				}
 			}
 		}
 	}
 
-	if len(kialiValues) > 0 {
-		if err := setHelmValue(values, "kiali", kialiValues); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -123,12 +104,10 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 
 	kiali := &v2.KialiAddonConfig{}
 
-	if name, ok, err := kialiValues.GetString("resourceName"); err != nil {
-		return err
-	} else if !ok || name == "" {
-		kiali.Name = "kiali"
-	} else {
+	if name, ok, err := kialiValues.GetString("resourceName"); ok {
 		kiali.Name = name
+	} else if err != nil {
+		return err
 	}
 
 	if enabled, ok, err := kialiValues.GetBool("enabled"); ok {
@@ -138,8 +117,7 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 	}
 
 	install := &v2.KialiInstallConfig{}
-	// for v1, there's no way to disable install, so always create install
-	setInstall := true
+	setInstall := false
 	dashboardConfig := &install.Config.Dashboard
 
 	if viewOnlyMode, ok, err := kialiValues.GetBool("dashboard.viewOnlyMode"); ok {

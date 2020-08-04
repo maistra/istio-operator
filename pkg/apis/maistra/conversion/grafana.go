@@ -270,17 +270,15 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 		setInstall = true
 	}
 	container := v2.ContainerConfig{}
-	// non-istiod
 	if applied, err := populateContainerConfig(grafanaValues, &container); err != nil {
 		return err
 	} else if applied {
 		if install.Runtime == nil {
 			install.Runtime = runtime
-			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
-		} else if runtime.Pod.Containers == nil {
-			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
 		}
-		install.Runtime.Pod.Containers["grafana"] = container
+		install.Runtime.Pod.Containers = map[string]v2.ContainerConfig{
+			"grafana": container,
+		}
 		setInstall = true
 	}
 
