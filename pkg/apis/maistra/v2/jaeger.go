@@ -86,9 +86,8 @@ type JaegerElasticsearchStorageConfig struct {
 	Storage *v1.HelmValues `json:"storage,omitempty"`
 	// RedundancyPolicy configures the redundancy policy for elasticsearch
 	// .Values.tracing.jaeger.elasticsearch.redundancyPolicy, raw yaml
-	// XXX: RawExtension?
 	// +optional
-	RedundancyPolicy *v1.HelmValues `json:"redundancyPolicy,omitempty"`
+	RedundancyPolicy string `json:"redundancyPolicy,omitempty"`
 	// IndexCleaner represents the configuration for the elasticsearch index cleaner
 	// .Values.tracing.jaeger.elasticsearch.esIndexCleaner, raw yaml
 	// XXX: RawExtension?

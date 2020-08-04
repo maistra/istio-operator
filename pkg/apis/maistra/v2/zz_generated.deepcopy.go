@@ -1064,10 +1064,6 @@ func (in *JaegerElasticsearchStorageConfig) DeepCopyInto(out *JaegerElasticsearc
 		in, out := &in.Storage, &out.Storage
 		*out = (*in).DeepCopy()
 	}
-	if in.RedundancyPolicy != nil {
-		in, out := &in.RedundancyPolicy, &out.RedundancyPolicy
-		*out = (*in).DeepCopy()
-	}
 	if in.IndexCleaner != nil {
 		in, out := &in.IndexCleaner, &out.IndexCleaner
 		*out = (*in).DeepCopy()

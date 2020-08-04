@@ -5,9 +5,10 @@ import (
 	"strconv"
 	"strings"
 
-	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/yaml"
+
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
 func setMetadataLabels(labels map[string]interface{}, out *v2.MetadataConfig) error {

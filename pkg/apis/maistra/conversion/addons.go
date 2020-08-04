@@ -30,7 +30,7 @@ func populateAddonsValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 		if err := setHelmBoolValue(values, "tracing.enabled", false); err != nil {
 			return err
 		}
-		if err := setHelmStringValue(values, "tracing.provider", ""); err != nil {
+		if err := setHelmStringValue(values, "tracing.provider", "none"); err != nil {
 			return err
 		}
 	case v2.TracerTypeJaeger:
@@ -108,8 +108,9 @@ func populateAddonsConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 		return err
 	}
 
-	if addonsConfig.Metrics.Prometheus != nil || addonsConfig.Tracing.Jaeger != nil ||
-		addonsConfig.Visualization.Grafana != nil || addonsConfig.Visualization.Kiali != nil {
+	if addonsConfig.Metrics.Prometheus != nil || addonsConfig.Tracing.Type != "" ||
+		addonsConfig.Tracing.Jaeger != nil || addonsConfig.Visualization.Grafana != nil ||
+		addonsConfig.Visualization.Kiali != nil {
 		out.Addons = addonsConfig
 	}
 	return nil

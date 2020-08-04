@@ -75,6 +75,10 @@ func TestCompleteKialiConversionFromV2(t *testing.T) {
 	runTestCasesFromV2(kialiTestCases, t)
 }
 
+func TestCompleteJaegerConversionFromV2(t *testing.T) {
+	runTestCasesFromV2(jaegerTestCases, t)
+}
+
 func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 	scheme := runtime.NewScheme()
 	v1.SchemeBuilder.AddToScheme(scheme)
