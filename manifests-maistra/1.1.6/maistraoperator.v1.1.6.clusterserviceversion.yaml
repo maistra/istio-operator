@@ -1,7 +1,7 @@
 apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
-  name: servicemeshoperator.v1.1.6
+  name: maistraoperator.v1.1.6
   namespace: placeholder
   annotations:
     categories: "OpenShift Optional, Integration & Delivery"
@@ -9,10 +9,10 @@ metadata:
     certified: "false"
     repository: https://github.com/maistra/istio-operator
     description: |-
-      The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
+      The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
-    containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.1.6
-    createdAt: 2020-08-03T20:49:22EDT
+    containerImage: maistra/istio-ubi8-operator:1.1.5
+    createdAt: 2020-08-03T20:49:21EDT
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <1.1.6"
     alm-examples: |-
@@ -95,25 +95,25 @@ metadata:
 spec:
   version: 1.1.6
   maturity: alpha
-  displayName: Red Hat OpenShift Service Mesh
+  displayName: Maistra Service Mesh
   description: |-
-    Red Hat OpenShift Service Mesh is a platform that provides behavioral insight and operational control over a service mesh, providing a uniform way to connect, secure, and monitor microservice applications.
+    Maistra is a platform that provides behavioral insight and operational control over a service mesh, providing a uniform way to connect, secure, and monitor microservice applications.
 
     ### Overview
 
-    Red Hat OpenShift Service Mesh, based on the open source [Istio](https://istio.io/) project, adds a transparent layer on existing
-    distributed applications without requiring any changes to the service code. You add Red Hat OpenShift Service Mesh
+    Maistra Service Mesh, based on the open source [Istio](https://istio.io/) project, adds a transparent layer on existing
+    distributed applications without requiring any changes to the service code. You add Maistra Service Mesh
     support to services by deploying a special sidecar proxy throughout your environment that intercepts all network
     communication between microservices. You configure and manage the service mesh using the control plane features.
 
-    Red Hat OpenShift Service Mesh provides an easy way to create a network of deployed services that provides discovery,
+    Maistra Service Mesh provides an easy way to create a network of deployed services that provides discovery,
     load balancing, service-to-service authentication, failure recovery, metrics, and monitoring. A service mesh also
     provides more complex operational functionality, including A/B testing, canary releases, rate limiting, access
     control, and end-to-end authentication.
 
     ### Core Capabilities
 
-    Red Hat OpenShift Service Mesh supports uniform application of a number of key capabilities across a network of services:
+    Maistra Service Mesh supports uniform application of a number of key capabilities across a network of services:
 
     + **Traffic Management** - Control the flow of traffic and API calls between services, make calls more reliable,
       and make the network more robust in the face of adverse conditions.
@@ -130,7 +130,7 @@ spec:
 
     ### Joining Projects Into a Mesh
 
-    Once an instance of Red Hat OpenShift Service Mesh has been installed, it will only exercise control over services within its own
+    Once an instance of Maistra Service Mesh has been installed, it will only exercise control over services within its own
     project.  Other projects may be added into the mesh using one of two methods:
 
     1. A **ServiceMeshMember** resource may be created in other projects to add those projects into the mesh.  The
@@ -146,92 +146,46 @@ spec:
 
     ### More Information
 
-    * [Documentation](https://docs.openshift.com/container-platform/latest/service_mesh/servicemesh-release-notes.html)
-    * [Bugs](https://issues.redhat.com/projects/OSSM)
+    * [Documentation](https://maistra.io/)
+    * [Bugs](https://issues.redhat.com/projects/MAISTRA)
 
   icon:
   - mediatype: image/png
     base64data: |-
-      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
-      ylLtXP0/aeQGS1ZSYNsAAAAASUVORK5CYII=
+      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
 
   keywords: [ 'istio', 'maistra', 'servicemesh' ]
   maintainers:
@@ -240,15 +194,15 @@ spec:
   provider:
     name: Red Hat, Inc.
   links:
-  - name: Red Hat OpenShift Service Mesh
-    url: https://docs.openshift.com/container-platform/latest/service_mesh/servicemesh-release-notes.html
+  - name: Maistra Service Mesh
+    url: https://maistra.io/
   - name: Istio
     url: https://istio.io/
   - name: Operator Source Code
     url: https://github.com/Maistra/istio-operator
   - name: Bugs
-    url: https://issues.redhat.com/projects/OSSM
-  replaces: servicemeshoperator.v1.1.5.2
+    url: https://issues.redhat.com/projects/MAISTRA
+  replaces: maistraoperator.v1.1.5
   installModes:
   - type: OwnNamespace
     supported: false
@@ -260,51 +214,51 @@ spec:
     supported: true
   relatedImages:
   - name: v1_0.3scale-istio-adapter
-    image: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
+    image: quay.io/3scale/3scale-istio-adapter:v1.0.0
   - name: v1_0.citadel
-    image: registry.redhat.io/openshift-service-mesh/citadel-rhel8:1.0.11
+    image: docker.io/maistra/citadel-ubi8:1.0.8
   - name: v1_0.cni
-    image: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.0.11
+    image: docker.io/maistra/istio-cni-ubi8:1.0.8
   - name: v1_0.galley
-    image: registry.redhat.io/openshift-service-mesh/galley-rhel8:1.0.11
+    image: docker.io/maistra/galley-ubi8:1.0.8
   - name: v1_0.grafana
-    image: registry.redhat.io/openshift-service-mesh/grafana-rhel8:1.0.11
+    image: docker.io/maistra/grafana-ubi8:1.0.8
   - name: v1_0.mixer
-    image: registry.redhat.io/openshift-service-mesh/mixer-rhel8:1.0.11
+    image: docker.io/maistra/mixer-ubi8:1.0.8
   - name: v1_0.pilot
-    image: registry.redhat.io/openshift-service-mesh/pilot-rhel8:1.0.11
+    image: docker.io/maistra/pilot-ubi8:1.0.8
   - name: v1_0.prometheus
-    image: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:1.0.11
+    image: docker.io/maistra/prometheus-ubi8:1.0.8
   - name: v1_0.proxy-init
-    image: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.0.11
+    image: docker.io/maistra/proxy-init-centos7:1.0.8
   - name: v1_0.proxyv2
-    image: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.0.11
+    image: docker.io/maistra/proxyv2-ubi8:1.0.8
   - name: v1_0.sidecar-injector
-    image: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.0.11
+    image: docker.io/maistra/sidecar-injector-ubi8:1.0.8
   - name: v1_1.3scale-istio-adapter
-    image: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
+    image: quay.io/3scale/3scale-istio-adapter:v1.0.0
   - name: v1_1.citadel
-    image: registry.redhat.io/openshift-service-mesh/citadel-rhel8:1.1.6
+    image: docker.io/maistra/citadel-ubi8:1.1.5
   - name: v1_1.cni
-    image: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.1.6
+    image: docker.io/maistra/istio-cni-ubi8:1.1.5
   - name: v1_1.galley
-    image: registry.redhat.io/openshift-service-mesh/galley-rhel8:1.1.6
+    image: docker.io/maistra/galley-ubi8:1.1.5
   - name: v1_1.grafana
-    image: registry.redhat.io/openshift-service-mesh/grafana-rhel8:1.1.6
+    image: docker.io/maistra/grafana-ubi8:1.1.5
   - name: v1_1.ior
-    image: registry.redhat.io/openshift-service-mesh/ior-rhel8:1.1.6
+    image: docker.io/maistra/istio-ior-ubi8:1.1.5
   - name: v1_1.mixer
-    image: registry.redhat.io/openshift-service-mesh/mixer-rhel8:1.1.6
+    image: docker.io/maistra/mixer-ubi8:1.1.5
   - name: v1_1.pilot
-    image: registry.redhat.io/openshift-service-mesh/pilot-rhel8:1.1.6
+    image: docker.io/maistra/pilot-ubi8:1.1.5
   - name: v1_1.prometheus
-    image: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:1.1.6
+    image: docker.io/maistra/prometheus-ubi8:1.1.5
   - name: v1_1.proxy-init
-    image: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.1.6
+    image: docker.io/maistra/proxy-init-centos7:1.1.5
   - name: v1_1.proxyv2
-    image: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.1.6
+    image: docker.io/maistra/proxyv2-ubi8:1.1.5
   - name: v1_1.sidecar-injector
-    image: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.1.6
+    image: docker.io/maistra/sidecar-injector-ubi8:1.1.5
   install:
     strategy: deployment
     spec:
@@ -539,38 +493,34 @@ spec:
               labels:
                 name: istio-operator
               annotations:
-                olm.relatedImage.v1_0.3scale-istio-adapter: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
-                olm.relatedImage.v1_0.citadel: registry.redhat.io/openshift-service-mesh/citadel-rhel8:1.0.11
-                olm.relatedImage.v1_0.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.0.11
-                olm.relatedImage.v1_0.galley: registry.redhat.io/openshift-service-mesh/galley-rhel8:1.0.11
-                olm.relatedImage.v1_0.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:1.0.11
-                olm.relatedImage.v1_0.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:1.0.11
-                olm.relatedImage.v1_0.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:1.0.11
-                olm.relatedImage.v1_0.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:1.0.11
-                olm.relatedImage.v1_0.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.0.11
-                olm.relatedImage.v1_0.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.0.11
-                olm.relatedImage.v1_0.sidecar-injector: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.0.11
-                olm.relatedImage.v1_1.3scale-istio-adapter: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
-                olm.relatedImage.v1_1.citadel: registry.redhat.io/openshift-service-mesh/citadel-rhel8:1.1.6
-                olm.relatedImage.v1_1.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.1.6
-                olm.relatedImage.v1_1.galley: registry.redhat.io/openshift-service-mesh/galley-rhel8:1.1.6
-                olm.relatedImage.v1_1.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:1.1.6
-                olm.relatedImage.v1_1.ior: registry.redhat.io/openshift-service-mesh/ior-rhel8:1.1.6
-                olm.relatedImage.v1_1.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:1.1.6
-                olm.relatedImage.v1_1.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:1.1.6
-                olm.relatedImage.v1_1.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:1.1.6
-                olm.relatedImage.v1_1.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.1.6
-                olm.relatedImage.v1_1.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.1.6
-                olm.relatedImage.v1_1.sidecar-injector: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.1.6
-                oauth-proxy.query: 'true'
-                oauth-proxy.namespace: openshift
-                oauth-proxy.name: oauth-proxy
-                oauth-proxy.tag: v4.4
+                olm.relatedImage.v1_0.3scale-istio-adapter: quay.io/3scale/3scale-istio-adapter:v1.0.0
+                olm.relatedImage.v1_0.citadel: docker.io/maistra/citadel-ubi8:1.0.8
+                olm.relatedImage.v1_0.cni: docker.io/maistra/istio-cni-ubi8:1.0.8
+                olm.relatedImage.v1_0.galley: docker.io/maistra/galley-ubi8:1.0.8
+                olm.relatedImage.v1_0.grafana: docker.io/maistra/grafana-ubi8:1.0.8
+                olm.relatedImage.v1_0.mixer: docker.io/maistra/mixer-ubi8:1.0.8
+                olm.relatedImage.v1_0.pilot: docker.io/maistra/pilot-ubi8:1.0.8
+                olm.relatedImage.v1_0.prometheus: docker.io/maistra/prometheus-ubi8:1.0.8
+                olm.relatedImage.v1_0.proxy-init: docker.io/maistra/proxy-init-centos7:1.0.8
+                olm.relatedImage.v1_0.proxyv2: docker.io/maistra/proxyv2-ubi8:1.0.8
+                olm.relatedImage.v1_0.sidecar-injector: docker.io/maistra/sidecar-injector-ubi8:1.0.8
+                olm.relatedImage.v1_1.3scale-istio-adapter: quay.io/3scale/3scale-istio-adapter:v1.0.0
+                olm.relatedImage.v1_1.citadel: docker.io/maistra/citadel-ubi8:1.1.5
+                olm.relatedImage.v1_1.cni: docker.io/maistra/istio-cni-ubi8:1.1.5
+                olm.relatedImage.v1_1.galley: docker.io/maistra/galley-ubi8:1.1.5
+                olm.relatedImage.v1_1.grafana: docker.io/maistra/grafana-ubi8:1.1.5
+                olm.relatedImage.v1_1.ior: docker.io/maistra/istio-ior-ubi8:1.1.5
+                olm.relatedImage.v1_1.mixer: docker.io/maistra/mixer-ubi8:1.1.5
+                olm.relatedImage.v1_1.pilot: docker.io/maistra/pilot-ubi8:1.1.5
+                olm.relatedImage.v1_1.prometheus: docker.io/maistra/prometheus-ubi8:1.1.5
+                olm.relatedImage.v1_1.proxy-init: docker.io/maistra/proxy-init-centos7:1.1.5
+                olm.relatedImage.v1_1.proxyv2: docker.io/maistra/proxyv2-ubi8:1.1.5
+                olm.relatedImage.v1_1.sidecar-injector: docker.io/maistra/sidecar-injector-ubi8:1.1.5
             spec:
               serviceAccountName: istio-operator
               containers:
               - name: istio-operator
-                image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:1.1.6
+                image: maistra/istio-ubi8-operator:1.1.5
                 ports:
                 - containerPort: 11999
                   name: validation
