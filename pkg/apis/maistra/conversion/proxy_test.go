@@ -6,7 +6,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"sigs.k8s.io/yaml"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -23,11 +22,7 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"useMCP": true,
@@ -47,11 +42,7 @@ var proxyTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Proxy:   &v2.ProxyConfig{},
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"useMCP": true,
@@ -86,9 +77,6 @@ var proxyTestCases = []conversionTestCase{
 					"logLevel":          "critical",
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -118,9 +106,6 @@ var proxyTestCases = []conversionTestCase{
 					"concurrency": 4,
 					"adminPort":   12345,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -154,9 +139,6 @@ var proxyTestCases = []conversionTestCase{
 					"connectionTimeout": "30s",
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -186,9 +168,6 @@ var proxyTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -228,9 +207,6 @@ var proxyTestCases = []conversionTestCase{
 					"dnsRefreshRate": "120s",
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -255,11 +231,7 @@ var proxyTestCases = []conversionTestCase{
 				},
 			},
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"useMCP": true,
@@ -286,6 +258,11 @@ var proxyTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"proxy": map[string]interface{}{
+					"initType": "CNI",
+				},
+			},
 			"istio_cni": map[string]interface{}{
 				"enabled": true,
 			},
@@ -316,6 +293,11 @@ var proxyTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"proxy": map[string]interface{}{
+					"initType": "InitContainer",
+				},
+			},
 			"istio_cni": map[string]interface{}{
 				"enabled": false,
 			},
@@ -372,6 +354,9 @@ var proxyTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
+				"proxy": map[string]interface{}{
+					"initType": "InitContainer",
+				},
 				"proxy_init": map[string]interface{}{
 					"hub":             "custom-registry",
 					"image":           "custom-init",
@@ -420,9 +405,6 @@ var proxyTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -455,9 +437,6 @@ var proxyTestCases = []conversionTestCase{
 					"protocolDetectionTimeout": "500ms",
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -488,9 +467,6 @@ var proxyTestCases = []conversionTestCase{
 			"pilot": map[string]interface{}{
 				"enableProtocolSniffingForInbound":  false,
 				"enableProtocolSniffingForOutbound": false,
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -526,9 +502,6 @@ var proxyTestCases = []conversionTestCase{
 				"enableProtocolSniffingForInbound":  true,
 				"enableProtocolSniffingForOutbound": false,
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -554,9 +527,6 @@ var proxyTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -591,9 +561,6 @@ var proxyTestCases = []conversionTestCase{
 					"interceptionMode": "REDIRECT",
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -627,9 +594,6 @@ var proxyTestCases = []conversionTestCase{
 				"proxy": map[string]interface{}{
 					"interceptionMode": "TPROXY",
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -672,9 +636,6 @@ var proxyTestCases = []conversionTestCase{
 					"includeInboundPorts": "*",
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -710,9 +671,6 @@ var proxyTestCases = []conversionTestCase{
 					"excludeInboundPorts": "",
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -747,9 +705,6 @@ var proxyTestCases = []conversionTestCase{
 					"mode": "ALLOW_ANY",
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -783,9 +738,6 @@ var proxyTestCases = []conversionTestCase{
 				"outboundTrafficPolicy": map[string]interface{}{
 					"mode": "REGISTRY_ONLY",
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -833,9 +785,6 @@ var proxyTestCases = []conversionTestCase{
 					"includeIPRanges":      "*",
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -872,9 +821,6 @@ var proxyTestCases = []conversionTestCase{
 					"excludeIPRanges":      "",
 					"excludeOutboundPorts": "",
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -917,9 +863,6 @@ var proxyTestCases = []conversionTestCase{
 			},
 			"sidecarInjectorWebhook": map[string]interface{}{
 				"rewriteAppHTTPProbe": true,
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -989,9 +932,6 @@ var proxyTestCases = []conversionTestCase{
 					},
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -1026,11 +966,7 @@ func TestProxyConversionFromV2(t *testing.T) {
 			if err := populateProxyConfig(helmValues.DeepCopy(), specv2); err != nil {
 				t.Fatalf("error converting from values: %s", err)
 			}
-			if !reflect.DeepEqual(tc.spec.Proxy, specv2.Proxy) {
-				expected, _ := yaml.Marshal(tc.spec.Proxy)
-				got, _ := yaml.Marshal(specv2.Proxy)
-				t.Errorf("unexpected output converting values back to v2:\n\texpected:\n%s\n\tgot:\n%s", string(expected), string(got))
-			}
+			assertEquals(t, tc.spec.Proxy, specv2.Proxy)
 		})
 	}
 }

@@ -8,7 +8,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/yaml"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -37,9 +36,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -48,21 +44,7 @@ var telemetryTestCases = []conversionTestCase{
 			Version:   versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{},
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"mixer": map[string]interface{}{
-				"enabled": false,
-			},
-			"telemetry": map[string]interface{}{
-				"implementation": "Istiod",
-				"enabled":        true,
-				"v1": map[string]interface{}{
-					"enabled": false,
-				},
-				"v2": map[string]interface{}{
-					"enabled": true,
-				},
-			},
-		}),
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"useMCP": true,
@@ -73,9 +55,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -85,17 +64,7 @@ var telemetryTestCases = []conversionTestCase{
 			Version:   versions.V1_1.String(),
 			Telemetry: &v2.TelemetryConfig{},
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"mixer": map[string]interface{}{
-				"enabled": true,
-				"telemetry": map[string]interface{}{
-					"enabled": true,
-				},
-			},
-			"telemetry": map[string]interface{}{
-				"implementation": "Mixer",
-			},
-		}),
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"useMCP": true,
@@ -106,9 +75,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -148,9 +114,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -181,9 +144,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -221,9 +181,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -260,9 +217,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -309,9 +263,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -362,9 +313,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -406,9 +354,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -454,9 +399,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -499,9 +441,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -547,9 +486,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -597,9 +533,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -668,9 +601,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -709,9 +639,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -752,9 +679,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -804,9 +728,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -860,9 +781,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -924,9 +842,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -981,9 +896,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1042,9 +954,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1109,9 +1018,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1180,9 +1086,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1254,9 +1157,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1333,9 +1233,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1404,9 +1301,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1479,9 +1373,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1537,9 +1428,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1599,9 +1487,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1644,9 +1529,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1840,9 +1722,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1909,9 +1788,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1943,9 +1819,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1979,9 +1852,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -2024,9 +1894,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -2073,9 +1940,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -2130,9 +1994,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -2180,9 +2041,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -2234,9 +2092,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -2294,9 +2149,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -2358,9 +2210,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -2425,9 +2274,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -2497,9 +2343,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -2561,9 +2404,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -2629,9 +2469,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -2680,9 +2517,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -2735,9 +2569,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -2773,9 +2604,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -2985,9 +2813,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -3047,9 +2872,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -3092,9 +2914,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -3139,9 +2958,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -3196,9 +3012,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -3234,9 +3047,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -3274,9 +3084,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -3324,9 +3131,6 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 }
@@ -3353,11 +3157,7 @@ func TestTelemetryConversionFromV2(t *testing.T) {
 			} else {
 				t.Fatalf("error parsing version: %s", err)
 			}
-			if !reflect.DeepEqual(tc.spec.Telemetry, specv2.Telemetry) {
-				expected, _ := yaml.Marshal(tc.spec.Telemetry)
-				got, _ := yaml.Marshal(specv2.Telemetry)
-				t.Errorf("unexpected output converting values back to v2:\n\texpected:\n%s\n\tgot:\n%s", string(expected), string(got))
-			}
+			assertEquals(t, tc.spec.Telemetry, specv2.Telemetry)
 		})
 	}
 }

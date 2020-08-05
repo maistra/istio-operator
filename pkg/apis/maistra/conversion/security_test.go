@@ -4,8 +4,6 @@ import (
 	"reflect"
 	"testing"
 
-	"sigs.k8s.io/yaml"
-
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
@@ -29,9 +27,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -51,9 +46,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -87,9 +79,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -121,9 +110,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -157,9 +143,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -201,9 +184,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -241,9 +221,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -283,9 +260,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -337,9 +311,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -377,9 +348,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -419,9 +387,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -467,9 +432,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -501,9 +463,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -540,9 +499,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -582,9 +538,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -616,9 +569,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -652,9 +602,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -694,9 +641,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -734,9 +678,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -776,9 +717,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -830,9 +768,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -870,9 +805,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -913,9 +845,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -941,6 +870,9 @@ var securityTestCases = []conversionTestCase{
 				"ca": map[string]interface{}{
 					"implementation": "Istiod",
 				},
+				"env": map[string]interface{}{
+					"ROOT_CA_DIR": "/etc/cacerts",
+				},
 			},
 			"security": map[string]interface{}{
 				"selfSigned": false,
@@ -956,9 +888,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -991,9 +920,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1030,9 +956,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1072,9 +995,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1104,9 +1024,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1138,9 +1055,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1171,9 +1085,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1219,9 +1130,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1251,9 +1159,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1285,9 +1190,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1318,9 +1220,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1366,9 +1265,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1399,9 +1295,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1431,9 +1324,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1471,9 +1361,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1504,9 +1391,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1536,9 +1420,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1576,9 +1457,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1608,9 +1486,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1642,9 +1517,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1674,9 +1546,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1708,9 +1577,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1740,9 +1606,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1774,9 +1637,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1806,9 +1666,6 @@ var securityTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1840,9 +1697,6 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 }
@@ -1865,11 +1719,7 @@ func TestSecurityConversionFromV2(t *testing.T) {
 			if err := populateSecurityConfig(helmValues.DeepCopy(), specv2); err != nil {
 				t.Fatalf("error converting from values: %s", err)
 			}
-			if !reflect.DeepEqual(tc.spec.Security, specv2.Security) {
-				expected, _ := yaml.Marshal(tc.spec.Security)
-				got, _ := yaml.Marshal(specv2.Security)
-				t.Errorf("unexpected output converting values back to v2:\n\texpected:\n%s\n\tgot:\n%s", string(expected), string(got))
-			}
+			assertEquals(t, tc.spec.Security, specv2.Security)
 		})
 	}
 }

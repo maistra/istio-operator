@@ -9,7 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/yaml"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -34,9 +33,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -44,6 +40,30 @@ var gatewaysTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version:  versions.V2_0.String(),
 			Gateways: &v2.GatewaysConfig{},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "enablement." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Gateways: &v2.GatewaysConfig{
+				Enablement: v2.Enablement{
+					Enabled: &featureEnabled,
+				},
+			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
@@ -61,9 +81,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -76,7 +93,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-ingressgateway": map[string]interface{}{
 					"name": "istio-ingressgateway",
 				},
@@ -92,9 +108,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -116,7 +129,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled": false,
 					"name":    "istio-ingressgateway",
@@ -133,9 +145,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -157,7 +166,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled": true,
 					"name":    "istio-ingressgateway",
@@ -174,9 +182,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -228,7 +233,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled": true,
 					"name":    "istio-ingressgateway",
@@ -269,9 +273,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -331,7 +332,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled": true,
 					"name":    "istio-ingressgateway",
@@ -380,9 +380,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -435,7 +432,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled": true,
 					"name":    "istio-ingressgateway",
@@ -478,9 +474,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -503,7 +496,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled":   true,
 					"name":      "istio-ingressgateway",
@@ -524,9 +516,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -574,7 +563,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled": true,
 					"name":    "istio-ingressgateway",
@@ -605,9 +593,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -719,7 +704,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled":               true,
 					"name":                  "istio-ingressgateway",
@@ -796,9 +780,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -835,7 +816,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled":          true,
 					"name":             "istio-ingressgateway",
@@ -862,9 +842,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -886,7 +863,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled": true,
 					"name":    "istio-ingressgateway",
@@ -906,9 +882,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -931,7 +904,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled": true,
 					"name":    "istio-ingressgateway",
@@ -951,9 +923,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1005,7 +974,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled":          true,
 					"name":             "istio-ingressgateway",
@@ -1043,9 +1011,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1097,7 +1062,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled":          true,
 					"name":             "istio-ingressgateway",
@@ -1135,9 +1099,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1246,7 +1207,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"extra-ingress-enabled": map[string]interface{}{
 					"enabled": true,
 					"name":    "extra-ingress-enabled",
@@ -1321,9 +1281,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1339,7 +1296,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-egressgateway": map[string]interface{}{
 					"name": "istio-egressgateway",
 					"env": map[string]interface{}{
@@ -1358,9 +1314,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1382,7 +1335,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-egressgateway": map[string]interface{}{
 					"enabled": false,
 					"name":    "istio-egressgateway",
@@ -1402,9 +1354,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1426,7 +1375,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"istio-egressgateway": map[string]interface{}{
 					"enabled": true,
 					"name":    "istio-egressgateway",
@@ -1446,9 +1394,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1530,7 +1475,6 @@ var gatewaysTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
-				"enabled": true,
 				"extra-egress-enabled": map[string]interface{}{
 					"enabled": true,
 					"name":    "extra-egress-enabled",
@@ -1590,9 +1534,6 @@ var gatewaysTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 }
@@ -1615,11 +1556,7 @@ func TestGatewaysConversionFromV2(t *testing.T) {
 			if err := populateGatewaysConfig(helmValues.DeepCopy(), specv2); err != nil {
 				t.Fatalf("error converting from values: %s", err)
 			}
-			if !reflect.DeepEqual(tc.spec.Gateways, specv2.Gateways) {
-				expected, _ := yaml.Marshal(tc.spec.Gateways)
-				got, _ := yaml.Marshal(specv2.Gateways)
-				t.Errorf("unexpected output converting values back to v2:\n\texpected:\n%s\n\tgot:\n%s", string(expected), string(got))
-			}
+			assertEquals(t, tc.spec.Gateways, specv2.Gateways)
 		})
 	}
 }

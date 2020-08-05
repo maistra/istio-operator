@@ -6,6 +6,7 @@ import (
 
 // GatewaysConfig configures gateways for the mesh
 type GatewaysConfig struct {
+	Enablement `json:",inline"`
 	// ClusterIngress configures the istio-ingressgateway for the mesh
 	// works in conjunction with cluster.meshExpansion.ingress configuration
 	// (for enabling ILB gateway and mesh expansion ports)

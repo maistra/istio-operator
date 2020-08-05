@@ -8,7 +8,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/yaml"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -48,9 +47,6 @@ var jaegerTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -85,9 +81,6 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -126,9 +119,6 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -171,9 +161,6 @@ var jaegerTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -215,9 +202,6 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -264,9 +248,6 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -317,9 +298,6 @@ var jaegerTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -369,9 +347,6 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -428,9 +403,6 @@ var jaegerTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -479,9 +451,6 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -532,9 +501,6 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -610,9 +576,6 @@ var jaegerTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -664,9 +627,6 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -857,9 +817,6 @@ var jaegerTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -904,9 +861,6 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1108,9 +1062,6 @@ var jaegerTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -1154,9 +1105,6 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -1223,9 +1171,6 @@ var jaegerTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 }
@@ -1248,11 +1193,7 @@ func TestJaegerConversionFromV2(t *testing.T) {
 			if err := populateAddonsConfig(helmValues.DeepCopy(), specv2); err != nil {
 				t.Fatalf("error converting from values: %s", err)
 			}
-			if !reflect.DeepEqual(tc.spec.Addons, specv2.Addons) {
-				expected, _ := yaml.Marshal(tc.spec.Addons)
-				got, _ := yaml.Marshal(specv2.Addons)
-				t.Errorf("unexpected output converting values back to v2:\n\texpected:\n%s\n\tgot:\n%s", string(expected), string(got))
-			}
+			assertEquals(t, tc.spec.Addons, specv2.Addons)
 		})
 	}
 }

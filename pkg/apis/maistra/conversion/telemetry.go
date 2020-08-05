@@ -12,18 +12,11 @@ import (
 
 func populateTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
 	telemetry := in.Telemetry
-	if telemetry == nil {
+	if telemetry == nil || in.Telemetry.Type == "" {
 		return nil
 	}
 
 	istiod := !(in.Version == "" || in.Version == versions.V1_0.String() || in.Version == versions.V1_1.String())
-	if in.Telemetry.Type == "" {
-		if istiod {
-			in.Telemetry.Type = v2.TelemetryTypeIstiod
-		} else {
-			in.Telemetry.Type = v2.TelemetryTypeMixer
-		}
-	}
 
 	if err := setHelmStringValue(values, "telemetry.implementation", string(in.Telemetry.Type)); err != nil {
 		return nil

@@ -1,6 +1,7 @@
 package conversion
 
 import (
+	"fmt"
 	"strings"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -45,11 +46,17 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 		}
 	}
 	switch proxy.Networking.Initialization.Type {
-	case v2.ProxyNetworkInitTypeCNI, "":
+	case v2.ProxyNetworkInitTypeCNI:
+		if err := setHelmStringValue(proxyValues, "initType", string(proxy.Networking.Initialization.Type)); err != nil {
+			return err
+		}
 		if err := setHelmBoolValue(values, "istio_cni.enabled", true); err != nil {
 			return err
 		}
 	case v2.ProxyNetworkInitTypeInitContainer:
+		if err := setHelmStringValue(proxyValues, "initType", string(proxy.Networking.Initialization.Type)); err != nil {
+			return err
+		}
 		if err := setHelmBoolValue(values, "istio_cni.enabled", false); err != nil {
 			return err
 		}
@@ -222,9 +229,12 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 		return err
 	}
 
-	if rawIstioCNI, _, err := in.GetMap("istio_cni"); err == nil {
-		istioCNI := v1.NewHelmValues(rawIstioCNI)
-		if cniEnabled, ok, err := istioCNI.GetBool("enabled"); ok && !cniEnabled {
+	if initType, ok, err := proxyValues.GetString("initType"); ok {
+		proxy.Networking.Initialization.Type = v2.ProxyNetworkInitType(initType)
+		switch proxy.Networking.Initialization.Type {
+		case v2.ProxyNetworkInitTypeCNI:
+			setProxy = true
+		case v2.ProxyNetworkInitTypeInitContainer:
 			proxy.Networking.Initialization.Type = v2.ProxyNetworkInitTypeInitContainer
 			setProxy = true
 			if rawProxyInit, ok, err := in.GetMap("global.proxy_init"); ok && len(rawProxyInit) > 0 {
@@ -242,10 +252,12 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 			} else if err != nil {
 				return err
 			}
-		} else if err != nil {
-			return err
+		case "":
+			// ignore this
+		default:
+			return fmt.Errorf("unknown proxy init type: %s", proxy.Networking.Initialization.Type)
 		}
-	} else {
+	} else if err != nil {
 		return err
 	}
 
@@ -335,8 +347,22 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 
 	// DNS
 	if podDNSSearchNamespaces, ok, err := in.GetStringSlice("global.podDNSSearchNamespaces"); ok {
-		proxy.Networking.DNS.SearchSuffixes = podDNSSearchNamespaces
-		setProxy = true
+		if addedSearchSuffixes, ok, err := in.GetStringSlice("global.multiCluster.addedSearchSuffixes"); ok && len(addedSearchSuffixes) > 0 {
+			for _, addedSuffix := range addedSearchSuffixes {
+				for index, suffix := range podDNSSearchNamespaces {
+					if suffix == addedSuffix {
+						podDNSSearchNamespaces = append(podDNSSearchNamespaces[:index], podDNSSearchNamespaces[index+1:]...)
+						break
+					}
+				}
+			}
+		} else if err != nil {
+			return err
+		}
+		if len(podDNSSearchNamespaces) > 0 {
+			proxy.Networking.DNS.SearchSuffixes = podDNSSearchNamespaces
+			setProxy = true
+		}
 	} else if err != nil {
 		return err
 	}

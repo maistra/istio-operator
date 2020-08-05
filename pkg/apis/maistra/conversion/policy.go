@@ -15,18 +15,11 @@ import (
 
 func populatePolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
 	// Cluster settings
-	if in.Policy == nil {
+	if in.Policy == nil || in.Policy.Type == "" {
 		return nil
 	}
 
 	istiod := !(in.Version == "" || in.Version == versions.V1_0.String() || in.Version == versions.V1_1.String())
-	if in.Policy.Type == "" {
-		if istiod {
-			in.Policy.Type = v2.PolicyTypeIstiod
-		} else {
-			in.Policy.Type = v2.PolicyTypeMixer
-		}
-	}
 
 	if err := setHelmStringValue(values, "policy.implementation", string(in.Policy.Type)); err != nil {
 		return nil

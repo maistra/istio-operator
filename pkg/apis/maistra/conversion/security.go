@@ -92,6 +92,12 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			} else {
 				// configure security (citadel) settings
 				// XXX: nothing here is currently configurable for pre-1.6
+				if pksigner.RootCADir != "" {
+					// to support roundtripping
+					if err := setHelmStringValue(values, "pilot.env.ROOT_CA_DIR", pksigner.RootCADir); err != nil {
+						return err
+					}
+				}
 			}
 		case v2.IstioCertificateSignerTypeSelfSigned:
 			if err := setHelmBoolValue(values, "security.selfSigned", true); err != nil {
@@ -237,6 +243,7 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	var istiodCAType v2.IstioCertificateSignerType
 	if caImplementation, ok, err := in.GetString("pilot.ca.implementation"); ok && caImplementation != "" {
 		caType = v2.CertificateAuthorityType(caImplementation)
+		setSecurity = true
 	} else if err != nil {
 		return err
 	}

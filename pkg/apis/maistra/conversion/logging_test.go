@@ -7,7 +7,6 @@ import (
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
-	"sigs.k8s.io/yaml"
 )
 
 var loggingTestCases = []conversionTestCase{
@@ -28,9 +27,6 @@ var loggingTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 	{
@@ -50,9 +46,6 @@ var loggingTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
 			},
 		}),
 	},
@@ -88,9 +81,6 @@ var loggingTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 		}),
 	},
 }
@@ -113,11 +103,7 @@ func TestLoggingConversionFromV2(t *testing.T) {
 			if err := populateControlPlaneLoggingConfig(helmValues.DeepCopy(), specv2); err != nil {
 				t.Fatalf("error converting from values: %s", err)
 			}
-			if !reflect.DeepEqual(tc.spec.Proxy, specv2.Proxy) {
-				expected, _ := yaml.Marshal(tc.spec.Proxy)
-				got, _ := yaml.Marshal(specv2.Proxy)
-				t.Errorf("unexpected output converting values back to v2:\n\texpected:\n%s\n\tgot:\n%s", string(expected), string(got))
-			}
+			assertEquals(t, tc.spec.Logging, specv2.Logging)
 		})
 	}
 }

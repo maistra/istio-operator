@@ -27,8 +27,51 @@ var (
 type conversionTestCase struct {
 	name          string
 	spec          *v2.ControlPlaneSpec
+	roundTripSpec *v2.ControlPlaneSpec
 	isolatedIstio *v1.HelmValues
 	completeIstio *v1.HelmValues
+}
+
+func assertEquals(t *testing.T, expected, actual interface{}) {
+	t.Helper()
+	if !reflect.DeepEqual(expected, actual) {
+		t.Logf("DeepEqual() failed, retrying after pruning empty/nil objects")
+		prunedExpected := pruneEmptyObjects(expected)
+		prunedActual := pruneEmptyObjects(actual)
+		if !reflect.DeepEqual(prunedExpected, prunedActual) {
+			expectedYAML, _ := yaml.Marshal(expected)
+			actualYAML, _ := yaml.Marshal(actual)
+			t.Errorf("unexpected output converting values back to v2:\n\texpected:\n%s\n\tgot:\n%s", string(expectedYAML), string(actualYAML))
+		}
+	}
+
+}
+func pruneEmptyObjects(in interface{}) *v1.HelmValues {
+	values, err := toValues(in)
+	if err != nil {
+		panic(fmt.Errorf("unexpected error converting value: %v", in))
+	}
+	pruneTree(values)
+	return v1.NewHelmValues(values)
+}
+
+func pruneTree(in map[string]interface{}) {
+	for restart := true; restart; {
+		restart = false
+		for key, rawValue := range in {
+			switch value := rawValue.(type) {
+			case []interface{}:
+				if len(value) == 0 {
+					delete(in, key)
+				}
+			case map[string]interface{}:
+				pruneTree(value)
+				if len(value) == 0 {
+					delete(in, key)
+				}
+			}
+		}
+	}
 }
 
 func TestCompleteClusterConversionFromV2(t *testing.T) {
@@ -106,11 +149,7 @@ func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 			if err := scheme.Convert(smcpv1, newsmcpv2, nil); err != nil {
 				t.Fatalf("error converting from values: %s", err)
 			}
-			if !reflect.DeepEqual(smcpv2, newsmcpv2) {
-				expected, _ := yaml.Marshal(smcpv2)
-				got, _ := yaml.Marshal(newsmcpv2)
-				t.Errorf("unexpected output converting values back to v2:\n\texpected:\n%s\n\tgot:\n%s", string(expected), string(got))
-			}
+			assertEquals(t, smcpv2, newsmcpv2)
 		})
 	}
 }

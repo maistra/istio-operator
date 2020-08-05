@@ -58,8 +58,10 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 		return nil
 	}
 
-	if err := setHelmBoolValue(values, "gateways.enabled", true); err != nil {
-		return err
+	if in.Gateways.Enabled != nil {
+		if err := setHelmBoolValue(values, "gateways.enabled", *in.Gateways.Enabled); err != nil {
+			return err
+		}
 	}
 
 	gateways := in.Gateways
@@ -317,7 +319,12 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	if gateways, ok, err := in.GetMap("gateways"); ok {
 		for name, gateway := range gateways {
 			if name == "enabled" {
-				setGatewaysConfig = true
+				if enabled, ok := gateway.(bool); ok {
+					gatewaysConfig.Enabled = &enabled
+					setGatewaysConfig = true
+				} else {
+					return fmt.Errorf("invalid value for gateways.enabled: %v", gateway)
+				}
 				continue
 			}
 			gc := v2.GatewayConfig{}
@@ -387,7 +394,8 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 						IngressGatewayConfig: ingressGateway,
 					}
 					gatewaysConfig.ClusterIngress = &clusterIngress
-				} else {
+				} else if name != "istio-ilbgateway" {
+					// ilb gateway is handled by cluster config
 					gatewaysConfig.IngressGateways[name] = ingressGateway
 				}
 			}

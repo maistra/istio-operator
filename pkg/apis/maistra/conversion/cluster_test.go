@@ -6,7 +6,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/yaml"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -31,11 +30,7 @@ var clusterTestCases = []conversionTestCase{
 				},
 			},
 		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
 	},
 	{
 		name: "nil." + versions.V1_1.String(),
@@ -54,11 +49,7 @@ var clusterTestCases = []conversionTestCase{
 				},
 			},
 		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
 	},
 	{
 		name: "nil." + versions.V2_0.String(),
@@ -77,11 +68,7 @@ var clusterTestCases = []conversionTestCase{
 				},
 			},
 		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
 	},
 	{
 		name: "simple." + versions.V1_1.String(),
@@ -106,11 +93,7 @@ var clusterTestCases = []conversionTestCase{
 				"useMCP":  true,
 			},
 		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
 	},
 	{
 		name: "simple." + versions.V2_0.String(),
@@ -135,11 +118,7 @@ var clusterTestCases = []conversionTestCase{
 				"useMCP":  true,
 			},
 		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
-		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
 	},
 	{
 		name: "multicluster.simple." + versions.V1_1.String(),
@@ -154,8 +133,19 @@ var clusterTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
+					"clusterName":       "my-cluster",
+					"enabled":           true,
+					"addedLocalNetwork": "my-network",
+					"addedSearchSuffixes": []interface{}{
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"global",
+					},
+					"gatewaysOverrides": map[string]interface{}{
+						"addedExternal":  true,
+						"egressEnabled":  interface{}(nil),
+						"enabled":        interface{}(nil),
+						"ingressEnabled": interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -185,9 +175,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
@@ -197,7 +184,8 @@ var clusterTestCases = []conversionTestCase{
 			"gateways": map[string]interface{}{
 				"enabled": true,
 				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
+					"enabled": true,
+					"env": map[string]interface{}{
 						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
 					},
 					"name": "istio-egressgateway",
@@ -222,8 +210,19 @@ var clusterTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
+					"clusterName":       "my-cluster",
+					"enabled":           true,
+					"addedLocalNetwork": "my-network",
+					"addedSearchSuffixes": []interface{}{
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"global",
+					},
+					"gatewaysOverrides": map[string]interface{}{
+						"addedExternal":  true,
+						"egressEnabled":  interface{}(nil),
+						"enabled":        interface{}(nil),
+						"ingressEnabled": interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -253,9 +252,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
@@ -297,8 +293,18 @@ var clusterTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
+					"clusterName":       "my-cluster",
+					"enabled":           true,
+					"addedLocalNetwork": "my-network",
+					"addedSearchSuffixes": []interface{}{
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"global",
+					},
+					"gatewaysOverrides": map[string]interface{}{
+						"addedExternal": true,
+						"egressEnabled": interface{}(nil),
+						"enabled":       interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -328,9 +334,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
@@ -379,6 +382,16 @@ var clusterTestCases = []conversionTestCase{
 				"multiCluster": map[string]interface{}{
 					"clusterName": "my-cluster",
 					"enabled":     true,
+					"addedSearchSuffixes": []interface{}{
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"global",
+					},
+					"gatewaysOverrides": map[string]interface{}{
+						"addedExternal":  true,
+						"egressEnabled":  interface{}(nil),
+						"enabled":        interface{}(nil),
+						"ingressEnabled": interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -408,9 +421,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
@@ -461,8 +471,19 @@ var clusterTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
+					"clusterName":       "my-cluster",
+					"enabled":           true,
+					"addedLocalNetwork": "my-network",
+					"addedSearchSuffixes": []interface{}{
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"global",
+					},
+					"gatewaysOverrides": map[string]interface{}{
+						"addedExternal":  true,
+						"egressEnabled":  interface{}(nil),
+						"enabled":        interface{}(nil),
+						"ingressEnabled": interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -504,9 +525,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
@@ -546,8 +564,19 @@ var clusterTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
+					"clusterName":       "my-cluster",
+					"enabled":           true,
+					"addedLocalNetwork": "my-network",
+					"addedSearchSuffixes": []interface{}{
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"global",
+					},
+					"gatewaysOverrides": map[string]interface{}{
+						"addedExternal":  true,
+						"egressEnabled":  interface{}(nil),
+						"enabled":        interface{}(nil),
+						"ingressEnabled": interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -577,9 +606,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
@@ -626,8 +652,18 @@ var clusterTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
+					"clusterName":       "my-cluster",
+					"enabled":           true,
+					"addedLocalNetwork": "my-network",
+					"addedSearchSuffixes": []interface{}{
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					},
+					"gatewaysOverrides": map[string]interface{}{
+						"addedExternal":  true,
+						"egressEnabled":  interface{}(nil),
+						"enabled":        interface{}(nil),
+						"ingressEnabled": interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -657,9 +693,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
@@ -703,8 +736,18 @@ var clusterTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
+					"clusterName":       "my-cluster",
+					"enabled":           true,
+					"addedLocalNetwork": "my-network",
+					"addedSearchSuffixes": []interface{}{
+						"global",
+					},
+					"gatewaysOverrides": map[string]interface{}{
+						"addedExternal":  true,
+						"egressEnabled":  interface{}(nil),
+						"enabled":        interface{}(nil),
+						"ingressEnabled": interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -734,9 +777,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
@@ -781,8 +821,15 @@ var clusterTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
+					"clusterName":       "my-cluster",
+					"enabled":           true,
+					"addedLocalNetwork": "my-network",
+					"gatewaysOverrides": map[string]interface{}{
+						"addedExternal":  true,
+						"egressEnabled":  interface{}(nil),
+						"enabled":        interface{}(nil),
+						"ingressEnabled": interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -812,9 +859,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
@@ -858,8 +902,19 @@ var clusterTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
+					"clusterName":       "my-cluster",
+					"enabled":           true,
+					"addedLocalNetwork": "my-network",
+					"addedSearchSuffixes": []interface{}{
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"global",
+					},
+					"gatewaysOverrides": map[string]interface{}{
+						"addedExternal":  true,
+						"egressEnabled":  interface{}(nil),
+						"enabled":        interface{}(nil),
+						"ingressEnabled": interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -889,9 +944,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
@@ -937,8 +989,18 @@ var clusterTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
+					"clusterName":       "my-cluster",
+					"enabled":           true,
+					"addedLocalNetwork": "my-network",
+					"addedSearchSuffixes": []interface{}{
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					},
+					"gatewaysOverrides": map[string]interface{}{
+						"addedExternal":  true,
+						"egressEnabled":  interface{}(nil),
+						"enabled":        interface{}(nil),
+						"ingressEnabled": interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -968,9 +1030,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"custom",
@@ -1007,8 +1066,19 @@ var clusterTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
+					"clusterName":       "my-cluster",
+					"enabled":           true,
+					"addedLocalNetwork": "my-network",
+					"addedSearchSuffixes": []interface{}{
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"global",
+					},
+					"gatewaysOverrides": map[string]interface{}{
+						"addedExternal":  true,
+						"egressEnabled":  interface{}(nil),
+						"enabled":        interface{}(nil),
+						"ingressEnabled": interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -1038,9 +1108,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
@@ -1084,8 +1151,18 @@ var clusterTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
+					"clusterName":       "my-cluster",
+					"enabled":           true,
+					"addedLocalNetwork": "my-network",
+					"addedSearchSuffixes": []interface{}{
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"global",
+					},
+					"gatewaysOverrides": map[string]interface{}{
+						"addedExternal":  true,
+						"enabled":        interface{}(nil),
+						"ingressEnabled": interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -1115,9 +1192,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
@@ -1164,8 +1238,17 @@ var clusterTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
+					"clusterName":       "my-cluster",
+					"enabled":           true,
+					"addedLocalNetwork": "my-network",
+					"addedSearchSuffixes": []interface{}{
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"global",
+					},
+					"gatewaysOverrides": map[string]interface{}{
+						"enabled":        interface{}(nil),
+						"ingressEnabled": interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -1195,9 +1278,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
@@ -1234,8 +1314,19 @@ var clusterTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
+					"clusterName":       "my-cluster",
+					"enabled":           true,
+					"addedLocalNetwork": "my-network",
+					"addedSearchSuffixes": []interface{}{
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"global",
+					},
+					"gatewaysOverrides": map[string]interface{}{
+						"addedExternal":  true,
+						"egressEnabled":  interface{}(nil),
+						"enabled":        interface{}(nil),
+						"ingressEnabled": interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -1268,9 +1359,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
@@ -1329,8 +1417,18 @@ var clusterTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
+					"clusterName":       "my-cluster",
+					"enabled":           true,
+					"addedLocalNetwork": "my-network",
+					"addedSearchSuffixes": []interface{}{
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"global",
+					},
+					"gatewaysOverrides": map[string]interface{}{
+						"addedExternal":  true,
+						"egressEnabled":  interface{}(nil),
+						"enabled":        interface{}(nil),
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": true,
@@ -1364,9 +1462,6 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"istio_cni": map[string]interface{}{
-				"enabled": true,
-			},
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
@@ -1415,11 +1510,7 @@ func TestClusterConversionFromV2(t *testing.T) {
 			if err := populateClusterConfig(helmValues.DeepCopy(), specv2); err != nil {
 				t.Fatalf("error converting from values: %s", err)
 			}
-			if !reflect.DeepEqual(tc.spec.Cluster, specv2.Cluster) {
-				expected, _ := yaml.Marshal(tc.spec.Cluster)
-				got, _ := yaml.Marshal(specv2.Cluster)
-				t.Errorf("unexpected output converting values back to v2:\n\texpected:\n%s\n\tgot:\n%s", string(expected), string(got))
-			}
+			assertEquals(t, tc.spec.Cluster, specv2.Cluster)
 		})
 	}
 }
