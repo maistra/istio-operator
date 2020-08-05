@@ -28,6 +28,7 @@ type ProxyLoggingConfig struct {
 
 // ComponentLogLevels represent various logging levels, e.g. trace, debug, etc.
 type ComponentLogLevels map[EnvoyComponent]LogLevel
+
 // LogLevel represents the logging level
 type LogLevel string
 
@@ -50,3 +51,41 @@ const (
 
 // EnvoyComponent represents an envoy component to configure logging
 type EnvoyComponent string
+
+// not a comprehensive list
+const (
+	EnvoyComponentAdmin         EnvoyComponent = "admin"
+	EnvoyComponentAssert        EnvoyComponent = "assert"
+	EnvoyComponentBacktrace     EnvoyComponent = "backtrace"
+	EnvoyComponentClient        EnvoyComponent = "client"
+	EnvoyComponentConfig        EnvoyComponent = "config"
+	EnvoyComponentConnection    EnvoyComponent = "connection"
+	EnvoyComponentConnHandler   EnvoyComponent = "conn_handler"
+	EnvoyComponentFile          EnvoyComponent = "file"
+	EnvoyComponentFilter        EnvoyComponent = "filter"
+	EnvoyComponentForwardProxy  EnvoyComponent = "forward_proxy"
+	EnvoyComponentGRPC          EnvoyComponent = "grpc"
+	EnvoyComponentHealth        EnvoyComponent = "hc"
+	EnvoyComponentHealthChecker EnvoyComponent = "health_checker"
+	EnvoyComponentHTTP          EnvoyComponent = "http"
+	EnvoyComponentHTTP2         EnvoyComponent = "http2"
+	EnvoyComponentInit          EnvoyComponent = "init"
+	EnvoyComponentIO            EnvoyComponent = "io"
+	EnvoyComponentJWT           EnvoyComponent = "jwt"
+	EnvoyComponentLua           EnvoyComponent = "lua"
+	EnvoyComponentMain          EnvoyComponent = "main"
+	EnvoyComponentMisc          EnvoyComponent = "misc"
+	EnvoyComponentQuic          EnvoyComponent = "quic"
+	EnvoyComponentPool          EnvoyComponent = "pool"
+	EnvoyComponentRBAC          EnvoyComponent = "rbac"
+	EnvoyComponentRouter        EnvoyComponent = "router"
+	EnvoyComponentRuntime       EnvoyComponent = "runtime"
+	EnvoyComponentStats         EnvoyComponent = "stats"
+	EnvoyComponentSecret        EnvoyComponent = "secret"
+	EnvoyComponentTap           EnvoyComponent = "tap"
+	EnvoyComponentTesting       EnvoyComponent = "testing"
+	EnvoyComponentTracing       EnvoyComponent = "tracing"
+	EnvoyComponentUpstream      EnvoyComponent = "upstream"
+	EnvoyComponentUDP           EnvoyComponent = "udp"
+	EnvoyComponentWASM          EnvoyComponent = "wasm"
+)

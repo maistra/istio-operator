@@ -3,6 +3,7 @@ package conversion
 import (
 	"fmt"
 
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
@@ -29,13 +30,15 @@ func populateAddonsValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 		if err := setHelmBoolValue(values, "tracing.enabled", false); err != nil {
 			return err
 		}
-		if err := setHelmStringValue(values, "tracing.provider", ""); err != nil {
+		if err := setHelmStringValue(values, "tracing.provider", "none"); err != nil {
 			return err
 		}
 	case v2.TracerTypeJaeger:
 		if err := populateJaegerAddonValues(in.Addons.Tracing.Jaeger, values); err != nil {
 			return err
 		}
+	case "":
+		// nothing to do
 	default:
 		return fmt.Errorf("Unknown tracer type: %s", in.Addons.Tracing.Type)
 	}
@@ -62,28 +65,103 @@ func populateAddonIngressValues(ingress *v2.ComponentIngressConfig, values map[s
 		}
 	}
 
-	if err := setHelmBoolValue(values, "enabled", true); err != nil {
-		return err
-	}
 	if ingress.ContextPath != "" {
 		if err := setHelmStringValue(values, "contextPath", ingress.ContextPath); err != nil {
 			return err
 		}
 	}
 	if len(ingress.Hosts) > 0 {
-		if err := setHelmSliceValue(values, "hosts", ingress.Hosts); err != nil {
+		if err := setHelmStringSliceValue(values, "hosts", ingress.Hosts); err != nil {
 			return err
 		}
 	}
 	if len(ingress.Metadata.Annotations) > 0 {
-		if err := setHelmMapValue(values, "annotations", ingress.Metadata.Annotations); err != nil {
+		if err := setHelmStringMapValue(values, "annotations", ingress.Metadata.Annotations); err != nil {
 			return err
 		}
 	}
-	if len(ingress.TLS) > 0 {
-		if err := setHelmMapValue(values, "tls", ingress.TLS); err != nil {
+	if len(ingress.Metadata.Labels) > 0 {
+		if err := setHelmStringMapValue(values, "labels", ingress.Metadata.Labels); err != nil {
+			return err
+		}
+	}
+	if len(ingress.TLS.GetContent()) > 0 {
+		if err := setHelmValue(values, "tls", ingress.TLS.GetContent()); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func populateAddonsConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
+	addonsConfig := &v2.AddonsConfig{}
+	if err := populateKialiAddonConfig(in, addonsConfig); err != nil {
+		return err
+	}
+	if err := populatePrometheusAddonConfig(in, addonsConfig); err != nil {
+		return err
+	}
+	if err := populateTracingAddonConfig(in, addonsConfig); err != nil {
+		return err
+	}
+	if err := populateGrafanaAddonConfig(in, addonsConfig); err != nil {
+		return err
+	}
+
+	if addonsConfig.Metrics.Prometheus != nil || addonsConfig.Tracing.Type != "" ||
+		addonsConfig.Tracing.Jaeger != nil || addonsConfig.Visualization.Grafana != nil ||
+		addonsConfig.Visualization.Kiali != nil {
+		out.Addons = addonsConfig
+	}
+	return nil
+}
+
+func populateAddonIngressConfig(in *v1.HelmValues, out *v2.ComponentIngressConfig) (bool, error) {
+	setValues := false
+	if enabled, ok, err := in.GetBool("enabled"); ok {
+		out.Enabled = &enabled
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+
+	if contextPath, ok, err := in.GetString("contextPath"); ok {
+		out.ContextPath = contextPath
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+	if hosts, ok, err := in.GetStringSlice("hosts"); ok {
+		out.Hosts = append([]string{}, hosts...)
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+
+	if rawAnnotations, ok, err := in.GetMap("annotations"); ok && len(rawAnnotations) > 0 {
+		if err := setMetadataAnnotations(rawAnnotations, &out.Metadata); err != nil {
+			return false, err
+		}
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+
+	if rawLabels, ok, err := in.GetMap("labels"); ok && len(rawLabels) > 0 {
+		if err := setMetadataLabels(rawLabels, &out.Metadata); err != nil {
+			return false, err
+		}
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+
+	if tls, ok, err := in.GetMap("tls"); ok && len(tls) > 0 {
+		out.TLS = v1.NewHelmValues(tls)
+		setValues = true
+	} else if err != nil {
+		return false, err
+	}
+
+	return setValues, nil
 }

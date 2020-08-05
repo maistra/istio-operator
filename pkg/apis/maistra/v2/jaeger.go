@@ -1,5 +1,7 @@
 package v2
 
+import v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+
 // JaegerTracerConfig configures Jaeger a tracer implementation
 // XXX: this currently deviates from upstream, which creates a jaeger all-in-one deployment manually
 type JaegerTracerConfig struct {
@@ -81,17 +83,16 @@ type JaegerElasticsearchStorageConfig struct {
 	// .Values.tracing.jaeger.elasticsearch.storage, raw yaml
 	// XXX: RawExtension?
 	// +optional
-	Storage map[string]string `json:"storage,omitempty"`
+	Storage *v1.HelmValues `json:"storage,omitempty"`
 	// RedundancyPolicy configures the redundancy policy for elasticsearch
 	// .Values.tracing.jaeger.elasticsearch.redundancyPolicy, raw yaml
-	// XXX: RawExtension?
 	// +optional
-	RedundancyPolicy map[string]string `json:"redundancyPolicy,omitempty"`
+	RedundancyPolicy string `json:"redundancyPolicy,omitempty"`
 	// IndexCleaner represents the configuration for the elasticsearch index cleaner
 	// .Values.tracing.jaeger.elasticsearch.esIndexCleaner, raw yaml
 	// XXX: RawExtension?
 	// +optional
-	IndexCleaner map[string]string `json:"indexCleaner,omitempty"`
+	IndexCleaner *v1.HelmValues `json:"indexCleaner,omitempty"`
 	// Runtime allows for customization of the elasticsearch pods
 	// used for node selector, etc., specific to elasticsearch config
 	// +optional
