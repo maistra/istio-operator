@@ -106,6 +106,14 @@ spec:
           - name: TLS_MAX_PROTOCOL_VERSION
             value: {{ .Values.global.tls.maxProtocolVersion }}
 {{- end }}
+{{- if .Values.global.tls.cipherSuites }}
+          - name: TLS_CIPHER_SUITES
+            value: {{ .Values.global.tls.cipherSuites }}
+{{- end }}
+{{- if .Values.global.tls.ecdhCurves }}
+          - name: TLS_ECDH_CURVES
+            value: {{ .Values.global.tls.ecdhCurves }}
+{{- end }}
 {{- end }}
           volumeMounts:
           - name: certs
