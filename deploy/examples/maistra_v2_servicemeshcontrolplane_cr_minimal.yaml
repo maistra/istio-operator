@@ -1,9 +1,9 @@
 apiVersion: maistra.io/v2
 kind: ServiceMeshControlPlane
 metadata:
-  name: minimal-install
+  name: minimal
 spec:
-  version: v1.1
+  version: v2.0
   addons:
     tracing:
       # change to Jaeger to enable tracing

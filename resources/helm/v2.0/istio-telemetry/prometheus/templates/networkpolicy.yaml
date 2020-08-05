@@ -7,8 +7,6 @@ metadata:
   labels:
     maistra-version: 2.0.0
     app: prometheus
-    chart: {{ template "prometheus.chart" . }}
-    heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
   annotations:
     "maistra.io/internal": "true"

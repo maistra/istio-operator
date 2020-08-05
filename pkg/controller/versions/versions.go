@@ -7,6 +7,7 @@ import (
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -96,7 +97,7 @@ type ValidationStrategy interface {
 type RenderingStrategy interface {
 	GetChartInstallOrder() [][]string
 	SetImageValues(ctx context.Context, cr *common.ControllerResources, smcp *v1.ControlPlaneSpec) error
-	Render(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error)
+	Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error)
 }
 
 // VersionStrategy provides encapsulates customization required for a particular
@@ -174,7 +175,7 @@ func (v *nilVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Clie
 func (v *nilVersionStrategy) GetChartInstallOrder() [][]string {
 	return nil
 }
-func (v *nilVersionStrategy) Render(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
+func (v *nilVersionStrategy) Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
 	return nil, fmt.Errorf("nil version does not support rendering")
 }
 
@@ -200,7 +201,7 @@ func (v *invalidVersionStrategy) GetChartInstallOrder() [][]string {
 	return nil
 }
 
-func (v *invalidVersionStrategy) Render(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
+func (v *invalidVersionStrategy) Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
 	return nil, fmt.Errorf("invalid version: %s", v.version)
 }
 

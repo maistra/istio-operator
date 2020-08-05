@@ -8,6 +8,7 @@ import (
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/helm"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/helm/pkg/manifest"
@@ -15,7 +16,7 @@ import (
 
 type v1xRenderingStrategy struct {}
 
-func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
+func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
 	log := common.LogFromContext(ctx)
 	//Generate the spec
 	v1spec := &v1.ControlPlaneSpec{}
@@ -23,6 +24,10 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 		return nil, err
 	}
 	v1spec.Version = v.String()
+
+	if v1spec.Istio == nil {
+		v1spec.Istio = v1.NewHelmValues(make(map[string]interface{}))
+	}
 
 	var err error
 	smcp.Status.LastAppliedConfiguration, err = v.applyTemplates(ctx, cr, *v1spec)
@@ -34,12 +39,8 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 
 	spec := &smcp.Status.LastAppliedConfiguration
 
-	if spec.Istio == nil {
-		spec.Istio = v1.NewHelmValues(nil)
-	}
-
 	if spec.ThreeScale == nil {
-		spec.ThreeScale = v1.NewHelmValues(nil)
+		spec.ThreeScale = v1.NewHelmValues(make(map[string]interface{}))
 	}
 
 	err = spec.Istio.SetField("global.operatorNamespace", common.GetOperatorNamespace())
@@ -47,6 +48,10 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 		return nil, err
 	}
 
+	err = spec.Istio.SetField("istio_cni.enabled", cniConfig.Enabled)
+	if err != nil {
+		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.enabled: %v", err)
+	}
 	err = spec.Istio.SetField("istio_cni.istio_cni_network", v.GetCNINetworkName())
 	if err != nil {
 		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.istio_cni_network: %v", err)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,22 +44,38 @@ var _ WebhookCABundleManager = (*webhookCABundleManager)(nil)
 // ManageWebhookCABundle registers the webhook to be managed with the secret that
 // should be used to populate its caBundle field.
 func (wm *webhookCABundleManager) ManageWebhookCABundle(obj runtime.Object, secret types.NamespacedName, keyName string) error {
-	webhook, err := wm.namespacedNameForWebhook(obj)
+	webhook, err := toWebhookWrapper(obj)
 	if err != nil {
 		return err
 	}
+	info := secretInfo{NamespacedName: secret, keyName: keyName}
+	info.Namespace = ""
+	for _, clientConfig := range webhook.ClientConfigs() {
+		if clientConfig.Service == nil {
+			continue
+		}
+		if info.Namespace != "" && clientConfig.Service.Namespace != info.Namespace {
+			return fmt.Errorf("webhook has multiple clients referencing services in multiple namespaces: %s", webhook.MetaObject().GetName())
+		}
+		info.Namespace = clientConfig.Service.Namespace
+	}
+	if info.Namespace == "" {
+		return fmt.Errorf("no clients to configure in webhook: %s", webhook.MetaObject().GetName())
+	}
+
+	webhookName := webhook.NamespacedName()
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
-	if _, ok := wm.webhooksToSecrets[webhook]; ok {
-		return fmt.Errorf("Already watching webhook %s", webhook)
+	if _, ok := wm.webhooksToSecrets[webhookName]; ok {
+		return fmt.Errorf("Already watching webhook %s", webhookName)
 	}
-	wm.webhooksToSecrets[webhook] = secretInfo{NamespacedName: secret, keyName: keyName}
-	webhooks := wm.secretsToWebhooks[secret]
+	wm.webhooksToSecrets[webhookName] = info
+	webhooks := wm.secretsToWebhooks[info.NamespacedName]
 	if webhooks == nil {
 		webhooks = make(map[types.NamespacedName]struct{})
-		wm.secretsToWebhooks[secret] = webhooks
+		wm.secretsToWebhooks[info.NamespacedName] = webhooks
 	}
-	webhooks[webhook] = struct{}{}
+	webhooks[webhookName] = struct{}{}
 	return nil
 }
 
@@ -85,11 +100,13 @@ func (wm *webhookCABundleManager) UnmanageWebhookCABundle(obj runtime.Object) er
 }
 
 func (wm *webhookCABundleManager) IsManaged(obj runtime.Object) bool {
-	key, err := wm.namespacedNameForWebhook(obj)
-	if err != nil {
-		return false
+	if name, err := wm.namespacedNameForWebhook(obj); err == nil {
+		wm.mu.RLock()
+		defer wm.mu.RUnlock()
+		_, ok := wm.webhooksToSecrets[name]
+		return ok
 	}
-	return len(wm.secretForWebhook(key).Name) > 0
+	return false
 }
 
 func (wm *webhookCABundleManager) IsManagingWebhooksForSecret(secret types.NamespacedName) bool {
@@ -101,7 +118,7 @@ func (wm *webhookCABundleManager) ReconcileRequestsFromWebhook(webhook runtime.O
 	if err != nil {
 		return nil
 	}
-	return []reconcile.Request{reconcile.Request{NamespacedName: webhookName}}
+	return []reconcile.Request{{NamespacedName: webhookName}}
 }
 
 func (wm *webhookCABundleManager) ReconcileRequestsFromSecret(secret types.NamespacedName) []reconcile.Request {
@@ -129,10 +146,28 @@ func (wm *webhookCABundleManager) webhooksForSecret(secret types.NamespacedName)
 	return webhooks
 }
 
-func (wm *webhookCABundleManager) secretForWebhook(webhookName types.NamespacedName) secretInfo {
+func (wm *webhookCABundleManager) secretForWebhook(webhookName types.NamespacedName) (secretInfo, bool) {
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
-	return wm.webhooksToSecrets[webhookName]
+	secret, ok := wm.webhooksToSecrets[webhookName]
+	return secret, ok
+}
+
+func (wm *webhookCABundleManager) initSecretForWebhook(webhook webhookWrapper) (secretInfo, error) {
+	info := secretInfo{}
+	for _, clientConfig := range webhook.ClientConfigs() {
+		if clientConfig.Service == nil {
+			continue
+		}
+		if info.Namespace != "" && clientConfig.Service.Namespace != info.Namespace {
+			return info, fmt.Errorf("webhook has multiple clients referencing services in multiple namespaces: %s", webhook.MetaObject().GetName())
+		}
+		info.Namespace = clientConfig.Service.Namespace
+	}
+	if info.Namespace == "" {
+		return info, fmt.Errorf("no clients to configure in webhook: %s", webhook.MetaObject().GetName())
+	}
+	return info, nil
 }
 
 const (
@@ -144,13 +179,11 @@ const (
 // webhook within the manager.  The key is composed of type and name in the
 // form, <type>/<name>
 func (wm *webhookCABundleManager) namespacedNameForWebhook(obj runtime.Object) (types.NamespacedName, error) {
-	switch wh := obj.(type) {
-	case *v1beta1.ValidatingWebhookConfiguration:
-		return types.NamespacedName{Namespace: validatingNamespaceValue, Name: wh.GetName()}, nil
-	case *v1beta1.MutatingWebhookConfiguration:
-		return types.NamespacedName{Namespace: mutatingNamespaceValue, Name: wh.GetName()}, nil
+	wh, err := toWebhookWrapper(obj)
+	if err == nil {
+		return wh.NamespacedName(), nil
 	}
-	return types.NamespacedName{}, fmt.Errorf("Object is not a MutatingWebhookConfiguration or ValidatingWebhookConfiguration")
+	return types.NamespacedName{}, err
 }
 
 // getWebhookGetter returns a factory for the object.  Note, the type of webhook

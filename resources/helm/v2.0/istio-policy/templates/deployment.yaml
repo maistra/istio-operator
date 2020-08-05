@@ -49,7 +49,7 @@ spec:
 {{- if .Values.global.controlPlaneSecurityEnabled }}
       - name: config-volume
         configMap:
-          name: istio{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
+          name: istio-{{ .Values.revision | default "default" }}
           optional: true
       {{- if eq .Values.global.pilotCertProvider "istiod" }}
       - name: istiod-ca-cert
@@ -120,12 +120,12 @@ spec:
     {{- if .Values.global.controlPlaneSecurityEnabled}}
           - --configStoreURL=mcps://istio-galley.{{ .Values.global.configNamespace }}.svc:15019
     {{- else }}
-          - --configStoreURL=mcp://istio-galley.{{ .Values.global.istioNamespace }}.svc:9901
+          - --configStoreURL=mcp://istio-galley.{{ .Release.Namespace }}.svc:9901
     {{- end }}
 {{- else }}
           - --configStoreURL=k8s://
 {{- end }}
-          - --configDefaultNamespace={{ .Values.global.istioNamespace }}
+          - --configDefaultNamespace={{ .Release.Namespace }}
           {{- if .Values.mixer.policy.adapters.useAdapterCRDs }}
           - --useAdapterCRDs=true
           {{- else }}
@@ -241,7 +241,7 @@ spec:
         {{- if .Values.global.caAddress }}
           value: {{ .Values.global.caAddress }}
         {{- else }}
-          value: istiod.{{ .Values.global.istioNamespace }}.svc:15012
+          value: istiod.{{ .Release.Namespace }}.svc:15012
         {{- end }}
         resources:
 {{- if .Values.global.proxy.resources }}

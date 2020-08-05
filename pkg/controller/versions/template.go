@@ -184,6 +184,10 @@ func (v version) applyTemplates(ctx context.Context, cr *common.ControllerResour
 		log.Info("No template provided. Using default")
 	}
 
+	if smcpSpec.Istio == nil {
+		smcpSpec.Istio = v1.NewHelmValues(make(map[string]interface{}))
+	}
+
 	applyDisconnectedSettings := true
 	if tag, _, _ := smcpSpec.Istio.GetString("global.tag"); tag != "" {
 		// don't update anything

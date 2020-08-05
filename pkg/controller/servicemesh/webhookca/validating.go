@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"k8s.io/api/admissionregistration/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,8 +36,16 @@ func (vw *validatingWebhookWrapper) Object() runtime.Object {
 	return vw.ValidatingWebhookConfiguration
 }
 
+func (vw *validatingWebhookWrapper) MetaObject() metav1.Object {
+	return vw.ValidatingWebhookConfiguration
+}
+
 func (vw *validatingWebhookWrapper) Copy() webhookWrapper {
 	return &validatingWebhookWrapper{ValidatingWebhookConfiguration: vw.ValidatingWebhookConfiguration.DeepCopyObject().(*v1beta1.ValidatingWebhookConfiguration)}
+}
+
+func (vw *validatingWebhookWrapper) NamespacedName() types.NamespacedName {
+	return types.NamespacedName{Namespace: validatingNamespaceValue, Name: vw.GetName()}
 }
 
 func (vw *validatingWebhookWrapper) ClientConfigs() []*v1beta1.WebhookClientConfig {

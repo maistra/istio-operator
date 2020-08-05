@@ -27,6 +27,7 @@ const (
 	appNamespace               = "app-namespace"
 	galleyWebhookName          = galleyWebhookNamePrefix + appNamespace
 	sidecarInjectorWebhookName = sidecarInjectorWebhookNamePrefix + appNamespace
+	istiodWebhookName          = istiodWebhookNamePrefix + "default-" + appNamespace
 )
 
 var (
@@ -46,6 +47,20 @@ var (
 		},
 	}
 
+	istiodInjectorRequest = reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: mutatingNamespaceValue,
+			Name:      istiodWebhookName,
+		},
+	}
+
+	istiodValidatorRequest = reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: validatingNamespaceValue,
+			Name:      istiodWebhookName,
+		},
+	}
+
 	invalidRequest = reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name: sidecarInjectorWebhookNamePrefix + appNamespace,
@@ -58,6 +73,7 @@ func cases() []struct {
 	webhook     runtime.Object
 	webhookName string
 	secret      *corev1.Secret
+	caFileName  string
 	request     reconcile.Request
 	getter      webhookGetter
 } {
@@ -66,23 +82,44 @@ func cases() []struct {
 		webhook     runtime.Object
 		webhookName string
 		secret      *corev1.Secret
+		caFileName  string
 		request     reconcile.Request
 		getter      webhookGetter
 	}{
 		{
 			name:        "sidecar-injector-webhook",
-			webhook:     newMutatingWebhookConfig(caBundleValue),
+			webhook:     newMutatingWebhookConfig(sidecarInjectorWebhookName, caBundleValue),
 			webhookName: sidecarInjectorWebhookName,
-			secret:      newSecret(sidecarInjectorSecretName, caBundleValue),
+			secret:      newSecret(sidecarInjectorSecretName, common.IstioRootCertKey, caBundleValue),
+			caFileName:  common.IstioRootCertKey,
 			request:     sidecarRequest,
 			getter:      mutatingWebhook,
 		},
 		{
 			name:        "galley-webhook",
-			webhook:     newValidatingWebhookConfig(caBundleValue),
+			webhook:     newValidatingWebhookConfig(galleyWebhookName, caBundleValue),
 			webhookName: galleyWebhookName,
-			secret:      newSecret(galleySecretName, caBundleValue),
+			secret:      newSecret(galleySecretName, common.IstioRootCertKey, caBundleValue),
+			caFileName:  common.IstioRootCertKey,
 			request:     galleyRequest,
+			getter:      validatingWebhook,
+		},
+		{
+			name:        "istiod-injector-webhook",
+			webhook:     newMutatingWebhookConfig(istiodWebhookName, caBundleValue),
+			webhookName: istiodWebhookName,
+			secret:      newSecret(istiodSecretName, common.IstiodCertKey, caBundleValue),
+			caFileName:  common.IstiodCertKey,
+			request:     istiodInjectorRequest,
+			getter:      mutatingWebhook,
+		},
+		{
+			name:        "istiod-validating-webhook",
+			webhook:     newValidatingWebhookConfig(istiodWebhookName, caBundleValue),
+			webhookName: istiodWebhookName,
+			secret:      newSecret(istiodSecretName, common.IstiodCertKey, caBundleValue),
+			caFileName:  common.IstiodCertKey,
+			request:     istiodValidatorRequest,
 			getter:      validatingWebhook,
 		},
 	}
@@ -153,9 +190,11 @@ func TestReconcileUpdatesCABundle(t *testing.T) {
 				common.IstioRootCertKey: []byte("new-value"),
 			}
 			cl, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
-			r.webhookCABundleManager.ManageWebhookCABundle(
+			if err := r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, common.IstioRootCertKey)
+				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, common.IstioRootCertKey); err != nil {
+				t.Fatal(err)
+			}
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
 
@@ -186,7 +225,7 @@ func TestReconcileAutomaticRegistration(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.secret.Data = map[string][]byte{
-				common.IstioRootCertKey: []byte("new-value"),
+				tc.caFileName: []byte("new-value"),
 			}
 			cl, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
 
@@ -199,6 +238,8 @@ func TestReconcileAutomaticRegistration(t *testing.T) {
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
 			wrapper, _ := tc.getter.Get(context.TODO(), cl, types.NamespacedName{Name: tc.webhookName})
 			assert.DeepEquals(wrapper.ClientConfigs()[0].CABundle, []byte("new-value"), "Expected Reconcile() to update the CABundle in the webhook configuration", t)
+
+			assert.True(r.webhookCABundleManager.IsManagingWebhooksForSecret(types.NamespacedName{Name: tc.secret.Name, Namespace: tc.secret.Namespace}), "Expected secret to trigger a webhook reconcile", t)
 
 			watchPredicates.Delete(event.DeleteEvent{Meta: accessor, Object: tc.webhook})
 			if r.webhookCABundleManager.IsManaged(tc.webhook) {
@@ -216,6 +257,41 @@ func TestReconcileHandlesWebhookConfigsWithoutWebhooks(t *testing.T) {
 				wh.Webhooks = nil
 			case *v1beta1.ValidatingWebhookConfiguration:
 				wh.Webhooks = nil
+			}
+			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
+			r.webhookCABundleManager.ManageWebhookCABundle(
+				tc.webhook,
+				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, common.IstioRootCertKey)
+			assertReconcileSucceeds(r, tc.request, t)
+			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
+		})
+	}
+}
+
+func TestReconcileDoesNothingWithMultipleNamesacedServices(t *testing.T) {
+	for _, tc := range cases() {
+		t.Run(tc.name, func(t *testing.T) {
+			switch wh := tc.webhook.(type) {
+			case *v1beta1.MutatingWebhookConfiguration:
+				wh.Webhooks = append(wh.Webhooks, v1beta1.MutatingWebhook{
+					Name: "bad-webhook",
+					ClientConfig: v1beta1.WebhookClientConfig{
+						Service: &v1beta1.ServiceReference{
+							Name:      "bogus-service",
+							Namespace: appNamespace + "-2",
+						},
+					},
+				})
+			case *v1beta1.ValidatingWebhookConfiguration:
+				wh.Webhooks = append(wh.Webhooks, v1beta1.ValidatingWebhook{
+					Name: "bad-webhook",
+					ClientConfig: v1beta1.WebhookClientConfig{
+						Service: &v1beta1.ServiceReference{
+							Name:      "bogus-service",
+							Namespace: appNamespace + "-2",
+						},
+					},
+				})
 			}
 			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
 			r.webhookCABundleManager.ManageWebhookCABundle(
@@ -246,16 +322,20 @@ func TestReconcileReturnsErrorWhenUpdateFails(t *testing.T) {
 
 // TODO: add test to ensure reconcile() is never called for webhook configs that don't start with the correct prefix, as it would panic
 
-func newMutatingWebhookConfig(caBundleValue []byte) *v1beta1.MutatingWebhookConfiguration {
+func newMutatingWebhookConfig(name string, caBundleValue []byte) *v1beta1.MutatingWebhookConfiguration {
 	webhookConfig := &v1beta1.MutatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: sidecarInjectorWebhookName,
+			Name: name,
 		},
 		Webhooks: []v1beta1.MutatingWebhook{
 			{
 				Name: "webhhook",
 				ClientConfig: v1beta1.WebhookClientConfig{
 					CABundle: caBundleValue,
+					Service: &v1beta1.ServiceReference{
+						Name:      "webhook-service",
+						Namespace: appNamespace,
+					},
 				},
 			},
 		},
@@ -263,16 +343,20 @@ func newMutatingWebhookConfig(caBundleValue []byte) *v1beta1.MutatingWebhookConf
 	return webhookConfig
 }
 
-func newValidatingWebhookConfig(caBundleValue []byte) *v1beta1.ValidatingWebhookConfiguration {
+func newValidatingWebhookConfig(name string, caBundleValue []byte) *v1beta1.ValidatingWebhookConfiguration {
 	webhookConfig := &v1beta1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: galleyWebhookName,
+			Name: name,
 		},
 		Webhooks: []v1beta1.ValidatingWebhook{
 			{
 				Name: "webhhook",
 				ClientConfig: v1beta1.WebhookClientConfig{
 					CABundle: caBundleValue,
+					Service: &v1beta1.ServiceReference{
+						Name:      "webhook-service",
+						Namespace: appNamespace,
+					},
 				},
 			},
 		},
@@ -280,14 +364,14 @@ func newValidatingWebhookConfig(caBundleValue []byte) *v1beta1.ValidatingWebhook
 	return webhookConfig
 }
 
-func newSecret(secretName string, caBundleValue []byte) *corev1.Secret {
+func newSecret(secretName string, caName string, caBundleValue []byte) *corev1.Secret {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
 			Namespace: appNamespace,
 		},
 		Data: map[string][]byte{
-			common.IstioRootCertKey: caBundleValue,
+			caName: caBundleValue,
 		},
 		StringData: nil,
 		Type:       "",

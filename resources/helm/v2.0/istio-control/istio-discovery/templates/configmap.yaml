@@ -207,7 +207,7 @@
       {{- if .Values.global.remotePilotAddress }}
       discoveryAddress: {{ printf "istiod-remote.%s.svc" .Release.Namespace }}:15012
       {{- else }}
-      discoveryAddress: istiod{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}.{{.Release.Namespace}}.svc:15012
+      discoveryAddress: istiod-{{ .Values.revision | default "default" }}.{{.Release.Namespace}}.svc:15012
       {{- end }}
 
     {{- if .Values.global.proxy.envoyMetricsService }}
@@ -255,7 +255,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: istio{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
+  name: istio-{{ .Values.revision | default "default" }}
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 2.0.0

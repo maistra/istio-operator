@@ -15,6 +15,8 @@ import (
 var (
 	// IstioRootCertKey name of Secret entry Istio uses for the cert
 	IstioRootCertKey = "root-cert.pem"
+	// IstiodCertKey name of Secret entry Istiod uses for the cert
+	IstiodCertKey = "ca-cert.pem"
 	// ServiceCARootCertKey name of Secret entry service-ca operator uses for the cert
 	ServiceCARootCertKey = "tls.crt"
 )

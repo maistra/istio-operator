@@ -111,7 +111,7 @@ if r.renderings == nil {
 		}()
 
 		// Render the templates
-		r.renderings, err = version.Strategy().Render(ctx, &r.ControllerResources, r.Instance)
+		r.renderings, err = version.Strategy().Render(ctx, &r.ControllerResources, r.cniConfig, r.Instance)
 		if err != nil {
 			// we can't progress here
 			reconciliationReason = status.ConditionReasonReconcileError

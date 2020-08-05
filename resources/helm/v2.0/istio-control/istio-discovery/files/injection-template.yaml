@@ -1,7 +1,7 @@
 template: |
   rewriteAppHTTPProbe: {{ valueOrDefault .Values.sidecarInjectorWebhook.rewriteAppHTTPProbe false }}
   initContainers:
-  {{ if ne (annotation .ObjectMeta `sidecar.istio.io/interceptionMode` .ProxyConfig.InterceptionMode) `NONE` }}
+  {{ if not .Values.istio_cni.enabled -}}
   {{ if .Values.istio_cni.enabled -}}
   - name: istio-validation
   {{ else -}}
@@ -67,10 +67,10 @@ template: |
     {{- end }}
         drop:
         - ALL
-      - KILL
-      - MKNOD
-      - SETGID
-      - SETUID
+        - KILL
+        - MKNOD
+        - SETGID
+        - SETUID
     {{- if not .Values.istio_cni.enabled }}
       readOnlyRootFilesystem: false
       runAsGroup: 0
@@ -162,7 +162,7 @@ template: |
     {{- if .Values.global.caAddress }}
       value: {{ .Values.global.caAddress }}
     {{- else }}
-      value: istiod{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}.{{ .Values.global.istioNamespace }}.svc:15012
+      value: istiod-{{ valueOrDefault .Values.revision "default" }}.{{ .Values.global.istioNamespace }}.svc:15012
     {{- end }}
     - name: POD_NAME
       valueFrom:
@@ -282,10 +282,10 @@ template: |
         {{- end }}
         drop:
         - ALL
-      - KILL
-      - MKNOD
-      - SETGID
-      - SETUID
+        - KILL
+        - MKNOD
+        - SETGID
+        - SETUID
       privileged: {{ .Values.global.proxy.privileged }}
       readOnlyRootFilesystem: {{ not .Values.global.proxy.enableCoreDump }}
       runAsGroup: 1337

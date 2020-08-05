@@ -40,7 +40,7 @@ const (
 	// LogLevelInfo info logging level
 	LogLevelInfo LogLevel = "info"
 	// LogLevelWarning warning logging level
-	LogLevelWarning LogLevel = "warning"
+	LogLevelWarning LogLevel = "warn"
 	// LogLevelError error logging level
 	LogLevelError LogLevel = "error"
 	// LogLevelCritical critical logging level

@@ -23,7 +23,8 @@ spec:
     port: 9090
     targetPort: 3001
 
-{{- if .Values.prometheus.service }}
+{{- if .Values.prometheus.service.nodePort }}
+{{- if .Values.prometheus.service.nodePort.enabled }}
 # Using separate ingress for nodeport, to avoid conflict with pilot e2e test configs.
 ---
 apiVersion: v1
@@ -44,4 +45,5 @@ spec:
     name: http-prometheus
   selector:
     app: prometheus
+{{- end }}
 {{- end }}

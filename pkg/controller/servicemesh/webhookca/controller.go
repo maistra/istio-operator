@@ -27,15 +27,32 @@ const controllerName = "webhookca-controller"
 const (
 	galleySecretName                 = "istio.istio-galley-service-account"
 	galleyWebhookNamePrefix          = "istio-galley-"
+	istiodSecretName                 = "istio-ca-secret"
+	istiodWebhookNamePrefix          = "istiod-"
 	sidecarInjectorSecretName        = "istio.istio-sidecar-injector-service-account"
 	sidecarInjectorWebhookNamePrefix = "istio-sidecar-injector-"
 )
 
 // autoRegistrationMap maps webhook name prefixes to a secret name.  This is
 // is used to auto register the webhook with the WebhookCABundleManager.
-var autoRegistrationMap = map[string]string{
-	galleyWebhookNamePrefix:          galleySecretName,
-	sidecarInjectorWebhookNamePrefix: sidecarInjectorSecretName,
+var autoRegistrationMap = map[string]registrationMapEntry{
+	galleyWebhookNamePrefix: {
+		secretName: galleySecretName,
+		caFileName: common.IstioRootCertKey,
+	},
+	sidecarInjectorWebhookNamePrefix: {
+		secretName: sidecarInjectorSecretName,
+		caFileName: common.IstioRootCertKey,
+	},
+	istiodWebhookNamePrefix: {
+		secretName: istiodSecretName,
+		caFileName: common.IstiodCertKey,
+	},
+}
+
+type registrationMapEntry struct {
+	secretName string
+	caFileName string
 }
 
 // Add creates a new Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -128,16 +145,14 @@ func webhookWatchPredicates(webhookCABundleManager WebhookCABundleManager) predi
 	return &predicate.Funcs{
 		CreateFunc: func(event event.CreateEvent) (ok bool) {
 			objName := event.Meta.GetName()
-			for prefix, secret := range autoRegistrationMap {
+			for prefix, registration := range autoRegistrationMap {
 				if strings.HasPrefix(objName, prefix) {
-					namespace := objName[len(prefix):]
 					if err := webhookCABundleManager.ManageWebhookCABundle(
 						event.Object,
 						types.NamespacedName{
-							Namespace: namespace,
-							Name:      secret,
-						},
-						common.IstioRootCertKey); err == nil {
+							Namespace: "",
+							Name:      registration.secretName,
+						}, registration.caFileName); err == nil {
 						return true
 					}
 					// XXX: should we log an error here?
@@ -184,21 +199,21 @@ func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	return reconcile.Result{}, r.webhookCABundleManager.UpdateCABundle(ctx, r.Client, request.NamespacedName)
 }
 
-func (wm *webhookCABundleManager) UpdateCABundle(ctx context.Context, cl client.Client, webhook types.NamespacedName) error {
+func (wm *webhookCABundleManager) UpdateCABundle(ctx context.Context, cl client.Client, webhookName types.NamespacedName) error {
 	logger := common.LogFromContext(ctx)
 
 	// get current webhook config
-	currentConfig, err := wm.getWebhookWrapper(ctx, cl, webhook)
+	currentConfig, err := wm.getWebhookWrapper(ctx, cl, webhookName)
 	if err != nil {
 		logger.Info("WebhookConfiguration does not exist yet. No action taken")
 		return nil
 	}
-	if !wm.IsManaged(currentConfig.Object()) {
+	secret, ok := wm.secretForWebhook(webhookName)
+	if !ok {
 		logger.Error(nil, "webhook is not registered with the caBundle manager")
 		return nil
 	}
 
-	secret := wm.secretForWebhook(webhook)
 	caRoot, err := common.GetRootCertFromSecret(ctx, cl, secret.Namespace, secret.Name, secret.keyName)
 	if err != nil {
 		logger.Info("could not get secret: " + err.Error())
