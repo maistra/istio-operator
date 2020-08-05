@@ -69,7 +69,6 @@ func TestControlPlaneValidation(t *testing.T) {
 		name         string
 		controlPlane *maistrav1.ServiceMeshControlPlane
 		valid        bool
-		resources    []runtime.Object
 	}{
 		{
 			name:         "blank-version",
@@ -327,93 +326,11 @@ func TestControlPlaneValidation(t *testing.T) {
 			},
 			valid: true,
 		},
-		{
-			name: "gateway-outside-mesh",
-			controlPlane: &maistrav1.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
-					Name:      "some-smcp",
-					Namespace: "istio-system",
-				},
-				Spec: maistrav1.ControlPlaneSpec{
-					Version: versions.V1_1.String(),
-					Istio: maistrav1.NewHelmValues(map[string]interface{}{
-						"gateways": map[string]interface{}{
-							"istio-ingressgateway": map[string]interface{}{
-								"namespace": "outside",
-							},
-							"istio-egressgateway": map[string]interface{}{
-								"namespace": "inside",
-							},
-						},
-					}),
-				},
-			},
-			resources: []runtime.Object{
-				&maistrav1.ServiceMeshMemberRoll{
-					ObjectMeta: meta.ObjectMeta{
-						Name:      "default",
-						Namespace: "istio-system",
-					},
-					Spec: maistrav1.ServiceMeshMemberRollSpec{
-						Members: []string{
-							"inside",
-						},
-					},
-					Status: maistrav1.ServiceMeshMemberRollStatus{
-						ConfiguredMembers: []string{
-							"inside",
-						},
-					},
-				},
-			},
-			valid: false,
-		},
-		{
-			name: "gateway-inside-mesh",
-			controlPlane: &maistrav1.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
-					Name:      "some-smcp",
-					Namespace: "istio-system",
-				},
-				Spec: maistrav1.ControlPlaneSpec{
-					Version: versions.V1_1.String(),
-					Istio: maistrav1.NewHelmValues(map[string]interface{}{
-						"gateways": map[string]interface{}{
-							"istio-ingressgateway": map[string]interface{}{
-								"namespace": "inside",
-							},
-							"istio-egressgateway": map[string]interface{}{
-								"namespace": "inside",
-							},
-						},
-					}),
-				},
-			},
-			resources: []runtime.Object{
-				&maistrav1.ServiceMeshMemberRoll{
-					ObjectMeta: meta.ObjectMeta{
-						Name:      "default",
-						Namespace: "istio-system",
-					},
-					Spec: maistrav1.ServiceMeshMemberRollSpec{
-						Members: []string{
-							"inside",
-						},
-					},
-					Status: maistrav1.ServiceMeshMemberRollStatus{
-						ConfiguredMembers: []string{
-							"inside",
-						},
-					},
-				},
-			},
-			valid: true,
-		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			validator, _, _ := createControlPlaneValidatorTestFixture(tc.resources...)
+			validator, _, _ := createControlPlaneValidatorTestFixture()
 			response := validator.Handle(ctx, createCreateRequest(tc.controlPlane))
 			if tc.valid {
 				var reason string
