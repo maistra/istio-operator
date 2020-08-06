@@ -45,6 +45,10 @@ function checkDependencies() {
 
 function generateCRDs() {
   go run -mod=vendor github.com/operator-framework/operator-sdk/cmd/operator-sdk generate crds --crd-version v1
+
+  # workaround for https://github.com/kubernetes-sigs/controller-tools/issues/457
+  sed -i -e "s/\( *\)\(description\: The IP protocol for this port\)/\1default: TCP\n\1\2/" deploy/crds/maistra.io_servicemeshcontrolplanes_crd.yaml
+
   mv deploy/crds/maistra.io_servicemeshcontrolplanes_crd.yaml ${BUNDLE_DIR}/servicemeshcontrolplanes.crd.yaml
   mv deploy/crds/maistra.io_servicemeshmemberrolls_crd.yaml ${BUNDLE_DIR}/servicemeshmemberrolls.crd.yaml
   mv deploy/crds/maistra.io_servicemeshmembers_crd.yaml ${BUNDLE_DIR}/servicemeshmembers.crd.yaml
