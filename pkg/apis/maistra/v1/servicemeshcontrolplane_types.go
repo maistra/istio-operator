@@ -22,7 +22,7 @@ const DefaultTemplate = "default"
 // the ServiceMeshControlPlane resides. The configuration options for the
 // components that comprise the control plane are specified in this object.
 // +k8s:openapi-gen=true
-// +kubebuilder:resource:shortName=smcp
+// +kubebuilder:resource:shortName=smcp,categories=maistra-io
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.annotations.readyComponentCount",description="How many of the total number of components are ready"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].reason",description="Whether or not the control plane installation is up to date and ready to handle requests."
@@ -57,11 +57,11 @@ type ServiceMeshControlPlaneList struct {
 
 // ControlPlaneStatus represents the current state of a ServiceMeshControlPlane.
 type ControlPlaneStatus struct {
-status.StatusBase `json:",inline"`
+	status.StatusBase `json:",inline"`
 
-// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-status.StatusType `json:",inline"`
+	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
+	status.StatusType `json:",inline"`
 
 	// The generation observed by the controller during the most recent
 	// reconciliation. The information in the status pertains to this particular

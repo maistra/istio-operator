@@ -6,6 +6,8 @@ metadata:
 spec:
   group: maistra.io
   names:
+    categories:
+    - maistra-io
     kind: ServiceMeshControlPlane
     listKind: ServiceMeshControlPlaneList
     plural: servicemeshcontrolplanes
@@ -3250,6 +3252,7 @@ spec:
                                       format: int32
                                       type: integer
                                     protocol:
+                                      default: TCP
                                       description: The IP protocol for this port.
                                         Supports "TCP", "UDP", and "SCTP". Default
                                         is TCP.
@@ -4155,6 +4158,7 @@ spec:
                                     format: int32
                                     type: integer
                                   protocol:
+                                    default: TCP
                                     description: The IP protocol for this port. Supports
                                       "TCP", "UDP", and "SCTP". Default is TCP.
                                     type: string
@@ -4989,6 +4993,7 @@ spec:
                                     format: int32
                                     type: integer
                                   protocol:
+                                    default: TCP
                                     description: The IP protocol for this port. Supports
                                       "TCP", "UDP", and "SCTP". Default is TCP.
                                     type: string
@@ -5811,6 +5816,7 @@ spec:
                                   format: int32
                                   type: integer
                                 protocol:
+                                  default: TCP
                                   description: The IP protocol for this port. Supports
                                     "TCP", "UDP", and "SCTP". Default is TCP.
                                   type: string
@@ -6170,6 +6176,7 @@ spec:
                               format: int32
                               type: integer
                             protocol:
+                              default: TCP
                               description: The IP protocol for this port. Supports
                                 "TCP", "UDP", and "SCTP". Default is TCP.
                               type: string
@@ -6687,6 +6694,7 @@ spec:
                                   format: int32
                                   type: integer
                                 protocol:
+                                  default: TCP
                                   description: The IP protocol for this port. Supports
                                     "TCP", "UDP", and "SCTP". Default is TCP.
                                   type: string
@@ -9826,6 +9834,8 @@ metadata:
 spec:
   group: maistra.io
   names:
+    categories:
+    - maistra-io
     kind: ServiceMeshMemberRoll
     listKind: ServiceMeshMemberRollList
     plural: servicemeshmemberrolls
@@ -9965,6 +9975,8 @@ metadata:
 spec:
   group: maistra.io
   names:
+    categories:
+    - maistra-io
     kind: ServiceMeshMember
     listKind: ServiceMeshMemberList
     plural: servicemeshmembers

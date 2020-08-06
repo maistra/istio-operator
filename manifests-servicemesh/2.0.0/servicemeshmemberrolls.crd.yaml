@@ -5,6 +5,8 @@ metadata:
 spec:
   group: maistra.io
   names:
+    categories:
+    - maistra-io
     kind: ServiceMeshMemberRoll
     listKind: ServiceMeshMemberRollList
     plural: servicemeshmemberrolls
