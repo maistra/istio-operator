@@ -404,20 +404,6 @@ spec:
                                             format: int32
                                             type: integer
                                         type: object
-                                      metadata:
-                                        description: Metadata specifies additional
-                                          labels and annotations to be applied to
-                                          the deployment
-                                        properties:
-                                          annotations:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
-                                          labels:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
-                                        type: object
                                       replicas:
                                         description: Number of desired pods. This
                                           is a pointer to distinguish between explicit
@@ -505,8 +491,9 @@ spec:
                                           PodAffinity is not supported at this time
                                         properties:
                                           podAntiAffinity:
-                                            description: PodAntiAffinity configures
-                                              anti affinity for pod scheduling
+                                            description: 'XXX: use corev1.PodAntiAffinity
+                                              instead, the only things not supported
+                                              are namespaces and weighting'
                                             properties:
                                               preferredDuringScheduling:
                                                 items:
@@ -812,13 +799,12 @@ spec:
                                             type: object
                                         type: object
                                       tls:
-                                        additionalProperties:
-                                          type: string
                                         description: 'TLS is used to configure TLS
                                           for the Ingress/Route XXX: should this be
                                           something like RawExtension, as the configuration
                                           differs between Route and Ingress?'
                                         type: object
+                                        x-kubernetes-preserve-unknown-fields: true
                                     type: object
                                   metadata:
                                     description: Metadata represents addtional annotations/labels
@@ -879,13 +865,12 @@ spec:
                                           of elasticsearch storage implies .Values.tracing.jaeger.template=production-elasticsearch
                                         properties:
                                           indexCleaner:
-                                            additionalProperties:
-                                              type: string
                                             description: 'IndexCleaner represents
                                               the configuration for the elasticsearch
                                               index cleaner .Values.tracing.jaeger.elasticsearch.esIndexCleaner,
                                               raw yaml XXX: RawExtension?'
                                             type: object
+                                            x-kubernetes-preserve-unknown-fields: true
                                           nodeCount:
                                             description: NodeCount represents the
                                               number of elasticsearch nodes to create.
@@ -894,13 +879,11 @@ spec:
                                             format: int32
                                             type: integer
                                           redundancyPolicy:
-                                            additionalProperties:
-                                              type: string
-                                            description: 'RedundancyPolicy configures
+                                            description: RedundancyPolicy configures
                                               the redundancy policy for elasticsearch
                                               .Values.tracing.jaeger.elasticsearch.redundancyPolicy,
-                                              raw yaml XXX: RawExtension?'
-                                            type: object
+                                              raw yaml
+                                            type: string
                                           runtime:
                                             description: Runtime allows for customization
                                               of the elasticsearch pods used for node
@@ -916,8 +899,10 @@ spec:
                                                   is not supported at this time
                                                 properties:
                                                   podAntiAffinity:
-                                                    description: PodAntiAffinity configures
-                                                      anti affinity for pod scheduling
+                                                    description: 'XXX: use corev1.PodAntiAffinity
+                                                      instead, the only things not
+                                                      supported are namespaces and
+                                                      weighting'
                                                     properties:
                                                       preferredDuringScheduling:
                                                         items:
@@ -1215,12 +1200,11 @@ spec:
                                                 type: array
                                             type: object
                                           storage:
-                                            additionalProperties:
-                                              type: string
                                             description: 'Storage represents storage
                                               configuration for elasticsearch. .Values.tracing.jaeger.elasticsearch.storage,
                                               raw yaml XXX: RawExtension?'
                                             type: object
+                                            x-kubernetes-preserve-unknown-fields: true
                                         type: object
                                       memory:
                                         description: Memory represents configuration
@@ -1297,20 +1281,6 @@ spec:
                                               be used.
                                             format: int32
                                             type: integer
-                                        type: object
-                                      metadata:
-                                        description: Metadata specifies additional
-                                          labels and annotations to be applied to
-                                          the deployment
-                                        properties:
-                                          annotations:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
-                                          labels:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
                                         type: object
                                       replicas:
                                         description: Number of desired pods. This
@@ -1399,8 +1369,9 @@ spec:
                                           PodAffinity is not supported at this time
                                         properties:
                                           podAntiAffinity:
-                                            description: PodAntiAffinity configures
-                                              anti affinity for pod scheduling
+                                            description: 'XXX: use corev1.PodAntiAffinity
+                                              instead, the only things not supported
+                                              are namespaces and weighting'
                                             properties:
                                               preferredDuringScheduling:
                                                 items:
@@ -1716,23 +1687,43 @@ spec:
                                   in the charts, hard coded to 5Gi'
                                 properties:
                                   accessMode:
-                                    description: AccessMode for the PersistentVolume
+                                    description: AccessMode for the PersistentVolumeClaim
                                     type: string
                                   capacity:
-                                    additionalProperties:
-                                      anyOf:
-                                      - type: integer
-                                      - type: string
-                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                      x-kubernetes-int-or-string: true
-                                    description: Capacity to request for the PersistentVolume
+                                    description: Resources to request for the PersistentVolumeClaim
+                                    properties:
+                                      limits:
+                                        additionalProperties:
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
+                                        description: 'Limits describes the maximum
+                                          amount of compute resources allowed. More
+                                          info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                        type: object
+                                      requests:
+                                        additionalProperties:
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
+                                        description: 'Requests describes the minimum
+                                          amount of compute resources required. If
+                                          Requests is omitted for a container, it
+                                          defaults to Limits if that is explicitly
+                                          specified, otherwise to an implementation-defined
+                                          value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                        type: object
                                     type: object
                                   enabled:
                                     description: Enabled specifies whether or not
                                       this feature is enabled
                                     type: boolean
                                   storageClassName:
-                                    description: StorageClassName for the PersistentVolume
+                                    description: StorageClassName for the PersistentVolumeClaim
                                     type: string
                                 type: object
                               runtime:
@@ -1768,20 +1759,6 @@ spec:
                                               be used.
                                             format: int32
                                             type: integer
-                                        type: object
-                                      metadata:
-                                        description: Metadata specifies additional
-                                          labels and annotations to be applied to
-                                          the deployment
-                                        properties:
-                                          annotations:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
-                                          labels:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
                                         type: object
                                       replicas:
                                         description: Number of desired pods. This
@@ -1870,8 +1847,9 @@ spec:
                                           PodAffinity is not supported at this time
                                         properties:
                                           podAntiAffinity:
-                                            description: PodAntiAffinity configures
-                                              anti affinity for pod scheduling
+                                            description: 'XXX: use corev1.PodAntiAffinity
+                                              instead, the only things not supported
+                                              are namespaces and weighting'
                                             properties:
                                               preferredDuringScheduling:
                                                 items:
@@ -2134,6 +2112,10 @@ spec:
                                   service. .Values.grafana.security.enabled, true
                                   if not null XXX: unused for maistra, as we use oauth-proxy'
                                 properties:
+                                  enabled:
+                                    description: Enabled specifies whether or not
+                                      this feature is enabled
+                                    type: boolean
                                   passphraseKey:
                                     description: PassphraseKey is the name of the
                                       key within the secret identifying the password.
@@ -2196,13 +2178,12 @@ spec:
                                             type: object
                                         type: object
                                       tls:
-                                        additionalProperties:
-                                          type: string
                                         description: 'TLS is used to configure TLS
                                           for the Ingress/Route XXX: should this be
                                           something like RawExtension, as the configuration
                                           differs between Route and Ingress?'
                                         type: object
+                                        x-kubernetes-preserve-unknown-fields: true
                                     type: object
                                   metadata:
                                     description: Metadata represents addtional annotations/labels
@@ -2303,20 +2284,6 @@ spec:
                                             format: int32
                                             type: integer
                                         type: object
-                                      metadata:
-                                        description: Metadata specifies additional
-                                          labels and annotations to be applied to
-                                          the deployment
-                                        properties:
-                                          annotations:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
-                                          labels:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
-                                        type: object
                                       replicas:
                                         description: Number of desired pods. This
                                           is a pointer to distinguish between explicit
@@ -2404,8 +2371,9 @@ spec:
                                           PodAffinity is not supported at this time
                                         properties:
                                           podAntiAffinity:
-                                            description: PodAntiAffinity configures
-                                              anti affinity for pod scheduling
+                                            description: 'XXX: use corev1.PodAntiAffinity
+                                              instead, the only things not supported
+                                              are namespaces and weighting'
                                             properties:
                                               preferredDuringScheduling:
                                                 items:
@@ -2706,13 +2674,12 @@ spec:
                                             type: object
                                         type: object
                                       tls:
-                                        additionalProperties:
-                                          type: string
                                         description: 'TLS is used to configure TLS
                                           for the Ingress/Route XXX: should this be
                                           something like RawExtension, as the configuration
                                           differs between Route and Ingress?'
                                         type: object
+                                        x-kubernetes-preserve-unknown-fields: true
                                     type: object
                                   metadata:
                                     description: Metadata represents addtional annotations/labels
@@ -2807,19 +2774,6 @@ spec:
                                         format: int32
                                         type: integer
                                     type: object
-                                  metadata:
-                                    description: Metadata specifies additional labels
-                                      and annotations to be applied to the deployment
-                                    properties:
-                                      annotations:
-                                        additionalProperties:
-                                          type: string
-                                        type: object
-                                      labels:
-                                        additionalProperties:
-                                          type: string
-                                        type: object
-                                    type: object
                                   replicas:
                                     description: Number of desired pods. This is a
                                       pointer to distinguish between explicit zero
@@ -2900,8 +2854,9 @@ spec:
                                       is not supported at this time
                                     properties:
                                       podAntiAffinity:
-                                        description: PodAntiAffinity configures anti
-                                          affinity for pod scheduling
+                                        description: 'XXX: use corev1.PodAntiAffinity
+                                          instead, the only things not supported are
+                                          namespaces and weighting'
                                         properties:
                                           preferredDuringScheduling:
                                             items:
@@ -3491,10 +3446,6 @@ spec:
                                             or its keys must be defined
                                           type: boolean
                                       type: object
-                                    name:
-                                      description: 'Volume''s name. Must be a DNS_LABEL
-                                        and unique within the pod. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
-                                      type: string
                                     secret:
                                       description: 'Secret represents a secret that
                                         should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
@@ -3562,8 +3513,6 @@ spec:
                                             pod''s namespace to use. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
                                           type: string
                                       type: object
-                                  required:
-                                  - name
                                   type: object
                                 volumeMount:
                                   description: Mount.Name maps to .Values.gateways.<gateway-name>.<type>.name
@@ -3677,6 +3626,8 @@ spec:
                 properties:
                   additionalEgress:
                     additionalProperties:
+                      description: EgressGatewayConfig represents gateway configuration
+                        for egress
                       properties:
                         enabled:
                           description: Enabled specifies whether or not this feature
@@ -3738,19 +3689,6 @@ spec:
                                       format: int32
                                       type: integer
                                   type: object
-                                metadata:
-                                  description: Metadata specifies additional labels
-                                    and annotations to be applied to the deployment
-                                  properties:
-                                    annotations:
-                                      additionalProperties:
-                                        type: string
-                                      type: object
-                                    labels:
-                                      additionalProperties:
-                                        type: string
-                                      type: object
-                                  type: object
                                 replicas:
                                   description: Number of desired pods. This is a pointer
                                     to distinguish between explicit zero and not specified.
@@ -3829,8 +3767,9 @@ spec:
                                     is not supported at this time
                                   properties:
                                     podAntiAffinity:
-                                      description: PodAntiAffinity configures anti
-                                        affinity for pod scheduling
+                                      description: 'XXX: use corev1.PodAntiAffinity
+                                        instead, the only things not supported are
+                                        namespaces and weighting'
                                       properties:
                                         preferredDuringScheduling:
                                           items:
@@ -4407,10 +4346,6 @@ spec:
                                           or its keys must be defined
                                         type: boolean
                                     type: object
-                                  name:
-                                    description: 'Volume''s name. Must be a DNS_LABEL
-                                      and unique within the pod. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
-                                    type: string
                                   secret:
                                     description: 'Secret represents a secret that
                                       should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
@@ -4478,8 +4413,6 @@ spec:
                                           namespace to use. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
                                         type: string
                                     type: object
-                                required:
-                                - name
                                 type: object
                               volumeMount:
                                 description: Mount.Name maps to .Values.gateways.<gateway-name>.<type>.name
@@ -4532,6 +4465,8 @@ spec:
                     type: object
                   additionalIngress:
                     additionalProperties:
+                      description: IngressGatewayConfig represents gateway configuration
+                        for ingress
                       properties:
                         enableSDS:
                           description: 'EnableSDS for the gateway. .Values.gateways.<gateway-name>.sds.enabled
@@ -4588,19 +4523,6 @@ spec:
                                       format: int32
                                       type: integer
                                   type: object
-                                metadata:
-                                  description: Metadata specifies additional labels
-                                    and annotations to be applied to the deployment
-                                  properties:
-                                    annotations:
-                                      additionalProperties:
-                                        type: string
-                                      type: object
-                                    labels:
-                                      additionalProperties:
-                                        type: string
-                                      type: object
-                                  type: object
                                 replicas:
                                   description: Number of desired pods. This is a pointer
                                     to distinguish between explicit zero and not specified.
@@ -4679,8 +4601,9 @@ spec:
                                     is not supported at this time
                                   properties:
                                     podAntiAffinity:
-                                      description: PodAntiAffinity configures anti
-                                        affinity for pod scheduling
+                                      description: 'XXX: use corev1.PodAntiAffinity
+                                        instead, the only things not supported are
+                                        namespaces and weighting'
                                       properties:
                                         preferredDuringScheduling:
                                           items:
@@ -5257,10 +5180,6 @@ spec:
                                           or its keys must be defined
                                         type: boolean
                                     type: object
-                                  name:
-                                    description: 'Volume''s name. Must be a DNS_LABEL
-                                      and unique within the pod. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
-                                    type: string
                                   secret:
                                     description: 'Secret represents a secret that
                                       should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
@@ -5328,8 +5247,6 @@ spec:
                                           namespace to use. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
                                         type: string
                                     type: object
-                                required:
-                                - name
                                 type: object
                               volumeMount:
                                 description: Mount.Name maps to .Values.gateways.<gateway-name>.<type>.name
@@ -5441,19 +5358,6 @@ spec:
                                     format: int32
                                     type: integer
                                 type: object
-                              metadata:
-                                description: Metadata specifies additional labels
-                                  and annotations to be applied to the deployment
-                                properties:
-                                  annotations:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
-                                  labels:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
-                                type: object
                               replicas:
                                 description: Number of desired pods. This is a pointer
                                   to distinguish between explicit zero and not specified.
@@ -5529,8 +5433,9 @@ spec:
                                   time PodAffinity is not supported at this time
                                 properties:
                                   podAntiAffinity:
-                                    description: PodAntiAffinity configures anti affinity
-                                      for pod scheduling
+                                    description: 'XXX: use corev1.PodAntiAffinity
+                                      instead, the only things not supported are namespaces
+                                      and weighting'
                                     properties:
                                       preferredDuringScheduling:
                                         items:
@@ -6095,10 +6000,6 @@ spec:
                                         its keys must be defined
                                       type: boolean
                                   type: object
-                                name:
-                                  description: 'Volume''s name. Must be a DNS_LABEL
-                                    and unique within the pod. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
-                                  type: string
                                 secret:
                                   description: 'Secret represents a secret that should
                                     populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
@@ -6164,8 +6065,6 @@ spec:
                                         namespace to use. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
                                       type: string
                                   type: object
-                              required:
-                              - name
                               type: object
                             volumeMount:
                               description: Mount.Name maps to .Values.gateways.<gateway-name>.<type>.name
@@ -6213,6 +6112,10 @@ spec:
                           type: object
                         type: array
                     type: object
+                  enabled:
+                    description: Enabled specifies whether or not this feature is
+                      enabled
+                    type: boolean
                   ingress:
                     description: ClusterIngress configures the istio-ingressgateway
                       for the mesh works in conjunction with cluster.meshExpansion.ingress
@@ -6331,19 +6234,6 @@ spec:
                                     format: int32
                                     type: integer
                                 type: object
-                              metadata:
-                                description: Metadata specifies additional labels
-                                  and annotations to be applied to the deployment
-                                properties:
-                                  annotations:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
-                                  labels:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
-                                type: object
                               replicas:
                                 description: Number of desired pods. This is a pointer
                                   to distinguish between explicit zero and not specified.
@@ -6419,8 +6309,9 @@ spec:
                                   time PodAffinity is not supported at this time
                                 properties:
                                   podAntiAffinity:
-                                    description: PodAntiAffinity configures anti affinity
-                                      for pod scheduling
+                                    description: 'XXX: use corev1.PodAntiAffinity
+                                      instead, the only things not supported are namespaces
+                                      and weighting'
                                     properties:
                                       preferredDuringScheduling:
                                         items:
@@ -6985,10 +6876,6 @@ spec:
                                         its keys must be defined
                                       type: boolean
                                   type: object
-                                name:
-                                  description: 'Volume''s name. Must be a DNS_LABEL
-                                    and unique within the pod. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
-                                  type: string
                                 secret:
                                   description: 'Secret represents a secret that should
                                     populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
@@ -7054,8 +6941,6 @@ spec:
                                         namespace to use. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
                                       type: string
                                   type: object
-                              required:
-                              - name
                               type: object
                             volumeMount:
                               description: Mount.Name maps to .Values.gateways.<gateway-name>.<type>.name
@@ -7124,11 +7009,6 @@ spec:
                 description: Policy configures policy checking for the control plane.
                   .Values.policy.enabled, true if not null
                 properties:
-                  istiod:
-                    description: 'Istiod policy implementation (v2) XXX: is this the
-                      default policy config, i.e. what''s used if mixer is not being
-                      used?  Does this need to be explicit?'
-                    type: object
                   mixer:
                     description: Mixer configuration (legacy, v1) .Values.mixer.policy.enabled
                     properties:
@@ -7194,19 +7074,6 @@ spec:
                                       policy will be used.
                                     format: int32
                                     type: integer
-                                type: object
-                              metadata:
-                                description: Metadata specifies additional labels
-                                  and annotations to be applied to the deployment
-                                properties:
-                                  annotations:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
-                                  labels:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
                                 type: object
                               replicas:
                                 description: Number of desired pods. This is a pointer
@@ -7283,8 +7150,9 @@ spec:
                                   time PodAffinity is not supported at this time
                                 properties:
                                   podAntiAffinity:
-                                    description: PodAntiAffinity configures anti affinity
-                                      for pod scheduling
+                                    description: 'XXX: use corev1.PodAntiAffinity
+                                      instead, the only things not supported are namespaces
+                                      and weighting'
                                     properties:
                                       preferredDuringScheduling:
                                         items:
@@ -7555,8 +7423,9 @@ spec:
                   values were previously exposed through .Values.global.proxy
                 properties:
                   adminPort:
-                    description: AdminPort configures the admin port exposed by the
+                    description: 'AdminPort configures the admin port exposed by the
                       sidecar. maps to defaultConfig.proxyAdminPort, defaults to 15000
+                      XXX: currently not configurable in charts'
                     format: int32
                     type: integer
                   concurrency:
@@ -7600,80 +7469,39 @@ spec:
                         description: 'maps to meshConfig.defaultConfig.connectionTimeout,
                           defaults to 10s XXX: currently not exposed through values.yaml'
                         type: string
+                      dns:
+                        description: DNS configures aspects of the sidecar's usage
+                          of DNS
+                        properties:
+                          refreshRate:
+                            description: RefreshRate configures the DNS refresh rate
+                              for Envoy cluster of type STRICT_DNS This must be given
+                              it terms of seconds. For example, 300s is valid but
+                              5m is invalid. .Values.global.proxy.dnsRefreshRate,
+                              default 300s
+                            type: string
+                          searchSuffixes:
+                            description: 'SearchSuffixes are additional search suffixes
+                              to be used when resolving names. .Values.global.podDNSSearchNamespaces
+                              Custom DNS config for the pod to resolve names of services
+                              in other clusters. Use this to add additional search
+                              domains, and other settings. see https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#dns-config
+                              This does not apply to gateway pods as they typically
+                              need a different set of DNS settings than the normal
+                              application pods (e.g., in multicluster scenarios).
+                              NOTE: If using templates, follow the pattern in the
+                              commented example below.    podDNSSearchNamespaces:    -
+                              global    - "{{ valueOrDefault .DeploymentMeta.Namespace
+                              \"default\" }}.global"'
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       initialization:
                         description: Initialization is used to specify how the pod's
                           networking through the proxy is initialized.  This configures
                           the use of CNI or an init container.
                         properties:
-                          cni:
-                            description: CNI configures the use of CNI for initializing
-                              the pod's networking. istio_cni.enabled = true, if CNI
-                              is used
-                            properties:
-                              runtime:
-                                description: Runtime configures customization of the
-                                  CNI containers (e.g. resources)
-                                properties:
-                                  image:
-                                    type: string
-                                  imagePullPolicy:
-                                    description: PullPolicy describes a policy for
-                                      if/when to pull a container image
-                                    type: string
-                                  imagePullSecrets:
-                                    items:
-                                      description: LocalObjectReference contains enough
-                                        information to let you locate the referenced
-                                        object inside the same namespace.
-                                      properties:
-                                        name:
-                                          description: 'Name of the referent. More
-                                            info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                            TODO: Add other useful fields. apiVersion,
-                                            kind, uid?'
-                                          type: string
-                                      type: object
-                                    type: array
-                                  imageRegistry:
-                                    type: string
-                                  imageTag:
-                                    type: string
-                                  priorityClassName:
-                                    description: PriorityClassName configures the
-                                      priority class name for the pods.
-                                    type: string
-                                  resources:
-                                    description: ResourceRequirements describes the
-                                      compute resource requirements.
-                                    properties:
-                                      limits:
-                                        additionalProperties:
-                                          anyOf:
-                                          - type: integer
-                                          - type: string
-                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                          x-kubernetes-int-or-string: true
-                                        description: 'Limits describes the maximum
-                                          amount of compute resources allowed. More
-                                          info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
-                                        type: object
-                                      requests:
-                                        additionalProperties:
-                                          anyOf:
-                                          - type: integer
-                                          - type: string
-                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                          x-kubernetes-int-or-string: true
-                                        description: 'Requests describes the minimum
-                                          amount of compute resources required. If
-                                          Requests is omitted for a container, it
-                                          defaults to Limits if that is explicitly
-                                          specified, otherwise to an implementation-defined
-                                          value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
-                                        type: object
-                                    type: object
-                                type: object
-                            type: object
                           initContainer:
                             description: InitContainer configures the use of a pod
                               init container for initializing the pod's networking.
@@ -7744,15 +7572,28 @@ spec:
                             type: string
                         type: object
                       protocol:
-                        description: DNS configures aspects of the sidecar's usage
-                          of DNS
+                        description: Protocol configures how the sidecar works with
+                          applicaiton protocols.
                         properties:
-                          searchSuffixes:
-                            description: RefreshRate configures the DNS refresh rate
-                              for Envoy cluster of type STRICT_DNS This must be given
-                              it terms of seconds. For example, 300s is valid but
-                              5m is invalid. .Values.global.proxy.dnsRefreshRate,
-                              default 300s
+                          debug:
+                            description: Debug configures debugging capabilities for
+                              the connection.
+                            properties:
+                              enableInboudSniffing:
+                                description: EnableInboundSniffing enables protocol
+                                  sniffing on inbound traffic. .Values.pilot.enableProtocolSniffingForInbound
+                                type: boolean
+                              enableOutboundSniffing:
+                                description: EnableOutboundSniffing enables protocol
+                                  sniffing on outbound traffic. .Values.pilot.enableProtocolSniffingForOutbound
+                                type: boolean
+                            type: object
+                          detectionTimeout:
+                            description: DetectionTimeout specifies how much time
+                              the sidecar will spend determining the protocol being
+                              used for the connection before reverting to raw TCP.
+                              .Values.global.proxy.protocolDetectionTimeout, maps
+                              to protocolDetectionTimeout
                             type: string
                         type: object
                       trafficControl:
@@ -7769,7 +7610,8 @@ spec:
                                   sidecar. .Values.global.proxy.excludeInboundPorts,
                                   defaults to empty list, overridden by traffic.sidecar.istio.io/excludeInboundPorts
                                 items:
-                                  type: string
+                                  format: int32
+                                  type: integer
                                 type: array
                               includedPorts:
                                 description: IncludedPorts to be routed through the
@@ -7828,6 +7670,61 @@ spec:
                     description: Runtime is used to customize runtime configuration
                       for the sidecar container.
                     properties:
+                      container:
+                        description: Container configures the sidecar container.
+                        properties:
+                          image:
+                            type: string
+                          imagePullPolicy:
+                            description: PullPolicy describes a policy for if/when
+                              to pull a container image
+                            type: string
+                          imagePullSecrets:
+                            items:
+                              description: LocalObjectReference contains enough information
+                                to let you locate the referenced object inside the
+                                same namespace.
+                              properties:
+                                name:
+                                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                    TODO: Add other useful fields. apiVersion, kind,
+                                    uid?'
+                                  type: string
+                              type: object
+                            type: array
+                          imageRegistry:
+                            type: string
+                          imageTag:
+                            type: string
+                          resources:
+                            description: ResourceRequirements describes the compute
+                              resource requirements.
+                            properties:
+                              limits:
+                                additionalProperties:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                  x-kubernetes-int-or-string: true
+                                description: 'Limits describes the maximum amount
+                                  of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                type: object
+                              requests:
+                                additionalProperties:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                  x-kubernetes-int-or-string: true
+                                description: 'Requests describes the minimum amount
+                                  of compute resources required. If Requests is omitted
+                                  for a container, it defaults to Limits if that is
+                                  explicitly specified, otherwise to an implementation-defined
+                                  value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                type: object
+                            type: object
+                        type: object
                       readiness:
                         description: Readiness configures the readiness probe behavior
                           for the injected pod.
@@ -7871,34 +7768,6 @@ spec:
                             format: int32
                             type: integer
                         type: object
-                      resources:
-                        description: Resources configures the resources on the sidecar
-                          container.
-                        properties:
-                          limits:
-                            additionalProperties:
-                              anyOf:
-                              - type: integer
-                              - type: string
-                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                              x-kubernetes-int-or-string: true
-                            description: 'Limits describes the maximum amount of compute
-                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
-                            type: object
-                          requests:
-                            additionalProperties:
-                              anyOf:
-                              - type: integer
-                              - type: string
-                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                              x-kubernetes-int-or-string: true
-                            description: 'Requests describes the minimum amount of
-                              compute resources required. If Requests is omitted for
-                              a container, it defaults to Limits if that is explicitly
-                              specified, otherwise to an implementation-defined value.
-                              More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
-                            type: object
-                        type: object
                     type: object
                 type: object
               runtime:
@@ -7935,19 +7804,6 @@ spec:
                                   will be used.
                                 format: int32
                                 type: integer
-                            type: object
-                          metadata:
-                            description: Metadata specifies additional labels and
-                              annotations to be applied to the deployment
-                            properties:
-                              annotations:
-                                additionalProperties:
-                                  type: string
-                                type: object
-                              labels:
-                                additionalProperties:
-                                  type: string
-                                type: object
                             type: object
                           replicas:
                             description: Number of desired pods. This is a pointer
@@ -8022,8 +7878,9 @@ spec:
                               PodAffinity is not supported at this time
                             properties:
                               podAntiAffinity:
-                                description: PodAntiAffinity configures anti affinity
-                                  for pod scheduling
+                                description: 'XXX: use corev1.PodAntiAffinity instead,
+                                  the only things not supported are namespaces and
+                                  weighting'
                                 properties:
                                   preferredDuringScheduling:
                                     items:
@@ -8417,19 +8274,6 @@ spec:
                                 format: int32
                                 type: integer
                             type: object
-                          metadata:
-                            description: Metadata specifies additional labels and
-                              annotations to be applied to the deployment
-                            properties:
-                              annotations:
-                                additionalProperties:
-                                  type: string
-                                type: object
-                              labels:
-                                additionalProperties:
-                                  type: string
-                                type: object
-                            type: object
                           replicas:
                             description: Number of desired pods. This is a pointer
                               to distinguish between explicit zero and not specified.
@@ -8503,8 +8347,9 @@ spec:
                               PodAffinity is not supported at this time
                             properties:
                               podAntiAffinity:
-                                description: PodAntiAffinity configures anti affinity
-                                  for pod scheduling
+                                description: 'XXX: use corev1.PodAntiAffinity instead,
+                                  the only things not supported are namespaces and
+                                  weighting'
                                 properties:
                                   preferredDuringScheduling:
                                     items:
@@ -8756,19 +8601,6 @@ spec:
                                 format: int32
                                 type: integer
                             type: object
-                          metadata:
-                            description: Metadata specifies additional labels and
-                              annotations to be applied to the deployment
-                            properties:
-                              annotations:
-                                additionalProperties:
-                                  type: string
-                                type: object
-                              labels:
-                                additionalProperties:
-                                  type: string
-                                type: object
-                            type: object
                           replicas:
                             description: Number of desired pods. This is a pointer
                               to distinguish between explicit zero and not specified.
@@ -8842,8 +8674,9 @@ spec:
                               PodAffinity is not supported at this time
                             properties:
                               podAntiAffinity:
-                                description: PodAntiAffinity configures anti affinity
-                                  for pod scheduling
+                                description: 'XXX: use corev1.PodAntiAffinity instead,
+                                  the only things not supported are namespaces and
+                                  weighting'
                                 properties:
                                   preferredDuringScheduling:
                                     items:
@@ -9103,26 +8936,12 @@ spec:
                                 description: PrivateKey configures istiod to use a
                                   user specified private key/cert when signing certificates.
                                 properties:
-                                  certChainFile:
-                                    description: hard coded to cert-chain.pem
-                                    type: string
-                                  encryptionSecret:
-                                    description: hard coded to use a secret named
-                                      cacerts
-                                    type: string
                                   rootCADir:
-                                    description: 'ROOT_CA_DIR, defaults to /etc/cacerts
-                                      Mount directory for encryption secret XXX: currently,
+                                    description: 'hard coded to use a secret named
+                                      cacerts EncryptionSecret string `json:"encryptionSecret,omitempty"`
+                                      ROOT_CA_DIR, defaults to /etc/cacerts Mount
+                                      directory for encryption secret XXX: currently,
                                       not configurable in the charts'
-                                    type: string
-                                  rootCertFile:
-                                    description: hard coded to root-cert.pem
-                                    type: string
-                                  signingCertFile:
-                                    description: hard coded to ca-cert.pem
-                                    type: string
-                                  signingKeyFile:
-                                    description: hard coded to ca-key.pem
                                     type: string
                                 type: object
                               selfSigned:
@@ -9145,11 +8964,6 @@ spec:
                                     description: GracePeriod percentile for self-signed
                                       cert env CITADEL_SELF_SIGNED_ROOT_CERT_GRACE_PERIOD_PERCENTILE
                                       default is 20%
-                                    type: string
-                                  org:
-                                    description: 'Org is the Org value in the certificate.
-                                      XXX: currently uses TrustDomain.  I don''t think
-                                      this is configurable.'
                                     type: string
                                   ttl:
                                     description: TTL for self-signed root certificate
@@ -9200,10 +9014,6 @@ spec:
                         description: Identity configures the types of user tokens
                           used by clients.
                         properties:
-                          kubernetes:
-                            description: Kubernetes configures istiod to use default
-                              Kubernetes service account tokens to identify users.
-                            type: object
                           thirdParty:
                             description: 'ThirdParty configures istiod to use a third-party
                               token provider for identifying users. (basically uses
@@ -9219,12 +9029,6 @@ spec:
                                 description: Issuer is the URL of the issuer. env
                                   TOKEN_ISSUER, defaults to iss in specified token
                                   only supported in 1.6+
-                                type: string
-                              tokenPath:
-                                description: 'TokenPath is the path to the token used
-                                  to identify the workload. default /var/run/secrets/tokens/istio-token
-                                  XXX: projects service account token with specified
-                                  audience (istio-ca) XXX: not configurable'
                                 type: string
                             type: object
                           type:
@@ -9267,7 +9071,7 @@ spec:
                           logging filter for v2 telemetry. .Values.telemetry.v2.accessLogPolicy.enabled
                         properties:
                           logWindowDuration:
-                            description: LogWindoDuration configures the log window
+                            description: LogWindowDuration configures the log window
                               duration for access logs. defaults to 43200s To reduce
                               the number of successful logs, default log window duration
                               is set to 12 hours.
@@ -9306,9 +9110,9 @@ spec:
                           as opposed to here?'
                         properties:
                           configOverride:
-                            additionalProperties:
-                              type: string
+                            description: HelmValues is typedef for Helm .Values
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           disableOutbound:
                             type: boolean
                           logging:
@@ -9466,19 +9270,6 @@ spec:
                                     format: int32
                                     type: integer
                                 type: object
-                              metadata:
-                                description: Metadata specifies additional labels
-                                  and annotations to be applied to the deployment
-                                properties:
-                                  annotations:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
-                                  labels:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
-                                type: object
                               replicas:
                                 description: Number of desired pods. This is a pointer
                                   to distinguish between explicit zero and not specified.
@@ -9554,8 +9345,9 @@ spec:
                                   time PodAffinity is not supported at this time
                                 properties:
                                   podAntiAffinity:
-                                    description: PodAntiAffinity configures anti affinity
-                                      for pod scheduling
+                                    description: 'XXX: use corev1.PodAntiAffinity
+                                      instead, the only things not supported are namespaces
+                                      and weighting'
                                     properties:
                                       preferredDuringScheduling:
                                         items:

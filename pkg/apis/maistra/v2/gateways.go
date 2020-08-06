@@ -6,6 +6,7 @@ import (
 
 // GatewaysConfig configures gateways for the mesh
 type GatewaysConfig struct {
+	Enablement `json:",inline"`
 	// ClusterIngress configures the istio-ingressgateway for the mesh
 	// works in conjunction with cluster.meshExpansion.ingress configuration
 	// (for enabling ILB gateway and mesh expansion ports)
@@ -131,10 +132,6 @@ type VolumeConfig struct {
 // GatewayVolume is a pared down version of corev1.Volume, which only supports
 // specifying ConfigMap and Secret volume types.
 type GatewayVolume struct {
-	// Volume's name.
-	// Must be a DNS_LABEL and unique within the pod.
-	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-	Name string `json:"name"`
 	// ConfigMap represents a configMap that should populate this volume
 	// +optional
 	ConfigMap *corev1.ConfigMapVolumeSource `json:"configMap,omitempty"`

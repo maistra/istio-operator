@@ -1,5 +1,7 @@
 package v2
 
+import v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+
 // TelemetryConfig for the mesh
 type TelemetryConfig struct {
 	// Type of telemetry implementation to use.
@@ -232,15 +234,15 @@ type StackDriverFilterConfig struct {
 	// +optional
 	DisableOutbound bool              `json:"disableOutbound,omitempty"`
 	// +optional
-	ConfigOverride  map[string]string `json:"configOverride,omitempty"`
+	ConfigOverride  *v1.HelmValues `json:"configOverride,omitempty"`
 }
 
 // AccessLogTelemetryFilterConfig for v2 telemetry.
 type AccessLogTelemetryFilterConfig struct {
-	// LogWindoDuration configures the log window duration for access logs.
+	// LogWindowDuration configures the log window duration for access logs.
 	// defaults to 43200s
 	// To reduce the number of successful logs, default log window duration is
 	// set to 12 hours.
 	// +optional
-	LogWindoDuration string `json:"logWindowDuration,omitempty"`
+	LogWindowDuration string `json:"logWindowDuration,omitempty"`
 }

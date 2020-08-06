@@ -6,7 +6,7 @@ metadata:
     app: {{ template "galley.name" . }}
     chart: {{ template "galley.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.1.5
+    maistra-version: 1.1.6
     release: {{ .Release.Name }}
     istio: galley
 webhooks:
