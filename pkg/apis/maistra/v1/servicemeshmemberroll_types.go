@@ -23,7 +23,7 @@ func init() {
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:storageversion
-// +kubebuilder:resource:shortName=smmr
+// +kubebuilder:resource:shortName=smmr,categories=maistra-io
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.annotations.configuredMemberCount",description="How many of the total number of member namespaces are configured"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].reason",description="Whether all member namespaces have been configured or why that's not the case"
