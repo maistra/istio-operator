@@ -32,7 +32,7 @@ func init() {
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:storageversion
-// +kubebuilder:resource:shortName=smm
+// +kubebuilder:resource:shortName=smm,categories=maistra-io
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Control Plane",type="string",JSONPath=".status.annotations.controlPlaneRef",description="The ServiceMeshControlPlane this namespace belongs to"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status",description="Whether or not namespace is configured as a member of the mesh."

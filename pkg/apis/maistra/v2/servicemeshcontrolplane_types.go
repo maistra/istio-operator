@@ -15,7 +15,7 @@ func init() {
 // ServiceMeshControlPlane is the Schema for the controlplanes API
 // +k8s:openapi-gen=true
 // +kubebuilder:storageversion
-// +kubebuilder:resource:shortName=smcp
+// +kubebuilder:resource:shortName=smcp,categories=maistra-io
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.annotations.readyComponentCount",description="How many of the total number of components are ready"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].reason",description="Whether or not the control plane installation is up to date and ready to handle requests."
