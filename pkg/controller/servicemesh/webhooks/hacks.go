@@ -148,7 +148,7 @@ func newWebhookService(namespace string) *corev1.Service {
 				"name": "istio-operator",
 			},
 			Ports: []corev1.ServicePort{
-				corev1.ServicePort{
+				{
 					Name:       "validation",
 					Port:       443,
 					TargetPort: intstr.FromInt(11999),
@@ -164,7 +164,7 @@ func newValidatingWebhookConfiguration(namespace string) *arbeta1.ValidatingWebh
 			Name: fmt.Sprintf("%s.servicemesh-resources.maistra.io", namespace),
 		},
 		Webhooks: []arbeta1.ValidatingWebhook{
-			arbeta1.ValidatingWebhook{
+			{
 				Name:          "smcp.validation.maistra.io",
 				Rules:         rulesFor("servicemeshcontrolplanes", arbeta1.Create, arbeta1.Update),
 				FailurePolicy: &webhookFailurePolicy,
@@ -176,7 +176,7 @@ func newValidatingWebhookConfiguration(namespace string) *arbeta1.ValidatingWebh
 					},
 				},
 			},
-			arbeta1.ValidatingWebhook{
+			{
 				Name:          "smmr.validation.maistra.io",
 				Rules:         rulesFor("servicemeshmemberrolls", arbeta1.Create, arbeta1.Update),
 				FailurePolicy: &webhookFailurePolicy,
@@ -188,7 +188,7 @@ func newValidatingWebhookConfiguration(namespace string) *arbeta1.ValidatingWebh
 					},
 				},
 			},
-			arbeta1.ValidatingWebhook{
+			{
 				Name:          "smm.validation.maistra.io",
 				Rules:         rulesFor("servicemeshmembers", arbeta1.Create, arbeta1.Update),
 				FailurePolicy: &webhookFailurePolicy,
@@ -210,7 +210,7 @@ func newMutatingWebhookConfiguration(namespace string) *arbeta1.MutatingWebhookC
 			Name: fmt.Sprintf("%s.servicemesh-resources.maistra.io", namespace),
 		},
 		Webhooks: []arbeta1.MutatingWebhook{
-			arbeta1.MutatingWebhook{
+			{
 				Name:          "smcp.mutation.maistra.io",
 				Rules:         rulesFor("servicemeshcontrolplanes", arbeta1.Create, arbeta1.Update),
 				FailurePolicy: &webhookFailurePolicy,
@@ -222,7 +222,7 @@ func newMutatingWebhookConfiguration(namespace string) *arbeta1.MutatingWebhookC
 					},
 				},
 			},
-			arbeta1.MutatingWebhook{
+			{
 				Name:          "smmr.mutation.maistra.io",
 				Rules:         rulesFor("servicemeshmemberrolls", arbeta1.Create, arbeta1.Update),
 				FailurePolicy: &webhookFailurePolicy,

@@ -104,7 +104,13 @@ function prometheus_patch_deployment() {
 
 function prometheus_patch_service() {
   sed_wrap -i -e '/port: 9090/ a\
-    targetPort: 3001' ${HELM_DIR}/istio-telemetry/prometheus/templates/service.yaml
+    targetPort: 3001' \
+    -e '/^{{- if .Values.prometheus.service }}/,/^{{- end }}/ {
+      s/^{{- if .Values.prometheus.service }}/{{- if .Values.prometheus.service.nodePort }}\
+{{- if .Values.prometheus.service.nodePort.enabled }}/
+      /{{- end }}/a\
+\{\{- end \}\}
+      }' ${HELM_DIR}/istio-telemetry/prometheus/templates/service.yaml
 }
 
 function prometheus_patch_values() {

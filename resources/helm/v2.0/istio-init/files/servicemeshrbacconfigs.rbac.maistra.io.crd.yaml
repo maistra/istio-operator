@@ -6,30 +6,29 @@ metadata:
   labels:
     maistra-version: 2.0.0
     app: istio-pilot
-    chart: istio
     heritage: Tiller
     istio: rbac
+    maistra-version: 1.1.6
     release: istio
-  name: clusterrbacconfigs.rbac.istio.io
+  name: servicemeshrbacconfigs.rbac.maistra.io
 spec:
-  group: rbac.istio.io
+  group: rbac.maistra.io
   names:
     categories:
     - istio-io
     - rbac-istio-io
-    kind: ClusterRbacConfig
-    listKind: ClusterRbacConfigList
-    plural: clusterrbacconfigs
-    singular: clusterrbacconfig
-  preserveUnknownFields: false
-  scope: Cluster
+    kind: ServiceMeshRbacConfig
+    plural: servicemeshrbacconfigs
+    singular: servicemeshrbacconfig
+  scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
       properties:
         spec:
-          description: 'See more details at:'
+          description: 'Configuration for Role Based Access Control. See more details
+            at: https://istio.io/docs/reference/config/authorization/istio.rbac.v1alpha1.html'
           properties:
             enforcementMode:
               enum:
@@ -79,11 +78,8 @@ spec:
               - ON_WITH_EXCLUSION
               type: string
           type: object
-        status:
-          type: object
-          x-kubernetes-preserve-unknown-fields: true
       type: object
   versions:
-  - name: v1alpha1
+  - name: v1
     served: true
     storage: true

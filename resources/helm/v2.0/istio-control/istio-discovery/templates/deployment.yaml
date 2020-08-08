@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: istiod{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
+  name: istiod-{{ .Values.revision | default "default" }}
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
@@ -24,23 +24,14 @@ spec:
       maxUnavailable: {{ .Values.pilot.rollingMaxUnavailable }}
   selector:
     matchLabels:
-      {{- if ne .Values.revision ""}}
       app: istiod
       istio.io/rev: {{ .Values.revision | default "default" }}
-      {{- else }}
-      istio: pilot
-      {{- end }}
   template:
     metadata:
       labels:
         maistra-control-plane: {{ .Release.Namespace }}
         app: istiod
         istio.io/rev: {{ .Values.revision | default "default" }}
-        {{- if eq .Values.revision ""}}
-        istio: pilot
-        {{- else }}
-        istio: istiod
-        {{- end }}
       annotations:
         {{- if .Values.meshConfig.enablePrometheusMerge }}
         prometheus.io/port: "15014"
@@ -51,14 +42,13 @@ spec:
 {{ toYaml .Values.pilot.podAnnotations | indent 8 }}
         {{- end }}
     spec:
-      serviceAccountName: istiod-service-account
+      serviceAccountName: istiod-service-account-{{ .Values.revision | default "default" }}
 {{- if .Values.global.priorityClassName }}
       priorityClassName: "{{ .Values.global.priorityClassName }}"
 {{- end }}
-      securityContext:
-        fsGroup: 1337
       containers:
         - name: discovery
+          workingDir: "/"
 {{- if contains "/" .Values.pilot.image }}
           image: "{{ .Values.pilot.image }}"
 {{- else }}
@@ -70,7 +60,6 @@ spec:
           args:
           - "discovery"
           - --memberRollName=default
-          - --useOldProcessor=true
           - --podLocalitySource=pod
           - --monitoringAddr=:15014
 {{- if .Values.global.logging.level }}
@@ -144,8 +133,10 @@ spec:
             value: "{{ .Values.pilot.enableProtocolSniffingForInbound }}"
           - name: INJECTION_WEBHOOK_CONFIG_NAME
             value: ""
+          - name: VALIDATION_WEBHOOK_CONFIG_NAME
+            value: ""
           - name: ISTIOD_ADDR
-            value: istiod{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}.{{ .Release.Namespace }}.svc:15012
+            value: istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc:15012
           - name: PILOT_ENABLE_ANALYSIS
             value: "{{ .Values.global.istiod.enableAnalysis }}"
           - name: CLUSTER_ID
@@ -159,9 +150,6 @@ spec:
 {{ toYaml .Values.global.defaultResources | trim | indent 12 }}
 {{- end }}
           securityContext:
-            runAsUser: 1337
-            runAsGroup: 1337
-            runAsNonRoot: true
             capabilities:
               drop:
               - ALL
@@ -208,14 +196,14 @@ spec:
       # Optional - image should have
       - name: inject
         configMap:
-          name: istio-sidecar-injector{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
+          name: istio-sidecar-injector-{{ .Values.revision | default "default" }}
           optional: true
       - name: config-volume
         configMap:
-          name: istio{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
+          name: istio-{{ .Values.revision | default "default" }}
   {{- if .Values.pilot.jwksResolverExtraRootCA }}
       - name: extracacerts
         configMap:
-          name: pilot-jwks-extra-cacerts{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
+          name: pilot-jwks-extra-cacerts-{{ .Values.revision | default "default" }}
   {{- end }}
 ---

@@ -23,6 +23,7 @@ import (
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 )
 
 // these components have to be installed in the specified order
@@ -280,6 +281,6 @@ func (v *versionStrategyV1_1) GetChartInstallOrder() [][]string {
 	return v1_1ChartOrder
 }
 
-func (v *versionStrategyV1_1) Render(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
-	return v.renderImpl.render(ctx, v.version, cr, smcp)
+func (v *versionStrategyV1_1) Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
+	return v.renderImpl.render(ctx, v.version, cr, cniConfig, smcp)
 }

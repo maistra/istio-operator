@@ -146,8 +146,8 @@ collect-1.1-templates:
 .PHONY: update-2.0-charts
 update-2.0-charts:
 	HELM_DIR=${RESOURCES_DIR}/helm/v2.0 ISTIO_VERSION=1.6.0 ${SOURCE_DIR}/build/download-charts.sh
-	find ${RESOURCES_DIR}/helm/v2.0/istio-init/files/ -maxdepth 1 -name "*.crd.yaml" -delete
 	CRD_DIR=${RESOURCES_DIR}/helm/v2.0/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
+	rm ${RESOURCES_DIR}/helm/v2.0/istio-init/files/clusterrbacconfigs.rbac.istio.io.crd.yaml
 
 .PHONY: collect-2.0-charts
 collect-2.0-charts:

@@ -64,7 +64,24 @@ func TestBootstrapping(t *testing.T) {
 					Template: "maistra",
 				},
 			},
-			crdCount: 24,
+			crdCount: 25,
+		},
+		{
+			name: "v2.0.mixer",
+			smcp: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version:  versions.V2_0.String(),
+					Template: "maistra",
+					Policy: &maistrav2.PolicyConfig{
+						Type: maistrav2.PolicyTypeMixer,
+					},
+					Telemetry: &maistrav2.TelemetryConfig{
+						Type: maistrav2.TelemetryTypeMixer,
+					},
+				},
+			},
+			crdCount: 25,
 		},
 	}
 

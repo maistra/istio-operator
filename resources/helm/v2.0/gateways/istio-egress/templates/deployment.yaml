@@ -158,7 +158,7 @@ spec:
           {{- if .Values.global.caAddress }}
             value: {{ .Values.global.caAddress }}
           {{- else }}
-            value: istiod{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}.{{ .Values.global.istioNamespace }}.svc:15012
+            value: istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc:15012
           {{- end }}
           - name: NODE_NAME
             valueFrom:
@@ -290,7 +290,7 @@ spec:
       {{- end }}
       - name: config-volume
         configMap:
-          name: istio{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
+          name: istio-{{ .Values.revision | default "default" }}
           optional: true
       {{- range $gateway.secretVolumes }}
       - name: {{ .name }}
