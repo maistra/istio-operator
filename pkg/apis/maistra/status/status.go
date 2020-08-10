@@ -36,6 +36,7 @@ func NewStatus() StatusType {
 }
 
 type ComponentStatusList struct {
+	//+optional
 	ComponentStatus []ComponentStatus `json:"components"`
 }
 

@@ -27,6 +27,9 @@ spec:
       jwtPolicy: first-party-jwt
       logging:
         level: warn
+      k8sIngress:
+        enabled: false
+        gatewayName: ingressgateway
     istio_cni:
       repair:
         enabled: false

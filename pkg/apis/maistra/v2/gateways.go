@@ -89,6 +89,13 @@ type IngressGatewayConfig struct {
 // ClusterIngressGatewayConfig represents gateway configuration for cluster ingress
 type ClusterIngressGatewayConfig struct {
 	IngressGatewayConfig `json:",inline"`
+	// .Values.global.k8sIngress.enabled
+	// implies the following:
+	// .Values.global.k8sIngress.gatewayName will match the ingress gateway
+	// .Values.global.k8sIngress.enableHttps will be true if gateway service exposes port 443
+	// XXX: not sure whether or not this is specific to multicluster, mesh expansion, or both
+	// +optional
+	IngressEnabled *bool `json:"ingress,omitempty"`
 	// MeshExpansionPorts define the port set used with multi-cluster/mesh expansion
 	// +optional
 	MeshExpansionPorts []corev1.ServicePort `json:"meshExpansionPorts,omitempty"`

@@ -83,6 +83,24 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 					return err
 				}
 			}
+			if gateways.ClusterIngress.IngressEnabled != nil {
+				if err := setHelmBoolValue(values, "global.k8sIngress.enabled", *gateways.ClusterIngress.IngressEnabled); err != nil {
+					return err
+				}
+				hasHTTPS := false
+				for _, port := range gateways.ClusterIngress.Service.Ports {
+					if port.Port == 443 {
+						hasHTTPS = true
+						break
+					}
+				}
+				if err := setHelmBoolValue(values, "global.k8sIngress.enableHttps", hasHTTPS); err != nil {
+					return err
+				}
+				if err := setHelmStringValue(values, "global.k8sIngress.gatewayName", "ingressgateway"); err != nil {
+					return err
+				}
+			}
 			if err := setHelmValue(gatewayValues, "name", "istio-ingressgateway"); err != nil {
 				return err
 			}
@@ -392,6 +410,11 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 				if name == "istio-ingressgateway" {
 					clusterIngress := v2.ClusterIngressGatewayConfig{
 						IngressGatewayConfig: ingressGateway,
+					}
+					if k8sIngressEnabled, ok, err := in.GetBool("global.k8sIngress.enabled"); ok {
+						clusterIngress.IngressEnabled = &k8sIngressEnabled
+					} else if err != nil {
+						return err
 					}
 					gatewaysConfig.ClusterIngress = &clusterIngress
 				} else if name != "istio-ilbgateway" {

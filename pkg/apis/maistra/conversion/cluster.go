@@ -147,25 +147,6 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 			gatewaysOverrides.SetField("addedExternal", true)
 			in.Gateways.ClusterEgress.RequestedNetworkView = append(in.Gateways.ClusterEgress.RequestedNetworkView, "external")
 		}
-		// XXX: i think this should be moved to Gateways.ClusterIngress
-		// XXX: how does this interact with IOR
-		if cluster.MultiCluster.Ingress {
-			if err := setHelmBoolValue(values, "global.k8sIngress.enabled", true); err != nil {
-				return err
-			}
-			if in.Gateways != nil && in.Gateways.ClusterIngress != nil {
-				hasHTTPS := false
-				for _, port := range in.Gateways.ClusterIngress.Service.Ports {
-					if port.Port == 443 {
-						hasHTTPS = true
-						break
-					}
-				}
-				if err := setHelmBoolValue(values, "global.k8sIngress.enableHttps", hasHTTPS); err != nil {
-					return err
-				}
-			}
-		}
 	}
 	if multiClusterEnabled || cluster.MeshExpansion != nil {
 		if err := setHelmBoolValue(values, "global.meshExpansion.enabled", true); err != nil {
@@ -176,6 +157,7 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 				cluster.MeshExpansion.ILBGateway.Enabled == nil || !*cluster.MeshExpansion.ILBGateway.Enabled {
 				if in.Gateways.ClusterIngress == nil {
 					gatewaysOverrides.SetField("ingressEnabled", nil)
+					gatewaysOverrides.SetField("k8sIngressEnabled", nil)
 					enabled := true
 					in.Gateways.ClusterIngress = &v2.ClusterIngressGatewayConfig{
 						IngressGatewayConfig: v2.IngressGatewayConfig{
@@ -185,10 +167,19 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 								},
 							},
 						},
+						IngressEnabled: &enabled,
 					}
-				} else if !*in.Gateways.ClusterIngress.Enabled {
-					gatewaysOverrides.SetField("ingressEnabled", *in.Gateways.ClusterIngress.Enabled)
-					*in.Gateways.ClusterIngress.Enabled = true
+				} else {
+					if in.Gateways.ClusterIngress.Enabled == nil || !*in.Gateways.ClusterIngress.Enabled {
+						enabled := true
+						in.Gateways.ClusterIngress.Enabled = &enabled
+						gatewaysOverrides.SetField("ingressEnabled", *in.Gateways.ClusterIngress.Enabled)
+					}
+					if in.Gateways.ClusterIngress.IngressEnabled == nil || !*in.Gateways.ClusterIngress.IngressEnabled {
+						k8sIngressEnabled := true
+						in.Gateways.ClusterIngress.IngressEnabled = &k8sIngressEnabled
+						gatewaysOverrides.SetField("k8sIngressEnabled", *in.Gateways.ClusterIngress.Enabled)
+					}
 				}
 				addExpansionPorts(&in.Gateways.ClusterIngress.MeshExpansionPorts, expansionPorts)
 				if err := setHelmBoolValue(values, "gateways.istio-ilbgateway.enabled", false); err != nil {
@@ -377,6 +368,20 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 					in.SetField("gateways", gateways)
 				}
 			}
+			if k8sIngressEnabled, ok, err := gatewaysOverrides.GetFieldNoCopy("k8sIngressEnabled"); ok {
+				if k8sIngressValues, ok, err := in.GetMap("global.k8sIngress"); ok && len(k8sIngressValues) > 0 {
+					if k8sIngressEnabled == nil {
+						delete(k8sIngressValues, "enabled")
+					} else {
+						k8sIngressValues["enabled"] = k8sIngressEnabled
+					}
+					in.SetField("global.k8sIngress", k8sIngressValues)
+				} else if err != nil {
+					return nil
+				}
+			} else if err != nil {
+				return nil
+			}
 		} else if err != nil {
 			return err
 		}
@@ -401,11 +406,6 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 			}
 		} else if err != nil {
 			return nil
-		}
-		if ingressEnabled, ok, err := in.GetBool("global.k8sIngress.enabled"); ok {
-			clusterConfig.MultiCluster.Ingress = ingressEnabled
-		} else if err != nil {
-			return err
 		}
 		if expansionEnabled, ok, err := in.GetBool("global.meshExpansion.enabled"); ok && expansionEnabled {
 			meshExpansionConfig := &v2.MeshExpansionConfig{}

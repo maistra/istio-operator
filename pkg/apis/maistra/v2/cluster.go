@@ -25,13 +25,6 @@ type ControlPlaneClusterConfig struct {
 // adds external to RequestedNetworkView (ISTIO_META_REQUESTED_NETWORK_VIEW) for egress gateway
 // adds "global" and "{{ valueOrDefault .DeploymentMeta.Namespace \"default\" }}.global" to pod dns search suffixes
 type MultiClusterConfig struct {
-	// .Values.global.k8sIngress.enabled
-	// implies the following:
-	// .Values.global.k8sIngress.gatewayName will match the ingress gateway
-	// .Values.global.k8sIngress.enableHttps will be true if gateway service exposes port 443
-	// XXX: not sure whether or not this is specific to multicluster, mesh expansion, or both
-	// +optional
-	Ingress bool `json:"ingress,omitempty"`
 	// .Values.global.meshNetworks
 	// XXX: if non-empty, local cluster network should be configured as:
 	//  <spec.cluster.network>:

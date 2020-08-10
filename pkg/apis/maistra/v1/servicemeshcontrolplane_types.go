@@ -77,6 +77,7 @@ type ControlPlaneStatus struct {
 
 	// The full specification of the configuration options that were applied
 	// to the components of the control plane during the most recent reconciliation.
+	// +optional
 	LastAppliedConfiguration ControlPlaneSpec `json:"lastAppliedConfiguration"`
 }
 

@@ -272,9 +272,6 @@ spec:
               reconciledVersion:
                 description: The last version that was reconciled.
                 type: string
-            required:
-            - components
-            - lastAppliedConfiguration
             type: object
         type: object
     served: true
@@ -3569,14 +3566,6 @@ spec:
                   multiCluster:
                     description: .Values.global.multiCluster.enabled, if not null
                     properties:
-                      ingress:
-                        description: '.Values.global.k8sIngress.enabled implies the
-                          following: .Values.global.k8sIngress.gatewayName will match
-                          the ingress gateway .Values.global.k8sIngress.enableHttps
-                          will be true if gateway service exposes port 443 XXX: not
-                          sure whether or not this is specific to multicluster, mesh
-                          expansion, or both'
-                        type: boolean
                       meshNetworks:
                         additionalProperties:
                           description: MeshNetworkConfig configures mesh networks
@@ -6136,6 +6125,14 @@ spec:
                       enabled:
                         description: Enabled specifies whether or not this feature
                           is enabled
+                        type: boolean
+                      ingress:
+                        description: '.Values.global.k8sIngress.enabled implies the
+                          following: .Values.global.k8sIngress.gatewayName will match
+                          the ingress gateway .Values.global.k8sIngress.enableHttps
+                          will be true if gateway service exposes port 443 XXX: not
+                          sure whether or not this is specific to multicluster, mesh
+                          expansion, or both'
                         type: boolean
                       meshExpansionPorts:
                         description: MeshExpansionPorts define the port set used with
@@ -9815,9 +9812,6 @@ spec:
               reconciledVersion:
                 description: The last version that was reconciled.
                 type: string
-            required:
-            - components
-            - lastAppliedConfiguration
             type: object
         type: object
     served: true
