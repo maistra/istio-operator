@@ -141,10 +141,11 @@ var clusterTestCases = []conversionTestCase{
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal":  true,
-						"egressEnabled":  interface{}(nil),
-						"enabled":        interface{}(nil),
-						"ingressEnabled": interface{}(nil),
+						"addedExternal":     true,
+						"egressEnabled":     interface{}(nil),
+						"enabled":           interface{}(nil),
+						"ingressEnabled":    interface{}(nil),
+						"k8sIngressEnabled": interface{}(nil),
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -179,6 +180,11 @@ var clusterTestCases = []conversionTestCase{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
 					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+				},
+				"k8sIngress": map[string]interface{}{
+					"enabled":     true,
+					"enableHttps": false,
+					"gatewayName": "ingressgateway",
 				},
 			},
 			"gateways": map[string]interface{}{
@@ -218,10 +224,11 @@ var clusterTestCases = []conversionTestCase{
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal":  true,
-						"egressEnabled":  interface{}(nil),
-						"enabled":        interface{}(nil),
-						"ingressEnabled": interface{}(nil),
+						"addedExternal":     true,
+						"egressEnabled":     interface{}(nil),
+						"enabled":           interface{}(nil),
+						"ingressEnabled":    interface{}(nil),
+						"k8sIngressEnabled": interface{}(nil),
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -256,6 +263,11 @@ var clusterTestCases = []conversionTestCase{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
 					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+				},
+				"k8sIngress": map[string]interface{}{
+					"enabled":     true,
+					"enableHttps": false,
+					"gatewayName": "ingressgateway",
 				},
 			},
 			"gateways": map[string]interface{}{
@@ -387,10 +399,11 @@ var clusterTestCases = []conversionTestCase{
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal":  true,
-						"egressEnabled":  interface{}(nil),
-						"enabled":        interface{}(nil),
-						"ingressEnabled": interface{}(nil),
+						"addedExternal":     true,
+						"egressEnabled":     interface{}(nil),
+						"enabled":           interface{}(nil),
+						"ingressEnabled":    interface{}(nil),
+						"k8sIngressEnabled": interface{}(nil),
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -425,6 +438,11 @@ var clusterTestCases = []conversionTestCase{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
 					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+				},
+				"k8sIngress": map[string]interface{}{
+					"enabled":     true,
+					"enableHttps": false,
+					"gatewayName": "ingressgateway",
 				},
 			},
 			"gateways": map[string]interface{}{
@@ -479,10 +497,11 @@ var clusterTestCases = []conversionTestCase{
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal":  true,
-						"egressEnabled":  interface{}(nil),
-						"enabled":        interface{}(nil),
-						"ingressEnabled": interface{}(nil),
+						"addedExternal":     true,
+						"egressEnabled":     interface{}(nil),
+						"enabled":           interface{}(nil),
+						"ingressEnabled":    interface{}(nil),
+						"k8sIngressEnabled": interface{}(nil),
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -530,6 +549,11 @@ var clusterTestCases = []conversionTestCase{
 					"global",
 					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
 				},
+				"k8sIngress": map[string]interface{}{
+					"enabled":     true,
+					"enableHttps": false,
+					"gatewayName": "ingressgateway",
+				},
 			},
 			"gateways": map[string]interface{}{
 				"enabled": true,
@@ -572,10 +596,11 @@ var clusterTestCases = []conversionTestCase{
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal":  true,
-						"egressEnabled":  interface{}(nil),
-						"enabled":        interface{}(nil),
-						"ingressEnabled": interface{}(nil),
+						"addedExternal":     true,
+						"egressEnabled":     interface{}(nil),
+						"enabled":           interface{}(nil),
+						"ingressEnabled":    interface{}(nil),
+						"k8sIngressEnabled": interface{}(nil),
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -613,6 +638,11 @@ var clusterTestCases = []conversionTestCase{
 				},
 				"proxy": map[string]interface{}{
 					"clusterDomain": "example.com",
+				},
+				"k8sIngress": map[string]interface{}{
+					"enabled":     true,
+					"enableHttps": false,
+					"gatewayName": "ingressgateway",
 				},
 			},
 			"gateways": map[string]interface{}{
@@ -659,10 +689,11 @@ var clusterTestCases = []conversionTestCase{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal":  true,
-						"egressEnabled":  interface{}(nil),
-						"enabled":        interface{}(nil),
-						"ingressEnabled": interface{}(nil),
+						"addedExternal":     true,
+						"egressEnabled":     interface{}(nil),
+						"enabled":           interface{}(nil),
+						"ingressEnabled":    interface{}(nil),
+						"k8sIngressEnabled": interface{}(nil),
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -697,6 +728,11 @@ var clusterTestCases = []conversionTestCase{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
 					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+				},
+				"k8sIngress": map[string]interface{}{
+					"enabled":     true,
+					"enableHttps": false,
+					"gatewayName": "ingressgateway",
 				},
 			},
 			"gateways": map[string]interface{}{
@@ -743,10 +779,11 @@ var clusterTestCases = []conversionTestCase{
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal":  true,
-						"egressEnabled":  interface{}(nil),
-						"enabled":        interface{}(nil),
-						"ingressEnabled": interface{}(nil),
+						"addedExternal":     true,
+						"egressEnabled":     interface{}(nil),
+						"enabled":           interface{}(nil),
+						"ingressEnabled":    interface{}(nil),
+						"k8sIngressEnabled": interface{}(nil),
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -781,6 +818,11 @@ var clusterTestCases = []conversionTestCase{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
 					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+				},
+				"k8sIngress": map[string]interface{}{
+					"enabled":     true,
+					"enableHttps": false,
+					"gatewayName": "ingressgateway",
 				},
 			},
 			"gateways": map[string]interface{}{
@@ -825,10 +867,11 @@ var clusterTestCases = []conversionTestCase{
 					"enabled":           true,
 					"addedLocalNetwork": "my-network",
 					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal":  true,
-						"egressEnabled":  interface{}(nil),
-						"enabled":        interface{}(nil),
-						"ingressEnabled": interface{}(nil),
+						"addedExternal":     true,
+						"egressEnabled":     interface{}(nil),
+						"enabled":           interface{}(nil),
+						"ingressEnabled":    interface{}(nil),
+						"k8sIngressEnabled": interface{}(nil),
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -863,6 +906,11 @@ var clusterTestCases = []conversionTestCase{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
 					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+				},
+				"k8sIngress": map[string]interface{}{
+					"enabled":     true,
+					"enableHttps": false,
+					"gatewayName": "ingressgateway",
 				},
 			},
 			"gateways": map[string]interface{}{
@@ -910,10 +958,11 @@ var clusterTestCases = []conversionTestCase{
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal":  true,
-						"egressEnabled":  interface{}(nil),
-						"enabled":        interface{}(nil),
-						"ingressEnabled": interface{}(nil),
+						"addedExternal":     true,
+						"egressEnabled":     interface{}(nil),
+						"enabled":           interface{}(nil),
+						"ingressEnabled":    interface{}(nil),
+						"k8sIngressEnabled": interface{}(nil),
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -949,6 +998,11 @@ var clusterTestCases = []conversionTestCase{
 					"global",
 					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
 					"custom",
+				},
+				"k8sIngress": map[string]interface{}{
+					"enabled":     true,
+					"enableHttps": false,
+					"gatewayName": "ingressgateway",
 				},
 			},
 			"gateways": map[string]interface{}{
@@ -996,10 +1050,11 @@ var clusterTestCases = []conversionTestCase{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal":  true,
-						"egressEnabled":  interface{}(nil),
-						"enabled":        interface{}(nil),
-						"ingressEnabled": interface{}(nil),
+						"addedExternal":     true,
+						"egressEnabled":     interface{}(nil),
+						"enabled":           interface{}(nil),
+						"ingressEnabled":    interface{}(nil),
+						"k8sIngressEnabled": interface{}(nil),
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -1035,6 +1090,11 @@ var clusterTestCases = []conversionTestCase{
 					"custom",
 					"global",
 					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+				},
+				"k8sIngress": map[string]interface{}{
+					"enabled":     true,
+					"enableHttps": false,
+					"gatewayName": "ingressgateway",
 				},
 			},
 			"gateways": map[string]interface{}{
@@ -1074,10 +1134,11 @@ var clusterTestCases = []conversionTestCase{
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal":  true,
-						"egressEnabled":  interface{}(nil),
-						"enabled":        interface{}(nil),
-						"ingressEnabled": interface{}(nil),
+						"addedExternal":     true,
+						"egressEnabled":     interface{}(nil),
+						"enabled":           interface{}(nil),
+						"ingressEnabled":    interface{}(nil),
+						"k8sIngressEnabled": interface{}(nil),
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -1112,6 +1173,11 @@ var clusterTestCases = []conversionTestCase{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
 					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+				},
+				"k8sIngress": map[string]interface{}{
+					"enabled":     true,
+					"enableHttps": false,
+					"gatewayName": "ingressgateway",
 				},
 			},
 			"gateways": map[string]interface{}{
@@ -1159,9 +1225,10 @@ var clusterTestCases = []conversionTestCase{
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal":  true,
-						"enabled":        interface{}(nil),
-						"ingressEnabled": interface{}(nil),
+						"addedExternal":     true,
+						"enabled":           interface{}(nil),
+						"ingressEnabled":    interface{}(nil),
+						"k8sIngressEnabled": interface{}(nil),
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -1196,6 +1263,11 @@ var clusterTestCases = []conversionTestCase{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
 					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+				},
+				"k8sIngress": map[string]interface{}{
+					"enabled":     true,
+					"enableHttps": false,
+					"gatewayName": "ingressgateway",
 				},
 			},
 			"gateways": map[string]interface{}{
@@ -1246,8 +1318,9 @@ var clusterTestCases = []conversionTestCase{
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
-						"enabled":        interface{}(nil),
-						"ingressEnabled": interface{}(nil),
+						"enabled":           interface{}(nil),
+						"ingressEnabled":    interface{}(nil),
+						"k8sIngressEnabled": interface{}(nil),
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -1282,6 +1355,11 @@ var clusterTestCases = []conversionTestCase{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
 					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+				},
+				"k8sIngress": map[string]interface{}{
+					"enabled":     true,
+					"enableHttps": false,
+					"gatewayName": "ingressgateway",
 				},
 			},
 			"gateways": map[string]interface{}{
@@ -1304,11 +1382,9 @@ var clusterTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Ingress: featureEnabled,
-				},
+				Name:         "my-cluster",
+				Network:      "my-network",
+				MultiCluster: &v2.MultiClusterConfig{},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
@@ -1322,10 +1398,11 @@ var clusterTestCases = []conversionTestCase{
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal":  true,
-						"egressEnabled":  interface{}(nil),
-						"enabled":        interface{}(nil),
-						"ingressEnabled": interface{}(nil),
+						"addedExternal":     true,
+						"egressEnabled":     interface{}(nil),
+						"enabled":           interface{}(nil),
+						"ingressEnabled":    interface{}(nil),
+						"k8sIngressEnabled": interface{}(nil),
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -1346,9 +1423,6 @@ var clusterTestCases = []conversionTestCase{
 						},
 					},
 				},
-				"k8sIngress": map[string]interface{}{
-					"enabled": true,
-				},
 				"network": "my-network",
 				"useMCP":  true,
 			},
@@ -1363,6 +1437,11 @@ var clusterTestCases = []conversionTestCase{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
 					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+				},
+				"k8sIngress": map[string]interface{}{
+					"enabled":     true,
+					"enableHttps": false,
+					"gatewayName": "ingressgateway",
 				},
 			},
 			"gateways": map[string]interface{}{
@@ -1385,11 +1464,9 @@ var clusterTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Ingress: featureEnabled,
-				},
+				Name:         "my-cluster",
+				Network:      "my-network",
+				MultiCluster: &v2.MultiClusterConfig{},
 			},
 			Gateways: &v2.GatewaysConfig{
 				ClusterIngress: &v2.ClusterIngressGatewayConfig{
@@ -1411,6 +1488,7 @@ var clusterTestCases = []conversionTestCase{
 							},
 						},
 					},
+					IngressEnabled: &featureEnabled,
 				},
 			},
 		},
@@ -1425,9 +1503,9 @@ var clusterTestCases = []conversionTestCase{
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal":  true,
-						"egressEnabled":  interface{}(nil),
-						"enabled":        interface{}(nil),
+						"addedExternal": true,
+						"egressEnabled": interface{}(nil),
+						"enabled":       interface{}(nil),
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -1448,10 +1526,6 @@ var clusterTestCases = []conversionTestCase{
 						},
 					},
 				},
-				"k8sIngress": map[string]interface{}{
-					"enabled":     true,
-					"enableHttps": true,
-				},
 				"network": "my-network",
 				"useMCP":  true,
 			},
@@ -1466,6 +1540,11 @@ var clusterTestCases = []conversionTestCase{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
 					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+				},
+				"k8sIngress": map[string]interface{}{
+					"enabled":     true,
+					"enableHttps": true,
+					"gatewayName": "ingressgateway",
 				},
 			},
 			"gateways": map[string]interface{}{

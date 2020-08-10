@@ -186,9 +186,27 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 	if err != nil {
 		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.istio_cni_network: %v", err)
 	}
+
+	// Override these globals to match the install namespace
 	err = spec.Istio.SetField("global.istioNamespace", smcp.GetNamespace())
 	if err != nil {
 		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.istioNamespace: %v", err)
+	}
+	err = spec.Istio.SetField("global.telemetryNamespace", smcp.GetNamespace())
+	if err != nil {
+		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.telemetryNamespace: %v", err)
+	}
+	err = spec.Istio.SetField("global.prometheusNamespace", smcp.GetNamespace())
+	if err != nil {
+		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.prometheusNamespace: %v", err)
+	}
+	err = spec.Istio.SetField("global.policyNamespace", smcp.GetNamespace())
+	if err != nil {
+		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.policyNamespace: %v", err)
+	}
+	err = spec.Istio.SetField("global.configRootNamespace", smcp.GetNamespace())
+	if err != nil {
+		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.configRootNamespace: %v", err)
 	}
 
 	// XXX: using values.yaml settings, as things may have been overridden in profiles/templates

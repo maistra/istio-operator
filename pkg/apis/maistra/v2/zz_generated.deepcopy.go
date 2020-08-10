@@ -124,6 +124,11 @@ func (in *CertificateAuthorityConfig) DeepCopy() *CertificateAuthorityConfig {
 func (in *ClusterIngressGatewayConfig) DeepCopyInto(out *ClusterIngressGatewayConfig) {
 	*out = *in
 	in.IngressGatewayConfig.DeepCopyInto(&out.IngressGatewayConfig)
+	if in.IngressEnabled != nil {
+		in, out := &in.IngressEnabled, &out.IngressEnabled
+		*out = new(bool)
+		**out = **in
+	}
 	if in.MeshExpansionPorts != nil {
 		in, out := &in.MeshExpansionPorts, &out.MeshExpansionPorts
 		*out = make([]v1.ServicePort, len(*in))
