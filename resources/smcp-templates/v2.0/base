@@ -66,6 +66,7 @@ spec:
       service:
         annotations:
            service.alpha.openshift.io/serving-cert-secret-name: grafana-tls
+        externalPort: 8080
     tracing:
       enabled: true
       ingress:
