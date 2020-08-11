@@ -83,7 +83,7 @@ type ServiceMeshMemberRollStatus struct {
 	// List of namespaces that are configured as members of the service mesh.
 	// +optional
 	// +nullable
-	ConfiguredMembers []string `json:"configuredMembers,omitempty"`
+	ConfiguredMembers []string `json:"configuredMembers"`
 
 	// Represents the latest available observations of this ServiceMeshMemberRoll's
 	// current state.
