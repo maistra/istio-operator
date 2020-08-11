@@ -78,8 +78,8 @@ template: |
       runAsUser: 0
     {{- else }}
       readOnlyRootFilesystem: true
-      runAsGroup: 1337
-      runAsUser: 1337
+      runAsGroup: {{ .ProxyUID }}
+      runAsUser: {{ .ProxyUID }}
       runAsNonRoot: true
     {{- end }}
     restartPolicy: Always
@@ -288,14 +288,14 @@ template: |
         - SETUID
       privileged: {{ .Values.global.proxy.privileged }}
       readOnlyRootFilesystem: {{ not .Values.global.proxy.enableCoreDump }}
-      runAsGroup: 1337
-      fsGroup: 1337
+      runAsGroup: {{ .ProxyUID }}
+      fsGroup: {{ .ProxyUID }}
       {{ if or (eq (annotation .ObjectMeta `sidecar.istio.io/interceptionMode` .ProxyConfig.InterceptionMode) `TPROXY`) (eq (annotation .ObjectMeta `sidecar.istio.io/capNetBindService` .Values.global.proxy.capNetBindService) `true`) -}}
       runAsNonRoot: false
       runAsUser: 0
       {{- else -}}
       runAsNonRoot: true
-      runAsUser: 1337
+      runAsUser: {{ .ProxyUID }}
       {{- end }}
     resources:
   {{- if or (isset .ObjectMeta.Annotations `sidecar.istio.io/proxyCPU`) (isset .ObjectMeta.Annotations `sidecar.istio.io/proxyMemory`) (isset .ObjectMeta.Annotations `sidecar.istio.io/proxyCPULimit`) (isset .ObjectMeta.Annotations `sidecar.istio.io/proxyMemoryLimit`) }}
