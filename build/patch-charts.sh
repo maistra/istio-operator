@@ -248,6 +248,10 @@ function patchSidecarInjector() {
         - SETUID
   }' ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
 
+  sed_wrap -i -e 's/runAsUser: 1337/runAsUser: {{ .ProxyUID }}/g' ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
+  sed_wrap -i -e 's/runAsGroup: 1337/runAsGroup: {{ .ProxyUID }}/g' ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
+  sed_wrap -i -e 's/fsGroup: 1337/fsGroup: {{ .ProxyUID }}/g' ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
+
   # add annotation for Multus & Istio CNI
   sed_wrap -i -e 's/^\(.*injectedAnnotations:.*\)$/\1\
     \{\{- if and (.Values.istio_cni.enabled) (not .Values.sidecarInjectorWebhook.injectPodRedirectAnnot) \}\}\
