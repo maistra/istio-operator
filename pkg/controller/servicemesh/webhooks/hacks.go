@@ -7,12 +7,16 @@ import (
 
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
-	arbeta1 "k8s.io/api/admissionregistration/v1beta1"
+	admissionv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
+	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	clientapixv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	pttypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/json"
 	clientcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -25,7 +29,7 @@ import (
 // XXX: this entire file can be removed once ValidatingWebhookConfiguration and
 // Service definitions are moved into the operator's CSV file.
 
-var webhookFailurePolicy = arbeta1.Fail
+var webhookFailurePolicy = admissionv1.Fail
 
 const (
 	webhookSecretName  = "maistra-operator-serving-cert"
@@ -53,7 +57,7 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 		if errors.IsAlreadyExists(err) {
 			// the cache is not available until the manager is started, so webhook update needs to be done during startup.
 			log.Info("Updating existing Maistra ValidatingWebhookConfiguration")
-			existing := &arbeta1.ValidatingWebhookConfiguration{}
+			existing := &admissionv1.ValidatingWebhookConfiguration{}
 			if err := cl.Get(context.TODO(), types.NamespacedName{Name: validatingWebhookConfiguration.GetName()}, existing); err != nil {
 				return pkgerrors.Wrap(err, "error retrieving existing Maistra ValidatingWebhookConfiguration")
 			}
@@ -83,7 +87,7 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 		if errors.IsAlreadyExists(err) {
 			// the cache is not available until the manager is started, so webhook update needs to be done during startup.
 			log.Info("Updating existing Maistra MutatingWebhookConfiguration")
-			existing := &arbeta1.MutatingWebhookConfiguration{}
+			existing := &admissionv1.MutatingWebhookConfiguration{}
 			if err := cl.Get(context.TODO(), types.NamespacedName{Name: mutatingWebhookConfiguration.GetName()}, existing); err != nil {
 				return pkgerrors.Wrap(err, "error retrieving existing Maistra MutatingWebhookConfiguration")
 			}
@@ -104,6 +108,47 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 			Name:      webhookSecretName,
 		},
 		common.ServiceCARootCertKey); err != nil {
+		return err
+	}
+
+	log.Info("Adding conversion webhook to SMCP CRD")
+	if apixclient, err := clientapixv1.NewForConfig(mgr.GetConfig()); err == nil {
+		if crdPatchBytes, err := json.Marshal(map[string]interface{}{
+			"spec": map[string]interface{}{
+				"conversion": &apixv1.CustomResourceConversion{
+					Strategy: apixv1.WebhookConverter,
+					Webhook: &apixv1.WebhookConversion{
+						ConversionReviewVersions: []string{"v1beta1"},
+						ClientConfig: &apixv1.WebhookClientConfig{
+							URL: nil,
+							Service: &apixv1.ServiceReference{
+								Name:      webhookServiceName,
+								Namespace: operatorNamespace,
+								Path:      &smcpConverterServicePath,
+							},
+						},
+					},
+				},
+			},
+		}); err == nil {
+			if smcpcrd, err := apixclient.CustomResourceDefinitions().Patch(ctx, webhookca.ServiceMeshControlPlaneCRDName,
+				pttypes.MergePatchType, crdPatchBytes, metav1.PatchOptions{FieldManager: common.FinalizerName}); err == nil {
+				log.Info("Registering Maistra ServiceMeshControlPlane CRD conversion webhook with CABundle reconciler")
+				if err := webhookca.WebhookCABundleManagerInstance.ManageWebhookCABundle(
+					smcpcrd,
+					types.NamespacedName{
+						Namespace: operatorNamespace,
+						Name:      webhookSecretName,
+					}, common.ServiceCARootCertKey); err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		} else {
+			return err
+		}
+	} else {
 		return err
 	}
 
@@ -158,18 +203,21 @@ func newWebhookService(namespace string) *corev1.Service {
 	}
 }
 
-func newValidatingWebhookConfiguration(namespace string) *arbeta1.ValidatingWebhookConfiguration {
-	return &arbeta1.ValidatingWebhookConfiguration{
+func newValidatingWebhookConfiguration(namespace string) *admissionv1.ValidatingWebhookConfiguration {
+	noneSideEffects := admissionv1.SideEffectClassNone
+	return &admissionv1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s.servicemesh-resources.maistra.io", namespace),
 		},
-		Webhooks: []arbeta1.ValidatingWebhook{
+		Webhooks: []admissionv1.ValidatingWebhook{
 			{
-				Name:          "smcp.validation.maistra.io",
-				Rules:         rulesFor("servicemeshcontrolplanes", arbeta1.Create, arbeta1.Update),
-				FailurePolicy: &webhookFailurePolicy,
-				ClientConfig: arbeta1.WebhookClientConfig{
-					Service: &arbeta1.ServiceReference{
+				Name:                    "smcp.validation.maistra.io",
+				Rules:                   rulesFor("servicemeshcontrolplanes", admissionv1.Create, admissionv1.Update),
+				FailurePolicy:           &webhookFailurePolicy,
+				SideEffects:             &noneSideEffects,
+				AdmissionReviewVersions: []string{"v1beta1"},
+				ClientConfig: admissionv1.WebhookClientConfig{
+					Service: &admissionv1.ServiceReference{
 						Path:      &smcpValidatorServicePath,
 						Name:      webhookServiceName,
 						Namespace: namespace,
@@ -177,11 +225,13 @@ func newValidatingWebhookConfiguration(namespace string) *arbeta1.ValidatingWebh
 				},
 			},
 			{
-				Name:          "smmr.validation.maistra.io",
-				Rules:         rulesFor("servicemeshmemberrolls", arbeta1.Create, arbeta1.Update),
-				FailurePolicy: &webhookFailurePolicy,
-				ClientConfig: arbeta1.WebhookClientConfig{
-					Service: &arbeta1.ServiceReference{
+				Name:                    "smmr.validation.maistra.io",
+				Rules:                   rulesFor("servicemeshmemberrolls", admissionv1.Create, admissionv1.Update),
+				FailurePolicy:           &webhookFailurePolicy,
+				SideEffects:             &noneSideEffects,
+				AdmissionReviewVersions: []string{"v1beta1"},
+				ClientConfig: admissionv1.WebhookClientConfig{
+					Service: &admissionv1.ServiceReference{
 						Path:      &smmrValidatorServicePath,
 						Name:      webhookServiceName,
 						Namespace: namespace,
@@ -189,11 +239,13 @@ func newValidatingWebhookConfiguration(namespace string) *arbeta1.ValidatingWebh
 				},
 			},
 			{
-				Name:          "smm.validation.maistra.io",
-				Rules:         rulesFor("servicemeshmembers", arbeta1.Create, arbeta1.Update),
-				FailurePolicy: &webhookFailurePolicy,
-				ClientConfig: arbeta1.WebhookClientConfig{
-					Service: &arbeta1.ServiceReference{
+				Name:                    "smm.validation.maistra.io",
+				Rules:                   rulesFor("servicemeshmembers", admissionv1.Create, admissionv1.Update),
+				FailurePolicy:           &webhookFailurePolicy,
+				SideEffects:             &noneSideEffects,
+				AdmissionReviewVersions: []string{"v1beta1"},
+				ClientConfig: admissionv1.WebhookClientConfig{
+					Service: &admissionv1.ServiceReference{
 						Path:      &smmValidatorServicePath,
 						Name:      webhookServiceName,
 						Namespace: namespace,
@@ -204,18 +256,21 @@ func newValidatingWebhookConfiguration(namespace string) *arbeta1.ValidatingWebh
 	}
 }
 
-func newMutatingWebhookConfiguration(namespace string) *arbeta1.MutatingWebhookConfiguration {
-	return &arbeta1.MutatingWebhookConfiguration{
+func newMutatingWebhookConfiguration(namespace string) *admissionv1.MutatingWebhookConfiguration {
+	noneOnDryRunSideEffects := admissionv1.SideEffectClassNoneOnDryRun
+	return &admissionv1.MutatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s.servicemesh-resources.maistra.io", namespace),
 		},
-		Webhooks: []arbeta1.MutatingWebhook{
+		Webhooks: []admissionv1.MutatingWebhook{
 			{
-				Name:          "smcp.mutation.maistra.io",
-				Rules:         rulesFor("servicemeshcontrolplanes", arbeta1.Create, arbeta1.Update),
-				FailurePolicy: &webhookFailurePolicy,
-				ClientConfig: arbeta1.WebhookClientConfig{
-					Service: &arbeta1.ServiceReference{
+				Name:                    "smcp.mutation.maistra.io",
+				Rules:                   rulesFor("servicemeshcontrolplanes", admissionv1.Create, admissionv1.Update),
+				FailurePolicy:           &webhookFailurePolicy,
+				SideEffects:             &noneOnDryRunSideEffects,
+				AdmissionReviewVersions: []string{"v1beta1"},
+				ClientConfig: admissionv1.WebhookClientConfig{
+					Service: &admissionv1.ServiceReference{
 						Path:      &smcpMutatorServicePath,
 						Name:      webhookServiceName,
 						Namespace: namespace,
@@ -223,11 +278,13 @@ func newMutatingWebhookConfiguration(namespace string) *arbeta1.MutatingWebhookC
 				},
 			},
 			{
-				Name:          "smmr.mutation.maistra.io",
-				Rules:         rulesFor("servicemeshmemberrolls", arbeta1.Create, arbeta1.Update),
-				FailurePolicy: &webhookFailurePolicy,
-				ClientConfig: arbeta1.WebhookClientConfig{
-					Service: &arbeta1.ServiceReference{
+				Name:                    "smmr.mutation.maistra.io",
+				Rules:                   rulesFor("servicemeshmemberrolls", admissionv1.Create, admissionv1.Update),
+				FailurePolicy:           &webhookFailurePolicy,
+				SideEffects:             &noneOnDryRunSideEffects,
+				AdmissionReviewVersions: []string{"v1beta1"},
+				ClientConfig: admissionv1.WebhookClientConfig{
+					Service: &admissionv1.ServiceReference{
 						Path:      &smmrMutatorServicePath,
 						Name:      webhookServiceName,
 						Namespace: namespace,
@@ -238,10 +295,10 @@ func newMutatingWebhookConfiguration(namespace string) *arbeta1.MutatingWebhookC
 	}
 }
 
-func rulesFor(resource string, operations ...arbeta1.OperationType) []arbeta1.RuleWithOperations {
-	return []arbeta1.RuleWithOperations{
+func rulesFor(resource string, operations ...admissionv1.OperationType) []admissionv1.RuleWithOperations {
+	return []admissionv1.RuleWithOperations{
 		{
-			Rule: arbeta1.Rule{
+			Rule: admissionv1.Rule{
 				APIGroups:   []string{maistrav1.SchemeGroupVersion.Group},
 				APIVersions: []string{maistrav1.SchemeGroupVersion.Version},
 				Resources:   []string{resource},

@@ -196,6 +196,15 @@ func populateTracingAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 		}
 	} else if err != nil {
 		return err
+	} else if traceEnabled, ok, err := in.GetBool("tracing.enabled"); ok {
+		if traceEnabled {
+			// default to jaeger if enabled and no proxy.tracer specified
+			out.Tracing.Type = v2.TracerTypeJaeger
+		} else {
+			out.Tracing.Type = v2.TracerTypeNone
+		}
+	} else if err != nil {
+		return err
 	}
 
 	switch out.Tracing.Type {

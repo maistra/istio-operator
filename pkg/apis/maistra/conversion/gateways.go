@@ -290,8 +290,14 @@ func gatewayEgressConfigToValues(in *v2.EgressGatewayConfig) (map[string]interfa
 	}
 
 	// Always set this to allow round-tripping
-	if err := setHelmStringValue(values, "env.ISTIO_META_REQUESTED_NETWORK_VIEW", strings.Join(in.RequestedNetworkView, ",")); err != nil {
+	if err := setHelmStringValue(values, "gatewayType", "egress"); err != nil {
 		return nil, err
+	}
+
+	if in.RequestedNetworkView != nil {
+		if err := setHelmStringValue(values, "env.ISTIO_META_REQUESTED_NETWORK_VIEW", strings.Join(in.RequestedNetworkView, ",")); err != nil {
+			return nil, err
+		}
 	}
 
 	return values, nil
@@ -300,6 +306,11 @@ func gatewayEgressConfigToValues(in *v2.EgressGatewayConfig) (map[string]interfa
 func gatewayIngressConfigToValues(in *v2.IngressGatewayConfig) (map[string]interface{}, error) {
 	values, err := gatewayConfigToValues(&in.GatewayConfig)
 	if err != nil {
+		return nil, err
+	}
+
+	// Always set this to allow round-tripping
+	if err := setHelmStringValue(values, "gatewayType", "ingress"); err != nil {
 		return nil, err
 	}
 
@@ -358,25 +369,25 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 				return err
 			}
 
-			// egress only
-			if rawNetworkView, ok, err := gatewayValues.GetString("env.ISTIO_META_REQUESTED_NETWORK_VIEW"); ok {
-				var networkView []string
-				if rawNetworkView == "" {
-					networkView = make([]string, 0)
-				} else {
-					networkView = strings.Split(rawNetworkView, ",")
-				}
+			if isEgressGateway(gatewayValues) || name == "istio-egressgateway" {
+				// egress only
 				egressGateway := v2.EgressGatewayConfig{
-					GatewayConfig:        gc,
-					RequestedNetworkView: networkView,
+					GatewayConfig: gc,
+				}
+				if rawNetworkView, ok, err := gatewayValues.GetString("env.ISTIO_META_REQUESTED_NETWORK_VIEW"); ok {
+					if rawNetworkView == "" {
+						egressGateway.RequestedNetworkView = make([]string, 0)
+					} else {
+						egressGateway.RequestedNetworkView = strings.Split(rawNetworkView, ",")
+					}
+				} else if err != nil {
+					return err
 				}
 				if name == "istio-egressgateway" {
 					gatewaysConfig.ClusterEgress = &egressGateway
 				} else {
 					gatewaysConfig.EgressGateways[name] = egressGateway
 				}
-			} else if err != nil {
-				return err
 			} else {
 				// assume ingress gateway
 				ingressGateway := v2.IngressGatewayConfig{
@@ -436,6 +447,17 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 		out.Gateways = gatewaysConfig
 	}
 	return nil
+}
+
+func isEgressGateway(gatewayValues *v1.HelmValues) bool {
+	if gatewayType, ok, _ := gatewayValues.GetString("gatewayType"); ok {
+		if gatewayType == "egress" {
+			return true
+		}
+		return false
+	}
+	_, ok, _ := gatewayValues.GetString("env.ISTIO_META_REQUESTED_NETWORK_VIEW")
+	return ok
 }
 
 func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {

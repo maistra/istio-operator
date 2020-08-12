@@ -5,7 +5,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/conversion"
 
+	// This is required to ensure v1.ConverterV1V2 and v1.ConverterV2V1 are properly initialized
+	_ "github.com/maistra/istio-operator/pkg/apis/maistra/conversion"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	webhookcommon "github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/common"
 	"github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/mutation"
@@ -19,6 +22,7 @@ var log = logf.Log.WithName(componentName)
 var (
 	smcpValidatorServicePath = "/validate-smcp"
 	smcpMutatorServicePath   = "/mutate-smcp"
+	smcpConverterServicePath = "/convert-smcp"
 	smmrValidatorServicePath = "/validate-smmr"
 	smmrMutatorServicePath   = "/mutate-smmr"
 	smmValidatorServicePath  = "/validate-smm"
@@ -41,6 +45,9 @@ func Add(mgr manager.Manager) error {
 	namespaceFilter := webhookcommon.NamespaceFilter(watchNamespaceStr)
 
 	hookServer := mgr.GetWebhookServer()
+
+	log.Info("Adding Maistra ServiceMeshControlPlane conversion handler")
+	hookServer.Register(smcpConverterServicePath, &conversion.Webhook{})
 
 	log.Info("Adding Maistra ServiceMeshControlPlane validation handler")
 	hookServer.Register(smcpValidatorServicePath, &webhook.Admission{

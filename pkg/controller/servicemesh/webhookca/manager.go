@@ -173,6 +173,7 @@ func (wm *webhookCABundleManager) initSecretForWebhook(webhook webhookWrapper) (
 const (
 	validatingNamespaceValue = "validating"
 	mutatingNamespaceValue   = "mutating"
+	conversionNamespaceValue = "conversion"
 )
 
 // namespacedNameForWebhook returns a types.NamespacedName used to identify the
@@ -194,6 +195,8 @@ func (wm *webhookCABundleManager) getWebhookWrapper(ctx context.Context, cl clie
 		return validatingWebhook.Get(ctx, cl, types.NamespacedName{Name: webhook.Name})
 	case mutatingNamespaceValue:
 		return mutatingWebhook.Get(ctx, cl, types.NamespacedName{Name: webhook.Name})
+	case conversionNamespaceValue:
+		return conversionWebhook.Get(ctx, cl, types.NamespacedName{Name: webhook.Name})
 	}
 	return nil, fmt.Errorf("unsupported webhook type: %s", webhook.String())
 }

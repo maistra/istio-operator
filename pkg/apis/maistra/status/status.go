@@ -37,7 +37,7 @@ func NewStatus() StatusType {
 
 type ComponentStatusList struct {
 	//+optional
-	ComponentStatus []ComponentStatus `json:"components"`
+	ComponentStatus []ComponentStatus `json:"components,omitempty"`
 }
 
 // FindComponentByName returns the status for a specific component
