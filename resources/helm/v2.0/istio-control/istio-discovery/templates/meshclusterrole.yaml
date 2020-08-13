@@ -18,7 +18,7 @@ rules:
     verbs: ["create"]
   # additional perms required for istiod startup
   - apiGroups: [""]
-    resources: ["namespaces", "nodes"]
+    resources: ["nodes"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses", "ingressclasses"]
