@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"k8s.io/api/admissionregistration/v1beta1"
+	v1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
+	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -61,6 +62,13 @@ var (
 		},
 	}
 
+	conversionRequest = reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: conversionNamespaceValue,
+			Name:      ServiceMeshControlPlaneCRDName,
+		},
+	}
+
 	invalidRequest = reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name: sidecarInjectorWebhookNamePrefix + appNamespace,
@@ -69,22 +77,24 @@ var (
 )
 
 func cases() []struct {
-	name        string
-	webhook     runtime.Object
-	webhookName string
-	secret      *corev1.Secret
-	caFileName  string
-	request     reconcile.Request
-	getter      webhookGetter
+	name                 string
+	webhook              runtime.Object
+	webhookName          string
+	secret               *corev1.Secret
+	caFileName           string
+	request              reconcile.Request
+	getter               webhookGetter
+	skipAutoRegistration bool
 } {
 	return []struct {
-		name        string
-		webhook     runtime.Object
-		webhookName string
-		secret      *corev1.Secret
-		caFileName  string
-		request     reconcile.Request
-		getter      webhookGetter
+		name                 string
+		webhook              runtime.Object
+		webhookName          string
+		secret               *corev1.Secret
+		caFileName           string
+		request              reconcile.Request
+		getter               webhookGetter
+		skipAutoRegistration bool
 	}{
 		{
 			name:        "sidecar-injector-webhook",
@@ -122,6 +132,16 @@ func cases() []struct {
 			request:     istiodValidatorRequest,
 			getter:      validatingWebhook,
 		},
+		{
+			name:                 "service-mesh-conversion",
+			webhook:              newCustomResourceDefinition(ServiceMeshControlPlaneCRDName, caBundleValue),
+			webhookName:          ServiceMeshControlPlaneCRDName,
+			secret:               newSecret(istiodSecretName, common.IstiodCertKey, caBundleValue),
+			caFileName:           common.ServiceCARootCertKey,
+			request:              conversionRequest,
+			getter:               conversionWebhook,
+			skipAutoRegistration: true,
+		},
 	}
 }
 
@@ -135,7 +155,7 @@ func TestReconcileDoesNothingWhenWebhookConfigMissing(t *testing.T) {
 			_, tracker, r := createClientAndReconciler(t, tc.secret)
 			r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, common.IstioRootCertKey)
+				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 		})
@@ -148,7 +168,7 @@ func TestReconcileDoesNothingWhenSecretMissing(t *testing.T) {
 			_, tracker, r := createClientAndReconciler(t, tc.webhook)
 			r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, common.IstioRootCertKey)
+				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 		})
@@ -158,11 +178,11 @@ func TestReconcileDoesNothingWhenSecretMissing(t *testing.T) {
 func TestReconcileDoesNothingWhenSecretContainsNoCertificate(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			delete(tc.secret.Data, common.IstioRootCertKey)
+			delete(tc.secret.Data, tc.caFileName)
 			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
 			r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, common.IstioRootCertKey)
+				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 		})
@@ -175,7 +195,7 @@ func TestReconcileDoesNothingWhenCABundleMatches(t *testing.T) {
 			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
 			r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, common.IstioRootCertKey)
+				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 		})
@@ -187,12 +207,12 @@ func TestReconcileUpdatesCABundle(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.secret.Data = map[string][]byte{
-				common.IstioRootCertKey: []byte("new-value"),
+				tc.caFileName: []byte("new-value"),
 			}
 			cl, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
 			if err := r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, common.IstioRootCertKey); err != nil {
+				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName); err != nil {
 				t.Fatal(err)
 			}
 			assertReconcileSucceeds(r, tc.request, t)
@@ -208,7 +228,7 @@ func TestReconcileUnmanagedWebhookNotUpdated(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.secret.Data = map[string][]byte{
-				common.IstioRootCertKey: []byte("new-value"),
+				tc.caFileName: []byte("new-value"),
 			}
 			cl, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
 
@@ -224,6 +244,9 @@ func TestReconcileUnmanagedWebhookNotUpdated(t *testing.T) {
 func TestReconcileAutomaticRegistration(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.skipAutoRegistration {
+				t.SkipNow()
+			}
 			tc.secret.Data = map[string][]byte{
 				tc.caFileName: []byte("new-value"),
 			}
@@ -253,15 +276,15 @@ func TestReconcileHandlesWebhookConfigsWithoutWebhooks(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
 			switch wh := tc.webhook.(type) {
-			case *v1beta1.MutatingWebhookConfiguration:
+			case *v1.MutatingWebhookConfiguration:
 				wh.Webhooks = nil
-			case *v1beta1.ValidatingWebhookConfiguration:
+			case *v1.ValidatingWebhookConfiguration:
 				wh.Webhooks = nil
 			}
 			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
 			r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, common.IstioRootCertKey)
+				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 		})
@@ -272,21 +295,21 @@ func TestReconcileDoesNothingWithMultipleNamesacedServices(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
 			switch wh := tc.webhook.(type) {
-			case *v1beta1.MutatingWebhookConfiguration:
-				wh.Webhooks = append(wh.Webhooks, v1beta1.MutatingWebhook{
+			case *v1.MutatingWebhookConfiguration:
+				wh.Webhooks = append(wh.Webhooks, v1.MutatingWebhook{
 					Name: "bad-webhook",
-					ClientConfig: v1beta1.WebhookClientConfig{
-						Service: &v1beta1.ServiceReference{
+					ClientConfig: v1.WebhookClientConfig{
+						Service: &v1.ServiceReference{
 							Name:      "bogus-service",
 							Namespace: appNamespace + "-2",
 						},
 					},
 				})
-			case *v1beta1.ValidatingWebhookConfiguration:
-				wh.Webhooks = append(wh.Webhooks, v1beta1.ValidatingWebhook{
+			case *v1.ValidatingWebhookConfiguration:
+				wh.Webhooks = append(wh.Webhooks, v1.ValidatingWebhook{
 					Name: "bad-webhook",
-					ClientConfig: v1beta1.WebhookClientConfig{
-						Service: &v1beta1.ServiceReference{
+					ClientConfig: v1.WebhookClientConfig{
+						Service: &v1.ServiceReference{
 							Name:      "bogus-service",
 							Namespace: appNamespace + "-2",
 						},
@@ -296,7 +319,7 @@ func TestReconcileDoesNothingWithMultipleNamesacedServices(t *testing.T) {
 			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
 			r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, common.IstioRootCertKey)
+				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 		})
@@ -307,14 +330,15 @@ func TestReconcileReturnsErrorWhenUpdateFails(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.secret.Data = map[string][]byte{
-				common.IstioRootCertKey: []byte("new-value"),
+				tc.caFileName: []byte("new-value"),
 			}
 			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
 			r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, common.IstioRootCertKey)
+				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName)
 			tracker.AddReactor("update", "mutatingwebhookconfigurations", test.ClientFails())
 			tracker.AddReactor("update", "validatingwebhookconfigurations", test.ClientFails())
+			tracker.AddReactor("update", "customresourcedefinitions", test.ClientFails())
 			assertReconcileFails(r, tc.request, t)
 		})
 	}
@@ -322,17 +346,17 @@ func TestReconcileReturnsErrorWhenUpdateFails(t *testing.T) {
 
 // TODO: add test to ensure reconcile() is never called for webhook configs that don't start with the correct prefix, as it would panic
 
-func newMutatingWebhookConfig(name string, caBundleValue []byte) *v1beta1.MutatingWebhookConfiguration {
-	webhookConfig := &v1beta1.MutatingWebhookConfiguration{
+func newMutatingWebhookConfig(name string, caBundleValue []byte) *v1.MutatingWebhookConfiguration {
+	webhookConfig := &v1.MutatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Webhooks: []v1beta1.MutatingWebhook{
+		Webhooks: []v1.MutatingWebhook{
 			{
 				Name: "webhhook",
-				ClientConfig: v1beta1.WebhookClientConfig{
+				ClientConfig: v1.WebhookClientConfig{
 					CABundle: caBundleValue,
-					Service: &v1beta1.ServiceReference{
+					Service: &v1.ServiceReference{
 						Name:      "webhook-service",
 						Namespace: appNamespace,
 					},
@@ -343,17 +367,17 @@ func newMutatingWebhookConfig(name string, caBundleValue []byte) *v1beta1.Mutati
 	return webhookConfig
 }
 
-func newValidatingWebhookConfig(name string, caBundleValue []byte) *v1beta1.ValidatingWebhookConfiguration {
-	webhookConfig := &v1beta1.ValidatingWebhookConfiguration{
+func newValidatingWebhookConfig(name string, caBundleValue []byte) *v1.ValidatingWebhookConfiguration {
+	webhookConfig := &v1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Webhooks: []v1beta1.ValidatingWebhook{
+		Webhooks: []v1.ValidatingWebhook{
 			{
 				Name: "webhhook",
-				ClientConfig: v1beta1.WebhookClientConfig{
+				ClientConfig: v1.WebhookClientConfig{
 					CABundle: caBundleValue,
-					Service: &v1beta1.ServiceReference{
+					Service: &v1.ServiceReference{
 						Name:      "webhook-service",
 						Namespace: appNamespace,
 					},
@@ -362,6 +386,29 @@ func newValidatingWebhookConfig(name string, caBundleValue []byte) *v1beta1.Vali
 		},
 	}
 	return webhookConfig
+}
+
+func newCustomResourceDefinition(name string, caBundleValue []byte) *apixv1.CustomResourceDefinition {
+	crd := &apixv1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: apixv1.CustomResourceDefinitionSpec{
+			Conversion: &apixv1.CustomResourceConversion{
+				Strategy: apixv1.WebhookConverter,
+				Webhook: &apixv1.WebhookConversion{
+					ClientConfig: &apixv1.WebhookClientConfig{
+						CABundle: caBundleValue,
+						Service: &apixv1.ServiceReference{
+							Name:      "webhook-service",
+							Namespace: appNamespace,
+						},
+					},
+				},
+			},
+		},
+	}
+	return crd
 }
 
 func newSecret(secretName string, caName string, caBundleValue []byte) *corev1.Secret {

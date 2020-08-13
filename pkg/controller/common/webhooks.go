@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"k8s.io/api/admissionregistration/v1beta1"
+	v1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -45,7 +45,7 @@ func GetRootCertFromSecret(ctx context.Context, client client.Client, namespace 
 
 // InjectCABundle updates the CABundle in a WebhookClientConfig. It returns true
 // if the value has changed, false otherwise
-func InjectCABundle(config *v1beta1.WebhookClientConfig, caBundle []byte) bool {
+func InjectCABundle(config *v1.WebhookClientConfig, caBundle []byte) bool {
 	if bytes.Compare(config.CABundle, caBundle) != 0 {
 		config.CABundle = caBundle
 		return true

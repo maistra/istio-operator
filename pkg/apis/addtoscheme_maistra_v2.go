@@ -14,6 +14,7 @@ import (
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 )
 
@@ -31,5 +32,6 @@ func init() {
 		extensionsv1beta1.AddToScheme,
 		corev1.AddToScheme,
 		rbacv1.AddToScheme,
+		apiextensionsv1.AddToScheme,
 		apiextensionsv1beta1.AddToScheme)
 }

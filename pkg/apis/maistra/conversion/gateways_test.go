@@ -94,7 +94,8 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"istio-ingressgateway": map[string]interface{}{
-					"name": "istio-ingressgateway",
+					"name":        "istio-ingressgateway",
+					"gatewayType": "ingress",
 				},
 			},
 		}),
@@ -130,8 +131,9 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"istio-ingressgateway": map[string]interface{}{
-					"enabled": false,
-					"name":    "istio-ingressgateway",
+					"enabled":     false,
+					"name":        "istio-ingressgateway",
+					"gatewayType": "ingress",
 				},
 			},
 		}),
@@ -167,8 +169,9 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"istio-ingressgateway": map[string]interface{}{
-					"enabled": true,
-					"name":    "istio-ingressgateway",
+					"enabled":     true,
+					"name":        "istio-ingressgateway",
+					"gatewayType": "ingress",
 				},
 			},
 		}),
@@ -234,8 +237,9 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"istio-ingressgateway": map[string]interface{}{
-					"enabled": true,
-					"name":    "istio-ingressgateway",
+					"enabled":     true,
+					"name":        "istio-ingressgateway",
+					"gatewayType": "ingress",
 					"labels": map[string]interface{}{
 						"extra-label": "label-value",
 					},
@@ -333,8 +337,9 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"istio-ingressgateway": map[string]interface{}{
-					"enabled": true,
-					"name":    "istio-ingressgateway",
+					"enabled":     true,
+					"name":        "istio-ingressgateway",
+					"gatewayType": "ingress",
 					"labels": map[string]interface{}{
 						"extra-label": "label-value",
 					},
@@ -433,8 +438,9 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"istio-ingressgateway": map[string]interface{}{
-					"enabled": true,
-					"name":    "istio-ingressgateway",
+					"enabled":     true,
+					"name":        "istio-ingressgateway",
+					"gatewayType": "ingress",
 					"labels": map[string]interface{}{
 						"extra-label": "label-value",
 					},
@@ -497,9 +503,10 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"istio-ingressgateway": map[string]interface{}{
-					"enabled":   true,
-					"name":      "istio-ingressgateway",
-					"namespace": "custom-namespace",
+					"enabled":     true,
+					"name":        "istio-ingressgateway",
+					"gatewayType": "ingress",
+					"namespace":   "custom-namespace",
 					"env": map[string]interface{}{
 						"ISTIO_META_ROUTER_MODE": "sni-dnat",
 					},
@@ -564,8 +571,9 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"istio-ingressgateway": map[string]interface{}{
-					"enabled": true,
-					"name":    "istio-ingressgateway",
+					"enabled":     true,
+					"name":        "istio-ingressgateway",
+					"gatewayType": "ingress",
 					"secretVolumes": []interface{}{
 						map[string]interface{}{
 							"name":       "secret-mount",
@@ -707,6 +715,7 @@ var gatewaysTestCases = []conversionTestCase{
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled":               true,
 					"name":                  "istio-ingressgateway",
+					"gatewayType":           "ingress",
 					"autoscaleEnabled":      false,
 					"replicaCount":          2,
 					"rollingMaxSurge":       1,
@@ -819,6 +828,7 @@ var gatewaysTestCases = []conversionTestCase{
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled":          true,
 					"name":             "istio-ingressgateway",
+					"gatewayType":      "ingress",
 					"autoscaleEnabled": true,
 					"autoscaleMax":     5,
 					"autoscaleMin":     1,
@@ -864,8 +874,9 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"istio-ingressgateway": map[string]interface{}{
-					"enabled": true,
-					"name":    "istio-ingressgateway",
+					"enabled":     true,
+					"name":        "istio-ingressgateway",
+					"gatewayType": "ingress",
 					"sds": map[string]interface{}{
 						"enabled": false,
 					},
@@ -905,8 +916,9 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"istio-ingressgateway": map[string]interface{}{
-					"enabled": true,
-					"name":    "istio-ingressgateway",
+					"enabled":     true,
+					"name":        "istio-ingressgateway",
+					"gatewayType": "ingress",
 					"sds": map[string]interface{}{
 						"enabled": true,
 					},
@@ -977,6 +989,7 @@ var gatewaysTestCases = []conversionTestCase{
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled":          true,
 					"name":             "istio-ingressgateway",
+					"gatewayType":      "ingress",
 					"autoscaleEnabled": false,
 					"sds": map[string]interface{}{
 						"enabled":         true,
@@ -1065,6 +1078,7 @@ var gatewaysTestCases = []conversionTestCase{
 				"istio-ingressgateway": map[string]interface{}{
 					"enabled":          true,
 					"name":             "istio-ingressgateway",
+					"gatewayType":      "ingress",
 					"autoscaleEnabled": false,
 					"sds": map[string]interface{}{
 						"enabled":         false,
@@ -1208,16 +1222,19 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"extra-ingress-enabled": map[string]interface{}{
-					"enabled": true,
-					"name":    "extra-ingress-enabled",
+					"enabled":     true,
+					"name":        "extra-ingress-enabled",
+					"gatewayType": "ingress",
 				},
 				"extra-ingress-disabled": map[string]interface{}{
-					"enabled": false,
-					"name":    "extra-ingress-disabled",
+					"enabled":     false,
+					"name":        "extra-ingress-disabled",
+					"gatewayType": "ingress",
 				},
 				"extra-ingress-runtime": map[string]interface{}{
 					"enabled":          false,
 					"name":             "extra-ingress-runtime",
+					"gatewayType":      "ingress",
 					"autoscaleEnabled": false,
 					"hub":              "custom-registry",
 					"tag":              "test",
@@ -1238,8 +1255,9 @@ var gatewaysTestCases = []conversionTestCase{
 					"image": "custom-proxy-image",
 				},
 				"extra-ingress-sds": map[string]interface{}{
-					"enabled": true,
-					"name":    "extra-ingress-sds",
+					"enabled":     true,
+					"name":        "extra-ingress-sds",
+					"gatewayType": "ingress",
 					"sds": map[string]interface{}{
 						"enabled": true,
 					},
@@ -1247,6 +1265,7 @@ var gatewaysTestCases = []conversionTestCase{
 				"extra-ingress-sds-runtime": map[string]interface{}{
 					"enabled":          false,
 					"name":             "extra-ingress-sds-runtime",
+					"gatewayType":      "ingress",
 					"autoscaleEnabled": false,
 					"sds": map[string]interface{}{
 						"hub":             "custom-registry",
@@ -1297,7 +1316,8 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"istio-egressgateway": map[string]interface{}{
-					"name": "istio-egressgateway",
+					"name":        "istio-egressgateway",
+					"gatewayType": "egress",
 					"env": map[string]interface{}{
 						"ISTIO_META_REQUESTED_NETWORK_VIEW": "",
 					},
@@ -1336,8 +1356,9 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"istio-egressgateway": map[string]interface{}{
-					"enabled": false,
-					"name":    "istio-egressgateway",
+					"enabled":     false,
+					"name":        "istio-egressgateway",
+					"gatewayType": "egress",
 					"env": map[string]interface{}{
 						"ISTIO_META_REQUESTED_NETWORK_VIEW": "",
 					},
@@ -1376,8 +1397,9 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"istio-egressgateway": map[string]interface{}{
-					"enabled": true,
-					"name":    "istio-egressgateway",
+					"enabled":     true,
+					"name":        "istio-egressgateway",
+					"gatewayType": "egress",
 					"env": map[string]interface{}{
 						"ISTIO_META_REQUESTED_NETWORK_VIEW": "",
 					},
@@ -1409,8 +1431,6 @@ var gatewaysTestCases = []conversionTestCase{
 								Enabled: &featureEnabled,
 							},
 						},
-						// XXX: currently, requested network view must be set for round-tripping
-						RequestedNetworkView: []string{},
 					},
 					"extra-egress-disabled": {
 						GatewayConfig: v2.GatewayConfig{
@@ -1418,7 +1438,6 @@ var gatewaysTestCases = []conversionTestCase{
 								Enabled: &featureDisabled,
 							},
 						},
-						// XXX: currently, requested network view must be set for round-tripping
 						RequestedNetworkView: []string{},
 					},
 					"extra-egress-runtime": {
@@ -1456,7 +1475,6 @@ var gatewaysTestCases = []conversionTestCase{
 								},
 							},
 						},
-						// XXX: currently, requested network view must be set for round-tripping
 						RequestedNetworkView: []string{},
 					},
 					"extra-egress-network": {
@@ -1465,7 +1483,6 @@ var gatewaysTestCases = []conversionTestCase{
 								Enabled: &featureEnabled,
 							},
 						},
-						// XXX: currently, requested network view must be set for round-tripping
 						RequestedNetworkView: []string{
 							"external",
 						},
@@ -1476,22 +1493,22 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"extra-egress-enabled": map[string]interface{}{
-					"enabled": true,
-					"name":    "extra-egress-enabled",
-					"env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "",
-					},
+					"enabled":     true,
+					"name":        "extra-egress-enabled",
+					"gatewayType": "egress",
 				},
 				"extra-egress-disabled": map[string]interface{}{
-					"enabled": false,
-					"name":    "extra-egress-disabled",
+					"enabled":     false,
+					"name":        "extra-egress-disabled",
+					"gatewayType": "egress",
 					"env": map[string]interface{}{
 						"ISTIO_META_REQUESTED_NETWORK_VIEW": "",
 					},
 				},
 				"extra-egress-runtime": map[string]interface{}{
-					"enabled": false,
-					"name":    "extra-egress-runtime",
+					"enabled":     false,
+					"name":        "extra-egress-runtime",
+					"gatewayType": "egress",
 					"env": map[string]interface{}{
 						"ISTIO_META_REQUESTED_NETWORK_VIEW": "",
 					},
@@ -1515,8 +1532,9 @@ var gatewaysTestCases = []conversionTestCase{
 					"image": "custom-proxy-image",
 				},
 				"extra-egress-network": map[string]interface{}{
-					"enabled": true,
-					"name":    "extra-egress-network",
+					"enabled":     true,
+					"name":        "extra-egress-network",
+					"gatewayType": "egress",
 					"env": map[string]interface{}{
 						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
 					},

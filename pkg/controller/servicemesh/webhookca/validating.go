@@ -3,7 +3,7 @@ package webhookca
 import (
 	"context"
 
-	"k8s.io/api/admissionregistration/v1beta1"
+	v1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,7 +19,7 @@ type validatingWebhookGetter struct{}
 var _ webhookGetter = (*validatingWebhookGetter)(nil)
 
 func (vwg *validatingWebhookGetter) Get(ctx context.Context, cl client.Client, name types.NamespacedName) (webhookWrapper, error) {
-	obj := &v1beta1.ValidatingWebhookConfiguration{}
+	obj := &v1.ValidatingWebhookConfiguration{}
 	if err := cl.Get(ctx, name, obj); err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func (vwg *validatingWebhookGetter) Get(ctx context.Context, cl client.Client, n
 }
 
 type validatingWebhookWrapper struct {
-	*v1beta1.ValidatingWebhookConfiguration
+	*v1.ValidatingWebhookConfiguration
 }
 
 var _ webhookWrapper = (*validatingWebhookWrapper)(nil)
@@ -41,17 +41,21 @@ func (vw *validatingWebhookWrapper) MetaObject() metav1.Object {
 }
 
 func (vw *validatingWebhookWrapper) Copy() webhookWrapper {
-	return &validatingWebhookWrapper{ValidatingWebhookConfiguration: vw.ValidatingWebhookConfiguration.DeepCopyObject().(*v1beta1.ValidatingWebhookConfiguration)}
+	return &validatingWebhookWrapper{ValidatingWebhookConfiguration: vw.ValidatingWebhookConfiguration.DeepCopy()}
 }
 
 func (vw *validatingWebhookWrapper) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{Namespace: validatingNamespaceValue, Name: vw.GetName()}
 }
 
-func (vw *validatingWebhookWrapper) ClientConfigs() []*v1beta1.WebhookClientConfig {
-	clientConfigs := make([]*v1beta1.WebhookClientConfig, len(vw.Webhooks))
+func (vw *validatingWebhookWrapper) ClientConfigs() []*v1.WebhookClientConfig {
+	clientConfigs := make([]*v1.WebhookClientConfig, len(vw.Webhooks))
 	for index := range vw.Webhooks {
 		clientConfigs[index] = &vw.Webhooks[index].ClientConfig
 	}
 	return clientConfigs
+}
+
+func (mw *validatingWebhookWrapper) UpdateCABundle(ctx context.Context, cl client.Client, caBundle []byte) error {
+	return updateAdmissionWebHookCABundles(ctx, cl, mw, caBundle)
 }

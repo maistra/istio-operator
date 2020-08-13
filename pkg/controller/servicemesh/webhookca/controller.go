@@ -6,9 +6,9 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/pkg/errors"
-	"k8s.io/api/admissionregistration/v1beta1"
+	v1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
+	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,6 +31,7 @@ const (
 	istiodWebhookNamePrefix          = "istiod-"
 	sidecarInjectorSecretName        = "istio.istio-sidecar-injector-service-account"
 	sidecarInjectorWebhookNamePrefix = "istio-sidecar-injector-"
+	ServiceMeshControlPlaneCRDName   = "servicemeshcontrolplanes.maistra.io"
 )
 
 // autoRegistrationMap maps webhook name prefixes to a secret name.  This is
@@ -115,7 +116,7 @@ func add(mgr manager.Manager, r *reconciler) error {
 	webhookEventHander := enqueueWebhookRequests(r.webhookCABundleManager)
 	// Watch MutatingWebhookConfigurations
 	err = c.Watch(
-		&source.Kind{Type: &v1beta1.MutatingWebhookConfiguration{}},
+		&source.Kind{Type: &v1.MutatingWebhookConfiguration{}},
 		webhookEventHander,
 		webhookWatchPredicates(r.webhookCABundleManager))
 	if err != nil {
@@ -124,13 +125,21 @@ func add(mgr manager.Manager, r *reconciler) error {
 
 	// Watch ValidatingWebhookConfigurations
 	err = c.Watch(
-		&source.Kind{Type: &v1beta1.ValidatingWebhookConfiguration{}},
+		&source.Kind{Type: &v1.ValidatingWebhookConfiguration{}},
 		webhookEventHander,
 		webhookWatchPredicates(r.webhookCABundleManager))
 	if err != nil {
 		return err
 	}
 
+	// Watch CustomResourceDefinition
+	err = c.Watch(
+		&source.Kind{Type: &apixv1.CustomResourceDefinition{}},
+		webhookEventHander,
+		webhookWatchPredicates(r.webhookCABundleManager))
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -145,18 +154,20 @@ func webhookWatchPredicates(webhookCABundleManager WebhookCABundleManager) predi
 	return &predicate.Funcs{
 		CreateFunc: func(event event.CreateEvent) (ok bool) {
 			objName := event.Meta.GetName()
-			for prefix, registration := range autoRegistrationMap {
-				if strings.HasPrefix(objName, prefix) {
-					if err := webhookCABundleManager.ManageWebhookCABundle(
-						event.Object,
-						types.NamespacedName{
-							Namespace: "",
-							Name:      registration.secretName,
-						}, registration.caFileName); err == nil {
-						return true
+			if _, ok := event.Object.(*apixv1.CustomResourceDefinition); !ok {
+				for prefix, registration := range autoRegistrationMap {
+					if strings.HasPrefix(objName, prefix) {
+						if err := webhookCABundleManager.ManageWebhookCABundle(
+							event.Object,
+							types.NamespacedName{
+								Namespace: "",
+								Name:      registration.secretName,
+							}, registration.caFileName); err == nil {
+							return true
+						}
+						// XXX: should we log an error here?
+						return false
 					}
-					// XXX: should we log an error here?
-					return false
 				}
 			}
 			return webhookCABundleManager.IsManaged(event.Object)
@@ -167,13 +178,15 @@ func webhookWatchPredicates(webhookCABundleManager WebhookCABundleManager) predi
 		// deletion and generic events don't interest us
 		DeleteFunc: func(event event.DeleteEvent) bool {
 			objName := event.Meta.GetName()
-			for prefix := range autoRegistrationMap {
-				if strings.HasPrefix(objName, prefix) {
-					// remove sidecar injector webhook
-					if err := webhookCABundleManager.UnmanageWebhookCABundle(event.Object); err != nil {
-						// XXX: should we log an error here?
+			if webhookCABundleManager.IsManaged(event.Object) {
+				for prefix := range autoRegistrationMap {
+					if strings.HasPrefix(objName, prefix) {
+						// remove sidecar injector webhook
+						if err := webhookCABundleManager.UnmanageWebhookCABundle(event.Object); err != nil {
+							// XXX: should we log an error here?
+						}
+						return false
 					}
-					return false
 				}
 			}
 			return false
@@ -219,24 +232,7 @@ func (wm *webhookCABundleManager) UpdateCABundle(ctx context.Context, cl client.
 		logger.Info("could not get secret: " + err.Error())
 		return nil
 	}
-	// update caBundle if it doesn't match what's in the secret
-	updated := false
-	newConfig := currentConfig.Copy().(webhookWrapper)
-	for _, clientConfig := range newConfig.ClientConfigs() {
-		updated = common.InjectCABundle(clientConfig, caRoot) || updated
-	}
-
-	if updated {
-		err := cl.Update(ctx, newConfig.Object())
-		if err != nil {
-			return errors.Wrap(err, "failed to update CABundle")
-		}
-		logger.Info("CABundle updated")
-		return nil
-	}
-
-	logger.Info("Correct CABundle already present. Ignoring")
-	return nil
+	return currentConfig.UpdateCABundle(ctx, cl, caRoot)
 }
 
 // Don't use this function to obtain a logger. Get it by invoking

@@ -19,7 +19,6 @@ spec:
     foo:
       bar: baz
 status:
-  components: null
   lastAppliedConfiguration:
     istio:
       foo:
