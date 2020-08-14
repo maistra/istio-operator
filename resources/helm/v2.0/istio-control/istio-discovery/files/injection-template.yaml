@@ -427,9 +427,9 @@ template: |
   podRedirectAnnot:
   {{- if and (.Values.istio_cni.enabled) (not .Values.istio_cni.chained) }}
   {{ if isset .ObjectMeta.Annotations `k8s.v1.cni.cncf.io/networks` }}
-    k8s.v1.cni.cncf.io/networks: "{{ index .ObjectMeta.Annotations `k8s.v1.cni.cncf.io/networks`}}, istio-cni"
+    k8s.v1.cni.cncf.io/networks: "{{ index .ObjectMeta.Annotations `k8s.v1.cni.cncf.io/networks`}}, {{ .Values.istio_cni.istio_cni_network }}"
   {{- else }}
-    k8s.v1.cni.cncf.io/networks: "istio-cni"
+    k8s.v1.cni.cncf.io/networks: "{{ .Values.istio_cni.istio_cni_network }}"
   {{- end }}
   {{- end }}
     sidecar.istio.io/interceptionMode: "{{ annotation .ObjectMeta `sidecar.istio.io/interceptionMode` .ProxyConfig.InterceptionMode }}"
