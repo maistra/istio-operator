@@ -115,6 +115,8 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 	if apixclient, err := clientapixv1.NewForConfig(mgr.GetConfig()); err == nil {
 		if crdPatchBytes, err := json.Marshal(map[string]interface{}{
 			"spec": map[string]interface{}{
+				// make this work from v1beta1 resources, which set this to true by default
+				"preserveUnknownFields": false,
 				"conversion": &apixv1.CustomResourceConversion{
 					Strategy: apixv1.WebhookConverter,
 					Webhook: &apixv1.WebhookConversion{
