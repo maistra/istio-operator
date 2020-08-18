@@ -30,7 +30,7 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 	}
 
 	var err error
-	smcp.Status.LastAppliedConfiguration, err = v.applyTemplates(ctx, cr, *v1spec)
+	smcp.Status.LastAppliedConfiguration, err = v.applyProfiles(ctx, cr, v1spec)
 	if err != nil {
 		log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates")
 

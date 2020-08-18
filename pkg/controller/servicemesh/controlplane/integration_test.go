@@ -50,7 +50,7 @@ func TestBootstrapping(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
 				Spec: maistrav2.ControlPlaneSpec{
 					Version:  versions.V1_1.String(),
-					Template: "maistra",
+					Profiles: []string{"maistra"},
 				},
 			},
 			crdCount: 23,
@@ -61,7 +61,7 @@ func TestBootstrapping(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
 				Spec: maistrav2.ControlPlaneSpec{
 					Version:  versions.V2_0.String(),
-					Template: "maistra",
+					Profiles: []string{"maistra"},
 				},
 			},
 			crdCount: 25,
@@ -72,7 +72,7 @@ func TestBootstrapping(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
 				Spec: maistrav2.ControlPlaneSpec{
 					Version:  versions.V2_0.String(),
-					Template: "maistra",
+					Profiles: []string{"maistra"},
 					Policy: &maistrav2.PolicyConfig{
 						Type: maistrav2.PolicyTypeMixer,
 					},

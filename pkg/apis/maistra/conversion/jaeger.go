@@ -9,6 +9,11 @@ import (
 )
 
 func populateJaegerAddonValues(jaeger *v2.JaegerTracerConfig, values map[string]interface{}) (reterr error) {
+
+	if jaeger == nil {
+		return nil
+	}
+
 	tracingValues := make(map[string]interface{})
 	jaegerValues := make(map[string]interface{})
 
@@ -19,27 +24,13 @@ func populateJaegerAddonValues(jaeger *v2.JaegerTracerConfig, values map[string]
 					reterr = err
 				}
 			}
-			if len(tracingValues) > 0 {
-				if err := setHelmValue(values, "tracing", tracingValues); err != nil {
+			for key, value := range tracingValues {
+				if err := setHelmValue(values, "tracing."+key, value); err != nil {
 					reterr = err
 				}
 			}
 		}
 	}()
-
-	if err := setHelmStringValue(values, "global.proxy.tracer", "jaeger"); err != nil {
-		return err
-	}
-	if err := setHelmStringValue(tracingValues, "provider", "jaeger"); err != nil {
-		return err
-	}
-	if err := setHelmBoolValue(tracingValues, "enabled", true); err != nil {
-		return err
-	}
-
-	if jaeger == nil {
-		return nil
-	}
 
 	if jaeger.Name != "" {
 		if err := setHelmStringValue(jaegerValues, "resourceName", jaeger.Name); err != nil {

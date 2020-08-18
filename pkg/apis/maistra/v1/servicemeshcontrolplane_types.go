@@ -100,6 +100,11 @@ type ControlPlaneSpec struct {
 	// +optional
 	Template string `json:"template,omitempty"`
 
+	// Profiles selects the profile to use for default values. Defaults to
+	// "default" when not set.  Takes precedence over Template.
+	// +optional
+	Profiles []string `json:"profiles,omitempty"`
+
 	// Version specifies what Maistra version of the control plane to install.
 	// When creating a new ServiceMeshControlPlane with an empty version, the
 	// admission webhook sets the version to the latest version supported by

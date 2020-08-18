@@ -34,13 +34,24 @@ func populateAddonsValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 			return err
 		}
 	case v2.TracerTypeJaeger:
-		if err := populateJaegerAddonValues(in.Addons.Tracing.Jaeger, values); err != nil {
+		if err := setHelmValue(values, "tracing.provider", "jaeger"); err != nil {
 			return err
 		}
-	case "":
+		if err := setHelmBoolValue(values, "tracing.enabled", true); err != nil {
+			return err
+		}
+		if err := setHelmStringValue(values, "global.proxy.tracer", "jaeger"); err != nil {
+			return err
+		}
+		case "":
 		// nothing to do
 	default:
 		return fmt.Errorf("Unknown tracer type: %s", in.Addons.Tracing.Type)
+	}
+
+	// always add values, even if they're not enabled to support profiles
+	if err := populateJaegerAddonValues(in.Addons.Tracing.Jaeger, values); err != nil {
+		return err
 	}
 
 	if in.Addons.Visualization.Grafana != nil {
