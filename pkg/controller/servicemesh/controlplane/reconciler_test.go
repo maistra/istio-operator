@@ -29,7 +29,7 @@ import (
 
 func TestInstallationErrorDoesNotUpdateLastTransitionTimeWhenNoStateTransitionOccurs(t *testing.T) {
 	controlPlane := newControlPlane()
-	controlPlane.Spec.Template = "maistra"
+	controlPlane.Spec.Profiles = []string{"maistra"}
 	controlPlane.Status.SetCondition(status.Condition{
 		Type:               status.ConditionTypeReconciled,
 		Status:             status.ConditionStatusFalse,
@@ -122,7 +122,7 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 			enabled := true
 			smcp := newControlPlane()
 			smcp.Spec = maistrav2.ControlPlaneSpec{
-				Template: "maistra",
+				Profiles: []string{"maistra"},
 				Version:  versions.V1_1.String(),
 				Policy: &maistrav2.PolicyConfig{
 					Type: maistrav2.PolicyTypeNone,
@@ -154,7 +154,7 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 					Visualization: maistrav2.VisualizationAddonsConfig{
 						Grafana: &maistrav2.GrafanaAddonConfig{
 							Enablement: maistrav2.Enablement{Enabled: &enabled},
-							Install: &maistrav2.GrafanaInstallConfig{},
+							Install:    &maistrav2.GrafanaInstallConfig{},
 						},
 						Kiali: &maistrav2.KialiAddonConfig{
 							Enablement: maistrav2.Enablement{Enabled: &disabled},
@@ -173,7 +173,6 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 			assertInstanceReconcilerSucceeds(r, t)
 			galleyDeployment := assertDeploymentExists(cl, "istio-galley", t)
 			markDeploymentAvailable(cl, galleyDeployment)
-
 
 			if tc.reactorsForFirstReconcile != nil {
 				tracker.AddReaction(tc.reactorsForFirstReconcile...)

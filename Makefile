@@ -158,7 +158,7 @@ collect-2.0-charts:
 collect-2.0-templates:
 	mkdir -p ${TEMPLATES_OUT_DIR}/v2.0
 	cp ${RESOURCES_DIR}/smcp-templates/v2.0/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v2.0/default
-	cp ${RESOURCES_DIR}/smcp-templates/v2.0/base ${TEMPLATES_OUT_DIR}/v2.0
+	find ${RESOURCES_DIR}/smcp-templates/v2.0/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" |xargs cp -t ${TEMPLATES_OUT_DIR}/v2.0
 
 
 ################################################################################

@@ -1,0 +1,81 @@
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+metadata:
+  name: small
+spec:
+  runtime:
+    defaults:
+      deployment:
+        podDisruption: null
+      container:
+        # constrain resources for use in smaller environments
+        resources:
+          requests:
+            cpu: 10m
+            memory: 128Mi
+          limits: {}
+    components:
+      pilot:
+        deployment:
+          autoScaling: null
+        container:
+          # constrain resources for use in smaller environments
+          resources:
+            requests:
+              cpu: 10m
+              memory: 128Mi
+            limits: {}
+      mixer.policy:
+        container:
+          # constrain resources for use in smaller environments
+          resources:
+            requests:
+              cpu: 10m
+              memory: 128Mi
+            limits: {}
+      mixer.telemetry:
+        container:
+          # constrain resources for use in smaller environments
+          resources:
+            requests:
+              cpu: 10m
+              memory: 128Mi
+            limits: {}
+      prometheus:
+        container:
+          # constrain resources for use in smaller environments
+          resources:
+            requests:
+              cpu: 10m
+              memory: 128Mi
+            limits: {}
+
+  gateways:
+    ingress:
+      runtime:
+        container:
+          # constrain resources for use in smaller environments
+          resources:
+            requests:
+              cpu: 10m
+              memory: 128Mi
+            limits: {}
+    egress:
+      runtime:
+        container:
+          # constrain resources for use in smaller environments
+          resources:
+            requests:
+              cpu: 10m
+              memory: 128Mi
+            limits: {}
+
+  proxy:
+    runtime:
+      container:
+        # constrain resources for use in smaller environments
+        resources:
+          requests:
+            cpu: 10m
+            memory: 128Mi
+          limits: {}

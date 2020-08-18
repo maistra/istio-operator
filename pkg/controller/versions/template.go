@@ -7,13 +7,14 @@ import (
 	"path"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	imagev1 "github.com/openshift/api/image/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
@@ -69,58 +70,89 @@ func mergeValues(base map[string]interface{}, input map[string]interface{}) map[
 	return base
 }
 
-func (v version) getSMCPTemplate(name string) (v1.ControlPlaneSpec, error) {
+func (v version) getSMCPProfile(name string) (*v1.ControlPlaneSpec, []string, error) {
 	if strings.Contains(name, "/") {
-		return v1.ControlPlaneSpec{}, fmt.Errorf("template name contains invalid character '/'")
+		return nil, nil, fmt.Errorf("profile name contains invalid character '/'")
 	}
 
-	templateContent, err := ioutil.ReadFile(path.Join(v.GetUserTemplatesDir(), name))
+	profileContent, err := ioutil.ReadFile(path.Join(v.GetUserTemplatesDir(), name))
 	if err != nil {
-		//if we can't read from the user template path, try from the default path
+		//if we can't read from the user profile path, try from the default path
 		//we use two paths because Kubernetes will not auto-update volume mounted
 		//configmaps mounted in directories with pre-existing content
-		defaultTemplateContent, defaultErr := ioutil.ReadFile(path.Join(v.GetDefaultTemplatesDir(), name))
+		defaultProfileContent, defaultErr := ioutil.ReadFile(path.Join(v.GetDefaultTemplatesDir(), name))
 		if defaultErr != nil {
-			return v1.ControlPlaneSpec{}, fmt.Errorf("template cannot be loaded from user or default directory. Error from user: %s. Error from default: %s", err, defaultErr)
+			return nil, nil, fmt.Errorf("template cannot be loaded from user or default directory. Error from user: %s. Error from default: %s", err, defaultErr)
 		}
-		templateContent = defaultTemplateContent
+		profileContent = defaultProfileContent
 	}
 
-	var template v1.ServiceMeshControlPlane
-	if err = yaml.Unmarshal(templateContent, &template); err != nil {
-		return v1.ControlPlaneSpec{}, fmt.Errorf("failed to parse template %s contents: %s", name, err)
+	obj, gvk, err := decoder.Decode(profileContent, nil, nil)
+	if err != nil || gvk == nil {
+		return nil, nil, fmt.Errorf("failed to parse profile %s contents: %s", name, err)
 	}
-	return template.Spec, nil
+	switch smcp := obj.(type) {
+	case *v1.ServiceMeshControlPlane:
+		if len(smcp.Spec.Profiles) == 0 {
+			if smcp.Spec.Template == "" {
+				return &smcp.Spec, nil, nil
+			} else {
+				return &smcp.Spec, []string{smcp.Spec.Template}, nil
+			}
+		}
+		return &smcp.Spec, smcp.Spec.Profiles, nil
+	case *v2.ServiceMeshControlPlane:
+		smcpv1 := &v1.ServiceMeshControlPlane{}
+		if err := smcpv1.ConvertFrom(smcp); err != nil {
+			return nil, nil, err
+		}
+		return &smcpv1.Spec, smcp.Spec.Profiles, nil
+	default:
+		return nil, nil, fmt.Errorf("unsupported ServiceMeshControlPlane version: %s", gvk.String())
+	}
 }
 
 //renderSMCPTemplates traverses and processes all of the references templates
-func (v version) recursivelyApplyTemplates(ctx context.Context, smcp v1.ControlPlaneSpec, visited sets.String) (v1.ControlPlaneSpec, error) {
+func (v version) recursivelyApplyProfiles(ctx context.Context, smcp *v1.ControlPlaneSpec, profiles []string, visited sets.String) (v1.ControlPlaneSpec, error) {
 	log := common.LogFromContext(ctx)
-	if smcp.Template == "" {
-		return smcp, nil
+
+	for index := len(profiles) - 1; index >= 0; index-- {
+		profileName := profiles[index]
+		if visited.Has(profileName) {
+			log.Info(fmt.Sprintf("smcp profile %s has already been applied", profileName))
+			continue
+		}
+		log.Info(fmt.Sprintf("processing smcp profile %s", profileName))
+
+		profile, profiles, err := v.getSMCPProfile(profileName)
+		if err != nil {
+			return *smcp, err
+		}
+
+		if log.V(5).Enabled() {
+			rawValues, _ := yaml.Marshal(profile)
+			log.V(5).Info(fmt.Sprintf("profile values:\n%s\n", string(rawValues)))
+			rawValues, _ = yaml.Marshal(smcp)
+			log.V(5).Info(fmt.Sprintf("before applying profile values:\n%s\n", string(rawValues)))
+		}
+	
+		// apply this profile first, then its children
+		smcp.Istio = v1.NewHelmValues(mergeValues(smcp.Istio.GetContent(), profile.Istio.GetContent()))
+		smcp.ThreeScale = v1.NewHelmValues(mergeValues(smcp.ThreeScale.GetContent(), profile.ThreeScale.GetContent()))
+
+		if log.V(5).Enabled() {
+			rawValues, _ := yaml.Marshal(smcp)
+			log.V(5).Info(fmt.Sprintf("after applying profile values:\n%s\n", string(rawValues)))
+		}
+
+		*smcp, err = v.recursivelyApplyProfiles(ctx, smcp, profiles, visited)
+		if err != nil {
+			log.Info(fmt.Sprintf("error applying profiles: %s\n", err))
+			return *smcp, err
+		}
 	}
-	log.Info(fmt.Sprintf("processing smcp template %s", smcp.Template))
 
-	if visited.Has(smcp.Template) {
-		return smcp, fmt.Errorf("SMCP templates form cyclic dependency. Cannot proceed")
-	}
-
-	template, err := v.getSMCPTemplate(smcp.Template)
-	if err != nil {
-		return smcp, err
-	}
-
-	template, err = v.recursivelyApplyTemplates(ctx, template, visited)
-	if err != nil {
-		log.Info(fmt.Sprintf("error rendering SMCP templates: %s\n", err))
-		return smcp, err
-	}
-
-	visited.Insert(smcp.Template)
-
-	smcp.Istio = v1.NewHelmValues(mergeValues(smcp.Istio.GetContent(), template.Istio.GetContent()))
-	smcp.ThreeScale = v1.NewHelmValues(mergeValues(smcp.ThreeScale.GetContent(), template.ThreeScale.GetContent()))
-	return smcp, nil
+	return *smcp, nil
 }
 
 func (v version) updateImagesWithSHAs(ctx context.Context, cr *common.ControllerResources, smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
@@ -176,16 +208,24 @@ func updateImageField(helmValues *v1.HelmValues, path, value string) error {
 	return helmValues.SetField(path, value)
 }
 
-func (v version) applyTemplates(ctx context.Context, cr *common.ControllerResources, smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
+func (v version) applyProfiles(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
 	log := common.LogFromContext(ctx)
-	log.Info("updating servicemeshcontrolplane with templates")
-	if smcpSpec.Template == "" {
-		smcpSpec.Template = v1.DefaultTemplate
-		log.Info("No template provided. Using default")
+	log.Info("applying profiles to ServiceMeshControlPlane")
+	profiles := smcpSpec.Profiles
+	if len(profiles) == 0 {
+		if smcpSpec.Template == "" {
+			profiles = []string{v1.DefaultTemplate}
+			log.Info("No profiles specified, applying default profile")
+		} else {
+			profiles = []string{smcpSpec.Template}
+		}
 	}
 
 	if smcpSpec.Istio == nil {
 		smcpSpec.Istio = v1.NewHelmValues(make(map[string]interface{}))
+	}
+	if smcpSpec.ThreeScale == nil {
+		smcpSpec.ThreeScale = v1.NewHelmValues(make(map[string]interface{}))
 	}
 
 	applyDisconnectedSettings := true
@@ -197,7 +237,10 @@ func (v version) applyTemplates(ctx context.Context, cr *common.ControllerResour
 		applyDisconnectedSettings = false
 	}
 
-	spec, err := v.recursivelyApplyTemplates(ctx, smcpSpec, sets.NewString())
+	spec, err := v.recursivelyApplyProfiles(ctx, smcpSpec, profiles, sets.NewString())
+	if err != nil {
+		return spec, err
+	}
 
 	if applyDisconnectedSettings {
 		spec, err = v.updateImagesWithSHAs(ctx, cr, spec)

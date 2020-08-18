@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/ghodss/yaml"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -15,6 +14,7 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -149,10 +149,11 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 	log := common.LogFromContext(ctx)
 	//Generate the spec
 	// XXX: we should apply v2 templates first, then convert to values.yaml (v1)
-	v1spec := &v1.ControlPlaneSpec{}
-	if err := cr.Scheme.Convert(&smcp.Spec, v1spec, nil); err != nil {
+	v1smcp := &v1.ServiceMeshControlPlane{}
+	if err := v1smcp.ConvertFrom(smcp); err != nil {
 		return nil, err
 	}
+	v1spec := &v1smcp.Spec
 	v1spec.Version = v.String()
 
 	if v1spec.Istio == nil {
@@ -160,7 +161,7 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 	}
 
 	var err error
-	smcp.Status.LastAppliedConfiguration, err = v.applyTemplates(ctx, cr, *v1spec)
+	smcp.Status.LastAppliedConfiguration, err = v.applyProfiles(ctx, cr, v1spec)
 	if err != nil {
 		log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates")
 

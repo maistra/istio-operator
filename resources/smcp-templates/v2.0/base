@@ -1,117 +1,82 @@
-apiVersion: maistra.io/v1
+apiVersion: maistra.io/v2
 kind: ServiceMeshControlPlane
+metadata:
+  name: base
 spec:
-  istio:
-    global:
-      tag: 2.0.0
-      # constrain resources for use in smaller environments
-      defaultResources:
-        requests:
-          cpu: 10m
-          memory: 128Mi
-        limits:
-      proxy:
-        autoInject: disabled
-        dnsRefreshRate: 300s
-        # constrain resources for use in smaller environments
-        resources:
-          requests:
-            cpu: 10m
-            memory: 128Mi
-          limits:
-      oauthproxy:
-        tag: 4.2
-        imagePullPolicy: IfNotPresent
-      defaultPodDisruptionBudget:
-        enabled: false
-      jwtPolicy: first-party-jwt
-      logging:
-        level: warn
-      k8sIngress:
-        enabled: false
-        gatewayName: ingressgateway
-    istio_cni:
-      repair:
-        enabled: false
-    pilot:
-      autoscaleEnabled: false
-      resources:
-        requests:
-          cpu: 10m
-          memory: 128Mi
-        limits:
-      env:
-        GODEBUG: null
-    telemetry:
+  runtime:
+    defaults:
+      container:
+        tag: 2.0.0
+
+  gateways:
+    enabled: true
+    ingress:
       enabled: true
-      v1:
-        enabled: false
-      v2:
-        enabled: true
-    mixer:
-      enabled: false
-      policy:
-        enabled: false
-      telemetry:
-        enabled: false
-        # constrain resources for use in smaller environments
-        resources:
-          requests:
-            cpu: 10m
-            memory: 128Mi
-          limits:
-      env:
-        GODEBUG: null
-    grafana:
-      enabled: true
-      ingress:
-        enabled: true
+      ingress: false
       service:
-        annotations:
-           service.alpha.openshift.io/serving-cert-secret-name: grafana-tls
-    tracing:
-      enabled: true
-      ingress:
-        enabled: true
-    kiali:
-      enabled: true
-      dashboard:
-        viewOnlyMode: false
-      ingress:
-        enabled: true
-    sidecarInjectorWebhook:
-      enableNamespacesByDefault: true
-    gateways:
-      enabled: true
-      istio-egressgateway:
-        enabled: true
-        # constrain resources for use in smaller environments
-        resources:
-          requests:
-            cpu: 10m
-            memory: 128Mi
-          limits:
-      istio-ingressgateway:
-        enabled: true
-        ior_enabled: false
         type: ClusterIP
-        # constrain resources for use in smaller environments
-        resources:
-          requests:
-            cpu: 10m
-            memory: 128Mi
-          limits:
-    prometheus:
+    egress:
       enabled: true
-      service:
-        annotations:
-          service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls
-      ingress:
+
+  logging:
+    level: warn
+
+  proxy:
+    autoInject: true
+    networking:
+      dns:
+        refreshRate: 300s
+
+  security:
+    mutualTLS:
+      identity:
+        type: Kubernetes
+
+  telemetry:
+    type: Istiod
+
+  policy:
+    type: None
+
+  addons:
+    metrics:
+      prometheus:
         enabled: true
-      # constrain resources for use in smaller environments
-      resources:
-        requests:
-          cpu: 10m
-          memory: 128Mi
-        limits:
-  threeScale: {}
+        install:
+          service:
+            metadata:
+              annotations:
+                service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls
+            ingress:
+              enabled: true
+
+    tracing:
+      type: Jaeger
+      jaeger:
+        name: jaeger
+        install:
+          storage:
+            type: Memory
+          ingress:
+            enabled: true
+
+    visualization:
+      grafana:
+        enabled: true
+        install:
+          service:
+            metadata:
+              annotations:
+                service.alpha.openshift.io/serving-cert-secret-name: grafana-tls
+            ingress:
+              enabled: true
+      kiali:
+        enabled: true
+        name: kiali
+        install:
+          config:
+            dashboard:
+              viewOnly: false
+          service:
+            ingress:
+              enabled: true
