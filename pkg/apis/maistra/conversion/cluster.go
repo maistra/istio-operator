@@ -38,7 +38,7 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 	// TODO: figure out how to get the install namespace
 	var namespace string
 	clusterDomain := clusterDomainDefault
-	if in.Proxy != nil && in.Proxy.Networking.ClusterDomain != "" {
+	if in.Proxy != nil && in.Proxy.Networking != nil && in.Proxy.Networking.ClusterDomain != "" {
 		clusterDomain = in.Proxy.Networking.ClusterDomain
 	}
 	hasClusterName := len(cluster.Name) > 0
@@ -226,10 +226,12 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 		globalIndex := -1
 		deploymentMetadataIndex := -1
 		addedSearchSuffixes := make([]interface{}, 0, 2)
+		dns := &v2.ProxyDNSConfig{}
 		if in.Proxy == nil {
 			in.Proxy = &v2.ProxyConfig{}
-		} else {
-			for index, ss := range in.Proxy.Networking.DNS.SearchSuffixes {
+		} else if in.Proxy.Networking != nil && in.Proxy.Networking.DNS != nil {
+			dns = in.Proxy.Networking.DNS
+			for index, ss := range dns.SearchSuffixes {
 				if ss == searchSuffixGlobal {
 					globalIndex = index
 				} else if strings.Index(ss, ".DeploymentMeta.Namespace") > 0 { // greater than works here because the template must be bracketed with {{ }}
@@ -241,16 +243,22 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 			namespaceSuffix := fmt.Sprintf(searchSuffixNamespaceGlobalTemplate, namespace)
 			addedSearchSuffixes = append(addedSearchSuffixes, namespaceSuffix)
 			if globalIndex < 0 {
-				in.Proxy.Networking.DNS.SearchSuffixes = append([]string{namespaceSuffix}, in.Proxy.Networking.DNS.SearchSuffixes...)
+				dns.SearchSuffixes = append([]string{namespaceSuffix}, dns.SearchSuffixes...)
 			} else {
-				in.Proxy.Networking.DNS.SearchSuffixes = append(append(in.Proxy.Networking.DNS.SearchSuffixes[:globalIndex+1], namespaceSuffix), in.Proxy.Networking.DNS.SearchSuffixes[globalIndex+1:]...)
+				dns.SearchSuffixes = append(append(dns.SearchSuffixes[:globalIndex+1], namespaceSuffix), dns.SearchSuffixes[globalIndex+1:]...)
 			}
 		}
 		if globalIndex < 0 {
 			addedSearchSuffixes = append(addedSearchSuffixes, searchSuffixGlobal)
-			in.Proxy.Networking.DNS.SearchSuffixes = append([]string{searchSuffixGlobal}, in.Proxy.Networking.DNS.SearchSuffixes...)
+			dns.SearchSuffixes = append([]string{searchSuffixGlobal}, dns.SearchSuffixes...)
 		}
 		if len(addedSearchSuffixes) > 0 {
+			if in.Proxy.Networking == nil {
+				in.Proxy.Networking = &v2.ProxyNetworkingConfig{}
+			}
+			if in.Proxy.Networking.DNS == nil {
+				in.Proxy.Networking.DNS = dns
+			}
 			if err := setHelmValue(values, "global.multiCluster.addedSearchSuffixes", addedSearchSuffixes); err != nil {
 				return err
 			}

@@ -103,22 +103,6 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 		}
 	}
 
-	runtime := grafana.Install.Runtime
-	if runtime != nil {
-		if err := populateRuntimeValues(runtime, grafanaValues); err != nil {
-			return err
-		}
-
-		// set image and resources
-		if runtime.Pod.Containers != nil {
-			if container, ok := runtime.Pod.Containers["grafana"]; ok {
-				if err := populateContainerConfigValues(&container, grafanaValues); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
 	return nil
 }
 
@@ -259,26 +243,6 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 	}
 	if setSecurityConfig {
 		install.Security = &securityConfig
-		setInstall = true
-	}
-
-	runtime := &v2.ComponentRuntimeConfig{}
-	if applied, err := runtimeValuesToComponentRuntimeConfig(grafanaValues, runtime); err != nil {
-		return err
-	} else if applied {
-		install.Runtime = runtime
-		setInstall = true
-	}
-	container := v2.ContainerConfig{}
-	if applied, err := populateContainerConfig(grafanaValues, &container); err != nil {
-		return err
-	} else if applied {
-		if install.Runtime == nil {
-			install.Runtime = runtime
-		}
-		install.Runtime.Pod.Containers = map[string]v2.ContainerConfig{
-			"grafana": container,
-		}
 		setInstall = true
 	}
 

@@ -32,7 +32,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -54,7 +53,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -64,7 +62,7 @@ var runtimeTestCases = []conversionTestCase{
 			Runtime: &v2.ControlPlaneRuntimeConfig{
 				Defaults: &v2.DefaultRuntimeConfig{
 					Deployment: &v2.CommonDeploymentRuntimeConfig{
-						Disruption: &v2.PodDisruptionBudget{
+						PodDisruption: &v2.PodDisruptionBudget{
 							MaxUnavailable: &intStr25Percent,
 							MinAvailable:   &intStrInt1,
 						},
@@ -92,7 +90,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -102,7 +99,7 @@ var runtimeTestCases = []conversionTestCase{
 			Runtime: &v2.ControlPlaneRuntimeConfig{
 				Defaults: &v2.DefaultRuntimeConfig{
 					Deployment: &v2.CommonDeploymentRuntimeConfig{
-						Disruption: &v2.PodDisruptionBudget{
+						PodDisruption: &v2.PodDisruptionBudget{
 							MaxUnavailable: &intStrInt1,
 							MinAvailable:   &intStr25Percent,
 						},
@@ -130,7 +127,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -193,7 +189,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -256,7 +251,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -264,14 +258,12 @@ var runtimeTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{
-				Citadel: &v2.ComponentRuntimeConfig{},
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameSecurity: {},
+				},
 			},
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"security": map[string]interface{}{
-				"autoscaleEnabled": false,
-			},
-		}),
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"useMCP": true,
@@ -283,7 +275,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -291,85 +282,85 @@ var runtimeTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{
-				Citadel: &v2.ComponentRuntimeConfig{
-					Pod: v2.PodRuntimeConfig{
-						CommonPodRuntimeConfig: v2.CommonPodRuntimeConfig{
-							NodeSelector: map[string]string{
-								"node-label": "node-value",
-							},
-							PriorityClassName: "normal",
-							Tolerations: []corev1.Toleration{
-								{
-									Key:      "bad-node",
-									Operator: corev1.TolerationOpExists,
-									Effect:   corev1.TaintEffectNoExecute,
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameSecurity: {
+						Pod: &v2.PodRuntimeConfig{
+							CommonPodRuntimeConfig: v2.CommonPodRuntimeConfig{
+								NodeSelector: map[string]string{
+									"node-label": "node-value",
 								},
-								{
-									Key:      "istio",
-									Operator: corev1.TolerationOpEqual,
-									Value:    "disabled",
-									Effect:   corev1.TaintEffectNoSchedule,
-								},
-							},
-						},
-						Affinity: &v2.Affinity{
-							PodAntiAffinity: v2.PodAntiAffinity{
-								PreferredDuringScheduling: []v2.PodAntiAffinityTerm{
+								PriorityClassName: "normal",
+								Tolerations: []corev1.Toleration{
 									{
-										LabelSelectorRequirement: metav1.LabelSelectorRequirement{
-											Key:      "istio",
-											Operator: metav1.LabelSelectorOpIn,
-											Values: []string{
-												"control-plane",
-											},
-										},
+										Key:      "bad-node",
+										Operator: corev1.TolerationOpExists,
+										Effect:   corev1.TaintEffectNoExecute,
 									},
-								},
-								RequiredDuringScheduling: []v2.PodAntiAffinityTerm{
 									{
-										LabelSelectorRequirement: metav1.LabelSelectorRequirement{
-											Key:      "istio",
-											Operator: metav1.LabelSelectorOpIn,
-											Values: []string{
-												"ingressgateway",
-											},
-										},
+										Key:      "istio",
+										Operator: corev1.TolerationOpEqual,
+										Value:    "disabled",
+										Effect:   corev1.TaintEffectNoSchedule,
 									},
 								},
 							},
-						},
-						Metadata: v2.MetadataConfig{
-							Annotations: map[string]string{
-								"some-pod-annotation": "pod-annotation-value",
-							},
-							Labels: map[string]string{
-								"some-pod-label": "pod-label-value",
-							},
-						},
-						Containers: map[string]v2.ContainerConfig{
-							"default": {
-								CommonContainerConfig: v2.CommonContainerConfig{
-									ImageRegistry:   "custom-registry",
-									ImageTag:        "test",
-									ImagePullPolicy: "Always",
-									ImagePullSecrets: []corev1.LocalObjectReference{
+							Affinity: &v2.Affinity{
+								PodAntiAffinity: v2.PodAntiAffinity{
+									PreferredDuringScheduling: []v2.PodAntiAffinityTerm{
 										{
-											Name: "pull-secret",
+											LabelSelectorRequirement: metav1.LabelSelectorRequirement{
+												Key:      "istio",
+												Operator: metav1.LabelSelectorOpIn,
+												Values: []string{
+													"control-plane",
+												},
+											},
 										},
 									},
-									Resources: &corev1.ResourceRequirements{
-										Limits: corev1.ResourceList{
-											corev1.ResourceCPU:    resource.MustParse("100m"),
-											corev1.ResourceMemory: resource.MustParse("128Mi"),
-										},
-										Requests: corev1.ResourceList{
-											corev1.ResourceCPU:    resource.MustParse("10m"),
-											corev1.ResourceMemory: resource.MustParse("64Mi"),
+									RequiredDuringScheduling: []v2.PodAntiAffinityTerm{
+										{
+											LabelSelectorRequirement: metav1.LabelSelectorRequirement{
+												Key:      "istio",
+												Operator: metav1.LabelSelectorOpIn,
+												Values: []string{
+													"ingressgateway",
+												},
+											},
 										},
 									},
 								},
-								Image: "custom-citadel",
 							},
+							Metadata: v2.MetadataConfig{
+								Annotations: map[string]string{
+									"some-pod-annotation": "pod-annotation-value",
+								},
+								Labels: map[string]string{
+									"some-pod-label": "pod-label-value",
+								},
+							},
+						},
+						Container: &v2.ContainerConfig{
+							CommonContainerConfig: v2.CommonContainerConfig{
+								ImageRegistry:   "custom-registry",
+								ImageTag:        "test",
+								ImagePullPolicy: "Always",
+								ImagePullSecrets: []corev1.LocalObjectReference{
+									{
+										Name: "pull-secret",
+									},
+								},
+								Resources: &corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("100m"),
+										corev1.ResourceMemory: resource.MustParse("128Mi"),
+									},
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("64Mi"),
+									},
+								},
+							},
+							Image: "custom-citadel",
 						},
 					},
 				},
@@ -377,7 +368,6 @@ var runtimeTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"security": map[string]interface{}{
-				"autoscaleEnabled": false,
 				"nodeSelector": map[string]interface{}{
 					"node-label": "node-value",
 				},
@@ -447,7 +437,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -455,13 +444,15 @@ var runtimeTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{
-				Citadel: &v2.ComponentRuntimeConfig{
-					Deployment: v2.DeploymentRuntimeConfig{
-						Replicas: &replicaCount2,
-						Strategy: &appsv1.DeploymentStrategy{
-							RollingUpdate: &appsv1.RollingUpdateDeployment{
-								MaxSurge:       &intStrInt1,
-								MaxUnavailable: &intStr25Percent,
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameSecurity: {
+						Deployment: &v2.DeploymentRuntimeConfig{
+							Replicas: &replicaCount2,
+							Strategy: &appsv1.DeploymentStrategy{
+								RollingUpdate: &appsv1.RollingUpdateDeployment{
+									MaxSurge:       &intStrInt1,
+									MaxUnavailable: &intStr25Percent,
+								},
 							},
 						},
 					},
@@ -487,7 +478,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -495,18 +485,20 @@ var runtimeTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{
-				Citadel: &v2.ComponentRuntimeConfig{
-					Deployment: v2.DeploymentRuntimeConfig{
-						AutoScaling: &v2.AutoScalerConfig{
-							MaxReplicas:                    &replicaCount5,
-							MinReplicas:                    &replicaCount1,
-							TargetCPUUtilizationPercentage: &cpuUtilization80,
-						},
-						Replicas: &replicaCount2,
-						Strategy: &appsv1.DeploymentStrategy{
-							RollingUpdate: &appsv1.RollingUpdateDeployment{
-								MaxSurge:       &intStrInt1,
-								MaxUnavailable: &intStr25Percent,
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameSecurity: {
+						Deployment: &v2.DeploymentRuntimeConfig{
+							AutoScaling: &v2.AutoScalerConfig{
+								MaxReplicas:                    &replicaCount5,
+								MinReplicas:                    &replicaCount1,
+								TargetCPUUtilizationPercentage: &cpuUtilization80,
+							},
+							Replicas: &replicaCount2,
+							Strategy: &appsv1.DeploymentStrategy{
+								RollingUpdate: &appsv1.RollingUpdateDeployment{
+									MaxSurge:       &intStrInt1,
+									MaxUnavailable: &intStr25Percent,
+								},
 							},
 						},
 					},
@@ -537,7 +529,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -545,14 +536,12 @@ var runtimeTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{
-				Galley: &v2.ComponentRuntimeConfig{},
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameGalley: {},
+				},
 			},
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"galley": map[string]interface{}{
-				"autoscaleEnabled": false,
-			},
-		}),
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"useMCP": true,
@@ -564,7 +553,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -572,85 +560,85 @@ var runtimeTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{
-				Galley: &v2.ComponentRuntimeConfig{
-					Pod: v2.PodRuntimeConfig{
-						CommonPodRuntimeConfig: v2.CommonPodRuntimeConfig{
-							NodeSelector: map[string]string{
-								"node-label": "node-value",
-							},
-							PriorityClassName: "normal",
-							Tolerations: []corev1.Toleration{
-								{
-									Key:      "bad-node",
-									Operator: corev1.TolerationOpExists,
-									Effect:   corev1.TaintEffectNoExecute,
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameGalley: {
+						Pod: &v2.PodRuntimeConfig{
+							CommonPodRuntimeConfig: v2.CommonPodRuntimeConfig{
+								NodeSelector: map[string]string{
+									"node-label": "node-value",
 								},
-								{
-									Key:      "istio",
-									Operator: corev1.TolerationOpEqual,
-									Value:    "disabled",
-									Effect:   corev1.TaintEffectNoSchedule,
-								},
-							},
-						},
-						Affinity: &v2.Affinity{
-							PodAntiAffinity: v2.PodAntiAffinity{
-								PreferredDuringScheduling: []v2.PodAntiAffinityTerm{
+								PriorityClassName: "normal",
+								Tolerations: []corev1.Toleration{
 									{
-										LabelSelectorRequirement: metav1.LabelSelectorRequirement{
-											Key:      "istio",
-											Operator: metav1.LabelSelectorOpIn,
-											Values: []string{
-												"control-plane",
-											},
-										},
+										Key:      "bad-node",
+										Operator: corev1.TolerationOpExists,
+										Effect:   corev1.TaintEffectNoExecute,
 									},
-								},
-								RequiredDuringScheduling: []v2.PodAntiAffinityTerm{
 									{
-										LabelSelectorRequirement: metav1.LabelSelectorRequirement{
-											Key:      "istio",
-											Operator: metav1.LabelSelectorOpIn,
-											Values: []string{
-												"ingressgateway",
-											},
-										},
+										Key:      "istio",
+										Operator: corev1.TolerationOpEqual,
+										Value:    "disabled",
+										Effect:   corev1.TaintEffectNoSchedule,
 									},
 								},
 							},
-						},
-						Metadata: v2.MetadataConfig{
-							Annotations: map[string]string{
-								"some-pod-annotation": "pod-annotation-value",
-							},
-							Labels: map[string]string{
-								"some-pod-label": "pod-label-value",
-							},
-						},
-						Containers: map[string]v2.ContainerConfig{
-							"default": {
-								CommonContainerConfig: v2.CommonContainerConfig{
-									ImageRegistry:   "custom-registry",
-									ImageTag:        "test",
-									ImagePullPolicy: "Always",
-									ImagePullSecrets: []corev1.LocalObjectReference{
+							Affinity: &v2.Affinity{
+								PodAntiAffinity: v2.PodAntiAffinity{
+									PreferredDuringScheduling: []v2.PodAntiAffinityTerm{
 										{
-											Name: "pull-secret",
+											LabelSelectorRequirement: metav1.LabelSelectorRequirement{
+												Key:      "istio",
+												Operator: metav1.LabelSelectorOpIn,
+												Values: []string{
+													"control-plane",
+												},
+											},
 										},
 									},
-									Resources: &corev1.ResourceRequirements{
-										Limits: corev1.ResourceList{
-											corev1.ResourceCPU:    resource.MustParse("100m"),
-											corev1.ResourceMemory: resource.MustParse("128Mi"),
-										},
-										Requests: corev1.ResourceList{
-											corev1.ResourceCPU:    resource.MustParse("10m"),
-											corev1.ResourceMemory: resource.MustParse("64Mi"),
+									RequiredDuringScheduling: []v2.PodAntiAffinityTerm{
+										{
+											LabelSelectorRequirement: metav1.LabelSelectorRequirement{
+												Key:      "istio",
+												Operator: metav1.LabelSelectorOpIn,
+												Values: []string{
+													"ingressgateway",
+												},
+											},
 										},
 									},
 								},
-								Image: "custom-citadel",
 							},
+							Metadata: v2.MetadataConfig{
+								Annotations: map[string]string{
+									"some-pod-annotation": "pod-annotation-value",
+								},
+								Labels: map[string]string{
+									"some-pod-label": "pod-label-value",
+								},
+							},
+						},
+						Container: &v2.ContainerConfig{
+							CommonContainerConfig: v2.CommonContainerConfig{
+								ImageRegistry:   "custom-registry",
+								ImageTag:        "test",
+								ImagePullPolicy: "Always",
+								ImagePullSecrets: []corev1.LocalObjectReference{
+									{
+										Name: "pull-secret",
+									},
+								},
+								Resources: &corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("100m"),
+										corev1.ResourceMemory: resource.MustParse("128Mi"),
+									},
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("64Mi"),
+									},
+								},
+							},
+							Image: "custom-citadel",
 						},
 					},
 				},
@@ -658,7 +646,6 @@ var runtimeTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"galley": map[string]interface{}{
-				"autoscaleEnabled": false,
 				"nodeSelector": map[string]interface{}{
 					"node-label": "node-value",
 				},
@@ -728,7 +715,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -736,13 +722,15 @@ var runtimeTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{
-				Galley: &v2.ComponentRuntimeConfig{
-					Deployment: v2.DeploymentRuntimeConfig{
-						Replicas: &replicaCount2,
-						Strategy: &appsv1.DeploymentStrategy{
-							RollingUpdate: &appsv1.RollingUpdateDeployment{
-								MaxSurge:       &intStrInt1,
-								MaxUnavailable: &intStr25Percent,
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameGalley: {
+						Deployment: &v2.DeploymentRuntimeConfig{
+							Replicas: &replicaCount2,
+							Strategy: &appsv1.DeploymentStrategy{
+								RollingUpdate: &appsv1.RollingUpdateDeployment{
+									MaxSurge:       &intStrInt1,
+									MaxUnavailable: &intStr25Percent,
+								},
 							},
 						},
 					},
@@ -768,7 +756,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -776,18 +763,20 @@ var runtimeTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{
-				Galley: &v2.ComponentRuntimeConfig{
-					Deployment: v2.DeploymentRuntimeConfig{
-						AutoScaling: &v2.AutoScalerConfig{
-							MaxReplicas:                    &replicaCount5,
-							MinReplicas:                    &replicaCount1,
-							TargetCPUUtilizationPercentage: &cpuUtilization80,
-						},
-						Replicas: &replicaCount2,
-						Strategy: &appsv1.DeploymentStrategy{
-							RollingUpdate: &appsv1.RollingUpdateDeployment{
-								MaxSurge:       &intStrInt1,
-								MaxUnavailable: &intStr25Percent,
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameGalley: {
+						Deployment: &v2.DeploymentRuntimeConfig{
+							AutoScaling: &v2.AutoScalerConfig{
+								MaxReplicas:                    &replicaCount5,
+								MinReplicas:                    &replicaCount1,
+								TargetCPUUtilizationPercentage: &cpuUtilization80,
+							},
+							Replicas: &replicaCount2,
+							Strategy: &appsv1.DeploymentStrategy{
+								RollingUpdate: &appsv1.RollingUpdateDeployment{
+									MaxSurge:       &intStrInt1,
+									MaxUnavailable: &intStr25Percent,
+								},
 							},
 						},
 					},
@@ -818,7 +807,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -826,14 +814,12 @@ var runtimeTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{
-				Pilot: &v2.ComponentRuntimeConfig{},
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNamePilot: {},
+				},
 			},
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"pilot": map[string]interface{}{
-				"autoscaleEnabled": false,
-			},
-		}),
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"useMCP": true,
@@ -845,7 +831,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -853,85 +838,85 @@ var runtimeTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{
-				Pilot: &v2.ComponentRuntimeConfig{
-					Pod: v2.PodRuntimeConfig{
-						CommonPodRuntimeConfig: v2.CommonPodRuntimeConfig{
-							NodeSelector: map[string]string{
-								"node-label": "node-value",
-							},
-							PriorityClassName: "normal",
-							Tolerations: []corev1.Toleration{
-								{
-									Key:      "bad-node",
-									Operator: corev1.TolerationOpExists,
-									Effect:   corev1.TaintEffectNoExecute,
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNamePilot: {
+						Pod: &v2.PodRuntimeConfig{
+							CommonPodRuntimeConfig: v2.CommonPodRuntimeConfig{
+								NodeSelector: map[string]string{
+									"node-label": "node-value",
 								},
-								{
-									Key:      "istio",
-									Operator: corev1.TolerationOpEqual,
-									Value:    "disabled",
-									Effect:   corev1.TaintEffectNoSchedule,
-								},
-							},
-						},
-						Affinity: &v2.Affinity{
-							PodAntiAffinity: v2.PodAntiAffinity{
-								PreferredDuringScheduling: []v2.PodAntiAffinityTerm{
+								PriorityClassName: "normal",
+								Tolerations: []corev1.Toleration{
 									{
-										LabelSelectorRequirement: metav1.LabelSelectorRequirement{
-											Key:      "istio",
-											Operator: metav1.LabelSelectorOpIn,
-											Values: []string{
-												"control-plane",
-											},
-										},
+										Key:      "bad-node",
+										Operator: corev1.TolerationOpExists,
+										Effect:   corev1.TaintEffectNoExecute,
 									},
-								},
-								RequiredDuringScheduling: []v2.PodAntiAffinityTerm{
 									{
-										LabelSelectorRequirement: metav1.LabelSelectorRequirement{
-											Key:      "istio",
-											Operator: metav1.LabelSelectorOpIn,
-											Values: []string{
-												"ingressgateway",
-											},
-										},
+										Key:      "istio",
+										Operator: corev1.TolerationOpEqual,
+										Value:    "disabled",
+										Effect:   corev1.TaintEffectNoSchedule,
 									},
 								},
 							},
-						},
-						Metadata: v2.MetadataConfig{
-							Annotations: map[string]string{
-								"some-pod-annotation": "pod-annotation-value",
-							},
-							Labels: map[string]string{
-								"some-pod-label": "pod-label-value",
-							},
-						},
-						Containers: map[string]v2.ContainerConfig{
-							"default": {
-								CommonContainerConfig: v2.CommonContainerConfig{
-									ImageRegistry:   "custom-registry",
-									ImageTag:        "test",
-									ImagePullPolicy: "Always",
-									ImagePullSecrets: []corev1.LocalObjectReference{
+							Affinity: &v2.Affinity{
+								PodAntiAffinity: v2.PodAntiAffinity{
+									PreferredDuringScheduling: []v2.PodAntiAffinityTerm{
 										{
-											Name: "pull-secret",
+											LabelSelectorRequirement: metav1.LabelSelectorRequirement{
+												Key:      "istio",
+												Operator: metav1.LabelSelectorOpIn,
+												Values: []string{
+													"control-plane",
+												},
+											},
 										},
 									},
-									Resources: &corev1.ResourceRequirements{
-										Limits: corev1.ResourceList{
-											corev1.ResourceCPU:    resource.MustParse("100m"),
-											corev1.ResourceMemory: resource.MustParse("128Mi"),
-										},
-										Requests: corev1.ResourceList{
-											corev1.ResourceCPU:    resource.MustParse("10m"),
-											corev1.ResourceMemory: resource.MustParse("64Mi"),
+									RequiredDuringScheduling: []v2.PodAntiAffinityTerm{
+										{
+											LabelSelectorRequirement: metav1.LabelSelectorRequirement{
+												Key:      "istio",
+												Operator: metav1.LabelSelectorOpIn,
+												Values: []string{
+													"ingressgateway",
+												},
+											},
 										},
 									},
 								},
-								Image: "custom-citadel",
 							},
+							Metadata: v2.MetadataConfig{
+								Annotations: map[string]string{
+									"some-pod-annotation": "pod-annotation-value",
+								},
+								Labels: map[string]string{
+									"some-pod-label": "pod-label-value",
+								},
+							},
+						},
+						Container: &v2.ContainerConfig{
+							CommonContainerConfig: v2.CommonContainerConfig{
+								ImageRegistry:   "custom-registry",
+								ImageTag:        "test",
+								ImagePullPolicy: "Always",
+								ImagePullSecrets: []corev1.LocalObjectReference{
+									{
+										Name: "pull-secret",
+									},
+								},
+								Resources: &corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("100m"),
+										corev1.ResourceMemory: resource.MustParse("128Mi"),
+									},
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("64Mi"),
+									},
+								},
+							},
+							Image: "custom-citadel",
 						},
 					},
 				},
@@ -939,7 +924,6 @@ var runtimeTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"pilot": map[string]interface{}{
-				"autoscaleEnabled": false,
 				"nodeSelector": map[string]interface{}{
 					"node-label": "node-value",
 				},
@@ -1009,7 +993,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -1017,13 +1000,15 @@ var runtimeTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{
-				Pilot: &v2.ComponentRuntimeConfig{
-					Deployment: v2.DeploymentRuntimeConfig{
-						Replicas: &replicaCount2,
-						Strategy: &appsv1.DeploymentStrategy{
-							RollingUpdate: &appsv1.RollingUpdateDeployment{
-								MaxSurge:       &intStrInt1,
-								MaxUnavailable: &intStr25Percent,
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNamePilot: {
+						Deployment: &v2.DeploymentRuntimeConfig{
+							Replicas: &replicaCount2,
+							Strategy: &appsv1.DeploymentStrategy{
+								RollingUpdate: &appsv1.RollingUpdateDeployment{
+									MaxSurge:       &intStrInt1,
+									MaxUnavailable: &intStr25Percent,
+								},
 							},
 						},
 					},
@@ -1049,7 +1034,6 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
 		}),
 	},
 	{
@@ -1057,18 +1041,20 @@ var runtimeTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Runtime: &v2.ControlPlaneRuntimeConfig{
-				Pilot: &v2.ComponentRuntimeConfig{
-					Deployment: v2.DeploymentRuntimeConfig{
-						AutoScaling: &v2.AutoScalerConfig{
-							MaxReplicas:                    &replicaCount5,
-							MinReplicas:                    &replicaCount1,
-							TargetCPUUtilizationPercentage: &cpuUtilization80,
-						},
-						Replicas: &replicaCount2,
-						Strategy: &appsv1.DeploymentStrategy{
-							RollingUpdate: &appsv1.RollingUpdateDeployment{
-								MaxSurge:       &intStrInt1,
-								MaxUnavailable: &intStr25Percent,
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNamePilot: {
+						Deployment: &v2.DeploymentRuntimeConfig{
+							AutoScaling: &v2.AutoScalerConfig{
+								MaxReplicas:                    &replicaCount5,
+								MinReplicas:                    &replicaCount1,
+								TargetCPUUtilizationPercentage: &cpuUtilization80,
+							},
+							Replicas: &replicaCount2,
+							Strategy: &appsv1.DeploymentStrategy{
+								RollingUpdate: &appsv1.RollingUpdateDeployment{
+									MaxSurge:       &intStrInt1,
+									MaxUnavailable: &intStr25Percent,
+								},
 							},
 						},
 					},
@@ -1099,7 +1085,875 @@ var runtimeTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
-			
+		}),
+	},
+	{
+		name: "mixer.policy.runtime.defaults." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Runtime: &v2.ControlPlaneRuntimeConfig{
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameMixerPolicy: {},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "mixer.policy.runtime.basic." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Runtime: &v2.ControlPlaneRuntimeConfig{
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameMixerPolicy: {
+						Deployment: &v2.DeploymentRuntimeConfig{
+							Replicas: &replicaCount2,
+							Strategy: &appsv1.DeploymentStrategy{
+								RollingUpdate: &appsv1.RollingUpdateDeployment{
+									MaxSurge:       &intStrInt1,
+									MaxUnavailable: &intStr25Percent,
+								},
+							},
+						},
+						Pod: &v2.PodRuntimeConfig{
+							CommonPodRuntimeConfig: v2.CommonPodRuntimeConfig{
+								NodeSelector: map[string]string{
+									"node-label": "node-value",
+								},
+								PriorityClassName: "normal",
+								Tolerations: []corev1.Toleration{
+									{
+										Key:      "bad-node",
+										Operator: corev1.TolerationOpExists,
+										Effect:   corev1.TaintEffectNoExecute,
+									},
+									{
+										Key:      "istio",
+										Operator: corev1.TolerationOpEqual,
+										Value:    "disabled",
+										Effect:   corev1.TaintEffectNoSchedule,
+									},
+								},
+							},
+							Affinity: &v2.Affinity{
+								PodAntiAffinity: v2.PodAntiAffinity{
+									PreferredDuringScheduling: []v2.PodAntiAffinityTerm{
+										{
+											LabelSelectorRequirement: metav1.LabelSelectorRequirement{
+												Key:      "istio",
+												Operator: metav1.LabelSelectorOpIn,
+												Values: []string{
+													"control-plane",
+												},
+											},
+										},
+									},
+									RequiredDuringScheduling: []v2.PodAntiAffinityTerm{
+										{
+											LabelSelectorRequirement: metav1.LabelSelectorRequirement{
+												Key:      "istio",
+												Operator: metav1.LabelSelectorOpIn,
+												Values: []string{
+													"ingressgateway",
+												},
+											},
+										},
+									},
+								},
+							},
+							Metadata: v2.MetadataConfig{
+								Annotations: map[string]string{
+									"some-pod-annotation": "pod-annotation-value",
+								},
+								Labels: map[string]string{
+									"some-pod-label": "pod-label-value",
+								},
+							},
+						},
+						Container: &v2.ContainerConfig{
+							CommonContainerConfig: v2.CommonContainerConfig{
+								ImageRegistry:   "custom-registry",
+								ImageTag:        "test",
+								ImagePullPolicy: "Always",
+								ImagePullSecrets: []corev1.LocalObjectReference{
+									{
+										Name: "pull-secret",
+									},
+								},
+								Resources: &corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("100m"),
+										corev1.ResourceMemory: resource.MustParse("128Mi"),
+									},
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("64Mi"),
+									},
+								},
+							},
+							Image: "custom-mixer",
+						},
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"mixer": map[string]interface{}{
+				"policy": map[string]interface{}{
+					"autoscaleEnabled":      false,
+					"replicaCount":          2,
+					"rollingMaxSurge":       1,
+					"rollingMaxUnavailable": "25%",
+					"nodeSelector": map[string]interface{}{
+						"node-label": "node-value",
+					},
+					"priorityClassName": "normal",
+					"tolerations": []interface{}{
+						map[string]interface{}{
+							"effect":   "NoExecute",
+							"key":      "bad-node",
+							"operator": "Exists",
+						},
+						map[string]interface{}{
+							"effect":   "NoSchedule",
+							"key":      "istio",
+							"operator": "Equal",
+							"value":    "disabled",
+						},
+					},
+					"podAntiAffinityTermLabelSelector": []interface{}{
+						map[string]interface{}{
+							"key":         "istio",
+							"operator":    "In",
+							"topologyKey": "",
+							"values":      "control-plane",
+						},
+					},
+					"podAntiAffinityLabelSelector": []interface{}{
+						map[string]interface{}{
+							"key":         "istio",
+							"operator":    "In",
+							"topologyKey": "",
+							"values":      "ingressgateway",
+						},
+					},
+					"podAnnotations": map[string]interface{}{
+						"some-pod-annotation": "pod-annotation-value",
+					},
+					"podLabels": map[string]interface{}{
+						"some-pod-label": "pod-label-value",
+					},
+					"hub":             "custom-registry",
+					"image":           "custom-mixer",
+					"tag":             "test",
+					"imagePullPolicy": "Always",
+					"imagePullSecrets": []interface{}{
+						"pull-secret",
+					},
+					"resources": map[string]interface{}{
+						"limits": map[string]interface{}{
+							"cpu":    "100m",
+							"memory": "128Mi",
+						},
+						"requests": map[string]interface{}{
+							"cpu":    "10m",
+							"memory": "64Mi",
+						},
+					},
+				},
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "mixer.policy.runtime.autoscale." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Runtime: &v2.ControlPlaneRuntimeConfig{
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameMixerPolicy: {
+						Deployment: &v2.DeploymentRuntimeConfig{
+							Replicas: &replicaCount2,
+							AutoScaling: &v2.AutoScalerConfig{
+								MaxReplicas:                    &replicaCount5,
+								MinReplicas:                    &replicaCount1,
+								TargetCPUUtilizationPercentage: &cpuUtilization80,
+							},
+							Strategy: &appsv1.DeploymentStrategy{
+								RollingUpdate: &appsv1.RollingUpdateDeployment{
+									MaxSurge:       &intStr25Percent,
+									MaxUnavailable: &intStrInt1,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"mixer": map[string]interface{}{
+				"policy": map[string]interface{}{
+					"autoscaleEnabled": true,
+					"autoscaleMax":     5,
+					"autoscaleMin":     1,
+					"cpu": map[string]interface{}{
+						"targetAverageUtilization": 80,
+					},
+					"replicaCount":          2,
+					"rollingMaxSurge":       "25%",
+					"rollingMaxUnavailable": 1,
+				},
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "mixer.runtime.defaults." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Runtime: &v2.ControlPlaneRuntimeConfig{
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameMixerTelemetry: {},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "mixer.runtime.basic." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Runtime: &v2.ControlPlaneRuntimeConfig{
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameMixerTelemetry: {
+						Deployment: &v2.DeploymentRuntimeConfig{
+							Replicas: &replicaCount2,
+							Strategy: &appsv1.DeploymentStrategy{
+								RollingUpdate: &appsv1.RollingUpdateDeployment{
+									MaxSurge:       &intStrInt1,
+									MaxUnavailable: &intStr25Percent,
+								},
+							},
+						},
+						Pod: &v2.PodRuntimeConfig{
+							CommonPodRuntimeConfig: v2.CommonPodRuntimeConfig{
+								NodeSelector: map[string]string{
+									"node-label": "node-value",
+								},
+								PriorityClassName: "normal",
+								Tolerations: []corev1.Toleration{
+									{
+										Key:      "bad-node",
+										Operator: corev1.TolerationOpExists,
+										Effect:   corev1.TaintEffectNoExecute,
+									},
+									{
+										Key:      "istio",
+										Operator: corev1.TolerationOpEqual,
+										Value:    "disabled",
+										Effect:   corev1.TaintEffectNoSchedule,
+									},
+								},
+							},
+							Affinity: &v2.Affinity{
+								PodAntiAffinity: v2.PodAntiAffinity{
+									PreferredDuringScheduling: []v2.PodAntiAffinityTerm{
+										{
+											LabelSelectorRequirement: metav1.LabelSelectorRequirement{
+												Key:      "istio",
+												Operator: metav1.LabelSelectorOpIn,
+												Values: []string{
+													"control-plane",
+												},
+											},
+										},
+									},
+									RequiredDuringScheduling: []v2.PodAntiAffinityTerm{
+										{
+											LabelSelectorRequirement: metav1.LabelSelectorRequirement{
+												Key:      "istio",
+												Operator: metav1.LabelSelectorOpIn,
+												Values: []string{
+													"ingressgateway",
+												},
+											},
+										},
+									},
+								},
+							},
+							Metadata: v2.MetadataConfig{
+								Annotations: map[string]string{
+									"some-pod-annotation": "pod-annotation-value",
+								},
+								Labels: map[string]string{
+									"some-pod-label": "pod-label-value",
+								},
+							},
+						},
+						Container: &v2.ContainerConfig{
+							CommonContainerConfig: v2.CommonContainerConfig{
+								ImageRegistry:   "custom-registry",
+								ImageTag:        "test",
+								ImagePullPolicy: "Always",
+								ImagePullSecrets: []corev1.LocalObjectReference{
+									{
+										Name: "pull-secret",
+									},
+								},
+								Resources: &corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("100m"),
+										corev1.ResourceMemory: resource.MustParse("128Mi"),
+									},
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("64Mi"),
+									},
+								},
+							},
+							Image: "custom-mixer",
+						},
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"mixer": map[string]interface{}{
+				"telemetry": map[string]interface{}{
+					"autoscaleEnabled":      false,
+					"replicaCount":          2,
+					"rollingMaxSurge":       1,
+					"rollingMaxUnavailable": "25%",
+					"nodeSelector": map[string]interface{}{
+						"node-label": "node-value",
+					},
+					"priorityClassName": "normal",
+					"tolerations": []interface{}{
+						map[string]interface{}{
+							"effect":   "NoExecute",
+							"key":      "bad-node",
+							"operator": "Exists",
+						},
+						map[string]interface{}{
+							"effect":   "NoSchedule",
+							"key":      "istio",
+							"operator": "Equal",
+							"value":    "disabled",
+						},
+					},
+					"podAntiAffinityTermLabelSelector": []interface{}{
+						map[string]interface{}{
+							"key":         "istio",
+							"operator":    "In",
+							"topologyKey": "",
+							"values":      "control-plane",
+						},
+					},
+					"podAntiAffinityLabelSelector": []interface{}{
+						map[string]interface{}{
+							"key":         "istio",
+							"operator":    "In",
+							"topologyKey": "",
+							"values":      "ingressgateway",
+						},
+					},
+					"podAnnotations": map[string]interface{}{
+						"some-pod-annotation": "pod-annotation-value",
+					},
+					"podLabels": map[string]interface{}{
+						"some-pod-label": "pod-label-value",
+					},
+					"hub":             "custom-registry",
+					"image":           "custom-mixer",
+					"tag":             "test",
+					"imagePullPolicy": "Always",
+					"imagePullSecrets": []interface{}{
+						"pull-secret",
+					},
+					"resources": map[string]interface{}{
+						"limits": map[string]interface{}{
+							"cpu":    "100m",
+							"memory": "128Mi",
+						},
+						"requests": map[string]interface{}{
+							"cpu":    "10m",
+							"memory": "64Mi",
+						},
+					},
+				},
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "mixer.runtime.autoscale." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Runtime: &v2.ControlPlaneRuntimeConfig{
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameMixerTelemetry: {
+						Deployment: &v2.DeploymentRuntimeConfig{
+							Replicas: &replicaCount2,
+							AutoScaling: &v2.AutoScalerConfig{
+								MaxReplicas:                    &replicaCount5,
+								MinReplicas:                    &replicaCount1,
+								TargetCPUUtilizationPercentage: &cpuUtilization80,
+							},
+							Strategy: &appsv1.DeploymentStrategy{
+								RollingUpdate: &appsv1.RollingUpdateDeployment{
+									MaxSurge:       &intStr25Percent,
+									MaxUnavailable: &intStrInt1,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"mixer": map[string]interface{}{
+				"telemetry": map[string]interface{}{
+					"autoscaleEnabled": true,
+					"autoscaleMax":     5,
+					"autoscaleMin":     1,
+					"cpu": map[string]interface{}{
+						"targetAverageUtilization": 80,
+					},
+					"replicaCount":          2,
+					"rollingMaxSurge":       "25%",
+					"rollingMaxUnavailable": 1,
+				},
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "jaeger.runtime.basic." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Runtime: &v2.ControlPlaneRuntimeConfig{
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameTracing: {
+						Deployment: &v2.DeploymentRuntimeConfig{
+							Replicas: &replicaCount2,
+							Strategy: &appsv1.DeploymentStrategy{
+								RollingUpdate: &appsv1.RollingUpdateDeployment{
+									MaxSurge:       &intStrInt1,
+									MaxUnavailable: &intStr25Percent,
+								},
+							},
+						},
+						Pod: &v2.PodRuntimeConfig{
+							CommonPodRuntimeConfig: v2.CommonPodRuntimeConfig{
+								NodeSelector: map[string]string{
+									"node-label": "node-value",
+								},
+								PriorityClassName: "normal",
+								Tolerations: []corev1.Toleration{
+									{
+										Key:      "bad-node",
+										Operator: corev1.TolerationOpExists,
+										Effect:   corev1.TaintEffectNoExecute,
+									},
+									{
+										Key:      "istio",
+										Operator: corev1.TolerationOpEqual,
+										Value:    "disabled",
+										Effect:   corev1.TaintEffectNoSchedule,
+									},
+								},
+							},
+							Affinity: &v2.Affinity{
+								PodAntiAffinity: v2.PodAntiAffinity{
+									PreferredDuringScheduling: []v2.PodAntiAffinityTerm{
+										{
+											LabelSelectorRequirement: metav1.LabelSelectorRequirement{
+												Key:      "istio",
+												Operator: metav1.LabelSelectorOpIn,
+												Values: []string{
+													"control-plane",
+												},
+											},
+										},
+									},
+									RequiredDuringScheduling: []v2.PodAntiAffinityTerm{
+										{
+											LabelSelectorRequirement: metav1.LabelSelectorRequirement{
+												Key:      "istio",
+												Operator: metav1.LabelSelectorOpIn,
+												Values: []string{
+													"ingressgateway",
+												},
+											},
+										},
+									},
+								},
+							},
+							Metadata: v2.MetadataConfig{
+								Annotations: map[string]string{
+									"some-pod-annotation": "pod-annotation-value",
+								},
+								Labels: map[string]string{
+									"some-pod-label": "pod-label-value",
+								},
+							},
+						},
+					},
+					v2.ControlPlaneComponentNameTracingJaeger: {
+						Pod: &v2.PodRuntimeConfig{
+							Metadata: v2.MetadataConfig{
+								Annotations: map[string]string{
+									"some-pod-annotation": "pod-annotation-value",
+								},
+								Labels: map[string]string{
+									"some-pod-label": "pod-label-value",
+								},
+							},
+						},
+						Container: &v2.ContainerConfig{
+							CommonContainerConfig: v2.CommonContainerConfig{
+								ImageRegistry:   "custom-registry",
+								ImageTag:        "test",
+								ImagePullPolicy: "Always",
+								ImagePullSecrets: []corev1.LocalObjectReference{
+									{
+										Name: "pull-secret",
+									},
+								},
+								Resources: &corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("100m"),
+										corev1.ResourceMemory: resource.MustParse("128Mi"),
+									},
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("64Mi"),
+									},
+								},
+							},
+							Image: "custom-jaeger",
+						},
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"tracing": map[string]interface{}{
+				"jaeger": map[string]interface{}{
+					"podAnnotations": map[string]interface{}{
+						"some-pod-annotation": "pod-annotation-value",
+					},
+					"podLabels": map[string]interface{}{
+						"some-pod-label": "pod-label-value",
+					},
+					"hub":             "custom-registry",
+					"image":           "custom-jaeger",
+					"tag":             "test",
+					"imagePullPolicy": "Always",
+					"imagePullSecrets": []interface{}{
+						"pull-secret",
+					},
+					"resources": map[string]interface{}{
+						"limits": map[string]interface{}{
+							"cpu":    "100m",
+							"memory": "128Mi",
+						},
+						"requests": map[string]interface{}{
+							"cpu":    "10m",
+							"memory": "64Mi",
+						},
+					},
+				},
+				"autoscaleEnabled":      false,
+				"replicaCount":          2,
+				"rollingMaxSurge":       1,
+				"rollingMaxUnavailable": "25%",
+				"nodeSelector": map[string]interface{}{
+					"node-label": "node-value",
+				},
+				"priorityClassName": "normal",
+				"tolerations": []interface{}{
+					map[string]interface{}{
+						"effect":   "NoExecute",
+						"key":      "bad-node",
+						"operator": "Exists",
+					},
+					map[string]interface{}{
+						"effect":   "NoSchedule",
+						"key":      "istio",
+						"operator": "Equal",
+						"value":    "disabled",
+					},
+				},
+				"podAntiAffinityTermLabelSelector": []interface{}{
+					map[string]interface{}{
+						"key":         "istio",
+						"operator":    "In",
+						"topologyKey": "",
+						"values":      "control-plane",
+					},
+				},
+				"podAntiAffinityLabelSelector": []interface{}{
+					map[string]interface{}{
+						"key":         "istio",
+						"operator":    "In",
+						"topologyKey": "",
+						"values":      "ingressgateway",
+					},
+				},
+				"podAnnotations": map[string]interface{}{
+					"some-pod-annotation": "pod-annotation-value",
+				},
+				"podLabels": map[string]interface{}{
+					"some-pod-label": "pod-label-value",
+				},
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "jaeger.elasticsearch.runtime.full." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Runtime: &v2.ControlPlaneRuntimeConfig{
+				Components: map[v2.ControlPlaneComponentName]v2.ComponentRuntimeConfig{
+					v2.ControlPlaneComponentNameTracingJaegerElasticsearch: {
+						Pod: &v2.PodRuntimeConfig{
+							CommonPodRuntimeConfig: v2.CommonPodRuntimeConfig{
+								NodeSelector: map[string]string{
+									"node-label": "node-value",
+								},
+								PriorityClassName: "normal",
+								Tolerations: []corev1.Toleration{
+									{
+										Key:      "bad-node",
+										Operator: corev1.TolerationOpExists,
+										Effect:   corev1.TaintEffectNoExecute,
+									},
+									{
+										Key:      "istio",
+										Operator: corev1.TolerationOpEqual,
+										Value:    "disabled",
+										Effect:   corev1.TaintEffectNoSchedule,
+									},
+								},
+							},
+							Affinity: &v2.Affinity{
+								PodAntiAffinity: v2.PodAntiAffinity{
+									PreferredDuringScheduling: []v2.PodAntiAffinityTerm{
+										{
+											LabelSelectorRequirement: metav1.LabelSelectorRequirement{
+												Key:      "istio",
+												Operator: metav1.LabelSelectorOpIn,
+												Values: []string{
+													"control-plane",
+												},
+											},
+										},
+									},
+									RequiredDuringScheduling: []v2.PodAntiAffinityTerm{
+										{
+											LabelSelectorRequirement: metav1.LabelSelectorRequirement{
+												Key:      "istio",
+												Operator: metav1.LabelSelectorOpIn,
+												Values: []string{
+													"ingressgateway",
+												},
+											},
+										},
+									},
+								},
+							},
+							Metadata: v2.MetadataConfig{
+								Annotations: map[string]string{
+									"some-pod-annotation": "pod-annotation-value",
+								},
+								Labels: map[string]string{
+									"some-pod-label": "pod-label-value",
+								},
+							},
+						},
+						Container: &v2.ContainerConfig{
+							CommonContainerConfig: v2.CommonContainerConfig{
+								ImageRegistry:   "custom-registry",
+								ImageTag:        "test",
+								ImagePullPolicy: "Always",
+								ImagePullSecrets: []corev1.LocalObjectReference{
+									{
+										Name: "pull-secret",
+									},
+								},
+								Resources: &corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("100m"),
+										corev1.ResourceMemory: resource.MustParse("128Mi"),
+									},
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("64Mi"),
+									},
+								},
+							},
+							Image: "custom-elasticsearch",
+						},
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"tracing": map[string]interface{}{
+				"jaeger": map[string]interface{}{
+					"elasticsearch": map[string]interface{}{
+						"nodeSelector": map[string]interface{}{
+							"node-label": "node-value",
+						},
+						"priorityClassName": "normal",
+						"podAntiAffinityTermLabelSelector": []interface{}{
+							map[string]interface{}{
+								"key":         "istio",
+								"operator":    "In",
+								"topologyKey": "",
+								"values":      "control-plane",
+							},
+						},
+						"podAntiAffinityLabelSelector": []interface{}{
+							map[string]interface{}{
+								"key":         "istio",
+								"operator":    "In",
+								"topologyKey": "",
+								"values":      "ingressgateway",
+							},
+						},
+						"tolerations": []interface{}{
+							map[string]interface{}{
+								"effect":   "NoExecute",
+								"key":      "bad-node",
+								"operator": "Exists",
+							},
+							map[string]interface{}{
+								"effect":   "NoSchedule",
+								"key":      "istio",
+								"operator": "Equal",
+								"value":    "disabled",
+							},
+						},
+						"podAnnotations": map[string]interface{}{
+							"some-pod-annotation": "pod-annotation-value",
+						},
+						"podLabels": map[string]interface{}{
+							"some-pod-label": "pod-label-value",
+						},
+						"hub":             "custom-registry",
+						"image":           "custom-elasticsearch",
+						"tag":             "test",
+						"imagePullPolicy": "Always",
+						"imagePullSecrets": []interface{}{
+							"pull-secret",
+						},
+						"resources": map[string]interface{}{
+							"limits": map[string]interface{}{
+								"cpu":    "100m",
+								"memory": "128Mi",
+							},
+							"requests": map[string]interface{}{
+								"cpu":    "10m",
+								"memory": "64Mi",
+							},
+						},
+					},
+				},
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
 		}),
 	},
 }

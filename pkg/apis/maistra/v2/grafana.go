@@ -30,9 +30,6 @@ type GrafanaInstallConfig struct {
 	// XXX: capacity is not supported in the charts, hard coded to 5Gi
 	// +optional
 	Persistence *ComponentPersistenceConfig `json:"persistence,omitempty"`
-	// Runtime is used to customize the grafana deployment/pod
-	// +optional
-	Runtime *ComponentRuntimeConfig `json:"runtime,omitempty"`
 	// Security is used to secure the grafana service.
 	// .Values.grafana.security.enabled, true if not null
 	// XXX: unused for maistra, as we use oauth-proxy

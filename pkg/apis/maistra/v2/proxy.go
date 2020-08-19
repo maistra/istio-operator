@@ -3,18 +3,20 @@ package v2
 // ProxyConfig configures the default sidecar behavior for workloads.
 type ProxyConfig struct {
 	// Logging configures logging for the sidecar.
-	// XXX: should this be independent of global logging?  previously, this was
-	// only exposed through proxy settings and there was no separate logging for
-	// control plane components (e.g. pilot, mixer, etc.).
 	// e.g. .Values.global.proxy.logLevel
 	// +optional
-	Logging ProxyLoggingConfig `json:"logging,omitempty"`
+	Logging *ProxyLoggingConfig `json:"logging,omitempty"`
 	// Networking represents network settings to be configured for the sidecars.
 	// +optional
-	Networking ProxyNetworkingConfig `json:"networking,omitempty"`
+	Networking *ProxyNetworkingConfig `json:"networking,omitempty"`
 	// Runtime is used to customize runtime configuration for the sidecar container.
 	// +optional
-	Runtime ProxyRuntimeConfig `json:"runtime,omitempty"`
+	Runtime *ProxyRuntimeConfig `json:"runtime,omitempty"`
+	// AutoInject configures automatic injection of sidecar proxies
+	// .Values.global.proxy.autoInject
+	// .Values.sidecarInjectorWebhook.enableNamespacesByDefault
+	// +optional
+	AutoInject *bool `json:"autoInject,omitempty"`
 	// AdminPort configures the admin port exposed by the sidecar.
 	// maps to defaultConfig.proxyAdminPort, defaults to 15000
 	// XXX: currently not configurable in charts
@@ -41,16 +43,16 @@ type ProxyNetworkingConfig struct {
 	// Initialization is used to specify how the pod's networking through the
 	// proxy is initialized.  This configures the use of CNI or an init container.
 	// +optional
-	Initialization ProxyNetworkInitConfig `json:"initialization,omitempty"`
+	Initialization *ProxyNetworkInitConfig `json:"initialization,omitempty"`
 	// TrafficControl configures what network traffic is routed through the proxy.
 	// +optional
-	TrafficControl ProxyTrafficControlConfig `json:"trafficControl,omitempty"`
+	TrafficControl *ProxyTrafficControlConfig `json:"trafficControl,omitempty"`
 	// Protocol configures how the sidecar works with applicaiton protocols.
 	// +optional
-	Protocol ProxyNetworkProtocolConfig `json:"protocol,omitempty"`
+	Protocol *ProxyNetworkProtocolConfig `json:"protocol,omitempty"`
 	// DNS configures aspects of the sidecar's usage of DNS
 	// +optional
-	DNS ProxyDNSConfig `json:"dns,omitempty"`
+	DNS *ProxyDNSConfig `json:"dns,omitempty"`
 }
 
 // ProxyNetworkInitConfig is used to configure how the pod's networking through
@@ -211,7 +213,7 @@ type ProxyDNSConfig struct {
 type ProxyRuntimeConfig struct {
 	// Readiness configures the readiness probe behavior for the injected pod.
 	// +optional
-	Readiness ProxyReadinessConfig `json:"readiness,omitempty"`
+	Readiness *ProxyReadinessConfig `json:"readiness,omitempty"`
 	// Container configures the sidecar container.
 	// +optional
 	Container *ContainerConfig `json:"container,omitempty"`

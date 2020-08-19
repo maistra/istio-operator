@@ -4,11 +4,6 @@ import (
 	"reflect"
 	"testing"
 
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
@@ -215,9 +210,7 @@ var jaegerTestCases = []conversionTestCase{
 					Jaeger: &v2.JaegerTracerConfig{
 						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
-							Config: v2.JaegerConfig{
-								Storage: &v2.JaegerStorageConfig{},
-							},
+							Storage: &v2.JaegerStorageConfig{},
 						},
 					},
 				},
@@ -261,10 +254,8 @@ var jaegerTestCases = []conversionTestCase{
 					Jaeger: &v2.JaegerTracerConfig{
 						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
-							Config: v2.JaegerConfig{
-								Storage: &v2.JaegerStorageConfig{
-									Type: v2.JaegerStorageTypeMemory,
-								},
+							Storage: &v2.JaegerStorageConfig{
+								Type: v2.JaegerStorageTypeMemory,
 							},
 						},
 					},
@@ -310,11 +301,9 @@ var jaegerTestCases = []conversionTestCase{
 					Jaeger: &v2.JaegerTracerConfig{
 						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
-							Config: v2.JaegerConfig{
-								Storage: &v2.JaegerStorageConfig{
-									Type:   v2.JaegerStorageTypeMemory,
-									Memory: &v2.JaegerMemoryStorageConfig{},
-								},
+							Storage: &v2.JaegerStorageConfig{
+								Type:   v2.JaegerStorageTypeMemory,
+								Memory: &v2.JaegerMemoryStorageConfig{},
 							},
 						},
 					},
@@ -360,12 +349,10 @@ var jaegerTestCases = []conversionTestCase{
 					Jaeger: &v2.JaegerTracerConfig{
 						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
-							Config: v2.JaegerConfig{
-								Storage: &v2.JaegerStorageConfig{
-									Type: v2.JaegerStorageTypeMemory,
-									Memory: &v2.JaegerMemoryStorageConfig{
-										MaxTraces: &jaegerMaxTraces,
-									},
+							Storage: &v2.JaegerStorageConfig{
+								Type: v2.JaegerStorageTypeMemory,
+								Memory: &v2.JaegerMemoryStorageConfig{
+									MaxTraces: &jaegerMaxTraces,
 								},
 							},
 						},
@@ -415,10 +402,8 @@ var jaegerTestCases = []conversionTestCase{
 					Jaeger: &v2.JaegerTracerConfig{
 						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
-							Config: v2.JaegerConfig{
-								Storage: &v2.JaegerStorageConfig{
-									Type: v2.JaegerStorageTypeElasticsearch,
-								},
+							Storage: &v2.JaegerStorageConfig{
+								Type: v2.JaegerStorageTypeElasticsearch,
 							},
 						},
 					},
@@ -464,11 +449,9 @@ var jaegerTestCases = []conversionTestCase{
 					Jaeger: &v2.JaegerTracerConfig{
 						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
-							Config: v2.JaegerConfig{
-								Storage: &v2.JaegerStorageConfig{
-									Type:          v2.JaegerStorageTypeElasticsearch,
-									Elasticsearch: &v2.JaegerElasticsearchStorageConfig{},
-								},
+							Storage: &v2.JaegerStorageConfig{
+								Type:          v2.JaegerStorageTypeElasticsearch,
+								Elasticsearch: &v2.JaegerElasticsearchStorageConfig{},
 							},
 						},
 					},
@@ -514,22 +497,20 @@ var jaegerTestCases = []conversionTestCase{
 					Jaeger: &v2.JaegerTracerConfig{
 						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
-							Config: v2.JaegerConfig{
-								Storage: &v2.JaegerStorageConfig{
-									Type: v2.JaegerStorageTypeElasticsearch,
-									Elasticsearch: &v2.JaegerElasticsearchStorageConfig{
-										NodeCount: &jaegerElasticsearchNodeCount,
-										IndexCleaner: v1.NewHelmValues(map[string]interface{}{
-											"enabled":      true,
-											"numberOfDays": 7,
-											"schedule":     "55 23 * * *",
-										}).DeepCopy(),
-										RedundancyPolicy: "ZeroRedundancy",
-										Storage: v1.NewHelmValues(map[string]interface{}{
-											"storageClassName": "gp2",
-											"size":             "5Gi",
-										}).DeepCopy(),
-									},
+							Storage: &v2.JaegerStorageConfig{
+								Type: v2.JaegerStorageTypeElasticsearch,
+								Elasticsearch: &v2.JaegerElasticsearchStorageConfig{
+									NodeCount: &jaegerElasticsearchNodeCount,
+									IndexCleaner: v1.NewHelmValues(map[string]interface{}{
+										"enabled":      true,
+										"numberOfDays": 7,
+										"schedule":     "55 23 * * *",
+									}).DeepCopy(),
+									RedundancyPolicy: "ZeroRedundancy",
+									Storage: v1.NewHelmValues(map[string]interface{}{
+										"storageClassName": "gp2",
+										"size":             "5Gi",
+									}).DeepCopy(),
 								},
 							},
 						},
@@ -562,492 +543,6 @@ var jaegerTestCases = []conversionTestCase{
 							"storageClassName": "gp2",
 						},
 					},
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-		}),
-	},
-	{
-		name: "install.storage.elasticsearch.runtime.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{
-						Name: "my-jaeger",
-						Install: &v2.JaegerInstallConfig{
-							Config: v2.JaegerConfig{
-								Storage: &v2.JaegerStorageConfig{
-									Type: v2.JaegerStorageTypeElasticsearch,
-									Elasticsearch: &v2.JaegerElasticsearchStorageConfig{
-										Runtime: &v2.PodRuntimeConfig{},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-				"jaeger": map[string]interface{}{
-					"install":      true,
-					"resourceName": "my-jaeger",
-					"template":     "production-elasticsearch",
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-		}),
-	},
-	{
-		name: "install.storage.elasticsearch.runtime.full." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{
-						Name: "my-jaeger",
-						Install: &v2.JaegerInstallConfig{
-							Config: v2.JaegerConfig{
-								Storage: &v2.JaegerStorageConfig{
-									Type: v2.JaegerStorageTypeElasticsearch,
-									Elasticsearch: &v2.JaegerElasticsearchStorageConfig{
-										Runtime: &v2.PodRuntimeConfig{
-											CommonPodRuntimeConfig: v2.CommonPodRuntimeConfig{
-												NodeSelector: map[string]string{
-													"node-label": "node-value",
-												},
-												PriorityClassName: "normal",
-												Tolerations: []corev1.Toleration{
-													{
-														Key:      "bad-node",
-														Operator: corev1.TolerationOpExists,
-														Effect:   corev1.TaintEffectNoExecute,
-													},
-													{
-														Key:      "istio",
-														Operator: corev1.TolerationOpEqual,
-														Value:    "disabled",
-														Effect:   corev1.TaintEffectNoSchedule,
-													},
-												},
-											},
-											Affinity: &v2.Affinity{
-												PodAntiAffinity: v2.PodAntiAffinity{
-													PreferredDuringScheduling: []v2.PodAntiAffinityTerm{
-														{
-															LabelSelectorRequirement: metav1.LabelSelectorRequirement{
-																Key:      "istio",
-																Operator: metav1.LabelSelectorOpIn,
-																Values: []string{
-																	"control-plane",
-																},
-															},
-														},
-													},
-													RequiredDuringScheduling: []v2.PodAntiAffinityTerm{
-														{
-															LabelSelectorRequirement: metav1.LabelSelectorRequirement{
-																Key:      "istio",
-																Operator: metav1.LabelSelectorOpIn,
-																Values: []string{
-																	"ingressgateway",
-																},
-															},
-														},
-													},
-												},
-											},
-											Metadata: v2.MetadataConfig{
-												Annotations: map[string]string{
-													"some-pod-annotation": "pod-annotation-value",
-												},
-												Labels: map[string]string{
-													"some-pod-label": "pod-label-value",
-												},
-											},
-											Containers: map[string]v2.ContainerConfig{
-												"elasticsearch": {
-													CommonContainerConfig: v2.CommonContainerConfig{
-														ImageRegistry:   "custom-registry",
-														ImageTag:        "test",
-														ImagePullPolicy: "Always",
-														ImagePullSecrets: []corev1.LocalObjectReference{
-															{
-																Name: "pull-secret",
-															},
-														},
-														Resources: &corev1.ResourceRequirements{
-															Limits: corev1.ResourceList{
-																corev1.ResourceCPU:    resource.MustParse("100m"),
-																corev1.ResourceMemory: resource.MustParse("128Mi"),
-															},
-															Requests: corev1.ResourceList{
-																corev1.ResourceCPU:    resource.MustParse("10m"),
-																corev1.ResourceMemory: resource.MustParse("64Mi"),
-															},
-														},
-													},
-													Image: "custom-elasticsearch",
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-				"jaeger": map[string]interface{}{
-					"install":      true,
-					"resourceName": "my-jaeger",
-					"template":     "production-elasticsearch",
-					"elasticsearch": map[string]interface{}{
-						"nodeSelector": map[string]interface{}{
-							"node-label": "node-value",
-						},
-						"priorityClassName": "normal",
-						"podAntiAffinityTermLabelSelector": []interface{}{
-							map[string]interface{}{
-								"key":         "istio",
-								"operator":    "In",
-								"topologyKey": "",
-								"values":      "control-plane",
-							},
-						},
-						"podAntiAffinityLabelSelector": []interface{}{
-							map[string]interface{}{
-								"key":         "istio",
-								"operator":    "In",
-								"topologyKey": "",
-								"values":      "ingressgateway",
-							},
-						},
-						"tolerations": []interface{}{
-							map[string]interface{}{
-								"effect":   "NoExecute",
-								"key":      "bad-node",
-								"operator": "Exists",
-							},
-							map[string]interface{}{
-								"effect":   "NoSchedule",
-								"key":      "istio",
-								"operator": "Equal",
-								"value":    "disabled",
-							},
-						},
-						"podAnnotations": map[string]interface{}{
-							"some-pod-annotation": "pod-annotation-value",
-						},
-						"podLabels": map[string]interface{}{
-							"some-pod-label": "pod-label-value",
-						},
-						"hub":             "custom-registry",
-						"image":           "custom-elasticsearch",
-						"tag":             "test",
-						"imagePullPolicy": "Always",
-						"imagePullSecrets": []interface{}{
-							"pull-secret",
-						},
-						"resources": map[string]interface{}{
-							"limits": map[string]interface{}{
-								"cpu":    "100m",
-								"memory": "128Mi",
-							},
-							"requests": map[string]interface{}{
-								"cpu":    "10m",
-								"memory": "64Mi",
-							},
-						},
-					},
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-		}),
-	},
-	{
-		name: "install.runtime.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{
-						Name: "my-jaeger",
-						Install: &v2.JaegerInstallConfig{
-							Runtime: &v2.ComponentRuntimeConfig{},
-						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-				"jaeger": map[string]interface{}{
-					"install":      true,
-					"resourceName": "my-jaeger",
-				},
-				"autoscaleEnabled": false,
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-		}),
-	},
-	{
-		name: "install.runtime.basic." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{
-						Name: "my-jaeger",
-						Install: &v2.JaegerInstallConfig{
-							Runtime: &v2.ComponentRuntimeConfig{
-								Deployment: v2.DeploymentRuntimeConfig{
-									Replicas: &replicaCount2,
-									Strategy: &appsv1.DeploymentStrategy{
-										RollingUpdate: &appsv1.RollingUpdateDeployment{
-											MaxSurge:       &intStrInt1,
-											MaxUnavailable: &intStr25Percent,
-										},
-									},
-								},
-								Pod: v2.PodRuntimeConfig{
-									CommonPodRuntimeConfig: v2.CommonPodRuntimeConfig{
-										NodeSelector: map[string]string{
-											"node-label": "node-value",
-										},
-										PriorityClassName: "normal",
-										Tolerations: []corev1.Toleration{
-											{
-												Key:      "bad-node",
-												Operator: corev1.TolerationOpExists,
-												Effect:   corev1.TaintEffectNoExecute,
-											},
-											{
-												Key:      "istio",
-												Operator: corev1.TolerationOpEqual,
-												Value:    "disabled",
-												Effect:   corev1.TaintEffectNoSchedule,
-											},
-										},
-									},
-									Affinity: &v2.Affinity{
-										PodAntiAffinity: v2.PodAntiAffinity{
-											PreferredDuringScheduling: []v2.PodAntiAffinityTerm{
-												{
-													LabelSelectorRequirement: metav1.LabelSelectorRequirement{
-														Key:      "istio",
-														Operator: metav1.LabelSelectorOpIn,
-														Values: []string{
-															"control-plane",
-														},
-													},
-												},
-											},
-											RequiredDuringScheduling: []v2.PodAntiAffinityTerm{
-												{
-													LabelSelectorRequirement: metav1.LabelSelectorRequirement{
-														Key:      "istio",
-														Operator: metav1.LabelSelectorOpIn,
-														Values: []string{
-															"ingressgateway",
-														},
-													},
-												},
-											},
-										},
-									},
-									Metadata: v2.MetadataConfig{
-										Annotations: map[string]string{
-											"some-pod-annotation": "pod-annotation-value",
-										},
-										Labels: map[string]string{
-											"some-pod-label": "pod-label-value",
-										},
-									},
-									Containers: map[string]v2.ContainerConfig{
-										"default": {
-											CommonContainerConfig: v2.CommonContainerConfig{
-												ImageRegistry:   "custom-registry",
-												ImageTag:        "test",
-												ImagePullPolicy: "Always",
-												ImagePullSecrets: []corev1.LocalObjectReference{
-													{
-														Name: "pull-secret",
-													},
-												},
-												Resources: &corev1.ResourceRequirements{
-													Limits: corev1.ResourceList{
-														corev1.ResourceCPU:    resource.MustParse("100m"),
-														corev1.ResourceMemory: resource.MustParse("128Mi"),
-													},
-													Requests: corev1.ResourceList{
-														corev1.ResourceCPU:    resource.MustParse("10m"),
-														corev1.ResourceMemory: resource.MustParse("64Mi"),
-													},
-												},
-											},
-											Image: "custom-jaeger",
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-				"jaeger": map[string]interface{}{
-					"install":      true,
-					"resourceName": "my-jaeger",
-					"podAnnotations": map[string]interface{}{
-						"some-pod-annotation": "pod-annotation-value",
-					},
-					"podLabels": map[string]interface{}{
-						"some-pod-label": "pod-label-value",
-					},
-					"hub":             "custom-registry",
-					"image":           "custom-jaeger",
-					"tag":             "test",
-					"imagePullPolicy": "Always",
-					"imagePullSecrets": []interface{}{
-						"pull-secret",
-					},
-					"resources": map[string]interface{}{
-						"limits": map[string]interface{}{
-							"cpu":    "100m",
-							"memory": "128Mi",
-						},
-						"requests": map[string]interface{}{
-							"cpu":    "10m",
-							"memory": "64Mi",
-						},
-					},
-				},
-				"autoscaleEnabled":      false,
-				"replicaCount":          2,
-				"rollingMaxSurge":       1,
-				"rollingMaxUnavailable": "25%",
-				"nodeSelector": map[string]interface{}{
-					"node-label": "node-value",
-				},
-				"priorityClassName": "normal",
-				"tolerations": []interface{}{
-					map[string]interface{}{
-						"effect":   "NoExecute",
-						"key":      "bad-node",
-						"operator": "Exists",
-					},
-					map[string]interface{}{
-						"effect":   "NoSchedule",
-						"key":      "istio",
-						"operator": "Equal",
-						"value":    "disabled",
-					},
-				},
-				"podAntiAffinityTermLabelSelector": []interface{}{
-					map[string]interface{}{
-						"key":         "istio",
-						"operator":    "In",
-						"topologyKey": "",
-						"values":      "control-plane",
-					},
-				},
-				"podAntiAffinityLabelSelector": []interface{}{
-					map[string]interface{}{
-						"key":         "istio",
-						"operator":    "In",
-						"topologyKey": "",
-						"values":      "ingressgateway",
-					},
-				},
-				"podAnnotations": map[string]interface{}{
-					"some-pod-annotation": "pod-annotation-value",
-				},
-				"podLabels": map[string]interface{}{
-					"some-pod-label": "pod-label-value",
 				},
 			},
 		}),
