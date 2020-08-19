@@ -34,6 +34,7 @@ require (
 	k8s.io/helm v2.16.7+incompatible
 	k8s.io/kubectl v0.18.3
 	sigs.k8s.io/controller-runtime v0.6.0
+	sigs.k8s.io/controller-tools v0.3.0
 	sigs.k8s.io/yaml v1.2.0
 )
 
