@@ -44,14 +44,18 @@ function checkDependencies() {
 }
 
 function generateCRDs() {
-  go run -mod=vendor github.com/operator-framework/operator-sdk/cmd/operator-sdk generate crds --crd-version v1
-
+  #go run -mod=vendor github.com/operator-framework/operator-sdk/cmd/operator-sdk generate crds --crd-version v1
+  go run -mod=vendor sigs.k8s.io/controller-tools/cmd/controller-gen crd \
+      paths=./pkg/apis/maistra/... \
+      crd:maxDescLen=0,preserveUnknownFields=false,crdVersions=v1beta1 \
+      output:crd:dir=./deploy/crds
   # workaround for https://github.com/kubernetes-sigs/controller-tools/issues/457
-  sed -i -e "s/\( *\)\(description\: The IP protocol for this port\)/\1default: TCP\n\1\2/" deploy/crds/maistra.io_servicemeshcontrolplanes_crd.yaml
+  #sed -i -e "s/\( *\)\(description\: The IP protocol for this port\)/\1default: TCP\n\1\2/" \
+  #    deploy/crds/maistra.io_servicemeshcontrolplanes.yaml
 
-  mv deploy/crds/maistra.io_servicemeshcontrolplanes_crd.yaml ${BUNDLE_DIR}/servicemeshcontrolplanes.crd.yaml
-  mv deploy/crds/maistra.io_servicemeshmemberrolls_crd.yaml ${BUNDLE_DIR}/servicemeshmemberrolls.crd.yaml
-  mv deploy/crds/maistra.io_servicemeshmembers_crd.yaml ${BUNDLE_DIR}/servicemeshmembers.crd.yaml
+  mv deploy/crds/maistra.io_servicemeshcontrolplanes.yaml ${BUNDLE_DIR}/servicemeshcontrolplanes.crd.yaml
+  mv deploy/crds/maistra.io_servicemeshmemberrolls.yaml ${BUNDLE_DIR}/servicemeshmemberrolls.crd.yaml
+  mv deploy/crds/maistra.io_servicemeshmembers.yaml ${BUNDLE_DIR}/servicemeshmembers.crd.yaml
   rm -rf deploy/crds/
 
   cat ${BUNDLE_DIR}/servicemeshcontrolplanes.crd.yaml >deploy/src/crd.yaml
