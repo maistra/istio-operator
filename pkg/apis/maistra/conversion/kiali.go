@@ -35,7 +35,7 @@ func populateKialiAddonValues(kiali *v2.KialiAddonConfig, values map[string]inte
 		return nil
 	}
 
-	dashboardConfig := kiali.Install.Config.Dashboard
+	dashboardConfig := kiali.Install.Dashboard
 	if dashboardConfig.ViewOnly != nil {
 		if err := setHelmBoolValue(kialiValues, "dashboard.viewOnlyMode", *dashboardConfig.ViewOnly); err != nil {
 			return err
@@ -58,22 +58,6 @@ func populateKialiAddonValues(kiali *v2.KialiAddonConfig, values map[string]inte
 	}
 	if err := populateComponentServiceValues(&kiali.Install.Service, kialiValues); err != nil {
 		return err
-	}
-
-	runtime := kiali.Install.Runtime
-	if runtime != nil {
-		if err := populateRuntimeValues(runtime, kialiValues); err != nil {
-			return err
-		}
-
-		// set image and resources
-		if runtime.Pod.Containers != nil {
-			if container, ok := runtime.Pod.Containers["kiali"]; ok {
-				if err := populateContainerConfigValues(&container, kialiValues); err != nil {
-					return err
-				}
-			}
-		}
 	}
 
 	return nil
@@ -118,7 +102,7 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 
 	install := &v2.KialiInstallConfig{}
 	setInstall := false
-	dashboardConfig := &install.Config.Dashboard
+	dashboardConfig := &install.Dashboard
 
 	if viewOnlyMode, ok, err := kialiValues.GetBool("dashboard.viewOnlyMode"); ok {
 		dashboardConfig.ViewOnly = &viewOnlyMode
@@ -149,26 +133,6 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 		setInstall = setInstall || applied
 	} else {
 		return err
-	}
-
-	runtime := &v2.ComponentRuntimeConfig{}
-	if applied, err := runtimeValuesToComponentRuntimeConfig(kialiValues, runtime); err != nil {
-		return err
-	} else if applied {
-		install.Runtime = runtime
-		setInstall = true
-	}
-	container := v2.ContainerConfig{}
-	if applied, err := populateContainerConfig(kialiValues, &container); err != nil {
-		return err
-	} else if applied {
-		if install.Runtime == nil {
-			install.Runtime = runtime
-		}
-		install.Runtime.Pod.Containers = map[string]v2.ContainerConfig{
-			"kiali": container,
-		}
-		setInstall = true
 	}
 
 	if setInstall {

@@ -81,9 +81,15 @@ type IngressGatewayConfig struct {
 	GatewayConfig `json:",inline"`
 	// EnableSDS for the gateway.
 	// .Values.gateways.<gateway-name>.sds.enabled
-	// XXX: I believe this is only applicable to ingress gateways
 	// +optional
-	EnableSDS *bool `json:"enableSDS,omitempty"`
+	SDS *SecretDiscoveryService `json:"sds,omitempty"`
+}
+
+// SecretDiscoveryService configures whether or not SDS is configured for the gateway
+type SecretDiscoveryService struct {
+	Enablement `json:",inline"`
+	// Runtime configuration for sds sidecar
+	Runtime *ContainerConfig `json:"runtime,omitempty"`
 }
 
 // ClusterIngressGatewayConfig represents gateway configuration for cluster ingress

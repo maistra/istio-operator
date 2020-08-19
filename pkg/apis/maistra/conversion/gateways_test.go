@@ -616,7 +616,7 @@ var gatewaysTestCases = []conversionTestCase{
 								Enabled: &featureEnabled,
 							},
 							Runtime: &v2.ComponentRuntimeConfig{
-								Deployment: v2.DeploymentRuntimeConfig{
+								Deployment: &v2.DeploymentRuntimeConfig{
 									Replicas: &replicaCount2,
 									Strategy: &appsv1.DeploymentStrategy{
 										RollingUpdate: &appsv1.RollingUpdateDeployment{
@@ -625,7 +625,7 @@ var gatewaysTestCases = []conversionTestCase{
 										},
 									},
 								},
-								Pod: v2.PodRuntimeConfig{
+								Pod: &v2.PodRuntimeConfig{
 									CommonPodRuntimeConfig: v2.CommonPodRuntimeConfig{
 										NodeSelector: map[string]string{
 											"node-label": "node-value",
@@ -679,27 +679,25 @@ var gatewaysTestCases = []conversionTestCase{
 											"some-pod-label": "pod-label-value",
 										},
 									},
-									Containers: map[string]v2.ContainerConfig{
-										"istio-proxy": {
-											CommonContainerConfig: v2.CommonContainerConfig{
-												ImageRegistry:   "custom-registry",
-												ImageTag:        "test",
-												ImagePullPolicy: "Always",
-												ImagePullSecrets: []corev1.LocalObjectReference{
-													{
-														Name: "pull-secret",
-													},
-												},
-												Resources: &corev1.ResourceRequirements{
-													Limits: corev1.ResourceList{
-														corev1.ResourceCPU:    resource.MustParse("100m"),
-														corev1.ResourceMemory: resource.MustParse("128Mi"),
-													},
-													Requests: corev1.ResourceList{
-														corev1.ResourceCPU:    resource.MustParse("10m"),
-														corev1.ResourceMemory: resource.MustParse("64Mi"),
-													},
-												},
+								},
+								Container: &v2.ContainerConfig{
+									CommonContainerConfig: v2.CommonContainerConfig{
+										ImageRegistry:   "custom-registry",
+										ImageTag:        "test",
+										ImagePullPolicy: "Always",
+										ImagePullSecrets: []corev1.LocalObjectReference{
+											{
+												Name: "pull-secret",
+											},
+										},
+										Resources: &corev1.ResourceRequirements{
+											Limits: corev1.ResourceList{
+												corev1.ResourceCPU:    resource.MustParse("100m"),
+												corev1.ResourceMemory: resource.MustParse("128Mi"),
+											},
+											Requests: corev1.ResourceList{
+												corev1.ResourceCPU:    resource.MustParse("10m"),
+												corev1.ResourceMemory: resource.MustParse("64Mi"),
 											},
 										},
 									},
@@ -803,7 +801,7 @@ var gatewaysTestCases = []conversionTestCase{
 								Enabled: &featureEnabled,
 							},
 							Runtime: &v2.ComponentRuntimeConfig{
-								Deployment: v2.DeploymentRuntimeConfig{
+								Deployment: &v2.DeploymentRuntimeConfig{
 									Replicas: &replicaCount2,
 									AutoScaling: &v2.AutoScalerConfig{
 										MaxReplicas:                    &replicaCount5,
@@ -855,7 +853,7 @@ var gatewaysTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "ingress.sds.simple.disabled" + versions.V2_0.String(),
+		name: "ingress.sds.simple.disabled." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Gateways: &v2.GatewaysConfig{
@@ -866,7 +864,11 @@ var gatewaysTestCases = []conversionTestCase{
 								Enabled: &featureEnabled,
 							},
 						},
-						EnableSDS: &featureDisabled,
+						SDS: &v2.SecretDiscoveryService{
+							Enablement: v2.Enablement{
+								Enabled: &featureDisabled,
+							},
+						},
 					},
 				},
 			},
@@ -908,7 +910,11 @@ var gatewaysTestCases = []conversionTestCase{
 								Enabled: &featureEnabled,
 							},
 						},
-						EnableSDS: &featureEnabled,
+						SDS: &v2.SecretDiscoveryService{
+							Enablement: v2.Enablement{
+								Enabled: &featureEnabled,
+							},
+						},
 					},
 				},
 			},
@@ -939,7 +945,7 @@ var gatewaysTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "ingress.sds.runtime.enabled" + versions.V2_0.String(),
+		name: "ingress.sds.runtime.enabled." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Gateways: &v2.GatewaysConfig{
@@ -949,37 +955,35 @@ var gatewaysTestCases = []conversionTestCase{
 							Enablement: v2.Enablement{
 								Enabled: &featureEnabled,
 							},
-							Runtime: &v2.ComponentRuntimeConfig{
-								Pod: v2.PodRuntimeConfig{
-									Containers: map[string]v2.ContainerConfig{
-										"ingress-sds": {
-											CommonContainerConfig: v2.CommonContainerConfig{
-												ImageRegistry:   "custom-registry",
-												ImageTag:        "test",
-												ImagePullPolicy: "Always",
-												ImagePullSecrets: []corev1.LocalObjectReference{
-													{
-														Name: "pull-secret",
-													},
-												},
-												Resources: &corev1.ResourceRequirements{
-													Limits: corev1.ResourceList{
-														corev1.ResourceCPU:    resource.MustParse("100m"),
-														corev1.ResourceMemory: resource.MustParse("128Mi"),
-													},
-													Requests: corev1.ResourceList{
-														corev1.ResourceCPU:    resource.MustParse("10m"),
-														corev1.ResourceMemory: resource.MustParse("64Mi"),
-													},
-												},
-											},
-											Image: "custom-sds-image",
+						},
+						SDS: &v2.SecretDiscoveryService{
+							Enablement: v2.Enablement{
+								Enabled: &featureEnabled,
+							},
+							Runtime: &v2.ContainerConfig{
+								CommonContainerConfig: v2.CommonContainerConfig{
+									ImageRegistry:   "custom-registry",
+									ImageTag:        "test",
+									ImagePullPolicy: "Always",
+									ImagePullSecrets: []corev1.LocalObjectReference{
+										{
+											Name: "pull-secret",
+										},
+									},
+									Resources: &corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("100m"),
+											corev1.ResourceMemory: resource.MustParse("128Mi"),
+										},
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("10m"),
+											corev1.ResourceMemory: resource.MustParse("64Mi"),
 										},
 									},
 								},
+								Image: "custom-sds-image",
 							},
 						},
-						EnableSDS: &featureEnabled,
 					},
 				},
 			},
@@ -987,10 +991,9 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"istio-ingressgateway": map[string]interface{}{
-					"enabled":          true,
-					"name":             "istio-ingressgateway",
-					"gatewayType":      "ingress",
-					"autoscaleEnabled": false,
+					"enabled":     true,
+					"name":        "istio-ingressgateway",
+					"gatewayType": "ingress",
 					"sds": map[string]interface{}{
 						"enabled":         true,
 						"hub":             "custom-registry",
@@ -1028,7 +1031,7 @@ var gatewaysTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "ingress.sds.runtime.disabled" + versions.V2_0.String(),
+		name: "ingress.sds.runtime.disabled." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Gateways: &v2.GatewaysConfig{
@@ -1038,37 +1041,35 @@ var gatewaysTestCases = []conversionTestCase{
 							Enablement: v2.Enablement{
 								Enabled: &featureEnabled,
 							},
-							Runtime: &v2.ComponentRuntimeConfig{
-								Pod: v2.PodRuntimeConfig{
-									Containers: map[string]v2.ContainerConfig{
-										"ingress-sds": {
-											CommonContainerConfig: v2.CommonContainerConfig{
-												ImageRegistry:   "custom-registry",
-												ImageTag:        "test",
-												ImagePullPolicy: "Always",
-												ImagePullSecrets: []corev1.LocalObjectReference{
-													{
-														Name: "pull-secret",
-													},
-												},
-												Resources: &corev1.ResourceRequirements{
-													Limits: corev1.ResourceList{
-														corev1.ResourceCPU:    resource.MustParse("100m"),
-														corev1.ResourceMemory: resource.MustParse("128Mi"),
-													},
-													Requests: corev1.ResourceList{
-														corev1.ResourceCPU:    resource.MustParse("10m"),
-														corev1.ResourceMemory: resource.MustParse("64Mi"),
-													},
-												},
-											},
-											Image: "custom-sds-image",
+						},
+						SDS: &v2.SecretDiscoveryService{
+							Enablement: v2.Enablement{
+								Enabled: &featureDisabled,
+							},
+							Runtime: &v2.ContainerConfig{
+								CommonContainerConfig: v2.CommonContainerConfig{
+									ImageRegistry:   "custom-registry",
+									ImageTag:        "test",
+									ImagePullPolicy: "Always",
+									ImagePullSecrets: []corev1.LocalObjectReference{
+										{
+											Name: "pull-secret",
+										},
+									},
+									Resources: &corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("100m"),
+											corev1.ResourceMemory: resource.MustParse("128Mi"),
+										},
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("10m"),
+											corev1.ResourceMemory: resource.MustParse("64Mi"),
 										},
 									},
 								},
+								Image: "custom-sds-image",
 							},
 						},
-						EnableSDS: &featureDisabled,
 					},
 				},
 			},
@@ -1076,10 +1077,9 @@ var gatewaysTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"gateways": map[string]interface{}{
 				"istio-ingressgateway": map[string]interface{}{
-					"enabled":          true,
-					"name":             "istio-ingressgateway",
-					"gatewayType":      "ingress",
-					"autoscaleEnabled": false,
+					"enabled":     true,
+					"name":        "istio-ingressgateway",
+					"gatewayType": "ingress",
 					"sds": map[string]interface{}{
 						"enabled":         false,
 						"hub":             "custom-registry",
@@ -1142,32 +1142,29 @@ var gatewaysTestCases = []conversionTestCase{
 								Enabled: &featureDisabled,
 							},
 							Runtime: &v2.ComponentRuntimeConfig{
-								Pod: v2.PodRuntimeConfig{
-									Containers: map[string]v2.ContainerConfig{
-										"istio-proxy": {
-											CommonContainerConfig: v2.CommonContainerConfig{
-												ImageRegistry:   "custom-registry",
-												ImageTag:        "test",
-												ImagePullPolicy: "Always",
-												ImagePullSecrets: []corev1.LocalObjectReference{
-													{
-														Name: "pull-secret",
-													},
-												},
-												Resources: &corev1.ResourceRequirements{
-													Limits: corev1.ResourceList{
-														corev1.ResourceCPU:    resource.MustParse("100m"),
-														corev1.ResourceMemory: resource.MustParse("128Mi"),
-													},
-													Requests: corev1.ResourceList{
-														corev1.ResourceCPU:    resource.MustParse("10m"),
-														corev1.ResourceMemory: resource.MustParse("64Mi"),
-													},
-												},
+								Deployment: &v2.DeploymentRuntimeConfig{},
+								Container: &v2.ContainerConfig{
+									CommonContainerConfig: v2.CommonContainerConfig{
+										ImageRegistry:   "custom-registry",
+										ImageTag:        "test",
+										ImagePullPolicy: "Always",
+										ImagePullSecrets: []corev1.LocalObjectReference{
+											{
+												Name: "pull-secret",
 											},
-											Image: "custom-proxy-image",
+										},
+										Resources: &corev1.ResourceRequirements{
+											Limits: corev1.ResourceList{
+												corev1.ResourceCPU:    resource.MustParse("100m"),
+												corev1.ResourceMemory: resource.MustParse("128Mi"),
+											},
+											Requests: corev1.ResourceList{
+												corev1.ResourceCPU:    resource.MustParse("10m"),
+												corev1.ResourceMemory: resource.MustParse("64Mi"),
+											},
 										},
 									},
+									Image: "custom-proxy-image",
 								},
 							},
 						},
@@ -1178,41 +1175,41 @@ var gatewaysTestCases = []conversionTestCase{
 								Enabled: &featureEnabled,
 							},
 						},
-						EnableSDS: &featureEnabled,
+						SDS: &v2.SecretDiscoveryService{
+							Enablement: v2.Enablement{
+								Enabled: &featureEnabled,
+							},
+						},
 					},
 					"extra-ingress-sds-runtime": {
 						GatewayConfig: v2.GatewayConfig{
 							Enablement: v2.Enablement{
 								Enabled: &featureDisabled,
 							},
-							Runtime: &v2.ComponentRuntimeConfig{
-								Pod: v2.PodRuntimeConfig{
-									Containers: map[string]v2.ContainerConfig{
-										"ingress-sds": {
-											CommonContainerConfig: v2.CommonContainerConfig{
-												ImageRegistry:   "custom-registry",
-												ImageTag:        "test",
-												ImagePullPolicy: "Always",
-												ImagePullSecrets: []corev1.LocalObjectReference{
-													{
-														Name: "pull-secret",
-													},
-												},
-												Resources: &corev1.ResourceRequirements{
-													Limits: corev1.ResourceList{
-														corev1.ResourceCPU:    resource.MustParse("100m"),
-														corev1.ResourceMemory: resource.MustParse("128Mi"),
-													},
-													Requests: corev1.ResourceList{
-														corev1.ResourceCPU:    resource.MustParse("10m"),
-														corev1.ResourceMemory: resource.MustParse("64Mi"),
-													},
-												},
-											},
-											Image: "custom-sds-image",
+						},
+						SDS: &v2.SecretDiscoveryService{
+							Runtime: &v2.ContainerConfig{
+								CommonContainerConfig: v2.CommonContainerConfig{
+									ImageRegistry:   "custom-registry",
+									ImageTag:        "test",
+									ImagePullPolicy: "Always",
+									ImagePullSecrets: []corev1.LocalObjectReference{
+										{
+											Name: "pull-secret",
+										},
+									},
+									Resources: &corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("100m"),
+											corev1.ResourceMemory: resource.MustParse("128Mi"),
+										},
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("10m"),
+											corev1.ResourceMemory: resource.MustParse("64Mi"),
 										},
 									},
 								},
+								Image: "custom-sds-image",
 							},
 						},
 					},
@@ -1263,10 +1260,9 @@ var gatewaysTestCases = []conversionTestCase{
 					},
 				},
 				"extra-ingress-sds-runtime": map[string]interface{}{
-					"enabled":          false,
-					"name":             "extra-ingress-sds-runtime",
-					"gatewayType":      "ingress",
-					"autoscaleEnabled": false,
+					"enabled":     false,
+					"name":        "extra-ingress-sds-runtime",
+					"gatewayType": "ingress",
 					"sds": map[string]interface{}{
 						"hub":             "custom-registry",
 						"tag":             "test",
@@ -1446,32 +1442,29 @@ var gatewaysTestCases = []conversionTestCase{
 								Enabled: &featureDisabled,
 							},
 							Runtime: &v2.ComponentRuntimeConfig{
-								Pod: v2.PodRuntimeConfig{
-									Containers: map[string]v2.ContainerConfig{
-										"istio-proxy": {
-											CommonContainerConfig: v2.CommonContainerConfig{
-												ImageRegistry:   "custom-registry",
-												ImageTag:        "test",
-												ImagePullPolicy: "Always",
-												ImagePullSecrets: []corev1.LocalObjectReference{
-													{
-														Name: "pull-secret",
-													},
-												},
-												Resources: &corev1.ResourceRequirements{
-													Limits: corev1.ResourceList{
-														corev1.ResourceCPU:    resource.MustParse("100m"),
-														corev1.ResourceMemory: resource.MustParse("128Mi"),
-													},
-													Requests: corev1.ResourceList{
-														corev1.ResourceCPU:    resource.MustParse("10m"),
-														corev1.ResourceMemory: resource.MustParse("64Mi"),
-													},
-												},
+								Deployment: &v2.DeploymentRuntimeConfig{},
+								Container: &v2.ContainerConfig{
+									CommonContainerConfig: v2.CommonContainerConfig{
+										ImageRegistry:   "custom-registry",
+										ImageTag:        "test",
+										ImagePullPolicy: "Always",
+										ImagePullSecrets: []corev1.LocalObjectReference{
+											{
+												Name: "pull-secret",
 											},
-											Image: "custom-proxy-image",
+										},
+										Resources: &corev1.ResourceRequirements{
+											Limits: corev1.ResourceList{
+												corev1.ResourceCPU:    resource.MustParse("100m"),
+												corev1.ResourceMemory: resource.MustParse("128Mi"),
+											},
+											Requests: corev1.ResourceList{
+												corev1.ResourceCPU:    resource.MustParse("10m"),
+												corev1.ResourceMemory: resource.MustParse("64Mi"),
+											},
 										},
 									},
+									Image: "custom-proxy-image",
 								},
 							},
 						},

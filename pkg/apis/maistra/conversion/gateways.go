@@ -238,12 +238,9 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 			return nil, err
 		}
 
-		if runtime.Pod.Containers != nil {
-			// Proxy container specific config
-			if proxyContainer, ok := runtime.Pod.Containers["istio-proxy"]; ok {
-				if err := populateContainerConfigValues(&proxyContainer, values); err != nil {
-					return nil, err
-				}
+		if runtime.Container != nil {
+			if err := populateContainerConfigValues(runtime.Container, values); err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -315,25 +312,22 @@ func gatewayIngressConfigToValues(in *v2.IngressGatewayConfig) (map[string]inter
 	}
 
 	// gateway SDS
-	sdsValues := make(map[string]interface{})
-	if in.EnableSDS != nil {
-		if err := setHelmBoolValue(sdsValues, "enabled", *in.EnableSDS); err != nil {
-			return nil, err
-		}
-	}
-	if in.Runtime != nil {
-		runtime := in.Runtime
-		if runtime.Pod.Containers != nil {
-			// SDS container specific config
-			if sdsContainer, ok := runtime.Pod.Containers["ingress-sds"]; ok {
-				if err := populateContainerConfigValues(&sdsContainer, sdsValues); err != nil {
-					return nil, err
-				}
+	if in.SDS != nil {
+		sdsValues := make(map[string]interface{})
+		if in.SDS.Enabled != nil {
+			if err := setHelmBoolValue(sdsValues, "enabled", *in.SDS.Enabled); err != nil {
+				return nil, err
 			}
 		}
-	}
-	if len(sdsValues) > 0 {
-		setHelmValue(values, "sds", sdsValues)
+		if in.SDS.Runtime != nil {
+			// SDS container specific config
+			if err := populateContainerConfigValues(in.SDS.Runtime, sdsValues); err != nil {
+				return nil, err
+			}
+		}
+		if len(sdsValues) > 0 {
+			setHelmValue(values, "sds", sdsValues)
+		}
 	}
 
 	return values, nil
@@ -395,25 +389,19 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 				}
 				if rawSDSValues, ok, err := gatewayValues.GetMap("sds"); ok && len(rawSDSValues) > 0 {
 					sdsValues := v1.NewHelmValues(rawSDSValues)
+					sds := &v2.SecretDiscoveryService{}
 					if enableSDS, ok, err := sdsValues.GetBool("enabled"); ok {
-						ingressGateway.EnableSDS = &enableSDS
+						sds.Enabled = &enableSDS
+						ingressGateway.SDS = sds
 					} else if err != nil {
 						return err
 					}
-					sdsContainerConfig := v2.ContainerConfig{}
-					if applied, err := populateContainerConfig(sdsValues, &sdsContainerConfig); err != nil {
+					sdsContainerConfig := &v2.ContainerConfig{}
+					if applied, err := populateContainerConfig(sdsValues, sdsContainerConfig); err != nil {
 						return err
 					} else if applied {
-						if ingressGateway.Runtime == nil {
-							ingressGateway.Runtime = &v2.ComponentRuntimeConfig{
-								Pod: v2.PodRuntimeConfig{
-									Containers: make(map[string]v2.ContainerConfig),
-								},
-							}
-						} else if ingressGateway.Runtime.Pod.Containers == nil {
-							ingressGateway.Runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
-						}
-						ingressGateway.Runtime.Pod.Containers["ingress-sds"] = sdsContainerConfig
+						sds.Runtime = sdsContainerConfig
+						ingressGateway.SDS = sds
 					}
 				} else if err != nil {
 					return err
@@ -571,19 +559,6 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 		return err
 	} else if applied {
 		out.Runtime = runtime
-	}
-
-	// container settings
-	container := v2.ContainerConfig{}
-	if applied, err := populateContainerConfig(in, &container); err != nil {
-		return err
-	} else if applied {
-		if out.Runtime == nil {
-			out.Runtime = &v2.ComponentRuntimeConfig{}
-		}
-		out.Runtime.Pod.Containers = map[string]v2.ContainerConfig{
-			"istio-proxy": container,
-		}
 	}
 
 	return nil

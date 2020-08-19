@@ -11,34 +11,80 @@ import (
 // ControlPlaneRuntimeConfig configures execution parameters for control plane
 // componets.
 type ControlPlaneRuntimeConfig struct {
-	// Citadel configures overrides for citadel deployment/pods
-	// .Values.security.resources, e.g.
+	// Components allows specifying execution parameters for specific control plane
+	// componets.  The key of the map is the component name to which the settings
+	// should be applied.
 	// +optional
-	Citadel *ComponentRuntimeConfig `json:"citadel,omitempty"`
-	// Galley configures overrides for galley deployment/pods
-	// .Values.galley.resources, e.g.
-	// +optional
-	Galley *ComponentRuntimeConfig `json:"galley,omitempty"`
-	// Pilot configures overrides for pilot/istiod deployment/pods
-	// .Values.pilot.resources, e.g.
-	// +optional
-	Pilot *ComponentRuntimeConfig `json:"pilot,omitempty"`
+	Components map[ControlPlaneComponentName]ComponentRuntimeConfig `json:"components,omitempty"`
 	// Defaults will be merged into specific component config.
 	// .Values.global.defaultResources, e.g.
 	// +optional
 	Defaults *DefaultRuntimeConfig `json:"defaults,omitempty"`
 }
 
+// ControlPlaneComponentName simple type for control plane component names
+type ControlPlaneComponentName string
+
+const (
+	// ControlPlaneComponentNameSecurity - security (citadel)
+	ControlPlaneComponentNameSecurity ControlPlaneComponentName = "security"
+	// ControlPlaneComponentNameGalley - galley
+	ControlPlaneComponentNameGalley ControlPlaneComponentName = "galley"
+	// ControlPlaneComponentNamePilot - pilot
+	ControlPlaneComponentNamePilot ControlPlaneComponentName = "pilot"
+	// ControlPlaneComponentNameMixer - mixer
+	ControlPlaneComponentNameMixer ControlPlaneComponentName = "mixer"
+	// ControlPlaneComponentNameMixerPolicy - mixer.policy
+	ControlPlaneComponentNameMixerPolicy ControlPlaneComponentName = "mixer.policy"
+	// ControlPlaneComponentNameMixerTelemetry - mixer.telemetry
+	ControlPlaneComponentNameMixerTelemetry ControlPlaneComponentName = "mixer.telemetry"
+	// ControlPlaneComponentNameSidecarInjectoryWebhook - sidecarInjectorWebhook
+	ControlPlaneComponentNameSidecarInjectoryWebhook ControlPlaneComponentName = "sidecarInjectorWebhook"
+	// ControlPlaneComponentNameTracing - tracing
+	ControlPlaneComponentNameTracing ControlPlaneComponentName = "tracing"
+	// ControlPlaneComponentNameTracingJaeger - tracing.jaeger
+	ControlPlaneComponentNameTracingJaeger ControlPlaneComponentName = "tracing.jaeger"
+	// ControlPlaneComponentNameTracingJaegerElasticsearch - tracing.jaeger.elasticsearch
+	ControlPlaneComponentNameTracingJaegerElasticsearch ControlPlaneComponentName = "tracing.jaeger.elasticsearch"
+	// ControlPlaneComponentNamePrometheus - prometheus
+	ControlPlaneComponentNamePrometheus ControlPlaneComponentName = "prometheus"
+	// ControlPlaneComponentNameKiali - kiali
+	ControlPlaneComponentNameKiali ControlPlaneComponentName = "kiali"
+	// ControlPlaneComponentNameGrafana - grafana
+	ControlPlaneComponentNameGrafana ControlPlaneComponentName = "grafana"
+)
+
+// ControlPlaneComponentNames - supported runtime components
+var ControlPlaneComponentNames = []ControlPlaneComponentName{
+	ControlPlaneComponentNameSecurity,
+	ControlPlaneComponentNameGalley,
+	ControlPlaneComponentNamePilot,
+	ControlPlaneComponentNameMixer,
+	ControlPlaneComponentNameMixerPolicy,
+	ControlPlaneComponentNameMixerTelemetry,
+	ControlPlaneComponentNameSidecarInjectoryWebhook,
+	ControlPlaneComponentNameTracing,
+	ControlPlaneComponentNameTracingJaeger,
+	ControlPlaneComponentNameTracingJaegerElasticsearch,
+	ControlPlaneComponentNamePrometheus,
+	ControlPlaneComponentNameKiali,
+	ControlPlaneComponentNameGrafana,
+}
+
 // ComponentRuntimeConfig allows for partial customization of a component's
 // runtime configuration (Deployment, PodTemplate, auto scaling, pod disruption, etc.)
-// XXX: not sure if this needs a separate Container field for component container defaults, e.g. image name, etc.
 type ComponentRuntimeConfig struct {
 	// Deployment specific overrides
 	// +optional
-	Deployment DeploymentRuntimeConfig `json:"deployment,omitempty"`
+	Deployment *DeploymentRuntimeConfig `json:"deployment,omitempty"`
+
 	// Pod specific overrides
 	// +optional
-	Pod PodRuntimeConfig `json:"pod,omitempty"`
+	Pod *PodRuntimeConfig `json:"pod,omitempty"`
+
+	// .Values.*.resource, imagePullPolicy, etc.
+	// +optional
+	Container *ContainerConfig `json:"container,omitempty"`
 }
 
 // DeploymentRuntimeConfig allow customization of a component's Deployment
@@ -71,7 +117,7 @@ type CommonDeploymentRuntimeConfig struct {
 	// XXX: this is currently a global setting, not per component.  perhaps
 	// this should only be available on the defaults?
 	// +optional
-	Disruption *PodDisruptionBudget `json:"disruption,omitempty"`
+	PodDisruption *PodDisruptionBudget `json:"podDisruption,omitempty"`
 }
 
 // AutoScalerConfig is used to configure autoscaling for a deployment
@@ -104,11 +150,6 @@ type PodRuntimeConfig struct {
 	// NodeAffinity is not supported at this time
 	// PodAffinity is not supported at this time
 	Affinity *Affinity `json:"affinity,omitempty"`
-
-	// XXX: is it too cheesy to use 'default' name for defaults?  default would apply to all containers
-	// .Values.*.resource, imagePullPolicy, etc.
-	// +optional
-	Containers map[string]ContainerConfig `json:"containers,omitempty"`
 }
 
 // CommonPodRuntimeConfig represents pod settings common to both defaults and
@@ -144,7 +185,7 @@ type Affinity struct {
 // PodAntiAffinity configures anti affinity for pod scheduling
 type PodAntiAffinity struct {
 	// +optional
-	RequiredDuringScheduling  []PodAntiAffinityTerm `json:"requiredDuringScheduling,omitempty"`
+	RequiredDuringScheduling []PodAntiAffinityTerm `json:"requiredDuringScheduling,omitempty"`
 	// +optional
 	PreferredDuringScheduling []PodAntiAffinityTerm `json:"preferredDuringScheduling,omitempty"`
 }
@@ -165,29 +206,29 @@ type PodAntiAffinityTerm struct {
 type ContainerConfig struct {
 	CommonContainerConfig `json:",inline"`
 	// +optional
-	Image                 string `json:"image,omitempty"`
+	Image string `json:"image,omitempty"`
 }
 
 // CommonContainerConfig represents container settings common to both defaults
 // and component specific configuration.
 type CommonContainerConfig struct {
 	// +optional
-	ImageRegistry    string                        `json:"imageRegistry,omitempty"`
+	ImageRegistry string `json:"registry,omitempty"`
 	// +optional
-	ImageTag         string                        `json:"imageTag,omitempty"`
+	ImageTag string `json:"tag,omitempty"`
 	// +optional
-	ImagePullPolicy  corev1.PullPolicy             `json:"imagePullPolicy,omitempty"`
+	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// +optional
-	Resources        *corev1.ResourceRequirements  `json:"resources,omitempty"`
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // PodDisruptionBudget details
 // XXX: currently only configurable globally (i.e. no component values.yaml equivalent)
 type PodDisruptionBudget struct {
 	// +optional
-	MinAvailable   *intstr.IntOrString `json:"minAvailable,omitempty"`
+	MinAvailable *intstr.IntOrString `json:"minAvailable,omitempty"`
 	// +optional
 	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
 }
@@ -210,7 +251,7 @@ type DefaultRuntimeConfig struct {
 // MetadataConfig represents additional metadata to be applied to resources
 type MetadataConfig struct {
 	// +optional
-	Labels      map[string]string `json:"labels,omitempty"`
+	Labels map[string]string `json:"labels,omitempty"`
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 }

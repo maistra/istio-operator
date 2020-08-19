@@ -61,7 +61,7 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Logging: v2.ProxyLoggingConfig{
+				Logging: &v2.ProxyLoggingConfig{
 					Level: v2.LogLevelCritical,
 					ComponentLevels: v2.ComponentLogLevels{
 						v2.EnvoyComponentAdmin:  v2.LogLevelDebug,
@@ -96,6 +96,7 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
+				AutoInject:  &featureEnabled,
 				AdminPort:   12345,
 				Concurrency: &proxyConcurrency4,
 			},
@@ -103,9 +104,13 @@ var proxyTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"proxy": map[string]interface{}{
+					"autoInject":  "enabled",
 					"concurrency": 4,
 					"adminPort":   12345,
 				},
+			},
+			"sidecarInjectorWebhook": map[string]interface{}{
+				"enableNamespacesByDefault": true,
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -126,7 +131,7 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
+				Networking: &v2.ProxyNetworkingConfig{
 					ClusterDomain:     "example.com",
 					ConnectionTimeout: "30s",
 				},
@@ -158,8 +163,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					DNS: v2.ProxyDNSConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					DNS: &v2.ProxyDNSConfig{
 						SearchSuffixes: []string{},
 					},
 				},
@@ -188,8 +193,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					DNS: v2.ProxyDNSConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					DNS: &v2.ProxyDNSConfig{
 						SearchSuffixes: []string{
 							"example.com",
 						},
@@ -226,8 +231,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					Initialization: v2.ProxyNetworkInitConfig{},
+				Networking: &v2.ProxyNetworkingConfig{
+					Initialization: &v2.ProxyNetworkInitConfig{},
 				},
 			},
 		},
@@ -250,8 +255,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					Initialization: v2.ProxyNetworkInitConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					Initialization: &v2.ProxyNetworkInitConfig{
 						Type: v2.ProxyNetworkInitTypeCNI,
 					},
 				},
@@ -285,8 +290,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					Initialization: v2.ProxyNetworkInitConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					Initialization: &v2.ProxyNetworkInitConfig{
 						Type: v2.ProxyNetworkInitTypeInitContainer,
 					},
 				},
@@ -320,8 +325,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					Initialization: v2.ProxyNetworkInitConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					Initialization: &v2.ProxyNetworkInitConfig{
 						Type: v2.ProxyNetworkInitTypeInitContainer,
 						InitContainer: &v2.ProxyInitContainerConfig{
 							Runtime: &v2.ContainerConfig{
@@ -399,13 +404,12 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					Protocol: v2.ProxyNetworkProtocolConfig{},
+				Networking: &v2.ProxyNetworkingConfig{
+					Protocol: &v2.ProxyNetworkProtocolConfig{},
 				},
 			},
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-		}),
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"useMCP": true,
@@ -424,8 +428,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					Protocol: v2.ProxyNetworkProtocolConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					Protocol: &v2.ProxyNetworkProtocolConfig{
 						DetectionTimeout: "500ms",
 					},
 				},
@@ -456,8 +460,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					Protocol: v2.ProxyNetworkProtocolConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					Protocol: &v2.ProxyNetworkProtocolConfig{
 						Debug: &v2.ProxyNetworkProtocolDebugConfig{},
 					},
 				},
@@ -487,8 +491,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					Protocol: v2.ProxyNetworkProtocolConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					Protocol: &v2.ProxyNetworkProtocolConfig{
 						Debug: &v2.ProxyNetworkProtocolDebugConfig{
 							EnableInboundSniffing:  true,
 							EnableOutboundSniffing: false,
@@ -521,13 +525,12 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					TrafficControl: v2.ProxyTrafficControlConfig{},
+				Networking: &v2.ProxyNetworkingConfig{
+					TrafficControl: &v2.ProxyTrafficControlConfig{},
 				},
 			},
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-		}),
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"useMCP": true,
@@ -546,8 +549,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					TrafficControl: v2.ProxyTrafficControlConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					TrafficControl: &v2.ProxyTrafficControlConfig{
 						Inbound: v2.ProxyInboundTrafficControlConfig{
 							InterceptionMode: v2.ProxyNetworkInterceptionModeRedirect,
 						},
@@ -580,8 +583,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					TrafficControl: v2.ProxyTrafficControlConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					TrafficControl: &v2.ProxyTrafficControlConfig{
 						Inbound: v2.ProxyInboundTrafficControlConfig{
 							InterceptionMode: v2.ProxyNetworkInterceptionModeTProxy,
 						},
@@ -614,8 +617,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					TrafficControl: v2.ProxyTrafficControlConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					TrafficControl: &v2.ProxyTrafficControlConfig{
 						Inbound: v2.ProxyInboundTrafficControlConfig{
 							ExcludedPorts: []int32{
 								12345,
@@ -655,8 +658,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					TrafficControl: v2.ProxyTrafficControlConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					TrafficControl: &v2.ProxyTrafficControlConfig{
 						Inbound: v2.ProxyInboundTrafficControlConfig{
 							ExcludedPorts: []int32{},
 							IncludedPorts: []string{},
@@ -690,8 +693,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					TrafficControl: v2.ProxyTrafficControlConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					TrafficControl: &v2.ProxyTrafficControlConfig{
 						Outbound: v2.ProxyOutboundTrafficControlConfig{
 							Policy: v2.ProxyOutboundTrafficPolicyAllowAny,
 						},
@@ -724,8 +727,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					TrafficControl: v2.ProxyTrafficControlConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					TrafficControl: &v2.ProxyTrafficControlConfig{
 						Outbound: v2.ProxyOutboundTrafficControlConfig{
 							Policy: v2.ProxyOutboundTrafficPolicyRegistryOnly,
 						},
@@ -758,8 +761,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					TrafficControl: v2.ProxyTrafficControlConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					TrafficControl: &v2.ProxyTrafficControlConfig{
 						Outbound: v2.ProxyOutboundTrafficControlConfig{
 							ExcludedIPRanges: []string{
 								"10.30.1.0/24",
@@ -804,8 +807,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					TrafficControl: v2.ProxyTrafficControlConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					TrafficControl: &v2.ProxyTrafficControlConfig{
 						Outbound: v2.ProxyOutboundTrafficControlConfig{
 							ExcludedIPRanges: []string{},
 							ExcludedPorts:    []int32{},
@@ -841,8 +844,8 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Runtime: v2.ProxyRuntimeConfig{
-					Readiness: v2.ProxyReadinessConfig{
+				Runtime: &v2.ProxyRuntimeConfig{
+					Readiness: &v2.ProxyReadinessConfig{
 						RewriteApplicationProbes: featureEnabled,
 						FailureThreshold:         3,
 						InitialDelaySeconds:      10,
@@ -883,7 +886,7 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Runtime: v2.ProxyRuntimeConfig{
+				Runtime: &v2.ProxyRuntimeConfig{
 					Container: &v2.ContainerConfig{
 						CommonContainerConfig: v2.CommonContainerConfig{
 							ImageRegistry:   "custom-registry",

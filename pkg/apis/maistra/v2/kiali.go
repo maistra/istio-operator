@@ -12,27 +12,15 @@ type KialiAddonConfig struct {
 
 // KialiInstallConfig is used to configure a kiali installation
 type KialiInstallConfig struct {
-	// Config is used to configure the behavior of the kiali installation
+	// Dashboard configures the behavior of the kiali dashboard.
 	// +optional
-	Config KialiConfig `json:"config,omitempty"`
+	Dashboard KialiDashboardConfig `json:"dashboard,omitempty"`
 	// Service is used to configure the k8s Service associated with the kiali
 	// installation.
 	// XXX: provided for upstream support, only ingress is used, and then only
 	// for enablement and contextPath
 	// +optional
 	Service ComponentServiceConfig `json:"service,omitempty"`
-	// Runtime is used to customize the deployment/pod for the kiali installation.
-	// XXX: largely unused, only image pull policy and image pull secrets are
-	// relevant for maistra
-	// +optional
-	Runtime *ComponentRuntimeConfig `json:"runtime,omitempty"`
-}
-
-// KialiConfig configures the behavior of the kiali installation
-type KialiConfig struct {
-	// Dashboard configures the behavior of the kiali dashboard.
-	// +optional
-	Dashboard KialiDashboardConfig `json:"dashboard,omitempty"`
 }
 
 // KialiDashboardConfig configures the behavior of the kiali dashboard

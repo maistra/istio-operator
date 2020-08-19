@@ -55,22 +55,7 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 			}
 		}
 	}
-	// Deployment specific settings
-	runtime := prometheus.Install.Runtime
-	if runtime != nil {
-		if err := populateRuntimeValues(runtime, prometheusValues); err != nil {
-			return err
-		}
 
-		// set image and resources
-		if runtime.Pod.Containers != nil {
-			if container, ok := runtime.Pod.Containers["prometheus"]; ok {
-				if err := populateContainerConfigValues(&container, prometheusValues); err != nil {
-					return err
-				}
-			}
-		}
-	}
 	if err := populateComponentServiceValues(&prometheus.Install.Service, prometheusValues); err != nil {
 		return err
 	}
@@ -137,28 +122,6 @@ func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) erro
 	} else if err != nil {
 		return err
 	}
-
-	runtime := &v2.ComponentRuntimeConfig{}
-	if applied, err := runtimeValuesToComponentRuntimeConfig(prometheusValues, runtime); err != nil {
-		return err
-	} else if applied {
-		install.Runtime = runtime
-		setInstall = true
-	}
-	container := v2.ContainerConfig{}
-	// non-istiod
-	if applied, err := populateContainerConfig(prometheusValues, &container); err != nil {
-		return err
-	} else if applied {
-		if install.Runtime == nil {
-			install.Runtime = runtime
-		}
-		install.Runtime.Pod.Containers = map[string]v2.ContainerConfig{
-			"prometheus": container,
-		}
-		setInstall = true
-	}
-
 	if applied, err := populateComponentServiceConfig(prometheusValues, &install.Service); err == nil {
 		setInstall = setInstall || applied
 	} else {

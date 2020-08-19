@@ -18,27 +18,11 @@ type JaegerTracerConfig struct {
 type JaegerInstallConfig struct {
 	// Config represents the configuration of Jaeger behavior.
 	// +optional
-	Config JaegerConfig `json:"config,omitempty"`
-	// Runtime configures runtime aspects of Jaeger deployment/pod
-	// Used to configure resources and affinity.  runtime.pod.containers can be
-	// used to override details for specific jaeger components, e.g. allInOne,
-	// query, etc.  runtime.metadata.annotations maps to
-	// .Values.tracing.jaeger.annotations
-	// +optional
-	Runtime *ComponentRuntimeConfig `json:"runtime,omitempty"`
+	Storage *JaegerStorageConfig `json:"storage,omitempty"`
 	// Ingress configures k8s Ingress or OpenShift Route for Jaeger services
 	// .Values.tracing.jaeger.ingress.enabled, false if null
 	// +optional
 	Ingress *JaegerIngressConfig `json:"ingress,omitempty"`
-}
-
-// JaegerConfig is used to configure the behavior of the Jaeger installation.JaegerConfig
-// XXX: should this include the templates that were used before?
-// XXX: the storage type is used to imply which template should be used
-type JaegerConfig struct {
-	// Storage represents the storage configuration for the Jaeger install
-	// +optional
-	Storage *JaegerStorageConfig `json:"storage,omitempty"`
 }
 
 // JaegerStorageConfig configures the storage used by the Jaeger installation.
@@ -93,10 +77,6 @@ type JaegerElasticsearchStorageConfig struct {
 	// XXX: RawExtension?
 	// +optional
 	IndexCleaner *v1.HelmValues `json:"indexCleaner,omitempty"`
-	// Runtime allows for customization of the elasticsearch pods
-	// used for node selector, etc., specific to elasticsearch config
-	// +optional
-	Runtime *PodRuntimeConfig `json:"runtime,omitempty"`
 }
 
 // JaegerIngressConfig configures k8s Ingress or OpenShift Route for exposing

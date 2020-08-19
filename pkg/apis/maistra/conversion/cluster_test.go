@@ -584,7 +584,7 @@ var clusterTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
+				Networking: &v2.ProxyNetworkingConfig{
 					ClusterDomain: "example.com",
 				},
 			},
@@ -676,8 +676,8 @@ var clusterTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					DNS: v2.ProxyDNSConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					DNS: &v2.ProxyDNSConfig{
 						SearchSuffixes: []string{
 							"global",
 						},
@@ -768,8 +768,8 @@ var clusterTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					DNS: v2.ProxyDNSConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					DNS: &v2.ProxyDNSConfig{
 						SearchSuffixes: []string{
 							"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
 						},
@@ -860,8 +860,8 @@ var clusterTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					DNS: v2.ProxyDNSConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					DNS: &v2.ProxyDNSConfig{
 						SearchSuffixes: []string{
 							"global",
 							"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
@@ -950,8 +950,8 @@ var clusterTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					DNS: v2.ProxyDNSConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					DNS: &v2.ProxyDNSConfig{
 						SearchSuffixes: []string{
 							"custom",
 						},
@@ -1044,8 +1044,8 @@ var clusterTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				Networking: v2.ProxyNetworkingConfig{
-					DNS: v2.ProxyDNSConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					DNS: &v2.ProxyDNSConfig{
 						SearchSuffixes: []string{
 							"custom",
 							"global",

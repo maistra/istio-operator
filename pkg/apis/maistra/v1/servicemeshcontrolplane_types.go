@@ -96,6 +96,7 @@ func (s *ControlPlaneStatus) GetReconciledVersion() string {
 type ControlPlaneSpec struct {
 	// Template selects the template to use for default values. Defaults to
 	// "default" when not set.
+	// DEPRECATED - use Profiles instead
 	// +optional
 	Template string `json:"template,omitempty"`
 

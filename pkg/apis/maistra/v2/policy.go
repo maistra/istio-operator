@@ -45,9 +45,6 @@ type MixerPolicyConfig struct {
 	// Default is false which means the traffic is denied when the client is unable to connect to Mixer.
 	// +optional
 	FailOpen *bool `json:"failOpen,omitempty"`
-	// Runtime configures execution aspects of the mixer deployment/pod (e.g. resources)
-	// +optional
-	Runtime *ComponentRuntimeConfig `json:"runtime,omitempty"`
 	// Adapters configures available adapters.
 	// +optional
 	Adapters *MixerPolicyAdaptersConfig `json:"adapters,omitempty"`
@@ -57,7 +54,7 @@ type MixerPolicyConfig struct {
 type MixerPolicyAdaptersConfig struct {
 	// UseAdapterCRDs configures mixer to support deprecated mixer CRDs.
 	// .Values.mixer.policy.adapters.useAdapterCRDs, removed in istio 1.4, defaults to false
-	// XXX: I don't think this should ever be used, as the CRDs were supported in istio 1.1, but removed entirely in 1.4
+	// Only supported in v1.0, where it defaulted to true
 	// +optional
 	UseAdapterCRDs *bool `json:"useAdapterCRDs,omitempty"`
 	// Kubernetesenv configures the use of the kubernetesenv adapter.

@@ -69,14 +69,14 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 		return err
 	}
 
+	if err := populateTelemetryBatchingValues(mixer.Batching, v1TelemetryValues); err != nil {
+		return nil
+	}
+
 	if mixer.SessionAffinity != nil {
 		if err := setHelmBoolValue(v1TelemetryValues, "sessionAffinityEnabled", *mixer.SessionAffinity); err != nil {
 			return err
 		}
-	}
-
-	if err := populateTelemetryBatchingValues(&mixer.Batching, v1TelemetryValues); err != nil {
-		return nil
 	}
 
 	if mixer.Adapters != nil {
@@ -161,55 +161,6 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 		}
 	}
 
-	// Deployment specific settings
-	runtime := mixer.Runtime
-	if runtime != nil {
-		if err := populateRuntimeValues(runtime, v1TelemetryValues); err != nil {
-			return err
-		}
-
-		// set image and resources
-		if runtime.Pod.Containers != nil {
-			// Mixer container specific config
-			if mixerContainer, ok := runtime.Pod.Containers["mixer"]; ok {
-				if err := populateContainerConfigValues(&mixerContainer, v1TelemetryValues); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	if !istiod {
-		// move image, podAnnotations, nodeSelector, podAntiAffinityLabelSelector, and
-		// podAntiAffinityTermLabelSelector from mixer.telemetry to mixer for v1.0 and v1.1
-		// Note, these may overwrite settings specified in policy
-		if image, found, _ := unstructured.NestedString(v1TelemetryValues, "image"); found {
-			if err := setHelmValue(values, "mixer.image", image); err != nil {
-				return err
-			}
-		}
-		if podAnnotations, found, _ := unstructured.NestedFieldCopy(v1TelemetryValues, "podAnnotations"); found {
-			if err := setHelmValue(values, "mixer.podAnnotations", podAnnotations); err != nil {
-				return err
-			}
-		}
-		if nodeSelector, found, _ := unstructured.NestedFieldCopy(v1TelemetryValues, "nodeSelector"); found {
-			if err := setHelmValue(values, "mixer.nodeSelector", nodeSelector); err != nil {
-				return err
-			}
-		}
-		if podAntiAffinityLabelSelector, found, _ := unstructured.NestedFieldCopy(v1TelemetryValues, "podAntiAffinityLabelSelector"); found {
-			if err := setHelmValue(values, "mixer.podAntiAffinityLabelSelector", podAntiAffinityLabelSelector); err != nil {
-				return err
-			}
-		}
-		if podAntiAffinityTermLabelSelector, found, _ := unstructured.NestedFieldCopy(v1TelemetryValues, "podAntiAffinityTermLabelSelector"); found {
-			if err := setHelmValue(values, "mixer.podAntiAffinityTermLabelSelector", podAntiAffinityTermLabelSelector); err != nil {
-				return err
-			}
-		}
-	}
-
 	// set the telemetry values
 	if istiod {
 		var v2TelemetryValues map[string]interface{}
@@ -252,6 +203,9 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 }
 
 func populateTelemetryBatchingValues(in *v2.TelemetryBatchingConfig, values map[string]interface{}) error {
+	if in == nil {
+		return nil
+	}
 	if in.MaxTime != "" {
 		if err := setHelmStringValue(values, "reportBatchMaxTime", in.MaxTime); err != nil {
 			return err
@@ -287,7 +241,7 @@ func populateRemoteTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values 
 		return err
 	}
 
-	if err := populateTelemetryBatchingValues(&remote.Batching, v1TelemetryValues); err != nil {
+	if err := populateTelemetryBatchingValues(remote.Batching, v1TelemetryValues); err != nil {
 		return nil
 	}
 
@@ -551,10 +505,12 @@ func populateMixerTelemetryConfig(in *v1.HelmValues, out *v2.MixerTelemetryConfi
 		return false, nil
 	}
 
-	if applied, err := populateTelemetryBatchingConfig(v1TelemetryValues, &out.Batching); err != nil {
+	batching := &v2.TelemetryBatchingConfig{}
+	if applied, err := populateTelemetryBatchingConfig(v1TelemetryValues, batching); err != nil {
 		return false, nil
 	} else if applied {
 		setValues = true
+		out.Batching = batching
 	}
 
 	var adaptersValues *v1.HelmValues
@@ -658,51 +614,6 @@ func populateMixerTelemetryConfig(in *v1.HelmValues, out *v2.MixerTelemetryConfi
 		}
 	}
 
-	// Deployment specific settings
-	runtime := &v2.ComponentRuntimeConfig{}
-	// istiod
-	if applied, err := runtimeValuesToComponentRuntimeConfig(v1TelemetryValues, runtime); err != nil {
-		return false, err
-	} else if applied {
-		out.Runtime = runtime
-		setValues = true
-	}
-	// non-istiod (this will just overwrite whatever was previously written)
-	if applied, err := runtimeValuesToComponentRuntimeConfig(mixerValues, runtime); err != nil {
-		return false, err
-	} else if applied {
-		out.Runtime = runtime
-		setValues = true
-	}
-
-	// Container
-	container := v2.ContainerConfig{}
-	// non-istiod
-	if applied, err := populateContainerConfig(mixerValues, &container); err != nil {
-		return false, nil
-	} else if applied {
-		if out.Runtime == nil {
-			out.Runtime = runtime
-		}
-		runtime.Pod.Containers = map[string]v2.ContainerConfig{
-			"mixer": container,
-		}
-		setValues = true
-	}
-	// istiod (this will just overwrite whatever was previously written)
-	if applied, err := populateContainerConfig(v1TelemetryValues, &container); err != nil {
-		return false, nil
-	} else if applied {
-		if out.Runtime == nil {
-			out.Runtime = runtime
-			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
-		} else if runtime.Pod.Containers == nil {
-			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
-		}
-		out.Runtime.Pod.Containers["mixer"] = container
-		setValues = true
-	}
-
 	return setValues, nil
 }
 
@@ -749,9 +660,11 @@ func populateRemoteTelemetryConfig(in *v1.HelmValues, out *v2.RemoteTelemetryCon
 	}
 	v1TelemetryValues := v1.NewHelmValues(rawV1TelemetryValues)
 
-	if applied, err := populateTelemetryBatchingConfig(v1TelemetryValues, &out.Batching); err != nil {
+	batching := &v2.TelemetryBatchingConfig{}
+	if applied, err := populateTelemetryBatchingConfig(v1TelemetryValues, batching); err != nil {
 		return false, nil
 	} else if applied {
+		out.Batching = batching
 		setValues = true
 	}
 

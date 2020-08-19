@@ -30,9 +30,6 @@ type PrometheusInstallConfig struct {
 	// prometheus installation.
 	// +optional
 	Service ComponentServiceConfig `json:"service,omitempty"`
-	// Runtime allows for customization of the Deployment/Pods for the installation (e.g. resources)
-	// +optional
-	Runtime *ComponentRuntimeConfig `json:"runtime,omitempty"`
 	// UseTLS for the prometheus server
 	// .Values.prometheus.provisionPrometheusCert
 	// 1.6+

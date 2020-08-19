@@ -3,8 +3,6 @@ package conversion
 import (
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
@@ -88,55 +86,6 @@ func populateMixerPolicyValues(in *v2.ControlPlaneSpec, istiod bool, values map[
 				if err := setHelmValue(values, "mixer.adapters", adaptersValues); err != nil {
 					return err
 				}
-			}
-		}
-	}
-
-	// Deployment specific settings
-	runtime := mixer.Runtime
-	if runtime != nil {
-		if err := populateRuntimeValues(runtime, policyValues); err != nil {
-			return err
-		}
-
-		// set image and resources
-		if runtime.Pod.Containers != nil {
-			// Mixer container specific config
-			if mixerContainer, ok := runtime.Pod.Containers["mixer"]; ok {
-				if err := populateContainerConfigValues(&mixerContainer, policyValues); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	if !istiod {
-		// move image, podAnnotations, nodeSelector, podAntiAffinityLabelSelector, and
-		// podAntiAffinityTermLabelSelector from mixer.policy to mixer for v1.0 and v1.1
-		// Note, these may overwrite settings specified in telemetry
-		if image, found, _ := unstructured.NestedString(policyValues, "image"); found {
-			if err := setHelmValue(values, "mixer.image", image); err != nil {
-				return err
-			}
-		}
-		if podAnnotations, found, _ := unstructured.NestedFieldCopy(policyValues, "podAnnotations"); found {
-			if err := setHelmValue(values, "mixer.podAnnotations", podAnnotations); err != nil {
-				return err
-			}
-		}
-		if nodeSelector, found, _ := unstructured.NestedFieldCopy(policyValues, "nodeSelector"); found {
-			if err := setHelmValue(values, "mixer.nodeSelector", nodeSelector); err != nil {
-				return err
-			}
-		}
-		if podAntiAffinityLabelSelector, found, _ := unstructured.NestedFieldCopy(policyValues, "podAntiAffinityLabelSelector"); found {
-			if err := setHelmValue(values, "mixer.podAntiAffinityLabelSelector", podAntiAffinityLabelSelector); err != nil {
-				return err
-			}
-		}
-		if podAntiAffinityTermLabelSelector, found, _ := unstructured.NestedFieldCopy(policyValues, "podAntiAffinityTermLabelSelector"); found {
-			if err := setHelmValue(values, "mixer.podAntiAffinityTermLabelSelector", podAntiAffinityTermLabelSelector); err != nil {
-				return err
 			}
 		}
 	}
@@ -347,51 +296,6 @@ func populateMixerPolicyConfig(in *v1.HelmValues, out *v2.MixerPolicyConfig) (bo
 			out.Adapters = adapters
 			setValues = true
 		}
-	}
-
-	// Deployment specific settings
-	runtime := &v2.ComponentRuntimeConfig{}
-	// istiod
-	if applied, err := runtimeValuesToComponentRuntimeConfig(policyValues, runtime); err != nil {
-		return false, err
-	} else if applied {
-		out.Runtime = runtime
-		setValues = true
-	}
-	// non-istiod (this will just overwrite whatever was previously written)
-	if applied, err := runtimeValuesToComponentRuntimeConfig(mixerValues, runtime); err != nil {
-		return false, err
-	} else if applied {
-		out.Runtime = runtime
-		setValues = true
-	}
-
-	// Container
-	container := v2.ContainerConfig{}
-	// non-istiod
-	if applied, err := populateContainerConfig(mixerValues, &container); err != nil {
-		return false, err
-	} else if applied {
-		if out.Runtime == nil {
-			out.Runtime = runtime
-		}
-		runtime.Pod.Containers = map[string]v2.ContainerConfig{
-			"mixer": container,
-		}
-		setValues = true
-	}
-	// istiod (this will just overwrite whatever was previously written)
-	if applied, err := populateContainerConfig(policyValues, &container); err != nil {
-		return false, err
-	} else if applied {
-		if out.Runtime == nil {
-			out.Runtime = runtime
-			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
-		} else if runtime.Pod.Containers == nil {
-			runtime.Pod.Containers = make(map[string]v2.ContainerConfig)
-		}
-		out.Runtime.Pod.Containers["mixer"] = container
-		setValues = true
 	}
 
 	return setValues, nil
