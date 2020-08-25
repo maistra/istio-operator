@@ -38,3 +38,16 @@ func errForEnabledValue(obj *v1.HelmValues, path string, disallowed bool) error 
 	}
 	return nil
 }
+
+func errForValue(obj *v1.HelmValues, path string, value string) error {
+	val, ok, _ := obj.GetFieldNoCopy(path)
+	if ok {
+		switch typedVal := val.(type) {
+		case string:
+			if typedVal == value {
+				return fmt.Errorf("%s=%s is not supported", path, value)
+			}
+		}
+	}
+	return nil
+}

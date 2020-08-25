@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/servicemesh/webhookca"
 )
@@ -211,8 +212,10 @@ func newValidatingWebhookConfiguration(namespace string) *admissionv1.Validating
 		},
 		Webhooks: []admissionv1.ValidatingWebhook{
 			{
-				Name:                    "smcp.validation.maistra.io",
-				Rules:                   rulesFor("servicemeshcontrolplanes", admissionv1.Create, admissionv1.Update),
+				Name: "smcp.validation.maistra.io",
+				Rules: rulesFor("servicemeshcontrolplanes",
+					[]string{maistrav1.SchemeGroupVersion.Version, maistrav2.SchemeGroupVersion.Version},
+					admissionv1.Create, admissionv1.Update),
 				FailurePolicy:           &webhookFailurePolicy,
 				SideEffects:             &noneSideEffects,
 				AdmissionReviewVersions: []string{"v1beta1"},
@@ -225,8 +228,9 @@ func newValidatingWebhookConfiguration(namespace string) *admissionv1.Validating
 				},
 			},
 			{
-				Name:                    "smmr.validation.maistra.io",
-				Rules:                   rulesFor("servicemeshmemberrolls", admissionv1.Create, admissionv1.Update),
+				Name: "smmr.validation.maistra.io",
+				Rules: rulesFor("servicemeshmemberrolls",
+					[]string{maistrav1.SchemeGroupVersion.Version}, admissionv1.Create, admissionv1.Update),
 				FailurePolicy:           &webhookFailurePolicy,
 				SideEffects:             &noneSideEffects,
 				AdmissionReviewVersions: []string{"v1beta1"},
@@ -239,8 +243,9 @@ func newValidatingWebhookConfiguration(namespace string) *admissionv1.Validating
 				},
 			},
 			{
-				Name:                    "smm.validation.maistra.io",
-				Rules:                   rulesFor("servicemeshmembers", admissionv1.Create, admissionv1.Update),
+				Name: "smm.validation.maistra.io",
+				Rules: rulesFor("servicemeshmembers",
+					[]string{maistrav1.SchemeGroupVersion.Version}, admissionv1.Create, admissionv1.Update),
 				FailurePolicy:           &webhookFailurePolicy,
 				SideEffects:             &noneSideEffects,
 				AdmissionReviewVersions: []string{"v1beta1"},
@@ -264,8 +269,10 @@ func newMutatingWebhookConfiguration(namespace string) *admissionv1.MutatingWebh
 		},
 		Webhooks: []admissionv1.MutatingWebhook{
 			{
-				Name:                    "smcp.mutation.maistra.io",
-				Rules:                   rulesFor("servicemeshcontrolplanes", admissionv1.Create, admissionv1.Update),
+				Name: "smcp.mutation.maistra.io",
+				Rules: rulesFor("servicemeshcontrolplanes",
+					[]string{maistrav1.SchemeGroupVersion.Version, maistrav2.SchemeGroupVersion.Version},
+					admissionv1.Create, admissionv1.Update),
 				FailurePolicy:           &webhookFailurePolicy,
 				SideEffects:             &noneOnDryRunSideEffects,
 				AdmissionReviewVersions: []string{"v1beta1"},
@@ -278,8 +285,9 @@ func newMutatingWebhookConfiguration(namespace string) *admissionv1.MutatingWebh
 				},
 			},
 			{
-				Name:                    "smmr.mutation.maistra.io",
-				Rules:                   rulesFor("servicemeshmemberrolls", admissionv1.Create, admissionv1.Update),
+				Name: "smmr.mutation.maistra.io",
+				Rules: rulesFor("servicemeshmemberrolls",
+					[]string{maistrav1.SchemeGroupVersion.Version}, admissionv1.Create, admissionv1.Update),
 				FailurePolicy:           &webhookFailurePolicy,
 				SideEffects:             &noneOnDryRunSideEffects,
 				AdmissionReviewVersions: []string{"v1beta1"},
@@ -295,12 +303,12 @@ func newMutatingWebhookConfiguration(namespace string) *admissionv1.MutatingWebh
 	}
 }
 
-func rulesFor(resource string, operations ...admissionv1.OperationType) []admissionv1.RuleWithOperations {
+func rulesFor(resource string, versions []string, operations ...admissionv1.OperationType) []admissionv1.RuleWithOperations {
 	return []admissionv1.RuleWithOperations{
 		{
 			Rule: admissionv1.Rule{
 				APIGroups:   []string{maistrav1.SchemeGroupVersion.Group},
-				APIVersions: []string{maistrav1.SchemeGroupVersion.Version},
+				APIVersions: versions,
 				Resources:   []string{resource},
 			},
 			Operations: operations,

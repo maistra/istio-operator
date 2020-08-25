@@ -60,7 +60,7 @@ func (v *versionStrategyV1_1) SetImageValues(ctx context.Context, cr *common.Con
 	common.UpdateField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V1_1.IOR)
 	return nil
 }
-func (v *versionStrategyV1_1) Validate(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *versionStrategyV1_1) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	var allErrors []error
 
 	if zipkinAddress, ok, _ := smcp.Spec.Istio.GetString("global.tracer.zipkin.address"); ok && len(zipkinAddress) > 0 {
@@ -96,7 +96,33 @@ func (v *versionStrategyV1_1) Validate(ctx context.Context, cl client.Client, sm
 			}
 		}
 	}
+	// Istiod not supported
+	if err := errForValue(smcp.Spec.Istio, "policy.implementation", string(v2.PolicyTypeIstiod)); err != nil {
+		allErrors = append(allErrors, err)
+	}
+	if err := errForValue(smcp.Spec.Istio, "telemetry.implementation", string(v2.PolicyTypeIstiod)); err != nil {
+		allErrors = append(allErrors, err)
+	}
+	// XXX: i don't think this is supported in the helm charts
+	// telemetry.v2.enabled=true (values.yaml, in-proxy metrics)
+	if err := errForEnabledValue(smcp.Spec.Istio, "telemetry.enabled", true); err != nil {
+		if err := errForEnabledValue(smcp.Spec.Istio, "telemetry.v2.enabled", true); err != nil {
+			allErrors = append(allErrors, err)
+		}
+	}
 
+	return utilerrors.NewAggregate(allErrors)
+}
+
+func (v *versionStrategyV1_1) ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
+	var allErrors []error
+	// I believe the only settings that aren't supported are Istiod policy and telemetry
+	if smcp.Spec.Policy != nil && smcp.Spec.Policy.Type == v2.PolicyTypeIstiod {
+		allErrors = append(allErrors, fmt.Errorf("policy type %s is not supported in version %s", smcp.Spec.Policy.Type, v.String()))
+	}
+	if smcp.Spec.Telemetry != nil && smcp.Spec.Telemetry.Type == v2.TelemetryTypeIstiod {
+		allErrors = append(allErrors, fmt.Errorf("telemetry type %s is not supported in version %s", smcp.Spec.Telemetry.Type, v.String()))
+	}
 	return utilerrors.NewAggregate(allErrors)
 }
 
@@ -107,7 +133,7 @@ var (
 	}
 )
 
-func (v *versionStrategyV1_1) ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *versionStrategyV1_1) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
 	var allErrors []error
 	meshNamespaces := sets.NewString(smcp.GetNamespace())
 
@@ -175,8 +201,17 @@ func (v *versionStrategyV1_1) ValidateDowngrade(ctx context.Context, cl client.C
 
 	// we don't do any validation for 1.0 control planes, but the validation
 	// logic for it is associated with v1.0, so invoke it now.
-	if err := V1_0.Strategy().Validate(ctx, cl, smcp); err != nil {
-		allErrors = append(allErrors, err)
+	switch smcp := smcp.(type) {
+	case *v1.ServiceMeshControlPlane:
+		if err := V1_0.Strategy().ValidateV1(ctx, cl, smcp); err != nil {
+			allErrors = append(allErrors, err)
+		}
+	case *v2.ServiceMeshControlPlane:
+		if err := V1_0.Strategy().ValidateV2(ctx, cl, smcp); err != nil {
+			allErrors = append(allErrors, err)
+		}
+	default:
+		allErrors = append(allErrors, fmt.Errorf("unknown ServiceMeshControlPlane type: %T", smcp))
 	}
 
 	return utilerrors.NewAggregate(allErrors)
@@ -223,7 +258,7 @@ var (
 	}
 )
 
-func (v *versionStrategyV1_1) ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *versionStrategyV1_1) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
 	var allErrors []error
 
 	meshNamespaces := sets.NewString(smcp.GetNamespace())
