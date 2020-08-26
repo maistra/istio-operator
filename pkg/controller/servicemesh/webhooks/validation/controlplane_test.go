@@ -23,6 +23,10 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
+func init() {
+	os.Setenv("POD_NAMESPACE", "openshift-operators")
+}
+
 func TestDeletedControlPlaneIsAlwaysAllowed(t *testing.T) {
 	controlPlane := newControlPlane("my-smcp", "istio-system")
 	controlPlane.DeletionTimestamp = now()

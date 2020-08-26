@@ -69,6 +69,13 @@ func (v *versionStrategyV1_0) ValidateV1(ctx context.Context, cl client.Client, 
 	if err := errForValue(smcp.Spec.Istio, "telemetry.implementation", string(v2.PolicyTypeIstiod)); err != nil {
 		allErrors = append(allErrors, err)
 	}
+	// XXX: i don't think this is supported in the helm charts
+	// telemetry.v2.enabled=true (values.yaml, in-proxy metrics)
+	if err := errForEnabledValue(smcp.Spec.Istio, "telemetry.enabled", true); err != nil {
+		if err := errForEnabledValue(smcp.Spec.Istio, "telemetry.v2.enabled", true); err != nil {
+			allErrors = append(allErrors, err)
+		}
+	}
 	// global.proxy.envoyAccessLogService.enabled=true (Envoy ALS enabled)
 	if err := errForEnabledValue(smcp.Spec.Istio, "global.proxy.envoyAccessLogService.enabled", true); err != nil {
 		allErrors = append(allErrors, err)

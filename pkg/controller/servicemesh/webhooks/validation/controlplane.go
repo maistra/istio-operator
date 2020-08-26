@@ -62,24 +62,26 @@ func (v *ControlPlaneValidator) Handle(ctx context.Context, req admission.Reques
 		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "only one service mesh may be installed per project/namespace")
 	}
 
-	smcpvalidator, err := v.decodeRequest(req, logger)
+	smcprequest, err := v.decodeRequest(req, logger)
 	if err != nil {
 		logger.Error(err, "error decoding admission request")
 		return admission.Errored(http.StatusBadRequest, err)
-	} else if smcpvalidator.New().GetDeletionTimestamp() != nil {
+	} else if smcprequest.New().GetDeletionTimestamp() != nil {
 		logger.Info("skipping deleted smcp resource")
 		return admission.Allowed("")
+	} else if err := v.validateVersion(ctx, smcprequest.New(), smcprequest.NewVersion()); err != nil {
+		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, err.Error())
 	}
 
 	if req.AdmissionRequest.Operation == admissionv1beta1.Update {
 		// verify update
-		return v.validateUpdate(ctx, smcpvalidator.OldVersion(), smcpvalidator.NewVersion(), smcpvalidator.New(), logger)
+		return v.validateUpdate(ctx, smcprequest.OldVersion(), smcprequest.NewVersion(), smcprequest.New(), logger)
 	}
 
 	return admission.ValidationResponse(true, "")
 }
 
-func (v *ControlPlaneValidator) decodeRequest(req admission.Request, logger logr.Logger) (smcpvalidator, error) {
+func (v *ControlPlaneValidator) decodeRequest(req admission.Request, logger logr.Logger) (smcprequest, error) {
 	switch req.Kind.Version {
 	case maistrav1.SchemeGroupVersion.Version:
 		smcp := &maistrav1.ServiceMeshControlPlane{}
@@ -106,7 +108,7 @@ func (v *ControlPlaneValidator) decodeRequest(req admission.Request, logger logr
 				return nil, fmt.Errorf("invalid Version specified; supported versions are: %v", versions.GetSupportedVersions())
 			}
 		}
-		return &smcpv1validator{new: smcp, old: oldsmcp, newVersion: newVersion, oldVersion: oldVersion}, nil
+		return &smcpv1request{new: smcp, old: oldsmcp, newVersion: newVersion, oldVersion: oldVersion}, nil
 	case maistrav2.SchemeGroupVersion.Version:
 		smcp := &maistrav2.ServiceMeshControlPlane{}
 		err := v.decoder.Decode(req, smcp)
@@ -132,7 +134,7 @@ func (v *ControlPlaneValidator) decodeRequest(req admission.Request, logger logr
 				return nil, fmt.Errorf("invalid Version specified; supported versions are: %v", versions.GetSupportedVersions())
 			}
 		}
-		return &smcpv2validator{new: smcp, old: oldsmcp, newVersion: newVersion, oldVersion: oldVersion}, nil
+		return &smcpv2request{new: smcp, old: oldsmcp, newVersion: newVersion, oldVersion: oldVersion}, nil
 	default:
 		return nil, fmt.Errorf("unkown resource type: %s", req.Kind.String())
 	}
@@ -194,98 +196,83 @@ func (v *ControlPlaneValidator) InjectDecoder(d *admission.Decoder) error {
 	return nil
 }
 
-type smcpvalidator interface {
+type smcprequest interface {
 	New() metav1.Object
 	NewVersion() versions.Version
 	Old() metav1.Object
 	OldVersion() versions.Version
-	Validate(ctx context.Context, cl client.Client) error
 }
 
-type smcpv1validator struct {
+type smcpv1request struct {
 	new        *maistrav1.ServiceMeshControlPlane
 	old        *maistrav1.ServiceMeshControlPlane
 	newVersion versions.Version
 	oldVersion versions.Version
 }
 
-var _ smcpvalidator = (*smcpv1validator)(nil)
+var _ smcprequest = (*smcpv1request)(nil)
 
-func (smcp *smcpv1validator) New() metav1.Object {
+func (smcp *smcpv1request) New() metav1.Object {
 	if smcp == nil {
 		return nil
 	}
 	return smcp.new
 }
 
-func (smcp *smcpv1validator) NewVersion() versions.Version {
+func (smcp *smcpv1request) NewVersion() versions.Version {
 	if smcp == nil {
 		return versions.InvalidVersion
 	}
 	return smcp.newVersion
 }
 
-func (smcp *smcpv1validator) Old() metav1.Object {
+func (smcp *smcpv1request) Old() metav1.Object {
 	if smcp == nil {
 		return nil
 	}
 	return smcp.old
 }
 
-func (smcp *smcpv1validator) OldVersion() versions.Version {
+func (smcp *smcpv1request) OldVersion() versions.Version {
 	if smcp == nil {
 		return versions.InvalidVersion
 	}
 	return smcp.oldVersion
 }
 
-func (smcp *smcpv1validator) Validate(ctx context.Context, cl client.Client) error {
-	if smcp == nil {
-		return fmt.Errorf("null request")
-	}
-	return smcp.newVersion.Strategy().ValidateV1(ctx, cl, smcp.new)
-}
-
-type smcpv2validator struct {
+type smcpv2request struct {
 	new        *maistrav2.ServiceMeshControlPlane
 	old        *maistrav2.ServiceMeshControlPlane
 	newVersion versions.Version
 	oldVersion versions.Version
 }
 
-var _ smcpvalidator = (*smcpv2validator)(nil)
+var _ smcprequest = (*smcpv2request)(nil)
 
-func (smcp *smcpv2validator) New() metav1.Object {
+func (smcp *smcpv2request) New() metav1.Object {
 	if smcp == nil {
 		return nil
 	}
 	return smcp.new
 }
 
-func (smcp *smcpv2validator) NewVersion() versions.Version {
+func (smcp *smcpv2request) NewVersion() versions.Version {
 	if smcp == nil {
 		return versions.InvalidVersion
 	}
 	return smcp.newVersion
 }
 
-func (smcp *smcpv2validator) Old() metav1.Object {
+func (smcp *smcpv2request) Old() metav1.Object {
 	if smcp == nil {
 		return nil
 	}
 	return smcp.old
 }
 
-func (smcp *smcpv2validator) OldVersion() versions.Version {
+func (smcp *smcpv2request) OldVersion() versions.Version {
 	if smcp == nil {
 		return versions.InvalidVersion
 	}
 	return smcp.oldVersion
-}
-
-func (smcp *smcpv2validator) Validate(ctx context.Context, cl client.Client) error {
-	if smcp == nil {
-		return fmt.Errorf("null request")
-	}
-	return smcp.newVersion.Strategy().ValidateV2(ctx, cl, smcp.new)
 }

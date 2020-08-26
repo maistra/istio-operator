@@ -13,18 +13,17 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	clienttesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/apis"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
 
 func GetScheme() *runtime.Scheme {
 	s := runtime.NewScheme()
-	scheme.AddToScheme(s)
 	if err := apis.AddToScheme(s); err != nil {
 		panic(fmt.Sprintf("Could not add to scheme: %v", err))
 	}
@@ -48,7 +47,7 @@ func CreateClient(clientObjects ...runtime.Object) (client.Client, *EnhancedTrac
 	s := GetScheme()
 	codecs := serializer.NewCodecFactory(s)
 	tracker := clienttesting.NewObjectTracker(s, codecs.UniversalDecoder())
-	enhancedTracker := NewEnhancedTracker(tracker, s)
+	enhancedTracker := NewEnhancedTracker(tracker, s, v2.SchemeGroupVersion)
 	cl := NewFakeClientWithSchemeAndTracker(s, enhancedTracker, clientObjects...)
 	return cl, enhancedTracker
 }

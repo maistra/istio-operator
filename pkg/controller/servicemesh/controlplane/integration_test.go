@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
@@ -25,6 +26,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	. "github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -102,6 +104,7 @@ func TestBootstrapping(t *testing.T) {
 				GroupResources: []*restmapper.APIGroupResources{
 					CNIGroupResources,
 				},
+				StorageVersions: []schema.GroupVersion{v2.SchemeGroupVersion},
 				Events: []ControllerTestEvent{
 					{
 						Name: "bootstrap-clean-install-cni-no-errors",

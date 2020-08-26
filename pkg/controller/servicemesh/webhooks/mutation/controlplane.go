@@ -157,11 +157,15 @@ func (m *smcppatch) GetPatches() []jsonpatch.JsonPatchOperation {
 }
 
 func (m *smcppatch) SetVersion(version string) {
-	m.patches = append(m.patches, jsonpatch.NewPatch("replace", "/spec/version", version))
+	m.patches = append(m.patches, jsonpatch.NewPatch("add", "/spec/version", version))
 }
 
 func (m *smcppatch) SetProfiles(profiles []string) {
-	m.patches = append(m.patches, jsonpatch.NewPatch("replace", "/spec/profiles", profiles))
+	value := make([]interface{}, len(profiles))
+	for index, profile := range profiles {
+		value[index] = profile
+	}
+	m.patches = append(m.patches, jsonpatch.NewPatch("add", "/spec/profiles", value))
 }
 
 type smcpv1mutator struct {
@@ -188,6 +192,12 @@ func (m *smcpv1mutator) OldVersion() string {
 }
 
 func (m *smcpv1mutator) GetProfiles() []string {
+	if len(m.smcp.Spec.Profiles) == 0 {
+		if m.smcp.Spec.Template == "" {
+			return nil
+		}
+		return []string{m.smcp.Spec.Template}
+	}
 	return m.smcp.Spec.Profiles
 }
 

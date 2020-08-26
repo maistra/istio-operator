@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -16,5 +17,12 @@ func PatchResponse(original runtime.RawExtension, new runtime.Object) admission.
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 
-	return admission.PatchResponseFromRaw(original.Raw, marshaledObject)
+	resp := admission.PatchResponseFromRaw(original.Raw, marshaledObject)
+	if resp.Allowed && resp.Result == nil {
+		resp.Result = &v1.Status{
+			Code: int32(http.StatusOK),
+		}
+	}
+	resp.PatchType = nil
+	return resp
 }

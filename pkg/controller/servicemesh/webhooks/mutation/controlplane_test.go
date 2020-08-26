@@ -88,11 +88,15 @@ func TestVersionIsDefaultedToOldSMCPVersionOnUpdate(t *testing.T) {
 			updatedControlPlane.Labels = map[string]string{"newLabel": "newValue"}
 
 			mutatedControlPlane := controlPlane.DeepCopy()
-			mutatedControlPlane.Spec.Version = controlPlane.Spec.Version
+			mutatedControlPlane.Spec.Version = ""
 
 			mutator, _, _ := createControlPlaneMutatorTestFixture(controlPlane)
 			response := mutator.Handle(ctx, newUpdateRequest(controlPlane, updatedControlPlane))
-			expectedResponse := PatchResponse(toRawExtension(controlPlane), mutatedControlPlane)
+			expectedResponse := PatchResponse(toRawExtension(mutatedControlPlane), controlPlane)
+			if len(expectedResponse.Patches) == 0 {
+				// PatchResponse() always creates a Patches array, so set it to nil if it's empty
+				expectedResponse.Patches = nil
+			}
 			assert.DeepEquals(response, expectedResponse, "Expected the response to set the version to previously AppliedVersion on update", t)
 		})
 	}
@@ -103,7 +107,7 @@ func TestTemplateIsDefaultedOnCreate(t *testing.T) {
 	controlPlane.Spec.Template = ""
 
 	mutatedControlPlane := controlPlane.DeepCopy()
-	mutatedControlPlane.Spec.Template = maistrav1.DefaultTemplate
+	mutatedControlPlane.Spec.Profiles = []string{maistrav1.DefaultTemplate}
 
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
 
@@ -120,7 +124,7 @@ func TestTemplateIsDefaultedOnUpdate(t *testing.T) {
 	updatedControlPlane.Labels = map[string]string{"newLabel": "newValue"}
 
 	mutatedControlPlane := updatedControlPlane.DeepCopy()
-	mutatedControlPlane.Spec.Template = maistrav1.DefaultTemplate
+	mutatedControlPlane.Spec.Profiles = []string{maistrav1.DefaultTemplate}
 
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
 	response := mutator.Handle(ctx, newUpdateRequest(origControlPlane, updatedControlPlane))
