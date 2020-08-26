@@ -468,12 +468,12 @@ func TestControlPlaneValidation(t *testing.T) {
 		},
 		{
 			name: "v1-v2.0",
-			controlPlane: &maistrav2.ServiceMeshControlPlane{
+			controlPlane: &maistrav1.ServiceMeshControlPlane{
 				ObjectMeta: meta.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
-				Spec: maistrav2.ControlPlaneSpec{
+				Spec: maistrav1.ControlPlaneSpec{
 					Version: versions.V2_0.String(),
 				},
 			},
