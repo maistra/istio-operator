@@ -141,15 +141,14 @@ func (v *ControlPlaneValidator) decodeRequest(req admission.Request, logger logr
 }
 
 func (v *ControlPlaneValidator) validateVersion(ctx context.Context, obj metav1.Object, version versions.Version) error {
-	// version specific validation
-	switch version.Version() {
-	// UndefinedVersion defaults to legacy v1.0
-	case versions.V1_0:
-		// no validation existed in 1.0, so we won't validate
-		return nil
-	}
 	switch smcp := obj.(type) {
 	case *maistrav1.ServiceMeshControlPlane:
+		switch version.Version() {
+		// UndefinedVersion defaults to legacy v1.0
+		case versions.V1_0:
+			// no validation existed in 1.0, so we won't validate
+			return nil
+		}
 		return version.Strategy().ValidateV1(ctx, v.client, smcp)
 	case *maistrav2.ServiceMeshControlPlane:
 		return version.Strategy().ValidateV2(ctx, v.client, smcp)

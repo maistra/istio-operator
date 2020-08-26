@@ -128,13 +128,11 @@ func (v *versionStrategyV2_0) SetImageValues(ctx context.Context, cr *common.Con
 }
 
 func (v *versionStrategyV2_0) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
-	// TODO: XXX
-	return V1_1.Strategy().ValidateV1(ctx, cl, smcp)
+	return fmt.Errorf("must use v2 ServiceMeshControlPlane resource for v2.0+ installations")
 }
 
 func (v *versionStrategyV2_0) ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
-	// TODO: XXX
-	return V1_1.Strategy().ValidateV2(ctx, cl, smcp)
+	return nil
 }
 
 func (v *versionStrategyV2_0) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {

@@ -10,13 +10,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
-func TestDeletedControlPlaneIsAlwaysAllowed(t *testing.T) {
-	controlPlane := newControlPlane("my-smcp", "istio-system")
+func TestDeletedV1ControlPlaneIsAlwaysAllowed(t *testing.T) {
+	controlPlane := newControlPlaneV1("my-smcp", "istio-system")
 	controlPlane.Spec.Version = ""
 	controlPlane.Spec.Template = ""
 	controlPlane.DeletionTimestamp = now()
@@ -26,8 +27,19 @@ func TestDeletedControlPlaneIsAlwaysAllowed(t *testing.T) {
 	assert.DeepEquals(response, acceptWithNoMutation, "Expected mutator to accept deleted ServiceMeshControlPlane", t)
 }
 
-func TestControlPlaneOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
-	controlPlane := newControlPlane("my-smcp", "not-watched")
+func TestDeletedV2ControlPlaneIsAlwaysAllowed(t *testing.T) {
+	controlPlane := newControlPlaneV2("my-smcp", "istio-system")
+	controlPlane.Spec.Version = ""
+	controlPlane.Spec.Template = ""
+	controlPlane.DeletionTimestamp = now()
+
+	mutator, _, _ := createControlPlaneMutatorTestFixture()
+	response := mutator.Handle(ctx, newCreateRequest(controlPlane))
+	assert.DeepEquals(response, acceptWithNoMutation, "Expected mutator to accept deleted ServiceMeshControlPlane", t)
+}
+
+func TestV1ControlPlaneOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
+	controlPlane := newControlPlaneV1("my-smcp", "not-watched")
 	controlPlane.Spec.Version = ""
 	controlPlane.Spec.Template = ""
 	mutator, _, _ := createControlPlaneMutatorTestFixture()
@@ -36,8 +48,18 @@ func TestControlPlaneOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
 	assert.DeepEquals(response, acceptWithNoMutation, "Expected mutator to accept ServiceMeshControlPlane whose namespace isn't watched", t)
 }
 
-func TestControlPlaneNoMutation(t *testing.T) {
-	controlPlane := newControlPlane("my-smcp", "istio-system")
+func TestV2ControlPlaneOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
+	controlPlane := newControlPlaneV2("my-smcp", "not-watched")
+	controlPlane.Spec.Version = ""
+	controlPlane.Spec.Template = ""
+	mutator, _, _ := createControlPlaneMutatorTestFixture()
+	mutator.namespaceFilter = "watched-namespace"
+	response := mutator.Handle(ctx, newCreateRequest(controlPlane))
+	assert.DeepEquals(response, acceptWithNoMutation, "Expected mutator to accept ServiceMeshControlPlane whose namespace isn't watched", t)
+}
+
+func TestV1ControlPlaneNoMutation(t *testing.T) {
+	controlPlane := newControlPlaneV1("my-smcp", "istio-system")
 	controlPlane.Spec.Version = versions.DefaultVersion.String()
 	controlPlane.Spec.Template = maistrav1.DefaultTemplate
 
@@ -46,8 +68,18 @@ func TestControlPlaneNoMutation(t *testing.T) {
 	assert.DeepEquals(response, acceptWithNoMutation, "Expected mutator to accepet ServiceMeshControlPlane with no changes", t)
 }
 
-func TestVersionIsDefaultedToCurrentMaistraVersionOnCreate(t *testing.T) {
-	controlPlane := newControlPlane("my-smcp", "istio-system")
+func TestV2ControlPlaneNoMutation(t *testing.T) {
+	controlPlane := newControlPlaneV2("my-smcp", "istio-system")
+	controlPlane.Spec.Version = versions.DefaultVersion.String()
+	controlPlane.Spec.Template = maistrav1.DefaultTemplate
+
+	mutator, _, _ := createControlPlaneMutatorTestFixture()
+	response := mutator.Handle(ctx, newCreateRequest(controlPlane))
+	assert.DeepEquals(response, acceptWithNoMutation, "Expected mutator to accepet ServiceMeshControlPlane with no changes", t)
+}
+
+func TestV1VersionIsDefaultedToCurrentMaistraVersionOnCreate(t *testing.T) {
+	controlPlane := newControlPlaneV1("my-smcp", "istio-system")
 	controlPlane.Spec.Version = ""
 
 	mutatedControlPlane := controlPlane.DeepCopy()
@@ -60,7 +92,20 @@ func TestVersionIsDefaultedToCurrentMaistraVersionOnCreate(t *testing.T) {
 }
 
 // Test if the webhook defaults Version to the existing Version on an update
-func TestVersionIsDefaultedToOldSMCPVersionOnUpdate(t *testing.T) {
+func TestV2VersionIsDefaultedToCurrentMaistraVersionOnCreate(t *testing.T) {
+	controlPlane := newControlPlaneV2("my-smcp", "istio-system")
+	controlPlane.Spec.Version = ""
+
+	mutatedControlPlane := controlPlane.DeepCopy()
+	mutatedControlPlane.Spec.Version = versions.DefaultVersion.String()
+
+	mutator, _, _ := createControlPlaneMutatorTestFixture()
+	response := mutator.Handle(ctx, newCreateRequest(controlPlane))
+	expectedResponse := PatchResponse(toRawExtension(controlPlane), mutatedControlPlane)
+	assert.DeepEquals(response, expectedResponse, "Expected the response to set the version on create", t)
+}
+
+func TestV1VersionIsDefaultedToOldSMCPVersionOnUpdate(t *testing.T) {
 	cases := []struct {
 		name    string
 		version string
@@ -80,19 +125,19 @@ func TestVersionIsDefaultedToOldSMCPVersionOnUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			controlPlane := newControlPlane("my-smcp", "istio-system")
+			controlPlane := newControlPlaneV1("my-smcp", "istio-system")
 			controlPlane.Spec.Version = tc.version
 
 			updatedControlPlane := controlPlane.DeepCopy()
 			updatedControlPlane.Spec.Version = ""
 			updatedControlPlane.Labels = map[string]string{"newLabel": "newValue"}
 
-			mutatedControlPlane := controlPlane.DeepCopy()
-			mutatedControlPlane.Spec.Version = ""
+			mutatedControlPlane := updatedControlPlane.DeepCopy()
+			mutatedControlPlane.Spec.Version = controlPlane.Spec.Version
 
 			mutator, _, _ := createControlPlaneMutatorTestFixture(controlPlane)
 			response := mutator.Handle(ctx, newUpdateRequest(controlPlane, updatedControlPlane))
-			expectedResponse := PatchResponse(toRawExtension(mutatedControlPlane), controlPlane)
+			expectedResponse := PatchResponse(toRawExtension(updatedControlPlane), mutatedControlPlane)
 			if len(expectedResponse.Patches) == 0 {
 				// PatchResponse() always creates a Patches array, so set it to nil if it's empty
 				expectedResponse.Patches = nil
@@ -102,8 +147,50 @@ func TestVersionIsDefaultedToOldSMCPVersionOnUpdate(t *testing.T) {
 	}
 }
 
-func TestTemplateIsDefaultedOnCreate(t *testing.T) {
-	controlPlane := newControlPlane("my-smcp", "istio-system")
+func TestV2VersionIsDefaultedToOldSMCPVersionOnUpdate(t *testing.T) {
+	cases := []struct {
+		name    string
+		version string
+	}{
+		{
+			name:    "legacy-default",
+			version: "",
+		},
+		{
+			name:    "v1.0",
+			version: "v1.0",
+		},
+		{
+			name:    "v1.1",
+			version: "v1.1",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			controlPlane := newControlPlaneV2("my-smcp", "istio-system")
+			controlPlane.Spec.Version = tc.version
+
+			updatedControlPlane := controlPlane.DeepCopy()
+			updatedControlPlane.Spec.Version = ""
+			updatedControlPlane.Labels = map[string]string{"newLabel": "newValue"}
+
+			mutatedControlPlane := updatedControlPlane.DeepCopy()
+			mutatedControlPlane.Spec.Version = controlPlane.Spec.Version
+
+			mutator, _, _ := createControlPlaneMutatorTestFixture(controlPlane)
+			response := mutator.Handle(ctx, newUpdateRequest(controlPlane, updatedControlPlane))
+			expectedResponse := PatchResponse(toRawExtension(updatedControlPlane), mutatedControlPlane)
+			if len(expectedResponse.Patches) == 0 {
+				// PatchResponse() always creates a Patches array, so set it to nil if it's empty
+				expectedResponse.Patches = nil
+			}
+			assert.DeepEquals(response, expectedResponse, "Expected the response to set the version to previously AppliedVersion on update", t)
+		})
+	}
+}
+
+func TestV1TemplateIsDefaultedOnCreate(t *testing.T) {
+	controlPlane := newControlPlaneV1("my-smcp", "istio-system")
 	controlPlane.Spec.Template = ""
 
 	mutatedControlPlane := controlPlane.DeepCopy()
@@ -116,8 +203,38 @@ func TestTemplateIsDefaultedOnCreate(t *testing.T) {
 	assert.DeepEquals(response, expectedResponse, "Expected the response to set the template on create", t)
 }
 
-func TestTemplateIsDefaultedOnUpdate(t *testing.T) {
-	origControlPlane := newControlPlane("my-smcp", "istio-system")
+func TestV2TemplateIsDefaultedOnCreate(t *testing.T) {
+	controlPlane := newControlPlaneV2("my-smcp", "istio-system")
+	controlPlane.Spec.Template = ""
+
+	mutatedControlPlane := controlPlane.DeepCopy()
+	mutatedControlPlane.Spec.Profiles = []string{maistrav1.DefaultTemplate}
+
+	mutator, _, _ := createControlPlaneMutatorTestFixture()
+
+	response := mutator.Handle(ctx, newCreateRequest(controlPlane))
+	expectedResponse := PatchResponse(toRawExtension(controlPlane), mutatedControlPlane)
+	assert.DeepEquals(response, expectedResponse, "Expected the response to set the template on create", t)
+}
+
+func TestV1TemplateIsDefaultedOnUpdate(t *testing.T) {
+	origControlPlane := newControlPlaneV1("my-smcp", "istio-system")
+	origControlPlane.Spec.Template = ""
+
+	updatedControlPlane := origControlPlane.DeepCopy()
+	updatedControlPlane.Labels = map[string]string{"newLabel": "newValue"}
+
+	mutatedControlPlane := updatedControlPlane.DeepCopy()
+	mutatedControlPlane.Spec.Profiles = []string{maistrav1.DefaultTemplate}
+
+	mutator, _, _ := createControlPlaneMutatorTestFixture()
+	response := mutator.Handle(ctx, newUpdateRequest(origControlPlane, updatedControlPlane))
+	expectedResponse := PatchResponse(toRawExtension(updatedControlPlane), mutatedControlPlane)
+	assert.DeepEquals(response, expectedResponse, "Expected the response to set the template on update", t)
+}
+
+func TestV2TemplateIsDefaultedOnUpdate(t *testing.T) {
+	origControlPlane := newControlPlaneV2("my-smcp", "istio-system")
 	origControlPlane.Spec.Template = ""
 
 	updatedControlPlane := origControlPlane.DeepCopy()
@@ -153,13 +270,26 @@ func createControlPlaneMutatorTestFixture(clientObjects ...runtime.Object) (*Con
 	return validator, cl, tracker
 }
 
-func newControlPlane(name, namespace string) *maistrav1.ServiceMeshControlPlane {
+func newControlPlaneV1(name, namespace string) *maistrav1.ServiceMeshControlPlane {
 	return &maistrav1.ServiceMeshControlPlane{
 		ObjectMeta: meta.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
 		Spec: maistrav1.ControlPlaneSpec{
+			Version:  versions.DefaultVersion.String(),
+			Template: maistrav1.DefaultTemplate,
+		},
+	}
+}
+
+func newControlPlaneV2(name, namespace string) *maistrav2.ServiceMeshControlPlane {
+	return &maistrav2.ServiceMeshControlPlane{
+		ObjectMeta: meta.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: maistrav2.ControlPlaneSpec{
 			Version:  versions.DefaultVersion.String(),
 			Template: maistrav1.DefaultTemplate,
 		},

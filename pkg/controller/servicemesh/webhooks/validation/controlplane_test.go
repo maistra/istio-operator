@@ -17,6 +17,7 @@ import (
 	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/simple/networking/v1alpha3"
 	securityv1beta1 "github.com/maistra/istio-operator/pkg/apis/istio/simple/security/v1beta1"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
@@ -71,7 +72,7 @@ func TestOnlyOneControlPlaneIsAllowedPerNamespace(t *testing.T) {
 func TestControlPlaneValidation(t *testing.T) {
 	cases := []struct {
 		name         string
-		controlPlane *maistrav1.ServiceMeshControlPlane
+		controlPlane runtime.Object
 		valid        bool
 	}{
 		{
@@ -329,6 +330,154 @@ func TestControlPlaneValidation(t *testing.T) {
 				},
 			},
 			valid: true,
+		},
+		{
+			name: "v2-default-v1.0",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_0.String(),
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "v2-default-v1.1",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_1.String(),
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "v2-default-v2.0",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V2_0.String(),
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "v2-istiod-policy-v1.0",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_0.String(),
+					Policy: &maistrav2.PolicyConfig{
+						Type: maistrav2.PolicyTypeIstiod,
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "v2-istiod-policy-v1.1",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_1.String(),
+					Policy: &maistrav2.PolicyConfig{
+						Type: maistrav2.PolicyTypeIstiod,
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "v2-istiod-policy-v2.0",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V2_0.String(),
+					Policy: &maistrav2.PolicyConfig{
+						Type: maistrav2.PolicyTypeIstiod,
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "v2-istiod-telemetry-v1.0",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_0.String(),
+					Telemetry: &maistrav2.TelemetryConfig{
+						Type: maistrav2.TelemetryTypeIstiod,
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "v2-istiod-telemetry-v1.1",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_1.String(),
+					Telemetry: &maistrav2.TelemetryConfig{
+						Type: maistrav2.TelemetryTypeIstiod,
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "v2-istiod-telemetry-v2.0",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V2_0.String(),
+					Telemetry: &maistrav2.TelemetryConfig{
+						Type: maistrav2.TelemetryTypeIstiod,
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "v1-v2.0",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V2_0.String(),
+				},
+			},
+			valid: false,
 		},
 	}
 
