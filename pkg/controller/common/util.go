@@ -136,8 +136,10 @@ func GetOperatorNamespace() string {
 	return operatorNamespace
 }
 
-func ToNamespacedName(objectMeta metav1.ObjectMeta) types.NamespacedName {
-	return types.NamespacedName{objectMeta.Namespace, objectMeta.Name}
+func ToNamespacedName(obj metav1.Object) types.NamespacedName {
+	return types.NamespacedName{
+		Namespace: obj.GetNamespace(),
+		Name:      obj.GetName()}
 }
 
 func BoolToConditionStatus(b bool) core.ConditionStatus {

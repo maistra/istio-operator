@@ -122,10 +122,7 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 				requests := make([]reconcile.Request, 0, len(smcpList.Items))
 				for _, smcp := range smcpList.Items {
 					requests = append(requests, reconcile.Request{
-						NamespacedName: types.NamespacedName{
-							Name:      smcp.Name,
-							Namespace: smcp.Namespace,
-						},
+						NamespacedName: common.ToNamespacedName(&smcp),
 					})
 				}
 				return requests
@@ -238,7 +235,7 @@ func (r *ControlPlaneReconciler) getOrCreateReconciler(newInstance *v2.ServiceMe
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	key := common.ToNamespacedName(newInstance.ObjectMeta)
+	key := common.ToNamespacedName(newInstance)
 	if reconciler, ok := r.reconcilers[key]; ok {
 		reconciler.SetInstance(newInstance)
 		return key, reconciler

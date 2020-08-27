@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"github.com/maistra/istio-operator/pkg/controller/common"
 	v1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -20,6 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
 const controllerName = "webhookca-controller"
@@ -81,25 +82,13 @@ func add(mgr manager.Manager, r *reconciler) error {
 	// Watch secret
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
-			return r.webhookCABundleManager.ReconcileRequestsFromSecret(
-				types.NamespacedName{
-					Namespace: obj.Meta.GetNamespace(),
-					Name:      obj.Meta.GetName(),
-				})
+			return r.webhookCABundleManager.ReconcileRequestsFromSecret(common.ToNamespacedName(obj.Meta))
 		})}, predicate.Funcs{
 		CreateFunc: func(event event.CreateEvent) bool {
-			return r.webhookCABundleManager.IsManagingWebhooksForSecret(
-				types.NamespacedName{
-					Namespace: event.Meta.GetNamespace(),
-					Name:      event.Meta.GetName(),
-				})
+			return r.webhookCABundleManager.IsManagingWebhooksForSecret(common.ToNamespacedName(event.Meta))
 		},
 		UpdateFunc: func(event event.UpdateEvent) bool {
-			return r.webhookCABundleManager.IsManagingWebhooksForSecret(
-				types.NamespacedName{
-					Namespace: event.MetaNew.GetNamespace(),
-					Name:      event.MetaNew.GetName(),
-				})
+			return r.webhookCABundleManager.IsManagingWebhooksForSecret(common.ToNamespacedName(event.MetaNew))
 		},
 		// deletion and generic events don't interest us
 		DeleteFunc: func(event event.DeleteEvent) bool {

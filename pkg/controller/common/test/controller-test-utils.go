@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/apis"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
 
@@ -62,7 +63,7 @@ func GetObject(ctx context.Context, cl client.Client, objectKey client.ObjectKey
 }
 
 func GetUpdatedObject(ctx context.Context, cl client.Client, objectMeta meta.ObjectMeta, into runtime.Object) runtime.Object {
-	err := cl.Get(ctx, getNamespacedName(objectMeta), into)
+	err := cl.Get(ctx, common.ToNamespacedName(&objectMeta), into)
 	if err != nil {
 		// we don't expect any errors, since we're calling Get on a fake client, but let's panic if one does occur
 		panic(fmt.Sprintf("Unexpected error: %v", err))
@@ -126,10 +127,6 @@ func AssertGetAction(t *testing.T, action clienttesting.Action, objectMeta meta.
 	act := action.(clienttesting.GetAction)
 	assert.Equals(act.GetName(), objectMeta.Name, "Unexpected resource name in client action", t)
 	assert.Equals(act.GetNamespace(), objectMeta.Namespace, "Unexpected resource namespace in client action", t)
-}
-
-func getNamespacedName(obj meta.ObjectMeta) types.NamespacedName {
-	return types.NamespacedName{Namespace: obj.Namespace, Name: obj.Name}
 }
 
 func ClientFailsOn(verb string, resource string) clienttesting.ReactionFunc {

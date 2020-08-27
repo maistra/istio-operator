@@ -72,7 +72,7 @@ func (r *controlPlaneInstanceReconciler) Delete(ctx context.Context) error {
 
 	// get fresh SMCP from cache to minimize the chance of a conflict during update (the SMCP might have been updated during the execution of reconciler.Delete())
 	instance := &maistrav1.ServiceMeshControlPlane{}
-	if err := r.Client.Get(ctx, common.ToNamespacedName(r.Instance.ObjectMeta), instance); err == nil {
+	if err := r.Client.Get(ctx, common.ToNamespacedName(r.Instance), instance); err == nil {
 		finalizers := sets.NewString(instance.Finalizers...)
 		finalizers.Delete(common.FinalizerName)
 		instance.SetFinalizers(finalizers.List())
