@@ -136,13 +136,11 @@ func (v *versionStrategyV2_0) ValidateV2(ctx context.Context, cl client.Client, 
 }
 
 func (v *versionStrategyV2_0) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
-	// TODO: XXX
-	return nil
+	return fmt.Errorf("inplace downgrade from v2.0 to v1.x is not supported")
 }
 
 func (v *versionStrategyV2_0) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
-	// TODO: XXX
-	return nil
+	return fmt.Errorf("inplace upgrade from v1.x to v2.0 is not supported")
 }
 
 func (v *versionStrategyV2_0) GetChartInstallOrder() [][]string {
