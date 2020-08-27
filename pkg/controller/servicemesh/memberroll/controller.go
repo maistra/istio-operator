@@ -102,10 +102,7 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 			var requests []reconcile.Request
 			for _, smmr := range list.Items {
 				requests = append(requests, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      smmr.Name,
-						Namespace: smmr.Namespace,
-					},
+					NamespacedName: common.ToNamespacedName(&smmr),
 				})
 			}
 			return requests

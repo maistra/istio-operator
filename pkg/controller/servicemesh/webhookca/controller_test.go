@@ -155,7 +155,7 @@ func TestReconcileDoesNothingWhenWebhookConfigMissing(t *testing.T) {
 			_, tracker, r := createClientAndReconciler(t, tc.secret)
 			r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName)
+				common.ToNamespacedName(tc.secret), tc.caFileName)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 		})
@@ -168,7 +168,7 @@ func TestReconcileDoesNothingWhenSecretMissing(t *testing.T) {
 			_, tracker, r := createClientAndReconciler(t, tc.webhook)
 			r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName)
+				common.ToNamespacedName(tc.secret), tc.caFileName)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 		})
@@ -182,7 +182,7 @@ func TestReconcileDoesNothingWhenSecretContainsNoCertificate(t *testing.T) {
 			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
 			r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName)
+				common.ToNamespacedName(tc.secret), tc.caFileName)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 		})
@@ -195,7 +195,7 @@ func TestReconcileDoesNothingWhenCABundleMatches(t *testing.T) {
 			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
 			r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName)
+				common.ToNamespacedName(tc.secret), tc.caFileName)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 		})
@@ -212,7 +212,7 @@ func TestReconcileUpdatesCABundle(t *testing.T) {
 			cl, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
 			if err := r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName); err != nil {
+				common.ToNamespacedName(tc.secret), tc.caFileName); err != nil {
 				t.Fatal(err)
 			}
 			assertReconcileSucceeds(r, tc.request, t)
@@ -262,7 +262,7 @@ func TestReconcileAutomaticRegistration(t *testing.T) {
 			wrapper, _ := tc.getter.Get(context.TODO(), cl, types.NamespacedName{Name: tc.webhookName})
 			assert.DeepEquals(wrapper.ClientConfigs()[0].CABundle, []byte("new-value"), "Expected Reconcile() to update the CABundle in the webhook configuration", t)
 
-			assert.True(r.webhookCABundleManager.IsManagingWebhooksForSecret(types.NamespacedName{Name: tc.secret.Name, Namespace: tc.secret.Namespace}), "Expected secret to trigger a webhook reconcile", t)
+			assert.True(r.webhookCABundleManager.IsManagingWebhooksForSecret(common.ToNamespacedName(tc.secret)), "Expected secret to trigger a webhook reconcile", t)
 
 			watchPredicates.Delete(event.DeleteEvent{Meta: accessor, Object: tc.webhook})
 			if r.webhookCABundleManager.IsManaged(tc.webhook) {
@@ -284,7 +284,7 @@ func TestReconcileHandlesWebhookConfigsWithoutWebhooks(t *testing.T) {
 			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
 			r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName)
+				common.ToNamespacedName(tc.secret), tc.caFileName)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 		})
@@ -319,7 +319,7 @@ func TestReconcileDoesNothingWithMultipleNamesacedServices(t *testing.T) {
 			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
 			r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName)
+				common.ToNamespacedName(tc.secret), tc.caFileName)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 		})
@@ -335,7 +335,7 @@ func TestReconcileReturnsErrorWhenUpdateFails(t *testing.T) {
 			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.secret)
 			r.webhookCABundleManager.ManageWebhookCABundle(
 				tc.webhook,
-				types.NamespacedName{Namespace: tc.secret.GetNamespace(), Name: tc.secret.GetName()}, tc.caFileName)
+				common.ToNamespacedName(tc.secret), tc.caFileName)
 			tracker.AddReactor("update", "mutatingwebhookconfigurations", test.ClientFails())
 			tracker.AddReactor("update", "validatingwebhookconfigurations", test.ClientFails())
 			tracker.AddReactor("update", "customresourcedefinitions", test.ClientFails())

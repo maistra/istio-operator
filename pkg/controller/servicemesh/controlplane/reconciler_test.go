@@ -51,7 +51,7 @@ func TestInstallationErrorDoesNotUpdateLastTransitionTimeWhenNoStateTransitionOc
 
 	// remember the SMCP status at this point
 	updatedControlPlane := &maistrav2.ServiceMeshControlPlane{}
-	test.PanicOnError(cl.Get(ctx, common.ToNamespacedName(controlPlane.ObjectMeta), updatedControlPlane))
+	test.PanicOnError(cl.Get(ctx, common.ToNamespacedName(controlPlane), updatedControlPlane))
 	initialStatus := updatedControlPlane.Status.DeepCopy()
 
 	// the resolution of lastTransitionTime is one second, so we need to wait at least one second before
@@ -62,7 +62,7 @@ func TestInstallationErrorDoesNotUpdateLastTransitionTimeWhenNoStateTransitionOc
 	// run reconcile again to check if the status is still the same
 	assertInstanceReconcilerFails(r, t)
 
-	test.PanicOnError(cl.Get(ctx, common.ToNamespacedName(controlPlane.ObjectMeta), updatedControlPlane))
+	test.PanicOnError(cl.Get(ctx, common.ToNamespacedName(controlPlane), updatedControlPlane))
 	newStatus := &updatedControlPlane.Status
 
 	marshal, _ := json.Marshal(initialStatus)
@@ -259,7 +259,7 @@ func assertInstanceReconcilerSucceeds(r ControlPlaneInstanceReconciler, t *testi
 
 func assertReconciledConditionMatches(cl client.Client, smcp *maistrav2.ServiceMeshControlPlane, reason status.ConditionReason, messageSubstring string, t *testing.T) {
 	t.Helper()
-	test.PanicOnError(cl.Get(ctx, common.ToNamespacedName(smcp.ObjectMeta), smcp))
+	test.PanicOnError(cl.Get(ctx, common.ToNamespacedName(smcp), smcp))
 	reconciledCondition := smcp.Status.GetCondition(status.ConditionTypeReconciled)
 	assert.Equals(reconciledCondition.Reason, reason, "Unexpected reconciledCondition.Reason", t)
 	assert.True(

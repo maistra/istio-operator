@@ -8,7 +8,6 @@ import (
 	errors2 "github.com/pkg/errors"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -137,10 +136,7 @@ func (r *MemberReconciler) getRequestsForMembersReferencing(ctx context.Context,
 	var requests []reconcile.Request
 	for _, smm := range list.Items {
 		requests = append(requests, reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      smm.Name,
-				Namespace: smm.Namespace,
-			},
+			NamespacedName: common.ToNamespacedName(&smm),
 		})
 	}
 	return requests
@@ -204,7 +200,7 @@ func (r *MemberReconciler) reconcileMember(ctx context.Context, member *maistra.
 			},
 		}
 
-		reqLogger.Info("Creating ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll.ObjectMeta).String())
+		reqLogger.Info("Creating ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll).String())
 		err = r.Client.Create(ctx, memberRoll)
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -232,7 +228,7 @@ func (r *MemberReconciler) reconcileMember(ctx context.Context, member *maistra.
 
 	} else {
 		if !contains(member.Namespace, memberRoll.Spec.Members) {
-			reqLogger.Info("Adding ServiceMeshMember to ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll.ObjectMeta).String())
+			reqLogger.Info("Adding ServiceMeshMember to ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll).String())
 			memberRoll.Spec.Members = append(memberRoll.Spec.Members, member.Namespace)
 
 			err = r.Client.Update(ctx, memberRoll)
@@ -287,7 +283,7 @@ func (r *MemberReconciler) finalizeMember(ctx context.Context, obj runtime.Objec
 
 		memberRollCreatedByThisController := memberRoll.Annotations[common.CreatedByKey] == controllerName
 		if len(memberRoll.Spec.Members) == 0 && memberRollCreatedByThisController {
-			reqLogger.Info("Deleting ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll.ObjectMeta).String())
+			reqLogger.Info("Deleting ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll).String())
 			err = r.Client.Delete(ctx, memberRoll)     // TODO: need to add resourceVersion precondition to delete request (need newer apimachinery to do that)
 			if err != nil && !errors.IsNotFound(err) { // if NotFound, MemberRoll has been deleted, which is what we wanted. This means this is not an error, but a success.
 				err = errors2.Wrapf(err, "Could not delete ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
@@ -295,7 +291,7 @@ func (r *MemberReconciler) finalizeMember(ctx context.Context, obj runtime.Objec
 				return false, err
 			}
 		} else {
-			reqLogger.Info("Removing ServiceMeshMember from ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll.ObjectMeta).String())
+			reqLogger.Info("Removing ServiceMeshMember from ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll).String())
 			err = r.Client.Update(ctx, memberRoll)
 			if err != nil {
 				if errors.IsNotFound(err) {

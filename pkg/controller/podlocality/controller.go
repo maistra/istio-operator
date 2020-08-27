@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -96,10 +95,7 @@ func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 			for _, pod := range list.Items {
 				if podHasSidecar(pod) {
 					requests = append(requests, reconcile.Request{
-						NamespacedName: types.NamespacedName{
-							Name:      pod.Name,
-							Namespace: pod.Namespace,
-						},
+						NamespacedName: common.ToNamespacedName(&pod),
 					})
 				}
 			}
