@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/admissionregistration/v1"
 	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -12,6 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
 // this file contains implementations specific to validating webhooks
@@ -75,7 +76,7 @@ func (mw *conversionWebhookWrapper) UpdateCABundle(ctx context.Context, cl clien
 		logger.Info("Skipping CABundle update, no webhook client.")
 		return nil
 	}
-	if bytes.Compare(mw.Spec.Conversion.Webhook.ClientConfig.CABundle, caBundle) == 0 {
+	if bytes.Equal(mw.Spec.Conversion.Webhook.ClientConfig.CABundle, caBundle) {
 		logger.Info("Correct CABundle already present. Ignoring")
 		return nil
 	}
