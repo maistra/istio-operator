@@ -74,7 +74,7 @@ func (v *ControlPlaneMutator) Handle(ctx context.Context, req admission.Request)
 	}
 
 	if len(mutator.GetProfiles()) == 0 {
-		log.Info("Setting .spec.profiles to default value", "profiles")
+		log.Info("Setting .spec.profiles to default value", "profiles", []string{v1.DefaultTemplate})
 		mutator.SetProfiles([]string{v1.DefaultTemplate})
 	}
 
