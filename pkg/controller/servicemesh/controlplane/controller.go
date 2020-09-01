@@ -166,6 +166,7 @@ type ControlPlaneReconciler struct {
 type ControlPlaneInstanceReconciler interface {
 	Reconcile(ctx context.Context) (reconcile.Result, error)
 	UpdateReadiness(ctx context.Context) error
+	PatchAddons(ctx context.Context) error
 	Delete(ctx context.Context) error
 	SetInstance(instance *v2.ServiceMeshControlPlane)
 	IsFinished() bool
@@ -220,6 +221,9 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 
 	if isFullyReconciled(instance) {
 		err := reconciler.UpdateReadiness(ctx)
+		if err == nil {
+			err = reconciler.PatchAddons(ctx)
+		}
 		return reconcile.Result{}, err
 	}
 

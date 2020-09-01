@@ -97,6 +97,16 @@ func (h *HelmValues) SetField(path string, value interface{}) error {
 	return unstructured.SetNestedField(h.data, value, strings.Split(path, ".")...)
 }
 
+func (h *HelmValues) SetStringSlice(path string, value []string) error {
+	if h == nil {
+		panic("Tried to invoke SetField on nil *HelmValues")
+	}
+	if h.data == nil {
+		h.data = map[string]interface{}{}
+	}
+	return unstructured.SetNestedStringSlice(h.data, value, strings.Split(path, ".")...)
+}
+
 func (h *HelmValues) UnmarshalJSON(in []byte) error {
 	err := json.Unmarshal(in, &h.data)
 	if err != nil {

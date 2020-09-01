@@ -17,9 +17,9 @@ import (
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	configv1alpha2 "github.com/maistra/istio-operator/pkg/apis/istio/simple/config/v1alpha2"
-	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/simple/networking/v1alpha3"
-	securityv1beta1 "github.com/maistra/istio-operator/pkg/apis/istio/simple/security/v1beta1"
+	configv1alpha2 "github.com/maistra/istio-operator/pkg/apis/external/istio/config/v1alpha2"
+	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/external/istio/networking/v1alpha3"
+	securityv1beta1 "github.com/maistra/istio-operator/pkg/apis/external/istio/security/v1beta1"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -164,7 +164,7 @@ func (v *versionStrategyV1_1) ValidateDowngrade(ctx context.Context, cl client.C
 	for _, vs := range virtualServices.Items {
 		// we only care about resources in this mesh, which aren't being managed by the operator directly
 		if meshNamespaces.Has(vs.GetNamespace()) && !metav1.IsControlledBy(&vs, smcp) {
-			if routes, ok, _ := unstructured.NestedSlice(vs.Spec, "http"); ok {
+			if routes, ok, _ := vs.Spec.GetSlice("http"); ok {
 				for _, route := range routes {
 					if routeStruct, ok := route.(map[string]interface{}); ok {
 						if _, ok, _ := unstructured.NestedFieldNoCopy(routeStruct, "mirrorPercent"); ok {

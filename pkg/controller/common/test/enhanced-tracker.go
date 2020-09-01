@@ -3,6 +3,7 @@ package test
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -142,6 +143,11 @@ func (t *EnhancedTracker) PrependProxyReaction(reactors ...testing.ProxyReactor)
 	t.ProxyReactionChain = append(reactors, t.ProxyReactionChain...)
 }
 
+func (t *EnhancedTracker) yeild() {
+	// yeild to allow watches to process the change before returning
+	time.Sleep(5 * time.Millisecond)
+}
+
 func (t *EnhancedTracker) Add(obj runtime.Object) error {
 	gvks, unversioned, err := t.Scheme.ObjectKinds(obj)
 	if err != nil {
@@ -157,7 +163,8 @@ func (t *EnhancedTracker) Add(obj runtime.Object) error {
 	if err != nil {
 		return err
 	}
-	return t.ObjectTracker.Add(preferred)
+	err = t.ObjectTracker.Add(preferred)
+	return err
 }
 
 // Create creates the obj in the embedded ObjectTracker.  Before creating the
@@ -176,7 +183,10 @@ func (t *EnhancedTracker) Create(gvr schema.GroupVersionResource, obj runtime.Ob
 	if err != nil {
 		return err
 	}
-	return t.ObjectTracker.Create(preferredGVR, preferred, ns)
+	err = t.ObjectTracker.Create(preferredGVR, preferred, ns)
+	// yeild to allow watches to process the change before returning
+	t.yeild()
+	return err
 }
 
 // Update updates the obj in the embedded ObjectTracker.  Before updating the
@@ -194,7 +204,20 @@ func (t *EnhancedTracker) Update(gvr schema.GroupVersionResource, obj runtime.Ob
 	if err != nil {
 		return err
 	}
-	return t.ObjectTracker.Update(preferredGVR, preferred, ns)
+	err = t.ObjectTracker.Update(preferredGVR, preferred, ns)
+	// yeild to allow watches to process the change before returning
+	t.yeild()
+	return err
+
+}
+
+// Delete deltes the obj in the embedded ObjectTracker.  Before returning, we
+// yield the processor to ensure watches have a chance to run before.
+func (t *EnhancedTracker) Delete(gvr schema.GroupVersionResource, ns, name string) (err error) {
+	err = t.ObjectTracker.Delete(gvr, ns, name)
+	// yeild to allow watches to process the change before returning
+	t.yeild()
+	return err
 }
 
 func (t *EnhancedTracker) Get(gvr schema.GroupVersionResource, ns, name string) (runtime.Object, error) {
@@ -232,18 +255,28 @@ func (t *EnhancedTracker) Get(gvr schema.GroupVersionResource, ns, name string) 
 }
 
 func (t *EnhancedTracker) List(gvr schema.GroupVersionResource, gvk schema.GroupVersionKind, ns string) (runtime.Object, error) {
+	storageGVR := gvr
 	storageKind, ok := t.GroupVersioner.KindForGroupVersionKinds([]schema.GroupVersionKind{gvk})
 	if !ok {
-		return t.ObjectTracker.List(gvr, gvk, ns)
+		storageKind = gvk
+	} else if t.Scheme.Recognizes(storageKind) {
+		storageGVR = schema.GroupVersionResource{Group: gvr.Group, Resource: gvr.Resource, Version: storageKind.Version}
+	} else {
+		// no kind for preferred version
+		// XXX: need to create v2 kinds for ServiceMeshMember, ServiceMeshMemberRoll, etc.
+		storageKind = gvk
 	}
+
 	if !t.Scheme.Recognizes(storageKind) {
-		// preferred version doesn't exist for this kind
-		return t.ObjectTracker.List(gvr, gvk, ns)
+		// register the type
+		listGVK := storageKind
+		listGVK.Kind = listGVK.Kind + "List"
+		t.Scheme.AddKnownTypeWithName(storageKind, &unstructured.Unstructured{})
+		t.Scheme.AddKnownTypeWithName(listGVK, &unstructured.UnstructuredList{})
 	}
 	// get the stored version
-	stoargeGVR := schema.GroupVersionResource{Group: gvr.Group, Resource: gvr.Resource, Version: storageKind.Version}
-	obj, err := t.ObjectTracker.List(stoargeGVR, storageKind, ns)
-	if err != nil {
+	obj, err := t.ObjectTracker.List(storageGVR, storageKind, ns)
+	if err != nil || storageKind == gvk {
 		return obj, err
 	}
 	// convert to desired version

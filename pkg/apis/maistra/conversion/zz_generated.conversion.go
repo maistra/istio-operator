@@ -89,17 +89,24 @@ func autoConvert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneS
 }
 
 func autoConvert_v1_ControlPlaneStatus_To_v2_ControlPlaneStatus(in *v1.ControlPlaneStatus, out *v2.ControlPlaneStatus, s conversion.Scope) error {
-	// WARNING: in.StatusBase requires manual conversion: does not exist in peer-type
-	// WARNING: in.StatusType requires manual conversion: does not exist in peer-type
-	// WARNING: in.ObservedGeneration requires manual conversion: does not exist in peer-type
+	out.StatusBase = in.StatusBase
+	out.StatusType = in.StatusType
+	out.ObservedGeneration = in.ObservedGeneration
 	// WARNING: in.ReconciledVersion requires manual conversion: does not exist in peer-type
-	// WARNING: in.ComponentStatusList requires manual conversion: does not exist in peer-type
+	out.ComponentStatusList = in.ComponentStatusList
 	// WARNING: in.LastAppliedConfiguration requires manual conversion: does not exist in peer-type
 	return nil
 }
 
 func autoConvert_v2_ControlPlaneStatus_To_v1_ControlPlaneStatus(in *v2.ControlPlaneStatus, out *v1.ControlPlaneStatus, s conversion.Scope) error {
-	// WARNING: in.ControlPlaneStatus requires manual conversion: does not exist in peer-type
+	out.StatusBase = in.StatusBase
+	out.StatusType = in.StatusType
+	out.ObservedGeneration = in.ObservedGeneration
+	// WARNING: in.OperatorVersion requires manual conversion: does not exist in peer-type
+	// WARNING: in.ChartVersion requires manual conversion: does not exist in peer-type
+	out.ComponentStatusList = in.ComponentStatusList
+	// WARNING: in.AppliedSpec requires manual conversion: does not exist in peer-type
+	// WARNING: in.AppliedValues requires manual conversion: does not exist in peer-type
 	return nil
 }
 

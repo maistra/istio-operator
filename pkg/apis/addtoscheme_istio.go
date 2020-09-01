@@ -1,9 +1,9 @@
 package apis
 
 import (
-	"github.com/maistra/istio-operator/pkg/apis/istio/simple/config/v1alpha2"
-	"github.com/maistra/istio-operator/pkg/apis/istio/simple/networking/v1alpha3"
-	"github.com/maistra/istio-operator/pkg/apis/istio/simple/security/v1beta1"
+	"github.com/maistra/istio-operator/pkg/apis/external/istio/config/v1alpha2"
+	"github.com/maistra/istio-operator/pkg/apis/external/istio/networking/v1alpha3"
+	"github.com/maistra/istio-operator/pkg/apis/external/istio/security/v1beta1"
 )
 
 func init() {

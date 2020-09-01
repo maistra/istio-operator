@@ -29,6 +29,16 @@ func TestMarshall(t *testing.T) {
 			expected: "foo:\n" +
 				"  bar: baz\n",
 		},
+		{
+			name: "nil-value",
+			value: NewHelmValues(map[string]interface{}{
+				"foo": map[string]interface{}{
+					"bar": nil,
+				},
+			}),
+			expected: "foo:\n" +
+				"  bar: null\n",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -40,6 +50,17 @@ func TestMarshall(t *testing.T) {
 
 			if string(actualYaml) != tc.expected {
 				t.Fatalf("Unexpected YAML;\nexpected:\n%v\n\nactual:\n%v", tc.expected, string(actualYaml))
+			}
+			deserialized := NewHelmValues(map[string]interface{}{})
+			if err := yaml.Unmarshal(actualYaml, &deserialized); err != nil {
+				panic(fmt.Sprintf("Unexpected error: %v", err))
+			}
+			if !reflect.DeepEqual(deserialized, tc.value) {
+				t.Fatalf("Unexpected deserialized value;\nexpected:\n%v\n\nactual:\n%v", tc.value, deserialized)
+			}
+			copy := tc.value.DeepCopy()
+			if !reflect.DeepEqual(copy, tc.value) {
+				t.Fatalf("Unexpected copy value;\nexpected:\n%v\n\nactual:\n%v", tc.value, copy)
 			}
 		})
 	}

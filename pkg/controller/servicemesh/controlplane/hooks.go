@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
-	"github.com/maistra/istio-operator/pkg/controller/common"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/wait"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
 func (r *controlPlaneInstanceReconciler) processNewComponent(name string, status *status.ComponentStatus) error {
@@ -34,6 +33,11 @@ func (r *controlPlaneInstanceReconciler) preprocessObject(ctx context.Context, o
 
 	// add generation annotation
 	common.SetAnnotation(object, common.MeshGenerationKey, r.meshGeneration)
+
+	// pull chart version
+	if r.chartVersion == "" {
+		r.chartVersion, _ = common.GetLabel(object, "maistra-version")
+	}
 
 	switch object.GetKind() {
 	case "Kiali":
@@ -74,28 +78,11 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, o
 	// if the user has not yet configured this, let's try to auto-detect it now.
 	if len(jaegerURL) == 0 && jaegerEnabled {
 		log.Info("attempting to auto-detect jaeger for kiali")
-		jaegerRoute := &unstructured.Unstructured{}
-		jaegerRoute.SetAPIVersion("route.openshift.io/v1")
-		jaegerRoute.SetKind("Route")
-		// jaeger is the name of the Jaeger CR
-		err = r.Client.Get(ctx, client.ObjectKey{Name: "jaeger", Namespace: object.GetNamespace()}, jaegerRoute)
+		jaegerURL, err = r.jaegerURL(ctx, log)
 		if err != nil {
-			if !errors.IsNotFound(err) {
-				log.Error(err, "error retrieving jaeger route - will disable it in Kiali")
-				// we aren't going to return here - Jaeger is optional for Kiali; Kiali can still run without it
-			}
 			jaegerEnabled = false
-		} else {
-			jaegerURL, _, _ = unstructured.NestedString(jaegerRoute.UnstructuredContent(), "spec", "host")
-			jaegerScheme := "http"
-			if jaegerTLSTermination, ok, _ := unstructured.NestedString(jaegerRoute.UnstructuredContent(), "spec", "tls", "termination"); ok && len(jaegerTLSTermination) > 0 {
-				jaegerScheme = "https"
-			}
-			if len(jaegerURL) > 0 {
-				jaegerURL = fmt.Sprintf("%s://%s", jaegerScheme, jaegerURL)
-			} else {
-				jaegerEnabled = false // there is no host on this route - disable it in kiali
-			}
+		} else if jaegerURL == "" {
+			jaegerEnabled = false // there is no host on this route - disable it in kiali
 		}
 	}
 
@@ -112,27 +99,11 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, o
 	// if the user has not yet configured this, let's try to auto-detect it now.
 	if len(grafanaURL) == 0 && grafanaEnabled {
 		log.Info("attempting to auto-detect grafana for kiali")
-		grafanaRoute := &unstructured.Unstructured{}
-		grafanaRoute.SetAPIVersion("route.openshift.io/v1")
-		grafanaRoute.SetKind("Route")
-		err = r.Client.Get(ctx, client.ObjectKey{Name: "grafana", Namespace: object.GetNamespace()}, grafanaRoute)
+		grafanaURL, err = r.grafanaURL(ctx, log)
 		if err != nil {
-			if !errors.IsNotFound(err) {
-				log.Error(err, "error retrieving grafana route - will disable it in Kiali")
-				// we aren't going to return here - Grafana is optional for Kiali; Kiali can still run without it
-			}
 			grafanaEnabled = false
-		} else {
-			grafanaURL, _, _ = unstructured.NestedString(grafanaRoute.UnstructuredContent(), "spec", "host")
-			grafanaScheme := "http"
-			if grafanaTLSTermination, ok, _ := unstructured.NestedString(grafanaRoute.UnstructuredContent(), "spec", "tls", "termination"); ok && len(grafanaTLSTermination) > 0 {
-				grafanaScheme = "https"
-			}
-			if len(grafanaURL) > 0 {
-				grafanaURL = fmt.Sprintf("%s://%s", grafanaScheme, grafanaURL)
-			} else {
-				grafanaEnabled = false // there is no host on this route - disable it in kiali
-			}
+		} else if grafanaURL == "" {
+			grafanaEnabled = false // there is no host on this route - disable it in kiali
 		}
 	}
 
@@ -159,7 +130,7 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, o
 		return fmt.Errorf("could not set grafana enabled flag in kiali CR: %s", err)
 	}
 
-	rawPassword, err := r.getRawHtPasswd(ctx, object)
+	rawPassword, err := r.getRawHtPasswd(ctx)
 	if err != nil {
 		return err
 	}
