@@ -30,14 +30,14 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 	}
 
 	var err error
-	smcp.Status.LastAppliedConfiguration, err = v.applyProfiles(ctx, cr, v1spec)
+	smcp.Status.AppliedValues, err = v.applyProfiles(ctx, cr, v1spec)
 	if err != nil {
 		log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates")
 
 		return nil, err
 	}
 
-	spec := &smcp.Status.LastAppliedConfiguration
+	spec := &smcp.Status.AppliedValues
 
 	if spec.ThreeScale == nil {
 		spec.ThreeScale = v1.NewHelmValues(make(map[string]interface{}))
@@ -55,6 +55,13 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 	err = spec.Istio.SetField("istio_cni.istio_cni_network", v.GetCNINetworkName())
 	if err != nil {
 		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.istio_cni_network: %v", err)
+	}
+
+	// convert back to the v2 type
+	smcp.Status.AppliedSpec = v2.ControlPlaneSpec{}
+	err = cr.Scheme.Convert(&smcp.Status.AppliedValues, &smcp.Status.AppliedSpec, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Unexpected error setting Status.AppliedSpec: %v", err)
 	}
 
 	//Render the charts

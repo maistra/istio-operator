@@ -175,5 +175,5 @@ func (a *AbstractActionFilter) String() string {
 	if a.Subresource == "" {
 		return fmt.Sprintf("%s on %s named %s in %s", a.Verb, a.Resource, a.Name, a.Namespace)
 	}
-	return fmt.Sprintf("%s on %s/%s named %s in %s", a.Verb, a.Resource, a.Subresource, a.Name, a.Namespace)
+	return fmt.Sprintf("%s on %s.%s named %s in %s", a.Verb, a.Resource, a.Subresource, a.Name, a.Namespace)
 }

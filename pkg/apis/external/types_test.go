@@ -1,10 +1,12 @@
-package simple
+package external
 
 import (
 	"reflect"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 )
 
 type testType struct {
@@ -45,7 +47,7 @@ func TestDeepCopy(t *testing.T) {
 					"annotation": "value",
 				},
 			},
-			Spec: map[string]interface{}{
+			Spec: v1.NewHelmValues(map[string]interface{}{
 				"string": "some-value",
 				"int":    int64(42),
 				"float":  float64(4.2),
@@ -56,7 +58,7 @@ func TestDeepCopy(t *testing.T) {
 					"nestedFloat":  float64(2.5),
 					"nestedBool":   true,
 				},
-			},
+			}),
 		},
 	}
 	copy := source.DeepCopy()

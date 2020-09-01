@@ -99,9 +99,6 @@ var jaegerTestCases = []conversionTestCase{
 			"tracing": map[string]interface{}{
 				"enabled":  true,
 				"provider": "jaeger",
-				"jaeger": map[string]interface{}{
-					"install": false,
-				},
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -140,7 +137,6 @@ var jaegerTestCases = []conversionTestCase{
 				"enabled":  true,
 				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      false,
 					"resourceName": "my-jaeger",
 				},
 			},
@@ -182,7 +178,6 @@ var jaegerTestCases = []conversionTestCase{
 				"enabled":  true,
 				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 				},
 			},
@@ -226,7 +221,6 @@ var jaegerTestCases = []conversionTestCase{
 				"enabled":  true,
 				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 				},
 			},
@@ -272,7 +266,6 @@ var jaegerTestCases = []conversionTestCase{
 				"enabled":  true,
 				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 					"template":     "all-in-one",
 				},
@@ -320,7 +313,6 @@ var jaegerTestCases = []conversionTestCase{
 				"enabled":  true,
 				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 					"template":     "all-in-one",
 				},
@@ -370,7 +362,6 @@ var jaegerTestCases = []conversionTestCase{
 				"enabled":  true,
 				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 					"template":     "all-in-one",
 					"memory": map[string]interface{}{
@@ -420,7 +411,6 @@ var jaegerTestCases = []conversionTestCase{
 				"enabled":  true,
 				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 					"template":     "production-elasticsearch",
 				},
@@ -468,7 +458,6 @@ var jaegerTestCases = []conversionTestCase{
 				"enabled":  true,
 				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 					"template":     "production-elasticsearch",
 				},
@@ -528,7 +517,6 @@ var jaegerTestCases = []conversionTestCase{
 				"enabled":  true,
 				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 					"template":     "production-elasticsearch",
 					"elasticsearch": map[string]interface{}{
@@ -585,7 +573,6 @@ var jaegerTestCases = []conversionTestCase{
 				"enabled":  true,
 				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 				},
 			},
@@ -641,7 +628,6 @@ var jaegerTestCases = []conversionTestCase{
 				"enabled":  true,
 				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 				},
 				"ingress": map[string]interface{}{

@@ -9,7 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -25,6 +25,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/maistra/istio-operator/pkg/apis/external"
+	kialiv1alpha1 "github.com/maistra/istio-operator/pkg/apis/external/kiali/v1alpha1"
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -212,9 +214,18 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			return reconcile.Result{}, utilerrors.NewAggregate(nsErrors)
 		}
 
-		err = r.kialiReconciler.reconcileKiali(ctx, instance.Namespace, []string{})
+		mesh, err := r.getActiveMesh(ctx, instance)
 		if err != nil {
 			return reconcile.Result{}, err
+		}
+		if mesh != nil && mesh.Status.AppliedSpec.Addons != nil &&
+			mesh.Status.AppliedSpec.Addons.Visualization.Kiali != nil &&
+			mesh.Status.AppliedSpec.Addons.Visualization.Kiali.Enabled != nil &&
+			*mesh.Status.AppliedSpec.Addons.Visualization.Kiali.Enabled {
+			err = r.kialiReconciler.reconcileKiali(ctx, mesh.Status.AppliedSpec.Addons.Visualization.Kiali.Name, instance.Namespace, []string{})
+			if err != nil {
+				return reconcile.Result{}, err
+			}
 		}
 
 		// get fresh SMMR from cache to minimize the chance of a conflict during update (the SMMR might have been updated during the execution of Reconcile())
@@ -243,58 +254,8 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	reqLogger.Info("Reconciling ServiceMeshMemberRoll")
 
-	meshList := &v2.ServiceMeshControlPlaneList{}
-	err = r.Client.List(ctx, meshList, client.InNamespace(instance.Namespace))
-	if err != nil {
-		return reconcile.Result{}, pkgerrors.Wrap(err, "Error retrieving ServiceMeshControlPlane resources")
-	}
-	meshCount := len(meshList.Items)
-	if meshCount != 1 {
-		if meshCount > 0 {
-			reqLogger.Info("Skipping reconciliation of SMMR, because multiple ServiceMeshControlPlane resources exist in the project", "project", instance.Namespace)
-			instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
-				Type:    v1.ConditionTypeMemberRollReady,
-				Status:  corev1.ConditionFalse,
-				Reason:  v1.ConditionReasonMultipleSMCP,
-				Message: "Multiple ServiceMeshControlPlane resources exist in the namespace",
-			})
-		} else {
-			reqLogger.Info("Skipping reconciliation of SMMR, because no ServiceMeshControlPlane exists in the project.", "project", instance.Namespace)
-			instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
-				Type:    v1.ConditionTypeMemberRollReady,
-				Status:  corev1.ConditionFalse,
-				Reason:  v1.ConditionReasonSMCPMissing,
-				Message: "No ServiceMeshControlPlane exists in the namespace",
-			})
-		}
-		// when a control plane is created/deleted our watch will pick it up and issue a new reconcile event
-		err = r.updateStatus(ctx, instance)
-		return reconcile.Result{}, err
-	}
-
-	mesh := &meshList.Items[0]
-
-	if mesh.Status.ObservedGeneration == 0 {
-		reqLogger.Info("Initial service mesh installation has not completed")
-		instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
-			Type:    v1.ConditionTypeMemberRollReady,
-			Status:  corev1.ConditionFalse,
-			Reason:  v1.ConditionReasonSMCPNotReconciled,
-			Message: "Initial service mesh installation has not completed",
-		})
-		// a new reconcile request will be issued when the control plane resource is updated
-		err = r.updateStatus(ctx, instance)
-		return reconcile.Result{}, err
-	} else if meshReconcileStatus := mesh.Status.GetCondition(status.ConditionTypeReconciled); meshReconcileStatus.Status != status.ConditionStatusTrue {
-		reqLogger.Info("skipping reconciliation because mesh is not in a known good state")
-		instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
-			Type:    v1.ConditionTypeMemberRollReady,
-			Status:  corev1.ConditionFalse,
-			Reason:  v1.ConditionReasonSMCPNotReconciled,
-			Message: "Service mesh installation is not in a known good state",
-		})
-		// a new reconcile request will be issued when the control plane resource is updated
-		err = r.updateStatus(ctx, instance)
+	mesh, err := r.getActiveMesh(ctx, instance)
+	if mesh == nil || err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -404,12 +365,77 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	err = r.updateStatus(ctx, instance)
 
 	// tell Kiali about all the namespaces in the mesh
-	kialiErr := r.kialiReconciler.reconcileKiali(ctx, instance.Namespace, instance.Status.ConfiguredMembers)
+	var kialiErr error
+	if mesh.Status.AppliedSpec.Addons != nil &&
+		mesh.Status.AppliedSpec.Addons.Visualization.Kiali != nil &&
+		mesh.Status.AppliedSpec.Addons.Visualization.Kiali.Enabled != nil &&
+		*mesh.Status.AppliedSpec.Addons.Visualization.Kiali.Enabled {
+		kialiErr = r.kialiReconciler.reconcileKiali(ctx, mesh.Status.AppliedSpec.Addons.Visualization.Kiali.Name, instance.Namespace, instance.Status.ConfiguredMembers)
+	}
 
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, kialiErr
+}
+
+func (r *MemberRollReconciler) getActiveMesh(ctx context.Context, instance *v1.ServiceMeshMemberRoll) (*v2.ServiceMeshControlPlane, error) {
+	reqLogger := common.LogFromContext(ctx)
+	meshList := &v2.ServiceMeshControlPlaneList{}
+	if err := r.Client.List(ctx, meshList, client.InNamespace(instance.Namespace)); err != nil {
+		return nil, pkgerrors.Wrap(err, "Error retrieving ServiceMeshControlPlane resources")
+	}
+	meshCount := len(meshList.Items)
+	if meshCount != 1 {
+		var err error
+		if instance.GetDeletionTimestamp() == nil {
+			if meshCount > 0 {
+				reqLogger.Info("Skipping reconciliation of SMMR, because multiple ServiceMeshControlPlane resources exist in the project", "project", instance.Namespace)
+				instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
+					Type:    v1.ConditionTypeMemberRollReady,
+					Status:  corev1.ConditionFalse,
+					Reason:  v1.ConditionReasonMultipleSMCP,
+					Message: "Multiple ServiceMeshControlPlane resources exist in the namespace",
+				})
+			} else {
+				reqLogger.Info("Skipping reconciliation of SMMR, because no ServiceMeshControlPlane exists in the project.", "project", instance.Namespace)
+				instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
+					Type:    v1.ConditionTypeMemberRollReady,
+					Status:  corev1.ConditionFalse,
+					Reason:  v1.ConditionReasonSMCPMissing,
+					Message: "No ServiceMeshControlPlane exists in the namespace",
+				})
+			}
+			err = r.updateStatus(ctx, instance)
+		}
+		// when a control plane is created/deleted our watch will pick it up and issue a new reconcile event
+		return nil, err
+	}
+
+	mesh := &meshList.Items[0]
+
+	if mesh.Status.ObservedGeneration == 0 {
+		reqLogger.Info("Initial service mesh installation has not completed")
+		instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
+			Type:    v1.ConditionTypeMemberRollReady,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1.ConditionReasonSMCPNotReconciled,
+			Message: "Initial service mesh installation has not completed",
+		})
+		// a new reconcile request will be issued when the control plane resource is updated
+		return nil, r.updateStatus(ctx, instance)
+	} else if meshReconcileStatus := mesh.Status.GetCondition(status.ConditionTypeReconciled); meshReconcileStatus.Status != status.ConditionStatusTrue {
+		reqLogger.Info("skipping reconciliation because mesh is not in a known good state")
+		instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
+			Type:    v1.ConditionTypeMemberRollReady,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1.ConditionReasonSMCPNotReconciled,
+			Message: "Service mesh installation is not in a known good state",
+		})
+		// a new reconcile request will be issued when the control plane resource is updated
+		return nil, r.updateStatus(ctx, instance)
+	}
+	return mesh, nil
 }
 
 func (r *MemberRollReconciler) updateStatus(ctx context.Context, instance *v1.ServiceMeshMemberRoll) error {
@@ -480,21 +506,18 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 }
 
 type KialiReconciler interface {
-	reconcileKiali(ctx context.Context, kialiCRNamespace string, configuredMembers []string) error
+	reconcileKiali(ctx context.Context, kialiCRName, kialiCRNamespace string, configuredMembers []string) error
 }
 
 type defaultKialiReconciler struct {
 	Client client.Client
 }
 
-func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRNamespace string, configuredMembers []string) error {
+func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName, kialiCRNamespace string, configuredMembers []string) error {
 	reqLogger := common.LogFromContext(ctx)
 	reqLogger.Info("Attempting to get Kiali CR", "kialiCRNamespace", kialiCRNamespace)
 
-	kialiCRName := "kiali"
-	kialiCR := &unstructured.Unstructured{}
-	kialiCR.SetAPIVersion("kiali.io/v1alpha1")
-	kialiCR.SetKind("Kiali")
+	kialiCR := &kialiv1alpha1.Kiali{}
 	kialiCR.SetNamespace(kialiCRNamespace)
 	kialiCR.SetName(kialiCRName)
 	err := r.Client.Get(ctx, client.ObjectKey{Name: kialiCRName, Namespace: kialiCRNamespace}, kialiCR)
@@ -519,20 +542,33 @@ func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName
 		}
 	}
 
-	if existingNamespaces, found, _ := unstructured.NestedStringSlice(kialiCR.UnstructuredContent(), "spec", "deployment", "accessible_namespaces"); found && sets.NewString(accessibleNamespaces...).Equal(sets.NewString(existingNamespaces...)) {
+	if existingNamespaces, found, _ := kialiCR.Spec.GetStringSlice("deployment.accessible_namespaces"); found && sets.NewString(accessibleNamespaces...).Equal(sets.NewString(existingNamespaces...)) {
 		reqLogger.Info("Kiali CR deployment.accessible_namespaces already up to date")
 		return nil
 	}
 
 	reqLogger.Info("Updating Kiali CR deployment.accessible_namespaces", "accessibleNamespaces", accessibleNamespaces)
 
-	err = unstructured.SetNestedStringSlice(kialiCR.UnstructuredContent(), accessibleNamespaces, "spec", "deployment", "accessible_namespaces")
+	updatedKiali := &kialiv1alpha1.Kiali{
+		Base: external.Base{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      kialiCRName,
+				Namespace: kialiCRNamespace,
+			},
+			Spec: v1.NewHelmValues(make(map[string]interface{})),
+		},
+	}
+	err = updatedKiali.Spec.SetStringSlice("deployment.accessible_namespaces", accessibleNamespaces)
 	if err != nil {
 		return pkgerrors.Wrapf(err, "cannot set deployment.accessible_namespaces in Kiali CR %s/%s", kialiCRNamespace, kialiCRName)
 	}
 
-	err = r.Client.Update(ctx, kialiCR)
+	err = r.Client.Patch(ctx, kialiCR, client.Merge)
 	if err != nil {
+		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
+			reqLogger.Info(fmt.Sprintf("skipping kiali update, %s/%s is no longer available", kialiCR.GetNamespace(), kialiCR.GetName()))
+			return nil
+		}
 		return pkgerrors.Wrapf(err, "cannot update Kiali CR %s/%s with new accessible namespaces", kialiCRNamespace, kialiCRName)
 	}
 

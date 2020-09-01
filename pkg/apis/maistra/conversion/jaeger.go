@@ -39,18 +39,10 @@ func populateJaegerAddonValues(jaeger *v2.JaegerTracerConfig, values map[string]
 	}
 
 	if jaeger.Install == nil {
-		// XXX: do we need to be setting global.tracer.zipkin.address?
-		if err := setHelmBoolValue(jaegerValues, "install", false); err != nil {
-			return err
-		}
 		return nil
 	}
 
 	if err := setHelmStringValue(tracingValues, "provider", "jaeger"); err != nil {
-		return err
-	}
-
-	if err := setHelmBoolValue(jaegerValues, "install", true); err != nil {
 		return err
 	}
 
@@ -202,15 +194,6 @@ func populateJaegerAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
 	}
 
 	setInstall := false
-	if shouldInstall, ok, err := jaegerValues.GetBool("install"); ok {
-		if shouldInstall {
-			setInstall = true
-		} else {
-			return nil
-		}
-	} else if err != nil {
-		return nil
-	}
 
 	install := &v2.JaegerInstallConfig{}
 	storage := &v2.JaegerStorageConfig{}

@@ -1,3 +1,4 @@
+{{- if .Values.kiali.install }}
 apiVersion: kiali.io/v1alpha1
 kind: Kiali
 metadata:
@@ -70,7 +71,7 @@ spec:
 {{- if .Values.jaegerInClusterURL }}
       in_cluster_url: "{{ .Values.jaegerInClusterURL }}"
 {{- else }}
-      in_cluster_url: "https://jaeger-query.{{ .Release.Namespace }}.svc"
+      in_cluster_url: "https://{{ .Values.tracing.jaeger.resourceName | default "jaeger" }}-query.{{ .Release.Namespace }}.svc"
 {{- end }}
       namespace: "{{ .Release.Namespace }}"
       service : ""
@@ -83,4 +84,5 @@ spec:
 {{- if .Values.contextPath }}
   server:
     web_root: "{{ .Values.contextPath }}"
+{{- end }}
 {{- end }}

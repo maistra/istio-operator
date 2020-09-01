@@ -58,7 +58,9 @@ func RunControllerTestCase(t *testing.T, testCase ControllerTestCase) {
 					tracker.RemoveReaction(event.Reactors...)
 				}()
 				// inject the test runner into the verifier
-				event.Verifier.InjectTestRunner(t)
+				if event.Verifier != nil {
+					event.Verifier.InjectTestRunner(t)
+				}
 				// insert reactions.  these must come before any default reactions added for normal resource handling
 				tracker.PrependReaction(event.Reactors...)
 				// insert assertions.  these need to be before any reactors, as they do not actually handle events
@@ -66,7 +68,9 @@ func RunControllerTestCase(t *testing.T, testCase ControllerTestCase) {
 					tracker.PrependReaction(assertion)
 				}
 				// insert verifier.  this needs to be the first handler, as it verifies the event, but does not handle it
-				tracker.PrependReaction(event.Verifier)
+				if event.Verifier != nil {
+					tracker.PrependReaction(event.Verifier)
+				}
 				if event.AssertExtraneousActions {
 					// add failure for events occurring after validation should be complete
 					tracker.PrependReaction(extraneousActionFilter)
@@ -74,7 +78,9 @@ func RunControllerTestCase(t *testing.T, testCase ControllerTestCase) {
 				if err := event.Execute(mgr, tracker); err != nil {
 					t.Fatal(err)
 				}
-				if !event.Verifier.Wait(event.Timeout) {
+				// wait for the first event to show up on the queue
+				mgr.WaitForFirstEvent()
+				if event.Verifier == nil || !event.Verifier.Wait(event.Timeout) {
 					// no need to process assertions if there was a problem with the event processing
 					// just need to wait for Reconcile() to complete before processing assertions
 					mgr.WaitForReconcileCompletion()

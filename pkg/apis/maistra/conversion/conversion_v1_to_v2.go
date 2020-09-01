@@ -1,6 +1,8 @@
 package conversion
 
 import (
+	"strings"
+
 	conversion "k8s.io/apimachinery/pkg/conversion"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -73,6 +75,20 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 }
 
 func Convert_v1_ControlPlaneStatus_To_v2_ControlPlaneStatus(in *v1.ControlPlaneStatus, out *v2.ControlPlaneStatus, s conversion.Scope) error {
-	in.DeepCopyInto(&out.ControlPlaneStatus)
+	if err := autoConvert_v1_ControlPlaneStatus_To_v2_ControlPlaneStatus(in, out, s); err != nil {
+		return err
+	}
+	// WARNING: in.OperatorVersion requires manual conversion: does not exist in peer-type
+	lastDash := strings.LastIndex(in.ReconciledVersion, "-")
+	if lastDash >= 0 {
+		out.OperatorVersion = in.ReconciledVersion[:lastDash]
+	}
+	// WARNING: in.ChartVersion requires manual conversion: does not exist in peer-type
+	// WARNING: in.AppliedValues requires manual conversion: does not exist in peer-type
+	in.LastAppliedConfiguration.DeepCopyInto(&out.AppliedValues)
+	// WARNING: in.AppliedSpec requires manual conversion: does not exist in peer-type
+	if err := Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(&in.LastAppliedConfiguration, &out.AppliedSpec, s); err != nil {
+		return err
+	}
 	return nil
 }

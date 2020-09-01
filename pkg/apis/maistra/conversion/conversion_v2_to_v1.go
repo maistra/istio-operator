@@ -3,6 +3,7 @@ package conversion
 import (
 	conversion "k8s.io/apimachinery/pkg/conversion"
 
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
@@ -77,6 +78,9 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 }
 
 func Convert_v2_ControlPlaneStatus_To_v1_ControlPlaneStatus(in *v2.ControlPlaneStatus, out *v1.ControlPlaneStatus, s conversion.Scope) error {
-	in.ControlPlaneStatus.DeepCopyInto(out)
+	// ReconciledVersion requires manual conversion: does not exist in peer-type
+	out.ReconciledVersion = status.ComposeReconciledVersion(in.OperatorVersion, in.ObservedGeneration)
+	// LastAppliedConfiguration requires manual conversion: does not exist in peer-type
+	in.AppliedValues.DeepCopyInto(&out.LastAppliedConfiguration)
 	return nil
 }

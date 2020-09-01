@@ -57,10 +57,10 @@ func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) getRawHtPasswd(ctx context.Context, object *unstructured.Unstructured) (string, error) {
+func (r *controlPlaneInstanceReconciler) getRawHtPasswd(ctx context.Context) (string, error) {
 	log := common.LogFromContext(ctx)
 	htSecret := &corev1.Secret{}
-	err := r.Client.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: "htpasswd"}, htSecret)
+	err := r.Client.Get(ctx, client.ObjectKey{Namespace: r.Instance.GetNamespace(), Name: "htpasswd"}, htSecret)
 	if err != nil {
 		log.Error(err, "error retrieving htpasswd Secret")
 		return "", err
@@ -79,7 +79,7 @@ func (r *controlPlaneInstanceReconciler) patchGrafanaConfig(ctx context.Context,
 
 	log.Info("patching Grafana-Prometheus link", object.GetKind(), object.GetName())
 
-	rawPassword, err := r.getRawHtPasswd(ctx, object)
+	rawPassword, err := r.getRawHtPasswd(ctx)
 	if err != nil {
 		return err
 	}

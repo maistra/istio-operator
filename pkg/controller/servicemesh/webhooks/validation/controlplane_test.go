@@ -12,10 +12,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/maistra/istio-operator/pkg/apis/istio/simple"
-	configv1alpha2 "github.com/maistra/istio-operator/pkg/apis/istio/simple/config/v1alpha2"
-	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/simple/networking/v1alpha3"
-	securityv1beta1 "github.com/maistra/istio-operator/pkg/apis/istio/simple/security/v1beta1"
+	"github.com/maistra/istio-operator/pkg/apis/external"
+	configv1alpha2 "github.com/maistra/istio-operator/pkg/apis/external/istio/config/v1alpha2"
+	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/external/istio/networking/v1alpha3"
+	securityv1beta1 "github.com/maistra/istio-operator/pkg/apis/external/istio/security/v1beta1"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -691,7 +691,7 @@ func TestVersionUpgrade1_0To1_1(t *testing.T) {
 			allowed: true,
 			resources: []runtime.Object{
 				&configv1alpha2.Stdio{
-					Base: simple.Base{
+					Base: external.Base{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: configv1alpha2.SchemeGroupVersion.String(),
 							Kind:       "stdio",
@@ -709,7 +709,7 @@ func TestVersionUpgrade1_0To1_1(t *testing.T) {
 			allowed: true,
 			resources: []runtime.Object{
 				&configv1alpha2.Stdio{
-					Base: simple.Base{
+					Base: external.Base{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: configv1alpha2.SchemeGroupVersion.String(),
 							Kind:       "stdio",
@@ -730,7 +730,7 @@ func TestVersionUpgrade1_0To1_1(t *testing.T) {
 			allowed: false,
 			resources: []runtime.Object{
 				&configv1alpha2.Stdio{
-					Base: simple.Base{
+					Base: external.Base{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: configv1alpha2.SchemeGroupVersion.String(),
 							Kind:       "stdio",
@@ -901,6 +901,7 @@ func TestVersionUpgrade1_0To1_1(t *testing.T) {
 }
 
 func TestVersionDowngrade1_1To1_0(t *testing.T) {
+	test.PanicOnError(os.Setenv("POD_NAMESPACE", "openshift-operators")) // TODO: make it easier to set the namespace in tests
 	v1_0ControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0")
 	v1_1ControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v1.1")
 	v1_0ControlPlane.SetUID("random-uid")
@@ -921,7 +922,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 			allowed: true,
 			resources: []runtime.Object{
 				&securityv1beta1.AuthorizationPolicy{
-					Base: simple.Base{
+					Base: external.Base{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: securityv1beta1.SchemeGroupVersion.String(),
 							Kind:       "AuthorizationPolicy",
@@ -939,7 +940,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 			allowed: true,
 			resources: []runtime.Object{
 				&securityv1beta1.AuthorizationPolicy{
-					Base: simple.Base{
+					Base: external.Base{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: securityv1beta1.SchemeGroupVersion.String(),
 							Kind:       "AuthorizationPolicy",
@@ -960,7 +961,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 			allowed: false,
 			resources: []runtime.Object{
 				&securityv1beta1.AuthorizationPolicy{
-					Base: simple.Base{
+					Base: external.Base{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: securityv1beta1.SchemeGroupVersion.String(),
 							Kind:       "AuthorizationPolicy",
@@ -1020,7 +1021,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 			allowed: true,
 			resources: []runtime.Object{
 				&networkingv1alpha3.VirtualService{
-					Base: simple.Base{
+					Base: external.Base{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: networkingv1alpha3.SchemeGroupVersion.String(),
 							Kind:       "VirtualService",
@@ -1029,7 +1030,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 							Name:      "dummy-virtual-service",
 							Namespace: "app-namespace",
 						},
-						Spec: map[string]interface{}{
+						Spec: maistrav1.NewHelmValues(map[string]interface{}{
 							"http": []interface{}{
 								map[string]interface{}{
 									"name": "some-http",
@@ -1038,7 +1039,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 									"name": "some-other-http",
 								},
 							},
-						},
+						}),
 					},
 				},
 			},
@@ -1048,7 +1049,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 			allowed: true,
 			resources: []runtime.Object{
 				&networkingv1alpha3.VirtualService{
-					Base: simple.Base{
+					Base: external.Base{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: networkingv1alpha3.SchemeGroupVersion.String(),
 							Kind:       "VirtualService",
@@ -1060,7 +1061,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 								*metav1.NewControllerRef(v1_1ControlPlane, maistrav1.SchemeGroupVersion.WithKind("ServiceMeshControlPlane")),
 							},
 						},
-						Spec: map[string]interface{}{
+						Spec: maistrav1.NewHelmValues(map[string]interface{}{
 							"http": []interface{}{
 								map[string]interface{}{
 									"name": "some-http",
@@ -1070,7 +1071,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 									"mirrorPercent": "50%",
 								},
 							},
-						},
+						}),
 					},
 				},
 			},
@@ -1080,7 +1081,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 			allowed: false,
 			resources: []runtime.Object{
 				&networkingv1alpha3.VirtualService{
-					Base: simple.Base{
+					Base: external.Base{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: networkingv1alpha3.SchemeGroupVersion.String(),
 							Kind:       "VirtualService",
@@ -1089,7 +1090,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 							Name:      "dummy-virtual-service",
 							Namespace: "app-namespace",
 						},
-						Spec: map[string]interface{}{
+						Spec: maistrav1.NewHelmValues(map[string]interface{}{
 							"http": []interface{}{
 								map[string]interface{}{
 									"name": "some-http",
@@ -1099,7 +1100,7 @@ func TestVersionDowngrade1_1To1_0(t *testing.T) {
 									"mirrorPercent": "50%",
 								},
 							},
-						},
+						}),
 					},
 				},
 			},

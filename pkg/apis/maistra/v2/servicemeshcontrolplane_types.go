@@ -3,7 +3,8 @@ package v2
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 )
 
 func init() {
@@ -19,10 +20,10 @@ func init() {
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.annotations.readyComponentCount",description="How many of the total number of components are ready"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].reason",description="Whether or not the control plane installation is up to date and ready to handle requests."
-// +kubebuilder:printcolumn:name="Template",type="string",JSONPath=".status.lastAppliedConfiguration.template",description="The configuration template to use as the base."
-// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".status.lastAppliedConfiguration.version",description="The actual current version of the control plane installation."
+// +kubebuilder:printcolumn:name="Profiles",type="string",JSONPath=".status.appliedSpec.profiles",description="The configuration profiles applied to the configuration."
+// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".status.chartVersion",description="The actual current version of the control plane installation."
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="The age of the object"
-// +kubebuilder:printcolumn:name="Image HUB",type="string",JSONPath=".status.lastAppliedConfiguration.istio.global.hub",description="The image hub used as the base for all component images.",priority=1
+// +kubebuilder:printcolumn:name="Image Registry",type="string",JSONPath=".status.appliedSpec.runtime.defaults.container.registry",description="The image registry used as the base for all component images.",priority=1
 type ServiceMeshControlPlane struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -41,9 +42,47 @@ type ServiceMeshControlPlaneList struct {
 }
 
 // ControlPlaneStatus defines the observed state of ServiceMeshControlPlane
+// ControlPlaneStatus represents the current state of a ServiceMeshControlPlane.
 type ControlPlaneStatus struct {
-	maistrav1.ControlPlaneStatus `json:",inline"`
+	status.StatusBase `json:",inline"`
+
+	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
+	status.StatusType `json:",inline"`
+
+	// The generation observed by the controller during the most recent
+	// reconciliation. The information in the status pertains to this particular
+	// generation of the object.
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// The version of the operator that last processed this resource.
+	OperatorVersion string `json:"operatorVersion,omitempty"`
+
+	// The version of the charts that were last processed for this resource.
+	ChartVersion string `json:"chartVersion,omitempty"`
+
+	// The list of components comprising the control plane and their statuses.
+	// +nullable
+	status.ComponentStatusList `json:",inline"`
+
+	// The resulting specification of the configuration options after all profiles
+	// have been applied.
+	// +optional
+	AppliedSpec ControlPlaneSpec `json:"appliedSpec,omitempty"`
+
+	// The resulting values.yaml used to generate the charts.
+	// +optional
+	AppliedValues v1.ControlPlaneSpec `json:"appliedValues,omitempty"`
 }
+
+// GetReconciledVersion returns the reconciled version, or a default for older resources
+func (s *ControlPlaneStatus) GetReconciledVersion() string {
+	if s == nil {
+		return status.ComposeReconciledVersion("0.0.0", 0)
+	}
+	return status.ComposeReconciledVersion(s.OperatorVersion, s.ObservedGeneration)
+}
+
 
 // ControlPlaneSpec represents the configuration for installing a control plane
 type ControlPlaneSpec struct {

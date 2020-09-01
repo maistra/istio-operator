@@ -24,6 +24,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/hacks"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
+	buildinfo "github.com/maistra/istio-operator/pkg/version"
 )
 
 type controlPlaneInstanceReconciler struct {
@@ -32,6 +33,7 @@ type controlPlaneInstanceReconciler struct {
 	Status            *v2.ControlPlaneStatus
 	ownerRefs         []metav1.OwnerReference
 	meshGeneration    string
+	chartVersion      string
 	renderings        map[string][]manifest.Manifest
 	waitForComponents sets.String
 	cniConfig         cni.Config
@@ -112,6 +114,9 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 
 		// Render the templates
 		r.renderings, err = version.Strategy().Render(ctx, &r.ControllerResources, r.cniConfig, r.Instance)
+		// always set these, especially if rendering failed, as these are useful for debugging
+		r.Instance.Status.AppliedValues.DeepCopyInto(&r.Status.AppliedValues)
+		r.Instance.Status.AppliedSpec.DeepCopyInto(&r.Status.AppliedSpec)
 		if err != nil {
 			// we can't progress here
 			reconciliationReason = status.ConditionReasonReconcileError
@@ -119,7 +124,6 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			err = errors.Wrap(err, reconciliationMessage)
 			return
 		}
-		r.Status.LastAppliedConfiguration = r.Instance.Status.LastAppliedConfiguration
 
 		// install istio
 
@@ -291,7 +295,8 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReasonInstalled, reconciliationMessage)
 	}
 	r.Status.ObservedGeneration = r.Instance.GetGeneration()
-	r.Status.ReconciledVersion = r.meshGeneration
+	r.Status.OperatorVersion = buildinfo.Info.Version
+	r.Status.ChartVersion = r.chartVersion
 	updateControlPlaneConditions(r.Status, nil)
 
 	reconciliationComplete = true
@@ -344,6 +349,11 @@ func (r *controlPlaneInstanceReconciler) PostStatus(ctx context.Context) error {
 		if err = r.Client.Status().Patch(ctx, instance, common.NewStatusPatch(instance.Status)); err != nil && !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
 			return errors.Wrap(err, "error updating ServiceMeshControlPlane status")
 		}
+		// null values may have been removed during patching, which means the
+		// status we've been caching will not match the status on the instance
+		// on the next reconcile, which will lead to a cycle of status updates
+		// while waiting for components to become available.
+		r.Status = instance.Status.DeepCopy()
 	} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
 		return errors.Wrap(err, "error getting ServiceMeshControlPlane prior to updating status")
 	}
@@ -384,8 +394,8 @@ func (r *controlPlaneInstanceReconciler) initializeReconcileStatus() {
 	var conditionReason status.ConditionReason
 	if r.isUpdating() {
 		if r.Status.ObservedGeneration == r.Instance.GetGeneration() {
-			fromVersion := r.Status.GetReconciledVersion()
-			toVersion := status.CurrentReconciledVersion(r.Instance.GetGeneration())
+			fromVersion := r.Status.OperatorVersion
+			toVersion := buildinfo.Info.Version
 			readyMessage = fmt.Sprintf("Upgrading mesh from version %s to version %s", fromVersion[strings.LastIndex(fromVersion, "-")+1:], toVersion[strings.LastIndex(toVersion, "-")+1:])
 		} else {
 			readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", r.Status.ObservedGeneration, r.Instance.GetGeneration())

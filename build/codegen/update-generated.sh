@@ -25,7 +25,13 @@ go run --mod=vendor k8s.io/code-generator/cmd/conversion-gen \
 bash vendor/k8s.io/code-generator/generate-groups.sh \
     deepcopy \
     github.com/maistra/istio-operator/pkg/generated \
-    github.com/maistra/istio-operator/pkg/apis/istio/simple \
+    github.com/maistra/istio-operator/pkg/apis/external/istio \
     "config:v1alpha2 networking:v1alpha3 security:v1beta1" \
     --go-header-file "./build/codegen/boilerplate.go.txt"
 
+bash vendor/k8s.io/code-generator/generate-groups.sh \
+    deepcopy \
+    github.com/maistra/istio-operator/pkg/generated \
+    github.com/maistra/istio-operator/pkg/apis/external \
+    "jaeger:v1 kiali:v1alpha1" \
+    --go-header-file "./build/codegen/boilerplate.go.txt"

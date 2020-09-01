@@ -26,7 +26,6 @@ import (
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	. "github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -104,7 +103,7 @@ func TestBootstrapping(t *testing.T) {
 				GroupResources: []*restmapper.APIGroupResources{
 					CNIGroupResources,
 				},
-				StorageVersions: []schema.GroupVersion{v2.SchemeGroupVersion},
+				StorageVersions: []schema.GroupVersion{maistrav2.SchemeGroupVersion},
 				Events: []ControllerTestEvent{
 					{
 						Name: "bootstrap-clean-install-cni-no-errors",
