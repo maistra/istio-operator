@@ -16,11 +16,6 @@ go run -mod=vendor k8s.io/code-generator/cmd/deepcopy-gen \
     --go-header-file "./build/codegen/boilerplate.go.txt" \
     -O zz_generated.deepcopy.go
 
-go run -mod=vendor k8s.io/code-generator/cmd/deepcopy-gen \
-    -i github.com/maistra/istio-operator/pkg/apis/maistra/status \
-    --go-header-file "./build/codegen/boilerplate.go.txt" \
-    -O zz_generated.deepcopy.go
-
 go run --mod=vendor k8s.io/code-generator/cmd/conversion-gen \
     -i ./pkg/apis/maistra/conversion \
     -p github.com/maistra/istio-operator/pkg/maistra/conversion \
