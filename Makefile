@@ -87,6 +87,8 @@ update-1.0-charts: update-remote-maistra-1.0
 	git reset HEAD ${SOURCE_DIR}/resources/helm/v1.0
 	HELM_DIR=${RESOURCES_DIR}/helm/v1.0 ${SOURCE_DIR}/build/patch-container-image.sh
 	find ${RESOURCES_DIR}/helm/v1.0/istio-init/files/ -maxdepth 1 -name "*.crd.yaml" -delete
+	# MAISTRA-1776
+	sed -i -e '/kind: handler/,/kind:/ { /name: kubernetesenv/,/kind:/ s/params:/params: \{\}/ }' ${RESOURCES_DIR}/helm/v1.0/istio/charts/mixer/templates/config.yaml
 	CRD_DIR=${RESOURCES_DIR}/helm/v1.0/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
 
 .PHONY: update-1.0-templates
@@ -122,6 +124,8 @@ update-1.1-charts: update-remote-maistra-1.1
 	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.1 -- ${SOURCE_DIR}/resources/helm/v1.1
 	git reset HEAD ${SOURCE_DIR}/resources/helm/v1.1
 	find ${RESOURCES_DIR}/helm/v1.1/istio-init/files/ -maxdepth 1 -name "*.crd.yaml" -delete
+	# MAISTRA-1776
+	sed -i -e '/kind: handler/,/kind:/ { /name: kubernetesenv/,/kind:/ s/params:/params: \{\}/ }' ${RESOURCES_DIR}/helm/v1.1/istio/charts/mixer/templates/config.yaml
 	CRD_DIR=${RESOURCES_DIR}/helm/v1.1/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
 
 .PHONY: update-1.1-templates
