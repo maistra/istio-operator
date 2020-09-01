@@ -67,7 +67,20 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 			updateStatus = true
 		}
 	} else {
-		if readyCondition.Status != status.ConditionStatusTrue {
+		reconciledCondition := r.Status.GetCondition(status.ConditionTypeReconciled)
+		if reconciledCondition.Status != status.ConditionStatusTrue {
+			readyCondition := r.Status.GetCondition(status.ConditionTypeReady)
+			if readyCondition.Message != reconciledCondition.Message {
+				condition := status.Condition{
+					Type:    status.ConditionTypeReady,
+					Status:  reconciledCondition.Status,
+					Reason:  status.ConditionReasonComponentsNotReady,
+					Message: reconciledCondition.Message,
+				}
+				r.Status.SetCondition(condition)
+				updateStatus = true
+			}
+		} else if readyCondition.Status != status.ConditionStatusTrue {
 			condition := status.Condition{
 				Type:    status.ConditionTypeReady,
 				Status:  status.ConditionStatusTrue,
