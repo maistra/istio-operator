@@ -14,18 +14,13 @@ github.com/maistra/istio-operator/pkg/apis \
 go run -mod=vendor k8s.io/code-generator/cmd/deepcopy-gen \
     -i github.com/maistra/istio-operator/pkg/apis/maistra/status \
     --go-header-file "./build/codegen/boilerplate.go.txt" \
-    -O zz_generated.deepcopy.go
-
-go run -mod=vendor k8s.io/code-generator/cmd/deepcopy-gen \
-    -i github.com/maistra/istio-operator/pkg/apis/maistra/status \
-    --go-header-file "./build/codegen/boilerplate.go.txt" \
-    -O zz_generated.deepcopy.go
+    -O zz_generated.deepcopy
 
 go run --mod=vendor k8s.io/code-generator/cmd/conversion-gen \
     -i ./pkg/apis/maistra/conversion \
     -p github.com/maistra/istio-operator/pkg/maistra/conversion \
     --go-header-file "./build/codegen/boilerplate.go.txt" \
-    -O zz_generated.conversion.go
+    -O zz_generated.conversion
 
 bash vendor/k8s.io/code-generator/generate-groups.sh \
     deepcopy \
