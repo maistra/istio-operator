@@ -14,15 +14,15 @@ import (
 // WebhookCABundleManager is the public interface for managing webhook caBundle.
 type WebhookCABundleManager interface {
 	// ManageWebhookCABundle adds a webhook to the manager.
-	ManageWebhookCABundle(obj runtime.Object, secret types.NamespacedName, keyName string) error
+	ManageWebhookCABundle(obj runtime.Object, source CABundleSource, keyName string) error
 	// UnmanageWebhookCABundle removes a webhook from the manager.
 	UnmanageWebhookCABundle(obj runtime.Object) error
 	// IsManaged returns true if the webhook is being managed.
 	IsManaged(obj runtime.Object) bool
-	// IsManagingWebhooksForSecret returns true if any webhooks being managed are using the secret.
-	IsManagingWebhooksForSecret(secret types.NamespacedName) bool
-	// ReconcileRequestsFromSecret returns a slice of reconcile.Request objects for the specified secret
-	ReconcileRequestsFromSecret(secret types.NamespacedName) []reconcile.Request
+	// IsManagingWebhooksForSource returns true if any webhooks being managed are using the secret or config map.
+	IsManagingWebhooksForSource(source CABundleSource) bool
+	// ReconcileRequestsFromSource returns a slice of reconcile.Request objects for the specified secret or config map
+	ReconcileRequestsFromSource(source CABundleSource) []reconcile.Request
 	// ReconcileRequestsFromWebhook returns a slice of reconcile.Request objects for the specified webhook
 	ReconcileRequestsFromWebhook(webhook runtime.Object) []reconcile.Request
 	// UpdateCABundle updates the caBundle for the webhook.  The webhook namespace identifies the type of webhook (validating or mutating).
@@ -34,46 +34,46 @@ type WebhookCABundleManager interface {
 var WebhookCABundleManagerInstance = newWebhookCABundleManager()
 
 type webhookCABundleManager struct {
-	mu                sync.RWMutex
-	webhooksToSecrets map[types.NamespacedName]secretInfo
-	secretsToWebhooks map[types.NamespacedName]map[types.NamespacedName]struct{}
+	mu                     sync.RWMutex
+	webhooksToBundleSource map[types.NamespacedName]caBundleSourceConfig
+	sourcesToWebhooks      map[CABundleSource]map[types.NamespacedName]struct{}
 }
 
 var _ WebhookCABundleManager = (*webhookCABundleManager)(nil)
 
-// ManageWebhookCABundle registers the webhook to be managed with the secret that
+// ManageWebhookCABundle registers the webhook to be managed with the Secret/ConfigMap that
 // should be used to populate its caBundle field.
-func (wm *webhookCABundleManager) ManageWebhookCABundle(obj runtime.Object, secret types.NamespacedName, keyName string) error {
+func (wm *webhookCABundleManager) ManageWebhookCABundle(obj runtime.Object, source CABundleSource, keyName string) error {
 	webhook, err := toWebhookWrapper(obj)
 	if err != nil {
 		return err
 	}
-	info := secretInfo{NamespacedName: secret, keyName: keyName}
-	info.Namespace = ""
+	source.Namespace = ""
 	for _, clientConfig := range webhook.ClientConfigs() {
 		if clientConfig.Service == nil {
 			continue
 		}
-		if info.Namespace != "" && clientConfig.Service.Namespace != info.Namespace {
+		if source.Namespace != "" && clientConfig.Service.Namespace != source.Namespace {
 			return fmt.Errorf("webhook has multiple clients referencing services in multiple namespaces: %s", webhook.MetaObject().GetName())
 		}
-		info.Namespace = clientConfig.Service.Namespace
+		source.Namespace = clientConfig.Service.Namespace
 	}
-	if info.Namespace == "" {
+	if source.Namespace == "" {
 		return fmt.Errorf("no clients to configure in webhook: %s", webhook.MetaObject().GetName())
 	}
 
 	webhookName := webhook.NamespacedName()
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
-	if _, ok := wm.webhooksToSecrets[webhookName]; ok {
+	if _, ok := wm.webhooksToBundleSource[webhookName]; ok {
 		return fmt.Errorf("Already watching webhook %s", webhookName)
 	}
-	wm.webhooksToSecrets[webhookName] = info
-	webhooks := wm.secretsToWebhooks[info.NamespacedName]
+	wm.webhooksToBundleSource[webhookName] = caBundleSourceConfig{CABundleSource: source, keyName: keyName}
+
+	webhooks := wm.sourcesToWebhooks[source]
 	if webhooks == nil {
 		webhooks = make(map[types.NamespacedName]struct{})
-		wm.secretsToWebhooks[info.NamespacedName] = webhooks
+		wm.sourcesToWebhooks[source] = webhooks
 	}
 	webhooks[webhookName] = struct{}{}
 	return nil
@@ -87,9 +87,9 @@ func (wm *webhookCABundleManager) UnmanageWebhookCABundle(obj runtime.Object) er
 	}
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
-	if secret, ok := wm.webhooksToSecrets[key]; ok {
-		delete(wm.webhooksToSecrets, key)
-		webhooks := wm.secretsToWebhooks[secret.NamespacedName]
+	if caBundleSourceConfig, ok := wm.webhooksToBundleSource[key]; ok {
+		delete(wm.webhooksToBundleSource, key)
+		webhooks := wm.sourcesToWebhooks[caBundleSourceConfig.CABundleSource]
 		if webhooks != nil {
 			delete(webhooks, key)
 		}
@@ -103,14 +103,14 @@ func (wm *webhookCABundleManager) IsManaged(obj runtime.Object) bool {
 	if name, err := wm.namespacedNameForWebhook(obj); err == nil {
 		wm.mu.RLock()
 		defer wm.mu.RUnlock()
-		_, ok := wm.webhooksToSecrets[name]
+		_, ok := wm.webhooksToBundleSource[name]
 		return ok
 	}
 	return false
 }
 
-func (wm *webhookCABundleManager) IsManagingWebhooksForSecret(secret types.NamespacedName) bool {
-	return len(wm.webhooksForSecret(secret)) > 0
+func (wm *webhookCABundleManager) IsManagingWebhooksForSource(source CABundleSource) bool {
+	return len(wm.webhooksForSource(source)) > 0
 }
 
 func (wm *webhookCABundleManager) ReconcileRequestsFromWebhook(webhook runtime.Object) []reconcile.Request {
@@ -121,8 +121,8 @@ func (wm *webhookCABundleManager) ReconcileRequestsFromWebhook(webhook runtime.O
 	return []reconcile.Request{{NamespacedName: webhookName}}
 }
 
-func (wm *webhookCABundleManager) ReconcileRequestsFromSecret(secret types.NamespacedName) []reconcile.Request {
-	webhooks := wm.webhooksForSecret(secret)
+func (wm *webhookCABundleManager) ReconcileRequestsFromSource(source CABundleSource) []reconcile.Request {
+	webhooks := wm.webhooksForSource(source)
 	requests := make([]reconcile.Request, len(webhooks))
 	for index, webhook := range webhooks {
 		requests[index] = reconcile.Request{
@@ -132,10 +132,10 @@ func (wm *webhookCABundleManager) ReconcileRequestsFromSecret(secret types.Names
 	return requests
 }
 
-func (wm *webhookCABundleManager) webhooksForSecret(secret types.NamespacedName) []types.NamespacedName {
+func (wm *webhookCABundleManager) webhooksForSource(source CABundleSource) []types.NamespacedName {
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
-	webhooksMap := wm.secretsToWebhooks[secret]
+	webhooksMap := wm.sourcesToWebhooks[source]
 	if webhooksMap == nil {
 		return []types.NamespacedName{}
 	}
@@ -146,28 +146,11 @@ func (wm *webhookCABundleManager) webhooksForSecret(secret types.NamespacedName)
 	return webhooks
 }
 
-func (wm *webhookCABundleManager) secretForWebhook(webhookName types.NamespacedName) (secretInfo, bool) {
+func (wm *webhookCABundleManager) caBundleSourceForWebhook(webhookName types.NamespacedName) (caBundleSourceConfig, bool) {
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
-	secret, ok := wm.webhooksToSecrets[webhookName]
-	return secret, ok
-}
-
-func (wm *webhookCABundleManager) initSecretForWebhook(webhook webhookWrapper) (secretInfo, error) {
-	info := secretInfo{}
-	for _, clientConfig := range webhook.ClientConfigs() {
-		if clientConfig.Service == nil {
-			continue
-		}
-		if info.Namespace != "" && clientConfig.Service.Namespace != info.Namespace {
-			return info, fmt.Errorf("webhook has multiple clients referencing services in multiple namespaces: %s", webhook.MetaObject().GetName())
-		}
-		info.Namespace = clientConfig.Service.Namespace
-	}
-	if info.Namespace == "" {
-		return info, fmt.Errorf("no clients to configure in webhook: %s", webhook.MetaObject().GetName())
-	}
-	return info, nil
+	source, ok := wm.webhooksToBundleSource[webhookName]
+	return source, ok
 }
 
 const (
@@ -203,12 +186,22 @@ func (wm *webhookCABundleManager) getWebhookWrapper(ctx context.Context, cl clie
 
 func newWebhookCABundleManager() WebhookCABundleManager {
 	return &webhookCABundleManager{
-		webhooksToSecrets: make(map[types.NamespacedName]secretInfo),
-		secretsToWebhooks: make(map[types.NamespacedName]map[types.NamespacedName]struct{}),
+		webhooksToBundleSource: make(map[types.NamespacedName]caBundleSourceConfig),
+		sourcesToWebhooks:      make(map[CABundleSource]map[types.NamespacedName]struct{}),
 	}
 }
 
-type secretInfo struct {
+type CABundleSourceKind string
+
+const CABundleSourceKindConfigMap = "ConfigMap"
+const CABundleSourceKindSecret = "Secret"
+
+type CABundleSource struct {
+	Kind CABundleSourceKind
 	types.NamespacedName
+}
+
+type caBundleSourceConfig struct {
+	CABundleSource
 	keyName string
 }

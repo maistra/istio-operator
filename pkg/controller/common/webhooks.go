@@ -17,36 +17,50 @@ var (
 	IstioRootCertKey = "root-cert.pem"
 	// IstiodCertKey name of Secret entry Istiod uses for the cert
 	IstiodCertKey = "ca-cert.pem"
-	// ServiceCARootCertKey name of Secret entry service-ca operator uses for the cert
-	ServiceCARootCertKey = "tls.crt"
+	// ServiceCABundleKey name of config map entry service-ca operator uses for the CA bundle
+	ServiceCABundleKey = "service-ca.crt"
 )
 
-// GetRootCertFromSecret retrieves the root certificate from an Istio SA secret
-func GetRootCertFromSecret(ctx context.Context, client client.Client, namespace string, name string, key string) ([]byte, error) {
+// GetCABundleFromSecret retrieves the root certificate from an Istio SA secret
+func GetCABundleFromSecret(ctx context.Context, client client.Client, namespacedName types.NamespacedName, key string) ([]byte, error) {
 	secret := &corev1.Secret{}
-	err := client.Get(ctx, types.NamespacedName{
-		Namespace: namespace,
-		Name:      name,
-	}, secret)
+	err := client.Get(ctx, namespacedName, secret)
 	if err != nil {
 		return nil, err
 	}
 	caBundle, ok := secret.Data[key]
 	if !ok {
 		return nil, fmt.Errorf(
-			"secret %s/%s does not contain root certificate under key %s",
-			namespace,
-			name,
+			"secret %s does not contain root certificate under key %s",
+			namespacedName,
 			key,
 		)
 	}
 	return caBundle, nil
 }
 
+// GetCABundleFromConfigMap retrieves the CABundle from a ConfigMap injected via service.beta.openshift.io/inject-cabundle annotation
+func GetCABundleFromConfigMap(ctx context.Context, client client.Client, namespacedName types.NamespacedName, key string) ([]byte, error) {
+	cm := &corev1.ConfigMap{}
+	err := client.Get(ctx, namespacedName, cm)
+	if err != nil {
+		return nil, err
+	}
+	caBundle, ok := cm.Data[key]
+	if !ok {
+		return nil, fmt.Errorf(
+			"config map %s does not contain CA bundle under key %s",
+			namespacedName,
+			key,
+		)
+	}
+	return []byte(caBundle), nil
+}
+
 // InjectCABundle updates the CABundle in a WebhookClientConfig. It returns true
 // if the value has changed, false otherwise
 func InjectCABundle(config *v1.WebhookClientConfig, caBundle []byte) bool {
-	if bytes.Compare(config.CABundle, caBundle) != 0 {
+	if !bytes.Equal(config.CABundle, caBundle) {
 		config.CABundle = caBundle
 		return true
 	}
