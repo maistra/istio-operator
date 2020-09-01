@@ -35,7 +35,7 @@ const (
 	ServiceMeshControlPlaneCRDName   = "servicemeshcontrolplanes.maistra.io"
 )
 
-// autoRegistrationMap maps webhook name prefixes to a secret name.  This is
+// autoRegistrationMap maps webhook name prefixes to a secret name. This
 // is used to auto register the webhook with the WebhookCABundleManager.
 var autoRegistrationMap = map[string]registrationMapEntry{
 	galleyWebhookNamePrefix: {
@@ -82,22 +82,23 @@ func add(mgr manager.Manager, r *reconciler) error {
 	// Watch secret
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
-			return r.webhookCABundleManager.ReconcileRequestsFromSecret(common.ToNamespacedName(obj.Meta))
-		})}, predicate.Funcs{
-		CreateFunc: func(event event.CreateEvent) bool {
-			return r.webhookCABundleManager.IsManagingWebhooksForSecret(common.ToNamespacedName(event.Meta))
-		},
-		UpdateFunc: func(event event.UpdateEvent) bool {
-			return r.webhookCABundleManager.IsManagingWebhooksForSecret(common.ToNamespacedName(event.MetaNew))
-		},
-		// deletion and generic events don't interest us
-		DeleteFunc: func(event event.DeleteEvent) bool {
-			return false
-		},
-		GenericFunc: func(event event.GenericEvent) bool {
-			return false
-		},
-	})
+			return r.webhookCABundleManager.ReconcileRequestsFromSource(
+				CABundleSource{
+					Kind:           CABundleSourceKindSecret,
+					NamespacedName: common.ToNamespacedName(obj.Meta)})
+		})}, sourceWatchPredicates(r, CABundleSourceKindSecret))
+	if err != nil {
+		return err
+	}
+
+	// Watch config map
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
+			return r.webhookCABundleManager.ReconcileRequestsFromSource(
+				CABundleSource{
+					Kind:           CABundleSourceKindConfigMap,
+					NamespacedName: common.ToNamespacedName(obj.Meta)})
+		})}, sourceWatchPredicates(r, CABundleSourceKindConfigMap))
 	if err != nil {
 		return err
 	}
@@ -132,6 +133,30 @@ func add(mgr manager.Manager, r *reconciler) error {
 	return nil
 }
 
+func sourceWatchPredicates(r *reconciler, sourceKind CABundleSourceKind) predicate.Funcs {
+	return predicate.Funcs{
+		CreateFunc: func(event event.CreateEvent) bool {
+			return r.webhookCABundleManager.IsManagingWebhooksForSource(
+				CABundleSource{
+					Kind:           sourceKind,
+					NamespacedName: common.ToNamespacedName(event.Meta)})
+		},
+		UpdateFunc: func(event event.UpdateEvent) bool {
+			return r.webhookCABundleManager.IsManagingWebhooksForSource(
+				CABundleSource{
+					Kind:           sourceKind,
+					NamespacedName: common.ToNamespacedName(event.MetaNew)})
+		},
+		// deletion and generic events don't interest us
+		DeleteFunc: func(event event.DeleteEvent) bool {
+			return false
+		},
+		GenericFunc: func(event event.GenericEvent) bool {
+			return false
+		},
+	}
+}
+
 func enqueueWebhookRequests(webhookCABundleManager WebhookCABundleManager) handler.EventHandler {
 	return &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
@@ -143,15 +168,17 @@ func webhookWatchPredicates(webhookCABundleManager WebhookCABundleManager) predi
 	return &predicate.Funcs{
 		CreateFunc: func(event event.CreateEvent) (ok bool) {
 			objName := event.Meta.GetName()
-			if _, ok := event.Object.(*apixv1.CustomResourceDefinition); !ok {
+			if _, isCRD := event.Object.(*apixv1.CustomResourceDefinition); !isCRD {
 				for prefix, registration := range autoRegistrationMap {
 					if strings.HasPrefix(objName, prefix) {
 						if err := webhookCABundleManager.ManageWebhookCABundle(
 							event.Object,
-							types.NamespacedName{
-								Namespace: "",
-								Name:      registration.secretName,
-							}, registration.caFileName); err == nil {
+							CABundleSource{
+								Kind: CABundleSourceKindSecret,
+								NamespacedName: types.NamespacedName{
+									Namespace: "",
+									Name:      registration.secretName,
+								}}, registration.caFileName); err == nil {
 							return true
 						}
 						// XXX: should we log an error here?
@@ -193,7 +220,7 @@ type reconciler struct {
 }
 
 // Reconcile updates ClientConfigs of MutatingWebhookConfigurations to contain the CABundle
-// from the respective Istio SA secret
+// from the respective Istio SA secret or CA Bundle config map
 func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	logger := createLogger().WithValues("WebhookConfig", request.NamespacedName.String())
 	logger.Info("reconciling WebhookConfiguration")
@@ -210,18 +237,30 @@ func (wm *webhookCABundleManager) UpdateCABundle(ctx context.Context, cl client.
 		logger.Info("WebhookConfiguration does not exist yet. No action taken")
 		return nil
 	}
-	secret, ok := wm.secretForWebhook(webhookName)
+	caBundleSourceConfig, ok := wm.caBundleSourceForWebhook(webhookName)
 	if !ok {
 		logger.Error(nil, "webhook is not registered with the caBundle manager")
 		return nil
 	}
 
-	caRoot, err := common.GetRootCertFromSecret(ctx, cl, secret.Namespace, secret.Name, secret.keyName)
+	caBundle, err := wm.getCABundleFromSource(ctx, cl, caBundleSourceConfig)
 	if err != nil {
-		logger.Info("could not get secret: " + err.Error())
+		logger.Info("could not get CA bundle", "caBundleSourceConfig", caBundleSourceConfig, "error", err)
 		return nil
 	}
-	return currentConfig.UpdateCABundle(ctx, cl, caRoot)
+	return currentConfig.UpdateCABundle(ctx, cl, caBundle)
+}
+
+// GetCABundleFromSource retrieves the CA bundle from a secret or config map
+func (wm *webhookCABundleManager) getCABundleFromSource(ctx context.Context, cl client.Client, config caBundleSourceConfig) ([]byte, error) {
+	switch config.Kind {
+	case CABundleSourceKindSecret:
+		return common.GetCABundleFromSecret(ctx, cl, config.NamespacedName, config.keyName)
+	case CABundleSourceKindConfigMap:
+		return common.GetCABundleFromConfigMap(ctx, cl, config.NamespacedName, config.keyName)
+	default:
+		panic("Invalid source type " + config.Kind)
+	}
 }
 
 // Don't use this function to obtain a logger. Get it by invoking

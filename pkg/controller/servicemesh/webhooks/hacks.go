@@ -32,8 +32,9 @@ import (
 var webhookFailurePolicy = admissionv1.Fail
 
 const (
-	webhookSecretName  = "maistra-operator-serving-cert"
-	webhookServiceName = "maistra-admission-controller"
+	webhookSecretName    = "maistra-operator-serving-cert"
+	webhookConfigMapName = "maistra-operator-cabundle"
+	webhookServiceName   = "maistra-admission-controller"
 )
 
 func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.Logger, operatorNamespace string) error {
@@ -48,6 +49,15 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 			log.Info("Maistra webhook Service already exists")
 		} else {
 			return pkgerrors.Wrap(err, "error creating Maistra webhook Service")
+		}
+	}
+
+	log.Info("Creating Maistra webhook CA bundle ConfigMap")
+	if err := cl.Create(context.TODO(), newCABundleConfigMap(operatorNamespace)); err != nil {
+		if errors.IsAlreadyExists(err) {
+			log.Info("Maistra webhook CA bundle ConfigMap already exists")
+		} else {
+			return pkgerrors.Wrap(err, "error creating Maistra webhook CA bundle ConfigMap")
 		}
 	}
 
@@ -73,11 +83,14 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 	log.Info("Registering Maistra ValidatingWebhookConfiguration with CABundle reconciler")
 	if err := webhookca.WebhookCABundleManagerInstance.ManageWebhookCABundle(
 		validatingWebhookConfiguration,
-		types.NamespacedName{
-			Namespace: operatorNamespace,
-			Name:      webhookSecretName,
+		webhookca.CABundleSource{
+			Kind: webhookca.CABundleSourceKindConfigMap,
+			NamespacedName: types.NamespacedName{
+				Namespace: operatorNamespace,
+				Name:      webhookConfigMapName,
+			},
 		},
-		common.ServiceCARootCertKey); err != nil {
+		common.ServiceCABundleKey); err != nil {
 		return err
 	}
 
@@ -103,11 +116,14 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 	log.Info("Registering Maistra MutatingWebhookConfiguration with CABundle reconciler")
 	if err := webhookca.WebhookCABundleManagerInstance.ManageWebhookCABundle(
 		mutatingWebhookConfiguration,
-		types.NamespacedName{
-			Namespace: operatorNamespace,
-			Name:      webhookSecretName,
+		webhookca.CABundleSource{
+			Kind: webhookca.CABundleSourceKindConfigMap,
+			NamespacedName: types.NamespacedName{
+				Namespace: operatorNamespace,
+				Name:      webhookConfigMapName,
+			},
 		},
-		common.ServiceCARootCertKey); err != nil {
+		common.ServiceCABundleKey); err != nil {
 		return err
 	}
 
@@ -136,10 +152,12 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 				log.Info("Registering Maistra ServiceMeshControlPlane CRD conversion webhook with CABundle reconciler")
 				if err := webhookca.WebhookCABundleManagerInstance.ManageWebhookCABundle(
 					smcpcrd,
-					types.NamespacedName{
-						Namespace: operatorNamespace,
-						Name:      webhookSecretName,
-					}, common.ServiceCARootCertKey); err != nil {
+					webhookca.CABundleSource{
+						Kind: webhookca.CABundleSourceKindConfigMap,
+						NamespacedName: types.NamespacedName{
+							Namespace: operatorNamespace,
+							Name:      webhookConfigMapName,
+						}}, common.ServiceCABundleKey); err != nil {
 					return err
 				}
 			} else {
@@ -176,6 +194,22 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 		}
 	}()
 
+	configMapWatch, err := coreclient.ConfigMaps(operatorNamespace).Watch(ctx, metav1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", webhookConfigMapName)})
+	if err != nil {
+		log.Info("error occured creating watch for Maistra webhook CA bundle ConfigMap")
+		return nil
+	}
+	func() {
+		defer configMapWatch.Stop()
+		log.Info("Waiting for Maistra webhook CA bundle ConfigMap to become available")
+		select {
+		case <-configMapWatch.ResultChan():
+			log.Info("Maistra webhook CA bundle ConfigMap is now ready")
+		case <-time.After(30 * time.Second):
+			log.Info("timed out waiting for Maistra webhook CA bundle ConfigMap to become available")
+		}
+	}()
+
 	return nil
 }
 
@@ -203,11 +237,26 @@ func newWebhookService(namespace string) *corev1.Service {
 	}
 }
 
+func newCABundleConfigMap(namespace string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      webhookConfigMapName,
+			Namespace: namespace,
+			Annotations: map[string]string{
+				"service.beta.openshift.io/inject-cabundle": "true",
+			},
+		},
+	}
+}
+
 func newValidatingWebhookConfiguration(namespace string) *admissionv1.ValidatingWebhookConfiguration {
 	noneSideEffects := admissionv1.SideEffectClassNone
 	return &admissionv1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s.servicemesh-resources.maistra.io", namespace),
+			Annotations: map[string]string{
+				"service.beta.openshift.io/inject-cabundle": "true",
+			},
 		},
 		Webhooks: []admissionv1.ValidatingWebhook{
 			{
@@ -261,6 +310,9 @@ func newMutatingWebhookConfiguration(namespace string) *admissionv1.MutatingWebh
 	return &admissionv1.MutatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s.servicemesh-resources.maistra.io", namespace),
+			Annotations: map[string]string{
+				"service.beta.openshift.io/inject-cabundle": "true",
+			},
 		},
 		Webhooks: []admissionv1.MutatingWebhook{
 			{
