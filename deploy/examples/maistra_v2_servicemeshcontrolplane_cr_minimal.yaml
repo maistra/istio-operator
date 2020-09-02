@@ -11,6 +11,9 @@ spec:
       jaeger:
         name: jaeger
         install: {}
+    metrics:
+      prometheus:
+        enabled: false
     visualization:
       grafana:
         enabled: false
