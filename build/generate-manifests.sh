@@ -56,6 +56,7 @@ function generateCRDs() {
   mv deploy/crds/maistra.io_servicemeshcontrolplanes.yaml ${BUNDLE_DIR}/servicemeshcontrolplanes.crd.yaml
   mv deploy/crds/maistra.io_servicemeshmemberrolls.yaml ${BUNDLE_DIR}/servicemeshmemberrolls.crd.yaml
   mv deploy/crds/maistra.io_servicemeshmembers.yaml ${BUNDLE_DIR}/servicemeshmembers.crd.yaml
+
   rm -rf deploy/crds/
 
   cat ${BUNDLE_DIR}/servicemeshcontrolplanes.crd.yaml >deploy/src/crd.yaml
@@ -63,6 +64,12 @@ function generateCRDs() {
   cat ${BUNDLE_DIR}/servicemeshmemberrolls.crd.yaml >>deploy/src/crd.yaml
   echo -e "\n---\n" >>deploy/src/crd.yaml
   cat ${BUNDLE_DIR}/servicemeshmembers.crd.yaml >>deploy/src/crd.yaml
+
+  currentDir=$(pwd)
+  cd ${BUNDLE_DIR}
+  sed -i -e '/x-kubernetes-list-map-keys:/,/x-kubernetes-list-type: map/ { /- protocol/d }' *.crd.yaml        
+  sed -i -e '/---/d' *.crd.yaml
+  cd ${currentDir}
 }
 
 function generateDeploymentFile() {
