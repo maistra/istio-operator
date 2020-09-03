@@ -1,0 +1,148 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.3.0
+  creationTimestamp: null
+  name: servicemeshmemberrolls.maistra.io
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.annotations.configuredMemberCount
+    description: How many of the total number of member namespaces are configured
+    name: Ready
+    type: string
+  - JSONPath: .status.conditions[?(@.type=="Ready")].reason
+    description: Whether all member namespaces have been configured or why that's
+      not the case
+    name: Status
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    description: The age of the object
+    name: Age
+    type: date
+  - JSONPath: .spec.members
+    description: Namespaces that are members of this Control Plane
+    name: Members
+    priority: 1
+    type: string
+  group: maistra.io
+  names:
+    categories:
+    - maistra-io
+    kind: ServiceMeshMemberRoll
+    listKind: ServiceMeshMemberRollList
+    plural: servicemeshmemberrolls
+    shortNames:
+    - smmr
+    singular: servicemeshmemberroll
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: The ServiceMeshMemberRoll object configures which namespaces belong
+        to a service mesh. Only namespaces listed in the ServiceMeshMemberRoll will
+        be affected by the control plane. Any number of namespaces can be added, but
+        a namespace may not exist in more than one service mesh. The ServiceMeshMemberRoll
+        object must be created in the same namespace as the ServiceMeshControlPlane
+        object and must be named "default".
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: Specification of the desired list of members of the service
+            mesh.
+          properties:
+            members:
+              description: ' List of namespaces that should be members of the service
+                mesh.'
+              items:
+                type: string
+              nullable: true
+              type: array
+          type: object
+        status:
+          description: The current status of this ServiceMeshMemberRoll. This data
+            may be out of date by some window of time.
+          properties:
+            annotations:
+              additionalProperties:
+                type: string
+              description: Annotations is an unstructured key value map used to store
+                additional, usually redundant status information, such as the number
+                of components deployed by the ServiceMeshControlPlane (number is redundant
+                because you could just as easily count the elements in the ComponentStatus
+                array). The reason to add this redundant information is to make it
+                available to kubectl, which does not yet allow counting objects in
+                JSONPath expressions.
+              type: object
+            conditions:
+              description: Represents the latest available observations of this ServiceMeshMemberRoll's
+                current state.
+              items:
+                description: Condition represents a specific condition on a resource
+                properties:
+                  lastTransitionTime:
+                    format: date-time
+                    type: string
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                  status:
+                    type: string
+                  type:
+                    description: 'ServiceMeshMemberRollConditionType represents the
+                      type of the condition.  Condition types are: Reconciled, NamespaceConfigured'
+                    type: string
+                type: object
+              nullable: true
+              type: array
+            configuredMembers:
+              description: List of namespaces that are configured as members of the
+                service mesh.
+              items:
+                type: string
+              nullable: true
+              type: array
+            meshGeneration:
+              description: The generation of the ServiceMeshControlPlane object observed
+                by the controller during the most recent reconciliation of this ServiceMeshMemberRoll.
+              format: int64
+              type: integer
+            meshReconciledVersion:
+              description: The reconciled version of the ServiceMeshControlPlane object
+                observed by the controller during the most recent reconciliation of
+                this ServiceMeshMemberRoll.
+              type: string
+            observedGeneration:
+              description: The generation observed by the controller during the most
+                recent reconciliation. The information in the status pertains to this
+                particular generation of the object.
+              format: int64
+              type: integer
+          type: object
+      type: object
+  version: v1
+  versions:
+  - name: v1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
