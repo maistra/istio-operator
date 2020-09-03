@@ -28,9 +28,6 @@ spec:
       pilot:
         container:
           image: pilot-ubi8
-      ior:
-        container:
-          image: istio-ior-ubi8
       prometheus:
         container:
           image: prometheus-ubi8
