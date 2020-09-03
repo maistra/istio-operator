@@ -49,9 +49,6 @@ function generateCRDs() {
       paths=./pkg/apis/maistra/... \
       crd:maxDescLen=0,preserveUnknownFields=false,crdVersions=v1beta1 \
       output:crd:dir=./deploy/crds
-  # workaround for https://github.com/kubernetes-sigs/controller-tools/issues/457
-  #sed -i -e "s/\( *\)\(description\: The IP protocol for this port\)/\1default: TCP\n\1\2/" \
-  #    deploy/crds/maistra.io_servicemeshcontrolplanes.yaml
 
   mv deploy/crds/maistra.io_servicemeshcontrolplanes.yaml ${BUNDLE_DIR}/servicemeshcontrolplanes.crd.yaml
   mv deploy/crds/maistra.io_servicemeshmemberrolls.yaml ${BUNDLE_DIR}/servicemeshmemberrolls.crd.yaml
@@ -67,7 +64,7 @@ function generateCRDs() {
 
   currentDir=$(pwd)
   cd ${BUNDLE_DIR}
-  sed -i -e '/x-kubernetes-list-map-keys:/,/x-kubernetes-list-type: map/ { /- protocol/d }' *.crd.yaml        
+  sed -i -e '/x-kubernetes-list-map-keys:/,/x-kubernetes-list-type: map/ { /- protocol/d }' *.crd.yaml
   sed -i -e '/---/d' *.crd.yaml
   cd ${currentDir}
 }
