@@ -47,7 +47,7 @@ function generateCRDs() {
   go run -mod=vendor sigs.k8s.io/controller-tools/cmd/controller-gen crd \
       paths=./pkg/apis/maistra/... \
       crd:maxDescLen=0,preserveUnknownFields=false,crdVersions=v1beta1 \
-      output:crd:dir=./deploy/crds
+      output:dir=./deploy/crds
    # workaround for https://github.com/kubernetes-sigs/controller-tools/issues/457
   #sed -i -e "s/\( *\)\(description\: The IP protocol for this port\)/\1default: TCP\n\1\2/" \
   #    deploy/crds/maistra.io_servicemeshcontrolplanes.yaml
