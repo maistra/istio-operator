@@ -27,6 +27,7 @@ import (
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
@@ -122,7 +123,7 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 	}
 
 	// watch control planes and trigger reconcile requests as they come and go
-	err = c.Watch(&source.Kind{Type: &v1.ServiceMeshControlPlane{}}, &handler.EnqueueRequestsFromMapFunc{
+	err = c.Watch(&source.Kind{Type: &v2.ServiceMeshControlPlane{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(smcpMap handler.MapObject) []reconcile.Request {
 			namespacedName := types.NamespacedName{Name: common.MemberRollName, Namespace: smcpMap.Meta.GetNamespace()}
 			err := mgr.GetClient().Get(ctx, namespacedName, &v1.ServiceMeshMemberRoll{})
@@ -242,7 +243,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	reqLogger.Info("Reconciling ServiceMeshMemberRoll")
 
-	meshList := &v1.ServiceMeshControlPlaneList{}
+	meshList := &v2.ServiceMeshControlPlaneList{}
 	err = r.Client.List(ctx, meshList, client.InNamespace(instance.Namespace))
 	if err != nil {
 		return reconcile.Result{}, pkgerrors.Wrap(err, "Error retrieving ServiceMeshControlPlane resources")

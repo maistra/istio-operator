@@ -43,11 +43,12 @@ func StartManager(mgr manager.Manager, t *testing.T) func() {
 	go func() {
 		t.Helper()
 		t.Logf("starting manager.Manager")
+		defer close(startChannel)
 		if err := mgr.Start(stopChannel); err != nil {
-			t.Fatalf("Uexpected error returned from manager.Manager: %v", err)
+			t.Errorf("Uexpected error returned from manager.Manager: %v", err)
+			return
 		}
 		t.Logf("manager.Manager stopped cleanly")
-		close(startChannel)
 	}()
 
 	mgr.GetCache().WaitForCacheSync(stopChannel)
