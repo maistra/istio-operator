@@ -12,7 +12,7 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
 
     containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.0.0
-    createdAt: 2020-09-03T15:53:01EDT
+    createdAt: 2020-09-03T16:18:53EDT
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.0.0"
     alm-examples: |-
@@ -311,8 +311,6 @@ spec:
     image: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:2.0.0
   - name: v2_0.grafana
     image: registry.redhat.io/openshift-service-mesh/grafana-rhel8:2.0.0
-  - name: v2_0.ior
-    image: registry.redhat.io/openshift-service-mesh/ior-rhel8:2.0.0
   - name: v2_0.mixer
     image: registry.redhat.io/openshift-service-mesh/mixer-rhel8:2.0.0
   - name: v2_0.pilot
@@ -596,7 +594,6 @@ spec:
                 olm.relatedImage.v2_0.3scale-istio-adapter: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
                 olm.relatedImage.v2_0.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:2.0.0
                 olm.relatedImage.v2_0.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:2.0.0
-                olm.relatedImage.v2_0.ior: registry.redhat.io/openshift-service-mesh/ior-rhel8:2.0.0
                 olm.relatedImage.v2_0.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:2.0.0
                 olm.relatedImage.v2_0.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.0.0
                 olm.relatedImage.v2_0.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:2.0.0

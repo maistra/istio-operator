@@ -41,7 +41,6 @@ spec:
         olm.relatedImage.v2_0.3scale-istio-adapter: quay.io/3scale/3scale-istio-adapter:v1.0.0
         olm.relatedImage.v2_0.cni: docker.io/maistra/istio-cni-ubi8:2.0.0
         olm.relatedImage.v2_0.grafana: docker.io/maistra/grafana-ubi8:2.0.0
-        olm.relatedImage.v2_0.ior: docker.io/maistra/istio-ior-ubi8:2.0.0
         olm.relatedImage.v2_0.mixer: docker.io/maistra/mixer-ubi8:2.0.0
         olm.relatedImage.v2_0.pilot: docker.io/maistra/pilot-ubi8:2.0.0
         olm.relatedImage.v2_0.prometheus: docker.io/maistra/prometheus-ubi8:2.0.0

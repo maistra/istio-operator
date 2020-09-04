@@ -96,6 +96,13 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 5
           env:
+{{- $iorEnabled := "true" }}
+{{- $gateway := index .Values "gateways" "istio-ingressgateway" }}
+{{- if or (not .Values.gateways.enabled) (not $gateway) (not $gateway.ior_enabled) }}
+{{- $iorEnabled = "false" }}
+{{- end }}
+          - name: ENABLE_IOR
+            value: "{{ $iorEnabled }}"
           - name: REVISION
             value: "{{ .Values.revision | default `default` }}"
           - name: JWT_POLICY

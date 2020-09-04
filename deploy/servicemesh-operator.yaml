@@ -2265,6 +2265,11 @@ spec:
                           type: object
                         type: array
                     type: object
+                  openshiftRoute:
+                    properties:
+                      enabled:
+                        type: boolean
+                    type: object
                 type: object
               logging:
                 properties:
@@ -3588,7 +3593,6 @@ spec:
         olm.relatedImage.v2_0.3scale-istio-adapter: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
         olm.relatedImage.v2_0.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:2.0.0
         olm.relatedImage.v2_0.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:2.0.0
-        olm.relatedImage.v2_0.ior: registry.redhat.io/openshift-service-mesh/ior-rhel8:2.0.0
         olm.relatedImage.v2_0.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:2.0.0
         olm.relatedImage.v2_0.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.0.0
         olm.relatedImage.v2_0.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:2.0.0

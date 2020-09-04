@@ -277,6 +277,8 @@ spec:
       some-other-ingress-gateway: {}
     additionalEgress:
       some-other-egress-gateway: {}
+    openshiftRoute: # configures the Gateway ↔ OpenShift Route integration
+      enabled: true
 
   runtime:
     components:

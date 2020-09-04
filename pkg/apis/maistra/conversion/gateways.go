@@ -156,6 +156,13 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 			return err
 		}
 	}
+
+	if gateways.OpenShiftRoute != nil {
+		if err := setHelmBoolValue(values, "gateways.istio-ingressgateway.ior_enabled", *gateways.OpenShiftRoute.Enabled); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -416,6 +423,16 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 						return err
 					}
 					gatewaysConfig.ClusterIngress = &clusterIngress
+
+					if iorEnabled, ok, err := gatewayValues.GetBool("ior_enabled"); ok {
+						gatewaysConfig.OpenShiftRoute = &v2.OpenShiftRouteConfig{
+							Enablement: v2.Enablement{
+								Enabled: &iorEnabled,
+							},
+						}
+					} else if err != nil {
+						return err
+					}
 				} else if name != "istio-ilbgateway" {
 					// ilb gateway is handled by cluster config
 					gatewaysConfig.IngressGateways[name] = ingressGateway

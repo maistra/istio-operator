@@ -18,7 +18,7 @@ spec:
       istio-ingressgateway:
         # disable autoscaling for use in smaller environments
         autoscaleEnabled: false
-        # set to true to enable IOR
+        # enable integration between Istio Gateways and OpenShift Routes
         ior_enabled: false
 
     mixer:

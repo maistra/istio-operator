@@ -122,8 +122,6 @@ func (v *versionStrategyV2_0) SetImageValues(ctx context.Context, cr *common.Con
 	common.UpdateField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V2_0.ProxyInit)
 	common.UpdateField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V2_0.ProxyV2)
 	common.UpdateField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V2_0.ThreeScale)
-
-	common.UpdateField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V2_0.IOR)
 	return nil
 }
 

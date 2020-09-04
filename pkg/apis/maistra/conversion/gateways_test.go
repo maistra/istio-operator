@@ -189,6 +189,38 @@ var gatewaysTestCases = []conversionTestCase{
 		}),
 	},
 	{
+		name: "ingress.ior_enabled." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Gateways: &v2.GatewaysConfig{
+				OpenShiftRoute: &v2.OpenShiftRouteConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"gateways": map[string]interface{}{
+				"istio-ingressgateway": map[string]interface{}{
+					"ior_enabled": true,
+				},
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
 		name: "ingress.service.basic." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
