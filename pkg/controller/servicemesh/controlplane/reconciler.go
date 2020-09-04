@@ -101,7 +101,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		return
 	}
 
-if r.renderings == nil {
+	if r.renderings == nil {
 		// error handling
 		defer func() {
 			if err != nil {
@@ -352,11 +352,6 @@ func (r *controlPlaneInstanceReconciler) PostStatus(ctx context.Context) error {
 }
 
 func (r *controlPlaneInstanceReconciler) postReconciliationStatus(ctx context.Context, reconciliationReason status.ConditionReason, reconciliationMessage string, processingErr error) error {
-	_, err := r.updateReadinessStatus(ctx)
-	if err != nil {
-		return err
-	}
-
 	var reason string
 	if r.isUpdating() {
 		reason = eventReasonUpdating
@@ -373,6 +368,12 @@ func (r *controlPlaneInstanceReconciler) postReconciliationStatus(ctx context.Co
 		r.EventRecorder.Event(r.Instance, corev1.EventTypeWarning, reason, reconciledCondition.Message)
 	}
 	r.Status.SetCondition(reconciledCondition)
+
+	// calculate readiness after updating reconciliation status, so we don't mark failed reconcilations as "ready"
+	_, err := r.updateReadinessStatus(ctx)
+	if err != nil {
+		return err
+	}
 
 	return r.PostStatus(ctx)
 }
@@ -476,4 +477,3 @@ func componentFromChartName(chartName string) string {
 	_, componentName := path.Split(chartName)
 	return componentName
 }
-
