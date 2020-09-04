@@ -3,7 +3,6 @@ kind: ServiceMeshControlPlane
 metadata:
   name: minimal
 spec:
-  version: v2.0
   addons:
     tracing:
       # change to Jaeger to enable tracing
