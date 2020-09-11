@@ -12,13 +12,15 @@ metadata:
     "maistra.io/internal": "true"
 spec:
   podSelector:
+    matchExpressions:
+    # the value of this label depends on the deployment strategy used
+    - key: app.kubernetes.io/component
+      operator: In
+      values:
+      - all-in-one
+      - query
     matchLabels:
-  {{- if eq .Values.tracing.jaeger.template "all-in-one"}}
-      app.kubernetes.io/component: all-in-one
-  {{- else }}
-      app.kubernetes.io/component: collector
-  {{- end }}
-      app.kubernetes.io/instance: {{ default .Values.tracing.jaeger.resourceName "jaeger" }}
+      app.kubernetes.io/instance: {{ .Values.tracing.jaeger.resourceName | default "jaeger" }}
       app.kubernetes.io/part-of: jaeger
       app.kubernetes.io/managed-by: jaeger-operator
   ingress:
