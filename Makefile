@@ -16,8 +16,8 @@
 
 MAISTRA_VERSION        ?= 2.0.0
 MAISTRA_BRANCH         ?= maistra-2.0
-REPLACES_PRODUCT_CSV   ?= 1.1.4
-REPLACES_COMMUNITY_CSV ?= 1.1.8
+REPLACES_PRODUCT_CSV   ?= 1.1.8
+REPLACES_COMMUNITY_CSV ?= 1.1.3
 VERSION                ?= development
 IMAGE                  ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}
 CONTAINER_CLI          ?= docker
@@ -180,7 +180,7 @@ generate-product-manifests:
 # resource generation
 ################################################################################
 .PHONY: gen
-gen: update-charts update-generated-code
+gen: update-charts update-templates update-generated-code
 
 .PHONY: gen-check
 gen-check: gen check-clean-repo
