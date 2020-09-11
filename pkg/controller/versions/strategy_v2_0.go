@@ -223,6 +223,10 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 			if jaegerResource == "" {
 				jaegerResource = "jaeger"
 			}
+
+			// set the correct zipkin address
+			spec.Istio.SetField("global.tracer.zipkin.address", fmt.Sprintf("%s-collector.%s.svc:9411", jaegerResource, smcp.GetNamespace()))
+
 			jaeger := &jaegerv1.Jaeger{}
 			jaeger.SetName(jaegerResource)
 			jaeger.SetNamespace(smcp.GetNamespace())

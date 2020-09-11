@@ -170,6 +170,10 @@
           address: {{ .Values.global.tracer.lightstep.address }}
           # Access Token used to communicate with the Satellite pool
           accessToken: {{ .Values.global.tracer.lightstep.accessToken }}
+      {{- else if eq .Values.global.proxy.tracer "jaeger" }}
+        zipkin:
+          # Address of the Jaeger collector
+          address: {{ .Values.global.tracer.zipkin.address }}
       {{- else if eq .Values.global.proxy.tracer "zipkin" }}
         zipkin:
           # Address of the Zipkin collector
