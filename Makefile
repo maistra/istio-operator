@@ -14,9 +14,9 @@
 
 -include Makefile.overrides
 
-MAISTRA_VERSION        ?= 1.1.7
+MAISTRA_VERSION        ?= 1.1.8
 MAISTRA_BRANCH         ?= maistra-1.1
-REPLACES_PRODUCT_CSV   ?= 1.1.6
+REPLACES_PRODUCT_CSV   ?= 1.1.7
 REPLACES_COMMUNITY_CSV ?= 1.1.5
 VERSION                ?= development
 IMAGE                  ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}
