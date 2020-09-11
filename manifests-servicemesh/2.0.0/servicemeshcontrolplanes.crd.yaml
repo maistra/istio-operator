@@ -2809,6 +2809,14 @@ spec:
                         type: object
                     type: object
                 type: object
+              techPreviews:
+                properties:
+                  wasmExtensions:
+                    properties:
+                      enabled:
+                        type: boolean
+                    type: object
+                type: object
               telemetry:
                 properties:
                   istiod:

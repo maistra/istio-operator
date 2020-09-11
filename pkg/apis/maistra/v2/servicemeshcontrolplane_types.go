@@ -97,6 +97,9 @@ type ControlPlaneSpec struct {
 	// components, e.g. visualization, metric storage, etc.
 	// +optional
 	Addons *AddonsConfig `json:"addons,omitempty"`
+	// TechPreviews contains switches for features that are not GA yet.
+	// +optional
+	TechPreviews *TechPreviewsConfig `json:"techPreviews,omitempty"`
 }
 
 // Enablement is a common definition for features that can be enabled

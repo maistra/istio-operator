@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    maistra-version: 2.0.0
+    maistra-version: 2.0.0
+    maistra-version: 2.0.0
+    app: mec
+    chart: {{ template "mec.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: mec
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mec
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        maistra-control-plane: {{ .Release.Namespace }}
+        maistra-control-plane: {{ .Release.Namespace }}
+        app: mec
+        chart: {{ template "mec.chart" . }}
+        heritage: {{ .Release.Service }}
+        release: {{ .Release.Name }}
+    spec:
+      serviceAccountName: mec
+      containers:
+      - name: mec
+{{- if contains "/" .Values.image }}
+        image: "{{ .Values.image }}"
+{{- else }}
+        image: "{{ .Values.global.hub }}/{{ .Values.image }}:{{ .Values.global.tag }}"
+{{- end }}
+        imagePullPolicy: Always
+        command:
+        - mec
+        - --namespace
+        - {{ .Release.Namespace }}
+        - --baseURL
+        - http://mec.{{ .Release.Namespace }}.svc.cluster.local
+        resources: {}
+        env:
+        - name: HOME
+          value: /podman
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: home
+          mountPath: /podman
+        - name: servedir
+          mountPath: /srv
+        - name: graph
+          mountPath: /var/lib/containers
+      volumes:
+      - name: home
+        emptyDir: {}
+      - name: servedir
+        emptyDir: {}
+      - name: graph
+        emptyDir: {}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      securityContext: {}
+      terminationGracePeriodSeconds: 30

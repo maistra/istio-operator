@@ -18,7 +18,7 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 	if len(in.Profiles) == 1 {
 		out.Template = in.Profiles[0]
 	}
-	
+
 	// Make a copy so we can modify fields as needed
 	in = in.DeepCopy()
 
@@ -68,6 +68,11 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 
 	// Addons
 	if err := populateAddonsValues(in, values); err != nil {
+		return err
+	}
+
+	// TechPreviews
+	if err := populateTechPreviewsValues(in, values); err != nil {
 		return err
 	}
 
