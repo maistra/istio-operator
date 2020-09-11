@@ -86,6 +86,7 @@ func autoConvert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneS
 	// WARNING: in.Gateways requires manual conversion: does not exist in peer-type
 	// WARNING: in.Runtime requires manual conversion: does not exist in peer-type
 	// WARNING: in.Addons requires manual conversion: does not exist in peer-type
+	// WARNING: in.TechPreviews requires manual conversion: does not exist in peer-type
 	return nil
 }
 

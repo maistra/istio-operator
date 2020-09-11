@@ -3140,6 +3140,14 @@ spec:
                         type: string
                     type: object
                 type: object
+              techPreviews:
+                properties:
+                  wasmExtensions:
+                    properties:
+                      enabled:
+                        type: boolean
+                    type: object
+                type: object
               telemetry:
                 properties:
                   mixer:
@@ -6141,6 +6149,14 @@ spec:
                             type: string
                         type: object
                     type: object
+                  techPreviews:
+                    properties:
+                      wasmExtensions:
+                        properties:
+                          enabled:
+                            type: boolean
+                        type: object
+                    type: object
                   telemetry:
                     properties:
                       mixer:
@@ -6513,6 +6529,92 @@ spec:
   version: v1
   versions:
   - name: v1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.0
+  creationTimestamp: null
+  name: servicemeshextensions.extensions.maistra.io
+spec:
+  group: extensions.maistra.io
+  names:
+    categories:
+    - maistra-io
+    kind: ServiceMeshExtension
+    listKind: ServiceMeshExtensionList
+    plural: servicemeshextensions
+    shortNames:
+    - sme
+    singular: servicemeshextension
+  preserveUnknownFields: false
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            config:
+              type: string
+            image:
+              type: string
+            phase:
+              type: string
+            priority:
+              type: integer
+            workloadSelector:
+              properties:
+                labels:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+          type: object
+        status:
+          properties:
+            deployment:
+              properties:
+                containerSha256:
+                  type: string
+                ready:
+                  type: boolean
+                sha256:
+                  type: string
+                url:
+                  type: string
+              type: object
+            observedGeneration:
+              format: int64
+              type: integer
+            phase:
+              type: string
+            priority:
+              type: integer
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
     served: true
     storage: true
 status:

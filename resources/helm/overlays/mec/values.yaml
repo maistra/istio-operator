@@ -1,0 +1,3 @@
+enabled: true
+
+image: registry.gitlab.com/dgrimm/istio/mec:latest

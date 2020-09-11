@@ -72,6 +72,7 @@ type v2_0ImageNames struct {
 	Prometheus string `json:"prometheus,omitempty"`
 	ProxyInit  string `json:"proxy-init,omitempty"`
 	ProxyV2    string `json:"proxyv2,omitempty"`
+	Mec        string `json:"mec,omitempty"`
 }
 
 type oauthProxy struct {

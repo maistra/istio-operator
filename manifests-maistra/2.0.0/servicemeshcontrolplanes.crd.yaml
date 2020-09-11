@@ -3139,6 +3139,14 @@ spec:
                         type: string
                     type: object
                 type: object
+              techPreviews:
+                properties:
+                  wasmExtensions:
+                    properties:
+                      enabled:
+                        type: boolean
+                    type: object
+                type: object
               telemetry:
                 properties:
                   mixer:
@@ -6138,6 +6146,14 @@ spec:
                             type: array
                           domain:
                             type: string
+                        type: object
+                    type: object
+                  techPreviews:
+                    properties:
+                      wasmExtensions:
+                        properties:
+                          enabled:
+                            type: boolean
                         type: object
                     type: object
                   telemetry:

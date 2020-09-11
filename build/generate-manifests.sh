@@ -62,7 +62,7 @@ function generateCRDs() {
   mv deploy/crds/maistra.io_servicemeshcontrolplanes.yaml ${BUNDLE_DIR}/servicemeshcontrolplanes.crd.yaml
   mv deploy/crds/maistra.io_servicemeshmemberrolls.yaml ${BUNDLE_DIR}/servicemeshmemberrolls.crd.yaml
   mv deploy/crds/maistra.io_servicemeshmembers.yaml ${BUNDLE_DIR}/servicemeshmembers.crd.yaml
-
+  mv deploy/crds/extensions.maistra.io_servicemeshextensions.yaml ${BUNDLE_DIR}/servicemeshextensions.crd.yaml
   rm -rf deploy/crds/
 
   cat ${BUNDLE_DIR}/servicemeshcontrolplanes.crd.yaml >deploy/src/crd.yaml
@@ -70,6 +70,8 @@ function generateCRDs() {
   cat ${BUNDLE_DIR}/servicemeshmemberrolls.crd.yaml >>deploy/src/crd.yaml
   echo -e "\n---\n" >>deploy/src/crd.yaml
   cat ${BUNDLE_DIR}/servicemeshmembers.crd.yaml >>deploy/src/crd.yaml
+  echo -e "\n---\n" >>deploy/src/crd.yaml
+  cat ${BUNDLE_DIR}/servicemeshextensions.crd.yaml >>deploy/src/crd.yaml
 
 }
 

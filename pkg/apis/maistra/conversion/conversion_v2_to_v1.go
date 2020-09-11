@@ -151,6 +151,11 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 		return err
 	}
 
+	// TechPreviews
+	if err := populateTechPreviewsValues(in, values); err != nil {
+		return err
+	}
+
 	out.Istio = v1.NewHelmValues(values)
 
 	return nil
