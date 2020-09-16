@@ -219,10 +219,10 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			return reconcile.Result{}, err
 		}
 		if mesh != nil && mesh.Status.AppliedSpec.Addons != nil &&
-			mesh.Status.AppliedSpec.Addons.Visualization.Kiali != nil &&
-			mesh.Status.AppliedSpec.Addons.Visualization.Kiali.Enabled != nil &&
-			*mesh.Status.AppliedSpec.Addons.Visualization.Kiali.Enabled {
-			err = r.kialiReconciler.reconcileKiali(ctx, mesh.Status.AppliedSpec.Addons.Visualization.Kiali.Name, instance.Namespace, []string{})
+			mesh.Status.AppliedSpec.Addons.Kiali != nil &&
+			mesh.Status.AppliedSpec.Addons.Kiali.Enabled != nil &&
+			*mesh.Status.AppliedSpec.Addons.Kiali.Enabled {
+			err = r.kialiReconciler.reconcileKiali(ctx, mesh.Status.AppliedSpec.Addons.Kiali.Name, instance.Namespace, []string{})
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -367,10 +367,10 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	// tell Kiali about all the namespaces in the mesh
 	var kialiErr error
 	if mesh.Status.AppliedSpec.Addons != nil &&
-		mesh.Status.AppliedSpec.Addons.Visualization.Kiali != nil &&
-		mesh.Status.AppliedSpec.Addons.Visualization.Kiali.Enabled != nil &&
-		*mesh.Status.AppliedSpec.Addons.Visualization.Kiali.Enabled {
-		kialiErr = r.kialiReconciler.reconcileKiali(ctx, mesh.Status.AppliedSpec.Addons.Visualization.Kiali.Name, instance.Namespace, instance.Status.ConfiguredMembers)
+		mesh.Status.AppliedSpec.Addons.Kiali != nil &&
+		mesh.Status.AppliedSpec.Addons.Kiali.Enabled != nil &&
+		*mesh.Status.AppliedSpec.Addons.Kiali.Enabled {
+		kialiErr = r.kialiReconciler.reconcileKiali(ctx, mesh.Status.AppliedSpec.Addons.Kiali.Name, instance.Namespace, instance.Status.ConfiguredMembers)
 	}
 
 	if err != nil {

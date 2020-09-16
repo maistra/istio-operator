@@ -4,7 +4,19 @@ package v2
 // control plane.  Only one of Install or Address may be specified
 type PrometheusAddonConfig struct {
 	Enablement `json:",inline"`
+	// TelemetryConfig configures telemetry adapters/filters when the prometheus
+	// addon is enabled and telemetry is enabled.
+	// .Values.mixer.adapters.prometheus.enabled, true if this.Enabled is true
+	// .Values.telemetry.v2.prometheus.enabled, true if this.Enabled is true
+	// +optional
+	TelemetryConfig *PrometheusTelemetryConfig `json:"telemetry,omitempty"`
+	// Scrape metrics from the pod if true. (maistra-2.0+)
+	// defaults to true
+	// .Values.meshConfig.enablePrometheusMerge
+	// +optional
+	Scrape *bool `json:"scrape,omitempty"`
 	// Install configuration if not using an existing prometheus installation.
+	// .Values.prometheus.enabled, if not null
 	// +optional
 	Install *PrometheusInstallConfig `json:"install,omitempty"`
 	// Address of existing prometheus installation
@@ -23,9 +35,15 @@ type PrometheusInstallConfig struct {
 	// Governs use of either prometheus charts or prometheusOperator charts.
 	// +optional
 	SelfManaged bool `json:"selfManaged,omitempty"`
-	// Config for the prometheus installation
+	// Retention specifies how long metrics should be retained by prometheus.
+	// .Values.prometheus.retention, defaults to 6h
 	// +optional
-	Config PrometheusConfig `json:"config,omitempty"`
+	Retention string `json:"retention,omitempty"`
+	// ScrapeInterval specifies how frequently prometheus should scrape pods for
+	// metrics.
+	// .Values.prometheus.scrapeInterval, defaults to 15s
+	// +optional
+	ScrapeInterval string `json:"scrapeInterval,omitempty"`
 	// Service allows for customization of the k8s Service associated with the
 	// prometheus installation.
 	// +optional
@@ -41,15 +59,11 @@ type PrometheusInstallConfig struct {
 	UseTLS *bool `json:"useTLS,omitempty"`
 }
 
-// PrometheusConfig is used to configure the behavior of the prometheus instance.
-type PrometheusConfig struct {
-	// Retention specifies how long metrics should be retained by prometheus.
-	// .Values.prometheus.retention, defaults to 6h
+// PrometheusTelemetryConfig is used to configure Prometheus related telemetry
+// functionality.
+type PrometheusTelemetryConfig struct {
+	// MetricsExpiryDuration is the duration to hold metrics. (mixer/v1 only)
+	// .Values.mixer.adapters.prometheus.metricsExpiryDuration, defaults to 10m
 	// +optional
-	Retention string `json:"retention,omitempty"`
-	// ScrapeInterval specifies how frequently prometheus should scrape pods for
-	// metrics.
-	// .Values.prometheus.scrapeInterval, defaults to 15s
-	// +optional
-	ScrapeInterval string `json:"scrapeInterval,omitempty"`
+	MetricsExpiryDuration string `json:"metricsExpiryDuration,omitempty"`
 }

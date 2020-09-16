@@ -15,8 +15,8 @@ spec:
   deployment:
     accessible_namespaces:
     - "{{ .Release.Namespace }}"
-{{- if and .Values.hub .Values.image }}
-    image_name: "{{ .Values.hub }}/{{ .Values.image }}"
+{{- if and .Values.kiali.hub .Values.kiali.image }}
+    image_name: "{{ .Values.kiali.hub }}/{{ .Values.kiali.image }}"
 {{- end }}
     image_pull_policy: "{{ .Values.global.imagePullPolicy }}"
 {{- if .Values.global.imagePullSecrets }}
@@ -25,15 +25,15 @@ spec:
     - {{ . }}
 {{- end }}
 {{- end }}
-{{- if .Values.ingress }}
-{{- if .Values.ingress.enabled }}
-    ingress_enabled: {{ .Values.ingress.enabled }}
+{{- if .Values.kiali.ingress }}
+{{- if .Values.kiali.ingress.enabled }}
+    ingress_enabled: {{ .Values.kiali.ingress.enabled }}
 {{- end }}
 {{- end }}
     namespace: "{{ .Release.Namespace }}"
-{{- if .Values.dashboard }}
-{{- if .Values.dashboard.viewOnlyMode }}
-    view_only_mode: {{ .Values.dashboard.viewOnlyMode }}
+{{- if .Values.kiali.dashboard }}
+{{- if .Values.kiali.dashboard.viewOnlyMode }}
+    view_only_mode: {{ .Values.kiali.dashboard.viewOnlyMode }}
 {{- end }}
 {{- end }}
 
@@ -47,9 +47,9 @@ spec:
         password: ""
       enabled: true
       in_cluster_url: "https://grafana.{{ .Release.Namespace }}.svc:3000"
-{{- if .Values.dashboard }}
-{{- if .Values.dashboard.grafanaURL }}
-      url: "{{ .Values.dashboard.grafanaURL }}"
+{{- if .Values.kiali.dashboard }}
+{{- if .Values.kiali.dashboard.grafanaURL }}
+      url: "{{ .Values.kiali.dashboard.grafanaURL }}"
 {{- end }}
 {{- end }}
     prometheus:
@@ -68,21 +68,21 @@ spec:
         username: "internal"
         password: ""
       enabled: true
-{{- if .Values.jaegerInClusterURL }}
-      in_cluster_url: "{{ .Values.jaegerInClusterURL }}"
+{{- if .Values.kiali.jaegerInClusterURL }}
+      in_cluster_url: "{{ .Values.kiali.jaegerInClusterURL }}"
 {{- else }}
       in_cluster_url: "https://{{ .Values.tracing.jaeger.resourceName | default "jaeger" }}-query.{{ .Release.Namespace }}.svc"
 {{- end }}
       namespace: "{{ .Release.Namespace }}"
       service : ""
-{{- if .Values.dashboard }}
-{{- if .Values.dashboard.jaegerURL }}
-      url: "{{ .Values.dashboard.jaegerURL }}"
+{{- if .Values.kiali.dashboard }}
+{{- if .Values.kiali.dashboard.jaegerURL }}
+      url: "{{ .Values.kiali.dashboard.jaegerURL }}"
 {{- end }}
 {{- end }}
 
-{{- if .Values.contextPath }}
+{{- if .Values.kiali.contextPath }}
   server:
-    web_root: "{{ .Values.contextPath }}"
+    web_root: "{{ .Values.kiali.contextPath }}"
 {{- end }}
 {{- end }}

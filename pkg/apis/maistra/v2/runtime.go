@@ -15,7 +15,7 @@ type ControlPlaneRuntimeConfig struct {
 	// componets.  The key of the map is the component name to which the settings
 	// should be applied.
 	// +optional
-	Components map[ControlPlaneComponentName]ComponentRuntimeConfig `json:"components,omitempty"`
+	Components map[ControlPlaneComponentName]*ComponentRuntimeConfig `json:"components,omitempty"`
 	// Defaults will be merged into specific component config.
 	// .Values.global.defaultResources, e.g.
 	// +optional
@@ -46,12 +46,22 @@ const (
 	ControlPlaneComponentNameTracingJaeger ControlPlaneComponentName = "tracing.jaeger"
 	// ControlPlaneComponentNameTracingJaegerElasticsearch - tracing.jaeger.elasticsearch
 	ControlPlaneComponentNameTracingJaegerElasticsearch ControlPlaneComponentName = "tracing.jaeger.elasticsearch"
+	// ControlPlaneComponentNameTracingJaegerAgent - tracing.jaeger.agent
+	ControlPlaneComponentNameTracingJaegerAgent ControlPlaneComponentName = "tracing.jaeger.agent"
+	// ControlPlaneComponentNameTracingJaegerAllInOne - tracing.jaeger.allInOne
+	ControlPlaneComponentNameTracingJaegerAllInOne ControlPlaneComponentName = "tracing.jaeger.allInOne"
+	// ControlPlaneComponentNameTracingJaegerCollector - tracing.jaeger.collector
+	ControlPlaneComponentNameTracingJaegerCollector ControlPlaneComponentName = "tracing.jaeger.collector"
+	// ControlPlaneComponentNameTracingJaegerQuery - tracing.jaeger.query
+	ControlPlaneComponentNameTracingJaegerQuery ControlPlaneComponentName = "tracing.jaeger.query"
 	// ControlPlaneComponentNamePrometheus - prometheus
 	ControlPlaneComponentNamePrometheus ControlPlaneComponentName = "prometheus"
 	// ControlPlaneComponentNameKiali - kiali
 	ControlPlaneComponentNameKiali ControlPlaneComponentName = "kiali"
 	// ControlPlaneComponentNameGrafana - grafana
 	ControlPlaneComponentNameGrafana ControlPlaneComponentName = "grafana"
+	// ControlPlaneComponentNameThreeScale - 3scale
+	ControlPlaneComponentNameThreeScale ControlPlaneComponentName = "3scale"
 )
 
 // ControlPlaneComponentNames - supported runtime components
@@ -66,9 +76,14 @@ var ControlPlaneComponentNames = []ControlPlaneComponentName{
 	ControlPlaneComponentNameTracing,
 	ControlPlaneComponentNameTracingJaeger,
 	ControlPlaneComponentNameTracingJaegerElasticsearch,
+	ControlPlaneComponentNameTracingJaegerAgent,
+	ControlPlaneComponentNameTracingJaegerAllInOne,
+	ControlPlaneComponentNameTracingJaegerCollector,
+	ControlPlaneComponentNameTracingJaegerQuery,
 	ControlPlaneComponentNamePrometheus,
 	ControlPlaneComponentNameKiali,
 	ControlPlaneComponentNameGrafana,
+	ControlPlaneComponentNameThreeScale,
 }
 
 // ComponentRuntimeConfig allows for partial customization of a component's
@@ -206,16 +221,18 @@ type PodAntiAffinityTerm struct {
 type ContainerConfig struct {
 	CommonContainerConfig `json:",inline"`
 	// +optional
-	Image string `json:"image,omitempty"`
+	Image string `json:"imageName,omitempty"`
+	// +optional
+	Env map[string]string `json:"env,omitempty"`
 }
 
 // CommonContainerConfig represents container settings common to both defaults
 // and component specific configuration.
 type CommonContainerConfig struct {
 	// +optional
-	ImageRegistry string `json:"registry,omitempty"`
+	ImageRegistry string `json:"imageRegistry,omitempty"`
 	// +optional
-	ImageTag string `json:"tag,omitempty"`
+	ImageTag string `json:"imageTag,omitempty"`
 	// +optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 	// +optional
@@ -263,7 +280,7 @@ type ComponentServiceConfig struct {
 	// +optional
 	Metadata MetadataConfig `json:"metadata,omitempty"`
 	// NodePort specifies a NodePort for the component's Service.
-	// .Values.prometheus.service.nodePort.port, ...enabled is true if not null
+	// .Values.<component>.service.nodePort.port, ...enabled is true if not null
 	// +optional
 	NodePort *int32 `json:"nodePort,omitempty"`
 	// Ingress specifies details for accessing the component's service through

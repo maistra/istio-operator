@@ -1153,7 +1153,7 @@ var gatewaysTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Gateways: &v2.GatewaysConfig{
-				IngressGateways: map[string]v2.IngressGatewayConfig{
+				IngressGateways: map[string]*v2.IngressGatewayConfig{
 					"extra-ingress-enabled": {
 						GatewayConfig: v2.GatewayConfig{
 							Enablement: v2.Enablement{
@@ -1452,7 +1452,7 @@ var gatewaysTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Gateways: &v2.GatewaysConfig{
-				EgressGateways: map[string]v2.EgressGatewayConfig{
+				EgressGateways: map[string]*v2.EgressGatewayConfig{
 					"extra-egress-enabled": {
 						GatewayConfig: v2.GatewayConfig{
 							Enablement: v2.Enablement{

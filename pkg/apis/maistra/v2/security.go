@@ -4,33 +4,32 @@ package v2
 type SecurityConfig struct {
 	// MutualTLS configures mutual TLS for the control plane and mesh
 	// +optional
-	MutualTLS MutualTLSConfig `json:"mutualTLS,omitempty"`
+	MutualTLS *MutualTLSConfig `json:"mtls,omitempty"`
+	// Trust configures trust aspects associated with mutual TLS clients.
+	// +optional
+	Trust *TrustConfig `json:"trust,omitempty"`
+	// CertificateAuthority configures the certificate authority used by the
+	// control plane to create and sign client certs and server keys.
+	// +optional
+	CertificateAuthority *CertificateAuthorityConfig `json:"certificateAuthority,omitempty"`
+	// Identity configures the types of user tokens used by clients.
+	// +optional
+	Identity *IdentityConfig `json:"identity,omitempty"`
+	// ControlPlane configures mutual TLS for control plane communication.
+	// +optional
+	ControlPlane *ControlPlaneSecurityConfig `json:"controlPlane,omitempty"`
 }
 
 // MutualTLSConfig specifies mutual TLS configuration for the control plane and mesh.
 type MutualTLSConfig struct {
+	// Enable mutual TLS by default.
+	// .Values.global.mtls.enabled
+	Enablement `json:",inline"`
 	// Auto configures the mesh to automatically detect whether or not mutual
 	// TLS is required for a specific connection.
 	// .Values.global.mtls.auto
 	// +optional
 	Auto *bool `json:"auto,omitempty"`
-	// Enable mutual TLS by default.
-	// .Values.global.mtls.enabled
-	// +optional
-	Enable *bool `json:"enable,omitempty"`
-	// Trust configures trust aspects associated with mutual TLS clients.
-	// +optional
-	Trust TrustConfig `json:"trust,omitempty"`
-	// CertificateAuthority configures the certificate authority used by the
-	// control plane to create and sign client certs and server keys.
-	// +optional
-	CertificateAuthority CertificateAuthorityConfig `json:"certificateAuthority,omitempty"`
-	// Identity configures the types of user tokens used by clients.
-	// +optional
-	Identity IdentityConfig `json:"identity,omitempty"`
-	// ControlPlane configures mutual TLS for control plane communication.
-	// +optional
-	ControlPlane ControlPlaneMTLSConfig `json:"controlPlane,omitempty"`
 }
 
 // TrustConfig configures trust aspects associated with mutual TLS clients
@@ -217,19 +216,23 @@ type ThirdPartyIdentityConfig struct {
 	Audience string `json:"audience,omitempty"`
 }
 
-// ControlPlaneMTLSConfig is the mutual TLS configuration specific to the
+// ControlPlaneSecurityConfig is the mutual TLS configuration specific to the
 // control plane.
-type ControlPlaneMTLSConfig struct {
+type ControlPlaneSecurityConfig struct {
 	// Enable mutual TLS for the control plane components.
 	// .Values.global.controlPlaneSecurityEnabled
 	// +optional
-	Enable *bool `json:"enable,omitempty"`
+	MTLS *bool `json:"mtls,omitempty"`
 	// CertProvider is the certificate authority used to generate the serving
 	// certificates for the control plane components.
 	// .Values.global.pilotCertProvider
 	// Provider used to generate serving certs for istiod (pilot)
 	// +optional
 	CertProvider ControlPlaneCertProviderType `json:"certProvider,omitempty"`
+
+	// TLS configures aspects of TLS listeners created by control plane components.
+	// +optional
+	TLS *ControlPlaneTLSConfig `json:"tls,omitempty"`
 }
 
 // ControlPlaneCertProviderType represents the provider used to generate serving
@@ -245,3 +248,28 @@ const (
 	// XXX: Not quite sure what this means. Presumably, the key and cert chain have been mounted specially
 	ControlPlaneCertProviderTypeCustom ControlPlaneCertProviderType = "Custom"
 )
+
+// ControlPlaneTLSConfig configures settings on TLS listeners created by
+// control plane components, e.g. webhooks, grpc (if mtls is enabled), etc.
+type ControlPlaneTLSConfig struct {
+	// CipherSuites configures the cipher suites that are available for use by
+	// TLS listeners.
+	// .Values.global.tls.cipherSuites
+	// +optional
+	CipherSuites []string `json:"cipherSuites,omitempty"`
+	// ECDHCurves configures the ECDH curves that are available for use by
+	// TLS listeners.
+	// .Values.global.tls.ecdhCurves
+	// +optional
+	ECDHCurves []string `json:"ecdhCurves,omitempty"`
+	// MinProtocolVersion the minimum TLS version that should be supported by
+	// the listeners.
+	// .Values.global.tls.minProtocolVersion
+	// +optional
+	MinProtocolVersion string `json:"minProtocolVersion,omitempty"`
+	// MaxProtocolVersion the maximum TLS version that should be supported by
+	// the listeners.
+	// .Values.global.tls.maxProtocolVersion
+	// +optional
+	MaxProtocolVersion string `json:"maxProtocolVersion,omitempty"`
+}

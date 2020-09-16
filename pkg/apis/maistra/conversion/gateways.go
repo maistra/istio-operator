@@ -128,7 +128,7 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 	}
 
 	for name, gateway := range gateways.IngressGateways {
-		if gatewayValues, err := gatewayIngressConfigToValues(&gateway); err == nil {
+		if gatewayValues, err := gatewayIngressConfigToValues(gateway); err == nil {
 			if len(gatewayValues) > 0 {
 				if err := setHelmValue(gatewayValues, "name", name); err != nil {
 					return err
@@ -143,7 +143,7 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 	}
 
 	for name, gateway := range gateways.EgressGateways {
-		if gatewayValues, err := gatewayEgressConfigToValues(&gateway); err == nil {
+		if gatewayValues, err := gatewayEgressConfigToValues(gateway); err == nil {
 			if len(gatewayValues) > 0 {
 				if err := setHelmValue(gatewayValues, "name", name); err != nil {
 					return err
@@ -168,57 +168,55 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 
 // converts v2.GatewayConfig to values.yaml
 func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error) {
-	values := make(map[string]interface{})
+	gatewayValues := make(map[string]interface{})
 	if in.Enabled != nil {
-		if err := setHelmBoolValue(values, "enabled", *in.Enabled); err != nil {
+		if err := setHelmBoolValue(gatewayValues, "enabled", *in.Enabled); err != nil {
 			return nil, err
 		}
 	}
 
 	if in.Namespace != "" {
-		if err := setHelmStringValue(values, "namespace", in.Namespace); err != nil {
+		if err := setHelmStringValue(gatewayValues, "namespace", in.Namespace); err != nil {
 			return nil, err
 		}
 	}
 	if in.RouterMode != "" {
-		if err := setHelmStringValue(values, "env.ISTIO_META_ROUTER_MODE", string(in.RouterMode)); err != nil {
-			return nil, err
-		}
+		addEnvToGateway(in, "ISTIO_META_ROUTER_MODE", string(in.RouterMode))
 	}
 
 	// Service specific settings
 	if in.Service.LoadBalancerIP != "" {
-		if err := setHelmStringValue(values, "loadBalancerIP", in.Service.LoadBalancerIP); err != nil {
+		if err := setHelmStringValue(gatewayValues, "loadBalancerIP", in.Service.LoadBalancerIP); err != nil {
 			return nil, err
 		}
 	}
 	if len(in.Service.LoadBalancerSourceRanges) > 0 {
-		if err := setHelmStringSliceValue(values, "loadBalancerSourceRanges", in.Service.LoadBalancerSourceRanges); err != nil {
+		if err := setHelmStringSliceValue(gatewayValues, "loadBalancerSourceRanges", in.Service.LoadBalancerSourceRanges); err != nil {
 			return nil, err
 		}
 	}
 	if in.Service.ExternalTrafficPolicy != "" {
-		if err := setHelmStringValue(values, "externalTrafficPolicy", string(in.Service.ExternalTrafficPolicy)); err != nil {
+		if err := setHelmStringValue(gatewayValues, "externalTrafficPolicy", string(in.Service.ExternalTrafficPolicy)); err != nil {
 			return nil, err
 		}
 	}
 	if len(in.Service.ExternalIPs) > 0 {
-		if err := setHelmStringSliceValue(values, "externalIPs", in.Service.ExternalIPs); err != nil {
+		if err := setHelmStringSliceValue(gatewayValues, "externalIPs", in.Service.ExternalIPs); err != nil {
 			return nil, err
 		}
 	}
 	if in.Service.Type != "" {
-		if err := setHelmStringValue(values, "type", string(in.Service.Type)); err != nil {
+		if err := setHelmStringValue(gatewayValues, "type", string(in.Service.Type)); err != nil {
 			return nil, err
 		}
 	}
 	if len(in.Service.Metadata.Labels) > 0 {
-		if err := setHelmStringMapValue(values, "labels", in.Service.Metadata.Labels); err != nil {
+		if err := setHelmStringMapValue(gatewayValues, "labels", in.Service.Metadata.Labels); err != nil {
 			return nil, err
 		}
 	}
 	if len(in.Service.Metadata.Annotations) > 0 {
-		if err := setHelmStringMapValue(values, "annotations", in.Service.Metadata.Annotations); err != nil {
+		if err := setHelmStringMapValue(gatewayValues, "annotations", in.Service.Metadata.Annotations); err != nil {
 			return nil, err
 		}
 	}
@@ -229,7 +227,7 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 		}
 		if portsValue, err := sliceToValues(untypedSlice); err == nil {
 			if len(portsValue) > 0 {
-				if err := setHelmValue(values, "ports", portsValue); err != nil {
+				if err := setHelmValue(gatewayValues, "ports", portsValue); err != nil {
 					return nil, err
 				}
 			}
@@ -241,12 +239,12 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 	// Deployment specific settings
 	if in.Runtime != nil {
 		runtime := in.Runtime
-		if err := populateRuntimeValues(runtime, values); err != nil {
+		if err := populateRuntimeValues(runtime, gatewayValues); err != nil {
 			return nil, err
 		}
 
 		if runtime.Container != nil {
-			if err := populateContainerConfigValues(runtime.Container, values); err != nil {
+			if err := populateContainerConfigValues(runtime.Container, gatewayValues); err != nil {
 				return nil, err
 			}
 		}
@@ -274,47 +272,46 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 			}
 		}
 		if len(configVolumes) > 0 {
-			if err := setHelmValue(values, "configVolumes", configVolumes); err != nil {
+			if err := setHelmValue(gatewayValues, "configVolumes", configVolumes); err != nil {
 				return nil, err
 			}
 		}
 		if len(secretVolumes) > 0 {
-			if err := setHelmValue(values, "secretVolumes", secretVolumes); err != nil {
+			if err := setHelmValue(gatewayValues, "secretVolumes", secretVolumes); err != nil {
 				return nil, err
 			}
 		}
 	}
-	return values, nil
+	return gatewayValues, nil
 }
 
 func gatewayEgressConfigToValues(in *v2.EgressGatewayConfig) (map[string]interface{}, error) {
-	values, err := gatewayConfigToValues(&in.GatewayConfig)
+	// add Env before populating runtime values for base GatewayConfig
+	if in.RequestedNetworkView != nil {
+		addEnvToGateway(&in.GatewayConfig, "ISTIO_META_REQUESTED_NETWORK_VIEW", strings.Join(in.RequestedNetworkView, ","))
+	}
+
+	gatewayValues, err := gatewayConfigToValues(&in.GatewayConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	// Always set this to allow round-tripping
-	if err := setHelmStringValue(values, "gatewayType", "egress"); err != nil {
+	if err := setHelmStringValue(gatewayValues, "gatewayType", "egress"); err != nil {
 		return nil, err
 	}
 
-	if in.RequestedNetworkView != nil {
-		if err := setHelmStringValue(values, "env.ISTIO_META_REQUESTED_NETWORK_VIEW", strings.Join(in.RequestedNetworkView, ",")); err != nil {
-			return nil, err
-		}
-	}
-
-	return values, nil
+	return gatewayValues, nil
 }
 
 func gatewayIngressConfigToValues(in *v2.IngressGatewayConfig) (map[string]interface{}, error) {
-	values, err := gatewayConfigToValues(&in.GatewayConfig)
+	gatewayValues, err := gatewayConfigToValues(&in.GatewayConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	// Always set this to allow round-tripping
-	if err := setHelmStringValue(values, "gatewayType", "ingress"); err != nil {
+	if err := setHelmStringValue(gatewayValues, "gatewayType", "ingress"); err != nil {
 		return nil, err
 	}
 
@@ -333,17 +330,17 @@ func gatewayIngressConfigToValues(in *v2.IngressGatewayConfig) (map[string]inter
 			}
 		}
 		if len(sdsValues) > 0 {
-			setHelmValue(values, "sds", sdsValues)
+			setHelmValue(gatewayValues, "sds", sdsValues)
 		}
 	}
 
-	return values, nil
+	return gatewayValues, nil
 }
 
 func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	gatewaysConfig := &v2.GatewaysConfig{
-		EgressGateways:  make(map[string]v2.EgressGatewayConfig),
-		IngressGateways: make(map[string]v2.IngressGatewayConfig),
+		EgressGateways:  make(map[string]*v2.EgressGatewayConfig),
+		IngressGateways: make(map[string]*v2.IngressGatewayConfig),
 	}
 	setGatewaysConfig := false
 	if gateways, ok, err := in.GetMap("gateways"); ok {
@@ -372,20 +369,18 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 
 			if isEgressGateway(gatewayValues) || name == "istio-egressgateway" {
 				// egress only
-				egressGateway := v2.EgressGatewayConfig{
+				egressGateway := &v2.EgressGatewayConfig{
 					GatewayConfig: gc,
 				}
-				if rawNetworkView, ok, err := gatewayValues.GetString("env.ISTIO_META_REQUESTED_NETWORK_VIEW"); ok {
+				if rawNetworkView, ok := getAndClearEnv(&egressGateway.GatewayConfig, "ISTIO_META_REQUESTED_NETWORK_VIEW"); ok {
 					if rawNetworkView == "" {
 						egressGateway.RequestedNetworkView = make([]string, 0)
 					} else {
 						egressGateway.RequestedNetworkView = strings.Split(rawNetworkView, ",")
 					}
-				} else if err != nil {
-					return err
 				}
 				if name == "istio-egressgateway" {
-					gatewaysConfig.ClusterEgress = &egressGateway
+					gatewaysConfig.ClusterEgress = egressGateway
 				} else {
 					gatewaysConfig.EgressGateways[name] = egressGateway
 				}
@@ -414,7 +409,7 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 					return err
 				}
 				if name == "istio-ingressgateway" {
-					clusterIngress := v2.ClusterIngressGatewayConfig{
+					clusterIngress := &v2.ClusterIngressGatewayConfig{
 						IngressGatewayConfig: ingressGateway,
 					}
 					if k8sIngressEnabled, ok, err := in.GetBool("global.k8sIngress.enabled"); ok {
@@ -422,7 +417,7 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 					} else if err != nil {
 						return err
 					}
-					gatewaysConfig.ClusterIngress = &clusterIngress
+					gatewaysConfig.ClusterIngress = clusterIngress
 
 					if iorEnabled, ok, err := gatewayValues.GetBool("ior_enabled"); ok {
 						gatewaysConfig.OpenShiftRoute = &v2.OpenShiftRouteConfig{
@@ -435,7 +430,7 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 					}
 				} else if name != "istio-ilbgateway" {
 					// ilb gateway is handled by cluster config
-					gatewaysConfig.IngressGateways[name] = ingressGateway
+					gatewaysConfig.IngressGateways[name] = &ingressGateway
 				}
 			}
 		}
@@ -473,12 +468,6 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 	}
 	if namespace, ok, err := in.GetString("namespace"); ok {
 		out.Namespace = namespace
-	} else if err != nil {
-		return err
-	}
-	// env.ISTIO_META_ROUTER_MODE
-	if routerMode, ok, err := in.GetString("env.ISTIO_META_ROUTER_MODE"); ok {
-		out.RouterMode = v2.RouterModeType(routerMode)
 	} else if err != nil {
 		return err
 	}
@@ -578,7 +567,39 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 		out.Runtime = runtime
 	}
 
+	// env.ISTIO_META_ROUTER_MODE
+	if routerMode, ok := getAndClearEnv(out, "ISTIO_META_ROUTER_MODE"); ok {
+		out.RouterMode = v2.RouterModeType(routerMode)
+	}
+
 	return nil
+}
+
+func addEnvToGateway(in *v2.GatewayConfig, name, value string) {
+	if in.Runtime == nil {
+		in.Runtime = &v2.ComponentRuntimeConfig{}
+	}
+	if in.Runtime.Container == nil {
+		in.Runtime.Container = &v2.ContainerConfig{}
+	}
+	if in.Runtime.Container.Env == nil {
+		in.Runtime.Container.Env = make(map[string]string)
+	}
+	in.Runtime.Container.Env[name] = value
+}
+
+func getAndClearEnv(in *v2.GatewayConfig, name string) (string, bool) {
+	if in.Runtime == nil || in.Runtime.Container == nil || in.Runtime.Container.Env == nil {
+		return "", false
+	}
+	if value, ok := in.Runtime.Container.Env[name]; ok {
+		delete(in.Runtime.Container.Env, name)
+		if len(in.Runtime.Container.Env) == 0 {
+			in.Runtime.Container.Env = nil
+		}
+		return value, ok
+	}
+	return "", false
 }
 
 func expansionPortsForVersion(version string) ([]corev1.ServicePort, error) {

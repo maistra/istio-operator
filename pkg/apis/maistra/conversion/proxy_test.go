@@ -6,6 +6,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -96,7 +97,6 @@ var proxyTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
-				AutoInject:  &featureEnabled,
 				AdminPort:   12345,
 				Concurrency: &proxyConcurrency4,
 			},
@@ -104,13 +104,9 @@ var proxyTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"proxy": map[string]interface{}{
-					"autoInject":  "enabled",
 					"concurrency": 4,
 					"adminPort":   12345,
 				},
-			},
-			"sidecarInjectorWebhook": map[string]interface{}{
-				"enableNamespacesByDefault": true,
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -134,6 +130,7 @@ var proxyTestCases = []conversionTestCase{
 				Networking: &v2.ProxyNetworkingConfig{
 					ClusterDomain:     "example.com",
 					ConnectionTimeout: "30s",
+					MaxConnectionAge:  "30m",
 				},
 			},
 		},
@@ -143,6 +140,9 @@ var proxyTestCases = []conversionTestCase{
 					"clusterDomain":     "example.com",
 					"connectionTimeout": "30s",
 				},
+			},
+			"pilot": map[string]interface{}{
+				"keepaliveMaxServerConnectionAge": "30m",
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -424,13 +424,43 @@ var proxyTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "networking.protocol.misc." + versions.V2_0.String(),
+		name: "networking.protocol.auto.defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
 				Networking: &v2.ProxyNetworkingConfig{
 					Protocol: &v2.ProxyNetworkProtocolConfig{
-						DetectionTimeout: "500ms",
+						AutoDetect: &v2.ProxyNetworkAutoProtocolDetectionConfig{},
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "networking.protocol.auto.all." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Proxy: &v2.ProxyConfig{
+				Networking: &v2.ProxyNetworkingConfig{
+					Protocol: &v2.ProxyNetworkProtocolConfig{
+						AutoDetect: &v2.ProxyNetworkAutoProtocolDetectionConfig{
+							Timeout:  "500ms",
+							Inbound:  &featureEnabled,
+							Outbound: &featureDisabled,
+						},
 					},
 				},
 			},
@@ -441,67 +471,6 @@ var proxyTestCases = []conversionTestCase{
 					"protocolDetectionTimeout": "500ms",
 				},
 			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-		}),
-	},
-	{
-		name: "networking.protocol.debug.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Proxy: &v2.ProxyConfig{
-				Networking: &v2.ProxyNetworkingConfig{
-					Protocol: &v2.ProxyNetworkProtocolConfig{
-						Debug: &v2.ProxyNetworkProtocolDebugConfig{},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"pilot": map[string]interface{}{
-				"enableProtocolSniffingForInbound":  false,
-				"enableProtocolSniffingForOutbound": false,
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-		}),
-	},
-	{
-		name: "networking.protocol.debug.set." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Proxy: &v2.ProxyConfig{
-				Networking: &v2.ProxyNetworkingConfig{
-					Protocol: &v2.ProxyNetworkProtocolConfig{
-						Debug: &v2.ProxyNetworkProtocolDebugConfig{
-							EnableInboundSniffing:  true,
-							EnableOutboundSniffing: false,
-						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"pilot": map[string]interface{}{
 				"enableProtocolSniffingForInbound":  true,
 				"enableProtocolSniffingForOutbound": false,
@@ -823,6 +792,301 @@ var proxyTestCases = []conversionTestCase{
 				"proxy": map[string]interface{}{
 					"excludeIPRanges":      "",
 					"excludeOutboundPorts": "",
+				},
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "injection.empty." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Proxy: &v2.ProxyConfig{
+				Injection: &v2.ProxyInjectionConfig{},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "injection.full." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Proxy: &v2.ProxyConfig{
+				Injection: &v2.ProxyInjectionConfig{
+					AutoInject: &featureEnabled,
+					AlwaysInjectSelector: []metav1.LabelSelector{
+						{
+							MatchLabels: map[string]string{
+								"some-label": "some-value",
+							},
+						},
+					},
+					NeverInjectSelector: []metav1.LabelSelector{
+						{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "some-label",
+									Operator: metav1.LabelSelectorOpNotIn,
+									Values: []string{
+										"some-value",
+									},
+								},
+							},
+						},
+					},
+					InjectedAnnotations: map[string]string{
+						"some-annotation": "some-annotation-value",
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"proxy": map[string]interface{}{
+					"autoInject": "enabled",
+				},
+			},
+			"sidecarInjectorWebhook": map[string]interface{}{
+				"enableNamespacesByDefault": true,
+				"alwaysInjectSelector": []interface{}{
+					map[string]interface{}{
+						"matchLabels": map[string]interface{}{
+							"some-label": "some-value",
+						},
+					},
+				},
+				"neverInjectSelector": []interface{}{
+					map[string]interface{}{
+						"matchExpressions": []interface{}{
+							map[string]interface{}{
+								"key":      "some-label",
+								"operator": "NotIn",
+								"values": []interface{}{
+									"some-value",
+								},
+							},
+						},
+					},
+				},
+				"injectedAnnotations": map[string]interface{}{
+					"some-annotation": "some-annotation-value",
+				},
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "accessLog.empty." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Proxy: &v2.ProxyConfig{
+				AccessLogging: &v2.ProxyAccessLoggingConfig{},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "accessLog.file." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Proxy: &v2.ProxyConfig{
+				AccessLogging: &v2.ProxyAccessLoggingConfig{
+					File: &v2.ProxyFileAccessLogConfig{
+						Name:     "/dev/stdout",
+						Encoding: "JSON",
+						Format:   "[%START_TIME%] %REQ(:METHOD)%",
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"proxy": map[string]interface{}{
+					"accessLogFile":     "/dev/stdout",
+					"accessLogEncoding": "JSON",
+					"accessLogFormat":   "[%START_TIME%] %REQ(:METHOD)%",
+				},
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "accessLog.service." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Proxy: &v2.ProxyConfig{
+				AccessLogging: &v2.ProxyAccessLoggingConfig{
+					EnvoyService: &v2.ProxyEnvoyServiceConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+						Address: "some.host.com:8080",
+						TCPKeepalive: &v2.EnvoyServiceTCPKeepalive{
+							Probes:   3,
+							Interval: "10s",
+							Time:     "20s",
+						},
+						TLSSettings: &v2.EnvoyServiceClientTLSSettings{
+							Mode:              "DISABLED",
+							ClientCertificate: "/etc/istio/als/cert-chain.pem",
+							PrivateKey:        "/etc/istio/als/key.pem",
+							CACertificates:    "/etc/istio/als/root-cert.pem",
+							SNIHost:           "als.somedomain",
+							SubjectAltNames: []string{
+								"als.somedomain",
+							},
+						},
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"proxy": map[string]interface{}{
+					"envoyAccessLogService": map[string]interface{}{
+						"enabled": true,
+						"host":    "some.host.com",
+						"port":    "8080",
+						"tcpKeepalive": map[string]interface{}{
+							"interval": "10s",
+							"probes":   3,
+							"time":     "20s",
+						},
+						"tlsSettings": map[string]interface{}{
+							"caCertificates":    "/etc/istio/als/root-cert.pem",
+							"clientCertificate": "/etc/istio/als/cert-chain.pem",
+							"mode":              "DISABLED",
+							"privateKey":        "/etc/istio/als/key.pem",
+							"sni":               "als.somedomain",
+							"subjectAltNames": []interface{}{
+								"als.somedomain",
+							},
+						},
+					},
+				},
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "metricsService." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Proxy: &v2.ProxyConfig{
+				EnvoyMetricsService: &v2.ProxyEnvoyServiceConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+					Address: "some.host.com:8080",
+					TCPKeepalive: &v2.EnvoyServiceTCPKeepalive{
+						Probes:   3,
+						Interval: "10s",
+						Time:     "20s",
+					},
+					TLSSettings: &v2.EnvoyServiceClientTLSSettings{
+						Mode:              "DISABLED",
+						ClientCertificate: "/etc/istio/als/cert-chain.pem",
+						PrivateKey:        "/etc/istio/als/key.pem",
+						CACertificates:    "/etc/istio/als/root-cert.pem",
+						SNIHost:           "als.somedomain",
+						SubjectAltNames: []string{
+							"als.somedomain",
+						},
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"proxy": map[string]interface{}{
+					"envoyMetricsService": map[string]interface{}{
+						"enabled": true,
+						"host":    "some.host.com",
+						"port":    "8080",
+						"tcpKeepalive": map[string]interface{}{
+							"interval": "10s",
+							"probes":   3,
+							"time":     "20s",
+						},
+						"tlsSettings": map[string]interface{}{
+							"caCertificates":    "/etc/istio/als/root-cert.pem",
+							"clientCertificate": "/etc/istio/als/cert-chain.pem",
+							"mode":              "DISABLED",
+							"privateKey":        "/etc/istio/als/key.pem",
+							"sni":               "als.somedomain",
+							"subjectAltNames": []interface{}{
+								"als.somedomain",
+							},
+						},
+					},
 				},
 			},
 		}),

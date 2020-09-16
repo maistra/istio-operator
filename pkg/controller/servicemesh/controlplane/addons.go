@@ -26,15 +26,15 @@ func (r *controlPlaneInstanceReconciler) PatchAddons(ctx context.Context) error 
 
 func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context) error {
 	if r.Instance == nil || r.Instance.Status.AppliedSpec.Addons == nil ||
-		r.Instance.Status.AppliedSpec.Addons.Visualization.Kiali == nil ||
-		r.Instance.Status.AppliedSpec.Addons.Visualization.Kiali.Enabled == nil ||
-		!*r.Instance.Status.AppliedSpec.Addons.Visualization.Kiali.Enabled {
+		r.Instance.Status.AppliedSpec.Addons.Kiali == nil ||
+		r.Instance.Status.AppliedSpec.Addons.Kiali.Enabled == nil ||
+		!*r.Instance.Status.AppliedSpec.Addons.Kiali.Enabled {
 		return nil
 	}
 
 	log := common.LogFromContext(ctx)
 
-	kialiConfig := r.Instance.Status.AppliedSpec.Addons.Visualization.Kiali
+	kialiConfig := r.Instance.Status.AppliedSpec.Addons.Kiali
 
 	// get the kiali resource
 	kiali := &kialiv1alpha1.Kiali{}
@@ -148,12 +148,14 @@ func (r *controlPlaneInstanceReconciler) grafanaURL(ctx context.Context, log log
 func (r *controlPlaneInstanceReconciler) jaegerURL(ctx context.Context, log logr.Logger) (string, error) {
 	log.Info("attempting to auto-detect Jaeger for Kiali")
 	if r.Instance.Status.AppliedSpec.Addons == nil ||
-		r.Instance.Status.AppliedSpec.Addons.Tracing.Type != v2.TracerTypeJaeger ||
-		r.Instance.Status.AppliedSpec.Addons.Tracing.Jaeger == nil {
+		r.Instance.Status.AppliedSpec.Tracing.Type != v2.TracerTypeJaeger {
 		log.Info("Jaeger is not installed, disabling tracing in Kiali")
 		return "", nil
 	}
-	jaegerName := r.Instance.Status.AppliedSpec.Addons.Tracing.Jaeger.Name
+	jaegerName := "jaeger"
+	if r.Instance.Status.AppliedSpec.Addons.Jaeger != nil && r.Instance.Status.AppliedSpec.Addons.Jaeger.Name != "" {
+		jaegerName = r.Instance.Status.AppliedSpec.Addons.Jaeger.Name
+	}
 	jaegerRoutes := &routev1.RouteList{}
 	err := r.Client.List(ctx, jaegerRoutes,
 		client.InNamespace(r.Instance.Namespace),

@@ -7,7 +7,10 @@ import (
 )
 
 func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]interface{}) (reterr error) {
-	prometheus := in.Addons.Metrics.Prometheus
+	if in.Addons == nil {
+		return nil
+	}
+	prometheus := in.Addons.Prometheus
 	if prometheus == nil {
 		return nil
 	}
@@ -26,6 +29,18 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 			}
 		}
 	}()
+
+	if prometheus.Scrape != nil {
+		if err := setHelmBoolValue(values, "meshConfig.enablePrometheusMerge", *prometheus.Scrape); err != nil {
+			return err
+		}
+	}
+
+	// telemetry
+	if err := populatePrometheusTelemetryValues(prometheus, values); err != nil {
+		return err
+	}
+
 	// install takes precedence
 	if prometheus.Install == nil {
 		if prometheus.Address != nil {
@@ -34,13 +49,13 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 		return nil
 	}
 
-	if prometheus.Install.Config.Retention != "" {
-		if err := setHelmStringValue(prometheusValues, "retention", prometheus.Install.Config.Retention); err != nil {
+	if prometheus.Install.Retention != "" {
+		if err := setHelmStringValue(prometheusValues, "retention", prometheus.Install.Retention); err != nil {
 			return err
 		}
 	}
-	if prometheus.Install.Config.ScrapeInterval != "" {
-		if err := setHelmStringValue(prometheusValues, "scrapeInterval", prometheus.Install.Config.ScrapeInterval); err != nil {
+	if prometheus.Install.ScrapeInterval != "" {
+		if err := setHelmStringValue(prometheusValues, "scrapeInterval", prometheus.Install.ScrapeInterval); err != nil {
 			return err
 		}
 	}
@@ -59,54 +74,91 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 	if err := populateComponentServiceValues(&prometheus.Install.Service, prometheusValues); err != nil {
 		return err
 	}
-
 	return nil
 }
 
-func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) error {
-	rawPrometheusValues, ok, err := in.GetMap("prometheus")
-	if err != nil {
-		return err
-	} else if !ok || len(rawPrometheusValues) == 0 {
-		// nothing to do
-		// check to see if grafana.Address should be set
-		if address, ok, err := in.GetString("kiali.prometheusAddr"); ok {
-			// If grafana URL is set, assume we're using an existing grafana install
-			out.Metrics.Prometheus = &v2.PrometheusAddonConfig{
-				Address: &address,
-			}
-		} else if err != nil {
+func populatePrometheusTelemetryValues(in *v2.PrometheusAddonConfig, values map[string]interface{}) error {
+	if in == nil {
+		return nil
+	}
+	if in.Enabled != nil {
+		if err := setHelmBoolValue(values, "mixer.adapters.prometheus.enabled", *in.Enabled); err != nil {
 			return err
 		}
+		if err := setHelmBoolValue(values, "telemetry.v2.prometheus.enabled", *in.Enabled); err != nil {
+			return err
+		}
+	}
+	telemetry := in.TelemetryConfig
+	if telemetry == nil {
 		return nil
+	}
+	if telemetry.MetricsExpiryDuration != "" {
+		if err := setHelmStringValue(values, "mixer.adapters.prometheus.metricsExpiryDuration", telemetry.MetricsExpiryDuration); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.PrometheusAddonConfig) (bool, error) {
+	prometheus := out
+	setPrometheus := false
+
+	if enablePrometheusMerge, ok, err := in.GetBool("meshConfig.enablePrometheusMerge"); ok {
+		prometheus.Scrape = &enablePrometheusMerge
+		setPrometheus = true
+	} else if err != nil {
+		return false, err
+	}
+
+	telemetry := &v2.PrometheusTelemetryConfig{}
+	if updated, err := populatePrometheusTelemetryConfig(in, telemetry); updated {
+		prometheus.TelemetryConfig = telemetry
+		setPrometheus = true
+	} else if err != nil {
+		return false, err
+	}
+
+	// check to see if prometheus.Address should be set
+	if address, ok, err := in.GetString("kiali.prometheusAddr"); ok {
+		// If grafana URL is set, assume we're using an existing grafana install
+		prometheus.Address = &address
+		setPrometheus = true
+	} else if err != nil {
+		return false, err
+	}
+
+	rawPrometheusValues, ok, err := in.GetMap("prometheus")
+	if err != nil {
+		return false, err
+	} else if !ok || len(rawPrometheusValues) == 0 {
+		// nothing to do
+		return setPrometheus, nil
 	}
 	prometheusValues := v1.NewHelmValues(rawPrometheusValues)
 
-	if out.Metrics.Prometheus == nil {
-		out.Metrics.Prometheus = &v2.PrometheusAddonConfig{}
-	}
-	prometheus := out.Metrics.Prometheus
-
 	if enabled, ok, err := prometheusValues.GetBool("enabled"); ok {
 		prometheus.Enabled = &enabled
+		setPrometheus = true
 	} else if err != nil {
-		return err
+		return false, err
 	}
 
 	install := &v2.PrometheusInstallConfig{}
 	setInstall := false
 
 	if retention, ok, err := prometheusValues.GetString("retention"); ok {
-		install.Config.Retention = retention
+		install.Retention = retention
 		setInstall = true
 	} else if err != nil {
-		return err
+		return false, err
 	}
 	if scrapeInterval, ok, err := prometheusValues.GetString("scrapeInterval"); ok {
-		install.Config.ScrapeInterval = scrapeInterval
+		install.ScrapeInterval = scrapeInterval
 		setInstall = true
 	} else if err != nil {
-		return err
+		return false, err
 	}
 
 	if securityEnabled, ok, err := prometheusValues.GetBool("security.enabled"); ok {
@@ -114,23 +166,34 @@ func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.AddonsConfig) erro
 		install.UseTLS = &securityEnabled
 		setInstall = true
 	} else if err != nil {
-		return err
+		return false, err
 	} else if provisionPrometheusCert, ok, err := prometheusValues.GetBool("provisionPrometheusCert"); ok {
 		// v2_0
 		install.UseTLS = &provisionPrometheusCert
 		setInstall = true
 	} else if err != nil {
-		return err
+		return false, err
 	}
 	if applied, err := populateComponentServiceConfig(prometheusValues, &install.Service); err == nil {
 		setInstall = setInstall || applied
 	} else {
-		return err
+		return false, err
 	}
 
 	if setInstall {
 		prometheus.Install = install
+		setPrometheus = true
 	}
 
-	return nil
+	return setPrometheus, nil
+}
+
+func populatePrometheusTelemetryConfig(in *v1.HelmValues, telemetry *v2.PrometheusTelemetryConfig) (bool, error) {
+	if metricsExpiryDuration, ok, err := in.GetString("mixer.adapters.prometheus.metricsExpiryDuration"); ok {
+		telemetry.MetricsExpiryDuration = metricsExpiryDuration
+		return true, nil
+	} else if err != nil {
+		return false, err
+	}
+	return false, nil
 }

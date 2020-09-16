@@ -144,21 +144,17 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 						},
 					},
 				},
+				Tracing: &maistrav2.TracingConfig{Type: maistrav2.TracerTypeNone},
 				Addons: &maistrav2.AddonsConfig{
-					Metrics: maistrav2.MetricsAddonsConfig{
-						Prometheus: &maistrav2.PrometheusAddonConfig{
-							Enablement: maistrav2.Enablement{Enabled: &disabled},
-						},
+					Prometheus: &maistrav2.PrometheusAddonConfig{
+						Enablement: maistrav2.Enablement{Enabled: &disabled},
 					},
-					Tracing: maistrav2.TracingConfig{Type: maistrav2.TracerTypeNone},
-					Visualization: maistrav2.VisualizationAddonsConfig{
-						Grafana: &maistrav2.GrafanaAddonConfig{
-							Enablement: maistrav2.Enablement{Enabled: &enabled},
-							Install:    &maistrav2.GrafanaInstallConfig{},
-						},
-						Kiali: &maistrav2.KialiAddonConfig{
-							Enablement: maistrav2.Enablement{Enabled: &disabled},
-						},
+					Grafana: &maistrav2.GrafanaAddonConfig{
+						Enablement: maistrav2.Enablement{Enabled: &enabled},
+						Install:    &maistrav2.GrafanaInstallConfig{},
+					},
+					Kiali: &maistrav2.KialiAddonConfig{
+						Enablement: maistrav2.Enablement{Enabled: &disabled},
 					},
 				},
 			}

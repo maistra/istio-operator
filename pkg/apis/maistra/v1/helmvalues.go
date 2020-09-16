@@ -9,6 +9,7 @@ import (
 )
 
 // HelmValues is typedef for Helm .Values
+// +kubebuilder:validation:Type=object
 // +kubebuilder:validation:XPreserveUnknownFields
 type HelmValues struct {
 	data map[string]interface{} `json:"-"`
@@ -54,6 +55,13 @@ func (h *HelmValues) GetInt64(path string) (int64, bool, error) {
 		return 0, false, nil
 	}
 	return unstructured.NestedInt64(h.data, strings.Split(path, ".")...)
+}
+
+func (h *HelmValues) GetFloat64(path string) (float64, bool, error) {
+	if h == nil || h.data == nil {
+		return 0, false, nil
+	}
+	return unstructured.NestedFloat64(h.data, strings.Split(path, ".")...)
 }
 
 func (h *HelmValues) GetStringSlice(path string) ([]string, bool, error) {

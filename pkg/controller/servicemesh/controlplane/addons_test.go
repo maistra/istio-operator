@@ -203,20 +203,18 @@ func TestAddonsInstall(t *testing.T) {
 							Spec: maistrav2.ControlPlaneSpec{
 								Version:  versions.V2_0.String(),
 								Profiles: []string{"maistra"},
+								Tracing: &maistrav2.TracingConfig{
+									Type: maistrav2.TracerTypeJaeger,
+								},
 								Addons: &maistrav2.AddonsConfig{
-									Visualization: maistrav2.VisualizationAddonsConfig{
-										Kiali: &maistrav2.KialiAddonConfig{
-											Enablement: maistrav2.Enablement{
-												Enabled: &enable,
-											},
-											Name: tc.kialiName,
+									Kiali: &maistrav2.KialiAddonConfig{
+										Enablement: maistrav2.Enablement{
+											Enabled: &enable,
 										},
+										Name: tc.kialiName,
 									},
-									Tracing: maistrav2.TracingConfig{
-										Type: maistrav2.TracerTypeJaeger,
-										Jaeger: &maistrav2.JaegerTracerConfig{
-											Name: tc.jaegerName,
-										},
+									Jaeger: &maistrav2.JaegerAddonConfig{
+										Name: tc.jaegerName,
 									},
 								},
 							},

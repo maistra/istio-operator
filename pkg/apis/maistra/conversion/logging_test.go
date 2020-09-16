@@ -33,7 +33,9 @@ var loggingTestCases = []conversionTestCase{
 		name: "defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
-			Logging: &v2.LoggingConfig{},
+			General: &v2.GeneralConfig{
+				Logging: &v2.LoggingConfig{},
+			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -53,12 +55,14 @@ var loggingTestCases = []conversionTestCase{
 		name: "all." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
-			Logging: &v2.LoggingConfig{
-				ComponentLevels: v2.ComponentLogLevels{
-					v2.EnvoyComponentAdmin:  v2.LogLevelDebug,
-					v2.EnvoyComponentClient: v2.LogLevelTrace,
+			General: &v2.GeneralConfig{
+				Logging: &v2.LoggingConfig{
+					ComponentLevels: v2.ComponentLogLevels{
+						v2.EnvoyComponentAdmin:  v2.LogLevelDebug,
+						v2.EnvoyComponentClient: v2.LogLevelTrace,
+					},
+					LogAsJSON: &featureEnabled,
 				},
-				LogAsJSON: &featureEnabled,
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
@@ -89,8 +93,12 @@ func TestLoggingConversionFromV2(t *testing.T) {
 	for _, tc := range loggingTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			specCopy := tc.spec.DeepCopy()
+			var loggingConfig *v2.LoggingConfig
+			if specCopy.General != nil {
+				loggingConfig = specCopy.General.Logging
+			}
 			helmValues := v1.NewHelmValues(make(map[string]interface{}))
-			if err := populateControlPlaneLogging(specCopy.Logging, helmValues.GetContent()); err != nil {
+			if err := populateControlPlaneLogging(loggingConfig, helmValues.GetContent()); err != nil {
 				t.Fatalf("error converting to values: %s", err)
 			}
 			if !reflect.DeepEqual(tc.isolatedIstio.DeepCopy(), helmValues.DeepCopy()) {
@@ -103,7 +111,7 @@ func TestLoggingConversionFromV2(t *testing.T) {
 			if err := populateControlPlaneLoggingConfig(helmValues.DeepCopy(), specv2); err != nil {
 				t.Fatalf("error converting from values: %s", err)
 			}
-			assertEquals(t, tc.spec.Logging, specv2.Logging)
+			assertEquals(t, tc.spec.General, specv2.General)
 		})
 	}
 }

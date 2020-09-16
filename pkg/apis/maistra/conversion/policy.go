@@ -64,26 +64,31 @@ func populateMixerPolicyValues(in *v2.ControlPlaneSpec, istiod bool, values map[
 			return err
 		}
 	}
+	if mixer.SessionAffinity != nil {
+		if err := setHelmBoolValue(policyValues, "sessionAffinityEnabled", *mixer.SessionAffinity); err != nil {
+			return err
+		}
+	}
 
 	if mixer.Adapters != nil {
-		adaptersValues := make(map[string]interface{})
+		policyAdaptersValues := make(map[string]interface{})
 		if mixer.Adapters.UseAdapterCRDs != nil {
-			if err := setHelmBoolValue(adaptersValues, "useAdapterCRDs", *mixer.Adapters.UseAdapterCRDs); err != nil {
+			if err := setHelmBoolValue(policyAdaptersValues, "useAdapterCRDs", *mixer.Adapters.UseAdapterCRDs); err != nil {
 				return err
 			}
 		}
 		if mixer.Adapters.KubernetesEnv != nil {
-			if err := setHelmBoolValue(adaptersValues, "kubernetesenv.enabled", *mixer.Adapters.KubernetesEnv); err != nil {
+			if err := setHelmBoolValue(policyAdaptersValues, "kubernetesenv.enabled", *mixer.Adapters.KubernetesEnv); err != nil {
 				return err
 			}
 		}
-		if len(adaptersValues) > 0 {
+		if len(policyAdaptersValues) > 0 {
 			if istiod {
-				if err := setHelmValue(policyValues, "adapters", adaptersValues); err != nil {
+				if err := setHelmValue(policyValues, "adapters", policyAdaptersValues); err != nil {
 					return err
 				}
 			} else {
-				if err := setHelmValue(values, "mixer.adapters", adaptersValues); err != nil {
+				if err := setHelmValue(values, "mixer.adapters", policyAdaptersValues); err != nil {
 					return err
 				}
 			}
@@ -264,29 +269,35 @@ func populateMixerPolicyConfig(in *v1.HelmValues, out *v2.MixerPolicyConfig) (bo
 	} else if err != nil {
 		return false, err
 	}
+	if sessionAffinityEnabled, ok, err := policyValues.GetBool("sessionAffinityEnabled"); ok {
+		out.SessionAffinity = &sessionAffinityEnabled
+		setValues = true
+	} else if err != nil {
+		return false, nil
+	}
 
-	var adaptersValues *v1.HelmValues
+	var policyAdaptersValues *v1.HelmValues
 	// check policy first, as mixer values are used with telemetry
 	if rawAdaptersValues, ok, err := policyValues.GetMap("adapters"); ok {
-		adaptersValues = v1.NewHelmValues(rawAdaptersValues)
+		policyAdaptersValues = v1.NewHelmValues(rawAdaptersValues)
 	} else if err != nil {
 		return false, err
 	} else if rawAdaptersValues, ok, err := mixerValues.GetMap("adapters"); ok {
-		adaptersValues = v1.NewHelmValues(rawAdaptersValues)
+		policyAdaptersValues = v1.NewHelmValues(rawAdaptersValues)
 	} else if err != nil {
 		return false, err
 	}
 
-	if adaptersValues != nil {
+	if policyAdaptersValues != nil {
 		adapters := &v2.MixerPolicyAdaptersConfig{}
 		setAdapters := false
-		if useAdapterCRDs, ok, err := adaptersValues.GetBool("useAdapterCRDs"); ok {
+		if useAdapterCRDs, ok, err := policyAdaptersValues.GetBool("useAdapterCRDs"); ok {
 			adapters.UseAdapterCRDs = &useAdapterCRDs
 			setAdapters = true
 		} else if err != nil {
 			return false, err
 		}
-		if kubernetesenv, ok, err := adaptersValues.GetBool("kubernetesenv.enabled"); ok {
+		if kubernetesenv, ok, err := policyAdaptersValues.GetBool("kubernetesenv.enabled"); ok {
 			adapters.KubernetesEnv = &kubernetesenv
 			setAdapters = true
 		} else if err != nil {

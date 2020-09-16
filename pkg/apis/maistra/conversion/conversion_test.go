@@ -25,11 +25,13 @@ var (
 )
 
 type conversionTestCase struct {
-	name          string
-	spec          *v2.ControlPlaneSpec
-	roundTripSpec *v2.ControlPlaneSpec
-	isolatedIstio *v1.HelmValues
-	completeIstio *v1.HelmValues
+	name               string
+	spec               *v2.ControlPlaneSpec
+	roundTripSpec      *v2.ControlPlaneSpec
+	isolatedIstio      *v1.HelmValues
+	isolatedThreeScale *v1.HelmValues
+	completeIstio      *v1.HelmValues
+	completeThreeScale *v1.HelmValues
 }
 
 func assertEquals(t *testing.T, expected, actual interface{}) {
@@ -122,6 +124,10 @@ func TestCompleteJaegerConversionFromV2(t *testing.T) {
 	runTestCasesFromV2(jaegerTestCases, t)
 }
 
+func TestCompleteThreeScaleConversionFromV2(t *testing.T) {
+	runTestCasesFromV2(threeScaleTestCases, t)
+}
+
 func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 	scheme := runtime.NewScheme()
 	v1.SchemeBuilder.AddToScheme(scheme)
@@ -141,11 +147,17 @@ func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 			istio := tc.isolatedIstio.DeepCopy().GetContent()
 			mergeMaps(tc.completeIstio.DeepCopy().GetContent(), istio)
 			if !reflect.DeepEqual(istio, smcpv1.Spec.Istio.DeepCopy().GetContent()) {
-				t.Errorf("unexpected output converting v2 to values:\n\texpected:\n%#v\n\tgot:\n%#v", istio, smcpv1.Spec.Istio.GetContent())
+				t.Errorf("unexpected output converting v2 to Istio values:\n\texpected:\n%#v\n\tgot:\n%#v", istio, smcpv1.Spec.Istio.GetContent())
+			}
+			threeScale := tc.isolatedThreeScale.DeepCopy().GetContent()
+			mergeMaps(tc.completeThreeScale.DeepCopy().GetContent(), threeScale)
+			if !reflect.DeepEqual(threeScale, smcpv1.Spec.ThreeScale.DeepCopy().GetContent()) {
+				t.Errorf("unexpected output converting v2 to ThreeScale values:\n\texpected:\n%#v\n\tgot:\n%#v", threeScale, smcpv1.Spec.ThreeScale.GetContent())
 			}
 			newsmcpv2 := &v2.ServiceMeshControlPlane{}
 			// use expected data
 			smcpv1.Spec.Istio = v1.NewHelmValues(istio).DeepCopy()
+			smcpv1.Spec.ThreeScale = v1.NewHelmValues(threeScale).DeepCopy()
 			if err := scheme.Convert(smcpv1, newsmcpv2, nil); err != nil {
 				t.Fatalf("error converting from values: %s", err)
 			}
@@ -160,6 +172,9 @@ func mergeMaps(source, target map[string]interface{}) {
 			if targetmap, ok := targetvalue.(map[string]interface{}); ok {
 				if valmap, ok := val.(map[string]interface{}); ok {
 					mergeMaps(valmap, targetmap)
+					continue
+				} else if valmap == nil {
+					delete(target, key)
 					continue
 				} else {
 					panic(fmt.Sprintf("trying to merge non-map into map: key=%v, value=:%v", key, val))
