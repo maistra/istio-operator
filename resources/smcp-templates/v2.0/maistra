@@ -42,6 +42,9 @@ spec:
           imageName: origin-oauth-proxy
           imageTag: "4.2"
           imagePullPolicy: IfNotPresent
+      mec:
+        container:
+          image: pilot-ubi8
 
   proxy:
     runtime:
