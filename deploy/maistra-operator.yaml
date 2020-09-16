@@ -5,7 +5,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     service.beta.openshift.io/inject-cabundle: "true"
-    controller-gen.kubebuilder.io/version: v0.3.0
+    controller-gen.kubebuilder.io/version: v0.4.0
   creationTimestamp: null
   name: servicemeshcontrolplanes.maistra.io
 spec:
@@ -217,82 +217,139 @@ spec:
             properties:
               addons:
                 properties:
-                  metrics:
+                  3scale:
                     properties:
-                      prometheus:
+                      backend:
                         properties:
-                          address:
-                            type: string
-                          enabled:
+                          cache_flush_interval:
+                            format: int32
+                            type: integer
+                          enable_cache:
                             type: boolean
-                          install:
-                            properties:
-                              config:
-                                properties:
-                                  retention:
-                                    type: string
-                                  scrapeInterval:
-                                    type: string
-                                type: object
-                              selfManaged:
-                                type: boolean
-                              service:
-                                properties:
-                                  ingress:
-                                    properties:
-                                      contextPath:
-                                        type: string
-                                      enabled:
-                                        type: boolean
-                                      hosts:
-                                        items:
-                                          type: string
-                                        type: array
-                                      metadata:
-                                        properties:
-                                          annotations:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
-                                          labels:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
-                                        type: object
-                                      tls:
-                                        type: object
-                                        x-kubernetes-preserve-unknown-fields: true
-                                    type: object
-                                  metadata:
-                                    properties:
-                                      annotations:
-                                        additionalProperties:
-                                          type: string
-                                        type: object
-                                      labels:
-                                        additionalProperties:
-                                          type: string
-                                        type: object
-                                    type: object
-                                  nodePort:
-                                    format: int32
-                                    type: integer
-                                type: object
-                              useTLS:
-                                type: boolean
-                            type: object
+                          policy_fail_closed:
+                            type: boolean
+                        type: object
+                      client:
+                        properties:
+                          allow_insecure_connections:
+                            type: boolean
+                          timeout:
+                            format: int32
+                            type: integer
+                        type: object
+                      enabled:
+                        type: boolean
+                      grpc:
+                        properties:
+                          max_conn_timeout:
+                            format: int32
+                            type: integer
+                        type: object
+                      listen_addr:
+                        format: int32
+                        type: integer
+                      log_grpc:
+                        type: boolean
+                      log_json:
+                        type: boolean
+                      log_level:
+                        type: string
+                      metrics:
+                        properties:
+                          port:
+                            format: int32
+                            type: integer
+                          report:
+                            type: boolean
+                        type: object
+                      system:
+                        properties:
+                          cache_max_size:
+                            format: int64
+                            type: integer
+                          cache_refresh_interval:
+                            format: int32
+                            type: integer
+                          cache_refresh_retries:
+                            format: int32
+                            type: integer
+                          cache_ttl:
+                            format: int32
+                            type: integer
                         type: object
                     type: object
-                  tracing:
+                  grafana:
                     properties:
-                      jaeger:
+                      address:
+                        type: string
+                      enabled:
+                        type: boolean
+                      install:
                         properties:
-                          install:
+                          config:
+                            properties:
+                              env:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                              envSecrets:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                            type: object
+                          persistence:
+                            properties:
+                              accessMode:
+                                type: string
+                              capacity:
+                                properties:
+                                  limits:
+                                    additionalProperties:
+                                      anyOf:
+                                      - type: integer
+                                      - type: string
+                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                      x-kubernetes-int-or-string: true
+                                    type: object
+                                  requests:
+                                    additionalProperties:
+                                      anyOf:
+                                      - type: integer
+                                      - type: string
+                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                      x-kubernetes-int-or-string: true
+                                    type: object
+                                type: object
+                              enabled:
+                                type: boolean
+                              storageClassName:
+                                type: string
+                            type: object
+                          security:
+                            properties:
+                              enabled:
+                                type: boolean
+                              passphraseKey:
+                                type: string
+                              secretName:
+                                type: string
+                              usernameKey:
+                                type: string
+                            type: object
+                          selfManaged:
+                            type: boolean
+                          service:
                             properties:
                               ingress:
                                 properties:
+                                  contextPath:
+                                    type: string
                                   enabled:
                                     type: boolean
+                                  hosts:
+                                    items:
+                                      type: string
+                                    type: array
                                   metadata:
                                     properties:
                                       annotations:
@@ -304,128 +361,105 @@ spec:
                                           type: string
                                         type: object
                                     type: object
+                                  tls:
+                                    type: object
+                                    x-kubernetes-preserve-unknown-fields: true
                                 type: object
-                              storage:
+                              metadata:
                                 properties:
-                                  elasticsearch:
-                                    properties:
-                                      indexCleaner:
-                                        type: object
-                                        x-kubernetes-preserve-unknown-fields: true
-                                      nodeCount:
-                                        format: int32
-                                        type: integer
-                                      redundancyPolicy:
-                                        type: string
-                                      storage:
-                                        type: object
-                                        x-kubernetes-preserve-unknown-fields: true
+                                  annotations:
+                                    additionalProperties:
+                                      type: string
                                     type: object
-                                  memory:
-                                    properties:
-                                      maxTraces:
-                                        format: int64
-                                        type: integer
+                                  labels:
+                                    additionalProperties:
+                                      type: string
                                     type: object
-                                  type:
-                                    type: string
+                                type: object
+                              nodePort:
+                                format: int32
+                                type: integer
+                            type: object
+                        type: object
+                    type: object
+                  jaeger:
+                    properties:
+                      install:
+                        properties:
+                          ingress:
+                            properties:
+                              enabled:
+                                type: boolean
+                              metadata:
+                                properties:
+                                  annotations:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  labels:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
                                 type: object
                             type: object
-                          name:
-                            type: string
+                          storage:
+                            properties:
+                              elasticsearch:
+                                properties:
+                                  indexCleaner:
+                                    type: object
+                                    x-kubernetes-preserve-unknown-fields: true
+                                  nodeCount:
+                                    format: int32
+                                    type: integer
+                                  redundancyPolicy:
+                                    type: string
+                                  storage:
+                                    type: object
+                                    x-kubernetes-preserve-unknown-fields: true
+                                type: object
+                              memory:
+                                properties:
+                                  maxTraces:
+                                    format: int64
+                                    type: integer
+                                type: object
+                              type:
+                                type: string
+                            type: object
                         type: object
-                      type:
+                      name:
                         type: string
                     type: object
-                  visualization:
+                  kiali:
                     properties:
-                      grafana:
+                      enabled:
+                        type: boolean
+                      install:
                         properties:
-                          address:
-                            type: string
-                          enabled:
-                            type: boolean
-                          install:
+                          dashboard:
                             properties:
-                              config:
-                                properties:
-                                  env:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
-                                  envSecrets:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
-                                type: object
-                              persistence:
-                                properties:
-                                  accessMode:
-                                    type: string
-                                  capacity:
-                                    properties:
-                                      limits:
-                                        additionalProperties:
-                                          anyOf:
-                                          - type: integer
-                                          - type: string
-                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                          x-kubernetes-int-or-string: true
-                                        type: object
-                                      requests:
-                                        additionalProperties:
-                                          anyOf:
-                                          - type: integer
-                                          - type: string
-                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                          x-kubernetes-int-or-string: true
-                                        type: object
-                                    type: object
-                                  enabled:
-                                    type: boolean
-                                  storageClassName:
-                                    type: string
-                                type: object
-                              security:
-                                properties:
-                                  enabled:
-                                    type: boolean
-                                  passphraseKey:
-                                    type: string
-                                  secretName:
-                                    type: string
-                                  usernameKey:
-                                    type: string
-                                type: object
-                              selfManaged:
+                              enableGrafana:
                                 type: boolean
-                              service:
+                              enablePrometheus:
+                                type: boolean
+                              enableTracing:
+                                type: boolean
+                              viewOnly:
+                                type: boolean
+                            type: object
+                          service:
+                            properties:
+                              ingress:
                                 properties:
-                                  ingress:
-                                    properties:
-                                      contextPath:
-                                        type: string
-                                      enabled:
-                                        type: boolean
-                                      hosts:
-                                        items:
-                                          type: string
-                                        type: array
-                                      metadata:
-                                        properties:
-                                          annotations:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
-                                          labels:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
-                                        type: object
-                                      tls:
-                                        type: object
-                                        x-kubernetes-preserve-unknown-fields: true
-                                    type: object
+                                  contextPath:
+                                    type: string
+                                  enabled:
+                                    type: boolean
+                                  hosts:
+                                    items:
+                                      type: string
+                                    type: array
                                   metadata:
                                     properties:
                                       annotations:
@@ -437,56 +471,55 @@ spec:
                                           type: string
                                         type: object
                                     type: object
-                                  nodePort:
-                                    format: int32
-                                    type: integer
+                                  tls:
+                                    type: object
+                                    x-kubernetes-preserve-unknown-fields: true
                                 type: object
+                              metadata:
+                                properties:
+                                  annotations:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  labels:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                type: object
+                              nodePort:
+                                format: int32
+                                type: integer
                             type: object
                         type: object
-                      kiali:
+                      name:
+                        type: string
+                    type: object
+                  prometheus:
+                    properties:
+                      address:
+                        type: string
+                      enabled:
+                        type: boolean
+                      install:
                         properties:
-                          enabled:
+                          retention:
+                            type: string
+                          scrapeInterval:
+                            type: string
+                          selfManaged:
                             type: boolean
-                          install:
+                          service:
                             properties:
-                              dashboard:
+                              ingress:
                                 properties:
-                                  enableGrafana:
+                                  contextPath:
+                                    type: string
+                                  enabled:
                                     type: boolean
-                                  enablePrometheus:
-                                    type: boolean
-                                  enableTracing:
-                                    type: boolean
-                                  viewOnly:
-                                    type: boolean
-                                type: object
-                              service:
-                                properties:
-                                  ingress:
-                                    properties:
-                                      contextPath:
-                                        type: string
-                                      enabled:
-                                        type: boolean
-                                      hosts:
-                                        items:
-                                          type: string
-                                        type: array
-                                      metadata:
-                                        properties:
-                                          annotations:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
-                                          labels:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
-                                        type: object
-                                      tls:
-                                        type: object
-                                        x-kubernetes-preserve-unknown-fields: true
-                                    type: object
+                                  hosts:
+                                    items:
+                                      type: string
+                                    type: array
                                   metadata:
                                     properties:
                                       annotations:
@@ -498,13 +531,81 @@ spec:
                                           type: string
                                         type: object
                                     type: object
-                                  nodePort:
-                                    format: int32
-                                    type: integer
+                                  tls:
+                                    type: object
+                                    x-kubernetes-preserve-unknown-fields: true
                                 type: object
+                              metadata:
+                                properties:
+                                  annotations:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  labels:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                type: object
+                              nodePort:
+                                format: int32
+                                type: integer
                             type: object
-                          name:
+                          useTLS:
+                            type: boolean
+                        type: object
+                      scrape:
+                        type: boolean
+                      telemetry:
+                        properties:
+                          metricsExpiryDuration:
                             type: string
+                        type: object
+                    type: object
+                  stackdriver:
+                    properties:
+                      telemetry:
+                        properties:
+                          accessLogging:
+                            properties:
+                              enabled:
+                                type: boolean
+                              logWindowDuration:
+                                type: string
+                            type: object
+                          auth:
+                            properties:
+                              apiKey:
+                                type: string
+                              appCredentials:
+                                type: boolean
+                              serviceAccountPath:
+                                type: string
+                            type: object
+                          configOverride:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                          enableContextGraph:
+                            type: boolean
+                          enableLogging:
+                            type: boolean
+                          enableMetrics:
+                            type: boolean
+                          enabled:
+                            type: boolean
+                        type: object
+                      tracer:
+                        properties:
+                          debug:
+                            type: boolean
+                          maxNumberOfAnnotations:
+                            format: int64
+                            type: integer
+                          maxNumberOfAttributes:
+                            format: int64
+                            type: integer
+                          maxNumberOfMessageEvents:
+                            format: int64
+                            type: integer
                         type: object
                     type: object
                 type: object
@@ -524,7 +625,11 @@ spec:
                             properties:
                               container:
                                 properties:
-                                  image:
+                                  env:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  imageName:
                                     type: string
                                   imagePullPolicy:
                                     type: string
@@ -535,7 +640,9 @@ spec:
                                           type: string
                                       type: object
                                     type: array
-                                  registry:
+                                  imageRegistry:
+                                    type: string
+                                  imageTag:
                                     type: string
                                   resources:
                                     properties:
@@ -556,8 +663,6 @@ spec:
                                           x-kubernetes-int-or-string: true
                                         type: object
                                     type: object
-                                  tag:
-                                    type: string
                                 type: object
                               deployment:
                                 properties:
@@ -890,7 +995,11 @@ spec:
                           properties:
                             container:
                               properties:
-                                image:
+                                env:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                imageName:
                                   type: string
                                 imagePullPolicy:
                                   type: string
@@ -901,7 +1010,9 @@ spec:
                                         type: string
                                     type: object
                                   type: array
-                                registry:
+                                imageRegistry:
+                                  type: string
+                                imageTag:
                                   type: string
                                 resources:
                                   properties:
@@ -922,8 +1033,6 @@ spec:
                                         x-kubernetes-int-or-string: true
                                       type: object
                                   type: object
-                                tag:
-                                  type: string
                               type: object
                             deployment:
                               properties:
@@ -1216,7 +1325,11 @@ spec:
                           properties:
                             container:
                               properties:
-                                image:
+                                env:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                imageName:
                                   type: string
                                 imagePullPolicy:
                                   type: string
@@ -1227,7 +1340,9 @@ spec:
                                         type: string
                                     type: object
                                   type: array
-                                registry:
+                                imageRegistry:
+                                  type: string
+                                imageTag:
                                   type: string
                                 resources:
                                   properties:
@@ -1248,8 +1363,6 @@ spec:
                                         x-kubernetes-int-or-string: true
                                       type: object
                                   type: object
-                                tag:
-                                  type: string
                               type: object
                             deployment:
                               properties:
@@ -1372,7 +1485,11 @@ spec:
                               type: boolean
                             runtime:
                               properties:
-                                image:
+                                env:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                imageName:
                                   type: string
                                 imagePullPolicy:
                                   type: string
@@ -1383,7 +1500,9 @@ spec:
                                         type: string
                                     type: object
                                   type: array
-                                registry:
+                                imageRegistry:
+                                  type: string
+                                imageTag:
                                   type: string
                                 resources:
                                   properties:
@@ -1404,8 +1523,6 @@ spec:
                                         x-kubernetes-int-or-string: true
                                       type: object
                                   type: object
-                                tag:
-                                  type: string
                               type: object
                           type: object
                         service:
@@ -1587,7 +1704,11 @@ spec:
                         properties:
                           container:
                             properties:
-                              image:
+                              env:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                              imageName:
                                 type: string
                               imagePullPolicy:
                                 type: string
@@ -1598,7 +1719,9 @@ spec:
                                       type: string
                                   type: object
                                 type: array
-                              registry:
+                              imageRegistry:
+                                type: string
+                              imageTag:
                                 type: string
                               resources:
                                 properties:
@@ -1619,8 +1742,6 @@ spec:
                                       x-kubernetes-int-or-string: true
                                     type: object
                                 type: object
-                              tag:
-                                type: string
                             type: object
                           deployment:
                             properties:
@@ -1939,7 +2060,11 @@ spec:
                         properties:
                           container:
                             properties:
-                              image:
+                              env:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                              imageName:
                                 type: string
                               imagePullPolicy:
                                 type: string
@@ -1950,7 +2075,9 @@ spec:
                                       type: string
                                   type: object
                                 type: array
-                              registry:
+                              imageRegistry:
+                                type: string
+                              imageTag:
                                 type: string
                               resources:
                                 properties:
@@ -1971,8 +2098,6 @@ spec:
                                       x-kubernetes-int-or-string: true
                                     type: object
                                 type: object
-                              tag:
-                                type: string
                             type: object
                           deployment:
                             properties:
@@ -2095,7 +2220,11 @@ spec:
                             type: boolean
                           runtime:
                             properties:
-                              image:
+                              env:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                              imageName:
                                 type: string
                               imagePullPolicy:
                                 type: string
@@ -2106,7 +2235,9 @@ spec:
                                       type: string
                                   type: object
                                 type: array
-                              registry:
+                              imageRegistry:
+                                type: string
+                              imageTag:
                                 type: string
                               resources:
                                 properties:
@@ -2127,8 +2258,6 @@ spec:
                                       x-kubernetes-int-or-string: true
                                     type: object
                                 type: object
-                              tag:
-                                type: string
                             type: object
                         type: object
                       service:
@@ -2299,13 +2428,18 @@ spec:
                         type: boolean
                     type: object
                 type: object
-              logging:
+              general:
                 properties:
-                  componentLevels:
-                    additionalProperties:
-                      type: string
+                  logging:
+                    properties:
+                      componentLevels:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      logAsJSON:
+                        type: boolean
                     type: object
-                  logAsJSON:
+                  validationMessages:
                     type: boolean
                 type: object
               policy:
@@ -2322,6 +2456,8 @@ spec:
                       enableChecks:
                         type: boolean
                       failOpen:
+                        type: boolean
+                      sessionAffinity:
                         type: boolean
                     type: object
                   remote:
@@ -2344,14 +2480,151 @@ spec:
                 type: array
               proxy:
                 properties:
+                  accessLogging:
+                    properties:
+                      envoyService:
+                        properties:
+                          address:
+                            type: string
+                          enabled:
+                            type: boolean
+                          tcpKeepalive:
+                            properties:
+                              interval:
+                                type: string
+                              probes:
+                                format: int32
+                                type: integer
+                              time:
+                                type: string
+                            type: object
+                          tlsSettings:
+                            properties:
+                              caCertificates:
+                                type: string
+                              clientCertificate:
+                                type: string
+                              mode:
+                                type: string
+                              privateKey:
+                                type: string
+                              sni:
+                                type: string
+                              subjectAltNames:
+                                items:
+                                  type: string
+                                type: array
+                            type: object
+                        type: object
+                      file:
+                        properties:
+                          encoding:
+                            type: string
+                          format:
+                            type: string
+                          name:
+                            type: string
+                        type: object
+                    type: object
                   adminPort:
                     format: int32
                     type: integer
-                  autoInject:
-                    type: boolean
                   concurrency:
                     format: int32
                     type: integer
+                  envoyMetricsService:
+                    properties:
+                      address:
+                        type: string
+                      enabled:
+                        type: boolean
+                      tcpKeepalive:
+                        properties:
+                          interval:
+                            type: string
+                          probes:
+                            format: int32
+                            type: integer
+                          time:
+                            type: string
+                        type: object
+                      tlsSettings:
+                        properties:
+                          caCertificates:
+                            type: string
+                          clientCertificate:
+                            type: string
+                          mode:
+                            type: string
+                          privateKey:
+                            type: string
+                          sni:
+                            type: string
+                          subjectAltNames:
+                            items:
+                              type: string
+                            type: array
+                        type: object
+                    type: object
+                  injection:
+                    properties:
+                      alwaysInjectSelector:
+                        items:
+                          properties:
+                            matchExpressions:
+                              items:
+                                properties:
+                                  key:
+                                    type: string
+                                  operator:
+                                    type: string
+                                  values:
+                                    items:
+                                      type: string
+                                    type: array
+                                required:
+                                - key
+                                - operator
+                                type: object
+                              type: array
+                            matchLabels:
+                              additionalProperties:
+                                type: string
+                              type: object
+                          type: object
+                        type: array
+                      autoInject:
+                        type: boolean
+                      injectedAnnotations:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      neverInjectSelector:
+                        items:
+                          properties:
+                            matchExpressions:
+                              items:
+                                properties:
+                                  key:
+                                    type: string
+                                  operator:
+                                    type: string
+                                  values:
+                                    items:
+                                      type: string
+                                    type: array
+                                required:
+                                - key
+                                - operator
+                                type: object
+                              type: array
+                            matchLabels:
+                              additionalProperties:
+                                type: string
+                              type: object
+                          type: object
+                        type: array
+                    type: object
                   logging:
                     properties:
                       componentLevels:
@@ -2382,7 +2655,11 @@ spec:
                             properties:
                               runtime:
                                 properties:
-                                  image:
+                                  env:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  imageName:
                                     type: string
                                   imagePullPolicy:
                                     type: string
@@ -2393,7 +2670,9 @@ spec:
                                           type: string
                                       type: object
                                     type: array
-                                  registry:
+                                  imageRegistry:
+                                    type: string
+                                  imageTag:
                                     type: string
                                   resources:
                                     properties:
@@ -2414,24 +2693,24 @@ spec:
                                           x-kubernetes-int-or-string: true
                                         type: object
                                     type: object
-                                  tag:
-                                    type: string
                                 type: object
                             type: object
                           type:
                             type: string
                         type: object
+                      maxConnectionAge:
+                        type: string
                       protocol:
                         properties:
-                          debug:
+                          autoDetect:
                             properties:
-                              enableInboudSniffing:
+                              inbound:
                                 type: boolean
-                              enableOutboundSniffing:
+                              outbound:
                                 type: boolean
+                              timeout:
+                                type: string
                             type: object
-                          detectionTimeout:
-                            type: string
                         type: object
                       trafficControl:
                         properties:
@@ -2473,7 +2752,11 @@ spec:
                     properties:
                       container:
                         properties:
-                          image:
+                          env:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          imageName:
                             type: string
                           imagePullPolicy:
                             type: string
@@ -2484,7 +2767,9 @@ spec:
                                   type: string
                               type: object
                             type: array
-                          registry:
+                          imageRegistry:
+                            type: string
+                          imageTag:
                             type: string
                           resources:
                             properties:
@@ -2505,8 +2790,6 @@ spec:
                                   x-kubernetes-int-or-string: true
                                 type: object
                             type: object
-                          tag:
-                            type: string
                         type: object
                       readiness:
                         properties:
@@ -2534,7 +2817,11 @@ spec:
                       properties:
                         container:
                           properties:
-                            image:
+                            env:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            imageName:
                               type: string
                             imagePullPolicy:
                               type: string
@@ -2545,7 +2832,9 @@ spec:
                                     type: string
                                 type: object
                               type: array
-                            registry:
+                            imageRegistry:
+                              type: string
+                            imageTag:
                               type: string
                             resources:
                               properties:
@@ -2566,8 +2855,6 @@ spec:
                                     x-kubernetes-int-or-string: true
                                   type: object
                               type: object
-                            tag:
-                              type: string
                           type: object
                         deployment:
                           properties:
@@ -2698,7 +2985,9 @@ spec:
                                   type: string
                               type: object
                             type: array
-                          registry:
+                          imageRegistry:
+                            type: string
+                          imageTag:
                             type: string
                           resources:
                             properties:
@@ -2719,8 +3008,6 @@ spec:
                                   x-kubernetes-int-or-string: true
                                 type: object
                             type: object
-                          tag:
-                            type: string
                         type: object
                       deployment:
                         properties:
@@ -2767,149 +3054,104 @@ spec:
                 type: object
               security:
                 properties:
-                  mutualTLS:
+                  certificateAuthority:
                     properties:
-                      auto:
-                        type: boolean
-                      certificateAuthority:
+                      custom:
                         properties:
-                          custom:
+                          address:
+                            type: string
+                        type: object
+                      istiod:
+                        properties:
+                          privateKey:
                             properties:
-                              address:
+                              rootCADir:
                                 type: string
                             type: object
-                          istiod:
+                          selfSigned:
                             properties:
-                              privateKey:
-                                properties:
-                                  rootCADir:
-                                    type: string
-                                type: object
-                              selfSigned:
-                                properties:
-                                  checkPeriod:
-                                    type: string
-                                  enableJitter:
-                                    type: boolean
-                                  gracePeriod:
-                                    type: string
-                                  ttl:
-                                    type: string
-                                type: object
-                              type:
+                              checkPeriod:
                                 type: string
-                              workloadCertTTLDefault:
+                              enableJitter:
+                                type: boolean
+                              gracePeriod:
                                 type: string
-                              workloadCertTTLMax:
+                              ttl:
                                 type: string
                             type: object
                           type:
                             type: string
-                        type: object
-                      controlPlane:
-                        properties:
-                          certProvider:
+                          workloadCertTTLDefault:
                             type: string
-                          enable:
-                            type: boolean
+                          workloadCertTTLMax:
+                            type: string
                         type: object
-                      enable:
+                      type:
+                        type: string
+                    type: object
+                  controlPlane:
+                    properties:
+                      certProvider:
+                        type: string
+                      mtls:
                         type: boolean
-                      identity:
+                      tls:
                         properties:
-                          thirdParty:
-                            properties:
-                              audience:
-                                type: string
-                              issuer:
-                                type: string
-                            type: object
-                          type:
-                            type: string
-                        type: object
-                      trust:
-                        properties:
-                          additionalDomains:
+                          cipherSuites:
                             items:
                               type: string
                             type: array
-                          domain:
+                          ecdhCurves:
+                            items:
+                              type: string
+                            type: array
+                          maxProtocolVersion:
+                            type: string
+                          minProtocolVersion:
                             type: string
                         type: object
+                    type: object
+                  identity:
+                    properties:
+                      thirdParty:
+                        properties:
+                          audience:
+                            type: string
+                          issuer:
+                            type: string
+                        type: object
+                      type:
+                        type: string
+                    type: object
+                  mtls:
+                    properties:
+                      auto:
+                        type: boolean
+                      enabled:
+                        type: boolean
+                    type: object
+                  trust:
+                    properties:
+                      additionalDomains:
+                        items:
+                          type: string
+                        type: array
+                      domain:
+                        type: string
                     type: object
                 type: object
               telemetry:
                 properties:
-                  istiod:
-                    properties:
-                      accessLogTelemetryFilter:
-                        properties:
-                          logWindowDuration:
-                            type: string
-                        type: object
-                      metadataExchange:
-                        properties:
-                          wasmEnabled:
-                            type: boolean
-                        type: object
-                      prometheusFilter:
-                        properties:
-                          scrape:
-                            type: boolean
-                          wasmEnabled:
-                            type: boolean
-                        type: object
-                      stackDriverFilter:
-                        properties:
-                          configOverride:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                          disableOutbound:
-                            type: boolean
-                          logging:
-                            type: boolean
-                          monitoring:
-                            type: boolean
-                          topology:
-                            type: boolean
-                        type: object
-                    type: object
                   mixer:
                     properties:
                       adapters:
                         properties:
                           kubernetesenv:
                             type: boolean
-                          prometheus:
-                            properties:
-                              metricsExpiryDuration:
-                                type: string
-                            type: object
-                          stackdriver:
-                            properties:
-                              auth:
-                                properties:
-                                  apiKey:
-                                    type: string
-                                  appCredentials:
-                                    type: boolean
-                                  serviceAccountPath:
-                                    type: string
-                                type: object
-                              enableContextGraph:
-                                type: boolean
-                              enableLogging:
-                                type: boolean
-                              enableMetrics:
-                                type: boolean
-                              tracer:
-                                properties:
-                                  sampleProbability:
-                                    type: integer
-                                type: object
-                            type: object
                           stdio:
                             properties:
+                              enabled:
+                                type: boolean
                               outputAsJSON:
                                 type: boolean
                             type: object
@@ -2922,6 +3164,13 @@ spec:
                             format: int32
                             type: integer
                           maxTime:
+                            type: string
+                        type: object
+                      loadshedding:
+                        properties:
+                          latencyThreshold:
+                            type: string
+                          mode:
                             type: string
                         type: object
                       sessionAffinity:
@@ -2945,6 +3194,16 @@ spec:
                   type:
                     type: string
                 type: object
+              tracing:
+                properties:
+                  sampling:
+                    format: int32
+                    maximum: 10000
+                    minimum: 0
+                    type: integer
+                  type:
+                    type: string
+                type: object
               version:
                 type: string
             type: object
@@ -2959,82 +3218,139 @@ spec:
                 properties:
                   addons:
                     properties:
-                      metrics:
+                      3scale:
                         properties:
-                          prometheus:
+                          backend:
                             properties:
-                              address:
-                                type: string
-                              enabled:
+                              cache_flush_interval:
+                                format: int32
+                                type: integer
+                              enable_cache:
                                 type: boolean
-                              install:
-                                properties:
-                                  config:
-                                    properties:
-                                      retention:
-                                        type: string
-                                      scrapeInterval:
-                                        type: string
-                                    type: object
-                                  selfManaged:
-                                    type: boolean
-                                  service:
-                                    properties:
-                                      ingress:
-                                        properties:
-                                          contextPath:
-                                            type: string
-                                          enabled:
-                                            type: boolean
-                                          hosts:
-                                            items:
-                                              type: string
-                                            type: array
-                                          metadata:
-                                            properties:
-                                              annotations:
-                                                additionalProperties:
-                                                  type: string
-                                                type: object
-                                              labels:
-                                                additionalProperties:
-                                                  type: string
-                                                type: object
-                                            type: object
-                                          tls:
-                                            type: object
-                                            x-kubernetes-preserve-unknown-fields: true
-                                        type: object
-                                      metadata:
-                                        properties:
-                                          annotations:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
-                                          labels:
-                                            additionalProperties:
-                                              type: string
-                                            type: object
-                                        type: object
-                                      nodePort:
-                                        format: int32
-                                        type: integer
-                                    type: object
-                                  useTLS:
-                                    type: boolean
-                                type: object
+                              policy_fail_closed:
+                                type: boolean
+                            type: object
+                          client:
+                            properties:
+                              allow_insecure_connections:
+                                type: boolean
+                              timeout:
+                                format: int32
+                                type: integer
+                            type: object
+                          enabled:
+                            type: boolean
+                          grpc:
+                            properties:
+                              max_conn_timeout:
+                                format: int32
+                                type: integer
+                            type: object
+                          listen_addr:
+                            format: int32
+                            type: integer
+                          log_grpc:
+                            type: boolean
+                          log_json:
+                            type: boolean
+                          log_level:
+                            type: string
+                          metrics:
+                            properties:
+                              port:
+                                format: int32
+                                type: integer
+                              report:
+                                type: boolean
+                            type: object
+                          system:
+                            properties:
+                              cache_max_size:
+                                format: int64
+                                type: integer
+                              cache_refresh_interval:
+                                format: int32
+                                type: integer
+                              cache_refresh_retries:
+                                format: int32
+                                type: integer
+                              cache_ttl:
+                                format: int32
+                                type: integer
                             type: object
                         type: object
-                      tracing:
+                      grafana:
                         properties:
-                          jaeger:
+                          address:
+                            type: string
+                          enabled:
+                            type: boolean
+                          install:
                             properties:
-                              install:
+                              config:
+                                properties:
+                                  env:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  envSecrets:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                type: object
+                              persistence:
+                                properties:
+                                  accessMode:
+                                    type: string
+                                  capacity:
+                                    properties:
+                                      limits:
+                                        additionalProperties:
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
+                                        type: object
+                                      requests:
+                                        additionalProperties:
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
+                                        type: object
+                                    type: object
+                                  enabled:
+                                    type: boolean
+                                  storageClassName:
+                                    type: string
+                                type: object
+                              security:
+                                properties:
+                                  enabled:
+                                    type: boolean
+                                  passphraseKey:
+                                    type: string
+                                  secretName:
+                                    type: string
+                                  usernameKey:
+                                    type: string
+                                type: object
+                              selfManaged:
+                                type: boolean
+                              service:
                                 properties:
                                   ingress:
                                     properties:
+                                      contextPath:
+                                        type: string
                                       enabled:
                                         type: boolean
+                                      hosts:
+                                        items:
+                                          type: string
+                                        type: array
                                       metadata:
                                         properties:
                                           annotations:
@@ -3046,128 +3362,105 @@ spec:
                                               type: string
                                             type: object
                                         type: object
+                                      tls:
+                                        type: object
+                                        x-kubernetes-preserve-unknown-fields: true
                                     type: object
-                                  storage:
+                                  metadata:
                                     properties:
-                                      elasticsearch:
-                                        properties:
-                                          indexCleaner:
-                                            type: object
-                                            x-kubernetes-preserve-unknown-fields: true
-                                          nodeCount:
-                                            format: int32
-                                            type: integer
-                                          redundancyPolicy:
-                                            type: string
-                                          storage:
-                                            type: object
-                                            x-kubernetes-preserve-unknown-fields: true
+                                      annotations:
+                                        additionalProperties:
+                                          type: string
                                         type: object
-                                      memory:
-                                        properties:
-                                          maxTraces:
-                                            format: int64
-                                            type: integer
+                                      labels:
+                                        additionalProperties:
+                                          type: string
                                         type: object
-                                      type:
-                                        type: string
+                                    type: object
+                                  nodePort:
+                                    format: int32
+                                    type: integer
+                                type: object
+                            type: object
+                        type: object
+                      jaeger:
+                        properties:
+                          install:
+                            properties:
+                              ingress:
+                                properties:
+                                  enabled:
+                                    type: boolean
+                                  metadata:
+                                    properties:
+                                      annotations:
+                                        additionalProperties:
+                                          type: string
+                                        type: object
+                                      labels:
+                                        additionalProperties:
+                                          type: string
+                                        type: object
                                     type: object
                                 type: object
-                              name:
-                                type: string
+                              storage:
+                                properties:
+                                  elasticsearch:
+                                    properties:
+                                      indexCleaner:
+                                        type: object
+                                        x-kubernetes-preserve-unknown-fields: true
+                                      nodeCount:
+                                        format: int32
+                                        type: integer
+                                      redundancyPolicy:
+                                        type: string
+                                      storage:
+                                        type: object
+                                        x-kubernetes-preserve-unknown-fields: true
+                                    type: object
+                                  memory:
+                                    properties:
+                                      maxTraces:
+                                        format: int64
+                                        type: integer
+                                    type: object
+                                  type:
+                                    type: string
+                                type: object
                             type: object
-                          type:
+                          name:
                             type: string
                         type: object
-                      visualization:
+                      kiali:
                         properties:
-                          grafana:
+                          enabled:
+                            type: boolean
+                          install:
                             properties:
-                              address:
-                                type: string
-                              enabled:
-                                type: boolean
-                              install:
+                              dashboard:
                                 properties:
-                                  config:
-                                    properties:
-                                      env:
-                                        additionalProperties:
-                                          type: string
-                                        type: object
-                                      envSecrets:
-                                        additionalProperties:
-                                          type: string
-                                        type: object
-                                    type: object
-                                  persistence:
-                                    properties:
-                                      accessMode:
-                                        type: string
-                                      capacity:
-                                        properties:
-                                          limits:
-                                            additionalProperties:
-                                              anyOf:
-                                              - type: integer
-                                              - type: string
-                                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                              x-kubernetes-int-or-string: true
-                                            type: object
-                                          requests:
-                                            additionalProperties:
-                                              anyOf:
-                                              - type: integer
-                                              - type: string
-                                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                              x-kubernetes-int-or-string: true
-                                            type: object
-                                        type: object
-                                      enabled:
-                                        type: boolean
-                                      storageClassName:
-                                        type: string
-                                    type: object
-                                  security:
-                                    properties:
-                                      enabled:
-                                        type: boolean
-                                      passphraseKey:
-                                        type: string
-                                      secretName:
-                                        type: string
-                                      usernameKey:
-                                        type: string
-                                    type: object
-                                  selfManaged:
+                                  enableGrafana:
                                     type: boolean
-                                  service:
+                                  enablePrometheus:
+                                    type: boolean
+                                  enableTracing:
+                                    type: boolean
+                                  viewOnly:
+                                    type: boolean
+                                type: object
+                              service:
+                                properties:
+                                  ingress:
                                     properties:
-                                      ingress:
-                                        properties:
-                                          contextPath:
-                                            type: string
-                                          enabled:
-                                            type: boolean
-                                          hosts:
-                                            items:
-                                              type: string
-                                            type: array
-                                          metadata:
-                                            properties:
-                                              annotations:
-                                                additionalProperties:
-                                                  type: string
-                                                type: object
-                                              labels:
-                                                additionalProperties:
-                                                  type: string
-                                                type: object
-                                            type: object
-                                          tls:
-                                            type: object
-                                            x-kubernetes-preserve-unknown-fields: true
-                                        type: object
+                                      contextPath:
+                                        type: string
+                                      enabled:
+                                        type: boolean
+                                      hosts:
+                                        items:
+                                          type: string
+                                        type: array
                                       metadata:
                                         properties:
                                           annotations:
@@ -3179,56 +3472,55 @@ spec:
                                               type: string
                                             type: object
                                         type: object
-                                      nodePort:
-                                        format: int32
-                                        type: integer
+                                      tls:
+                                        type: object
+                                        x-kubernetes-preserve-unknown-fields: true
                                     type: object
+                                  metadata:
+                                    properties:
+                                      annotations:
+                                        additionalProperties:
+                                          type: string
+                                        type: object
+                                      labels:
+                                        additionalProperties:
+                                          type: string
+                                        type: object
+                                    type: object
+                                  nodePort:
+                                    format: int32
+                                    type: integer
                                 type: object
                             type: object
-                          kiali:
+                          name:
+                            type: string
+                        type: object
+                      prometheus:
+                        properties:
+                          address:
+                            type: string
+                          enabled:
+                            type: boolean
+                          install:
                             properties:
-                              enabled:
+                              retention:
+                                type: string
+                              scrapeInterval:
+                                type: string
+                              selfManaged:
                                 type: boolean
-                              install:
+                              service:
                                 properties:
-                                  dashboard:
+                                  ingress:
                                     properties:
-                                      enableGrafana:
+                                      contextPath:
+                                        type: string
+                                      enabled:
                                         type: boolean
-                                      enablePrometheus:
-                                        type: boolean
-                                      enableTracing:
-                                        type: boolean
-                                      viewOnly:
-                                        type: boolean
-                                    type: object
-                                  service:
-                                    properties:
-                                      ingress:
-                                        properties:
-                                          contextPath:
-                                            type: string
-                                          enabled:
-                                            type: boolean
-                                          hosts:
-                                            items:
-                                              type: string
-                                            type: array
-                                          metadata:
-                                            properties:
-                                              annotations:
-                                                additionalProperties:
-                                                  type: string
-                                                type: object
-                                              labels:
-                                                additionalProperties:
-                                                  type: string
-                                                type: object
-                                            type: object
-                                          tls:
-                                            type: object
-                                            x-kubernetes-preserve-unknown-fields: true
-                                        type: object
+                                      hosts:
+                                        items:
+                                          type: string
+                                        type: array
                                       metadata:
                                         properties:
                                           annotations:
@@ -3240,13 +3532,81 @@ spec:
                                               type: string
                                             type: object
                                         type: object
-                                      nodePort:
-                                        format: int32
-                                        type: integer
+                                      tls:
+                                        type: object
+                                        x-kubernetes-preserve-unknown-fields: true
                                     type: object
+                                  metadata:
+                                    properties:
+                                      annotations:
+                                        additionalProperties:
+                                          type: string
+                                        type: object
+                                      labels:
+                                        additionalProperties:
+                                          type: string
+                                        type: object
+                                    type: object
+                                  nodePort:
+                                    format: int32
+                                    type: integer
                                 type: object
-                              name:
+                              useTLS:
+                                type: boolean
+                            type: object
+                          scrape:
+                            type: boolean
+                          telemetry:
+                            properties:
+                              metricsExpiryDuration:
                                 type: string
+                            type: object
+                        type: object
+                      stackdriver:
+                        properties:
+                          telemetry:
+                            properties:
+                              accessLogging:
+                                properties:
+                                  enabled:
+                                    type: boolean
+                                  logWindowDuration:
+                                    type: string
+                                type: object
+                              auth:
+                                properties:
+                                  apiKey:
+                                    type: string
+                                  appCredentials:
+                                    type: boolean
+                                  serviceAccountPath:
+                                    type: string
+                                type: object
+                              configOverride:
+                                type: object
+                                x-kubernetes-preserve-unknown-fields: true
+                              enableContextGraph:
+                                type: boolean
+                              enableLogging:
+                                type: boolean
+                              enableMetrics:
+                                type: boolean
+                              enabled:
+                                type: boolean
+                            type: object
+                          tracer:
+                            properties:
+                              debug:
+                                type: boolean
+                              maxNumberOfAnnotations:
+                                format: int64
+                                type: integer
+                              maxNumberOfAttributes:
+                                format: int64
+                                type: integer
+                              maxNumberOfMessageEvents:
+                                format: int64
+                                type: integer
                             type: object
                         type: object
                     type: object
@@ -3266,7 +3626,11 @@ spec:
                                 properties:
                                   container:
                                     properties:
-                                      image:
+                                      env:
+                                        additionalProperties:
+                                          type: string
+                                        type: object
+                                      imageName:
                                         type: string
                                       imagePullPolicy:
                                         type: string
@@ -3277,7 +3641,9 @@ spec:
                                               type: string
                                           type: object
                                         type: array
-                                      registry:
+                                      imageRegistry:
+                                        type: string
+                                      imageTag:
                                         type: string
                                       resources:
                                         properties:
@@ -3298,8 +3664,6 @@ spec:
                                               x-kubernetes-int-or-string: true
                                             type: object
                                         type: object
-                                      tag:
-                                        type: string
                                     type: object
                                   deployment:
                                     properties:
@@ -3632,7 +3996,11 @@ spec:
                               properties:
                                 container:
                                   properties:
-                                    image:
+                                    env:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                    imageName:
                                       type: string
                                     imagePullPolicy:
                                       type: string
@@ -3643,7 +4011,9 @@ spec:
                                             type: string
                                         type: object
                                       type: array
-                                    registry:
+                                    imageRegistry:
+                                      type: string
+                                    imageTag:
                                       type: string
                                     resources:
                                       properties:
@@ -3664,8 +4034,6 @@ spec:
                                             x-kubernetes-int-or-string: true
                                           type: object
                                       type: object
-                                    tag:
-                                      type: string
                                   type: object
                                 deployment:
                                   properties:
@@ -3958,7 +4326,11 @@ spec:
                               properties:
                                 container:
                                   properties:
-                                    image:
+                                    env:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                    imageName:
                                       type: string
                                     imagePullPolicy:
                                       type: string
@@ -3969,7 +4341,9 @@ spec:
                                             type: string
                                         type: object
                                       type: array
-                                    registry:
+                                    imageRegistry:
+                                      type: string
+                                    imageTag:
                                       type: string
                                     resources:
                                       properties:
@@ -3990,8 +4364,6 @@ spec:
                                             x-kubernetes-int-or-string: true
                                           type: object
                                       type: object
-                                    tag:
-                                      type: string
                                   type: object
                                 deployment:
                                   properties:
@@ -4114,7 +4486,11 @@ spec:
                                   type: boolean
                                 runtime:
                                   properties:
-                                    image:
+                                    env:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                    imageName:
                                       type: string
                                     imagePullPolicy:
                                       type: string
@@ -4125,7 +4501,9 @@ spec:
                                             type: string
                                         type: object
                                       type: array
-                                    registry:
+                                    imageRegistry:
+                                      type: string
+                                    imageTag:
                                       type: string
                                     resources:
                                       properties:
@@ -4146,8 +4524,6 @@ spec:
                                             x-kubernetes-int-or-string: true
                                           type: object
                                       type: object
-                                    tag:
-                                      type: string
                                   type: object
                               type: object
                             service:
@@ -4329,7 +4705,11 @@ spec:
                             properties:
                               container:
                                 properties:
-                                  image:
+                                  env:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  imageName:
                                     type: string
                                   imagePullPolicy:
                                     type: string
@@ -4340,7 +4720,9 @@ spec:
                                           type: string
                                       type: object
                                     type: array
-                                  registry:
+                                  imageRegistry:
+                                    type: string
+                                  imageTag:
                                     type: string
                                   resources:
                                     properties:
@@ -4361,8 +4743,6 @@ spec:
                                           x-kubernetes-int-or-string: true
                                         type: object
                                     type: object
-                                  tag:
-                                    type: string
                                 type: object
                               deployment:
                                 properties:
@@ -4681,7 +5061,11 @@ spec:
                             properties:
                               container:
                                 properties:
-                                  image:
+                                  env:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  imageName:
                                     type: string
                                   imagePullPolicy:
                                     type: string
@@ -4692,7 +5076,9 @@ spec:
                                           type: string
                                       type: object
                                     type: array
-                                  registry:
+                                  imageRegistry:
+                                    type: string
+                                  imageTag:
                                     type: string
                                   resources:
                                     properties:
@@ -4713,8 +5099,6 @@ spec:
                                           x-kubernetes-int-or-string: true
                                         type: object
                                     type: object
-                                  tag:
-                                    type: string
                                 type: object
                               deployment:
                                 properties:
@@ -4837,7 +5221,11 @@ spec:
                                 type: boolean
                               runtime:
                                 properties:
-                                  image:
+                                  env:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  imageName:
                                     type: string
                                   imagePullPolicy:
                                     type: string
@@ -4848,7 +5236,9 @@ spec:
                                           type: string
                                       type: object
                                     type: array
-                                  registry:
+                                  imageRegistry:
+                                    type: string
+                                  imageTag:
                                     type: string
                                   resources:
                                     properties:
@@ -4869,8 +5259,6 @@ spec:
                                           x-kubernetes-int-or-string: true
                                         type: object
                                     type: object
-                                  tag:
-                                    type: string
                                 type: object
                             type: object
                           service:
@@ -5041,13 +5429,18 @@ spec:
                             type: boolean
                         type: object
                     type: object
-                  logging:
+                  general:
                     properties:
-                      componentLevels:
-                        additionalProperties:
-                          type: string
+                      logging:
+                        properties:
+                          componentLevels:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          logAsJSON:
+                            type: boolean
                         type: object
-                      logAsJSON:
+                      validationMessages:
                         type: boolean
                     type: object
                   policy:
@@ -5064,6 +5457,8 @@ spec:
                           enableChecks:
                             type: boolean
                           failOpen:
+                            type: boolean
+                          sessionAffinity:
                             type: boolean
                         type: object
                       remote:
@@ -5086,14 +5481,151 @@ spec:
                     type: array
                   proxy:
                     properties:
+                      accessLogging:
+                        properties:
+                          envoyService:
+                            properties:
+                              address:
+                                type: string
+                              enabled:
+                                type: boolean
+                              tcpKeepalive:
+                                properties:
+                                  interval:
+                                    type: string
+                                  probes:
+                                    format: int32
+                                    type: integer
+                                  time:
+                                    type: string
+                                type: object
+                              tlsSettings:
+                                properties:
+                                  caCertificates:
+                                    type: string
+                                  clientCertificate:
+                                    type: string
+                                  mode:
+                                    type: string
+                                  privateKey:
+                                    type: string
+                                  sni:
+                                    type: string
+                                  subjectAltNames:
+                                    items:
+                                      type: string
+                                    type: array
+                                type: object
+                            type: object
+                          file:
+                            properties:
+                              encoding:
+                                type: string
+                              format:
+                                type: string
+                              name:
+                                type: string
+                            type: object
+                        type: object
                       adminPort:
                         format: int32
                         type: integer
-                      autoInject:
-                        type: boolean
                       concurrency:
                         format: int32
                         type: integer
+                      envoyMetricsService:
+                        properties:
+                          address:
+                            type: string
+                          enabled:
+                            type: boolean
+                          tcpKeepalive:
+                            properties:
+                              interval:
+                                type: string
+                              probes:
+                                format: int32
+                                type: integer
+                              time:
+                                type: string
+                            type: object
+                          tlsSettings:
+                            properties:
+                              caCertificates:
+                                type: string
+                              clientCertificate:
+                                type: string
+                              mode:
+                                type: string
+                              privateKey:
+                                type: string
+                              sni:
+                                type: string
+                              subjectAltNames:
+                                items:
+                                  type: string
+                                type: array
+                            type: object
+                        type: object
+                      injection:
+                        properties:
+                          alwaysInjectSelector:
+                            items:
+                              properties:
+                                matchExpressions:
+                                  items:
+                                    properties:
+                                      key:
+                                        type: string
+                                      operator:
+                                        type: string
+                                      values:
+                                        items:
+                                          type: string
+                                        type: array
+                                    required:
+                                    - key
+                                    - operator
+                                    type: object
+                                  type: array
+                                matchLabels:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                              type: object
+                            type: array
+                          autoInject:
+                            type: boolean
+                          injectedAnnotations:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          neverInjectSelector:
+                            items:
+                              properties:
+                                matchExpressions:
+                                  items:
+                                    properties:
+                                      key:
+                                        type: string
+                                      operator:
+                                        type: string
+                                      values:
+                                        items:
+                                          type: string
+                                        type: array
+                                    required:
+                                    - key
+                                    - operator
+                                    type: object
+                                  type: array
+                                matchLabels:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                              type: object
+                            type: array
+                        type: object
                       logging:
                         properties:
                           componentLevels:
@@ -5124,7 +5656,11 @@ spec:
                                 properties:
                                   runtime:
                                     properties:
-                                      image:
+                                      env:
+                                        additionalProperties:
+                                          type: string
+                                        type: object
+                                      imageName:
                                         type: string
                                       imagePullPolicy:
                                         type: string
@@ -5135,7 +5671,9 @@ spec:
                                               type: string
                                           type: object
                                         type: array
-                                      registry:
+                                      imageRegistry:
+                                        type: string
+                                      imageTag:
                                         type: string
                                       resources:
                                         properties:
@@ -5156,24 +5694,24 @@ spec:
                                               x-kubernetes-int-or-string: true
                                             type: object
                                         type: object
-                                      tag:
-                                        type: string
                                     type: object
                                 type: object
                               type:
                                 type: string
                             type: object
+                          maxConnectionAge:
+                            type: string
                           protocol:
                             properties:
-                              debug:
+                              autoDetect:
                                 properties:
-                                  enableInboudSniffing:
+                                  inbound:
                                     type: boolean
-                                  enableOutboundSniffing:
+                                  outbound:
                                     type: boolean
+                                  timeout:
+                                    type: string
                                 type: object
-                              detectionTimeout:
-                                type: string
                             type: object
                           trafficControl:
                             properties:
@@ -5215,7 +5753,11 @@ spec:
                         properties:
                           container:
                             properties:
-                              image:
+                              env:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                              imageName:
                                 type: string
                               imagePullPolicy:
                                 type: string
@@ -5226,7 +5768,9 @@ spec:
                                       type: string
                                   type: object
                                 type: array
-                              registry:
+                              imageRegistry:
+                                type: string
+                              imageTag:
                                 type: string
                               resources:
                                 properties:
@@ -5247,8 +5791,6 @@ spec:
                                       x-kubernetes-int-or-string: true
                                     type: object
                                 type: object
-                              tag:
-                                type: string
                             type: object
                           readiness:
                             properties:
@@ -5276,7 +5818,11 @@ spec:
                           properties:
                             container:
                               properties:
-                                image:
+                                env:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                imageName:
                                   type: string
                                 imagePullPolicy:
                                   type: string
@@ -5287,7 +5833,9 @@ spec:
                                         type: string
                                     type: object
                                   type: array
-                                registry:
+                                imageRegistry:
+                                  type: string
+                                imageTag:
                                   type: string
                                 resources:
                                   properties:
@@ -5308,8 +5856,6 @@ spec:
                                         x-kubernetes-int-or-string: true
                                       type: object
                                   type: object
-                                tag:
-                                  type: string
                               type: object
                             deployment:
                               properties:
@@ -5440,7 +5986,9 @@ spec:
                                       type: string
                                   type: object
                                 type: array
-                              registry:
+                              imageRegistry:
+                                type: string
+                              imageTag:
                                 type: string
                               resources:
                                 properties:
@@ -5461,8 +6009,6 @@ spec:
                                       x-kubernetes-int-or-string: true
                                     type: object
                                 type: object
-                              tag:
-                                type: string
                             type: object
                           deployment:
                             properties:
@@ -5509,149 +6055,104 @@ spec:
                     type: object
                   security:
                     properties:
-                      mutualTLS:
+                      certificateAuthority:
                         properties:
-                          auto:
-                            type: boolean
-                          certificateAuthority:
+                          custom:
                             properties:
-                              custom:
+                              address:
+                                type: string
+                            type: object
+                          istiod:
+                            properties:
+                              privateKey:
                                 properties:
-                                  address:
+                                  rootCADir:
                                     type: string
                                 type: object
-                              istiod:
+                              selfSigned:
                                 properties:
-                                  privateKey:
-                                    properties:
-                                      rootCADir:
-                                        type: string
-                                    type: object
-                                  selfSigned:
-                                    properties:
-                                      checkPeriod:
-                                        type: string
-                                      enableJitter:
-                                        type: boolean
-                                      gracePeriod:
-                                        type: string
-                                      ttl:
-                                        type: string
-                                    type: object
-                                  type:
+                                  checkPeriod:
                                     type: string
-                                  workloadCertTTLDefault:
+                                  enableJitter:
+                                    type: boolean
+                                  gracePeriod:
                                     type: string
-                                  workloadCertTTLMax:
+                                  ttl:
                                     type: string
                                 type: object
                               type:
                                 type: string
-                            type: object
-                          controlPlane:
-                            properties:
-                              certProvider:
+                              workloadCertTTLDefault:
                                 type: string
-                              enable:
-                                type: boolean
+                              workloadCertTTLMax:
+                                type: string
                             type: object
-                          enable:
+                          type:
+                            type: string
+                        type: object
+                      controlPlane:
+                        properties:
+                          certProvider:
+                            type: string
+                          mtls:
                             type: boolean
-                          identity:
+                          tls:
                             properties:
-                              thirdParty:
-                                properties:
-                                  audience:
-                                    type: string
-                                  issuer:
-                                    type: string
-                                type: object
-                              type:
-                                type: string
-                            type: object
-                          trust:
-                            properties:
-                              additionalDomains:
+                              cipherSuites:
                                 items:
                                   type: string
                                 type: array
-                              domain:
+                              ecdhCurves:
+                                items:
+                                  type: string
+                                type: array
+                              maxProtocolVersion:
+                                type: string
+                              minProtocolVersion:
                                 type: string
                             type: object
+                        type: object
+                      identity:
+                        properties:
+                          thirdParty:
+                            properties:
+                              audience:
+                                type: string
+                              issuer:
+                                type: string
+                            type: object
+                          type:
+                            type: string
+                        type: object
+                      mtls:
+                        properties:
+                          auto:
+                            type: boolean
+                          enabled:
+                            type: boolean
+                        type: object
+                      trust:
+                        properties:
+                          additionalDomains:
+                            items:
+                              type: string
+                            type: array
+                          domain:
+                            type: string
                         type: object
                     type: object
                   telemetry:
                     properties:
-                      istiod:
-                        properties:
-                          accessLogTelemetryFilter:
-                            properties:
-                              logWindowDuration:
-                                type: string
-                            type: object
-                          metadataExchange:
-                            properties:
-                              wasmEnabled:
-                                type: boolean
-                            type: object
-                          prometheusFilter:
-                            properties:
-                              scrape:
-                                type: boolean
-                              wasmEnabled:
-                                type: boolean
-                            type: object
-                          stackDriverFilter:
-                            properties:
-                              configOverride:
-                                type: object
-                                x-kubernetes-preserve-unknown-fields: true
-                              disableOutbound:
-                                type: boolean
-                              logging:
-                                type: boolean
-                              monitoring:
-                                type: boolean
-                              topology:
-                                type: boolean
-                            type: object
-                        type: object
                       mixer:
                         properties:
                           adapters:
                             properties:
                               kubernetesenv:
                                 type: boolean
-                              prometheus:
-                                properties:
-                                  metricsExpiryDuration:
-                                    type: string
-                                type: object
-                              stackdriver:
-                                properties:
-                                  auth:
-                                    properties:
-                                      apiKey:
-                                        type: string
-                                      appCredentials:
-                                        type: boolean
-                                      serviceAccountPath:
-                                        type: string
-                                    type: object
-                                  enableContextGraph:
-                                    type: boolean
-                                  enableLogging:
-                                    type: boolean
-                                  enableMetrics:
-                                    type: boolean
-                                  tracer:
-                                    properties:
-                                      sampleProbability:
-                                        type: integer
-                                    type: object
-                                type: object
                               stdio:
                                 properties:
+                                  enabled:
+                                    type: boolean
                                   outputAsJSON:
                                     type: boolean
                                 type: object
@@ -5664,6 +6165,13 @@ spec:
                                 format: int32
                                 type: integer
                               maxTime:
+                                type: string
+                            type: object
+                          loadshedding:
+                            properties:
+                              latencyThreshold:
+                                type: string
+                              mode:
                                 type: string
                             type: object
                           sessionAffinity:
@@ -5684,6 +6192,16 @@ spec:
                           createService:
                             type: boolean
                         type: object
+                      type:
+                        type: string
+                    type: object
+                  tracing:
+                    properties:
+                      sampling:
+                        format: int32
+                        maximum: 10000
+                        minimum: 0
+                        type: integer
                       type:
                         type: string
                     type: object
@@ -5794,7 +6312,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.3.0
+    controller-gen.kubebuilder.io/version: v0.4.0
   creationTimestamp: null
   name: servicemeshmemberrolls.maistra.io
 spec:
@@ -5905,7 +6423,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.3.0
+    controller-gen.kubebuilder.io/version: v0.4.0
   creationTimestamp: null
   name: servicemeshmembers.maistra.io
 spec:

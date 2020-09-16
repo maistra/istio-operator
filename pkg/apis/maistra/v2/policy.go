@@ -45,6 +45,10 @@ type MixerPolicyConfig struct {
 	// Default is false which means the traffic is denied when the client is unable to connect to Mixer.
 	// +optional
 	FailOpen *bool `json:"failOpen,omitempty"`
+	// SessionAffinity configures session affinity for sidecar policy connections.
+	// .Values.mixer.policy.sessionAffinityEnabled
+	// +optional
+	SessionAffinity *bool `json:"sessionAffinity,omitempty"`
 	// Adapters configures available adapters.
 	// +optional
 	Adapters *MixerPolicyAdaptersConfig `json:"adapters,omitempty"`
@@ -85,6 +89,3 @@ type RemotePolicyConfig struct {
 	// +optional
 	FailOpen *bool `json:"failOpen,omitempty"`
 }
-
-// IstiodPolicyConfig configures policy aspects of istiod
-type IstiodPolicyConfig struct{}

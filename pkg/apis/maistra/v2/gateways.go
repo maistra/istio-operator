@@ -20,11 +20,11 @@ type GatewaysConfig struct {
 	// Other user defined ingress gateways
 	// .Values.gateways.<key>
 	// +optional
-	IngressGateways map[string]IngressGatewayConfig `json:"additionalIngress,omitempty"`
+	IngressGateways map[string]*IngressGatewayConfig `json:"additionalIngress,omitempty"`
 	// Other user defined egress gateways
 	// .Values.gateways.<key>
 	// +optional
-	EgressGateways map[string]EgressGatewayConfig `json:"additionalEgress,omitempty"`
+	EgressGateways map[string]*EgressGatewayConfig `json:"additionalEgress,omitempty"`
 	// Route configures the Gateway ↔ OpenShift Route integration
 	OpenShiftRoute *OpenShiftRouteConfig `json:"openshiftRoute,omitempty"`
 }

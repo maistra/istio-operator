@@ -8,47 +8,47 @@ spec:
   runtime:
     defaults:
       container:
-        registry: registry.redhat.io/openshift-service-mesh
+        imageRegistry: registry.redhat.io/openshift-service-mesh
     components:
       grafana:
         container:
-          image: grafana-rhel8
+          imageName: grafana-rhel8
       tracing:
         jaeger:
           template: all-in-one
       mixer:
         container:
-          image: mixer-rhel8
+          imageName: mixer-rhel8
       mixer.policy:
         container:
-          image: mixer-rhel8
+          imageName: mixer-rhel8
       mixer.telemetry:
         container:
-          image: mixer-rhel8
+          imageName: mixer-rhel8
       pilot:
         container:
-          image: pilot-rhel8
+          imageName: pilot-rhel8
       prometheus:
         container:
-          image: prometheus-rhel8
-      threeScale:
+          imageName: prometheus-rhel8
+      3scale:
         container:
-          registry: registry.redhat.io/openshift-service-mesh
-          image: 3scale-istio-adapter-rhel8
-          tag: 1.0.0
+          imageRegistry: registry.redhat.io/openshift-service-mesh
+          imageName: 3scale-istio-adapter-rhel8
+          imageTag: 1.0.0
       global.oauthproxy:
         container:
-          registry: image-registry.openshift-image-registry.svc:5000/openshift
-          image: oauth-proxy
-          tag: v4.4
+          imageRegistry: image-registry.openshift-image-registry.svc:5000/openshift
+          imageName: oauth-proxy
+          imageTag: v4.4
           imagePullPolicy: IfNotPresent
 
   proxy:
     runtime:
       container:
-        image: proxyv2-rhel8
+        imageName: proxyv2-rhel8
     networking:
       initialization:
         initContainer:
           runtime:
-            image: proxy-init-rhel7
+            imageName: proxy-init-rhel7

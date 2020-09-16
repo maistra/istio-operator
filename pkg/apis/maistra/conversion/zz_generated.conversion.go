@@ -77,11 +77,12 @@ func autoConvert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneS
 	out.Profiles = *(*[]string)(unsafe.Pointer(&in.Profiles))
 	out.Version = in.Version
 	// WARNING: in.Cluster requires manual conversion: does not exist in peer-type
-	// WARNING: in.Logging requires manual conversion: does not exist in peer-type
+	// WARNING: in.General requires manual conversion: does not exist in peer-type
 	// WARNING: in.Policy requires manual conversion: does not exist in peer-type
 	// WARNING: in.Proxy requires manual conversion: does not exist in peer-type
 	// WARNING: in.Security requires manual conversion: does not exist in peer-type
 	// WARNING: in.Telemetry requires manual conversion: does not exist in peer-type
+	// WARNING: in.Tracing requires manual conversion: does not exist in peer-type
 	// WARNING: in.Gateways requires manual conversion: does not exist in peer-type
 	// WARNING: in.Runtime requires manual conversion: does not exist in peer-type
 	// WARNING: in.Addons requires manual conversion: does not exist in peer-type

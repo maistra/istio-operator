@@ -2,9 +2,9 @@ package v2
 
 import v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 
-// JaegerTracerConfig configures Jaeger a tracer implementation
+// JaegerAddonConfig configuration specific to Jaeger integration.
 // XXX: this currently deviates from upstream, which creates a jaeger all-in-one deployment manually
-type JaegerTracerConfig struct {
+type JaegerAddonConfig struct {
 	// Name of Jaeger CR, Namespace must match control plane namespace
 	Name string `json:"name,omitempty"`
 	// Install configures a Jaeger installation, which will be created if the

@@ -27,18 +27,18 @@ func populateControlPlaneLogging(logging *v2.LoggingConfig, values map[string]in
 	return nil
 }
 
-func populateProxyLogging(logging *v2.ProxyLoggingConfig, values map[string]interface{}) error {
+func populateProxyLogging(logging *v2.ProxyLoggingConfig, proxyLoggingValues map[string]interface{}) error {
 	if logging == nil {
 		return nil
 	}
 	if logging.Level != "" {
-		if err := setHelmStringValue(values, "logLevel", string(logging.Level)); err != nil {
+		if err := setHelmStringValue(proxyLoggingValues, "logLevel", string(logging.Level)); err != nil {
 			return err
 		}
 	}
 	componentLevels := componentLogLevelsToString(logging.ComponentLevels)
 	if componentLevels != "" {
-		if err := setHelmStringValue(values, "componentLogLevel", componentLevels); err != nil {
+		if err := setHelmStringValue(proxyLoggingValues, "componentLogLevel", componentLevels); err != nil {
 			return err
 		}
 	}
@@ -85,7 +85,10 @@ func populateControlPlaneLoggingConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 	}
 
 	if setLogging {
-		out.Logging = logging
+		if out.General == nil {
+			out.General = &v2.GeneralConfig{}
+		}
+		out.General.Logging = logging
 	}
 
 	return nil

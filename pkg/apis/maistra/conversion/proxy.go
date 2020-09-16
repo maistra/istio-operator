@@ -16,20 +16,6 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 	proxyValues := make(map[string]interface{})
 
 	// General
-	if proxy.AutoInject != nil {
-		if err := setHelmBoolValue(values, "sidecarInjectorWebhook.enableNamespacesByDefault", *proxy.AutoInject); err != nil {
-			return err
-		}
-		if *proxy.AutoInject {
-			if err := setHelmStringValue(proxyValues, "autoInject", "enabled"); err != nil {
-				return err
-			}
-		} else {
-			if err := setHelmStringValue(proxyValues, "autoInject", "disabled"); err != nil {
-				return err
-			}
-		}
-	}
 	if proxy.Concurrency != nil {
 		if err := setHelmIntValue(proxyValues, "concurrency", int64(*proxy.Concurrency)); err != nil {
 			return err
@@ -57,6 +43,11 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 		// XXX: proxy.Networking.ConnectionTimeout is not exposed through values
 		if proxy.Networking.ConnectionTimeout != "" {
 			if err := setHelmStringValue(proxyValues, "connectionTimeout", proxy.Networking.ConnectionTimeout); err != nil {
+				return err
+			}
+		}
+		if proxy.Networking.MaxConnectionAge != "" {
+			if err := setHelmStringValue(values, "pilot.keepaliveMaxServerConnectionAge", proxy.Networking.MaxConnectionAge); err != nil {
 				return err
 			}
 		}
@@ -134,17 +125,20 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 		}
 
 		// Protocol
-		if proxy.Networking.Protocol != nil {
-			if proxy.Networking.Protocol.DetectionTimeout != "" {
-				if err := setHelmStringValue(proxyValues, "protocolDetectionTimeout", proxy.Networking.Protocol.DetectionTimeout); err != nil {
+		if proxy.Networking.Protocol != nil && proxy.Networking.Protocol.AutoDetect != nil {
+			autoDetect := proxy.Networking.Protocol.AutoDetect
+			if autoDetect.Timeout != "" {
+				if err := setHelmStringValue(proxyValues, "protocolDetectionTimeout", autoDetect.Timeout); err != nil {
 					return err
 				}
 			}
-			if proxy.Networking.Protocol.Debug != nil {
-				if err := setHelmBoolValue(values, "pilot.enableProtocolSniffingForInbound", proxy.Networking.Protocol.Debug.EnableInboundSniffing); err != nil {
+			if autoDetect.Inbound != nil {
+				if err := setHelmBoolValue(values, "pilot.enableProtocolSniffingForInbound", *autoDetect.Inbound); err != nil {
 					return err
 				}
-				if err := setHelmBoolValue(values, "pilot.enableProtocolSniffingForOutbound", proxy.Networking.Protocol.Debug.EnableOutboundSniffing); err != nil {
+			}
+			if autoDetect.Outbound != nil {
+				if err := setHelmBoolValue(values, "pilot.enableProtocolSniffingForOutbound", *autoDetect.Outbound); err != nil {
 					return err
 				}
 			}
@@ -162,6 +156,106 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 					return err
 				}
 			}
+		}
+	}
+
+	// Injection
+	if proxy.Injection != nil {
+		injection := proxy.Injection
+		if injection.AutoInject != nil {
+			if err := setHelmBoolValue(values, "sidecarInjectorWebhook.enableNamespacesByDefault", *injection.AutoInject); err != nil {
+				return err
+			}
+			if *injection.AutoInject {
+				if err := setHelmStringValue(proxyValues, "autoInject", "enabled"); err != nil {
+					return err
+				}
+			} else {
+				if err := setHelmStringValue(proxyValues, "autoInject", "disabled"); err != nil {
+					return err
+				}
+			}
+		}
+		if len(injection.AlwaysInjectSelector) > 0 {
+			untypedSlice := make([]interface{}, len(injection.AlwaysInjectSelector))
+			for index, value := range injection.AlwaysInjectSelector {
+				untypedSlice[index] = value
+			}
+			if alwaysInjectSelector, err := sliceToValues(untypedSlice); err == nil {
+				if err := setHelmValue(values, "sidecarInjectorWebhook.alwaysInjectSelector", alwaysInjectSelector); err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+		if len(injection.NeverInjectSelector) > 0 {
+			untypedSlice := make([]interface{}, len(injection.NeverInjectSelector))
+			for index, value := range injection.NeverInjectSelector {
+				untypedSlice[index] = value
+			}
+			if neverInjectSelector, err := sliceToValues(untypedSlice); err == nil {
+				if err := setHelmValue(values, "sidecarInjectorWebhook.neverInjectSelector", neverInjectSelector); err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+		if len(injection.InjectedAnnotations) > 0 {
+			if injectedAnnotations, err := toValues(injection.InjectedAnnotations); err == nil {
+				if err := setHelmValue(values, "sidecarInjectorWebhook.injectedAnnotations", injectedAnnotations); err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+	}
+
+	// Access logging
+	if proxy.AccessLogging != nil {
+		if proxy.AccessLogging.File != nil {
+			file := proxy.AccessLogging.File
+			if file.Name != "" {
+				if err := setHelmStringValue(proxyValues, "accessLogFile", file.Name); err != nil {
+					return err
+				}
+			}
+			if file.Encoding != "" {
+				if err := setHelmStringValue(proxyValues, "accessLogEncoding", file.Encoding); err != nil {
+					return err
+				}
+			}
+			if file.Format != "" {
+				if err := setHelmStringValue(proxyValues, "accessLogFormat", file.Format); err != nil {
+					return err
+				}
+			}
+		}
+		if proxy.AccessLogging.EnvoyService != nil {
+			accessLogServiceValues := map[string]interface{}{}
+			if err := populateProxyEnvoyServiceValues(proxy.AccessLogging.EnvoyService, accessLogServiceValues); err == nil && len(accessLogServiceValues) > 0 {
+				if err := setHelmValue(proxyValues, "envoyAccessLogService", accessLogServiceValues); err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+	}
+
+	// Metrics service
+	if proxy.EnvoyMetricsService != nil {
+		metricsServiceValues := map[string]interface{}{}
+		if err := populateProxyEnvoyServiceValues(proxy.EnvoyMetricsService, metricsServiceValues); err == nil {
+			if len(metricsServiceValues) > 0 {
+				if err := setHelmValue(proxyValues, "envoyMetricsService", metricsServiceValues); err != nil {
+					return err
+				}
+			}
+		} else {
+			return err
 		}
 	}
 
@@ -208,6 +302,51 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 	return nil
 }
 
+func populateProxyEnvoyServiceValues(service *v2.ProxyEnvoyServiceConfig, envoyServiceValues map[string]interface{}) error {
+	if service.Enabled != nil {
+		if err := setHelmBoolValue(envoyServiceValues, "enabled", *service.Enabled); err != nil {
+			return err
+		}
+	}
+	if service.Address != "" {
+		hostPort := strings.SplitN(service.Address, ":", 2)
+		host := hostPort[0]
+		port := "80"
+		if len(hostPort) > 1 {
+			port = hostPort[1]
+		}
+		if err := setHelmStringValue(envoyServiceValues, "host", host); err != nil {
+			return err
+		}
+		if err := setHelmStringValue(envoyServiceValues, "port", port); err != nil {
+			return err
+		}
+	}
+	if service.TCPKeepalive != nil {
+		if tcpKeepalive, err := toValues(service.TCPKeepalive); err == nil {
+			if len(tcpKeepalive) > 0 {
+				if err := setHelmValue(envoyServiceValues, "tcpKeepalive", tcpKeepalive); err != nil {
+					return err
+				}
+			}
+		} else {
+			return err
+		}
+	}
+	if service.TLSSettings != nil {
+		if tlsSettings, err := toValues(service.TLSSettings); err == nil {
+			if len(tlsSettings) > 0 {
+				if err := setHelmValue(envoyServiceValues, "tlsSettings", tlsSettings); err != nil {
+					return err
+				}
+			}
+		} else {
+			return err
+		}
+	}
+	return nil
+}
+
 func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	proxy := &v2.ProxyConfig{}
 	setProxy := false
@@ -220,24 +359,6 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	proxyValues := v1.NewHelmValues(rawProxyValues)
 
 	// General
-	if autoInject, ok, err := proxyValues.GetString("autoInject"); ok {
-		if autoInject == "enabled" {
-			enabled := true
-			proxy.AutoInject = &enabled
-			setProxy = true
-		} else {
-			disabled := false
-			proxy.AutoInject = &disabled
-			setProxy = true
-		}
-	} else if err != nil {
-		return err
-	} else if enableNamespacesByDefault, ok, err := in.GetBool("sidecarInjectorWebhook.enableNamespacesByDefault"); ok {
-		proxy.AutoInject = &enableNamespacesByDefault
-		setProxy = true
-	} else if err != nil {
-		return err
-	}
 	if rawConcurrency, ok, err := proxyValues.GetInt64("concurrency"); ok {
 		concurrency := int32(rawConcurrency)
 		proxy.Concurrency = &concurrency
@@ -272,6 +393,12 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	}
 	if connectionTimeout, ok, err := proxyValues.GetString("connectionTimeout"); ok {
 		networking.ConnectionTimeout = connectionTimeout
+		setNetworking = true
+	} else if err != nil {
+		return err
+	}
+	if maxConnectionAge, ok, err := in.GetString("pilot.keepaliveMaxServerConnectionAge"); ok {
+		networking.MaxConnectionAge = maxConnectionAge
 		setNetworking = true
 	} else if err != nil {
 		return err
@@ -381,35 +508,30 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	}
 
 	// Protocol
-	protocol := &v2.ProxyNetworkProtocolConfig{}
-	setProtocol := true
+	autoDetect := &v2.ProxyNetworkAutoProtocolDetectionConfig{}
+	setProtocol := false
 	if protocolDetectionTimeout, ok, err := proxyValues.GetString("protocolDetectionTimeout"); ok && protocolDetectionTimeout != "" {
-		protocol.DetectionTimeout = protocolDetectionTimeout
+		autoDetect.Timeout = protocolDetectionTimeout
 		setProtocol = true
 	} else if err != nil {
 		return err
 	}
-	// Protocol Debug
-	protocolDebugConfig := &v2.ProxyNetworkProtocolDebugConfig{}
-	setProtocolDebug := false
 	if enableProtocolSniffingForInbound, ok, err := in.GetBool("pilot.enableProtocolSniffingForInbound"); ok {
-		protocolDebugConfig.EnableInboundSniffing = enableProtocolSniffingForInbound
-		setProtocolDebug = true
+		autoDetect.Inbound = &enableProtocolSniffingForInbound
+		setProtocol = true
 	} else if err != nil {
 		return err
 	}
 	if enableProtocolSniffingForOutbound, ok, err := in.GetBool("pilot.enableProtocolSniffingForOutbound"); ok {
-		protocolDebugConfig.EnableOutboundSniffing = enableProtocolSniffingForOutbound
-		setProtocolDebug = true
+		autoDetect.Outbound = &enableProtocolSniffingForOutbound
+		setProtocol = true
 	} else if err != nil {
 		return err
 	}
-	if setProtocolDebug {
-		protocol.Debug = protocolDebugConfig
-		setProtocol = true
-	}
 	if setProtocol {
-		networking.Protocol = protocol
+		networking.Protocol = &v2.ProxyNetworkProtocolConfig{
+			AutoDetect: autoDetect,
+		}
 		setNetworking = true
 	}
 
@@ -449,6 +571,112 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	if setNetworking {
 		proxy.Networking = networking
 		setProxy = true
+	}
+
+	// Injection
+	injection := &v2.ProxyInjectionConfig{}
+	setInjection := false
+	if autoInject, ok, err := proxyValues.GetString("autoInject"); ok {
+		if autoInject == "enabled" {
+			enabled := true
+			injection.AutoInject = &enabled
+			setInjection = true
+		} else {
+			disabled := false
+			injection.AutoInject = &disabled
+			setInjection = true
+		}
+	} else if err != nil {
+		return err
+	} else if enableNamespacesByDefault, ok, err := in.GetBool("sidecarInjectorWebhook.enableNamespacesByDefault"); ok {
+		injection.AutoInject = &enableNamespacesByDefault
+		setInjection = true
+	} else if err != nil {
+		return err
+	}
+	if alwaysInjectSelector, ok, err := in.GetFieldNoCopy("sidecarInjectorWebhook.alwaysInjectSelector"); ok {
+		if err := fromValues(alwaysInjectSelector, &injection.AlwaysInjectSelector); err != nil {
+			return err
+		}
+		setInjection = true
+	} else if err != nil {
+		return err
+	}
+	if neverInjectSelector, ok, err := in.GetFieldNoCopy("sidecarInjectorWebhook.neverInjectSelector"); ok {
+		if err := fromValues(neverInjectSelector, &injection.NeverInjectSelector); err != nil {
+			return err
+		}
+		setInjection = true
+	} else if err != nil {
+		return err
+	}
+	if injectedAnnotations, ok, err := in.GetFieldNoCopy("sidecarInjectorWebhook.injectedAnnotations"); ok {
+		if err := fromValues(injectedAnnotations, &injection.InjectedAnnotations); err != nil {
+			return err
+		}
+		setInjection = true
+	} else if err != nil {
+		return err
+	}
+	if setInjection {
+		proxy.Injection = injection
+		setProxy = true
+	}
+
+	// Access logging
+	accessLogging := &v2.ProxyAccessLoggingConfig{}
+	setAccessLogging := false
+	fileAccessLog := &v2.ProxyFileAccessLogConfig{}
+	setFileAccessLog := false
+	if accessLogFile, ok, err := proxyValues.GetString("accessLogFile"); ok && accessLogFile != "" {
+		fileAccessLog.Name = accessLogFile
+		setFileAccessLog = true
+	} else if err != nil {
+		return err
+	}
+	if accessLogEncoding, ok, err := proxyValues.GetString("accessLogEncoding"); ok && accessLogEncoding != "" {
+		fileAccessLog.Encoding = accessLogEncoding
+		setFileAccessLog = true
+	} else if err != nil {
+		return err
+	}
+	if accessLogFormat, ok, err := proxyValues.GetString("accessLogFormat"); ok && accessLogFormat != "" {
+		fileAccessLog.Format = accessLogFormat
+		setFileAccessLog = true
+	} else if err != nil {
+		return err
+	}
+	if setFileAccessLog {
+		accessLogging.File = fileAccessLog
+		setAccessLogging = true
+	}
+	if accessLogServiceValues, ok, err := proxyValues.GetMap("envoyAccessLogService"); ok && len(accessLogServiceValues) > 0 {
+		accessLogService := &v2.ProxyEnvoyServiceConfig{}
+		if updated, err := populateProxyEnvoyServiceConfig(v1.NewHelmValues(accessLogServiceValues), accessLogService); updated {
+			accessLogging.EnvoyService = accessLogService
+			setAccessLogging = true
+		} else if err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	if setAccessLogging {
+		proxy.AccessLogging = accessLogging
+		setProxy = true
+	}
+
+	// Metrics service
+	if metricsServiceValues, ok, err := proxyValues.GetMap("envoyMetricsService"); ok && len(metricsServiceValues) > 0 {
+		metricsService := &v2.ProxyEnvoyServiceConfig{}
+		if updated, err := populateProxyEnvoyServiceConfig(v1.NewHelmValues(metricsServiceValues), metricsService); updated {
+			proxy.EnvoyMetricsService = metricsService
+			setProxy = true
+		} else if err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
 	}
 
 	// Runtime
@@ -508,4 +736,46 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	}
 
 	return nil
+}
+
+func populateProxyEnvoyServiceConfig(in *v1.HelmValues, out *v2.ProxyEnvoyServiceConfig) (bool, error) {
+	updated := false
+	if enabled, ok, err := in.GetBool("enabled"); ok {
+		out.Enabled = &enabled
+		updated = true
+	} else if err != nil {
+		return false, err
+	}
+	if address, ok, err := in.GetString("host"); ok {
+		if port, ok, err := in.GetString("port"); ok {
+			if port != "" {
+				address = fmt.Sprintf("%s:%s", address, port)
+			}
+		} else if err != nil {
+			return false, err
+		}
+		out.Address = address
+		updated = true
+	} else if err != nil {
+		return false, err
+	}
+	if tcpKeepaliveValues, ok, err := in.GetMap("tcpKeepalive"); ok && len(tcpKeepaliveValues) > 0 {
+		out.TCPKeepalive = &v2.EnvoyServiceTCPKeepalive{}
+		updated = true
+		if err := fromValues(tcpKeepaliveValues, out.TCPKeepalive); err != nil {
+			return false, err
+		}
+	} else if err != nil {
+		return false, err
+	}
+	if tlsSettingsValues, ok, err := in.GetMap("tlsSettings"); ok && len(tlsSettingsValues) > 0 {
+		out.TLSSettings = &v2.EnvoyServiceClientTLSSettings{}
+		updated = true
+		if err := fromValues(tlsSettingsValues, out.TLSSettings); err != nil {
+			return false, err
+		}
+	} else if err != nil {
+		return false, err
+	}
+	return updated, nil
 }

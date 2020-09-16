@@ -23,9 +23,7 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: nil,
-				},
+				Grafana: nil,
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
@@ -47,9 +45,7 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{},
-				},
+				Grafana: &v2.GrafanaAddonConfig{},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
@@ -71,11 +67,9 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Enablement: v2.Enablement{
-							Enabled: &featureEnabled,
-						},
+				Grafana: &v2.GrafanaAddonConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
 					},
 				},
 			},
@@ -103,10 +97,8 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Address: &grafanaTestAddress,
-					},
+				Grafana: &v2.GrafanaAddonConfig{
+					Address: &grafanaTestAddress,
 				},
 			},
 		},
@@ -135,10 +127,8 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{},
-					},
+				Grafana: &v2.GrafanaAddonConfig{
+					Install: &v2.GrafanaInstallConfig{},
 				},
 			},
 		},
@@ -161,16 +151,14 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Config: v2.GrafanaConfig{
-								Env: map[string]string{
-									"GF_SMTP_ENABLED": "true",
-								},
-								EnvSecrets: map[string]string{
-									"GF_SMTP_USER": "grafana-secrets",
-								},
+				Grafana: &v2.GrafanaAddonConfig{
+					Install: &v2.GrafanaInstallConfig{
+						Config: v2.GrafanaConfig{
+							Env: map[string]string{
+								"GF_SMTP_ENABLED": "true",
+							},
+							EnvSecrets: map[string]string{
+								"GF_SMTP_USER": "grafana-secrets",
 							},
 						},
 					},
@@ -205,11 +193,9 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Persistence: &v2.ComponentPersistenceConfig{},
-						},
+				Grafana: &v2.GrafanaAddonConfig{
+					Install: &v2.GrafanaInstallConfig{
+						Persistence: &v2.ComponentPersistenceConfig{},
 					},
 				},
 			},
@@ -233,16 +219,14 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Persistence: &v2.ComponentPersistenceConfig{
-								Enablement: v2.Enablement{
-									Enabled: &featureEnabled,
-								},
-								AccessMode:       corev1.ReadWriteOnce,
-								StorageClassName: "standarad",
+				Grafana: &v2.GrafanaAddonConfig{
+					Install: &v2.GrafanaInstallConfig{
+						Persistence: &v2.ComponentPersistenceConfig{
+							Enablement: v2.Enablement{
+								Enabled: &featureEnabled,
 							},
+							AccessMode:       corev1.ReadWriteOnce,
+							StorageClassName: "standarad",
 						},
 					},
 				},
@@ -273,12 +257,10 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Persistence: &v2.ComponentPersistenceConfig{
-								Resources: &corev1.ResourceRequirements{},
-							},
+				Grafana: &v2.GrafanaAddonConfig{
+					Install: &v2.GrafanaInstallConfig{
+						Persistence: &v2.ComponentPersistenceConfig{
+							Resources: &corev1.ResourceRequirements{},
 						},
 					},
 				},
@@ -303,17 +285,15 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Persistence: &v2.ComponentPersistenceConfig{
-								Resources: &corev1.ResourceRequirements{
-									Requests: corev1.ResourceList{
-										corev1.ResourceStorage: resource.MustParse("5Gi"),
-									},
-									Limits: corev1.ResourceList{
-										corev1.ResourceStorage: resource.MustParse("25Gi"),
-									},
+				Grafana: &v2.GrafanaAddonConfig{
+					Install: &v2.GrafanaInstallConfig{
+						Persistence: &v2.ComponentPersistenceConfig{
+							Resources: &corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: resource.MustParse("5Gi"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceStorage: resource.MustParse("25Gi"),
 								},
 							},
 						},
@@ -351,11 +331,9 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Security: &v2.GrafanaSecurityConfig{},
-						},
+				Grafana: &v2.GrafanaAddonConfig{
+					Install: &v2.GrafanaInstallConfig{
+						Security: &v2.GrafanaSecurityConfig{},
 					},
 				},
 			},
@@ -379,17 +357,15 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Security: &v2.GrafanaSecurityConfig{
-								Enablement: v2.Enablement{
-									Enabled: &featureEnabled,
-								},
-								PassphraseKey: "passphrase",
-								SecretName:    "htpasswd",
-								UsernameKey:   "username",
+				Grafana: &v2.GrafanaAddonConfig{
+					Install: &v2.GrafanaInstallConfig{
+						Security: &v2.GrafanaSecurityConfig{
+							Enablement: v2.Enablement{
+								Enabled: &featureEnabled,
 							},
+							PassphraseKey: "passphrase",
+							SecretName:    "htpasswd",
+							UsernameKey:   "username",
 						},
 					},
 				},
@@ -423,17 +399,15 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Service: v2.ComponentServiceConfig{
-								Metadata: v2.MetadataConfig{
-									Annotations: map[string]string{
-										"some-service-annotation": "service-annotation-value",
-									},
-									Labels: map[string]string{
-										"some-service-label": "service-label-value",
-									},
+				Grafana: &v2.GrafanaAddonConfig{
+					Install: &v2.GrafanaInstallConfig{
+						Service: v2.ComponentServiceConfig{
+							Metadata: v2.MetadataConfig{
+								Annotations: map[string]string{
+									"some-service-annotation": "service-annotation-value",
+								},
+								Labels: map[string]string{
+									"some-service-label": "service-label-value",
 								},
 							},
 						},
@@ -471,12 +445,10 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Service: v2.ComponentServiceConfig{
-								Ingress: &v2.ComponentIngressConfig{},
-							},
+				Grafana: &v2.GrafanaAddonConfig{
+					Install: &v2.GrafanaInstallConfig{
+						Service: v2.ComponentServiceConfig{
+							Ingress: &v2.ComponentIngressConfig{},
 						},
 					},
 				},
@@ -501,30 +473,28 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Service: v2.ComponentServiceConfig{
-								Ingress: &v2.ComponentIngressConfig{
-									Enablement: v2.Enablement{
-										Enabled: &featureEnabled,
-									},
-									ContextPath: "/grafana",
-									Hosts: []string{
-										"grafana.example.com",
-									},
-									Metadata: v2.MetadataConfig{
-										Annotations: map[string]string{
-											"ingress-annotation": "ingress-annotation-value",
-										},
-										Labels: map[string]string{
-											"ingress-label": "ingress-label-value",
-										},
-									},
-									TLS: v1.NewHelmValues(map[string]interface{}{
-										"termination": "reencrypt",
-									}),
+				Grafana: &v2.GrafanaAddonConfig{
+					Install: &v2.GrafanaInstallConfig{
+						Service: v2.ComponentServiceConfig{
+							Ingress: &v2.ComponentIngressConfig{
+								Enablement: v2.Enablement{
+									Enabled: &featureEnabled,
 								},
+								ContextPath: "/grafana",
+								Hosts: []string{
+									"grafana.example.com",
+								},
+								Metadata: v2.MetadataConfig{
+									Annotations: map[string]string{
+										"ingress-annotation": "ingress-annotation-value",
+									},
+									Labels: map[string]string{
+										"ingress-label": "ingress-label-value",
+									},
+								},
+								TLS: v1.NewHelmValues(map[string]interface{}{
+									"termination": "reencrypt",
+								}),
 							},
 						},
 					},
@@ -533,6 +503,7 @@ var grafanaTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"grafana": map[string]interface{}{
+				"contextPath": "/grafana",
 				"ingress": map[string]interface{}{
 					"enabled":     true,
 					"contextPath": "/grafana",
@@ -569,12 +540,10 @@ var grafanaTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Grafana: &v2.GrafanaAddonConfig{
-						Install: &v2.GrafanaInstallConfig{
-							Service: v2.ComponentServiceConfig{
-								NodePort: &grafanaTestNodePort,
-							},
+				Grafana: &v2.GrafanaAddonConfig{
+					Install: &v2.GrafanaInstallConfig{
+						Service: v2.ComponentServiceConfig{
+							NodePort: &grafanaTestNodePort,
 						},
 					},
 				},

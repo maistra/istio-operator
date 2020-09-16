@@ -20,9 +20,7 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: nil,
-				},
+				Prometheus: nil,
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
@@ -44,9 +42,7 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{},
-				},
+				Prometheus: &v2.PrometheusAddonConfig{},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
@@ -68,11 +64,9 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Enablement: v2.Enablement{
-							Enabled: &featureEnabled,
-						},
+				Prometheus: &v2.PrometheusAddonConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
 					},
 				},
 			},
@@ -80,6 +74,20 @@ var prometheusTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"prometheus": map[string]interface{}{
 				"enabled": true,
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"prometheus": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"prometheus": map[string]interface{}{
+						"enabled": true,
+					},
+				},
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -100,10 +108,8 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Address: &prometheusTestAddress,
-					},
+				Prometheus: &v2.PrometheusAddonConfig{
+					Address: &prometheusTestAddress,
 				},
 			},
 		},
@@ -130,10 +136,8 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{},
-					},
+				Prometheus: &v2.PrometheusAddonConfig{
+					Install: &v2.PrometheusInstallConfig{},
 				},
 			},
 		},
@@ -156,15 +160,11 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{
-							UseTLS: &featureEnabled,
-							Config: v2.PrometheusConfig{
-								Retention:      "6h",
-								ScrapeInterval: "15s",
-							},
-						},
+				Prometheus: &v2.PrometheusAddonConfig{
+					Install: &v2.PrometheusInstallConfig{
+						UseTLS:         &featureEnabled,
+						Retention:      "6h",
+						ScrapeInterval: "15s",
 					},
 				},
 			},
@@ -194,15 +194,11 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{
-							UseTLS: &featureEnabled,
-							Config: v2.PrometheusConfig{
-								Retention:      "6h",
-								ScrapeInterval: "15s",
-							},
-						},
+				Prometheus: &v2.PrometheusAddonConfig{
+					Install: &v2.PrometheusInstallConfig{
+						UseTLS:         &featureEnabled,
+						Retention:      "6h",
+						ScrapeInterval: "15s",
 					},
 				},
 			},
@@ -234,17 +230,15 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{
-							Service: v2.ComponentServiceConfig{
-								Metadata: v2.MetadataConfig{
-									Annotations: map[string]string{
-										"some-service-annotation": "service-annotation-value",
-									},
-									Labels: map[string]string{
-										"some-service-label": "service-label-value",
-									},
+				Prometheus: &v2.PrometheusAddonConfig{
+					Install: &v2.PrometheusInstallConfig{
+						Service: v2.ComponentServiceConfig{
+							Metadata: v2.MetadataConfig{
+								Annotations: map[string]string{
+									"some-service-annotation": "service-annotation-value",
+								},
+								Labels: map[string]string{
+									"some-service-label": "service-label-value",
 								},
 							},
 						},
@@ -282,12 +276,10 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{
-							Service: v2.ComponentServiceConfig{
-								Ingress: &v2.ComponentIngressConfig{},
-							},
+				Prometheus: &v2.PrometheusAddonConfig{
+					Install: &v2.PrometheusInstallConfig{
+						Service: v2.ComponentServiceConfig{
+							Ingress: &v2.ComponentIngressConfig{},
 						},
 					},
 				},
@@ -312,30 +304,28 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{
-							Service: v2.ComponentServiceConfig{
-								Ingress: &v2.ComponentIngressConfig{
-									Enablement: v2.Enablement{
-										Enabled: &featureEnabled,
-									},
-									ContextPath: "/prometheus",
-									Hosts: []string{
-										"prometheus.example.com",
-									},
-									Metadata: v2.MetadataConfig{
-										Annotations: map[string]string{
-											"ingress-annotation": "ingress-annotation-value",
-										},
-										Labels: map[string]string{
-											"ingress-label": "ingress-label-value",
-										},
-									},
-									TLS: v1.NewHelmValues(map[string]interface{}{
-										"termination": "reencrypt",
-									}),
+				Prometheus: &v2.PrometheusAddonConfig{
+					Install: &v2.PrometheusInstallConfig{
+						Service: v2.ComponentServiceConfig{
+							Ingress: &v2.ComponentIngressConfig{
+								Enablement: v2.Enablement{
+									Enabled: &featureEnabled,
 								},
+								ContextPath: "/prometheus",
+								Hosts: []string{
+									"prometheus.example.com",
+								},
+								Metadata: v2.MetadataConfig{
+									Annotations: map[string]string{
+										"ingress-annotation": "ingress-annotation-value",
+									},
+									Labels: map[string]string{
+										"ingress-label": "ingress-label-value",
+									},
+								},
+								TLS: v1.NewHelmValues(map[string]interface{}{
+									"termination": "reencrypt",
+								}),
 							},
 						},
 					},
@@ -344,6 +334,7 @@ var prometheusTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"prometheus": map[string]interface{}{
+				"contextPath": "/prometheus",
 				"ingress": map[string]interface{}{
 					"enabled":     true,
 					"contextPath": "/prometheus",
@@ -380,12 +371,10 @@ var prometheusTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Metrics: v2.MetricsAddonsConfig{
-					Prometheus: &v2.PrometheusAddonConfig{
-						Install: &v2.PrometheusInstallConfig{
-							Service: v2.ComponentServiceConfig{
-								NodePort: &prometheusTestNodePort,
-							},
+				Prometheus: &v2.PrometheusAddonConfig{
+					Install: &v2.PrometheusInstallConfig{
+						Service: v2.ComponentServiceConfig{
+							NodePort: &prometheusTestNodePort,
 						},
 					},
 				},
