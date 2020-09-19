@@ -3,7 +3,6 @@ kind: ServiceMeshControlPlane
 metadata:
   name: full
 spec:
-  version: v2.0
   addons:
     tracing:
       # change to None to disable tracing

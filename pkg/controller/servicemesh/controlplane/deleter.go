@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
-	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/hacks"
 )
@@ -71,7 +71,7 @@ func (r *controlPlaneInstanceReconciler) Delete(ctx context.Context) error {
 	}
 
 	// get fresh SMCP from cache to minimize the chance of a conflict during update (the SMCP might have been updated during the execution of reconciler.Delete())
-	instance := &maistrav1.ServiceMeshControlPlane{}
+	instance := &maistrav2.ServiceMeshControlPlane{}
 	if err := r.Client.Get(ctx, common.ToNamespacedName(r.Instance), instance); err == nil {
 		finalizers := sets.NewString(instance.Finalizers...)
 		finalizers.Delete(common.FinalizerName)

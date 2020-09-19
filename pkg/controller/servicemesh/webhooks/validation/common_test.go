@@ -8,16 +8,19 @@ import (
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	authentication "k8s.io/api/authentication/v1"
 	authorization "k8s.io/api/authorization/v1"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	meta "k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clienttesting "k8s.io/client-go/testing"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	"github.com/maistra/istio-operator/pkg/controller/common/test"
 )
 
 var ctx = common.NewContextWithLog(context.Background(), logf.Log)
+var test_scheme = test.GetScheme()
 
 var userInfo = authentication.UserInfo{
 	Username: "joe-user",
@@ -41,38 +44,52 @@ func createSubjectAccessReviewReactor(allowClusterScope, allowNamespaceScope boo
 	}
 }
 
-func createCreateRequest(obj interface{}) admission.Request {
-	request := admission.Request{
+func createCreateRequest(obj runtime.Object) admission.Request {
+	request := createRequest(obj)
+	request.Operation = admissionv1beta1.Create
+	request.UserInfo = userInfo
+	return request
+}
+
+func createUpdateRequest(oldObj, newObj runtime.Object) admission.Request {
+	request := createRequest(newObj)
+	request.Operation = admissionv1beta1.Update
+	request.OldObject = toRawExtension(oldObj)
+	request.UserInfo = userInfo
+	return request
+}
+
+func createDeleteRequest(obj runtime.Object) admission.Request {
+	request := createRequest(obj)
+	request.Operation = admissionv1beta1.Delete
+	request.UserInfo = userInfo
+	return request
+}
+
+func createRequest(obj runtime.Object) admission.Request {
+	metaObj, err := meta.Accessor(obj)
+	if err != nil {
+		panic(err)
+	}
+	return admission.Request{
 		AdmissionRequest: admissionv1beta1.AdmissionRequest{
-			Operation: admissionv1beta1.Create,
+			Kind:      metaGVKForObject(obj),
+			Name:      metaObj.GetName(),
+			Namespace: metaObj.GetNamespace(),
 			Object:    toRawExtension(obj),
 			UserInfo:  userInfo,
 		},
 	}
-	return request
 }
 
-func createUpdateRequest(oldObj, newObj interface{}) admission.Request {
-	request := admission.Request{
-		AdmissionRequest: admissionv1beta1.AdmissionRequest{
-			Operation: admissionv1beta1.Update,
-			Object:    toRawExtension(newObj),
-			OldObject: toRawExtension(oldObj),
-			UserInfo:  userInfo,
-		},
+func metaGVKForObject(obj runtime.Object) metav1.GroupVersionKind {
+	gvks, _, err := test_scheme.ObjectKinds(obj)
+	if err != nil {
+		panic(err)
+	} else if len(gvks) == 0 {
+		panic(fmt.Errorf("could not get GVK for object: %T", obj))
 	}
-	return request
-}
-
-func createDeleteRequest(obj interface{}) admission.Request {
-	request := admission.Request{
-		AdmissionRequest: admissionv1beta1.AdmissionRequest{
-			Operation: admissionv1beta1.Delete,
-			Object:    toRawExtension(obj),
-			UserInfo:  userInfo,
-		},
-	}
-	return request
+	return metav1.GroupVersionKind{Group: gvks[0].Group, Kind: gvks[0].Kind, Version: gvks[0].Version}
 }
 
 func toRawExtension(obj interface{}) runtime.RawExtension {
@@ -86,7 +103,7 @@ func toRawExtension(obj interface{}) runtime.RawExtension {
 	}
 }
 
-func now() *meta.Time {
-	now := meta.Now()
+func now() *metav1.Time {
+	now := metav1.Now()
 	return &now
 }

@@ -2265,6 +2265,11 @@ spec:
                           type: object
                         type: array
                     type: object
+                  openshiftRoute:
+                    properties:
+                      enabled:
+                        type: boolean
+                    type: object
                 type: object
               logging:
                 properties:

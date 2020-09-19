@@ -3,7 +3,6 @@ kind: ServiceMeshControlPlane
 metadata:
   name: auth
 spec:
-  version: v2.0
   security:
     mutualTLS:
       enable: true

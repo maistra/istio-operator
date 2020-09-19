@@ -17,6 +17,8 @@ spec:
         type: ClusterIP
     egress:
       enabled: true
+    openshiftRoute:
+      enabled: true
 
   logging:
     level: warn

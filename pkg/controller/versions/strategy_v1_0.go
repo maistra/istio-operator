@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,7 +47,7 @@ func (v *versionStrategyV1_0) SetImageValues(ctx context.Context, cr *common.Con
 	common.UpdateField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_0.ThreeScale)
 	return nil
 }
-func (v *versionStrategyV1_0) Validate(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *versionStrategyV1_0) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	var allErrors []error
 
 	// sidecarInjectorWebhook.alwaysInjectSelector is being used (values.yaml)
@@ -61,12 +62,23 @@ func (v *versionStrategyV1_0) Validate(ctx context.Context, cl client.Client, sm
 	if err := errForEnabledValue(smcp.Spec.Istio, "global.proxy.envoyAccessLogService.enabled", true); err != nil {
 		allErrors = append(allErrors, err)
 	}
+	// Istiod not supported
+	if err := errForValue(smcp.Spec.Istio, "policy.implementation", string(v2.PolicyTypeIstiod)); err != nil {
+		allErrors = append(allErrors, err)
+	}
+	if err := errForValue(smcp.Spec.Istio, "telemetry.implementation", string(v2.PolicyTypeIstiod)); err != nil {
+		allErrors = append(allErrors, err)
+	}
 	// XXX: i don't think this is supported in the helm charts
 	// telemetry.v2.enabled=true (values.yaml, in-proxy metrics)
 	if err := errForEnabledValue(smcp.Spec.Istio, "telemetry.enabled", true); err != nil {
 		if err := errForEnabledValue(smcp.Spec.Istio, "telemetry.v2.enabled", true); err != nil {
 			allErrors = append(allErrors, err)
 		}
+	}
+	// global.proxy.envoyAccessLogService.enabled=true (Envoy ALS enabled)
+	if err := errForEnabledValue(smcp.Spec.Istio, "global.proxy.envoyAccessLogService.enabled", true); err != nil {
+		allErrors = append(allErrors, err)
 	}
 
 	// kiali.jaegerInClusterURL is only supported in v1.1
@@ -79,12 +91,24 @@ func (v *versionStrategyV1_0) Validate(ctx context.Context, cl client.Client, sm
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (v *versionStrategyV1_0) ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *versionStrategyV1_0) ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
+	var allErrors []error
+	// I believe the only settings that aren't supported are Istiod policy and telemetry
+	if smcp.Spec.Policy != nil && smcp.Spec.Policy.Type == v2.PolicyTypeIstiod {
+		allErrors = append(allErrors, fmt.Errorf("policy type %s is not supported in version %s", smcp.Spec.Policy.Type, v.String()))
+	}
+	if smcp.Spec.Telemetry != nil && smcp.Spec.Telemetry.Type == v2.TelemetryTypeIstiod {
+		allErrors = append(allErrors, fmt.Errorf("telemetry type %s is not supported in version %s", smcp.Spec.Telemetry.Type, v.String()))
+	}
+	return utilerrors.NewAggregate(allErrors)
+}
+
+func (v *versionStrategyV1_0) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
 	// nothing to downgrade to
 	return nil
 }
 
-func (v *versionStrategyV1_0) ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *versionStrategyV1_0) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
 	// nothing to upgrade from
 	return nil
 }

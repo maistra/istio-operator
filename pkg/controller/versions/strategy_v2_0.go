@@ -7,6 +7,7 @@ import (
 
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -121,24 +122,23 @@ func (v *versionStrategyV2_0) SetImageValues(ctx context.Context, cr *common.Con
 	common.UpdateField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V2_0.ProxyInit)
 	common.UpdateField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V2_0.ProxyV2)
 	common.UpdateField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V2_0.ThreeScale)
-
-	common.UpdateField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V2_0.IOR)
 	return nil
 }
 
-func (v *versionStrategyV2_0) Validate(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
-	// TODO: XXX
-	return V1_1.Strategy().Validate(ctx, cl, smcp)
+func (v *versionStrategyV2_0) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+	return fmt.Errorf("must use v2 ServiceMeshControlPlane resource for v2.0+ installations")
 }
 
-func (v *versionStrategyV2_0) ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
-	// TODO: XXX
+func (v *versionStrategyV2_0) ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
 	return nil
 }
 
-func (v *versionStrategyV2_0) ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
-	// TODO: XXX
-	return nil
+func (v *versionStrategyV2_0) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+	return fmt.Errorf("inplace downgrade from v2.0 to v1.x is not supported")
+}
+
+func (v *versionStrategyV2_0) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+	return fmt.Errorf("inplace upgrade from v1.x to v2.0 is not supported")
 }
 
 func (v *versionStrategyV2_0) GetChartInstallOrder() [][]string {

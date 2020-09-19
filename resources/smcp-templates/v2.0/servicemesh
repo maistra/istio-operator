@@ -28,9 +28,6 @@ spec:
       pilot:
         container:
           image: pilot-rhel8
-      ior:
-        container:
-          image: ior-rhel8
       prometheus:
         container:
           image: prometheus-rhel8
