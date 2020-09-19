@@ -9,7 +9,6 @@ require (
 	github.com/containerd/typeurl v0.0.0-20190228175220-2a93cfde8c20 // indirect
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
-	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-logr/logr v0.1.0
 	github.com/gregjones/httpcache v0.0.0-20181110185634-c63ab54fda8f // indirect
@@ -26,6 +25,7 @@ require (
 	go.uber.org/zap v1.14.1
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899 // indirect
 	golang.org/x/text v0.3.3 // indirect
+	gomodules.xyz/jsonpatch/v2 v2.0.1
 	k8s.io/api v0.18.3
 	k8s.io/apiextensions-apiserver v0.18.3
 	k8s.io/apimachinery v0.18.3
@@ -35,7 +35,7 @@ require (
 	k8s.io/helm v2.16.7+incompatible
 	k8s.io/kubectl v0.18.3
 	sigs.k8s.io/controller-runtime v0.6.0
-	sigs.k8s.io/controller-tools v0.3.0
+	sigs.k8s.io/controller-tools v0.4.0
 	sigs.k8s.io/yaml v1.2.0
 )
 
