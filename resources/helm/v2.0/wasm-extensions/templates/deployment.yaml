@@ -30,9 +30,10 @@ spec:
         heritage: {{ .Release.Service }}
         release: {{ .Release.Name }}
     spec:
-      serviceAccountName: maistra-wasm-cacher-{{ .Values.revision | default "default" }}
+      serviceAccountName: wasm-cacher-{{ .Values.revision | default "default" }}
       containers:
       - name: wasm-cacher
+        workingDir: "/"
 {{- if contains "/" .Values.wasmExtensions.cacher.image }}
         image: "{{ .Values.wasmExtensions.cacher.image }}"
 {{- else }}
