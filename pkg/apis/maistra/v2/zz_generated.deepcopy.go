@@ -537,6 +537,10 @@ func (in *ControlPlaneSpec) DeepCopyInto(out *ControlPlaneSpec) {
 		*out = new(AddonsConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.TechPreview != nil {
+		in, out := &in.TechPreview, &out.TechPreview
+		*out = (*in).DeepCopy()
+	}
 	return
 }
 

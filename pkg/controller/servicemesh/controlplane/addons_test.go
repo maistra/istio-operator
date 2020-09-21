@@ -1,22 +1,17 @@
 package controlplane
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"go.uber.org/zap/zapcore"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -26,25 +21,22 @@ import (
 	kialiv1alpha1 "github.com/maistra/istio-operator/pkg/apis/external/kiali/v1alpha1"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	. "github.com/maistra/istio-operator/pkg/controller/common/test"
-	"github.com/maistra/istio-operator/pkg/controller/versions"
 	routev1 "github.com/openshift/api/route/v1"
 )
 
 func TestAddonsInstall(t *testing.T) {
 	const (
-		operatorNamespace     = "istio-operator"
-		controlPlaneNamespace = "test"
-		smcpName              = "test"
-		cniDaemonSetName      = "istio-node"
-		domain                = "test.com"
-		kialiName             = "kiali"
-		kialiExistingName     = "kiali-existing"
-		jaegerName            = "jaeger"
-		jaegerExistingName    = "jaeger-existing"
+		operatorNamespace  = "istio-operator"
+		smcpName           = "test"
+		cniDaemonSetName   = "istio-node"
+		domain             = "test.com"
+		kialiName          = "kiali"
+		kialiExistingName  = "kiali-existing"
+		jaegerName         = "jaeger"
+		jaegerExistingName = "jaeger-existing"
 	)
-
-	enable := true
 
 	if testing.Verbose() {
 		logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(os.Stderr), zap.Level(zapcore.Level(-5))))
@@ -69,29 +61,17 @@ func TestAddonsInstall(t *testing.T) {
 		},
 	}
 
-	type validation struct {
-		Assertions []ActionAssertion
-		Verifier   ActionVerifier
-	}
-
-	testCases := []struct {
-		name       string
-		jaegerName string
-		kialiName  string
-		resources  []runtime.Object
-		create     validation
-		delete     validation
-	}{
+	testCases := []IntegrationTestCase{
 		{
-			name:      "kiali.install.jaeger.install",
-			kialiName: kialiName,
-			create: validation{
+			name: "kiali.install.jaeger.install",
+			smcp: NewSMCPForKialiJaegerTests(smcpName, kialiName, ""),
+			create: IntegrationTestValidation{
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
 					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsSeen(),
 				},
 			},
-			delete: validation{
+			delete: IntegrationTestValidation{
 				Assertions: ActionAssertions{
 					Assert("delete").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
 					Assert("delete").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsSeen(),
@@ -100,12 +80,12 @@ func TestAddonsInstall(t *testing.T) {
 		},
 		{
 			name: "kiali.install.jaeger.existing",
+			smcp: NewSMCPForKialiJaegerTests(smcpName, "", jaegerExistingName),
 			resources: []runtime.Object{
 				jaegerExisting,
 				jaegerRoute,
 			},
-			jaegerName: jaegerExistingName,
-			create: validation{
+			create: IntegrationTestValidation{
 				Verifier: ActionVerifier(
 					Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).Passes(ExpectedKialiCreate(jaegerExistingName, domain)),
 				),
@@ -115,7 +95,7 @@ func TestAddonsInstall(t *testing.T) {
 					Assert("create").On("jaegers").Named(jaegerExistingName).In(controlPlaneNamespace).IsNotSeen(),
 				},
 			},
-			delete: validation{
+			delete: IntegrationTestValidation{
 				Assertions: ActionAssertions{
 					Assert("delete").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
 					Assert("delete").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
@@ -124,14 +104,14 @@ func TestAddonsInstall(t *testing.T) {
 			},
 		},
 		{
-			name:      "kiali.existing.jaeger.install",
-			kialiName: kialiName,
+			name: "kiali.existing.jaeger.install",
+			smcp: NewSMCPForKialiJaegerTests(smcpName, kialiName, ""),
 			resources: []runtime.Object{
 				&kialiv1alpha1.Kiali{Base: external.Base{
 					ObjectMeta: metav1.ObjectMeta{Name: kialiName, Namespace: controlPlaneNamespace},
 				}},
 			},
-			create: validation{
+			create: IntegrationTestValidation{
 				Verifier: ActionVerifier(
 					Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).Passes(ExpectedKialiPatch(jaegerName, domain)),
 				),
@@ -140,7 +120,7 @@ func TestAddonsInstall(t *testing.T) {
 					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsSeen(),
 				},
 			},
-			delete: validation{
+			delete: IntegrationTestValidation{
 				Assertions: ActionAssertions{
 					Assert("delete").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
 					Assert("delete").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsSeen(),
@@ -148,8 +128,8 @@ func TestAddonsInstall(t *testing.T) {
 			},
 		},
 		{
-			name:      "kiali.existing.jaeger.existing",
-			kialiName: kialiExistingName,
+			name: "kiali.existing.jaeger.existing",
+			smcp: NewSMCPForKialiJaegerTests(smcpName, kialiExistingName, jaegerExistingName),
 			resources: []runtime.Object{
 				&kialiv1alpha1.Kiali{Base: external.Base{
 					ObjectMeta: metav1.ObjectMeta{Name: kialiExistingName, Namespace: controlPlaneNamespace},
@@ -157,8 +137,7 @@ func TestAddonsInstall(t *testing.T) {
 				jaegerExisting,
 				jaegerRoute,
 			},
-			jaegerName: jaegerExistingName,
-			create: validation{
+			create: IntegrationTestValidation{
 				Verifier: ActionVerifier(
 					Verify("patch").On("kialis").Named(kialiExistingName).In(controlPlaneNamespace).Passes(ExpectedKialiPatch(jaegerExistingName, domain)),
 				),
@@ -169,7 +148,7 @@ func TestAddonsInstall(t *testing.T) {
 					Assert("create").On("jaegers").Named(jaegerExistingName).In(controlPlaneNamespace).IsNotSeen(),
 				},
 			},
-			delete: validation{
+			delete: IntegrationTestValidation{
 				Assertions: ActionAssertions{
 					Assert("delete").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
 					Assert("delete").On("kialis").Named(kialiExistingName).In(controlPlaneNamespace).IsNotSeen(),
@@ -180,78 +159,27 @@ func TestAddonsInstall(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
-		ctc := ControllerTestCase{
-			Name:             tc.name,
-			ConfigureGlobals: InitializeGlobals(operatorNamespace),
-			AddControllers:   []AddControllerFunc{Add},
-			Resources: []runtime.Object{
-				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: controlPlaneNamespace}},
-				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorNamespace}},
-			},
-			GroupResources: []*restmapper.APIGroupResources{
-				CNIGroupResources,
-				//MaistraGroupResources,
-			},
-			StorageVersions: []schema.GroupVersion{maistrav2.SchemeGroupVersion},
-			Events: []ControllerTestEvent{
-				{
-					Name: "create-smcp",
-					Execute: func(mgr *FakeManager, _ *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), &maistrav2.ServiceMeshControlPlane{
-							ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
-							Spec: maistrav2.ControlPlaneSpec{
-								Version:  versions.V2_0.String(),
-								Profiles: []string{"maistra"},
-								Tracing: &maistrav2.TracingConfig{
-									Type: maistrav2.TracerTypeJaeger,
-								},
-								Addons: &maistrav2.AddonsConfig{
-									Kiali: &maistrav2.KialiAddonConfig{
-										Enablement: maistrav2.Enablement{
-											Enabled: &enable,
-										},
-										Name: tc.kialiName,
-									},
-									Jaeger: &maistrav2.JaegerAddonConfig{
-										Name: tc.jaegerName,
-									},
-								},
-							},
-						})
-					},
-					Verifier:   tc.create.Verifier,
-					Assertions: tc.create.Assertions,
-					Reactors: []clienttesting.Reactor{
-						// make sure deployments come back as ready
-						ReactTo("create").On("deployments").In(controlPlaneNamespace).With(SetDeploymentReady),
-						// create reasonable default Host value
-						ReactTo("create").On("routes").In(controlPlaneNamespace).With(SetRouteHostName(domain)),
-						// create jaeger routes and services
-						ReactTo("create").On("jaegers").In(controlPlaneNamespace).With(SimulateJaegerInstall(domain, nil)),
-					},
-					Timeout: 10 * time.Second,
+	RunSimpleInstallTest(t, testCases)
+}
+
+func NewSMCPForKialiJaegerTests(smcpName, kialiName, jaegerName string) *v2.ServiceMeshControlPlane {
+	enable := true
+	return New20SMCPResource(smcpName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{
+		Tracing: &maistrav2.TracingConfig{
+			Type: maistrav2.TracerTypeJaeger,
+		},
+		Addons: &maistrav2.AddonsConfig{
+			Kiali: &maistrav2.KialiAddonConfig{
+				Enablement: maistrav2.Enablement{
+					Enabled: &enable,
 				},
-				{
-					Name: "delete-smcp",
-					Execute: func(mgr *FakeManager, _ *EnhancedTracker) error {
-						return mgr.GetClient().Delete(context.TODO(), &maistrav2.ServiceMeshControlPlane{
-							ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
-						})
-					},
-					Verifier:   tc.delete.Verifier,
-					Assertions: tc.delete.Assertions,
-					Timeout:    10 * time.Second,
-				},
+				Name: kialiName,
 			},
-		}
-		if tc.resources != nil {
-			ctc.Resources = append(ctc.Resources, tc.resources...)
-		}
-		t.Run(tc.name, func(t *testing.T) {
-			RunControllerTestCase(t, ctc)
-		})
-	}
+			Jaeger: &maistrav2.JaegerAddonConfig{
+				Name: jaegerName,
+			},
+		},
+	})
 }
 
 func ExpectedKialiCreate(jaegerName, domain string) VerifierTestFunc {

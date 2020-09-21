@@ -14,7 +14,7 @@ import (
 	"k8s.io/helm/pkg/manifest"
 )
 
-type v1xRenderingStrategy struct {}
+type v1xRenderingStrategy struct{}
 
 func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
 	log := common.LogFromContext(ctx)

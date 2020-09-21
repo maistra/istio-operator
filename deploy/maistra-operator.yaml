@@ -3140,6 +3140,9 @@ spec:
                         type: string
                     type: object
                 type: object
+              techPreview:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
               telemetry:
                 properties:
                   mixer:
@@ -6141,6 +6144,9 @@ spec:
                             type: string
                         type: object
                     type: object
+                  techPreview:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   telemetry:
                     properties:
                       mixer:
@@ -6524,6 +6530,92 @@ status:
 
 ---
 
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.0
+  creationTimestamp: null
+  name: servicemeshextensions.extensions.maistra.io
+spec:
+  group: extensions.maistra.io
+  names:
+    categories:
+    - maistra-io
+    kind: ServiceMeshExtension
+    listKind: ServiceMeshExtensionList
+    plural: servicemeshextensions
+    shortNames:
+    - sme
+    singular: servicemeshextension
+  preserveUnknownFields: false
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            config:
+              type: string
+            image:
+              type: string
+            phase:
+              type: string
+            priority:
+              type: integer
+            workloadSelector:
+              properties:
+                labels:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+          type: object
+        status:
+          properties:
+            deployment:
+              properties:
+                containerSha256:
+                  type: string
+                ready:
+                  type: boolean
+                sha256:
+                  type: string
+                url:
+                  type: string
+              type: object
+            observedGeneration:
+              format: int64
+              type: integer
+            phase:
+              type: string
+            priority:
+              type: integer
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+
 # create role that can be used to grant users permission to create smcp and smmr resources
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -6881,6 +6973,7 @@ spec:
         olm.relatedImage.v2_0.prometheus: docker.io/maistra/prometheus-ubi8:2.0.0
         olm.relatedImage.v2_0.proxy-init: docker.io/maistra/proxy-init-centos7:2.0.0
         olm.relatedImage.v2_0.proxyv2: docker.io/maistra/proxyv2-ubi8:2.0.0
+        olm.relatedImage.v2_0.wasm-cacher: docker.io/maistra/pilot-ubi8:2.0.0
 
     spec:
       serviceAccountName: istio-operator

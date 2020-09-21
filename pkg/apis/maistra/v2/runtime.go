@@ -62,6 +62,8 @@ const (
 	ControlPlaneComponentNameGrafana ControlPlaneComponentName = "grafana"
 	// ControlPlaneComponentNameThreeScale - 3scale
 	ControlPlaneComponentNameThreeScale ControlPlaneComponentName = "3scale"
+	// ControlPlaneComponentNameWASMCacher - wasm-extensions cacher
+	ControlPlaneComponentNameWASMCacher ControlPlaneComponentName = "wasmExtensions.cacher"
 )
 
 // ControlPlaneComponentNames - supported runtime components
@@ -84,6 +86,7 @@ var ControlPlaneComponentNames = []ControlPlaneComponentName{
 	ControlPlaneComponentNameKiali,
 	ControlPlaneComponentNameGrafana,
 	ControlPlaneComponentNameThreeScale,
+	ControlPlaneComponentNameWASMCacher,
 }
 
 // ComponentRuntimeConfig allows for partial customization of a component's

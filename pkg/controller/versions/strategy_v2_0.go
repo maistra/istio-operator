@@ -40,6 +40,7 @@ const (
 	TelemetryCommonChart = "telemetry-common"
 	ThreeScaleChart      = "maistra-threescale"
 	TracingChart         = "tracing"
+	WASMExtensionsChart  = "wasm-extensions"
 
 	// Event reasons
 	eventReasonRendering = "Rendering"
@@ -100,6 +101,10 @@ var (
 			path:         "mesh-config",
 			enabledField: "",
 		},
+		WASMExtensionsChart: {
+			path:         "wasm-extensions",
+			enabledField: "wasmExtensions",
+		},
 	}
 )
 
@@ -111,7 +116,7 @@ var v2_0ChartOrder = [][]string{
 	{TelemetryCommonChart, PrometheusChart},
 	{MixerPolicyChart, MixerTelemetryChart, TracingChart, GatewayIngressChart, GatewayEgressChart, GrafanaChart},
 	{KialiChart},
-	{ThreeScaleChart},
+	{ThreeScaleChart, WASMExtensionsChart},
 }
 
 type versionStrategyV2_0 struct {
@@ -127,6 +132,7 @@ func (v *versionStrategyV2_0) SetImageValues(ctx context.Context, cr *common.Con
 	common.UpdateField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V2_0.Prometheus)
 	common.UpdateField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V2_0.ProxyInit)
 	common.UpdateField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V2_0.ProxyV2)
+	common.UpdateField(smcpSpec.Istio, "wasmExtensions.cacher.image", common.Config.OLM.Images.V2_0.WASMCacher)
 	common.UpdateField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V2_0.ThreeScale)
 	return nil
 }

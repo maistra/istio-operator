@@ -94,7 +94,17 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 	in = in.DeepCopy()
 
 	// Initialize output
-	values := make(map[string]interface{})
+	// we start with techPreview values, which may be overwritten by "real" configuration
+	// this allows us to promote techpreview features into main configuration without
+	// worrying about conflicting values
+	var values map[string]interface{}
+	if in.TechPreview == nil {
+		values = make(map[string]interface{})
+	} else {
+		values = in.TechPreview.GetContent()
+		// preserve for round tripping
+		values["techPreview"] = in.TechPreview.DeepCopy().GetContent()
+	}
 
 	// Cluster settings
 	// cluster must come first as it may modify other settings on the input (e.g. meshExpansionPorts)

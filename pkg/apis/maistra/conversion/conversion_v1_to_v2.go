@@ -75,6 +75,12 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 
 	// copy to preserve input
 	values := in.Istio.DeepCopy()
+	if techPreview, ok, err := values.GetMap("techPreview"); ok {
+		out.TechPreview = v1.NewHelmValues(techPreview).DeepCopy()
+		delete(values.GetContent(), "techPreview")
+	} else if err != nil {
+		return err
+	}
 
 	if err := v1ToV2Hacks(in, values); err != nil {
 		return err

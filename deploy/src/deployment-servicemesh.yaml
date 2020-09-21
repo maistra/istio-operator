@@ -46,6 +46,7 @@ spec:
         olm.relatedImage.v2_0.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:2.0.0
         olm.relatedImage.v2_0.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:2.0.0
         olm.relatedImage.v2_0.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:2.0.0
+        olm.relatedImage.v2_0.wasm-cacher: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.0.0
 
         oauth-proxy.query: "true"
         oauth-proxy.namespace: openshift
