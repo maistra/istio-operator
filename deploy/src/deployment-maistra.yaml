@@ -46,6 +46,7 @@ spec:
         olm.relatedImage.v2_0.prometheus: docker.io/maistra/prometheus-ubi8:2.0.0
         olm.relatedImage.v2_0.proxy-init: docker.io/maistra/proxy-init-centos7:2.0.0
         olm.relatedImage.v2_0.proxyv2: docker.io/maistra/proxyv2-ubi8:2.0.0
+        olm.relatedImage.v2_0.wasmCacher: docker.io/maistra/pilot-ubi8:2.0.0
 
     spec:
       serviceAccountName: istio-operator

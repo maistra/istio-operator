@@ -42,7 +42,7 @@ spec:
           imageName: origin-oauth-proxy
           imageTag: "4.2"
           imagePullPolicy: IfNotPresent
-      mec:
+      wasmExtensions.cacher:
         container:
           image: pilot-ubi8
 

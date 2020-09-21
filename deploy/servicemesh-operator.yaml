@@ -3140,14 +3140,9 @@ spec:
                         type: string
                     type: object
                 type: object
-              techPreviews:
-                properties:
-                  wasmExtensions:
-                    properties:
-                      enabled:
-                        type: boolean
-                    type: object
+              techPreview:
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               telemetry:
                 properties:
                   mixer:
@@ -6149,14 +6144,9 @@ spec:
                             type: string
                         type: object
                     type: object
-                  techPreviews:
-                    properties:
-                      wasmExtensions:
-                        properties:
-                          enabled:
-                            type: boolean
-                        type: object
+                  techPreview:
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   telemetry:
                     properties:
                       mixer:
@@ -6983,6 +6973,7 @@ spec:
         olm.relatedImage.v2_0.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:2.0.0
         olm.relatedImage.v2_0.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:2.0.0
         olm.relatedImage.v2_0.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:2.0.0
+        olm.relatedImage.v2_0.wasmCacher: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.0.0
 
         oauth-proxy.query: "true"
         oauth-proxy.namespace: openshift

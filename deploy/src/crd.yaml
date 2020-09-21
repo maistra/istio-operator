@@ -3139,14 +3139,9 @@ spec:
                         type: string
                     type: object
                 type: object
-              techPreviews:
-                properties:
-                  wasmExtensions:
-                    properties:
-                      enabled:
-                        type: boolean
-                    type: object
+              techPreview:
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               telemetry:
                 properties:
                   mixer:
@@ -6148,14 +6143,9 @@ spec:
                             type: string
                         type: object
                     type: object
-                  techPreviews:
-                    properties:
-                      wasmExtensions:
-                        properties:
-                          enabled:
-                            type: boolean
-                        type: object
+                  techPreview:
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   telemetry:
                     properties:
                       mixer:

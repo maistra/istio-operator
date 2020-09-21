@@ -158,6 +158,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		}
 		if err != nil {
 			// bail if there was an error updating the namespace
+			r.renderings = nil
 			reconciliationReason = status.ConditionReasonReconcileError
 			reconciliationMessage = "Error updating labels on mesh namespace"
 			err = errors.Wrap(err, reconciliationMessage)

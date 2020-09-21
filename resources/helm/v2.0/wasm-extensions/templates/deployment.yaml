@@ -3,18 +3,18 @@ kind: Deployment
 metadata:
   labels:
     maistra-version: 2.0.0
-    maistra-version: 2.0.0
-    app: mec
-    chart: {{ template "mec.chart" . }}
+    app: wasm-cacher
+    istio.io/rev: {{ .Values.revision | default "default" }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
-  name: mec
+  name: wasm-cacher-{{ .Values.revision | default "default" }}
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: mec
+      app: wasm-cacher
+      istio.io/rev: {{ .Values.revision | default "default" }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -25,18 +25,18 @@ spec:
       labels:
         maistra-control-plane: {{ .Release.Namespace }}
         maistra-control-plane: {{ .Release.Namespace }}
-        app: mec
-        chart: {{ template "mec.chart" . }}
+        app: wasm-cacher
+        istio.io/rev: {{ .Values.revision | default "default" }}
         heritage: {{ .Release.Service }}
         release: {{ .Release.Name }}
     spec:
-      serviceAccountName: mec
+      serviceAccountName: maistra-wasm-cacher-{{ .Values.revision | default "default" }}
       containers:
-      - name: mec
-{{- if contains "/" .Values.image }}
-        image: "{{ .Values.image }}"
+      - name: wasm-cacher
+{{- if contains "/" .Values.wasmExtensions.cacher.image }}
+        image: "{{ .Values.wasmExtensions.cacher.image }}"
 {{- else }}
-        image: "{{ .Values.global.hub }}/{{ .Values.image }}:{{ .Values.global.tag }}"
+        image: "{{ .Values.global.hub }}/{{ .Values.wasmExtensions.cacher.image }}:{{ .Values.global.tag }}"
 {{- end }}
         imagePullPolicy: Always
         command:
@@ -44,8 +44,13 @@ spec:
         - --namespace
         - {{ .Release.Namespace }}
         - --baseURL
-        - http://mec.{{ .Release.Namespace }}.svc.cluster.local
-        resources: {}
+        - http://wasm-cacher-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.cluster.local
+        resources:
+{{- if .Values.wasmExtensions.cacher.resources }}
+{{ toYaml .Values.wasmExtensions.cacher.resources | trim | indent 10 }}
+{{- else }}
+{{ toYaml .Values.global.defaultResources | trim | indent 10 }}
+{{- end }}
         env:
         - name: HOME
           value: /podman

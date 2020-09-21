@@ -26,11 +26,33 @@ import (
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	. "github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
+
+func TestDefaultInstall(t *testing.T) {
+	testCases := []IntegrationTestCase{
+		{
+			// TODO: add more assertions to verify default component installation
+			name: "default." + versions.V2_0.String(),
+			smcp: New20SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{}),
+			create: IntegrationTestValidation{
+				Assertions: ActionAssertions{
+					Assert("create").On("deployments").Named("wasm-cacher-test").In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+			delete: IntegrationTestValidation{
+				Assertions: ActionAssertions{
+					Assert("delete").On("deployments").Named("wasm-cacher-test").In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+		},
+		// TODO: add test cases for v1.0 and v1.1
+	}
+	RunSimpleInstallTest(t, testCases)
+}
 
 func TestBootstrapping(t *testing.T) {
 	const (
@@ -163,7 +185,7 @@ func SetDaemonSetStatus(name string, status appsv1.DaemonSetStatus) ReactionFunc
 	}
 }
 
-func FinalizerAddedTest(finalizer string) test.VerifierTestFunc {
+func FinalizerAddedTest(finalizer string) VerifierTestFunc {
 	return func(action clienttesting.Action) error {
 		switch realAction := action.(type) {
 		case clienttesting.UpdateAction:

@@ -85,6 +85,6 @@ spec:
         service:
           ingress:
             enabled: true
-  techPreviews:
+  techPreview:
     wasmExtensions:
       enabled: false

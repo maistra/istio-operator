@@ -42,7 +42,7 @@ spec:
           imageName: oauth-proxy
           imageTag: v4.4
           imagePullPolicy: IfNotPresent
-      mec:
+      wasmExtensions.cacher:
         container:
           image: pilot-rhel8
 

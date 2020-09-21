@@ -162,7 +162,7 @@ function patchGalley() {
   convertClusterRoleBinding ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrolebinding.yaml
   sed_wrap -i -e '/- "discovery"/ a\
           - --memberRollName=default\
-          - --cacheCluster=outbound|80||mec.{{ .Release.Namespace }}.svc.cluster.local\
+          - --cacheCluster=outbound|80||istio-wasm-cacher-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.cluster.local\
           - --podLocalitySource=pod' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
   # disable webhook config updates
   sed_wrap -i -r -e '/INJECTION_WEBHOOK_CONFIG_NAME/,/ISTIOD_ADDR/ {
@@ -199,7 +199,7 @@ base:
   # Extensions
   sed_wrap -i -e '/env:/ a\
           - name: ENABLE_MAISTRA_EXTENSIONS\
-            value: "{{ .Values.mec.enabled }}"' "${deployment}"
+            value: "{{ .Values.wasmExtensions.enabled }}"' "${deployment}"
 }
 
 function patchGateways() {
