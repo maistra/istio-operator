@@ -65,6 +65,9 @@ type ControlPlaneStatus struct {
 	// +nullable
 	status.ComponentStatusList `json:",inline"`
 
+	// The readiness status of components & owned resources
+	Readiness ReadinessStatus `json:"readiness"`
+
 	// The resulting specification of the configuration options after all profiles
 	// have been applied.
 	// +optional
@@ -74,6 +77,15 @@ type ControlPlaneStatus struct {
 	// +optional
 	AppliedValues v1.ControlPlaneSpec `json:"appliedValues,omitempty"`
 }
+
+// ReadinessStatus contains readiness information for each deployed component.
+type ReadinessStatus struct {
+	// The readiness status of components
+	// +optional
+	Components ReadinessMap `json:"components,omitempty"`
+}
+
+type ReadinessMap map[string][]string
 
 // GetReconciledVersion returns the reconciled version, or a default for older resources
 func (s *ControlPlaneStatus) GetReconciledVersion() string {

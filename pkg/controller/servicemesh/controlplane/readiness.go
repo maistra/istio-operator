@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,6 +18,7 @@ import (
 )
 
 const statusAnnotationReadyComponentCount = "readyComponentCount"
+const statusAnnotationAlwaysReadyComponents = "alwaysReadyComponents"
 
 func (r *controlPlaneInstanceReconciler) UpdateReadiness(ctx context.Context) error {
 	log := common.LogFromContext(ctx)
@@ -96,8 +98,18 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 	if r.Status.Annotations == nil {
 		r.Status.Annotations = map[string]string{}
 	}
-	r.Status.Annotations[statusAnnotationReadyComponentCount] = fmt.Sprintf("%d/%d", len(readyComponents), len(readyComponents)+len(unreadyComponents))
+	r.Status.Annotations[statusAnnotationReadyComponentCount] = fmt.Sprintf("%d/%d", len(readyComponents), len(r.Status.ComponentStatus))
 
+	allComponents := sets.NewString()
+	for _, comp := range r.Status.ComponentStatus {
+		allComponents.Insert(comp.Resource)
+	}
+
+	r.Status.Readiness.Components = map[string][]string {
+		"ready": readyComponents.List(),
+		"unready": unreadyComponents.List(),
+		"pending": allComponents.Difference(readyComponents).Difference(unreadyComponents).List(),
+	}
 	return updateStatus, nil
 }
 
@@ -170,9 +182,15 @@ func (r *controlPlaneInstanceReconciler) calculateComponentReadinessMap(ctx cont
 		}
 	}
 
-	cniReady, err := r.isCNIReady(ctx)
-	readinessMap["cni"] = cniReady
-	return readinessMap, err
+	if r.Status.Annotations != nil {
+		alwaysReadyComponents := r.Status.Annotations[statusAnnotationAlwaysReadyComponents]
+		if alwaysReadyComponents != "" {
+			for _, c := range strings.Split(alwaysReadyComponents, ",") {
+				readinessMap[c] = true
+			}
+		}
+	}
+	return readinessMap, nil
 }
 
 func (r *controlPlaneInstanceReconciler) isCNIReady(ctx context.Context) (bool, error) {
