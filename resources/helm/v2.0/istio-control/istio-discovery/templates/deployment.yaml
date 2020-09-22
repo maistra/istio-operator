@@ -60,7 +60,7 @@ spec:
           args:
           - "discovery"
           - --memberRollName=default
-          - --cacheCluster=outbound|80||istio-wasm-cacher-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.cluster.local
+          - --cacheCluster=outbound|80||wasm-cacher-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.cluster.local
           - --podLocalitySource=pod
           - --monitoringAddr=:15014
 {{- if .Values.global.logging.level }}
