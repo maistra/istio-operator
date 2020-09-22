@@ -254,6 +254,17 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			}
 			if hasReadiness {
 				r.waitForComponents.Insert(component)
+			} else {
+				if r.Status.Annotations == nil {
+					r.Status.Annotations = make(map[string]string)
+				}
+				alwaysReadyComponents := r.Status.Annotations[statusAnnotationAlwaysReadyComponents]
+				if alwaysReadyComponents == "" {
+					alwaysReadyComponents = component
+				} else {
+					alwaysReadyComponents = fmt.Sprintf("%s,%s", alwaysReadyComponents, component)
+				}
+				r.Status.Annotations[statusAnnotationAlwaysReadyComponents] = alwaysReadyComponents
 			}
 		}
 

@@ -17,6 +17,7 @@ import (
 )
 
 const statusAnnotationReadyComponentCount = "readyComponentCount"
+const statusAnnotationAlwaysReadyComponents = "alwaysReadyComponents"
 
 func (r *controlPlaneInstanceReconciler) UpdateReadiness(ctx context.Context) error {
 	log := common.LogFromContext(ctx)
@@ -96,7 +97,7 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 	if r.Status.Annotations == nil {
 		r.Status.Annotations = map[string]string{}
 	}
-	r.Status.Annotations[statusAnnotationReadyComponentCount] = fmt.Sprintf("%d/%d", len(readyComponents), len(readyComponents)+len(unreadyComponents))
+	r.Status.Annotations[statusAnnotationReadyComponentCount] = fmt.Sprintf("%d/%d", len(readyComponents), len(r.Status.ComponentStatus))
 
 	return updateStatus, nil
 }
@@ -170,9 +171,15 @@ func (r *controlPlaneInstanceReconciler) calculateComponentReadinessMap(ctx cont
 		}
 	}
 
-	cniReady, err := r.isCNIReady(ctx)
-	readinessMap["cni"] = cniReady
-	return readinessMap, err
+	if r.Status.Annotations != nil {
+		alwaysReadyComponents := r.Status.Annotations[statusAnnotationAlwaysReadyComponents]
+		if alwaysReadyComponents != "" {
+			for _, c := range strings.Split(alwaysReadyComponents, ",") {
+				readinessMap[c] = true
+			}
+		}
+	}
+	return readinessMap, nil
 }
 
 func (r *controlPlaneInstanceReconciler) isCNIReady(ctx context.Context) (bool, error) {
