@@ -56,3 +56,6 @@ replace k8s.io/client-go => k8s.io/client-go v0.18.3
 // use json-patch 4.6.0+, since earlier versions cause json patch generation to be very slow (MAISTRA-1780)
 // can't use 4.6.0-4.8.0, because it contains a go.mod file and thus can't be referenced by tag, so we use 4.9.0 (see https://github.com/evanphx/json-patch/pull/113)
 replace github.com/evanphx/json-patch => github.com/evanphx/json-patch v4.9.0+incompatible
+
+// pkg disappeard from bitbucket
+replace bitbucket.org/ww/goautoneg => github.com/munnerz/goautoneg v0.0.0-20120707110453-a547fc61f48d
