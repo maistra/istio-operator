@@ -29,6 +29,13 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
+var (
+	falseVal = false
+	ptrFalse = &falseVal
+	trueVal  = true
+	ptrTrue  = &trueVal
+)
+
 func TestInstallationErrorDoesNotUpdateLastTransitionTimeWhenNoStateTransitionOccurs(t *testing.T) {
 	controlPlane := newControlPlane()
 	controlPlane.Spec.Profiles = []string{"maistra"}
@@ -80,11 +87,12 @@ type customSetup func(client.Client, *test.EnhancedTracker)
 func TestManifestValidation(t *testing.T) {
 	enabled := true
 	testCases := []struct {
-		name         string
-		controlPlane *maistrav2.ServiceMeshControlPlane
-		memberRoll   *maistrav1.ServiceMeshMemberRoll
-		setupFn      customSetup
-		errorMessage string
+		name          string
+		controlPlane  *maistrav2.ServiceMeshControlPlane
+		memberRoll    *maistrav1.ServiceMeshMemberRoll
+		setupFn       customSetup
+		errorMessages map[versions.Version]string // expected error message for each version
+		errorMessage  string                      // common error message (expected for all versions)
 	}{
 		{
 			name: "error getting smmr",
@@ -181,7 +189,11 @@ func TestManifestValidation(t *testing.T) {
 					},
 				},
 			},
-			errorMessage: "namespace of manifest b/another-ingress not in mesh",
+			errorMessages: map[versions.Version]string{
+				versions.V1_0: "namespace of manifest b/another-ingress not in mesh",
+				versions.V1_1: "namespace of manifest b/another-ingress not in mesh",
+				versions.V2_0: "Spec is invalid: error: [namespace \"b\" for ingress gateway \"another-ingress\" must be part of the mesh, namespace \"d\" for ingress gateway \"another-egress\" must be part of the mesh]",
+			},
 		},
 		{
 			name: "valid namespaces",
@@ -289,7 +301,11 @@ func TestManifestValidation(t *testing.T) {
 				// run initial reconcile to update the SMCP status
 				_, err := r.Reconcile(ctx)
 
-				if tc.errorMessage != "" {
+				expectedErrorMessage := tc.errorMessages[version]
+				if expectedErrorMessage == "" {
+					expectedErrorMessage = tc.errorMessage
+				}
+				if expectedErrorMessage != "" {
 					if err == nil {
 						t.Fatal(tc.name, "-", "Expected reconcile to fail, but it didn't")
 					}
@@ -298,7 +314,7 @@ func TestManifestValidation(t *testing.T) {
 					test.PanicOnError(cl.Get(ctx, common.ToNamespacedName(&tc.controlPlane.ObjectMeta), updatedControlPlane))
 					newStatus := &updatedControlPlane.Status
 
-					assert.True(strings.Contains(newStatus.GetCondition(status.ConditionTypeReconciled).Message, tc.errorMessage), "Expected reconciliation error: "+tc.errorMessage+", but got:"+newStatus.GetCondition(status.ConditionTypeReconciled).Message, t)
+					assert.True(strings.Contains(newStatus.GetCondition(status.ConditionTypeReconciled).Message, expectedErrorMessage), "Expected reconciliation error:\n    "+expectedErrorMessage+"\nbut got:\n    "+newStatus.GetCondition(status.ConditionTypeReconciled).Message, t)
 				} else {
 					if err != nil {
 						t.Fatal(tc.name, "-", "Expected no errors, but got error: ", err)
@@ -444,6 +460,71 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 			assertInstanceReconcilerSucceeds(r, t)
 			assertDeploymentExists(cl, "grafana", t)
 			assertReconciledConditionMatches(cl, smcp, status.ConditionReasonPausingInstall, "[grafana]", t)
+		})
+	}
+}
+
+func TestValidation(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		spec        maistrav2.ControlPlaneSpec
+		expectValid bool
+	}{
+		{
+			name: "kiali-enabled-prometheus-disabled",
+			spec: maistrav2.ControlPlaneSpec{
+				Version:  versions.V2_0.String(),
+				Profiles: []string{"maistra"},
+				Addons: &maistrav2.AddonsConfig{
+					Kiali: &maistrav2.KialiAddonConfig{
+						Enablement: maistrav2.Enablement{Enabled: ptrTrue},
+					},
+					Prometheus: &maistrav2.PrometheusAddonConfig{
+						Enablement: maistrav2.Enablement{Enabled: ptrFalse},
+					},
+				},
+			},
+			expectValid: false,
+		},
+		{
+			name: "kiali-enabled-prometheus-enabled",
+			spec: maistrav2.ControlPlaneSpec{
+				Version:  versions.V2_0.String(),
+				Profiles: []string{"maistra"},
+				Addons: &maistrav2.AddonsConfig{
+					Kiali: &maistrav2.KialiAddonConfig{
+						Enablement: maistrav2.Enablement{Enabled: ptrTrue},
+					},
+					Prometheus: &maistrav2.PrometheusAddonConfig{
+						Enablement: maistrav2.Enablement{Enabled: ptrTrue},
+					},
+				},
+			},
+			expectValid: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			smcp := newControlPlane()
+			smcp.Spec = tc.spec
+
+			cl, _, r := newReconcilerTestFixture(smcp)
+
+			// run initial reconcile to initialize reconcile status
+			assertInstanceReconcilerSucceeds(r, t)
+
+			// run reconcile to apply profiles & validate SMCP
+			if tc.expectValid {
+				assertInstanceReconcilerSucceeds(r, t)
+			} else {
+				assertInstanceReconcilerFails(r, t)
+
+				// check if Reconciled condition reason is set to ValidationError
+				test.PanicOnError(cl.Get(ctx, common.ToNamespacedName(smcp), smcp))
+				condition := smcp.Status.GetCondition(status.ConditionTypeReconciled)
+				assert.Equals(condition.Reason, status.ConditionReasonValidationError, "Unexpected Reason in Reconciled condition", t)
+			}
 		})
 	}
 }
