@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/external/istio/networking/v1alpha3"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
@@ -22,7 +23,9 @@ func TestReconcileNamespaceInMesh(t *testing.T) {
 	namespace := newNamespace(appNamespace)
 	meshRoleBinding := newMeshRoleBinding()
 	meshRoleBindings := []*rbac.RoleBinding{meshRoleBinding}
-	cl, _ := test.CreateClient(namespace, meshRoleBinding)
+	meshEnvoyFilter := newMeshEnvoyFilter()
+	meshEnvoyFilters := []*networkingv1alpha3.EnvoyFilter{meshEnvoyFilter}
+	cl, _ := test.CreateClient(namespace, meshRoleBinding, meshEnvoyFilter)
 
 	fakeNetworkStrategy := &fakeNetworkStrategy{}
 	assertReconcileNamespaceSucceeds(t, cl, fakeNetworkStrategy)
@@ -55,7 +58,23 @@ func TestReconcileNamespaceInMesh(t *testing.T) {
 		expectedRoleBindings = append(expectedRoleBindings, *expectedRB)
 	}
 
+	// check envoy filters exist
+	envoyFilters := networkingv1alpha3.EnvoyFilterList{}
+	err = cl.List(ctx, &envoyFilters, client.InNamespace(appNamespace))
+	if err != nil {
+		t.Fatalf("Couldn't list EnvoyFilters: %v", err)
+	}
+
+	expectedEnvoyFilters := []networkingv1alpha3.EnvoyFilter{}
+	for _, meshEF := range meshEnvoyFilters {
+		expectedEF := meshEF.DeepCopy()
+		expectedEF.Namespace = appNamespace
+		expectedEF.Labels[common.MemberOfKey] = controlPlaneNamespace
+		expectedEnvoyFilters = append(expectedEnvoyFilters, *expectedEF)
+	}
+
 	assert.DeepEquals(roleBindings.Items, expectedRoleBindings, "Unexpected RoleBindings found in namespace", t)
+	assert.DeepEquals(envoyFilters.Items, expectedEnvoyFilters, "Unexpected EnvoyFilters found in namespace", t)
 	assert.DeepEquals(fakeNetworkStrategy.reconciledNamespaces, []string{appNamespace}, "Expected reconcileNamespaceInMesh to invoke the networkStrategy with only the appNamespace, but it didn't", t)
 }
 
@@ -72,7 +91,8 @@ func TestReconcileFailsIfNamespaceIsPartOfAnotherMesh(t *testing.T) {
 func TestRemoveNamespaceFromMesh(t *testing.T) {
 	namespace := newNamespace(appNamespace)
 	meshRoleBinding := newMeshRoleBinding()
-	cl, _ := test.CreateClient(namespace, meshRoleBinding)
+	meshEnvoyFilter := newMeshEnvoyFilter()
+	cl, _ := test.CreateClient(namespace, meshRoleBinding, meshEnvoyFilter)
 	setupReconciledNamespace(t, cl, appNamespace)
 
 	fakeNetworkStrategy := &fakeNetworkStrategy{}
@@ -94,6 +114,11 @@ func TestRemoveNamespaceFromMesh(t *testing.T) {
 	roleBinding := &rbac.RoleBinding{}
 	err = cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: meshRoleBinding.Name}, roleBinding)
 	assertNotFound(err, "Expected RoleBinding to be deleted, but it is still present", t)
+
+	// check that envoy filter was removed
+	envoyFilter := &networkingv1alpha3.EnvoyFilter{}
+	err = cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: meshEnvoyFilter.Name}, envoyFilter)
+	assertNotFound(err, "Expected EnvoyFilter to be deleted, but it is still present", t)
 
 	assert.DeepEquals(fakeNetworkStrategy.removedNamespaces, []string{appNamespace}, "Expected removeNamespaceFromMesh to invoke the networkStrategy with only the appNamespace, but it didn't", t)
 }
@@ -138,14 +163,19 @@ func TestReconcileUpdatesModifiedRoleBindings(t *testing.T) {
 	assert.DeepEquals(fakeNetworkStrategy.reconciledNamespaces, []string{appNamespace}, "Expected reconcileNamespace to invoke the networkStrategy with only the appNamespace, but it didn't", t)
 }
 
-func TestReconcileDeletesObsoleteRoleBindings(t *testing.T) {
+func TestReconcileDeletesObsoleteResources(t *testing.T) {
 	namespace := newNamespace(appNamespace)
 	meshRoleBinding := newMeshRoleBinding()
-
-	cl, _ := test.CreateClient(namespace, meshRoleBinding)
+	meshEnvoyFilter := newMeshEnvoyFilter()
+	cl, _ := test.CreateClient(namespace, meshRoleBinding, meshEnvoyFilter)
 	setupReconciledNamespace(t, cl, appNamespace)
 
 	err := cl.Delete(ctx, meshRoleBinding)
+	if err != nil {
+		t.Fatalf("Couldn't update meshRoleBinding: %v", err)
+	}
+
+	err = cl.Delete(ctx, meshEnvoyFilter)
 	if err != nil {
 		t.Fatalf("Couldn't update meshRoleBinding: %v", err)
 	}
@@ -159,8 +189,14 @@ func TestReconcileDeletesObsoleteRoleBindings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't list RoleBindings: %v", err)
 	}
+	envoyFilters := networkingv1alpha3.EnvoyFilterList{}
+	err = cl.List(ctx, &envoyFilters, client.InNamespace(appNamespace))
+	if err != nil {
+		t.Fatalf("Couldn't list EnvoyFilters: %v", err)
+	}
 
 	assert.DeepEquals(roleBindings.Items, []rbac.RoleBinding{}, "Unexpected RoleBindings found in namespace", t)
+	assert.DeepEquals(envoyFilters.Items, []networkingv1alpha3.EnvoyFilter{}, "Unexpected EnvoyFilters found in namespace", t)
 }
 
 func TestOtherResourcesArePreserved(t *testing.T) {
@@ -169,6 +205,7 @@ func TestOtherResourcesArePreserved(t *testing.T) {
 	namespace := newNamespace(appNamespace)
 	namespace.Labels[otherLabelName] = otherLabelValue
 	meshRoleBinding := newMeshRoleBinding()
+	meshEnvoyFilter := newMeshEnvoyFilter()
 
 	otherNetAttachDefNamme := "some-other-net-attach-def"
 	otherNetAttachDef := newNetworkAttachmentDefinition()
@@ -178,7 +215,10 @@ func TestOtherResourcesArePreserved(t *testing.T) {
 	otherRoleBindingName := "other-role-binding"
 	otherRoleBinding := newRoleBinding(appNamespace, otherRoleBindingName)
 
-	cl, _ := test.CreateClient(namespace, meshRoleBinding, otherNetAttachDef, otherRoleBinding)
+	otherEnvoyFilterName := "other-envoy-filter"
+	otherEnvoyFilter := newEnvoyFilter(appNamespace, otherEnvoyFilterName)
+
+	cl, _ := test.CreateClient(namespace, meshRoleBinding, meshEnvoyFilter, otherNetAttachDef, otherRoleBinding, otherEnvoyFilter)
 
 	fakeNetworkStrategy := &fakeNetworkStrategy{}
 
@@ -210,6 +250,16 @@ func TestOtherResourcesArePreserved(t *testing.T) {
 	}
 	assert.DeepEquals(rb, otherRoleBinding, "Expected reconcileNamespaceInMesh to preserve other RoleBinding, but it modified it", t)
 
+	// 1d. check if other EnvoyFilters were preserved
+	ef := &networkingv1alpha3.EnvoyFilter{}
+	err = cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: otherEnvoyFilterName}, ef)
+	if errors.IsNotFound(err) {
+		t.Fatalf("Expected reconcileNamespaceInMesh to preserve other EnvoyFilter, but it deleted it")
+	} else if err != nil {
+		panic(err)
+	}
+	assert.DeepEquals(ef, otherEnvoyFilter, "Expected reconcileNamespaceInMesh to preserve other EnvoyFilter, but it modified it", t)
+
 	// 2. check if removeNamespaceFromMesh preserves other resources
 	assertRemoveNamespaceSucceeds(t, cl, fakeNetworkStrategy)
 
@@ -237,6 +287,16 @@ func TestOtherResourcesArePreserved(t *testing.T) {
 		panic(err)
 	}
 	assert.DeepEquals(rb, otherRoleBinding, "Expected removeNamespaceFromMesh to preserve other RoleBinding, but it modified it", t)
+
+	// 2d. check if other EnvoyFilters were preserved
+	ef = &networkingv1alpha3.EnvoyFilter{}
+	err = cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: otherEnvoyFilterName}, ef)
+	if errors.IsNotFound(err) {
+		t.Fatalf("Expected reconcileNamespaceInMesh to preserve other EnvoyFilter, but it deleted it")
+	} else if err != nil {
+		panic(err)
+	}
+	assert.DeepEquals(ef, otherEnvoyFilter, "Expected reconcileNamespaceInMesh to preserve other EnvoyFilter, but it modified it", t)
 }
 
 func newNetworkAttachmentDefinition() *unstructured.Unstructured {

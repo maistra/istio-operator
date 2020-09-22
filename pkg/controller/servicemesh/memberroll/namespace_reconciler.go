@@ -7,20 +7,19 @@ import (
 
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/sets"
-
-	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/controller/versions"
-
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/external/istio/networking/v1alpha3"
+	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 const networkTypeOpenShiftSDN = "OpenShiftSDN"
@@ -34,6 +33,8 @@ type namespaceReconciler struct {
 	networkingStrategy   NamespaceReconciler
 	roleBindingsList     rbac.RoleBindingList
 	requiredRoleBindings sets.String
+	envoyFiltersList     networkingv1alpha3.EnvoyFilterList
+	requiredEnvoyFilters sets.String
 }
 
 func newNamespaceReconciler(ctx context.Context, cl client.Client, meshNamespace string, meshVersion versions.Version, isCNIEnabled bool) (NamespaceReconciler, error) {
@@ -46,6 +47,8 @@ func newNamespaceReconciler(ctx context.Context, cl client.Client, meshNamespace
 		isCNIEnabled:         isCNIEnabled,
 		roleBindingsList:     rbac.RoleBindingList{},
 		requiredRoleBindings: sets.NewString(),
+		envoyFiltersList:     networkingv1alpha3.EnvoyFilterList{},
+		requiredEnvoyFilters: sets.NewString(),
 	}
 	logger := reconciler.getLogger(ctx)
 
@@ -63,6 +66,16 @@ func newNamespaceReconciler(ctx context.Context, cl client.Client, meshNamespace
 	for _, rb := range reconciler.roleBindingsList.Items {
 		reconciler.requiredRoleBindings.Insert(rb.GetName())
 	}
+
+	err = cl.List(ctx, &reconciler.envoyFiltersList, client.InNamespace(meshNamespace), client.MatchingLabels(labelSelector))
+	if err != nil {
+		logger.Error(err, "error retrieving EnvoyFilter resources for mesh")
+		return nil, pkgerrors.Wrap(err, "error retrieving EnvoyFilter resources for mesh")
+	}
+	for _, ef := range reconciler.envoyFiltersList.Items {
+		reconciler.requiredEnvoyFilters.Insert(ef.GetName())
+	}
+
 	return reconciler, nil
 }
 
@@ -155,21 +168,15 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(ctx context.Context, names
 
 	allErrors := []error{}
 
-	// delete role bindings
-	rbList := &rbac.RoleBindingList{}
 	labelSelector := map[string]string{common.OwnerKey: r.meshNamespace}
-	err = r.Client.List(ctx, rbList, client.InNamespace(namespace), client.MatchingLabels(labelSelector))
-	if err == nil {
-		for _, rb := range rbList.Items {
-			logger.Info("deleting RoleBinding for mesh ServiceAccount", "RoleBinding", rb.GetName())
-			err = r.Client.Delete(ctx, &rb)
-			if err != nil {
-				logger.Error(err, "error removing RoleBinding associated with mesh", "RoleBinding", rb.GetName())
-				allErrors = append(allErrors, err)
-			}
-		}
-	} else {
-		logger.Error(err, "error could not retrieve RoleBindings associated with mesh")
+	// delete role bindings
+	if err = r.Client.DeleteAllOf(ctx, &rbac.RoleBinding{}, client.InNamespace(namespace), client.MatchingLabels(labelSelector)); err != nil {
+		logger.Error(err, "error deleting RoleBindings associated with mesh")
+		allErrors = append(allErrors, err)
+	}
+	// delete envoy filters
+	if err = r.Client.DeleteAllOf(ctx, &networkingv1alpha3.EnvoyFilter{}, client.InNamespace(namespace), client.MatchingLabels(labelSelector)); err != nil {
+		logger.Error(err, "error deleting EnvoyFilters associated with mesh")
 		allErrors = append(allErrors, err)
 	}
 
@@ -234,6 +241,12 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(ctx context.Context, name
 
 	// add role bindings
 	err = r.reconcileRoleBindings(ctx, namespace)
+	if err != nil {
+		allErrors = append(allErrors, err)
+	}
+
+	// add envoy filters (for telemetry)
+	err = r.reconcileEnvoyFilters(ctx, namespace)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
@@ -316,6 +329,65 @@ func (r *namespaceReconciler) reconcileRoleBindings(ctx context.Context, namespa
 		err = r.Client.Delete(ctx, roleBinding, client.PropagationPolicy(metav1.DeletePropagationForeground))
 		if err != nil && !(apierrors.IsNotFound(err) || apierrors.IsGone(err)) {
 			reqLogger.Error(err, "error deleting RoleBinding for mesh ServiceAccount", "RoleBinding", roleBindingName)
+			allErrors = append(allErrors, err)
+		}
+	}
+
+	// if there were errors, we've logged them and there's not really anything we can do, as we're in an uncertain state
+	// maybe a following reconcile will add the required role binding that failed.  if it was a delete that failed, we're
+	// just leaving behind some cruft.
+	return utilerrors.NewAggregate(allErrors)
+}
+
+func (r *namespaceReconciler) reconcileEnvoyFilters(ctx context.Context, namespace string) error {
+	reqLogger := common.LogFromContext(ctx)
+
+	namespaceEnvoyFilters := networkingv1alpha3.EnvoyFilterList{}
+	labelSelector := map[string]string{common.MemberOfKey: r.meshNamespace}
+	err := r.Client.List(ctx, &namespaceEnvoyFilters, client.MatchingLabels(labelSelector), client.InNamespace(namespace))
+	if err != nil {
+		reqLogger.Error(err, "error retrieving EnvoyFilter resources for namespace")
+		return err
+	}
+
+	allErrors := []error{}
+
+	// add required role bindings
+	existingEnvoyFilters := nameSet(&namespaceEnvoyFilters)
+	addedEnvoyFilters := sets.NewString()
+	for _, meshEnvoyFilter := range r.envoyFiltersList.Items {
+		envoyFilterName := meshEnvoyFilter.GetName()
+		if !existingEnvoyFilters.Has(envoyFilterName) {
+			reqLogger.Info("creating EnvoyFilter for mesh", "EnvoyFilter", envoyFilterName)
+			envoyFilter := meshEnvoyFilter.DeepCopy()
+			envoyFilter.ObjectMeta = metav1.ObjectMeta{
+				Name:        meshEnvoyFilter.Name,
+				Namespace:   namespace,
+				Labels:      envoyFilter.Labels,
+				Annotations: envoyFilter.Annotations,
+			}
+			common.SetLabel(envoyFilter, common.MemberOfKey, r.meshNamespace)
+			err = r.Client.Create(ctx, envoyFilter)
+			if err == nil {
+				addedEnvoyFilters.Insert(envoyFilterName)
+			} else {
+				reqLogger.Error(err, "error creating envoyFilterName for mesh", "EnvoyFilter", envoyFilterName)
+				allErrors = append(allErrors, err)
+			}
+		} // XXX: else if existingRoleBinding.annotations[mesh-generation] != meshRoleBinding.annotations[generation] then update?
+	}
+
+	existingEnvoyFilters = existingEnvoyFilters.Union(addedEnvoyFilters)
+
+	// delete obsolete envoy filters
+	for envoyFilterName := range existingEnvoyFilters.Difference(r.requiredEnvoyFilters) {
+		reqLogger.Info("deleting EnvoyFilter for mesh", "EnvoyFilter", envoyFilterName)
+		envoyFilter := &networkingv1alpha3.EnvoyFilter{}
+		envoyFilter.SetName(envoyFilterName)
+		envoyFilter.SetNamespace(namespace)
+		err = r.Client.Delete(ctx, envoyFilter, client.PropagationPolicy(metav1.DeletePropagationForeground))
+		if err != nil && !(apierrors.IsNotFound(err) || apierrors.IsGone(err)) {
+			reqLogger.Error(err, "error deleting EnvoyFilter for mesh", "EnvoyFilter", envoyFilterName)
 			allErrors = append(allErrors, err)
 		}
 	}

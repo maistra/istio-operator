@@ -21,6 +21,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
+	"github.com/maistra/istio-operator/pkg/apis/external"
+	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/external/istio/networking/v1alpha3"
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -817,11 +819,29 @@ func newRoleBinding(namespace, name string) *rbac.RoleBinding {
 	}
 }
 
+func newEnvoyFilter(namespace, name string) *networkingv1alpha3.EnvoyFilter {
+	return &networkingv1alpha3.EnvoyFilter{
+		Base: external.Base{
+			ObjectMeta: meta.ObjectMeta{
+				Namespace: namespace,
+				Name:      name,
+			},
+		},
+	}
+}
+
 func newMeshRoleBinding() *rbac.RoleBinding {
 	roleBinding := newRoleBinding(controlPlaneNamespace, "role-binding")
 	roleBinding.Labels = map[string]string{}
 	roleBinding.Labels[common.OwnerKey] = controlPlaneNamespace
 	return roleBinding
+}
+
+func newMeshEnvoyFilter() *networkingv1alpha3.EnvoyFilter {
+	envoyFilter := newEnvoyFilter(controlPlaneNamespace, "envoy-filter")
+	envoyFilter.Labels = map[string]string{}
+	envoyFilter.Labels[common.OwnerKey] = controlPlaneNamespace
+	return envoyFilter
 }
 
 func newAppNamespaceRoleBinding() *rbac.RoleBinding {

@@ -2,10 +2,10 @@
 apiVersion: kiali.io/v1alpha1
 kind: Kiali
 metadata:
-  name: kiali
+  name: {{ .Values.kiali.resourceName | default "kiali" }}
   namespace: {{ .Release.Namespace }}
 spec:
-  version: "v1.12"
+  version: "v1.24"
   installation_tag: "Kiali [{{ .Release.Namespace }}]"
   istio_namespace: "{{ .Release.Namespace }}"
 
@@ -38,6 +38,8 @@ spec:
 {{- end }}
 
   external_services:
+    istio:
+      config_map_name: istio-{{ .Values.revision | default "default" }}
     grafana:
       auth:
         ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"

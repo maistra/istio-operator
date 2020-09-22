@@ -16,5 +16,6 @@ var (
 func init() {
 	SchemeBuilder.Register(
 		&VirtualService{}, &VirtualServiceList{},
+		&EnvoyFilter{}, &EnvoyFilterList{},
 	)
 }
