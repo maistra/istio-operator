@@ -153,6 +153,24 @@ spec:
             value: "{{ $.Values.global.multiCluster.clusterName | default `Kubernetes` }}"
           - name: CENTRAL_ISTIOD
             value: "{{ $.Values.global.centralIstiod | default "false" }}"
+{{- if .Values.global.tls }}
+{{- if .Values.global.tls.minProtocolVersion }}
+          - name: TLS_MIN_PROTOCOL_VERSION
+            value: {{ .Values.global.tls.minProtocolVersion }}
+{{- end }}
+{{- if .Values.global.tls.maxProtocolVersion }}
+          - name: TLS_MAX_PROTOCOL_VERSION
+            value: {{ .Values.global.tls.maxProtocolVersion }}
+{{- end }}
+{{- if .Values.global.tls.cipherSuites }}
+          - name: TLS_CIPHER_SUITES
+            value: {{ .Values.global.tls.cipherSuites }}
+{{- end }}
+{{- if .Values.global.tls.ecdhCurves }}
+          - name: TLS_ECDH_CURVES
+            value: {{ .Values.global.tls.ecdhCurves }}
+{{- end }}
+{{- end }}
           resources:
 {{- if .Values.pilot.resources }}
 {{ toYaml .Values.pilot.resources | trim | indent 12 }}
