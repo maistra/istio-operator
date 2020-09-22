@@ -141,10 +141,8 @@ func TestBootstrapping(t *testing.T) {
 							Verify("create").On("customresourcedefinitions").IsSeen(),
 							// verify that CNI is installed
 							Verify("create").On("daemonsets").Named(cniDaemonSetName).In(operatorNamespace).IsSeen(),
-							// verify CNI readiness check during reconcile
-							Verify("list").On("daemonsets").In(operatorNamespace).IsSeen(),
 							// verify readiness check triggered daemon set creation
-							VerifyReadinessCheckOccurs(controlPlaneNamespace, operatorNamespace),
+							VerifyReadinessCheckOccurs(controlPlaneNamespace),
 						),
 						Assertions: ActionAssertions{
 							// verify proper number of CRDs is created

@@ -200,15 +200,10 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 
 		// Ensure Istio CNI is installed
 		if r.cniConfig.Enabled {
-			r.waitForComponents = sets.NewString("cni")
 			if err = bootstrap.InstallCNI(ctx, r.Client, r.cniConfig); err != nil {
 				reconciliationReason = status.ConditionReasonReconcileError
 				reconciliationMessage = "Failed to install/update Istio CNI"
 				log.Error(err, reconciliationMessage)
-				return
-			} else if ready, _ := r.isCNIReady(ctx); !ready {
-				reconciliationReason = status.ConditionReasonPausingInstall
-				reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", "cni")
 				return
 			}
 		}

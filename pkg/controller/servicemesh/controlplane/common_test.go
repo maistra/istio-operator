@@ -165,14 +165,12 @@ var CNIGroupResources = &restmapper.APIGroupResources{
 // VerifyReadinessCheckOccurs returns an ActionVerifier which includes
 // verifications for all actions that should be performed during a successful
 // readiness check.  controlPlaneNamespace is the namespace within which the
-// control plane is installed.  operatorNamespace is the namespace within which
-// the operator is running.
-func VerifyReadinessCheckOccurs(controlPlaneNamespace, operatorNamespace string) test.ActionVerifier {
+// control plane is installed.
+func VerifyReadinessCheckOccurs(controlPlaneNamespace string) test.ActionVerifier {
 	return test.VerifyActions(
 		test.Verify("list").On("deployments").In(controlPlaneNamespace).IsSeen(),
 		test.Verify("list").On("statefulsets").In(controlPlaneNamespace).IsSeen(),
 		test.Verify("list").On("daemonsets").In(controlPlaneNamespace).IsSeen(),
-		test.Verify("list").On("daemonsets").In(operatorNamespace).IsSeen(),
 	)
 }
 
