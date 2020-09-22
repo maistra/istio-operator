@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -99,6 +100,16 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 	}
 	r.Status.Annotations[statusAnnotationReadyComponentCount] = fmt.Sprintf("%d/%d", len(readyComponents), len(r.Status.ComponentStatus))
 
+	allComponents := sets.NewString()
+	for _, comp := range r.Status.ComponentStatus {
+		allComponents.Insert(comp.Resource)
+	}
+
+	r.Status.Readiness.Components = map[string][]string {
+		"ready": readyComponents.List(),
+		"unready": unreadyComponents.List(),
+		"pending": allComponents.Difference(readyComponents).Difference(unreadyComponents).List(),
+	}
 	return updateStatus, nil
 }
 
