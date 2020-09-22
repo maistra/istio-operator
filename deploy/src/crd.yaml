@@ -6299,6 +6299,17 @@ spec:
                 type: integer
               operatorVersion:
                 type: string
+              readiness:
+                properties:
+                  components:
+                    additionalProperties:
+                      items:
+                        type: string
+                      type: array
+                    type: object
+                type: object
+            required:
+            - readiness
             type: object
         type: object
     served: true

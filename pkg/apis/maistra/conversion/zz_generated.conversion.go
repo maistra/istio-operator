@@ -107,6 +107,7 @@ func autoConvert_v2_ControlPlaneStatus_To_v1_ControlPlaneStatus(in *v2.ControlPl
 	// WARNING: in.OperatorVersion requires manual conversion: does not exist in peer-type
 	// WARNING: in.ChartVersion requires manual conversion: does not exist in peer-type
 	out.ComponentStatusList = in.ComponentStatusList
+	// WARNING: in.Readiness requires manual conversion: does not exist in peer-type
 	// WARNING: in.AppliedSpec requires manual conversion: does not exist in peer-type
 	// WARNING: in.AppliedValues requires manual conversion: does not exist in peer-type
 	return nil
