@@ -12,7 +12,7 @@ metadata:
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: maistra/istio-ubi8-operator:2.0.0
-    createdAt: 2020-09-21T15:27:42MDT
+    createdAt: 2020-09-22T09:06:21CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.0.0"
     alm-examples: |-
@@ -602,7 +602,7 @@ spec:
   customresourcedefinitions:
     owned:
     - name: servicemeshcontrolplanes.maistra.io
-      version: v1
+      version: v2
       kind: ServiceMeshControlPlane
       displayName: Istio Service Mesh Control Plane
       description: An Istio control plane installation
@@ -617,52 +617,54 @@ spec:
           - 'urn:alm:descriptor:com.tectonic.ui:select:v1.0'
       - description: Enable mTLS for communication between control plane components (galley, pilot, etc.)
         displayName: Control Plane Security
-        path: istio.global.controlPlaneSecurityEnabled
+        path: security.controlPlane.mtls
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: Enable mTLS for communcation between services in the mesh
         displayName: Data Plane Security
-        path: istio.global.mtls.enabled
+        path: security.mtls.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: Set to true to install Kiali
         displayName: Install Kiali
-        path: istio.kiali.enabled
+        path: addons.kiali.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:visualization'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: Set to true to install Grafana
         displayName: Install Grafana
-        path: istio.grafana.enabled
+        path: addons.grafana.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:visualization'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: Set to false to disable tracing
-        displayName: Install Jaeger
-        path: istio.tracing.enabled
+        displayName: Install Tracing
+        path: tracing.type
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:tracing'
-          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
-      - description: Set template to use when installing Jaeger
-        displayName: Jaeger template
-        path: istio.tracing.jaeger.template
+          - 'urn:alm:descriptor:com.tectonic.ui:select:None'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Jaeger'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Stackdriver'
+      - description: Set storage type for Jaeger
+        displayName: Jaeger Storage Type
+        path: addons.jaeger.install.storage.type
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:tracing'
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldDependency:istio.tracing.enabled:true'
-          - 'urn:alm:descriptor:com.tectonic.ui:select:all-in-one'
-          - 'urn:alm:descriptor:com.tectonic.ui:select:production-elasticsearch'
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldDependency:tracing.type:Jaeger'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Memory'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Elasticsearch'
       - description: Set to true to install the Istio 3Scale adapter
         displayName: Install 3Scale Adapter
-        path: threeScale.enabled
+        path: addons.3scale.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:API_Management'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
           - 'urn:alm:descriptor:com.tectonic.ui:advanced'
       - description: Limits describes the minimum/maximum amount of compute resources required/allowed
         displayName: Default Resource Requirements
-        path: istio.global.defaultResources
+        path: runtime.defaults.container.resources
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Resource_Requirements'
           - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
