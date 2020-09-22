@@ -8,7 +8,7 @@ set -e
 CRD_DIR=$(realpath --relative-to "${SOURCE_DIR}" "${CRD_DIR}")
 (
   cd "${SOURCE_DIR}"
-  find "${CRD_DIR}" -maxdepth 1 -name "*.yaml" -type f ! -name "*crd.yaml" | xargs -t go run ./tools/crd --zap-encoder=console
+  find "${CRD_DIR}" -maxdepth 1 -name "*.yaml" -type f ! -name "*crd.yaml" | xargs -t go run -mod=vendor ./tools/crd --zap-encoder=console
   # delete the original files
   find "${CRD_DIR}" -maxdepth 1 ! -name "*crd.yaml" -a -type f -delete
 )
