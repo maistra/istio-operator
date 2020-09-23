@@ -64,6 +64,9 @@ func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Ma
 	// split the manifest into individual objects
 	objects := releaseutil.SplitManifests(man.Content)
 	for _, raw := range objects {
+		if raw == "---" {
+			continue
+		}
 		rawJSON, err := yaml.YAMLToJSON([]byte(raw))
 		if err != nil {
 			log.Error(err, fmt.Sprintf("unable to convert raw data to JSON: %s", raw))
