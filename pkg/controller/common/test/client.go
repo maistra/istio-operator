@@ -282,7 +282,7 @@ func (c *fakeClient) internalPatch(subresource string, obj runtime.Object, patch
 
 // DeleteAllOf deletes all objects of the given type matching the given options.
 func (c *fakeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
-	gvk, err := apiutil.GVKForObject(obj, scheme.Scheme)
+	gvk, err := apiutil.GVKForObject(obj, c.scheme)
 	if err != nil {
 		return err
 	}
