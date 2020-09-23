@@ -4,28 +4,29 @@ metadata:
   name: auth
 spec:
   security:
-    mutualTLS:
-      enable: true
+    mtls:
+      enabled: true
       auto: true
-      controlPlane:
-        enable: true
+    controlPlane:
+      mtls: true
+  tracing:
+    # change to None to disable tracing
+    type: Jaeger
   addons:
-    tracing:
-      # change to None to disable tracing
-      type: Jaeger
-      jaeger:
-        name: jaeger
-        # we want maistra to create the jaeger resource
-        install: {}
-    visualization:
-      grafana:
-        enabled: true
-        install: {}
-      kiali:
-        name: kiali
-        enabled: true
-        # we want maistra to create the kiali resource
-        install: {}
+    jaeger:
+      name: jaeger
+      # we want maistra to create the jaeger resource
+      install: {}
+    grafana:
+      enabled: true
+      install: {}
+    kiali:
+      name: kiali
+      enabled: true
+      # we want maistra to create the kiali resource
+      install: {}
+    prometheus:
+      enabled: true
 
 ---
 
