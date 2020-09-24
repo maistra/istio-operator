@@ -59,4 +59,7 @@ replace sigs.k8s.io/controller-runtime => github.com/maistra/controller-runtime 
 
 replace github.com/operator-framework/operator-sdk => github.com/operator-framework/operator-sdk v0.10.0
 
+// pkg disappeared from bitbucket
+replace bitbucket.org/ww/goautoneg => ./internal/bitbucket.org/ww/goautoneg
+
 go 1.13
