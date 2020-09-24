@@ -24,7 +24,8 @@ spec:
     level: warn
 
   proxy:
-    autoInject: true
+    injection:
+      autoInject: false
     networking:
       protocol:
         autoDetect:
@@ -88,3 +89,6 @@ spec:
   techPreview:
     wasmExtensions:
       enabled: false
+    sidecarInjectorWebhook:
+      objectSelector:
+        enabled: false

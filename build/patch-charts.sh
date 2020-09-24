@@ -220,7 +220,7 @@ function patchSidecarInjector() {
       -e '/metadata:/a\
 \  name: istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}' \
     $webhookconfig
-  sed_wrap -i -e '/if .Values.sidecarInjectorWebhook.enableNamespacesByDefault/,/{{- end/ {
+  sed_wrap -i -e '/if .Values.sidecarInjectorWebhook.enableNamespacesByDefault/,$ {
       /enableNamespacesByDefault/i\
       matchExpressions:\
       - key: maistra.io\/member-of\
@@ -232,12 +232,28 @@ function patchSidecarInjector() {
       - key: istio-injection\
         operator: NotIn\
         values:\
-        - disabled
+        - disabled\
+      - key: istio-env\
+        operator: DoesNotExist\
+\{\{- if .Values.sidecarInjectorWebhook.objectSelector.enabled \}\}\
+    objectSelector:\
+      matchExpressions:\
+\{\{- if eq .Values.global.proxy.autoInject "enabled" \}\}\
+      - key: "sidecar.istio.io/inject"\
+        operator: NotIn\
+        values:\
+        - "false"\
+\{\{- else \}\}\
+      - key: "sidecar.istio.io/inject"\
+        operator: In\
+        values:\
+        - "true"\
+\{\{- end \}\}\
+\{\{- end \}\}
       d
     }' $webhookconfig
   # remove {{- if not .Values.global.operatorManageWebhooks }} ... {{- end }}
   sed_wrap -i -e '/operatorManageWebhooks/ d' $webhookconfig
-  sed_wrap -i -e '$ d' $webhookconfig
 
   # - change privileged value on istio-proxy injection configmap to false
   # setting the proper values will fix this:
