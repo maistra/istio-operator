@@ -15,6 +15,7 @@ metadata:
     createdAt: __DATE__
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <__VERSION__"
+    operators.openshift.io/infrastructure-features: '__OLM_FEATURES__'
     alm-examples: |-
       [
         {
