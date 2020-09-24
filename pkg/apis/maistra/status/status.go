@@ -156,6 +156,10 @@ type Condition struct {
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
+func (c *Condition) Matches(status ConditionStatus, reason ConditionReason, message string) bool {
+	return c.Status == status && c.Reason == reason && c.Message == message
+}
+
 // CurrentReconciledVersion returns a ReconciledVersion for this release of the operator
 func CurrentReconciledVersion(generation int64) string {
 	return ComposeReconciledVersion(version.Info.Version, generation)
