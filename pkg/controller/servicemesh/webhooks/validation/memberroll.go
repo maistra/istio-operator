@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"sync"
 	"time"
 
@@ -25,10 +26,16 @@ import (
 
 const maxConcurrentSARChecks = 5
 
+var memberRegex *regexp.Regexp
+
 type MemberRollValidator struct {
 	client          client.Client
 	decoder         *admission.Decoder
 	namespaceFilter webhookcommon.NamespaceFilter
+}
+
+func init() {
+	memberRegex = regexp.MustCompile("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
 }
 
 func NewMemberRollValidator(namespaceFilter webhookcommon.NamespaceFilter) *MemberRollValidator {
@@ -73,6 +80,18 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request)
 
 	if smmr.Namespace == common.GetOperatorNamespace() {
 		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("ServiceMeshMemberRoll may not be created in the same project/namespace as the operator"))
+	}
+
+	// check for duplicate namespaces (we must check this in code, because +kubebuilder:validation:UniqueItem doesn't work)
+	if len(sets.NewString(smmr.Spec.Members...)) != len(smmr.Spec.Members) {
+		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("ServiceMeshMemberRoll may not contain duplicate namespaces in .spec.members"))
+	}
+
+	// check if namespace names conform to DNS-1123 (we must check this in code, because +kubebuilder:validation:Pattern can't be applied to array elements yet)
+	for _, member := range smmr.Spec.Members {
+		if !memberRegex.MatchString(member) {
+			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf(".spec.members contains invalid value '%s'. Must be a valid namespace name.", member))
+		}
 	}
 
 	smmrList := &maistrav1.ServiceMeshMemberRollList{}
