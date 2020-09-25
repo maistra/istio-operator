@@ -207,9 +207,104 @@ function patchGateways() {
   sed_wrap -i -e 's/type: LoadBalancer$/type: ClusterIP/' ${HELM_DIR}/gateways/istio-ingress/values.yaml
 
   sed_wrap -i -e 's/\(^ *\)- containerPort: {{ $val.targetPort | default $val.port }}/\1- name: {{ $val.name }}\
-\1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml
-  sed_wrap -i -e 's/\(^ *\)- containerPort: {{ $val.targetPort | default $val.port }}/\1- name: {{ $val.name }}\
-\1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
+\1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
+
+  # add label for easier selection in Gateway resources
+  sed_wrap -i -e 's/^\(.*\)labels:/\1labels:\
+\1  maistra.io\/gateway: {{ $gateway.name | default "istio-ingressgateway" }}.{{ $gateway.namespace | default .Release.Namespace }}/' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml
+  sed_wrap -i -e 's/^\(.*\)labels:/\1labels:\
+\1  maistra.io\/gateway: {{ $gateway.name | default "istio-egressgateway" }}.{{ $gateway.namespace | default .Release.Namespace }}/' ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
+
+  # gateways in other namespaces need proxy config
+  sed_wrap -i -e '/env:/ a\
+{{- if $gateway.namespace }}\
+{{- if ne $gateway.namespace .Release.Namespace }}\
+          - name: PROXY_CONFIG\
+            value: |-\
+              concurrency: {{ .Values.global.proxy.concurrency | default 2 }}\
+              tracing:\
+              {{- if eq .Values.global.proxy.tracer "lightstep" }}\
+                lightstep:\
+                  address: {{ .Values.global.tracer.lightstep.address }}\
+                  accessToken: {{ .Values.global.tracer.lightstep.accessToken }}\
+              {{- else if eq .Values.global.proxy.tracer "jaeger" }}\
+                zipkin:\
+                  address: {{ .Values.global.tracer.zipkin.address }}\
+              {{- else if eq .Values.global.proxy.tracer "zipkin" }}\
+                zipkin:\
+                {{- if .Values.global.tracer.zipkin.address }}\
+                  address: {{ .Values.global.tracer.zipkin.address }}\
+                {{- else }}\
+                  address: zipkin.{{ .Values.global.telemetryNamespace }}:9411\
+                {{- end }}\
+              {{- else if eq .Values.global.proxy.tracer "datadog" }}\
+                datadog:\
+                  address: {{ .Values.global.tracer.datadog.address }}\
+              {{- else if eq .Values.global.proxy.tracer "stackdriver" }}\
+                stackdriver:\
+                {{- if $.Values.global.tracer.stackdriver.debug }}\
+                  debug: {{ $.Values.global.tracer.stackdriver.debug }}\
+                {{- end }}\
+                {{- if $.Values.global.tracer.stackdriver.maxNumberOfAttributes }}\
+                  maxNumberOfAttributes: {{ $.Values.global.tracer.stackdriver.maxNumberOfAttributes }}\
+                {{- end }}\
+                {{- if $.Values.global.tracer.stackdriver.maxNumberOfAnnotations }}\
+                  maxNumberOfAnnotations: {{ $.Values.global.tracer.stackdriver.maxNumberOfAnnotations }}\
+                {{- end }}\
+                {{- if $.Values.global.tracer.stackdriver.maxNumberOfMessageEvents }}\
+                  maxNumberOfMessageEvents: {{ $.Values.global.tracer.stackdriver.maxNumberOfMessageEvents }}\
+                {{- end }}\
+              {{- end }}\
+              controlPlaneAuthPolicy: NONE\
+              {{- if .Values.global.remotePilotAddress }}\
+              discoveryAddress: {{ printf "istiod-remote.%s.svc" .Release.Namespace }}:15012\
+              {{- else }}\
+              discoveryAddress: istiod-{{ .Values.revision | default "default" }}.{{.Release.Namespace}}.svc:15012\
+              {{- end }}\
+              {{- if .Values.global.proxy.envoyMetricsService }}\
+              {{- if .Values.global.proxy.envoyMetricsService.enabled }}\
+              envoyMetricsService:\
+                address: {{ .Values.global.proxy.envoyMetricsService.host }}:{{ .Values.global.proxy.envoyMetricsService.port }}\
+              {{- if .Values.global.proxy.envoyMetricsService.tlsSettings }}\
+                tlsSettings:\
+                  {{ toYaml .Values.global.proxy.envoyMetricsService.tlsSettings | trim | indent 18 }}\
+              {{- end}}\
+              {{- if .Values.global.proxy.envoyMetricsService.tcpKeepalive }}\
+                tcpKeepalive:\
+                  {{ toYaml .Values.global.proxy.envoyMetricsService.tcpKeepalive | trim | indent 18 }}\
+              {{- end}}\
+              {{- end}}\
+              {{- end}}\
+              {{- if .Values.global.proxy.envoyAccessLogService }}\
+              {{- if .Values.global.proxy.envoyAccessLogService.enabled }}\
+              envoyAccessLogService:\
+                address: {{ .Values.global.proxy.envoyAccessLogService.host }}:{{ .Values.global.proxy.envoyAccessLogService.port }}\
+              {{- if .Values.global.proxy.envoyAccessLogService.tlsSettings }}\
+                tlsSettings:\
+                  {{ toYaml .Values.global.proxy.envoyAccessLogService.tlsSettings | trim | indent 18 }}\
+              {{- end}}\
+              {{- if .Values.global.proxy.envoyAccessLogService.tcpKeepalive }}\
+                tcpKeepalive:\
+                  {{ toYaml .Values.global.proxy.envoyAccessLogService.tcpKeepalive | trim | indent 18 }}\
+              {{- end}}\
+              {{- end}}\
+              {{- end}}\
+{{- end }}\
+{{- end }}\
+' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
+
+  # install in specified namespace
+  for file in $(find ${HELM_DIR}/gateways/istio-ingress/templates -type f -name "*.yaml" ! -name "meshexpansion.yaml"); do
+    sed_wrap -i -e 's/^\( *\)namespace:.*/\1namespace: {{ $gateway.namespace | default .Release.Namespace }}/' $file
+  done
+  for file in $(find ${HELM_DIR}/gateways/istio-egress/templates -type f -name "*.yaml"); do
+    sed_wrap -i -e 's/^\( *\)namespace:.*/\1namespace: {{ $gateway.namespace | default .Release.Namespace }}/' $file
+  done
+  sed_wrap -i -e '1 {
+    i \{\{ $gateway := index .Values "gateways" "istio-ingressgateway" \}\}\
+\{\{- if and .Values.global.meshExpansion.enabled (eq $gateway.name "istio-ingressgateway") \}\}
+    d
+    }' ${HELM_DIR}/gateways/istio-ingress/templates/meshexpansion.yaml
 }
 
 function patchSidecarInjector() {

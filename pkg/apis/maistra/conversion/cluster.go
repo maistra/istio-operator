@@ -22,7 +22,7 @@ var externalRequestedNetworkRegex = regexp.MustCompile("(^|,)external(,|$)")
 // function will also update fields in other settings that are related to
 // clustering, e.g. MeshExpansionPorts on Ingress gateway and DNS search
 // search suffixes for Proxy.
-func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
+func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map[string]interface{}) error {
 	// Cluster settings
 	// non-configurable defaults
 	// XXX: not sure if this is version specific, i.e. does it apply to istio 1.6?
@@ -35,8 +35,6 @@ func populateClusterValues(in *v2.ControlPlaneSpec, values map[string]interface{
 		cluster = &v2.ControlPlaneClusterConfig{}
 	}
 
-	// TODO: figure out how to get the install namespace
-	var namespace string
 	clusterDomain := clusterDomainDefault
 	if in.Proxy != nil && in.Proxy.Networking != nil && in.Proxy.Networking.ClusterDomain != "" {
 		clusterDomain = in.Proxy.Networking.ClusterDomain

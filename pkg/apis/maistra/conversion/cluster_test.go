@@ -12,9 +12,12 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
+const clusterTestNamespace = "cp-namespace"
+
 var clusterTestCases = []conversionTestCase{
 	{
 		name: "nil." + versions.V1_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_0.String(),
 		},
@@ -34,6 +37,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "nil." + versions.V1_1.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 		},
@@ -53,6 +57,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "nil." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 		},
@@ -72,6 +77,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "simple." + versions.V1_1.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
@@ -97,6 +103,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "simple." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
@@ -122,6 +129,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.simple." + versions.V1_1.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
@@ -137,7 +145,7 @@ var clusterTestCases = []conversionTestCase{
 					"enabled":           true,
 					"addedLocalNetwork": "my-network",
 					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
@@ -161,7 +169,7 @@ var clusterTestCases = []conversionTestCase{
 						}, "gateways": []interface{}{
 							map[string]interface{}{
 								"port":    443,
-								"service": "istio-ingressgateway..svc.cluster.local",
+								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
 							},
 						},
 					},
@@ -179,7 +187,7 @@ var clusterTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 				},
 				"k8sIngress": map[string]interface{}{
 					"enabled":     true,
@@ -207,6 +215,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.simple." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
@@ -222,7 +231,7 @@ var clusterTestCases = []conversionTestCase{
 					"enabled":           true,
 					"addedLocalNetwork": "my-network",
 					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
@@ -246,7 +255,7 @@ var clusterTestCases = []conversionTestCase{
 						}, "gateways": []interface{}{
 							map[string]interface{}{
 								"port":    443,
-								"service": "istio-ingressgateway..svc.cluster.local",
+								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
 							},
 						},
 					},
@@ -264,7 +273,7 @@ var clusterTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 				},
 				"k8sIngress": map[string]interface{}{
 					"enabled":     true,
@@ -291,6 +300,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.ilb." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
@@ -313,7 +323,7 @@ var clusterTestCases = []conversionTestCase{
 					"enabled":           true,
 					"addedLocalNetwork": "my-network",
 					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
@@ -335,7 +345,7 @@ var clusterTestCases = []conversionTestCase{
 						}, "gateways": []interface{}{
 							map[string]interface{}{
 								"port":    443,
-								"service": "istio-ingressgateway..svc.cluster.local",
+								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
 							},
 						},
 					},
@@ -353,7 +363,7 @@ var clusterTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 				},
 			},
 			"gateways": map[string]interface{}{
@@ -370,6 +380,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.meshNetwork.override." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
@@ -400,7 +411,7 @@ var clusterTestCases = []conversionTestCase{
 					"clusterName": "my-cluster",
 					"enabled":     true,
 					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
@@ -442,7 +453,7 @@ var clusterTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 				},
 				"k8sIngress": map[string]interface{}{
 					"enabled":     true,
@@ -469,6 +480,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.meshNetwork.additional." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
@@ -500,7 +512,7 @@ var clusterTestCases = []conversionTestCase{
 					"enabled":           true,
 					"addedLocalNetwork": "my-network",
 					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
@@ -524,7 +536,7 @@ var clusterTestCases = []conversionTestCase{
 						}, "gateways": []interface{}{
 							map[string]interface{}{
 								"port":    443,
-								"service": "istio-ingressgateway..svc.cluster.local",
+								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
 							},
 						},
 					},
@@ -554,7 +566,7 @@ var clusterTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 				},
 				"k8sIngress": map[string]interface{}{
 					"enabled":     true,
@@ -581,6 +593,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.clusterDomain.override." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
@@ -601,7 +614,7 @@ var clusterTestCases = []conversionTestCase{
 					"enabled":           true,
 					"addedLocalNetwork": "my-network",
 					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
@@ -625,7 +638,7 @@ var clusterTestCases = []conversionTestCase{
 						}, "gateways": []interface{}{
 							map[string]interface{}{
 								"port":    443,
-								"service": "istio-ingressgateway..svc.example.com",
+								"service": "istio-ingressgateway.cp-namespace.svc.example.com",
 							},
 						},
 					},
@@ -643,7 +656,7 @@ var clusterTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 				},
 				"proxy": map[string]interface{}{
 					"clusterDomain": "example.com",
@@ -673,6 +686,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.searchSuffix.global." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
@@ -697,7 +711,7 @@ var clusterTestCases = []conversionTestCase{
 					"enabled":           true,
 					"addedLocalNetwork": "my-network",
 					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
 						"addedExternal":     true,
@@ -720,7 +734,7 @@ var clusterTestCases = []conversionTestCase{
 						}, "gateways": []interface{}{
 							map[string]interface{}{
 								"port":    443,
-								"service": "istio-ingressgateway..svc.cluster.local",
+								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
 							},
 						},
 					},
@@ -738,7 +752,7 @@ var clusterTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 				},
 				"k8sIngress": map[string]interface{}{
 					"enabled":     true,
@@ -765,13 +779,14 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.searchSuffix.namespace." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
 				Networking: &v2.ProxyNetworkingConfig{
 					DNS: &v2.ProxyDNSConfig{
 						SearchSuffixes: []string{
-							"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						},
 					},
 				},
@@ -812,7 +827,7 @@ var clusterTestCases = []conversionTestCase{
 						}, "gateways": []interface{}{
 							map[string]interface{}{
 								"port":    443,
-								"service": "istio-ingressgateway..svc.cluster.local",
+								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
 							},
 						},
 					},
@@ -830,7 +845,7 @@ var clusterTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 				},
 				"k8sIngress": map[string]interface{}{
 					"enabled":     true,
@@ -857,6 +872,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.searchSuffix.all." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
@@ -864,7 +880,7 @@ var clusterTestCases = []conversionTestCase{
 					DNS: &v2.ProxyDNSConfig{
 						SearchSuffixes: []string{
 							"global",
-							"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						},
 					},
 				},
@@ -902,7 +918,7 @@ var clusterTestCases = []conversionTestCase{
 						}, "gateways": []interface{}{
 							map[string]interface{}{
 								"port":    443,
-								"service": "istio-ingressgateway..svc.cluster.local",
+								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
 							},
 						},
 					},
@@ -920,7 +936,7 @@ var clusterTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 				},
 				"k8sIngress": map[string]interface{}{
 					"enabled":     true,
@@ -947,6 +963,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.searchSuffix.custom." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
@@ -971,7 +988,7 @@ var clusterTestCases = []conversionTestCase{
 					"enabled":           true,
 					"addedLocalNetwork": "my-network",
 					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
@@ -995,7 +1012,7 @@ var clusterTestCases = []conversionTestCase{
 						}, "gateways": []interface{}{
 							map[string]interface{}{
 								"port":    443,
-								"service": "istio-ingressgateway..svc.cluster.local",
+								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
 							},
 						},
 					},
@@ -1013,7 +1030,7 @@ var clusterTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 					"custom",
 				},
 				"k8sIngress": map[string]interface{}{
@@ -1041,6 +1058,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.searchSuffix.custom.insert." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Proxy: &v2.ProxyConfig{
@@ -1066,7 +1084,7 @@ var clusterTestCases = []conversionTestCase{
 					"enabled":           true,
 					"addedLocalNetwork": "my-network",
 					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
 						"addedExternal":     true,
@@ -1089,7 +1107,7 @@ var clusterTestCases = []conversionTestCase{
 						}, "gateways": []interface{}{
 							map[string]interface{}{
 								"port":    443,
-								"service": "istio-ingressgateway..svc.cluster.local",
+								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
 							},
 						},
 					},
@@ -1108,7 +1126,7 @@ var clusterTestCases = []conversionTestCase{
 				"podDNSSearchNamespaces": []interface{}{
 					"custom",
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 				},
 				"k8sIngress": map[string]interface{}{
 					"enabled":     true,
@@ -1135,6 +1153,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.gateways.egress.unconfigured" + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
@@ -1151,7 +1170,7 @@ var clusterTestCases = []conversionTestCase{
 					"enabled":           true,
 					"addedLocalNetwork": "my-network",
 					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
@@ -1175,7 +1194,7 @@ var clusterTestCases = []conversionTestCase{
 						}, "gateways": []interface{}{
 							map[string]interface{}{
 								"port":    443,
-								"service": "istio-ingressgateway..svc.cluster.local",
+								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
 							},
 						},
 					},
@@ -1193,7 +1212,7 @@ var clusterTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 				},
 				"k8sIngress": map[string]interface{}{
 					"enabled":     true,
@@ -1220,6 +1239,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.gateways.egress.enabled." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
@@ -1244,7 +1264,7 @@ var clusterTestCases = []conversionTestCase{
 					"enabled":           true,
 					"addedLocalNetwork": "my-network",
 					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
@@ -1267,7 +1287,7 @@ var clusterTestCases = []conversionTestCase{
 						}, "gateways": []interface{}{
 							map[string]interface{}{
 								"port":    443,
-								"service": "istio-ingressgateway..svc.cluster.local",
+								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
 							},
 						},
 					},
@@ -1285,7 +1305,7 @@ var clusterTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 				},
 				"k8sIngress": map[string]interface{}{
 					"enabled":     true,
@@ -1312,6 +1332,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.gateways.egress.configured." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
@@ -1339,7 +1360,7 @@ var clusterTestCases = []conversionTestCase{
 					"enabled":           true,
 					"addedLocalNetwork": "my-network",
 					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
@@ -1361,7 +1382,7 @@ var clusterTestCases = []conversionTestCase{
 						}, "gateways": []interface{}{
 							map[string]interface{}{
 								"port":    443,
-								"service": "istio-ingressgateway..svc.cluster.local",
+								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
 							},
 						},
 					},
@@ -1379,7 +1400,7 @@ var clusterTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 				},
 				"k8sIngress": map[string]interface{}{
 					"enabled":     true,
@@ -1406,6 +1427,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.ingress.http." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
@@ -1421,7 +1443,7 @@ var clusterTestCases = []conversionTestCase{
 					"enabled":           true,
 					"addedLocalNetwork": "my-network",
 					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
@@ -1445,7 +1467,7 @@ var clusterTestCases = []conversionTestCase{
 						}, "gateways": []interface{}{
 							map[string]interface{}{
 								"port":    443,
-								"service": "istio-ingressgateway..svc.cluster.local",
+								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
 							},
 						},
 					},
@@ -1463,7 +1485,7 @@ var clusterTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 				},
 				"k8sIngress": map[string]interface{}{
 					"enabled":     true,
@@ -1490,6 +1512,7 @@ var clusterTestCases = []conversionTestCase{
 	},
 	{
 		name: "multicluster.ingress.https." + versions.V2_0.String(),
+		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
@@ -1528,7 +1551,7 @@ var clusterTestCases = []conversionTestCase{
 					"enabled":           true,
 					"addedLocalNetwork": "my-network",
 					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
 					"gatewaysOverrides": map[string]interface{}{
@@ -1550,7 +1573,7 @@ var clusterTestCases = []conversionTestCase{
 						}, "gateways": []interface{}{
 							map[string]interface{}{
 								"port":    443,
-								"service": "istio-ingressgateway..svc.cluster.local",
+								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
 							},
 						},
 					},
@@ -1568,7 +1591,7 @@ var clusterTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"podDNSSearchNamespaces": []interface{}{
 					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"\" }}.global",
+					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 				},
 				"k8sIngress": map[string]interface{}{
 					"enabled":     true,
@@ -1607,7 +1630,7 @@ func TestClusterConversionFromV2(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			specCopy := tc.spec.DeepCopy()
 			helmValues := v1.NewHelmValues(make(map[string]interface{}))
-			if err := populateClusterValues(specCopy, helmValues.GetContent()); err != nil {
+			if err := populateClusterValues(specCopy, tc.namespace, helmValues.GetContent()); err != nil {
 				t.Fatalf("error converting to values: %s", err)
 			}
 			if !reflect.DeepEqual(tc.isolatedIstio.DeepCopy(), helmValues.DeepCopy()) {
