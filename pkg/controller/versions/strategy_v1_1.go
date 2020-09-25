@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	configv1alpha2 "github.com/maistra/istio-operator/pkg/apis/external/istio/config/v1alpha2"
 	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/external/istio/networking/v1alpha3"
@@ -61,6 +62,7 @@ func (v *versionStrategyV1_1) SetImageValues(ctx context.Context, cr *common.Con
 	return nil
 }
 func (v *versionStrategyV1_1) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+	logger := logf.Log.WithName("smcp-validator-1.1")
 	var allErrors []error
 
 	if zipkinAddress, ok, _ := smcp.Spec.Istio.GetString("global.tracer.zipkin.address"); ok && len(zipkinAddress) > 0 {
@@ -111,10 +113,28 @@ func (v *versionStrategyV1_1) ValidateV1(ctx context.Context, cl client.Client, 
 		}
 	}
 
+	smmr := &v1.ServiceMeshMemberRoll{}
+	err := cl.Get(ctx, client.ObjectKey{Name: common.MemberRollName, Namespace: smcp.GetNamespace()}, smmr)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			// log error, but don't fail validation: we'll just assume that the control plane namespace is the only namespace for now
+			logger.Error(err, "failed to retrieve SMMR for SMCP")
+			smmr = nil
+		}
+	}
+
+	meshNamespaces := common.GetMeshNamespaces(smcp.GetNamespace(), smmr)
+	for _, gateway := range getMapKeys(smcp.Spec.Istio, "gateways") {
+		if err := errForStringValue(smcp.Spec.Istio, "gateways."+gateway+".namespace", meshNamespaces); err != nil {
+			allErrors = append(allErrors, fmt.Errorf("%v: namespace must be part of the mesh", err))
+		}
+	}
+
 	return utilerrors.NewAggregate(allErrors)
 }
 
 func (v *versionStrategyV1_1) ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
+	logger := logf.Log.WithName("smcp-validator-1.1")
 	var allErrors []error
 	// I believe the only settings that aren't supported are Istiod policy and telemetry
 	if smcp.Spec.Policy != nil && smcp.Spec.Policy.Type == v2.PolicyTypeIstiod {
@@ -123,6 +143,28 @@ func (v *versionStrategyV1_1) ValidateV2(ctx context.Context, cl client.Client, 
 	if smcp.Spec.Telemetry != nil && smcp.Spec.Telemetry.Type == v2.TelemetryTypeIstiod {
 		allErrors = append(allErrors, fmt.Errorf("telemetry type %s is not supported in version %s", smcp.Spec.Telemetry.Type, v.String()))
 	}
+
+	smmr := &v1.ServiceMeshMemberRoll{}
+	err := cl.Get(ctx, client.ObjectKey{Name: common.MemberRollName, Namespace: smcp.GetNamespace()}, smmr)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			// log error, but don't fail validation: we'll just assume that the control plane namespace is the only namespace for now
+			logger.Error(err, "failed to retrieve SMMR for SMCP")
+			smmr = nil
+		}
+	}
+
+	meshNamespaces := common.GetMeshNamespaces(smcp.GetNamespace(), smmr)
+	gatewayNames := sets.NewString()
+	if smcp.Spec.Gateways != nil {
+		for name, gateway := range smcp.Spec.Gateways.IngressGateways {
+			validateGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, smcp.Namespace, &allErrors)
+		}
+		for name, gateway := range smcp.Spec.Gateways.EgressGateways {
+			validateGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, smcp.Namespace, &allErrors)
+		}
+	}
+
 	return utilerrors.NewAggregate(allErrors)
 }
 
