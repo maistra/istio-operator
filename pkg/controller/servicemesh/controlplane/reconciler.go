@@ -11,10 +11,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/helm/pkg/manifest"
+	"k8s.io/helm/pkg/releaseutil"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/yaml"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -235,6 +239,16 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		}
 	}
 
+	// validate generated manifests
+	// this has to be done always before applying because the memberroll might have changed
+	err = r.validateManifests(ctx)
+	if err != nil {
+		reconciliationReason = status.ConditionReasonReconcileError
+		reconciliationMessage = "Error validating generated manifests"
+		err = errors.Wrap(err, reconciliationMessage)
+		return
+	}
+
 	// create components
 	for _, charts := range r.getChartsInInstallationOrder(version.Strategy().GetChartInstallOrder()) {
 		r.waitForComponents = sets.NewString()
@@ -339,6 +353,48 @@ func (r *controlPlaneInstanceReconciler) validateSMCPSpec(spec v1.ControlPlaneSp
 
 	if _, ok, _ := spec.Istio.GetMap("global"); !ok {
 		return fmt.Errorf("ServiceMeshControlPlane missing %s.istio.global section", basePath)
+	}
+	return nil
+}
+
+func (r *controlPlaneInstanceReconciler) validateManifests(ctx context.Context) error {
+	log := common.LogFromContext(ctx)
+	allErrors := []error{}
+	// validate resource namespaces
+	smmr := &v1.ServiceMeshMemberRoll{}
+	var smmrRetrievalError error
+	if smmrRetrievalError = r.Client.Get(context.TODO(), client.ObjectKey{Namespace: r.Instance.GetNamespace(), Name: common.MemberRollName}, smmr); smmrRetrievalError != nil {
+		if !apierrors.IsNotFound(smmrRetrievalError) {
+			// log error, but don't fail validation just yet: we'll just assume that the control plane namespace is the only namespace for now
+			// if we end up failing validation because of this assumption, we'll return this error
+			log.Error(smmrRetrievalError, "failed to retrieve SMMR for SMCP")
+			smmr = nil
+		}
+	}
+	meshNamespaces := common.GetMeshNamespaces(r.Instance.GetNamespace(), smmr)
+	for _, manifestList := range r.renderings {
+		for _, manifestBundle := range manifestList {
+			manifests := releaseutil.SplitManifests(manifestBundle.Content)
+			for _, manifest := range manifests {
+				obj := &unstructured.Unstructured{
+					Object: make(map[string]interface{}),
+				}
+				err := yaml.Unmarshal([]byte(manifest), &obj.Object)
+				if err != nil || obj.GetNamespace() == "" {
+					continue
+				}
+				if !meshNamespaces.Has(obj.GetNamespace()) {
+					allErrors = append(allErrors, fmt.Errorf("%s: namespace of manifest %s/%s not in mesh", manifestBundle.Name, obj.GetNamespace(), obj.GetName()))
+				}
+			}
+		}
+	}
+	if len(allErrors) > 0 {
+		// if validation fails because we couldn't Get() the SMMR, return that error
+		if smmrRetrievalError != nil {
+			return smmrRetrievalError
+		}
+		return utilerrors.NewAggregate(allErrors)
 	}
 	return nil
 }

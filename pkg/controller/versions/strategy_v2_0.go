@@ -12,10 +12,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/gengo/examples/set-gen/sets"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/yaml"
 
 	jaegerv1 "github.com/maistra/istio-operator/pkg/apis/external/jaeger/v1"
@@ -142,7 +143,31 @@ func (v *versionStrategyV2_0) ValidateV1(ctx context.Context, cl client.Client, 
 }
 
 func (v *versionStrategyV2_0) ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
-	return nil
+	logger := logf.Log.WithName("smcp-validator-1.1")
+	var allErrors []error
+
+	smmr := &v1.ServiceMeshMemberRoll{}
+	err := cl.Get(ctx, client.ObjectKey{Name: common.MemberRollName, Namespace: smcp.GetNamespace()}, smmr)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			// log error, but don't fail validation: we'll just assume that the control plane namespace is the only namespace for now
+			logger.Error(err, "failed to retrieve SMMR for SMCP")
+			smmr = nil
+		}
+	}
+
+	meshNamespaces := common.GetMeshNamespaces(smcp.GetNamespace(), smmr)
+	gatewayNames := sets.NewString()
+	if smcp.Spec.Gateways != nil {
+		for name, gateway := range smcp.Spec.Gateways.IngressGateways {
+			validateGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, smcp.Namespace, &allErrors)
+		}
+		for name, gateway := range smcp.Spec.Gateways.EgressGateways {
+			validateGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, smcp.Namespace, &allErrors)
+		}
+	}
+
+	return utilerrors.NewAggregate(allErrors)
 }
 
 func (v *versionStrategyV2_0) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {

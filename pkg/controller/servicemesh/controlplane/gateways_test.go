@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	. "github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -88,6 +89,14 @@ func TestAdditionalIngressGatewayInstall(t *testing.T) {
 			name: "app-namespace",
 			resources: []runtime.Object{
 				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: appNamespace}},
+				&v1.ServiceMeshMemberRoll{
+					ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: controlPlaneNamespace},
+					Status: v1.ServiceMeshMemberRollStatus{
+						ConfiguredMembers: []string{
+							appNamespace,
+						},
+					},
+				},
 			},
 			smcp: New20SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
 				Gateways: &v2.GatewaysConfig{
