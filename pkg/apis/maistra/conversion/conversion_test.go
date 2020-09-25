@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
@@ -26,6 +27,7 @@ var (
 
 type conversionTestCase struct {
 	name               string
+	namespace          string
 	spec               *v2.ControlPlaneSpec
 	roundTripSpec      *v2.ControlPlaneSpec
 	isolatedIstio      *v1.HelmValues
@@ -140,8 +142,12 @@ func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 	t.Helper()
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			smcpv1 := &v1.ServiceMeshControlPlane{}
+			smcpv1 := &v1.ServiceMeshControlPlane{
+			}
 			smcpv2 := &v2.ServiceMeshControlPlane{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: tc.namespace,
+				},
 				Spec: *tc.spec.DeepCopy(),
 			}
 

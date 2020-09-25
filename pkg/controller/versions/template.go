@@ -70,7 +70,7 @@ func mergeValues(base map[string]interface{}, input map[string]interface{}) map[
 	return base
 }
 
-func (v version) getSMCPProfile(name string) (*v1.ControlPlaneSpec, []string, error) {
+func (v version) getSMCPProfile(name string, targetNamespace string) (*v1.ControlPlaneSpec, []string, error) {
 	if strings.Contains(name, "/") {
 		return nil, nil, fmt.Errorf("profile name contains invalid character '/'")
 	}
@@ -96,13 +96,13 @@ func (v version) getSMCPProfile(name string) (*v1.ControlPlaneSpec, []string, er
 		if len(smcp.Spec.Profiles) == 0 {
 			if smcp.Spec.Template == "" {
 				return &smcp.Spec, nil, nil
-			} else {
-				return &smcp.Spec, []string{smcp.Spec.Template}, nil
 			}
+			return &smcp.Spec, []string{smcp.Spec.Template}, nil
 		}
 		return &smcp.Spec, smcp.Spec.Profiles, nil
 	case *v2.ServiceMeshControlPlane:
 		smcpv1 := &v1.ServiceMeshControlPlane{}
+		smcp.SetNamespace(targetNamespace)
 		if err := smcpv1.ConvertFrom(smcp); err != nil {
 			return nil, nil, err
 		}
@@ -113,7 +113,7 @@ func (v version) getSMCPProfile(name string) (*v1.ControlPlaneSpec, []string, er
 }
 
 //renderSMCPTemplates traverses and processes all of the references templates
-func (v version) recursivelyApplyProfiles(ctx context.Context, smcp *v1.ControlPlaneSpec, profiles []string, visited sets.String) (v1.ControlPlaneSpec, error) {
+func (v version) recursivelyApplyProfiles(ctx context.Context, smcp *v1.ControlPlaneSpec, targetNamespace string, profiles []string, visited sets.String) (v1.ControlPlaneSpec, error) {
 	log := common.LogFromContext(ctx)
 
 	for index := len(profiles) - 1; index >= 0; index-- {
@@ -124,7 +124,7 @@ func (v version) recursivelyApplyProfiles(ctx context.Context, smcp *v1.ControlP
 		}
 		log.Info(fmt.Sprintf("processing smcp profile %s", profileName))
 
-		profile, profiles, err := v.getSMCPProfile(profileName)
+		profile, profiles, err := v.getSMCPProfile(profileName, targetNamespace)
 		if err != nil {
 			return *smcp, err
 		}
@@ -135,7 +135,7 @@ func (v version) recursivelyApplyProfiles(ctx context.Context, smcp *v1.ControlP
 			rawValues, _ = yaml.Marshal(smcp)
 			log.V(5).Info(fmt.Sprintf("before applying profile values:\n%s\n", string(rawValues)))
 		}
-	
+
 		// apply this profile first, then its children
 		smcp.Istio = v1.NewHelmValues(mergeValues(smcp.Istio.GetContent(), profile.Istio.GetContent()))
 		smcp.ThreeScale = v1.NewHelmValues(mergeValues(smcp.ThreeScale.GetContent(), profile.ThreeScale.GetContent()))
@@ -145,7 +145,7 @@ func (v version) recursivelyApplyProfiles(ctx context.Context, smcp *v1.ControlP
 			log.V(5).Info(fmt.Sprintf("after applying profile values:\n%s\n", string(rawValues)))
 		}
 
-		*smcp, err = v.recursivelyApplyProfiles(ctx, smcp, profiles, visited)
+		*smcp, err = v.recursivelyApplyProfiles(ctx, smcp, targetNamespace, profiles, visited)
 		if err != nil {
 			log.Info(fmt.Sprintf("error applying profiles: %s\n", err))
 			return *smcp, err
@@ -208,7 +208,7 @@ func updateImageField(helmValues *v1.HelmValues, path, value string) error {
 	return helmValues.SetField(path, value)
 }
 
-func (v version) applyProfiles(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
+func (v version) applyProfiles(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec, targetNamespace string) (v1.ControlPlaneSpec, error) {
 	log := common.LogFromContext(ctx)
 	log.Info("applying profiles to ServiceMeshControlPlane")
 	profiles := smcpSpec.Profiles
@@ -237,7 +237,7 @@ func (v version) applyProfiles(ctx context.Context, cr *common.ControllerResourc
 		applyDisconnectedSettings = false
 	}
 
-	spec, err := v.recursivelyApplyProfiles(ctx, smcpSpec, profiles, sets.NewString())
+	spec, err := v.recursivelyApplyProfiles(ctx, smcpSpec, targetNamespace, profiles, sets.NewString())
 	if err != nil {
 		return spec, err
 	}

@@ -173,7 +173,7 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 	}
 
 	var err error
-	smcp.Status.AppliedValues, err = v.applyProfiles(ctx, cr, v1spec)
+	smcp.Status.AppliedValues, err = v.applyProfiles(ctx, cr, v1spec, smcp.GetNamespace())
 	if err != nil {
 		log.Error(err, "warning: failed to apply ServiceMeshControlPlane profiles")
 
