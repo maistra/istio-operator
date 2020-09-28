@@ -30,9 +30,8 @@ spec:
       description: How many of the total number of components are ready
       name: Ready
       type: string
-    - JSONPath: .status.conditions[?(@.type=="Ready")].reason
-      description: Whether or not the control plane installation is up to date and
-        ready to handle requests.
+    - JSONPath: .status.conditions[?(@.type=="Reconciled")].reason
+      description: Whether or not the control plane installation is up to date.
       name: Status
       type: string
     - JSONPath: .status.lastAppliedConfiguration.template
