@@ -563,10 +563,10 @@ func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName
 		return pkgerrors.Wrapf(err, "cannot set deployment.accessible_namespaces in Kiali CR %s/%s", kialiCRNamespace, kialiCRName)
 	}
 
-	err = r.Client.Patch(ctx, kialiCR, client.Merge)
+	err = r.Client.Patch(ctx, updatedKiali, client.Merge)
 	if err != nil {
 		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
-			reqLogger.Info(fmt.Sprintf("skipping kiali update, %s/%s is no longer available", kialiCR.GetNamespace(), kialiCR.GetName()))
+			reqLogger.Info(fmt.Sprintf("skipping kiali update, %s/%s is no longer available", kialiCRNamespace, kialiCRName))
 			return nil
 		}
 		return pkgerrors.Wrapf(err, "cannot update Kiali CR %s/%s with new accessible namespaces", kialiCRNamespace, kialiCRName)
