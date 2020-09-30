@@ -18,28 +18,23 @@ spec:
     options:
       query:
         base-path: /
-    annotations:
-      {{- range $key, $value := .Values.tracing.jaeger.annotations }}
-        {{ $key }}: {{ $value | quote }}
-      {{- end }}
 
+{{- if and .Values.tracing.jaeger.hub .Values.tracing.jaeger.tag .Values.tracing.jaeger.collectorImage }}
   collector:
-    {{- if and .Values.tracing.jaeger.hub .Values.tracing.jaeger.tag .Values.tracing.jaeger.collectorImage }}
     image: {{ .Values.tracing.jaeger.hub }}/{{ .Values.tracing.jaeger.collectorImage }}:{{ .Values.tracing.jaeger.tag }}
-    {{- end }}
-    annotations:
-      {{- range $key, $value := .Values.tracing.jaeger.annotations }}
-        {{ $key }}: {{ $value | quote }}
-      {{- end }}
+{{- end }}
 
+{{- if and .Values.tracing.jaeger.hub .Values.tracing.jaeger.tag .Values.tracing.jaeger.agentImage }}
   agent:
-    {{- if and .Values.tracing.jaeger.hub .Values.tracing.jaeger.tag .Values.tracing.jaeger.agentImage }}
     image: {{ .Values.tracing.jaeger.hub }}/{{ .Values.tracing.jaeger.agentImage }}:{{ .Values.tracing.jaeger.tag }}
+{{- end }}
+
+{{- if .Values.tracing.jaeger.annotations }}
+  annotations:
+    {{- range $key, $value := .Values.tracing.jaeger.annotations }}
+      {{ $key }}: {{ $value | quote }}
     {{- end }}
-    annotations:
-      {{- range $key, $value := .Values.tracing.jaeger.annotations }}
-        {{ $key }}: {{ $value | quote }}
-      {{- end }}
+{{- end }}
 
   storage:
     type: elasticsearch
@@ -59,10 +54,12 @@ spec:
 {{- if .Values.tracing.jaeger.elasticsearch.redundancyPolicy }}
       redundancyPolicy: {{ toYaml .Values.tracing.jaeger.elasticsearch.redundancyPolicy }}
 {{- end }}
+{{- if .Values.tracing.jaeger.elasticsearch.nodeSelector }}
       nodeSelector:
         {{- range $key, $value := .Values.tracing.jaeger.elasticsearch.nodeSelector }}
           {{ $key }}: {{ $value | quote }}
         {{- end }}
+{{- end }}
       resources:
 {{- if .Values.tracing.jaeger.elasticsearch.resources }}
 {{ toYaml .Values.tracing.jaeger.elasticsearch.resources | indent 8 }}
@@ -81,10 +78,12 @@ spec:
     enabled: {{ .Values.tracing.ingress.enabled }}
     # XXX: should this be parameterized?
     security: oauth-proxy
+{{- if .Values.tracing.ingress.annotations }}
     annotations:
       {{- range $key, $value := .Values.tracing.ingress.annotations }}
         {{ $key }}: {{ $value | quote }}
       {{- end }}
+{{- end }}
     openshift:
       sar: '{"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}'
       htpasswdFile: /etc/proxy/htpasswd/auth
