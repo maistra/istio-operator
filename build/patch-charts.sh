@@ -163,6 +163,7 @@ function patchGalley() {
   sed_wrap -i -e '/- "discovery"/ a\
           - --memberRollName=default\
           - --cacheCluster=outbound|80||wasm-cacher-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.cluster.local\
+          - --enableNodePortGateways=false\
           - --podLocalitySource=pod' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
   # disable webhook config updates
   sed_wrap -i -r -e '/INJECTION_WEBHOOK_CONFIG_NAME/,/ISTIOD_ADDR/ {
