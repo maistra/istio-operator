@@ -6587,6 +6587,8 @@ spec:
                   additionalProperties:
                     type: string
                   type: object
+              required:
+              - labels
               type: object
           type: object
         status:
