@@ -71,7 +71,6 @@ type ControlPlaneStatus struct {
 	ChartVersion string `json:"chartVersion,omitempty"`
 
 	// The list of components comprising the control plane and their statuses.
-	// +nullable
 	status.ComponentStatusList `json:",inline"`
 
 	// The readiness status of components & owned resources
