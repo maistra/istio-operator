@@ -12,7 +12,7 @@ metadata:
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: maistra/istio-ubi8-operator:2.0.0
-    createdAt: 2020-10-01T17:09:15CEST
+    createdAt: 2020-10-01T17:10:06CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.0.0"
     operators.openshift.io/infrastructure-features: '[]'
@@ -660,14 +660,12 @@ spec:
         description: Set to true to install the Istio 3Scale adapter
         path: addons.3scale.enabled
         x-descriptors:
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:API_Management'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
           - 'urn:alm:descriptor:com.tectonic.ui:advanced'
       - displayName: Default Resource Requirements
         description: Set the default compute resource requests and limits for control plane components
         path: runtime.defaults.container.resources
         x-descriptors:
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Resource_Requirements'
           - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
           - 'urn:alm:descriptor:com.tectonic.ui:advanced'
       statusDescriptors:
