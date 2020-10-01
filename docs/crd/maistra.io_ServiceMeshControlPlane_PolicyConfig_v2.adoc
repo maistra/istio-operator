@@ -1,0 +1,122 @@
+
+
+= PolicyConfig
+
+:toc: right
+
+Used by link:maistra.io_ServiceMeshControlPlane_v2.adoc[ServiceMeshControlPlane(maistra.io/v2)]
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+PolicyConfig configures policy aspects of the mesh.
+
+.Table PolicyConfig Fields
+|===
+| Name | Description | Type
+
+| mixer
+| Mixer configuration (legacy, v1) .Values.mixer.policy.enabled
+| <<MixerPolicyConfig>>
+
+| remote
+| Remote mixer configuration (legacy, v1) .Values.global.remotePolicyAddress
+| <<RemotePolicyConfig>>
+
+| type
+| Required, the policy implementation defaults to Istiod 1.6+, Mixer pre-1.6
+| <<PolicyType>>
+
+|===
+
+
+[#MixerPolicyConfig]
+== MixerPolicyConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+MixerPolicyConfig configures a mixer implementation for policy .Values.mixer.policy.enabled
+
+.Table MixerPolicyConfig Fields
+|===
+| Name | Description | Type
+
+| adapters
+| Adapters configures available adapters.
+| <<MixerPolicyAdaptersConfig>>
+
+| enableChecks
+| EnableChecks configures whether or not policy checks should be enabled. .Values.global.disablePolicyChecks | default "true" (false, inverted logic) Set the following variable to false to disable policy checks by the Mixer. Note that metrics will still be reported to the Mixer.
+| boolean
+
+| failOpen
+| FailOpen configures policy checks to fail if mixer cannot be reached. .Values.global.policyCheckFailOpen, maps to MeshConfig.policyCheckFailOpen policyCheckFailOpen allows traffic in cases when the mixer policy service cannot be reached. Default is false which means the traffic is denied when the client is unable to connect to Mixer.
+| boolean
+
+| sessionAffinity
+| SessionAffinity configures session affinity for sidecar policy connections. .Values.mixer.policy.sessionAffinityEnabled
+| boolean
+
+|===
+
+
+[#MixerPolicyAdaptersConfig]
+== MixerPolicyAdaptersConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+MixerPolicyAdaptersConfig configures policy adapters for mixer.
+
+.Table MixerPolicyAdaptersConfig Fields
+|===
+| Name | Description | Type
+
+| kubernetesenv
+| Kubernetesenv configures the use of the kubernetesenv adapter. .Values.mixer.policy.adapters.kubernetesenv.enabled, defaults to true
+| boolean
+
+| useAdapterCRDs
+| UseAdapterCRDs configures mixer to support deprecated mixer CRDs. .Values.mixer.policy.adapters.useAdapterCRDs, removed in istio 1.4, defaults to false Only supported in v1.0, where it defaulted to true
+| boolean
+
+|===
+
+
+[#RemotePolicyConfig]
+== RemotePolicyConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+RemotePolicyConfig configures a remote mixer instance for policy
+
+.Table RemotePolicyConfig Fields
+|===
+| Name | Description | Type
+
+| address
+| Address represents the address of the mixer server. .Values.global.remotePolicyAddress, maps to MeshConfig.mixerCheckServer
+| string
+
+| createService
+| CreateServices specifies whether or not a k8s Service should be created for the remote policy server. .Values.global.createRemoteSvcEndpoints
+| boolean
+
+| enableChecks
+| EnableChecks configures whether or not policy checks should be enabled. .Values.global.disablePolicyChecks | default "true" (false, inverted logic) Set the following variable to false to disable policy checks by the Mixer. Note that metrics will still be reported to the Mixer.
+| boolean
+
+| failOpen
+| FailOpen configures policy checks to fail if mixer cannot be reached. .Values.global.policyCheckFailOpen, maps to MeshConfig.policyCheckFailOpen policyCheckFailOpen allows traffic in cases when the mixer policy service cannot be reached. Default is false which means the traffic is denied when the client is unable to connect to Mixer.
+| boolean
+
+|===
+
+
+[#PolicyType]
+== PolicyType
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+PolicyType represents the type of policy implementation used by the mesh.
+
+Type: string
+

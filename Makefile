@@ -187,7 +187,7 @@ generate-product-manifests:
 # resource generation
 ################################################################################
 .PHONY: gen
-gen:  generate-crds update-charts update-templates update-generated-code generate-manifests
+gen:  generate-crds update-charts update-templates update-generated-code generate-manifests generate-docs
 
 .PHONY: gen-check
 gen-check: gen restore-manifest-dates check-clean-repo
@@ -202,6 +202,11 @@ generate-manifests: generate-community-manifests generate-product-manifests
 .PHONY: generate-crds
 generate-crds:
 	${SOURCE_DIR}/build/generate-crds.sh
+
+.PHONY: generate-docs
+generate-docs:
+	rm -rf ${SOURCE_DIR}/docs/crd
+	go run -mod=vendor github.com/maistra/istio-operator/tools/doc/ paths=github.com/maistra/istio-operator/pkg/apis/maistra/... output:dir=${SOURCE_DIR}/docs/crd doc:format=adoc,depth=2
 
 .PHONY: restore-manifest-dates
 restore-manifest-dates:

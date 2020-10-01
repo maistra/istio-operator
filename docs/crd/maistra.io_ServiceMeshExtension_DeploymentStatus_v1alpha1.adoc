@@ -1,0 +1,33 @@
+
+
+= DeploymentStatus
+
+:toc: right
+
+Used by link:maistra.io_ServiceMeshExtension_v1alpha1.adoc[ServiceMeshExtension(maistra.io/v1alpha1)]
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v1alpha1
+
+.Table DeploymentStatus Fields
+|===
+| Name | Description | Type
+
+| containerSha256
+| 
+| string
+
+| ready
+| 
+| boolean
+
+| sha256
+| 
+| string
+
+| url
+| 
+| string
+
+|===
+
+
