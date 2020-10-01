@@ -172,6 +172,8 @@ spec:
               reconciledVersion:
                 type: string
             type: object
+        required:
+        - spec
         type: object
     served: true
     storage: false
@@ -6311,6 +6313,8 @@ spec:
             required:
             - readiness
             type: object
+        required:
+        - spec
         type: object
     served: true
     storage: true
@@ -6419,6 +6423,8 @@ spec:
               format: int64
               type: integer
           type: object
+      required:
+      - spec
       type: object
   version: v1
   versions:
@@ -6975,7 +6981,7 @@ spec:
         olm.relatedImage.v1_1.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.1.8
         olm.relatedImage.v1_1.sidecar-injector: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.1.8
 
-        olm.relatedImage.v2_0.3scale-istio-adapter: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:2.0.0
+        olm.relatedImage.v2_0.3scale-istio-adapter: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
         olm.relatedImage.v2_0.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:2.0.0
         olm.relatedImage.v2_0.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:2.0.0
         olm.relatedImage.v2_0.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:2.0.0

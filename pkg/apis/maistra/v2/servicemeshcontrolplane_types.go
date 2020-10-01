@@ -28,7 +28,16 @@ type ServiceMeshControlPlane struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ControlPlaneSpec   `json:"spec,omitempty"`
+	// The specification of the desired state of this ServiceMeshControlPlane.
+	// This includes the configuration options for all components that comprise
+	// the control plane.
+	// +kubebuilder:validation:Required
+	Spec   ControlPlaneSpec   `json:"spec"`
+
+	// The current status of this ServiceMeshControlPlane and the components
+	// that comprise the control plane. This data may be out of date by some
+	// window of time.
+	// +optional
 	Status ControlPlaneStatus `json:"status,omitempty"`
 }
 

@@ -35,7 +35,7 @@ type ServiceMeshMemberRoll struct {
 
 	// Specification of the desired list of members of the service mesh.
 	// +kubebuilder:validation:Required
-	Spec ServiceMeshMemberRollSpec `json:"spec,omitempty"`
+	Spec ServiceMeshMemberRollSpec `json:"spec"`
 
 	// The current status of this ServiceMeshMemberRoll. This data may be out
 	// of date by some window of time.
