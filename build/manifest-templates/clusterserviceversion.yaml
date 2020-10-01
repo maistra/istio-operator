@@ -19,7 +19,7 @@ metadata:
     alm-examples: |-
       [
         {
-          "apiVersion": "maistra.io/v1",
+          "apiVersion": "maistra.io/v2",
           "kind": "ServiceMeshControlPlane",
           "metadata": {
             "name": "basic",
@@ -27,39 +27,23 @@ metadata:
           },
           "spec": {
             "version": "v2.0",
-            "istio": {
-              "gateways": {
-                "istio-egressgateway": {
-                  "autoscaleEnabled": false
-                },
-                "istio-ingressgateway": {
-                  "autoscaleEnabled": false,
-                  "ior_enabled": false
+            "tracing": {
+              "type": "Jaeger",
+              "sampling": 10000
+            },
+            "addons": {
+              "jaeger": {
+                "install": {
+                  "storage": {
+                    "type": "__JAEGER_STORAGE__"
+                  }
                 }
-              },
-              "mixer": {
-                "policy": {
-                  "autoscaleEnabled": false
-                },
-                "telemetry": {
-                  "autoscaleEnabled": false
-                }
-              },
-              "pilot": {
-                "autoscaleEnabled": false,
-                "traceSampling": 100.0
               },
               "kiali": {
                 "enabled": true
               },
               "grafana": {
                 "enabled": true
-              },
-              "tracing": {
-                "enabled": true,
-                "jaeger": {
-                  "template": "__JAEGER_TEMPLATE__"
-                }
               }
             }
           }

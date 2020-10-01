@@ -12,14 +12,14 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
 
     containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.0.0
-    createdAt: 2020-10-01T17:10:19CEST
+    createdAt: 2020-10-01T17:12:00CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.0.0"
     operators.openshift.io/infrastructure-features: '["Disconnected"]'
     alm-examples: |-
       [
         {
-          "apiVersion": "maistra.io/v1",
+          "apiVersion": "maistra.io/v2",
           "kind": "ServiceMeshControlPlane",
           "metadata": {
             "name": "basic",
@@ -27,39 +27,23 @@ metadata:
           },
           "spec": {
             "version": "v2.0",
-            "istio": {
-              "gateways": {
-                "istio-egressgateway": {
-                  "autoscaleEnabled": false
-                },
-                "istio-ingressgateway": {
-                  "autoscaleEnabled": false,
-                  "ior_enabled": false
+            "tracing": {
+              "type": "Jaeger",
+              "sampling": 10000
+            },
+            "addons": {
+              "jaeger": {
+                "install": {
+                  "storage": {
+                    "type": "Memory"
+                  }
                 }
-              },
-              "mixer": {
-                "policy": {
-                  "autoscaleEnabled": false
-                },
-                "telemetry": {
-                  "autoscaleEnabled": false
-                }
-              },
-              "pilot": {
-                "autoscaleEnabled": false,
-                "traceSampling": 100.0
               },
               "kiali": {
                 "enabled": true
               },
               "grafana": {
                 "enabled": true
-              },
-              "tracing": {
-                "enabled": true,
-                "jaeger": {
-                  "template": "all-in-one"
-                }
               }
             }
           }
