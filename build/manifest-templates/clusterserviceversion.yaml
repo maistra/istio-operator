@@ -252,14 +252,12 @@ __DEPLOYMENT_SPEC__
         description: Set to true to install the Istio 3Scale adapter
         path: addons.3scale.enabled
         x-descriptors:
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:API_Management'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
           - 'urn:alm:descriptor:com.tectonic.ui:advanced'
       - displayName: Default Resource Requirements
         description: Set the default compute resource requests and limits for control plane components
         path: runtime.defaults.container.resources
         x-descriptors:
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Resource_Requirements'
           - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
           - 'urn:alm:descriptor:com.tectonic.ui:advanced'
       statusDescriptors:
