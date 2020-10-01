@@ -6,7 +6,7 @@
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-ServiceMeshControlPlane is the Schema for the controlplanes API
+`ServiceMeshControlPlane` is the schema for the control plane API
 
 .Table ServiceMeshControlPlane Fields
 |===

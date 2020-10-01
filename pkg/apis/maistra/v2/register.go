@@ -18,9 +18,9 @@ const (
 )
 
 var (
-	// SchemeGroupVersion is group version used to register these objects
+	// `SchemeGroupVersion` is group version used to register these objects
 	SchemeGroupVersion = schema.GroupVersion{Group: APIGroup, Version: APIVersion}
 
-	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
+	// `SchemeBuilder` is used to add Go types to the `GroupVersionKind` scheme
 	SchemeBuilder = &scheme.Builder{GroupVersion: SchemeGroupVersion}
 )

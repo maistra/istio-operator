@@ -2,56 +2,56 @@ package v2
 
 // LoggingConfig for control plane components
 type LoggingConfig struct {
-	// ComponentLevels configures log level for specific envoy components
-	// .Values.global.proxy.componentLogLevel, overridden by sidecar.istio.io/componentLogLevel
+	// `ComponentLevels` configures log level for specific Envoy components
+	// `.Values.global.proxy.componentLogLevel`, overridden by `sidecar.istio.io/componentLogLevel`
 	// map of <component>:<level>
 	// +optional
 	ComponentLevels ComponentLogLevels `json:"componentLevels,omitempty"`
-	// LogAsJSON enables JSON logging
-	// .Values.global.logAsJson
+	// `LogAsJSON` enables JSON logging
+	// `.Values.global.logAsJson`
 	// +optional
 	LogAsJSON *bool `json:"logAsJSON,omitempty"`
 }
 
-// ProxyLoggingConfig configures logging for a component
+// `ProxyLoggingConfig` configures logging for a component
 type ProxyLoggingConfig struct {
-	// Level the log level
-	// .Values.global.proxy.logLevel, overridden by sidecar.istio.io/logLevel
+	// `Level` configures the proxy log level
+	// `.Values.global.proxy.logLevel`, overridden by `sidecar.istio.io/logLevel`
 	// +optional
 	Level LogLevel `json:"level,omitempty"`
-	// ComponentLevels configures log level for specific envoy components
-	// .Values.global.proxy.componentLogLevel, overridden by sidecar.istio.io/componentLogLevel
+	// `ComponentLevels` configures the log level for specific Envoy components
+	// `.Values.global.proxy.componentLogLevel`, overridden by `sidecar.istio.io/componentLogLevel`
 	// map of <component>:<level>
 	// +optional
 	ComponentLevels ComponentLogLevels `json:"componentLevels,omitempty"`
 }
 
-// ComponentLogLevels represent various logging levels, e.g. trace, debug, etc.
+// `ComponentLogLevels` represent various logging levels, e.g. trace, debug, etc.
 type ComponentLogLevels map[EnvoyComponent]LogLevel
 
-// LogLevel represents the logging level
+// `LogLevel` represents the logging level
 type LogLevel string
 
 const (
-	// LogLevelTrace trace logging level
+	// `LogLevelTrace` sets trace logging level
 	LogLevelTrace LogLevel = "trace"
-	// LogLevelDebug debug logging level
+	// `LogLevelDebug` sets debug logging level
 	LogLevelDebug LogLevel = "debug"
-	// LogLevelInfo info logging level
+	// `LogLevelInfo` set info logging level
 	LogLevelInfo LogLevel = "info"
-	// LogLevelWarning warning logging level
+	// `LogLevelWarning` sets warning logging level
 	LogLevelWarning LogLevel = "warn"
-	// LogLevelWarningProxy proxy warning logging level
+	// `LogLevelWarningProxy` sets proxy warning logging level
 	LogLevelWarningProxy LogLevel = "warning"
-	// LogLevelError error logging level
+	// `LogLevelError` sets error logging level
 	LogLevelError LogLevel = "error"
-	// LogLevelCritical critical logging level
+	// `LogLevelCritical` sets critical logging level
 	LogLevelCritical LogLevel = "critical"
-	// LogLevelOff disable logging
+	// `LogLevelOff` sets disable logging
 	LogLevelOff LogLevel = "off"
 )
 
-// EnvoyComponent represents an envoy component to configure logging
+// `EnvoyComponent` represents an Envoy component to configure logging
 type EnvoyComponent string
 
 // not a comprehensive list

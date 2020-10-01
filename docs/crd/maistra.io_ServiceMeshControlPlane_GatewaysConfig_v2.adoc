@@ -8,7 +8,7 @@ Used by link:maistra.io_ServiceMeshControlPlane_v2.adoc[ServiceMeshControlPlane(
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-GatewaysConfig configures gateways for the mesh
+`GatewaysConfig` configures gateways for the mesh
 
 .Table GatewaysConfig Fields
 |===
@@ -19,23 +19,23 @@ GatewaysConfig configures gateways for the mesh
 | boolean
 
 | additionalEgress
-| Other user defined egress gateways .Values.gateways.<key>
+| Other user defined egress gateways `.Values.gateways.<key>`
 | map[string]<<EgressGatewayConfig>>
 
 | additionalIngress
-| Other user defined ingress gateways .Values.gateways.<key>
+| Other user defined ingress gateways `.Values.gateways.<key>`
 | map[string]<<IngressGatewayConfig>>
 
 | egress
-| ClusterEgress configures the istio-egressgateway for the mesh. .Values.gateways.istio-egressgateway
+| `ClusterEgress` configures the `istio-egressgateway` for the mesh. `.Values.gateways.istio-egressgateway`
 | <<EgressGatewayConfig>>
 
 | ingress
-| ClusterIngress configures the istio-ingressgateway for the mesh works in conjunction with cluster.meshExpansion.ingress configuration (for enabling ILB gateway and mesh expansion ports) .Values.gateways.istio-ingressgateway
+| `ClusterIngress` configures the `istio-ingressgateway` for the mesh works in conjunction with `cluster.meshExpansion.ingress` configuration (for enabling ILB (intermediate load balancer) gateway and mesh expansion ports) `.Values.gateways.istio-ingressgateway`
 | <<ClusterIngressGatewayConfig>>
 
 | openshiftRoute
-| Route configures the Gateway ↔ OpenShift Route integration
+| `Route` configures the Gateway ↔ OpenShift Route integration
 | <<OpenShiftRouteConfig>>
 
 |===
@@ -57,27 +57,27 @@ EgressGatewayConfig represents gateway configuration for egress
 | boolean
 
 | namespace
-| Namespace is the namespace within which the gateway will be installed, defaults to control plane namespace. .Values.gateways.<gateway-name>.namespace XXX: for the standard gateways, it might be possible that related resources could be installed in control plane namespace instead of the gateway namespace.  not sure if this is a problem or not.
+| `Namespace` is the namespace within which the gateway will be installed, defaults to control plane namespace. `.Values.gateways.<gateway-name>.namespace` resources could be installed in control plane namespace instead of the gateway namespace.  not sure if this is a problem or not.
 | string
 
 | routerMode
-| The router mode to be used by the gateway. .Values.gateways.<gateway-name>.env.ISTIO_META_ROUTER_MODE, defaults to sni-dnat
+| The router mode to be used by the gateway. `.Values.gateways.<gateway-name>.env.ISTIO_META_ROUTER_MODE`, defaults to `sni-dnat`
 | <<RouterModeType>>
 
 | runtime
-| Runtime is used to configure execution parameters for the pod/containers e.g. resources, replicas, etc.
+| `Runtime` is used to configure execution parameters for the pod/containers e.g. resources, replicas, etc.
 | <<ComponentRuntimeConfig>>
 
 | service
-| Service configures the service associated with the gateway, e.g. port mappings, service type, annotations/labels, etc. .Values.gateways.<gateway-name>.ports, .Values.gateways.<gateway-name>.type, .Values.gateways.<gateway-name>.loadBalancerIP, .Values.gateways.<gateway-name>.serviceAnnotations, .Values.gateways.<gateway-name>.serviceLabels XXX: currently there is no distinction between labels and serviceLabels
+| `Service` configures the service associated with the gateway, e.g. port mappings, service type, annotations/labels, etc. `.Values.gateways.<gateway-name>.ports`, `.Values.gateways.<gateway-name>.type`, `.Values.gateways.<gateway-name>.loadBalancerIP`, `.Values.gateways.<gateway-name>.serviceAnnotations`, `.Values.gateways.<gateway-name>.serviceLabels`
 | <<GatewayServiceConfig>>
 
 | volumes
-| Volumes is used to configure additional Secret and ConfigMap volumes that should be mounted for the gateway's pod. .Values.gateways.<gateway-name>.secretVolumes, .Values.gateways.<gateway-name>.configMapVolumes
+| `Volumes` is used to configure additional Secret and ConfigMap volumes that should be mounted for the gateway's pod. `.Values.gateways.<gateway-name>.secretVolumes`, `.Values.gateways.<gateway-name>.configMapVolumes`
 | []<<VolumeConfig>>
 
 | requestedNetworkView
-| RequestedNetworkView is a list of networks whose services should be made available to the gateway.  This is used primarily for mesh expansion/multi-cluster. .Values.gateways.<gateway-name>.env.ISTIO_META_REQUESTED_NETWORK_VIEW env, defaults to empty list XXX: I think this is only applicable to egress gateways
+| `RequestedNetworkView` is a list of networks whose services should be made available to the gateway.  This is used primarily for mesh expansion/multi-cluster. `.Values.gateways.<gateway-name>.env.ISTIO_META_REQUESTED_NETWORK_VIEW` env, defaults to empty list
 | []string
 
 |===
@@ -347,7 +347,7 @@ MetadataConfig represents additional metadata to be applied to resources
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-GatewayServiceConfig configures the k8s Service associated with the gateway
+`GatewayServiceConfig` configures the k8s Service associated with the gateway
 
 .Table GatewayServiceConfig Fields
 |===
@@ -425,18 +425,18 @@ GatewayServiceConfig configures the k8s Service associated with the gateway
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-VolumeConfig is used to specify volumes that should be mounted on the pod.
+`VolumeConfig` is used to specify volumes that should be mounted on the pod.
 
 .Table VolumeConfig Fields
 |===
 | Name | Description | Type
 
 | volume
-| Volume.Name maps to .Values.gateways.<gateway-name>.<type>.<type-name> (type-name is configMapName or secretName) .configVolumes -> .configMapName = volume.name .secretVolumes -> .secretName = volume.name Only ConfigMap and Secret fields are supported
+| `Volume.Name` maps to `.Values.gateways.<gateway-name>.<type>.<type-name>` (`type-name` is `configMapName` or `secretName`) `.configVolumes` -> `.configMapName = volume.name` `.secretVolumes` -> `.secretName = volume.name` Only `ConfigMap` and `Secret` fields are supported
 | <<GatewayVolume>>
 
 | volumeMount
-| Mount.Name maps to .Values.gateways.<gateway-name>.<type>.name .configVolumes -> .name = mount.name, .mountPath = mount.mountPath .secretVolumes -> .name = mount.name, .mountPath = mount.mountPath Only Name and MountPath fields are supported
+| `Mount.Name` maps to `.Values.gateways.<gateway-name>.<type>.name` `.configVolumes` -> `.name = mount.name`, `.mountPath = mount.mountPath` `.secretVolumes`-> `.name = mount.name`, `.mountPath = mount.mountPath` Only `Name` and `MountPath` fields are supported
 | <<corev1_VolumeMount>>
 
 |===
@@ -447,18 +447,18 @@ VolumeConfig is used to specify volumes that should be mounted on the pod.
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-GatewayVolume is a pared down version of corev1.Volume, which only supports specifying ConfigMap and Secret volume types.
+`GatewayVolume` is a pared down version of corev1.Volume, which only supports specifying ConfigMap and Secret volume types.
 
 .Table GatewayVolume Fields
 |===
 | Name | Description | Type
 
 | configMap
-| ConfigMap represents a configMap that should populate this volume
+| `ConfigMap` represents a `configMap` that should populate this volume
 | <<corev1_ConfigMapVolumeSource>>
 
 | secret
-| Secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
+| `Secret` represents a secret that should populate this volume. [More info](https://kubernetes.io/docs/concepts/storage/volumes#secret)
 | <<corev1_SecretVolumeSource>>
 
 |===
@@ -469,7 +469,7 @@ GatewayVolume is a pared down version of corev1.Volume, which only supports spec
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-IngressGatewayConfig represents gateway configuration for ingress
+`IngressGatewayConfig` represents gateway configuration for ingress
 
 .Table IngressGatewayConfig Fields
 |===
@@ -480,27 +480,27 @@ IngressGatewayConfig represents gateway configuration for ingress
 | boolean
 
 | namespace
-| Namespace is the namespace within which the gateway will be installed, defaults to control plane namespace. .Values.gateways.<gateway-name>.namespace XXX: for the standard gateways, it might be possible that related resources could be installed in control plane namespace instead of the gateway namespace.  not sure if this is a problem or not.
+| `Namespace` is the namespace within which the gateway will be installed, defaults to control plane namespace. `.Values.gateways.<gateway-name>.namespace` resources could be installed in control plane namespace instead of the gateway namespace.  not sure if this is a problem or not.
 | string
 
 | routerMode
-| The router mode to be used by the gateway. .Values.gateways.<gateway-name>.env.ISTIO_META_ROUTER_MODE, defaults to sni-dnat
+| The router mode to be used by the gateway. `.Values.gateways.<gateway-name>.env.ISTIO_META_ROUTER_MODE`, defaults to `sni-dnat`
 | <<RouterModeType>>
 
 | runtime
-| Runtime is used to configure execution parameters for the pod/containers e.g. resources, replicas, etc.
+| `Runtime` is used to configure execution parameters for the pod/containers e.g. resources, replicas, etc.
 | <<ComponentRuntimeConfig>>
 
 | service
-| Service configures the service associated with the gateway, e.g. port mappings, service type, annotations/labels, etc. .Values.gateways.<gateway-name>.ports, .Values.gateways.<gateway-name>.type, .Values.gateways.<gateway-name>.loadBalancerIP, .Values.gateways.<gateway-name>.serviceAnnotations, .Values.gateways.<gateway-name>.serviceLabels XXX: currently there is no distinction between labels and serviceLabels
+| `Service` configures the service associated with the gateway, e.g. port mappings, service type, annotations/labels, etc. `.Values.gateways.<gateway-name>.ports`, `.Values.gateways.<gateway-name>.type`, `.Values.gateways.<gateway-name>.loadBalancerIP`, `.Values.gateways.<gateway-name>.serviceAnnotations`, `.Values.gateways.<gateway-name>.serviceLabels`
 | <<GatewayServiceConfig>>
 
 | volumes
-| Volumes is used to configure additional Secret and ConfigMap volumes that should be mounted for the gateway's pod. .Values.gateways.<gateway-name>.secretVolumes, .Values.gateways.<gateway-name>.configMapVolumes
+| `Volumes` is used to configure additional Secret and ConfigMap volumes that should be mounted for the gateway's pod. `.Values.gateways.<gateway-name>.secretVolumes`, `.Values.gateways.<gateway-name>.configMapVolumes`
 | []<<VolumeConfig>>
 
 | sds
-| EnableSDS for the gateway. .Values.gateways.<gateway-name>.sds.enabled
+| Enables SDS for the gateway. `.Values.gateways.<gateway-name>.sds.enabled`
 | <<SecretDiscoveryService>>
 
 |===
@@ -522,7 +522,7 @@ SecretDiscoveryService configures whether or not SDS is configured for the gatew
 | boolean
 
 | runtime
-| Runtime configuration for sds sidecar
+| `Runtime` configuration for sds sidecar
 | <<ContainerConfig>>
 
 |===
@@ -544,35 +544,35 @@ ClusterIngressGatewayConfig represents gateway configuration for cluster ingress
 | boolean
 
 | namespace
-| Namespace is the namespace within which the gateway will be installed, defaults to control plane namespace. .Values.gateways.<gateway-name>.namespace XXX: for the standard gateways, it might be possible that related resources could be installed in control plane namespace instead of the gateway namespace.  not sure if this is a problem or not.
+| `Namespace` is the namespace within which the gateway will be installed, defaults to control plane namespace. `.Values.gateways.<gateway-name>.namespace` resources could be installed in control plane namespace instead of the gateway namespace.  not sure if this is a problem or not.
 | string
 
 | routerMode
-| The router mode to be used by the gateway. .Values.gateways.<gateway-name>.env.ISTIO_META_ROUTER_MODE, defaults to sni-dnat
+| The router mode to be used by the gateway. `.Values.gateways.<gateway-name>.env.ISTIO_META_ROUTER_MODE`, defaults to `sni-dnat`
 | <<RouterModeType>>
 
 | runtime
-| Runtime is used to configure execution parameters for the pod/containers e.g. resources, replicas, etc.
+| `Runtime` is used to configure execution parameters for the pod/containers e.g. resources, replicas, etc.
 | <<ComponentRuntimeConfig>>
 
 | service
-| Service configures the service associated with the gateway, e.g. port mappings, service type, annotations/labels, etc. .Values.gateways.<gateway-name>.ports, .Values.gateways.<gateway-name>.type, .Values.gateways.<gateway-name>.loadBalancerIP, .Values.gateways.<gateway-name>.serviceAnnotations, .Values.gateways.<gateway-name>.serviceLabels XXX: currently there is no distinction between labels and serviceLabels
+| `Service` configures the service associated with the gateway, e.g. port mappings, service type, annotations/labels, etc. `.Values.gateways.<gateway-name>.ports`, `.Values.gateways.<gateway-name>.type`, `.Values.gateways.<gateway-name>.loadBalancerIP`, `.Values.gateways.<gateway-name>.serviceAnnotations`, `.Values.gateways.<gateway-name>.serviceLabels`
 | <<GatewayServiceConfig>>
 
 | volumes
-| Volumes is used to configure additional Secret and ConfigMap volumes that should be mounted for the gateway's pod. .Values.gateways.<gateway-name>.secretVolumes, .Values.gateways.<gateway-name>.configMapVolumes
+| `Volumes` is used to configure additional Secret and ConfigMap volumes that should be mounted for the gateway's pod. `.Values.gateways.<gateway-name>.secretVolumes`, `.Values.gateways.<gateway-name>.configMapVolumes`
 | []<<VolumeConfig>>
 
 | sds
-| EnableSDS for the gateway. .Values.gateways.<gateway-name>.sds.enabled
+| Enables SDS for the gateway. `.Values.gateways.<gateway-name>.sds.enabled`
 | <<SecretDiscoveryService>>
 
 | ingress
-| .Values.global.k8sIngress.enabled implies the following: .Values.global.k8sIngress.gatewayName will match the ingress gateway .Values.global.k8sIngress.enableHttps will be true if gateway service exposes port 443 XXX: not sure whether or not this is specific to multicluster, mesh expansion, or both
+| `.Values.global.k8sIngress.enabled` implies the following: `.Values.global.k8sIngress.gatewayName` will match the ingress gateway `.Values.global.k8sIngress.enableHttps` will be true if gateway service exposes port 443
 | boolean
 
 | meshExpansionPorts
-| MeshExpansionPorts define the port set used with multi-cluster/mesh expansion
+| `MeshExpansionPorts` defines the port set used with multi-cluster/mesh expansion
 | []<<corev1_ServicePort>>
 
 |===
@@ -583,7 +583,7 @@ ClusterIngressGatewayConfig represents gateway configuration for cluster ingress
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-OpenShiftRouteConfig represents the Gateway ↔ OpenShift Route integration
+`OpenShiftRouteConfig` represents the Gateway ↔ OpenShift Route integration
 
 .Table OpenShiftRouteConfig Fields
 |===

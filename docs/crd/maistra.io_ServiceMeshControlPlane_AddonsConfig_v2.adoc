@@ -19,7 +19,7 @@ AddonsConfig configures additional features for use with the mesh
 | <<ThreeScaleAddonConfig>>
 
 | grafana
-| Grafana configures a grafana instance to use with the mesh .Values.grafana.enabled, true if not null
+| Grafana configures a grafana instance to use with the mesh `.Values.grafana.enabled`, true if not null
 | <<GrafanaAddonConfig>>
 
 | jaeger
@@ -27,7 +27,7 @@ AddonsConfig configures additional features for use with the mesh
 | <<JaegerAddonConfig>>
 
 | kiali
-| Kiali configures a kiali instance to use with the mesh .Values.kiali.enabled, true if not null
+| Kiali configures a kiali instance to use with the mesh `.Values.kiali.enabled`, true if not null
 | <<KialiAddonConfig>>
 
 | prometheus
@@ -229,11 +229,11 @@ GrafanaAddonConfig configures a grafana instance for use with the mesh. Only one
 | boolean
 
 | address
-| Address is the address of an existing grafana installation implies .Values.kiali.dashboard.grafanaURL
+| `Address` is the address of an existing grafana installation implies .Values.kiali.dashboard.grafanaURL
 | string
 
 | install
-| Install a new grafana instance and manage with control plane
+| `Install` installs a new grafana instance and manage with control plane
 | <<GrafanaInstallConfig>>
 
 |===
@@ -244,30 +244,30 @@ GrafanaAddonConfig configures a grafana instance for use with the mesh. Only one
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-GrafanaInstallConfig is used to configure a new installation of grafana.
+`GrafanaInstallConfig` is used to configure a new installation of grafana.
 
 .Table GrafanaInstallConfig Fields
 |===
 | Name | Description | Type
 
 | config
-| Config configures the behavior of the grafana installation
+| `Config` configures the behavior of the grafana installation
 | <<GrafanaConfig>>
 
 | persistence
-| Persistence configures a PersistentVolume associated with the grafana installation .Values.grafana.persist, true if not null XXX: capacity is not supported in the charts, hard coded to 5Gi
+| `Persistence` configures a PersistentVolume associated with the grafana installation `.Values.grafana.persist`, true if not null
 | <<ComponentPersistenceConfig>>
 
 | security
-| Security is used to secure the grafana service. .Values.grafana.security.enabled, true if not null XXX: unused for maistra, as we use oauth-proxy
+| `Security` is used to secure the grafana service. `.Values.grafana.security.enabled`, true if not null
 | <<GrafanaSecurityConfig>>
 
 | selfManaged
-| SelfManaged, true if the entire install should be managed by Maistra, false if using grafana CR (not supported)
+| `SelfManaged`, indicates whether the Grafana install is managed by Maistra or the Grafana custom resource. Set to true to use the Maistra installer. No support is provided for the Grafana custom resource.
 | boolean
 
 | service
-| Service configures the k8s Service associated with the grafana installation XXX: grafana service config does not follow other addon components' structure
+| `Service` configures the k8s Service associated with the grafana installation
 | <<ComponentServiceConfig>>
 
 |===
@@ -278,18 +278,18 @@ GrafanaInstallConfig is used to configure a new installation of grafana.
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-GrafanaConfig configures the behavior of the grafana installation
+`GrafanaConfig` configures the behavior of the grafana installation
 
 .Table GrafanaConfig Fields
 |===
 | Name | Description | Type
 
 | env
-| Env allows specification of various grafana environment variables to be configured on the grafana container. .Values.grafana.env XXX: This is pretty cheesy...
+| `Env` allows specification of various grafana environment variables to be configured on the Grafana container. .Values.grafana.env
 | map[string]string
 
 | envSecrets
-| EnvSecrets allows specification of secret fields into grafana environment variables to be configured on the grafana container .Values.grafana.envSecrets XXX: This is pretty cheesy...
+| `EnvSecrets` allows specification of secret fields into grafana environment variables to be configured on the grafana container `.Values.grafana.envSecrets`
 | map[string]string
 
 |===
@@ -330,7 +330,7 @@ ComponentPersistenceConfig is used to configure persistance for a component.
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-GrafanaSecurityConfig is used to secure access to grafana
+`GrafanaSecurityConfig` is used to secure access to grafana
 
 .Table GrafanaSecurityConfig Fields
 |===
@@ -341,15 +341,15 @@ GrafanaSecurityConfig is used to secure access to grafana
 | boolean
 
 | passphraseKey
-| PassphraseKey is the name of the key within the secret identifying the password.
+| `PassphraseKey` is the name of the key within the secret identifying the password.
 | string
 
 | secretName
-| SecretName is the name of a secret containing the username/password that should be used to access grafana.
+| `SecretName` is the name of a secret containing the username/password that should be used to access grafana.
 | string
 
 | usernameKey
-| UsernameKey is the name of the key within the secret identifying the username.
+| `UsernameKey` is the name of the key within the secret identifying the username.
 | string
 
 |===
@@ -427,11 +427,11 @@ MetadataConfig represents additional metadata to be applied to resources
 | Name | Description | Type
 
 | annotations
-| 
+|
 | map[string]string
 
 | labels
-| 
+|
 | map[string]string
 
 |===
@@ -442,18 +442,18 @@ MetadataConfig represents additional metadata to be applied to resources
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-JaegerAddonConfig configuration specific to Jaeger integration. XXX: this currently deviates from upstream, which creates a jaeger all-in-one deployment manually
+`JaegerAddonConfig` configuration specific to Jaeger integration.
 
 .Table JaegerAddonConfig Fields
 |===
 | Name | Description | Type
 
 | install
-| Install configures a Jaeger installation, which will be created if the named Jaeger resource is not present.  If null, the named Jaeger resource must exist.
+| `Install` configures a Jaeger installation, which will be created if the named Jaeger resource is not present.  If null, the named Jaeger resource must exist.
 | <<JaegerInstallConfig>>
 
 | name
-| Name of Jaeger CR, Namespace must match control plane namespace
+| Name of Jaeger custom resource, Namespace must match control plane namespace
 | string
 
 |===
@@ -464,18 +464,18 @@ JaegerAddonConfig configuration specific to Jaeger integration. XXX: this curren
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-JaegerInstallConfig configures a Jaeger installation.
+`JaegerInstallConfig` configures a Jaeger installation.
 
 .Table JaegerInstallConfig Fields
 |===
 | Name | Description | Type
 
 | ingress
-| Ingress configures k8s Ingress or OpenShift Route for Jaeger services .Values.tracing.jaeger.ingress.enabled, false if null
+| `Ingress` configures k8s Ingress or OpenShift Route for Jaeger services .Values.tracing.jaeger.ingress.enabled, false if null
 | <<JaegerIngressConfig>>
 
 | storage
-| Config represents the configuration of Jaeger behavior.
+| `Config` represents the configuration of Jaeger behavior.
 | <<JaegerStorageConfig>>
 
 |===
@@ -486,7 +486,7 @@ JaegerInstallConfig configures a Jaeger installation.
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-JaegerIngressConfig configures k8s Ingress or OpenShift Route for exposing Jaeger services.
+`JaegerIngressConfig` configures Kubernetes Ingress or OpenShift Route for exposing Jaeger services.
 
 .Table JaegerIngressConfig Fields
 |===
@@ -497,7 +497,7 @@ JaegerIngressConfig configures k8s Ingress or OpenShift Route for exposing Jaege
 | boolean
 
 | metadata
-| Metadata represents addtional annotations/labels to be applied to the ingress/route.
+| `Metadata` represents addtional annotations/labels to be applied to the ingress/route.
 | <<MetadataConfig>>
 
 |===
@@ -508,18 +508,18 @@ JaegerIngressConfig configures k8s Ingress or OpenShift Route for exposing Jaege
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-JaegerStorageConfig configures the storage used by the Jaeger installation.
+`JaegerStorageConfig` configures the storage used by the Jaeger installation.
 
 .Table JaegerStorageConfig Fields
 |===
 | Name | Description | Type
 
 | elasticsearch
-| Elasticsearch represents configuration of elasticsearch storage implies .Values.tracing.jaeger.template=production-elasticsearch
+| `Elasticsearch` represents configuration of elasticsearch storage implies .Values.tracing.jaeger.template=production-elasticsearch
 | <<JaegerElasticsearchStorageConfig>>
 
 | memory
-| Memory represents configuration of in-memory storage implies .Values.tracing.jaeger.template=all-in-one
+| `Memory` represents configuration of in-memory storage implies `.Values.tracing.jaeger.template`=`all-in-one`
 | <<JaegerMemoryStorageConfig>>
 
 | type
@@ -534,26 +534,26 @@ JaegerStorageConfig configures the storage used by the Jaeger installation.
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-JaegerElasticsearchStorageConfig configures elasticsearch storage parameters for Jaeger
+`JaegerElasticsearchStorageConfig` configures elasticsearch storage parameters for Jaeger
 
 .Table JaegerElasticsearchStorageConfig Fields
 |===
 | Name | Description | Type
 
 | indexCleaner
-| IndexCleaner represents the configuration for the elasticsearch index cleaner .Values.tracing.jaeger.elasticsearch.esIndexCleaner, raw yaml XXX: RawExtension?
+| `IndexCleaner` represents the configuration for the elasticsearch index cleaner `.Values.tracing.jaeger.elasticsearch.esIndexCleaner`, raw yaml
 | <<maistrav1_HelmValues>>
 
 | nodeCount
-| NodeCount represents the number of elasticsearch nodes to create. .Values.tracing.jaeger.elasticsearch.nodeCount, defaults to 3
+| `NodeCount` represents the number of elasticsearch nodes to create. Defaults to 3. `.Values.tracing.jaeger.elasticsearch.nodeCount`
 | integer
 
 | redundancyPolicy
-| RedundancyPolicy configures the redundancy policy for elasticsearch .Values.tracing.jaeger.elasticsearch.redundancyPolicy, raw yaml
+| `RedundancyPolicy` configures the redundancy policy for elasticsearch `.Values.tracing.jaeger.elasticsearch.redundancyPolicy`, raw YAML
 | string
 
 | storage
-| Storage represents storage configuration for elasticsearch. .Values.tracing.jaeger.elasticsearch.storage, raw yaml XXX: RawExtension?
+| Storage represents storage configuration for elasticsearch. `.Values.tracing.jaeger.elasticsearch.storage`, raw yaml
 | <<maistrav1_HelmValues>>
 
 |===
@@ -564,14 +564,14 @@ JaegerElasticsearchStorageConfig configures elasticsearch storage parameters for
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-JaegerMemoryStorageConfig configures in-memory storage parameters for Jaeger
+`JaegerMemoryStorageConfig` configures in-memory storage parameters for Jaeger
 
 .Table JaegerMemoryStorageConfig Fields
 |===
 | Name | Description | Type
 
 | maxTraces
-| MaxTraces to store .Values.tracing.jaeger.memory.max_traces, defaults to 100000
+| `MaxTraces` configures the maximum number of traces to store. Defaults to 100000. `.Values.tracing.jaeger.memory.max_traces`
 | integer
 
 |===
@@ -582,7 +582,7 @@ JaegerMemoryStorageConfig configures in-memory storage parameters for Jaeger
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-JaegerStorageType represents the type of storage configured for Jaeger
+`JaegerStorageType` represents the type of storage configured for Jaeger
 
 Type: string
 
@@ -591,7 +591,7 @@ Type: string
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-KialiAddonConfig is used to configure a kiali instance for use with the mesh
+`KialiAddonConfig` is used to configure a kiali instance for use with the mesh
 
 .Table KialiAddonConfig Fields
 |===
@@ -617,18 +617,18 @@ KialiAddonConfig is used to configure a kiali instance for use with the mesh
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-KialiInstallConfig is used to configure a kiali installation
+`KialiInstallConfig` is used to configure a kiali installation
 
 .Table KialiInstallConfig Fields
 |===
 | Name | Description | Type
 
 | dashboard
-| Dashboard configures the behavior of the kiali dashboard.
+| `Dashboard` configures the behavior of the kiali dashboard.
 | <<KialiDashboardConfig>>
 
 | service
-| Service is used to configure the k8s Service associated with the kiali installation. XXX: provided for upstream support, only ingress is used, and then only for enablement and contextPath
+| `Service` is used to configure the k8s Service associated with the Kiali installation. Ingress is used for enablement and context path. for enablement and contextPath
 | <<ComponentServiceConfig>>
 
 |===
@@ -646,7 +646,7 @@ KialiDashboardConfig configures the behavior of the kiali dashboard
 | Name | Description | Type
 
 | enableGrafana
-| XXX: should the user have a choice here, or should these be configured automatically if they are enabled for the control plane installation? Grafana endpoint will be configured based on Grafana configuration
+| Grafana endpoint will be configured based on Grafana configuration
 | boolean
 
 | enablePrometheus
@@ -658,7 +658,7 @@ KialiDashboardConfig configures the behavior of the kiali dashboard
 | boolean
 
 | viewOnly
-| ViewOnly configures view_only_mode for the dashboard .Values.kiali.dashboard.viewOnlyMode
+| ViewOnly configures view_only_mode for the dashboard `.Values.kiali.dashboard.viewOnlyMode`
 | boolean
 
 |===
@@ -669,7 +669,7 @@ KialiDashboardConfig configures the behavior of the kiali dashboard
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-PrometheusAddonConfig configures a prometheus instance to be used by the control plane.  Only one of Install or Address may be specified
+`PrometheusAddonConfig` configures a Prometheus instance to be used by the control plane.  Only one of `Install` or `Address` may be specified
 
 .Table PrometheusAddonConfig Fields
 |===
@@ -680,19 +680,19 @@ PrometheusAddonConfig configures a prometheus instance to be used by the control
 | boolean
 
 | address
-| Address of existing prometheus installation implies .Values.kiali.prometheusAddr XXX: do we need to do anything to configure credentials for accessing the prometheus server?
+| Address of existing prometheus installation implies .Values.kiali.prometheusAddr
 | string
 
 | install
-| Install configuration if not using an existing prometheus installation. .Values.prometheus.enabled, if not null
+| Install configuration if not using an existing Prometheus installation. `.Values.prometheus.enabled`, if not null
 | <<PrometheusInstallConfig>>
 
 | metricsExpiryDuration
-| MetricsExpiryDuration is the duration to hold metrics. (mixer/v1 only) .Values.mixer.adapters.prometheus.metricsExpiryDuration, defaults to 10m
+| `MetricsExpiryDuration` is the duration to hold metrics. (mixer/v1 only) Defaults to 10m `.Values.mixer.adapters.prometheus.metricsExpiryDuration`
 | string
 
 | scrape
-| Scrape metrics from the pod if true. (maistra-2.0+) defaults to true .Values.meshConfig.enablePrometheusMerge
+| Scrape metrics from the pod if true. (maistra-2.0+). Defaults to true `.Values.meshConfig.enablePrometheusMerge`
 | boolean
 
 |===
@@ -703,30 +703,30 @@ PrometheusAddonConfig configures a prometheus instance to be used by the control
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-PrometheusInstallConfig represents the configuration to be applied when installing a new instance of prometheus for use with the mesh.
+`PrometheusInstallConfig` represents the configuration to be applied when installing a new instance of Prometheus for use with the mesh.
 
 .Table PrometheusInstallConfig Fields
 |===
 | Name | Description | Type
 
 | retention
-| Retention specifies how long metrics should be retained by prometheus. .Values.prometheus.retention, defaults to 6h
+| `Retention` specifies how long metrics should be retained by Prometheus. Defaults to 6h. `.Values.prometheus.retention`
 | string
 
 | scrapeInterval
-| ScrapeInterval specifies how frequently prometheus should scrape pods for metrics. .Values.prometheus.scrapeInterval, defaults to 15s
+| `ScrapeInterval` specifies how frequently Prometheus should scrape pods for metrics. Defaults to 15s. `.Values.prometheus.scrapeInterval`
 | string
 
 | selfManaged
-| SelfManaged specifies whether or not the entire install should be managed by Maistra (true) or the Prometheus operator (false, not supported). Governs use of either prometheus charts or prometheusOperator charts.
+| `SelfManaged` specifies whether or not the Maistra operator or Prometheus operator should manage the Prometheus installation. Set `SelfManaged` to `true` to use the Maistra operator or `false` to use the Prometheus operator. No support is provided for the Prometheus operator. Governs use of either prometheus charts or prometheusOperator charts.
 | boolean
 
 | service
-| Service allows for customization of the k8s Service associated with the prometheus installation.
+| `Service` allows for customization of the Kubernetes Service associated with the Prometheus installation.
 | <<ComponentServiceConfig>>
 
 | useTLS
-| UseTLS for the prometheus server .Values.prometheus.provisionPrometheusCert 1.6+ ProvisionCert bool this seems to overlap with provision cert, as this manifests something similar to the above .Values.prometheus.security.enabled, version < 1.6 EnableSecurity bool
+| `UseTLS` configures whether the Prometheus server should use TLS. `.Values.prometheus.provisionPrometheusCert` 1.6+
 | boolean
 
 |===

@@ -9,11 +9,11 @@ type AddonsConfig struct {
 	// Jaeger configures Jaeger specific addon capabilities
 	Jaeger *JaegerAddonConfig `json:"jaeger,omitempty"`
 	// Grafana configures a grafana instance to use with the mesh
-	// .Values.grafana.enabled, true if not null
+	// `.Values.grafana.enabled`, true if not null
 	// +optional
 	Grafana *GrafanaAddonConfig `json:"grafana,omitempty"`
 	// Kiali configures a kiali instance to use with the mesh
-	// .Values.kiali.enabled, true if not null
+	// `.Values.kiali.enabled`, true if not null
 	// +optional
 	Kiali *KialiAddonConfig `json:"kiali,omitempty"`
 	// ThreeScale configures the 3scale adapter

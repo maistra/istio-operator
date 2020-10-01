@@ -226,18 +226,18 @@ ProxyInjectionConfig configures sidecar injection for the mesh.
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-ProxyLoggingConfig configures logging for a component
+`ProxyLoggingConfig` configures logging for a component
 
 .Table ProxyLoggingConfig Fields
 |===
 | Name | Description | Type
 
 | componentLevels
-| ComponentLevels configures log level for specific envoy components .Values.global.proxy.componentLogLevel, overridden by sidecar.istio.io/componentLogLevel map of <component>:<level>
+| `ComponentLevels` configures the log level for specific Envoy components `.Values.global.proxy.componentLogLevel`, overridden by `sidecar.istio.io/componentLogLevel` map of <component>:<level>
 | <<ComponentLogLevels>>
 
 | level
-| Level the log level .Values.global.proxy.logLevel, overridden by sidecar.istio.io/logLevel
+| `Level` configures the proxy log level `.Values.global.proxy.logLevel`, overridden by `sidecar.istio.io/logLevel`
 | <<LogLevel>>
 
 |===
@@ -248,7 +248,7 @@ ProxyLoggingConfig configures logging for a component
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-ComponentLogLevels represent various logging levels, e.g. trace, debug, etc.
+`ComponentLogLevels` represent various logging levels, e.g. trace, debug, etc.
 
 Type: map[string]<<LogLevel>>
 
@@ -257,7 +257,7 @@ Type: map[string]<<LogLevel>>
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-LogLevel represents the logging level
+`LogLevel` represents the logging level
 
 Type: string
 

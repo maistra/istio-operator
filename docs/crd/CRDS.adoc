@@ -6,7 +6,7 @@
 
 === v2
 
-link:maistra.io_ServiceMeshControlPlane_v2.adoc[ServiceMeshControlPlane]:: ServiceMeshControlPlane is the Schema for the controlplanes API
+link:maistra.io_ServiceMeshControlPlane_v2.adoc[ServiceMeshControlPlane]:: `ServiceMeshControlPlane` is the schema for the control plane API
 
 === v1
 

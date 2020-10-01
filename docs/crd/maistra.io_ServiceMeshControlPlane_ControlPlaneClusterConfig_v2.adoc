@@ -8,26 +8,26 @@ Used by link:maistra.io_ServiceMeshControlPlane_v2.adoc[ServiceMeshControlPlane(
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-ControlPlaneClusterConfig configures aspects related to clustering.
+`ControlPlaneClusterConfig` configures aspects related to clustering.
 
 .Table ControlPlaneClusterConfig Fields
 |===
 | Name | Description | Type
 
 | meshExpansion
-| .Values.global.meshExpansion.enabled, if not null XXX: it's not clear whether or not there is any overlap with MultiCluster, i.e. does MultiCluster require mesh expansion ports to be configured on the ingress gateway?
+| `.Values.global.meshExpansion.enabled`, if not null i.e. does MultiCluster require mesh expansion ports to be configured on the ingress gateway?
 | <<MeshExpansionConfig>>
 
 | multiCluster
-| .Values.global.multiCluster.enabled, if not null
+| `.Values.global.multiCluster.enabled`, if not null
 | <<MultiClusterConfig>>
 
 | name
-| .Values.global.multiCluster.clusterName, defaults to Kubernetes
+| `.Values.global.multiCluster.clusterName`, defaults to `Kubernetes`
 | string
 
 | network
-| .Values.global.network XXX: not sure what the difference is between this and cluster name
+| `.Values.global.network`
 | string
 
 |===
@@ -38,7 +38,7 @@ ControlPlaneClusterConfig configures aspects related to clustering.
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-MeshExpansionConfig configures aspects related to mesh expansion
+`MeshExpansionConfig` configures aspects related to mesh expansion
 
 .Table MeshExpansionConfig Fields
 |===
@@ -49,7 +49,7 @@ MeshExpansionConfig configures aspects related to mesh expansion
 | boolean
 
 | ilbGateway
-| .Values.global.meshExpansion.useILB, true if not null, otherwise uses ingress gateway
+| `.Values.global.meshExpansion.useILB`, defaults to true if not null, otherwise uses ingress gateway
 | <<GatewayConfig>>
 
 |===
@@ -60,7 +60,7 @@ MeshExpansionConfig configures aspects related to mesh expansion
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-GatewayConfig represents the configuration for a gateway XXX: should standard istio secrets be configured automatically, i.e. should the user be forced to add these manually?
+`GatewayConfig` represents the configuration for a gateway the user be forced to add these manually?
 
 .Table GatewayConfig Fields
 |===
@@ -71,23 +71,23 @@ GatewayConfig represents the configuration for a gateway XXX: should standard is
 | boolean
 
 | namespace
-| Namespace is the namespace within which the gateway will be installed, defaults to control plane namespace. .Values.gateways.<gateway-name>.namespace XXX: for the standard gateways, it might be possible that related resources could be installed in control plane namespace instead of the gateway namespace.  not sure if this is a problem or not.
+| `Namespace` is the namespace within which the gateway will be installed, defaults to control plane namespace. `.Values.gateways.<gateway-name>.namespace` resources could be installed in control plane namespace instead of the gateway namespace.  not sure if this is a problem or not.
 | string
 
 | routerMode
-| The router mode to be used by the gateway. .Values.gateways.<gateway-name>.env.ISTIO_META_ROUTER_MODE, defaults to sni-dnat
+| The router mode to be used by the gateway. `.Values.gateways.<gateway-name>.env.ISTIO_META_ROUTER_MODE`, defaults to `sni-dnat`
 | <<RouterModeType>>
 
 | runtime
-| Runtime is used to configure execution parameters for the pod/containers e.g. resources, replicas, etc.
+| `Runtime` is used to configure execution parameters for the pod/containers e.g. resources, replicas, etc.
 | <<ComponentRuntimeConfig>>
 
 | service
-| Service configures the service associated with the gateway, e.g. port mappings, service type, annotations/labels, etc. .Values.gateways.<gateway-name>.ports, .Values.gateways.<gateway-name>.type, .Values.gateways.<gateway-name>.loadBalancerIP, .Values.gateways.<gateway-name>.serviceAnnotations, .Values.gateways.<gateway-name>.serviceLabels XXX: currently there is no distinction between labels and serviceLabels
+| `Service` configures the service associated with the gateway, e.g. port mappings, service type, annotations/labels, etc. `.Values.gateways.<gateway-name>.ports`, `.Values.gateways.<gateway-name>.type`, `.Values.gateways.<gateway-name>.loadBalancerIP`, `.Values.gateways.<gateway-name>.serviceAnnotations`, `.Values.gateways.<gateway-name>.serviceLabels`
 | <<GatewayServiceConfig>>
 
 | volumes
-| Volumes is used to configure additional Secret and ConfigMap volumes that should be mounted for the gateway's pod. .Values.gateways.<gateway-name>.secretVolumes, .Values.gateways.<gateway-name>.configMapVolumes
+| `Volumes` is used to configure additional Secret and ConfigMap volumes that should be mounted for the gateway's pod. `.Values.gateways.<gateway-name>.secretVolumes`, `.Values.gateways.<gateway-name>.configMapVolumes`
 | []<<VolumeConfig>>
 
 |===
@@ -357,7 +357,7 @@ MetadataConfig represents additional metadata to be applied to resources
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-GatewayServiceConfig configures the k8s Service associated with the gateway
+`GatewayServiceConfig` configures the k8s Service associated with the gateway
 
 .Table GatewayServiceConfig Fields
 |===
@@ -435,18 +435,18 @@ GatewayServiceConfig configures the k8s Service associated with the gateway
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-VolumeConfig is used to specify volumes that should be mounted on the pod.
+`VolumeConfig` is used to specify volumes that should be mounted on the pod.
 
 .Table VolumeConfig Fields
 |===
 | Name | Description | Type
 
 | volume
-| Volume.Name maps to .Values.gateways.<gateway-name>.<type>.<type-name> (type-name is configMapName or secretName) .configVolumes -> .configMapName = volume.name .secretVolumes -> .secretName = volume.name Only ConfigMap and Secret fields are supported
+| `Volume.Name` maps to `.Values.gateways.<gateway-name>.<type>.<type-name>` (`type-name` is `configMapName` or `secretName`) `.configVolumes` -> `.configMapName = volume.name` `.secretVolumes` -> `.secretName = volume.name` Only `ConfigMap` and `Secret` fields are supported
 | <<GatewayVolume>>
 
 | volumeMount
-| Mount.Name maps to .Values.gateways.<gateway-name>.<type>.name .configVolumes -> .name = mount.name, .mountPath = mount.mountPath .secretVolumes -> .name = mount.name, .mountPath = mount.mountPath Only Name and MountPath fields are supported
+| `Mount.Name` maps to `.Values.gateways.<gateway-name>.<type>.name` `.configVolumes` -> `.name = mount.name`, `.mountPath = mount.mountPath` `.secretVolumes`-> `.name = mount.name`, `.mountPath = mount.mountPath` Only `Name` and `MountPath` fields are supported
 | <<corev1_VolumeMount>>
 
 |===
@@ -457,18 +457,18 @@ VolumeConfig is used to specify volumes that should be mounted on the pod.
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-GatewayVolume is a pared down version of corev1.Volume, which only supports specifying ConfigMap and Secret volume types.
+`GatewayVolume` is a pared down version of corev1.Volume, which only supports specifying ConfigMap and Secret volume types.
 
 .Table GatewayVolume Fields
 |===
 | Name | Description | Type
 
 | configMap
-| ConfigMap represents a configMap that should populate this volume
+| `ConfigMap` represents a `configMap` that should populate this volume
 | <<corev1_ConfigMapVolumeSource>>
 
 | secret
-| Secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
+| `Secret` represents a secret that should populate this volume. [More info](https://kubernetes.io/docs/concepts/storage/volumes#secret)
 | <<corev1_SecretVolumeSource>>
 
 |===
@@ -479,7 +479,7 @@ GatewayVolume is a pared down version of corev1.Volume, which only supports spec
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-MultiClusterConfig configures aspects related to multi-cluster. implies the following: adds external to RequestedNetworkView (ISTIO_META_REQUESTED_NETWORK_VIEW) for egress gateway adds "global" and "{{ valueOrDefault .DeploymentMeta.Namespace \"default\" }}.global" to pod dns search suffixes
+MultiClusterConfig configures aspects related to multi-cluster. implies the following: adds external to RequestedNetworkView (ISTIO_META_REQUESTED_NETWORK_VIEW) for egress gateway adds `global` and `{{ valueOrDefault .DeploymentMeta.Namespace \"default\" }}.global` to pod dns search suffixes
 
 .Table MultiClusterConfig Fields
 |===
@@ -490,7 +490,7 @@ MultiClusterConfig configures aspects related to multi-cluster. implies the foll
 | boolean
 
 | meshNetworks
-| .Values.global.meshNetworks XXX: if non-empty, local cluster network should be configured as:  <spec.cluster.network>:      endpoints:      - fromRegistry: <spec.cluster.name>      gateways:      - service: <ingress-gateway-service-name>        port: 443 # mtls port
+| `.Values.global.meshNetworks`  ```  <spec.cluster.network>:      endpoints:      - fromRegistry: <spec.cluster.name>      gateways:      - service: <ingress-gateway-service-name>        port: 443 # mtls port  ```
 | map[string]<<MeshNetworkConfig>>
 
 |===
@@ -501,7 +501,7 @@ MultiClusterConfig configures aspects related to multi-cluster. implies the foll
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-MeshNetworkConfig configures mesh networks for a multi-cluster mesh.
+`MeshNetworkConfig` configures mesh networks for a multi-cluster mesh.
 
 .Table MeshNetworkConfig Fields
 |===
@@ -523,18 +523,18 @@ MeshNetworkConfig configures mesh networks for a multi-cluster mesh.
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v2
 
-MeshEndpointConfig specifies the endpoint of a mesh network.  Only one of FromRegistry or FromCIDR may be specified
+`MeshEndpointConfig` specifies the endpoint of a mesh network.  Only one of `FromRegistry` or `FromCIDR` may be specified
 
 .Table MeshEndpointConfig Fields
 |===
 | Name | Description | Type
 
 | fromCIDR
-| 
+| `fromCIDR` adds a CIDR range for the set of endpoints to this network. CIDR ranges for endpoints from different networks cannot overlap.
 | string
 
 | fromRegistry
-| 
+| `fromRegistry` adds all endpoints from the specified registry to this network.
 | string
 
 |===

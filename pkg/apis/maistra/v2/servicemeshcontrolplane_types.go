@@ -13,7 +13,7 @@ func init() {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ServiceMeshControlPlane is the Schema for the controlplanes API
+// `ServiceMeshControlPlane` is the schema for the control plane API
 // +k8s:openapi-gen=true
 // +kubebuilder:storageversion
 // +kubebuilder:resource:shortName=smcp,categories=maistra-io
@@ -32,7 +32,7 @@ type ServiceMeshControlPlane struct {
 	// This includes the configuration options for all components that comprise
 	// the control plane.
 	// +kubebuilder:validation:Required
-	Spec   ControlPlaneSpec   `json:"spec"`
+	Spec ControlPlaneSpec `json:"spec"`
 
 	// The current status of this ServiceMeshControlPlane and the components
 	// that comprise the control plane. This data may be out of date by some
@@ -102,7 +102,6 @@ func (s *ControlPlaneStatus) GetReconciledVersion() string {
 	}
 	return status.ComposeReconciledVersion(s.OperatorVersion, s.ObservedGeneration)
 }
-
 
 // ControlPlaneSpec represents the configuration for installing a control plane
 type ControlPlaneSpec struct {
