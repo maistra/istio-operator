@@ -3212,7 +3212,6 @@ spec:
                 type: string
             type: object
           status:
-            nullable: true
             properties:
               annotations:
                 additionalProperties:
