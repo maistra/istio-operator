@@ -12,7 +12,7 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
 
     containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.0.0
-    createdAt: 2020-10-01T17:12:00CEST
+    createdAt: 2020-10-02T16:40:29CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.0.0"
     operators.openshift.io/infrastructure-features: '["Disconnected"]'
@@ -291,7 +291,7 @@ spec:
   - name: v1_1.sidecar-injector
     image: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.1.8
   - name: v2_0.3scale-istio-adapter
-    image: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
+    image: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:v2.0.0
   - name: v2_0.cni
     image: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:2.0.0
   - name: v2_0.grafana
@@ -578,7 +578,7 @@ spec:
                 olm.relatedImage.v1_1.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.1.8
                 olm.relatedImage.v1_1.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.1.8
                 olm.relatedImage.v1_1.sidecar-injector: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.1.8
-                olm.relatedImage.v2_0.3scale-istio-adapter: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
+                olm.relatedImage.v2_0.3scale-istio-adapter: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:v2.0.0
                 olm.relatedImage.v2_0.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:2.0.0
                 olm.relatedImage.v2_0.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:2.0.0
                 olm.relatedImage.v2_0.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:2.0.0
