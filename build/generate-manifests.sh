@@ -4,6 +4,12 @@
 
 set -e
 
+if [ "${GOPATH}" != "" ]; then
+  YQ=`which yq -a | grep -v ${GOPATH} | grep -v go`
+else
+  YQ=`which yq -a | grep -v go`
+fi
+
 : ${COMMUNITY:-"true"}
 : ${MAISTRA_VERSION:?"Need to set maistra version, e.g. 1.0.1"}
 if [[ ${COMMUNITY} == "true" ]]; then
@@ -39,7 +45,7 @@ function checkDependencies() {
     exit 1
   fi
 
-  if ! [ -x "$(command -v yq)" ]; then
+  if ! [ -x "$(command -v ${YQ})" ]; then
     echo "Please install yq package, e.g. 'pip install --user yq'"
     exit 1
   fi
@@ -91,25 +97,25 @@ function generateDeploymentFile() {
 }
 
 function generateCSV() {
-  IMAGE_SRC=$(yq -s -r '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.spec.containers[0].image' ${DEPLOYMENT_FILE})
+  IMAGE_SRC=$(${YQ} -s -r '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.spec.containers[0].image' ${DEPLOYMENT_FILE})
   if [ "$IMAGE_SRC" == "" ]; then
     echo "generateCSV(): Operator image source is empty, please verify source yaml/path to the field."
     exit 1
   fi
 
-  DEPLOYMENT_SPEC=$(yq -s -r -y --indentless '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec' ${DEPLOYMENT_FILE} | sed 's/^/          /')
+  DEPLOYMENT_SPEC=$(${YQ} -s -r -y --indentless '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec' ${DEPLOYMENT_FILE} | sed 's/^/          /')
   if [ "$DEPLOYMENT_SPEC" == "" ]; then
     echo "generateCSV(): Operator deployment spec is empty, please verify source yaml/path to the field."
     exit 1
   fi
 
-  CLUSTER_ROLE_RULES=$(yq -s -y --indentless '.[] | select(.kind=="ClusterRole" and .metadata.name=="istio-operator") | .rules' ${DEPLOYMENT_FILE} | sed 's/^/        /')
+  CLUSTER_ROLE_RULES=$(${YQ} -s -y --indentless '.[] | select(.kind=="ClusterRole" and .metadata.name=="istio-operator") | .rules' ${DEPLOYMENT_FILE} | sed 's/^/        /')
   if [ "$CLUSTER_ROLE_RULES" == "null" ]; then
     echo "generateCSV(): istio-operator cluster role source is empty, please verify source yaml/path to the field."
     exit 1
   fi
 
-  RELATED_IMAGES=$(yq -s -y --indentless '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.metadata.annotations' ${DEPLOYMENT_FILE} | \
+  RELATED_IMAGES=$(${YQ} -s -y --indentless '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.metadata.annotations' ${DEPLOYMENT_FILE} | \
     sed -n 's/olm\.relatedImage\.\([^:]*\): *\([^ ]*\)/- name: \1\
   image: \2/p' | \
     sed 's/^/  /')
