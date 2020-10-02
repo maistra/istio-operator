@@ -25,7 +25,7 @@ const DefaultTemplate = "default"
 // +kubebuilder:resource:shortName=smcp,categories=maistra-io
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.annotations.readyComponentCount",description="How many of the total number of components are ready"
-// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].reason",description="Whether or not the control plane installation is up to date and ready to handle requests."
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Reconciled\")].reason",description="Whether or not the control plane installation is up to date."
 // +kubebuilder:printcolumn:name="Template",type="string",JSONPath=".status.lastAppliedConfiguration.template",description="The configuration template to use as the base."
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".status.lastAppliedConfiguration.version",description="The actual current version of the control plane installation."
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="The age of the object"
@@ -38,7 +38,7 @@ type ServiceMeshControlPlane struct {
 	// This includes the configuration options for all components that comprise
 	// the control plane.
 	// +kubebuilder:validation:Required
-	Spec ControlPlaneSpec `json:"spec,omitempty"`
+	Spec ControlPlaneSpec `json:"spec"`
 
 	// The current status of this ServiceMeshControlPlane and the components
 	// that comprise the control plane. This data may be out of date by some

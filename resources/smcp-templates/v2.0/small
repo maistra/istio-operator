@@ -49,10 +49,20 @@ spec:
               cpu: 10m
               memory: 128Mi
             limits: {}
+      wasmExtensions.cacher:
+        container:
+          # constrain resources for use in smaller environments
+          resources:
+            requests:
+              cpu: 10m
+              memory: 128Mi
+            limits: {}
 
   gateways:
     ingress:
       runtime:
+        deployment:
+          autoScaling: null
         container:
           # constrain resources for use in smaller environments
           resources:
@@ -62,6 +72,8 @@ spec:
             limits: {}
     egress:
       runtime:
+        deployment:
+          autoScaling: null
         container:
           # constrain resources for use in smaller environments
           resources:

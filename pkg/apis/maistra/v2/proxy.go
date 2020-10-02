@@ -1,5 +1,9 @@
 package v2
 
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
 // ProxyConfig configures the default sidecar behavior for workloads.
 type ProxyConfig struct {
 	// Logging configures logging for the sidecar.
@@ -12,11 +16,9 @@ type ProxyConfig struct {
 	// Runtime is used to customize runtime configuration for the sidecar container.
 	// +optional
 	Runtime *ProxyRuntimeConfig `json:"runtime,omitempty"`
-	// AutoInject configures automatic injection of sidecar proxies
-	// .Values.global.proxy.autoInject
-	// .Values.sidecarInjectorWebhook.enableNamespacesByDefault
+	// Injection is used to customize sidecar injection for the mesh.
 	// +optional
-	AutoInject *bool `json:"autoInject,omitempty"`
+	Injection *ProxyInjectionConfig `json:"injection,omitempty"`
 	// AdminPort configures the admin port exposed by the sidecar.
 	// maps to defaultConfig.proxyAdminPort, defaults to 15000
 	// XXX: currently not configurable in charts
@@ -28,6 +30,14 @@ type ProxyConfig struct {
 	// XXX: this is defaulted to 2 in our values.yaml, but should probably be 0
 	// +optional
 	Concurrency *int32 `json:"concurrency,omitempty"`
+	// AccessLogging configures access logging for proxies.
+	// +optional
+	AccessLogging *ProxyAccessLoggingConfig `json:"accessLogging,omitempty"`
+	// EnvoyMetricsService configures reporting of Envoy metrics to an external
+	// service.
+	// .Values.global.proxy.envoyMetricsService
+	// +optional
+	EnvoyMetricsService *ProxyEnvoyServiceConfig `json:"envoyMetricsService,omitempty"`
 }
 
 // ProxyNetworkingConfig is used to configure networking aspects of the sidecar.
@@ -40,6 +50,12 @@ type ProxyNetworkingConfig struct {
 	// XXX: currently not exposed through values.yaml
 	// +optional
 	ConnectionTimeout string `json:"connectionTimeout,omitempty"`
+	// MaxConnectionAge limits how long a sidecar can be connected to pilot.
+	// This may be used to balance load across pilot instances, at the cost of
+	// system churn.
+	// .Values.pilot.keepaliveMaxServerConnectionAge
+	// +optional
+	MaxConnectionAge string `json:"maxConnectionAge,omitempty"`
 	// Initialization is used to specify how the pod's networking through the
 	// proxy is initialized.  This configures the use of CNI or an init container.
 	// +optional
@@ -162,26 +178,26 @@ const (
 
 // ProxyNetworkProtocolConfig configures the sidecar's protocol handling.
 type ProxyNetworkProtocolConfig struct {
+	// AutoDetect configures automatic detection of connection protocols.
+	// +optional
+	AutoDetect *ProxyNetworkAutoProtocolDetectionConfig `json:"autoDetect,omitempty"`
+}
+
+// ProxyNetworkAutoProtocolDetectionConfig configures automatic protocol detection for the proxies.
+type ProxyNetworkAutoProtocolDetectionConfig struct {
 	// DetectionTimeout specifies how much time the sidecar will spend determining
 	// the protocol being used for the connection before reverting to raw TCP.
 	// .Values.global.proxy.protocolDetectionTimeout, maps to protocolDetectionTimeout
 	// +optional
-	DetectionTimeout string `json:"detectionTimeout,omitempty"`
-	// Debug configures debugging capabilities for the connection.
-	// +optional
-	Debug *ProxyNetworkProtocolDebugConfig `json:"debug,omitempty"`
-}
-
-// ProxyNetworkProtocolDebugConfig specifies configuration for protocol debugging.
-type ProxyNetworkProtocolDebugConfig struct {
+	Timeout string `json:"timeout,omitempty"`
 	// EnableInboundSniffing enables protocol sniffing on inbound traffic.
 	// .Values.pilot.enableProtocolSniffingForInbound
 	// +optional
-	EnableInboundSniffing bool `json:"enableInboudSniffing,omitempty"`
+	Inbound *bool `json:"inbound,omitempty"`
 	// EnableOutboundSniffing enables protocol sniffing on outbound traffic.
 	// .Values.pilot.enableProtocolSniffingForOutbound
 	// +optional
-	EnableOutboundSniffing bool `json:"enableOutboundSniffing,omitempty"`
+	Outbound *bool `json:"outbound,omitempty"`
 }
 
 // ProxyDNSConfig is used to configure aspects of the sidecar's DNS usage.
@@ -245,4 +261,125 @@ type ProxyReadinessConfig struct {
 	// .Values.global.proxy.readinessFailureThreshold, overridden by readiness.status.sidecar.istio.io/failureThreshold, defaults to 30
 	// +optional
 	FailureThreshold int32 `json:"failureThreshold,omitempty"`
+}
+
+// ProxyInjectionConfig configures sidecar injection for the mesh.
+type ProxyInjectionConfig struct {
+	// AutoInject configures automatic injection of sidecar proxies
+	// .Values.global.proxy.autoInject
+	// .Values.sidecarInjectorWebhook.enableNamespacesByDefault
+	// +optional
+	AutoInject *bool `json:"autoInject,omitempty"`
+	// AlwaysInjectSelector allows specification of a label selector that when
+	// matched will always inject a sidecar into the pod.
+	// .Values.sidecarInjectorWebhook.alwaysInjectSelector
+	// +optional
+	AlwaysInjectSelector []metav1.LabelSelector `json:"alwaysInjectSelector,omitempty"`
+	// NeverInjectSelector allows specification of a label selector that when
+	// matched will never inject a sidecar into the pod.  This takes precendence
+	// over AlwaysInjectSelector.
+	// .Values.sidecarInjectorWebhook.neverInjectSelector
+	// +optional
+	NeverInjectSelector []metav1.LabelSelector `json:"neverInjectSelector,omitempty"`
+	// InjectedAnnotations allows specification of additional annotations to be
+	// added to pods that have sidecars injected in them.
+	// .Values.sidecarInjectorWebhook.injectedAnnotations
+	// +optional
+	InjectedAnnotations map[string]string `json:"injectedAnnotations,omitempty"`
+}
+
+// ProxyAccessLoggingConfig configures access logging for proxies.  Multiple
+// access logs can be configured.
+type ProxyAccessLoggingConfig struct {
+	// File configures access logging to the file system
+	// +optional
+	File *ProxyFileAccessLogConfig `json:"file,omitempty"`
+	// File configures access logging to an envoy service
+	// .Values.global.proxy.envoyAccessLogService
+	// +optional
+	EnvoyService *ProxyEnvoyServiceConfig `json:"envoyService,omitempty"`
+}
+
+// ProxyFileAccessLogConfig configures details related to file access log
+type ProxyFileAccessLogConfig struct {
+	// Name is the name of the file to which access log entries will be written.
+	// If Name is not specified, no log entries will be written to a file.
+	// .Values.global.proxy.accessLogFile
+	// +optional
+	Name string `json:"name,omitempty"`
+	// Encoding to use when writing access log entries.  Currently, JSON or TEXT
+	// may be specified.
+	// .Values.global.proxy.accessLogEncoding
+	// +optional
+	Encoding string `json:"encoding,omitempty"`
+	// Format to use when writing access log entries.
+	// .Values.global.proxy.accessLogFormat
+	// +optional
+	Format string `json:"format,omitempty"`
+}
+
+// ProxyEnvoyServiceConfig configures reporting to an external Envoy service.
+type ProxyEnvoyServiceConfig struct {
+	// Enable sending Envoy metrics to the service.
+	// .Values.global.proxy.(envoyAccessLogService|envoyMetricsService).enabled
+	Enablement `json:",inline"`
+	// Address of the service specified as host:port.
+	// .Values.global.proxy.(envoyAccessLogService|envoyMetricsService).host
+	// .Values.global.proxy.(envoyAccessLogService|envoyMetricsService).port
+	// +optional
+	Address string `json:"address,omitempty"`
+	// TCPKeepalive configures keepalive settings to use when connecting to the
+	// service.
+	// .Values.global.proxy.(envoyAccessLogService|envoyMetricsService).tcpKeepalive
+	// +optional
+	TCPKeepalive *EnvoyServiceTCPKeepalive `json:"tcpKeepalive,omitempty"`
+	// TLSSettings configures TLS settings to use when connecting to the service.
+	// .Values.global.proxy.(envoyAccessLogService|envoyMetricsService).tlsSettings
+	// +optional
+	TLSSettings *EnvoyServiceClientTLSSettings `json:"tlsSettings,omitempty"`
+}
+
+// EnvoyServiceTCPKeepalive configures keepalive settings for the Envoy service.
+// Provides the same interface as networking.v1alpha3.istio.io, ConnectionPoolSettings_TCPSettings_TcpKeepalive
+type EnvoyServiceTCPKeepalive struct {
+	// Probes represents the number of successive probe failures after which the
+	// connection should be considered "dead."
+	// +optional
+	Probes uint32 `json:"probes,omitempty"`
+	// Time represents the length of idle time that must elapse before a probe
+	// is sent.
+	// +optional
+	Time string `json:"time,omitempty"`
+	// Interval represents the interval between probes.
+	// +optional
+	Interval string `json:"interval,omitempty"`
+}
+
+// EnvoyServiceClientTLSSettings configures TLS settings for the Envoy service.
+// Provides the same interface as networking.v1alpha3.istio.io, ClientTLSSettings
+type EnvoyServiceClientTLSSettings struct {
+	// Mode represents the TLS mode to apply to the connection.  The following
+	// values are supported: DISABLE, SIMPLE, MUTUAL, ISTIO_MUTUAL
+	// +optional
+	Mode string `json:"mode,omitempty"`
+	// ClientCertificate represents the file name containing the client certificate
+	// to show to the Envoy service, e.g. /etc/istio/als/cert-chain.pem
+	// +optional
+	ClientCertificate string `json:"clientCertificate,omitempty"`
+	// PrivateKey represents the file name containing the private key used by
+	// the client, e.g. /etc/istio/als/key.pem
+	// +optional
+	PrivateKey string `json:"privateKey,omitempty"`
+	// CACertificates represents the file name containing the root certificates
+	// for the CA, e.g. /etc/istio/als/root-cert.pem
+	// +optional
+	CACertificates string `json:"caCertificates,omitempty"`
+	// SNIHost represents the host name presented to the server during TLS
+	// handshake, e.g. als.somedomain
+	// +optional
+	SNIHost string `json:"sni,omitempty"`
+	// SubjectAltNames represents the list of alternative names that may be used
+	// to verify the servers identity, e.g. [als.someotherdomain]
+	// +optional
+	SubjectAltNames []string `json:"subjectAltNames,omitempty"`
 }

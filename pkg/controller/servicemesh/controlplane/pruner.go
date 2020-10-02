@@ -67,7 +67,7 @@ var (
 		gvk("networking.istio.io", "v1beta1", "Sidecar"):             {supportsDeleteCollection: true},
 		gvk("networking.istio.io", "v1alpha3", "VirtualService"):     {supportsDeleteCollection: true},
 		gvk("networking.istio.io", "v1beta1", "VirtualService"):      {supportsDeleteCollection: true},
-		gvk("jaegertracing.io", "v1", "jaeger"):                      {supportsDeleteCollection: true},
+		gvk("jaegertracing.io", "v1", "Jaeger"):                      {supportsDeleteCollection: true},
 		gvk("authentication.maistra.io", "v1", "ServiceMeshPolicy"):  {supportsDeleteCollection: true},
 		gvk("security.istio.io", "v1beta1", "AuthorizationPolicy"):   {supportsDeleteCollection: true},
 		gvk("security.istio.io", "v1beta1", "PeerAuthentication"):    {supportsDeleteCollection: true},

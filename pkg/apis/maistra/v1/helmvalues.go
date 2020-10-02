@@ -9,6 +9,7 @@ import (
 )
 
 // HelmValues is typedef for Helm .Values
+// +kubebuilder:validation:Type=object
 // +kubebuilder:validation:XPreserveUnknownFields
 type HelmValues struct {
 	data map[string]interface{} `json:"-"`
@@ -56,6 +57,13 @@ func (h *HelmValues) GetInt64(path string) (int64, bool, error) {
 	return unstructured.NestedInt64(h.data, strings.Split(path, ".")...)
 }
 
+func (h *HelmValues) GetFloat64(path string) (float64, bool, error) {
+	if h == nil || h.data == nil {
+		return 0, false, nil
+	}
+	return unstructured.NestedFloat64(h.data, strings.Split(path, ".")...)
+}
+
 func (h *HelmValues) GetStringSlice(path string) ([]string, bool, error) {
 	if h == nil || h.data == nil {
 		return nil, false, nil
@@ -95,6 +103,16 @@ func (h *HelmValues) SetField(path string, value interface{}) error {
 		h.data = map[string]interface{}{}
 	}
 	return unstructured.SetNestedField(h.data, value, strings.Split(path, ".")...)
+}
+
+func (h *HelmValues) SetStringSlice(path string, value []string) error {
+	if h == nil {
+		panic("Tried to invoke SetField on nil *HelmValues")
+	}
+	if h.data == nil {
+		h.data = map[string]interface{}{}
+	}
+	return unstructured.SetNestedStringSlice(h.data, value, strings.Split(path, ".")...)
 }
 
 func (h *HelmValues) UnmarshalJSON(in []byte) error {

@@ -13,7 +13,7 @@ import (
 )
 
 func TestGetSMCPTemplateWithSlashReturnsError(t *testing.T) {
-	_, _, err := DefaultVersion.getSMCPProfile("/")
+	_, _, err := DefaultVersion.getSMCPProfile("/", "dummy-namespace")
 	if err == nil {
 		t.Fatalf("Allowed to access path outside of deployment directory")
 	}
@@ -87,7 +87,7 @@ func TestMerge(t *testing.T) {
 func TestCyclicTemplate(t *testing.T) {
 	t.SkipNow()
 	var ctx = common.NewContextWithLog(context.Background(), logf.Log)
-	_, err := DefaultVersion.recursivelyApplyProfiles(ctx, &v1.ControlPlaneSpec{Template: "visited"}, []string{"visited"}, sets.NewString("visited"))
+	_, err := DefaultVersion.recursivelyApplyProfiles(ctx, &v1.ControlPlaneSpec{Template: "visited"}, "dummy-namespace", []string{"visited"}, sets.NewString("visited"))
 	if err == nil {
 		t.Fatalf("Expected error to not be nil. Cyclic dependencies should not be allowed.")
 	}

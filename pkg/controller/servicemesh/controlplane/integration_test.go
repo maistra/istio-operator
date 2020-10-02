@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
@@ -25,11 +26,33 @@ import (
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	. "github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
+
+func TestDefaultInstall(t *testing.T) {
+	testCases := []IntegrationTestCase{
+		{
+			// TODO: add more assertions to verify default component installation
+			name: "default." + versions.V2_0.String(),
+			smcp: New20SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{}),
+			create: IntegrationTestValidation{
+				Assertions: ActionAssertions{
+					Assert("create").On("deployments").Named("wasm-cacher-test").In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+			delete: IntegrationTestValidation{
+				Assertions: ActionAssertions{
+					Assert("delete").On("deployments").Named("wasm-cacher-test").In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+		},
+		// TODO: add test cases for v1.0 and v1.1
+	}
+	RunSimpleInstallTest(t, testCases)
+}
 
 func TestBootstrapping(t *testing.T) {
 	const (
@@ -102,6 +125,7 @@ func TestBootstrapping(t *testing.T) {
 				GroupResources: []*restmapper.APIGroupResources{
 					CNIGroupResources,
 				},
+				StorageVersions: []schema.GroupVersion{maistrav2.SchemeGroupVersion},
 				Events: []ControllerTestEvent{
 					{
 						Name: "bootstrap-clean-install-cni-no-errors",
@@ -117,10 +141,8 @@ func TestBootstrapping(t *testing.T) {
 							Verify("create").On("customresourcedefinitions").IsSeen(),
 							// verify that CNI is installed
 							Verify("create").On("daemonsets").Named(cniDaemonSetName).In(operatorNamespace).IsSeen(),
-							// verify CNI readiness check during reconcile
-							Verify("list").On("daemonsets").In(operatorNamespace).IsSeen(),
 							// verify readiness check triggered daemon set creation
-							VerifyReadinessCheckOccurs(controlPlaneNamespace, operatorNamespace),
+							VerifyReadinessCheckOccurs(controlPlaneNamespace),
 						),
 						Assertions: ActionAssertions{
 							// verify proper number of CRDs is created
@@ -161,7 +183,7 @@ func SetDaemonSetStatus(name string, status appsv1.DaemonSetStatus) ReactionFunc
 	}
 }
 
-func FinalizerAddedTest(finalizer string) test.VerifierTestFunc {
+func FinalizerAddedTest(finalizer string) VerifierTestFunc {
 	return func(action clienttesting.Action) error {
 		switch realAction := action.(type) {
 		case clienttesting.UpdateAction:

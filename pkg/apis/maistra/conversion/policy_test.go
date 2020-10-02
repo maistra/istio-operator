@@ -235,8 +235,9 @@ var policyTestCases = []conversionTestCase{
 			Policy: &v2.PolicyConfig{
 				Type: v2.PolicyTypeMixer,
 				Mixer: &v2.MixerPolicyConfig{
-					EnableChecks: &featureEnabled,
-					FailOpen:     &featureDisabled,
+					EnableChecks:    &featureEnabled,
+					FailOpen:        &featureDisabled,
+					SessionAffinity: &featureEnabled,
 				},
 			},
 		},
@@ -248,7 +249,8 @@ var policyTestCases = []conversionTestCase{
 			"mixer": map[string]interface{}{
 				"enabled": true,
 				"policy": map[string]interface{}{
-					"enabled": true,
+					"enabled":                true,
+					"sessionAffinityEnabled": true,
 				},
 			},
 			"policy": map[string]interface{}{
@@ -419,8 +421,9 @@ var policyTestCases = []conversionTestCase{
 			Policy: &v2.PolicyConfig{
 				Type: v2.PolicyTypeMixer,
 				Mixer: &v2.MixerPolicyConfig{
-					EnableChecks: &featureEnabled,
-					FailOpen:     &featureDisabled,
+					EnableChecks:    &featureEnabled,
+					FailOpen:        &featureDisabled,
+					SessionAffinity: &featureEnabled,
 				},
 			},
 		},
@@ -432,7 +435,8 @@ var policyTestCases = []conversionTestCase{
 			"mixer": map[string]interface{}{
 				"enabled": true,
 				"policy": map[string]interface{}{
-					"enabled": true,
+					"enabled":                true,
+					"sessionAffinityEnabled": true,
 				},
 			},
 			"policy": map[string]interface{}{

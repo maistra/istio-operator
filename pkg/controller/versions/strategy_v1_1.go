@@ -16,10 +16,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
-	configv1alpha2 "github.com/maistra/istio-operator/pkg/apis/istio/simple/config/v1alpha2"
-	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/istio/simple/networking/v1alpha3"
-	securityv1beta1 "github.com/maistra/istio-operator/pkg/apis/istio/simple/security/v1beta1"
+	configv1alpha2 "github.com/maistra/istio-operator/pkg/apis/external/istio/config/v1alpha2"
+	networkingv1alpha3 "github.com/maistra/istio-operator/pkg/apis/external/istio/networking/v1alpha3"
+	securityv1beta1 "github.com/maistra/istio-operator/pkg/apis/external/istio/security/v1beta1"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -60,7 +61,8 @@ func (v *versionStrategyV1_1) SetImageValues(ctx context.Context, cr *common.Con
 	common.UpdateField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V1_1.IOR)
 	return nil
 }
-func (v *versionStrategyV1_1) Validate(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *versionStrategyV1_1) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+	logger := logf.Log.WithName("smcp-validator-1.1")
 	var allErrors []error
 
 	if zipkinAddress, ok, _ := smcp.Spec.Istio.GetString("global.tracer.zipkin.address"); ok && len(zipkinAddress) > 0 {
@@ -96,6 +98,72 @@ func (v *versionStrategyV1_1) Validate(ctx context.Context, cl client.Client, sm
 			}
 		}
 	}
+	// Istiod not supported
+	if err := errForValue(smcp.Spec.Istio, "policy.implementation", string(v2.PolicyTypeIstiod)); err != nil {
+		allErrors = append(allErrors, err)
+	}
+	if err := errForValue(smcp.Spec.Istio, "telemetry.implementation", string(v2.PolicyTypeIstiod)); err != nil {
+		allErrors = append(allErrors, err)
+	}
+	// XXX: i don't think this is supported in the helm charts
+	// telemetry.v2.enabled=true (values.yaml, in-proxy metrics)
+	if err := errForEnabledValue(smcp.Spec.Istio, "telemetry.enabled", true); err != nil {
+		if err := errForEnabledValue(smcp.Spec.Istio, "telemetry.v2.enabled", true); err != nil {
+			allErrors = append(allErrors, err)
+		}
+	}
+
+	smmr := &v1.ServiceMeshMemberRoll{}
+	err := cl.Get(ctx, client.ObjectKey{Name: common.MemberRollName, Namespace: smcp.GetNamespace()}, smmr)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			// log error, but don't fail validation: we'll just assume that the control plane namespace is the only namespace for now
+			logger.Error(err, "failed to retrieve SMMR for SMCP")
+			smmr = nil
+		}
+	}
+
+	meshNamespaces := common.GetMeshNamespaces(smcp.GetNamespace(), smmr)
+	for _, gateway := range getMapKeys(smcp.Spec.Istio, "gateways") {
+		if err := errForStringValue(smcp.Spec.Istio, "gateways."+gateway+".namespace", meshNamespaces); err != nil {
+			allErrors = append(allErrors, fmt.Errorf("%v: namespace must be part of the mesh", err))
+		}
+	}
+
+	return utilerrors.NewAggregate(allErrors)
+}
+
+func (v *versionStrategyV1_1) ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
+	logger := logf.Log.WithName("smcp-validator-1.1")
+	var allErrors []error
+	// I believe the only settings that aren't supported are Istiod policy and telemetry
+	if smcp.Spec.Policy != nil && smcp.Spec.Policy.Type == v2.PolicyTypeIstiod {
+		allErrors = append(allErrors, fmt.Errorf("policy type %s is not supported in version %s", smcp.Spec.Policy.Type, v.String()))
+	}
+	if smcp.Spec.Telemetry != nil && smcp.Spec.Telemetry.Type == v2.TelemetryTypeIstiod {
+		allErrors = append(allErrors, fmt.Errorf("telemetry type %s is not supported in version %s", smcp.Spec.Telemetry.Type, v.String()))
+	}
+
+	smmr := &v1.ServiceMeshMemberRoll{}
+	err := cl.Get(ctx, client.ObjectKey{Name: common.MemberRollName, Namespace: smcp.GetNamespace()}, smmr)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			// log error, but don't fail validation: we'll just assume that the control plane namespace is the only namespace for now
+			logger.Error(err, "failed to retrieve SMMR for SMCP")
+			smmr = nil
+		}
+	}
+
+	meshNamespaces := common.GetMeshNamespaces(smcp.GetNamespace(), smmr)
+	gatewayNames := sets.NewString()
+	if smcp.Spec.Gateways != nil {
+		for name, gateway := range smcp.Spec.Gateways.IngressGateways {
+			validateGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, smcp.Namespace, &allErrors)
+		}
+		for name, gateway := range smcp.Spec.Gateways.EgressGateways {
+			validateGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, smcp.Namespace, &allErrors)
+		}
+	}
 
 	return utilerrors.NewAggregate(allErrors)
 }
@@ -107,7 +175,7 @@ var (
 	}
 )
 
-func (v *versionStrategyV1_1) ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *versionStrategyV1_1) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
 	var allErrors []error
 	meshNamespaces := sets.NewString(smcp.GetNamespace())
 
@@ -138,7 +206,7 @@ func (v *versionStrategyV1_1) ValidateDowngrade(ctx context.Context, cl client.C
 	for _, vs := range virtualServices.Items {
 		// we only care about resources in this mesh, which aren't being managed by the operator directly
 		if meshNamespaces.Has(vs.GetNamespace()) && !metav1.IsControlledBy(&vs, smcp) {
-			if routes, ok, _ := unstructured.NestedSlice(vs.Spec, "http"); ok {
+			if routes, ok, _ := vs.Spec.GetSlice("http"); ok {
 				for _, route := range routes {
 					if routeStruct, ok := route.(map[string]interface{}); ok {
 						if _, ok, _ := unstructured.NestedFieldNoCopy(routeStruct, "mirrorPercent"); ok {
@@ -175,8 +243,17 @@ func (v *versionStrategyV1_1) ValidateDowngrade(ctx context.Context, cl client.C
 
 	// we don't do any validation for 1.0 control planes, but the validation
 	// logic for it is associated with v1.0, so invoke it now.
-	if err := V1_0.Strategy().Validate(ctx, cl, smcp); err != nil {
-		allErrors = append(allErrors, err)
+	switch smcp := smcp.(type) {
+	case *v1.ServiceMeshControlPlane:
+		if err := V1_0.Strategy().ValidateV1(ctx, cl, smcp); err != nil {
+			allErrors = append(allErrors, err)
+		}
+	case *v2.ServiceMeshControlPlane:
+		if err := V1_0.Strategy().ValidateV2(ctx, cl, smcp); err != nil {
+			allErrors = append(allErrors, err)
+		}
+	default:
+		allErrors = append(allErrors, fmt.Errorf("unknown ServiceMeshControlPlane type: %T", smcp))
 	}
 
 	return utilerrors.NewAggregate(allErrors)
@@ -223,7 +300,7 @@ var (
 	}
 )
 
-func (v *versionStrategyV1_1) ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *versionStrategyV1_1) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
 	var allErrors []error
 
 	meshNamespaces := sets.NewString(smcp.GetNamespace())

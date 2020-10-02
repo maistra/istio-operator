@@ -12,53 +12,38 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
 
     containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.0.0
-    createdAt: 2020-08-27T16:32:58MDT
+    createdAt: 2020-10-01T17:12:00CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.0.0"
+    operators.openshift.io/infrastructure-features: '["Disconnected"]'
     alm-examples: |-
       [
         {
-          "apiVersion": "maistra.io/v1",
+          "apiVersion": "maistra.io/v2",
           "kind": "ServiceMeshControlPlane",
           "metadata": {
-            "name": "basic-install",
+            "name": "basic",
             "namespace": "control-plane-namespace"
           },
           "spec": {
             "version": "v2.0",
-            "istio": {
-              "gateways": {
-                "istio-egressgateway": {
-                  "autoscaleEnabled": false
-                },
-                "istio-ingressgateway": {
-                  "autoscaleEnabled": false,
-                  "ior_enabled": false
+            "tracing": {
+              "type": "Jaeger",
+              "sampling": 10000
+            },
+            "addons": {
+              "jaeger": {
+                "install": {
+                  "storage": {
+                    "type": "Memory"
+                  }
                 }
-              },
-              "mixer": {
-                "policy": {
-                  "autoscaleEnabled": false
-                },
-                "telemetry": {
-                  "autoscaleEnabled": false
-                }
-              },
-              "pilot": {
-                "autoscaleEnabled": false,
-                "traceSampling": 100.0
               },
               "kiali": {
                 "enabled": true
               },
               "grafana": {
                 "enabled": true
-              },
-              "tracing": {
-                "enabled": true,
-                "jaeger": {
-                  "template": "all-in-one"
-                }
               }
             }
           }
@@ -86,7 +71,7 @@ metadata:
           },
           "spec": {
             "controlPlaneRef": {
-              "name": "basic-install",
+              "name": "basic",
               "namespace": "control-plane-namespace"
             }
           }
@@ -248,7 +233,7 @@ spec:
     url: https://github.com/Maistra/istio-operator
   - name: Bugs
     url: https://issues.redhat.com/projects/OSSM
-  replaces: servicemeshoperator.v1.1.4
+  replaces: servicemeshoperator.v1.1.9
   installModes:
   - type: OwnNamespace
     supported: false
@@ -284,35 +269,33 @@ spec:
   - name: v1_1.3scale-istio-adapter
     image: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
   - name: v1_1.citadel
-    image: registry.redhat.io/openshift-service-mesh/citadel-rhel8:1.1.4
+    image: registry.redhat.io/openshift-service-mesh/citadel-rhel8:1.1.8
   - name: v1_1.cni
-    image: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.1.4
+    image: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.1.8
   - name: v1_1.galley
-    image: registry.redhat.io/openshift-service-mesh/galley-rhel8:1.1.4
+    image: registry.redhat.io/openshift-service-mesh/galley-rhel8:1.1.8
   - name: v1_1.grafana
-    image: registry.redhat.io/openshift-service-mesh/grafana-rhel8:1.1.4
+    image: registry.redhat.io/openshift-service-mesh/grafana-rhel8:1.1.8
   - name: v1_1.ior
-    image: registry.redhat.io/openshift-service-mesh/ior-rhel8:1.1.4
+    image: registry.redhat.io/openshift-service-mesh/ior-rhel8:1.1.8
   - name: v1_1.mixer
-    image: registry.redhat.io/openshift-service-mesh/mixer-rhel8:1.1.4
+    image: registry.redhat.io/openshift-service-mesh/mixer-rhel8:1.1.8
   - name: v1_1.pilot
-    image: registry.redhat.io/openshift-service-mesh/pilot-rhel8:1.1.4
+    image: registry.redhat.io/openshift-service-mesh/pilot-rhel8:1.1.8
   - name: v1_1.prometheus
-    image: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:1.1.4
+    image: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:1.1.8
   - name: v1_1.proxy-init
-    image: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.1.4
+    image: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.1.8
   - name: v1_1.proxyv2
-    image: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.1.4
+    image: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.1.8
   - name: v1_1.sidecar-injector
-    image: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.1.4
+    image: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.1.8
   - name: v2_0.3scale-istio-adapter
     image: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
   - name: v2_0.cni
     image: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:2.0.0
   - name: v2_0.grafana
     image: registry.redhat.io/openshift-service-mesh/grafana-rhel8:2.0.0
-  - name: v2_0.ior
-    image: registry.redhat.io/openshift-service-mesh/ior-rhel8:2.0.0
   - name: v2_0.mixer
     image: registry.redhat.io/openshift-service-mesh/mixer-rhel8:2.0.0
   - name: v2_0.pilot
@@ -323,6 +306,8 @@ spec:
     image: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:2.0.0
   - name: v2_0.proxyv2
     image: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:2.0.0
+  - name: v2_0.wasm-cacher
+    image: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.0.0
   install:
     strategy: deployment
     spec:
@@ -582,26 +567,26 @@ spec:
                 olm.relatedImage.v1_0.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.0.11
                 olm.relatedImage.v1_0.sidecar-injector: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.0.11
                 olm.relatedImage.v1_1.3scale-istio-adapter: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
-                olm.relatedImage.v1_1.citadel: registry.redhat.io/openshift-service-mesh/citadel-rhel8:1.1.4
-                olm.relatedImage.v1_1.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.1.4
-                olm.relatedImage.v1_1.galley: registry.redhat.io/openshift-service-mesh/galley-rhel8:1.1.4
-                olm.relatedImage.v1_1.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:1.1.4
-                olm.relatedImage.v1_1.ior: registry.redhat.io/openshift-service-mesh/ior-rhel8:1.1.4
-                olm.relatedImage.v1_1.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:1.1.4
-                olm.relatedImage.v1_1.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:1.1.4
-                olm.relatedImage.v1_1.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:1.1.4
-                olm.relatedImage.v1_1.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.1.4
-                olm.relatedImage.v1_1.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.1.4
-                olm.relatedImage.v1_1.sidecar-injector: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.1.4
+                olm.relatedImage.v1_1.citadel: registry.redhat.io/openshift-service-mesh/citadel-rhel8:1.1.8
+                olm.relatedImage.v1_1.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.1.8
+                olm.relatedImage.v1_1.galley: registry.redhat.io/openshift-service-mesh/galley-rhel8:1.1.8
+                olm.relatedImage.v1_1.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:1.1.8
+                olm.relatedImage.v1_1.ior: registry.redhat.io/openshift-service-mesh/ior-rhel8:1.1.8
+                olm.relatedImage.v1_1.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:1.1.8
+                olm.relatedImage.v1_1.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:1.1.8
+                olm.relatedImage.v1_1.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:1.1.8
+                olm.relatedImage.v1_1.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.1.8
+                olm.relatedImage.v1_1.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.1.8
+                olm.relatedImage.v1_1.sidecar-injector: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.1.8
                 olm.relatedImage.v2_0.3scale-istio-adapter: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
                 olm.relatedImage.v2_0.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:2.0.0
                 olm.relatedImage.v2_0.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:2.0.0
-                olm.relatedImage.v2_0.ior: registry.redhat.io/openshift-service-mesh/ior-rhel8:2.0.0
                 olm.relatedImage.v2_0.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:2.0.0
                 olm.relatedImage.v2_0.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.0.0
                 olm.relatedImage.v2_0.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:2.0.0
                 olm.relatedImage.v2_0.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:2.0.0
                 olm.relatedImage.v2_0.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:2.0.0
+                olm.relatedImage.v2_0.wasm-cacher: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.0.0
                 oauth-proxy.query: 'true'
                 oauth-proxy.namespace: openshift
                 oauth-proxy.name: oauth-proxy
@@ -652,86 +637,92 @@ spec:
   customresourcedefinitions:
     owned:
     - name: servicemeshcontrolplanes.maistra.io
-      version: v1
+      version: v2
       kind: ServiceMeshControlPlane
       displayName: Istio Service Mesh Control Plane
       description: An Istio control plane installation
       specDescriptors:
-      - description: Specify the version of control control plane you want to install
-        displayName: Control Plane Version
+      - displayName: Control Plane Version
+        description: Specify the version of the control plane you want to install
         path: version
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v2.0'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v1.1'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v1.0'
-      - description: Enable mTLS for communication between control plane components (galley, pilot, etc.)
-        displayName: Control Plane Security
-        path: istio.global.controlPlaneSecurityEnabled
+      - displayName: Control Plane Security
+        description: Enable mTLS for communication between control plane components
+        path: security.controlPlane.mtls
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
-      - description: Enable mTLS for communcation between services in the mesh
-        displayName: Data Plane Security
-        path: istio.global.mtls.enabled
+      - displayName: Data Plane Security
+        description: Enable mTLS for communcation between services in the mesh
+        path: security.mtls.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
-      - description: Set to true to install Kiali
-        displayName: Install Kiali
-        path: istio.kiali.enabled
+      - displayName: Install Kiali
+        description: Set to true to install Kiali
+        path: addons.kiali.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:visualization'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
-      - description: Set to true to install Grafana
-        displayName: Install Grafana
-        path: istio.grafana.enabled
+      - displayName: Install Grafana
+        description: Set to true to install Grafana
+        path: addons.grafana.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:visualization'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
-      - description: Set to false to disable tracing
-        displayName: Install Jaeger
-        path: istio.tracing.enabled
+      - displayName: Tracing provider
+        description: Select the provider to use for tracing
+        path: tracing.type
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:tracing'
-          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
-      - description: Set template to use when installing Jaeger
-        displayName: Jaeger template
-        path: istio.tracing.jaeger.template
+          - 'urn:alm:descriptor:com.tectonic.ui:select:None'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Jaeger'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Stackdriver'
+      - displayName: Jaeger Storage Type
+        description: Set storage type for Jaeger (applies only when Jaeger is selected as the tracing provider)
+        path: addons.jaeger.install.storage.type
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:tracing'
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldDependency:istio.tracing.enabled:true'
-          - 'urn:alm:descriptor:com.tectonic.ui:select:all-in-one'
-          - 'urn:alm:descriptor:com.tectonic.ui:select:production-elasticsearch'
-      - description: Set to true to install the Istio 3Scale adapter
-        displayName: Install 3Scale Adapter
-        path: threeScale.enabled
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldDependency:tracing.type:Jaeger'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Memory'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Elasticsearch'
+      - displayName: Install 3Scale Adapter
+        description: Set to true to install the Istio 3Scale adapter
+        path: addons.3scale.enabled
         x-descriptors:
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:API_Management'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
           - 'urn:alm:descriptor:com.tectonic.ui:advanced'
-      - description: Limits describes the minimum/maximum amount of compute resources required/allowed
-        displayName: Default Resource Requirements
-        path: istio.global.defaultResources
+      - displayName: Default Resource Requirements
+        description: Set the default compute resource requests and limits for control plane components
+        path: runtime.defaults.container.resources
         x-descriptors:
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Resource_Requirements'
           - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
           - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      statusDescriptors:
+        - displayName: Components
+          description: Status of components deployed by this ServiceMeshControlPlane resource
+          path: readiness.components
+          x-descriptors:
+            - "urn:alm:descriptor:com.tectonic.ui:podStatuses"
     - name: servicemeshmembers.maistra.io
       version: v1
       kind: ServiceMeshMember
       displayName: Istio Service Mesh Member
       description: Marks the containing namespace as a member of the referenced Service Mesh
       specDescriptors:
-      - path: controlPlaneRef.namespace
+      - displayName: Namespace
         description: The namespace of the ServiceMeshControlPlane to which this namespace belongs
-        displayName: Namespace
+        path: controlPlaneRef.namespace
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Service_Mesh_Control_Plane'
           - 'urn:alm:descriptor:io.kubernetes:Namespace'
-      - path: controlPlaneRef.name
+      - displayName: Name
         description: The name of the ServiceMeshControlPlane to which this namespace belongs
-        displayName: Name
+        path: controlPlaneRef.name
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Service_Mesh_Control_Plane'
           - 'urn:alm:descriptor:com.tectonic.ui:text'

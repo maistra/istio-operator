@@ -108,6 +108,10 @@ func setHelmIntValue(obj map[string]interface{}, path string, value int64) error
 	return setHelmValue(obj, path, value)
 }
 
+func setHelmFloatValue(obj map[string]interface{}, path string, value float64) error {
+	return setHelmValue(obj, path, value)
+}
+
 func setHelmBoolValue(obj map[string]interface{}, path string, value bool) error {
 	return setHelmValue(obj, path, value)
 }

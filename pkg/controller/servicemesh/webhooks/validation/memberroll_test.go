@@ -3,6 +3,7 @@ package validation
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	authorization "k8s.io/api/authorization/v1"
@@ -73,6 +74,36 @@ func TestMemberRollWithControlPlaneNamespaceIsRejected(t *testing.T) {
 	roll := newMemberRoll("default", "istio-system", "istio-system")
 	response := validator.Handle(ctx, createCreateRequest(roll))
 	assert.False(response.Allowed, "Expected validator to reject ServiceMeshMemberRoll containing control plane namespace as member", t)
+}
+
+func TestMemberValidation(t *testing.T) {
+	testCases := []struct {
+		members string
+		valid   bool
+	}{
+		{valid: false, members: ""},
+		{valid: false, members: "-badname"},
+		{valid: false, members: "badname-"},
+		{valid: false, members: "bad%name"},
+		{valid: false, members: "duplicate-ns,foo,duplicate-ns"},
+		{valid: true, members: "ns1"},
+		{valid: true, members: "ns-1"},
+		{valid: true, members: "ns1,ns2"},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.members, func(t *testing.T) {
+			validator, _, tracker := createMemberRollValidatorTestFixture(smcp)
+			tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, true, nil))
+
+			roll := newMemberRoll("default", "istio-system", strings.Split(tc.members, ",")...)
+			response := validator.Handle(ctx, createCreateRequest(roll))
+			if tc.valid {
+				assert.True(response.Allowed, "Expected validator to allow ServiceMeshMemberRoll", t)
+			} else {
+				assert.False(response.Allowed, "Expected validator to reject ServiceMeshMemberRoll because of invalid or duplicated members", t)
+			}
+		})
+	}
 }
 
 func TestMemberRollWithFailedSubjectAccessReview(t *testing.T) {

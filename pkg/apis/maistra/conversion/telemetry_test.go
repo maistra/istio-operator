@@ -11,6 +11,9 @@ import (
 
 var (
 	batchMaxEntries100 = int32(100)
+	maxAnnotations     = int64(100)
+	maxEvents          = int64(200)
+	maxAttributes      = int64(300)
 )
 
 var telemetryTestCases = []conversionTestCase{
@@ -183,8 +186,7 @@ var telemetryTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{
-				Type:   v2.TelemetryTypeIstiod,
-				Istiod: &v2.IstiodTelemetryConfig{},
+				Type: v2.TelemetryTypeIstiod,
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
@@ -221,8 +223,13 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeIstiod,
-				Istiod: &v2.IstiodTelemetryConfig{
-					PrometheusFilter: &v2.PrometheusFilterConfig{},
+			},
+			Addons: &v2.AddonsConfig{
+				Prometheus: &v2.PrometheusAddonConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+					TelemetryConfig: &v2.PrometheusTelemetryConfig{},
 				},
 			},
 		},
@@ -238,14 +245,7 @@ var telemetryTestCases = []conversionTestCase{
 				},
 				"v2": map[string]interface{}{
 					"enabled": true,
-					"prometheus": map[string]interface{}{
-						"enabled":     true,
-						"wasmEnabled": false,
-					},
 				},
-			},
-			"meshConfig": map[string]interface{}{
-				"enablePrometheusMerge": false,
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -257,6 +257,21 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"prometheus": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			},
+			"prometheus": map[string]interface{}{"enabled": true},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"prometheus": map[string]interface{}{
+						"enabled": true,
+					},
 				},
 			},
 		}),
@@ -267,11 +282,13 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeIstiod,
-				Istiod: &v2.IstiodTelemetryConfig{
-					PrometheusFilter: &v2.PrometheusFilterConfig{
-						Scrape:      featureEnabled,
-						WASMEnabled: featureDisabled,
+			},
+			Addons: &v2.AddonsConfig{
+				Prometheus: &v2.PrometheusAddonConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
 					},
+					Scrape: &featureEnabled,
 				},
 			},
 		},
@@ -287,111 +304,36 @@ var telemetryTestCases = []conversionTestCase{
 				},
 				"v2": map[string]interface{}{
 					"enabled": true,
-					"prometheus": map[string]interface{}{
-						"enabled":     true,
-						"wasmEnabled": false,
-					},
+				},
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
 				},
 			},
 			"meshConfig": map[string]interface{}{
 				"enablePrometheusMerge": true,
 			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-		}),
-	},
-	{
-		name: "istiod.metadata.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Telemetry: &v2.TelemetryConfig{
-				Type: v2.TelemetryTypeIstiod,
-				Istiod: &v2.IstiodTelemetryConfig{
-					MetadataExchange: &v2.MetadataExchangeConfig{},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"mixer": map[string]interface{}{
-				"enabled": false,
+				"adapters": map[string]interface{}{
+					"prometheus": map[string]interface{}{
+						"enabled": true,
+					},
+				},
 			},
+			"prometheus": map[string]interface{}{"enabled": true},
 			"telemetry": map[string]interface{}{
-				"implementation": "Istiod",
-				"enabled":        true,
-				"v1": map[string]interface{}{
-					"enabled": false,
-				},
 				"v2": map[string]interface{}{
-					"enabled": true,
-					"metadataExchange": map[string]interface{}{
-						"wasmEnabled": false,
+					"prometheus": map[string]interface{}{
+						"enabled": true,
 					},
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-		}),
-	},
-	{
-		name: "istiod.metadata.full." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Telemetry: &v2.TelemetryConfig{
-				Type: v2.TelemetryTypeIstiod,
-				Istiod: &v2.IstiodTelemetryConfig{
-					MetadataExchange: &v2.MetadataExchangeConfig{
-						WASMEnabled: featureEnabled,
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"mixer": map[string]interface{}{
-				"enabled": false,
-			},
-			"telemetry": map[string]interface{}{
-				"implementation": "Istiod",
-				"enabled":        true,
-				"v1": map[string]interface{}{
-					"enabled": false,
-				},
-				"v2": map[string]interface{}{
-					"enabled": true,
-					"metadataExchange": map[string]interface{}{
-						"wasmEnabled": true,
-					},
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
 				},
 			},
 		}),
@@ -402,8 +344,15 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeIstiod,
-				Istiod: &v2.IstiodTelemetryConfig{
-					AccessLogTelemetryFilter: &v2.AccessLogTelemetryFilterConfig{},
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Telemetry: &v2.StackdriverTelemetryConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+						AccessLogging: &v2.StackdriverAccessLogTelemetryConfig{},
+					},
 				},
 			},
 		},
@@ -419,10 +368,6 @@ var telemetryTestCases = []conversionTestCase{
 				},
 				"v2": map[string]interface{}{
 					"enabled": true,
-					"accessLogPolicy": map[string]interface{}{
-						"enabled":           true,
-						"logWindowDuration": "",
-					},
 				},
 			},
 		}),
@@ -435,6 +380,20 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+					},
 				},
 			},
 		}),
@@ -445,9 +404,16 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeIstiod,
-				Istiod: &v2.IstiodTelemetryConfig{
-					AccessLogTelemetryFilter: &v2.AccessLogTelemetryFilterConfig{
-						LogWindowDuration: "43200s",
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Telemetry: &v2.StackdriverTelemetryConfig{
+						AccessLogging: &v2.StackdriverAccessLogTelemetryConfig{
+							Enablement: v2.Enablement{
+								Enabled: &featureEnabled,
+							},
+							LogWindowDuration: "43200s",
+						},
 					},
 				},
 			},
@@ -464,10 +430,6 @@ var telemetryTestCases = []conversionTestCase{
 				},
 				"v2": map[string]interface{}{
 					"enabled": true,
-					"accessLogPolicy": map[string]interface{}{
-						"enabled":           true,
-						"logWindowDuration": "43200s",
-					},
 				},
 			},
 		}),
@@ -480,6 +442,14 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"accessLogPolicy": map[string]interface{}{
+						"enabled":           true,
+						"logWindowDuration": "43200s",
+					},
 				},
 			},
 		}),
@@ -490,8 +460,14 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeIstiod,
-				Istiod: &v2.IstiodTelemetryConfig{
-					StackDriverFilter: &v2.StackDriverFilterConfig{},
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Telemetry: &v2.StackdriverTelemetryConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+					},
 				},
 			},
 		},
@@ -507,14 +483,6 @@ var telemetryTestCases = []conversionTestCase{
 				},
 				"v2": map[string]interface{}{
 					"enabled": true,
-					"stackdriver": map[string]interface{}{
-						"enabled":         true,
-						"configOverride":  map[string]interface{}(nil),
-						"disableOutbound": false,
-						"logging":         false,
-						"monitoring":      false,
-						"topology":        false,
-					},
 				},
 			},
 		}),
@@ -529,6 +497,20 @@ var telemetryTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			},
 		}),
 	},
 	{
@@ -537,12 +519,16 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeIstiod,
-				Istiod: &v2.IstiodTelemetryConfig{
-					StackDriverFilter: &v2.StackDriverFilterConfig{
-						DisableOutbound: true,
-						Logging:         true,
-						Monitoring:      true,
-						Topology:        true,
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Telemetry: &v2.StackdriverTelemetryConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+						EnableLogging:      &featureEnabled,
+						EnableMetrics:      &featureEnabled,
+						EnableContextGraph: &featureEnabled,
 						ConfigOverride: v1.NewHelmValues(map[string]interface{}{
 							"overrides": map[string]interface{}{
 								"some-key": "some-val",
@@ -567,21 +553,6 @@ var telemetryTestCases = []conversionTestCase{
 				},
 				"v2": map[string]interface{}{
 					"enabled": true,
-					"stackdriver": map[string]interface{}{
-						"enabled": true,
-						"configOverride": map[string]interface{}{
-							"overrides": map[string]interface{}{
-								"some-key": "some-val",
-								"some-struct": map[string]interface{}{
-									"nested-key": "nested-val",
-								},
-							},
-						},
-						"disableOutbound": true,
-						"logging":         true,
-						"monitoring":      true,
-						"topology":        true,
-					},
 				},
 			},
 		}),
@@ -594,6 +565,34 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled":      true,
+						"logging":      map[string]interface{}{"enabled": true},
+						"metrics":      map[string]interface{}{"enabled": true},
+						"contextGraph": map[string]interface{}{"enabled": true},
+					},
+				},
+			},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+						"configOverride": map[string]interface{}{
+							"overrides": map[string]interface{}{
+								"some-key": "some-val",
+								"some-struct": map[string]interface{}{
+									"nested-key": "nested-val",
+								},
+							},
+						},
+						"logging":    true,
+						"monitoring": true,
+						"topology":   true,
+					},
 				},
 			},
 		}),
@@ -689,6 +688,10 @@ var telemetryTestCases = []conversionTestCase{
 						MaxEntries: &batchMaxEntries100,
 						MaxTime:    "5",
 					},
+					Loadshedding: &v2.TelemetryLoadSheddingConfig{
+						Mode:             "enforce",
+						LatencyThreshold: "100ms",
+					},
 				},
 			},
 		},
@@ -700,6 +703,10 @@ var telemetryTestCases = []conversionTestCase{
 					"reportBatchMaxEntries":  100,
 					"reportBatchMaxTime":     "5",
 					"sessionAffinityEnabled": true,
+					"loadshedding": map[string]interface{}{
+						"mode":             "enforce",
+						"latencyThreshold": "100ms",
+					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -742,17 +749,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": false,
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -804,15 +800,6 @@ var telemetryTestCases = []conversionTestCase{
 						"enabled": true,
 					},
 					"useAdapterCRDs": false,
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": false,
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -844,10 +831,13 @@ var telemetryTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{
-				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Prometheus: &v2.MixerTelemetryPrometheusConfig{},
+				Type:  v2.TelemetryTypeMixer,
+				Mixer: &v2.MixerTelemetryConfig{},
+			},
+			Addons: &v2.AddonsConfig{
+				Prometheus: &v2.PrometheusAddonConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
 					},
 				},
 			},
@@ -857,17 +847,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": true,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": false,
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -890,6 +869,21 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"prometheus": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			},
+			"prometheus": map[string]interface{}{"enabled": true},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"prometheus": map[string]interface{}{
+						"enabled": true,
+					},
 				},
 			},
 		}),
@@ -899,12 +893,16 @@ var telemetryTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{
-				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Prometheus: &v2.MixerTelemetryPrometheusConfig{
-							MetricsExpiryDuration: "10m",
-						},
+				Type:  v2.TelemetryTypeMixer,
+				Mixer: &v2.MixerTelemetryConfig{},
+			},
+			Addons: &v2.AddonsConfig{
+				Prometheus: &v2.PrometheusAddonConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+					TelemetryConfig: &v2.PrometheusTelemetryConfig{
+						MetricsExpiryDuration: "10m",
 					},
 				},
 			},
@@ -914,18 +912,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled":               true,
-						"metricsExpiryDuration": "10m",
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": false,
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -948,6 +934,22 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"prometheus": map[string]interface{}{
+						"enabled":               true,
+						"metricsExpiryDuration": "10m",
+					},
+				},
+			},
+			"prometheus": map[string]interface{}{"enabled": true},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"prometheus": map[string]interface{}{
+						"enabled": true,
+					},
 				},
 			},
 		}),
@@ -957,10 +959,15 @@ var telemetryTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{
-				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Stackdriver: &v2.MixerTelemetryStackdriverConfig{},
+				Type:  v2.TelemetryTypeMixer,
+				Mixer: &v2.MixerTelemetryConfig{},
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Telemetry: &v2.StackdriverTelemetryConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
 					},
 				},
 			},
@@ -970,26 +977,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": true,
-						"contextGraph": map[string]interface{}{
-							"enabled": false,
-						},
-						"logging": map[string]interface{}{
-							"enabled": false,
-						},
-						"metrics": map[string]interface{}{
-							"enabled": false,
-						},
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -1012,6 +999,20 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+					},
 				},
 			},
 		}),
@@ -1021,14 +1022,26 @@ var telemetryTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{
-				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Stackdriver: &v2.MixerTelemetryStackdriverConfig{
-							EnableContextGraph: featureEnabled,
-							EnableLogging:      featureEnabled,
-							EnableMetrics:      featureEnabled,
+				Type:  v2.TelemetryTypeMixer,
+				Mixer: &v2.MixerTelemetryConfig{},
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Telemetry: &v2.StackdriverTelemetryConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
 						},
+						EnableLogging:      &featureEnabled,
+						EnableMetrics:      &featureEnabled,
+						EnableContextGraph: &featureEnabled,
+						ConfigOverride: v1.NewHelmValues(map[string]interface{}{
+							"overrides": map[string]interface{}{
+								"some-key": "some-val",
+								"some-struct": map[string]interface{}{
+									"nested-key": "nested-val",
+								},
+							},
+						}),
 					},
 				},
 			},
@@ -1038,26 +1051,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": true,
-						"contextGraph": map[string]interface{}{
-							"enabled": true,
-						},
-						"logging": map[string]interface{}{
-							"enabled": true,
-						},
-						"metrics": map[string]interface{}{
-							"enabled": true,
-						},
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -1080,6 +1073,34 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled":      true,
+						"logging":      map[string]interface{}{"enabled": true},
+						"metrics":      map[string]interface{}{"enabled": true},
+						"contextGraph": map[string]interface{}{"enabled": true},
+					},
+				},
+			},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+						"configOverride": map[string]interface{}{
+							"overrides": map[string]interface{}{
+								"some-key": "some-val",
+								"some-struct": map[string]interface{}{
+									"nested-key": "nested-val",
+								},
+							},
+						},
+						"logging":    true,
+						"monitoring": true,
+						"topology":   true,
+					},
 				},
 			},
 		}),
@@ -1090,11 +1111,14 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Stackdriver: &v2.MixerTelemetryStackdriverConfig{
-							Auth: &v2.MixerTelemetryStackdriverAuthConfig{},
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Telemetry: &v2.StackdriverTelemetryConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
 						},
+						Auth: &v2.StackdriverAuthConfig{},
 					},
 				},
 			},
@@ -1104,31 +1128,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": true,
-						"contextGraph": map[string]interface{}{
-							"enabled": false,
-						},
-						"logging": map[string]interface{}{
-							"enabled": false,
-						},
-						"metrics": map[string]interface{}{
-							"enabled": false,
-						},
-						"auth": map[string]interface{}{
-							"apiKey":             "",
-							"appCredentials":     false,
-							"serviceAccountPath": "",
-						},
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -1151,6 +1150,20 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+					},
 				},
 			},
 		}),
@@ -1161,14 +1174,17 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Stackdriver: &v2.MixerTelemetryStackdriverConfig{
-							Auth: &v2.MixerTelemetryStackdriverAuthConfig{
-								AppCredentials:     true,
-								APIKey:             "mykey",
-								ServiceAccountPath: "/path/to/sa",
-							},
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Telemetry: &v2.StackdriverTelemetryConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+						Auth: &v2.StackdriverAuthConfig{
+							AppCredentials:     &featureEnabled,
+							APIKey:             "mykey",
+							ServiceAccountPath: "/path/to/sa",
 						},
 					},
 				},
@@ -1179,31 +1195,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": true,
-						"contextGraph": map[string]interface{}{
-							"enabled": false,
-						},
-						"logging": map[string]interface{}{
-							"enabled": false,
-						},
-						"metrics": map[string]interface{}{
-							"enabled": false,
-						},
-						"auth": map[string]interface{}{
-							"apiKey":             "mykey",
-							"appCredentials":     true,
-							"serviceAccountPath": "/path/to/sa",
-						},
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -1226,6 +1217,25 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+						"auth": map[string]interface{}{
+							"apiKey":             "mykey",
+							"appCredentials":     true,
+							"serviceAccountPath": "/path/to/sa",
+						},
+					},
+				},
+			},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+					},
 				},
 			},
 		}),
@@ -1236,12 +1246,13 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Stackdriver: &v2.MixerTelemetryStackdriverConfig{
-							Tracer: &v2.MixerTelemetryStackdriverTracerConfig{},
-						},
-					},
+			},
+			Tracing: &v2.TracingConfig{
+				Type: v2.TracerTypeStackdriver,
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Tracer: &v2.StackdriverTracerConfig{},
 				},
 			},
 		},
@@ -1250,29 +1261,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": true,
-						"contextGraph": map[string]interface{}{
-							"enabled": false,
-						},
-						"logging": map[string]interface{}{
-							"enabled": false,
-						},
-						"metrics": map[string]interface{}{
-							"enabled": false,
-						},
-						"tracer": map[string]interface{}{
-							"sampleProbability": 0,
-						},
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -1296,6 +1284,23 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "stackdriver",
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"tracer": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "stackdriver",
 			},
 		}),
 	},
@@ -1305,13 +1310,23 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V2_0.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Stackdriver: &v2.MixerTelemetryStackdriverConfig{
-							Tracer: &v2.MixerTelemetryStackdriverTracerConfig{
-								SampleProbability: 50,
-							},
+			},
+			Tracing: &v2.TracingConfig{
+				Type:     v2.TracerTypeStackdriver,
+				Sampling: &traceSampling,
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Telemetry: &v2.StackdriverTelemetryConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
 						},
+					},
+					Tracer: &v2.StackdriverTracerConfig{
+						Debug:                    &featureEnabled,
+						MaxNumberOfAnnotations:   &maxAnnotations,
+						MaxNumberOfAttributes:    &maxAttributes,
+						MaxNumberOfMessageEvents: &maxEvents,
 					},
 				},
 			},
@@ -1321,29 +1336,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": true,
-						"contextGraph": map[string]interface{}{
-							"enabled": false,
-						},
-						"logging": map[string]interface{}{
-							"enabled": false,
-						},
-						"metrics": map[string]interface{}{
-							"enabled": false,
-						},
-						"tracer": map[string]interface{}{
-							"sampleProbability": 50,
-						},
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -1367,6 +1359,43 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "stackdriver",
+				},
+				"tracer": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"debug":                    true,
+						"maxNumberOfAttributes":    maxAttributes,
+						"maxNumberOfAnnotations":   maxAnnotations,
+						"maxNumberOfMessageEvents": maxEvents,
+					},
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+						"tracer": map[string]interface{}{
+							"enabled":           true,
+							"sampleProbability": .01,
+						},
+					},
+				},
+			},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			},
+			"pilot": map[string]interface{}{
+				"traceSampling": 0.01,
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "stackdriver",
 			},
 		}),
 	},
@@ -1378,7 +1407,11 @@ var telemetryTestCases = []conversionTestCase{
 				Type: v2.TelemetryTypeMixer,
 				Mixer: &v2.MixerTelemetryConfig{
 					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Stdio: &v2.MixerTelemetryStdioConfig{},
+						Stdio: &v2.MixerTelemetryStdioConfig{
+							Enablement: v2.Enablement{
+								Enabled: &featureEnabled,
+							},
+						},
 					},
 				},
 			},
@@ -1390,15 +1423,8 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": true,
 				},
 				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": false,
-					},
 					"stdio": map[string]interface{}{
 						"enabled":      true,
-						"outputAsJson": false,
 					},
 				},
 			},
@@ -1435,7 +1461,10 @@ var telemetryTestCases = []conversionTestCase{
 				Mixer: &v2.MixerTelemetryConfig{
 					Adapters: &v2.MixerTelemetryAdaptersConfig{
 						Stdio: &v2.MixerTelemetryStdioConfig{
-							OutputAsJSON: featureEnabled,
+							Enablement: v2.Enablement{
+								Enabled: &featureEnabled,
+							},
+							OutputAsJSON: &featureEnabled,
 						},
 					},
 				},
@@ -1448,12 +1477,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": true,
 				},
 				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": false,
-					},
 					"stdio": map[string]interface{}{
 						"enabled":      true,
 						"outputAsJson": true,
@@ -1561,6 +1584,10 @@ var telemetryTestCases = []conversionTestCase{
 						MaxEntries: &batchMaxEntries100,
 						MaxTime:    "5",
 					},
+					Loadshedding: &v2.TelemetryLoadSheddingConfig{
+						Mode:             "enforce",
+						LatencyThreshold: "100ms",
+					},
 				},
 			},
 		},
@@ -1572,6 +1599,10 @@ var telemetryTestCases = []conversionTestCase{
 					"reportBatchMaxEntries":  100,
 					"reportBatchMaxTime":     "5",
 					"sessionAffinityEnabled": true,
+					"loadshedding": map[string]interface{}{
+						"mode":             "enforce",
+						"latencyThreshold": "100ms",
+					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -1607,17 +1638,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": false,
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -1662,15 +1682,6 @@ var telemetryTestCases = []conversionTestCase{
 						"enabled": true,
 					},
 					"useAdapterCRDs": false,
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": false,
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -1696,9 +1707,11 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V1_1.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Prometheus: &v2.MixerTelemetryPrometheusConfig{},
+			},
+			Addons: &v2.AddonsConfig{
+				Prometheus: &v2.PrometheusAddonConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
 					},
 				},
 			},
@@ -1708,17 +1721,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": true,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": false,
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -1734,6 +1736,21 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"prometheus": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			},
+			"prometheus": map[string]interface{}{"enabled": true},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"prometheus": map[string]interface{}{
+						"enabled": true,
+					},
 				},
 			},
 		}),
@@ -1744,11 +1761,14 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V1_1.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Prometheus: &v2.MixerTelemetryPrometheusConfig{
-							MetricsExpiryDuration: "10m",
-						},
+			},
+			Addons: &v2.AddonsConfig{
+				Prometheus: &v2.PrometheusAddonConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+					TelemetryConfig: &v2.PrometheusTelemetryConfig{
+						MetricsExpiryDuration: "10m",
 					},
 				},
 			},
@@ -1758,18 +1778,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled":               true,
-						"metricsExpiryDuration": "10m",
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": false,
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -1785,6 +1793,22 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"prometheus": map[string]interface{}{
+						"enabled":               true,
+						"metricsExpiryDuration": "10m",
+					},
+				},
+			},
+			"prometheus": map[string]interface{}{"enabled": true},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"prometheus": map[string]interface{}{
+						"enabled": true,
+					},
 				},
 			},
 		}),
@@ -1795,9 +1819,13 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V1_1.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Stackdriver: &v2.MixerTelemetryStackdriverConfig{},
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Telemetry: &v2.StackdriverTelemetryConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
 					},
 				},
 			},
@@ -1807,26 +1835,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": true,
-						"contextGraph": map[string]interface{}{
-							"enabled": false,
-						},
-						"logging": map[string]interface{}{
-							"enabled": false,
-						},
-						"metrics": map[string]interface{}{
-							"enabled": false,
-						},
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -1842,6 +1850,20 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+					},
 				},
 			},
 		}),
@@ -1852,13 +1874,16 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V1_1.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Stackdriver: &v2.MixerTelemetryStackdriverConfig{
-							EnableContextGraph: featureEnabled,
-							EnableLogging:      featureEnabled,
-							EnableMetrics:      featureEnabled,
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Telemetry: &v2.StackdriverTelemetryConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
 						},
+						EnableLogging:      &featureEnabled,
+						EnableMetrics:      &featureEnabled,
+						EnableContextGraph: &featureEnabled,
 					},
 				},
 			},
@@ -1868,26 +1893,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": true,
-						"contextGraph": map[string]interface{}{
-							"enabled": true,
-						},
-						"logging": map[string]interface{}{
-							"enabled": true,
-						},
-						"metrics": map[string]interface{}{
-							"enabled": true,
-						},
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -1903,6 +1908,26 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled":      true,
+						"logging":      map[string]interface{}{"enabled": true},
+						"metrics":      map[string]interface{}{"enabled": true},
+						"contextGraph": map[string]interface{}{"enabled": true},
+					},
+				},
+			},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+						"logging":    true,
+						"monitoring": true,
+						"topology":   true,
+					},
 				},
 			},
 		}),
@@ -1913,11 +1938,14 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V1_1.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Stackdriver: &v2.MixerTelemetryStackdriverConfig{
-							Auth: &v2.MixerTelemetryStackdriverAuthConfig{},
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Telemetry: &v2.StackdriverTelemetryConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
 						},
+						Auth: &v2.StackdriverAuthConfig{},
 					},
 				},
 			},
@@ -1927,31 +1955,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": true,
-						"contextGraph": map[string]interface{}{
-							"enabled": false,
-						},
-						"logging": map[string]interface{}{
-							"enabled": false,
-						},
-						"metrics": map[string]interface{}{
-							"enabled": false,
-						},
-						"auth": map[string]interface{}{
-							"apiKey":             "",
-							"appCredentials":     false,
-							"serviceAccountPath": "",
-						},
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -1967,6 +1970,20 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+					},
 				},
 			},
 		}),
@@ -1977,14 +1994,17 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V1_1.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Stackdriver: &v2.MixerTelemetryStackdriverConfig{
-							Auth: &v2.MixerTelemetryStackdriverAuthConfig{
-								AppCredentials:     true,
-								APIKey:             "mykey",
-								ServiceAccountPath: "/path/to/sa",
-							},
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Telemetry: &v2.StackdriverTelemetryConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+						Auth: &v2.StackdriverAuthConfig{
+							AppCredentials:     &featureEnabled,
+							APIKey:             "mykey",
+							ServiceAccountPath: "/path/to/sa",
 						},
 					},
 				},
@@ -1995,31 +2015,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": true,
-						"contextGraph": map[string]interface{}{
-							"enabled": false,
-						},
-						"logging": map[string]interface{}{
-							"enabled": false,
-						},
-						"metrics": map[string]interface{}{
-							"enabled": false,
-						},
-						"auth": map[string]interface{}{
-							"apiKey":             "mykey",
-							"appCredentials":     true,
-							"serviceAccountPath": "/path/to/sa",
-						},
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -2035,6 +2030,25 @@ var telemetryTestCases = []conversionTestCase{
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+						"auth": map[string]interface{}{
+							"apiKey":             "mykey",
+							"appCredentials":     true,
+							"serviceAccountPath": "/path/to/sa",
+						},
+					},
+				},
+			},
+			"telemetry": map[string]interface{}{
+				"v2": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"enabled": true,
+					},
 				},
 			},
 		}),
@@ -2045,12 +2059,13 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V1_1.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Stackdriver: &v2.MixerTelemetryStackdriverConfig{
-							Tracer: &v2.MixerTelemetryStackdriverTracerConfig{},
-						},
-					},
+			},
+			Tracing: &v2.TracingConfig{
+				Type: v2.TracerTypeStackdriver,
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Tracer: &v2.StackdriverTracerConfig{},
 				},
 			},
 		},
@@ -2059,29 +2074,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": true,
-						"contextGraph": map[string]interface{}{
-							"enabled": false,
-						},
-						"logging": map[string]interface{}{
-							"enabled": false,
-						},
-						"metrics": map[string]interface{}{
-							"enabled": false,
-						},
-						"tracer": map[string]interface{}{
-							"sampleProbability": 0,
-						},
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -2098,6 +2090,23 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "stackdriver",
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"tracer": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "stackdriver",
 			},
 		}),
 	},
@@ -2107,13 +2116,18 @@ var telemetryTestCases = []conversionTestCase{
 			Version: versions.V1_1.String(),
 			Telemetry: &v2.TelemetryConfig{
 				Type: v2.TelemetryTypeMixer,
-				Mixer: &v2.MixerTelemetryConfig{
-					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Stackdriver: &v2.MixerTelemetryStackdriverConfig{
-							Tracer: &v2.MixerTelemetryStackdriverTracerConfig{
-								SampleProbability: 50,
-							},
-						},
+			},
+			Tracing: &v2.TracingConfig{
+				Type:     v2.TracerTypeStackdriver,
+				Sampling: &traceSampling,
+			},
+			Addons: &v2.AddonsConfig{
+				Stackdriver: &v2.StackdriverAddonConfig{
+					Tracer: &v2.StackdriverTracerConfig{
+						Debug:                    &featureEnabled,
+						MaxNumberOfAnnotations:   &maxAnnotations,
+						MaxNumberOfAttributes:    &maxAttributes,
+						MaxNumberOfMessageEvents: &maxEvents,
 					},
 				},
 			},
@@ -2123,29 +2137,6 @@ var telemetryTestCases = []conversionTestCase{
 				"enabled": true,
 				"telemetry": map[string]interface{}{
 					"enabled": true,
-				},
-				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": true,
-						"contextGraph": map[string]interface{}{
-							"enabled": false,
-						},
-						"logging": map[string]interface{}{
-							"enabled": false,
-						},
-						"metrics": map[string]interface{}{
-							"enabled": false,
-						},
-						"tracer": map[string]interface{}{
-							"sampleProbability": 50,
-						},
-					},
-					"stdio": map[string]interface{}{
-						"enabled": false,
-					},
 				},
 			},
 			"telemetry": map[string]interface{}{
@@ -2162,6 +2153,35 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "stackdriver",
+				},
+				"tracer": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"debug":                    true,
+						"maxNumberOfAttributes":    maxAttributes,
+						"maxNumberOfAnnotations":   maxAnnotations,
+						"maxNumberOfMessageEvents": maxEvents,
+					},
+				},
+			},
+			"mixer": map[string]interface{}{
+				"adapters": map[string]interface{}{
+					"stackdriver": map[string]interface{}{
+						"tracer": map[string]interface{}{
+							"enabled":           true,
+							"sampleProbability": .01,
+						},
+					},
+				},
+			},
+			"pilot": map[string]interface{}{
+				"traceSampling": 0.01,
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "stackdriver",
 			},
 		}),
 	},
@@ -2173,7 +2193,11 @@ var telemetryTestCases = []conversionTestCase{
 				Type: v2.TelemetryTypeMixer,
 				Mixer: &v2.MixerTelemetryConfig{
 					Adapters: &v2.MixerTelemetryAdaptersConfig{
-						Stdio: &v2.MixerTelemetryStdioConfig{},
+						Stdio: &v2.MixerTelemetryStdioConfig{
+							Enablement: v2.Enablement{
+								Enabled: &featureEnabled,
+							},
+						},
 					},
 				},
 			},
@@ -2185,15 +2209,8 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": true,
 				},
 				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": false,
-					},
 					"stdio": map[string]interface{}{
 						"enabled":      true,
-						"outputAsJson": false,
 					},
 				},
 			},
@@ -2223,7 +2240,10 @@ var telemetryTestCases = []conversionTestCase{
 				Mixer: &v2.MixerTelemetryConfig{
 					Adapters: &v2.MixerTelemetryAdaptersConfig{
 						Stdio: &v2.MixerTelemetryStdioConfig{
-							OutputAsJSON: featureEnabled,
+							Enablement: v2.Enablement{
+								Enabled: &featureEnabled,
+							},
+							OutputAsJSON: &featureEnabled,
 						},
 					},
 				},
@@ -2236,12 +2256,6 @@ var telemetryTestCases = []conversionTestCase{
 					"enabled": true,
 				},
 				"adapters": map[string]interface{}{
-					"prometheus": map[string]interface{}{
-						"enabled": false,
-					},
-					"stackdriver": map[string]interface{}{
-						"enabled": false,
-					},
 					"stdio": map[string]interface{}{
 						"enabled":      true,
 						"outputAsJson": true,

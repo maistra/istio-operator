@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,6 +18,7 @@ import (
 )
 
 const statusAnnotationReadyComponentCount = "readyComponentCount"
+const statusAnnotationAlwaysReadyComponents = "alwaysReadyComponents"
 
 func (r *controlPlaneInstanceReconciler) UpdateReadiness(ctx context.Context) error {
 	log := common.LogFromContext(ctx)
@@ -54,50 +56,60 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 
 	readyCondition := r.Status.GetCondition(status.ConditionTypeReady)
 	updateStatus := false
-	if len(unreadyComponents) > 0 {
-		if readyCondition.Status != status.ConditionStatusFalse {
-			condition := status.Condition{
+	reconciledCondition := r.Status.GetCondition(status.ConditionTypeReconciled)
+	if reconciledCondition.Status != status.ConditionStatusTrue {
+		if !readyCondition.Matches(reconciledCondition.Status, reconciledCondition.Reason, reconciledCondition.Message) {
+			r.Status.SetCondition(status.Condition{
 				Type:    status.ConditionTypeReady,
-				Status:  status.ConditionStatusFalse,
-				Reason:  status.ConditionReasonComponentsNotReady,
-				Message: "Some components are not fully available",
-			}
-			r.Status.SetCondition(condition)
-			r.EventRecorder.Event(r.Instance, corev1.EventTypeWarning, eventReasonNotReady, fmt.Sprintf("The following components are not fully available: %s", unreadyComponents))
+				Status:  reconciledCondition.Status,
+				Reason:  reconciledCondition.Reason,
+				Message: reconciledCondition.Message,
+			})
 			updateStatus = true
 		}
 	} else {
-		reconciledCondition := r.Status.GetCondition(status.ConditionTypeReconciled)
-		if reconciledCondition.Status != status.ConditionStatusTrue {
-			readyCondition := r.Status.GetCondition(status.ConditionTypeReady)
-			if readyCondition.Message != reconciledCondition.Message {
-				condition := status.Condition{
+		if len(unreadyComponents) > 0 {
+			message := fmt.Sprintf("The following components are not fully available: %s", unreadyComponents.List())
+			if !readyCondition.Matches(status.ConditionStatusFalse, status.ConditionReasonComponentsNotReady, message) {
+				r.Status.SetCondition(status.Condition{
 					Type:    status.ConditionTypeReady,
-					Status:  reconciledCondition.Status,
+					Status:  status.ConditionStatusFalse,
 					Reason:  status.ConditionReasonComponentsNotReady,
-					Message: reconciledCondition.Message,
-				}
-				r.Status.SetCondition(condition)
+					Message: message,
+				})
+				r.EventRecorder.Event(r.Instance, corev1.EventTypeWarning, eventReasonNotReady, message)
 				updateStatus = true
 			}
-		} else if readyCondition.Status != status.ConditionStatusTrue {
-			condition := status.Condition{
-				Type:    status.ConditionTypeReady,
-				Status:  status.ConditionStatusTrue,
-				Reason:  status.ConditionReasonComponentsReady,
-				Message: "All component deployments are Available",
+		} else {
+			message := "All component deployments are Available"
+			if !readyCondition.Matches(status.ConditionStatusTrue, status.ConditionReasonComponentsReady, message) {
+				r.Status.SetCondition(status.Condition{
+					Type:    status.ConditionTypeReady,
+					Status:  status.ConditionStatusTrue,
+					Reason:  status.ConditionReasonComponentsReady,
+					Message: message,
+				})
+				r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReasonReady, message)
+				updateStatus = true
 			}
-			r.Status.SetCondition(condition)
-			r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReasonReady, condition.Message)
-			updateStatus = true
 		}
 	}
 
 	if r.Status.Annotations == nil {
 		r.Status.Annotations = map[string]string{}
 	}
-	r.Status.Annotations[statusAnnotationReadyComponentCount] = fmt.Sprintf("%d/%d", len(readyComponents), len(readyComponents)+len(unreadyComponents))
+	r.Status.Annotations[statusAnnotationReadyComponentCount] = fmt.Sprintf("%d/%d", len(readyComponents), len(r.Status.ComponentStatus))
 
+	allComponents := sets.NewString()
+	for _, comp := range r.Status.ComponentStatus {
+		allComponents.Insert(comp.Resource)
+	}
+
+	r.Status.Readiness.Components = map[string][]string {
+		"ready": readyComponents.List(),
+		"unready": unreadyComponents.List(),
+		"pending": allComponents.Difference(readyComponents).Difference(unreadyComponents).List(),
+	}
 	return updateStatus, nil
 }
 
@@ -170,9 +182,15 @@ func (r *controlPlaneInstanceReconciler) calculateComponentReadinessMap(ctx cont
 		}
 	}
 
-	cniReady, err := r.isCNIReady(ctx)
-	readinessMap["cni"] = cniReady
-	return readinessMap, err
+	if r.Status.Annotations != nil {
+		alwaysReadyComponents := r.Status.Annotations[statusAnnotationAlwaysReadyComponents]
+		if alwaysReadyComponents != "" {
+			for _, c := range strings.Split(alwaysReadyComponents, ",") {
+				readinessMap[c] = true
+			}
+		}
+	}
+	return readinessMap, nil
 }
 
 func (r *controlPlaneInstanceReconciler) isCNIReady(ctx context.Context) (bool, error) {

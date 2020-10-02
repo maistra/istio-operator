@@ -1,12 +1,61 @@
 package conversion
 
 import (
+	"strings"
+
 	conversion "k8s.io/apimachinery/pkg/conversion"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
+
+func v1ToV2Hacks(in *v1.ControlPlaneSpec, values *v1.HelmValues) error {
+	// adjustments for 3scale
+	if in.ThreeScale != nil {
+		values.SetField("3scale", in.ThreeScale.DeepCopy().GetContent())
+	}
+
+	// move tracing.jaeger.annotations to tracing.jaeger.podAnnotations
+	if jaegerAnnotations, ok, err := values.GetFieldNoCopy("tracing.jaeger.annotations"); ok {
+		if err := values.SetField("tracing.jaeger.podAnnotations", jaegerAnnotations); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	// normalize jaeger images
+	if agentImage, ok, err := values.GetString("tracing.jaeger.agentImage"); ok {
+		if err := values.SetField("tracing.jaeger.agent.image", agentImage); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	if allInOneImage, ok, err := values.GetString("tracing.jaeger.allInOneImage"); ok {
+		if err := values.SetField("tracing.jaeger.allInOne.image", allInOneImage); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	if collectorImage, ok, err := values.GetString("tracing.jaeger.collectorImage"); ok {
+		if err := values.SetField("tracing.jaeger.collector.image", collectorImage); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	if queryImage, ok, err := values.GetString("tracing.jaeger.queryImage"); ok {
+		if err := values.SetField("tracing.jaeger.query.image", queryImage); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 // Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec converts a v1 ControlPlaneSpec to its v2 equivalent.
 func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec, out *v2.ControlPlaneSpec, s conversion.Scope) error {
@@ -24,48 +73,66 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 		out.Profiles = []string{in.Template}
 	}
 
-	// Cluster settings
-	if err := populateClusterConfig(in.Istio, out); err != nil {
+	// copy to preserve input
+	values := in.Istio.DeepCopy()
+	if techPreview, ok, err := values.GetMap("techPreview"); ok {
+		out.TechPreview = v1.NewHelmValues(techPreview).DeepCopy()
+		delete(values.GetContent(), "techPreview")
+	} else if err != nil {
 		return err
 	}
 
-	// Logging
-	if err := populateControlPlaneLoggingConfig(in.Istio, out); err != nil {
+	if err := v1ToV2Hacks(in, values); err != nil {
+		return err
+	}
+
+	// Cluster settings
+	if err := populateClusterConfig(values, out); err != nil {
+		return err
+	}
+
+	// General
+	if err := populateGeneralConfig(values, out); err != nil {
 		return err
 	}
 
 	// Policy
-	if err := populatePolicyConfig(in.Istio, out, version); err != nil {
+	if err := populatePolicyConfig(values, out, version); err != nil {
 		return err
 	}
 
 	// Proxy
-	if err := populateProxyConfig(in.Istio, out); err != nil {
+	if err := populateProxyConfig(values, out); err != nil {
 		return err
 	}
 
 	// Security
-	if err := populateSecurityConfig(in.Istio, out); err != nil {
+	if err := populateSecurityConfig(values, out); err != nil {
 		return err
 	}
 
 	// Telemetry
-	if err := populateTelemetryConfig(in.Istio, out, version); err != nil {
+	if err := populateTelemetryConfig(values, out, version); err != nil {
+		return err
+	}
+
+	// Tracing
+	if err := populateTracingConfig(values, out); err != nil {
 		return err
 	}
 
 	// Gateways
-	if err := populateGatewaysConfig(in.Istio, out); err != nil {
+	if err := populateGatewaysConfig(values, out); err != nil {
 		return err
 	}
 
 	// Runtime
-	if _, err := populateControlPlaneRuntimeConfig(in.Istio, out); err != nil {
+	if _, err := populateControlPlaneRuntimeConfig(values, out); err != nil {
 		return err
 	}
 
 	// Addons
-	if err := populateAddonsConfig(in.Istio, out); err != nil {
+	if err := populateAddonsConfig(values, out); err != nil {
 		return err
 	}
 
@@ -73,6 +140,20 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 }
 
 func Convert_v1_ControlPlaneStatus_To_v2_ControlPlaneStatus(in *v1.ControlPlaneStatus, out *v2.ControlPlaneStatus, s conversion.Scope) error {
-	in.DeepCopyInto(&out.ControlPlaneStatus)
+	if err := autoConvert_v1_ControlPlaneStatus_To_v2_ControlPlaneStatus(in, out, s); err != nil {
+		return err
+	}
+	// WARNING: in.OperatorVersion requires manual conversion: does not exist in peer-type
+	lastDash := strings.LastIndex(in.ReconciledVersion, "-")
+	if lastDash >= 0 {
+		out.OperatorVersion = in.ReconciledVersion[:lastDash]
+	}
+	// WARNING: in.ChartVersion requires manual conversion: does not exist in peer-type
+	// WARNING: in.AppliedValues requires manual conversion: does not exist in peer-type
+	in.LastAppliedConfiguration.DeepCopyInto(&out.AppliedValues)
+	// WARNING: in.AppliedSpec requires manual conversion: does not exist in peer-type
+	if err := Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(&in.LastAppliedConfiguration, &out.AppliedSpec, s); err != nil {
+		return err
+	}
 	return nil
 }

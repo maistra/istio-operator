@@ -54,9 +54,11 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					Enable: &featureEnabled,
-					Auto:   &featureEnabled,
+				MutualTLS: &v2.MutualTLSConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+					Auto: &featureEnabled,
 				},
 			},
 		},
@@ -86,10 +88,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-					},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
 				},
 			},
 		},
@@ -118,11 +118,9 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type:   v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{},
-					},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type:   v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{},
 				},
 			},
 		},
@@ -151,13 +149,11 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{
-							WorkloadCertTTLDefault: "24h",
-							WorkloadCertTTLMax:     "7d",
-						},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{
+						WorkloadCertTTLDefault: "24h",
+						WorkloadCertTTLMax:     "7d",
 					},
 				},
 			},
@@ -166,10 +162,6 @@ var securityTestCases = []conversionTestCase{
 			"pilot": map[string]interface{}{
 				"ca": map[string]interface{}{
 					"implementation": "Istiod",
-				},
-				"env": map[string]interface{}{
-					"DEFAULT_WORKLOAD_CERT_TTL": "24h",
-					"MAX_WORKLOAD_CERT_TTL":     "7d",
 				},
 			},
 		}),
@@ -184,6 +176,12 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
+			"pilot": map[string]interface{}{
+				"env": map[string]interface{}{
+					"DEFAULT_WORKLOAD_CERT_TTL": "24h",
+					"MAX_WORKLOAD_CERT_TTL":     "7d",
+				},
+			},
 		}),
 	},
 	{
@@ -191,12 +189,10 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{
-							Type: v2.IstioCertificateSignerTypeSelfSigned,
-						},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{
+						Type: v2.IstioCertificateSignerTypeSelfSigned,
 					},
 				},
 			},
@@ -229,13 +225,11 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{
-							Type:       v2.IstioCertificateSignerTypeSelfSigned,
-							SelfSigned: &v2.IstioSelfSignedCertificateSignerConfig{},
-						},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{
+						Type:       v2.IstioCertificateSignerTypeSelfSigned,
+						SelfSigned: &v2.IstioSelfSignedCertificateSignerConfig{},
 					},
 				},
 			},
@@ -268,17 +262,15 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{
-							Type: v2.IstioCertificateSignerTypeSelfSigned,
-							SelfSigned: &v2.IstioSelfSignedCertificateSignerConfig{
-								CheckPeriod:  "1h",
-								EnableJitter: &featureEnabled,
-								GracePeriod:  "20%",
-								TTL:          "1y",
-							},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{
+						Type: v2.IstioCertificateSignerTypeSelfSigned,
+						SelfSigned: &v2.IstioSelfSignedCertificateSignerConfig{
+							CheckPeriod:  "1h",
+							EnableJitter: &featureEnabled,
+							GracePeriod:  "20%",
+							TTL:          "1y",
 						},
 					},
 				},
@@ -288,12 +280,6 @@ var securityTestCases = []conversionTestCase{
 			"pilot": map[string]interface{}{
 				"ca": map[string]interface{}{
 					"implementation": "Istiod",
-				},
-				"env": map[string]interface{}{
-					"CITADEL_ENABLE_JITTER_FOR_ROOT_CERT_ROTATOR":           true,
-					"CITADEL_SELF_SIGNED_CA_CERT_TTL":                       "1y",
-					"CITADEL_SELF_SIGNED_ROOT_CERT_CHECK_INTERVAL":          "1h",
-					"CITADEL_SELF_SIGNED_ROOT_CERT_GRACE_PERIOD_PERCENTILE": "20%",
 				},
 			},
 			"security": map[string]interface{}{
@@ -311,6 +297,14 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
+			"pilot": map[string]interface{}{
+				"env": map[string]interface{}{
+					"CITADEL_ENABLE_JITTER_FOR_ROOT_CERT_ROTATOR":           "true",
+					"CITADEL_SELF_SIGNED_CA_CERT_TTL":                       "1y",
+					"CITADEL_SELF_SIGNED_ROOT_CERT_CHECK_INTERVAL":          "1h",
+					"CITADEL_SELF_SIGNED_ROOT_CERT_GRACE_PERIOD_PERCENTILE": "20%",
+				},
+			},
 		}),
 	},
 	{
@@ -318,12 +312,10 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{
-							Type: v2.IstioCertificateSignerTypePrivateKey,
-						},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{
+						Type: v2.IstioCertificateSignerTypePrivateKey,
 					},
 				},
 			},
@@ -356,13 +348,11 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{
-							Type:       v2.IstioCertificateSignerTypePrivateKey,
-							PrivateKey: &v2.IstioPrivateKeyCertificateSignerConfig{},
-						},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{
+						Type:       v2.IstioCertificateSignerTypePrivateKey,
+						PrivateKey: &v2.IstioPrivateKeyCertificateSignerConfig{},
 					},
 				},
 			},
@@ -395,14 +385,12 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{
-							Type: v2.IstioCertificateSignerTypePrivateKey,
-							PrivateKey: &v2.IstioPrivateKeyCertificateSignerConfig{
-								RootCADir: "/etc/cacerts",
-							},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{
+						Type: v2.IstioCertificateSignerTypePrivateKey,
+						PrivateKey: &v2.IstioPrivateKeyCertificateSignerConfig{
+							RootCADir: "/etc/cacerts",
 						},
 					},
 				},
@@ -412,9 +400,6 @@ var securityTestCases = []conversionTestCase{
 			"pilot": map[string]interface{}{
 				"ca": map[string]interface{}{
 					"implementation": "Istiod",
-				},
-				"env": map[string]interface{}{
-					"ROOT_CA_DIR": "/etc/cacerts",
 				},
 			},
 			"security": map[string]interface{}{
@@ -432,6 +417,11 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
+			"pilot": map[string]interface{}{
+				"env": map[string]interface{}{
+					"ROOT_CA_DIR": "/etc/cacerts",
+				},
+			},
 		}),
 	},
 	{
@@ -439,10 +429,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeCustom,
-					},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeCustom,
 				},
 			},
 		},
@@ -471,11 +459,9 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type:   v2.CertificateAuthorityTypeCustom,
-						Custom: &v2.CustomCertificateAuthorityConfig{},
-					},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type:   v2.CertificateAuthorityTypeCustom,
+					Custom: &v2.CustomCertificateAuthorityConfig{},
 				},
 			},
 		},
@@ -507,12 +493,10 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeCustom,
-						Custom: &v2.CustomCertificateAuthorityConfig{
-							Address: "my-caprovider.example.com",
-						},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeCustom,
+					Custom: &v2.CustomCertificateAuthorityConfig{
+						Address: "my-caprovider.example.com",
 					},
 				},
 			},
@@ -545,10 +529,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-					},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
 				},
 			},
 		},
@@ -577,11 +559,9 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type:   v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{},
-					},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type:   v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{},
 				},
 			},
 		},
@@ -610,12 +590,10 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{
-							WorkloadCertTTLDefault: "24h",
-						},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{
+						WorkloadCertTTLDefault: "24h",
 					},
 				},
 			},
@@ -648,12 +626,10 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{
-							Type: v2.IstioCertificateSignerTypeSelfSigned,
-						},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{
+						Type: v2.IstioCertificateSignerTypeSelfSigned,
 					},
 				},
 			},
@@ -686,13 +662,11 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{
-							Type:       v2.IstioCertificateSignerTypeSelfSigned,
-							SelfSigned: &v2.IstioSelfSignedCertificateSignerConfig{},
-						},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{
+						Type:       v2.IstioCertificateSignerTypeSelfSigned,
+						SelfSigned: &v2.IstioSelfSignedCertificateSignerConfig{},
 					},
 				},
 			},
@@ -725,17 +699,15 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{
-							Type: v2.IstioCertificateSignerTypeSelfSigned,
-							SelfSigned: &v2.IstioSelfSignedCertificateSignerConfig{
-								CheckPeriod:  "1h",
-								EnableJitter: &featureEnabled,
-								GracePeriod:  "20%",
-								TTL:          "1y",
-							},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{
+						Type: v2.IstioCertificateSignerTypeSelfSigned,
+						SelfSigned: &v2.IstioSelfSignedCertificateSignerConfig{
+							CheckPeriod:  "1h",
+							EnableJitter: &featureEnabled,
+							GracePeriod:  "20%",
+							TTL:          "1y",
 						},
 					},
 				},
@@ -749,12 +721,6 @@ var securityTestCases = []conversionTestCase{
 			},
 			"security": map[string]interface{}{
 				"selfSigned": true,
-				"env": map[string]interface{}{
-					"CITADEL_ENABLE_JITTER_FOR_ROOT_CERT_ROTATOR":           true,
-					"CITADEL_SELF_SIGNED_CA_CERT_TTL":                       "1y",
-					"CITADEL_SELF_SIGNED_ROOT_CERT_CHECK_INTERVAL":          "1h",
-					"CITADEL_SELF_SIGNED_ROOT_CERT_GRACE_PERIOD_PERCENTILE": "20%",
-				},
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -768,6 +734,14 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
+			"security": map[string]interface{}{
+				"env": map[string]interface{}{
+					"CITADEL_ENABLE_JITTER_FOR_ROOT_CERT_ROTATOR":           "true",
+					"CITADEL_SELF_SIGNED_CA_CERT_TTL":                       "1y",
+					"CITADEL_SELF_SIGNED_ROOT_CERT_CHECK_INTERVAL":          "1h",
+					"CITADEL_SELF_SIGNED_ROOT_CERT_GRACE_PERIOD_PERCENTILE": "20%",
+				},
+			},
 		}),
 	},
 	{
@@ -775,12 +749,10 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{
-							Type: v2.IstioCertificateSignerTypePrivateKey,
-						},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{
+						Type: v2.IstioCertificateSignerTypePrivateKey,
 					},
 				},
 			},
@@ -813,13 +785,11 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{
-							Type:       v2.IstioCertificateSignerTypePrivateKey,
-							PrivateKey: &v2.IstioPrivateKeyCertificateSignerConfig{},
-						},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{
+						Type:       v2.IstioCertificateSignerTypePrivateKey,
+						PrivateKey: &v2.IstioPrivateKeyCertificateSignerConfig{},
 					},
 				},
 			},
@@ -852,14 +822,12 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeIstiod,
-						Istiod: &v2.IstiodCertificateAuthorityConfig{
-							Type: v2.IstioCertificateSignerTypePrivateKey,
-							PrivateKey: &v2.IstioPrivateKeyCertificateSignerConfig{
-								RootCADir: "/etc/cacerts",
-							},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeIstiod,
+					Istiod: &v2.IstiodCertificateAuthorityConfig{
+						Type: v2.IstioCertificateSignerTypePrivateKey,
+						PrivateKey: &v2.IstioPrivateKeyCertificateSignerConfig{
+							RootCADir: "/etc/cacerts",
 						},
 					},
 				},
@@ -869,9 +837,6 @@ var securityTestCases = []conversionTestCase{
 			"pilot": map[string]interface{}{
 				"ca": map[string]interface{}{
 					"implementation": "Istiod",
-				},
-				"env": map[string]interface{}{
-					"ROOT_CA_DIR": "/etc/cacerts",
 				},
 			},
 			"security": map[string]interface{}{
@@ -889,6 +854,11 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
+			"pilot": map[string]interface{}{
+				"env": map[string]interface{}{
+					"ROOT_CA_DIR": "/etc/cacerts",
+				},
+			},
 		}),
 	},
 	{
@@ -896,10 +866,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeCustom,
-					},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeCustom,
 				},
 			},
 		},
@@ -928,11 +896,9 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type:   v2.CertificateAuthorityTypeCustom,
-						Custom: &v2.CustomCertificateAuthorityConfig{},
-					},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type:   v2.CertificateAuthorityTypeCustom,
+					Custom: &v2.CustomCertificateAuthorityConfig{},
 				},
 			},
 		},
@@ -964,12 +930,10 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					CertificateAuthority: v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeCustom,
-						Custom: &v2.CustomCertificateAuthorityConfig{
-							Address: "my-caprovider.example.com",
-						},
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeCustom,
+					Custom: &v2.CustomCertificateAuthorityConfig{
+						Address: "my-caprovider.example.com",
 					},
 				},
 			},
@@ -1002,10 +966,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					Identity: v2.IdentityConfig{
-						Type: v2.IdentityConfigTypeKubernetes,
-					},
+				Identity: &v2.IdentityConfig{
+					Type: v2.IdentityConfigTypeKubernetes,
 				},
 			},
 		},
@@ -1032,10 +994,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					Identity: v2.IdentityConfig{
-						Type: v2.IdentityConfigTypeThirdParty,
-					},
+				Identity: &v2.IdentityConfig{
+					Type: v2.IdentityConfigTypeThirdParty,
 				},
 			},
 		},
@@ -1062,11 +1022,9 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					Identity: v2.IdentityConfig{
-						Type:       v2.IdentityConfigTypeThirdParty,
-						ThirdParty: &v2.ThirdPartyIdentityConfig{},
-					},
+				Identity: &v2.IdentityConfig{
+					Type:       v2.IdentityConfigTypeThirdParty,
+					ThirdParty: &v2.ThirdPartyIdentityConfig{},
 				},
 			},
 		},
@@ -1093,13 +1051,11 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					Identity: v2.IdentityConfig{
-						Type: v2.IdentityConfigTypeThirdParty,
-						ThirdParty: &v2.ThirdPartyIdentityConfig{
-							Audience: "istio-ca",
-							Issuer:   "https://my-issuer.example.com",
-						},
+				Identity: &v2.IdentityConfig{
+					Type: v2.IdentityConfigTypeThirdParty,
+					ThirdParty: &v2.ThirdPartyIdentityConfig{
+						Audience: "istio-ca",
+						Issuer:   "https://my-issuer.example.com",
 					},
 				},
 			},
@@ -1111,11 +1067,6 @@ var securityTestCases = []conversionTestCase{
 					"token": map[string]interface{}{
 						"aud": "istio-ca",
 					},
-				},
-			},
-			"pilot": map[string]interface{}{
-				"env": map[string]interface{}{
-					"TOKEN_ISSUER": "https://my-issuer.example.com",
 				},
 			},
 		}),
@@ -1130,6 +1081,11 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
+			"pilot": map[string]interface{}{
+				"env": map[string]interface{}{
+					"TOKEN_ISSUER": "https://my-issuer.example.com",
+				},
+			},
 		}),
 	},
 	{
@@ -1137,10 +1093,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					Identity: v2.IdentityConfig{
-						Type: v2.IdentityConfigTypeKubernetes,
-					},
+				Identity: &v2.IdentityConfig{
+					Type: v2.IdentityConfigTypeKubernetes,
 				},
 			},
 		},
@@ -1167,10 +1121,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					Identity: v2.IdentityConfig{
-						Type: v2.IdentityConfigTypeThirdParty,
-					},
+				Identity: &v2.IdentityConfig{
+					Type: v2.IdentityConfigTypeThirdParty,
 				},
 			},
 		},
@@ -1197,11 +1149,9 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					Identity: v2.IdentityConfig{
-						Type:       v2.IdentityConfigTypeThirdParty,
-						ThirdParty: &v2.ThirdPartyIdentityConfig{},
-					},
+				Identity: &v2.IdentityConfig{
+					Type:       v2.IdentityConfigTypeThirdParty,
+					ThirdParty: &v2.ThirdPartyIdentityConfig{},
 				},
 			},
 		},
@@ -1228,13 +1178,11 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					Identity: v2.IdentityConfig{
-						Type: v2.IdentityConfigTypeThirdParty,
-						ThirdParty: &v2.ThirdPartyIdentityConfig{
-							Audience: "istio-ca",
-							Issuer:   "https://my-issuer.example.com",
-						},
+				Identity: &v2.IdentityConfig{
+					Type: v2.IdentityConfigTypeThirdParty,
+					ThirdParty: &v2.ThirdPartyIdentityConfig{
+						Audience: "istio-ca",
+						Issuer:   "https://my-issuer.example.com",
 					},
 				},
 			},
@@ -1246,11 +1194,6 @@ var securityTestCases = []conversionTestCase{
 					"token": map[string]interface{}{
 						"aud": "istio-ca",
 					},
-				},
-			},
-			"pilot": map[string]interface{}{
-				"env": map[string]interface{}{
-					"TOKEN_ISSUER": "https://my-issuer.example.com",
 				},
 			},
 		}),
@@ -1265,6 +1208,11 @@ var securityTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 			},
+			"pilot": map[string]interface{}{
+				"env": map[string]interface{}{
+					"TOKEN_ISSUER": "https://my-issuer.example.com",
+				},
+			},
 		}),
 	},
 	{
@@ -1272,10 +1220,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					Trust: v2.TrustConfig{
-						Domain: "example.com",
-					},
+				Trust: &v2.TrustConfig{
+					Domain: "example.com",
 				},
 			},
 		},
@@ -1302,10 +1248,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					Trust: v2.TrustConfig{
-						AdditionalDomains: []string{},
-					},
+				Trust: &v2.TrustConfig{
+					AdditionalDomains: []string{},
 				},
 			},
 		},
@@ -1332,12 +1276,10 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					Trust: v2.TrustConfig{
-						AdditionalDomains: []string{
-							"extra-trust.mydomain.com",
-							"another-trusted.anotherdomain.com",
-						},
+				Trust: &v2.TrustConfig{
+					AdditionalDomains: []string{
+						"extra-trust.mydomain.com",
+						"another-trusted.anotherdomain.com",
 					},
 				},
 			},
@@ -1368,10 +1310,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					Trust: v2.TrustConfig{
-						Domain: "example.com",
-					},
+				Trust: &v2.TrustConfig{
+					Domain: "example.com",
 				},
 			},
 		},
@@ -1398,10 +1338,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					Trust: v2.TrustConfig{
-						AdditionalDomains: []string{},
-					},
+				Trust: &v2.TrustConfig{
+					AdditionalDomains: []string{},
 				},
 			},
 		},
@@ -1428,12 +1366,10 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					Trust: v2.TrustConfig{
-						AdditionalDomains: []string{
-							"extra-trust.mydomain.com",
-							"another-trusted.anotherdomain.com",
-						},
+				Trust: &v2.TrustConfig{
+					AdditionalDomains: []string{
+						"extra-trust.mydomain.com",
+						"another-trusted.anotherdomain.com",
 					},
 				},
 			},
@@ -1464,10 +1400,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					ControlPlane: v2.ControlPlaneMTLSConfig{
-						Enable: &featureEnabled,
-					},
+				ControlPlane: &v2.ControlPlaneSecurityConfig{
+					MTLS: &featureEnabled,
 				},
 			},
 		},
@@ -1494,10 +1428,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					ControlPlane: v2.ControlPlaneMTLSConfig{
-						CertProvider: v2.ControlPlaneCertProviderTypeIstiod,
-					},
+				ControlPlane: &v2.ControlPlaneSecurityConfig{
+					CertProvider: v2.ControlPlaneCertProviderTypeIstiod,
 				},
 			},
 		},
@@ -1524,10 +1456,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					ControlPlane: v2.ControlPlaneMTLSConfig{
-						CertProvider: v2.ControlPlaneCertProviderTypeKubernetes,
-					},
+				ControlPlane: &v2.ControlPlaneSecurityConfig{
+					CertProvider: v2.ControlPlaneCertProviderTypeKubernetes,
 				},
 			},
 		},
@@ -1554,10 +1484,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					ControlPlane: v2.ControlPlaneMTLSConfig{
-						CertProvider: v2.ControlPlaneCertProviderTypeCustom,
-					},
+				ControlPlane: &v2.ControlPlaneSecurityConfig{
+					CertProvider: v2.ControlPlaneCertProviderTypeCustom,
 				},
 			},
 		},
@@ -1584,10 +1512,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					ControlPlane: v2.ControlPlaneMTLSConfig{
-						Enable: &featureEnabled,
-					},
+				ControlPlane: &v2.ControlPlaneSecurityConfig{
+					MTLS: &featureEnabled,
 				},
 			},
 		},
@@ -1614,10 +1540,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					ControlPlane: v2.ControlPlaneMTLSConfig{
-						CertProvider: v2.ControlPlaneCertProviderTypeIstiod,
-					},
+				ControlPlane: &v2.ControlPlaneSecurityConfig{
+					CertProvider: v2.ControlPlaneCertProviderTypeIstiod,
 				},
 			},
 		},
@@ -1644,10 +1568,8 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					ControlPlane: v2.ControlPlaneMTLSConfig{
-						CertProvider: v2.ControlPlaneCertProviderTypeKubernetes,
-					},
+				ControlPlane: &v2.ControlPlaneSecurityConfig{
+					CertProvider: v2.ControlPlaneCertProviderTypeKubernetes,
 				},
 			},
 		},
@@ -1674,16 +1596,58 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: v2.MutualTLSConfig{
-					ControlPlane: v2.ControlPlaneMTLSConfig{
-						CertProvider: v2.ControlPlaneCertProviderTypeCustom,
-					},
+				ControlPlane: &v2.ControlPlaneSecurityConfig{
+					CertProvider: v2.ControlPlaneCertProviderTypeCustom,
 				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"pilotCertProvider": "custom",
+			},
+		}),
+		completeIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"useMCP": true,
+				"multiCluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"meshExpansion": map[string]interface{}{
+					"enabled": false,
+					"useILB":  false,
+				},
+			},
+		}),
+	},
+	{
+		name: "controlplane.tls." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Security: &v2.SecurityConfig{
+				ControlPlane: &v2.ControlPlaneSecurityConfig{
+					TLS: &v2.ControlPlaneTLSConfig{
+						CipherSuites: []string{
+							"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+							"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+						},
+						ECDHCurves: []string{
+							"CurveP256",
+							"CurveP521",
+						},
+						MinProtocolVersion: "TLSv1_2",
+						MaxProtocolVersion: "TLSv1_3",
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"tls": map[string]interface{}{
+					"cipherSuites":       "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+					"ecdhCurves":         "CurveP256,CurveP521",
+					"minProtocolVersion": "TLSv1_2",
+					"maxProtocolVersion": "TLSv1_3",
+				},
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{

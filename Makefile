@@ -16,7 +16,7 @@
 
 MAISTRA_VERSION        ?= 2.0.0
 MAISTRA_BRANCH         ?= maistra-2.0
-REPLACES_PRODUCT_CSV   ?= 1.1.4
+REPLACES_PRODUCT_CSV   ?= 1.1.9
 REPLACES_COMMUNITY_CSV ?= 1.1.8
 VERSION                ?= development
 IMAGE                  ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}
@@ -89,6 +89,10 @@ update-1.0-charts: update-remote-maistra-1.0
 	find ${RESOURCES_DIR}/helm/v1.0/istio-init/files/ -maxdepth 1 -name "*.crd.yaml" -delete
 	# MAISTRA-1776
 	sed -i -e '/kind: handler/,/kind:/ { /name: kubernetesenv/,/kind:/ s/params:/params: \{\}/ }' ${RESOURCES_DIR}/helm/v1.0/istio/charts/mixer/templates/config.yaml
+	sed -i -e '/if (\$$spec.sds) and (eq \$$spec.sds.enabled true)/ a\{\{- if $$spec.sds \}\}\n\{\{- if eq $$spec.sds.enabled true \}\}' ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/role.yaml ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/rolebindings.yaml
+	sed -i -e '/if (\$$spec.sds) and (eq \$$spec.sds.enabled true)/ d' ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/role.yaml ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/rolebindings.yaml
+	echo "{{- end }}" >> ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/role.yaml
+	echo "{{- end }}" >> ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/rolebindings.yaml
 	CRD_DIR=${RESOURCES_DIR}/helm/v1.0/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
 
 .PHONY: update-1.0-templates
@@ -180,7 +184,7 @@ generate-product-manifests:
 # resource generation
 ################################################################################
 .PHONY: gen
-gen: update-charts update-generated-code
+gen: update-charts update-templates update-generated-code
 
 .PHONY: gen-check
 gen-check: gen check-clean-repo

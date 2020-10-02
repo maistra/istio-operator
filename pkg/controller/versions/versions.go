@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/helm/pkg/manifest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
-	"k8s.io/helm/pkg/manifest"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -88,9 +90,10 @@ type Version interface {
 
 // ValidationStrategy is an interface used by the validating webhook for validating SMCP resources.
 type ValidationStrategy interface {
-	Validate(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error
-	ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error
-	ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error
+	ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error
+	ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error
+	ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error
+	ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error
 }
 
 // RenderingStrategy is an interface used by the reconciler to manage rendering of charts.
@@ -147,9 +150,9 @@ func (v version) GetCNINetworkName() string {
 }
 
 // ParseVersion returns a version for the specified string
-func ParseVersion(str string) (Version, error) {
+func ParseVersion(str string) (version, error) {
 	if v, ok := stringToVersion[str]; ok {
-		return v.Version(), nil
+		return v, nil
 	}
 	return InvalidVersion, fmt.Errorf("invalid version: %s", str)
 }
@@ -163,13 +166,16 @@ var _ VersionStrategy = (*nilVersionStrategy)(nil)
 func (v *nilVersionStrategy) SetImageValues(ctx context.Context, cr *common.ControllerResources, smcp *v1.ControlPlaneSpec) error {
 	return nil
 }
-func (v *nilVersionStrategy) Validate(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *nilVersionStrategy) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	return nil
 }
-func (v *nilVersionStrategy) ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *nilVersionStrategy) ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
 	return nil
 }
-func (v *nilVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *nilVersionStrategy) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+	return nil
+}
+func (v *nilVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
 	return nil
 }
 func (v *nilVersionStrategy) GetChartInstallOrder() [][]string {
@@ -188,13 +194,16 @@ var _ VersionStrategy = (*invalidVersionStrategy)(nil)
 func (v *invalidVersionStrategy) SetImageValues(ctx context.Context, cr *common.ControllerResources, smcp *v1.ControlPlaneSpec) error {
 	return fmt.Errorf("invalid version: %s", v.version)
 }
-func (v *invalidVersionStrategy) Validate(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *invalidVersionStrategy) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	return fmt.Errorf("invalid version: %s", v.version)
 }
-func (v *invalidVersionStrategy) ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *invalidVersionStrategy) ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
 	return fmt.Errorf("invalid version: %s", v.version)
 }
-func (v *invalidVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *invalidVersionStrategy) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+	return fmt.Errorf("invalid version: %s", v.version)
+}
+func (v *invalidVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
 	return fmt.Errorf("invalid version: %s", v.version)
 }
 func (v *invalidVersionStrategy) GetChartInstallOrder() [][]string {

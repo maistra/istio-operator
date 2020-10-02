@@ -64,6 +64,9 @@ func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Ma
 	// split the manifest into individual objects
 	objects := releaseutil.SplitManifests(man.Content)
 	for _, raw := range objects {
+		if raw == "---" {
+			continue
+		}
 		rawJSON, err := yaml.YAMLToJSON([]byte(raw))
 		if err != nil {
 			log.Error(err, fmt.Sprintf("unable to convert raw data to JSON: %s", raw))
@@ -153,7 +156,7 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 		_, err = patch.Apply(ctx)
 		if errors.IsInvalid(err) {
 			// patch was invalid, try delete/create
-			log.Info("patch failed.  attempting to delete and recreate the resource")
+			log.Info(fmt.Sprintf("patch failed: %v.  attempting to delete and recreate the resource", err))
 			if deleteErr := p.Client.Delete(ctx, obj, client.PropagationPolicy(metav1.DeletePropagationBackground)); deleteErr == nil {
 				// we need to remove the resource version, which was updated by the patching process
 				obj.SetResourceVersion("")

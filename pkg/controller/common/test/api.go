@@ -8,6 +8,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -25,6 +26,8 @@ type ControllerTestCase struct {
 	AddControllers []AddControllerFunc
 	// Known resource types, used to seed RESTMapper
 	GroupResources []*restmapper.APIGroupResources
+	// StorageVersions represent the storage versions for resources with multiple versions
+	StorageVersions []schema.GroupVersion
 	// Resources are existing resources that should be seeded into the ObjectTracker
 	// used by the simulator.
 	Resources []runtime.Object
@@ -172,5 +175,5 @@ func (a *AbstractActionFilter) String() string {
 	if a.Subresource == "" {
 		return fmt.Sprintf("%s on %s named %s in %s", a.Verb, a.Resource, a.Name, a.Namespace)
 	}
-	return fmt.Sprintf("%s on %s/%s named %s in %s", a.Verb, a.Resource, a.Subresource, a.Name, a.Namespace)
+	return fmt.Sprintf("%s on %s.%s named %s in %s", a.Verb, a.Resource, a.Subresource, a.Name, a.Namespace)
 }

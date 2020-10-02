@@ -15,50 +15,35 @@ metadata:
     createdAt: __DATE__
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <__VERSION__"
+    operators.openshift.io/infrastructure-features: '__OLM_FEATURES__'
     alm-examples: |-
       [
         {
-          "apiVersion": "maistra.io/v1",
+          "apiVersion": "maistra.io/v2",
           "kind": "ServiceMeshControlPlane",
           "metadata": {
-            "name": "basic-install",
+            "name": "basic",
             "namespace": "control-plane-namespace"
           },
           "spec": {
             "version": "v2.0",
-            "istio": {
-              "gateways": {
-                "istio-egressgateway": {
-                  "autoscaleEnabled": false
-                },
-                "istio-ingressgateway": {
-                  "autoscaleEnabled": false,
-                  "ior_enabled": false
+            "tracing": {
+              "type": "Jaeger",
+              "sampling": 10000
+            },
+            "addons": {
+              "jaeger": {
+                "install": {
+                  "storage": {
+                    "type": "__JAEGER_STORAGE__"
+                  }
                 }
-              },
-              "mixer": {
-                "policy": {
-                  "autoscaleEnabled": false
-                },
-                "telemetry": {
-                  "autoscaleEnabled": false
-                }
-              },
-              "pilot": {
-                "autoscaleEnabled": false,
-                "traceSampling": 100.0
               },
               "kiali": {
                 "enabled": true
               },
               "grafana": {
                 "enabled": true
-              },
-              "tracing": {
-                "enabled": true,
-                "jaeger": {
-                  "template": "__JAEGER_TEMPLATE__"
-                }
               }
             }
           }
@@ -86,7 +71,7 @@ metadata:
           },
           "spec": {
             "controlPlaneRef": {
-              "name": "basic-install",
+              "name": "basic",
               "namespace": "control-plane-namespace"
             }
           }
@@ -194,86 +179,92 @@ __DEPLOYMENT_SPEC__
   customresourcedefinitions:
     owned:
     - name: servicemeshcontrolplanes.maistra.io
-      version: v1
+      version: v2
       kind: ServiceMeshControlPlane
       displayName: Istio Service Mesh Control Plane
       description: An Istio control plane installation
       specDescriptors:
-      - description: Specify the version of control control plane you want to install
-        displayName: Control Plane Version
+      - displayName: Control Plane Version
+        description: Specify the version of the control plane you want to install
         path: version
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v2.0'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v1.1'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v1.0'
-      - description: Enable mTLS for communication between control plane components (galley, pilot, etc.)
-        displayName: Control Plane Security
-        path: istio.global.controlPlaneSecurityEnabled
+      - displayName: Control Plane Security
+        description: Enable mTLS for communication between control plane components
+        path: security.controlPlane.mtls
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
-      - description: Enable mTLS for communcation between services in the mesh
-        displayName: Data Plane Security
-        path: istio.global.mtls.enabled
+      - displayName: Data Plane Security
+        description: Enable mTLS for communcation between services in the mesh
+        path: security.mtls.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
-      - description: Set to true to install Kiali
-        displayName: Install Kiali
-        path: istio.kiali.enabled
+      - displayName: Install Kiali
+        description: Set to true to install Kiali
+        path: addons.kiali.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:visualization'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
-      - description: Set to true to install Grafana
-        displayName: Install Grafana
-        path: istio.grafana.enabled
+      - displayName: Install Grafana
+        description: Set to true to install Grafana
+        path: addons.grafana.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:visualization'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
-      - description: Set to false to disable tracing
-        displayName: Install Jaeger
-        path: istio.tracing.enabled
+      - displayName: Tracing provider
+        description: Select the provider to use for tracing
+        path: tracing.type
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:tracing'
-          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
-      - description: Set template to use when installing Jaeger
-        displayName: Jaeger template
-        path: istio.tracing.jaeger.template
+          - 'urn:alm:descriptor:com.tectonic.ui:select:None'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Jaeger'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Stackdriver'
+      - displayName: Jaeger Storage Type
+        description: Set storage type for Jaeger (applies only when Jaeger is selected as the tracing provider)
+        path: addons.jaeger.install.storage.type
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:tracing'
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldDependency:istio.tracing.enabled:true'
-          - 'urn:alm:descriptor:com.tectonic.ui:select:all-in-one'
-          - 'urn:alm:descriptor:com.tectonic.ui:select:production-elasticsearch'
-      - description: Set to true to install the Istio 3Scale adapter
-        displayName: Install 3Scale Adapter
-        path: threeScale.enabled
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldDependency:tracing.type:Jaeger'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Memory'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Elasticsearch'
+      - displayName: Install 3Scale Adapter
+        description: Set to true to install the Istio 3Scale adapter
+        path: addons.3scale.enabled
         x-descriptors:
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:API_Management'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
           - 'urn:alm:descriptor:com.tectonic.ui:advanced'
-      - description: Limits describes the minimum/maximum amount of compute resources required/allowed
-        displayName: Default Resource Requirements
-        path: istio.global.defaultResources
+      - displayName: Default Resource Requirements
+        description: Set the default compute resource requests and limits for control plane components
+        path: runtime.defaults.container.resources
         x-descriptors:
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Resource_Requirements'
           - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
           - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      statusDescriptors:
+        - displayName: Components
+          description: Status of components deployed by this ServiceMeshControlPlane resource
+          path: readiness.components
+          x-descriptors:
+            - "urn:alm:descriptor:com.tectonic.ui:podStatuses"
     - name: servicemeshmembers.maistra.io
       version: v1
       kind: ServiceMeshMember
       displayName: Istio Service Mesh Member
       description: Marks the containing namespace as a member of the referenced Service Mesh
       specDescriptors:
-      - path: controlPlaneRef.namespace
+      - displayName: Namespace
         description: The namespace of the ServiceMeshControlPlane to which this namespace belongs
-        displayName: Namespace
+        path: controlPlaneRef.namespace
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Service_Mesh_Control_Plane'
           - 'urn:alm:descriptor:io.kubernetes:Namespace'
-      - path: controlPlaneRef.name
+      - displayName: Name
         description: The name of the ServiceMeshControlPlane to which this namespace belongs
-        displayName: Name
+        path: controlPlaneRef.name
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Service_Mesh_Control_Plane'
           - 'urn:alm:descriptor:com.tectonic.ui:text'

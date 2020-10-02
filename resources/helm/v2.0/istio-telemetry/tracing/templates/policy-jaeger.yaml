@@ -17,7 +17,7 @@ spec:
   {{- else }}
       app.kubernetes.io/component: collector
   {{- end }}
-      app.kubernetes.io/instance: {{ default .Values.tracing.jaeger.resourceName "jaeger" }}
+      app.kubernetes.io/instance: {{ .Values.tracing.jaeger.resourceName | default "jaeger" }}
   mtls:
     mode: DISABLE
 ---
@@ -31,7 +31,7 @@ metadata:
     app: {{ .Values.tracing.provider }}
     release: {{ .Release.Name }}
 spec:
-  host: jaeger-collector
+  host: {{ .Values.tracing.jaeger.resourceName | default "jaeger" }}-collector.{{ .Release.Namespace }}.svc
   trafficPolicy:
     tls:
       mode: DISABLE

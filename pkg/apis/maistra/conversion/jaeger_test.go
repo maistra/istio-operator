@@ -12,6 +12,8 @@ import (
 var (
 	jaegerMaxTraces              = int64(15000)
 	jaegerElasticsearchNodeCount = int32(5)
+	traceSampling                = int32(1)
+	traceSamplingInt             = int32(100)
 )
 
 var jaegerTestCases = []conversionTestCase{
@@ -19,18 +21,12 @@ var jaegerTestCases = []conversionTestCase{
 		name: "none." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeNone,
-				},
+			Tracing: &v2.TracingConfig{
+				Type:     v2.TracerTypeNone,
+				Sampling: &traceSampling,
 			},
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"tracing": map[string]interface{}{
-				"enabled":  false,
-				"provider": "none",
-			},
-		}),
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"useMCP": true,
@@ -41,6 +37,17 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": false,
+				"proxy": map[string]interface{}{
+					"tracer": "none",
+				},
+			},
+			"pilot": map[string]interface{}{
+				"traceSampling": 0.01,
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  false,
+				"provider": "none",
 			},
 		}),
 	},
@@ -48,24 +55,11 @@ var jaegerTestCases = []conversionTestCase{
 		name: "nil." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type:   v2.TracerTypeJaeger,
-					Jaeger: nil,
-				},
+			Tracing: &v2.TracingConfig{
+				Type: v2.TracerTypeJaeger,
 			},
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-			},
-		}),
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"useMCP": true,
@@ -76,6 +70,14 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "jaeger",
+				},
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "jaeger",
 			},
 		}),
 	},
@@ -83,27 +85,15 @@ var jaegerTestCases = []conversionTestCase{
 		name: "defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
+			Tracing: &v2.TracingConfig{
+				Sampling: &traceSamplingInt,
+				Type:     v2.TracerTypeJaeger,
+			},
 			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type:   v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{},
-				},
+				Jaeger: &v2.JaegerAddonConfig{},
 			},
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-				"jaeger": map[string]interface{}{
-					"install": false,
-				},
-			},
-		}),
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"useMCP": true,
@@ -114,6 +104,17 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "jaeger",
+				},
+			},
+			"pilot": map[string]interface{}{
+				"traceSampling": 1,
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "jaeger",
 			},
 		}),
 	},
@@ -121,26 +122,18 @@ var jaegerTestCases = []conversionTestCase{
 		name: "simple." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
+			Tracing: &v2.TracingConfig{
+				Type: v2.TracerTypeJaeger,
+			},
 			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{
-						Name: "my-jaeger",
-					},
+				Jaeger: &v2.JaegerAddonConfig{
+					Name: "my-jaeger",
 				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
 			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      false,
 					"resourceName": "my-jaeger",
 				},
 			},
@@ -155,6 +148,14 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "jaeger",
+				},
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "jaeger",
 			},
 		}),
 	},
@@ -162,27 +163,19 @@ var jaegerTestCases = []conversionTestCase{
 		name: "install.defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
+			Tracing: &v2.TracingConfig{
+				Type: v2.TracerTypeJaeger,
+			},
 			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{
-						Name:    "my-jaeger",
-						Install: &v2.JaegerInstallConfig{},
-					},
+				Jaeger: &v2.JaegerAddonConfig{
+					Name:    "my-jaeger",
+					Install: &v2.JaegerInstallConfig{},
 				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
 			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 				},
 			},
@@ -197,6 +190,14 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "jaeger",
+				},
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "jaeger",
 			},
 		}),
 	},
@@ -204,29 +205,21 @@ var jaegerTestCases = []conversionTestCase{
 		name: "install.storage.defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
+			Tracing: &v2.TracingConfig{
+				Type: v2.TracerTypeJaeger,
+			},
 			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{
-						Name: "my-jaeger",
-						Install: &v2.JaegerInstallConfig{
-							Storage: &v2.JaegerStorageConfig{},
-						},
+				Jaeger: &v2.JaegerAddonConfig{
+					Name: "my-jaeger",
+					Install: &v2.JaegerInstallConfig{
+						Storage: &v2.JaegerStorageConfig{},
 					},
 				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
 			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 				},
 			},
@@ -241,6 +234,14 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "jaeger",
+				},
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "jaeger",
 			},
 		}),
 	},
@@ -248,31 +249,23 @@ var jaegerTestCases = []conversionTestCase{
 		name: "install.storage.memory.nil." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
+			Tracing: &v2.TracingConfig{
+				Type: v2.TracerTypeJaeger,
+			},
 			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{
-						Name: "my-jaeger",
-						Install: &v2.JaegerInstallConfig{
-							Storage: &v2.JaegerStorageConfig{
-								Type: v2.JaegerStorageTypeMemory,
-							},
+				Jaeger: &v2.JaegerAddonConfig{
+					Name: "my-jaeger",
+					Install: &v2.JaegerInstallConfig{
+						Storage: &v2.JaegerStorageConfig{
+							Type: v2.JaegerStorageTypeMemory,
 						},
 					},
 				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
 			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 					"template":     "all-in-one",
 				},
@@ -288,6 +281,14 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "jaeger",
+				},
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "jaeger",
 			},
 		}),
 	},
@@ -295,32 +296,24 @@ var jaegerTestCases = []conversionTestCase{
 		name: "install.storage.memory.defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
+			Tracing: &v2.TracingConfig{
+				Type: v2.TracerTypeJaeger,
+			},
 			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{
-						Name: "my-jaeger",
-						Install: &v2.JaegerInstallConfig{
-							Storage: &v2.JaegerStorageConfig{
-								Type:   v2.JaegerStorageTypeMemory,
-								Memory: &v2.JaegerMemoryStorageConfig{},
-							},
+				Jaeger: &v2.JaegerAddonConfig{
+					Name: "my-jaeger",
+					Install: &v2.JaegerInstallConfig{
+						Storage: &v2.JaegerStorageConfig{
+							Type:   v2.JaegerStorageTypeMemory,
+							Memory: &v2.JaegerMemoryStorageConfig{},
 						},
 					},
 				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
 			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 					"template":     "all-in-one",
 				},
@@ -336,32 +329,7 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
-			},
-		}),
-	},
-	{
-		name: "install.storage.memory.full." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{
-						Name: "my-jaeger",
-						Install: &v2.JaegerInstallConfig{
-							Storage: &v2.JaegerStorageConfig{
-								Type: v2.JaegerStorageTypeMemory,
-								Memory: &v2.JaegerMemoryStorageConfig{
-									MaxTraces: &jaegerMaxTraces,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
+				"enableTracing": true,
 				"proxy": map[string]interface{}{
 					"tracer": "jaeger",
 				},
@@ -369,8 +337,33 @@ var jaegerTestCases = []conversionTestCase{
 			"tracing": map[string]interface{}{
 				"enabled":  true,
 				"provider": "jaeger",
+			},
+		}),
+	},
+	{
+		name: "install.storage.memory.full." + versions.V2_0.String(),
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Tracing: &v2.TracingConfig{
+				Type: v2.TracerTypeJaeger,
+			},
+			Addons: &v2.AddonsConfig{
+				Jaeger: &v2.JaegerAddonConfig{
+					Name: "my-jaeger",
+					Install: &v2.JaegerInstallConfig{
+						Storage: &v2.JaegerStorageConfig{
+							Type: v2.JaegerStorageTypeMemory,
+							Memory: &v2.JaegerMemoryStorageConfig{
+								MaxTraces: &jaegerMaxTraces,
+							},
+						},
+					},
+				},
+			},
+		},
+		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"tracing": map[string]interface{}{
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 					"template":     "all-in-one",
 					"memory": map[string]interface{}{
@@ -389,6 +382,14 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "jaeger",
+				},
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "jaeger",
 			},
 		}),
 	},
@@ -396,31 +397,23 @@ var jaegerTestCases = []conversionTestCase{
 		name: "install.storage.elasticsearch.nil." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
+			Tracing: &v2.TracingConfig{
+				Type: v2.TracerTypeJaeger,
+			},
 			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{
-						Name: "my-jaeger",
-						Install: &v2.JaegerInstallConfig{
-							Storage: &v2.JaegerStorageConfig{
-								Type: v2.JaegerStorageTypeElasticsearch,
-							},
+				Jaeger: &v2.JaegerAddonConfig{
+					Name: "my-jaeger",
+					Install: &v2.JaegerInstallConfig{
+						Storage: &v2.JaegerStorageConfig{
+							Type: v2.JaegerStorageTypeElasticsearch,
 						},
 					},
 				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
 			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 					"template":     "production-elasticsearch",
 				},
@@ -436,6 +429,14 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "jaeger",
+				},
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "jaeger",
 			},
 		}),
 	},
@@ -443,32 +444,24 @@ var jaegerTestCases = []conversionTestCase{
 		name: "install.storage.elasticsearch.defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
+			Tracing: &v2.TracingConfig{
+				Type: v2.TracerTypeJaeger,
+			},
 			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{
-						Name: "my-jaeger",
-						Install: &v2.JaegerInstallConfig{
-							Storage: &v2.JaegerStorageConfig{
-								Type:          v2.JaegerStorageTypeElasticsearch,
-								Elasticsearch: &v2.JaegerElasticsearchStorageConfig{},
-							},
+				Jaeger: &v2.JaegerAddonConfig{
+					Name: "my-jaeger",
+					Install: &v2.JaegerInstallConfig{
+						Storage: &v2.JaegerStorageConfig{
+							Type:          v2.JaegerStorageTypeElasticsearch,
+							Elasticsearch: &v2.JaegerElasticsearchStorageConfig{},
 						},
 					},
 				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
 			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 					"template":     "production-elasticsearch",
 				},
@@ -484,6 +477,14 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "jaeger",
+				},
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "jaeger",
 			},
 		}),
 	},
@@ -491,27 +492,27 @@ var jaegerTestCases = []conversionTestCase{
 		name: "install.storage.elasticsearch.basic." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
+			Tracing: &v2.TracingConfig{
+				Type: v2.TracerTypeJaeger,
+			},
 			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{
-						Name: "my-jaeger",
-						Install: &v2.JaegerInstallConfig{
-							Storage: &v2.JaegerStorageConfig{
-								Type: v2.JaegerStorageTypeElasticsearch,
-								Elasticsearch: &v2.JaegerElasticsearchStorageConfig{
-									NodeCount: &jaegerElasticsearchNodeCount,
-									IndexCleaner: v1.NewHelmValues(map[string]interface{}{
-										"enabled":      true,
-										"numberOfDays": 7,
-										"schedule":     "55 23 * * *",
-									}).DeepCopy(),
-									RedundancyPolicy: "ZeroRedundancy",
-									Storage: v1.NewHelmValues(map[string]interface{}{
-										"storageClassName": "gp2",
-										"size":             "5Gi",
-									}).DeepCopy(),
-								},
+				Jaeger: &v2.JaegerAddonConfig{
+					Name: "my-jaeger",
+					Install: &v2.JaegerInstallConfig{
+						Storage: &v2.JaegerStorageConfig{
+							Type: v2.JaegerStorageTypeElasticsearch,
+							Elasticsearch: &v2.JaegerElasticsearchStorageConfig{
+								NodeCount: &jaegerElasticsearchNodeCount,
+								IndexCleaner: v1.NewHelmValues(map[string]interface{}{
+									"enabled":      true,
+									"numberOfDays": 7,
+									"schedule":     "55 23 * * *",
+								}).DeepCopy(),
+								RedundancyPolicy: "ZeroRedundancy",
+								Storage: v1.NewHelmValues(map[string]interface{}{
+									"storageClassName": "gp2",
+									"size":             "5Gi",
+								}).DeepCopy(),
 							},
 						},
 					},
@@ -519,30 +520,22 @@ var jaegerTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
 			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 					"template":     "production-elasticsearch",
 					"elasticsearch": map[string]interface{}{
-						"nodeCount": 5,
-						"esIndexCleaner": map[string]interface{}{
-							"enabled":      true,
-							"numberOfDays": 7,
-							"schedule":     "55 23 * * *"},
+						"nodeCount":        5,
 						"redundancyPolicy": "ZeroRedundancy",
 						"storage": map[string]interface{}{
 							"size":             "5Gi",
 							"storageClassName": "gp2",
 						},
 					},
+					"esIndexCleaner": map[string]interface{}{
+						"enabled":      true,
+						"numberOfDays": 7,
+						"schedule":     "55 23 * * *"},
 				},
 			},
 		}),
@@ -556,6 +549,14 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "jaeger",
+				},
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "jaeger",
 			},
 		}),
 	},
@@ -563,29 +564,21 @@ var jaegerTestCases = []conversionTestCase{
 		name: "install.ingress.defaults." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
+			Tracing: &v2.TracingConfig{
+				Type: v2.TracerTypeJaeger,
+			},
 			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{
-						Name: "my-jaeger",
-						Install: &v2.JaegerInstallConfig{
-							Ingress: &v2.JaegerIngressConfig{},
-						},
+				Jaeger: &v2.JaegerAddonConfig{
+					Name: "my-jaeger",
+					Install: &v2.JaegerInstallConfig{
+						Ingress: &v2.JaegerIngressConfig{},
 					},
 				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
 			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 				},
 			},
@@ -600,6 +593,14 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "jaeger",
+				},
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "jaeger",
 			},
 		}),
 	},
@@ -607,23 +608,23 @@ var jaegerTestCases = []conversionTestCase{
 		name: "install.ingress.full." + versions.V2_0.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
+			Tracing: &v2.TracingConfig{
+				Type: v2.TracerTypeJaeger,
+			},
 			Addons: &v2.AddonsConfig{
-				Tracing: v2.TracingConfig{
-					Type: v2.TracerTypeJaeger,
-					Jaeger: &v2.JaegerTracerConfig{
-						Name: "my-jaeger",
-						Install: &v2.JaegerInstallConfig{
-							Ingress: &v2.JaegerIngressConfig{
-								Enablement: v2.Enablement{
-									Enabled: &featureEnabled,
+				Jaeger: &v2.JaegerAddonConfig{
+					Name: "my-jaeger",
+					Install: &v2.JaegerInstallConfig{
+						Ingress: &v2.JaegerIngressConfig{
+							Enablement: v2.Enablement{
+								Enabled: &featureEnabled,
+							},
+							Metadata: v2.MetadataConfig{
+								Annotations: map[string]string{
+									"ingress-annotation": "ingress-annotation-value",
 								},
-								Metadata: v2.MetadataConfig{
-									Annotations: map[string]string{
-										"ingress-annotation": "ingress-annotation-value",
-									},
-									Labels: map[string]string{
-										"ingress-label": "ingress-label-value",
-									},
+								Labels: map[string]string{
+									"ingress-label": "ingress-label-value",
 								},
 							},
 						},
@@ -632,16 +633,8 @@ var jaegerTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
-				},
-			},
 			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
 				"jaeger": map[string]interface{}{
-					"install":      true,
 					"resourceName": "my-jaeger",
 				},
 				"ingress": map[string]interface{}{
@@ -665,6 +658,14 @@ var jaegerTestCases = []conversionTestCase{
 					"enabled": false,
 					"useILB":  false,
 				},
+				"enableTracing": true,
+				"proxy": map[string]interface{}{
+					"tracer": "jaeger",
+				},
+			},
+			"tracing": map[string]interface{}{
+				"enabled":  true,
+				"provider": "jaeger",
 			},
 		}),
 	},

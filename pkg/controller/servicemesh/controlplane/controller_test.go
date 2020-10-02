@@ -19,6 +19,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
+	"github.com/maistra/istio-operator/pkg/version"
 )
 
 const (
@@ -95,7 +96,8 @@ func TestReconcileInvokedWhenInstanceNotFullyReconciled(t *testing.T) {
 
 func TestUpdateReadinessInvokedWhenInstanceFullyReconciled(t *testing.T) {
 	controlPlane := newControlPlane()
-	controlPlane.Status.ReconciledVersion = status.CurrentReconciledVersion(controlPlane.Generation)
+	controlPlane.Status.OperatorVersion = version.Info.Version
+	controlPlane.Status.ObservedGeneration = controlPlane.Generation
 	controlPlane.Status.Conditions = append(controlPlane.Status.Conditions, status.Condition{
 		Type:               status.ConditionTypeReconciled,
 		Status:             status.ConditionStatusTrue,
@@ -153,6 +155,11 @@ func (r *fakeInstanceReconciler) Reconcile(ctx context.Context) (reconcile.Resul
 }
 
 func (r *fakeInstanceReconciler) UpdateReadiness(ctx context.Context) error {
+	r.updateReadinessInvoked = true
+	return nil
+}
+
+func (r *fakeInstanceReconciler) PatchAddons(ctx context.Context) error {
 	r.updateReadinessInvoked = true
 	return nil
 }

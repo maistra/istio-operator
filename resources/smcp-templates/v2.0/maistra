@@ -8,50 +8,50 @@ spec:
   runtime:
     defaults:
       container:
-        registry: docker.io/maistra
+        imageRegistry: docker.io/maistra
     components:
       grafana:
         container:
-          image: grafana-ubi8
+          imageName: grafana-ubi8
       tracing:
         jaeger:
           template: all-in-one
       mixer:
         container:
-          image: mixer-ubi8
+          imageName: mixer-ubi8
       mixer.policy:
         container:
-          image: mixer-ubi8
+          imageName: mixer-ubi8
       mixer.telemetry:
         container:
-          image: mixer-ubi8
+          imageName: mixer-ubi8
       pilot:
         container:
-          image: pilot-ubi8
-      ior:
-        container:
-          image: istio-ior-ubi8
+          imageName: pilot-ubi8
       prometheus:
         container:
-          image: prometheus-ubi8
+          imageName: prometheus-ubi8
       threeScale:
         container:
-          registry: quay.io/3scale
-          image: 3scale-istio-adapter
-          tag: v1.0.0
+          imageRegistry: quay.io/3scale
+          imageName: 3scale-istio-adapter
+          imageTag: v2.0.0
       global.oauthproxy:
         container:
-          registry: quay.io/openshift
-          image: origin-oauth-proxy
-          tag: "4.2"
+          imageRegistry: quay.io/openshift
+          imageName: origin-oauth-proxy
+          imageTag: "4.2"
           imagePullPolicy: IfNotPresent
+      wasmExtensions.cacher:
+        container:
+          image: pilot-ubi8
 
   proxy:
     runtime:
       container:
-        image: proxyv2-ubi8
+        imageName: proxyv2-ubi8
     networking:
       initialization:
         initContainer:
           runtime:
-            image: proxy-init-centos7
+            imageName: proxy-init-centos7

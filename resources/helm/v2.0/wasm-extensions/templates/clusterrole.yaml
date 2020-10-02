@@ -1,0 +1,39 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: wasm-cacher-{{ .Values.revision | default "default" }}
+  labels:
+    maistra-version: 2.0.0
+    release: {{ .Release.Name }}
+    app: wasm-cacher
+    istio.io/rev: {{ .Values.revision | default "default" }}
+rules:
+- apiGroups:
+  - extensions.maistra.io
+  resources:
+  - servicemeshextensions
+  - servicemeshextensions/status
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - maistra.io
+  resources:
+  - servicemeshmemberrolls
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - image.openshift.io
+  resources:
+  - imagestreams
+  - imagestreamimports
+  verbs:
+  - create
+  - update
+  - get
+  - list
+  - watch

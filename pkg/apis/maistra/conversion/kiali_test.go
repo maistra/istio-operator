@@ -19,9 +19,7 @@ var kialiTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Kiali: nil,
-				},
+				Kiali: nil,
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
@@ -43,9 +41,7 @@ var kialiTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Kiali: &v2.KialiAddonConfig{},
-				},
+				Kiali: &v2.KialiAddonConfig{},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
@@ -67,13 +63,11 @@ var kialiTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Kiali: &v2.KialiAddonConfig{
-						Enablement: v2.Enablement{
-							Enabled: &featureEnabled,
-						},
-						Name: "my-kiali",
+				Kiali: &v2.KialiAddonConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
 					},
+					Name: "my-kiali",
 				},
 			},
 		},
@@ -101,11 +95,9 @@ var kialiTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Kiali: &v2.KialiAddonConfig{
-						Name:    "my-kiali",
-						Install: &v2.KialiInstallConfig{},
-					},
+				Kiali: &v2.KialiAddonConfig{
+					Name:    "my-kiali",
+					Install: &v2.KialiInstallConfig{},
 				},
 			},
 		},
@@ -132,16 +124,14 @@ var kialiTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Kiali: &v2.KialiAddonConfig{
-						Name: "my-kiali",
-						Install: &v2.KialiInstallConfig{
-							Dashboard: v2.KialiDashboardConfig{
-								EnableGrafana:    &featureEnabled,
-								EnablePrometheus: &featureEnabled,
-								EnableTracing:    &featureDisabled,
-								ViewOnly:         &featureEnabled,
-							},
+				Kiali: &v2.KialiAddonConfig{
+					Name: "my-kiali",
+					Install: &v2.KialiInstallConfig{
+						Dashboard: v2.KialiDashboardConfig{
+							EnableGrafana:    &featureEnabled,
+							EnablePrometheus: &featureEnabled,
+							EnableTracing:    &featureDisabled,
+							ViewOnly:         &featureEnabled,
 						},
 					},
 				},
@@ -176,18 +166,16 @@ var kialiTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Kiali: &v2.KialiAddonConfig{
-						Name: "my-kiali",
-						Install: &v2.KialiInstallConfig{
-							Service: v2.ComponentServiceConfig{
-								Metadata: v2.MetadataConfig{
-									Annotations: map[string]string{
-										"some-service-annotation": "service-annotation-value",
-									},
-									Labels: map[string]string{
-										"some-service-label": "service-label-value",
-									},
+				Kiali: &v2.KialiAddonConfig{
+					Name: "my-kiali",
+					Install: &v2.KialiInstallConfig{
+						Service: v2.ComponentServiceConfig{
+							Metadata: v2.MetadataConfig{
+								Annotations: map[string]string{
+									"some-service-annotation": "service-annotation-value",
+								},
+								Labels: map[string]string{
+									"some-service-label": "service-label-value",
 								},
 							},
 						},
@@ -226,13 +214,11 @@ var kialiTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Kiali: &v2.KialiAddonConfig{
-						Name: "my-kiali",
-						Install: &v2.KialiInstallConfig{
-							Service: v2.ComponentServiceConfig{
-								Ingress: &v2.ComponentIngressConfig{},
-							},
+				Kiali: &v2.KialiAddonConfig{
+					Name: "my-kiali",
+					Install: &v2.KialiInstallConfig{
+						Service: v2.ComponentServiceConfig{
+							Ingress: &v2.ComponentIngressConfig{},
 						},
 					},
 				},
@@ -261,31 +247,29 @@ var kialiTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Kiali: &v2.KialiAddonConfig{
-						Name: "my-kiali",
-						Install: &v2.KialiInstallConfig{
-							Service: v2.ComponentServiceConfig{
-								Ingress: &v2.ComponentIngressConfig{
-									Enablement: v2.Enablement{
-										Enabled: &featureEnabled,
-									},
-									ContextPath: "/kiali",
-									Hosts: []string{
-										"kiali.example.com",
-									},
-									Metadata: v2.MetadataConfig{
-										Annotations: map[string]string{
-											"ingress-annotation": "ingress-annotation-value",
-										},
-										Labels: map[string]string{
-											"ingress-label": "ingress-label-value",
-										},
-									},
-									TLS: v1.NewHelmValues(map[string]interface{}{
-										"termination": "reencrypt",
-									}),
+				Kiali: &v2.KialiAddonConfig{
+					Name: "my-kiali",
+					Install: &v2.KialiInstallConfig{
+						Service: v2.ComponentServiceConfig{
+							Ingress: &v2.ComponentIngressConfig{
+								Enablement: v2.Enablement{
+									Enabled: &featureEnabled,
 								},
+								ContextPath: "/kiali",
+								Hosts: []string{
+									"kiali.example.com",
+								},
+								Metadata: v2.MetadataConfig{
+									Annotations: map[string]string{
+										"ingress-annotation": "ingress-annotation-value",
+									},
+									Labels: map[string]string{
+										"ingress-label": "ingress-label-value",
+									},
+								},
+								TLS: v1.NewHelmValues(map[string]interface{}{
+									"termination": "reencrypt",
+								}),
 							},
 						},
 					},
@@ -295,6 +279,7 @@ var kialiTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"kiali": map[string]interface{}{
 				"resourceName": "my-kiali",
+				"contextPath":  "/kiali",
 				"ingress": map[string]interface{}{
 					"enabled":     true,
 					"contextPath": "/kiali",
@@ -331,13 +316,11 @@ var kialiTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Addons: &v2.AddonsConfig{
-				Visualization: v2.VisualizationAddonsConfig{
-					Kiali: &v2.KialiAddonConfig{
-						Name: "my-kiali",
-						Install: &v2.KialiInstallConfig{
-							Service: v2.ComponentServiceConfig{
-								NodePort: &kialiTestNodePort,
-							},
+				Kiali: &v2.KialiAddonConfig{
+					Name: "my-kiali",
+					Install: &v2.KialiInstallConfig{
+						Service: v2.ComponentServiceConfig{
+							NodePort: &kialiTestNodePort,
 						},
 					},
 				},

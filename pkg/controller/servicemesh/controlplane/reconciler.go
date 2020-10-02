@@ -11,10 +11,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/helm/pkg/manifest"
+	"k8s.io/helm/pkg/releaseutil"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/yaml"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -24,6 +28,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/hacks"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
+	buildinfo "github.com/maistra/istio-operator/pkg/version"
 )
 
 type controlPlaneInstanceReconciler struct {
@@ -32,6 +37,7 @@ type controlPlaneInstanceReconciler struct {
 	Status            *v2.ControlPlaneStatus
 	ownerRefs         []metav1.OwnerReference
 	meshGeneration    string
+	chartVersion      string
 	renderings        map[string][]manifest.Manifest
 	waitForComponents sets.String
 	cniConfig         cni.Config
@@ -112,6 +118,9 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 
 		// Render the templates
 		r.renderings, err = version.Strategy().Render(ctx, &r.ControllerResources, r.cniConfig, r.Instance)
+		// always set these, especially if rendering failed, as these are useful for debugging
+		r.Instance.Status.AppliedValues.DeepCopyInto(&r.Status.AppliedValues)
+		r.Instance.Status.AppliedSpec.DeepCopyInto(&r.Status.AppliedSpec)
 		if err != nil {
 			// we can't progress here
 			reconciliationReason = status.ConditionReasonReconcileError
@@ -119,7 +128,6 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			err = errors.Wrap(err, reconciliationMessage)
 			return
 		}
-		r.Status.LastAppliedConfiguration = r.Instance.Status.LastAppliedConfiguration
 
 		// install istio
 
@@ -154,6 +162,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		}
 		if err != nil {
 			// bail if there was an error updating the namespace
+			r.renderings = nil
 			reconciliationReason = status.ConditionReasonReconcileError
 			reconciliationMessage = "Error updating labels on mesh namespace"
 			err = errors.Wrap(err, reconciliationMessage)
@@ -195,15 +204,10 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 
 		// Ensure Istio CNI is installed
 		if r.cniConfig.Enabled {
-			r.waitForComponents = sets.NewString("cni")
 			if err = bootstrap.InstallCNI(ctx, r.Client, r.cniConfig); err != nil {
 				reconciliationReason = status.ConditionReasonReconcileError
 				reconciliationMessage = "Failed to install/update Istio CNI"
 				log.Error(err, reconciliationMessage)
-				return
-			} else if ready, _ := r.isCNIReady(ctx); !ready {
-				reconciliationReason = status.ConditionReasonPausingInstall
-				reconciliationMessage = fmt.Sprintf("Paused until %s becomes ready", "cni")
 				return
 			}
 		}
@@ -235,6 +239,16 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		}
 	}
 
+	// validate generated manifests
+	// this has to be done always before applying because the memberroll might have changed
+	err = r.validateManifests(ctx)
+	if err != nil {
+		reconciliationReason = status.ConditionReasonReconcileError
+		reconciliationMessage = "Error validating generated manifests"
+		err = errors.Wrap(err, reconciliationMessage)
+		return
+	}
+
 	// create components
 	for _, charts := range r.getChartsInInstallationOrder(version.Strategy().GetChartInstallOrder()) {
 		r.waitForComponents = sets.NewString()
@@ -249,6 +263,17 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			}
 			if hasReadiness {
 				r.waitForComponents.Insert(component)
+			} else {
+				if r.Status.Annotations == nil {
+					r.Status.Annotations = make(map[string]string)
+				}
+				alwaysReadyComponents := r.Status.Annotations[statusAnnotationAlwaysReadyComponents]
+				if alwaysReadyComponents == "" {
+					alwaysReadyComponents = component
+				} else {
+					alwaysReadyComponents = fmt.Sprintf("%s,%s", alwaysReadyComponents, component)
+				}
+				r.Status.Annotations[statusAnnotationAlwaysReadyComponents] = alwaysReadyComponents
 			}
 		}
 
@@ -291,7 +316,8 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReasonInstalled, reconciliationMessage)
 	}
 	r.Status.ObservedGeneration = r.Instance.GetGeneration()
-	r.Status.ReconciledVersion = r.meshGeneration
+	r.Status.OperatorVersion = buildinfo.Info.Version
+	r.Status.ChartVersion = r.chartVersion
 	updateControlPlaneConditions(r.Status, nil)
 
 	reconciliationComplete = true
@@ -331,6 +357,48 @@ func (r *controlPlaneInstanceReconciler) validateSMCPSpec(spec v1.ControlPlaneSp
 	return nil
 }
 
+func (r *controlPlaneInstanceReconciler) validateManifests(ctx context.Context) error {
+	log := common.LogFromContext(ctx)
+	allErrors := []error{}
+	// validate resource namespaces
+	smmr := &v1.ServiceMeshMemberRoll{}
+	var smmrRetrievalError error
+	if smmrRetrievalError = r.Client.Get(context.TODO(), client.ObjectKey{Namespace: r.Instance.GetNamespace(), Name: common.MemberRollName}, smmr); smmrRetrievalError != nil {
+		if !apierrors.IsNotFound(smmrRetrievalError) {
+			// log error, but don't fail validation just yet: we'll just assume that the control plane namespace is the only namespace for now
+			// if we end up failing validation because of this assumption, we'll return this error
+			log.Error(smmrRetrievalError, "failed to retrieve SMMR for SMCP")
+			smmr = nil
+		}
+	}
+	meshNamespaces := common.GetMeshNamespaces(r.Instance.GetNamespace(), smmr)
+	for _, manifestList := range r.renderings {
+		for _, manifestBundle := range manifestList {
+			manifests := releaseutil.SplitManifests(manifestBundle.Content)
+			for _, manifest := range manifests {
+				obj := &unstructured.Unstructured{
+					Object: make(map[string]interface{}),
+				}
+				err := yaml.Unmarshal([]byte(manifest), &obj.Object)
+				if err != nil || obj.GetNamespace() == "" {
+					continue
+				}
+				if !meshNamespaces.Has(obj.GetNamespace()) {
+					allErrors = append(allErrors, fmt.Errorf("%s: namespace of manifest %s/%s not in mesh", manifestBundle.Name, obj.GetNamespace(), obj.GetName()))
+				}
+			}
+		}
+	}
+	if len(allErrors) > 0 {
+		// if validation fails because we couldn't Get() the SMMR, return that error
+		if smmrRetrievalError != nil {
+			return smmrRetrievalError
+		}
+		return utilerrors.NewAggregate(allErrors)
+	}
+	return nil
+}
+
 func (r *controlPlaneInstanceReconciler) PostStatus(ctx context.Context) error {
 	// we should only post status if it has changed
 	if reflect.DeepEqual(r.Status, &r.Instance.Status) {
@@ -344,6 +412,11 @@ func (r *controlPlaneInstanceReconciler) PostStatus(ctx context.Context) error {
 		if err = r.Client.Status().Patch(ctx, instance, common.NewStatusPatch(instance.Status)); err != nil && !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
 			return errors.Wrap(err, "error updating ServiceMeshControlPlane status")
 		}
+		// null values may have been removed during patching, which means the
+		// status we've been caching will not match the status on the instance
+		// on the next reconcile, which will lead to a cycle of status updates
+		// while waiting for components to become available.
+		r.Status = instance.Status.DeepCopy()
 	} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
 		return errors.Wrap(err, "error getting ServiceMeshControlPlane prior to updating status")
 	}
@@ -384,8 +457,8 @@ func (r *controlPlaneInstanceReconciler) initializeReconcileStatus() {
 	var conditionReason status.ConditionReason
 	if r.isUpdating() {
 		if r.Status.ObservedGeneration == r.Instance.GetGeneration() {
-			fromVersion := r.Status.GetReconciledVersion()
-			toVersion := status.CurrentReconciledVersion(r.Instance.GetGeneration())
+			fromVersion := r.Status.OperatorVersion
+			toVersion := buildinfo.Info.Version
 			readyMessage = fmt.Sprintf("Upgrading mesh from version %s to version %s", fromVersion[strings.LastIndex(fromVersion, "-")+1:], toVersion[strings.LastIndex(toVersion, "-")+1:])
 		} else {
 			readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", r.Status.ObservedGeneration, r.Instance.GetGeneration())

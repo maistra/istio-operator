@@ -1,39 +1,26 @@
 apiVersion: v1
-kind: List
+kind: Service
 metadata:
-  name: tracing-services
+  name: zipkin
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
     app: {{ .Values.tracing.provider }}
     release: {{ .Release.Name }}
-items:
-- apiVersion: v1
-  kind: Service
-  metadata:
-    name: zipkin
-    namespace: {{ .Release.Namespace }}
-    labels:
-      app: {{ .Values.tracing.provider }}
-{{- if eq .Values.tracing.provider "jaeger" }}
-      jaeger-infra: zipkin-service
-{{- end }}
-      release: {{ .Release.Name }}
-  spec:
-    type: {{ .Values.tracing.service.type }}
-    ports:
-      - port: {{ .Values.tracing.zipkin.queryPort }}
-        targetPort: {{ .Values.tracing.zipkin.queryPort }}
-        protocol: TCP
-        name: {{ .Values.tracing.service.name }}
-    selector:
+spec:
+  ports:
+    - port: {{ .Values.tracing.zipkin.queryPort }}
+      targetPort: {{ .Values.tracing.zipkin.queryPort }}
+      protocol: TCP
+      name: {{ .Values.tracing.service.name }}
+  selector:
 {{- if eq .Values.tracing.provider "jaeger" }}
   {{- if eq .Values.tracing.jaeger.template "all-in-one"}}
       app.kubernetes.io/component: all-in-one
   {{- else }}
       app.kubernetes.io/component: collector
   {{- end }}
-      app.kubernetes.io/instance: {{ default .Values.tracing.jaeger.resourceName "jaeger" }}
+      app.kubernetes.io/instance: {{ .Values.tracing.jaeger.resourceName | default "jaeger" }}
       app.kubernetes.io/part-of: jaeger
       app.kubernetes.io/managed-by: jaeger-operator
 {{- else }}

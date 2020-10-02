@@ -15,26 +15,6 @@ spec:
 
 ---
 
-# this will work for all routes into the mesh namespace, but not on ocp 3.11
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: istio-ingress-router-{{ .Values.revision | default "default" }}
-  namespace: {{ .Release.Namespace }}
-  labels:
-    app: istio
-    release: {{ .Release.Name }}
-  annotations:
-    "maistra.io/internal": "true"
-spec:
-  ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          network.openshift.io/policy-group: ingress
-
----
-
 # this will work for all routes into the mesh namespace referencing a labelled pod, but not on ocp 3.11
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -53,35 +33,3 @@ spec:
     - namespaceSelector:
         matchLabels:
           network.openshift.io/policy-group: ingress
-
-# if users are running a custom Jaeger instance in the control plane namespace,
-# we need to make sure that it's accessible through its Route
-{{ if and (not .Values.tracing.enabled) (.Values.global.tracer.zipkin.address) }}
----
-
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: istio-external-jaeger-ingress-{{ .Values.revision | default "default" }}
-  namespace: {{ .Release.Namespace }}
-  labels:
-    app: jaeger
-    release: {{ .Release.Name }}
-  annotations:
-    "maistra.io/internal": "true"
-spec:
-  podSelector:
-    matchExpressions:
-    # the value of this label depends on the deployment strategy used
-    - key: app.kubernetes.io/component
-      operator: In
-      values:
-      - all-in-one
-      - query
-    matchLabels:
-      app.kubernetes.io/part-of: jaeger
-      app.kubernetes.io/managed-by: jaeger-operator
-  ingress:
-  - ports:
-    port: 8443
-{{ end }}

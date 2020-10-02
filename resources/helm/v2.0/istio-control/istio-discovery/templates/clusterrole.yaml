@@ -81,7 +81,11 @@ rules:
   - apiGroups: ["networking.x.k8s.io"]
     resources: ["*"]
     verbs: ["get", "watch", "list"]
+
   # Maistra specific
   - apiGroups: ["maistra.io"]
     resources: ["servicemeshmemberrolls"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["route.openshift.io"]
+    resources: ["routes", "routes/custom-host"]
+    verbs: ["get", "list", "watch", "create", "delete", "update"]

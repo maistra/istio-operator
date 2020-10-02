@@ -67,12 +67,12 @@ type v2_0ImageNames struct {
 	ThreeScale string `json:"3scale-istio-adapter,omitempty"`
 	CNI        string `json:"cni,omitempty"`
 	Grafana    string `json:"grafana,omitempty"`
-	IOR        string `json:"ior,omitempty"`
 	Mixer      string `json:"mixer,omitempty"`
 	Pilot      string `json:"pilot,omitempty"`
 	Prometheus string `json:"prometheus,omitempty"`
 	ProxyInit  string `json:"proxy-init,omitempty"`
 	ProxyV2    string `json:"proxyv2,omitempty"`
+	WASMCacher string `json:"wasm-cacher,omitempty"`
 }
 
 type oauthProxy struct {

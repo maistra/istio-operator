@@ -1,3 +1,4 @@
+{{- if .Values.grafana.enabled }}
 apiVersion: security.istio.io/v1beta1
 kind: PeerAuthentication
 metadata:
@@ -11,6 +12,9 @@ spec:
   selector:
     matchLabels:
       app: grafana
+  mtls:
+    mode: PERMISSIVE
   portLevelMtls:
     {{ .Values.grafana.service.externalPort }}:
       mode: DISABLE
+{{- end }}

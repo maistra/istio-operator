@@ -2,7 +2,7 @@
 apiVersion: jaegertracing.io/v1
 kind: "Jaeger"
 metadata:
-  name: {{ default .Values.tracing.jaeger.resourceName "jaeger" }}
+  name: {{ .Values.tracing.jaeger.resourceName | default "jaeger" }}
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
@@ -19,19 +19,18 @@ spec:
       log-level: debug
       query:
         base-path: /
-    annotations:
-      {{- range $key, $value := .Values.tracing.jaeger.annotations }}
-        {{ $key }}: {{ $value | quote }}
-      {{- end }}
 
+{{- if and .Values.tracing.jaeger.hub .Values.tracing.jaeger.tag .Values.tracing.jaeger.agentImage }}
   agent:
-    {{- if and .Values.tracing.jaeger.hub .Values.tracing.jaeger.tag .Values.tracing.jaeger.agentImage }}
     image: {{ .Values.tracing.jaeger.hub }}/{{ .Values.tracing.jaeger.agentImage }}:{{ .Values.tracing.jaeger.tag }}
+{{- end }}
+
+{{- if .Values.tracing.jaeger.annotations }}
+  annotations:
+    {{- range $key, $value := .Values.tracing.jaeger.annotations }}
+      {{ $key }}: {{ $value | quote }}
     {{- end }}
-    annotations:
-      {{- range $key, $value := .Values.tracing.jaeger.annotations }}
-        {{ $key }}: {{ $value | quote }}
-      {{- end }}
+{{- end }}
 
   storage:
     options:
@@ -46,10 +45,12 @@ spec:
     enabled: {{ .Values.tracing.ingress.enabled }}
     # XXX: should this be parameterized?
     security: oauth-proxy
+{{- if .Values.tracing.ingress.annotations }}
     annotations:
       {{- range $key, $value := .Values.tracing.ingress.annotations }}
         {{ $key }}: {{ $value | quote }}
       {{- end }}
+{{- end }}
     openshift:
       sar: '{"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}'
       htpasswdFile: /etc/proxy/htpasswd/auth

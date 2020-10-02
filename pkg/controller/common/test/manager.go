@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
@@ -43,11 +45,12 @@ func StartManager(mgr manager.Manager, t *testing.T) func() {
 	go func() {
 		t.Helper()
 		t.Logf("starting manager.Manager")
+		defer close(startChannel)
 		if err := mgr.Start(stopChannel); err != nil {
-			t.Fatalf("Uexpected error returned from manager.Manager: %v", err)
+			t.Errorf("Uexpected error returned from manager.Manager: %v", err)
+			return
 		}
 		t.Logf("manager.Manager stopped cleanly")
-		close(startChannel)
 	}()
 
 	mgr.GetCache().WaitForCacheSync(stopChannel)
@@ -62,6 +65,63 @@ func StartManager(mgr manager.Manager, t *testing.T) func() {
 
 // NewManager returns a new FakeManager that can be used for testing.
 func NewManager(scheme *runtime.Scheme, tracker clienttesting.ObjectTracker, groupResources ...*restmapper.APIGroupResources) (*FakeManager, error) {
+	// Known cluster resources
+	clusterKinds := sets.NewString(
+		"Namespace",
+		"CustomResourceDefinition",
+		"ClusterRole",
+		"ClusterRoleBinding",
+	)
+	// Initialize resource mapper with known kinds
+	specifiedGroups := sets.NewString()
+	for _, group := range groupResources {
+		specifiedGroups.Insert(group.Group.Name)
+	}
+
+	autoGroups := map[string]struct {
+		versions  sets.String
+		resources map[string][]metav1.APIResource
+	}{}
+	for kind := range scheme.AllKnownTypes() {
+		if specifiedGroups.Has(kind.Group) || strings.HasSuffix(kind.Kind, "List") {
+			continue
+		}
+		group, ok := autoGroups[kind.Group]
+		if !ok {
+			group = struct {
+				versions  sets.String
+				resources map[string][]metav1.APIResource
+			}{
+				versions:  sets.NewString(),
+				resources: make(map[string][]metav1.APIResource),
+			}
+			autoGroups[kind.Group] = group
+		}
+		plural, singular := meta.UnsafeGuessKindToResource(kind)
+		group.versions.Insert(kind.Version)
+		group.resources[kind.Version] = append(group.resources[kind.Version], metav1.APIResource{
+			Name:         plural.Resource,
+			SingularName: singular.Resource,
+			Namespaced:   clusterKinds.Has(kind.Kind),
+			Kind:         kind.Kind,
+		})
+	}
+	for group, resources := range autoGroups {
+		versions := make([]metav1.GroupVersionForDiscovery, resources.versions.Len())
+		for index, version := range resources.versions.List() {
+			versions[index] = metav1.GroupVersionForDiscovery{
+				Version: version,
+			}
+		}
+		groupResources = append(groupResources, &restmapper.APIGroupResources{
+			Group: metav1.APIGroup{
+				Name:     group,
+				Versions: versions,
+			},
+			VersionedResources: resources.resources,
+		})
+	}
+
 	options := NewManagerOptions(scheme, tracker, groupResources...)
 	delegate, err := manager.New(&rest.Config{}, options)
 	if err != nil {
@@ -99,6 +159,23 @@ func (m *FakeManager) Add(runnable manager.Runnable) error {
 	return m.Manager.Add(runnable)
 }
 
+// WaitForFirstEvent waits until an event is seen by the manager.  This prevents
+// immediate completion of tests when no verifiers have been registered.
+func (m *FakeManager) WaitForFirstEvent() {
+	waiting := true
+	for waiting {
+		func() {
+			m.requestTracker.cond.L.Lock()
+			defer m.requestTracker.cond.L.Unlock()
+			if m.requestTracker.started {
+				waiting = false
+			} else {
+				m.requestTracker.cond.Wait()
+			}
+		}()
+	}
+}
+
 // WaitForReconcileCompletion waits for all active reconciliations to complete.
 // This includes reconcilations that may have started after this function was
 // called, but prior to other active reconcilations completing. For example,
@@ -111,14 +188,19 @@ func (m *FakeManager) WaitForReconcileCompletion() {
 }
 
 type requestTracker struct {
-	cond  *sync.Cond
-	count int
+	cond    *sync.Cond
+	count   int
+	started bool
 }
 
 func (rt *requestTracker) Increment() {
 	rt.cond.L.Lock()
 	defer rt.cond.L.Unlock()
 	rt.count++
+	if !rt.started {
+		rt.started = true
+		rt.cond.Broadcast()
+	}
 }
 
 func (rt *requestTracker) Decrement() {

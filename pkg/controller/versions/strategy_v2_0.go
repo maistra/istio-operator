@@ -6,16 +6,21 @@ import (
 	"path"
 
 	pkgerrors "github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/gengo/examples/set-gen/sets"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/yaml"
 
+	jaegerv1 "github.com/maistra/istio-operator/pkg/apis/external/jaeger/v1"
+	kialiv1alpha1 "github.com/maistra/istio-operator/pkg/apis/external/kiali/v1alpha1"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -36,6 +41,10 @@ const (
 	TelemetryCommonChart = "telemetry-common"
 	ThreeScaleChart      = "maistra-threescale"
 	TracingChart         = "tracing"
+	WASMExtensionsChart  = "wasm-extensions"
+
+	// Event reasons
+	eventReasonRendering = "Rendering"
 )
 
 type chartRenderingDetails struct {
@@ -93,6 +102,10 @@ var (
 			path:         "mesh-config",
 			enabledField: "",
 		},
+		WASMExtensionsChart: {
+			path:         "wasm-extensions",
+			enabledField: "wasmExtensions",
+		},
 	}
 )
 
@@ -104,7 +117,7 @@ var v2_0ChartOrder = [][]string{
 	{TelemetryCommonChart, PrometheusChart},
 	{MixerPolicyChart, MixerTelemetryChart, TracingChart, GatewayIngressChart, GatewayEgressChart, GrafanaChart},
 	{KialiChart},
-	{ThreeScaleChart},
+	{ThreeScaleChart, WASMExtensionsChart},
 }
 
 type versionStrategyV2_0 struct {
@@ -120,25 +133,49 @@ func (v *versionStrategyV2_0) SetImageValues(ctx context.Context, cr *common.Con
 	common.UpdateField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V2_0.Prometheus)
 	common.UpdateField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V2_0.ProxyInit)
 	common.UpdateField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V2_0.ProxyV2)
+	common.UpdateField(smcpSpec.Istio, "wasmExtensions.cacher.image", common.Config.OLM.Images.V2_0.WASMCacher)
 	common.UpdateField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V2_0.ThreeScale)
-
-	common.UpdateField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V2_0.IOR)
 	return nil
 }
 
-func (v *versionStrategyV2_0) Validate(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
-	// TODO: XXX
-	return V1_1.Strategy().Validate(ctx, cl, smcp)
+func (v *versionStrategyV2_0) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+	return fmt.Errorf("must use v2 ServiceMeshControlPlane resource for v2.0+ installations")
 }
 
-func (v *versionStrategyV2_0) ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
-	// TODO: XXX
-	return nil
+func (v *versionStrategyV2_0) ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
+	logger := logf.Log.WithName("smcp-validator-1.1")
+	var allErrors []error
+
+	smmr := &v1.ServiceMeshMemberRoll{}
+	err := cl.Get(ctx, client.ObjectKey{Name: common.MemberRollName, Namespace: smcp.GetNamespace()}, smmr)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			// log error, but don't fail validation: we'll just assume that the control plane namespace is the only namespace for now
+			logger.Error(err, "failed to retrieve SMMR for SMCP")
+			smmr = nil
+		}
+	}
+
+	meshNamespaces := common.GetMeshNamespaces(smcp.GetNamespace(), smmr)
+	gatewayNames := sets.NewString()
+	if smcp.Spec.Gateways != nil {
+		for name, gateway := range smcp.Spec.Gateways.IngressGateways {
+			validateGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, smcp.Namespace, &allErrors)
+		}
+		for name, gateway := range smcp.Spec.Gateways.EgressGateways {
+			validateGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, smcp.Namespace, &allErrors)
+		}
+	}
+
+	return utilerrors.NewAggregate(allErrors)
 }
 
-func (v *versionStrategyV2_0) ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
-	// TODO: XXX
-	return nil
+func (v *versionStrategyV2_0) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+	return fmt.Errorf("inplace downgrade from v2.0 to v1.x is not supported")
+}
+
+func (v *versionStrategyV2_0) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+	return fmt.Errorf("inplace upgrade from v1.x to v2.0 is not supported")
 }
 
 func (v *versionStrategyV2_0) GetChartInstallOrder() [][]string {
@@ -161,14 +198,14 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 	}
 
 	var err error
-	smcp.Status.LastAppliedConfiguration, err = v.applyProfiles(ctx, cr, v1spec)
+	smcp.Status.AppliedValues, err = v.applyProfiles(ctx, cr, v1spec, smcp.GetNamespace())
 	if err != nil {
-		log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates")
+		log.Error(err, "warning: failed to apply ServiceMeshControlPlane profiles")
 
 		return nil, err
 	}
 
-	spec := &smcp.Status.LastAppliedConfiguration
+	spec := &smcp.Status.AppliedValues
 
 	if spec.ThreeScale == nil {
 		spec.ThreeScale = v1.NewHelmValues(make(map[string]interface{}))
@@ -209,33 +246,91 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 	if err != nil {
 		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.configRootNamespace: %v", err)
 	}
+	err = spec.Istio.SetField("global.configNamespace", smcp.GetNamespace())
+	if err != nil {
+		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.configNamespace: %v", err)
+	}
 
 	// XXX: using values.yaml settings, as things may have been overridden in profiles/templates
 	if isComponentEnabled(spec.Istio, v2_0ChartMapping[TracingChart].enabledField) {
-		// if we're not installing the jaeger resource, we need to determine what has been installed,
-		// so control plane rules are created correctly
 		if provider, _, _ := spec.Istio.GetString("tracing.provider"); provider == "jaeger" {
-			if install, _, _ := spec.Istio.GetBool("tracing.jaeger.install"); !install {
-				jaegerResource, _, _ := spec.Istio.GetString("tracing.jaeger.resourceName")
-				if jaegerResource == "" {
-					jaegerResource = "jaeger"
-				}
-				jaeger := &unstructured.Unstructured{}
-				jaeger.SetGroupVersionKind(schema.GroupVersionKind{Group: "jaegertracing.io", Kind: "Jaeger", Version: "v1"})
-				jaeger.SetName(jaegerResource)
-				jaeger.SetNamespace(smcp.GetNamespace())
-				if err := cr.Client.Get(ctx, client.ObjectKey{Name: jaeger.GetName(), Namespace: jaeger.GetNamespace()}, jaeger); err == nil {
-					if strategy, _, _ := unstructured.NestedString(jaeger.UnstructuredContent(), "spec", "strategy"); strategy == "" || strategy == "allInOne" {
+			// if we're not installing the jaeger resource, we need to determine what has been installed,
+			// so control plane rules are created correctly
+			jaegerResource, _, _ := spec.Istio.GetString("tracing.jaeger.resourceName")
+			if jaegerResource == "" {
+				jaegerResource = "jaeger"
+			}
+
+			// set the correct zipkin address
+			spec.Istio.SetField("global.tracer.zipkin.address", fmt.Sprintf("%s-collector.%s.svc:9411", jaegerResource, smcp.GetNamespace()))
+
+			jaeger := &jaegerv1.Jaeger{}
+			jaeger.SetName(jaegerResource)
+			jaeger.SetNamespace(smcp.GetNamespace())
+			if err := cr.Client.Get(ctx, client.ObjectKey{Name: jaeger.GetName(), Namespace: jaeger.GetNamespace()}, jaeger); err == nil {
+				if metav1.IsControlledBy(jaeger, smcp) {
+					// we're managing this install, so we'll update it
+					if err := spec.Istio.SetField("tracing.jaeger.install", true); err != nil {
+						return nil, fmt.Errorf("error enabling jaeger install")
+					}
+				} else {
+					// if the resource exists, we never overwrite it
+					if err := spec.Istio.SetField("tracing.jaeger.install", false); err != nil {
+						return nil, fmt.Errorf("error disabling jaeger install")
+					}
+					if strategy, _, _ := jaeger.Spec.GetString("strategy"); strategy == "" || strategy == "allInOne" {
 						spec.Istio.SetField("tracing.jaeger.template", "all-in-one")
 					} else {
 						// we just want it to not be all-in-one.  see the charts
 						spec.Istio.SetField("tracing.jaeger.template", "production-elasticsearch")
 					}
-				} else if !(errors.IsNotFound(err) || errors.IsGone(err)) {
-					return nil, pkgerrors.Wrapf(err, "error retrieving jaeger resource \"%s/%s\"", smcp.GetNamespace(), jaegerResource)
 				}
+			} else if !(errors.IsNotFound(err) || errors.IsGone(err)) {
+				if meta.IsNoMatchError(err) {
+					cr.EventRecorder.Eventf(smcp, corev1.EventTypeWarning, eventReasonRendering, "Cannot install Jaeger: %s", err)
+					return nil, pkgerrors.Wrapf(err, "cannot install control plane, Jaeger not installed")
+				}
+				return nil, pkgerrors.Wrapf(err, "error retrieving jaeger resource \"%s/%s\"", smcp.GetNamespace(), jaegerResource)
+			} else if err := spec.Istio.SetField("tracing.jaeger.install", true); err != nil {
+				return nil, pkgerrors.Wrapf(err, "error enabling jaeger install")
 			}
 		}
+	}
+	if isComponentEnabled(spec.Istio, v2_0ChartMapping[KialiChart].enabledField) {
+		kialiResource, _, _ := spec.Istio.GetString("kiali.resourceName")
+		if kialiResource == "" {
+			kialiResource = "kiali"
+		}
+		kiali := &kialiv1alpha1.Kiali{}
+		kiali.SetName(kialiResource)
+		kiali.SetNamespace(smcp.GetNamespace())
+		if err := cr.Client.Get(ctx, client.ObjectKey{Name: kiali.GetName(), Namespace: kiali.GetNamespace()}, kiali); err == nil {
+			if metav1.IsControlledBy(kiali, smcp) {
+				// we're managing this install, so we'll update it
+				if err := spec.Istio.SetField("kiali.install", true); err != nil {
+					return nil, fmt.Errorf("unexpected error disabling kiali install")
+				}
+			} else {
+				if err := spec.Istio.SetField("kiali.install", false); err != nil {
+					return nil, fmt.Errorf("unexpected error disabling kiali install")
+				}
+			}
+		} else if !(errors.IsNotFound(err) || errors.IsGone(err)) {
+			if meta.IsNoMatchError(err) {
+				cr.EventRecorder.Eventf(smcp, corev1.EventTypeWarning, eventReasonRendering, "Cannot install Kiali: %s", err)
+				return nil, pkgerrors.Wrapf(err, "cannot install control plane, Kiali not installed")
+			}
+			return nil, pkgerrors.Wrapf(err, "error retrieving kiali resource \"%s/%s\"", smcp.GetNamespace(), kialiResource)
+		} else if err := spec.Istio.SetField("kiali.install", true); err != nil {
+			return nil, pkgerrors.Wrapf(err, "error enabling kiali install")
+		}
+	}
+
+	// convert back to the v2 type
+	smcp.Status.AppliedSpec = v2.ControlPlaneSpec{}
+	err = cr.Scheme.Convert(&smcp.Status.AppliedValues, &smcp.Status.AppliedSpec, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Unexpected error setting Status.AppliedSpec: %v", err)
 	}
 
 	// Read in global.yaml

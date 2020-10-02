@@ -3,26 +3,22 @@ kind: ServiceMeshControlPlane
 metadata:
   name: minimal
 spec:
-  version: v2.0
+  tracing:
+    # change to Jaeger to enable tracing
+    type: None
   addons:
-    tracing:
-      # change to Jaeger to enable tracing
-      type: None
-      jaeger:
-        name: jaeger
-        install: {}
-    metrics:
-      prometheus:
-        enabled: false
-    visualization:
-      grafana:
-        enabled: false
-        install: {}
-      kiali:
-        name: kiali
-        enabled: false
-        install: {}
-
+    prometheus:
+      enabled: false
+    jaeger:
+      name: jaeger
+      install: {}
+    grafana:
+      enabled: false
+      install: {}
+    kiali:
+      name: kiali
+      enabled: false
+      install: {}
 ---
 
 apiVersion: maistra.io/v1

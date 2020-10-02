@@ -146,9 +146,14 @@ function patchGalley() {
   sed_wrap -i -e '/{{- if eq .Values.revision ""}}/,/{{- end }}/d' $deployment
 
   # multitenant
-  echo '  - apiGroups: ["maistra.io"]
+  echo '
+  # Maistra specific
+  - apiGroups: ["maistra.io"]
     resources: ["servicemeshmemberrolls"]
-    verbs: ["get", "list", "watch"]' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["route.openshift.io"]
+    resources: ["routes", "routes/custom-host"]
+    verbs: ["get", "list", "watch", "create", "delete", "update"]' >> ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e 's/, *"nodes"//' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e '/- apiGroups:.*admissionregistration\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e '/- apiGroups:.*certificates\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
@@ -157,6 +162,8 @@ function patchGalley() {
   convertClusterRoleBinding ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrolebinding.yaml
   sed_wrap -i -e '/- "discovery"/ a\
           - --memberRollName=default\
+          - --cacheCluster=outbound|80||wasm-cacher-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.cluster.local\
+          - --enableNodePortGateways=false\
           - --podLocalitySource=pod' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
   # disable webhook config updates
   sed_wrap -i -r -e '/INJECTION_WEBHOOK_CONFIG_NAME/,/ISTIOD_ADDR/ {
@@ -179,6 +186,21 @@ base:
 \      app: istiod\
 \      istio.io/rev: {{ .Values.revision | default "default" }}' \
     $deployment
+
+  # IOR
+  sed_wrap -i -e '/env:/ a\
+{{- $iorEnabled := "true" }}\
+{{- $gateway := index .Values "gateways" "istio-ingressgateway" }}\
+{{- if or (not .Values.gateways.enabled) (not $gateway) (not $gateway.ior_enabled) }}\
+{{- $iorEnabled = "false" }}\
+{{- end }}\
+          - name: ENABLE_IOR\
+            value: "{{ $iorEnabled }}"' "${deployment}"
+
+  # Extensions
+  sed_wrap -i -e '/env:/ a\
+          - name: ENABLE_MAISTRA_EXTENSIONS\
+            value: "{{ .Values.wasmExtensions.enabled }}"' "${deployment}"
 }
 
 function patchGateways() {
@@ -186,24 +208,104 @@ function patchGateways() {
   sed_wrap -i -e 's/type: LoadBalancer$/type: ClusterIP/' ${HELM_DIR}/gateways/istio-ingress/values.yaml
 
   sed_wrap -i -e 's/\(^ *\)- containerPort: {{ $val.targetPort | default $val.port }}/\1- name: {{ $val.name }}\
-\1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml
-  sed_wrap -i -e 's/\(^ *\)- containerPort: {{ $val.targetPort | default $val.port }}/\1- name: {{ $val.name }}\
-\1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
-}
+\1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
-function patchSecurity() {
-  echo "patching Security specific Helm charts"
+  # add label for easier selection in Gateway resources
+  sed_wrap -i -e 's/^\(.*\)labels:/\1labels:\
+\1  maistra.io\/gateway: {{ $gateway.name | default "istio-ingressgateway" }}.{{ $gateway.namespace | default .Release.Namespace }}/' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml
+  sed_wrap -i -e 's/^\(.*\)labels:/\1labels:\
+\1  maistra.io\/gateway: {{ $gateway.name | default "istio-egressgateway" }}.{{ $gateway.namespace | default .Release.Namespace }}/' ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
-  # now make sure they're available
-  # XXX: need to copy these over from 1.1 and migrate to AuthorizationPolicy
-  #sed_wrap -i -e 's/define "security-default\.yaml\.tpl"/if and .Values.createMeshPolicy .Values.global.mtls.enabled/' ${HELM_DIR}/istio/charts/security/templates/enable-mesh-mtls.yaml
-  #sed_wrap -i -e 's/define "security-permissive\.yaml\.tpl"/if and .Values.createMeshPolicy (not .Values.global.mtls.enabled)/' ${HELM_DIR}/istio/charts/security/templates/enable-mesh-permissive.yaml
+  # gateways in other namespaces need proxy config
+  sed_wrap -i -e '/env:/ a\
+{{- if $gateway.namespace }}\
+{{- if ne $gateway.namespace .Release.Namespace }}\
+          - name: PROXY_CONFIG\
+            value: |-\
+              concurrency: {{ .Values.global.proxy.concurrency | default 2 }}\
+              tracing:\
+              {{- if eq .Values.global.proxy.tracer "lightstep" }}\
+                lightstep:\
+                  address: {{ .Values.global.tracer.lightstep.address }}\
+                  accessToken: {{ .Values.global.tracer.lightstep.accessToken }}\
+              {{- else if eq .Values.global.proxy.tracer "jaeger" }}\
+                zipkin:\
+                  address: {{ .Values.global.tracer.zipkin.address }}\
+              {{- else if eq .Values.global.proxy.tracer "zipkin" }}\
+                zipkin:\
+                {{- if .Values.global.tracer.zipkin.address }}\
+                  address: {{ .Values.global.tracer.zipkin.address }}\
+                {{- else }}\
+                  address: zipkin.{{ .Values.global.telemetryNamespace }}:9411\
+                {{- end }}\
+              {{- else if eq .Values.global.proxy.tracer "datadog" }}\
+                datadog:\
+                  address: {{ .Values.global.tracer.datadog.address }}\
+              {{- else if eq .Values.global.proxy.tracer "stackdriver" }}\
+                stackdriver:\
+                {{- if $.Values.global.tracer.stackdriver.debug }}\
+                  debug: {{ $.Values.global.tracer.stackdriver.debug }}\
+                {{- end }}\
+                {{- if $.Values.global.tracer.stackdriver.maxNumberOfAttributes }}\
+                  maxNumberOfAttributes: {{ $.Values.global.tracer.stackdriver.maxNumberOfAttributes }}\
+                {{- end }}\
+                {{- if $.Values.global.tracer.stackdriver.maxNumberOfAnnotations }}\
+                  maxNumberOfAnnotations: {{ $.Values.global.tracer.stackdriver.maxNumberOfAnnotations }}\
+                {{- end }}\
+                {{- if $.Values.global.tracer.stackdriver.maxNumberOfMessageEvents }}\
+                  maxNumberOfMessageEvents: {{ $.Values.global.tracer.stackdriver.maxNumberOfMessageEvents }}\
+                {{- end }}\
+              {{- end }}\
+              controlPlaneAuthPolicy: NONE\
+              {{- if .Values.global.remotePilotAddress }}\
+              discoveryAddress: {{ printf "istiod-remote.%s.svc" .Release.Namespace }}:15012\
+              {{- else }}\
+              discoveryAddress: istiod-{{ .Values.revision | default "default" }}.{{.Release.Namespace}}.svc:15012\
+              {{- end }}\
+              {{- if .Values.global.proxy.envoyMetricsService }}\
+              {{- if .Values.global.proxy.envoyMetricsService.enabled }}\
+              envoyMetricsService:\
+                address: {{ .Values.global.proxy.envoyMetricsService.host }}:{{ .Values.global.proxy.envoyMetricsService.port }}\
+              {{- if .Values.global.proxy.envoyMetricsService.tlsSettings }}\
+                tlsSettings:\
+                  {{ toYaml .Values.global.proxy.envoyMetricsService.tlsSettings | trim | indent 18 }}\
+              {{- end}}\
+              {{- if .Values.global.proxy.envoyMetricsService.tcpKeepalive }}\
+                tcpKeepalive:\
+                  {{ toYaml .Values.global.proxy.envoyMetricsService.tcpKeepalive | trim | indent 18 }}\
+              {{- end}}\
+              {{- end}}\
+              {{- end}}\
+              {{- if .Values.global.proxy.envoyAccessLogService }}\
+              {{- if .Values.global.proxy.envoyAccessLogService.enabled }}\
+              envoyAccessLogService:\
+                address: {{ .Values.global.proxy.envoyAccessLogService.host }}:{{ .Values.global.proxy.envoyAccessLogService.port }}\
+              {{- if .Values.global.proxy.envoyAccessLogService.tlsSettings }}\
+                tlsSettings:\
+                  {{ toYaml .Values.global.proxy.envoyAccessLogService.tlsSettings | trim | indent 18 }}\
+              {{- end}}\
+              {{- if .Values.global.proxy.envoyAccessLogService.tcpKeepalive }}\
+                tcpKeepalive:\
+                  {{ toYaml .Values.global.proxy.envoyAccessLogService.tcpKeepalive | trim | indent 18 }}\
+              {{- end}}\
+              {{- end}}\
+              {{- end}}\
+{{- end }}\
+{{- end }}\
+' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
-  # multitenant
-  echo '  # Maistra specific
-  - apiGroups: ["maistra.io"]
-    resources: ["servicemeshmemberrolls"]
-    verbs: ["get", "list", "watch"]' >> ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
+  # install in specified namespace
+  for file in $(find ${HELM_DIR}/gateways/istio-ingress/templates -type f -name "*.yaml" ! -name "meshexpansion.yaml"); do
+    sed_wrap -i -e 's/^\( *\)namespace:.*/\1namespace: {{ $gateway.namespace | default .Release.Namespace }}/' $file
+  done
+  for file in $(find ${HELM_DIR}/gateways/istio-egress/templates -type f -name "*.yaml"); do
+    sed_wrap -i -e 's/^\( *\)namespace:.*/\1namespace: {{ $gateway.namespace | default .Release.Namespace }}/' $file
+  done
+  sed_wrap -i -e '1 {
+    i \{\{ $gateway := index .Values "gateways" "istio-ingressgateway" \}\}\
+\{\{- if and .Values.global.meshExpansion.enabled (eq $gateway.name "istio-ingressgateway") \}\}
+    d
+    }' ${HELM_DIR}/gateways/istio-ingress/templates/meshexpansion.yaml
 }
 
 function patchSidecarInjector() {
@@ -214,7 +316,7 @@ function patchSidecarInjector() {
       -e '/metadata:/a\
 \  name: istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}' \
     $webhookconfig
-  sed_wrap -i -e '/if .Values.sidecarInjectorWebhook.enableNamespacesByDefault/,/{{- end/ {
+  sed_wrap -i -e '/if .Values.sidecarInjectorWebhook.enableNamespacesByDefault/,$ {
       /enableNamespacesByDefault/i\
       matchExpressions:\
       - key: maistra.io\/member-of\
@@ -226,12 +328,28 @@ function patchSidecarInjector() {
       - key: istio-injection\
         operator: NotIn\
         values:\
-        - disabled
+        - disabled\
+      - key: istio-env\
+        operator: DoesNotExist\
+\{\{- if .Values.sidecarInjectorWebhook.objectSelector.enabled \}\}\
+    objectSelector:\
+      matchExpressions:\
+\{\{- if eq .Values.global.proxy.autoInject "enabled" \}\}\
+      - key: "sidecar.istio.io/inject"\
+        operator: NotIn\
+        values:\
+        - "false"\
+\{\{- else \}\}\
+      - key: "sidecar.istio.io/inject"\
+        operator: In\
+        values:\
+        - "true"\
+\{\{- end \}\}\
+\{\{- end \}\}
       d
     }' $webhookconfig
   # remove {{- if not .Values.global.operatorManageWebhooks }} ... {{- end }}
   sed_wrap -i -e '/operatorManageWebhooks/ d' $webhookconfig
-  sed_wrap -i -e '$ d' $webhookconfig
 
   # - change privileged value on istio-proxy injection configmap to false
   # setting the proper values will fix this:
@@ -357,7 +475,6 @@ patchTemplates
 
 patchGalley
 patchGateways
-patchSecurity
 patchSidecarInjector
 patchMixer
 patchKialiTemplate

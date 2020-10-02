@@ -23,6 +23,7 @@ import (
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -257,6 +258,7 @@ func TestReconcileReconcilesAddedMember(t *testing.T) {
 		meshVersion         string
 		expectedNetworkName string
 		upgradedOperator    bool
+		noKiali             bool
 	}{
 		{
 			// tests a namespace add being processed before the mesh is upgraded
@@ -293,6 +295,13 @@ func TestReconcileReconcilesAddedMember(t *testing.T) {
 			meshVersion:         "",
 			expectedNetworkName: cniNetwork1_0,
 		},
+		{
+			name:                "no-kiali",
+			operatorVersion:     operatorVersionDefault,
+			meshVersion:         "",
+			expectedNetworkName: cniNetwork1_0,
+			noKiali:             true,
+		},
 	}
 
 	for _, tc := range cases {
@@ -304,6 +313,9 @@ func TestReconcileReconcilesAddedMember(t *testing.T) {
 			if tc.upgradedOperator {
 				// need to reset the ServiceMeshReconciledVersion
 				roll.Status.ServiceMeshReconciledVersion = status.ComposeReconciledVersion(operatorVersion1_0, controlPlane.GetGeneration())
+			}
+			if tc.noKiali {
+				controlPlane.Status.AppliedSpec.Addons = nil
 			}
 			roll.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
 			namespace := newNamespace(appNamespace)
@@ -319,7 +331,9 @@ func TestReconcileReconcilesAddedMember(t *testing.T) {
 
 			assertNamespaceReconciled(t, cl, appNamespace, controlPlaneNamespace, tc.expectedNetworkName, []rbac.RoleBinding{*meshRoleBinding})
 			assertNamespaceReconcilerInvoked(t, nsReconciler, appNamespace)
-			kialiReconciler.assertInvokedWith(t, appNamespace)
+			if !tc.noKiali {
+				kialiReconciler.assertInvokedWith(t, appNamespace)
+			}
 		})
 	}
 
@@ -432,7 +446,7 @@ func TestReconcileDoesNotUpdateMemberRollWhenNothingToReconcile(t *testing.T) {
 		t.Errorf("Unexpected error retrieving updated ServiceMeshMemberRoll: %v", err)
 	} else if updatedRoll, ok := updatedObj.(*maistrav1.ServiceMeshMemberRoll); !ok {
 		t.Errorf("Unexpected error casting runtime.Object to ServiceMeshMemberRoll: %v", updatedObj)
-	} else if updatedRoll.Status.ServiceMeshReconciledVersion != controlPlane.Status.ReconciledVersion {
+	} else if updatedRoll.Status.ServiceMeshReconciledVersion != controlPlane.Status.GetReconciledVersion() {
 		t.Errorf("ServiceMeshMemberRoll was not updated")
 	}
 }
@@ -532,12 +546,20 @@ func TestReconcileHandlesDeletionProperly(t *testing.T) {
 		specMembers               []string
 		configuredMembers         []string
 		expectedRemovedNamespaces []string
+		noKiali                   bool
 	}{
 		{
 			name:                      "normal-deletion",
 			specMembers:               []string{appNamespace},
 			configuredMembers:         []string{appNamespace},
 			expectedRemovedNamespaces: []string{appNamespace},
+		},
+		{
+			name:                      "normal-deletion-no-kiali",
+			specMembers:               []string{appNamespace},
+			configuredMembers:         []string{appNamespace},
+			expectedRemovedNamespaces: []string{appNamespace},
+			noKiali:                   true,
 		},
 		{
 			name:                      "ns-removed-from-members-list-and-smmr-deleted-immediately",
@@ -550,12 +572,16 @@ func TestReconcileHandlesDeletionProperly(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			controlPlane := markControlPlaneReconciled(newControlPlane(""), operatorVersionDefault)
+			if tc.noKiali {
+				controlPlane.Status.AppliedSpec.Addons = nil
+			}
 			roll := newDefaultMemberRoll()
 			roll.Spec.Members = tc.specMembers
 			roll.Status.ConfiguredMembers = tc.configuredMembers
 			roll.DeletionTimestamp = &oneMinuteAgo
 
-			initObjects := []runtime.Object{roll}
+			initObjects := []runtime.Object{roll, controlPlane}
 			for _, ns := range tc.configuredMembers {
 				initObjects = append(initObjects, &core.Namespace{
 					ObjectMeta: meta.ObjectMeta{
@@ -575,7 +601,9 @@ func TestReconcileHandlesDeletionProperly(t *testing.T) {
 			assert.StringArrayEmpty(updatedRoll.Finalizers, "Expected finalizers list in SMMR to be empty, but it wasn't", t)
 
 			assertNamespaceRemoveInvoked(t, nsReconciler, tc.expectedRemovedNamespaces...)
-			kialiReconciler.assertInvokedWith(t /* no namespaces */)
+			if !tc.noKiali {
+				kialiReconciler.assertInvokedWith(t /* no namespaces */)
+			}
 		})
 	}
 }
@@ -619,10 +647,11 @@ func TestClientReturnsErrorWhenRemovingFinalizer(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			controlPlane := markControlPlaneReconciled(newControlPlane(""), operatorVersionDefault)
 			roll := newDefaultMemberRoll()
 			roll.DeletionTimestamp = &oneMinuteAgo
 
-			_, tracker, r, _, _ := createClientAndReconciler(t, roll)
+			_, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane)
 			tracker.AddReaction(tc.reactor)
 
 			if tc.successExpected {
@@ -731,21 +760,30 @@ func addOwnerReference(roll *maistrav1.ServiceMeshMemberRoll) *maistrav1.Service
 	return roll
 }
 
-func newControlPlane(version string) *maistrav1.ServiceMeshControlPlane {
-	return &maistrav1.ServiceMeshControlPlane{
+func newControlPlane(version string) *maistrav2.ServiceMeshControlPlane {
+	enabled := true
+	return &maistrav2.ServiceMeshControlPlane{
 		ObjectMeta: meta.ObjectMeta{
 			Name:       controlPlaneName,
 			Namespace:  controlPlaneNamespace,
 			UID:        controlPlaneUID,
 			Generation: 1,
 		},
-		Spec: maistrav1.ControlPlaneSpec{
+		Spec: maistrav2.ControlPlaneSpec{
 			Version: version,
+			Addons: &maistrav2.AddonsConfig{
+				Kiali: &maistrav2.KialiAddonConfig{
+					Enablement: maistrav2.Enablement{
+						Enabled: &enabled,
+					},
+					Name: "kiali",
+				},
+			},
 		},
 	}
 }
 
-func markControlPlaneReconciled(controlPlane *maistrav1.ServiceMeshControlPlane, operatorVersion string) *maistrav1.ServiceMeshControlPlane {
+func markControlPlaneReconciled(controlPlane *maistrav2.ServiceMeshControlPlane, operatorVersion string) *maistrav2.ServiceMeshControlPlane {
 	controlPlane.Status.ObservedGeneration = controlPlane.GetGeneration()
 	controlPlane.Status.Conditions = []status.Condition{
 		{
@@ -753,7 +791,9 @@ func markControlPlaneReconciled(controlPlane *maistrav1.ServiceMeshControlPlane,
 			Status: status.ConditionStatusTrue,
 		},
 	}
-	controlPlane.Status.ReconciledVersion = status.ComposeReconciledVersion(operatorVersion, controlPlane.GetGeneration())
+	controlPlane.Status.ObservedGeneration = controlPlane.GetGeneration()
+	controlPlane.Status.OperatorVersion = operatorVersion
+	controlPlane.Spec.DeepCopyInto(&controlPlane.Status.AppliedSpec)
 	return controlPlane
 }
 
@@ -815,17 +855,17 @@ type fakeKialiReconciler struct {
 	reconcileKialiInvoked  bool
 	kialiConfiguredMembers []string
 	errorToReturn          error
-	delegate               func(ctx context.Context, kialiCRNamespace string, configuredMembers []string) error
+	delegate               func(ctx context.Context, kialiCRName, kialiCRNamespace string, configuredMembers []string) error
 }
 
-func (f *fakeKialiReconciler) reconcileKiali(ctx context.Context, kialiCRNamespace string, configuredMembers []string) error {
+func (f *fakeKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName, kialiCRNamespace string, configuredMembers []string) error {
 	f.reconcileKialiInvoked = true
 	f.kialiConfiguredMembers = append([]string{}, configuredMembers...)
 	if f.errorToReturn != nil {
 		return f.errorToReturn
 	}
 	if f.delegate != nil {
-		return f.delegate(ctx, kialiCRNamespace, configuredMembers)
+		return f.delegate(ctx, kialiCRName, kialiCRNamespace, configuredMembers)
 	}
 	return nil
 }
