@@ -266,6 +266,12 @@ data:
         },
         "tag": "latest",
         "telemetryNamespace": "istio-system",
+        "tls": {
+          "cipherSuites": [],
+          "ecdhCurves": [],
+          "maxProtocolVersion": "",
+          "minProtocolVersion": ""
+        },
         "tracer": {
           "datadog": {
             "address": "$(HOST_IP):8126"

@@ -35,7 +35,7 @@ spec:
         container:
           imageRegistry: quay.io/3scale
           imageName: 3scale-istio-adapter
-          imageTag: v1.0.0
+          imageTag: v2.0.0
       global.oauthproxy:
         container:
           imageRegistry: quay.io/openshift

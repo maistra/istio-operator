@@ -38,7 +38,7 @@ type ServiceMeshControlPlane struct {
 	// This includes the configuration options for all components that comprise
 	// the control plane.
 	// +kubebuilder:validation:Required
-	Spec ControlPlaneSpec `json:"spec,omitempty"`
+	Spec ControlPlaneSpec `json:"spec"`
 
 	// The current status of this ServiceMeshControlPlane and the components
 	// that comprise the control plane. This data may be out of date by some

@@ -94,6 +94,8 @@ spec:
               format: int64
               type: integer
           type: object
+      required:
+      - spec
       type: object
   version: v1
   versions:

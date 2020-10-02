@@ -172,6 +172,8 @@ spec:
               reconciledVersion:
                 type: string
             type: object
+        required:
+        - spec
         type: object
     served: true
     storage: false
@@ -3210,7 +3212,6 @@ spec:
                 type: string
             type: object
           status:
-            nullable: true
             properties:
               annotations:
                 additionalProperties:
@@ -6311,6 +6312,8 @@ spec:
             required:
             - readiness
             type: object
+        required:
+        - spec
         type: object
     served: true
     storage: true
@@ -6419,6 +6422,8 @@ spec:
               format: int64
               type: integer
           type: object
+      required:
+      - spec
       type: object
   version: v1
   versions:
@@ -6975,7 +6980,7 @@ spec:
         olm.relatedImage.v1_1.proxyv2: docker.io/maistra/proxyv2-ubi8:1.1.8
         olm.relatedImage.v1_1.sidecar-injector: docker.io/maistra/sidecar-injector-ubi8:1.1.8
 
-        olm.relatedImage.v2_0.3scale-istio-adapter: quay.io/3scale/3scale-istio-adapter:v1.0.0
+        olm.relatedImage.v2_0.3scale-istio-adapter: quay.io/3scale/3scale-istio-adapter:v2.0.0
         olm.relatedImage.v2_0.cni: docker.io/maistra/istio-cni-ubi8:2.0.0
         olm.relatedImage.v2_0.grafana: docker.io/maistra/grafana-ubi8:2.0.0
         olm.relatedImage.v2_0.mixer: docker.io/maistra/mixer-ubi8:2.0.0

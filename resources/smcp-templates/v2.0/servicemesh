@@ -35,7 +35,7 @@ spec:
         container:
           imageRegistry: registry.redhat.io/openshift-service-mesh
           imageName: 3scale-istio-adapter-rhel8
-          imageTag: 1.0.0
+          imageTag: 2.0.0
       global.oauthproxy:
         container:
           imageRegistry: image-registry.openshift-image-registry.svc:5000/openshift
