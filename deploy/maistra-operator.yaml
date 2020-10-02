@@ -172,6 +172,8 @@ spec:
               reconciledVersion:
                 type: string
             type: object
+        required:
+        - spec
         type: object
     served: true
     storage: false
@@ -3210,7 +3212,6 @@ spec:
                 type: string
             type: object
           status:
-            nullable: true
             properties:
               annotations:
                 additionalProperties:
@@ -6311,6 +6312,8 @@ spec:
             required:
             - readiness
             type: object
+        required:
+        - spec
         type: object
     served: true
     storage: true
@@ -6419,6 +6422,8 @@ spec:
               format: int64
               type: integer
           type: object
+      required:
+      - spec
       type: object
   version: v1
   versions:
