@@ -35,6 +35,9 @@ OLM_MANIFEST_OUT_DIR = ${OUT_DIR}/resources/manifests
 OFFLINE_BUILD       ?= false
 GIT_UPSTREAM_REMOTE ?= $(shell git remote -v |grep --color=never '[/:][Mm]aistra/istio-operator\.git.*(fetch)' |grep --color=never -o '^[^[:space:]]*')
 
+MAISTRA_MANIFEST_DATE := $(shell cat manifests-maistra/2.0.0/maistraoperator.v2.0.0.clusterserviceversion.yaml | grep createdAt | awk '{print $$2}')
+OSSM_MANIFEST_DATE := $(shell cat manifests-servicemesh/2.0.0/servicemeshoperator.v2.0.0.clusterserviceversion.yaml | grep createdAt | awk '{print $$2}')
+
 ifeq "${GIT_UPSTREAM_REMOTE}" ""
 GIT_UPSTREAM_REMOTE = "ci-upstream"
 $(warning Could not find git remote for maistra/istio-operator, adding as '${GIT_UPSTREAM_REMOTE}')
@@ -89,6 +92,10 @@ update-1.0-charts: update-remote-maistra-1.0
 	find ${RESOURCES_DIR}/helm/v1.0/istio-init/files/ -maxdepth 1 -name "*.crd.yaml" -delete
 	# MAISTRA-1776
 	sed -i -e '/kind: handler/,/kind:/ { /name: kubernetesenv/,/kind:/ s/params:/params: \{\}/ }' ${RESOURCES_DIR}/helm/v1.0/istio/charts/mixer/templates/config.yaml
+	sed -i -e '/if (\$$spec.sds) and (eq \$$spec.sds.enabled true)/ a\{\{- if $$spec.sds \}\}\n\{\{- if eq $$spec.sds.enabled true \}\}' ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/role.yaml ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/rolebindings.yaml
+	sed -i -e '/if (\$$spec.sds) and (eq \$$spec.sds.enabled true)/ d' ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/role.yaml ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/rolebindings.yaml
+	echo "{{- end }}" >> ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/role.yaml
+	echo "{{- end }}" >> ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/rolebindings.yaml
 	CRD_DIR=${RESOURCES_DIR}/helm/v1.0/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
 
 .PHONY: update-1.0-templates
@@ -180,10 +187,10 @@ generate-product-manifests:
 # resource generation
 ################################################################################
 .PHONY: gen
-gen: update-charts update-templates update-generated-code
+gen:  update-charts update-templates update-generated-code generate-manifests
 
 .PHONY: gen-check
-gen-check: gen check-clean-repo
+gen-check: gen restore-manifest-dates check-clean-repo
 
 .PHONY: check-clean-repo
 check-clean-repo:
@@ -191,6 +198,11 @@ check-clean-repo:
 
 .PHONY: generate-manifests
 generate-manifests: generate-community-manifests generate-product-manifests
+
+.PHONY: restore-manifest-dates
+restore-manifest-dates:
+	sed -i -e "s/\(createdAt:\).*/\1 ${MAISTRA_MANIFEST_DATE}/" manifests-maistra/2.0.0/maistraoperator.v2.0.0.clusterserviceversion.yaml
+	sed -i -e "s/\(createdAt:\).*/\1 ${OSSM_MANIFEST_DATE}/" manifests-servicemesh/2.0.0/servicemeshoperator.v2.0.0.clusterserviceversion.yaml
 
 .PHONY: update-charts
 update-charts: update-1.0-charts update-1.1-charts update-2.0-charts

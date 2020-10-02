@@ -30,7 +30,7 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 	}
 
 	var err error
-	smcp.Status.AppliedValues, err = v.applyProfiles(ctx, cr, v1spec)
+	smcp.Status.AppliedValues, err = v.applyProfiles(ctx, cr, v1spec, smcp.GetNamespace())
 	if err != nil {
 		log.Error(err, "warning: failed to apply ServiceMeshControlPlane templates")
 
@@ -55,6 +55,12 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 	err = spec.Istio.SetField("istio_cni.istio_cni_network", v.GetCNINetworkName())
 	if err != nil {
 		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.istio_cni_network: %v", err)
+	}
+
+	// MAISTRA-1330
+	err = spec.Istio.SetField("global.istioNamespace", smcp.GetNamespace())
+	if err != nil {
+		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.istioNamespace: %v", err)
 	}
 
 	// convert back to the v2 type

@@ -16,27 +16,6 @@ spec:
 
 ---
 
-# this will work for all routes into the mesh namespace, but not on ocp 3.11
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: istio-ingress-router-{{ .Values.revision | default "default" }}
-  namespace: {{ .Release.Namespace }}
-  labels:
-    maistra-version: 2.0.0
-    app: istio
-    release: {{ .Release.Name }}
-  annotations:
-    "maistra.io/internal": "true"
-spec:
-  ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          network.openshift.io/policy-group: ingress
-
----
-
 # this will work for all routes into the mesh namespace referencing a labelled pod, but not on ocp 3.11
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

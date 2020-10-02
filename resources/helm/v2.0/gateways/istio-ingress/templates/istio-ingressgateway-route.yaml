@@ -1,10 +1,14 @@
 {{ $gateway := index .Values "gateways" "istio-ingressgateway" }}
-{{- if and ($gateway.enabled) (eq $gateway.name "istio-ingressgateway") }}
+{{- if $gateway.enabled }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: istio-ingressgateway
-  namespace: {{ .Release.Namespace }}
+  name: {{ $gateway.name | default "istio-ingressgateway" }}
+{{- if or (not $gateway.namespace) (eq $gateway.name "istio-ingressgateway") }}
+  namespace: {{ $gateway.namespace | default .Release.Namespace }}
+{{- else }}
+  namespace: {{ $gateway.namespace | default .Release.Namespace }}
+{{- end }}
   labels:
     maistra-version: 2.0.0
     release: {{ .Release.Name }}
@@ -14,7 +18,7 @@ metadata:
 spec:
   to:
     kind: Service
-    name: istio-ingressgateway
+    name: {{ $gateway.name | default "istio-ingressgateway" }}
   port:
     targetPort: 8080
 {{- end }}

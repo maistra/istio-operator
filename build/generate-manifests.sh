@@ -4,11 +4,17 @@
 
 set -e
 
+if [ "${GOPATH}" != "" ]; then
+  YQ=`which yq -a | grep -v ${GOPATH} | grep -v go`
+else
+  YQ=`which yq -a | grep -v go`
+fi
+
 : ${COMMUNITY:-"true"}
 : ${MAISTRA_VERSION:?"Need to set maistra version, e.g. 1.0.1"}
 if [[ ${COMMUNITY} == "true" ]]; then
   BUILD_TYPE="maistra"
-  JAEGER_TEMPLATE="all-in-one"
+  JAEGER_STORAGE="Memory"
   CSV_DESCRIPTION="The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project."
   APP_DESCRIPTION="Maistra is a platform that provides behavioral insight and operational control over a service mesh, providing a uniform way to connect, secure, and monitor microservice applications."
   DISPLAY_NAME="Maistra Service Mesh"
@@ -17,7 +23,7 @@ if [[ ${COMMUNITY} == "true" ]]; then
   OLM_FEATURES="[]"
 else
   BUILD_TYPE="servicemesh"
-  JAEGER_TEMPLATE="all-in-one"
+  JAEGER_STORAGE="Memory"
   CSV_DESCRIPTION="The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project."
   APP_DESCRIPTION="Red Hat OpenShift Service Mesh is a platform that provides behavioral insight and operational control over a service mesh, providing a uniform way to connect, secure, and monitor microservice applications."
   DISPLAY_NAME="Red Hat OpenShift Service Mesh"
@@ -39,7 +45,7 @@ function checkDependencies() {
     exit 1
   fi
 
-  if ! [ -x "$(command -v yq)" ]; then
+  if ! [ -x "$(command -v ${YQ})" ]; then
     echo "Please install yq package, e.g. 'pip install --user yq'"
     exit 1
   fi
@@ -91,25 +97,25 @@ function generateDeploymentFile() {
 }
 
 function generateCSV() {
-  IMAGE_SRC=$(yq -s -r '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.spec.containers[0].image' ${DEPLOYMENT_FILE})
+  IMAGE_SRC=$(${YQ} -s -r '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.spec.containers[0].image' ${DEPLOYMENT_FILE})
   if [ "$IMAGE_SRC" == "" ]; then
     echo "generateCSV(): Operator image source is empty, please verify source yaml/path to the field."
     exit 1
   fi
 
-  DEPLOYMENT_SPEC=$(yq -s -r -y --indentless '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec' ${DEPLOYMENT_FILE} | sed 's/^/          /')
+  DEPLOYMENT_SPEC=$(${YQ} -s -r -y --indentless '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec' ${DEPLOYMENT_FILE} | sed 's/^/          /')
   if [ "$DEPLOYMENT_SPEC" == "" ]; then
     echo "generateCSV(): Operator deployment spec is empty, please verify source yaml/path to the field."
     exit 1
   fi
 
-  CLUSTER_ROLE_RULES=$(yq -s -y --indentless '.[] | select(.kind=="ClusterRole" and .metadata.name=="istio-operator") | .rules' ${DEPLOYMENT_FILE} | sed 's/^/        /')
+  CLUSTER_ROLE_RULES=$(${YQ} -s -y --indentless '.[] | select(.kind=="ClusterRole" and .metadata.name=="istio-operator") | .rules' ${DEPLOYMENT_FILE} | sed 's/^/        /')
   if [ "$CLUSTER_ROLE_RULES" == "null" ]; then
     echo "generateCSV(): istio-operator cluster role source is empty, please verify source yaml/path to the field."
     exit 1
   fi
 
-  RELATED_IMAGES=$(yq -s -y --indentless '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.metadata.annotations' ${DEPLOYMENT_FILE} | \
+  RELATED_IMAGES=$(${YQ} -s -y --indentless '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.metadata.annotations' ${DEPLOYMENT_FILE} | \
     sed -n 's/olm\.relatedImage\.\([^:]*\): *\([^ ]*\)/- name: \1\
   image: \2/p' | \
     sed 's/^/  /')
@@ -130,7 +136,7 @@ function generateCSV() {
   sed -i -e 's+__DOCUMENTATION_URL__+'"$DOCUMENTATION_URL"'+' ${csv_path}
   sed -i -e 's+__BUG_URL__+'"$BUG_URL"'+' ${csv_path}
   sed -i -e 's+__OLM_FEATURES__+'"$OLM_FEATURES"'+' ${csv_path}
-  sed -i -e 's/__JAEGER_TEMPLATE__/'${JAEGER_TEMPLATE}'/' ${csv_path}
+  sed -i -e 's/__JAEGER_STORAGE__/'${JAEGER_STORAGE}'/' ${csv_path}
   sed -i -e 's/__DATE__/'$(date +%Y-%m-%dT%H:%M:%S%Z)'/g' ${csv_path}
   sed -i -e 's+__IMAGE_SRC__+'${IMAGE_SRC}'+g' ${csv_path}
   sed -i -e '/__RELATED_IMAGES__/{

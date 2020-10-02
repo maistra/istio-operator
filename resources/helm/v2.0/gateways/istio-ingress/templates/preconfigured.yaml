@@ -4,7 +4,7 @@ apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
   name: istio-multicluster-ingressgateway
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
 {{ $gateway.labels | toYaml | indent 4 }}
@@ -26,7 +26,7 @@ apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
   name: istio-multicluster-ingressgateway
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
 {{ $gateway.labels | toYaml | indent 4 }}
@@ -57,7 +57,7 @@ apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
 metadata:
   name: istio-multicluster-ingressgateway
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
     maistra-version: 2.0.0
 {{ $gateway.labels | toYaml | indent 4 }}
