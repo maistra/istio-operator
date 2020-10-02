@@ -57,6 +57,12 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.istio_cni_network: %v", err)
 	}
 
+	// MAISTRA-1330
+	err = spec.Istio.SetField("global.istioNamespace", smcp.GetNamespace())
+	if err != nil {
+		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.istioNamespace: %v", err)
+	}
+
 	// convert back to the v2 type
 	smcp.Status.AppliedSpec = v2.ControlPlaneSpec{}
 	err = cr.Scheme.Convert(&smcp.Status.AppliedValues, &smcp.Status.AppliedSpec, nil)
