@@ -123,8 +123,13 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		r.Instance.Status.AppliedSpec.DeepCopyInto(&r.Status.AppliedSpec)
 		if err != nil {
 			// we can't progress here
-			reconciliationReason = status.ConditionReasonReconcileError
-			reconciliationMessage = "Error rendering helm charts"
+			if versions.IsValidationError(err) {
+				reconciliationReason = status.ConditionReasonValidationError
+				reconciliationMessage = "Spec is invalid"
+			} else {
+				reconciliationReason = status.ConditionReasonReconcileError
+				reconciliationMessage = "Error rendering helm charts"
+			}
 			err = errors.Wrap(err, reconciliationMessage)
 			return
 		}

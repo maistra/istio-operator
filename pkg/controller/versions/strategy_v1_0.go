@@ -91,16 +91,11 @@ func (v *versionStrategyV1_0) ValidateV1(ctx context.Context, cl client.Client, 
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (v *versionStrategyV1_0) ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
+func (v *versionStrategyV1_0) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
-	// I believe the only settings that aren't supported are Istiod policy and telemetry
-	if smcp.Spec.Policy != nil && smcp.Spec.Policy.Type == v2.PolicyTypeIstiod {
-		allErrors = append(allErrors, fmt.Errorf("policy type %s is not supported in version %s", smcp.Spec.Policy.Type, v.String()))
-	}
-	if smcp.Spec.Telemetry != nil && smcp.Spec.Telemetry.Type == v2.TelemetryTypeIstiod {
-		allErrors = append(allErrors, fmt.Errorf("telemetry type %s is not supported in version %s", smcp.Spec.Telemetry.Type, v.String()))
-	}
-	return utilerrors.NewAggregate(allErrors)
+	allErrors = validatePolicyType(nil, meta, spec, v.version, allErrors)
+	allErrors = validateTelemetryType(nil, meta, spec, v.version, allErrors)
+	return NewValidationError(allErrors...)
 }
 
 func (v *versionStrategyV1_0) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {

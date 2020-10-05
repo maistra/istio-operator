@@ -133,39 +133,12 @@ func (v *versionStrategyV1_1) ValidateV1(ctx context.Context, cl client.Client, 
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (v *versionStrategyV1_1) ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
-	logger := logf.Log.WithName("smcp-validator-1.1")
+func (v *versionStrategyV1_1) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
-	// I believe the only settings that aren't supported are Istiod policy and telemetry
-	if smcp.Spec.Policy != nil && smcp.Spec.Policy.Type == v2.PolicyTypeIstiod {
-		allErrors = append(allErrors, fmt.Errorf("policy type %s is not supported in version %s", smcp.Spec.Policy.Type, v.String()))
-	}
-	if smcp.Spec.Telemetry != nil && smcp.Spec.Telemetry.Type == v2.TelemetryTypeIstiod {
-		allErrors = append(allErrors, fmt.Errorf("telemetry type %s is not supported in version %s", smcp.Spec.Telemetry.Type, v.String()))
-	}
-
-	smmr := &v1.ServiceMeshMemberRoll{}
-	err := cl.Get(ctx, client.ObjectKey{Name: common.MemberRollName, Namespace: smcp.GetNamespace()}, smmr)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			// log error, but don't fail validation: we'll just assume that the control plane namespace is the only namespace for now
-			logger.Error(err, "failed to retrieve SMMR for SMCP")
-			smmr = nil
-		}
-	}
-
-	meshNamespaces := common.GetMeshNamespaces(smcp.GetNamespace(), smmr)
-	gatewayNames := sets.NewString()
-	if smcp.Spec.Gateways != nil {
-		for name, gateway := range smcp.Spec.Gateways.IngressGateways {
-			validateGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, smcp.Namespace, &allErrors)
-		}
-		for name, gateway := range smcp.Spec.Gateways.EgressGateways {
-			validateGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, smcp.Namespace, &allErrors)
-		}
-	}
-
-	return utilerrors.NewAggregate(allErrors)
+	allErrors = validatePolicyType(ctx, meta, spec, v.version, allErrors)
+	allErrors = validateTelemetryType(nil, meta, spec, v.version, allErrors)
+	allErrors = validateGateways(ctx, meta, spec, v.version, cl, allErrors)
+	return NewValidationError(allErrors...)
 }
 
 var (
@@ -249,7 +222,7 @@ func (v *versionStrategyV1_1) ValidateDowngrade(ctx context.Context, cl client.C
 			allErrors = append(allErrors, err)
 		}
 	case *v2.ServiceMeshControlPlane:
-		if err := V1_0.Strategy().ValidateV2(ctx, cl, smcp); err != nil {
+		if err := V1_0.Strategy().ValidateV2(ctx, cl, &smcp.ObjectMeta, &smcp.Spec); err != nil {
 			allErrors = append(allErrors, err)
 		}
 	default:
