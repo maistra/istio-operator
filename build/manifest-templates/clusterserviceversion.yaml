@@ -273,8 +273,3 @@ __DEPLOYMENT_SPEC__
       kind: ServiceMeshMemberRoll
       displayName: Istio Service Mesh Member Roll
       description: A list of namespaces in Service Mesh
-    - name: servicemeshextensions.maistra.io
-      version: v1alpha1
-      kind: ServiceMeshExtension
-      displayName: Istio Service Mesh Extension
-      description: An Istio Service Mesh Extension deployment
