@@ -187,7 +187,7 @@ generate-product-manifests:
 # resource generation
 ################################################################################
 .PHONY: gen
-gen:  update-charts update-templates update-generated-code generate-manifests
+gen:  generate-crds update-charts update-templates update-generated-code generate-manifests
 
 .PHONY: gen-check
 gen-check: gen restore-manifest-dates check-clean-repo
@@ -198,6 +198,10 @@ check-clean-repo:
 
 .PHONY: generate-manifests
 generate-manifests: generate-community-manifests generate-product-manifests
+
+.PHONY: generate-crds
+generate-crds:
+	${SOURCE_DIR}/build/generate-crds.sh
 
 .PHONY: restore-manifest-dates
 restore-manifest-dates:
