@@ -16,7 +16,6 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/yaml"
 
 	jaegerv1 "github.com/maistra/istio-operator/pkg/apis/external/jaeger/v1"
@@ -142,32 +141,25 @@ func (v *versionStrategyV2_0) ValidateV1(ctx context.Context, cl client.Client, 
 	return fmt.Errorf("must use v2 ServiceMeshControlPlane resource for v2.0+ installations")
 }
 
-func (v *versionStrategyV2_0) ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
-	logger := logf.Log.WithName("smcp-validator-1.1")
+func (v *versionStrategyV2_0) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
+	allErrors = validateGateways(ctx, meta, spec, v.version, cl, allErrors)
+	return NewValidationError(allErrors...)
+}
 
-	smmr := &v1.ServiceMeshMemberRoll{}
-	err := cl.Get(ctx, client.ObjectKey{Name: common.MemberRollName, Namespace: smcp.GetNamespace()}, smmr)
+func (v *versionStrategyV2_0) ValidateV2Full(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
+	var allErrors []error
+	err := v.ValidateV2(ctx, cl, meta, spec)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			// log error, but don't fail validation: we'll just assume that the control plane namespace is the only namespace for now
-			logger.Error(err, "failed to retrieve SMMR for SMCP")
-			smmr = nil
+		if validationErr, ok := err.(ValidationError); ok {
+			allErrors = validationErr.Errors()
+		} else {
+			return err
 		}
 	}
-
-	meshNamespaces := common.GetMeshNamespaces(smcp.GetNamespace(), smmr)
-	gatewayNames := sets.NewString()
-	if smcp.Spec.Gateways != nil {
-		for name, gateway := range smcp.Spec.Gateways.IngressGateways {
-			validateGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, smcp.Namespace, &allErrors)
-		}
-		for name, gateway := range smcp.Spec.Gateways.EgressGateways {
-			validateGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, smcp.Namespace, &allErrors)
-		}
-	}
-
-	return utilerrors.NewAggregate(allErrors)
+	// additional validation checks that are only performed just before reconciliation
+	allErrors = validatePrometheusEnabledWhenKialiEnabled(spec, allErrors)
+	return NewValidationError(allErrors...)
 }
 
 func (v *versionStrategyV2_0) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
@@ -342,6 +334,12 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 	if log.V(5).Enabled() {
 		rawValues, _ := yaml.Marshal(values)
 		log.V(5).Info(fmt.Sprintf("rendering values:\n%s", string(rawValues)))
+	}
+
+	// Validate the final AppliedSpec
+	err = v.ValidateV2Full(ctx, cr.Client, &smcp.ObjectMeta, &smcp.Status.AppliedSpec)
+	if err != nil {
+		return nil, err
 	}
 
 	//Render the charts

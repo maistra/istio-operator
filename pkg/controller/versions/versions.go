@@ -91,7 +91,7 @@ type Version interface {
 // ValidationStrategy is an interface used by the validating webhook for validating SMCP resources.
 type ValidationStrategy interface {
 	ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error
-	ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error
+	ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error
 	ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error
 	ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error
 }
@@ -169,7 +169,7 @@ func (v *nilVersionStrategy) SetImageValues(ctx context.Context, cr *common.Cont
 func (v *nilVersionStrategy) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	return nil
 }
-func (v *nilVersionStrategy) ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
+func (v *nilVersionStrategy) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	return nil
 }
 func (v *nilVersionStrategy) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
@@ -197,7 +197,7 @@ func (v *invalidVersionStrategy) SetImageValues(ctx context.Context, cr *common.
 func (v *invalidVersionStrategy) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	return fmt.Errorf("invalid version: %s", v.version)
 }
-func (v *invalidVersionStrategy) ValidateV2(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
+func (v *invalidVersionStrategy) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	return fmt.Errorf("invalid version: %s", v.version)
 }
 func (v *invalidVersionStrategy) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {

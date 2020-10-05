@@ -151,7 +151,7 @@ func (v *ControlPlaneValidator) validateVersion(ctx context.Context, obj metav1.
 		}
 		return version.Strategy().ValidateV1(ctx, v.client, smcp)
 	case *maistrav2.ServiceMeshControlPlane:
-		return version.Strategy().ValidateV2(ctx, v.client, smcp)
+		return version.Strategy().ValidateV2(ctx, v.client, &smcp.ObjectMeta, &smcp.Spec)
 	default:
 		return fmt.Errorf("unknown ServiceMeshControlPlane type: %T", smcp)
 	}
