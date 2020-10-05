@@ -87,7 +87,7 @@ func TestBootstrapping(t *testing.T) {
 					Profiles: []string{"maistra"},
 				},
 			},
-			crdCount: 25,
+			crdCount: 26,
 		},
 		{
 			name: "v2.0.mixer",
@@ -104,7 +104,7 @@ func TestBootstrapping(t *testing.T) {
 					},
 				},
 			},
-			crdCount: 25,
+			crdCount: 26,
 		},
 	}
 
