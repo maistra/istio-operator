@@ -153,7 +153,10 @@ function patchGalley() {
     verbs: ["get", "list", "watch"]
   - apiGroups: ["route.openshift.io"]
     resources: ["routes", "routes/custom-host"]
-    verbs: ["get", "list", "watch", "create", "delete", "update"]' >> ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
+    verbs: ["get", "list", "watch", "create", "delete", "update"]
+  - apiGroups: ["extensions.maistra.io"]
+    resources: ["servicemeshextensions"]
+    verbs: ["get", "list", "watch"]' >> ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e 's/, *"nodes"//' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e '/- apiGroups:.*admissionregistration\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e '/- apiGroups:.*certificates\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml

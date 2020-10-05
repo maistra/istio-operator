@@ -25,6 +25,3 @@ rules:
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses/status"]
     verbs: ["*"]
-  - apiGroups: ["extensions.maistra.io"]
-    resources: ["servicemeshextensions"]
-    verbs: ["get", "list", "watch"]
