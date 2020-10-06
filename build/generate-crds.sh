@@ -25,6 +25,11 @@ function generateCRDs() {
   sed -i -e 's/^  annotations:/  annotations:\n    service.beta.openshift.io\/inject-cabundle: "true"/' \
       deploy/crds/maistra.io_servicemeshcontrolplanes.yaml
 
+  sed -i -e 's/^metadata:/metadata:\
+  labels:\
+    chart: istio\
+    release: istio/' deploy/crds/extensions.maistra.io_servicemeshextensions.yaml
+
   for bundle_dir in ${BUNDLE_DIRS}; do
     cp deploy/crds/maistra.io_servicemeshcontrolplanes.yaml ${bundle_dir}/servicemeshcontrolplanes.crd.yaml
     cp deploy/crds/maistra.io_servicemeshmemberrolls.yaml ${bundle_dir}/servicemeshmemberrolls.crd.yaml
