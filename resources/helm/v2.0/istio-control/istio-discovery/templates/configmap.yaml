@@ -136,6 +136,13 @@
 {{ toYaml .Values.global.certificates | trim | indent 6 }}
 {{- end }}
 
+    # The namespace to treat as the administrative root namespace for istio
+    # configuration.
+{{- if .Values.global.configRootNamespace }}
+    rootNamespace: {{ .Values.global.configRootNamespace }}
+{{- else }}
+    rootNamespace: {{ .Release.Namespace }}
+{{- end }}
     defaultConfig:
       #
       # TCP connection timeout between Envoy & the application, and between Envoys.
