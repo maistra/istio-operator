@@ -62,6 +62,7 @@ spec:
           - --memberRollName=default
           - --cacheCluster=outbound|80||wasm-cacher-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.cluster.local
           - --enableNodePortGateways=false
+          - --enableCRDScan=false
           - --podLocalitySource=pod
           - --monitoringAddr=:15014
 {{- if .Values.global.logging.level }}
