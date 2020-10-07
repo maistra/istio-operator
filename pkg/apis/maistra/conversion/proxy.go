@@ -72,7 +72,7 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 				container := proxy.Networking.Initialization.InitContainer.Runtime
 				initValues := make(map[string]interface{})
 				if err := populateContainerConfigValues(container, initValues); err == nil {
-					if err := setHelmValue(values, "global.proxy_init", initValues); err != nil {
+					if err := overwriteHelmValues(values, initValues, "global", "proxy_init"); err != nil {
 						return err
 					}
 				}
@@ -94,7 +94,7 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 					return err
 				}
 			}
-			if proxy.Networking.TrafficControl.Inbound.ExcludedPorts != nil {
+			if len(proxy.Networking.TrafficControl.Inbound.ExcludedPorts) > 0 {
 				if err := setHelmStringValue(proxyValues, "excludeInboundPorts", int32SliceToString(proxy.Networking.TrafficControl.Inbound.ExcludedPorts)); err != nil {
 					return err
 				}
@@ -107,12 +107,12 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 					return err
 				}
 			}
-			if proxy.Networking.TrafficControl.Outbound.ExcludedIPRanges != nil {
+			if len(proxy.Networking.TrafficControl.Outbound.ExcludedIPRanges) > 0 {
 				if err := setHelmStringValue(proxyValues, "excludeIPRanges", strings.Join(proxy.Networking.TrafficControl.Outbound.ExcludedIPRanges, ",")); err != nil {
 					return err
 				}
 			}
-			if proxy.Networking.TrafficControl.Outbound.ExcludedPorts != nil {
+			if len(proxy.Networking.TrafficControl.Outbound.ExcludedPorts) > 0 {
 				if err := setHelmStringValue(proxyValues, "excludeOutboundPorts", int32SliceToString(proxy.Networking.TrafficControl.Outbound.ExcludedPorts)); err != nil {
 					return err
 				}
@@ -294,7 +294,7 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 
 	// set proxy values
 	if len(proxyValues) > 0 {
-		if err := setHelmValue(values, "global.proxy", proxyValues); err != nil {
+		if err := overwriteHelmValues(values, proxyValues, "global", "proxy"); err != nil {
 			return err
 		}
 	}
@@ -358,15 +358,18 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	}
 	proxyValues := v1.NewHelmValues(rawProxyValues)
 
+	// remove auto-populated values
+	in.RemoveField("istio_cni.enabled")
+
 	// General
-	if rawConcurrency, ok, err := proxyValues.GetInt64("concurrency"); ok {
+	if rawConcurrency, ok, err := proxyValues.GetAndRemoveInt64("concurrency"); ok {
 		concurrency := int32(rawConcurrency)
 		proxy.Concurrency = &concurrency
 		setProxy = true
 	} else if err != nil {
 		return err
 	}
-	if adminPort, ok, err := proxyValues.GetInt64("adminPort"); ok && adminPort > 0 {
+	if adminPort, ok, err := proxyValues.GetAndRemoveInt64("adminPort"); ok && adminPort > 0 {
 		proxy.AdminPort = int32(adminPort)
 		setProxy = true
 	} else if err != nil {
@@ -385,19 +388,19 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	// Networking
 	networking := &v2.ProxyNetworkingConfig{}
 	setNetworking := false
-	if clusterDomain, ok, err := proxyValues.GetString("clusterDomain"); ok && clusterDomain != "" {
+	if clusterDomain, ok, err := proxyValues.GetAndRemoveString("clusterDomain"); ok && clusterDomain != "" {
 		networking.ClusterDomain = clusterDomain
 		setNetworking = true
 	} else if err != nil {
 		return err
 	}
-	if connectionTimeout, ok, err := proxyValues.GetString("connectionTimeout"); ok {
+	if connectionTimeout, ok, err := proxyValues.GetAndRemoveString("connectionTimeout"); ok {
 		networking.ConnectionTimeout = connectionTimeout
 		setNetworking = true
 	} else if err != nil {
 		return err
 	}
-	if maxConnectionAge, ok, err := in.GetString("pilot.keepaliveMaxServerConnectionAge"); ok {
+	if maxConnectionAge, ok, err := in.GetAndRemoveString("pilot.keepaliveMaxServerConnectionAge"); ok {
 		networking.MaxConnectionAge = maxConnectionAge
 		setNetworking = true
 	} else if err != nil {
@@ -406,7 +409,7 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 
 	initialization := &v2.ProxyNetworkInitConfig{}
 	setInitialization := false
-	if initType, ok, err := proxyValues.GetString("initType"); ok {
+	if initType, ok, err := proxyValues.GetAndRemoveString("initType"); ok {
 		initialization.Type = v2.ProxyNetworkInitType(initType)
 		switch initialization.Type {
 		case v2.ProxyNetworkInitTypeCNI:
@@ -434,6 +437,11 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 			initialization.InitContainer = proxyInitConfig
 			setInitialization = true
 		}
+		if len(rawProxyInit) == 0 {
+			in.RemoveField("global.proxy_init")
+		} else if err := in.SetField("global.proxy_init", rawProxyInit); err != nil {
+			return err
+		}
 	} else if err != nil {
 		return err
 	}
@@ -448,19 +456,19 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	setTrafficControl := false
 	// Inbound
 	// XXX: InterceptionMode is not configurable through values.yaml
-	if interceptionMode, ok, err := proxyValues.GetString("interceptionMode"); ok && interceptionMode != "" {
+	if interceptionMode, ok, err := proxyValues.GetAndRemoveString("interceptionMode"); ok && interceptionMode != "" {
 		trafficControl.Inbound.InterceptionMode = v2.ProxyNetworkInterceptionMode(interceptionMode)
 		setTrafficControl = true
 	} else if err != nil {
 		return err
 	}
-	if includeInboundPorts, ok, err := proxyValues.GetString("includeInboundPorts"); ok {
+	if includeInboundPorts, ok, err := proxyValues.GetAndRemoveString("includeInboundPorts"); ok {
 		trafficControl.Inbound.IncludedPorts = strings.Split(includeInboundPorts, ",")
 		setTrafficControl = true
 	} else if err != nil {
 		return err
 	}
-	if excludeInboundPorts, ok, err := proxyValues.GetString("excludeInboundPorts"); ok {
+	if excludeInboundPorts, ok, err := proxyValues.GetAndRemoveString("excludeInboundPorts"); ok {
 		if trafficControl.Inbound.ExcludedPorts, err = stringToInt32Slice(excludeInboundPorts); err != nil {
 			return err
 		}
@@ -469,17 +477,15 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 		return err
 	}
 	// Outbound
-	if includeIPRanges, ok, err := proxyValues.GetString("includeIPRanges"); ok {
+	if includeIPRanges, ok, err := proxyValues.GetAndRemoveString("includeIPRanges"); ok {
 		trafficControl.Outbound.IncludedIPRanges = strings.Split(includeIPRanges, ",")
 		setTrafficControl = true
 	} else if err != nil {
 		return err
 	}
-	if excludeIPRanges, ok, err := proxyValues.GetString("excludeIPRanges"); ok {
+	if excludeIPRanges, ok, err := proxyValues.GetAndRemoveString("excludeIPRanges"); ok {
 		var ipRangeSlice []string
-		if excludeIPRanges == "" {
-			ipRangeSlice = make([]string, 0)
-		} else {
+		if excludeIPRanges != "" {
 			ipRangeSlice = strings.Split(excludeIPRanges, ",")
 		}
 		trafficControl.Outbound.ExcludedIPRanges = ipRangeSlice
@@ -487,7 +493,7 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	} else if err != nil {
 		return err
 	}
-	if excludeOutboundPorts, ok, err := proxyValues.GetString("excludeOutboundPorts"); ok {
+	if excludeOutboundPorts, ok, err := proxyValues.GetAndRemoveString("excludeOutboundPorts"); ok {
 		if trafficControl.Outbound.ExcludedPorts, err = stringToInt32Slice(excludeOutboundPorts); err != nil {
 			return err
 		}
@@ -495,7 +501,7 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	} else if err != nil {
 		return err
 	}
-	if outboundTrafficPolicy, ok, err := in.GetString("global.outboundTrafficPolicy.mode"); ok && outboundTrafficPolicy != "" {
+	if outboundTrafficPolicy, ok, err := in.GetAndRemoveString("global.outboundTrafficPolicy.mode"); ok && outboundTrafficPolicy != "" {
 		trafficControl.Outbound.Policy = v2.ProxyOutboundTrafficPolicy(outboundTrafficPolicy)
 		setTrafficControl = true
 	} else if err != nil {
@@ -510,19 +516,19 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	// Protocol
 	autoDetect := &v2.ProxyNetworkAutoProtocolDetectionConfig{}
 	setProtocol := false
-	if protocolDetectionTimeout, ok, err := proxyValues.GetString("protocolDetectionTimeout"); ok && protocolDetectionTimeout != "" {
+	if protocolDetectionTimeout, ok, err := proxyValues.GetAndRemoveString("protocolDetectionTimeout"); ok && protocolDetectionTimeout != "" {
 		autoDetect.Timeout = protocolDetectionTimeout
 		setProtocol = true
 	} else if err != nil {
 		return err
 	}
-	if enableProtocolSniffingForInbound, ok, err := in.GetBool("pilot.enableProtocolSniffingForInbound"); ok {
+	if enableProtocolSniffingForInbound, ok, err := in.GetAndRemoveBool("pilot.enableProtocolSniffingForInbound"); ok {
 		autoDetect.Inbound = &enableProtocolSniffingForInbound
 		setProtocol = true
 	} else if err != nil {
 		return err
 	}
-	if enableProtocolSniffingForOutbound, ok, err := in.GetBool("pilot.enableProtocolSniffingForOutbound"); ok {
+	if enableProtocolSniffingForOutbound, ok, err := in.GetAndRemoveBool("pilot.enableProtocolSniffingForOutbound"); ok {
 		autoDetect.Outbound = &enableProtocolSniffingForOutbound
 		setProtocol = true
 	} else if err != nil {
@@ -538,8 +544,8 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	// DNS
 	dns := &v2.ProxyDNSConfig{}
 	setDNS := false
-	if podDNSSearchNamespaces, ok, err := in.GetStringSlice("global.podDNSSearchNamespaces"); ok {
-		if addedSearchSuffixes, ok, err := in.GetStringSlice("global.multiCluster.addedSearchSuffixes"); ok && len(addedSearchSuffixes) > 0 {
+	if podDNSSearchNamespaces, ok, err := in.GetAndRemoveStringSlice("global.podDNSSearchNamespaces"); ok {
+		if addedSearchSuffixes, ok, err := in.GetAndRemoveStringSlice("global.multiCluster.addedSearchSuffixes"); ok && len(addedSearchSuffixes) > 0 {
 			for _, addedSuffix := range addedSearchSuffixes {
 				for index, suffix := range podDNSSearchNamespaces {
 					if suffix == addedSuffix {
@@ -558,7 +564,7 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	} else if err != nil {
 		return err
 	}
-	if dnsRefreshRate, ok, err := proxyValues.GetString("dnsRefreshRate"); ok && dnsRefreshRate != "" {
+	if dnsRefreshRate, ok, err := proxyValues.GetAndRemoveString("dnsRefreshRate"); ok && dnsRefreshRate != "" {
 		dns.RefreshRate = dnsRefreshRate
 		setDNS = true
 	} else if err != nil {
@@ -576,7 +582,7 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	// Injection
 	injection := &v2.ProxyInjectionConfig{}
 	setInjection := false
-	if autoInject, ok, err := proxyValues.GetString("autoInject"); ok {
+	if autoInject, ok, err := proxyValues.GetAndRemoveString("autoInject"); ok {
 		if autoInject == "enabled" {
 			enabled := true
 			injection.AutoInject = &enabled
@@ -586,9 +592,11 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 			injection.AutoInject = &disabled
 			setInjection = true
 		}
+		// clear other setting
+		in.RemoveField("sidecarInjectorWebhook.enableNamespacesByDefault")
 	} else if err != nil {
 		return err
-	} else if enableNamespacesByDefault, ok, err := in.GetBool("sidecarInjectorWebhook.enableNamespacesByDefault"); ok {
+	} else if enableNamespacesByDefault, ok, err := in.GetAndRemoveBool("sidecarInjectorWebhook.enableNamespacesByDefault"); ok {
 		injection.AutoInject = &enableNamespacesByDefault
 		setInjection = true
 	} else if err != nil {
@@ -599,6 +607,7 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 			return err
 		}
 		setInjection = true
+		in.RemoveField("sidecarInjectorWebhook.alwaysInjectSelector")
 	} else if err != nil {
 		return err
 	}
@@ -607,14 +616,20 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 			return err
 		}
 		setInjection = true
+		in.RemoveField("sidecarInjectorWebhook.neverInjectSelector")
 	} else if err != nil {
 		return err
 	}
-	if injectedAnnotations, ok, err := in.GetFieldNoCopy("sidecarInjectorWebhook.injectedAnnotations"); ok {
-		if err := fromValues(injectedAnnotations, &injection.InjectedAnnotations); err != nil {
+	if injectedAnnotations, ok, err := in.GetMap("sidecarInjectorWebhook.injectedAnnotations"); ok {
+		if err := decodeAndRemoveFromValues(injectedAnnotations, &injection.InjectedAnnotations); err != nil {
 			return err
 		}
 		setInjection = true
+		if len(injectedAnnotations) == 0 {
+			in.RemoveField("sidecarInjectorWebhook.injectedAnnotations")
+		} else if err := in.SetField("sidecarInjectorWebhook.injectedAnnotations", injectedAnnotations); err != nil {
+			return err
+		}
 	} else if err != nil {
 		return err
 	}
@@ -628,19 +643,19 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	setAccessLogging := false
 	fileAccessLog := &v2.ProxyFileAccessLogConfig{}
 	setFileAccessLog := false
-	if accessLogFile, ok, err := proxyValues.GetString("accessLogFile"); ok && accessLogFile != "" {
+	if accessLogFile, ok, err := proxyValues.GetAndRemoveString("accessLogFile"); ok && accessLogFile != "" {
 		fileAccessLog.Name = accessLogFile
 		setFileAccessLog = true
 	} else if err != nil {
 		return err
 	}
-	if accessLogEncoding, ok, err := proxyValues.GetString("accessLogEncoding"); ok && accessLogEncoding != "" {
+	if accessLogEncoding, ok, err := proxyValues.GetAndRemoveString("accessLogEncoding"); ok && accessLogEncoding != "" {
 		fileAccessLog.Encoding = accessLogEncoding
 		setFileAccessLog = true
 	} else if err != nil {
 		return err
 	}
-	if accessLogFormat, ok, err := proxyValues.GetString("accessLogFormat"); ok && accessLogFormat != "" {
+	if accessLogFormat, ok, err := proxyValues.GetAndRemoveString("accessLogFormat"); ok && accessLogFormat != "" {
 		fileAccessLog.Format = accessLogFormat
 		setFileAccessLog = true
 	} else if err != nil {
@@ -656,6 +671,11 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 			accessLogging.EnvoyService = accessLogService
 			setAccessLogging = true
 		} else if err != nil {
+			return err
+		}
+		if len(accessLogServiceValues) == 0 {
+			proxyValues.RemoveField("envoyAccessLogService")
+		} else if err := proxyValues.SetField("envoyAccessLogService", accessLogServiceValues); err != nil {
 			return err
 		}
 	} else if err != nil {
@@ -675,6 +695,11 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 		} else if err != nil {
 			return err
 		}
+		if len(metricsServiceValues) == 0 {
+			proxyValues.RemoveField("envoyMetricsService")
+		} else if err := proxyValues.SetField("envoyMetricsService", metricsServiceValues); err != nil {
+			return err
+		}
 	} else if err != nil {
 		return err
 	}
@@ -692,31 +717,31 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	// Readiness
 	readiness := &v2.ProxyReadinessConfig{}
 	setReadiness := false
-	if statusPort, ok, err := proxyValues.GetInt64("statusPort"); ok && statusPort > 0 {
+	if statusPort, ok, err := proxyValues.GetAndRemoveInt64("statusPort"); ok && statusPort > 0 {
 		readiness.StatusPort = int32(statusPort)
 		setReadiness = true
 	} else if err != nil {
 		return err
 	}
-	if readinessInitialDelaySeconds, ok, err := proxyValues.GetInt64("readinessInitialDelaySeconds"); ok && readinessInitialDelaySeconds > 0 {
+	if readinessInitialDelaySeconds, ok, err := proxyValues.GetAndRemoveInt64("readinessInitialDelaySeconds"); ok && readinessInitialDelaySeconds > 0 {
 		readiness.InitialDelaySeconds = int32(readinessInitialDelaySeconds)
 		setReadiness = true
 	} else if err != nil {
 		return err
 	}
-	if readinessPeriodSeconds, ok, err := proxyValues.GetInt64("readinessPeriodSeconds"); ok && readinessPeriodSeconds > 0 {
+	if readinessPeriodSeconds, ok, err := proxyValues.GetAndRemoveInt64("readinessPeriodSeconds"); ok && readinessPeriodSeconds > 0 {
 		readiness.PeriodSeconds = int32(readinessPeriodSeconds)
 		setReadiness = true
 	} else if err != nil {
 		return err
 	}
-	if readinessFailureThreshold, ok, err := proxyValues.GetInt64("readinessFailureThreshold"); ok && readinessFailureThreshold > 0 {
+	if readinessFailureThreshold, ok, err := proxyValues.GetAndRemoveInt64("readinessFailureThreshold"); ok && readinessFailureThreshold > 0 {
 		readiness.FailureThreshold = int32(readinessFailureThreshold)
 		setReadiness = true
 	} else if err != nil {
 		return err
 	}
-	if rewriteAppHTTPProbe, ok, err := in.GetBool("sidecarInjectorWebhook.rewriteAppHTTPProbe"); ok {
+	if rewriteAppHTTPProbe, ok, err := in.GetAndRemoveBool("sidecarInjectorWebhook.rewriteAppHTTPProbe"); ok {
 		readiness.RewriteApplicationProbes = rewriteAppHTTPProbe
 		setReadiness = true
 	} else if err != nil {
@@ -734,20 +759,25 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	if setProxy {
 		out.Proxy = proxy
 	}
+	if len(proxyValues.GetContent()) == 0 {
+		in.RemoveField("global.proxy")
+	} else if err := in.SetField("global.proxy", proxyValues.GetContent()); err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func populateProxyEnvoyServiceConfig(in *v1.HelmValues, out *v2.ProxyEnvoyServiceConfig) (bool, error) {
 	updated := false
-	if enabled, ok, err := in.GetBool("enabled"); ok {
+	if enabled, ok, err := in.GetAndRemoveBool("enabled"); ok {
 		out.Enabled = &enabled
 		updated = true
 	} else if err != nil {
 		return false, err
 	}
-	if address, ok, err := in.GetString("host"); ok {
-		if port, ok, err := in.GetString("port"); ok {
+	if address, ok, err := in.GetAndRemoveString("host"); ok {
+		if port, ok, err := in.GetAndRemoveString("port"); ok {
 			if port != "" {
 				address = fmt.Sprintf("%s:%s", address, port)
 			}
@@ -762,7 +792,12 @@ func populateProxyEnvoyServiceConfig(in *v1.HelmValues, out *v2.ProxyEnvoyServic
 	if tcpKeepaliveValues, ok, err := in.GetMap("tcpKeepalive"); ok && len(tcpKeepaliveValues) > 0 {
 		out.TCPKeepalive = &v2.EnvoyServiceTCPKeepalive{}
 		updated = true
-		if err := fromValues(tcpKeepaliveValues, out.TCPKeepalive); err != nil {
+		if err := decodeAndRemoveFromValues(tcpKeepaliveValues, out.TCPKeepalive); err != nil {
+			return false, err
+		}
+		if len(tcpKeepaliveValues) == 0 {
+			in.RemoveField("tcpKeepalive")
+		} else if err := in.SetField("tcpKeepalive", tcpKeepaliveValues); err != nil {
 			return false, err
 		}
 	} else if err != nil {
@@ -771,7 +806,12 @@ func populateProxyEnvoyServiceConfig(in *v1.HelmValues, out *v2.ProxyEnvoyServic
 	if tlsSettingsValues, ok, err := in.GetMap("tlsSettings"); ok && len(tlsSettingsValues) > 0 {
 		out.TLSSettings = &v2.EnvoyServiceClientTLSSettings{}
 		updated = true
-		if err := fromValues(tlsSettingsValues, out.TLSSettings); err != nil {
+		if err := decodeAndRemoveFromValues(tlsSettingsValues, out.TLSSettings); err != nil {
+			return false, err
+		}
+		if len(tlsSettingsValues) == 0 {
+			in.RemoveField("tlsSettings")
+		} else if err := in.SetField("tlsSettings", tlsSettingsValues); err != nil {
 			return false, err
 		}
 	} else if err != nil {

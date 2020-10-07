@@ -21,32 +21,33 @@ func v1ToV2Hacks(in *v1.ControlPlaneSpec, values *v1.HelmValues) error {
 		if err := values.SetField("tracing.jaeger.podAnnotations", jaegerAnnotations); err != nil {
 			return err
 		}
+		values.RemoveField("tracing.jaeger.annotations")
 	} else if err != nil {
 		return err
 	}
 	// normalize jaeger images
-	if agentImage, ok, err := values.GetString("tracing.jaeger.agentImage"); ok {
+	if agentImage, ok, err := values.GetAndRemoveString("tracing.jaeger.agentImage"); ok {
 		if err := values.SetField("tracing.jaeger.agent.image", agentImage); err != nil {
 			return err
 		}
 	} else if err != nil {
 		return err
 	}
-	if allInOneImage, ok, err := values.GetString("tracing.jaeger.allInOneImage"); ok {
+	if allInOneImage, ok, err := values.GetAndRemoveString("tracing.jaeger.allInOneImage"); ok {
 		if err := values.SetField("tracing.jaeger.allInOne.image", allInOneImage); err != nil {
 			return err
 		}
 	} else if err != nil {
 		return err
 	}
-	if collectorImage, ok, err := values.GetString("tracing.jaeger.collectorImage"); ok {
+	if collectorImage, ok, err := values.GetAndRemoveString("tracing.jaeger.collectorImage"); ok {
 		if err := values.SetField("tracing.jaeger.collector.image", collectorImage); err != nil {
 			return err
 		}
 	} else if err != nil {
 		return err
 	}
-	if queryImage, ok, err := values.GetString("tracing.jaeger.queryImage"); ok {
+	if queryImage, ok, err := values.GetAndRemoveString("tracing.jaeger.queryImage"); ok {
 		if err := values.SetField("tracing.jaeger.query.image", queryImage); err != nil {
 			return err
 		}
@@ -76,7 +77,9 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 	// copy to preserve input
 	values := in.Istio.DeepCopy()
 	if techPreview, ok, err := values.GetMap("techPreview"); ok {
-		out.TechPreview = v1.NewHelmValues(techPreview).DeepCopy()
+		if len(techPreview) > 0 {
+			out.TechPreview = v1.NewHelmValues(techPreview).DeepCopy()
+		}
 		delete(values.GetContent(), "techPreview")
 	} else if err != nil {
 		return err
@@ -126,14 +129,27 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 		return err
 	}
 
+	// Addons
+	if err := populateAddonsConfig(values, out); err != nil {
+		return err
+	}
+
 	// Runtime
 	if _, err := populateControlPlaneRuntimeConfig(values, out); err != nil {
 		return err
 	}
 
-	// Addons
-	if err := populateAddonsConfig(values, out); err != nil {
-		return err
+	// save anything that's left for proper round tripping
+	if len(values.GetContent()) > 0 {
+		if out.TechPreview == nil {
+			out.TechPreview = v1.NewHelmValues(make(map[string]interface{}))
+		}
+		if err := overwriteHelmValues(out.TechPreview.GetContent(), values.GetContent()); err != nil {
+			return err
+		}
+		if len(out.TechPreview.GetContent()) == 0 {
+			out.TechPreview = nil
+		}
 	}
 
 	return nil

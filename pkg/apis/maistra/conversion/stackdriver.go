@@ -44,7 +44,7 @@ func populateStackDriverAddonValues(stackdriver *v2.StackdriverAddonConfig, valu
 			}
 		}
 		if telemetry.ConfigOverride != nil && len(telemetry.ConfigOverride.GetContent()) > 0 {
-			if err := setHelmValue(values, "telemetry.v2.stackdriver.configOverride", telemetry.ConfigOverride.GetContent()); err != nil {
+			if err := overwriteHelmValues(values, telemetry.ConfigOverride.GetContent(), "telemetry", "v2", "stackdriver", "configOverride"); err != nil {
 				return err
 			}
 		}
@@ -122,48 +122,48 @@ func populateStackdriverAddonConfig(in *v1.HelmValues, out *v2.StackdriverAddonC
 	telemetry := &v2.StackdriverTelemetryConfig{}
 	setTelemetry := false
 
-	if enabled, ok, err := in.GetBool("telemetry.v2.stackdriver.enabled"); ok {
+	if enabled, ok, err := in.GetAndRemoveBool("telemetry.v2.stackdriver.enabled"); ok {
 		telemetry.Enabled = &enabled
 		setTelemetry = true
 	} else if err != nil {
 		return false, err
-	} else if enabled, ok, err := in.GetBool("mixer.adapters.stackdriver.enabled"); ok {
+	} else if enabled, ok, err := in.GetAndRemoveBool("mixer.adapters.stackdriver.enabled"); ok {
 		telemetry.Enabled = &enabled
 		setTelemetry = true
 	} else if err != nil {
 		return false, err
 	}
 
-	if contextGraph, ok, err := in.GetBool("telemetry.v2.stackdriver.topology"); ok {
+	if contextGraph, ok, err := in.GetAndRemoveBool("telemetry.v2.stackdriver.topology"); ok {
 		telemetry.EnableContextGraph = &contextGraph
 		setTelemetry = true
 	} else if err != nil {
 		return false, err
-	} else if contextGraph, ok, err := in.GetBool("mixer.adapters.stackdriver.contextGraph.enabled"); ok {
+	} else if contextGraph, ok, err := in.GetAndRemoveBool("mixer.adapters.stackdriver.contextGraph.enabled"); ok {
 		telemetry.EnableContextGraph = &contextGraph
 		setTelemetry = true
 	} else if err != nil {
 		return false, err
 	}
 
-	if logging, ok, err := in.GetBool("telemetry.v2.stackdriver.logging"); ok {
+	if logging, ok, err := in.GetAndRemoveBool("telemetry.v2.stackdriver.logging"); ok {
 		telemetry.EnableLogging = &logging
 		setTelemetry = true
 	} else if err != nil {
 		return false, err
-	} else if logging, ok, err := in.GetBool("mixer.adapters.stackdriver.logging.enabled"); ok {
+	} else if logging, ok, err := in.GetAndRemoveBool("mixer.adapters.stackdriver.logging.enabled"); ok {
 		telemetry.EnableLogging = &logging
 		setTelemetry = true
 	} else if err != nil {
 		return false, err
 	}
 
-	if metrics, ok, err := in.GetBool("telemetry.v2.stackdriver.monitoring"); ok {
+	if metrics, ok, err := in.GetAndRemoveBool("telemetry.v2.stackdriver.monitoring"); ok {
 		telemetry.EnableMetrics = &metrics
 		setTelemetry = true
 	} else if err != nil {
 		return false, err
-	} else if metrics, ok, err := in.GetBool("mixer.adapters.stackdriver.metrics.enabled"); ok {
+	} else if metrics, ok, err := in.GetAndRemoveBool("mixer.adapters.stackdriver.metrics.enabled"); ok {
 		telemetry.EnableMetrics = &metrics
 		setTelemetry = true
 	} else if err != nil {
@@ -173,27 +173,28 @@ func populateStackdriverAddonConfig(in *v1.HelmValues, out *v2.StackdriverAddonC
 	if configOverride, ok, err := in.GetMap("telemetry.v2.stackdriver.configOverride"); ok && len(configOverride) > 0 {
 		telemetry.ConfigOverride = v1.NewHelmValues(configOverride)
 		setTelemetry = true
+		in.RemoveField("telemetry.v2.stackdriver.configOverride")
 	} else if err != nil {
 		return false, err
 	}
 
 	auth := &v2.StackdriverAuthConfig{}
 	setAuth := false
-	if appCredentials, ok, err := in.GetBool("mixer.adapters.stackdriver.auth.appCredentials"); ok {
+	if appCredentials, ok, err := in.GetAndRemoveBool("mixer.adapters.stackdriver.auth.appCredentials"); ok {
 		auth.AppCredentials = &appCredentials
 		setAuth = true
 	} else if err != nil {
 		return false, err
 	}
 
-	if apiKey, ok, err := in.GetString("mixer.adapters.stackdriver.auth.apiKey"); ok {
+	if apiKey, ok, err := in.GetAndRemoveString("mixer.adapters.stackdriver.auth.apiKey"); ok {
 		auth.APIKey = apiKey
 		setAuth = true
 	} else if err != nil {
 		return false, err
 	}
 
-	if serviceAccountPath, ok, err := in.GetString("mixer.adapters.stackdriver.auth.serviceAccountPath"); ok {
+	if serviceAccountPath, ok, err := in.GetAndRemoveString("mixer.adapters.stackdriver.auth.serviceAccountPath"); ok {
 		auth.ServiceAccountPath = serviceAccountPath
 		setAuth = true
 	} else if err != nil {
@@ -207,13 +208,13 @@ func populateStackdriverAddonConfig(in *v1.HelmValues, out *v2.StackdriverAddonC
 
 	accessLogging := &v2.StackdriverAccessLogTelemetryConfig{}
 	setAccessLogging := false
-	if enabled, ok, err := in.GetBool("telemetry.v2.accessLogPolicy.enabled"); ok {
+	if enabled, ok, err := in.GetAndRemoveBool("telemetry.v2.accessLogPolicy.enabled"); ok {
 		accessLogging.Enabled = &enabled
 		setAccessLogging = true
 	} else if err != nil {
 		return false, err
 	}
-	if logWindowDuration, ok, err := in.GetString("telemetry.v2.accessLogPolicy.logWindowDuration"); ok {
+	if logWindowDuration, ok, err := in.GetAndRemoveString("telemetry.v2.accessLogPolicy.logWindowDuration"); ok {
 		accessLogging.LogWindowDuration = logWindowDuration
 		setAccessLogging = true
 	} else if err != nil {
@@ -231,25 +232,25 @@ func populateStackdriverAddonConfig(in *v1.HelmValues, out *v2.StackdriverAddonC
 
 	tracer := &v2.StackdriverTracerConfig{}
 	setTracer := false
-	if debug, ok, err := in.GetBool("global.tracer.stackdriver.debug"); ok {
+	if debug, ok, err := in.GetAndRemoveBool("global.tracer.stackdriver.debug"); ok {
 		tracer.Debug = &debug
 		setTracer = true
 	} else if err != nil {
 		return false, err
 	}
-	if maxNumberOfAttributes, ok, err := in.GetInt64("global.tracer.stackdriver.maxNumberOfAttributes"); ok {
+	if maxNumberOfAttributes, ok, err := in.GetAndRemoveInt64("global.tracer.stackdriver.maxNumberOfAttributes"); ok {
 		tracer.MaxNumberOfAttributes = &maxNumberOfAttributes
 		setTracer = true
 	} else if err != nil {
 		return false, err
 	}
-	if maxNumberOfAnnotations, ok, err := in.GetInt64("global.tracer.stackdriver.maxNumberOfAnnotations"); ok {
+	if maxNumberOfAnnotations, ok, err := in.GetAndRemoveInt64("global.tracer.stackdriver.maxNumberOfAnnotations"); ok {
 		tracer.MaxNumberOfAnnotations = &maxNumberOfAnnotations
 		setTracer = true
 	} else if err != nil {
 		return false, err
 	}
-	if maxNumberOfMessageEvents, ok, err := in.GetInt64("global.tracer.stackdriver.maxNumberOfMessageEvents"); ok {
+	if maxNumberOfMessageEvents, ok, err := in.GetAndRemoveInt64("global.tracer.stackdriver.maxNumberOfMessageEvents"); ok {
 		tracer.MaxNumberOfMessageEvents = &maxNumberOfMessageEvents
 		setTracer = true
 	} else if err != nil {
@@ -259,6 +260,14 @@ func populateStackdriverAddonConfig(in *v1.HelmValues, out *v2.StackdriverAddonC
 		out.Tracer = tracer
 		setStackdriver = true
 	}
+
+	// remove auto-populated/duplicate fields
+	in.RemoveField("mixer.adapters.stackdriver.enabled")
+	in.RemoveField("mixer.adapters.stackdriver.contextGraph.enabled")
+	in.RemoveField("mixer.adapters.stackdriver.logging.enabled")
+	in.RemoveField("mixer.adapters.stackdriver.metrics.enabled")
+	in.RemoveField("mixer.adapters.stackdriver.tracer.enabled")
+	in.RemoveField("mixer.adapters.stackdriver.tracer.sampleProbability")
 
 	return setStackdriver, nil
 }

@@ -30,7 +30,7 @@ func populateTracingValues(in *v2.ControlPlaneSpec, values map[string]interface{
 				return err
 			}
 		case v2.TracerTypeJaeger:
-			if err := setHelmValue(values, "tracing.provider", "jaeger"); err != nil {
+			if err := setHelmStringValue(values, "tracing.provider", "jaeger"); err != nil {
 				return err
 			}
 			if err := setHelmBoolValue(values, "tracing.enabled", true); err != nil {
@@ -43,7 +43,7 @@ func populateTracingValues(in *v2.ControlPlaneSpec, values map[string]interface{
 				return err
 			}
 		case v2.TracerTypeStackdriver:
-			if err := setHelmValue(values, "tracing.provider", "stackdriver"); err != nil {
+			if err := setHelmStringValue(values, "tracing.provider", "stackdriver"); err != nil {
 				return err
 			}
 			if err := setHelmBoolValue(values, "tracing.enabled", true); err != nil {
@@ -67,21 +67,21 @@ func populateTracingValues(in *v2.ControlPlaneSpec, values map[string]interface{
 func populateTracingConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	tracing := &v2.TracingConfig{}
 	setTracing := false
-	if tracer, ok, err := in.GetString("tracing.provider"); ok && tracer != "" {
+	if tracer, ok, err := in.GetAndRemoveString("tracing.provider"); ok && tracer != "" {
 		if tracing.Type, err = tracerTypeFromString(tracer); err != nil {
 			return err
 		}
 		setTracing = true
 	} else if err != nil {
 		return err
-	} else if tracer, ok, err := in.GetString("global.proxy.tracer"); ok && tracer != "" {
+	} else if tracer, ok, err := in.GetAndRemoveString("global.proxy.tracer"); ok && tracer != "" {
 		if tracing.Type, err = tracerTypeFromString(tracer); err != nil {
 			return err
 		}
 		setTracing = true
 	} else if err != nil {
 		return err
-	} else if traceEnabled, ok, err := in.GetBool("tracing.enabled"); ok {
+	} else if traceEnabled, ok, err := in.GetAndRemoveBool("tracing.enabled"); ok {
 		if traceEnabled {
 			// default to jaeger if enabled and no proxy.tracer specified
 			tracing.Type = v2.TracerTypeJaeger
@@ -93,11 +93,11 @@ func populateTracingConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 		return err
 	}
 
-	if rawSampling, ok, err := in.GetFloat64("pilot.traceSampling"); ok {
+	if rawSampling, ok, err := in.GetAndRemoveFloat64("pilot.traceSampling"); ok {
 		sampling := int32(rawSampling * 100.0)
 		tracing.Sampling = &sampling
 		setTracing = true
-	} else if rawSampling, ok, newErr := in.GetInt64("pilot.traceSampling"); ok {
+	} else if rawSampling, ok, newErr := in.GetAndRemoveInt64("pilot.traceSampling"); ok {
 		// sampling: 0 - 100% = 0 - 10000, i.e. 1% = 100
 		sampling := int32(rawSampling * 100)
 		tracing.Sampling = &sampling
@@ -109,6 +109,12 @@ func populateTracingConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	if setTracing {
 		out.Tracing = tracing
 	}
+
+	// remove auto-populated fields
+	in.RemoveField("global.enableTracing")
+	in.RemoveField("global.proxy.tracer")
+	in.RemoveField("tracing.enabled")
+
 	return nil
 }
 

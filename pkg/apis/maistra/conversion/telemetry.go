@@ -117,7 +117,7 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 			}
 		}
 		if len(telemetryAdaptersValues) > 0 {
-			if err := setHelmValue(values, "mixer.adapters", telemetryAdaptersValues); err != nil {
+			if err := overwriteHelmValues(values, telemetryAdaptersValues, "mixer", "adapters"); err != nil {
 				return err
 			}
 		}
@@ -145,17 +145,17 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 			return err
 		}
 
-		if err := setHelmValue(values, "telemetry", v2TelemetryValues); err != nil {
+		if err := overwriteHelmValues(values, v2TelemetryValues, "telemetry"); err != nil {
 			return err
 		}
 		if len(v1TelemetryValues) > 0 {
-			if err := setHelmValue(values, "mixer.telemetry", v1TelemetryValues); err != nil {
+			if err := overwriteHelmValues(values, v1TelemetryValues, "mixer", "telemetry"); err != nil {
 				return err
 			}
 		}
 	} else {
 		if len(v1TelemetryValues) > 0 {
-			if err := setHelmValue(values, "mixer.telemetry", v1TelemetryValues); err != nil {
+			if err := overwriteHelmValues(values, v1TelemetryValues, "mixer", "telemetry"); err != nil {
 				return err
 			}
 		}
@@ -194,8 +194,10 @@ func populateRemoteTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values 
 		return err
 	}
 	// XXX: this applies to both policy and telemetry
-	if err := setHelmBoolValue(values, "global.createRemoteSvcEndpoints", remote.CreateService); err != nil {
-		return err
+	if remote.CreateService != nil {
+		if err := setHelmBoolValue(values, "global.createRemoteSvcEndpoints", *remote.CreateService); err != nil {
+			return err
+		}
 	}
 
 	v1TelemetryValues := make(map[string]interface{})
@@ -229,17 +231,17 @@ func populateRemoteTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values 
 			return err
 		}
 
-		if err := setHelmValue(values, "telemetry", v2TelemetryValues); err != nil {
+		if err := overwriteHelmValues(values, v2TelemetryValues, "telemetry"); err != nil {
 			return err
 		}
 		if len(v1TelemetryValues) > 0 {
-			if err := setHelmValue(values, "mixer.telemetry", v1TelemetryValues); err != nil {
+			if err := overwriteHelmValues(values, v1TelemetryValues, "mixer", "telemetry"); err != nil {
 				return err
 			}
 		}
 	} else {
 		if len(v1TelemetryValues) > 0 {
-			if err := setHelmValue(values, "mixer.telemetry", v1TelemetryValues); err != nil {
+			if err := overwriteHelmValues(values, v1TelemetryValues, "mixer", "telemetry"); err != nil {
 				return err
 			}
 		}
@@ -276,7 +278,7 @@ func populateIstiodTelemetryValues(in *v2.ControlPlaneSpec, values map[string]in
 
 	// set the telemetry values
 	if len(telemetryValues) > 0 {
-		if err := setHelmValue(values, "telemetry", telemetryValues); err != nil {
+		if err := overwriteHelmValues(values, telemetryValues, "telemetry"); err != nil {
 			return err
 		}
 	}
@@ -286,7 +288,7 @@ func populateIstiodTelemetryValues(in *v2.ControlPlaneSpec, values map[string]in
 
 func populateTelemetryConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version versions.Version) error {
 	var telemetryType v2.TelemetryType
-	if telemetryTypeStr, ok, err := in.GetString("telemetry.implementation"); ok && telemetryTypeStr != "" {
+	if telemetryTypeStr, ok, err := in.GetAndRemoveString("telemetry.implementation"); ok && telemetryTypeStr != "" {
 		switch v2.TelemetryType(telemetryTypeStr) {
 		case v2.TelemetryTypeIstiod:
 			telemetryType = v2.TelemetryTypeIstiod
@@ -303,13 +305,13 @@ func populateTelemetryConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, versio
 		return err
 	} else {
 		// figure out what we're installing
-		if v2Enabled, v2EnabledSet, err := in.GetBool("telemetry.v2.enabled"); v2EnabledSet && v2Enabled {
+		if v2Enabled, v2EnabledSet, err := in.GetAndRemoveBool("telemetry.v2.enabled"); v2EnabledSet && v2Enabled {
 			telemetryType = v2.TelemetryTypeIstiod
 		} else if err != nil {
 			return err
-		} else if mixerTelemetryEnabled, mixerTelemetryEnabledSet, err := in.GetBool("mixer.telemetry.enabled"); err == nil {
+		} else if mixerTelemetryEnabled, mixerTelemetryEnabledSet, err := in.GetAndRemoveBool("mixer.telemetry.enabled"); err == nil {
 			// installing some form of mixer based telemetry
-			if mixerEnabled, mixerEnabledSet, err := in.GetBool("mixer.enabled"); err == nil {
+			if mixerEnabled, mixerEnabledSet, err := in.GetAndRemoveBool("mixer.enabled"); err == nil {
 				if !mixerEnabledSet || !mixerTelemetryEnabledSet {
 					// assume no telemetry to configure
 					return nil
@@ -348,8 +350,14 @@ func populateTelemetryConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, versio
 		}
 	}
 	if telemetryType == "" {
-		return fmt.Errorf("Could not determine policy type")
+		return fmt.Errorf("Could not determine telemetry type")
 	}
+
+	// remove auto-populated values
+	in.RemoveField("mixer.telemetry.enabled")
+	in.RemoveField("telemetry.enabled")
+	in.RemoveField("telemetry.v1.enabled")
+	in.RemoveField("telemetry.v2.enabled")
 
 	out.Telemetry = &v2.TelemetryConfig{
 		Type: telemetryType,
@@ -397,7 +405,7 @@ func populateMixerTelemetryConfig(in *v1.HelmValues, out *v2.MixerTelemetryConfi
 	}
 	v1TelemetryValues := v1.NewHelmValues(rawV1TelemetryValues)
 
-	if sessionAffinityEnabled, ok, err := v1TelemetryValues.GetBool("sessionAffinityEnabled"); ok {
+	if sessionAffinityEnabled, ok, err := v1TelemetryValues.GetAndRemoveBool("sessionAffinityEnabled"); ok {
 		out.SessionAffinity = &sessionAffinityEnabled
 		setValues = true
 	} else if err != nil {
@@ -406,13 +414,13 @@ func populateMixerTelemetryConfig(in *v1.HelmValues, out *v2.MixerTelemetryConfi
 
 	loadshedding := &v2.TelemetryLoadSheddingConfig{}
 	setLoadshedding := false
-	if mode, ok, err := v1TelemetryValues.GetString("loadshedding.mode"); ok && mode != "" {
+	if mode, ok, err := v1TelemetryValues.GetAndRemoveString("loadshedding.mode"); ok && mode != "" {
 		loadshedding.Mode = mode
 		setLoadshedding = true
 	} else if err != nil {
 		return false, nil
 	}
-	if latencyThreshold, ok, err := v1TelemetryValues.GetString("loadshedding.latencyThreshold"); ok && latencyThreshold != "" {
+	if latencyThreshold, ok, err := v1TelemetryValues.GetAndRemoveString("loadshedding.latencyThreshold"); ok && latencyThreshold != "" {
 		loadshedding.LatencyThreshold = latencyThreshold
 		setLoadshedding = true
 	} else if err != nil {
@@ -441,13 +449,13 @@ func populateMixerTelemetryConfig(in *v1.HelmValues, out *v2.MixerTelemetryConfi
 	if telemetryAdaptersValues != nil {
 		adapters := &v2.MixerTelemetryAdaptersConfig{}
 		setAdapters := false
-		if useAdapterCRDs, ok, err := telemetryAdaptersValues.GetBool("useAdapterCRDs"); ok {
+		if useAdapterCRDs, ok, err := telemetryAdaptersValues.GetAndRemoveBool("useAdapterCRDs"); ok {
 			adapters.UseAdapterCRDs = &useAdapterCRDs
 			setAdapters = true
 		} else if err != nil {
 			return false, err
 		}
-		if kubernetesenv, ok, err := telemetryAdaptersValues.GetBool("kubernetesenv.enabled"); ok {
+		if kubernetesenv, ok, err := telemetryAdaptersValues.GetAndRemoveBool("kubernetesenv.enabled"); ok {
 			adapters.KubernetesEnv = &kubernetesenv
 			setAdapters = true
 		} else if err != nil {
@@ -455,13 +463,13 @@ func populateMixerTelemetryConfig(in *v1.HelmValues, out *v2.MixerTelemetryConfi
 		}
 		stdio := &v2.MixerTelemetryStdioConfig{}
 		setStdio := false
-		if enabled, ok, err := telemetryAdaptersValues.GetBool("stdio.enabled"); ok {
+		if enabled, ok, err := telemetryAdaptersValues.GetAndRemoveBool("stdio.enabled"); ok {
 			stdio.Enabled = &enabled
 			setStdio = true
 		} else if err != nil {
 			return false, err
 		}
-		if outputAsJSON, ok, err := telemetryAdaptersValues.GetBool("stdio.outputAsJson"); ok {
+		if outputAsJSON, ok, err := telemetryAdaptersValues.GetAndRemoveBool("stdio.outputAsJson"); ok {
 			stdio.OutputAsJSON = &outputAsJSON
 		} else if err != nil {
 			return false, err
@@ -474,6 +482,23 @@ func populateMixerTelemetryConfig(in *v1.HelmValues, out *v2.MixerTelemetryConfi
 			out.Adapters = adapters
 			setValues = true
 		}
+		if len(telemetryAdaptersValues.GetContent()) == 0 {
+			mixerValues.RemoveField("adapters")
+		} else if err := mixerValues.SetField("adapters", telemetryAdaptersValues.GetContent()); err != nil {
+			return false, err
+		}
+	}
+
+	// update the mixer settings
+	if len(v1TelemetryValues.GetContent()) == 0 {
+		mixerValues.RemoveField("telemetry")
+	} else if err := mixerValues.SetField("telemetry", v1TelemetryValues.GetContent()); err != nil {
+		return false, err
+	}
+	if len(mixerValues.GetContent()) == 0 {
+		in.RemoveField("mixer")
+	} else if err := in.SetField("mixer", mixerValues.GetContent()); err != nil {
+		return false, err
 	}
 
 	return setValues, nil
@@ -481,13 +506,13 @@ func populateMixerTelemetryConfig(in *v1.HelmValues, out *v2.MixerTelemetryConfi
 
 func populateTelemetryBatchingConfig(in *v1.HelmValues, out *v2.TelemetryBatchingConfig) (bool, error) {
 	setValues := false
-	if reportBatchMaxTime, ok, err := in.GetString("reportBatchMaxTime"); ok {
+	if reportBatchMaxTime, ok, err := in.GetAndRemoveString("reportBatchMaxTime"); ok {
 		out.MaxTime = reportBatchMaxTime
 		setValues = true
 	} else if err != nil {
 		return false, err
 	}
-	if rawReportBatchMaxEntries, ok, err := in.GetInt64("reportBatchMaxEntries"); ok {
+	if rawReportBatchMaxEntries, ok, err := in.GetAndRemoveInt64("reportBatchMaxEntries"); ok {
 		reportBatchMaxEntries := int32(rawReportBatchMaxEntries)
 		out.MaxEntries = &reportBatchMaxEntries
 		setValues = true
@@ -501,14 +526,14 @@ func populateTelemetryBatchingConfig(in *v1.HelmValues, out *v2.TelemetryBatchin
 func populateRemoteTelemetryConfig(in *v1.HelmValues, out *v2.RemoteTelemetryConfig) (bool, error) {
 	setValues := false
 
-	if remoteTelemetryAddress, ok, err := in.GetString("global.remoteTelemetryAddress"); ok {
+	if remoteTelemetryAddress, ok, err := in.GetAndRemoveString("global.remoteTelemetryAddress"); ok && remoteTelemetryAddress != "" {
 		out.Address = remoteTelemetryAddress
 		setValues = true
 	} else if err != nil {
 		return false, err
 	}
-	if createRemoteSvcEndpoints, ok, err := in.GetBool("global.createRemoteSvcEndpoints"); ok {
-		out.CreateService = createRemoteSvcEndpoints
+	if createRemoteSvcEndpoints, ok, err := in.GetAndRemoveBool("global.createRemoteSvcEndpoints"); ok {
+		out.CreateService = &createRemoteSvcEndpoints
 		setValues = true
 	} else if err != nil {
 		return false, err
@@ -528,6 +553,12 @@ func populateRemoteTelemetryConfig(in *v1.HelmValues, out *v2.RemoteTelemetryCon
 	} else if applied {
 		out.Batching = batching
 		setValues = true
+	}
+
+	if len(v1TelemetryValues.GetContent()) == 0 {
+		in.RemoveField("mixer.telemetry")
+	} else if err := in.SetField("mixer.telemetry", v1TelemetryValues.GetContent()); err != nil {
+		return false, err
 	}
 
 	return setValues, nil

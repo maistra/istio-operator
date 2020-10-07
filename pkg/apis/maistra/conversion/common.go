@@ -63,6 +63,25 @@ func fromValues(in interface{}, out interface{}) error {
 	return yaml.Unmarshal(inYAML, out)
 }
 
+func decodeAndRemoveFromValues(in map[string]interface{}, out interface{}) error {
+	if in == nil {
+		return nil
+	}
+	inYAML, err := yaml.Marshal(in)
+	if err != nil {
+		return err
+	}
+	if err := yaml.Unmarshal(inYAML, out); err != nil {
+		return err
+	}
+	if newValues, err := toValues(out); err == nil {
+		removeHelmValues(in, newValues)
+	} else {
+		return err
+	}
+	return nil
+}
+
 func sliceToValues(in []interface{}) ([]interface{}, error) {
 	out := make([]interface{}, len(in))
 	bytes, err := yaml.Marshal(in)
@@ -74,7 +93,7 @@ func sliceToValues(in []interface{}) ([]interface{}, error) {
 
 func stringToInt32Slice(in string) ([]int32, error) {
 	if in == "" {
-		return make([]int32, 0), nil
+		return nil, nil
 	}
 	inslice := strings.Split(in, ",")
 	out := make([]int32, len(inslice))
@@ -94,6 +113,46 @@ func int32SliceToString(in []int32) string {
 		strslice[index] = strconv.FormatInt(int64(intval), 10)
 	}
 	return strings.Join(strslice, ",")
+}
+
+// overwriteHelmValues updates the nested values at path using values
+func overwriteHelmValues(obj map[string]interface{}, values map[string]interface{}, fields ...string) error {
+	for key, value := range values {
+		switch typedValue := value.(type) {
+		case map[string]interface{}:
+			if err := overwriteHelmValues(obj, typedValue, append(fields, key)...); err != nil {
+				return err
+			}
+		default:
+			if err := unstructured.SetNestedField(obj, value, append(fields, key)...); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func removeHelmValues(obj map[string]interface{}, values map[string]interface{}, fields ...string) error {
+	for key, value := range values {
+		switch typedValue := value.(type) {
+		case map[string]interface{}:
+			if err := removeHelmValues(obj, typedValue, append(fields, key)...); err != nil {
+				return err
+			}
+			if objField, ok, err := unstructured.NestedFieldNoCopy(obj, append(fields, key)...); ok {
+				if objMapField, ok := objField.(map[string]interface{}); ok {
+					if len(objMapField) == 0 {
+						unstructured.RemoveNestedField(obj, append(fields, key)...)
+					}
+				}
+			} else if err != nil {
+				return err
+			}
+		default:
+			unstructured.RemoveNestedField(obj, append(fields, key)...)
+		}
+	}
+	return nil
 }
 
 func setHelmValue(obj map[string]interface{}, path string, value interface{}) error {

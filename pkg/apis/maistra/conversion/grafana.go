@@ -23,7 +23,7 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 	defer func() {
 		if reterr == nil {
 			if len(grafanaValues) > 0 {
-				if err := setHelmValue(values, "grafana", grafanaValues); err != nil {
+				if err := overwriteHelmValues(values, grafanaValues, "grafana"); err != nil {
 					reterr = err
 				}
 			}
@@ -113,7 +113,7 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.GrafanaAddonConfig) (
 	} else if !ok || len(rawGrafanaValues) == 0 {
 		// nothing to do
 		// check to see if grafana.Address should be set
-		if address, ok, err := in.GetString("kiali.dashboard.grafanaURL"); ok {
+		if address, ok, err := in.GetAndRemoveString("kiali.dashboard.grafanaURL"); ok {
 			// If grafana URL is set, assume we're using an existing grafana install
 			out.Address = &address
 			return true, nil
@@ -125,13 +125,13 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.GrafanaAddonConfig) (
 
 	grafana := out
 	grafanaValues := v1.NewHelmValues(rawGrafanaValues)
-	if enabled, ok, err := grafanaValues.GetBool("enabled"); ok {
+	if enabled, ok, err := grafanaValues.GetAndRemoveBool("enabled"); ok {
 		grafana.Enabled = &enabled
 	} else if err != nil {
 		return false, err
 	}
 
-	if address, ok, err := in.GetString("kiali.dashboard.grafanaURL"); ok {
+	if address, ok, err := in.GetAndRemoveString("kiali.dashboard.grafanaURL"); ok {
 		// If grafana URL is set, assume we're using an existing grafana install
 		grafana.Address = &address
 		grafana.Install = nil
@@ -153,6 +153,7 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.GrafanaAddonConfig) (
 				return false, fmt.Errorf("error casting env value to string")
 			}
 		}
+		grafanaValues.RemoveField("env")
 	} else if err != nil {
 		return false, err
 	}
@@ -166,25 +167,26 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.GrafanaAddonConfig) (
 				return false, fmt.Errorf("error casting envSecrets value to string")
 			}
 		}
+		grafanaValues.RemoveField("envSecrets")
 	} else if err != nil {
 		return false, err
 	}
 
 	persistenceConfig := v2.ComponentPersistenceConfig{}
 	setPersistenceConfig := false
-	if enabled, ok, err := grafanaValues.GetBool("persist"); ok {
+	if enabled, ok, err := grafanaValues.GetAndRemoveBool("persist"); ok {
 		persistenceConfig.Enabled = &enabled
 		setPersistenceConfig = true
 	} else if err != nil {
 		return false, err
 	}
-	if stoargeClassName, ok, err := grafanaValues.GetString("storageClassName"); ok {
+	if stoargeClassName, ok, err := grafanaValues.GetAndRemoveString("storageClassName"); ok {
 		persistenceConfig.StorageClassName = stoargeClassName
 		setPersistenceConfig = true
 	} else if err != nil {
 		return false, err
 	}
-	if accessMode, ok, err := grafanaValues.GetString("accessMode"); ok {
+	if accessMode, ok, err := grafanaValues.GetAndRemoveString("accessMode"); ok {
 		persistenceConfig.AccessMode = corev1.PersistentVolumeAccessMode(accessMode)
 		setPersistenceConfig = true
 	} else if err != nil {
@@ -192,11 +194,12 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.GrafanaAddonConfig) (
 	}
 	if resourcesValues, ok, err := grafanaValues.GetMap("persistenceResources"); ok {
 		resources := &corev1.ResourceRequirements{}
-		if err := fromValues(resourcesValues, resources); err != nil {
+		if err := decodeAndRemoveFromValues(resourcesValues, resources); err != nil {
 			return false, err
 		}
 		persistenceConfig.Resources = resources
 		setPersistenceConfig = true
+		grafanaValues.RemoveField("persistenceResources")
 	} else if err != nil {
 		return false, err
 	}
@@ -213,25 +216,25 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.GrafanaAddonConfig) (
 
 	securityConfig := v2.GrafanaSecurityConfig{}
 	setSecurityConfig := false
-	if enabled, ok, err := grafanaValues.GetBool("security.enabled"); ok {
+	if enabled, ok, err := grafanaValues.GetAndRemoveBool("security.enabled"); ok {
 		securityConfig.Enabled = &enabled
 		setSecurityConfig = true
 	} else if err != nil {
 		return false, err
 	}
-	if secretName, ok, err := grafanaValues.GetString("security.secretName"); ok {
+	if secretName, ok, err := grafanaValues.GetAndRemoveString("security.secretName"); ok {
 		securityConfig.SecretName = secretName
 		setSecurityConfig = true
 	} else if err != nil {
 		return false, err
 	}
-	if usernameKey, ok, err := grafanaValues.GetString("security.usernameKey"); ok {
+	if usernameKey, ok, err := grafanaValues.GetAndRemoveString("security.usernameKey"); ok {
 		securityConfig.UsernameKey = usernameKey
 		setSecurityConfig = true
 	} else if err != nil {
 		return false, err
 	}
-	if passphraseKey, ok, err := grafanaValues.GetString("security.passphraseKey"); ok {
+	if passphraseKey, ok, err := grafanaValues.GetAndRemoveString("security.passphraseKey"); ok {
 		securityConfig.PassphraseKey = passphraseKey
 		setSecurityConfig = true
 	} else if err != nil {
@@ -244,6 +247,12 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.GrafanaAddonConfig) (
 
 	if setInstall {
 		grafana.Install = install
+	}
+	// update the grafana settings
+	if len(grafanaValues.GetContent()) == 0 {
+		in.RemoveField("grafana")
+	} else if err := in.SetField("grafana", grafanaValues.GetContent()); err != nil {
+		return false, err
 	}
 
 	return true, nil
