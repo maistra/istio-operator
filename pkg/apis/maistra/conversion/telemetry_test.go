@@ -25,14 +25,9 @@ var telemetryTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -45,14 +40,9 @@ var telemetryTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -65,14 +55,9 @@ var telemetryTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -103,14 +88,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -134,14 +114,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -170,14 +145,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -206,14 +176,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -250,14 +215,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -309,14 +269,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"meshConfig": map[string]interface{}{
 				"enablePrometheusMerge": true,
@@ -373,14 +328,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -435,14 +385,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"telemetry": map[string]interface{}{
 				"v2": map[string]interface{}{
@@ -488,14 +433,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -558,14 +498,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -625,14 +560,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -665,14 +595,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -722,14 +647,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -764,14 +684,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -815,14 +730,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -862,14 +772,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -927,14 +832,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -992,14 +892,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -1066,14 +961,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -1143,14 +1033,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -1210,14 +1095,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -1276,14 +1156,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
 					"tracer": "stackdriver",
@@ -1351,14 +1226,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
 					"tracer": "stackdriver",
@@ -1424,7 +1294,7 @@ var telemetryTestCases = []conversionTestCase{
 				},
 				"adapters": map[string]interface{}{
 					"stdio": map[string]interface{}{
-						"enabled":      true,
+						"enabled": true,
 					},
 				},
 			},
@@ -1441,14 +1311,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -1496,14 +1361,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -1528,14 +1388,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -1561,14 +1416,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -1611,14 +1461,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -1646,14 +1491,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -1690,14 +1530,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -1729,14 +1564,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -1786,14 +1616,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -1843,14 +1668,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -1901,14 +1721,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -1923,7 +1738,7 @@ var telemetryTestCases = []conversionTestCase{
 			"telemetry": map[string]interface{}{
 				"v2": map[string]interface{}{
 					"stackdriver": map[string]interface{}{
-						"enabled": true,
+						"enabled":    true,
 						"logging":    true,
 						"monitoring": true,
 						"topology":   true,
@@ -1963,14 +1778,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -2023,14 +1833,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 			"mixer": map[string]interface{}{
 				"adapters": map[string]interface{}{
@@ -2082,14 +1887,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
 					"tracer": "stackdriver",
@@ -2145,14 +1945,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
 					"tracer": "stackdriver",
@@ -2210,7 +2005,7 @@ var telemetryTestCases = []conversionTestCase{
 				},
 				"adapters": map[string]interface{}{
 					"stdio": map[string]interface{}{
-						"enabled":      true,
+						"enabled": true,
 					},
 				},
 			},
@@ -2220,14 +2015,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -2268,14 +2058,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -2289,8 +2074,7 @@ var telemetryTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"createRemoteSvcEndpoints": false,
-				"remoteTelemetryAddress":   "",
+				"remoteTelemetryAddress": "",
 			},
 			"mixer": map[string]interface{}{
 				"enabled": false,
@@ -2311,14 +2095,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -2333,8 +2112,7 @@ var telemetryTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"createRemoteSvcEndpoints": false,
-				"remoteTelemetryAddress":   "",
+				"remoteTelemetryAddress": "",
 			},
 			"mixer": map[string]interface{}{
 				"enabled": false,
@@ -2355,14 +2133,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -2374,7 +2147,7 @@ var telemetryTestCases = []conversionTestCase{
 				Type: v2.TelemetryTypeRemote,
 				Remote: &v2.RemoteTelemetryConfig{
 					Address:       "mixer-telemetry.some-namespace.svc.cluster.local",
-					CreateService: true,
+					CreateService: &featureEnabled,
 					Batching: &v2.TelemetryBatchingConfig{
 						MaxEntries: &batchMaxEntries100,
 						MaxTime:    "5",
@@ -2408,14 +2181,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -2429,8 +2197,7 @@ var telemetryTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"createRemoteSvcEndpoints": false,
-				"remoteTelemetryAddress":   "",
+				"remoteTelemetryAddress": "",
 			},
 			"mixer": map[string]interface{}{
 				"enabled": false,
@@ -2444,14 +2211,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -2466,8 +2228,7 @@ var telemetryTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"createRemoteSvcEndpoints": false,
-				"remoteTelemetryAddress":   "",
+				"remoteTelemetryAddress": "",
 			},
 			"mixer": map[string]interface{}{
 				"enabled": false,
@@ -2481,14 +2242,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -2500,7 +2256,7 @@ var telemetryTestCases = []conversionTestCase{
 				Type: v2.TelemetryTypeRemote,
 				Remote: &v2.RemoteTelemetryConfig{
 					Address:       "mixer-telemetry.some-namespace.svc.cluster.local",
-					CreateService: true,
+					CreateService: &featureEnabled,
 					Batching: &v2.TelemetryBatchingConfig{
 						MaxEntries: &batchMaxEntries100,
 						MaxTime:    "5",
@@ -2527,14 +2283,9 @@ var telemetryTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},

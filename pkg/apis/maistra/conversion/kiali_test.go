@@ -25,14 +25,9 @@ var kialiTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -47,14 +42,9 @@ var kialiTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -79,14 +69,9 @@ var kialiTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -108,14 +93,9 @@ var kialiTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -150,14 +130,9 @@ var kialiTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -198,14 +173,9 @@ var kialiTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -231,14 +201,9 @@ var kialiTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -300,14 +265,9 @@ var kialiTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -339,14 +299,9 @@ var kialiTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},

@@ -104,7 +104,7 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 			if err := setHelmValue(gatewayValues, "name", "istio-ingressgateway"); err != nil {
 				return err
 			}
-			if err := setHelmValue(values, "gateways.istio-ingressgateway", gatewayValues); err != nil {
+			if err := overwriteHelmValues(values, gatewayValues, "gateways", "istio-ingressgateway"); err != nil {
 				return err
 			}
 		} else {
@@ -118,7 +118,7 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 				if err := setHelmValue(gatewayValues, "name", "istio-egressgateway"); err != nil {
 					return err
 				}
-				if err := setHelmValue(values, "gateways.istio-egressgateway", gatewayValues); err != nil {
+				if err := overwriteHelmValues(values, gatewayValues, "gateways", "istio-egressgateway"); err != nil {
 					return err
 				}
 			}
@@ -133,7 +133,7 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 				if err := setHelmValue(gatewayValues, "name", name); err != nil {
 					return err
 				}
-				if err := setHelmValue(values, "gateways."+name, gatewayValues); err != nil {
+				if err := overwriteHelmValues(values, gatewayValues, "gateways", name); err != nil {
 					return err
 				}
 			}
@@ -148,7 +148,7 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 				if err := setHelmValue(gatewayValues, "name", name); err != nil {
 					return err
 				}
-				if err := setHelmValue(values, "gateways."+name, gatewayValues); err != nil {
+				if err := overwriteHelmValues(values, gatewayValues, "gateways", name); err != nil {
 					return err
 				}
 			}
@@ -185,30 +185,12 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 	}
 
 	// Service specific settings
-	if in.Service.LoadBalancerIP != "" {
-		if err := setHelmStringValue(gatewayValues, "loadBalancerIP", in.Service.LoadBalancerIP); err != nil {
+	if serviceSpecValues, err := toValues(in.Service.ServiceSpec); err == nil {
+		if err := overwriteHelmValues(gatewayValues, serviceSpecValues); err != nil {
 			return nil, err
 		}
-	}
-	if len(in.Service.LoadBalancerSourceRanges) > 0 {
-		if err := setHelmStringSliceValue(gatewayValues, "loadBalancerSourceRanges", in.Service.LoadBalancerSourceRanges); err != nil {
-			return nil, err
-		}
-	}
-	if in.Service.ExternalTrafficPolicy != "" {
-		if err := setHelmStringValue(gatewayValues, "externalTrafficPolicy", string(in.Service.ExternalTrafficPolicy)); err != nil {
-			return nil, err
-		}
-	}
-	if len(in.Service.ExternalIPs) > 0 {
-		if err := setHelmStringSliceValue(gatewayValues, "externalIPs", in.Service.ExternalIPs); err != nil {
-			return nil, err
-		}
-	}
-	if in.Service.Type != "" {
-		if err := setHelmStringValue(gatewayValues, "type", string(in.Service.Type)); err != nil {
-			return nil, err
-		}
+	} else {
+		return nil, err
 	}
 	if len(in.Service.Metadata.Labels) > 0 {
 		if err := setHelmStringMapValue(gatewayValues, "labels", in.Service.Metadata.Labels); err != nil {
@@ -217,21 +199,6 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 	}
 	if len(in.Service.Metadata.Annotations) > 0 {
 		if err := setHelmStringMapValue(gatewayValues, "annotations", in.Service.Metadata.Annotations); err != nil {
-			return nil, err
-		}
-	}
-	if len(in.Service.Ports) > 0 {
-		untypedSlice := make([]interface{}, len(in.Service.Ports))
-		for index, port := range in.Service.Ports {
-			untypedSlice[index] = port
-		}
-		if portsValue, err := sliceToValues(untypedSlice); err == nil {
-			if len(portsValue) > 0 {
-				if err := setHelmValue(gatewayValues, "ports", portsValue); err != nil {
-					return nil, err
-				}
-			}
-		} else {
 			return nil, err
 		}
 	}
@@ -338,17 +305,23 @@ func gatewayIngressConfigToValues(in *v2.IngressGatewayConfig) (map[string]inter
 }
 
 func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
+	// remove defaulted global config
+	in.RemoveField("global.k8sIngress.enableHttps")
+	in.RemoveField("global.k8sIngress.gatewayName")
+
 	gatewaysConfig := &v2.GatewaysConfig{
 		EgressGateways:  make(map[string]*v2.EgressGatewayConfig),
 		IngressGateways: make(map[string]*v2.IngressGatewayConfig),
 	}
 	setGatewaysConfig := false
-	if gateways, ok, err := in.GetMap("gateways"); ok {
-		for name, gateway := range gateways {
+	if rawGateways, ok, err := in.GetMap("gateways"); ok {
+		gateways := v1.NewHelmValues(rawGateways)
+		for name, gateway := range gateways.DeepCopy().GetContent() {
 			if name == "enabled" {
 				if enabled, ok := gateway.(bool); ok {
 					gatewaysConfig.Enabled = &enabled
 					setGatewaysConfig = true
+					gateways.RemoveField("enabled")
 				} else {
 					return fmt.Errorf("invalid value for gateways.enabled: %v", gateway)
 				}
@@ -363,21 +336,43 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 			}
 			setGatewaysConfig = true
 			gatewayValues := v1.NewHelmValues(gatewayMap)
+			if name == "istio-ingressgateway" {
+				// special handling for ior only setting
+				if iorEnabled, ok, err := gatewayValues.GetAndRemoveBool("ior_enabled"); ok {
+					gatewaysConfig.OpenShiftRoute = &v2.OpenShiftRouteConfig{
+						Enablement: v2.Enablement{
+							Enabled: &iorEnabled,
+						},
+					}
+				} else if err != nil {
+					return err
+				}
+				if len(gatewayValues.GetContent()) == 0 {
+					gateways.RemoveField(name)
+					// avoid creating an empty ClusterIngress struct
+					continue
+				}
+			}
+
+			// Use any particular ENV settings before we parse, to prevent empty runtime fields
+			var networkView *string
+			if rawNetworkView, ok, err := gatewayValues.GetAndRemoveString("env.ISTIO_META_REQUESTED_NETWORK_VIEW"); ok {
+				networkView = &rawNetworkView
+			} else if err != nil {
+				return err
+			}
+
 			if err := gatewayValuesToConfig(gatewayValues, &gc); err != nil {
 				return err
 			}
 
-			if isEgressGateway(gatewayValues) || name == "istio-egressgateway" {
+			if isEgressGateway(gatewayValues) || name == "istio-egressgateway" || networkView != nil {
 				// egress only
 				egressGateway := &v2.EgressGatewayConfig{
 					GatewayConfig: gc,
 				}
-				if rawNetworkView, ok := getAndClearEnv(&egressGateway.GatewayConfig, "ISTIO_META_REQUESTED_NETWORK_VIEW"); ok {
-					if rawNetworkView == "" {
-						egressGateway.RequestedNetworkView = make([]string, 0)
-					} else {
-						egressGateway.RequestedNetworkView = strings.Split(rawNetworkView, ",")
-					}
+				if networkView != nil && *networkView != "" {
+					egressGateway.RequestedNetworkView = strings.Split(*networkView, ",")
 				}
 				if name == "istio-egressgateway" {
 					gatewaysConfig.ClusterEgress = egressGateway
@@ -392,7 +387,7 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 				if rawSDSValues, ok, err := gatewayValues.GetMap("sds"); ok && len(rawSDSValues) > 0 {
 					sdsValues := v1.NewHelmValues(rawSDSValues)
 					sds := &v2.SecretDiscoveryService{}
-					if enableSDS, ok, err := sdsValues.GetBool("enabled"); ok {
+					if enableSDS, ok, err := sdsValues.GetAndRemoveBool("enabled"); ok {
 						sds.Enabled = &enableSDS
 						ingressGateway.SDS = sds
 					} else if err != nil {
@@ -405,6 +400,11 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 						sds.Runtime = sdsContainerConfig
 						ingressGateway.SDS = sds
 					}
+					if len(sdsValues.GetContent()) == 0 {
+						gatewayValues.RemoveField("sds")
+					} else if err := gatewayValues.SetField("sds", sdsValues.GetContent()); err != nil {
+						return err
+					}
 				} else if err != nil {
 					return err
 				}
@@ -412,27 +412,29 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 					clusterIngress := &v2.ClusterIngressGatewayConfig{
 						IngressGatewayConfig: ingressGateway,
 					}
-					if k8sIngressEnabled, ok, err := in.GetBool("global.k8sIngress.enabled"); ok {
+					if k8sIngressEnabled, ok, err := in.GetAndRemoveBool("global.k8sIngress.enabled"); ok {
 						clusterIngress.IngressEnabled = &k8sIngressEnabled
 					} else if err != nil {
 						return err
 					}
 					gatewaysConfig.ClusterIngress = clusterIngress
-
-					if iorEnabled, ok, err := gatewayValues.GetBool("ior_enabled"); ok {
-						gatewaysConfig.OpenShiftRoute = &v2.OpenShiftRouteConfig{
-							Enablement: v2.Enablement{
-								Enabled: &iorEnabled,
-							},
-						}
-					} else if err != nil {
-						return err
-					}
 				} else if name != "istio-ilbgateway" {
 					// ilb gateway is handled by cluster config
 					gatewaysConfig.IngressGateways[name] = &ingressGateway
 				}
 			}
+			// remove defaulted fields
+			gatewayValues.RemoveField("name")
+			if len(gatewayValues.GetContent()) == 0 {
+				gateways.RemoveField(name)
+			} else if err := gateways.SetField(name, gatewayValues.GetContent()); err != nil {
+				return err
+			}
+		}
+		if len(gateways.GetContent()) == 0 {
+			in.RemoveField("gateways")
+		} else if err := in.SetField("gateways", gateways.GetContent()); err != nil {
+			return err
 		}
 	} else if err != nil {
 		return err
@@ -450,23 +452,17 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 }
 
 func isEgressGateway(gatewayValues *v1.HelmValues) bool {
-	if gatewayType, ok, _ := gatewayValues.GetString("gatewayType"); ok {
-		if gatewayType == "egress" {
-			return true
-		}
-		return false
-	}
-	_, ok, _ := gatewayValues.GetString("env.ISTIO_META_REQUESTED_NETWORK_VIEW")
-	return ok
+	gatewayType, ok, _ := gatewayValues.GetAndRemoveString("gatewayType")
+	return ok && gatewayType == "egress"
 }
 
 func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
-	if enabled, ok, err := in.GetBool("enabled"); ok {
+	if enabled, ok, err := in.GetAndRemoveBool("enabled"); ok {
 		out.Enabled = &enabled
 	} else if err != nil {
 		return err
 	}
-	if namespace, ok, err := in.GetString("namespace"); ok {
+	if namespace, ok, err := in.GetAndRemoveString("namespace"); ok {
 		out.Namespace = namespace
 	} else if err != nil {
 		return err
@@ -474,7 +470,7 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 
 	// Service-specific config
 	out.Service = v2.GatewayServiceConfig{}
-	if err := fromValues(in.GetContent(), &out.Service); err != nil {
+	if err := decodeAndRemoveFromValues(in.GetContent(), &out.Service); err != nil {
 		return err
 	}
 
@@ -482,6 +478,7 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 		if err := setMetadataLabels(rawLabels, &out.Service.Metadata); err != nil {
 			return err
 		}
+		in.RemoveField("labels")
 	} else if err != nil {
 		return err
 	}
@@ -489,12 +486,13 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 		if err := setMetadataAnnotations(rawAnnotations, &out.Service.Metadata); err != nil {
 			return err
 		}
+		in.RemoveField("annotations")
 	} else if err != nil {
 		return err
 	}
 
 	// volumes
-	if secretVolumes, ok, err := in.GetSlice("secretVolumes"); ok {
+	if secretVolumes, ok, err := in.GetAndRemoveSlice("secretVolumes"); ok {
 		for _, rawSecretVolume := range secretVolumes {
 			if secretVolume, ok := rawSecretVolume.(map[string]interface{}); ok {
 				volumeValues := v1.NewHelmValues(secretVolume)
@@ -503,17 +501,17 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 						Secret: &corev1.SecretVolumeSource{},
 					},
 				}
-				if name, ok, err := volumeValues.GetString("name"); ok {
+				if name, ok, err := volumeValues.GetAndRemoveString("name"); ok {
 					volume.Mount.Name = name
 				} else if err != nil {
 					return err
 				}
-				if secretName, ok, err := volumeValues.GetString("secretName"); ok {
+				if secretName, ok, err := volumeValues.GetAndRemoveString("secretName"); ok {
 					volume.Volume.Secret.SecretName = secretName
 				} else if err != nil {
 					return err
 				}
-				if mountPath, ok, err := volumeValues.GetString("mountPath"); ok {
+				if mountPath, ok, err := volumeValues.GetAndRemoveString("mountPath"); ok {
 					volume.Mount.MountPath = mountPath
 				} else if err != nil {
 					return err
@@ -526,7 +524,7 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 	} else if err != nil {
 		return err
 	}
-	if configVolumes, ok, err := in.GetSlice("configVolumes"); ok {
+	if configVolumes, ok, err := in.GetAndRemoveSlice("configVolumes"); ok {
 		for _, rawConfigVolume := range configVolumes {
 			if configVolume, ok := rawConfigVolume.(map[string]interface{}); ok {
 				volumeValues := v1.NewHelmValues(configVolume)
@@ -535,17 +533,17 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 						ConfigMap: &corev1.ConfigMapVolumeSource{},
 					},
 				}
-				if name, ok, err := volumeValues.GetString("name"); ok {
+				if name, ok, err := volumeValues.GetAndRemoveString("name"); ok {
 					volume.Mount.Name = name
 				} else if err != nil {
 					return err
 				}
-				if configMapName, ok, err := volumeValues.GetString("configMapName"); ok {
+				if configMapName, ok, err := volumeValues.GetAndRemoveString("configMapName"); ok {
 					volume.Volume.ConfigMap.Name = configMapName
 				} else if err != nil {
 					return err
 				}
-				if mountPath, ok, err := volumeValues.GetString("mountPath"); ok {
+				if mountPath, ok, err := volumeValues.GetAndRemoveString("mountPath"); ok {
 					volume.Mount.MountPath = mountPath
 				} else if err != nil {
 					return err
@@ -555,6 +553,12 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 				return fmt.Errorf("could not cast secretVolume entry to map[string]interface{}")
 			}
 		}
+	} else if err != nil {
+		return err
+	}
+
+	if routerMode, ok, err := in.GetAndRemoveString("env.ISTIO_META_ROUTER_MODE"); ok {
+		out.RouterMode = v2.RouterModeType(routerMode)
 	} else if err != nil {
 		return err
 	}
@@ -565,11 +569,6 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 		return err
 	} else if applied {
 		out.Runtime = runtime
-	}
-
-	// env.ISTIO_META_ROUTER_MODE
-	if routerMode, ok := getAndClearEnv(out, "ISTIO_META_ROUTER_MODE"); ok {
-		out.RouterMode = v2.RouterModeType(routerMode)
 	}
 
 	return nil
@@ -586,20 +585,6 @@ func addEnvToGateway(in *v2.GatewayConfig, name, value string) {
 		in.Runtime.Container.Env = make(map[string]string)
 	}
 	in.Runtime.Container.Env[name] = value
-}
-
-func getAndClearEnv(in *v2.GatewayConfig, name string) (string, bool) {
-	if in.Runtime == nil || in.Runtime.Container == nil || in.Runtime.Container.Env == nil {
-		return "", false
-	}
-	if value, ok := in.Runtime.Container.Env[name]; ok {
-		delete(in.Runtime.Container.Env, name)
-		if len(in.Runtime.Container.Env) == 0 {
-			in.Runtime.Container.Env = nil
-		}
-		return value, ok
-	}
-	return "", false
 }
 
 func expansionPortsForVersion(version string) ([]corev1.ServicePort, error) {

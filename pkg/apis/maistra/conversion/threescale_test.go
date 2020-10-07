@@ -32,14 +32,9 @@ var threeScaleTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -103,14 +98,9 @@ var threeScaleTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 	},
@@ -203,14 +193,9 @@ var threeScaleTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
+				"useMCP":        true,
+				"multiCluster":  globalMultiClusterDefaults,
+				"meshExpansion": globalMeshExpansionDefaults,
 			},
 		}),
 		completeThreeScale: v1.NewHelmValues(map[string]interface{}{

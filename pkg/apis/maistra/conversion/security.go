@@ -229,13 +229,13 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	// General mutual TLS
 	mutualTLS := &v2.MutualTLSConfig{}
 	setMutualTLS := false
-	if mtlsEnabled, ok, err := in.GetBool("global.mtls.enabled"); ok {
+	if mtlsEnabled, ok, err := in.GetAndRemoveBool("global.mtls.enabled"); ok {
 		mutualTLS.Enabled = &mtlsEnabled
 		setMutualTLS = true
 	} else if err != nil {
 		return err
 	}
-	if autoMtlsEnabled, ok, err := in.GetBool("global.mtls.auto"); ok {
+	if autoMtlsEnabled, ok, err := in.GetAndRemoveBool("global.mtls.auto"); ok {
 		mutualTLS.Auto = &autoMtlsEnabled
 		setMutualTLS = true
 	} else if err != nil {
@@ -249,13 +249,13 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	// SPIFFE trust domain
 	trust := &v2.TrustConfig{}
 	setTrust := false
-	if trustDomain, ok, err := in.GetString("global.trustDomain"); ok {
+	if trustDomain, ok, err := in.GetAndRemoveString("global.trustDomain"); ok {
 		trust.Domain = trustDomain
 		setTrust = true
 	} else if err != nil {
 		return err
 	}
-	if trustDomainAliases, ok, err := in.GetStringSlice("global.trustDomainAliases"); ok {
+	if trustDomainAliases, ok, err := in.GetAndRemoveStringSlice("global.trustDomainAliases"); ok {
 		trust.AdditionalDomains = trustDomainAliases
 		setTrust = true
 	} else if err != nil {
@@ -271,13 +271,13 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	setCA := false
 	var caType v2.CertificateAuthorityType
 	var istiodCAType v2.IstioCertificateSignerType
-	if caImplementation, ok, err := in.GetString("pilot.ca.implementation"); ok && caImplementation != "" {
+	if caImplementation, ok, err := in.GetAndRemoveString("pilot.ca.implementation"); ok && caImplementation != "" {
 		caType = v2.CertificateAuthorityType(caImplementation)
 		setCA = true
 	} else if err != nil {
 		return err
 	}
-	if selfSigned, ok, err := in.GetBool("security.selfSigned"); ok {
+	if selfSigned, ok, err := in.GetAndRemoveBool("security.selfSigned"); ok {
 		if caType == "" {
 			caType = v2.CertificateAuthorityTypeIstiod
 		}
@@ -293,10 +293,11 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	case v2.CertificateAuthorityTypeIstiod:
 		setCA = true
 		ca.Type = v2.CertificateAuthorityTypeIstiod
-		ca.Istiod = &v2.IstiodCertificateAuthorityConfig{}
-		istiod := ca.Istiod
+		istiod := &v2.IstiodCertificateAuthorityConfig{}
+		setIstiod := false
 		switch istiodCAType {
 		case v2.IstioCertificateSignerTypeSelfSigned:
+			setIstiod = true
 			istiod.Type = v2.IstioCertificateSignerTypeSelfSigned
 			selfSignedConfig := &v2.IstioSelfSignedCertificateSignerConfig{}
 			setSelfSigned := false
@@ -356,6 +357,7 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 				istiod.SelfSigned = selfSignedConfig
 			}
 		case v2.IstioCertificateSignerTypePrivateKey:
+			setIstiod = true
 			istiod.Type = v2.IstioCertificateSignerTypePrivateKey
 			if rootCADir, ok, err := getAndClearComponentEnv(in, "pilot", "ROOT_CA_DIR"); ok {
 				istiod.PrivateKey = &v2.IstioPrivateKeyCertificateSignerConfig{
@@ -366,23 +368,29 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 			}
 		}
 		if workloadCertTTLDefault, ok, err := getAndClearComponentEnv(in, "pilot", "DEFAULT_WORKLOAD_CERT_TTL"); ok {
+			setIstiod = true
 			istiod.WorkloadCertTTLDefault = workloadCertTTLDefault
 		} else if err != nil {
 			return err
-		} else if workloadCertTTLDefault, ok, err := in.GetString("security.workloadCertTtl"); ok {
+		} else if workloadCertTTLDefault, ok, err := in.GetAndRemoveString("security.workloadCertTtl"); ok {
+			setIstiod = true
 			istiod.WorkloadCertTTLDefault = workloadCertTTLDefault
 		} else if err != nil {
 			return err
 		}
 		if workloadCertTTLMax, ok, err := getAndClearComponentEnv(in, "pilot", "MAX_WORKLOAD_CERT_TTL"); ok {
+			setIstiod = true
 			istiod.WorkloadCertTTLMax = workloadCertTTLMax
 		} else if err != nil {
 			return err
 		}
+		if setIstiod {
+			ca.Istiod = istiod
+		}
 	case v2.CertificateAuthorityTypeCustom:
 		setCA = true
 		ca.Type = v2.CertificateAuthorityTypeCustom
-		if caAddress, ok, err := in.GetString("global.caAddress"); ok {
+		if caAddress, ok, err := in.GetAndRemoveString("global.caAddress"); ok {
 			ca.Custom = &v2.CustomCertificateAuthorityConfig{
 				Address: caAddress,
 			}
@@ -400,7 +408,7 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	// Identity
 	identity := &v2.IdentityConfig{}
 	setIdentity := false
-	if jwtPolicy, ok, err := in.GetString("global.jwtPolicy"); ok {
+	if jwtPolicy, ok, err := in.GetAndRemoveString("global.jwtPolicy"); ok {
 		if identityType, err := getIdentityTypeFromJWTPolicy(jwtPolicy); err == nil {
 			switch identityType {
 			case v2.IdentityConfigTypeKubernetes:
@@ -418,7 +426,7 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 				} else if err != nil {
 					return err
 				}
-				if audience, ok, err := in.GetString("global.sds.token.aud"); ok {
+				if audience, ok, err := in.GetAndRemoveString("global.sds.token.aud"); ok {
 					thirdPartyConfig.Audience = audience
 					setThirdParty = true
 					setSecurity = true
@@ -443,13 +451,13 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	// Control Plane Security
 	controlPlane := &v2.ControlPlaneSecurityConfig{}
 	setControlPlane := false
-	if controlPlaneSecurityEnabled, ok, err := in.GetBool("global.controlPlaneSecurityEnabled"); ok {
+	if controlPlaneSecurityEnabled, ok, err := in.GetAndRemoveBool("global.controlPlaneSecurityEnabled"); ok {
 		controlPlane.MTLS = &controlPlaneSecurityEnabled
 		setControlPlane = true
 	} else if err != nil {
 		return err
 	}
-	if pilotCertProvider, ok, err := in.GetString("global.pilotCertProvider"); ok {
+	if pilotCertProvider, ok, err := in.GetAndRemoveString("global.pilotCertProvider"); ok {
 		if pilotCertProviderType, err := getPilotCertProviderType(pilotCertProvider); err == nil {
 			if pilotCertProviderType != "" {
 				controlPlane.CertProvider = pilotCertProviderType
@@ -463,25 +471,25 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	}
 	tls := &v2.ControlPlaneTLSConfig{}
 	setTLS := false
-	if cipherSuites, ok, err := in.GetString("global.tls.cipherSuites"); ok && cipherSuites != "" {
+	if cipherSuites, ok, err := in.GetAndRemoveString("global.tls.cipherSuites"); ok && cipherSuites != "" {
 		tls.CipherSuites = strings.Split(cipherSuites, ",")
 		setTLS = true
 	} else if err != nil {
 		return err
 	}
-	if ecdhCurves, ok, err := in.GetString("global.tls.ecdhCurves"); ok && ecdhCurves != "" {
+	if ecdhCurves, ok, err := in.GetAndRemoveString("global.tls.ecdhCurves"); ok && ecdhCurves != "" {
 		tls.ECDHCurves = strings.Split(ecdhCurves, ",")
 		setTLS = true
 	} else if err != nil {
 		return err
 	}
-	if minProtocolVersion, ok, err := in.GetString("global.tls.minProtocolVersion"); ok {
+	if minProtocolVersion, ok, err := in.GetAndRemoveString("global.tls.minProtocolVersion"); ok {
 		tls.MinProtocolVersion = minProtocolVersion
 		setTLS = true
 	} else if err != nil {
 		return err
 	}
-	if maxProtocolVersion, ok, err := in.GetString("global.tls.maxProtocolVersion"); ok {
+	if maxProtocolVersion, ok, err := in.GetAndRemoveString("global.tls.maxProtocolVersion"); ok {
 		tls.MaxProtocolVersion = maxProtocolVersion
 		setTLS = true
 	} else if err != nil {

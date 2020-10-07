@@ -613,6 +613,8 @@ spec:
                 properties:
                   meshExpansion:
                     properties:
+                      enabled:
+                        type: boolean
                       ilbGateway:
                         properties:
                           enabled:
@@ -944,6 +946,8 @@ spec:
                     type: object
                   multiCluster:
                     properties:
+                      enabled:
+                        type: boolean
                       meshNetworks:
                         additionalProperties:
                           properties:
@@ -3616,6 +3620,8 @@ spec:
                     properties:
                       meshExpansion:
                         properties:
+                          enabled:
+                            type: boolean
                           ilbGateway:
                             properties:
                               enabled:
@@ -3947,6 +3953,8 @@ spec:
                         type: object
                       multiCluster:
                         properties:
+                          enabled:
+                            type: boolean
                           meshNetworks:
                             additionalProperties:
                               properties:

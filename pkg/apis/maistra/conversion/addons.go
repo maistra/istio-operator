@@ -154,20 +154,20 @@ func populateAddonsConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 
 func populateAddonIngressConfig(in *v1.HelmValues, out *v2.ComponentIngressConfig) (bool, error) {
 	setValues := false
-	if enabled, ok, err := in.GetBool("enabled"); ok {
+	if enabled, ok, err := in.GetAndRemoveBool("enabled"); ok {
 		out.Enabled = &enabled
 		setValues = true
 	} else if err != nil {
 		return false, err
 	}
 
-	if contextPath, ok, err := in.GetString("contextPath"); ok {
+	if contextPath, ok, err := in.GetAndRemoveString("contextPath"); ok {
 		out.ContextPath = contextPath
 		setValues = true
 	} else if err != nil {
 		return false, err
 	}
-	if hosts, ok, err := in.GetStringSlice("hosts"); ok {
+	if hosts, ok, err := in.GetAndRemoveStringSlice("hosts"); ok {
 		out.Hosts = append([]string{}, hosts...)
 		setValues = true
 	} else if err != nil {
@@ -178,6 +178,7 @@ func populateAddonIngressConfig(in *v1.HelmValues, out *v2.ComponentIngressConfi
 		if err := setMetadataAnnotations(rawAnnotations, &out.Metadata); err != nil {
 			return false, err
 		}
+		in.RemoveField("annotations")
 		setValues = true
 	} else if err != nil {
 		return false, err
@@ -187,6 +188,7 @@ func populateAddonIngressConfig(in *v1.HelmValues, out *v2.ComponentIngressConfi
 		if err := setMetadataLabels(rawLabels, &out.Metadata); err != nil {
 			return false, err
 		}
+		in.RemoveField("labels")
 		setValues = true
 	} else if err != nil {
 		return false, err
@@ -194,6 +196,7 @@ func populateAddonIngressConfig(in *v1.HelmValues, out *v2.ComponentIngressConfi
 
 	if tls, ok, err := in.GetMap("tls"); ok && len(tls) > 0 {
 		out.TLS = v1.NewHelmValues(tls)
+		in.RemoveField("tls")
 		setValues = true
 	} else if err != nil {
 		return false, err

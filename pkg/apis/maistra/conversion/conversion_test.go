@@ -2,14 +2,13 @@ package conversion
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/yaml"
 
+	"github.com/google/go-cmp/cmp"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
@@ -23,6 +22,92 @@ var (
 	cpuUtilization80 = int32(80)
 	intStrInt1       = intstr.FromInt(1)
 	intStr25Percent  = intstr.FromString("25%")
+
+	globalMultiClusterDefaults = map[string]interface{}{
+		"enabled": false,
+		"multiClusterOverrides": map[string]interface{}{
+			"expansionEnabled":    nil,
+			"multiClusterEnabled": nil,
+		},
+	}
+	globalMeshExpansionDefaults = map[string]interface{}{
+		"enabled": false,
+		"useILB":  false,
+	}
+
+	roundTripTestCases = []struct {
+		name   string
+		smcpv1 v1.ControlPlaneSpec
+		cruft  *v1.HelmValues
+	}{
+		{
+			name: "simple",
+			smcpv1: v1.ControlPlaneSpec{
+				Version: "v1.1",
+				Istio: v1.NewHelmValues(map[string]interface{}{
+					"global": map[string]interface{}{
+						"proxy": map[string]interface{}{
+							"image": "asd",
+						},
+						"some-unmapped-field": map[string]interface{}{
+							"foo":   "bar",
+							"fooey": true,
+						},
+					},
+					"prometheus": map[string]interface{}{
+						"enabled": true,
+					},
+					"tracing": map[string]interface{}{
+						"enabled": true,
+					},
+				}),
+			},
+			cruft: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					// a result of enabling tracing
+					"enableTracing": true,
+					// mesh expansion is disabled by default
+					"meshExpansion": map[string]interface{}{
+						"enabled": false,
+						"useILB":  false,
+					},
+					// multicluster is disabled by default
+					"multiCluster": map[string]interface{}{
+						"enabled": false,
+						"multiClusterOverrides": map[string]interface{}{
+							"expansionEnabled":    nil,
+							"multiClusterEnabled": nil,
+						},
+					},
+					// a result of enabling tracing, default provider is jaeger
+					"proxy": map[string]interface{}{
+						"tracer": string("jaeger"),
+					},
+					"useMCP": true,
+				},
+				// a result of enabling prometheus
+				"mixer": map[string]interface{}{
+					"adapters": map[string]interface{}{
+						"prometheus": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+				// a result of enabling prometheus
+				"telemetry": map[string]interface{}{
+					"v2": map[string]interface{}{
+						"prometheus": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+				// a result of enabling tracing, default provider is jaeger
+				"tracing": map[string]interface{}{
+					"provider": string("jaeger"),
+				},
+			}),
+		},
+	}
 )
 
 type conversionTestCase struct {
@@ -38,14 +123,12 @@ type conversionTestCase struct {
 
 func assertEquals(t *testing.T, expected, actual interface{}) {
 	t.Helper()
-	if !reflect.DeepEqual(expected, actual) {
-		t.Logf("DeepEqual() failed, retrying after pruning empty/nil objects")
+	if diff := cmp.Diff(expected, actual, cmp.AllowUnexported(v1.HelmValues{})); diff != "" {
+		t.Logf("DeepEqual() failed, retrying after pruning empty/nil objects: %s", diff)
 		prunedExpected := pruneEmptyObjects(expected)
 		prunedActual := pruneEmptyObjects(actual)
-		if !reflect.DeepEqual(prunedExpected, prunedActual) {
-			expectedYAML, _ := yaml.Marshal(expected)
-			actualYAML, _ := yaml.Marshal(actual)
-			t.Errorf("unexpected output converting values back to v2:\n\texpected:\n%s\n\tgot:\n%s", string(expectedYAML), string(actualYAML))
+		if diff := cmp.Diff(prunedExpected, prunedActual, cmp.AllowUnexported(v1.HelmValues{})); diff != "" {
+			t.Errorf("unexpected output converting values back to v2: %s", diff)
 		}
 	}
 
@@ -134,6 +217,31 @@ func TestTechPreviewConversionFromV2(t *testing.T) {
 	runTestCasesFromV2(techPreviewTestCases, t)
 }
 
+func TestRoundTripConversion(t *testing.T) {
+	for _, tc := range roundTripTestCases {
+		t.Run(tc.name, func(t *testing.T) {
+			smcpv1 := *tc.smcpv1.DeepCopy()
+			smcpv2 := v2.ControlPlaneSpec{}
+			err := Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(&smcpv1, &smcpv2, nil)
+			if err != nil {
+				t.Fatalf("error converting smcpv1 to smcpv2: %v", err)
+			}
+			smcpv1 = v1.ControlPlaneSpec{}
+			err = Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(&smcpv2, &smcpv1, nil)
+			if err != nil {
+				t.Fatalf("error converting smcpv2 to smcpv1: %v", err)
+			}
+			if diff := cmp.Diff(tc.smcpv1, smcpv1, cmp.AllowUnexported(v1.HelmValues{})); diff != "" {
+				t.Logf("TestRoundTripConversion() case %s mismatch, will try again after removing cruft (-want +got):\n%s", tc.name, diff)
+				removeHelmValues(smcpv1.Istio.GetContent(), tc.cruft.GetContent())
+				if diff := cmp.Diff(tc.smcpv1, smcpv1, cmp.AllowUnexported(v1.HelmValues{})); diff != "" {
+					t.Errorf("TestRoundTripConversion() case %s mismatch (-want +got):\n%s", tc.name, diff)
+				}
+			}
+		})
+	}
+}
+
 func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 	scheme := runtime.NewScheme()
 	v1.SchemeBuilder.AddToScheme(scheme)
@@ -142,8 +250,7 @@ func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 	t.Helper()
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			smcpv1 := &v1.ServiceMeshControlPlane{
-			}
+			smcpv1 := &v1.ServiceMeshControlPlane{}
 			smcpv2 := &v2.ServiceMeshControlPlane{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: tc.namespace,
@@ -156,13 +263,13 @@ func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 			}
 			istio := tc.isolatedIstio.DeepCopy().GetContent()
 			mergeMaps(tc.completeIstio.DeepCopy().GetContent(), istio)
-			if !reflect.DeepEqual(istio, smcpv1.Spec.Istio.DeepCopy().GetContent()) {
-				t.Errorf("unexpected output converting v2 to Istio values:\n\texpected:\n%#v\n\tgot:\n%#v", istio, smcpv1.Spec.Istio.GetContent())
+			if diff := cmp.Diff(istio, smcpv1.Spec.Istio.DeepCopy().GetContent()); diff != "" {
+				t.Errorf("unexpected output converting v2 to Istio values: %s", diff)
 			}
 			threeScale := tc.isolatedThreeScale.DeepCopy().GetContent()
 			mergeMaps(tc.completeThreeScale.DeepCopy().GetContent(), threeScale)
-			if !reflect.DeepEqual(threeScale, smcpv1.Spec.ThreeScale.DeepCopy().GetContent()) {
-				t.Errorf("unexpected output converting v2 to ThreeScale values:\n\texpected:\n%#v\n\tgot:\n%#v", threeScale, smcpv1.Spec.ThreeScale.GetContent())
+			if diff := cmp.Diff(threeScale, smcpv1.Spec.ThreeScale.DeepCopy().GetContent()); diff != "" {
+				t.Errorf("unexpected output converting v2 to ThreeScale values:%s", diff)
 			}
 			newsmcpv2 := &v2.ServiceMeshControlPlane{}
 			// use expected data
