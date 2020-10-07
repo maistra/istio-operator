@@ -12,7 +12,7 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
 
     containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.0.0
-    createdAt: 2020-10-05T11:56:25CEST
+    createdAt: 2020-10-07T13:52:28CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.0.0"
     operators.openshift.io/infrastructure-features: '["Disconnected"]'
@@ -38,6 +38,9 @@ metadata:
                     "type": "Memory"
                   }
                 }
+              },
+              "prometheus": {
+                "enabled": true
               },
               "kiali": {
                 "enabled": true
@@ -656,6 +659,12 @@ spec:
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - displayName: Install Prometheus
+        description: Set to true to install Prometheus
+        path: addons.prometheus.enabled
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:metrics'
+        - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - displayName: Data Plane Security
         description: Enable mTLS for communcation between services in the mesh
         path: security.mtls.enabled
