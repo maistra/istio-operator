@@ -167,6 +167,7 @@ function patchGalley() {
           - --memberRollName=default\
           - --cacheCluster=outbound|80||wasm-cacher-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.cluster.local\
           - --enableNodePortGateways=false\
+          - --enableIngressClassName=false\
           - --podLocalitySource=pod' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
   # disable webhook config updates
   sed_wrap -i -r -e '/INJECTION_WEBHOOK_CONFIG_NAME/,/ISTIOD_ADDR/ {
@@ -474,6 +475,15 @@ function removeUnsupportedCharts() {
   rm -rf ${HELM_DIR}/istio-operator
 }
 
+function moveEnvoyFiltersToMeshConfigChart() {
+  echo "moving EnvoyFilter manifests to mesh-config"
+  mv ${HELM_DIR}/istio-control/istio-discovery/templates/telemetry*.yaml ${HELM_DIR}/mesh-config/templates
+
+  echo >> ${HELM_DIR}/global.yaml
+  sed_nowrap -n -e '/^telemetry:/,/^      logWindowDuration/ p' ${HELM_DIR}/istio-control/istio-discovery/values.yaml >> ${HELM_DIR}/global.yaml
+  sed_wrap -i -n -e '/^telemetry:/,/^      logWindowDuration/ d; p' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
+}
+
 function hacks() {
   echo "XXXXXXXX HACKS THAT NEED TO BE RESOLVED BEFORE 2.0 RELEASE XXXXXXXX"
   sed_wrap -i -e '/containers:/,/name: discovery/ {
@@ -493,6 +503,7 @@ patchSidecarInjector
 patchMixer
 patchKialiTemplate
 patchKialiOpenShift
+moveEnvoyFiltersToMeshConfigChart
 
 source ${SOURCE_DIR}/build/patch-grafana.sh
 source ${SOURCE_DIR}/build/patch-jaeger.sh
