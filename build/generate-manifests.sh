@@ -5,9 +5,9 @@
 set -e
 
 if [ "${GOPATH}" != "" ]; then
-  YQ=`which yq -a | grep -v ${GOPATH} | grep -v go`
+  YQ=`which yq -a | grep -v ${GOPATH} | grep -v go | head -1`
 else
-  YQ=`which yq -a | grep -v go`
+  YQ=`which yq -a | grep -v go | head -1`
 fi
 
 : ${COMMUNITY:-"true"}

@@ -116,6 +116,10 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			}
 		}()
 
+		if r.Status.Annotations != nil {
+			r.Status.Annotations[statusAnnotationAlwaysReadyComponents] = ""
+		}
+
 		// Render the templates
 		r.renderings, err = version.Strategy().Render(ctx, &r.ControllerResources, r.cniConfig, r.Instance)
 		// always set these, especially if rendering failed, as these are useful for debugging
@@ -126,6 +130,9 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			if versions.IsValidationError(err) {
 				reconciliationReason = status.ConditionReasonValidationError
 				reconciliationMessage = "Spec is invalid"
+			} else if versions.IsDependencyMissingError(err) {
+				reconciliationReason = status.ConditionReasonDependencyMissingError
+				reconciliationMessage = fmt.Sprintf( "Dependency %q is missing", versions.GetMissingDependency(err))
 			} else {
 				reconciliationReason = status.ConditionReasonReconcileError
 				reconciliationMessage = "Error rendering helm charts"
