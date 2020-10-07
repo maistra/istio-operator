@@ -130,6 +130,9 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			if versions.IsValidationError(err) {
 				reconciliationReason = status.ConditionReasonValidationError
 				reconciliationMessage = "Spec is invalid"
+			} else if versions.IsDependencyMissingError(err) {
+				reconciliationReason = status.ConditionReasonDependencyMissingError
+				reconciliationMessage = fmt.Sprintf( "Dependency %q is missing", versions.GetMissingDependency(err))
 			} else {
 				reconciliationReason = status.ConditionReasonReconcileError
 				reconciliationMessage = "Error rendering helm charts"

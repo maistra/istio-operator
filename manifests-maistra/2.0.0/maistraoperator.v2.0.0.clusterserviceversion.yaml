@@ -12,7 +12,7 @@ metadata:
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: maistra/istio-ubi8-operator:2.0.0
-    createdAt: 2020-10-05T11:56:20CEST
+    createdAt: 2020-10-07T13:52:22CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.0.0"
     operators.openshift.io/infrastructure-features: '[]'
@@ -38,6 +38,9 @@ metadata:
                     "type": "Memory"
                   }
                 }
+              },
+              "prometheus": {
+                "enabled": true
               },
               "kiali": {
                 "enabled": true
@@ -606,6 +609,12 @@ spec:
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - displayName: Install Prometheus
+        description: Set to true to install Prometheus
+        path: addons.prometheus.enabled
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:metrics'
+        - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - displayName: Data Plane Security
         description: Enable mTLS for communcation between services in the mesh
         path: security.mtls.enabled
