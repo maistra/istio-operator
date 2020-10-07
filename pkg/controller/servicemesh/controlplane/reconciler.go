@@ -116,6 +116,10 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			}
 		}()
 
+		if r.Status.Annotations != nil {
+			r.Status.Annotations[statusAnnotationAlwaysReadyComponents] = ""
+		}
+
 		// Render the templates
 		r.renderings, err = version.Strategy().Render(ctx, &r.ControllerResources, r.cniConfig, r.Instance)
 		// always set these, especially if rendering failed, as these are useful for debugging
