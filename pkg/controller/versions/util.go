@@ -187,3 +187,32 @@ func IsValidationError(err error) bool {
 	_, ok := err.(*validationError)
 	return ok
 }
+
+
+type dependencyMissingError struct {
+	dependency string
+	err error
+}
+
+func (e *dependencyMissingError) Error() string {
+	return e.err.Error()
+}
+
+func NewDependencyMissingError(dependency string, err error) error {
+	return &dependencyMissingError{
+		dependency: dependency,
+		err: err,
+	}
+}
+
+func IsDependencyMissingError(err error) bool {
+	_, ok := err.(*dependencyMissingError)
+	return ok
+}
+
+func GetMissingDependency(err error) string {
+	if e, ok := err.(*dependencyMissingError); ok {
+		return e.dependency
+	}
+	return ""
+}
