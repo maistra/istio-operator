@@ -206,6 +206,17 @@ base:
   sed_wrap -i -e '/env:/ a\
           - name: ENABLE_MAISTRA_EXTENSIONS\
             value: "{{ .Values.wasmExtensions.enabled }}"' "${deployment}"
+
+  # rootNamespace
+  sed_wrap -i -e '/defaultConfig:/ i\
+    # The namespace to treat as the administrative root namespace for istio\
+    # configuration.\
+{{- if .Values.global.configRootNamespace }}\
+    rootNamespace: {{ .Values.global.configRootNamespace }}\
+{{- else }}\
+    rootNamespace: {{ .Release.Namespace }}\
+{{- end }}' ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml
+
 }
 
 function patchGateways() {
