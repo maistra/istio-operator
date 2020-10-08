@@ -167,6 +167,7 @@ function patchGalley() {
           - --memberRollName=default\
           - --cacheCluster=outbound|80||wasm-cacher-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.cluster.local\
           - --enableNodePortGateways=false\
+          - --enableCRDScan=false\
           - --enableIngressClassName=false\
           - --podLocalitySource=pod' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
   # disable webhook config updates
