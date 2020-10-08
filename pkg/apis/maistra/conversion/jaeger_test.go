@@ -72,7 +72,7 @@ var jaegerTestCases = []conversionTestCase{
 				},
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
+					"tracer": "zipkin",
 				},
 			},
 			"tracing": map[string]interface{}{
@@ -106,7 +106,7 @@ var jaegerTestCases = []conversionTestCase{
 				},
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
+					"tracer": "zipkin",
 				},
 			},
 			"pilot": map[string]interface{}{
@@ -150,7 +150,7 @@ var jaegerTestCases = []conversionTestCase{
 				},
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
+					"tracer": "zipkin",
 				},
 			},
 			"tracing": map[string]interface{}{
@@ -192,7 +192,7 @@ var jaegerTestCases = []conversionTestCase{
 				},
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
+					"tracer": "zipkin",
 				},
 			},
 			"tracing": map[string]interface{}{
@@ -236,7 +236,7 @@ var jaegerTestCases = []conversionTestCase{
 				},
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
+					"tracer": "zipkin",
 				},
 			},
 			"tracing": map[string]interface{}{
@@ -283,7 +283,7 @@ var jaegerTestCases = []conversionTestCase{
 				},
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
+					"tracer": "zipkin",
 				},
 			},
 			"tracing": map[string]interface{}{
@@ -331,7 +331,7 @@ var jaegerTestCases = []conversionTestCase{
 				},
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
+					"tracer": "zipkin",
 				},
 			},
 			"tracing": map[string]interface{}{
@@ -384,7 +384,7 @@ var jaegerTestCases = []conversionTestCase{
 				},
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
+					"tracer": "zipkin",
 				},
 			},
 			"tracing": map[string]interface{}{
@@ -431,7 +431,7 @@ var jaegerTestCases = []conversionTestCase{
 				},
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
+					"tracer": "zipkin",
 				},
 			},
 			"tracing": map[string]interface{}{
@@ -479,7 +479,7 @@ var jaegerTestCases = []conversionTestCase{
 				},
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
+					"tracer": "zipkin",
 				},
 			},
 			"tracing": map[string]interface{}{
@@ -551,7 +551,7 @@ var jaegerTestCases = []conversionTestCase{
 				},
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
+					"tracer": "zipkin",
 				},
 			},
 			"tracing": map[string]interface{}{
@@ -595,7 +595,7 @@ var jaegerTestCases = []conversionTestCase{
 				},
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
+					"tracer": "zipkin",
 				},
 			},
 			"tracing": map[string]interface{}{
@@ -660,7 +660,7 @@ var jaegerTestCases = []conversionTestCase{
 				},
 				"enableTracing": true,
 				"proxy": map[string]interface{}{
-					"tracer": "jaeger",
+					"tracer": "zipkin",
 				},
 			},
 			"tracing": map[string]interface{}{
