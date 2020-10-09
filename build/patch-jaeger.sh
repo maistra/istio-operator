@@ -25,20 +25,10 @@ function jaeger_remove_files() {
   rm -f ${HELM_DIR}/istio-telemetry/tracing/templates/pvc.yaml
 }
 
-function jaeger_istio_config() {
-  sed_wrap -i -e '/else if eq .Values.global.proxy.tracer "zipkin"/ i\
-      {{- else if eq .Values.global.proxy.tracer "jaeger" }}\
-        zipkin:\
-          # Address of the Jaeger collector\
-          address: {{ .Values.global.tracer.zipkin.address }}' \
-      ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml
-}
-
 function JaegerPatch() {
   echo "Patching Jaeger"
 
   jaeger_remove_files
-  jaeger_istio_config
 }
 
 jaeger_patch_values
