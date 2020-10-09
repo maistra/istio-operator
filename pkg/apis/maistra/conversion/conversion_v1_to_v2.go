@@ -99,7 +99,8 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 		return err
 	}
 
-	// Policy
+	// Policy - ensure policy runs before telemetry, as both may use mixer.adapters
+	// policy won't remove these from values, but telemetry will
 	if err := populatePolicyConfig(values, out, version); err != nil {
 		return err
 	}
@@ -138,6 +139,9 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 	if _, err := populateControlPlaneRuntimeConfig(values, out); err != nil {
 		return err
 	}
+
+	// remove common mixer settings (used by both telemetry and policy)
+	values.RemoveField("global.istioRemote")
 
 	// save anything that's left for proper round tripping
 	if len(values.GetContent()) > 0 {

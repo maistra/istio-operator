@@ -38,7 +38,8 @@ var (
 	roundTripTestCases = []struct {
 		name   string
 		smcpv1 v1.ControlPlaneSpec
-		cruft  *v1.HelmValues
+		smcpv2 v2.ControlPlaneSpec
+		cruft  *v1.HelmValues // these are just the key paths that need to be removed
 	}{
 		{
 			name: "simple",
@@ -62,34 +63,53 @@ var (
 					},
 				}),
 			},
+			smcpv2: v2.ControlPlaneSpec{
+				Version: "v1.1",
+				Proxy: &v2.ProxyConfig{
+					Runtime: &v2.ProxyRuntimeConfig{
+						Container: &v2.ContainerConfig{
+							Image: "asd",
+						},
+					},
+				},
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
+				},
+				Addons: &v2.AddonsConfig{
+					Prometheus: &v2.PrometheusAddonConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+					},
+				},
+				TechPreview: v1.NewHelmValues(map[string]interface{}{
+					"global": map[string]interface{}{
+						"some-unmapped-field": map[string]interface{}{
+							"foo":   "bar",
+							"fooey": true,
+						},
+					},
+				}),
+			},
 			cruft: v1.NewHelmValues(map[string]interface{}{
 				"global": map[string]interface{}{
 					// a result of enabling tracing
-					"enableTracing": true,
+					"enableTracing": nil,
 					// mesh expansion is disabled by default
-					"meshExpansion": map[string]interface{}{
-						"enabled": false,
-						"useILB":  false,
-					},
+					"meshExpansion": globalMeshExpansionDefaults,
 					// multicluster is disabled by default
-					"multiCluster": map[string]interface{}{
-						"enabled": false,
-						"multiClusterOverrides": map[string]interface{}{
-							"expansionEnabled":    nil,
-							"multiClusterEnabled": nil,
-						},
-					},
+					"multiCluster": globalMultiClusterDefaults,
 					// a result of enabling tracing, default provider is jaeger
 					"proxy": map[string]interface{}{
-						"tracer": string("jaeger"),
+						"tracer": nil,
 					},
-					"useMCP": true,
+					"useMCP": nil,
 				},
 				// a result of enabling prometheus
 				"mixer": map[string]interface{}{
 					"adapters": map[string]interface{}{
 						"prometheus": map[string]interface{}{
-							"enabled": true,
+							"enabled": nil,
 						},
 					},
 				},
@@ -97,13 +117,41 @@ var (
 				"telemetry": map[string]interface{}{
 					"v2": map[string]interface{}{
 						"prometheus": map[string]interface{}{
-							"enabled": true,
+							"enabled": nil,
 						},
 					},
 				},
 				// a result of enabling tracing, default provider is jaeger
 				"tracing": map[string]interface{}{
-					"provider": string("jaeger"),
+					"provider": nil,
+				},
+			}),
+		},
+		{
+			name: "MAISTRA-1902",
+			smcpv1: v1.ControlPlaneSpec{
+				Version: "v1.1",
+				Istio: v1.NewHelmValues(map[string]interface{}{
+					"global": map[string]interface{}{
+						"disablePolicyChecks": false,
+					},
+				}),
+			},
+			smcpv2: v2.ControlPlaneSpec{
+				Version: "v1.1",
+				Policy: &v2.PolicyConfig{
+					Mixer: &v2.MixerPolicyConfig{
+						EnableChecks: &featureEnabled,
+					},
+				},
+			},
+			cruft: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					// mesh expansion is disabled by default
+					"meshExpansion": globalMeshExpansionDefaults,
+					// multicluster is disabled by default
+					"multiCluster": globalMultiClusterDefaults,
+					"useMCP":       nil,
 				},
 			}),
 		},
@@ -124,11 +172,11 @@ type conversionTestCase struct {
 func assertEquals(t *testing.T, expected, actual interface{}) {
 	t.Helper()
 	if diff := cmp.Diff(expected, actual, cmp.AllowUnexported(v1.HelmValues{})); diff != "" {
-		t.Logf("DeepEqual() failed, retrying after pruning empty/nil objects: %s", diff)
+		t.Logf("DeepEqual() failed, retrying after pruning empty/nil objects:\n%s", diff)
 		prunedExpected := pruneEmptyObjects(expected)
 		prunedActual := pruneEmptyObjects(actual)
 		if diff := cmp.Diff(prunedExpected, prunedActual, cmp.AllowUnexported(v1.HelmValues{})); diff != "" {
-			t.Errorf("unexpected output converting values back to v2: %s", diff)
+			t.Errorf("unexpected output converting values back to v2:\n%s", diff)
 		}
 	}
 
@@ -226,16 +274,19 @@ func TestRoundTripConversion(t *testing.T) {
 			if err != nil {
 				t.Fatalf("error converting smcpv1 to smcpv2: %v", err)
 			}
+			if diff := cmp.Diff(tc.smcpv2, smcpv2, cmp.AllowUnexported(v1.HelmValues{})); diff != "" {
+				t.Errorf("TestRoundTripConversion() case %s v1->v2 mismatch (-want +got):\n%s", tc.name, diff)
+			}
 			smcpv1 = v1.ControlPlaneSpec{}
 			err = Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(&smcpv2, &smcpv1, nil)
 			if err != nil {
 				t.Fatalf("error converting smcpv2 to smcpv1: %v", err)
 			}
 			if diff := cmp.Diff(tc.smcpv1, smcpv1, cmp.AllowUnexported(v1.HelmValues{})); diff != "" {
-				t.Logf("TestRoundTripConversion() case %s mismatch, will try again after removing cruft (-want +got):\n%s", tc.name, diff)
+				t.Logf("TestRoundTripConversion() case %s v2->v1 mismatch, will try again after removing cruft (-want +got):\n%s", tc.name, diff)
 				removeHelmValues(smcpv1.Istio.GetContent(), tc.cruft.GetContent())
 				if diff := cmp.Diff(tc.smcpv1, smcpv1, cmp.AllowUnexported(v1.HelmValues{})); diff != "" {
-					t.Errorf("TestRoundTripConversion() case %s mismatch (-want +got):\n%s", tc.name, diff)
+					t.Errorf("TestRoundTripConversion() case %s v2->v1 mismatch (-want +got):\n%s", tc.name, diff)
 				}
 			}
 		})
@@ -277,6 +328,11 @@ func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 			smcpv1.Spec.ThreeScale = v1.NewHelmValues(threeScale).DeepCopy()
 			if err := scheme.Convert(smcpv1, newsmcpv2, nil); err != nil {
 				t.Fatalf("error converting from values: %s", err)
+			}
+			if tc.roundTripSpec != nil {
+				t.Logf("Substituting roundTripSpec for actual result, differences between expected and substituted are:\n%s", cmp.Diff(smcpv2.Spec, *tc.roundTripSpec, cmp.AllowUnexported(v1.HelmValues{})))
+				smcpv2.Spec = v2.ControlPlaneSpec{}
+				tc.roundTripSpec.DeepCopyInto(&smcpv2.Spec)
 			}
 			assertEquals(t, smcpv2, newsmcpv2)
 		})

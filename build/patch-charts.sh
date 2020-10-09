@@ -215,7 +215,27 @@ base:
     rootNamespace: {{ .Values.global.configRootNamespace }}\
 {{- else }}\
     rootNamespace: {{ .Release.Namespace }}\
-{{- end }}' ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml
+{{- end }}' \
+    -e '/{{- if .Values.global.remotePolicyAddress }}/,/{{- if and .Values.telemetry.v1.enabled .Values.telemetry.enabled }}/ {
+        /{{- if .Values.mixer.policy.enabled }}/,/{{- if and .Values.telemetry.v1.enabled .Values.telemetry.enabled }}/ {
+        d
+      }
+      /{{- if .Values.global.remotePolicyAddress }}/,/{{- if .Values.global.remoteTelemetryAddress }}/ {
+        /.Values.global.remoteTelemetryAddress/i\
+    \{\{- if and .Values.telemetry.v1.enabled .Values.telemetry.enabled \}\}
+        /{{- else }}/,/{{- end }}/ {
+          /{{- end }}/ a\
+    \{\{- else \}\}\
+    \{\{- if .Values.mixer.policy.enabled \}\}\
+    \{\{- if .Values.global.controlPlaneSecurityEnabled \}\}\
+    mixerCheckServer: istio-policy.\{\{ .Values.global.policyNamespace \}\}.svc.\{\{ .Values.global.proxy.clusterDomain \}\}:15004\
+    \{\{- else \}\}\
+    mixerCheckServer: istio-policy.\{\{ .Values.global.policyNamespace \}\}.svc.\{\{ .Values.global.proxy.clusterDomain \}\}:9091\
+    \{\{- end \}\}\
+    \{\{- end \}\}
+        }
+      }
+    }' ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml
 
 }
 

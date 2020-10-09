@@ -1,9 +1,9 @@
 package conversion
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
@@ -89,6 +89,9 @@ var policyTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"istioRemote": false,
+			},
 			"mixer": map[string]interface{}{
 				"policy": map[string]interface{}{
 					"enabled": false,
@@ -116,7 +119,6 @@ var policyTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"mixer": map[string]interface{}{
-				"enabled": false,
 				"policy": map[string]interface{}{
 					"enabled": false,
 				},
@@ -143,7 +145,6 @@ var policyTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"mixer": map[string]interface{}{
-				"enabled": true,
 				"policy": map[string]interface{}{
 					"enabled": true,
 				},
@@ -171,7 +172,6 @@ var policyTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"mixer": map[string]interface{}{
-				"enabled": true,
 				"policy": map[string]interface{}{
 					"enabled": true,
 				},
@@ -207,7 +207,6 @@ var policyTestCases = []conversionTestCase{
 				"policyCheckFailOpen": false,
 			},
 			"mixer": map[string]interface{}{
-				"enabled": true,
 				"policy": map[string]interface{}{
 					"enabled":                true,
 					"sessionAffinityEnabled": true,
@@ -238,7 +237,6 @@ var policyTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"mixer": map[string]interface{}{
-				"enabled": true,
 				"policy": map[string]interface{}{
 					"enabled": true,
 				},
@@ -271,7 +269,6 @@ var policyTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"mixer": map[string]interface{}{
-				"enabled": true,
 				"policy": map[string]interface{}{
 					"enabled": true,
 					"adapters": map[string]interface{}{
@@ -303,8 +300,10 @@ var policyTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"istioRemote": false,
+			},
 			"mixer": map[string]interface{}{
-				"enabled": true,
 				"policy": map[string]interface{}{
 					"enabled": true,
 				},
@@ -331,8 +330,10 @@ var policyTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"istioRemote": false,
+			},
 			"mixer": map[string]interface{}{
-				"enabled": true,
 				"policy": map[string]interface{}{
 					"enabled": true,
 				},
@@ -364,11 +365,11 @@ var policyTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
+				"istioRemote":         false,
 				"disablePolicyChecks": false,
 				"policyCheckFailOpen": false,
 			},
 			"mixer": map[string]interface{}{
-				"enabled": true,
 				"policy": map[string]interface{}{
 					"enabled":                true,
 					"sessionAffinityEnabled": true,
@@ -398,8 +399,10 @@ var policyTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"istioRemote": false,
+			},
 			"mixer": map[string]interface{}{
-				"enabled": true,
 				"policy": map[string]interface{}{
 					"enabled": true,
 				},
@@ -430,9 +433,31 @@ var policyTestCases = []conversionTestCase{
 				},
 			},
 		},
+		roundTripSpec: &v2.ControlPlaneSpec{
+			Version: versions.V1_1.String(),
+			Policy: &v2.PolicyConfig{
+				Type: v2.PolicyTypeMixer,
+				Mixer: &v2.MixerPolicyConfig{
+					Adapters: &v2.MixerPolicyAdaptersConfig{
+						KubernetesEnv:  &featureEnabled,
+						UseAdapterCRDs: &featureDisabled,
+					},
+				},
+			},
+			Telemetry: &v2.TelemetryConfig{
+				Mixer: &v2.MixerTelemetryConfig{
+					Adapters: &v2.MixerTelemetryAdaptersConfig{
+						KubernetesEnv:  &featureEnabled,
+						UseAdapterCRDs: &featureDisabled,
+					},
+				},
+			},
+		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+			"global": map[string]interface{}{
+				"istioRemote": false,
+			},
 			"mixer": map[string]interface{}{
-				"enabled": true,
 				"adapters": map[string]interface{}{
 					"kubernetesenv": map[string]interface{}{
 						"enabled": true,
@@ -464,13 +489,9 @@ var policyTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"remotePolicyAddress": "",
-			},
 			"mixer": map[string]interface{}{
-				"enabled": false,
 				"policy": map[string]interface{}{
-					"enabled": true,
+					"enabled": false,
 				},
 			},
 			"policy": map[string]interface{}{
@@ -495,13 +516,9 @@ var policyTestCases = []conversionTestCase{
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"remotePolicyAddress": "",
-			},
 			"mixer": map[string]interface{}{
-				"enabled": false,
 				"policy": map[string]interface{}{
-					"enabled": true,
+					"enabled": false,
 				},
 			},
 			"policy": map[string]interface{}{
@@ -530,6 +547,23 @@ var policyTestCases = []conversionTestCase{
 				},
 			},
 		},
+		roundTripSpec: &v2.ControlPlaneSpec{
+			Version: versions.V2_0.String(),
+			Policy: &v2.PolicyConfig{
+				Type: v2.PolicyTypeRemote,
+				Remote: &v2.RemotePolicyConfig{
+					Address:       "mixer-policy.some-namespace.svc.cluster.local",
+					CreateService: &featureEnabled,
+					EnableChecks:  &featureEnabled,
+					FailOpen:      &featureDisabled,
+				},
+			},
+			Telemetry: &v2.TelemetryConfig{
+				Remote: &v2.RemoteTelemetryConfig{
+					CreateService: &featureEnabled,
+				},
+			},
+		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"createRemoteSvcEndpoints": true,
@@ -538,9 +572,8 @@ var policyTestCases = []conversionTestCase{
 				"policyCheckFailOpen":      false,
 			},
 			"mixer": map[string]interface{}{
-				"enabled": false,
 				"policy": map[string]interface{}{
-					"enabled": true,
+					"enabled": false,
 				},
 			},
 			"policy": map[string]interface{}{
@@ -563,14 +596,22 @@ var policyTestCases = []conversionTestCase{
 				Type: v2.PolicyTypeRemote,
 			},
 		},
+		roundTripSpec: &v2.ControlPlaneSpec{
+			Version: versions.V1_1.String(),
+			Policy: &v2.PolicyConfig{
+				Type: v2.PolicyTypeRemote,
+			},
+			Telemetry: &v2.TelemetryConfig{
+				Type: v2.TelemetryTypeRemote,
+			},
+		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"remotePolicyAddress": "",
+				"istioRemote": true,
 			},
 			"mixer": map[string]interface{}{
-				"enabled": false,
 				"policy": map[string]interface{}{
-					"enabled": true,
+					"enabled": false,
 				},
 			},
 			"policy": map[string]interface{}{
@@ -594,14 +635,22 @@ var policyTestCases = []conversionTestCase{
 				Remote: &v2.RemotePolicyConfig{},
 			},
 		},
+		roundTripSpec: &v2.ControlPlaneSpec{
+			Version: versions.V1_1.String(),
+			Policy: &v2.PolicyConfig{
+				Type: v2.PolicyTypeRemote,
+			},
+			Telemetry: &v2.TelemetryConfig{
+				Type: v2.TelemetryTypeRemote,
+			},
+		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"remotePolicyAddress": "",
+				"istioRemote": true,
 			},
 			"mixer": map[string]interface{}{
-				"enabled": false,
 				"policy": map[string]interface{}{
-					"enabled": true,
+					"enabled": false,
 				},
 			},
 			"policy": map[string]interface{}{
@@ -630,17 +679,35 @@ var policyTestCases = []conversionTestCase{
 				},
 			},
 		},
+		roundTripSpec: &v2.ControlPlaneSpec{
+			Version: versions.V1_1.String(),
+			Policy: &v2.PolicyConfig{
+				Type: v2.PolicyTypeRemote,
+				Remote: &v2.RemotePolicyConfig{
+					Address:       "mixer-policy.some-namespace.svc.cluster.local",
+					CreateService: &featureEnabled,
+					EnableChecks:  &featureEnabled,
+					FailOpen:      &featureDisabled,
+				},
+			},
+			Telemetry: &v2.TelemetryConfig{
+				Type: v2.TelemetryTypeRemote,
+				Remote: &v2.RemoteTelemetryConfig{
+					CreateService: &featureEnabled,
+				},
+			},
+		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
+				"istioRemote":              true,
 				"createRemoteSvcEndpoints": true,
 				"remotePolicyAddress":      "mixer-policy.some-namespace.svc.cluster.local",
 				"disablePolicyChecks":      false,
 				"policyCheckFailOpen":      false,
 			},
 			"mixer": map[string]interface{}{
-				"enabled": false,
 				"policy": map[string]interface{}{
-					"enabled": true,
+					"enabled": false,
 				},
 			},
 			"policy": map[string]interface{}{
@@ -665,8 +732,8 @@ func TestPolicyConversionFromV2(t *testing.T) {
 			if err := populatePolicyValues(specCopy, helmValues.GetContent()); err != nil {
 				t.Fatalf("error converting to values: %s", err)
 			}
-			if !reflect.DeepEqual(tc.isolatedIstio.DeepCopy(), helmValues.DeepCopy()) {
-				t.Errorf("unexpected output converting v2 to values:\n\texpected:\n%#v\n\tgot:\n%#v", tc.isolatedIstio.GetContent(), helmValues.GetContent())
+			if diff := cmp.Diff(tc.isolatedIstio.GetContent(), helmValues.GetContent()); diff != "" {
+				t.Errorf("unexpected output converting v2 to values:\n%s", diff)
 			}
 			specv2 := &v2.ControlPlaneSpec{}
 			// use expected values
