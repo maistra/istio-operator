@@ -399,6 +399,7 @@ func (r *MemberRollReconciler) getActiveMesh(ctx context.Context, instance *v1.S
 				})
 			} else {
 				reqLogger.Info("Skipping reconciliation of SMMR, because no ServiceMeshControlPlane exists in the project.", "project", instance.Namespace)
+				instance.Status.ConfiguredMembers = make([]string, 0)
 				instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
 					Type:    v1.ConditionTypeMemberRollReady,
 					Status:  corev1.ConditionFalse,
