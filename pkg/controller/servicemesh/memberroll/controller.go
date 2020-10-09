@@ -138,12 +138,7 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 
 			return []reconcile.Request{{NamespacedName: namespacedName}}
 		}),
-	}, predicate.Funcs{
-		DeleteFunc: func(_ event.DeleteEvent) bool {
-			// we don't need to process the member roll on deletions (we add an owner reference, so it gets deleted automatically)
-			return false
-		},
-	})
+	}, predicate.Funcs{})
 	if err != nil {
 		return err
 	}
