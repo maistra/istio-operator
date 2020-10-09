@@ -244,9 +244,6 @@ function patchGateways() {
                 lightstep:\
                   address: {{ .Values.global.tracer.lightstep.address }}\
                   accessToken: {{ .Values.global.tracer.lightstep.accessToken }}\
-              {{- else if eq .Values.global.proxy.tracer "jaeger" }}\
-                zipkin:\
-                  address: {{ .Values.global.tracer.zipkin.address }}\
               {{- else if eq .Values.global.proxy.tracer "zipkin" }}\
                 zipkin:\
                 {{- if .Values.global.tracer.zipkin.address }}\

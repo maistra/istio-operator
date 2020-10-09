@@ -39,7 +39,7 @@ func populateTracingValues(in *v2.ControlPlaneSpec, values map[string]interface{
 			if err := setHelmBoolValue(values, "global.enableTracing", true); err != nil {
 				return err
 			}
-			if err := setHelmStringValue(values, "global.proxy.tracer", "jaeger"); err != nil {
+			if err := setHelmStringValue(values, "global.proxy.tracer", "zipkin"); err != nil {
 				return err
 			}
 		case v2.TracerTypeStackdriver:
@@ -114,6 +114,8 @@ func populateTracingConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 
 func tracerTypeFromString(tracer string) (v2.TracerType, error) {
 	switch strings.ToLower(tracer) {
+	case "zipkin":
+		return v2.TracerTypeJaeger, nil
 	case strings.ToLower(string(v2.TracerTypeJaeger)):
 		return v2.TracerTypeJaeger, nil
 	case strings.ToLower(string(v2.TracerTypeStackdriver)):
