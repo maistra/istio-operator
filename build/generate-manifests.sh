@@ -22,6 +22,7 @@ if [[ ${COMMUNITY} == "true" ]]; then
   DISPLAY_NAME="Maistra Service Mesh"
   DOCUMENTATION_URL="https://maistra.io/"
   BUG_URL="https://issues.redhat.com/projects/MAISTRA"
+  OLM_FEATURES="[]"
 else
   BUILD_TYPE="servicemesh"
   JAEGER_TEMPLATE="all-in-one"
@@ -30,6 +31,7 @@ else
   DISPLAY_NAME="Red Hat OpenShift Service Mesh"
   DOCUMENTATION_URL="https://docs.openshift.com/container-platform/latest/service_mesh/servicemesh-release-notes.html"
   BUG_URL="https://issues.redhat.com/projects/OSSM"
+  OLM_FEATURES="[\"Disconnected\"]"
 fi
 : ${DEPLOYMENT_FILE:=deploy/${BUILD_TYPE}-operator.yaml}
 : ${MANIFESTS_DIR:=manifests-${BUILD_TYPE}}
@@ -108,6 +110,7 @@ function generateCSV() {
   sed -i -e 's/__APP_DESCRIPTION__/'"$APP_DESCRIPTION"'/' ${csv_path}
   sed -i -e 's+__DOCUMENTATION_URL__+'"$DOCUMENTATION_URL"'+' ${csv_path}
   sed -i -e 's+__BUG_URL__+'"$BUG_URL"'+' ${csv_path}
+  sed -i -e 's+__OLM_FEATURES__+'"$OLM_FEATURES"'+' ${csv_path}
   sed -i -e 's/__JAEGER_TEMPLATE__/'${JAEGER_TEMPLATE}'/' ${csv_path}
   sed -i -e 's/__DATE__/'$(date +%Y-%m-%dT%H:%M:%S%Z)'/g' ${csv_path}
   sed -i -e 's+__IMAGE_SRC__+'${IMAGE_SRC}'+g' ${csv_path}
