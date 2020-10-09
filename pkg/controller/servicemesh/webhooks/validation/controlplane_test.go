@@ -70,6 +70,8 @@ func TestOnlyOneControlPlaneIsAllowedPerNamespace(t *testing.T) {
 }
 
 func TestControlPlaneValidation(t *testing.T) {
+	enabled := true
+	disabled := false
 	cases := []struct {
 		name         string
 		controlPlane runtime.Object
@@ -420,6 +422,125 @@ func TestControlPlaneValidation(t *testing.T) {
 			valid: true,
 		},
 		{
+			name: "v2-remote-policy-v1.0-fail",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_0.String(),
+					Policy: &maistrav2.PolicyConfig{
+						Type: maistrav2.PolicyTypeRemote,
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "v2-remote-policy-v1.1-fail",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_1.String(),
+					Policy: &maistrav2.PolicyConfig{
+						Type: maistrav2.PolicyTypeRemote,
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "v2-remote-policy-v2.0-fail",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V2_0.String(),
+					Policy: &maistrav2.PolicyConfig{
+						Remote: &maistrav2.RemotePolicyConfig{
+							Address: "some.address.com",
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "v2-remote-policy-v1.0-pass",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_0.String(),
+					Policy: &maistrav2.PolicyConfig{
+						Type: maistrav2.PolicyTypeRemote,
+						Remote: &maistrav2.RemotePolicyConfig{
+							Address: "some.address.com",
+						},
+					},
+					Telemetry: &maistrav2.TelemetryConfig{
+						Type: maistrav2.TelemetryTypeRemote,
+						Remote: &maistrav2.RemoteTelemetryConfig{
+							Address: "some.address.com",
+						},
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "v2-remote-policy-v1.1-pass",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_1.String(),
+					Policy: &maistrav2.PolicyConfig{
+						Type: maistrav2.PolicyTypeRemote,
+						Remote: &maistrav2.RemotePolicyConfig{
+							Address: "some.address.com",
+						},
+					},
+					Telemetry: &maistrav2.TelemetryConfig{
+						Type: maistrav2.TelemetryTypeRemote,
+						Remote: &maistrav2.RemoteTelemetryConfig{
+							Address: "some.address.com",
+						},
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "v2-remote-policy-v2.0-pass",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V2_0.String(),
+					Policy: &maistrav2.PolicyConfig{
+						Type: maistrav2.PolicyTypeRemote,
+						Remote: &maistrav2.RemotePolicyConfig{
+							Address: "some.address.com",
+						},
+					},
+				},
+			},
+			valid: true,
+		},
+		{
 			name: "v2-istiod-telemetry-v1.0",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
 				ObjectMeta: meta.ObjectMeta{
@@ -462,6 +583,247 @@ func TestControlPlaneValidation(t *testing.T) {
 					Version: versions.V2_0.String(),
 					Telemetry: &maistrav2.TelemetryConfig{
 						Type: maistrav2.TelemetryTypeIstiod,
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "v2-remote-telemetry-v1.0-fail",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_0.String(),
+					Telemetry: &maistrav2.TelemetryConfig{
+						Type: maistrav2.TelemetryTypeRemote,
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "v2-remote-telemetry-v1.1-fail",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_1.String(),
+					Telemetry: &maistrav2.TelemetryConfig{
+						Type: maistrav2.TelemetryTypeRemote,
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "v2-remote-telemetry-v2.0-fail",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V2_0.String(),
+					Telemetry: &maistrav2.TelemetryConfig{
+						Remote: &maistrav2.RemoteTelemetryConfig{
+							Address: "some.address.com",
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "v2-telemetry-mixer-adapters-v1.0-fail",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_0.String(),
+					Telemetry: &maistrav2.TelemetryConfig{
+						Mixer: &maistrav2.MixerTelemetryConfig{
+							Adapters: &maistrav2.MixerTelemetryAdaptersConfig{
+								KubernetesEnv:  &enabled,
+								UseAdapterCRDs: &enabled,
+							},
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "v2-telemetry-mixer-adapters-v1.1-fail",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_1.String(),
+					Telemetry: &maistrav2.TelemetryConfig{
+						Mixer: &maistrav2.MixerTelemetryConfig{
+							Adapters: &maistrav2.MixerTelemetryAdaptersConfig{
+								KubernetesEnv:  &enabled,
+								UseAdapterCRDs: &enabled,
+							},
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "v2-telemetry-mixer-adapters-v2.0-fail",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V2_0.String(),
+					Telemetry: &maistrav2.TelemetryConfig{
+						Mixer: &maistrav2.MixerTelemetryConfig{
+							Adapters: &maistrav2.MixerTelemetryAdaptersConfig{
+								KubernetesEnv:  &enabled,
+								UseAdapterCRDs: &enabled,
+							},
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "v2-telemetry-mixer-adapters-diff-v1.0-fail",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_0.String(),
+					Telemetry: &maistrav2.TelemetryConfig{
+						Mixer: &maistrav2.MixerTelemetryConfig{
+							Adapters: &maistrav2.MixerTelemetryAdaptersConfig{
+								KubernetesEnv: &enabled,
+							},
+						},
+					},
+					Policy: &maistrav2.PolicyConfig{
+						Mixer: &maistrav2.MixerPolicyConfig{
+							Adapters: &maistrav2.MixerPolicyAdaptersConfig{
+								KubernetesEnv: &disabled,
+							},
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "v2-telemetry-mixer-adapters-diff-v1.1-fail",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_1.String(),
+					Telemetry: &maistrav2.TelemetryConfig{
+						Mixer: &maistrav2.MixerTelemetryConfig{
+							Adapters: &maistrav2.MixerTelemetryAdaptersConfig{
+								KubernetesEnv: &enabled,
+							},
+						},
+					},
+					Policy: &maistrav2.PolicyConfig{
+						Mixer: &maistrav2.MixerPolicyConfig{
+							Adapters: &maistrav2.MixerPolicyAdaptersConfig{
+								KubernetesEnv: &disabled,
+							},
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "v2-telemetry-mixer-adapters-v1.0-pass",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_0.String(),
+					Telemetry: &maistrav2.TelemetryConfig{
+						Mixer: &maistrav2.MixerTelemetryConfig{
+							Adapters: &maistrav2.MixerTelemetryAdaptersConfig{
+								KubernetesEnv: &enabled,
+							},
+						},
+					},
+					Policy: &maistrav2.PolicyConfig{
+						Mixer: &maistrav2.MixerPolicyConfig{
+							Adapters: &maistrav2.MixerPolicyAdaptersConfig{
+								KubernetesEnv: &enabled,
+							},
+						},
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "v2-telemetry-mixer-adapters-v1.1-pass",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_1.String(),
+					Telemetry: &maistrav2.TelemetryConfig{
+						Mixer: &maistrav2.MixerTelemetryConfig{
+							Adapters: &maistrav2.MixerTelemetryAdaptersConfig{
+								KubernetesEnv: &enabled,
+							},
+						},
+					},
+					Policy: &maistrav2.PolicyConfig{
+						Mixer: &maistrav2.MixerPolicyConfig{
+							Adapters: &maistrav2.MixerPolicyAdaptersConfig{
+								KubernetesEnv: &enabled,
+							},
+						},
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "v2-telemetry-mixer-adapters-v2.0-pass",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V2_0.String(),
+					Telemetry: &maistrav2.TelemetryConfig{
+						Mixer: &maistrav2.MixerTelemetryConfig{
+							Adapters: &maistrav2.MixerTelemetryAdaptersConfig{
+								KubernetesEnv: &enabled,
+							},
+						},
 					},
 				},
 			},

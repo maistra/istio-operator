@@ -143,6 +143,8 @@ func (v *versionStrategyV2_0) ValidateV1(ctx context.Context, cl client.Client, 
 func (v *versionStrategyV2_0) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
 	allErrors = validateGateways(ctx, meta, spec, v.version, cl, allErrors)
+	allErrors = validatePolicyType(ctx, meta, spec, v.version, allErrors)
+	allErrors = validateTelemetryType(ctx, meta, spec, v.version, allErrors)
 	return NewValidationError(allErrors...)
 }
 

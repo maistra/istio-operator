@@ -3,8 +3,6 @@ package conversion
 import (
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
@@ -12,17 +10,20 @@ import (
 
 func populateTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
 	telemetry := in.Telemetry
-	if telemetry == nil || in.Telemetry.Type == "" {
+	if telemetry == nil {
 		return nil
 	}
 
 	istiod := !(in.Version == "" || in.Version == versions.V1_0.String() || in.Version == versions.V1_1.String())
 
-	if err := setHelmStringValue(values, "telemetry.implementation", string(in.Telemetry.Type)); err != nil {
-		return nil
+	if in.Telemetry.Type != "" {
+		if err := setHelmStringValue(values, "telemetry.implementation", string(in.Telemetry.Type)); err != nil {
+			return nil
+		}
 	}
 
-	if telemetry.Type == v2.TelemetryTypeNone {
+	switch in.Telemetry.Type {
+	case v2.TelemetryTypeNone:
 		if istiod {
 			if err := setHelmBoolValue(values, "telemetry.enabled", false); err != nil {
 				return err
@@ -33,24 +34,86 @@ func populateTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interfac
 			if err := setHelmBoolValue(values, "telemetry.v2.enabled", false); err != nil {
 				return err
 			}
+		} else {
+			if err := setHelmBoolValue(values, "global.istioRemote", false); err != nil {
+				return err
+			}
 		}
-		return setHelmBoolValue(values, "mixer.telemetry.enabled", false)
-	}
-
-	switch telemetry.Type {
+		if err := setHelmBoolValue(values, "mixer.telemetry.enabled", false); err != nil {
+			return err
+		}
 	case v2.TelemetryTypeMixer:
-		return populateMixerTelemetryValues(in, istiod, values)
+		if istiod {
+			if err := setHelmBoolValue(values, "telemetry.enabled", true); err != nil {
+				return err
+			}
+			if err := setHelmBoolValue(values, "telemetry.v1.enabled", true); err != nil {
+				return err
+			}
+			if err := setHelmBoolValue(values, "telemetry.v2.enabled", false); err != nil {
+				return err
+			}
+		} else {
+			if err := setHelmBoolValue(values, "global.istioRemote", false); err != nil {
+				return err
+			}
+		}
+		if err := setHelmBoolValue(values, "mixer.telemetry.enabled", true); err != nil {
+			return err
+		}
 	case v2.TelemetryTypeRemote:
-		return populateRemoteTelemetryValues(in, istiod, values)
+		if istiod {
+			if err := setHelmBoolValue(values, "telemetry.enabled", true); err != nil {
+				return err
+			}
+			if err := setHelmBoolValue(values, "telemetry.v1.enabled", true); err != nil {
+				return err
+			}
+			if err := setHelmBoolValue(values, "telemetry.v2.enabled", false); err != nil {
+				return err
+			}
+		} else {
+			if err := setHelmBoolValue(values, "global.istioRemote", true); err != nil {
+				return err
+			}
+		}
+		if err := setHelmBoolValue(values, "mixer.telemetry.enabled", false); err != nil {
+			return err
+		}
 	case v2.TelemetryTypeIstiod:
-		return populateIstiodTelemetryValues(in, values)
+		if istiod {
+			if err := setHelmBoolValue(values, "telemetry.enabled", true); err != nil {
+				return err
+			}
+			if err := setHelmBoolValue(values, "telemetry.v1.enabled", false); err != nil {
+				return err
+			}
+			if err := setHelmBoolValue(values, "telemetry.v2.enabled", true); err != nil {
+				return err
+			}
+		} else {
+			if err := setHelmBoolValue(values, "global.istioRemote", false); err != nil {
+				return err
+			}
+		}
+		if err := setHelmBoolValue(values, "mixer.telemetry.enabled", false); err != nil {
+			return err
+		}
+	case "":
+		// don't configure anything, let defaults take over
 	}
 
-	if istiod {
-		return setHelmBoolValue(values, "telemetry.enabled", false)
+	if err := populateMixerTelemetryValues(in, istiod, values); err != nil {
+		return err
 	}
-	setHelmBoolValue(values, "mixer.telemetry.enabled", false)
-	return fmt.Errorf("Unknown telemetry type: %s", telemetry.Type)
+	if err := populateRemoteTelemetryValues(in, istiod, values); err != nil {
+		return err
+	}
+	if err := populateIstiodTelemetryValues(in, values); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values map[string]interface{}) error {
@@ -59,16 +122,7 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 		mixer = &v2.MixerTelemetryConfig{}
 	}
 
-	// Make sure mixer is enabled
-	if err := setHelmBoolValue(values, "mixer.enabled", true); err != nil {
-		return err
-	}
-
 	v1TelemetryValues := make(map[string]interface{})
-	if err := setHelmBoolValue(v1TelemetryValues, "enabled", true); err != nil {
-		return err
-	}
-
 	if err := populateTelemetryBatchingValues(mixer.Batching, v1TelemetryValues); err != nil {
 		return nil
 	}
@@ -124,40 +178,9 @@ func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values m
 	}
 
 	// set the telemetry values
-	if istiod {
-		var v2TelemetryValues map[string]interface{}
-		if rawTelemetryValues, ok, err := unstructured.NestedFieldNoCopy(values, "telemetry"); ok {
-			if v2TelemetryValues, ok = rawTelemetryValues.(map[string]interface{}); !ok {
-				v2TelemetryValues = make(map[string]interface{})
-			}
-		} else if err != nil {
-			return nil
-		} else {
-			v2TelemetryValues = make(map[string]interface{})
-		}
-		if err := setHelmBoolValue(v2TelemetryValues, "enabled", true); err != nil {
+	if len(v1TelemetryValues) > 0 {
+		if err := overwriteHelmValues(values, v1TelemetryValues, "mixer", "telemetry"); err != nil {
 			return err
-		}
-		if err := setHelmBoolValue(v2TelemetryValues, "v1.enabled", true); err != nil {
-			return err
-		}
-		if err := setHelmBoolValue(v2TelemetryValues, "v2.enabled", false); err != nil {
-			return err
-		}
-
-		if err := overwriteHelmValues(values, v2TelemetryValues, "telemetry"); err != nil {
-			return err
-		}
-		if len(v1TelemetryValues) > 0 {
-			if err := overwriteHelmValues(values, v1TelemetryValues, "mixer", "telemetry"); err != nil {
-				return err
-			}
-		}
-	} else {
-		if len(v1TelemetryValues) > 0 {
-			if err := overwriteHelmValues(values, v1TelemetryValues, "mixer", "telemetry"); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -185,13 +208,10 @@ func populateRemoteTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values 
 		remote = &v2.RemoteTelemetryConfig{}
 	}
 
-	// Make sure mixer is disabled
-	if err := setHelmBoolValue(values, "mixer.enabled", false); err != nil {
-		return err
-	}
-
-	if err := setHelmStringValue(values, "global.remoteTelemetryAddress", remote.Address); err != nil {
-		return err
+	if remote.Address != "" {
+		if err := setHelmStringValue(values, "global.remoteTelemetryAddress", remote.Address); err != nil {
+			return err
+		}
 	}
 	// XXX: this applies to both policy and telemetry
 	if remote.CreateService != nil {
@@ -201,49 +221,14 @@ func populateRemoteTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values 
 	}
 
 	v1TelemetryValues := make(map[string]interface{})
-	if err := setHelmBoolValue(v1TelemetryValues, "enabled", true); err != nil {
-		return err
-	}
-
 	if err := populateTelemetryBatchingValues(remote.Batching, v1TelemetryValues); err != nil {
 		return nil
 	}
 
 	// set the telemetry values
-	if istiod {
-		var v2TelemetryValues map[string]interface{}
-		if rawTelemetryValues, ok, err := unstructured.NestedFieldNoCopy(values, "telemetry"); ok {
-			if v2TelemetryValues, ok = rawTelemetryValues.(map[string]interface{}); !ok {
-				v2TelemetryValues = make(map[string]interface{})
-			}
-		} else if err != nil {
-			return nil
-		} else {
-			v2TelemetryValues = make(map[string]interface{})
-		}
-		if err := setHelmBoolValue(v2TelemetryValues, "enabled", true); err != nil {
+	if len(v1TelemetryValues) > 0 {
+		if err := overwriteHelmValues(values, v1TelemetryValues, "mixer", "telemetry"); err != nil {
 			return err
-		}
-		if err := setHelmBoolValue(v2TelemetryValues, "v1.enabled", true); err != nil {
-			return err
-		}
-		if err := setHelmBoolValue(v2TelemetryValues, "v2.enabled", false); err != nil {
-			return err
-		}
-
-		if err := overwriteHelmValues(values, v2TelemetryValues, "telemetry"); err != nil {
-			return err
-		}
-		if len(v1TelemetryValues) > 0 {
-			if err := overwriteHelmValues(values, v1TelemetryValues, "mixer", "telemetry"); err != nil {
-				return err
-			}
-		}
-	} else {
-		if len(v1TelemetryValues) > 0 {
-			if err := overwriteHelmValues(values, v1TelemetryValues, "mixer", "telemetry"); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -251,38 +236,6 @@ func populateRemoteTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values 
 }
 
 func populateIstiodTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
-	// Make sure mixer is disabled
-	if err := setHelmBoolValue(values, "mixer.enabled", false); err != nil {
-		return err
-	}
-
-	var telemetryValues map[string]interface{}
-	if rawTelemetryValues, ok, err := unstructured.NestedFieldNoCopy(values, "telemetry"); ok {
-		if telemetryValues, ok = rawTelemetryValues.(map[string]interface{}); !ok {
-			telemetryValues = make(map[string]interface{})
-		}
-	} else if err != nil {
-		return nil
-	} else {
-		telemetryValues = make(map[string]interface{})
-	}
-	if err := setHelmBoolValue(telemetryValues, "enabled", true); err != nil {
-		return err
-	}
-	if err := setHelmBoolValue(telemetryValues, "v1.enabled", false); err != nil {
-		return err
-	}
-	if err := setHelmBoolValue(telemetryValues, "v2.enabled", true); err != nil {
-		return err
-	}
-
-	// set the telemetry values
-	if len(telemetryValues) > 0 {
-		if err := overwriteHelmValues(values, telemetryValues, "telemetry"); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -304,53 +257,84 @@ func populateTelemetryConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, versio
 	} else if err != nil {
 		return err
 	} else {
-		// figure out what we're installing
-		if v2Enabled, v2EnabledSet, err := in.GetAndRemoveBool("telemetry.v2.enabled"); v2EnabledSet && v2Enabled {
-			telemetryType = v2.TelemetryTypeIstiod
-		} else if err != nil {
-			return err
-		} else if mixerTelemetryEnabled, mixerTelemetryEnabledSet, err := in.GetAndRemoveBool("mixer.telemetry.enabled"); err == nil {
-			// installing some form of mixer based telemetry
-			if mixerEnabled, mixerEnabledSet, err := in.GetAndRemoveBool("mixer.enabled"); err == nil {
-				if !mixerEnabledSet || !mixerTelemetryEnabledSet {
-					// assume no telemetry to configure
-					return nil
-				}
-				if mixerEnabled {
-					if mixerTelemetryEnabled {
-						// installing mixer telemetry
-						telemetryType = v2.TelemetryTypeMixer
-					} else {
-						// mixer telemetry disabled
-						telemetryType = v2.TelemetryTypeNone
-					}
-				} else if mixerTelemetryEnabled {
-					// using remote mixer telemetry
-					telemetryType = v2.TelemetryTypeRemote
-				} else {
-					switch version {
-					case versions.V1_0, versions.V1_1:
-						// telemetry disabled
-						telemetryType = v2.TelemetryTypeNone
-					case versions.V2_0:
-						if v2EnabledSet {
-							telemetryType = v2.TelemetryTypeNone
-						} else {
-							telemetryType = v2.TelemetryTypeIstiod
-						}
-					default:
-						return fmt.Errorf("unknown version: %s", version.String())
-					}
-				}
-			} else {
-				return err
-			}
-		} else {
+		// now it's complicated
+		// we're converting from native v1 resource.  try to guess the type
+		var mixerTelemetryEnabled, mixerTelemetryEnabledSet, remoteEnabled bool
+		if mixerTelemetryEnabled, mixerTelemetryEnabledSet, err = in.GetAndRemoveBool("mixer.telemetry.enabled"); err != nil {
 			return err
 		}
+		if remoteEnabled, _, err = in.GetBool("global.istioRemote"); err != nil {
+			return err
+		}
+		// if mixer.telemetry.enabled is unset, assume version specific default
+		switch version {
+		case versions.V1_0:
+			fallthrough
+		case versions.V1_1:
+			if remoteEnabled {
+				// using remote telemetry, which takes precedence over mixer (in the charts, at least)
+				telemetryType = v2.TelemetryTypeRemote
+			} else if mixerTelemetryEnabled {
+				// mixer telemetry explicitly enabled
+				telemetryType = v2.TelemetryTypeMixer
+			} else if mixerTelemetryEnabledSet {
+				// mixer is explicitly disabled
+				telemetryType = v2.TelemetryTypeNone
+			} else {
+				// don't set telemetry type, let the defaults do their thing
+				telemetryType = ""
+			}
+		case versions.V2_0:
+			remoteTelemetryAddress, _, _ := in.GetString("global.remoteTelemetryAddress")
+			if remoteEnabled || remoteTelemetryAddress != "" {
+				// special case if copying over an old v1 resource an bumping the version to v2.0
+				telemetryType = v2.TelemetryTypeRemote
+			} else {
+				// leave the defaults
+				telemetryType = ""
+			}
+		default:
+			return fmt.Errorf("Unknown version")
+		}
 	}
-	if telemetryType == "" {
-		return fmt.Errorf("Could not determine telemetry type")
+
+	telemetry := &v2.TelemetryConfig{}
+	setTelemetry := false
+	if telemetryType != "" {
+		setTelemetry = true
+		telemetry.Type = telemetryType
+	}
+
+	// some funky handling here, as some mixer settings are duplicated, so try
+	// to get them in the right bucket
+	remote := &v2.RemoteTelemetryConfig{}
+	mixer := &v2.MixerTelemetryConfig{}
+	if telemetryType == v2.TelemetryTypeRemote {
+		if applied, err := populateRemoteTelemetryConfig(in, remote); err != nil {
+			return err
+		} else if applied {
+			setTelemetry = true
+			telemetry.Remote = remote
+		}
+		if applied, err := populateMixerTelemetryConfig(in, mixer); err != nil {
+			return err
+		} else if applied {
+			setTelemetry = true
+			telemetry.Mixer = mixer
+		}
+	} else {
+		if applied, err := populateMixerTelemetryConfig(in, mixer); err != nil {
+			return err
+		} else if applied {
+			setTelemetry = true
+			telemetry.Mixer = mixer
+		}
+		if applied, err := populateRemoteTelemetryConfig(in, remote); err != nil {
+			return err
+		} else if applied {
+			setTelemetry = true
+			telemetry.Remote = remote
+		}
 	}
 
 	// remove auto-populated values
@@ -359,28 +343,8 @@ func populateTelemetryConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, versio
 	in.RemoveField("telemetry.v1.enabled")
 	in.RemoveField("telemetry.v2.enabled")
 
-	out.Telemetry = &v2.TelemetryConfig{
-		Type: telemetryType,
-	}
-	switch telemetryType {
-	case v2.TelemetryTypeIstiod:
-		// nothing to do
-	case v2.TelemetryTypeMixer:
-		config := &v2.MixerTelemetryConfig{}
-		if applied, err := populateMixerTelemetryConfig(in, config); err != nil {
-			return err
-		} else if applied {
-			out.Telemetry.Mixer = config
-		}
-	case v2.TelemetryTypeRemote:
-		config := &v2.RemoteTelemetryConfig{}
-		if applied, err := populateRemoteTelemetryConfig(in, config); err != nil {
-			return err
-		} else if applied {
-			out.Telemetry.Remote = config
-		}
-	case v2.TelemetryTypeNone:
-		// no configuration to set
+	if setTelemetry {
+		out.Telemetry = telemetry
 	}
 
 	return nil
