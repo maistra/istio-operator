@@ -85,5 +85,5 @@ type JaegerIngressConfig struct {
 	Enablement `json:",inline"`
 	// Metadata represents addtional annotations/labels to be applied to the ingress/route.
 	// +optional
-	Metadata MetadataConfig `json:"metadata,omitempty"`
+	Metadata *MetadataConfig `json:"metadata,omitempty"`
 }

@@ -102,14 +102,16 @@ func populateJaegerAddonValues(jaeger *v2.JaegerAddonConfig, values map[string]i
 				return err
 			}
 		}
-		if len(jaeger.Install.Ingress.Metadata.Annotations) > 0 {
-			if err := setHelmStringMapValue(tracingValues, "ingress.annotations", jaeger.Install.Ingress.Metadata.Annotations); err != nil {
-				return err
+		if jaeger.Install.Ingress.Metadata != nil {
+			if len(jaeger.Install.Ingress.Metadata.Annotations) > 0 {
+				if err := setHelmStringMapValue(tracingValues, "ingress.annotations", jaeger.Install.Ingress.Metadata.Annotations); err != nil {
+					return err
+				}
 			}
-		}
-		if len(jaeger.Install.Ingress.Metadata.Labels) > 0 {
-			if err := setHelmStringMapValue(tracingValues, "ingress.labels", jaeger.Install.Ingress.Metadata.Labels); err != nil {
-				return err
+			if len(jaeger.Install.Ingress.Metadata.Labels) > 0 {
+				if err := setHelmStringMapValue(tracingValues, "ingress.labels", jaeger.Install.Ingress.Metadata.Labels); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -237,9 +239,11 @@ func populateJaegerAddonConfig(in *v1.HelmValues, out *v2.JaegerAddonConfig) (bo
 	} else if err != nil {
 		return false, err
 	}
+	metadata := &v2.MetadataConfig{}
+	setMetadata := false
 	if rawAnnotations, ok, err := tracingValues.GetMap("ingress.annotations"); ok && len(rawAnnotations) > 0 {
-		setIngressConfig = true
-		if err := setMetadataAnnotations(rawAnnotations, &ingressConfig.Metadata); err != nil {
+		setMetadata = true
+		if err := setMetadataAnnotations(rawAnnotations, metadata); err != nil {
 			return false, err
 		}
 		tracingValues.RemoveField("ingress.annotations")
@@ -247,13 +251,17 @@ func populateJaegerAddonConfig(in *v1.HelmValues, out *v2.JaegerAddonConfig) (bo
 		return false, err
 	}
 	if rawLabels, ok, err := tracingValues.GetMap("ingress.labels"); ok && len(rawLabels) > 0 {
-		setIngressConfig = true
-		if err := setMetadataLabels(rawLabels, &ingressConfig.Metadata); err != nil {
+		setMetadata = true
+		if err := setMetadataLabels(rawLabels, metadata); err != nil {
 			return false, err
 		}
 		tracingValues.RemoveField("ingress.labels")
 	} else if err != nil {
 		return false, err
+	}
+	if setMetadata {
+		setIngressConfig = true
+		ingressConfig.Metadata = metadata
 	}
 	if setIngressConfig {
 		install.Ingress = ingressConfig

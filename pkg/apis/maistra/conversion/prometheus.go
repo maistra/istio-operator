@@ -71,8 +71,10 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 		}
 	}
 
-	if err := populateComponentServiceValues(&prometheus.Install.Service, prometheusValues); err != nil {
-		return err
+	if prometheus.Install.Service != nil {
+		if err := populateComponentServiceValues(prometheus.Install.Service, prometheusValues); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -174,9 +176,11 @@ func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.PrometheusAddonCon
 	} else if err != nil {
 		return false, err
 	}
-	if applied, err := populateComponentServiceConfig(prometheusValues, &install.Service); err == nil {
-		setInstall = setInstall || applied
-	} else {
+	service := &v2.ComponentServiceConfig{}
+	if applied, err := populateComponentServiceConfig(prometheusValues, service); applied {
+		setInstall = true
+		install.Service = service
+	} else if err != nil {
 		return false, err
 	}
 

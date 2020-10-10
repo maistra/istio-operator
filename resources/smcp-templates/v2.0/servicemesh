@@ -9,13 +9,11 @@ spec:
     defaults:
       container:
         imageRegistry: registry.redhat.io/openshift-service-mesh
+        imageTag: 2.0.0
     components:
       grafana:
         container:
           imageName: grafana-rhel8
-      tracing:
-        jaeger:
-          template: all-in-one
       mixer:
         container:
           imageName: mixer-rhel8
@@ -38,8 +36,8 @@ spec:
           imageTag: 2.0.0
       global.oauthproxy:
         container:
-          imageRegistry: image-registry.openshift-image-registry.svc:5000/openshift
-          imageName: oauth-proxy
+          imageRegistry: registry.redhat.io/openshift4
+          imageName: ose-oauth-proxy
           imageTag: v4.4
           imagePullPolicy: IfNotPresent
       wasmExtensions.cacher:

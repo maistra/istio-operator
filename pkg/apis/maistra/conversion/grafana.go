@@ -39,14 +39,16 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 		return nil
 	}
 
-	if len(grafana.Install.Config.Env) > 0 {
-		if err := setHelmStringMapValue(grafanaValues, "env", grafana.Install.Config.Env); err != nil {
-			return err
+	if grafana.Install.Config != nil {
+		if len(grafana.Install.Config.Env) > 0 {
+			if err := setHelmStringMapValue(grafanaValues, "env", grafana.Install.Config.Env); err != nil {
+				return err
+			}
 		}
-	}
-	if len(grafana.Install.Config.EnvSecrets) > 0 {
-		if err := setHelmStringMapValue(grafanaValues, "envSecrets", grafana.Install.Config.EnvSecrets); err != nil {
-			return err
+		if len(grafana.Install.Config.EnvSecrets) > 0 {
+			if err := setHelmStringMapValue(grafanaValues, "envSecrets", grafana.Install.Config.EnvSecrets); err != nil {
+				return err
+			}
 		}
 	}
 	if grafana.Install.Persistence != nil {
@@ -77,8 +79,10 @@ func populateGrafanaAddonValues(grafana *v2.GrafanaAddonConfig, values map[strin
 			}
 		}
 	}
-	if err := populateComponentServiceValues(&grafana.Install.Service, grafanaValues); err != nil {
-		return err
+	if grafana.Install.Service != nil {
+		if err := populateComponentServiceValues(grafana.Install.Service, grafanaValues); err != nil {
+			return err
+		}
 	}
 	if grafana.Install.Security != nil {
 		if grafana.Install.Security.Enabled != nil {
@@ -143,33 +147,39 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.GrafanaAddonConfig) (
 	install := &v2.GrafanaInstallConfig{}
 	setInstall := false
 
-	if rawEnv, ok, err := grafanaValues.GetMap("env"); ok {
-		setInstall = true
-		install.Config.Env = make(map[string]string)
+	config := &v2.GrafanaConfig{}
+	setConfig := false
+	if rawEnv, ok, err := grafanaValues.GetMap("env"); ok && len(rawEnv) > 0 {
+		setConfig = true
+		config.Env = make(map[string]string)
 		for key, value := range rawEnv {
 			if stringValue, ok := value.(string); ok {
-				install.Config.Env[key] = stringValue
+				config.Env[key] = stringValue
 			} else {
 				return false, fmt.Errorf("error casting env value to string")
 			}
 		}
-		grafanaValues.RemoveField("env")
 	} else if err != nil {
 		return false, err
 	}
-	if rawEnv, ok, err := grafanaValues.GetMap("envSecrets"); ok {
-		setInstall = true
-		install.Config.EnvSecrets = make(map[string]string)
+	grafanaValues.RemoveField("env")
+	if rawEnv, ok, err := grafanaValues.GetMap("envSecrets"); ok && len(rawEnv) > 0 {
+		setConfig = true
+		config.EnvSecrets = make(map[string]string)
 		for key, value := range rawEnv {
 			if stringValue, ok := value.(string); ok {
-				install.Config.EnvSecrets[key] = stringValue
+				config.EnvSecrets[key] = stringValue
 			} else {
 				return false, fmt.Errorf("error casting envSecrets value to string")
 			}
 		}
-		grafanaValues.RemoveField("envSecrets")
 	} else if err != nil {
 		return false, err
+	}
+	grafanaValues.RemoveField("envSecrets")
+	if setConfig {
+		setInstall = true
+		install.Config = config
 	}
 
 	persistenceConfig := v2.ComponentPersistenceConfig{}
@@ -208,10 +218,12 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.GrafanaAddonConfig) (
 		setInstall = true
 	}
 
-	if applied, err := populateComponentServiceConfig(grafanaValues, &install.Service); err != nil {
+	service := &v2.ComponentServiceConfig{}
+	if applied, err := populateComponentServiceConfig(grafanaValues, service); err != nil {
 		return false, err
 	} else if applied {
 		setInstall = true
+		install.Service = service
 	}
 
 	securityConfig := v2.GrafanaSecurityConfig{}

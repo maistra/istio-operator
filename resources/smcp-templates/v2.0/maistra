@@ -9,13 +9,11 @@ spec:
     defaults:
       container:
         imageRegistry: docker.io/maistra
+        imageTag: 2.0.0
     components:
       grafana:
         container:
           imageName: grafana-ubi8
-      tracing:
-        jaeger:
-          template: all-in-one
       mixer:
         container:
           imageName: mixer-ubi8
@@ -31,7 +29,7 @@ spec:
       prometheus:
         container:
           imageName: prometheus-ubi8
-      threeScale:
+      3scale:
         container:
           imageRegistry: quay.io/3scale
           imageName: 3scale-istio-adapter
@@ -40,7 +38,7 @@ spec:
         container:
           imageRegistry: quay.io/openshift
           imageName: origin-oauth-proxy
-          imageTag: "4.2"
+          imageTag: "4.4"
           imagePullPolicy: IfNotPresent
       wasmExtensions.cacher:
         container:

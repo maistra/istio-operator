@@ -197,8 +197,8 @@ var prometheusTestCases = []conversionTestCase{
 			Addons: &v2.AddonsConfig{
 				Prometheus: &v2.PrometheusAddonConfig{
 					Install: &v2.PrometheusInstallConfig{
-						Service: v2.ComponentServiceConfig{
-							Metadata: v2.MetadataConfig{
+						Service: &v2.ComponentServiceConfig{
+							Metadata: &v2.MetadataConfig{
 								Annotations: map[string]string{
 									"some-service-annotation":                     "service-annotation-value",
 									"alpha.openshift.io/serving-cert-secret-name": "prometheus-tls",
@@ -240,7 +240,7 @@ var prometheusTestCases = []conversionTestCase{
 			Addons: &v2.AddonsConfig{
 				Prometheus: &v2.PrometheusAddonConfig{
 					Install: &v2.PrometheusInstallConfig{
-						Service: v2.ComponentServiceConfig{
+						Service: &v2.ComponentServiceConfig{
 							Ingress: &v2.ComponentIngressConfig{},
 						},
 					},
@@ -263,7 +263,7 @@ var prometheusTestCases = []conversionTestCase{
 			Addons: &v2.AddonsConfig{
 				Prometheus: &v2.PrometheusAddonConfig{
 					Install: &v2.PrometheusInstallConfig{
-						Service: v2.ComponentServiceConfig{
+						Service: &v2.ComponentServiceConfig{
 							Ingress: &v2.ComponentIngressConfig{
 								Enablement: v2.Enablement{
 									Enabled: &featureEnabled,
@@ -272,7 +272,7 @@ var prometheusTestCases = []conversionTestCase{
 								Hosts: []string{
 									"prometheus.example.com",
 								},
-								Metadata: v2.MetadataConfig{
+								Metadata: &v2.MetadataConfig{
 									Annotations: map[string]string{
 										"ingress-annotation": "ingress-annotation-value",
 									},
@@ -325,7 +325,7 @@ var prometheusTestCases = []conversionTestCase{
 			Addons: &v2.AddonsConfig{
 				Prometheus: &v2.PrometheusAddonConfig{
 					Install: &v2.PrometheusInstallConfig{
-						Service: v2.ComponentServiceConfig{
+						Service: &v2.ComponentServiceConfig{
 							NodePort: &prometheusTestNodePort,
 						},
 					},

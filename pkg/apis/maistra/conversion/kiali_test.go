@@ -107,7 +107,7 @@ var kialiTestCases = []conversionTestCase{
 				Kiali: &v2.KialiAddonConfig{
 					Name: "my-kiali",
 					Install: &v2.KialiInstallConfig{
-						Dashboard: v2.KialiDashboardConfig{
+						Dashboard: &v2.KialiDashboardConfig{
 							EnableGrafana:    &featureEnabled,
 							EnablePrometheus: &featureEnabled,
 							EnableTracing:    &featureDisabled,
@@ -144,8 +144,8 @@ var kialiTestCases = []conversionTestCase{
 				Kiali: &v2.KialiAddonConfig{
 					Name: "my-kiali",
 					Install: &v2.KialiInstallConfig{
-						Service: v2.ComponentServiceConfig{
-							Metadata: v2.MetadataConfig{
+						Service: &v2.ComponentServiceConfig{
+							Metadata: &v2.MetadataConfig{
 								Annotations: map[string]string{
 									"some-service-annotation": "service-annotation-value",
 								},
@@ -187,7 +187,7 @@ var kialiTestCases = []conversionTestCase{
 				Kiali: &v2.KialiAddonConfig{
 					Name: "my-kiali",
 					Install: &v2.KialiInstallConfig{
-						Service: v2.ComponentServiceConfig{
+						Service: &v2.ComponentServiceConfig{
 							Ingress: &v2.ComponentIngressConfig{},
 						},
 					},
@@ -215,7 +215,7 @@ var kialiTestCases = []conversionTestCase{
 				Kiali: &v2.KialiAddonConfig{
 					Name: "my-kiali",
 					Install: &v2.KialiInstallConfig{
-						Service: v2.ComponentServiceConfig{
+						Service: &v2.ComponentServiceConfig{
 							Ingress: &v2.ComponentIngressConfig{
 								Enablement: v2.Enablement{
 									Enabled: &featureEnabled,
@@ -224,7 +224,7 @@ var kialiTestCases = []conversionTestCase{
 								Hosts: []string{
 									"kiali.example.com",
 								},
-								Metadata: v2.MetadataConfig{
+								Metadata: &v2.MetadataConfig{
 									Annotations: map[string]string{
 										"ingress-annotation": "ingress-annotation-value",
 									},
@@ -279,7 +279,7 @@ var kialiTestCases = []conversionTestCase{
 				Kiali: &v2.KialiAddonConfig{
 					Name: "my-kiali",
 					Install: &v2.KialiInstallConfig{
-						Service: v2.ComponentServiceConfig{
+						Service: &v2.ComponentServiceConfig{
 							NodePort: &kialiTestNodePort,
 						},
 					},

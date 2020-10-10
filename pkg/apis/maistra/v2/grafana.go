@@ -20,11 +20,11 @@ type GrafanaInstallConfig struct {
 	SelfManaged bool `json:"selfManaged,omitempty"`
 	// Config configures the behavior of the grafana installation
 	// +optional
-	Config GrafanaConfig `json:"config,omitempty"`
+	Config *GrafanaConfig `json:"config,omitempty"`
 	// Service configures the k8s Service associated with the grafana installation
 	// XXX: grafana service config does not follow other addon components' structure
 	// +optional
-	Service ComponentServiceConfig `json:"service,omitempty"`
+	Service *ComponentServiceConfig `json:"service,omitempty"`
 	// Persistence configures a PersistentVolume associated with the grafana installation
 	// .Values.grafana.persist, true if not null
 	// XXX: capacity is not supported in the charts, hard coded to 5Gi

@@ -109,7 +109,7 @@ func TestManifestValidation(t *testing.T) {
 									},
 									Namespace: "somewhere",
 									Service: maistrav2.GatewayServiceConfig{
-										Metadata: maistrav2.MetadataConfig{
+										Metadata: &maistrav2.MetadataConfig{
 											Labels: map[string]string{
 												"app": "istio",
 											},
@@ -143,7 +143,7 @@ func TestManifestValidation(t *testing.T) {
 									},
 									Namespace: "b",
 									Service: maistrav2.GatewayServiceConfig{
-										Metadata: maistrav2.MetadataConfig{
+										Metadata: &maistrav2.MetadataConfig{
 											Labels: map[string]string{
 												"app": "istio",
 											},
@@ -160,7 +160,7 @@ func TestManifestValidation(t *testing.T) {
 									},
 									Namespace: "d",
 									Service: maistrav2.GatewayServiceConfig{
-										Metadata: maistrav2.MetadataConfig{
+										Metadata: &maistrav2.MetadataConfig{
 											Labels: map[string]string{
 												"app": "istio",
 											},
@@ -210,7 +210,7 @@ func TestManifestValidation(t *testing.T) {
 									},
 									Namespace: "a",
 									Service: maistrav2.GatewayServiceConfig{
-										Metadata: maistrav2.MetadataConfig{
+										Metadata: &maistrav2.MetadataConfig{
 											Labels: map[string]string{
 												"app": "istio",
 											},
@@ -227,7 +227,7 @@ func TestManifestValidation(t *testing.T) {
 									},
 									Namespace: "c",
 									Service: maistrav2.GatewayServiceConfig{
-										Metadata: maistrav2.MetadataConfig{
+										Metadata: &maistrav2.MetadataConfig{
 											Labels: map[string]string{
 												"app": "istio",
 											},

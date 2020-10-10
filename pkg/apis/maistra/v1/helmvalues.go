@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -58,8 +59,37 @@ func (h *HelmValues) GetString(path string) (string, bool, error) {
 	return unstructured.NestedString(h.data, strings.Split(path, ".")...)
 }
 
+func (h *HelmValues) GetForceNumberToString(path string) (string, bool, error) {
+	if h == nil || h.data == nil {
+		return "", false, nil
+	}
+	value, ok, err := unstructured.NestedFieldNoCopy(h.data, strings.Split(path, ".")...)
+	if err != nil {
+		return "", false, err
+	} else if !ok {
+		return "", false, nil
+	}
+	switch typeValue := value.(type) {
+	case int64:
+		return strconv.FormatInt(typeValue, 10), ok, nil
+	case float64:
+		return strconv.FormatFloat(typeValue, 'f', -1, 64), ok, nil
+	case string:
+		return typeValue, ok, nil
+	}
+	return "", false, fmt.Errorf("could not convert type to string: %T=%s", value, value)
+}
+
 func (h *HelmValues) GetAndRemoveString(path string) (string, bool, error) {
 	value, ok, err := h.GetString(path)
+	if ok {
+		h.RemoveField(path)
+	}
+	return value, ok, err
+}
+
+func (h *HelmValues) GetAndRemoveForceNumberToString(path string) (string, bool, error) {
+	value, ok, err := h.GetForceNumberToString(path)
 	if ok {
 		h.RemoveField(path)
 	}
