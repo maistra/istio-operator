@@ -128,7 +128,7 @@ var grafanaTestCases = []conversionTestCase{
 			Addons: &v2.AddonsConfig{
 				Grafana: &v2.GrafanaAddonConfig{
 					Install: &v2.GrafanaInstallConfig{
-						Config: v2.GrafanaConfig{
+						Config: &v2.GrafanaConfig{
 							Env: map[string]string{
 								"GF_SMTP_ENABLED": "true",
 							},
@@ -341,8 +341,8 @@ var grafanaTestCases = []conversionTestCase{
 			Addons: &v2.AddonsConfig{
 				Grafana: &v2.GrafanaAddonConfig{
 					Install: &v2.GrafanaInstallConfig{
-						Service: v2.ComponentServiceConfig{
-							Metadata: v2.MetadataConfig{
+						Service: &v2.ComponentServiceConfig{
+							Metadata: &v2.MetadataConfig{
 								Annotations: map[string]string{
 									"some-service-annotation": "service-annotation-value",
 								},
@@ -382,7 +382,7 @@ var grafanaTestCases = []conversionTestCase{
 			Addons: &v2.AddonsConfig{
 				Grafana: &v2.GrafanaAddonConfig{
 					Install: &v2.GrafanaInstallConfig{
-						Service: v2.ComponentServiceConfig{
+						Service: &v2.ComponentServiceConfig{
 							Ingress: &v2.ComponentIngressConfig{},
 						},
 					},
@@ -405,7 +405,7 @@ var grafanaTestCases = []conversionTestCase{
 			Addons: &v2.AddonsConfig{
 				Grafana: &v2.GrafanaAddonConfig{
 					Install: &v2.GrafanaInstallConfig{
-						Service: v2.ComponentServiceConfig{
+						Service: &v2.ComponentServiceConfig{
 							Ingress: &v2.ComponentIngressConfig{
 								Enablement: v2.Enablement{
 									Enabled: &featureEnabled,
@@ -414,7 +414,7 @@ var grafanaTestCases = []conversionTestCase{
 								Hosts: []string{
 									"grafana.example.com",
 								},
-								Metadata: v2.MetadataConfig{
+								Metadata: &v2.MetadataConfig{
 									Annotations: map[string]string{
 										"ingress-annotation": "ingress-annotation-value",
 									},
@@ -467,7 +467,7 @@ var grafanaTestCases = []conversionTestCase{
 			Addons: &v2.AddonsConfig{
 				Grafana: &v2.GrafanaAddonConfig{
 					Install: &v2.GrafanaInstallConfig{
-						Service: v2.ComponentServiceConfig{
+						Service: &v2.ComponentServiceConfig{
 							NodePort: &grafanaTestNodePort,
 						},
 					},

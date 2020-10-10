@@ -484,10 +484,10 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 		} else if err != nil {
 			return nil
 		}
-		in.RemoveField("global.multiCluster.multiClusterOverrides")
 	} else if err != nil {
 		return err
 	}
+	in.RemoveField("global.multiCluster.multiClusterOverrides")
 
 	// multi-cluster
 	multiCluster := &v2.MultiClusterConfig{}

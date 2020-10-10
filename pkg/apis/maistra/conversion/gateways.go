@@ -192,14 +192,16 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 	} else {
 		return nil, err
 	}
-	if len(in.Service.Metadata.Labels) > 0 {
-		if err := setHelmStringMapValue(gatewayValues, "labels", in.Service.Metadata.Labels); err != nil {
-			return nil, err
+	if in.Service.Metadata != nil {
+		if len(in.Service.Metadata.Labels) > 0 {
+			if err := setHelmStringMapValue(gatewayValues, "labels", in.Service.Metadata.Labels); err != nil {
+				return nil, err
+			}
 		}
-	}
-	if len(in.Service.Metadata.Annotations) > 0 {
-		if err := setHelmStringMapValue(gatewayValues, "annotations", in.Service.Metadata.Annotations); err != nil {
-			return nil, err
+		if len(in.Service.Metadata.Annotations) > 0 {
+			if err := setHelmStringMapValue(gatewayValues, "annotations", in.Service.Metadata.Annotations); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -474,21 +476,28 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 		return err
 	}
 
-	if rawLabels, ok, err := in.GetMap("labels"); ok {
-		if err := setMetadataLabels(rawLabels, &out.Service.Metadata); err != nil {
+	metadata := &v2.MetadataConfig{}
+	setMetadata := false
+	if rawLabels, ok, err := in.GetMap("labels"); ok && len(rawLabels) > 0 {
+		setMetadata = true
+		if err := setMetadataLabels(rawLabels, metadata); err != nil {
 			return err
 		}
-		in.RemoveField("labels")
 	} else if err != nil {
 		return err
 	}
-	if rawAnnotations, ok, err := in.GetMap("annotations"); ok {
-		if err := setMetadataAnnotations(rawAnnotations, &out.Service.Metadata); err != nil {
+	in.RemoveField("labels")
+	if rawAnnotations, ok, err := in.GetMap("annotations"); ok && len(rawAnnotations) > 0 {
+		setMetadata = true
+		if err := setMetadataAnnotations(rawAnnotations, metadata); err != nil {
 			return err
 		}
-		in.RemoveField("annotations")
 	} else if err != nil {
 		return err
+	}
+	in.RemoveField("annotations")
+	if setMetadata {
+		out.Service.Metadata = metadata
 	}
 
 	// volumes

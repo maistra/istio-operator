@@ -17,7 +17,8 @@ spec:
     components:
       pilot:
         deployment:
-          autoScaling: null
+          autoScaling:
+            enabled: false
         container:
           # constrain resources for use in smaller environments
           resources:
@@ -26,6 +27,9 @@ spec:
               memory: 128Mi
             limits: {}
       mixer.policy:
+        deployment:
+          autoScaling:
+            enabled: false
         container:
           # constrain resources for use in smaller environments
           resources:
@@ -34,6 +38,9 @@ spec:
               memory: 128Mi
             limits: {}
       mixer.telemetry:
+        deployment:
+          autoScaling:
+            enabled: false
         container:
           # constrain resources for use in smaller environments
           resources:
@@ -62,7 +69,8 @@ spec:
     ingress:
       runtime:
         deployment:
-          autoScaling: null
+          autoScaling:
+            enabled: false
         container:
           # constrain resources for use in smaller environments
           resources:
@@ -73,7 +81,8 @@ spec:
     egress:
       runtime:
         deployment:
-          autoScaling: null
+          autoScaling:
+            enabled: false
         container:
           # constrain resources for use in smaller environments
           resources:

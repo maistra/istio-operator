@@ -47,7 +47,7 @@ type PrometheusInstallConfig struct {
 	// Service allows for customization of the k8s Service associated with the
 	// prometheus installation.
 	// +optional
-	Service ComponentServiceConfig `json:"service,omitempty"`
+	Service *ComponentServiceConfig `json:"service,omitempty"`
 	// UseTLS for the prometheus server
 	// .Values.prometheus.provisionPrometheusCert
 	// 1.6+

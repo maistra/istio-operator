@@ -135,29 +135,35 @@ func populateThreeScaleAddonConfig(in *v1.HelmValues, out *v2.ThreeScaleAddonCon
 
 	threeScale := out
 	threeScaleValues := v1.NewHelmValues(rawThreeScaleValues)
+	setValues := false
 
 	if enabled, ok, err := threeScaleValues.GetAndRemoveBool("enabled"); ok {
+		setValues = true
 		threeScale.Enabled = &enabled
 	} else if err != nil {
 		return false, err
 	}
 	if rawListenAddr, ok, err := threeScaleValues.GetAndRemoveInt64("PARAM_THREESCALE_LISTEN_ADDR"); ok {
+		setValues = true
 		listernAddr := int32(rawListenAddr)
 		threeScale.ListenAddr = &listernAddr
 	} else if err != nil {
 		return false, err
 	}
 	if logGRPC, ok, err := threeScaleValues.GetAndRemoveBool("PARAM_THREESCALE_LOG_GRPC"); ok {
+		setValues = true
 		threeScale.LogGRPC = &logGRPC
 	} else if err != nil {
 		return false, err
 	}
 	if logJSON, ok, err := threeScaleValues.GetAndRemoveBool("PARAM_THREESCALE_LOG_JSON"); ok {
+		setValues = true
 		threeScale.LogJSON = &logJSON
 	} else if err != nil {
 		return false, err
 	}
 	if logLevel, ok, err := threeScaleValues.GetAndRemoveString("PARAM_THREESCALE_LOG_LEVEL"); ok {
+		setValues = true
 		threeScale.LogLevel = logLevel
 	} else if err != nil {
 		return false, err
@@ -179,6 +185,7 @@ func populateThreeScaleAddonConfig(in *v1.HelmValues, out *v2.ThreeScaleAddonCon
 		return false, err
 	}
 	if setMetrics {
+		setValues = true
 		threeScale.Metrics = metrics
 	}
 
@@ -212,11 +219,12 @@ func populateThreeScaleAddonConfig(in *v1.HelmValues, out *v2.ThreeScaleAddonCon
 		return false, err
 	}
 	if setSystem {
+		setValues = true
 		threeScale.System = system
 	}
 
 	client := &v2.ThreeScaleClientConfig{}
-	setClient := true
+	setClient := false
 	if allowInsecureConnections, ok, err := threeScaleValues.GetAndRemoveBool("PARAM_THREESCALE_ALLOW_INSECURE_CONN"); ok {
 		client.AllowInsecureConnections = &allowInsecureConnections
 		setClient = true
@@ -231,10 +239,12 @@ func populateThreeScaleAddonConfig(in *v1.HelmValues, out *v2.ThreeScaleAddonCon
 		return false, err
 	}
 	if setClient {
+		setValues = true
 		threeScale.Client = client
 	}
 
 	if rawMaxConnTimeout, ok, err := threeScaleValues.GetAndRemoveInt64("PARAM_THREESCALE_GRPC_CONN_MAX_SECONDS"); ok {
+		setValues = true
 		maxConnTimeout := int32(rawMaxConnTimeout)
 		threeScale.GRPC = &v2.ThreeScaleGRPCConfig{
 			MaxConnTimeout: &maxConnTimeout,
@@ -265,6 +275,7 @@ func populateThreeScaleAddonConfig(in *v1.HelmValues, out *v2.ThreeScaleAddonCon
 		return false, err
 	}
 	if setBackend {
+		setValues = true
 		threeScale.Backend = backend
 	}
 
@@ -275,5 +286,5 @@ func populateThreeScaleAddonConfig(in *v1.HelmValues, out *v2.ThreeScaleAddonCon
 		return false, err
 	}
 
-	return true, nil
+	return setValues, nil
 }

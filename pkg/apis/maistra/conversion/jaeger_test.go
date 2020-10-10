@@ -554,7 +554,7 @@ var jaegerTestCases = []conversionTestCase{
 							Enablement: v2.Enablement{
 								Enabled: &featureEnabled,
 							},
-							Metadata: v2.MetadataConfig{
+							Metadata: &v2.MetadataConfig{
 								Annotations: map[string]string{
 									"ingress-annotation": "ingress-annotation-value",
 								},

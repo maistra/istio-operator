@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -40,6 +42,7 @@ var (
 		smcpv1 v1.ControlPlaneSpec
 		smcpv2 v2.ControlPlaneSpec
 		cruft  *v1.HelmValues // these are just the key paths that need to be removed
+		skip   bool
 	}{
 		{
 			name: "simple",
@@ -142,6 +145,95 @@ var (
 				Policy: &v2.PolicyConfig{
 					Mixer: &v2.MixerPolicyConfig{
 						EnableChecks: &featureEnabled,
+					},
+				},
+			},
+			cruft: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					// mesh expansion is disabled by default
+					"meshExpansion": globalMeshExpansionDefaults,
+					// multicluster is disabled by default
+					"multiCluster": globalMultiClusterDefaults,
+					"useMCP":       nil,
+				},
+			}),
+		},
+		{
+			name: "cruft-check",
+			smcpv1: v1.ControlPlaneSpec{
+				Version: "v1.1",
+				Istio: v1.NewHelmValues(map[string]interface{}{
+					"galley": map[string]interface{}{
+						"resources": map[string]interface{}{
+							"requests": map[string]interface{}{
+								"cpu":    "10m",
+								"memory": "128Mi",
+							},
+						},
+					},
+				}),
+			},
+			smcpv2: v2.ControlPlaneSpec{
+				Version: "v1.1",
+				Runtime: &v2.ControlPlaneRuntimeConfig{
+					Components: map[v2.ControlPlaneComponentName]*v2.ComponentRuntimeConfig{
+						v2.ControlPlaneComponentNameGalley: {
+							Container: &v2.ContainerConfig{
+								CommonContainerConfig: v2.CommonContainerConfig{
+									Resources: &corev1.ResourceRequirements{
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("10m"),
+											corev1.ResourceMemory: resource.MustParse("128Mi"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			cruft: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					// mesh expansion is disabled by default
+					"meshExpansion": globalMeshExpansionDefaults,
+					// multicluster is disabled by default
+					"multiCluster": globalMultiClusterDefaults,
+					"useMCP":       nil,
+				},
+			}),
+		},
+		{
+			name: "float-int-tags",
+			skip: true,
+			smcpv1: v1.ControlPlaneSpec{
+				Version: "v1.1",
+				Istio: v1.NewHelmValues(map[string]interface{}{
+					"galley": map[string]interface{}{
+						"tag": 1.4,
+					},
+					"pilot": map[string]interface{}{
+						"tag": 1,
+					},
+				}),
+			},
+			smcpv2: v2.ControlPlaneSpec{
+				Version: "v1.1",
+				Runtime: &v2.ControlPlaneRuntimeConfig{
+					Components: map[v2.ControlPlaneComponentName]*v2.ComponentRuntimeConfig{
+						v2.ControlPlaneComponentNameGalley: {
+							Container: &v2.ContainerConfig{
+								CommonContainerConfig: v2.CommonContainerConfig{
+									ImageTag: "1.4",
+								},
+							},
+						},
+						v2.ControlPlaneComponentNamePilot: {
+							Container: &v2.ContainerConfig{
+								CommonContainerConfig: v2.CommonContainerConfig{
+									ImageTag: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -268,6 +360,9 @@ func TestTechPreviewConversionFromV2(t *testing.T) {
 func TestRoundTripConversion(t *testing.T) {
 	for _, tc := range roundTripTestCases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.skip {
+				t.Skip()
+			}
 			smcpv1 := *tc.smcpv1.DeepCopy()
 			smcpv2 := v2.ControlPlaneSpec{}
 			err := Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(&smcpv1, &smcpv2, nil)
