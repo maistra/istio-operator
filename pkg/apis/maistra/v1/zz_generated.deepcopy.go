@@ -330,6 +330,11 @@ func (in *ServiceMeshMemberRollStatus) DeepCopyInto(out *ServiceMeshMemberRollSt
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.PendingMembers != nil {
+		in, out := &in.PendingMembers, &out.PendingMembers
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
 		*out = make([]ServiceMeshMemberRollCondition, len(*in))

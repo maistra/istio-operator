@@ -460,7 +460,7 @@ func TestReconcileNamespacesIgnoresControlPlaneNamespace(t *testing.T) {
 	ctx := common.NewContextWithLog(ctx, reqLogger)
 
 	namespaces := sets.NewString(controlPlaneNamespace, appNamespace)
-	configuredMembers, err, nsErrors := r.reconcileNamespaces(ctx, namespaces, namespaces, controlPlaneNamespace, versions.DefaultVersion)
+	configuredMembers, pendingMembers, err, nsErrors := r.reconcileNamespaces(ctx, namespaces, namespaces, controlPlaneNamespace, versions.DefaultVersion)
 	if err != nil {
 		t.Fatalf("reconcileNamespaces failed: %v", err)
 	}
@@ -471,6 +471,7 @@ func TestReconcileNamespacesIgnoresControlPlaneNamespace(t *testing.T) {
 	assertNamespaceReconcilerInvoked(t, nsReconciler, appNamespace) // NOTE: no controlPlaneNamespace
 	assertNamespaceRemoveInvoked(t, nsReconciler, appNamespace)     // NOTE: no controlPlaneNamespace
 	assert.DeepEquals(configuredMembers, []string{appNamespace}, "reconcileNamespaces returned an unexpected configuredMembers list", t)
+	assert.DeepEquals(pendingMembers, []string{}, "reconcileNamespaces returned an unexpected pendingMembers list", t)
 }
 
 func TestReconcileWorksWithMultipleNamespaces(t *testing.T) {

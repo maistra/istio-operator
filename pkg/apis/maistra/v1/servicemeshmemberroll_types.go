@@ -85,6 +85,12 @@ type ServiceMeshMemberRollStatus struct {
 	// +nullable
 	ConfiguredMembers []string `json:"configuredMembers"`
 
+	// List of namespaces that haven't been configured as members of the service
+	// mesh yet.
+	// +optional
+	// +nullable
+	PendingMembers []string `json:"pendingMembers"`
+
 	// Represents the latest available observations of this ServiceMeshMemberRoll's
 	// current state.
 	// +optional

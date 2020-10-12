@@ -200,11 +200,12 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			return reconcile.Result{}, err
 		}
 
-		configuredMembers, err, nsErrors := r.reconcileNamespaces(ctx, nil, nameSet(&configuredNamespaces), instance.Namespace, versions.DefaultVersion)
+		configuredMembers, pendingMembers, err, nsErrors := r.reconcileNamespaces(ctx, nil, nameSet(&configuredNamespaces), instance.Namespace, versions.DefaultVersion)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 		instance.Status.ConfiguredMembers = configuredMembers
+		instance.Status.PendingMembers = pendingMembers
 		if len(nsErrors) > 0 {
 			return reconcile.Result{}, utilerrors.NewAggregate(nsErrors)
 		}
@@ -255,6 +256,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	var newConfiguredMembers []string
+	var pendingMembers []string
 	var nsErrors []error
 	allNamespaces, err := r.getAllNamespaces(ctx)
 	if err != nil {
@@ -279,11 +281,13 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		reqLogger.Info("Reconciling ServiceMeshMemberRoll namespaces with new generation of ServiceMeshControlPlane")
 
 		instance.Status.ConfiguredMembers = make([]string, 0, len(instance.Spec.Members))
-		newConfiguredMembers, err, nsErrors = r.reconcileNamespaces(ctx, requiredMembers, nil, instance.Namespace, meshVersion)
+		instance.Status.PendingMembers = make([]string, 0, len(instance.Spec.Members))
+		newConfiguredMembers, pendingMembers, err, nsErrors = r.reconcileNamespaces(ctx, requiredMembers, nil, instance.Namespace, meshVersion)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 		instance.Status.ConfiguredMembers = newConfiguredMembers
+		instance.Status.PendingMembers = pendingMembers
 		instance.Status.ServiceMeshGeneration = mesh.Status.ObservedGeneration
 		instance.Status.ServiceMeshReconciledVersion = mesh.Status.GetReconciledVersion()
 	} else if instance.Generation != instance.Status.ObservedGeneration { // member roll has been updated
@@ -291,6 +295,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		reqLogger.Info("Reconciling new generation of ServiceMeshMemberRoll")
 
 		instance.Status.ConfiguredMembers = make([]string, 0, len(instance.Spec.Members))
+		instance.Status.PendingMembers = make([]string, 0, len(instance.Spec.Members))
 
 		// setup namespaces
 		configuredNamespaces, err := r.findConfiguredNamespaces(ctx, mesh.Namespace)
@@ -301,26 +306,29 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 		existingMembers := nameSet(&configuredNamespaces)
 		namespacesToRemove := existingMembers.Difference(requiredMembers)
-		newConfiguredMembers, err, nsErrors = r.reconcileNamespaces(ctx, requiredMembers, namespacesToRemove, instance.Namespace, meshVersion)
+		newConfiguredMembers, pendingMembers, err, nsErrors = r.reconcileNamespaces(ctx, requiredMembers, namespacesToRemove, instance.Namespace, meshVersion)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 		instance.Status.ConfiguredMembers = newConfiguredMembers
+		instance.Status.PendingMembers = pendingMembers
 		instance.Status.ServiceMeshGeneration = mesh.Status.ObservedGeneration
 		instance.Status.ServiceMeshReconciledVersion = mesh.Status.GetReconciledVersion()
 	} else if len(unconfiguredMembers) > 0 { // required namespace that was missing has been created
 		reqLogger.Info("Reconciling newly created namespaces associated with this ServiceMeshMemberRoll")
 
-		newConfiguredMembers, err, nsErrors = r.reconcileNamespaces(ctx, requiredMembers, nil, instance.Namespace, meshVersion)
+		newConfiguredMembers, pendingMembers, err, nsErrors = r.reconcileNamespaces(ctx, requiredMembers, nil, instance.Namespace, meshVersion)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 		instance.Status.ConfiguredMembers = newConfiguredMembers
+		instance.Status.PendingMembers = pendingMembers
 		// we don't update the ServiceMeshGeneration in case the other members need to be updated
 	} else if len(deletedMembers) > 0 { // namespace that was configured has been deleted
 		// nothing to do, but we need to update the ConfiguredMembers field
 		reqLogger.Info("Removing deleted namespaces from ConfiguredMembers")
 		instance.Status.ConfiguredMembers = make([]string, 0, len(instance.Spec.Members))
+		instance.Status.PendingMembers = make([]string, 0, len(instance.Spec.Members))
 		for _, member := range instance.Spec.Members {
 			if member == instance.Namespace {
 				// we never operate on the control plane namespace
@@ -328,6 +336,8 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			}
 			if allNamespaces.Has(member) {
 				instance.Status.ConfiguredMembers = append(instance.Status.ConfiguredMembers, member)
+			} else {
+				instance.Status.PendingMembers = append(instance.Status.PendingMembers, member)
 			}
 		}
 	} else {
@@ -354,11 +364,11 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	err = utilerrors.NewAggregate(nsErrors)
 	if err != nil {
-		return reconcile.Result{}, err
+		err = r.updateStatus(ctx, instance)
+		return reconcile.Result{Requeue: true}, err
 	}
 
 	err = r.updateStatus(ctx, instance)
-
 	// tell Kiali about all the namespaces in the mesh
 	var kialiErr error
 	if mesh.Status.AppliedSpec.Addons != nil &&
@@ -395,6 +405,7 @@ func (r *MemberRollReconciler) getActiveMesh(ctx context.Context, instance *v1.S
 			} else {
 				reqLogger.Info("Skipping reconciliation of SMMR, because no ServiceMeshControlPlane exists in the project.", "project", instance.Namespace)
 				instance.Status.ConfiguredMembers = make([]string, 0)
+				instance.Status.PendingMembers = instance.Spec.Members
 				instance.Status.SetCondition(v1.ServiceMeshMemberRollCondition{
 					Type:    v1.ConditionTypeMemberRollReady,
 					Status:  corev1.ConditionFalse,
@@ -457,15 +468,17 @@ func (r *MemberRollReconciler) findConfiguredNamespaces(ctx context.Context, mes
 	return list, err
 }
 
-func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespacesToReconcile, namespacesToRemove sets.String, controlPlaneNamespace string, controlPlaneVersion versions.Version) (configuredMembers []string, err error, nsErrors []error) {
+func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespacesToReconcile, namespacesToRemove sets.String, controlPlaneNamespace string, controlPlaneVersion versions.Version) (configuredMembers, pendingMembers []string, err error, nsErrors []error) {
 	reqLogger := common.LogFromContext(ctx)
 	// current configuredNamespaces are namespacesToRemove minus control plane namespace
 	configured := sets.NewString(namespacesToRemove.List()...)
 	configured.Delete(controlPlaneNamespace)
+
+	pending := sets.NewString()
 	// create reconciler
 	reconciler, err := r.namespaceReconcilerFactory(ctx, r.Client, controlPlaneNamespace, controlPlaneVersion, r.cniConfig.Enabled)
 	if err != nil {
-		return nil, err, nil
+		return nil, nil, err, nil
 	}
 
 	for ns := range namespacesToRemove {
@@ -476,6 +489,7 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 		err = reconciler.removeNamespaceFromMesh(ctx, ns)
 		if err != nil {
 			nsErrors = append(nsErrors, err)
+			pending.Insert(ns) // TODO: do we want to have a separate list for namespaces that are being removed, but haven't yet been?
 		} else {
 			configured.Delete(ns)
 		}
@@ -493,12 +507,12 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 			} else {
 				nsErrors = append(nsErrors, err)
 			}
+			pending.Insert(ns)
 		} else {
 			configured.Insert(ns)
 		}
 	}
-	configuredMembers = configured.List()
-	return configuredMembers, nil, nsErrors
+	return configured.List(), pending.List(), nil, nsErrors
 }
 
 type KialiReconciler interface {
