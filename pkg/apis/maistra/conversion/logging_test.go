@@ -18,7 +18,6 @@ var loggingTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 			},
@@ -35,7 +34,6 @@ var loggingTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 			},
@@ -66,7 +64,6 @@ var loggingTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 			},

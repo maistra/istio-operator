@@ -24,7 +24,6 @@ var techPreviewTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 			},

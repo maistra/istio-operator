@@ -106,7 +106,6 @@ var (
 					"proxy": map[string]interface{}{
 						"tracer": nil,
 					},
-					"useMCP": nil,
 				},
 				// a result of enabling prometheus
 				"mixer": map[string]interface{}{
@@ -154,7 +153,6 @@ var (
 					"meshExpansion": globalMeshExpansionDefaults,
 					// multicluster is disabled by default
 					"multiCluster": globalMultiClusterDefaults,
-					"useMCP":       nil,
 				},
 			}),
 		},
@@ -198,7 +196,6 @@ var (
 					"meshExpansion": globalMeshExpansionDefaults,
 					// multicluster is disabled by default
 					"multiCluster": globalMultiClusterDefaults,
-					"useMCP":       nil,
 				},
 			}),
 		},
@@ -243,7 +240,6 @@ var (
 					"meshExpansion": globalMeshExpansionDefaults,
 					// multicluster is disabled by default
 					"multiCluster": globalMultiClusterDefaults,
-					"useMCP":       nil,
 				},
 			}),
 		},
