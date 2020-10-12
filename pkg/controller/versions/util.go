@@ -32,8 +32,7 @@ var decoder runtime.Decoder
 var reservedGatewayNames = sets.NewString("istio-ingressgateway", "istio-egressgateway")
 
 func validatePrometheusEnabledWhenKialiEnabled(spec *v2.ControlPlaneSpec, allErrors []error) []error {
-	if spec.Addons != nil && spec.Addons.Kiali != nil && spec.Addons.Kiali.Enabled != nil && *spec.Addons.Kiali.Enabled == true &&
-		(spec.Addons.Prometheus == nil || spec.Addons.Prometheus.Enabled == nil || *spec.Addons.Prometheus.Enabled != true) {
+	if spec.IsKialiEnabled() && !spec.IsPrometheusEnabled() {
 		return append(allErrors, fmt.Errorf(".spec.addons.prometheus.enabled must be true when .spec.addons.kiali.enabled is true"))
 	}
 	return allErrors

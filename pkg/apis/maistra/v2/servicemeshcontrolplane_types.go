@@ -169,3 +169,16 @@ type Enablement struct {
 	// Enabled specifies whether or not this feature is enabled
 	Enabled *bool `json:"enabled,omitempty"`
 }
+
+func (s ControlPlaneSpec) IsKialiEnabled() bool {
+	return s.Addons != nil &&
+		s.Addons.Kiali != nil &&
+		s.Addons.Kiali.Enabled != nil &&
+		*s.Addons.Kiali.Enabled
+}
+
+func (s ControlPlaneSpec) IsPrometheusEnabled() bool {
+	return s.Addons.Prometheus != nil &&
+		s.Addons.Prometheus.Enabled != nil &&
+		*s.Addons.Prometheus.Enabled
+}
