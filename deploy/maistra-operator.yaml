@@ -614,6 +614,8 @@ spec:
                 properties:
                   meshExpansion:
                     properties:
+                      enabled:
+                        type: boolean
                       ilbGateway:
                         properties:
                           enabled:
@@ -669,6 +671,8 @@ spec:
                                 properties:
                                   autoScaling:
                                     properties:
+                                      enabled:
+                                        type: boolean
                                       maxReplicas:
                                         format: int32
                                         type: integer
@@ -945,6 +949,8 @@ spec:
                     type: object
                   multiCluster:
                     properties:
+                      enabled:
+                        type: boolean
                       meshNetworks:
                         additionalProperties:
                           properties:
@@ -1039,6 +1045,8 @@ spec:
                               properties:
                                 autoScaling:
                                   properties:
+                                    enabled:
+                                      type: boolean
                                     maxReplicas:
                                       format: int32
                                       type: integer
@@ -1369,6 +1377,8 @@ spec:
                               properties:
                                 autoScaling:
                                   properties:
+                                    enabled:
+                                      type: boolean
                                     maxReplicas:
                                       format: int32
                                       type: integer
@@ -1748,6 +1758,8 @@ spec:
                             properties:
                               autoScaling:
                                 properties:
+                                  enabled:
+                                    type: boolean
                                   maxReplicas:
                                     format: int32
                                     type: integer
@@ -2104,6 +2116,8 @@ spec:
                             properties:
                               autoScaling:
                                 properties:
+                                  enabled:
+                                    type: boolean
                                   maxReplicas:
                                     format: int32
                                     type: integer
@@ -2861,6 +2875,8 @@ spec:
                           properties:
                             autoScaling:
                               properties:
+                                enabled:
+                                  type: boolean
                                 maxReplicas:
                                   format: int32
                                   type: integer
@@ -3617,6 +3633,8 @@ spec:
                     properties:
                       meshExpansion:
                         properties:
+                          enabled:
+                            type: boolean
                           ilbGateway:
                             properties:
                               enabled:
@@ -3672,6 +3690,8 @@ spec:
                                     properties:
                                       autoScaling:
                                         properties:
+                                          enabled:
+                                            type: boolean
                                           maxReplicas:
                                             format: int32
                                             type: integer
@@ -3948,6 +3968,8 @@ spec:
                         type: object
                       multiCluster:
                         properties:
+                          enabled:
+                            type: boolean
                           meshNetworks:
                             additionalProperties:
                               properties:
@@ -4042,6 +4064,8 @@ spec:
                                   properties:
                                     autoScaling:
                                       properties:
+                                        enabled:
+                                          type: boolean
                                         maxReplicas:
                                           format: int32
                                           type: integer
@@ -4372,6 +4396,8 @@ spec:
                                   properties:
                                     autoScaling:
                                       properties:
+                                        enabled:
+                                          type: boolean
                                         maxReplicas:
                                           format: int32
                                           type: integer
@@ -4751,6 +4777,8 @@ spec:
                                 properties:
                                   autoScaling:
                                     properties:
+                                      enabled:
+                                        type: boolean
                                       maxReplicas:
                                         format: int32
                                         type: integer
@@ -5107,6 +5135,8 @@ spec:
                                 properties:
                                   autoScaling:
                                     properties:
+                                      enabled:
+                                        type: boolean
                                       maxReplicas:
                                         format: int32
                                         type: integer
@@ -5864,6 +5894,8 @@ spec:
                               properties:
                                 autoScaling:
                                   properties:
+                                    enabled:
+                                      type: boolean
                                     maxReplicas:
                                       format: int32
                                       type: integer

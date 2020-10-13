@@ -14,13 +14,13 @@ type KialiAddonConfig struct {
 type KialiInstallConfig struct {
 	// Dashboard configures the behavior of the kiali dashboard.
 	// +optional
-	Dashboard KialiDashboardConfig `json:"dashboard,omitempty"`
+	Dashboard *KialiDashboardConfig `json:"dashboard,omitempty"`
 	// Service is used to configure the k8s Service associated with the kiali
 	// installation.
 	// XXX: provided for upstream support, only ingress is used, and then only
 	// for enablement and contextPath
 	// +optional
-	Service ComponentServiceConfig `json:"service,omitempty"`
+	Service *ComponentServiceConfig `json:"service,omitempty"`
 }
 
 // KialiDashboardConfig configures the behavior of the kiali dashboard

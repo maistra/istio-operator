@@ -25,6 +25,7 @@ type ControlPlaneClusterConfig struct {
 // adds external to RequestedNetworkView (ISTIO_META_REQUESTED_NETWORK_VIEW) for egress gateway
 // adds "global" and "{{ valueOrDefault .DeploymentMeta.Namespace \"default\" }}.global" to pod dns search suffixes
 type MultiClusterConfig struct {
+	Enablement `json:",inline"`
 	// .Values.global.meshNetworks
 	// XXX: if non-empty, local cluster network should be configured as:
 	//  <spec.cluster.network>:
@@ -39,6 +40,7 @@ type MultiClusterConfig struct {
 
 // MeshExpansionConfig configures aspects related to mesh expansion
 type MeshExpansionConfig struct {
+	Enablement `json:",inline"`
 	// .Values.global.meshExpansion.useILB, true if not null, otherwise uses ingress gateway
 	// +optional
 	ILBGateway *GatewayConfig `json:"ilbGateway,omitempty"`

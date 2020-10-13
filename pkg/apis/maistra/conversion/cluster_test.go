@@ -16,16 +16,19 @@ const clusterTestNamespace = "cp-namespace"
 
 var clusterTestCases = []conversionTestCase{
 	{
-		name: "nil." + versions.V1_0.String(),
+		name:      "nil." + versions.V1_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_0.String(),
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
 				"multiCluster": map[string]interface{}{
 					"enabled": false,
+					"multiClusterOverrides": map[string]interface{}{
+						"expansionEnabled":    nil,
+						"multiClusterEnabled": nil,
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
@@ -36,16 +39,19 @@ var clusterTestCases = []conversionTestCase{
 		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
 	},
 	{
-		name: "nil." + versions.V1_1.String(),
+		name:      "nil." + versions.V1_1.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
 				"multiCluster": map[string]interface{}{
 					"enabled": false,
+					"multiClusterOverrides": map[string]interface{}{
+						"expansionEnabled":    nil,
+						"multiClusterEnabled": nil,
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
@@ -56,16 +62,19 @@ var clusterTestCases = []conversionTestCase{
 		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
 	},
 	{
-		name: "nil." + versions.V2_0.String(),
+		name:      "nil." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
 				"multiCluster": map[string]interface{}{
 					"enabled": false,
+					"multiClusterOverrides": map[string]interface{}{
+						"expansionEnabled":    nil,
+						"multiClusterEnabled": nil,
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
@@ -76,7 +85,7 @@ var clusterTestCases = []conversionTestCase{
 		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
 	},
 	{
-		name: "simple." + versions.V1_1.String(),
+		name:      "simple." + versions.V1_1.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
@@ -90,19 +99,22 @@ var clusterTestCases = []conversionTestCase{
 				"multiCluster": map[string]interface{}{
 					"clusterName": "my-cluster",
 					"enabled":     false,
+					"multiClusterOverrides": map[string]interface{}{
+						"expansionEnabled":    nil,
+						"multiClusterEnabled": nil,
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
 	},
 	{
-		name: "simple." + versions.V2_0.String(),
+		name:      "simple." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
@@ -116,26 +128,33 @@ var clusterTestCases = []conversionTestCase{
 				"multiCluster": map[string]interface{}{
 					"clusterName": "my-cluster",
 					"enabled":     false,
+					"multiClusterOverrides": map[string]interface{}{
+						"expansionEnabled":    nil,
+						"multiClusterEnabled": nil,
+					},
 				},
 				"meshExpansion": map[string]interface{}{
 					"enabled": false,
 					"useILB":  false,
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
 	},
 	{
-		name: "multicluster.simple." + versions.V1_1.String(),
+		name:      "multicluster.simple." + versions.V1_1.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:         "my-cluster",
-				Network:      "my-network",
-				MultiCluster: &v2.MultiClusterConfig{},
+				Name:    "my-cluster",
+				Network: "my-network",
+				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
@@ -148,12 +167,14 @@ var clusterTestCases = []conversionTestCase{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
-					"gatewaysOverrides": map[string]interface{}{
+					"multiClusterOverrides": map[string]interface{}{
 						"addedExternal":     true,
-						"egressEnabled":     interface{}(nil),
-						"enabled":           interface{}(nil),
-						"ingressEnabled":    interface{}(nil),
-						"k8sIngressEnabled": interface{}(nil),
+						"egressEnabled":     nil,
+						"expansionEnabled":  nil,
+						"gatewaysEnabled":   nil,
+						"ilbEnabled":        nil,
+						"ingressEnabled":    nil,
+						"k8sIngressEnabled": nil,
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -175,7 +196,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -214,14 +234,18 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "multicluster.simple." + versions.V2_0.String(),
+		name:      "multicluster.simple." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:         "my-cluster",
-				Network:      "my-network",
-				MultiCluster: &v2.MultiClusterConfig{},
+				Name:    "my-cluster",
+				Network: "my-network",
+				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
@@ -234,12 +258,14 @@ var clusterTestCases = []conversionTestCase{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
-					"gatewaysOverrides": map[string]interface{}{
+					"multiClusterOverrides": map[string]interface{}{
 						"addedExternal":     true,
-						"egressEnabled":     interface{}(nil),
-						"enabled":           interface{}(nil),
-						"ingressEnabled":    interface{}(nil),
-						"k8sIngressEnabled": interface{}(nil),
+						"egressEnabled":     nil,
+						"expansionEnabled":  nil,
+						"gatewaysEnabled":   nil,
+						"ilbEnabled":        nil,
+						"ingressEnabled":    nil,
+						"k8sIngressEnabled": nil,
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -261,7 +287,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -299,14 +324,18 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "multicluster.ilb." + versions.V2_0.String(),
+		name:      "multicluster.ilb." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:         "my-cluster",
-				Network:      "my-network",
-				MultiCluster: &v2.MultiClusterConfig{},
+				Name:    "my-cluster",
+				Network: "my-network",
+				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+				},
 				MeshExpansion: &v2.MeshExpansionConfig{
 					ILBGateway: &v2.GatewayConfig{
 						Enablement: v2.Enablement{
@@ -326,10 +355,11 @@ var clusterTestCases = []conversionTestCase{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
-					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal": true,
-						"egressEnabled": interface{}(nil),
-						"enabled":       interface{}(nil),
+					"multiClusterOverrides": map[string]interface{}{
+						"addedExternal":    true,
+						"egressEnabled":    nil,
+						"expansionEnabled": nil,
+						"gatewaysEnabled":  nil,
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -351,7 +381,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -379,7 +408,7 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "multicluster.meshNetwork.override." + versions.V2_0.String(),
+		name:      "multicluster.meshNetwork.override." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
@@ -387,6 +416,9 @@ var clusterTestCases = []conversionTestCase{
 				Name:    "my-cluster",
 				Network: "my-network",
 				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
 					MeshNetworks: map[string]v2.MeshNetworkConfig{
 						"my-network": {
 							Endpoints: []v2.MeshEndpointConfig{
@@ -414,10 +446,12 @@ var clusterTestCases = []conversionTestCase{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
-					"gatewaysOverrides": map[string]interface{}{
+					"multiClusterOverrides": map[string]interface{}{
 						"addedExternal":     true,
 						"egressEnabled":     interface{}(nil),
-						"enabled":           interface{}(nil),
+						"expansionEnabled":  nil,
+						"gatewaysEnabled":   interface{}(nil),
+						"ilbEnabled":        nil,
 						"ingressEnabled":    interface{}(nil),
 						"k8sIngressEnabled": interface{}(nil),
 					},
@@ -441,7 +475,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -479,7 +512,7 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "multicluster.meshNetwork.additional." + versions.V2_0.String(),
+		name:      "multicluster.meshNetwork.additional." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
@@ -487,6 +520,9 @@ var clusterTestCases = []conversionTestCase{
 				Name:    "my-cluster",
 				Network: "my-network",
 				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
 					MeshNetworks: map[string]v2.MeshNetworkConfig{
 						"other-network": {
 							Endpoints: []v2.MeshEndpointConfig{
@@ -515,10 +551,12 @@ var clusterTestCases = []conversionTestCase{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
-					"gatewaysOverrides": map[string]interface{}{
+					"multiClusterOverrides": map[string]interface{}{
 						"addedExternal":     true,
 						"egressEnabled":     interface{}(nil),
-						"enabled":           interface{}(nil),
+						"expansionEnabled":  nil,
+						"gatewaysEnabled":   interface{}(nil),
+						"ilbEnabled":        nil,
 						"ingressEnabled":    interface{}(nil),
 						"k8sIngressEnabled": interface{}(nil),
 					},
@@ -554,7 +592,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -592,7 +629,7 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "multicluster.clusterDomain.override." + versions.V2_0.String(),
+		name:      "multicluster.clusterDomain.override." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
@@ -602,9 +639,13 @@ var clusterTestCases = []conversionTestCase{
 				},
 			},
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:         "my-cluster",
-				Network:      "my-network",
-				MultiCluster: &v2.MultiClusterConfig{},
+				Name:    "my-cluster",
+				Network: "my-network",
+				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
@@ -617,10 +658,12 @@ var clusterTestCases = []conversionTestCase{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
-					"gatewaysOverrides": map[string]interface{}{
+					"multiClusterOverrides": map[string]interface{}{
 						"addedExternal":     true,
 						"egressEnabled":     interface{}(nil),
-						"enabled":           interface{}(nil),
+						"expansionEnabled":  nil,
+						"gatewaysEnabled":   interface{}(nil),
+						"ilbEnabled":        nil,
 						"ingressEnabled":    interface{}(nil),
 						"k8sIngressEnabled": interface{}(nil),
 					},
@@ -644,7 +687,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -685,7 +727,7 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "multicluster.searchSuffix.global." + versions.V2_0.String(),
+		name:      "multicluster.searchSuffix.global." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
@@ -699,9 +741,13 @@ var clusterTestCases = []conversionTestCase{
 				},
 			},
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:         "my-cluster",
-				Network:      "my-network",
-				MultiCluster: &v2.MultiClusterConfig{},
+				Name:    "my-cluster",
+				Network: "my-network",
+				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
@@ -713,10 +759,12 @@ var clusterTestCases = []conversionTestCase{
 					"addedSearchSuffixes": []interface{}{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 					},
-					"gatewaysOverrides": map[string]interface{}{
+					"multiClusterOverrides": map[string]interface{}{
 						"addedExternal":     true,
 						"egressEnabled":     interface{}(nil),
-						"enabled":           interface{}(nil),
+						"expansionEnabled":  nil,
+						"gatewaysEnabled":   interface{}(nil),
+						"ilbEnabled":        nil,
 						"ingressEnabled":    interface{}(nil),
 						"k8sIngressEnabled": interface{}(nil),
 					},
@@ -740,7 +788,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -778,7 +825,7 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "multicluster.searchSuffix.namespace." + versions.V2_0.String(),
+		name:      "multicluster.searchSuffix.namespace." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
@@ -792,9 +839,13 @@ var clusterTestCases = []conversionTestCase{
 				},
 			},
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:         "my-cluster",
-				Network:      "my-network",
-				MultiCluster: &v2.MultiClusterConfig{},
+				Name:    "my-cluster",
+				Network: "my-network",
+				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
@@ -806,10 +857,12 @@ var clusterTestCases = []conversionTestCase{
 					"addedSearchSuffixes": []interface{}{
 						"global",
 					},
-					"gatewaysOverrides": map[string]interface{}{
+					"multiClusterOverrides": map[string]interface{}{
 						"addedExternal":     true,
 						"egressEnabled":     interface{}(nil),
-						"enabled":           interface{}(nil),
+						"expansionEnabled":  nil,
+						"gatewaysEnabled":   interface{}(nil),
+						"ilbEnabled":        nil,
 						"ingressEnabled":    interface{}(nil),
 						"k8sIngressEnabled": interface{}(nil),
 					},
@@ -833,7 +886,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -871,7 +923,7 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "multicluster.searchSuffix.all." + versions.V2_0.String(),
+		name:      "multicluster.searchSuffix.all." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
@@ -886,9 +938,13 @@ var clusterTestCases = []conversionTestCase{
 				},
 			},
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:         "my-cluster",
-				Network:      "my-network",
-				MultiCluster: &v2.MultiClusterConfig{},
+				Name:    "my-cluster",
+				Network: "my-network",
+				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
@@ -897,10 +953,12 @@ var clusterTestCases = []conversionTestCase{
 					"clusterName":       "my-cluster",
 					"enabled":           true,
 					"addedLocalNetwork": "my-network",
-					"gatewaysOverrides": map[string]interface{}{
+					"multiClusterOverrides": map[string]interface{}{
 						"addedExternal":     true,
 						"egressEnabled":     interface{}(nil),
-						"enabled":           interface{}(nil),
+						"expansionEnabled":  nil,
+						"gatewaysEnabled":   interface{}(nil),
+						"ilbEnabled":        nil,
 						"ingressEnabled":    interface{}(nil),
 						"k8sIngressEnabled": interface{}(nil),
 					},
@@ -924,7 +982,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -962,7 +1019,7 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "multicluster.searchSuffix.custom." + versions.V2_0.String(),
+		name:      "multicluster.searchSuffix.custom." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
@@ -976,9 +1033,13 @@ var clusterTestCases = []conversionTestCase{
 				},
 			},
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:         "my-cluster",
-				Network:      "my-network",
-				MultiCluster: &v2.MultiClusterConfig{},
+				Name:    "my-cluster",
+				Network: "my-network",
+				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
@@ -991,10 +1052,12 @@ var clusterTestCases = []conversionTestCase{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
-					"gatewaysOverrides": map[string]interface{}{
+					"multiClusterOverrides": map[string]interface{}{
 						"addedExternal":     true,
 						"egressEnabled":     interface{}(nil),
-						"enabled":           interface{}(nil),
+						"expansionEnabled":  nil,
+						"gatewaysEnabled":   interface{}(nil),
+						"ilbEnabled":        nil,
 						"ingressEnabled":    interface{}(nil),
 						"k8sIngressEnabled": interface{}(nil),
 					},
@@ -1018,7 +1081,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -1057,7 +1119,7 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "multicluster.searchSuffix.custom.insert." + versions.V2_0.String(),
+		name:      "multicluster.searchSuffix.custom.insert." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
@@ -1072,9 +1134,13 @@ var clusterTestCases = []conversionTestCase{
 				},
 			},
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:         "my-cluster",
-				Network:      "my-network",
-				MultiCluster: &v2.MultiClusterConfig{},
+				Name:    "my-cluster",
+				Network: "my-network",
+				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
@@ -1086,10 +1152,12 @@ var clusterTestCases = []conversionTestCase{
 					"addedSearchSuffixes": []interface{}{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 					},
-					"gatewaysOverrides": map[string]interface{}{
+					"multiClusterOverrides": map[string]interface{}{
 						"addedExternal":     true,
 						"egressEnabled":     interface{}(nil),
-						"enabled":           interface{}(nil),
+						"expansionEnabled":  nil,
+						"gatewaysEnabled":   interface{}(nil),
+						"ilbEnabled":        nil,
 						"ingressEnabled":    interface{}(nil),
 						"k8sIngressEnabled": interface{}(nil),
 					},
@@ -1113,7 +1181,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -1152,14 +1219,18 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "multicluster.gateways.egress.unconfigured" + versions.V2_0.String(),
+		name:      "multicluster.gateways.egress.unconfigured" + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:         "my-cluster",
-				Network:      "my-network",
-				MultiCluster: &v2.MultiClusterConfig{},
+				Name:    "my-cluster",
+				Network: "my-network",
+				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+				},
 			},
 			Gateways: &v2.GatewaysConfig{},
 		},
@@ -1173,10 +1244,12 @@ var clusterTestCases = []conversionTestCase{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
-					"gatewaysOverrides": map[string]interface{}{
+					"multiClusterOverrides": map[string]interface{}{
 						"addedExternal":     true,
 						"egressEnabled":     interface{}(nil),
-						"enabled":           interface{}(nil),
+						"expansionEnabled":  nil,
+						"gatewaysEnabled":   interface{}(nil),
+						"ilbEnabled":        nil,
 						"ingressEnabled":    interface{}(nil),
 						"k8sIngressEnabled": interface{}(nil),
 					},
@@ -1200,7 +1273,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -1238,14 +1310,18 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "multicluster.gateways.egress.enabled." + versions.V2_0.String(),
+		name:      "multicluster.gateways.egress.enabled." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:         "my-cluster",
-				Network:      "my-network",
-				MultiCluster: &v2.MultiClusterConfig{},
+				Name:    "my-cluster",
+				Network: "my-network",
+				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+				},
 			},
 			Gateways: &v2.GatewaysConfig{
 				ClusterEgress: &v2.EgressGatewayConfig{
@@ -1267,9 +1343,11 @@ var clusterTestCases = []conversionTestCase{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
-					"gatewaysOverrides": map[string]interface{}{
+					"multiClusterOverrides": map[string]interface{}{
 						"addedExternal":     true,
-						"enabled":           interface{}(nil),
+						"expansionEnabled":  nil,
+						"gatewaysEnabled":   interface{}(nil),
+						"ilbEnabled":        nil,
 						"ingressEnabled":    interface{}(nil),
 						"k8sIngressEnabled": interface{}(nil),
 					},
@@ -1293,7 +1371,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -1331,14 +1408,18 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "multicluster.gateways.egress.configured." + versions.V2_0.String(),
+		name:      "multicluster.gateways.egress.configured." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:         "my-cluster",
-				Network:      "my-network",
-				MultiCluster: &v2.MultiClusterConfig{},
+				Name:    "my-cluster",
+				Network: "my-network",
+				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+				},
 			},
 			Gateways: &v2.GatewaysConfig{
 				ClusterEgress: &v2.EgressGatewayConfig{
@@ -1363,8 +1444,10 @@ var clusterTestCases = []conversionTestCase{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
-					"gatewaysOverrides": map[string]interface{}{
-						"enabled":           interface{}(nil),
+					"multiClusterOverrides": map[string]interface{}{
+						"expansionEnabled":  nil,
+						"gatewaysEnabled":   interface{}(nil),
+						"ilbEnabled":        nil,
 						"ingressEnabled":    interface{}(nil),
 						"k8sIngressEnabled": interface{}(nil),
 					},
@@ -1388,7 +1471,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -1426,14 +1508,18 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "multicluster.ingress.http." + versions.V2_0.String(),
+		name:      "multicluster.ingress.http." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:         "my-cluster",
-				Network:      "my-network",
-				MultiCluster: &v2.MultiClusterConfig{},
+				Name:    "my-cluster",
+				Network: "my-network",
+				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+				},
 			},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
@@ -1446,10 +1532,12 @@ var clusterTestCases = []conversionTestCase{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
-					"gatewaysOverrides": map[string]interface{}{
+					"multiClusterOverrides": map[string]interface{}{
 						"addedExternal":     true,
 						"egressEnabled":     interface{}(nil),
-						"enabled":           interface{}(nil),
+						"expansionEnabled":  nil,
+						"gatewaysEnabled":   interface{}(nil),
+						"ilbEnabled":        nil,
 						"ingressEnabled":    interface{}(nil),
 						"k8sIngressEnabled": interface{}(nil),
 					},
@@ -1473,7 +1561,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -1511,14 +1598,18 @@ var clusterTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "multicluster.ingress.https." + versions.V2_0.String(),
+		name:      "multicluster.ingress.https." + versions.V2_0.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:         "my-cluster",
-				Network:      "my-network",
-				MultiCluster: &v2.MultiClusterConfig{},
+				Name:    "my-cluster",
+				Network: "my-network",
+				MultiCluster: &v2.MultiClusterConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureEnabled,
+					},
+				},
 			},
 			Gateways: &v2.GatewaysConfig{
 				ClusterIngress: &v2.ClusterIngressGatewayConfig{
@@ -1554,10 +1645,12 @@ var clusterTestCases = []conversionTestCase{
 						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 						"global",
 					},
-					"gatewaysOverrides": map[string]interface{}{
-						"addedExternal": true,
-						"egressEnabled": interface{}(nil),
-						"enabled":       interface{}(nil),
+					"multiClusterOverrides": map[string]interface{}{
+						"addedExternal":    true,
+						"egressEnabled":    interface{}(nil),
+						"expansionEnabled": nil,
+						"gatewaysEnabled":  interface{}(nil),
+						"ilbEnabled":       nil,
 					},
 				},
 				"meshExpansion": map[string]interface{}{
@@ -1579,7 +1672,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{

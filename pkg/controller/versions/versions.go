@@ -101,6 +101,8 @@ type RenderingStrategy interface {
 	GetChartInstallOrder() [][]string
 	SetImageValues(ctx context.Context, cr *common.ControllerResources, smcp *v1.ControlPlaneSpec) error
 	Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error)
+	// for testing purposes
+	ApplyProfiles(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec, targetNamespace string) (v1.ControlPlaneSpec, error)
 }
 
 // VersionStrategy provides encapsulates customization required for a particular

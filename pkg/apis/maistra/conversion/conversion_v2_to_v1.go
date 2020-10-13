@@ -38,28 +38,28 @@ func v2ToV1Hacks(values map[string]interface{}, out *v1.ControlPlaneSpec) error 
 			return err
 		}
 		// normalize jaeger images
-		if agentImage, ok, err := hv.GetString("tracing.jaeger.agent.image"); ok {
+		if agentImage, ok, err := hv.GetAndRemoveString("tracing.jaeger.agent.image"); ok {
 			if err := hv.SetField("tracing.jaeger.agentImage", agentImage); err != nil {
 				return err
 			}
 		} else if err != nil {
 			return err
 		}
-		if allInOneImage, ok, err := hv.GetString("tracing.jaeger.allInOne.image"); ok {
+		if allInOneImage, ok, err := hv.GetAndRemoveString("tracing.jaeger.allInOne.image"); ok {
 			if err := hv.SetField("tracing.jaeger.allInOneImage", allInOneImage); err != nil {
 				return err
 			}
 		} else if err != nil {
 			return err
 		}
-		if collectorImage, ok, err := hv.GetString("tracing.jaeger.collector.image"); ok {
+		if collectorImage, ok, err := hv.GetAndRemoveString("tracing.jaeger.collector.image"); ok {
 			if err := hv.SetField("tracing.jaeger.collectorImage", collectorImage); err != nil {
 				return err
 			}
 		} else if err != nil {
 			return err
 		}
-		if queryImage, ok, err := hv.GetString("tracing.jaeger.query.image"); ok {
+		if queryImage, ok, err := hv.GetAndRemoveString("tracing.jaeger.query.image"); ok {
 			if err := hv.SetField("tracing.jaeger.queryImage", queryImage); err != nil {
 				return err
 			}
@@ -120,8 +120,6 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 		values = make(map[string]interface{})
 	} else {
 		values = in.TechPreview.GetContent()
-		// preserve for round tripping
-		values["techPreview"] = in.TechPreview.DeepCopy().GetContent()
 	}
 
 	// Cluster settings

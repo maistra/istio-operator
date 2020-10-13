@@ -71,13 +71,13 @@ func populateControlPlaneLoggingConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 	logging := &v2.LoggingConfig{}
 	setLogging := false
 
-	if componentLevels, ok, err := in.GetString("global.logging.level"); ok && len(componentLevels) > 0 {
+	if componentLevels, ok, err := in.GetAndRemoveString("global.logging.level"); ok && len(componentLevels) > 0 {
 		logging.ComponentLevels = componentLogLevelsFromString(componentLevels)
 		setLogging = true
 	} else if err != nil {
 		return err
 	}
-	if logAsJSON, ok, err := in.GetBool("global.logAsJson"); ok {
+	if logAsJSON, ok, err := in.GetAndRemoveBool("global.logAsJson"); ok {
 		logging.LogAsJSON = &logAsJSON
 		setLogging = true
 	} else if err != nil {
@@ -96,13 +96,13 @@ func populateControlPlaneLoggingConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 
 func populateProxyLoggingConfig(proxyValues *v1.HelmValues, logging *v2.ProxyLoggingConfig) (bool, error) {
 	setLogging := false
-	if level, ok, err := proxyValues.GetString("logLevel"); ok {
+	if level, ok, err := proxyValues.GetAndRemoveString("logLevel"); ok {
 		logging.Level = v2.LogLevel(level)
 		setLogging = true
 	} else if err != nil {
 		return false, err
 	}
-	if componentLevels, ok, err := proxyValues.GetString("componentLogLevel"); ok && len(componentLevels) > 0 {
+	if componentLevels, ok, err := proxyValues.GetAndRemoveString("componentLogLevel"); ok && len(componentLevels) > 0 {
 		logging.ComponentLevels = componentLogLevelsFromString(componentLevels)
 		setLogging = true
 	} else if err != nil {

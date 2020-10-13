@@ -132,7 +132,7 @@ type GatewayServiceConfig struct {
 	corev1.ServiceSpec `json:",inline"`
 	// metadata to be applied to the gateway's service (annotations and labels)
 	// +optional
-	Metadata MetadataConfig `json:"metadata,omitempty"`
+	Metadata *MetadataConfig `json:"metadata,omitempty"`
 }
 
 // VolumeConfig is used to specify volumes that should be mounted on the pod.

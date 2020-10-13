@@ -129,6 +129,9 @@ func (v version) recursivelyApplyProfiles(ctx context.Context, smcp *v1.ControlP
 			return *smcp, err
 		}
 
+		// ensure version is set so conversion works correctly
+		profile.Version = v.String()
+
 		if log.V(5).Enabled() {
 			rawValues, _ := yaml.Marshal(profile)
 			log.V(5).Info(fmt.Sprintf("profile values:\n%s\n", string(rawValues)))
@@ -208,7 +211,7 @@ func updateImageField(helmValues *v1.HelmValues, path, value string) error {
 	return helmValues.SetField(path, value)
 }
 
-func (v version) applyProfiles(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec, targetNamespace string) (v1.ControlPlaneSpec, error) {
+func (v version) ApplyProfiles(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec, targetNamespace string) (v1.ControlPlaneSpec, error) {
 	log := common.LogFromContext(ctx)
 	log.Info("applying profiles to ServiceMeshControlPlane")
 	profiles := smcpSpec.Profiles

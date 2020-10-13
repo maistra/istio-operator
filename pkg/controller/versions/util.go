@@ -41,15 +41,92 @@ func validatePrometheusEnabledWhenKialiEnabled(spec *v2.ControlPlaneSpec, allErr
 
 func validatePolicyType(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, v version, allErrors []error) []error {
 	// I believe the only settings that aren't supported are Istiod policy and telemetry
-	if spec.Policy != nil && spec.Policy.Type == v2.PolicyTypeIstiod {
-		allErrors = append(allErrors, fmt.Errorf("policy type %s is not supported in version %s", spec.Policy.Type, v.String()))
+	policy := spec.Policy
+	if policy == nil {
+		return allErrors
+	}
+	if v == V1_0 || v == V1_1 {
+		if policy.Type == v2.PolicyTypeIstiod {
+			allErrors = append(allErrors, fmt.Errorf("policy type %s is not supported in version %s", policy.Type, v.String()))
+		} else if policy.Type == v2.PolicyTypeRemote {
+			if spec.Telemetry == nil || spec.Telemetry.Type != v2.TelemetryTypeRemote {
+				allErrors = append(allErrors, fmt.Errorf("if policy type is Remote, telemetry type must also be Remote for v1.x versions"))
+			}
+		}
+		if policy.Mixer != nil {
+			if policy.Mixer.Adapters != nil {
+				if policy.Mixer.Adapters.KubernetesEnv != nil &&
+					(spec.Telemetry == nil || spec.Telemetry.Mixer == nil || spec.Telemetry.Mixer.Adapters == nil ||
+						spec.Telemetry.Mixer.Adapters.KubernetesEnv == nil ||
+						*spec.Telemetry.Mixer.Adapters.KubernetesEnv != *policy.Mixer.Adapters.KubernetesEnv) {
+					allErrors = append(allErrors, fmt.Errorf("if policy.mixer.adapters.kubernetesenv is specified, it must match telemetry.mixer.adapters.kubernetesenv"))
+				}
+			}
+		}
+	} else {
+		if policy.Remote != nil && policy.Remote.Address != "" && policy.Type != v2.PolicyTypeRemote {
+			allErrors = append(allErrors, fmt.Errorf("if policy.remote.address is specified, policy.type must be Remote for v2.x versions"))
+		}
+	}
+
+	// all versions
+	if policy.Type == v2.PolicyTypeRemote {
+		if policy.Remote == nil || policy.Remote.Address == "" {
+			allErrors = append(allErrors, fmt.Errorf("if policy type is Remote, an address must be specified"))
+		}
+	}
+	if policy.Remote != nil && policy.Remote.CreateService != nil &&
+		(spec.Telemetry == nil || spec.Telemetry.Remote == nil || spec.Telemetry.Remote.CreateService == nil ||
+			*spec.Telemetry.Remote.CreateService != *policy.Remote.CreateService) {
+		allErrors = append(allErrors, fmt.Errorf("if policy.remote.createService is specified, it must match telemetry.remote.createService"))
+	}
+	if policy.Mixer != nil && policy.Mixer.Adapters != nil && policy.Mixer.Adapters.UseAdapterCRDs != nil && *policy.Mixer.Adapters.UseAdapterCRDs {
+		allErrors = append(allErrors, fmt.Errorf("if policy.mixer.adapters.useAdapterCRDs is not supported for this version"))
 	}
 	return allErrors
 }
 
 func validateTelemetryType(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, v version, allErrors []error) []error {
-	if spec.Telemetry != nil && spec.Telemetry.Type == v2.TelemetryTypeIstiod {
-		allErrors = append(allErrors, fmt.Errorf("telemetry type %s is not supported in version %s", spec.Telemetry.Type, v.String()))
+	telemetry := spec.Telemetry
+	if telemetry == nil {
+		return allErrors
+	}
+	if v == V1_0 || v == V1_1 {
+		if telemetry.Type == v2.TelemetryTypeIstiod {
+			allErrors = append(allErrors, fmt.Errorf("telemetry type %s is not supported in version %s", spec.Telemetry.Type, v.String()))
+		} else if telemetry.Type == v2.TelemetryTypeRemote {
+			if spec.Policy == nil || spec.Policy.Type != v2.PolicyTypeRemote {
+				allErrors = append(allErrors, fmt.Errorf("if telemetry type is Remote, policy type must also be Remote for v1.x versions"))
+			}
+		}
+		if telemetry.Mixer != nil {
+			if telemetry.Mixer.Adapters != nil {
+				if telemetry.Mixer.Adapters.KubernetesEnv != nil &&
+					(spec.Policy == nil || spec.Policy.Mixer == nil || spec.Policy.Mixer.Adapters == nil ||
+						spec.Policy.Mixer.Adapters.KubernetesEnv == nil ||
+						*spec.Policy.Mixer.Adapters.KubernetesEnv != *telemetry.Mixer.Adapters.KubernetesEnv) {
+					allErrors = append(allErrors, fmt.Errorf("if telemetry.mixer.adapters.kubernetesenv is specified, it must match policy.mixer.adapters.kubernetesenv"))
+				}
+			}
+		}
+	} else {
+		if telemetry.Remote != nil && telemetry.Remote.Address != "" && telemetry.Type != v2.TelemetryTypeRemote {
+			allErrors = append(allErrors, fmt.Errorf("if telemetry.remote.address is specified, telemetry.type must be Remote for v2.x versions"))
+		}
+	}
+	// all versions
+	if telemetry.Type == v2.TelemetryTypeRemote {
+		if telemetry.Remote == nil || telemetry.Remote.Address == "" {
+			allErrors = append(allErrors, fmt.Errorf("if telemetry type is Remote, an address must be specified"))
+		}
+	}
+	if telemetry.Remote != nil && telemetry.Remote.CreateService != nil &&
+		(spec.Policy == nil || spec.Policy.Remote == nil || spec.Policy.Remote.CreateService == nil ||
+			*spec.Policy.Remote.CreateService != *telemetry.Remote.CreateService) {
+		allErrors = append(allErrors, fmt.Errorf("if telemetry.remote.createService is specified, it must match policy.remote.createService"))
+	}
+	if telemetry.Mixer != nil && telemetry.Mixer.Adapters != nil && telemetry.Mixer.Adapters.UseAdapterCRDs != nil && *telemetry.Mixer.Adapters.UseAdapterCRDs {
+		allErrors = append(allErrors, fmt.Errorf("if telemetry.mixer.adapters.useAdapterCRDs is not supported for this version"))
 	}
 	return allErrors
 }
@@ -188,10 +265,9 @@ func IsValidationError(err error) bool {
 	return ok
 }
 
-
 type dependencyMissingError struct {
 	dependency string
-	err error
+	err        error
 }
 
 func (e *dependencyMissingError) Error() string {
@@ -201,7 +277,7 @@ func (e *dependencyMissingError) Error() string {
 func NewDependencyMissingError(dependency string, err error) error {
 	return &dependencyMissingError{
 		dependency: dependency,
-		err: err,
+		err:        err,
 	}
 }
 

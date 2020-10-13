@@ -58,9 +58,6 @@ func populateAddonIngressValues(ingress *v2.ComponentIngressConfig, addonIngress
 		if err := setHelmBoolValue(addonIngressValues, "enabled", *ingress.Enabled); err != nil {
 			return err
 		}
-		if !*ingress.Enabled {
-			return nil
-		}
 	}
 
 	if ingress.ContextPath != "" {
@@ -73,14 +70,16 @@ func populateAddonIngressValues(ingress *v2.ComponentIngressConfig, addonIngress
 			return err
 		}
 	}
-	if len(ingress.Metadata.Annotations) > 0 {
-		if err := setHelmStringMapValue(addonIngressValues, "annotations", ingress.Metadata.Annotations); err != nil {
-			return err
+	if ingress.Metadata != nil {
+		if len(ingress.Metadata.Annotations) > 0 {
+			if err := setHelmStringMapValue(addonIngressValues, "annotations", ingress.Metadata.Annotations); err != nil {
+				return err
+			}
 		}
-	}
-	if len(ingress.Metadata.Labels) > 0 {
-		if err := setHelmStringMapValue(addonIngressValues, "labels", ingress.Metadata.Labels); err != nil {
-			return err
+		if len(ingress.Metadata.Labels) > 0 {
+			if err := setHelmStringMapValue(addonIngressValues, "labels", ingress.Metadata.Labels); err != nil {
+				return err
+			}
 		}
 	}
 	if len(ingress.TLS.GetContent()) > 0 {
@@ -154,46 +153,55 @@ func populateAddonsConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 
 func populateAddonIngressConfig(in *v1.HelmValues, out *v2.ComponentIngressConfig) (bool, error) {
 	setValues := false
-	if enabled, ok, err := in.GetBool("enabled"); ok {
+	if enabled, ok, err := in.GetAndRemoveBool("enabled"); ok {
 		out.Enabled = &enabled
 		setValues = true
 	} else if err != nil {
 		return false, err
 	}
 
-	if contextPath, ok, err := in.GetString("contextPath"); ok {
+	if contextPath, ok, err := in.GetAndRemoveString("contextPath"); ok {
 		out.ContextPath = contextPath
 		setValues = true
 	} else if err != nil {
 		return false, err
 	}
-	if hosts, ok, err := in.GetStringSlice("hosts"); ok {
+	if hosts, ok, err := in.GetAndRemoveStringSlice("hosts"); ok {
 		out.Hosts = append([]string{}, hosts...)
 		setValues = true
 	} else if err != nil {
 		return false, err
 	}
 
+	metadata := &v2.MetadataConfig{}
+	setMetadata := false
 	if rawAnnotations, ok, err := in.GetMap("annotations"); ok && len(rawAnnotations) > 0 {
-		if err := setMetadataAnnotations(rawAnnotations, &out.Metadata); err != nil {
+		if err := setMetadataAnnotations(rawAnnotations, metadata); err != nil {
 			return false, err
 		}
-		setValues = true
+		in.RemoveField("annotations")
+		setMetadata = true
 	} else if err != nil {
 		return false, err
 	}
 
 	if rawLabels, ok, err := in.GetMap("labels"); ok && len(rawLabels) > 0 {
-		if err := setMetadataLabels(rawLabels, &out.Metadata); err != nil {
+		if err := setMetadataLabels(rawLabels, metadata); err != nil {
 			return false, err
 		}
-		setValues = true
+		in.RemoveField("labels")
+		setMetadata = true
 	} else if err != nil {
 		return false, err
+	}
+	if setMetadata {
+		setValues = true
+		out.Metadata = metadata
 	}
 
 	if tls, ok, err := in.GetMap("tls"); ok && len(tls) > 0 {
 		out.TLS = v1.NewHelmValues(tls)
+		in.RemoveField("tls")
 		setValues = true
 	} else if err != nil {
 		return false, err

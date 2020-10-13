@@ -24,12 +24,6 @@ var externalRequestedNetworkRegex = regexp.MustCompile("(^|,)external(,|$)")
 // search suffixes for Proxy.
 func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map[string]interface{}) error {
 	// Cluster settings
-	// non-configurable defaults
-	// XXX: not sure if this is version specific, i.e. does it apply to istio 1.6?
-	if err := setHelmBoolValue(values, "global.useMCP", true); err != nil {
-		return err
-	}
-
 	cluster := in.Cluster
 	if cluster == nil {
 		cluster = &v2.ControlPlaneClusterConfig{}
@@ -53,17 +47,21 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 	}
 
 	multiClusterEnabled := false
-	gatewaysOverrides := v1.NewHelmValues(make(map[string]interface{}))
-	if cluster.MultiCluster == nil {
-		if err := setHelmBoolValue(values, "global.multiCluster.enabled", false); err != nil {
-			return err
-		}
-	} else {
+	multiClusterOverrides := v1.NewHelmValues(make(map[string]interface{}))
+	if cluster.MultiCluster != nil {
 		// multi-cluster
-		// meshExpansion is always enabled for multi-cluster
-		multiClusterEnabled = true
-		if err := setHelmBoolValue(values, "global.multiCluster.enabled", true); err != nil {
-			return err
+		if cluster.MultiCluster.Enabled != nil {
+			// meshExpansion is always enabled for multi-cluster
+			multiClusterEnabled = *cluster.MultiCluster.Enabled
+			if err := setHelmBoolValue(values, "global.multiCluster.enabled", *cluster.MultiCluster.Enabled); err != nil {
+				return err
+			}
+		} else {
+			// default to false
+			multiClusterOverrides.SetField("multiClusterEnabled", nil)
+			if err := setHelmBoolValue(values, "global.multiCluster.enabled", false); err != nil {
+				return err
+			}
 		}
 		if hasClusterName && hasNetworkName {
 			// Configure local mesh network, if not defined
@@ -94,7 +92,7 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 
 			if meshNetworksValue, err := toValues(cluster.MultiCluster.MeshNetworks); err == nil {
 				if len(meshNetworksValue) > 0 {
-					if err := setHelmValue(values, "global.meshNetworks", meshNetworksValue); err != nil {
+					if err := overwriteHelmValues(values, meshNetworksValue, strings.Split("global.meshNetworks", ".")...); err != nil {
 						return err
 					}
 				}
@@ -103,59 +101,91 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 			}
 		}
 
-		// XXX: ingress and egress gateways must be configured if multicluster is enabled
-		if in.Gateways == nil {
-			in.Gateways = &v2.GatewaysConfig{}
-		}
-		if in.Gateways.ClusterEgress == nil {
-			gatewaysOverrides.SetField("egressEnabled", nil)
-			enabled := true
-			in.Gateways.ClusterEgress = &v2.EgressGatewayConfig{
-				GatewayConfig: v2.GatewayConfig{
+		if multiClusterEnabled {
+			// if multicluster is enabled, so is mesh expansion, regardless of user settings
+			if in.Cluster.MeshExpansion == nil {
+				in.Cluster.MeshExpansion = &v2.MeshExpansionConfig{
 					Enablement: v2.Enablement{
-						Enabled: &enabled,
+						Enabled: &multiClusterEnabled,
 					},
-				},
+				}
+				multiClusterOverrides.SetField("expansionEnabled", nil)
+			} else if in.Cluster.MeshExpansion.Enabled == nil {
+				in.Cluster.MeshExpansion.Enabled = &multiClusterEnabled
+				multiClusterOverrides.SetField("expansionEnabled", nil)
+			} else if !*in.Cluster.MeshExpansion.Enabled {
+				in.Cluster.MeshExpansion.Enabled = &multiClusterEnabled
+				multiClusterOverrides.SetField("expansionEnabled", false)
 			}
-		} else if in.Gateways.ClusterEgress.Enabled == nil {
-			gatewaysOverrides.SetField("egressEnabled", nil)
-			enabled := true
-			in.Gateways.ClusterEgress.Enabled = &enabled
-		} else if !*in.Gateways.ClusterEgress.Enabled {
-			gatewaysOverrides.SetField("egressEnabled", *in.Gateways.ClusterEgress.Enabled)
-			*in.Gateways.ClusterEgress.Enabled = true
-		}
-		if in.Gateways.Enabled == nil {
-			gatewaysOverrides.SetField("enabled", nil)
-			enabled := true
-			in.Gateways.Enabled = &enabled
-		} else if !*in.Gateways.Enabled {
-			gatewaysOverrides.SetField("enabled", *in.Gateways.Enabled)
-			*in.Gateways.Enabled = true
-		}
+			// XXX: ingress and egress gateways must be configured if multicluster is enabled
+			if in.Gateways == nil {
+				in.Gateways = &v2.GatewaysConfig{}
+			}
+			if in.Gateways.ClusterEgress == nil {
+				multiClusterOverrides.SetField("egressEnabled", nil)
+				enabled := true
+				in.Gateways.ClusterEgress = &v2.EgressGatewayConfig{
+					GatewayConfig: v2.GatewayConfig{
+						Enablement: v2.Enablement{
+							Enabled: &enabled,
+						},
+					},
+				}
+			} else if in.Gateways.ClusterEgress.Enabled == nil {
+				multiClusterOverrides.SetField("egressEnabled", nil)
+				enabled := true
+				in.Gateways.ClusterEgress.Enabled = &enabled
+			} else if !*in.Gateways.ClusterEgress.Enabled {
+				multiClusterOverrides.SetField("egressEnabled", *in.Gateways.ClusterEgress.Enabled)
+				*in.Gateways.ClusterEgress.Enabled = true
+			}
+			if in.Gateways.Enabled == nil {
+				multiClusterOverrides.SetField("gatewaysEnabled", nil)
+				enabled := true
+				in.Gateways.Enabled = &enabled
+			} else if !*in.Gateways.Enabled {
+				multiClusterOverrides.SetField("gatewaysEnabled", *in.Gateways.Enabled)
+				*in.Gateways.Enabled = true
+			}
 
-		foundExternal := false
-		for _, network := range in.Gateways.ClusterEgress.RequestedNetworkView {
-			if network == "external" {
-				foundExternal = true
-				break
+			foundExternal := false
+			for _, network := range in.Gateways.ClusterEgress.RequestedNetworkView {
+				if network == "external" {
+					foundExternal = true
+					break
+				}
+			}
+			if !foundExternal {
+				multiClusterOverrides.SetField("addedExternal", true)
+				in.Gateways.ClusterEgress.RequestedNetworkView = append(in.Gateways.ClusterEgress.RequestedNetworkView, "external")
 			}
 		}
-		if !foundExternal {
-			gatewaysOverrides.SetField("addedExternal", true)
-			in.Gateways.ClusterEgress.RequestedNetworkView = append(in.Gateways.ClusterEgress.RequestedNetworkView, "external")
-		}
-	}
-	if multiClusterEnabled || cluster.MeshExpansion != nil {
-		if err := setHelmBoolValue(values, "global.meshExpansion.enabled", true); err != nil {
+	} else {
+		// multi cluster disabled by default
+		multiClusterOverrides.SetField("multiClusterEnabled", nil)
+		if err := setHelmBoolValue(values, "global.multiCluster.enabled", false); err != nil {
 			return err
 		}
+	}
+
+	if cluster.MeshExpansion != nil {
+		if cluster.MeshExpansion.Enabled != nil {
+			if err := setHelmBoolValue(values, "global.meshExpansion.enabled", *cluster.MeshExpansion.Enabled); err != nil {
+				return err
+			}
+		} else {
+			// mesh expansion disabled by default
+			multiClusterOverrides.SetField("expansionEnabled", nil)
+			if err := setHelmBoolValue(values, "global.meshExpansion.enabled", false); err != nil {
+				return err
+			}
+		}
 		if expansionPorts, err := expansionPortsForVersion(in.Version); err == nil {
-			if cluster.MeshExpansion == nil || cluster.MeshExpansion.ILBGateway == nil ||
+			if cluster.MeshExpansion.ILBGateway == nil ||
 				cluster.MeshExpansion.ILBGateway.Enabled == nil || !*cluster.MeshExpansion.ILBGateway.Enabled {
 				if in.Gateways.ClusterIngress == nil {
-					gatewaysOverrides.SetField("ingressEnabled", nil)
-					gatewaysOverrides.SetField("k8sIngressEnabled", nil)
+					multiClusterOverrides.SetField("ingressEnabled", nil)
+					multiClusterOverrides.SetField("k8sIngressEnabled", nil)
 					enabled := true
 					in.Gateways.ClusterIngress = &v2.ClusterIngressGatewayConfig{
 						IngressGatewayConfig: v2.IngressGatewayConfig{
@@ -171,17 +201,29 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 					if in.Gateways.ClusterIngress.Enabled == nil || !*in.Gateways.ClusterIngress.Enabled {
 						enabled := true
 						in.Gateways.ClusterIngress.Enabled = &enabled
-						gatewaysOverrides.SetField("ingressEnabled", *in.Gateways.ClusterIngress.Enabled)
+						multiClusterOverrides.SetField("ingressEnabled", *in.Gateways.ClusterIngress.Enabled)
 					}
 					if in.Gateways.ClusterIngress.IngressEnabled == nil || !*in.Gateways.ClusterIngress.IngressEnabled {
 						k8sIngressEnabled := true
 						in.Gateways.ClusterIngress.IngressEnabled = &k8sIngressEnabled
-						gatewaysOverrides.SetField("k8sIngressEnabled", *in.Gateways.ClusterIngress.Enabled)
+						multiClusterOverrides.SetField("k8sIngressEnabled", *in.Gateways.ClusterIngress.Enabled)
 					}
 				}
 				addExpansionPorts(&in.Gateways.ClusterIngress.MeshExpansionPorts, expansionPorts)
-				if err := setHelmBoolValue(values, "gateways.istio-ilbgateway.enabled", false); err != nil {
-					return err
+				if cluster.MeshExpansion.ILBGateway == nil {
+					multiClusterOverrides.SetField("ilbEnabled", nil)
+					disabled := false
+					cluster.MeshExpansion.ILBGateway = &v2.GatewayConfig{
+						Enablement: v2.Enablement{
+							Enabled: &disabled,
+						},
+					}
+				} else {
+					if cluster.MeshExpansion.ILBGateway.Enabled == nil {
+						multiClusterOverrides.SetField("ilbEnabled", nil)
+					} else if *cluster.MeshExpansion.ILBGateway.Enabled {
+						multiClusterOverrides.SetField("ilbEnabled", *cluster.MeshExpansion.ILBGateway.Enabled)
+					}
 				}
 				if err := setHelmBoolValue(values, "global.meshExpansion.useILB", false); err != nil {
 					return err
@@ -191,8 +233,11 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 					return err
 				}
 				addExpansionPorts(&cluster.MeshExpansion.ILBGateway.Service.Ports, expansionPorts)
+			}
+			// serialize ilb gateway settings
+			if cluster.MeshExpansion.ILBGateway != nil {
 				if ilbGatewayValues, err := gatewayConfigToValues(cluster.MeshExpansion.ILBGateway); err == nil {
-					if err := setHelmValue(values, "gateways.istio-ilbgateway", ilbGatewayValues); err != nil {
+					if err := overwriteHelmValues(values, ilbGatewayValues, strings.Split("gateways.istio-ilbgateway", ".")...); err != nil {
 						return err
 					}
 				} else {
@@ -203,19 +248,13 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 			return err
 		}
 	} else {
+		// mesh expansion disabled by default
+		multiClusterOverrides.SetField("expansionEnabled", nil)
 		if err := setHelmBoolValue(values, "global.meshExpansion.enabled", false); err != nil {
 			return err
 		}
 		if err := setHelmBoolValue(values, "global.meshExpansion.useILB", false); err != nil {
 			return err
-		}
-		ilbDisabled := false
-		cluster.MeshExpansion = &v2.MeshExpansionConfig{
-			ILBGateway: &v2.GatewayConfig{
-				Enablement: v2.Enablement{
-					Enabled: &ilbDisabled,
-				},
-			},
 		}
 	}
 
@@ -263,8 +302,8 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 		}
 	}
 
-	if len(gatewaysOverrides.GetContent()) > 0 {
-		if err := setHelmValue(values, "global.multiCluster.gatewaysOverrides", gatewaysOverrides.GetContent()); err != nil {
+	if len(multiClusterOverrides.GetContent()) > 0 {
+		if err := overwriteHelmValues(values, multiClusterOverrides.GetContent(), strings.Split("global.multiCluster.multiClusterOverrides", ".")...); err != nil {
 			return err
 		}
 	}
@@ -280,13 +319,13 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	clusterConfig := &v2.ControlPlaneClusterConfig{}
 	setClusterConfig := false
 
-	if clusterName, ok, err := in.GetString("global.multiCluster.clusterName"); ok {
+	if clusterName, ok, err := in.GetAndRemoveString("global.multiCluster.clusterName"); ok {
 		clusterConfig.Name = clusterName
 		setClusterConfig = true
 	} else if err != nil {
 		return err
 	}
-	if network, ok, err := in.GetString("global.network"); ok {
+	if network, ok, err := in.GetAndRemoveString("global.network"); ok {
 		clusterConfig.Network = network
 		setClusterConfig = true
 	} else if err != nil {
@@ -294,28 +333,28 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	}
 
 	// patchup gateways
-	if rawGatewaysOverrides, ok, err := in.GetMap("global.multiCluster.gatewaysOverrides"); ok && len(rawGatewaysOverrides) > 0 {
-		gatewaysOverrides := v1.NewHelmValues(rawGatewaysOverrides)
+	if rawMultiClusterOverrides, ok, err := in.GetMap("global.multiCluster.multiClusterOverrides"); ok && len(rawMultiClusterOverrides) > 0 {
+		multiClusterOverrides := v1.NewHelmValues(rawMultiClusterOverrides)
 		if gateways, ok, err := in.GetMap("gateways"); ok && len(gateways) > 0 {
 			updateGateways := false
-			if enabled, ok, err := gatewaysOverrides.GetFieldNoCopy("enabled"); ok {
-				if enabled == nil {
+			if gatewaysEnabled, ok, err := multiClusterOverrides.GetFieldNoCopy("gatewaysEnabled"); ok {
+				if gatewaysEnabled == nil {
 					delete(gateways, "enabled")
 				} else {
-					gateways["enabled"] = enabled
+					gateways["enabled"] = gatewaysEnabled
 				}
 				updateGateways = true
 			} else if err != nil {
 				return err
 			}
-			if ingressEnabled, ok, err := gatewaysOverrides.GetFieldNoCopy("ingressEnabled"); ok {
+			if ingressEnabled, ok, err := multiClusterOverrides.GetFieldNoCopy("ingressEnabled"); ok {
 				if ingressGateway, ok, err := v1.NewHelmValues(gateways).GetMap("istio-ingressgateway"); ok && len(ingressGateway) > 0 {
 					if ingressEnabled == nil {
 						delete(ingressGateway, "enabled")
 					} else {
 						ingressGateway["enabled"] = ingressEnabled
 					}
-					if len(ingressGateway) == 1 {
+					if shouldDeleteGatewayValues(ingressGateway) {
 						// only element should be name
 						delete(gateways, "istio-ingressgateway")
 					} else {
@@ -330,7 +369,7 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 			}
 			if egressGateway, ok, err := v1.NewHelmValues(gateways).GetMap("istio-egressgateway"); ok && len(egressGateway) > 0 {
 				updateEgress := false
-				if egressEnabled, ok, err := gatewaysOverrides.GetFieldNoCopy("egressEnabled"); ok {
+				if egressEnabled, ok, err := multiClusterOverrides.GetFieldNoCopy("egressEnabled"); ok {
 					if egressEnabled == nil {
 						delete(egressGateway, "enabled")
 					} else {
@@ -340,14 +379,21 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 				} else if err != nil {
 					return nil
 				}
-				if addedExternal, ok, err := gatewaysOverrides.GetBool("addedExternal"); ok && addedExternal {
-					if requestedNetworkView, ok, err := v1.NewHelmValues(egressGateway).GetString("env.ISTIO_META_REQUESTED_NETWORK_VIEW"); ok {
+				if addedExternal, ok, err := multiClusterOverrides.GetAndRemoveBool("addedExternal"); ok && addedExternal {
+					if requestedNetworkView, ok, err := v1.NewHelmValues(egressGateway).GetAndRemoveString("env.ISTIO_META_REQUESTED_NETWORK_VIEW"); ok {
 						newRequestedNetworkView := externalRequestedNetworkRegex.ReplaceAllString(requestedNetworkView, "$1")
-						if newRequestedNetworkView != requestedNetworkView {
+						if newRequestedNetworkView != requestedNetworkView && newRequestedNetworkView != "" {
 							updateEgress = true
 							if err := setHelmStringValue(egressGateway, "env.ISTIO_META_REQUESTED_NETWORK_VIEW", newRequestedNetworkView); err != nil {
 								return err
 							}
+						}
+						// cleanup for to avoid extraneous empty ClusterEgress
+						if env, ok, err := v1.NewHelmValues(egressGateway).GetMap("env"); ok && len(env) == 0 {
+							delete(egressGateway, "env")
+							updateEgress = true
+						} else if err != nil {
+							return err
 						}
 					} else if err != nil {
 						return err
@@ -356,13 +402,33 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 					return err
 				}
 				if updateEgress {
-					if len(egressGateway) == 1 {
+					if shouldDeleteGatewayValues(egressGateway) {
 						// only element should be name
 						delete(gateways, "istio-egressgateway")
 					} else {
 						gateways["istio-egressgateway"] = egressGateway
 					}
 					updateGateways = true
+				}
+			} else if err != nil {
+				return nil
+			}
+			if ilbEnabled, ok, err := multiClusterOverrides.GetFieldNoCopy("ilbEnabled"); ok {
+				if ilbGateway, ok, err := v1.NewHelmValues(gateways).GetMap("istio-ilbgateway"); ok && len(ilbGateway) > 0 {
+					if ilbEnabled == nil {
+						delete(ilbGateway, "enabled")
+					} else {
+						ilbGateway["enabled"] = ilbEnabled
+					}
+					if shouldDeleteGatewayValues(ilbGateway) {
+						// only element should be name
+						delete(gateways, "istio-ilbgateway")
+					} else {
+						gateways["istio-ilbgateway"] = ilbGateway
+					}
+					updateGateways = true
+				} else if err != nil {
+					return nil
 				}
 			} else if err != nil {
 				return nil
@@ -374,79 +440,128 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 					in.SetField("gateways", gateways)
 				}
 			}
-			if k8sIngressEnabled, ok, err := gatewaysOverrides.GetFieldNoCopy("k8sIngressEnabled"); ok {
-				if k8sIngressValues, ok, err := in.GetMap("global.k8sIngress"); ok && len(k8sIngressValues) > 0 {
-					if k8sIngressEnabled == nil {
-						delete(k8sIngressValues, "enabled")
-					} else {
-						k8sIngressValues["enabled"] = k8sIngressEnabled
-					}
-					in.SetField("global.k8sIngress", k8sIngressValues)
-				} else if err != nil {
-					return nil
-				}
-			} else if err != nil {
-				return nil
-			}
 		} else if err != nil {
 			return err
 		}
-	} else if err != nil {
-		return err
-	}
-
-	// multi-cluster
-	if multiClusterEnabled, ok, err := in.GetBool("global.multiCluster.enabled"); ok && multiClusterEnabled {
-		clusterConfig.MultiCluster = &v2.MultiClusterConfig{}
-		setClusterConfig = true
-		if rawMeshNetworks, ok, err := in.GetMap("global.meshNetworks"); ok && len(rawMeshNetworks) > 0 {
-			clusterConfig.MultiCluster.MeshNetworks = make(map[string]v2.MeshNetworkConfig)
-			if err := fromValues(rawMeshNetworks, &clusterConfig.MultiCluster.MeshNetworks); err != nil {
-				return err
-			}
-			// remove defaulted mesh network
-			if addedLocalNetwork, ok, err := in.GetString("global.multiCluster.addedLocalNetwork"); ok {
-				delete(clusterConfig.MultiCluster.MeshNetworks, addedLocalNetwork)
+		if k8sIngressEnabled, ok, err := multiClusterOverrides.GetFieldNoCopy("k8sIngressEnabled"); ok {
+			if k8sIngressValues, ok, err := in.GetMap("global.k8sIngress"); ok && len(k8sIngressValues) > 0 {
+				if k8sIngressEnabled == nil {
+					delete(k8sIngressValues, "enabled")
+				} else {
+					k8sIngressValues["enabled"] = k8sIngressEnabled
+				}
+				in.SetField("global.k8sIngress", k8sIngressValues)
 			} else if err != nil {
 				return nil
 			}
 		} else if err != nil {
 			return nil
 		}
-		if expansionEnabled, ok, err := in.GetBool("global.meshExpansion.enabled"); ok && expansionEnabled {
-			meshExpansionConfig := &v2.MeshExpansionConfig{}
-			setMeshExpansion := false
-			if useILBGateway, ok, err := in.GetBool("global.meshExpansion.useILB"); ok && useILBGateway {
-				setMeshExpansion = true
-				meshExpansionConfig.ILBGateway = &v2.GatewayConfig{
-					Enablement: v2.Enablement{
-						Enabled: &useILBGateway,
-					},
-				}
-				if ilbGatewayValues, ok, err := in.GetMap("gateways.istio-ilbgateway"); ok && len(ilbGatewayValues) > 0 {
-					if err := gatewayValuesToConfig(v1.NewHelmValues(ilbGatewayValues), meshExpansionConfig.ILBGateway); err != nil {
-						return err
-					}
-				} else if err != nil {
-					return err
-				}
-			} else if err != nil {
-				return nil
-			}
-			if !multiClusterEnabled || setMeshExpansion {
-				clusterConfig.MeshExpansion = meshExpansionConfig
-				setClusterConfig = true
+		if expansionEnabled, ok, err := multiClusterOverrides.GetFieldNoCopy("expansionEnabled"); ok {
+			if expansionEnabled == nil {
+				in.RemoveField("global.meshExpansion.enabled")
+			} else if err := in.SetField("global.meshExpansion.enabled", expansionEnabled); err != nil {
+				return err
 			}
 		} else if err != nil {
+			return nil
+		}
+		if multiClusterEnabled, ok, err := multiClusterOverrides.GetFieldNoCopy("multiClusterEnabled"); ok {
+			if multiClusterEnabled == nil {
+				in.RemoveField("global.multiCluster.enabled")
+			} else if err := in.SetField("global.multiCluster.enabled", multiClusterEnabled); err != nil {
+				return err
+			}
+		} else if err != nil {
+			return nil
+		}
+	} else if err != nil {
+		return err
+	}
+	in.RemoveField("global.multiCluster.multiClusterOverrides")
+
+	// multi-cluster
+	multiCluster := &v2.MultiClusterConfig{}
+	setMultiCluster := false
+	if multiClusterEnabled, ok, err := in.GetAndRemoveBool("global.multiCluster.enabled"); ok {
+		multiCluster.Enabled = &multiClusterEnabled
+		setMultiCluster = true
+	} else if err != nil {
+		return err
+	}
+	if rawMeshNetworks, ok, err := in.GetMap("global.meshNetworks"); ok && len(rawMeshNetworks) > 0 {
+		multiCluster.MeshNetworks = make(map[string]v2.MeshNetworkConfig)
+		if err := decodeAndRemoveFromValues(rawMeshNetworks, &multiCluster.MeshNetworks); err != nil {
+			return err
+		}
+		if len(rawMeshNetworks) == 0 {
+			in.RemoveField("global.meshNetworks")
+		} else if err := in.SetField("global.meshNetworks", rawMeshNetworks); err != nil {
+			return err
+		}
+		// remove defaulted mesh network
+		if addedLocalNetwork, ok, err := in.GetAndRemoveString("global.multiCluster.addedLocalNetwork"); ok {
+			delete(multiCluster.MeshNetworks, addedLocalNetwork)
+		} else if err != nil {
+			return nil
+		}
+		if len(multiCluster.MeshNetworks) == 0 {
+			multiCluster.MeshNetworks = nil
+		} else {
+			setMultiCluster = true
+		}
+	} else if err != nil {
+		return err
+	}
+
+	if setMultiCluster {
+		clusterConfig.MultiCluster = multiCluster
+		setClusterConfig = true
+	}
+
+	meshExpansionConfig := &v2.MeshExpansionConfig{}
+	setMeshExpansion := false
+	if expansionEnabled, ok, err := in.GetAndRemoveBool("global.meshExpansion.enabled"); ok {
+		setMeshExpansion = true
+		meshExpansionConfig.Enabled = &expansionEnabled
+	} else if err != nil {
+		return err
+	}
+	if ilbGatewayValues, ok, err := in.GetMap("gateways.istio-ilbgateway"); ok && len(ilbGatewayValues) > 0 {
+		in.RemoveField("gateways.istio-ilbgateway")
+		setMeshExpansion = true
+		meshExpansionConfig.ILBGateway = &v2.GatewayConfig{}
+		if err := gatewayValuesToConfig(v1.NewHelmValues(ilbGatewayValues), meshExpansionConfig.ILBGateway); err != nil {
 			return err
 		}
 	} else if err != nil {
 		return err
 	}
 
+	if setMeshExpansion {
+		clusterConfig.MeshExpansion = meshExpansionConfig
+		setClusterConfig = true
+	}
+
+	// clear out defaults
+	in.RemoveField("gateways.istio-ilbgateway.enabled")
+	in.RemoveField("global.meshExpansion.enabled")
+	in.RemoveField("global.meshExpansion.useILB")
+
 	if setClusterConfig {
 		out.Cluster = clusterConfig
 	}
 
 	return nil
+}
+
+func shouldDeleteGatewayValues(gateway map[string]interface{}) bool {
+	minGatewaySize := 0
+	if _, ok := gateway["name"]; ok {
+		minGatewaySize++
+	}
+	if _, ok := gateway["gatewayType"]; ok {
+		minGatewaySize++
+	}
+	return len(gateway) == minGatewaySize
 }

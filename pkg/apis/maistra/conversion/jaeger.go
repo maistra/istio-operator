@@ -22,10 +22,8 @@ func populateJaegerAddonValues(jaeger *v2.JaegerAddonConfig, values map[string]i
 					reterr = err
 				}
 			}
-			for key, value := range tracingValues {
-				if err := setHelmValue(values, "tracing."+key, value); err != nil {
-					reterr = err
-				}
+			if err := overwriteHelmValues(values, tracingValues, "tracing"); err != nil {
+				reterr = err
 			}
 		}
 	}()
@@ -104,14 +102,16 @@ func populateJaegerAddonValues(jaeger *v2.JaegerAddonConfig, values map[string]i
 				return err
 			}
 		}
-		if len(jaeger.Install.Ingress.Metadata.Annotations) > 0 {
-			if err := setHelmStringMapValue(tracingValues, "ingress.annotations", jaeger.Install.Ingress.Metadata.Annotations); err != nil {
-				return err
+		if jaeger.Install.Ingress.Metadata != nil {
+			if len(jaeger.Install.Ingress.Metadata.Annotations) > 0 {
+				if err := setHelmStringMapValue(tracingValues, "ingress.annotations", jaeger.Install.Ingress.Metadata.Annotations); err != nil {
+					return err
+				}
 			}
-		}
-		if len(jaeger.Install.Ingress.Metadata.Labels) > 0 {
-			if err := setHelmStringMapValue(tracingValues, "ingress.labels", jaeger.Install.Ingress.Metadata.Labels); err != nil {
-				return err
+			if len(jaeger.Install.Ingress.Metadata.Labels) > 0 {
+				if err := setHelmStringMapValue(tracingValues, "ingress.labels", jaeger.Install.Ingress.Metadata.Labels); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -137,19 +137,19 @@ func populateJaegerAddonConfig(in *v1.HelmValues, out *v2.JaegerAddonConfig) (bo
 
 	jaeger := out
 	setJaeger := false
-	if resourceName, ok, err := jaegerValues.GetString("resourceName"); ok && resourceName != "" {
+	if resourceName, ok, err := jaegerValues.GetAndRemoveString("resourceName"); ok && resourceName != "" {
 		jaeger.Name = resourceName
 		setJaeger = true
 	} else if err != nil {
 		return false, err
 	}
 
+	install := &v2.JaegerInstallConfig{}
 	setInstall := false
 
-	install := &v2.JaegerInstallConfig{}
 	storage := &v2.JaegerStorageConfig{}
 	setStorage := false
-	if template, ok, err := jaegerValues.GetString("template"); ok {
+	if template, ok, err := jaegerValues.GetAndRemoveString("template"); ok {
 		switch template {
 		case "all-in-one":
 			setStorage = true
@@ -165,7 +165,7 @@ func populateJaegerAddonConfig(in *v1.HelmValues, out *v2.JaegerAddonConfig) (bo
 	} else if err != nil {
 		return false, err
 	}
-	if maxTraces, ok, err := jaegerValues.GetInt64("memory.max_traces"); ok {
+	if maxTraces, ok, err := jaegerValues.GetAndRemoveInt64("memory.max_traces"); ok {
 		storage.Memory = &v2.JaegerMemoryStorageConfig{
 			MaxTraces: &maxTraces,
 		}
@@ -177,7 +177,7 @@ func populateJaegerAddonConfig(in *v1.HelmValues, out *v2.JaegerAddonConfig) (bo
 		elasticsearchValues := v1.NewHelmValues(rawElasticsearchValues)
 		elasticsearch := &v2.JaegerElasticsearchStorageConfig{}
 		setElasticsearch := false
-		if rawNodeCount, ok, err := elasticsearchValues.GetInt64("nodeCount"); ok {
+		if rawNodeCount, ok, err := elasticsearchValues.GetAndRemoveInt64("nodeCount"); ok {
 			nodeCount := int32(rawNodeCount)
 			elasticsearch.NodeCount = &nodeCount
 			setElasticsearch = true
@@ -192,10 +192,11 @@ func populateJaegerAddonConfig(in *v1.HelmValues, out *v2.JaegerAddonConfig) (bo
 			} else {
 				return false, err
 			}
+			elasticsearchValues.RemoveField("storage")
 		} else if err != nil {
 			return false, err
 		}
-		if redundancyPolicy, ok, err := elasticsearchValues.GetString("redundancyPolicy"); ok && redundancyPolicy != "" {
+		if redundancyPolicy, ok, err := elasticsearchValues.GetAndRemoveString("redundancyPolicy"); ok && redundancyPolicy != "" {
 			elasticsearch.RedundancyPolicy = redundancyPolicy
 			setElasticsearch = true
 		} else if err != nil {
@@ -209,12 +210,18 @@ func populateJaegerAddonConfig(in *v1.HelmValues, out *v2.JaegerAddonConfig) (bo
 			} else {
 				return false, err
 			}
+			jaegerValues.RemoveField("esIndexCleaner")
 		} else if err != nil {
 			return false, err
 		}
 		if setElasticsearch {
 			storage.Elasticsearch = elasticsearch
 			setStorage = true
+		}
+		if len(elasticsearchValues.GetContent()) == 0 {
+			jaegerValues.RemoveField("elasticsearch")
+		} else if err := jaegerValues.SetField("elasticsearch", elasticsearchValues.GetContent()); err != nil {
+			return false, err
 		}
 	} else if err != nil {
 		return false, err
@@ -226,55 +233,55 @@ func populateJaegerAddonConfig(in *v1.HelmValues, out *v2.JaegerAddonConfig) (bo
 
 	ingressConfig := &v2.JaegerIngressConfig{}
 	setIngressConfig := false
-	if enabled, ok, err := tracingValues.GetBool("ingress.enabled"); ok {
+	if enabled, ok, err := tracingValues.GetAndRemoveBool("ingress.enabled"); ok {
 		ingressConfig.Enabled = &enabled
 		setIngressConfig = true
 	} else if err != nil {
 		return false, err
 	}
+	metadata := &v2.MetadataConfig{}
+	setMetadata := false
 	if rawAnnotations, ok, err := tracingValues.GetMap("ingress.annotations"); ok && len(rawAnnotations) > 0 {
-		setIngressConfig = true
-		if err := setMetadataAnnotations(rawAnnotations, &ingressConfig.Metadata); err != nil {
+		setMetadata = true
+		if err := setMetadataAnnotations(rawAnnotations, metadata); err != nil {
 			return false, err
 		}
+		tracingValues.RemoveField("ingress.annotations")
 	} else if err != nil {
 		return false, err
 	}
 	if rawLabels, ok, err := tracingValues.GetMap("ingress.labels"); ok && len(rawLabels) > 0 {
-		setIngressConfig = true
-		if err := setMetadataLabels(rawLabels, &ingressConfig.Metadata); err != nil {
+		setMetadata = true
+		if err := setMetadataLabels(rawLabels, metadata); err != nil {
 			return false, err
 		}
+		tracingValues.RemoveField("ingress.labels")
 	} else if err != nil {
 		return false, err
+	}
+	if setMetadata {
+		setIngressConfig = true
+		ingressConfig.Metadata = metadata
 	}
 	if setIngressConfig {
 		install.Ingress = ingressConfig
 		setInstall = true
 	}
 
-	// need to move jaeger.podAnnotations to tracing.podAnnotations
-	if podAnnotations, ok, err := jaegerValues.GetMap("podAnnotations"); ok && len(podAnnotations) > 0 {
-		tracingValues = tracingValues.DeepCopy()
-		if err := tracingValues.SetField("podAnnotations", podAnnotations); err != nil {
-			return false, err
-		}
-	} else if err != nil {
-		return false, err
-	}
-	// need to move jaeger.podLables to tracing.podLabels
-	if podLabels, ok, err := jaegerValues.GetMap("podLabels"); ok && len(podLabels) > 0 {
-		tracingValues = tracingValues.DeepCopy()
-		if err := tracingValues.SetField("podLabels", podLabels); err != nil {
-			return false, err
-		}
-	} else if err != nil {
-		return false, err
-	}
-
 	if setInstall {
 		jaeger.Install = install
 		setJaeger = true
+	}
+
+	if len(jaegerValues.GetContent()) == 0 {
+		tracingValues.RemoveField("jaeger")
+	} else if err := tracingValues.SetField("jaeger", jaegerValues.GetContent()); err != nil {
+		return false, err
+	}
+	if len(tracingValues.GetContent()) == 0 {
+		in.RemoveField("tracing")
+	} else if err := in.SetField("tracing", tracingValues.GetContent()); err != nil {
+		return false, err
 	}
 
 	return setJaeger, nil

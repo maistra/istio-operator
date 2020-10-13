@@ -3,11 +3,7 @@ kind: ServiceMeshControlPlane
 metadata:
   name: base
 spec:
-  runtime:
-    defaults:
-      container:
-        imageTag: 2.0.0
-
+  version: v2.0
   gateways:
     enabled: true
     ingress:
@@ -20,8 +16,10 @@ spec:
     openshiftRoute:
       enabled: true
 
-  logging:
-    level: warn
+  general:
+    logging:
+      componentLevels:
+        default: warn
 
   proxy:
     injection:
@@ -35,9 +33,8 @@ spec:
         refreshRate: 300s
 
   security:
-    mutualTLS:
-      identity:
-        type: Kubernetes
+    identity:
+      type: Kubernetes
 
   telemetry:
     type: Istiod
@@ -80,9 +77,8 @@ spec:
       enabled: true
       name: kiali
       install:
-        config:
-          dashboard:
-            viewOnly: false
+        dashboard:
+          viewOnly: false
         service:
           ingress:
             enabled: true

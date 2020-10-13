@@ -127,6 +127,8 @@ var _ VersionStrategy = (*versionStrategyV2_0)(nil)
 func (v *versionStrategyV2_0) SetImageValues(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec) error {
 	common.UpdateField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V2_0.Grafana)
 	common.UpdateField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V2_0.Mixer)
+	common.UpdateField(smcpSpec.Istio, "mixer.policy.image", common.Config.OLM.Images.V2_0.Mixer)
+	common.UpdateField(smcpSpec.Istio, "mixer.telemetry.image", common.Config.OLM.Images.V2_0.Mixer)
 	common.UpdateField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V2_0.Pilot)
 	common.UpdateField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V2_0.Prometheus)
 	common.UpdateField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V2_0.ProxyInit)
@@ -143,6 +145,8 @@ func (v *versionStrategyV2_0) ValidateV1(ctx context.Context, cl client.Client, 
 func (v *versionStrategyV2_0) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
 	allErrors = validateGateways(ctx, meta, spec, v.version, cl, allErrors)
+	allErrors = validatePolicyType(ctx, meta, spec, v.version, allErrors)
+	allErrors = validateTelemetryType(ctx, meta, spec, v.version, allErrors)
 	return NewValidationError(allErrors...)
 }
 
@@ -189,7 +193,7 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 	}
 
 	var err error
-	smcp.Status.AppliedValues, err = v.applyProfiles(ctx, cr, v1spec, smcp.GetNamespace())
+	smcp.Status.AppliedValues, err = v.ApplyProfiles(ctx, cr, v1spec, smcp.GetNamespace())
 	if err != nil {
 		log.Error(err, "warning: failed to apply ServiceMeshControlPlane profiles")
 

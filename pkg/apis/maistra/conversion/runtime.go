@@ -94,10 +94,8 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 				delete(globalValues, "resources")
 			}
 			// add values to the global set
-			for key, value := range globalValues {
-				if err := setHelmValue(values, "global."+key, value); err != nil {
-					return err
-				}
+			if err := overwriteHelmValues(values, globalValues, "global"); err != nil {
+				return err
 			}
 		}
 	}
@@ -105,10 +103,8 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 	for component, config := range runtime.Components {
 		componentValues := make(map[string]interface{})
 		if err := populateRuntimeValues(config, componentValues); err == nil {
-			for key, value := range componentValues {
-				if err := setHelmValue(values, string(component)+"."+key, value); err != nil {
-					return err
-				}
+			if err := overwriteHelmValues(values, componentValues, strings.Split(string(component), ".")...); err != nil {
+				return err
 			}
 		} else {
 			return err
@@ -188,14 +184,16 @@ func populatePodHelmValues(pod *v2.PodRuntimeConfig, componentValues map[string]
 	if pod == nil {
 		return nil
 	}
-	if len(pod.Metadata.Annotations) > 0 {
-		if err := setHelmStringMapValue(componentValues, "podAnnotations", pod.Metadata.Annotations); err != nil {
-			return err
+	if pod.Metadata != nil {
+		if len(pod.Metadata.Annotations) > 0 {
+			if err := setHelmStringMapValue(componentValues, "podAnnotations", pod.Metadata.Annotations); err != nil {
+				return err
+			}
 		}
-	}
-	if len(pod.Metadata.Labels) > 0 {
-		if err := setHelmStringMapValue(componentValues, "podLabels", pod.Metadata.Labels); err != nil {
-			return err
+		if len(pod.Metadata.Labels) > 0 {
+			if err := setHelmStringMapValue(componentValues, "podLabels", pod.Metadata.Labels); err != nil {
+				return err
+			}
 		}
 	}
 	if pod.PriorityClassName != "" {
@@ -264,27 +262,27 @@ func convertAntiAffinityTermsToHelmValues(terms []v2.PodAntiAffinityTerm) []inte
 
 func populateAutoscalingHelmValues(autoScalerConfg *v2.AutoScalerConfig, componentValues map[string]interface{}) error {
 	if autoScalerConfg == nil {
-		if err := setHelmBoolValue(componentValues, "autoscaleEnabled", false); err != nil {
+		return nil
+	}
+
+	if autoScalerConfg.Enabled != nil {
+		if err := setHelmBoolValue(componentValues, "autoscaleEnabled", *autoScalerConfg.Enabled); err != nil {
 			return err
 		}
-	} else {
-		if err := setHelmBoolValue(componentValues, "autoscaleEnabled", true); err != nil {
+	}
+	if autoScalerConfg.MinReplicas != nil {
+		if err := setHelmIntValue(componentValues, "autoscaleMin", int64(*autoScalerConfg.MinReplicas)); err != nil {
 			return err
 		}
-		if autoScalerConfg.MinReplicas != nil {
-			if err := setHelmIntValue(componentValues, "autoscaleMin", int64(*autoScalerConfg.MinReplicas)); err != nil {
-				return err
-			}
+	}
+	if autoScalerConfg.MaxReplicas != nil {
+		if err := setHelmIntValue(componentValues, "autoscaleMax", int64(*autoScalerConfg.MaxReplicas)); err != nil {
+			return err
 		}
-		if autoScalerConfg.MaxReplicas != nil {
-			if err := setHelmIntValue(componentValues, "autoscaleMax", int64(*autoScalerConfg.MaxReplicas)); err != nil {
-				return err
-			}
-		}
-		if autoScalerConfg.TargetCPUUtilizationPercentage != nil {
-			if err := setHelmIntValue(componentValues, "cpu.targetAverageUtilization", int64(*autoScalerConfg.TargetCPUUtilizationPercentage)); err != nil {
-				return err
-			}
+	}
+	if autoScalerConfg.TargetCPUUtilizationPercentage != nil {
+		if err := setHelmIntValue(componentValues, "cpu.targetAverageUtilization", int64(*autoScalerConfg.TargetCPUUtilizationPercentage)); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -403,7 +401,7 @@ func runtimeValuesToComponentRuntimeConfig(in *v1.HelmValues, out *v2.ComponentR
 
 func runtimeValuesToDeploymentRuntimeConfig(in *v1.HelmValues, out *v2.DeploymentRuntimeConfig) (bool, error) {
 	setValues := false
-	if replicaCount, ok, err := in.GetInt64("replicaCount"); ok {
+	if replicaCount, ok, err := in.GetAndRemoveInt64("replicaCount"); ok {
 		replicas := int32(replicaCount)
 		out.Replicas = &replicas
 		setValues = true
@@ -412,12 +410,12 @@ func runtimeValuesToDeploymentRuntimeConfig(in *v1.HelmValues, out *v2.Deploymen
 	}
 	rollingUpdate := &appsv1.RollingUpdateDeployment{}
 	setRollingUpdate := false
-	if rollingMaxSurgeString, ok, err := in.GetString("rollingMaxSurge"); ok {
+	if rollingMaxSurgeString, ok, err := in.GetAndRemoveString("rollingMaxSurge"); ok {
 		maxSurge := intstr.FromString(rollingMaxSurgeString)
 		rollingUpdate.MaxSurge = &maxSurge
 		setRollingUpdate = true
 	} else if err != nil {
-		if rollingMaxSurgeInt, ok, err := in.GetInt64("rollingMaxSurge"); ok {
+		if rollingMaxSurgeInt, ok, err := in.GetAndRemoveInt64("rollingMaxSurge"); ok {
 			maxSurge := intstr.FromInt(int(rollingMaxSurgeInt))
 			rollingUpdate.MaxSurge = &maxSurge
 			setRollingUpdate = true
@@ -425,12 +423,12 @@ func runtimeValuesToDeploymentRuntimeConfig(in *v1.HelmValues, out *v2.Deploymen
 			return false, err
 		}
 	}
-	if rollingMaxUnavailableString, ok, err := in.GetString("rollingMaxUnavailable"); ok {
+	if rollingMaxUnavailableString, ok, err := in.GetAndRemoveString("rollingMaxUnavailable"); ok {
 		maxUnavailable := intstr.FromString(rollingMaxUnavailableString)
 		rollingUpdate.MaxUnavailable = &maxUnavailable
 		setRollingUpdate = true
 	} else if err != nil {
-		if rollingMaxUnavailableInt, ok, err := in.GetInt64("rollingMaxUnavailable"); ok {
+		if rollingMaxUnavailableInt, ok, err := in.GetAndRemoveInt64("rollingMaxUnavailable"); ok {
 			maxUnavailable := intstr.FromInt(int(rollingMaxUnavailableInt))
 			rollingUpdate.MaxUnavailable = &maxUnavailable
 			setRollingUpdate = true
@@ -457,23 +455,32 @@ func runtimeValuesToDeploymentRuntimeConfig(in *v1.HelmValues, out *v2.Deploymen
 
 func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig) (bool, error) {
 	setValues := false
+	metadata := &v2.MetadataConfig{}
+	setMetadata := false
 	if rawAnnotations, ok, err := in.GetMap("podAnnotations"); ok && len(rawAnnotations) > 0 {
-		if err := setMetadataAnnotations(rawAnnotations, &out.Metadata); err != nil {
+		if err := setMetadataAnnotations(rawAnnotations, metadata); err != nil {
 			return false, err
 		}
-		setValues = true
+		setMetadata = true
 	} else if err != nil {
 		return false, err
 	}
+	in.RemoveField("podAnnotations")
 	if rawLabels, ok, err := in.GetMap("podLabels"); ok && len(rawLabels) > 0 {
-		if err := setMetadataLabels(rawLabels, &out.Metadata); err != nil {
+		if err := setMetadataLabels(rawLabels, metadata); err != nil {
 			return false, err
 		}
-		setValues = true
+		setMetadata = true
 	} else if err != nil {
 		return false, err
 	}
-	if priorityClassName, ok, err := in.GetString("priorityClassName"); ok {
+	in.RemoveField("podLabels")
+	if setMetadata {
+		setValues = true
+		out.Metadata = metadata
+	}
+
+	if priorityClassName, ok, err := in.GetAndRemoveString("priorityClassName"); ok {
 		out.PriorityClassName = priorityClassName
 		setValues = true
 	} else if err != nil {
@@ -491,10 +498,11 @@ func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig
 			}
 		}
 		setValues = true
+		in.RemoveField("nodeSelector")
 	} else if err != nil {
 		return false, err
 	}
-	if rawAntiAffinityLabelSelector, ok, err := in.GetSlice("podAntiAffinityLabelSelector"); ok && len(rawAntiAffinityLabelSelector) > 0 {
+	if rawAntiAffinityLabelSelector, ok, err := in.GetAndRemoveSlice("podAntiAffinityLabelSelector"); ok && len(rawAntiAffinityLabelSelector) > 0 {
 		if out.Affinity == nil {
 			out.Affinity = &v2.Affinity{}
 		} else {
@@ -516,7 +524,7 @@ func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig
 	} else if err != nil {
 		return false, err
 	}
-	if rawAntiAffinityLabelSelector, ok, err := in.GetSlice("podAntiAffinityTermLabelSelector"); ok && len(rawAntiAffinityLabelSelector) > 0 {
+	if rawAntiAffinityLabelSelector, ok, err := in.GetAndRemoveSlice("podAntiAffinityTermLabelSelector"); ok && len(rawAntiAffinityLabelSelector) > 0 {
 		if out.Affinity == nil {
 			out.Affinity = &v2.Affinity{}
 		} else {
@@ -538,7 +546,7 @@ func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig
 	} else if err != nil {
 		return false, err
 	}
-	if tolerationsValues, ok, err := in.GetSlice("tolerations"); ok && len(tolerationsValues) > 0 {
+	if tolerationsValues, ok, err := in.GetAndRemoveSlice("tolerations"); ok && len(tolerationsValues) > 0 {
 		for _, tolerationValues := range tolerationsValues {
 			toleration := corev1.Toleration{}
 			if err := fromValues(tolerationValues, &toleration); err != nil {
@@ -554,22 +562,22 @@ func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig
 }
 
 func affinityTermValuesToAntiAffinityTerm(in *v1.HelmValues, term *v2.PodAntiAffinityTerm) error {
-	if key, ok, err := in.GetString("key"); ok {
+	if key, ok, err := in.GetAndRemoveString("key"); ok {
 		term.Key = key
 	} else if err != nil {
 		return err
 	}
-	if operator, ok, err := in.GetString("operator"); ok {
+	if operator, ok, err := in.GetAndRemoveString("operator"); ok {
 		term.Operator = metav1.LabelSelectorOperator(operator)
 	} else if err != nil {
 		return err
 	}
-	if topologyKey, ok, err := in.GetString("topologyKey"); ok {
+	if topologyKey, ok, err := in.GetAndRemoveString("topologyKey"); ok {
 		term.TopologyKey = topologyKey
 	} else if err != nil {
 		return err
 	}
-	if values, ok, err := in.GetString("values"); ok {
+	if values, ok, err := in.GetAndRemoveString("values"); ok {
 		term.Values = strings.Split(values, ",")
 	} else if err != nil {
 		return err
@@ -578,31 +586,29 @@ func affinityTermValuesToAntiAffinityTerm(in *v1.HelmValues, term *v2.PodAntiAff
 }
 
 func runtimeValuesToAutoscalingConfig(in *v1.HelmValues, out *v2.DeploymentRuntimeConfig) (bool, error) {
-	if enabled, ok, err := in.GetBool("autoscaleEnabled"); ok {
-		if !enabled {
-			// return true to support round-tripping
-			return true, nil
-		}
+	autoScaling := &v2.AutoScalerConfig{}
+	setValues := false
+	if enabled, ok, err := in.GetAndRemoveBool("autoscaleEnabled"); ok {
+		setValues = true
+		autoScaling.Enabled = &enabled
 	} else if err != nil {
 		return false, err
 	}
-	autoScaling := &v2.AutoScalerConfig{}
-	setValues := false
-	if minReplicas64, ok, err := in.GetInt64("autoscaleMin"); ok {
+	if minReplicas64, ok, err := in.GetAndRemoveInt64("autoscaleMin"); ok {
 		minReplicas := int32(minReplicas64)
 		autoScaling.MinReplicas = &minReplicas
 		setValues = true
 	} else if err != nil {
 		return false, err
 	}
-	if maxReplicas64, ok, err := in.GetInt64("autoscaleMax"); ok {
+	if maxReplicas64, ok, err := in.GetAndRemoveInt64("autoscaleMax"); ok {
 		maxReplicas := int32(maxReplicas64)
 		autoScaling.MaxReplicas = &maxReplicas
 		setValues = true
 	} else if err != nil {
 		return false, err
 	}
-	if cpuUtilization64, ok, err := in.GetInt64("cpu.targetAverageUtilization"); ok {
+	if cpuUtilization64, ok, err := in.GetAndRemoveInt64("cpu.targetAverageUtilization"); ok {
 		cpuUtilization := int32(cpuUtilization64)
 		autoScaling.TargetCPUUtilizationPercentage = &cpuUtilization
 		setValues = true
@@ -630,15 +636,20 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 
 		if rawPDBValues, ok, err := globalValues.GetMap("defaultPodDisruptionBudget"); ok && len(rawPDBValues) > 0 {
 			pdbValues := v1.NewHelmValues(rawPDBValues)
-			if pdbEnabled, ok, err := pdbValues.GetBool("enabled"); ok && pdbEnabled {
+			if pdbEnabled, ok, err := pdbValues.GetAndRemoveBool("enabled"); ok && pdbEnabled {
 				defaults.Deployment = &v2.CommonDeploymentRuntimeConfig{
 					PodDisruption: &v2.PodDisruptionBudget{},
 				}
 				setDefaults = true
-				if err := fromValues(pdbValues, defaults.Deployment.PodDisruption); err != nil {
+				if err := decodeAndRemoveFromValues(pdbValues.GetContent(), defaults.Deployment.PodDisruption); err != nil {
 					return false, err
 				}
 			} else if err != nil {
+				return false, err
+			}
+			if len(pdbValues.GetContent()) == 0 {
+				globalValues.RemoveField("defaultPodDisruptionBudget")
+			} else if err := globalValues.SetField("defaultPodDisruptionBudget", pdbValues.GetContent()); err != nil {
 				return false, err
 			}
 		} else if err != nil {
@@ -650,13 +661,18 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 		if nodeSelector, ok, err := globalValues.GetMap("defaultNodeSelector"); ok && len(nodeSelector) > 0 {
 			pod.NodeSelector = make(map[string]string)
 			setPod = true
-			if err := fromValues(nodeSelector, &pod.NodeSelector); err != nil {
+			if err := decodeAndRemoveFromValues(nodeSelector, &pod.NodeSelector); err != nil {
+				return false, err
+			}
+			if len(nodeSelector) == 0 {
+				globalValues.RemoveField("defaultNodeSelector")
+			} else if err := globalValues.SetField("defaultNodeSelector", nodeSelector); err != nil {
 				return false, err
 			}
 		} else if err != nil {
 			return false, err
 		}
-		if tolerations, ok, err := globalValues.GetSlice("defaultTolerations"); ok && len(tolerations) > 0 {
+		if tolerations, ok, err := globalValues.GetAndRemoveSlice("defaultTolerations"); ok && len(tolerations) > 0 {
 			pod.Tolerations = make([]corev1.Toleration, len(tolerations))
 			setPod = true
 			for index, tolerationValues := range tolerations {
@@ -667,7 +683,7 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 		} else if err != nil {
 			return false, err
 		}
-		if priorityClassName, ok, err := globalValues.GetString("priorityClassName"); ok {
+		if priorityClassName, ok, err := globalValues.GetAndRemoveString("priorityClassName"); ok {
 			pod.PriorityClassName = priorityClassName
 			setPod = true
 		} else if err != nil {
@@ -687,21 +703,29 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 			setDefaults = true
 		}
 		// global resources use a different key
-		if resourcesValues, ok, err := globalValues.GetMap("defaultResources"); ok && len(resourcesValues) > 0 {
-			container.Resources = &corev1.ResourceRequirements{}
-			if err := fromValues(resourcesValues, container.Resources); err != nil {
-				return false, err
+		if resourcesValues, ok, err := globalValues.GetMap("defaultResources"); ok {
+			if len(resourcesValues) > 0 {
+				container.Resources = &corev1.ResourceRequirements{}
+				if err := decodeAndRemoveFromValues(resourcesValues, container.Resources); err != nil {
+					return false, err
+				}
+				if defaults.Container == nil {
+					defaults.Container = container
+				}
+				setDefaults = true
 			}
-			if defaults.Container == nil {
-				defaults.Container = container
-			}
-			setDefaults = true
+			globalValues.RemoveField("defaultResources")
 		} else if err != nil {
 			return false, err
 		}
 		if setDefaults {
 			runtime.Defaults = defaults
 			setRuntime = true
+		}
+		if len(globalValues.GetContent()) == 0 {
+			in.RemoveField("global")
+		} else if err := in.SetField("global", globalValues.GetContent()); err != nil {
+			return false, err
 		}
 	}
 
@@ -714,6 +738,11 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 			} else if applied {
 				runtime.Components[component] = componentConfig
 				setRuntime = true
+			}
+			if len(componentValues) == 0 {
+				in.RemoveField(string(component))
+			} else if err := in.SetField(string(component), componentValues); err != nil {
+				return false, err
 			}
 		} else if err != nil {
 			return false, err
@@ -732,29 +761,37 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 
 func populateContainerConfig(in *v1.HelmValues, out *v2.ContainerConfig) (bool, error) {
 	setContainer := false
-	if image, ok, err := in.GetString("image"); ok {
+	if image, ok, err := in.GetAndRemoveString("image"); ok {
 		out.Image = image
 		setContainer = true
 	} else if err != nil {
 		return false, err
 	}
 	if rawEnvValues, ok, err := in.GetMap("env"); ok {
-		out.Env = make(map[string]string)
-		for name, rawValue := range rawEnvValues {
-			if rawValue == nil {
-				continue
+		if len(rawEnvValues) > 0 {
+			out.Env = make(map[string]string)
+			for name, rawValue := range rawEnvValues {
+				if rawValue == nil {
+					continue
+				}
+				switch value := rawValue.(type) {
+				case string:
+					out.Env[name] = value
+				default:
+					return false, fmt.Errorf("unknown type for env.%s value, expected string: %T", name, rawValue)
+				}
 			}
-			switch value := rawValue.(type) {
-			case string:
-				out.Env[name] = value
-			default:
-				return false, fmt.Errorf("unknown type for env.%s value, expected string: %T", name, rawValue)
+			if len(out.Env) == 0 {
+				// this can happen if there are nil values
+				out.Env = nil
+			} else {
+				setContainer = true
 			}
-			setContainer = true
 		}
 	} else if err != nil {
 		return false, err
 	}
+	in.RemoveField("env")
 	if applied, err := populateCommonContainerConfig(in, &out.CommonContainerConfig); err == nil {
 		setContainer = setContainer || applied
 	} else {
@@ -765,13 +802,13 @@ func populateContainerConfig(in *v1.HelmValues, out *v2.ContainerConfig) (bool, 
 
 func populateCommonContainerConfig(in *v1.HelmValues, out *v2.CommonContainerConfig) (bool, error) {
 	setContainer := false
-	if imagePullPolicy, ok, err := in.GetString("imagePullPolicy"); ok {
+	if imagePullPolicy, ok, err := in.GetAndRemoveString("imagePullPolicy"); ok {
 		out.ImagePullPolicy = corev1.PullPolicy(imagePullPolicy)
 		setContainer = true
 	} else if err != nil {
 		return false, err
 	}
-	if imagePullSecrets, ok, err := in.GetStringSlice("imagePullSecrets"); ok && len(imagePullSecrets) > 0 {
+	if imagePullSecrets, ok, err := in.GetAndRemoveStringSlice("imagePullSecrets"); ok && len(imagePullSecrets) > 0 {
 		out.ImagePullSecrets = make([]corev1.LocalObjectReference, len(imagePullSecrets))
 		setContainer = true
 		for index, pullSecret := range imagePullSecrets {
@@ -780,24 +817,27 @@ func populateCommonContainerConfig(in *v1.HelmValues, out *v2.CommonContainerCon
 	} else if err != nil {
 		return false, err
 	}
-	if hub, ok, err := in.GetString("hub"); ok {
+	if hub, ok, err := in.GetAndRemoveString("hub"); ok {
 		out.ImageRegistry = hub
 		setContainer = true
 	} else if err != nil {
 		return false, err
 	}
-	if tag, ok, err := in.GetString("tag"); ok {
+	if tag, ok, err := in.GetAndRemoveForceNumberToString("tag"); ok {
 		out.ImageTag = tag
 		setContainer = true
 	} else if err != nil {
 		return false, err
 	}
-	if resourcesValues, ok, err := in.GetMap("resources"); ok && len(resourcesValues) > 0 {
-		out.Resources = &corev1.ResourceRequirements{}
-		if err := fromValues(resourcesValues, out.Resources); err != nil {
-			return false, err
+	if resourcesValues, ok, err := in.GetMap("resources"); ok {
+		if len(resourcesValues) > 0 {
+			out.Resources = &corev1.ResourceRequirements{}
+			if err := decodeAndRemoveFromValues(resourcesValues, out.Resources); err != nil {
+				return false, err
+			}
+			setContainer = true
 		}
-		setContainer = true
+		in.RemoveField("resources")
 	} else if err != nil {
 		return false, err
 	}
@@ -806,14 +846,19 @@ func populateCommonContainerConfig(in *v1.HelmValues, out *v2.CommonContainerCon
 }
 
 func populateComponentServiceValues(serviceConfig *v2.ComponentServiceConfig, componentServiceValues map[string]interface{}) error {
-	if len(serviceConfig.Metadata.Annotations) > 0 {
-		if err := setHelmStringMapValue(componentServiceValues, "service.annotations", serviceConfig.Metadata.Annotations); err != nil {
-			return err
-		}
+	if serviceConfig == nil {
+		return nil
 	}
-	if len(serviceConfig.Metadata.Labels) > 0 {
-		if err := setHelmStringMapValue(componentServiceValues, "service.labels", serviceConfig.Metadata.Labels); err != nil {
-			return err
+	if serviceConfig.Metadata != nil {
+		if len(serviceConfig.Metadata.Annotations) > 0 {
+			if err := setHelmStringMapValue(componentServiceValues, "service.annotations", serviceConfig.Metadata.Annotations); err != nil {
+				return err
+			}
+		}
+		if len(serviceConfig.Metadata.Labels) > 0 {
+			if err := setHelmStringMapValue(componentServiceValues, "service.labels", serviceConfig.Metadata.Labels); err != nil {
+				return err
+			}
 		}
 	}
 	if serviceConfig.NodePort != nil {
@@ -852,28 +897,36 @@ func populateComponentServiceValues(serviceConfig *v2.ComponentServiceConfig, co
 
 func populateComponentServiceConfig(in *v1.HelmValues, out *v2.ComponentServiceConfig) (bool, error) {
 	setValues := false
+	metadata := &v2.MetadataConfig{}
+	setMetadata := false
 	if rawAnnotations, ok, err := in.GetMap("service.annotations"); ok && len(rawAnnotations) > 0 {
-		if err := setMetadataAnnotations(rawAnnotations, &out.Metadata); err != nil {
+		if err := setMetadataAnnotations(rawAnnotations, metadata); err != nil {
 			return false, err
 		}
-		setValues = true
+		setMetadata = true
+		in.RemoveField("service.annotations")
 	} else if err != nil {
 		return false, err
 	}
 	if rawLabels, ok, err := in.GetMap("service.labels"); ok && len(rawLabels) > 0 {
-		if err := setMetadataLabels(rawLabels, &out.Metadata); err != nil {
+		if err := setMetadataLabels(rawLabels, metadata); err != nil {
 			return false, err
 		}
-		setValues = true
+		setMetadata = true
+		in.RemoveField("service.labels")
 	} else if err != nil {
 		return false, err
 	}
-	if enabled, ok, err := in.GetBool("service.nodePort.enabled"); ok {
+	if setMetadata {
+		out.Metadata = metadata
+		setValues = true
+	}
+	if enabled, ok, err := in.GetAndRemoveBool("service.nodePort.enabled"); ok {
 		if !enabled {
 			nodePort := int32(0)
 			out.NodePort = &nodePort
 			setValues = true
-		} else if rawNodePort, ok, err := in.GetInt64("service.nodePort.port"); ok {
+		} else if rawNodePort, ok, err := in.GetAndRemoveInt64("service.nodePort.port"); ok {
 			nodePort := int32(rawNodePort)
 			out.NodePort = &nodePort
 			setValues = true
@@ -883,23 +936,35 @@ func populateComponentServiceConfig(in *v1.HelmValues, out *v2.ComponentServiceC
 	} else if err != nil {
 		return false, err
 	}
+
+	// patch up contextPath, as some addons have this at root, as opposed to
+	// under ingress
+	if contextPath, ok, err := in.GetAndRemoveString("contextPath"); ok && contextPath != "" {
+		if _, ok, err := in.GetString("ingress.contextPath"); err == nil {
+			if !ok {
+				if err := in.SetField("ingress.contextPath", contextPath); err != nil {
+					return false, err
+				}
+			}
+		} else {
+			return false, err
+		}
+	} else if err != nil {
+		return false, err
+	}
 	if rawIngressValues, ok, err := in.GetMap("ingress"); ok && len(rawIngressValues) > 0 {
 		ingressValues := v1.NewHelmValues(rawIngressValues)
 		ingress := &v2.ComponentIngressConfig{}
-		// patch up contextPath, as some addons have this at root, as opposed to
-		// under ingress
-		if _, hasContextPath := rawIngressValues["contextPath"]; !hasContextPath {
-			if contextPath, ok, err := in.GetString("contextPath"); ok && contextPath != "" {
-				rawIngressValues["contextPath"] = contextPath
-			} else if err != nil {
-				return false, err
-			}
-		}
 		if applied, err := populateAddonIngressConfig(ingressValues, ingress); err != nil {
 			return false, err
 		} else if applied {
 			out.Ingress = ingress
 			setValues = true
+		}
+		if len(ingressValues.GetContent()) == 0 {
+			in.RemoveField("ingress")
+		} else if err := in.SetField("ingress", ingressValues.GetContent()); err != nil {
+			return false, err
 		}
 	} else if err != nil {
 		return false, err
@@ -932,6 +997,11 @@ func addEnvToComponent(in *v2.ControlPlaneSpec, component, name, value string) {
 func getAndClearComponentEnv(in *v1.HelmValues, component, name string) (string, bool, error) {
 	if rawComponentEnv, ok, err := in.GetFieldNoCopy(component + ".env"); ok && rawComponentEnv != nil {
 		if env, ok := rawComponentEnv.(map[string]interface{}); ok {
+			defer func() {
+				if len(env) == 0 {
+					in.RemoveField(component + ".env")
+				}
+			}()
 			if value, ok := env[name]; ok {
 				delete(env, name)
 				return fmt.Sprintf("%s", value), true, nil

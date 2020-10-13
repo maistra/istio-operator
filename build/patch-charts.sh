@@ -215,7 +215,27 @@ base:
     rootNamespace: {{ .Values.global.configRootNamespace }}\
 {{- else }}\
     rootNamespace: {{ .Release.Namespace }}\
-{{- end }}' ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml
+{{- end }}' \
+    -e '/{{- if .Values.global.remotePolicyAddress }}/,/{{- if and .Values.telemetry.v1.enabled .Values.telemetry.enabled }}/ {
+        /{{- if .Values.mixer.policy.enabled }}/,/{{- if and .Values.telemetry.v1.enabled .Values.telemetry.enabled }}/ {
+        d
+      }
+      /{{- if .Values.global.remotePolicyAddress }}/,/{{- if .Values.global.remoteTelemetryAddress }}/ {
+        /.Values.global.remoteTelemetryAddress/i\
+    \{\{- if and .Values.telemetry.v1.enabled .Values.telemetry.enabled \}\}
+        /{{- else }}/,/{{- end }}/ {
+          /{{- end }}/ a\
+    \{\{- else \}\}\
+    \{\{- if .Values.mixer.policy.enabled \}\}\
+    \{\{- if .Values.global.controlPlaneSecurityEnabled \}\}\
+    mixerCheckServer: istio-policy.\{\{ .Values.global.policyNamespace \}\}.svc.\{\{ .Values.global.proxy.clusterDomain \}\}:15004\
+    \{\{- else \}\}\
+    mixerCheckServer: istio-policy.\{\{ .Values.global.policyNamespace \}\}.svc.\{\{ .Values.global.proxy.clusterDomain \}\}:9091\
+    \{\{- end \}\}\
+    \{\{- end \}\}
+        }
+      }
+    }' ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml
 
 }
 
@@ -421,12 +441,24 @@ function patchMixer() {
     /args/ a\
 \          - --memberRollName=default\
 \          - --memberRollNamespace=\{\{ .Release.Namespace \}\}
-  }' ${HELM_DIR}/istio-policy/templates/deployment.yaml
-  sed_wrap -i -e '/name: *mixer/,/args:/ {
-    /args/ a\
-\          - --memberRollName=default\
-\          - --memberRollNamespace=\{\{ .Release.Namespace \}\}
-  }' ${HELM_DIR}/istio-telemetry/mixer-telemetry/templates/deployment.yaml
+  }' \
+    -e '0,/volumes:/ {/securityContext:/,/volumes:/ {/volumes:/! d}}' \
+    -e '/securityContext:/,/volumeMounts:/ {/volumeMounts:/! d}' \
+    ${HELM_DIR}/istio-telemetry/mixer-telemetry/templates/deployment.yaml \
+    ${HELM_DIR}/istio-policy/templates/deployment.yaml
+  # need to add mount for policy proxy's envoy config
+  sed_wrap -i -e '/- name: istio-proxy/,/- name: uds-socket/ {
+    /- name: uds-socket/ i\
+        - name: policy-envoy-config\
+          mountPath: /var/lib/istio/envoy
+    }' \
+    -e '/volumes:/,/affinity:/ {
+    /affinity:/ i\
+      - name: policy-envoy-config\
+        configMap:\
+          name: policy-envoy-config
+    }' \
+    -e 's/istiod.{{ .Release.Namespace }}.svc:15012/istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc:15012/' ${HELM_DIR}/istio-policy/templates/deployment.yaml
 }
 
 # The following modifications are made to the generated helm template for the Kiali yaml file

@@ -38,6 +38,8 @@ const (
 	ControlPlaneComponentNameMixerPolicy ControlPlaneComponentName = "mixer.policy"
 	// ControlPlaneComponentNameMixerTelemetry - mixer.telemetry
 	ControlPlaneComponentNameMixerTelemetry ControlPlaneComponentName = "mixer.telemetry"
+	// ControlPlaneComponentNameGlobalOauthProxy - global.oauthproxy
+	ControlPlaneComponentNameGlobalOauthProxy ControlPlaneComponentName = "global.oauthproxy"
 	// ControlPlaneComponentNameSidecarInjectoryWebhook - sidecarInjectorWebhook
 	ControlPlaneComponentNameSidecarInjectoryWebhook ControlPlaneComponentName = "sidecarInjectorWebhook"
 	// ControlPlaneComponentNameTracing - tracing
@@ -74,6 +76,7 @@ var ControlPlaneComponentNames = []ControlPlaneComponentName{
 	ControlPlaneComponentNameMixer,
 	ControlPlaneComponentNameMixerPolicy,
 	ControlPlaneComponentNameMixerTelemetry,
+	ControlPlaneComponentNameGlobalOauthProxy,
 	ControlPlaneComponentNameSidecarInjectoryWebhook,
 	ControlPlaneComponentNameTracing,
 	ControlPlaneComponentNameTracingJaeger,
@@ -140,12 +143,13 @@ type CommonDeploymentRuntimeConfig struct {
 
 // AutoScalerConfig is used to configure autoscaling for a deployment
 type AutoScalerConfig struct {
+	Enablement `json:",inline"`
 	// lower limit for the number of pods that can be set by the autoscaler, default 1.
 	// +optional
 	MinReplicas *int32 `json:"minReplicas,omitempty"`
 	// upper limit for the number of pods that can be set by the autoscaler; cannot be smaller than MinReplicas.
 	// +optional
-	MaxReplicas *int32 `json:"maxReplicas"`
+	MaxReplicas *int32 `json:"maxReplicas,omitempty"`
 	// target average CPU utilization (represented as a percentage of requested CPU) over all the pods;
 	// if not specified the default autoscaling policy will be used.
 	// +optional
@@ -160,7 +164,7 @@ type PodRuntimeConfig struct {
 	// .Values.*.podAnnotations
 	// XXX: currently, additional lables are not supported
 	// +optional
-	Metadata MetadataConfig `json:"metadata,omitempty"`
+	Metadata *MetadataConfig `json:"metadata,omitempty"`
 
 	// If specified, the pod's scheduling constraints
 	// +optional
@@ -217,7 +221,7 @@ type PodAntiAffinityTerm struct {
 	// selected pods is running.
 	// Empty topologyKey is not allowed.
 	// +optional
-	TopologyKey string `json:"topologyKey"`
+	TopologyKey string `json:"topologyKey,omitempty"`
 }
 
 // ContainerConfig to be applied to containers in a pod, in a deployment
@@ -281,7 +285,7 @@ type ComponentServiceConfig struct {
 	// Metadata represents addtional annotations/labels to be applied to the
 	// component's service.
 	// +optional
-	Metadata MetadataConfig `json:"metadata,omitempty"`
+	Metadata *MetadataConfig `json:"metadata,omitempty"`
 	// NodePort specifies a NodePort for the component's Service.
 	// .Values.<component>.service.nodePort.port, ...enabled is true if not null
 	// +optional
@@ -298,7 +302,7 @@ type ComponentIngressConfig struct {
 	Enablement `json:",inline"`
 	// Metadata represents additional metadata to be applied to the ingress/route.
 	// +optional
-	Metadata MetadataConfig `json:"metadata,omitempty"`
+	Metadata *MetadataConfig `json:"metadata,omitempty"`
 	// Hosts represents a list of host names to configure.  Note, OpenShift route
 	// only supports a single host name per route.  An empty host name implies
 	// a default host name for the Route.

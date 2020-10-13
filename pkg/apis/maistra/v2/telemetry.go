@@ -113,7 +113,7 @@ type RemoteTelemetryConfig struct {
 	// CreateService for the remote server.
 	// .Values.global.createRemoteSvcEndpoints
 	// +optional
-	CreateService bool `json:"createService,omitempty"`
+	CreateService *bool `json:"createService,omitempty"`
 	// Batching settings used when sending telemetry.
 	// +optional
 	Batching *TelemetryBatchingConfig `json:"batching,omitempty"`

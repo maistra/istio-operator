@@ -56,7 +56,7 @@ func (v *versionStrategyV1_1) SetImageValues(ctx context.Context, cr *common.Con
 	common.UpdateField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_1.ProxyInit)
 	common.UpdateField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_1.ProxyV2)
 	common.UpdateField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_1.SidecarInjector)
-	common.UpdateField(smcpSpec.Istio, "image", common.Config.OLM.Images.V1_1.ThreeScale)
+	common.UpdateField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_1.ThreeScale)
 
 	common.UpdateField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V1_1.IOR)
 	return nil
@@ -136,7 +136,7 @@ func (v *versionStrategyV1_1) ValidateV1(ctx context.Context, cl client.Client, 
 func (v *versionStrategyV1_1) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
 	allErrors = validatePolicyType(ctx, meta, spec, v.version, allErrors)
-	allErrors = validateTelemetryType(nil, meta, spec, v.version, allErrors)
+	allErrors = validateTelemetryType(ctx, meta, spec, v.version, allErrors)
 	allErrors = validateGateways(ctx, meta, spec, v.version, cl, allErrors)
 	return NewValidationError(allErrors...)
 }

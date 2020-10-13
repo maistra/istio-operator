@@ -23,7 +23,7 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 	defer func() {
 		if reterr == nil {
 			if len(prometheusValues) > 0 {
-				if err := setHelmValue(values, "prometheus", prometheusValues); err != nil {
+				if err := overwriteHelmValues(values, prometheusValues, "prometheus"); err != nil {
 					reterr = err
 				}
 			}
@@ -71,8 +71,10 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 		}
 	}
 
-	if err := populateComponentServiceValues(&prometheus.Install.Service, prometheusValues); err != nil {
-		return err
+	if prometheus.Install.Service != nil {
+		if err := populateComponentServiceValues(prometheus.Install.Service, prometheusValues); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -105,7 +107,7 @@ func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.PrometheusAddonCon
 	prometheus := out
 	setPrometheus := false
 
-	if enablePrometheusMerge, ok, err := in.GetBool("meshConfig.enablePrometheusMerge"); ok {
+	if enablePrometheusMerge, ok, err := in.GetAndRemoveBool("meshConfig.enablePrometheusMerge"); ok {
 		prometheus.Scrape = &enablePrometheusMerge
 		setPrometheus = true
 	} else if err != nil {
@@ -121,7 +123,7 @@ func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.PrometheusAddonCon
 	}
 
 	// check to see if prometheus.Address should be set
-	if address, ok, err := in.GetString("kiali.prometheusAddr"); ok {
+	if address, ok, err := in.GetAndRemoveString("kiali.prometheusAddr"); ok {
 		// If grafana URL is set, assume we're using an existing grafana install
 		prometheus.Address = &address
 		setPrometheus = true
@@ -138,7 +140,7 @@ func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.PrometheusAddonCon
 	}
 	prometheusValues := v1.NewHelmValues(rawPrometheusValues)
 
-	if enabled, ok, err := prometheusValues.GetBool("enabled"); ok {
+	if enabled, ok, err := prometheusValues.GetAndRemoveBool("enabled"); ok {
 		prometheus.Enabled = &enabled
 		setPrometheus = true
 	} else if err != nil {
@@ -148,35 +150,37 @@ func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.PrometheusAddonCon
 	install := &v2.PrometheusInstallConfig{}
 	setInstall := false
 
-	if retention, ok, err := prometheusValues.GetString("retention"); ok {
+	if retention, ok, err := prometheusValues.GetAndRemoveString("retention"); ok {
 		install.Retention = retention
 		setInstall = true
 	} else if err != nil {
 		return false, err
 	}
-	if scrapeInterval, ok, err := prometheusValues.GetString("scrapeInterval"); ok {
+	if scrapeInterval, ok, err := prometheusValues.GetAndRemoveString("scrapeInterval"); ok {
 		install.ScrapeInterval = scrapeInterval
 		setInstall = true
 	} else if err != nil {
 		return false, err
 	}
 
-	if securityEnabled, ok, err := prometheusValues.GetBool("security.enabled"); ok {
+	if securityEnabled, ok, err := prometheusValues.GetAndRemoveBool("security.enabled"); ok {
 		// v1_0 and v1_0
 		install.UseTLS = &securityEnabled
 		setInstall = true
 	} else if err != nil {
 		return false, err
-	} else if provisionPrometheusCert, ok, err := prometheusValues.GetBool("provisionPrometheusCert"); ok {
+	} else if provisionPrometheusCert, ok, err := prometheusValues.GetAndRemoveBool("provisionPrometheusCert"); ok {
 		// v2_0
 		install.UseTLS = &provisionPrometheusCert
 		setInstall = true
 	} else if err != nil {
 		return false, err
 	}
-	if applied, err := populateComponentServiceConfig(prometheusValues, &install.Service); err == nil {
-		setInstall = setInstall || applied
-	} else {
+	service := &v2.ComponentServiceConfig{}
+	if applied, err := populateComponentServiceConfig(prometheusValues, service); applied {
+		setInstall = true
+		install.Service = service
+	} else if err != nil {
 		return false, err
 	}
 
@@ -184,12 +188,22 @@ func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.PrometheusAddonCon
 		prometheus.Install = install
 		setPrometheus = true
 	}
+	// update the kiali settings
+	if len(prometheusValues.GetContent()) == 0 {
+		in.RemoveField("prometheus")
+	} else if err := in.SetField("prometheus", prometheusValues.GetContent()); err != nil {
+		return false, err
+	}
 
 	return setPrometheus, nil
 }
 
 func populatePrometheusTelemetryConfig(in *v1.HelmValues, telemetry *v2.PrometheusTelemetryConfig) (bool, error) {
-	if metricsExpiryDuration, ok, err := in.GetString("mixer.adapters.prometheus.metricsExpiryDuration"); ok {
+	// remove auto-populated fields
+	in.RemoveField("mixer.adapters.prometheus.enabled")
+	in.RemoveField("telemetry.v2.prometheus.enabled")
+
+	if metricsExpiryDuration, ok, err := in.GetAndRemoveString("mixer.adapters.prometheus.metricsExpiryDuration"); ok {
 		telemetry.MetricsExpiryDuration = metricsExpiryDuration
 		return true, nil
 	} else if err != nil {

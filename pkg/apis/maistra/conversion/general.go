@@ -28,14 +28,14 @@ func populateGeneralConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	if err := populateControlPlaneLoggingConfig(in, out); err != nil {
 		return err
 	}
-	if enableAnalysis, ok, err := in.GetBool("global.istiod.enableAnalysis"); ok {
+	if enableAnalysis, ok, err := in.GetAndRemoveBool("global.istiod.enableAnalysis"); ok {
 		if out.General == nil {
 			out.General = &v2.GeneralConfig{}
 		}
 		out.General.ValidationMessages = &enableAnalysis
 	} else if err != nil {
 		return err
-	} else if enableAnalysis, ok, err := in.GetBool("galley.enableAnalysis"); ok {
+	} else if enableAnalysis, ok, err := in.GetAndRemoveBool("galley.enableAnalysis"); ok {
 		if out.General == nil {
 			out.General = &v2.GeneralConfig{}
 		}

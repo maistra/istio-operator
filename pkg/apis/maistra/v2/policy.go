@@ -75,7 +75,7 @@ type RemotePolicyConfig struct {
 	// CreateServices specifies whether or not a k8s Service should be created for the remote policy server.
 	// .Values.global.createRemoteSvcEndpoints
 	// +optional
-	CreateService bool `json:"createService,omitempty"`
+	CreateService *bool `json:"createService,omitempty"`
 	// EnableChecks configures whether or not policy checks should be enabled.
 	// .Values.global.disablePolicyChecks | default "true" (false, inverted logic)
 	// Set the following variable to false to disable policy checks by the Mixer.

@@ -24,7 +24,7 @@ func populateKialiAddonValues(kiali *v2.KialiAddonConfig, values map[string]inte
 	defer func() {
 		if reterr == nil {
 			if len(kialiValues) > 0 {
-				if err := setHelmValue(values, "kiali", kialiValues); err != nil {
+				if err := overwriteHelmValues(values, kialiValues, "kiali"); err != nil {
 					reterr = err
 				}
 			}
@@ -36,28 +36,33 @@ func populateKialiAddonValues(kiali *v2.KialiAddonConfig, values map[string]inte
 	}
 
 	dashboardConfig := kiali.Install.Dashboard
-	if dashboardConfig.ViewOnly != nil {
-		if err := setHelmBoolValue(kialiValues, "dashboard.viewOnlyMode", *dashboardConfig.ViewOnly); err != nil {
-			return err
+	if dashboardConfig != nil {
+		if dashboardConfig.ViewOnly != nil {
+			if err := setHelmBoolValue(kialiValues, "dashboard.viewOnlyMode", *dashboardConfig.ViewOnly); err != nil {
+				return err
+			}
+		}
+		if dashboardConfig.EnableGrafana != nil {
+			if err := setHelmBoolValue(kialiValues, "dashboard.enableGrafana", *dashboardConfig.EnableGrafana); err != nil {
+				return err
+			}
+		}
+		if dashboardConfig.EnablePrometheus != nil {
+			if err := setHelmBoolValue(kialiValues, "dashboard.enablePrometheus", *dashboardConfig.EnablePrometheus); err != nil {
+				return err
+			}
+		}
+		if dashboardConfig.EnableTracing != nil {
+			if err := setHelmBoolValue(kialiValues, "dashboard.enableTracing", *dashboardConfig.EnableTracing); err != nil {
+				return err
+			}
 		}
 	}
-	if dashboardConfig.EnableGrafana != nil {
-		if err := setHelmBoolValue(kialiValues, "dashboard.enableGrafana", *dashboardConfig.EnableGrafana); err != nil {
+
+	if kiali.Install.Service != nil {
+		if err := populateComponentServiceValues(kiali.Install.Service, kialiValues); err != nil {
 			return err
 		}
-	}
-	if dashboardConfig.EnablePrometheus != nil {
-		if err := setHelmBoolValue(kialiValues, "dashboard.enablePrometheus", *dashboardConfig.EnablePrometheus); err != nil {
-			return err
-		}
-	}
-	if dashboardConfig.EnableTracing != nil {
-		if err := setHelmBoolValue(kialiValues, "dashboard.enableTracing", *dashboardConfig.EnableTracing); err != nil {
-			return err
-		}
-	}
-	if err := populateComponentServiceValues(&kiali.Install.Service, kialiValues); err != nil {
-		return err
 	}
 	if rawContextPath, ok := kialiValues["contextPath"]; ok {
 		if contextPath, ok := rawContextPath.(string); ok {
@@ -92,16 +97,18 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.KialiAddonConfig) (bool
 	if len(kialiValues.GetContent()) == 0 {
 		return false, nil
 	}
+	// we want to use the original, now that we're checking to see if there is actual kiali config
+	kialiValues = v1.NewHelmValues(rawKialiValues)
 
 	kiali := out
 
-	if name, ok, err := kialiValues.GetString("resourceName"); ok {
+	if name, ok, err := kialiValues.GetAndRemoveString("resourceName"); ok {
 		kiali.Name = name
 	} else if err != nil {
 		return false, err
 	}
 
-	if enabled, ok, err := kialiValues.GetBool("enabled"); ok {
+	if enabled, ok, err := kialiValues.GetAndRemoveBool("enabled"); ok {
 		kiali.Enabled = &enabled
 	} else if err != nil {
 		return false, err
@@ -109,41 +116,48 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.KialiAddonConfig) (bool
 
 	install := &v2.KialiInstallConfig{}
 	setInstall := false
-	dashboardConfig := &install.Dashboard
 
-	if viewOnlyMode, ok, err := kialiValues.GetBool("dashboard.viewOnlyMode"); ok {
+	dashboardConfig := &v2.KialiDashboardConfig{}
+	setDashboard := false
+	if viewOnlyMode, ok, err := kialiValues.GetAndRemoveBool("dashboard.viewOnlyMode"); ok {
 		dashboardConfig.ViewOnly = &viewOnlyMode
-		setInstall = true
+		setDashboard = true
 	} else if err != nil {
 		return false, err
 	}
-	if enableGrafana, ok, err := kialiValues.GetBool("dashboard.enableGrafana"); ok {
+	if enableGrafana, ok, err := kialiValues.GetAndRemoveBool("dashboard.enableGrafana"); ok {
 		dashboardConfig.EnableGrafana = &enableGrafana
-		setInstall = true
+		setDashboard = true
 	} else if err != nil {
 		return false, err
 	}
-	if enablePrometheus, ok, err := kialiValues.GetBool("dashboard.enablePrometheus"); ok {
+	if enablePrometheus, ok, err := kialiValues.GetAndRemoveBool("dashboard.enablePrometheus"); ok {
 		dashboardConfig.EnablePrometheus = &enablePrometheus
-		setInstall = true
+		setDashboard = true
 	} else if err != nil {
 		return false, err
 	}
-	if enableTracing, ok, err := kialiValues.GetBool("dashboard.enableTracing"); ok {
+	if enableTracing, ok, err := kialiValues.GetAndRemoveBool("dashboard.enableTracing"); ok {
 		dashboardConfig.EnableTracing = &enableTracing
-		setInstall = true
+		setDashboard = true
 	} else if err != nil {
 		return false, err
+	}
+	if setDashboard == true {
+		setInstall = true
+		install.Dashboard = dashboardConfig
 	}
 
-	if applied, err := populateComponentServiceConfig(kialiValues, &install.Service); err == nil {
-		setInstall = setInstall || applied
-	} else {
+	service := &v2.ComponentServiceConfig{}
+	if applied, err := populateComponentServiceConfig(kialiValues, service); applied {
+		setInstall = true
+		install.Service = service
+	} else if err != nil {
 		return false, err
 	}
-	if install.Service.Ingress == nil || install.Service.Ingress.ContextPath == "" {
+	if install.Service == nil || install.Service.Ingress == nil || install.Service.Ingress.ContextPath == "" {
 		// check old kiali.contextPath
-		if contextPath, ok, err := kialiValues.GetString("contextPath"); ok && contextPath != "" {
+		if contextPath, ok, err := kialiValues.GetAndRemoveString("contextPath"); ok && contextPath != "" {
 			if install.Service.Ingress == nil {
 				install.Service.Ingress = &v2.ComponentIngressConfig{}
 			}
@@ -156,6 +170,12 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.KialiAddonConfig) (bool
 
 	if setInstall {
 		kiali.Install = install
+	}
+	// update the kiali settings
+	if len(kialiValues.GetContent()) == 0 {
+		in.RemoveField("kiali")
+	} else if err := in.SetField("kiali", kialiValues.GetContent()); err != nil {
+		return false, err
 	}
 
 	return true, nil
