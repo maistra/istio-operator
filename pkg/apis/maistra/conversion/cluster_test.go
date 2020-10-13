@@ -23,7 +23,6 @@ var clusterTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
 				"multiCluster": map[string]interface{}{
 					"enabled": false,
 					"multiClusterOverrides": map[string]interface{}{
@@ -47,7 +46,6 @@ var clusterTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
 				"multiCluster": map[string]interface{}{
 					"enabled": false,
 					"multiClusterOverrides": map[string]interface{}{
@@ -71,7 +69,6 @@ var clusterTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP": true,
 				"multiCluster": map[string]interface{}{
 					"enabled": false,
 					"multiClusterOverrides": map[string]interface{}{
@@ -112,7 +109,6 @@ var clusterTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
@@ -142,7 +138,6 @@ var clusterTestCases = []conversionTestCase{
 					"useILB":  false,
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
@@ -201,7 +196,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -293,7 +287,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -388,7 +381,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -483,7 +475,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -601,7 +592,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -697,7 +687,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -799,7 +788,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -898,7 +886,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -995,7 +982,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -1095,7 +1081,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -1196,7 +1181,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -1289,7 +1273,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -1388,7 +1371,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -1489,7 +1471,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -1580,7 +1561,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{
@@ -1692,7 +1672,6 @@ var clusterTestCases = []conversionTestCase{
 					},
 				},
 				"network": "my-network",
-				"useMCP":  true,
 			},
 			"gateways": map[string]interface{}{
 				"istio-ilbgateway": map[string]interface{}{

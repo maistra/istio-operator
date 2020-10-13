@@ -24,12 +24,6 @@ var externalRequestedNetworkRegex = regexp.MustCompile("(^|,)external(,|$)")
 // search suffixes for Proxy.
 func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map[string]interface{}) error {
 	// Cluster settings
-	// non-configurable defaults
-	// XXX: not sure if this is version specific, i.e. does it apply to istio 1.6?
-	if err := setHelmBoolValue(values, "global.useMCP", true); err != nil {
-		return err
-	}
-
 	cluster := in.Cluster
 	if cluster == nil {
 		cluster = &v2.ControlPlaneClusterConfig{}
@@ -324,9 +318,6 @@ func getLocalNetworkService(gatewayService, namespace, clusterDomain string) str
 func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	clusterConfig := &v2.ControlPlaneClusterConfig{}
 	setClusterConfig := false
-
-	// clear out defaulted values
-	in.RemoveField("global.useMCP")
 
 	if clusterName, ok, err := in.GetAndRemoveString("global.multiCluster.clusterName"); ok {
 		clusterConfig.Name = clusterName

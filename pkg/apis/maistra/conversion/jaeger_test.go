@@ -29,7 +29,6 @@ var jaegerTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": false,
@@ -57,7 +56,6 @@ var jaegerTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
@@ -86,7 +84,6 @@ var jaegerTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
@@ -125,7 +122,6 @@ var jaegerTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
@@ -162,7 +158,6 @@ var jaegerTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
@@ -201,7 +196,6 @@ var jaegerTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
@@ -243,7 +237,6 @@ var jaegerTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
@@ -286,7 +279,6 @@ var jaegerTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
@@ -334,7 +326,6 @@ var jaegerTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
@@ -376,7 +367,6 @@ var jaegerTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
@@ -419,7 +409,6 @@ var jaegerTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
@@ -486,7 +475,6 @@ var jaegerTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
@@ -525,7 +513,6 @@ var jaegerTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,
@@ -585,7 +572,6 @@ var jaegerTestCases = []conversionTestCase{
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
-				"useMCP":        true,
 				"multiCluster":  globalMultiClusterDefaults,
 				"meshExpansion": globalMeshExpansionDefaults,
 				"enableTracing": true,

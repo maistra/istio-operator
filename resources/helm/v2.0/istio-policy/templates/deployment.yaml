@@ -43,8 +43,6 @@ spec:
 {{- if .Values.global.priorityClassName }}
       priorityClassName: "{{ .Values.global.priorityClassName }}"
 {{- end }}
-      securityContext:
-        fsGroup: 1337
       volumes:
 {{- if .Values.global.controlPlaneSecurityEnabled }}
       - name: config-volume
@@ -76,6 +74,9 @@ spec:
         secret:
           secretName: policy-adapter-secret
           optional: true
+      - name: policy-envoy-config
+        configMap:
+          name: policy-envoy-config
       affinity:
       {{- include "nodeaffinity" . | indent 6 }}
       {{- include "podAntiAffinity" . | indent 6 }}
@@ -155,13 +156,6 @@ spec:
 {{- else }}
 {{ toYaml .Values.global.defaultResources | indent 10 }}
 {{- end }}
-        securityContext:
-          runAsUser: 1337
-          runAsGroup: 1337
-          runAsNonRoot: true
-          capabilities:
-            drop:
-            - ALL
         volumeMounts:
 {{- if .Values.global.useMCP }}
         - name: istio-certs
@@ -241,7 +235,7 @@ spec:
         {{- if .Values.global.caAddress }}
           value: {{ .Values.global.caAddress }}
         {{- else }}
-          value: istiod.{{ .Release.Namespace }}.svc:15012
+          value: istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc:15012
         {{- end }}
         resources:
 {{- if .Values.global.proxy.resources }}
@@ -261,6 +255,8 @@ spec:
           mountPath: /var/run/secrets/tokens
           readOnly: true
         {{- end }}
+        - name: policy-envoy-config
+          mountPath: /var/lib/istio/envoy
         - name: uds-socket
           mountPath: /sock
 {{- end }}
