@@ -25,7 +25,7 @@ data:
       relabel_configs:
       - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
         action: keep
-        regex: istio-telemetry;prometheus
+        regex: istio-telemetry.*;prometheus
 
     # Scrape config for envoy stats
     - job_name: 'envoy-stats'
@@ -74,7 +74,7 @@ data:
       relabel_configs:
       - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
         action: keep
-        regex: istio-telemetry;http-monitoring
+        regex: istio-telemetry.*;http-monitoring
 
     - job_name: 'pilot'
       kubernetes_sd_configs:
@@ -86,7 +86,7 @@ data:
       relabel_configs:
       - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
         action: keep
-        regex: istiod;http-monitoring
+        regex: istiod.*;http-monitoring
       - source_labels: [__meta_kubernetes_service_label_app]
         target_label: app
     - job_name: 'galley'

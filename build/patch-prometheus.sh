@@ -152,6 +152,9 @@ function prometheus_patch_configmap() {
         action: drop
   }' ${HELM_DIR}/istio-telemetry/prometheus/templates/configmap.yaml
 
+  sed_wrap -i -e "s/\(regex: istiod\)/\1.*/" ${HELM_DIR}/istio-telemetry/prometheus/templates/configmap.yaml
+  sed_wrap -i -e "s/\(regex: istio-telemetry\)/\1.*/" ${HELM_DIR}/istio-telemetry/prometheus/templates/configmap.yaml
+
 }
 
 function prometheusPatch() {
