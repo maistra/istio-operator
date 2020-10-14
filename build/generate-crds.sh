@@ -10,10 +10,13 @@ for bundle_dir in ${BUNDLE_DIRS}; do
 done
 
 function generateCRDs() {
+  echo "Generating CRDs"
   go run -mod=vendor sigs.k8s.io/controller-tools/cmd/controller-gen crd \
       paths=./pkg/apis/maistra/... \
       crd:maxDescLen=0,preserveUnknownFields=false,crdVersions=v1beta1 \
       output:dir=./deploy/crds
+
+  echo "Patching CRDs to add attributes not supported by controller-gen"
    # workaround for https://github.com/kubernetes-sigs/controller-tools/issues/457
   #sed -i -e "s/\( *\)\(description\: The IP protocol for this port\)/\1default: TCP\n\1\2/" \
   #    deploy/crds/maistra.io_servicemeshcontrolplanes.yaml
@@ -31,12 +34,14 @@ function generateCRDs() {
     release: istio/' deploy/crds/extensions.maistra.io_servicemeshextensions.yaml
 
   for bundle_dir in ${BUNDLE_DIRS}; do
+    echo "Writing CRDs to directory ${bundle_dir}"
     cp deploy/crds/maistra.io_servicemeshcontrolplanes.yaml ${bundle_dir}/servicemeshcontrolplanes.crd.yaml
     cp deploy/crds/maistra.io_servicemeshmemberrolls.yaml ${bundle_dir}/servicemeshmemberrolls.crd.yaml
     cp deploy/crds/maistra.io_servicemeshmembers.yaml ${bundle_dir}/servicemeshmembers.crd.yaml
     cp deploy/crds/extensions.maistra.io_servicemeshextensions.yaml resources/helm/overlays/istio-init/files/servicemeshextensions.extensions.maistra.io.crd.yaml
   done
 
+  echo "Writing CRDs to file deploy/src/crd.yaml"
   cat deploy/crds/maistra.io_servicemeshcontrolplanes.yaml >deploy/src/crd.yaml
   echo -e "\n---\n" >>deploy/src/crd.yaml
   cat deploy/crds/maistra.io_servicemeshmemberrolls.yaml >>deploy/src/crd.yaml

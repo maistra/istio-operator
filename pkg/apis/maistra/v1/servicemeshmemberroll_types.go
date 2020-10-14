@@ -85,6 +85,12 @@ type ServiceMeshMemberRollStatus struct {
 	// +nullable
 	ConfiguredMembers []string `json:"configuredMembers"`
 
+	// List of namespaces that haven't been configured as members of the service
+	// mesh yet.
+	// +optional
+	// +nullable
+	PendingMembers []string `json:"pendingMembers"`
+
 	// Represents the latest available observations of this ServiceMeshMemberRoll's
 	// current state.
 	// +optional
@@ -107,8 +113,8 @@ type ServiceMeshMemberRollConditionReason string
 const (
 	// ConditionReasonConfigured indicates that all namespaces were configured
 	ConditionReasonConfigured ServiceMeshMemberRollConditionReason = "Configured"
-	// ConditionReasonNamespaceMissing indicates that one of the namespaces to configure does not exist
-	ConditionReasonNamespaceMissing ServiceMeshMemberRollConditionReason = "ErrNamespaceMissing"
+	// ConditionReasonReconcileError indicates that one of the namespaces to configure could not be configured
+	ConditionReasonReconcileError ServiceMeshMemberRollConditionReason = "ReconcileError"
 	// ConditionReasonSMCPMissing indicates that the ServiceMeshControlPlane resource does not exist
 	ConditionReasonSMCPMissing ServiceMeshMemberRollConditionReason = "ErrSMCPMissing"
 	// ConditionReasonMultipleSMCP indicates that multiple ServiceMeshControlPlane resources exist in the namespace
