@@ -460,7 +460,13 @@ func TestReconcileNamespacesIgnoresControlPlaneNamespace(t *testing.T) {
 	ctx := common.NewContextWithLog(ctx, reqLogger)
 
 	namespaces := sets.NewString(controlPlaneNamespace, appNamespace)
-	configuredMembers, err, nsErrors := r.reconcileNamespaces(ctx, namespaces, namespaces, controlPlaneNamespace, versions.DefaultVersion)
+	smmr := maistrav1.ServiceMeshMemberRoll{
+		ObjectMeta: meta.ObjectMeta{
+			Name: "default",
+			Namespace: controlPlaneNamespace,
+		},
+	}
+	configuredMembers, pendingMembers, err, nsErrors := r.reconcileNamespaces(ctx, namespaces, namespaces, &smmr, versions.DefaultVersion)
 	if err != nil {
 		t.Fatalf("reconcileNamespaces failed: %v", err)
 	}
@@ -471,6 +477,7 @@ func TestReconcileNamespacesIgnoresControlPlaneNamespace(t *testing.T) {
 	assertNamespaceReconcilerInvoked(t, nsReconciler, appNamespace) // NOTE: no controlPlaneNamespace
 	assertNamespaceRemoveInvoked(t, nsReconciler, appNamespace)     // NOTE: no controlPlaneNamespace
 	assert.DeepEquals(configuredMembers, []string{appNamespace}, "reconcileNamespaces returned an unexpected configuredMembers list", t)
+	assert.DeepEquals(pendingMembers, []string{}, "reconcileNamespaces returned an unexpected pendingMembers list", t)
 }
 
 func TestReconcileWorksWithMultipleNamespaces(t *testing.T) {
@@ -483,7 +490,7 @@ func TestReconcileWorksWithMultipleNamespaces(t *testing.T) {
 	roll.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
 
 	cl, _, r, _, kialiReconciler := createClientAndReconciler(t, roll, controlPlane, newNamespace(appNamespace))
-	assertReconcileSucceeds(r, t)
+	assertReconcileSucceedsWithRequeue(r, t)
 	test.PanicOnError(cl.Create(context.TODO(), newNamespace(appNamespace2)))
 	assertReconcileSucceeds(r, t)
 
@@ -714,6 +721,16 @@ func assertReconcileSucceeds(r *MemberRollReconciler, t *testing.T) {
 	}
 	if res.Requeue {
 		t.Error("Reconcile requeued the request, but it shouldn't have")
+	}
+}
+
+func assertReconcileSucceedsWithRequeue(r *MemberRollReconciler, t *testing.T) {
+	res, err := r.Reconcile(request)
+	if err != nil {
+		t.Fatalf("Reconcile failed: %v", err)
+	}
+	if !res.Requeue {
+		t.Error("Expected reconcile to requeue the request, but it didn't")
 	}
 }
 

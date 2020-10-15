@@ -6452,6 +6452,11 @@ spec:
             observedGeneration:
               format: int64
               type: integer
+            pendingMembers:
+              items:
+                type: string
+              nullable: true
+              type: array
           type: object
       required:
       - spec

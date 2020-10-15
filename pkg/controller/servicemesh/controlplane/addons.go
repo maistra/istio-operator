@@ -25,10 +25,7 @@ func (r *controlPlaneInstanceReconciler) PatchAddons(ctx context.Context) error 
 }
 
 func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context) error {
-	if r.Instance == nil || r.Instance.Status.AppliedSpec.Addons == nil ||
-		r.Instance.Status.AppliedSpec.Addons.Kiali == nil ||
-		r.Instance.Status.AppliedSpec.Addons.Kiali.Enabled == nil ||
-		!*r.Instance.Status.AppliedSpec.Addons.Kiali.Enabled {
+	if r.Instance == nil || !r.Instance.Status.AppliedSpec.IsKialiEnabled() {
 		return nil
 	}
 
