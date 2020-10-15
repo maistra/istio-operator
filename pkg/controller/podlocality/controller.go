@@ -30,6 +30,12 @@ const (
 	NodeRegionLabel = "failure-domain.beta.kubernetes.io/region"
 	// NodeZoneLabel is the well-known label for kubernetes node zone
 	NodeZoneLabel = "failure-domain.beta.kubernetes.io/zone"
+	// NodeRegionLabelGA is the well-known label for kubernetes node region in ga
+	NodeRegionLabelGA = "topology.kubernetes.io/region"
+	// NodeZoneLabelGA is the well-known label for kubernetes node zone in ga
+	NodeZoneLabelGA = "topology.kubernetes.io/zone"
+	// IstioSubzoneLabel is custom subzone label for locality-based routing in Kubernetes see: https://github.com/istio/istio/issues/19114
+	IstioSubzoneLabel = "topology.istio.io/subzone"
 	// IstioSidecarStatusAnnotation is the annotation Istio adds to the pod when the sidecar is injected
 	IstioSidecarStatusAnnotation = "sidecar.istio.io/status"
 )
@@ -106,8 +112,7 @@ func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 		DeleteFunc: func(evt event.DeleteEvent) bool { return false },
 		UpdateFunc: func(evt event.UpdateEvent) bool {
 			return evt.MetaOld != nil && evt.MetaNew != nil &&
-				(evt.MetaOld.GetLabels()[NodeRegionLabel] != evt.MetaNew.GetLabels()[NodeRegionLabel] ||
-					evt.MetaOld.GetLabels()[NodeZoneLabel] != evt.MetaNew.GetLabels()[NodeZoneLabel])
+				!topologyLabelsMatch(evt.MetaOld.GetLabels(), evt.MetaNew.GetLabels())
 		},
 		GenericFunc: func(evt event.GenericEvent) bool { return false },
 	})
@@ -169,18 +174,21 @@ func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	if node.Labels[NodeRegionLabel] == "" && node.Labels[NodeZoneLabel] == "" {
-		reqLogger.Info("The node the pod is scheduled on neither has the region nor zone labels. Nothing to do.")
+	if topologyLabelsMatch(node.Labels, map[string]string{}) {
+		reqLogger.Info("The node the pod is scheduled on neither has the region, zone nor subzone labels. Nothing to do.")
 		return reconcile.Result{}, nil
 	}
 
-	if pod.Labels[NodeRegionLabel] == node.Labels[NodeRegionLabel] && pod.Labels[NodeZoneLabel] == node.Labels[NodeZoneLabel] {
+	if topologyLabelsMatch(pod.Labels, node.Labels) {
 		reqLogger.Info("Pod's locality labels match the node's. Nothing to do.")
 		return reconcile.Result{}, nil
 	}
 
 	pod.Labels[NodeRegionLabel] = node.Labels[NodeRegionLabel]
 	pod.Labels[NodeZoneLabel] = node.Labels[NodeZoneLabel]
+	pod.Labels[NodeRegionLabelGA] = node.Labels[NodeRegionLabelGA]
+	pod.Labels[NodeZoneLabelGA] = node.Labels[NodeZoneLabelGA]
+	pod.Labels[IstioSubzoneLabel] = node.Labels[IstioSubzoneLabel]
 
 	err = r.Client.Update(ctx, pod)
 	if err != nil {
@@ -197,4 +205,15 @@ func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.
 // correct context info and logs it.
 func createLogger() logr.Logger {
 	return logf.Log.WithName(controllerName)
+}
+
+func topologyLabelsMatch(meta1Labels, meta2Labels map[string]string) bool {
+	if meta1Labels[NodeRegionLabel] == meta2Labels[NodeRegionLabel] &&
+		meta1Labels[NodeZoneLabel] == meta2Labels[NodeZoneLabel] &&
+		meta1Labels[NodeRegionLabelGA] == meta2Labels[NodeRegionLabelGA] &&
+		meta1Labels[NodeZoneLabelGA] == meta2Labels[NodeZoneLabelGA] &&
+		meta1Labels[IstioSubzoneLabel] == meta2Labels[IstioSubzoneLabel] {
+		return true
+	}
+	return false
 }
