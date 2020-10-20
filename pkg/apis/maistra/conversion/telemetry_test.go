@@ -194,7 +194,6 @@ var telemetryTestCases = []conversionTestCase{
 					Enablement: v2.Enablement{
 						Enabled: &featureEnabled,
 					},
-					TelemetryConfig: &v2.PrometheusTelemetryConfig{},
 				},
 			},
 		},
@@ -800,9 +799,7 @@ var telemetryTestCases = []conversionTestCase{
 					Enablement: v2.Enablement{
 						Enabled: &featureEnabled,
 					},
-					TelemetryConfig: &v2.PrometheusTelemetryConfig{
-						MetricsExpiryDuration: "10m",
-					},
+					MetricsExpiryDuration: "10m",
 				},
 			},
 		},
@@ -1599,9 +1596,7 @@ var telemetryTestCases = []conversionTestCase{
 					Enablement: v2.Enablement{
 						Enabled: &featureEnabled,
 					},
-					TelemetryConfig: &v2.PrometheusTelemetryConfig{
-						MetricsExpiryDuration: "10m",
-					},
+					MetricsExpiryDuration: "10m",
 				},
 			},
 		},

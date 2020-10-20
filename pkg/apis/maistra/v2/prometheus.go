@@ -4,12 +4,10 @@ package v2
 // control plane.  Only one of Install or Address may be specified
 type PrometheusAddonConfig struct {
 	Enablement `json:",inline"`
-	// TelemetryConfig configures telemetry adapters/filters when the prometheus
-	// addon is enabled and telemetry is enabled.
-	// .Values.mixer.adapters.prometheus.enabled, true if this.Enabled is true
-	// .Values.telemetry.v2.prometheus.enabled, true if this.Enabled is true
+	// MetricsExpiryDuration is the duration to hold metrics. (mixer/v1 only)
+	// .Values.mixer.adapters.prometheus.metricsExpiryDuration, defaults to 10m
 	// +optional
-	TelemetryConfig *PrometheusTelemetryConfig `json:"telemetry,omitempty"`
+	MetricsExpiryDuration string `json:"metricsExpiryDuration,omitempty"`
 	// Scrape metrics from the pod if true. (maistra-2.0+)
 	// defaults to true
 	// .Values.meshConfig.enablePrometheusMerge
@@ -57,13 +55,4 @@ type PrometheusInstallConfig struct {
 	//EnableSecurity bool
 	// +optional
 	UseTLS *bool `json:"useTLS,omitempty"`
-}
-
-// PrometheusTelemetryConfig is used to configure Prometheus related telemetry
-// functionality.
-type PrometheusTelemetryConfig struct {
-	// MetricsExpiryDuration is the duration to hold metrics. (mixer/v1 only)
-	// .Values.mixer.adapters.prometheus.metricsExpiryDuration, defaults to 10m
-	// +optional
-	MetricsExpiryDuration string `json:"metricsExpiryDuration,omitempty"`
 }

@@ -91,12 +91,8 @@ func populatePrometheusTelemetryValues(in *v2.PrometheusAddonConfig, values map[
 			return err
 		}
 	}
-	telemetry := in.TelemetryConfig
-	if telemetry == nil {
-		return nil
-	}
-	if telemetry.MetricsExpiryDuration != "" {
-		if err := setHelmStringValue(values, "mixer.adapters.prometheus.metricsExpiryDuration", telemetry.MetricsExpiryDuration); err != nil {
+	if in.MetricsExpiryDuration != "" {
+		if err := setHelmStringValue(values, "mixer.adapters.prometheus.metricsExpiryDuration", in.MetricsExpiryDuration); err != nil {
 			return err
 		}
 	}
@@ -114,9 +110,12 @@ func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.PrometheusAddonCon
 		return false, err
 	}
 
-	telemetry := &v2.PrometheusTelemetryConfig{}
-	if updated, err := populatePrometheusTelemetryConfig(in, telemetry); updated {
-		prometheus.TelemetryConfig = telemetry
+	// remove auto-populated fields
+	in.RemoveField("mixer.adapters.prometheus.enabled")
+	in.RemoveField("telemetry.v2.prometheus.enabled")
+
+	if metricsExpiryDuration, ok, err := in.GetAndRemoveString("mixer.adapters.prometheus.metricsExpiryDuration"); ok {
+		out.MetricsExpiryDuration = metricsExpiryDuration
 		setPrometheus = true
 	} else if err != nil {
 		return false, err
@@ -196,18 +195,4 @@ func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.PrometheusAddonCon
 	}
 
 	return setPrometheus, nil
-}
-
-func populatePrometheusTelemetryConfig(in *v1.HelmValues, telemetry *v2.PrometheusTelemetryConfig) (bool, error) {
-	// remove auto-populated fields
-	in.RemoveField("mixer.adapters.prometheus.enabled")
-	in.RemoveField("telemetry.v2.prometheus.enabled")
-
-	if metricsExpiryDuration, ok, err := in.GetAndRemoveString("mixer.adapters.prometheus.metricsExpiryDuration"); ok {
-		telemetry.MetricsExpiryDuration = metricsExpiryDuration
-		return true, nil
-	} else if err != nil {
-		return false, err
-	}
-	return false, nil
 }

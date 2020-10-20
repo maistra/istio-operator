@@ -553,13 +553,10 @@ spec:
                           useTLS:
                             type: boolean
                         type: object
+                      metricsExpiryDuration:
+                        type: string
                       scrape:
                         type: boolean
-                      telemetry:
-                        properties:
-                          metricsExpiryDuration:
-                            type: string
-                        type: object
                     type: object
                   stackdriver:
                     properties:
@@ -3572,13 +3569,10 @@ spec:
                               useTLS:
                                 type: boolean
                             type: object
+                          metricsExpiryDuration:
+                            type: string
                           scrape:
                             type: boolean
-                          telemetry:
-                            properties:
-                              metricsExpiryDuration:
-                                type: string
-                            type: object
                         type: object
                       stackdriver:
                         properties:

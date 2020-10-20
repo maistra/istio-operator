@@ -373,8 +373,7 @@ spec:
     prometheus:
       enabled: true
       scrape: true # configure scraping of telemetry by prometheus
-      telemetry:
-        metricsExpiryDuration: 10m
+      metricsExpiryDuration: 10m
       address: some-url-to-prometheus # specify this or install (i'm not sure if we can support this or not)
       install: # install prometheus, as opposed to using an existing install at address
         selfManaged: true # use prometheus CR, maybe poor naming?
