@@ -2,9 +2,6 @@ package v2
 
 // SecurityConfig specifies security aspects of the control plane.
 type SecurityConfig struct {
-	// MutualTLS configures mutual TLS for the control plane and mesh
-	// +optional
-	MutualTLS *MutualTLSConfig `json:"mtls,omitempty"`
 	// Trust configures trust aspects associated with mutual TLS clients.
 	// +optional
 	Trust *TrustConfig `json:"trust,omitempty"`
@@ -18,18 +15,9 @@ type SecurityConfig struct {
 	// ControlPlane configures mutual TLS for control plane communication.
 	// +optional
 	ControlPlane *ControlPlaneSecurityConfig `json:"controlPlane,omitempty"`
-}
-
-// MutualTLSConfig specifies mutual TLS configuration for the control plane and mesh.
-type MutualTLSConfig struct {
-	// Enable mutual TLS by default.
-	// .Values.global.mtls.enabled
-	Enablement `json:",inline"`
-	// Auto configures the mesh to automatically detect whether or not mutual
-	// TLS is required for a specific connection.
-	// .Values.global.mtls.auto
+	// DataPlane configures mutual TLS for data plane communication.
 	// +optional
-	Auto *bool `json:"auto,omitempty"`
+	DataPlane *DataPlaneSecurityConfig `json:"dataPlane,omitempty"`
 }
 
 // TrustConfig configures trust aspects associated with mutual TLS clients
@@ -233,6 +221,19 @@ type ControlPlaneSecurityConfig struct {
 	// TLS configures aspects of TLS listeners created by control plane components.
 	// +optional
 	TLS *ControlPlaneTLSConfig `json:"tls,omitempty"`
+}
+
+// DataPlaneSecurityConfig is the mutual TLS configuration specific to the
+// control plane.
+type DataPlaneSecurityConfig struct {
+	// Enable mutual TLS by default.
+	// .Values.global.mtls.enabled
+	MTLS *bool `json:"mtls,omitempty"`
+	// Auto configures the mesh to automatically detect whether or not mutual
+	// TLS is required for a specific connection.
+	// .Values.global.mtls.auto
+	// +optional
+	AutoMTLS *bool `json:"automtls,omitempty"`
 }
 
 // ControlPlaneCertProviderType represents the provider used to generate serving

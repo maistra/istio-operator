@@ -554,13 +554,10 @@ spec:
                           useTLS:
                             type: boolean
                         type: object
+                      metricsExpiryDuration:
+                        type: string
                       scrape:
                         type: boolean
-                      telemetry:
-                        properties:
-                          metricsExpiryDuration:
-                            type: string
-                        type: object
                     type: object
                   stackdriver:
                     properties:
@@ -3128,6 +3125,13 @@ spec:
                             type: string
                         type: object
                     type: object
+                  dataPlane:
+                    properties:
+                      automtls:
+                        type: boolean
+                      mtls:
+                        type: boolean
+                    type: object
                   identity:
                     properties:
                       thirdParty:
@@ -3139,13 +3143,6 @@ spec:
                         type: object
                       type:
                         type: string
-                    type: object
-                  mtls:
-                    properties:
-                      auto:
-                        type: boolean
-                      enabled:
-                        type: boolean
                     type: object
                   trust:
                     properties:
@@ -3573,13 +3570,10 @@ spec:
                               useTLS:
                                 type: boolean
                             type: object
+                          metricsExpiryDuration:
+                            type: string
                           scrape:
                             type: boolean
-                          telemetry:
-                            properties:
-                              metricsExpiryDuration:
-                                type: string
-                            type: object
                         type: object
                       stackdriver:
                         properties:
@@ -6147,6 +6141,13 @@ spec:
                                 type: string
                             type: object
                         type: object
+                      dataPlane:
+                        properties:
+                          automtls:
+                            type: boolean
+                          mtls:
+                            type: boolean
+                        type: object
                       identity:
                         properties:
                           thirdParty:
@@ -6158,13 +6159,6 @@ spec:
                             type: object
                           type:
                             type: string
-                        type: object
-                      mtls:
-                        properties:
-                          auto:
-                            type: boolean
-                          enabled:
-                            type: boolean
                         type: object
                       trust:
                         properties:
