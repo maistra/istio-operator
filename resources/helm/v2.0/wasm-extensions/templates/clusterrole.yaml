@@ -9,7 +9,7 @@ metadata:
     istio.io/rev: {{ .Values.revision | default "default" }}
 rules:
 - apiGroups:
-  - extensions.maistra.io
+  - maistra.io
   resources:
   - servicemeshextensions
   - servicemeshextensions/status

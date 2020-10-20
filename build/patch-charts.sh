@@ -154,7 +154,7 @@ function patchGalley() {
   - apiGroups: ["route.openshift.io"]
     resources: ["routes", "routes/custom-host"]
     verbs: ["get", "list", "watch", "create", "delete", "update"]
-  - apiGroups: ["extensions.maistra.io"]
+  - apiGroups: ["maistra.io"]
     resources: ["servicemeshextensions"]
     verbs: ["get", "list", "watch"]' >> ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e 's/, *"nodes"//' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
