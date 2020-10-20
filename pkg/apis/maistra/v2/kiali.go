@@ -41,3 +41,12 @@ type KialiDashboardConfig struct {
 	// +optional
 	EnableTracing *bool `json:"enableTracing,omitempty"`
 }
+
+// ResourceName returns the resource name for the Kiali resource, returning a
+// sensible default if the Name field is not set ("kiali").
+func (c KialiAddonConfig) ResourceName() string {
+	if c.Name == "" {
+		return "kiali"
+	}
+	return c.Name
+}
