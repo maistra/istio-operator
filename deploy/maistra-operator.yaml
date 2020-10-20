@@ -3128,6 +3128,13 @@ spec:
                             type: string
                         type: object
                     type: object
+                  dataPlane:
+                    properties:
+                      automtls:
+                        type: boolean
+                      mtls:
+                        type: boolean
+                    type: object
                   identity:
                     properties:
                       thirdParty:
@@ -3139,13 +3146,6 @@ spec:
                         type: object
                       type:
                         type: string
-                    type: object
-                  mtls:
-                    properties:
-                      auto:
-                        type: boolean
-                      enabled:
-                        type: boolean
                     type: object
                   trust:
                     properties:
@@ -6147,6 +6147,13 @@ spec:
                                 type: string
                             type: object
                         type: object
+                      dataPlane:
+                        properties:
+                          automtls:
+                            type: boolean
+                          mtls:
+                            type: boolean
+                        type: object
                       identity:
                         properties:
                           thirdParty:
@@ -6158,13 +6165,6 @@ spec:
                             type: object
                           type:
                             type: string
-                        type: object
-                      mtls:
-                        properties:
-                          auto:
-                            type: boolean
-                          enabled:
-                            type: boolean
                         type: object
                       trust:
                         properties:

@@ -6,6 +6,9 @@ spec:
   tracing:
     # change to Jaeger to enable tracing
     type: None
+  techPreview:
+    wasmExtensions:
+      enabled: true
   addons:
     jaeger:
       name: jaeger
@@ -26,6 +29,7 @@ metadata:
   name: default
 spec:
   members:
+  - test
   # a list of namespaces that should be joined into the service mesh
   # for example, to add the bookinfo namespace
   #- bookinfo

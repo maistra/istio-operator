@@ -16,15 +16,15 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 		return nil
 	}
 
-	if security.MutualTLS != nil {
+	if security.DataPlane != nil {
 		// General mutual TLS
-		if security.MutualTLS.Enabled != nil {
-			if err := setHelmBoolValue(values, "global.mtls.enabled", *security.MutualTLS.Enabled); err != nil {
+		if security.DataPlane.MTLS != nil {
+			if err := setHelmBoolValue(values, "global.mtls.enabled", *security.DataPlane.MTLS); err != nil {
 				return err
 			}
 		}
-		if security.MutualTLS.Auto != nil {
-			if err := setHelmBoolValue(values, "global.mtls.auto", *security.MutualTLS.Auto); err != nil {
+		if security.DataPlane.AutoMTLS != nil {
+			if err := setHelmBoolValue(values, "global.mtls.auto", *security.DataPlane.AutoMTLS); err != nil {
 				return err
 			}
 		}
@@ -227,22 +227,22 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	setSecurity := false
 
 	// General mutual TLS
-	mutualTLS := &v2.MutualTLSConfig{}
+	dataPlane := &v2.DataPlaneSecurityConfig{}
 	setMutualTLS := false
 	if mtlsEnabled, ok, err := in.GetAndRemoveBool("global.mtls.enabled"); ok {
-		mutualTLS.Enabled = &mtlsEnabled
+		dataPlane.MTLS = &mtlsEnabled
 		setMutualTLS = true
 	} else if err != nil {
 		return err
 	}
 	if autoMtlsEnabled, ok, err := in.GetAndRemoveBool("global.mtls.auto"); ok {
-		mutualTLS.Auto = &autoMtlsEnabled
+		dataPlane.AutoMTLS = &autoMtlsEnabled
 		setMutualTLS = true
 	} else if err != nil {
 		return err
 	}
 	if setMutualTLS {
-		security.MutualTLS = mutualTLS
+		security.DataPlane = dataPlane
 		setSecurity = true
 	}
 

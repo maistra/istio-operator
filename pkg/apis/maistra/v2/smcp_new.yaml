@@ -238,9 +238,6 @@ spec:
         resources: {} # requirements and limits
 
   security:
-    # this is the section i'm most unsure about
-    mutualTLS:
-      auto: true
     trust:
       domain: cluster.local
       additionalDomains: [some-other.cluster]
@@ -286,7 +283,8 @@ spec:
         ecdhCurves: []
         minProtocolVersion: TLSv1_2
         maxProtocolVersion: TLSv1_3
-
+    dataPlane:
+      auto: true
   gateways:
     ingress: # _the_ istio-ingressgateway
       # same settings as ilb gateway above

@@ -4,9 +4,9 @@ metadata:
   name: auth
 spec:
   security:
-    mtls:
-      enabled: true
-      auto: true
+    dataPlane:
+      mtls: true
+      automtls: true
     controlPlane:
       mtls: true
   tracing:
