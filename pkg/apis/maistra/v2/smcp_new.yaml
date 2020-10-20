@@ -284,7 +284,8 @@ spec:
         minProtocolVersion: TLSv1_2
         maxProtocolVersion: TLSv1_3
     dataPlane:
-      auto: true
+      mlts: true # enable mtls for data plane
+      automtls: true
   gateways:
     ingress: # _the_ istio-ingressgateway
       # same settings as ilb gateway above
