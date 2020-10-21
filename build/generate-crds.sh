@@ -31,14 +31,14 @@ function generateCRDs() {
   sed -i -e 's/^metadata:/metadata:\
   labels:\
     chart: istio\
-    release: istio/' deploy/crds/extensions.maistra.io_servicemeshextensions.yaml
+    release: istio/' deploy/crds/maistra.io_servicemeshextensions.yaml
 
   for bundle_dir in ${BUNDLE_DIRS}; do
     echo "Writing CRDs to directory ${bundle_dir}"
     cp deploy/crds/maistra.io_servicemeshcontrolplanes.yaml ${bundle_dir}/servicemeshcontrolplanes.crd.yaml
     cp deploy/crds/maistra.io_servicemeshmemberrolls.yaml ${bundle_dir}/servicemeshmemberrolls.crd.yaml
     cp deploy/crds/maistra.io_servicemeshmembers.yaml ${bundle_dir}/servicemeshmembers.crd.yaml
-    cp deploy/crds/extensions.maistra.io_servicemeshextensions.yaml resources/helm/overlays/istio-init/files/servicemeshextensions.extensions.maistra.io.crd.yaml
+    cp deploy/crds/maistra.io_servicemeshextensions.yaml resources/helm/overlays/istio-init/files/servicemeshextensions.maistra.io.crd.yaml
   done
 
   echo "Writing CRDs to file deploy/src/crd.yaml"

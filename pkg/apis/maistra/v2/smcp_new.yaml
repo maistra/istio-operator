@@ -238,9 +238,6 @@ spec:
         resources: {} # requirements and limits
 
   security:
-    # this is the section i'm most unsure about
-    mutualTLS:
-      auto: true
     trust:
       domain: cluster.local
       additionalDomains: [some-other.cluster]
@@ -286,7 +283,9 @@ spec:
         ecdhCurves: []
         minProtocolVersion: TLSv1_2
         maxProtocolVersion: TLSv1_3
-
+    dataPlane:
+      mlts: true # enable mtls for data plane
+      automtls: true
   gateways:
     ingress: # _the_ istio-ingressgateway
       # same settings as ilb gateway above
@@ -375,8 +374,7 @@ spec:
     prometheus:
       enabled: true
       scrape: true # configure scraping of telemetry by prometheus
-      telemetry:
-        metricsExpiryDuration: 10m
+      metricsExpiryDuration: 10m
       address: some-url-to-prometheus # specify this or install (i'm not sure if we can support this or not)
       install: # install prometheus, as opposed to using an existing install at address
         selfManaged: true # use prometheus CR, maybe poor naming?

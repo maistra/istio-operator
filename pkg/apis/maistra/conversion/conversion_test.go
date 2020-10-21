@@ -243,6 +243,38 @@ var (
 				},
 			}),
 		},
+		{
+			name: "float-int-tags",
+			skip: true,
+			smcpv1: v1.ControlPlaneSpec{
+				Version: "v1.1",
+				Istio: v1.NewHelmValues(map[string]interface{}{
+					"global": map[string]interface{}{
+						"mtls": map[string]interface{}{
+							"enabled": true,
+						},
+						"auto": true,
+					},
+				}),
+			},
+			smcpv2: v2.ControlPlaneSpec{
+				Version: "v1.1",
+				Security: &v2.SecurityConfig{
+					DataPlane: &v2.DataPlaneSecurityConfig{
+						MTLS:     &featureEnabled,
+						AutoMTLS: &featureEnabled,
+					},
+				},
+			},
+			cruft: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					// mesh expansion is disabled by default
+					"meshExpansion": globalMeshExpansionDefaults,
+					// multicluster is disabled by default
+					"multiCluster": globalMultiClusterDefaults,
+				},
+			}),
+		},
 	}
 )
 

@@ -42,11 +42,9 @@ var securityTestCases = []conversionTestCase{
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V2_0.String(),
 			Security: &v2.SecurityConfig{
-				MutualTLS: &v2.MutualTLSConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
-					},
-					Auto: &featureEnabled,
+				DataPlane: &v2.DataPlaneSecurityConfig{
+					MTLS:     &featureEnabled,
+					AutoMTLS: &featureEnabled,
 				},
 			},
 		},
