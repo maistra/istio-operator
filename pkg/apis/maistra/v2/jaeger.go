@@ -87,3 +87,12 @@ type JaegerIngressConfig struct {
 	// +optional
 	Metadata *MetadataConfig `json:"metadata,omitempty"`
 }
+
+// ResourceName returns the resource name for the Jaeger resource, returning a
+// sensible default if the Name field is not set ("jaeger").
+func (c JaegerAddonConfig) ResourceName() string {
+	if c.Name == "" {
+		return "jaeger"
+	}
+	return c.Name
+}

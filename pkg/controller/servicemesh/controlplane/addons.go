@@ -35,9 +35,9 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context) error {
 
 	// get the kiali resource
 	kiali := &kialiv1alpha1.Kiali{}
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: kialiConfig.Name, Namespace: r.Instance.Namespace}, kiali); err != nil {
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: kialiConfig.ResourceName(), Namespace: r.Instance.Namespace}, kiali); err != nil {
 		if errors.IsNotFound(err) || errors.IsGone(err) {
-			log.Error(nil, fmt.Sprintf("could not patch kiali CR, %s/%s does not exist", r.Instance.Namespace, kialiConfig.Name))
+			log.Error(nil, fmt.Sprintf("could not patch kiali CR, %s/%s does not exist", r.Instance.Namespace, kialiConfig.ResourceName()))
 			return nil
 		}
 		return err
@@ -150,8 +150,8 @@ func (r *controlPlaneInstanceReconciler) jaegerURL(ctx context.Context, log logr
 		return "", nil
 	}
 	jaegerName := "jaeger"
-	if r.Instance.Status.AppliedSpec.Addons.Jaeger != nil && r.Instance.Status.AppliedSpec.Addons.Jaeger.Name != "" {
-		jaegerName = r.Instance.Status.AppliedSpec.Addons.Jaeger.Name
+	if r.Instance.Status.AppliedSpec.Addons.Jaeger != nil {
+		jaegerName = r.Instance.Status.AppliedSpec.Addons.Jaeger.ResourceName()
 	}
 	jaegerRoutes := &routev1.RouteList{}
 	err := r.Client.List(ctx, jaegerRoutes,

@@ -216,7 +216,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			return reconcile.Result{}, err
 		}
 		if mesh != nil && mesh.Status.AppliedSpec.IsKialiEnabled() {
-			err = r.kialiReconciler.reconcileKiali(ctx, mesh.Status.AppliedSpec.Addons.Kiali.Name, instance.Namespace, []string{})
+			err = r.kialiReconciler.reconcileKiali(ctx, mesh.Status.AppliedSpec.Addons.Kiali.ResourceName(), instance.Namespace, []string{})
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -343,7 +343,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	// tell Kiali about all the namespaces in the mesh
 	var kialiErr error
 	if mesh.Status.AppliedSpec.IsKialiEnabled() {
-		kialiErr = r.kialiReconciler.reconcileKiali(ctx, mesh.Status.AppliedSpec.Addons.Kiali.Name, instance.Namespace, instance.Status.ConfiguredMembers)
+		kialiErr = r.kialiReconciler.reconcileKiali(ctx, mesh.Status.AppliedSpec.Addons.Kiali.ResourceName(), instance.Namespace, instance.Status.ConfiguredMembers)
 	}
 
 	if len(pendingMembers) > 0 {
@@ -541,7 +541,7 @@ type defaultKialiReconciler struct {
 
 func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName, kialiCRNamespace string, configuredMembers []string) error {
 	reqLogger := common.LogFromContext(ctx)
-	reqLogger.Info("Attempting to get Kiali CR", "kialiCRNamespace", kialiCRNamespace)
+	reqLogger.Info("Attempting to get Kiali CR", "kialiCRNamespace", kialiCRNamespace, "kialiCRName", kialiCRName)
 
 	kialiCR := &kialiv1alpha1.Kiali{}
 	kialiCR.SetNamespace(kialiCRNamespace)
