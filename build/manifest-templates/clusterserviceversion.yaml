@@ -244,7 +244,6 @@ __DEPLOYMENT_SPEC__
         path: addons.jaeger.install.storage.type
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:tracing'
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldDependency:tracing.type:Jaeger'
           - 'urn:alm:descriptor:com.tectonic.ui:select:Memory'
           - 'urn:alm:descriptor:com.tectonic.ui:select:Elasticsearch'
       - displayName: Type of Policy
@@ -255,12 +254,11 @@ __DEPLOYMENT_SPEC__
           - 'urn:alm:descriptor:com.tectonic.ui:select:Istiod'
           - 'urn:alm:descriptor:com.tectonic.ui:select:Mixer'
       - displayName: Install 3Scale Adapter
-        description: Set to true to install the Istio 3Scale adapter
+        description: Set to true to install the Istio 3Scale adapter (applies only when Policy type is set to Mixer)
         path: addons.3scale.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Policy'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldDependency:policy.type:Mixer'
       - displayName: Type of Telemetry
         description: Select "Mixer" when deploying a control plane version less than "v2.0"
         path: telemetry.type
