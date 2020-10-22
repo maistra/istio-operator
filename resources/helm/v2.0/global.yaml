@@ -133,7 +133,7 @@ global:
     enableCoreDump: false
 
     # Default port for Pilot agent health checks. A value of 0 will disable health checking.
-    statusPort: 15020
+    statusPort: 15021
 
     # The initial delay for readiness probes in seconds.
     readinessInitialDelaySeconds: 1
@@ -157,6 +157,7 @@ global:
     # examples:
     #     Redirect only selected ports:            --includeInboundPorts="80,8080"
     excludeInboundPorts: ""
+    includeInboundPorts: "*"
 
     # This controls the 'policy' in the sidecar injector.
     autoInject: enabled
