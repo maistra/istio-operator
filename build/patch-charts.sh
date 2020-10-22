@@ -421,6 +421,12 @@ function patchSidecarInjector() {
   # use the correct cni network defintion
   sed_wrap -i -e '/podRedirectAnnot:/,$s/istio-cni/{{ .Values.istio_cni.istio_cni_network }}/' \
       ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
+
+  # MAISTRA-1938 Ensure all ports are forwarded to the proxy by default
+  sed_wrap -i -e 's/(includeInboundPorts \.Spec\.Containers)/`*`/g' \
+      ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
+  sed_wrap -i -e 's/(includeInboundPorts \.Spec\.Containers)/`*`/g' \
+      ${HELM_DIR}/istio-control/istio-discovery/files/gen-istio.yaml
 }
 
 function patchMixer() {
