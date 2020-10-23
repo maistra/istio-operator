@@ -17,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
@@ -201,54 +202,74 @@ func FinalizerAddedTest(finalizer string) VerifierTestFunc {
 	}
 }
 
+type jsonPatchOperation struct {
+	Operation string      `json:"op"`
+	Path      string      `json:"path"`
+	Value     maistrav1.ControlPlaneStatus `json:"value,omitempty"`
+}
+
 func initalStatusTest(action clienttesting.Action) error {
 	switch realAction := action.(type) {
 	case clienttesting.PatchAction:
-		cp := &maistrav1.ServiceMeshControlPlane{}
-		err := json.Unmarshal(realAction.GetPatch(), cp)
-		if err != nil {
-			return fmt.Errorf("InitialStatusTest failed: could not unmarshal patch data")
+		patchAction := action.(clienttesting.PatchAction)
+		switch patchAction.GetPatchType() {
+		case types.JSONPatchType:
+			jsonPatch := []jsonPatchOperation{}
+			err := json.Unmarshal(realAction.GetPatch(), &jsonPatch)
+			if err != nil {
+				return fmt.Errorf("InitialStatusTest failed: could not unmarshal patch data: %v", string(realAction.GetPatch()))
+			}
+			return validateNewStatus(&jsonPatch[0].Value)
+		default:
+			cp := &maistrav1.ServiceMeshControlPlane{}
+			err := json.Unmarshal(realAction.GetPatch(), cp)
+			if err != nil {
+				return fmt.Errorf("InitialStatusTest failed: could not unmarshal patch data: %v", string(realAction.GetPatch()))
+			}
+			return validateNewStatus(cp.Status.DeepCopy())
 		}
-		actual := cp.Status.DeepCopy()
-		actual.LastAppliedConfiguration = maistrav1.ControlPlaneSpec{}
-		for index := range actual.Conditions {
-			actual.Conditions[index].LastTransitionTime = metav1.Time{}
-		}
-		expected := &maistrav1.ControlPlaneStatus{
-			StatusBase: status.StatusBase{
-				Annotations: map[string]string(nil),
-			},
-			StatusType: status.StatusType{
-				Conditions: []status.Condition{
-					{
-						Type:               status.ConditionTypeInstalled,
-						Status:             status.ConditionStatusFalse,
-						Reason:             status.ConditionReasonResourceCreated,
-						Message:            "Installing mesh generation 1",
-						LastTransitionTime: metav1.Time{},
-					},
-					{
-						Type:               status.ConditionTypeReconciled,
-						Status:             status.ConditionStatusFalse,
-						Reason:             status.ConditionReasonResourceCreated,
-						Message:            "Installing mesh generation 1",
-						LastTransitionTime: metav1.Time{},
-					},
-					{
-						Type:               status.ConditionTypeReady,
-						Status:             status.ConditionStatusFalse,
-						Reason:             status.ConditionReasonResourceCreated,
-						Message:            "Installing mesh generation 1",
-						LastTransitionTime: metav1.Time{},
-					},
-				},
-			},
-			ObservedGeneration: 0,
-		}
-		if !reflect.DeepEqual(actual, expected) {
-			return fmt.Errorf("InitialStatusTest failed: updated status does not match expected status:\n\texpected: %#v\n\tactual: %#v", actual, expected)
-		}
-		return nil
 	}
 	return fmt.Errorf("InitialStatusTest for failed: action is not a PatchAction")
+}
+
+func validateNewStatus(actual *maistrav1.ControlPlaneStatus) error {
+	actual.LastAppliedConfiguration = maistrav1.ControlPlaneSpec{}
+	for index := range actual.Conditions {
+		actual.Conditions[index].LastTransitionTime = metav1.Time{}
+	}
+	expected := &maistrav1.ControlPlaneStatus{
+		StatusBase: status.StatusBase{
+			Annotations: map[string]string(nil),
+		},
+		StatusType: status.StatusType{
+			Conditions: []status.Condition{
+				{
+					Type:               status.ConditionTypeInstalled,
+					Status:             status.ConditionStatusFalse,
+					Reason:             status.ConditionReasonResourceCreated,
+					Message:            "Installing mesh generation 1",
+					LastTransitionTime: metav1.Time{},
+				},
+				{
+					Type:               status.ConditionTypeReconciled,
+					Status:             status.ConditionStatusFalse,
+					Reason:             status.ConditionReasonResourceCreated,
+					Message:            "Installing mesh generation 1",
+					LastTransitionTime: metav1.Time{},
+				},
+				{
+					Type:               status.ConditionTypeReady,
+					Status:             status.ConditionStatusFalse,
+					Reason:             status.ConditionReasonResourceCreated,
+					Message:            "Installing mesh generation 1",
+					LastTransitionTime: metav1.Time{},
+				},
+			},
+		},
+		ObservedGeneration: 0,
+	}
+	if !reflect.DeepEqual(actual, expected) {
+		return fmt.Errorf("InitialStatusTest failed: updated status does not match expected status:\n\texpected: %#v\n\tactual: %#v", actual, expected)
+	}
+	return nil
 }

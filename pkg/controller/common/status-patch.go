@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 
+	"gomodules.xyz/jsonpatch/v2"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -18,12 +19,16 @@ func NewStatusPatch(status interface{}) *statusPatch {
 }
 
 func (p *statusPatch) Type() types.PatchType {
-	return types.MergePatchType
+	return types.JSONPatchType
 }
 
 func (p *statusPatch) Data(obj runtime.Object) ([]byte, error) {
-	data := map[string]interface{}{
-		"status": p.status,
+	data := []jsonpatch.Operation{
+		{
+			Operation: "replace",
+			Path: "/status",
+			Value: p.status,
+		},
 	}
 	statusJSON, err := json.Marshal(data)
 	if err != nil {
