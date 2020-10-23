@@ -421,6 +421,16 @@ function patchSidecarInjector() {
   # use the correct cni network defintion
   sed_wrap -i -e '/podRedirectAnnot:/,$s/istio-cni/{{ .Values.istio_cni.istio_cni_network }}/' \
       ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
+  # use global.proxy.includedInboundPorts if specified
+  sed_wrap -i -e 's$traffic.sidecar.istio.io/includeInboundPorts: "{{ annotation .ObjectMeta `traffic.sidecar.istio.io/includeInboundPorts` (includeInboundPorts .Spec.Containers) }}"$traffic.sidecar.istio.io/includeInboundPorts: "{{ annotation .ObjectMeta `traffic.sidecar.istio.io/includeInboundPorts` (valueOrDefault .Values.global.proxy.includeInboundPorts (includeInboundPorts .Spec.Containers)) }}"$' \
+      ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
+  sed_wrap -i -e '/excludeInboundPorts/a\
+    includeInboundPorts: "*"' ${HELM_DIR}/global.yaml
+  # status port is incorrect
+  sed_wrap -i -e 's/statusPort: 15020$/statusPort: 15021/' ${HELM_DIR}/global.yaml
+  # exclude 15090 from inbound ports
+  sed_wrap -i -e 's$traffic.sidecar.istio.io/excludeInboundPorts: "{{ excludeInboundPort (annotation .ObjectMeta `status.sidecar.istio.io/port` .Values.global.proxy.statusPort) (annotation .ObjectMeta `traffic.sidecar.istio.io/excludeInboundPorts` .Values.global.proxy.excludeInboundPorts) }}"$traffic.sidecar.istio.io/excludeInboundPorts: "15090,{{ excludeInboundPort (annotation .ObjectMeta `status.sidecar.istio.io/port` .Values.global.proxy.statusPort) (annotation .ObjectMeta `traffic.sidecar.istio.io/excludeInboundPorts` .Values.global.proxy.excludeInboundPorts) }}"$' \
+      ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
 }
 
 function patchMixer() {
