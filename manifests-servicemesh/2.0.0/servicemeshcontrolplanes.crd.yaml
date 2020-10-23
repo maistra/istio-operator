@@ -22,7 +22,6 @@ spec:
   scope: Namespaced
   subresources:
     status: {}
-  version: v1
   versions:
   - additionalPrinterColumns:
     - JSONPath: .status.annotations.readyComponentCount
