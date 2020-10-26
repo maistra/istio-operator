@@ -23,8 +23,10 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 		deployment := runtime.Defaults.Deployment
 		if deployment != nil {
 			if deployment.PodDisruption != nil {
-				if err := setHelmBoolValue(values, "global.defaultPodDisruptionBudget.enabled", true); err != nil {
-					return err
+				if deployment.PodDisruption.Enabled != nil {
+					if err := setHelmBoolValue(values, "global.defaultPodDisruptionBudget.enabled", *deployment.PodDisruption.Enabled); err != nil {
+						return err
+					}
 				}
 				if deployment.PodDisruption.MinAvailable != nil {
 					if deployment.PodDisruption.MinAvailable.Type == intstr.Int {
@@ -636,16 +638,20 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 
 		if rawPDBValues, ok, err := globalValues.GetMap("defaultPodDisruptionBudget"); ok && len(rawPDBValues) > 0 {
 			pdbValues := v1.NewHelmValues(rawPDBValues)
-			if pdbEnabled, ok, err := pdbValues.GetAndRemoveBool("enabled"); ok && pdbEnabled {
-				defaults.Deployment = &v2.CommonDeploymentRuntimeConfig{
-					PodDisruption: &v2.PodDisruptionBudget{},
-				}
-				setDefaults = true
-				if err := decodeAndRemoveFromValues(pdbValues.GetContent(), defaults.Deployment.PodDisruption); err != nil {
-					return false, err
-				}
+			podDisruption := &v2.PodDisruptionBudget{}
+			if pdbEnabled, ok, err := pdbValues.GetAndRemoveBool("enabled"); ok {
+				podDisruption.Enabled = &pdbEnabled
 			} else if err != nil {
 				return false, err
+			}
+			if err := decodeAndRemoveFromValues(pdbValues.GetContent(), podDisruption); err != nil {
+				return false, err
+			}
+			if podDisruption.Enabled != nil || podDisruption.MinAvailable != nil || podDisruption.MaxUnavailable != nil {
+				setDefaults = true
+				defaults.Deployment = &v2.CommonDeploymentRuntimeConfig{
+					PodDisruption: podDisruption,
+				}
 			}
 			if len(pdbValues.GetContent()) == 0 {
 				globalValues.RemoveField("defaultPodDisruptionBudget")

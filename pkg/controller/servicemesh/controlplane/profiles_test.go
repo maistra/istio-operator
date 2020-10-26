@@ -268,6 +268,11 @@ var (
 		},
 		Runtime: &v2.ControlPlaneRuntimeConfig{
 			Defaults: &v2.DefaultRuntimeConfig{
+				Deployment: &v2.CommonDeploymentRuntimeConfig{
+					PodDisruption: &v2.PodDisruptionBudget{
+						Enablement: v2.Enablement{Enabled: &falseVal},
+					},
+				},
 				Container: &v2.CommonContainerConfig{
 					ImageRegistry: "docker.io/maistra",
 					ImageTag:      "1.1.10",
@@ -570,6 +575,11 @@ var (
 		},
 		Runtime: &v2.ControlPlaneRuntimeConfig{
 			Defaults: &v2.DefaultRuntimeConfig{
+				Deployment: &v2.CommonDeploymentRuntimeConfig{
+					PodDisruption: &v2.PodDisruptionBudget{
+						Enablement: v2.Enablement{Enabled: &falseVal},
+					},
+				},
 				Container: &v2.CommonContainerConfig{
 					ImageRegistry: "docker.io/maistra",
 					ImageTag:      "2.0.0",

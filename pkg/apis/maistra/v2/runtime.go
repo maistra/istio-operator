@@ -251,6 +251,7 @@ type CommonContainerConfig struct {
 // PodDisruptionBudget details
 // XXX: currently only configurable globally (i.e. no component values.yaml equivalent)
 type PodDisruptionBudget struct {
+	Enablement `json:",inline"`
 	// +optional
 	MinAvailable *intstr.IntOrString `json:"minAvailable,omitempty"`
 	// +optional

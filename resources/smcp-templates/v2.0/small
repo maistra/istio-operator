@@ -6,7 +6,8 @@ spec:
   runtime:
     defaults:
       deployment:
-        podDisruption: null
+        podDisruption:
+          enabled: false
       container:
         # constrain resources for use in smaller environments
         resources:

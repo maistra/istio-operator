@@ -3026,6 +3026,8 @@ spec:
                         properties:
                           podDisruption:
                             properties:
+                              enabled:
+                                type: boolean
                               maxUnavailable:
                                 anyOf:
                                 - type: integer
@@ -6042,6 +6044,8 @@ spec:
                             properties:
                               podDisruption:
                                 properties:
+                                  enabled:
+                                    type: boolean
                                   maxUnavailable:
                                     anyOf:
                                     - type: integer

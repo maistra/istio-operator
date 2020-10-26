@@ -61,7 +61,6 @@ var runtimeTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"defaultPodDisruptionBudget": map[string]interface{}{
-					"enabled":        true,
 					"maxUnavailable": "25%",
 					"minAvailable":   1,
 				},
@@ -82,6 +81,7 @@ var runtimeTestCases = []conversionTestCase{
 				Defaults: &v2.DefaultRuntimeConfig{
 					Deployment: &v2.CommonDeploymentRuntimeConfig{
 						PodDisruption: &v2.PodDisruptionBudget{
+							Enablement:     v2.Enablement{Enabled: &featureEnabled},
 							MaxUnavailable: &intStrInt1,
 							MinAvailable:   &intStr25Percent,
 						},
