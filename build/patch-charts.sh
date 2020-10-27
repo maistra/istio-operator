@@ -235,7 +235,9 @@ base:
     \{\{- end \}\}
         }
       }
-    }' ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml
+    }' \
+    -e 's/{{ .Values.global.disablePolicyChecks | default "true" }}/{{ hasKey .Values.global "disablePolicyChecks" | ternary .Values.global.disablePolicyChecks true }}/' \
+    ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml
 
 }
 
