@@ -66,7 +66,7 @@
     # Set the following variable to true to disable policy checks by the Mixer.
     # Note that metrics will still be reported to the Mixer.
     {{- if .Values.mixer.policy.enabled }}
-    disablePolicyChecks: {{ .Values.global.disablePolicyChecks | default "true" }}
+    disablePolicyChecks: {{ hasKey .Values.global "disablePolicyChecks" | ternary .Values.global.disablePolicyChecks true }}
     {{- else }}
     disablePolicyChecks: true
     {{- end }}
