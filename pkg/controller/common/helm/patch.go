@@ -2,10 +2,9 @@ package helm
 
 import (
 	"context"
-	"fmt"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/kubectl/pkg/util"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -26,22 +25,30 @@ func NewPatchFactory(k8sClient client.Client) *PatchFactory {
 }
 
 // CreatePatch creates a patch based on the current and new versions of an object
-func (p *PatchFactory) CreatePatch(current, new runtime.Object) (Patch, error) {
+func (p *PatchFactory) CreatePatch(current, new *unstructured.Unstructured) (Patch, error) {
 	return &basicPatch{client: p.client, oldObj: current, newObj: new}, nil
 }
 
 type basicPatch struct {
 	client client.Client
-	oldObj runtime.Object
-	newObj runtime.Object
+	oldObj *unstructured.Unstructured
+	newObj *unstructured.Unstructured
 }
 
 func (p *basicPatch) Apply(ctx context.Context) (*unstructured.Unstructured, error) {
-	if err := p.client.Patch(ctx, p.newObj, client.Merge, client.FieldOwner("istio-operator")); err != nil {
+	var patch client.Patch
+	if originalBytes, err := util.GetOriginalConfiguration(p.oldObj); err == nil && len(originalBytes) > 0 {
+		if originalObj, _, err := unstructured.UnstructuredJSONScheme.Decode(originalBytes, nil, nil); err == nil {
+			patch = client.MergeFrom(originalObj)
+		}
+	}
+	if patch == nil {
+		// try merging with the existing
+		// this isn't ideal, but is more robust
+		patch = client.MergeFrom(p.oldObj)
+	}
+	if err := p.client.Patch(ctx, p.newObj, patch, client.FieldOwner("istio-operator")); err != nil {
 		return nil, err
 	}
-	if newUnstructured, ok := p.newObj.(*unstructured.Unstructured); ok {
-		return newUnstructured, nil
-	}
-	return nil, fmt.Errorf("could not decode unstructured object:\n%v", p.newObj)
+	return p.newObj, nil
 }
