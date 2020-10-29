@@ -244,6 +244,8 @@ base:
           - name: PILOT_ENABLE_STATUS\
             value: "{{ .Values.global.istiod.enableAnalysis }}"
   ' $deployment
+  # connectionTimeout not supported for proxy config
+  sed_wrap -i -e '/defaultConfig:/,/connectTimeout:/s/connectTimeout:/#connectTimeout:/' ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml
 }
 
 function patchGateways() {
