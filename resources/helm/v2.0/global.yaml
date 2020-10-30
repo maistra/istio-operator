@@ -589,6 +589,15 @@ meshConfig:
 base:
   validationURL: ""
 
+mixer:
+  policy:
+    adapters:
+      kubernetesenv:
+        enabled: true
+  adapters:
+    kubernetesenv:
+      enabled: true
+
 telemetry:
   enabled: true
   v1:
