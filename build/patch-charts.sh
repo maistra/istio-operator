@@ -85,6 +85,9 @@ function patchTemplates() {
   # rename base/crds to istio-init/files
   mv ${HELM_DIR}/base/crds/* ${HELM_DIR}/istio-init/files
   rm -rf ${HELM_DIR}/base
+
+  # MAISTRA-1972 - disable protocol sniffing
+  sed_wrap -i -e 's/\(enableProtocolSniffing.*:\).*$/\1 false/' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
 }
 
 function patchGalley() {

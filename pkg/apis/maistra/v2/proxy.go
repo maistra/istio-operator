@@ -192,10 +192,12 @@ type ProxyNetworkAutoProtocolDetectionConfig struct {
 	Timeout string `json:"timeout,omitempty"`
 	// EnableInboundSniffing enables protocol sniffing on inbound traffic.
 	// .Values.pilot.enableProtocolSniffingForInbound
+	// only supported for v1.1
 	// +optional
 	Inbound *bool `json:"inbound,omitempty"`
 	// EnableOutboundSniffing enables protocol sniffing on outbound traffic.
 	// .Values.pilot.enableProtocolSniffingForOutbound
+	// only supported for v1.1
 	// +optional
 	Outbound *bool `json:"outbound,omitempty"`
 }

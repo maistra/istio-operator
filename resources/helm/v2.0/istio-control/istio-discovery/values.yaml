@@ -31,9 +31,9 @@ pilot:
     targetAverageUtilization: 80
 
   # if protocol sniffing is enabled for outbound
-  enableProtocolSniffingForOutbound: true
+  enableProtocolSniffingForOutbound: false
   # if protocol sniffing is enabled for inbound
-  enableProtocolSniffingForInbound: true
+  enableProtocolSniffingForInbound: false
 
   nodeSelector: {}
   tolerations: []

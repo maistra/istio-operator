@@ -924,6 +924,138 @@ func TestControlPlaneValidation(t *testing.T) {
 			},
 			valid: true,
 		},
+		{
+			name: "protocolSniffing.inbound.v1.1",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_1.String(),
+					Proxy: &maistrav2.ProxyConfig{
+						Networking: &maistrav2.ProxyNetworkingConfig{
+							Protocol: &maistrav2.ProxyNetworkProtocolConfig{
+								AutoDetect: &maistrav2.ProxyNetworkAutoProtocolDetectionConfig{
+									Inbound: &enabled,
+								},
+							},
+						},
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "protocolSniffing.outbound.v1.1",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V1_1.String(),
+					Proxy: &maistrav2.ProxyConfig{
+						Networking: &maistrav2.ProxyNetworkingConfig{
+							Protocol: &maistrav2.ProxyNetworkProtocolConfig{
+								AutoDetect: &maistrav2.ProxyNetworkAutoProtocolDetectionConfig{
+									Outbound: &enabled,
+								},
+							},
+						},
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "protocolSniffing.inbound.v2.0.enabled",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V2_0.String(),
+					Proxy: &maistrav2.ProxyConfig{
+						Networking: &maistrav2.ProxyNetworkingConfig{
+							Protocol: &maistrav2.ProxyNetworkProtocolConfig{
+								AutoDetect: &maistrav2.ProxyNetworkAutoProtocolDetectionConfig{
+									Inbound: &enabled,
+								},
+							},
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "protocolSniffing.outbound.v2.0.enabled",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V2_0.String(),
+					Proxy: &maistrav2.ProxyConfig{
+						Networking: &maistrav2.ProxyNetworkingConfig{
+							Protocol: &maistrav2.ProxyNetworkProtocolConfig{
+								AutoDetect: &maistrav2.ProxyNetworkAutoProtocolDetectionConfig{
+									Outbound: &enabled,
+								},
+							},
+						},
+					},
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "protocolSniffing.inbound.v2.0.disabled",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V2_0.String(),
+					Proxy: &maistrav2.ProxyConfig{
+						Networking: &maistrav2.ProxyNetworkingConfig{
+							Protocol: &maistrav2.ProxyNetworkProtocolConfig{
+								AutoDetect: &maistrav2.ProxyNetworkAutoProtocolDetectionConfig{
+									Inbound: &disabled,
+								},
+							},
+						},
+					},
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "protocolSniffing.outbound.v2.0.disabled",
+			controlPlane: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "some-smcp",
+					Namespace: "istio-system",
+				},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version: versions.V2_0.String(),
+					Proxy: &maistrav2.ProxyConfig{
+						Networking: &maistrav2.ProxyNetworkingConfig{
+							Protocol: &maistrav2.ProxyNetworkProtocolConfig{
+								AutoDetect: &maistrav2.ProxyNetworkAutoProtocolDetectionConfig{
+									Outbound: &disabled,
+								},
+							},
+						},
+					},
+				},
+			},
+			valid: true,
+		},
 	}
 
 	for _, tc := range cases {
