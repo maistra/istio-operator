@@ -147,7 +147,22 @@ func (v *versionStrategyV2_0) ValidateV2(ctx context.Context, cl client.Client, 
 	allErrors = validateGateways(ctx, meta, spec, v.version, cl, allErrors)
 	allErrors = validatePolicyType(ctx, meta, spec, v.version, allErrors)
 	allErrors = validateTelemetryType(ctx, meta, spec, v.version, allErrors)
+	allErrors = v.validateProtocolDetection(ctx, meta, spec, allErrors)
 	return NewValidationError(allErrors...)
+}
+
+func (v *versionStrategyV2_0) validateProtocolDetection(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.Proxy == nil || spec.Proxy.Networking == nil || spec.Proxy.Networking.Protocol == nil || spec.Proxy.Networking.Protocol.AutoDetect == nil {
+		return allErrors
+	}
+	autoDetect := spec.Proxy.Networking.Protocol.AutoDetect
+	if autoDetect.Inbound != nil && *autoDetect.Inbound {
+		allErrors = append(allErrors, fmt.Errorf("automatic protocol detection is not supported in %s; if specified, spec.proxy.networking.protocol.autoDetect.inbound must be set to false", v.String()))
+	}
+	if autoDetect.Outbound != nil && *autoDetect.Outbound {
+		allErrors = append(allErrors, fmt.Errorf("automatic protocol detection is not supported in %s; if specified, spec.proxy.networking.protocol.autoDetect.outbound must be set to false", v.String()))
+	}
+	return allErrors
 }
 
 func (v *versionStrategyV2_0) ValidateV2Full(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
