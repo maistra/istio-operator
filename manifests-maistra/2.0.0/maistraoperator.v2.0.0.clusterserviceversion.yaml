@@ -12,7 +12,7 @@ metadata:
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: maistra/istio-ubi8-operator:2.0.0
-    createdAt: 2020-10-23T18:12:52UTC
+    createdAt: 2020-10-30T14:45:03MDT
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.0.0"
     operators.openshift.io/infrastructure-features: '[]'
@@ -623,7 +623,7 @@ spec:
         - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - displayName: Data Plane Security
         description: Enable mTLS for communcation between services in the mesh
-        path: security.mtls.enabled
+        path: security.dataPlane.mtls
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'

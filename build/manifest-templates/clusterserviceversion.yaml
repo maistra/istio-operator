@@ -215,7 +215,7 @@ __DEPLOYMENT_SPEC__
         - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - displayName: Data Plane Security
         description: Enable mTLS for communcation between services in the mesh
-        path: security.mtls.enabled
+        path: security.dataPlane.mtls
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
