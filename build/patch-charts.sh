@@ -474,6 +474,45 @@ function patchMixer() {
           name: policy-envoy-config
     }' \
     -e 's/istiod.{{ .Release.Namespace }}.svc:15012/istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc:15012/' ${HELM_DIR}/istio-policy/templates/deployment.yaml
+
+  # MAISTRA-1902
+  # move attribute installation to mesh-config
+  echo '{{ if (or .Values.mixer.policy.enabled .Values.mixer.telemetry.enabled) }}' > ${HELM_DIR}/mesh-config/templates/mixer-config.yaml
+  sed_nowrap -n -e '
+    /{{ if not (eq .Release.Namespace "istio-system") }}/,/{{- end }}/ {
+      /{{ if not (eq .Release.Namespace "istio-system") }}/ b noprint
+      $ b noprint
+      s/app: istio-policy/app: istio-mixer/
+      s/{{- if .Values.mixer.policy.adapters.kubernetesenv.enabled }}/{{- if (or .Values.mixer.policy.adapters.kubernetesenv.enabled .Values.mixer.adapters.kubernetesenv.enabled ) }}/
+      p
+      :noprint
+    }
+    :end' ${HELM_DIR}/istio-policy/templates/config.yaml >> ${HELM_DIR}/mesh-config/templates/mixer-config.yaml
+  echo '{{- end }}' >> ${HELM_DIR}/mesh-config/templates/mixer-config.yaml
+  # now delete it from policy and telemetry config
+  sed_wrap -i -e '/{{ if not (eq .Release.Namespace "istio-system") }}/,/{{- end }}/ d' \
+      -e '/^{{- end }}/,/---/ d' ${HELM_DIR}/istio-policy/templates/config.yaml
+  sed_wrap -i -e '
+    /{{- if .Values.mixer.adapters.kubernetesenv.enabled }}/,/apiVersion: networking.istio.io\/v1alpha3/ {
+      /apiVersion: networking.istio.io\/v1alpha3/ b nodelete
+      d
+      :nodelete
+    }
+    1,/{{- if .Values.mixer.adapters.stdio.enabled }}/ {
+      /{{- if .Values.mixer.adapters.stdio.enabled }}/ b nodelete
+      d
+      :nodelete
+    }' ${HELM_DIR}/istio-telemetry/mixer-telemetry/templates/config.yaml
+  # make sure values exist for kubernetesenv.enabled
+  echo '
+mixer:
+  policy:
+    adapters:
+      kubernetesenv:
+        enabled: true
+  adapters:
+    kubernetesenv:
+      enabled: true' >> ${HELM_DIR}/global.yaml
 }
 
 # The following modifications are made to the generated helm template for the Kiali yaml file
