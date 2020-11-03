@@ -144,6 +144,9 @@
 {{- else }}
     rootNamespace: {{ .Release.Namespace }}
 {{- end }}
+{{- if and (.Values.mixer.policy.enabled) (not .Values.global.disablePolicyChecks) }}
+    enableClientSidePolicyCheck: true
+{{- end }}
     defaultConfig:
       #
       # TCP connection timeout between Envoy & the application, and between Envoys.
