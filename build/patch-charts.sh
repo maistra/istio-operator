@@ -218,6 +218,9 @@ base:
     rootNamespace: {{ .Values.global.configRootNamespace }}\
 {{- else }}\
     rootNamespace: {{ .Release.Namespace }}\
+{{- end }}\
+{{- if and (.Values.mixer.policy.enabled) (not .Values.global.disablePolicyChecks) }}\
+    enableClientSidePolicyCheck: true\
 {{- end }}' \
     -e '/{{- if .Values.global.remotePolicyAddress }}/,/{{- if and .Values.telemetry.v1.enabled .Values.telemetry.enabled }}/ {
         /{{- if .Values.mixer.policy.enabled }}/,/{{- if and .Values.telemetry.v1.enabled .Values.telemetry.enabled }}/ {
