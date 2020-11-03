@@ -448,7 +448,9 @@ function patchMixer() {
   sed_wrap -i -e 's/^---.*$/\
 - apiGroups: ["maistra.io"]\
   resources: ["servicemeshmemberrolls"]\
-  verbs: ["get", "list", "watch"]/' ${HELM_DIR}/istio-policy/templates/clusterrole.yaml
+  verbs: ["get", "list", "watch"]/' \
+    -e 's/name: istio-policy/name: istio-policy-{{ .Release.Namespace }}/' ${HELM_DIR}/istio-policy/templates/clusterrole.yaml
+  sed_wrap -i -e 's/name: istio-policy$/name: istio-policy-{{ .Release.Namespace }}/' ${HELM_DIR}/istio-policy/templates/clusterrolebinding.yaml
   sed_wrap -i -e 's/^---.*$/\
 - apiGroups: ["maistra.io"]\
   resources: ["servicemeshmemberrolls"]\
