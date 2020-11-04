@@ -183,6 +183,10 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 }
 
 func Convert_v2_ControlPlaneStatus_To_v1_ControlPlaneStatus(in *v2.ControlPlaneStatus, out *v1.ControlPlaneStatus, s conversion.Scope) error {
+	if err := autoConvert_v2_ControlPlaneStatus_To_v1_ControlPlaneStatus(in, out, s); err != nil {
+		return err
+	}
+
 	// ReconciledVersion requires manual conversion: does not exist in peer-type
 	out.ReconciledVersion = status.ComposeReconciledVersion(in.OperatorVersion, in.ObservedGeneration)
 	// LastAppliedConfiguration requires manual conversion: does not exist in peer-type
