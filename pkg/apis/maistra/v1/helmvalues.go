@@ -57,7 +57,9 @@ func (h *HelmValues) GetBool(path string) (bool, bool, error) {
 
 func (h *HelmValues) GetAndRemoveBool(path string) (bool, bool, error) {
 	value, ok, err := h.GetBool(path)
-	h.RemoveField(path)
+	if err == nil {
+		h.RemoveField(path)
+	}
 	return value, ok, err
 }
 
@@ -104,13 +106,17 @@ func (h *HelmValues) GetForceNumberToString(path string) (string, bool, error) {
 
 func (h *HelmValues) GetAndRemoveString(path string) (string, bool, error) {
 	value, ok, err := h.GetString(path)
-	h.RemoveField(path)
+	if err == nil {
+		h.RemoveField(path)
+	}
 	return value, ok, err
 }
 
 func (h *HelmValues) GetAndRemoveForceNumberToString(path string) (string, bool, error) {
 	value, ok, err := h.GetForceNumberToString(path)
-	h.RemoveField(path)
+	if err == nil {
+		h.RemoveField(path)
+	}
 	return value, ok, err
 }
 
@@ -134,7 +140,9 @@ func (h *HelmValues) GetInt64(path string) (int64, bool, error) {
 
 func (h *HelmValues) GetAndRemoveInt64(path string) (int64, bool, error) {
 	value, ok, err := h.GetInt64(path)
-	h.RemoveField(path)
+	if err == nil {
+		h.RemoveField(path)
+	}
 	return value, ok, err
 }
 
@@ -158,7 +166,7 @@ func (h *HelmValues) GetFloat64(path string) (float64, bool, error) {
 
 func (h *HelmValues) GetAndRemoveFloat64(path string) (float64, bool, error) {
 	value, ok, err := h.GetFloat64(path)
-	if ok {
+	if err == nil {
 		h.RemoveField(path)
 	}
 	return value, ok, err
@@ -179,7 +187,9 @@ func (h *HelmValues) GetStringSlice(path string) ([]string, bool, error) {
 
 func (h *HelmValues) GetAndRemoveStringSlice(path string) ([]string, bool, error) {
 	value, ok, err := h.GetStringSlice(path)
-	h.RemoveField(path)
+	if err == nil {
+		h.RemoveField(path)
+	}
 	return value, ok, err
 }
 
@@ -198,7 +208,9 @@ func (h *HelmValues) GetSlice(path string) ([]interface{}, bool, error) {
 
 func (h *HelmValues) GetAndRemoveSlice(path string) ([]interface{}, bool, error) {
 	value, ok, err := h.GetSlice(path)
-	h.RemoveField(path)
+	if err == nil {
+		h.RemoveField(path)
+	}
 	return value, ok, err
 }
 
