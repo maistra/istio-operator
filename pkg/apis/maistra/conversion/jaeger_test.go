@@ -10,10 +10,12 @@ import (
 )
 
 var (
-	jaegerMaxTraces              = int64(15000)
-	jaegerElasticsearchNodeCount = int32(5)
-	traceSampling                = int32(1)
-	traceSamplingInt             = int32(100)
+	jaegerMaxTraces               = int64(15000)
+	jaegerElasticsearchNodeCount  = int32(5)
+	jaegerElasticsearchNodeCount3 = int32(3)
+	traceSampling                 = int32(1)
+	traceSamplingInt              = int32(100)
+	traceSamplingInt10000         = int32(10000)
 )
 
 var jaegerTestCases = []conversionTestCase{
