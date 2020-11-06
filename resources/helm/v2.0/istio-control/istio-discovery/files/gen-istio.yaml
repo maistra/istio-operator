@@ -6,7 +6,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     app: istiod
     istio.io/rev: default
     release: istio
@@ -25,7 +25,7 @@ metadata:
   name: istio
   namespace: istio-system
   labels:
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     istio.io/rev: default
     release: istio
 data:
@@ -87,7 +87,7 @@ metadata:
   name: istio-sidecar-injector
   namespace: istio-system
   labels:
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     istio.io/rev: default
     release: istio
 data:
@@ -772,7 +772,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     istio.io/rev: default
     app: istiod
     istio: pilot
@@ -805,7 +805,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     app: istiod
     istio.io/rev: default
     istio: pilot
@@ -953,7 +953,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     app: istiod
     release: istio
     istio.io/rev: default
@@ -978,7 +978,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     istio.io/rev: default
 spec:
   configPatches:
@@ -1011,7 +1011,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     istio.io/rev: default
 spec:
   configPatches:
@@ -1109,7 +1109,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     istio.io/rev: default
 spec:
   configPatches:
@@ -1146,7 +1146,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     istio.io/rev: default
 spec:
   configPatches:
@@ -1203,7 +1203,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     istio.io/rev: default
 spec:
   configPatches:
@@ -1313,7 +1313,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     istio.io/rev: default
 spec:
   configPatches:
@@ -1416,7 +1416,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     istio.io/rev: default
 spec:
   configPatches:
@@ -1454,7 +1454,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     istio.io/rev: default
 spec:
   configPatches:
@@ -1514,7 +1514,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     istio.io/rev: default
 spec:
   configPatches:
@@ -1624,7 +1624,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     istio.io/rev: default
 spec:
   configPatches:
@@ -1728,7 +1728,7 @@ metadata:
 
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: 2.0.0.1
     istio.io/rev: default
     app: sidecar-injector
     release: istio
