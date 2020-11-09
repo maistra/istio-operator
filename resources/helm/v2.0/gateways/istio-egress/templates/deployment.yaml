@@ -224,6 +224,9 @@ spec:
 {{- end }}
 {{- end }}
 
+          - name: ISTIO_META_UNPRIVILEGED_POD
+            value: "true"
+
           - name: JWT_POLICY
             value: {{ .Values.global.jwtPolicy }}
           - name: PILOT_CERT_PROVIDER
@@ -281,6 +284,10 @@ spec:
           {{- else if $.Values.global.trustDomain }}
           - name: ISTIO_META_MESH_ID
             value: "{{ $.Values.global.trustDomain }}"
+          {{- end }}
+          {{- if not $gateway.runAsRoot }}
+          - name: ISTIO_META_UNPRIVILEGED_POD
+            value: "true"
           {{- end }}
           {{- if $gateway.env }}
           {{- range $key, $val := $gateway.env }}

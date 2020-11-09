@@ -260,6 +260,12 @@ function patchGateways() {
   sed_wrap -i -e 's/^\(.*\)labels:/\1labels:\
 \1  maistra.io\/gateway: {{ $gateway.name | default "istio-egressgateway" }}.{{ $gateway.namespace | default .Release.Namespace }}/' ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
+  # MAISTRA-1963 Mark gateways as non-privileged
+  sed_wrap -i -e '/env:/ a\
+          - name: ISTIO_META_UNPRIVILEGED_POD\
+            value: "true"\
+' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
+
   # gateways in other namespaces need proxy config
   sed_wrap -i -e '/env:/ a\
 {{- if $gateway.namespace }}\
