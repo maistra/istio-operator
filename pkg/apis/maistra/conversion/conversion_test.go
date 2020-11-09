@@ -874,6 +874,221 @@ var (
 				},
 			}),
 		},
+		{
+			name: "MAISTRA-1983.user.2",
+			smcpv1: v1.ControlPlaneSpec{
+				Version: "v1.1",
+				// specifying both Template and Profiles saves having to duplicate
+				// everything in roundTripped, i.e. this will round trip exactly
+				Template: "default",
+				Profiles: []string{"default"},
+				Istio: v1.NewHelmValues(map[string]interface{}{
+					"gateways": map[string]interface{}{
+						"istio-ingressgateway": map[string]interface{}{
+							"autoscaleEnabled":      false,
+							"externalTrafficPolicy": "Local",
+							"ior_enabled":           false,
+							"ports": []interface{}{
+								map[string]interface{}{
+									"name":       "status-port",
+									"nodePort":   int64(30158),
+									"port":       int64(15020),
+									"protocol":   "TCP",
+									"targetPort": int64(15020),
+								},
+								map[string]interface{}{
+									"name":       "http2",
+									"nodePort":   int64(32520),
+									"port":       int64(80),
+									"protocol":   "TCP",
+									"targetPort": int64(8082),
+								},
+								map[string]interface{}{
+									"name":       "https",
+									"nodePort":   int64(32731),
+									"port":       int64(443),
+									"protocol":   "TCP",
+									"targetPort": int64(8443),
+								},
+								map[string]interface{}{
+									"name":       "tls",
+									"nodePort":   int64(30462),
+									"port":       int64(15443),
+									"protocol":   "TCP",
+									"targetPort": int64(15443),
+								},
+							},
+							"replicaCount": int64(5),
+							"sds": map[string]interface{}{
+								"enabled": true,
+								"image":   "istio/node-agent-k8s:1.5.9",
+							},
+							"type": "NodePort",
+						},
+					},
+					"global": map[string]interface{}{
+						"controlPlaneSecurityEnabled": true,
+						"disablePolicyChecks":         false,
+						"logging": map[string]interface{}{
+							"level": "default:info",
+						},
+						"mtls": map[string]interface{}{
+							"enabled": true,
+						},
+						"outboundTrafficPolicy": map[string]interface{}{
+							"mode": "REGISTRY_ONLY",
+						},
+						"policyCheckFailOpen": false,
+						"proxy": map[string]interface{}{
+							"accessLogFile": "/dev/stdout",
+						},
+						"tls": map[string]interface{}{
+							"minProtocolVersion": "TLSv1_2",
+						},
+					},
+					"grafana": map[string]interface{}{
+						"enabled": true,
+					},
+					"kiali": map[string]interface{}{
+						"enabled": true,
+					},
+					"mixer": map[string]interface{}{
+						"policy": map[string]interface{}{
+							"autoscaleEnabled": false,
+						},
+						"telemetry": map[string]interface{}{
+							"autoscaleEnabled": false,
+						},
+					},
+					"pilot": map[string]interface{}{
+						"autoscaleEnabled": false,
+						"traceSampling":    int64(100),
+					},
+					"tracing": map[string]interface{}{
+						"enabled": true,
+						"jaeger": map[string]interface{}{
+							"elasticsearch": map[string]interface{}{
+								"esIndexCleaner": map[string]interface{}{
+									"enabled":      true,
+									"numberOfDays": int64(60),
+									"schedule":     "55 23 * * *",
+								},
+								"nodeCount":        int64(3),
+								"redundancyPolicy": nil,
+							},
+							"template": "production-bad",
+						},
+					},
+				}),
+			},
+			smcpv2: v2.ControlPlaneSpec{
+				Version:  "v1.1",
+				Profiles: []string{"default"},
+				TechPreview: v1.NewHelmValues(map[string]interface{}{
+					"errored": map[string]interface{}{
+						"istio": map[string]interface{}{
+							"gateways": map[string]interface{}{
+								"istio-ingressgateway": map[string]interface{}{
+									"autoscaleEnabled":      false,
+									"externalTrafficPolicy": "Local",
+									"ior_enabled":           false,
+									"ports": []interface{}{
+										map[string]interface{}{
+											"name":       "status-port",
+											"nodePort":   int64(30158),
+											"port":       int64(15020),
+											"protocol":   "TCP",
+											"targetPort": int64(15020),
+										},
+										map[string]interface{}{
+											"name":       "http2",
+											"nodePort":   int64(32520),
+											"port":       int64(80),
+											"protocol":   "TCP",
+											"targetPort": int64(8082),
+										},
+										map[string]interface{}{
+											"name":       "https",
+											"nodePort":   int64(32731),
+											"port":       int64(443),
+											"protocol":   "TCP",
+											"targetPort": int64(8443),
+										},
+										map[string]interface{}{
+											"name":       "tls",
+											"nodePort":   int64(30462),
+											"port":       int64(15443),
+											"protocol":   "TCP",
+											"targetPort": int64(15443),
+										},
+									},
+									"replicaCount": int64(5),
+									"sds": map[string]interface{}{
+										"enabled": true,
+										"image":   "istio/node-agent-k8s:1.5.9",
+									},
+									"type": "NodePort",
+								},
+							},
+							"global": map[string]interface{}{
+								"controlPlaneSecurityEnabled": true,
+								"disablePolicyChecks":         false,
+								"logging": map[string]interface{}{
+									"level": "default:info",
+								},
+								"mtls": map[string]interface{}{
+									"enabled": true,
+								},
+								"outboundTrafficPolicy": map[string]interface{}{
+									"mode": "REGISTRY_ONLY",
+								},
+								"policyCheckFailOpen": false,
+								"proxy": map[string]interface{}{
+									"accessLogFile": "/dev/stdout",
+								},
+								"tls": map[string]interface{}{
+									"minProtocolVersion": "TLSv1_2",
+								},
+							},
+							"grafana": map[string]interface{}{
+								"enabled": true,
+							},
+							"kiali": map[string]interface{}{
+								"enabled": true,
+							},
+							"mixer": map[string]interface{}{
+								"policy": map[string]interface{}{
+									"autoscaleEnabled": false,
+								},
+								"telemetry": map[string]interface{}{
+									"autoscaleEnabled": false,
+								},
+							},
+							"pilot": map[string]interface{}{
+								"autoscaleEnabled": false,
+								"traceSampling":    int64(100),
+							},
+							"tracing": map[string]interface{}{
+								"enabled": true,
+								"jaeger": map[string]interface{}{
+									"elasticsearch": map[string]interface{}{
+										"esIndexCleaner": map[string]interface{}{
+											"enabled":      true,
+											"numberOfDays": int64(60),
+											"schedule":     "55 23 * * *",
+										},
+										"nodeCount":        int64(3),
+										"redundancyPolicy": nil,
+									},
+									"template": "production-bad",
+								},
+							},
+						},
+						"message": string("unknown jaeger.template: production-bad"),
+					},
+				}),
+			},
+		},
 	}
 )
 

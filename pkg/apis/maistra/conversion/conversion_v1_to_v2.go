@@ -1,6 +1,7 @@
 package conversion
 
 import (
+	"fmt"
 	"strings"
 
 	conversion "k8s.io/apimachinery/pkg/conversion"
@@ -59,14 +60,43 @@ func v1ToV2Hacks(in *v1.ControlPlaneSpec, values *v1.HelmValues) error {
 }
 
 // Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec converts a v1 ControlPlaneSpec to its v2 equivalent.
-func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec, out *v2.ControlPlaneSpec, s conversion.Scope) error {
+func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec, out *v2.ControlPlaneSpec, s conversion.Scope) (err error) {
+
+	defer func() {
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("unexpected error occurred during ServiceMeshControlPlane v1 to v2 conversion: %v", err))
+			if out.TechPreview == nil {
+				out.TechPreview = v1.NewHelmValues(make(map[string]interface{}))
+			}
+			out.TechPreview.SetField("errored.message", err.Error())
+			if len(in.Istio.GetContent()) > 0 {
+				out.TechPreview.SetField("errored.istio", in.Istio.DeepCopy().GetContent())
+			}
+			if len(in.ThreeScale.GetContent()) > 0 {
+				out.TechPreview.SetField("errored.3scale", in.ThreeScale.DeepCopy().GetContent())
+			}
+			// erase anything that converted successfully
+			out.Addons = nil
+			out.Cluster = nil
+			out.Gateways = nil
+			out.General = nil
+			out.Policy = nil
+			out.Proxy = nil
+			out.Runtime = nil
+			out.Security = nil
+			out.Telemetry = nil
+			out.Tracing = nil
+		}
+		err = nil
+	}()
+
+	if err := autoConvert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in, out, s); err != nil {
+		return err
+	}
 
 	version, versionErr := versions.ParseVersion(in.Version)
 	if versionErr != nil {
 		return versionErr
-	}
-	if err := autoConvert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in, out, s); err != nil {
-		return err
 	}
 
 	// legacy Template field
