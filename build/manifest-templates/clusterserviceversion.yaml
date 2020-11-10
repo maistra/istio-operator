@@ -14,7 +14,7 @@ metadata:
     containerImage: __IMAGE_SRC__
     createdAt: __DATE__
     support: Red Hat, Inc. 
-    olm.skipRange: ">=1.0.2 <__VERSION__"
+    olm.skipRange: ">=1.0.2 <__SEMANTIC_VERSION__"
     operators.openshift.io/infrastructure-features: '__OLM_FEATURES__'
     alm-examples: |-
       [
@@ -87,7 +87,7 @@ metadata:
         }
       ]
 spec:
-  version: __VERSION__
+  version: __SEMANTIC_VERSION__
   maturity: alpha
   displayName: __DISPLAY_NAME__
   description: |-
