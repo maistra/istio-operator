@@ -11,6 +11,12 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
+const (
+	TechPreviewErroredMessage = "errored.message"
+	TechPreviewErroredIstio   = "errored.istio"
+	TechPreviewErrored3scale  = "errored.3scale"
+)
+
 func v1ToV2Hacks(in *v1.ControlPlaneSpec, values *v1.HelmValues) error {
 	// adjustments for 3scale
 	if in.ThreeScale != nil {
@@ -68,12 +74,12 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 			if out.TechPreview == nil {
 				out.TechPreview = v1.NewHelmValues(make(map[string]interface{}))
 			}
-			out.TechPreview.SetField("errored.message", err.Error())
+			out.TechPreview.SetField(TechPreviewErroredMessage, err.Error())
 			if len(in.Istio.GetContent()) > 0 {
-				out.TechPreview.SetField("errored.istio", in.Istio.DeepCopy().GetContent())
+				out.TechPreview.SetField(TechPreviewErroredIstio, in.Istio.DeepCopy().GetContent())
 			}
 			if len(in.ThreeScale.GetContent()) > 0 {
-				out.TechPreview.SetField("errored.3scale", in.ThreeScale.DeepCopy().GetContent())
+				out.TechPreview.SetField(TechPreviewErrored3scale, in.ThreeScale.DeepCopy().GetContent())
 			}
 			// erase anything that converted successfully
 			out.Addons = nil
