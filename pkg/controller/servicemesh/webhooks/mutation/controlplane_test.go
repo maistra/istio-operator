@@ -101,7 +101,7 @@ func TestCreate(t *testing.T) {
 				controlPlane.Spec.Version = ""
 
 				mutatedControlPlane := controlPlane.DeepCopy()
-				mutatedControlPlane.Spec.Version = versions.DefaultVersion.String()
+				mutatedControlPlane.Spec.Version = versions.V1_1.String()
 				return controlPlane, mutatedControlPlane
 			},
 		},

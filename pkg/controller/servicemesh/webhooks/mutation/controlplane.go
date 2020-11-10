@@ -63,7 +63,7 @@ func (v *ControlPlaneMutator) Handle(ctx context.Context, req admission.Request)
 		switch req.AdmissionRequest.Operation {
 		case admissionv1beta1.Create:
 			log.Info("Setting .spec.version to default value", "version", versions.DefaultVersion.String())
-			mutator.SetVersion(versions.DefaultVersion.String())
+			mutator.SetVersion(mutator.DefaultVersion())
 		case admissionv1beta1.Update:
 			oldVersion := mutator.OldVersion()
 			if currentVersion != oldVersion && oldVersion != versions.InvalidVersion.String() {
@@ -140,6 +140,7 @@ func (v *ControlPlaneMutator) decodeRequest(req admission.Request, logger logr.L
 
 type smcpmutator interface {
 	Object() metav1.Object
+	DefaultVersion() string
 	OldVersion() string
 	NewVersion() string
 	SetVersion(version string)
@@ -180,6 +181,10 @@ func (m *smcpv1mutator) Object() metav1.Object {
 	return m.smcp
 }
 
+func (m *smcpv1mutator) DefaultVersion() string {
+	return versions.V1_1.String()
+}
+
 func (m *smcpv1mutator) NewVersion() string {
 	return m.smcp.Spec.Version
 }
@@ -211,6 +216,10 @@ var _ smcpmutator = (*smcpv2mutator)(nil)
 
 func (m *smcpv2mutator) Object() metav1.Object {
 	return m.smcp
+}
+
+func (m *smcpv2mutator) DefaultVersion() string {
+	return versions.DefaultVersion.String()
 }
 
 func (m *smcpv2mutator) NewVersion() string {
