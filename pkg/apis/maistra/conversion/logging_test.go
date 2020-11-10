@@ -97,3 +97,85 @@ func TestLoggingConversionFromV2(t *testing.T) {
 		})
 	}
 }
+
+func TestComponentLogLevelsFromString(t *testing.T) {
+	testCases := []struct{
+		logLevelsString string
+		expectError bool
+		expectedLogLevels v2.ComponentLogLevels
+	} {
+		{
+			logLevelsString: "",
+			expectedLogLevels: nil,
+		},
+		{
+			logLevelsString: "admin:info",
+			expectedLogLevels: v2.ComponentLogLevels{
+				v2.EnvoyComponentAdmin: v2.LogLevelInfo,
+			},
+		},
+		{
+			logLevelsString: "admin:info,client:debug",
+			expectedLogLevels: v2.ComponentLogLevels{
+				v2.EnvoyComponentAdmin: v2.LogLevelInfo,
+				v2.EnvoyComponentClient: v2.LogLevelDebug,
+			},
+		},
+		{
+			logLevelsString: "unknown_component:info",
+			expectedLogLevels: v2.ComponentLogLevels{
+				"unknown_component": v2.LogLevelInfo,
+			},
+		},
+		{
+			logLevelsString: "admin:non_standard_level",
+			expectedLogLevels: v2.ComponentLogLevels{
+				v2.EnvoyComponentAdmin: "non_standard_level",
+			},
+		},
+		{
+			logLevelsString: "bad_format",
+			expectError: true,
+		},
+		{
+			logLevelsString: "no_level:",
+			expectError: true,
+		},
+		{
+			logLevelsString: ":no_component",
+			expectError: true,
+		},
+		{
+			logLevelsString: ":",
+			expectError: true,
+		},
+		{
+			logLevelsString: "consecutive_commas:info,,",
+			expectError: true,
+		},
+		{
+			logLevelsString: ",,,",
+			expectError: true,
+		},
+		{
+			logLevelsString: ":,:,:",
+			expectError: true,
+		},
+		{
+			logLevelsString: "bad_format,bad_format",
+			expectError: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run("string=" + tc.logLevelsString, func(t *testing.T) {
+			logLevels, err := componentLogLevelsFromString(tc.logLevelsString)
+			if tc.expectError {
+				if err == nil {
+					t.Fatal("Expected function call to fail, but it didn't")
+				}
+			} else {
+				assertEquals(t, tc.expectedLogLevels, logLevels)
+			}
+		})
+	}
+}
