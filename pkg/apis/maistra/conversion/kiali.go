@@ -99,17 +99,20 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.KialiAddonConfig) (bool
 	}
 	// we want to use the original, now that we're checking to see if there is actual kiali config
 	kialiValues = v1.NewHelmValues(rawKialiValues)
+	setKiali := false
 
 	kiali := out
 
 	if name, ok, err := kialiValues.GetAndRemoveString("resourceName"); ok {
 		kiali.Name = name
+		setKiali = true
 	} else if err != nil {
 		return false, err
 	}
 
 	if enabled, ok, err := kialiValues.GetAndRemoveBool("enabled"); ok {
 		kiali.Enabled = &enabled
+		setKiali = true
 	} else if err != nil {
 		return false, err
 	}
@@ -170,6 +173,7 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.KialiAddonConfig) (bool
 
 	if setInstall {
 		kiali.Install = install
+		setKiali = true
 	}
 	// update the kiali settings
 	if len(kialiValues.GetContent()) == 0 {
@@ -178,5 +182,5 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.KialiAddonConfig) (bool
 		return false, err
 	}
 
-	return true, nil
+	return setKiali, nil
 }

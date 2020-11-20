@@ -1089,6 +1089,172 @@ var (
 				}),
 			},
 		},
+		{
+			name: "MAISTRA-2014.name.jaeger",
+			smcpv1: v1.ControlPlaneSpec{
+				Version: "v1.1",
+				Istio: v1.NewHelmValues(map[string]interface{}{
+					"global": map[string]interface{}{
+						"proxy": map[string]interface{}{
+							"tracer": "zipkin",
+						},
+						"tracer": map[string]interface{}{
+							"zipkin": map[string]interface{}{
+								"address": "jaeger-collector.cp-namespace.svc.cluster.local:9411",
+							},
+						},
+					},
+					"tracing": map[string]interface{}{
+						"enabled": false,
+					},
+					"kiali": map[string]interface{}{
+						"jaegerInClusterURL": "jaeger-query.cp-namespace.svc.cluster.local",
+					},
+				}),
+			},
+			smcpv2: v2.ControlPlaneSpec{
+				Version: "v1.1",
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
+				},
+				Addons: &v2.AddonsConfig{
+					Jaeger: &v2.JaegerAddonConfig{
+						Name: "jaeger",
+					},
+				},
+				TechPreview: v1.NewHelmValues(map[string]interface{}{
+					"global": map[string]interface{}{
+						"tracer": map[string]interface{}{
+							"zipkin": map[string]interface{}{
+								"address": "jaeger-collector.cp-namespace.svc.cluster.local:9411",
+							},
+						},
+					},
+					"kiali": map[string]interface{}{
+						"jaegerInClusterURL": "jaeger-query.cp-namespace.svc.cluster.local",
+					},
+				}),
+			},
+			roundTripped: &v1.ControlPlaneSpec{
+				Version: "v1.1",
+				Istio: v1.NewHelmValues(map[string]interface{}{
+					"global": map[string]interface{}{
+						"enableTracing": true,
+						"proxy": map[string]interface{}{
+							"tracer": "zipkin",
+						},
+						"tracer": map[string]interface{}{
+							"zipkin": map[string]interface{}{
+								"address": "jaeger-collector.cp-namespace.svc.cluster.local:9411",
+							},
+						},
+					},
+					"kiali": map[string]interface{}{
+						"jaegerInClusterURL": "jaeger-query.cp-namespace.svc.cluster.local",
+					},
+					"tracing": map[string]interface{}{
+						"enabled": false,
+					},
+				}),
+			},
+			cruft: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					// mesh expansion is disabled by default
+					"meshExpansion": globalMeshExpansionDefaults,
+					// multicluster is disabled by default
+					"multiCluster": globalMultiClusterDefaults,
+				},
+				"tracing": map[string]interface{}{
+					"jaeger": map[string]interface{}{
+						"resourceName": "jaeger",
+					},
+					"provider": "jaeger",
+				},
+			}),
+		},
+		{
+			name: "MAISTRA-2014.name.custom-jaeger",
+			smcpv1: v1.ControlPlaneSpec{
+				Version: "v1.1",
+				Istio: v1.NewHelmValues(map[string]interface{}{
+					"global": map[string]interface{}{
+						"proxy": map[string]interface{}{
+							"tracer": "zipkin",
+						},
+						"tracer": map[string]interface{}{
+							"zipkin": map[string]interface{}{
+								"address": "custom-jaeger-collector.cp-namespace.svc.cluster.local:9411",
+							},
+						},
+					},
+					"tracing": map[string]interface{}{
+						"enabled": false,
+					},
+					"kiali": map[string]interface{}{
+						"jaegerInClusterURL": "custom-jaeger-query.cp-namespace.svc.cluster.local",
+					},
+				}),
+			},
+			smcpv2: v2.ControlPlaneSpec{
+				Version: "v1.1",
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
+				},
+				Addons: &v2.AddonsConfig{
+					Jaeger: &v2.JaegerAddonConfig{
+						Name: "custom-jaeger",
+					},
+				},
+				TechPreview: v1.NewHelmValues(map[string]interface{}{
+					"global": map[string]interface{}{
+						"tracer": map[string]interface{}{
+							"zipkin": map[string]interface{}{
+								"address": "custom-jaeger-collector.cp-namespace.svc.cluster.local:9411",
+							},
+						},
+					},
+					"kiali": map[string]interface{}{
+						"jaegerInClusterURL": "custom-jaeger-query.cp-namespace.svc.cluster.local",
+					},
+				}),
+			},
+			roundTripped: &v1.ControlPlaneSpec{
+				Version: "v1.1",
+				Istio: v1.NewHelmValues(map[string]interface{}{
+					"global": map[string]interface{}{
+						"enableTracing": true,
+						"proxy": map[string]interface{}{
+							"tracer": "zipkin",
+						},
+						"tracer": map[string]interface{}{
+							"zipkin": map[string]interface{}{
+								"address": "custom-jaeger-collector.cp-namespace.svc.cluster.local:9411",
+							},
+						},
+					},
+					"kiali": map[string]interface{}{
+						"jaegerInClusterURL": "custom-jaeger-query.cp-namespace.svc.cluster.local",
+					},
+					"tracing": map[string]interface{}{
+						"enabled": false,
+					},
+				}),
+			},
+			cruft: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					// mesh expansion is disabled by default
+					"meshExpansion": globalMeshExpansionDefaults,
+					// multicluster is disabled by default
+					"multiCluster": globalMultiClusterDefaults,
+				},
+				"tracing": map[string]interface{}{
+					"jaeger": map[string]interface{}{
+						"resourceName": "jaeger",
+					},
+					"provider": "jaeger",
+				},
+			}),
+		},
 	}
 )
 

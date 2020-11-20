@@ -85,8 +85,13 @@ func populateTracingConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 		if traceEnabled {
 			// default to jaeger if enabled and no proxy.tracer specified
 			tracing.Type = v2.TracerTypeJaeger
-		} else {
+		} else if zipkinAddress, ok, err := in.GetString("global.tracer.zipkin.address"); ok && zipkinAddress != "" {
+			// configuration for external jaeger cr
+			tracing.Type = v2.TracerTypeJaeger
+		} else if err == nil {
 			tracing.Type = v2.TracerTypeNone
+		} else {
+			return err
 		}
 		setTracing = true
 	} else if err != nil {
