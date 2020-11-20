@@ -233,7 +233,7 @@ var gatewaysTestCases = []conversionTestCase{
 					"labels": map[string]interface{}{
 						"extra-label": "label-value",
 					},
-					"annotations": map[string]interface{}{
+					"serviceAnnotations": map[string]interface{}{
 						"some-annotation": "not-used-in-charts",
 					},
 					"ports": []interface{}{
@@ -327,7 +327,7 @@ var gatewaysTestCases = []conversionTestCase{
 					"labels": map[string]interface{}{
 						"extra-label": "label-value",
 					},
-					"annotations": map[string]interface{}{
+					"serviceAnnotations": map[string]interface{}{
 						"some-annotation": "not-used-in-charts",
 					},
 					"ports": []interface{}{
@@ -422,7 +422,7 @@ var gatewaysTestCases = []conversionTestCase{
 					"labels": map[string]interface{}{
 						"extra-label": "label-value",
 					},
-					"annotations": map[string]interface{}{
+					"serviceAnnotations": map[string]interface{}{
 						"some-annotation": "not-used-in-charts",
 					},
 					"ports": []interface{}{
