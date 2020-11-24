@@ -14,9 +14,9 @@
 
 -include Makefile.overrides
 
-MAISTRA_VERSION        ?= 2.0.0.1
+MAISTRA_VERSION        ?= 2.0.0.2
 MAISTRA_BRANCH         ?= maistra-2.0
-REPLACES_PRODUCT_CSV   ?= 2.0.0
+REPLACES_PRODUCT_CSV   ?= 2.0.0.1
 REPLACES_COMMUNITY_CSV ?= 1.1.10
 VERSION                ?= development
 IMAGE                  ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}
@@ -35,8 +35,8 @@ OLM_MANIFEST_OUT_DIR = ${OUT_DIR}/resources/manifests
 OFFLINE_BUILD       ?= false
 GIT_UPSTREAM_REMOTE ?= $(shell git remote -v |grep --color=never '[/:][Mm]aistra/istio-operator\.git.*(fetch)' |grep --color=never -o '^[^[:space:]]*')
 
-MAISTRA_MANIFEST_DATE := $(shell cat manifests-maistra/${MAISTRA_VERSION}/maistraoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml | grep createdAt | awk '{print $$2}')
-OSSM_MANIFEST_DATE := $(shell cat manifests-servicemesh/${MAISTRA_VERSION}/servicemeshoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml | grep createdAt | awk '{print $$2}')
+MAISTRA_MANIFEST_DATE := $(shell cat manifests-maistra/${MAISTRA_VERSION}/maistraoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml 2>/dev/null | grep createdAt | awk '{print $$2}')
+OSSM_MANIFEST_DATE := $(shell cat manifests-servicemesh/${MAISTRA_VERSION}/servicemeshoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml 2>/dev/null | grep createdAt | awk '{print $$2}')
 
 ifeq "${GIT_UPSTREAM_REMOTE}" ""
 GIT_UPSTREAM_REMOTE = "ci-upstream"
@@ -205,8 +205,12 @@ generate-crds:
 
 .PHONY: restore-manifest-dates
 restore-manifest-dates:
+ifneq "${MAISTRA_MANIFEST_DATE}" ""
 	sed -i -e "s/\(createdAt:\).*/\1 ${MAISTRA_MANIFEST_DATE}/" manifests-maistra/${MAISTRA_VERSION}/maistraoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml
+endif
+ifneq "${OSSM_MANIFEST_DATE}" ""
 	sed -i -e "s/\(createdAt:\).*/\1 ${OSSM_MANIFEST_DATE}/" manifests-servicemesh/${MAISTRA_VERSION}/servicemeshoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml
+endif
 
 .PHONY: update-charts
 update-charts: update-1.0-charts update-1.1-charts update-2.0-charts
