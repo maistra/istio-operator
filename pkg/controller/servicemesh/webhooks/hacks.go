@@ -84,14 +84,11 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 	log.Info("Registering Maistra ValidatingWebhookConfiguration with CABundle reconciler")
 	if err := webhookca.WebhookCABundleManagerInstance.ManageWebhookCABundle(
 		validatingWebhookConfiguration,
-		webhookca.CABundleSource{
-			Kind: webhookca.CABundleSourceKindConfigMap,
-			NamespacedName: types.NamespacedName{
-				Namespace: operatorNamespace,
-				Name:      webhookConfigMapName,
-			},
-		},
-		common.ServiceCABundleKey); err != nil {
+		&webhookca.ConfigMapCABundleSource{
+			Namespace:     operatorNamespace,
+			ConfigMapName: webhookConfigMapName,
+			Key:           common.ServiceCABundleKey,
+		}); err != nil {
 		return err
 	}
 
@@ -117,14 +114,11 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 	log.Info("Registering Maistra MutatingWebhookConfiguration with CABundle reconciler")
 	if err := webhookca.WebhookCABundleManagerInstance.ManageWebhookCABundle(
 		mutatingWebhookConfiguration,
-		webhookca.CABundleSource{
-			Kind: webhookca.CABundleSourceKindConfigMap,
-			NamespacedName: types.NamespacedName{
-				Namespace: operatorNamespace,
-				Name:      webhookConfigMapName,
-			},
-		},
-		common.ServiceCABundleKey); err != nil {
+		&webhookca.ConfigMapCABundleSource{
+			Namespace:     operatorNamespace,
+			ConfigMapName: webhookConfigMapName,
+			Key:           common.ServiceCABundleKey,
+		}); err != nil {
 		return err
 	}
 
@@ -153,12 +147,11 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 				log.Info("Registering Maistra ServiceMeshControlPlane CRD conversion webhook with CABundle reconciler")
 				if err := webhookca.WebhookCABundleManagerInstance.ManageWebhookCABundle(
 					smcpcrd,
-					webhookca.CABundleSource{
-						Kind: webhookca.CABundleSourceKindConfigMap,
-						NamespacedName: types.NamespacedName{
-							Namespace: operatorNamespace,
-							Name:      webhookConfigMapName,
-						}}, common.ServiceCABundleKey); err != nil {
+					&webhookca.ConfigMapCABundleSource{
+						Namespace:     operatorNamespace,
+						ConfigMapName: webhookConfigMapName,
+						Key:           common.ServiceCABundleKey,
+					}); err != nil {
 					return err
 				}
 			} else {
