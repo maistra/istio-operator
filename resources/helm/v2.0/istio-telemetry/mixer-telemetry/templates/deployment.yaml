@@ -9,7 +9,11 @@ metadata:
     istio: mixer
     release: {{ .Release.Name }}
 spec:
+{{- if not .Values.mixer.telemetry.autoscaleEnabled }}
+{{- if .Values.mixer.telemetry.replicaCount }}
   replicas: {{ .Values.mixer.telemetry.replicaCount }}
+{{- end }}
+{{- end }}
   strategy:
     rollingUpdate:
       maxSurge: {{ .Values.mixer.telemetry.rollingMaxSurge }}
@@ -134,6 +138,10 @@ spec:
           {{- else }}
           - --trace_zipkin_url=http://zipkin.{{ .Values.global.telemetryNamespace }}:9411/api/v1/spans
           {{- end }}
+          - --averageLatencyThreshold
+          - {{ .Values.mixer.telemetry.loadshedding.latencyThreshold }}
+          - --loadsheddingMode
+          - {{ .Values.mixer.telemetry.loadshedding.mode }}
         env:
         - name: POD_NAMESPACE
           valueFrom:
