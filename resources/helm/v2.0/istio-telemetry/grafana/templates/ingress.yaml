@@ -18,4 +18,5 @@ spec:
     name: grafana
   tls:
     termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect
 {{- end -}}
