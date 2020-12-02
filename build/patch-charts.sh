@@ -34,7 +34,7 @@ function patchTemplates() {
   for file in $(find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl"); do
     if grep -l 'release: ' $file; then
       sed_wrap -i -e '/^metadata:/,/^[^ {]/ { s/^\(.*\)labels:/\1labels:\
-\1  maistra-version: '${MAISTRA_VERSION}'/ }' $file
+\1  maistra-version: "'${MAISTRA_VERSION}'"/ }' $file
     fi
     if grep -l '\.Values\.global\.istioNamespace' $file; then
       sed_wrap -i -e 's/\.Values\.global\.istioNamespace/.Release.Namespace/' $file
