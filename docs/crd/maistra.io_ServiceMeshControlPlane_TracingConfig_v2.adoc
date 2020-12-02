@@ -1,0 +1,36 @@
+
+
+= TracingConfig
+
+:toc: right
+
+Used by link:maistra.io_ServiceMeshControlPlane_v2.adoc[ServiceMeshControlPlane(maistra.io/v2)]
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+TracingConfig configures tracing solutions for the mesh. .Values.global.enableTracing
+
+.Table TracingConfig Fields
+|===
+| Name | Description | Type
+
+| sampling
+| Sampling sets the mesh-wide trace sampling percentage. Should be between 0.0 - 100.0. Precision to 0.01, scaled as 0 to 10000, e.g.: 100% = 10000, 1% = 100 .Values.pilot.traceSampling
+| integer
+
+| type
+| Type represents the type of tracer to be installed.
+| <<TracerType>>
+
+|===
+
+
+[#TracerType]
+== TracerType
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+TracerType represents the tracer type to use
+
+Type: string
+

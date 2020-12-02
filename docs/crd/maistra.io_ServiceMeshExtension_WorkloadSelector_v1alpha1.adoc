@@ -1,0 +1,23 @@
+
+
+= WorkloadSelector
+
+:toc: right
+
+Used by link:maistra.io_ServiceMeshExtension_v1alpha1.adoc[ServiceMeshExtension(maistra.io/v1alpha1)]
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v1alpha1
+
+WorkloadSelector is used to match workloads based on pod labels
+
+.Table WorkloadSelector Fields
+|===
+| Name | Description | Type
+
+| labels
+| 
+| map[string]string
+
+|===
+
+

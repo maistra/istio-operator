@@ -1,0 +1,67 @@
+
+
+= GeneralConfig
+
+:toc: right
+
+Used by link:maistra.io_ServiceMeshControlPlane_v2.adoc[ServiceMeshControlPlane(maistra.io/v2)]
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+GeneralConfig for control plane
+
+.Table GeneralConfig Fields
+|===
+| Name | Description | Type
+
+| logging
+| Logging represents the logging configuration for the control plane components XXX: Should this be separate from Proxy.Logging?
+| <<LoggingConfig>>
+
+| validationMessages
+| ValidationMessages configures the control plane to add validationMessages to the status fields of istio.io resources.  This can be usefule for detecting configuration errors in resources. .Values.galley.enableAnalysis (<v2.0) .Values.global.istiod.enableAnalysis (>=v2.0)
+| boolean
+
+|===
+
+
+[#LoggingConfig]
+== LoggingConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+LoggingConfig for control plane components
+
+.Table LoggingConfig Fields
+|===
+| Name | Description | Type
+
+| componentLevels
+| ComponentLevels configures log level for specific envoy components .Values.global.proxy.componentLogLevel, overridden by sidecar.istio.io/componentLogLevel map of <component>:<level>
+| <<ComponentLogLevels>>
+
+| logAsJSON
+| LogAsJSON enables JSON logging .Values.global.logAsJson
+| boolean
+
+|===
+
+
+[#ComponentLogLevels]
+== ComponentLogLevels
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+ComponentLogLevels represent various logging levels, e.g. trace, debug, etc.
+
+Type: map[string]<<LogLevel>>
+
+[#LogLevel]
+== LogLevel
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+LogLevel represents the logging level
+
+Type: string
+
