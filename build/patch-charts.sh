@@ -34,7 +34,7 @@ function patchTemplates() {
   for file in $(find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl"); do
     if grep -l 'release: ' $file; then
       sed_wrap -i -e '/^metadata:/,/^[^ {]/ { s/^\(.*\)labels:/\1labels:\
-\1  maistra-version: '${MAISTRA_VERSION}'/ }' $file
+\1  maistra-version: "'${MAISTRA_VERSION}'"/ }' $file
     fi
     if grep -l '\.Values\.global\.istioNamespace' $file; then
       sed_wrap -i -e 's/\.Values\.global\.istioNamespace/.Release.Namespace/' $file
@@ -259,6 +259,12 @@ function patchGateways() {
 \1  maistra.io\/gateway: {{ $gateway.name | default "istio-ingressgateway" }}.{{ $gateway.namespace | default .Release.Namespace }}/' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml
   sed_wrap -i -e 's/^\(.*\)labels:/\1labels:\
 \1  maistra.io\/gateway: {{ $gateway.name | default "istio-egressgateway" }}.{{ $gateway.namespace | default .Release.Namespace }}/' ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
+
+  # MAISTRA-1963 Mark gateways as non-privileged
+  sed_wrap -i -e '/env:/ a\
+          - name: ISTIO_META_UNPRIVILEGED_POD\
+            value: "true"\
+' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
   # gateways in other namespaces need proxy config
   sed_wrap -i -e '/env:/ a\

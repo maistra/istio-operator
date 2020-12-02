@@ -25,6 +25,7 @@ import (
 
 const networkTypeOpenShiftSDN = "OpenShiftSDN"
 const networkTypeCalico = "Calico"
+const networkTypeOVNKubernetes = "OVNKubernetes"
 
 type namespaceReconciler struct {
 	common.ControllerResources
@@ -124,6 +125,9 @@ func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) 
 				}
 			case strings.ToLower(networkTypeCalico):
 				log.Info("Network Strategy Calico:NetworkPolicy")
+				r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
+			case strings.ToLower(networkTypeOVNKubernetes):
+				log.Info("Network Strategy OVNKubernetes:NetworkPolicy")
 				r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
 			default:
 				return fmt.Errorf("unsupported network type: %s", networkType)
