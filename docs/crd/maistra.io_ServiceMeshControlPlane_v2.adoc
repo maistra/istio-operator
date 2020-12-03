@@ -48,23 +48,23 @@ ControlPlaneSpec represents the configuration for installing a control plane
 
 | addons
 | Addons is used to configure additional features beyond core control plane components, e.g. visualization, metric storage, etc.
-| link:maistra.io_ServiceMeshControlPlane_AddonsConfig_v2.adoc[AddonsConfig]
+| AddonsConfig
 
 | cluster
 | Cluster is the general configuration of the cluster (cluster name, network name, multi-cluster, mesh expansion, etc.)
-| link:maistra.io_ServiceMeshControlPlane_ControlPlaneClusterConfig_v2.adoc[ControlPlaneClusterConfig]
+| ControlPlaneClusterConfig
 
 | gateways
 | Gateways configures gateways for the mesh .Values.gateways.*
-| link:maistra.io_ServiceMeshControlPlane_GatewaysConfig_v2.adoc[GatewaysConfig]
+| GatewaysConfig
 
 | general
 | General represents general control plane configuration that does not logically fit in another area.
-| link:maistra.io_ServiceMeshControlPlane_GeneralConfig_v2.adoc[GeneralConfig]
+| GeneralConfig
 
 | policy
 | Policy configures policy checking for the control plane. .Values.policy.enabled, true if not null
-| link:maistra.io_ServiceMeshControlPlane_PolicyConfig_v2.adoc[PolicyConfig]
+| PolicyConfig
 
 | profiles
 | Profiles selects the profile to use for default values. Defaults to "default" when not set.
@@ -72,15 +72,15 @@ ControlPlaneSpec represents the configuration for installing a control plane
 
 | proxy
 | Proxy configures the default behavior for sidecars.  Many values were previously exposed through .Values.global.proxy
-| link:maistra.io_ServiceMeshControlPlane_ProxyConfig_v2.adoc[ProxyConfig]
+| ProxyConfig
 
 | runtime
 | Runtime configuration for pilot (and galley, etc., pre 2.0)
-| link:maistra.io_ServiceMeshControlPlane_ControlPlaneRuntimeConfig_v2.adoc[ControlPlaneRuntimeConfig]
+| ControlPlaneRuntimeConfig
 
 | security
 | Security configures aspects of security for the control plane.
-| link:maistra.io_ServiceMeshControlPlane_SecurityConfig_v2.adoc[SecurityConfig]
+| SecurityConfig
 
 | techPreview
 | TechPreview contains switches for features that are not GA yet.
@@ -88,11 +88,11 @@ ControlPlaneSpec represents the configuration for installing a control plane
 
 | telemetry
 | Telemetry configures telemetry for the mesh. .Values.mixer.telemetry.enabled, true if not null.  1.6, .Values.telemetry.enabled
-| link:maistra.io_ServiceMeshControlPlane_TelemetryConfig_v2.adoc[TelemetryConfig]
+| TelemetryConfig
 
 | tracing
 | Tracing configures tracing for the mesh.
-| link:maistra.io_ServiceMeshControlPlane_TracingConfig_v2.adoc[TracingConfig]
+| TracingConfig
 
 | version
 | Version specifies what Maistra version of the control plane to install. When creating a new ServiceMeshControlPlane with an empty version, the admission webhook sets the version to the current version. Existing ServiceMeshControlPlanes with an empty version are treated as having the version set to "v1.0"
@@ -126,7 +126,7 @@ ControlPlaneStatus defines the observed state of ServiceMeshControlPlane Control
 
 | appliedSpec
 | The resulting specification of the configuration options after all profiles have been applied.
-| link:maistra.io_ServiceMeshControlPlane_v2.adoc#ControlPlaneSpec[ControlPlaneSpec]
+| link:maistra.io_ServiceMeshControlPlane_ControlPlaneSpec_v2.adoc[ControlPlaneSpec]
 
 | appliedValues
 | The resulting values.yaml used to generate the charts.

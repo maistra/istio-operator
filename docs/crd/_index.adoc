@@ -1,7 +1,0 @@
-+++
-title = "Config Options"
-chapter = false
-weight = 2
-+++
-
-
