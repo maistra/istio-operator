@@ -1,0 +1,876 @@
+
+
+= AddonsConfig
+
+:toc: right
+
+Used by link:maistra.io_ServiceMeshControlPlane_v2.adoc[ServiceMeshControlPlane(maistra.io/v2)]
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+AddonsConfig configures additional features for use with the mesh
+
+.Table AddonsConfig Fields
+|===
+| Name | Description | Type
+
+| 3scale
+| ThreeScale configures the 3scale adapter
+| <<ThreeScaleAddonConfig>>
+
+| grafana
+| Grafana configures a grafana instance to use with the mesh `.Values.grafana.enabled`, true if not null
+| <<GrafanaAddonConfig>>
+
+| jaeger
+| Jaeger configures Jaeger specific addon capabilities
+| <<JaegerAddonConfig>>
+
+| kiali
+| Kiali configures a kiali instance to use with the mesh `.Values.kiali.enabled`, true if not null
+| <<KialiAddonConfig>>
+
+| prometheus
+| Prometheus configures Prometheus specific addon capabilities
+| <<PrometheusAddonConfig>>
+
+| stackdriver
+| Stackdriver configures Stackdriver specific addon capabilities
+| <<StackdriverAddonConfig>>
+
+|===
+
+
+[#ThreeScaleAddonConfig]
+== ThreeScaleAddonConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+ThreeScaleAddonConfig represents configuration options for the installation of the 3scale adapter.  The options are structured similarly to what is defined by the 3scale ConfigMap.
+
+.Table ThreeScaleAddonConfig Fields
+|===
+| Name | Description | Type
+
+| enabled
+| Enabled specifies whether or not this feature is enabled
+| boolean
+
+| backend
+| Backend configures backend specific details
+| <<ThreeScaleBackendConfig>>
+
+| client
+| Client configures client specific details
+| <<ThreeScaleClientConfig>>
+
+| grpc
+| GRPC configures gRPC specific details
+| <<ThreeScaleGRPCConfig>>
+
+| listen_addr
+| ListenerAddr sets the listen address for the gRPC server. PARAM_THREESCALE_LISTEN_ADDR
+| integer
+
+| log_grpc
+| LogGRPC controls whether the log includes gRPC info PARAM_THREESCALE_LOG_GRPC
+| boolean
+
+| log_json
+| LogJSON controls whether the log is formatted as JSON PARAM_THREESCALE_LOG_JSON
+| boolean
+
+| log_level
+| LogLevel sets the minimum log output level. Accepted values are one of: debug, info, warn, error, none PARAM_THREESCALE_LOG_LEVEL
+| string
+
+| metrics
+| Metrics configures metrics specific details
+| <<ThreeScaleMetricsConfig>>
+
+| system
+| System configures system specific details
+| <<ThreeScaleSystemConfig>>
+
+|===
+
+
+[#ThreeScaleBackendConfig]
+== ThreeScaleBackendConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+ThreeScaleBackendConfig represents 3scale adapter options for its 'backend' section.
+
+.Table ThreeScaleBackendConfig Fields
+|===
+| Name | Description | Type
+
+| cache_flush_interval
+| CacheFlushInterval sets the interval at which metrics get reported from the cache to 3scale PARAM_THREESCALE_BACKEND_CACHE_FLUSH_INTERVAL_SECONDS
+| integer
+
+| enable_cache
+| EnableCache if true, attempts to create an in-memory apisonator cache for authorization requests PARAM_THREESCALE_USE_CACHED_BACKEND
+| boolean
+
+| policy_fail_closed
+| PolicyFailClosed if true, request will fail if 3scale Apisonator is unreachable PARAM_THREESCALE_BACKEND_CACHE_POLICY_FAIL_CLOSED
+| boolean
+
+|===
+
+
+[#ThreeScaleClientConfig]
+== ThreeScaleClientConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+ThreeScaleClientConfig represents 3scale adapter options for its 'client' section.
+
+.Table ThreeScaleClientConfig Fields
+|===
+| Name | Description | Type
+
+| allow_insecure_connections
+| AllowInsecureConnections skips certificate verification when calling 3scale API's. Enabling is not recommended PARAM_THREESCALE_ALLOW_INSECURE_CONN
+| boolean
+
+| timeout
+| Timeout sets the number of seconds to wait before terminating requests to 3scale System and Backend PARAM_THREESCALE_CLIENT_TIMEOUT_SECONDS
+| integer
+
+|===
+
+
+[#ThreeScaleGRPCConfig]
+== ThreeScaleGRPCConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+ThreeScaleGRPCConfig represents 3scale adapter options for its 'grpc' section.
+
+.Table ThreeScaleGRPCConfig Fields
+|===
+| Name | Description | Type
+
+| max_conn_timeout
+| MaxConnTimeout sets the maximum amount of seconds (+/-10% jitter) a connection may exist before it will be closed PARAM_THREESCALE_GRPC_CONN_MAX_SECONDS
+| integer
+
+|===
+
+
+[#ThreeScaleMetricsConfig]
+== ThreeScaleMetricsConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+ThreeScaleMetricsConfig represents 3scale adapter options for its 'metrics' section.
+
+.Table ThreeScaleMetricsConfig Fields
+|===
+| Name | Description | Type
+
+| port
+| Port sets the port which 3scale /metrics endpoint can be scrapped from PARAM_THREESCALE_METRICS_PORT
+| integer
+
+| report
+| Report controls whether 3scale system and backend metrics are collected and reported to Prometheus PARAM_THREESCALE_REPORT_METRICS
+| boolean
+
+|===
+
+
+[#ThreeScaleSystemConfig]
+== ThreeScaleSystemConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+ThreeScaleSystemConfig represents 3scale adapter options for its 'system' section.
+
+.Table ThreeScaleSystemConfig Fields
+|===
+| Name | Description | Type
+
+| cache_max_size
+| CacheMaxSize is the max number of items that can be stored in the cache at any time. Set to 0 to disable caching PARAM_THREESCALE_CACHE_ENTRIES_MAX
+| integer
+
+| cache_refresh_interval
+| CacheRefreshInterval is the time period in seconds, before a background process attempts to refresh cached entries PARAM_THREESCALE_CACHE_REFRESH_SECONDS
+| integer
+
+| cache_refresh_retries
+| CacheRefreshRetries sets the number of times unreachable hosts will be retried during a cache update loop PARAM_THREESCALE_CACHE_REFRESH_RETRIES
+| integer
+
+| cache_ttl
+| CacheTTL is the time period, in seconds, to wait before purging expired items from the cache PARAM_THREESCALE_CACHE_TTL_SECONDS
+| integer
+
+|===
+
+
+[#GrafanaAddonConfig]
+== GrafanaAddonConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+GrafanaAddonConfig configures a grafana instance for use with the mesh. Only one of install or address may be specified
+
+.Table GrafanaAddonConfig Fields
+|===
+| Name | Description | Type
+
+| enabled
+| Enabled specifies whether or not this feature is enabled
+| boolean
+
+| address
+| `Address` is the address of an existing grafana installation implies .Values.kiali.dashboard.grafanaURL
+| string
+
+| install
+| `Install` installs a new grafana instance and manage with control plane
+| <<GrafanaInstallConfig>>
+
+|===
+
+
+[#GrafanaInstallConfig]
+== GrafanaInstallConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+`GrafanaInstallConfig` is used to configure a new installation of grafana.
+
+.Table GrafanaInstallConfig Fields
+|===
+| Name | Description | Type
+
+| config
+| `Config` configures the behavior of the grafana installation
+| <<GrafanaConfig>>
+
+| persistence
+| `Persistence` configures a PersistentVolume associated with the grafana installation `.Values.grafana.persist`, true if not null
+| <<ComponentPersistenceConfig>>
+
+| security
+| `Security` is used to secure the grafana service. `.Values.grafana.security.enabled`, true if not null
+| <<GrafanaSecurityConfig>>
+
+| selfManaged
+| `SelfManaged`, indicates whether the Grafana install is managed by Maistra or the Grafana custom resource. Set to true to use the Maistra installer. No support is provided for the Grafana custom resource.
+| boolean
+
+| service
+| `Service` configures the k8s Service associated with the grafana installation
+| <<ComponentServiceConfig>>
+
+|===
+
+
+[#GrafanaConfig]
+== GrafanaConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+`GrafanaConfig` configures the behavior of the grafana installation
+
+.Table GrafanaConfig Fields
+|===
+| Name | Description | Type
+
+| env
+| `Env` allows specification of various grafana environment variables to be configured on the Grafana container. .Values.grafana.env
+| map[string]string
+
+| envSecrets
+| `EnvSecrets` allows specification of secret fields into grafana environment variables to be configured on the grafana container `.Values.grafana.envSecrets`
+| map[string]string
+
+|===
+
+
+[#ComponentPersistenceConfig]
+== ComponentPersistenceConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+ComponentPersistenceConfig is used to configure persistance for a component.
+
+.Table ComponentPersistenceConfig Fields
+|===
+| Name | Description | Type
+
+| enabled
+| Enabled specifies whether or not this feature is enabled
+| boolean
+
+| accessMode
+| AccessMode for the PersistentVolumeClaim
+| <<corev1_PersistentVolumeAccessMode>>
+
+| capacity
+| Resources to request for the PersistentVolumeClaim
+| <<corev1_ResourceRequirements>>
+
+| storageClassName
+| StorageClassName for the PersistentVolumeClaim
+| string
+
+|===
+
+
+[#GrafanaSecurityConfig]
+== GrafanaSecurityConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+`GrafanaSecurityConfig` is used to secure access to grafana
+
+.Table GrafanaSecurityConfig Fields
+|===
+| Name | Description | Type
+
+| enabled
+| Enabled specifies whether or not this feature is enabled
+| boolean
+
+| passphraseKey
+| `PassphraseKey` is the name of the key within the secret identifying the password.
+| string
+
+| secretName
+| `SecretName` is the name of a secret containing the username/password that should be used to access grafana.
+| string
+
+| usernameKey
+| `UsernameKey` is the name of the key within the secret identifying the username.
+| string
+
+|===
+
+
+[#ComponentServiceConfig]
+== ComponentServiceConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+ComponentServiceConfig is used to customize the service associated with a component.
+
+.Table ComponentServiceConfig Fields
+|===
+| Name | Description | Type
+
+| ingress
+| Ingress specifies details for accessing the component's service through a k8s Ingress or OpenShift Route.
+| <<ComponentIngressConfig>>
+
+| metadata
+| Metadata represents addtional annotations/labels to be applied to the component's service.
+| <<MetadataConfig>>
+
+| nodePort
+| NodePort specifies a NodePort for the component's Service. .Values.<component>.service.nodePort.port, ...enabled is true if not null
+| integer
+
+|===
+
+
+[#ComponentIngressConfig]
+== ComponentIngressConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+ComponentIngressConfig is used to customize a k8s Ingress or OpenShift Route for the service associated with a component.
+
+.Table ComponentIngressConfig Fields
+|===
+| Name | Description | Type
+
+| enabled
+| Enabled specifies whether or not this feature is enabled
+| boolean
+
+| contextPath
+| ContextPath represents the context path to the service.
+| string
+
+| hosts
+| Hosts represents a list of host names to configure.  Note, OpenShift route only supports a single host name per route.  An empty host name implies a default host name for the Route. XXX: is a host name required for k8s Ingress?
+| []string
+
+| metadata
+| Metadata represents additional metadata to be applied to the ingress/route.
+| <<MetadataConfig>>
+
+| tls
+| TLS is used to configure TLS for the Ingress/Route XXX: should this be something like RawExtension, as the configuration differs between Route and Ingress?
+| <<maistrav1_HelmValues>>
+
+|===
+
+
+[#MetadataConfig]
+== MetadataConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+MetadataConfig represents additional metadata to be applied to resources
+
+.Table MetadataConfig Fields
+|===
+| Name | Description | Type
+
+| annotations
+| 
+| map[string]string
+
+| labels
+| 
+| map[string]string
+
+|===
+
+
+[#JaegerAddonConfig]
+== JaegerAddonConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+`JaegerAddonConfig` configuration specific to Jaeger integration.
+
+.Table JaegerAddonConfig Fields
+|===
+| Name | Description | Type
+
+| install
+| `Install` configures a Jaeger installation, which will be created if the named Jaeger resource is not present.  If null, the named Jaeger resource must exist.
+| <<JaegerInstallConfig>>
+
+| name
+| Name of Jaeger custom resource, Namespace must match control plane namespace
+| string
+
+|===
+
+
+[#JaegerInstallConfig]
+== JaegerInstallConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+`JaegerInstallConfig` configures a Jaeger installation.
+
+.Table JaegerInstallConfig Fields
+|===
+| Name | Description | Type
+
+| ingress
+| `Ingress` configures k8s Ingress or OpenShift Route for Jaeger services .Values.tracing.jaeger.ingress.enabled, false if null
+| <<JaegerIngressConfig>>
+
+| storage
+| `Config` represents the configuration of Jaeger behavior.
+| <<JaegerStorageConfig>>
+
+|===
+
+
+[#JaegerIngressConfig]
+== JaegerIngressConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+`JaegerIngressConfig` configures Kubernetes Ingress or OpenShift Route for exposing Jaeger services.
+
+.Table JaegerIngressConfig Fields
+|===
+| Name | Description | Type
+
+| enabled
+| Enabled specifies whether or not this feature is enabled
+| boolean
+
+| metadata
+| `Metadata` represents addtional annotations/labels to be applied to the ingress/route.
+| <<MetadataConfig>>
+
+|===
+
+
+[#JaegerStorageConfig]
+== JaegerStorageConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+`JaegerStorageConfig` configures the storage used by the Jaeger installation.
+
+.Table JaegerStorageConfig Fields
+|===
+| Name | Description | Type
+
+| elasticsearch
+| `Elasticsearch` represents configuration of elasticsearch storage implies .Values.tracing.jaeger.template=production-elasticsearch
+| <<JaegerElasticsearchStorageConfig>>
+
+| memory
+| `Memory` represents configuration of in-memory storage implies `.Values.tracing.jaeger.template`=`all-in-one`
+| <<JaegerMemoryStorageConfig>>
+
+| type
+| Type of storage to use
+| <<JaegerStorageType>>
+
+|===
+
+
+[#JaegerElasticsearchStorageConfig]
+== JaegerElasticsearchStorageConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+`JaegerElasticsearchStorageConfig` configures elasticsearch storage parameters for Jaeger
+
+.Table JaegerElasticsearchStorageConfig Fields
+|===
+| Name | Description | Type
+
+| indexCleaner
+| `IndexCleaner` represents the configuration for the elasticsearch index cleaner `.Values.tracing.jaeger.elasticsearch.esIndexCleaner`, raw yaml
+| <<maistrav1_HelmValues>>
+
+| nodeCount
+| `NodeCount` represents the number of elasticsearch nodes to create. Defaults to 3. `.Values.tracing.jaeger.elasticsearch.nodeCount`
+| integer
+
+| redundancyPolicy
+| `RedundancyPolicy` configures the redundancy policy for elasticsearch `.Values.tracing.jaeger.elasticsearch.redundancyPolicy`, raw YAML
+| string
+
+| storage
+| Storage represents storage configuration for elasticsearch. `.Values.tracing.jaeger.elasticsearch.storage`, raw yaml
+| <<maistrav1_HelmValues>>
+
+|===
+
+
+[#JaegerMemoryStorageConfig]
+== JaegerMemoryStorageConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+`JaegerMemoryStorageConfig` configures in-memory storage parameters for Jaeger
+
+.Table JaegerMemoryStorageConfig Fields
+|===
+| Name | Description | Type
+
+| maxTraces
+| `MaxTraces` configures the maximum number of traces to store. Defaults to 100000. `.Values.tracing.jaeger.memory.max_traces`
+| integer
+
+|===
+
+
+[#JaegerStorageType]
+== JaegerStorageType
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+`JaegerStorageType` represents the type of storage configured for Jaeger
+
+Type: string
+
+[#KialiAddonConfig]
+== KialiAddonConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+`KialiAddonConfig` is used to configure a kiali instance for use with the mesh
+
+.Table KialiAddonConfig Fields
+|===
+| Name | Description | Type
+
+| enabled
+| Enabled specifies whether or not this feature is enabled
+| boolean
+
+| install
+| Install a Kiali resource if the named Kiali resource is not present.
+| <<KialiInstallConfig>>
+
+| name
+| Name of Kiali CR, Namespace must match control plane namespace
+| string
+
+|===
+
+
+[#KialiInstallConfig]
+== KialiInstallConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+`KialiInstallConfig` is used to configure a kiali installation
+
+.Table KialiInstallConfig Fields
+|===
+| Name | Description | Type
+
+| dashboard
+| `Dashboard` configures the behavior of the kiali dashboard.
+| <<KialiDashboardConfig>>
+
+| service
+| `Service` is used to configure the k8s Service associated with the Kiali installation. Ingress is used for enablement and context path. for enablement and contextPath
+| <<ComponentServiceConfig>>
+
+|===
+
+
+[#KialiDashboardConfig]
+== KialiDashboardConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+KialiDashboardConfig configures the behavior of the kiali dashboard
+
+.Table KialiDashboardConfig Fields
+|===
+| Name | Description | Type
+
+| enableGrafana
+| Grafana endpoint will be configured based on Grafana configuration
+| boolean
+
+| enablePrometheus
+| Prometheus endpoint will be configured based on Prometheus configuration
+| boolean
+
+| enableTracing
+| Tracing endpoint will be configured based on Tracing configuration
+| boolean
+
+| viewOnly
+| ViewOnly configures view_only_mode for the dashboard `.Values.kiali.dashboard.viewOnlyMode`
+| boolean
+
+|===
+
+
+[#PrometheusAddonConfig]
+== PrometheusAddonConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+`PrometheusAddonConfig` configures a Prometheus instance to be used by the control plane.  Only one of `Install` or `Address` may be specified
+
+.Table PrometheusAddonConfig Fields
+|===
+| Name | Description | Type
+
+| enabled
+| Enabled specifies whether or not this feature is enabled
+| boolean
+
+| address
+| Address of existing prometheus installation implies .Values.kiali.prometheusAddr
+| string
+
+| install
+| Install configuration if not using an existing Prometheus installation. `.Values.prometheus.enabled`, if not null
+| <<PrometheusInstallConfig>>
+
+| metricsExpiryDuration
+| `MetricsExpiryDuration` is the duration to hold metrics. (mixer/v1 only) Defaults to 10m `.Values.mixer.adapters.prometheus.metricsExpiryDuration`
+| string
+
+| scrape
+| Scrape metrics from the pod if true. (maistra-2.0+). Defaults to true `.Values.meshConfig.enablePrometheusMerge`
+| boolean
+
+|===
+
+
+[#PrometheusInstallConfig]
+== PrometheusInstallConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+`PrometheusInstallConfig` represents the configuration to be applied when installing a new instance of Prometheus for use with the mesh.
+
+.Table PrometheusInstallConfig Fields
+|===
+| Name | Description | Type
+
+| retention
+| `Retention` specifies how long metrics should be retained by Prometheus. Defaults to 6h. `.Values.prometheus.retention`
+| string
+
+| scrapeInterval
+| `ScrapeInterval` specifies how frequently Prometheus should scrape pods for metrics. Defaults to 15s. `.Values.prometheus.scrapeInterval`
+| string
+
+| selfManaged
+| `SelfManaged` specifies whether or not the Maistra operator or Prometheus operator should manage the Prometheus installation. Set `SelfManaged` to `true` to use the Maistra operator or `false` to use the Prometheus operator. No support is provided for the Prometheus operator. Governs use of either prometheus charts or prometheusOperator charts.
+| boolean
+
+| service
+| `Service` allows for customization of the Kubernetes Service associated with the Prometheus installation.
+| <<ComponentServiceConfig>>
+
+| useTLS
+| `UseTLS` configures whether the Prometheus server should use TLS. `.Values.prometheus.provisionPrometheusCert` 1.6+
+| boolean
+
+|===
+
+
+[#StackdriverAddonConfig]
+== StackdriverAddonConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+StackdriverAddonConfig configuration specific to Stackdriver integration.
+
+.Table StackdriverAddonConfig Fields
+|===
+| Name | Description | Type
+
+| telemetry
+| Configuration for Stackdriver telemetry plugins.  Applies when telemetry is enabled
+| <<StackdriverTelemetryConfig>>
+
+| tracer
+| Configuration for Stackdriver tracer.  Applies when Addons.Tracer.Type=Stackdriver
+| <<StackdriverTracerConfig>>
+
+|===
+
+
+[#StackdriverTelemetryConfig]
+== StackdriverTelemetryConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+StackdriverTelemetryConfig adds telemetry filters for Stackdriver.
+
+.Table StackdriverTelemetryConfig Fields
+|===
+| Name | Description | Type
+
+| enabled
+| Enabled specifies whether or not this feature is enabled
+| boolean
+
+| accessLogging
+| DisableOutbound disables intallation of sidecar outbound filter .Values.telemetry.v2.stackdriver.disableOutbound, defaults to false DisableOutbound bool `json:"disableOutbound,omitempty"` AccessLogging configures access logging for stackdriver
+| <<StackdriverAccessLogTelemetryConfig>>
+
+| auth
+| Auth configuration for stackdriver adapter (mixer/v1 telemetry only) .Values.mixer.adapters.stackdriver.auth
+| <<StackdriverAuthConfig>>
+
+| configOverride
+| ConfigOverride apply custom configuration to Stackdriver filters (v2 telemetry only) .Values.telemetry.v2.stackdriver.configOverride
+| <<maistrav1_HelmValues>>
+
+| enableContextGraph
+| EnableContextGraph for stackdriver adapter (edge reporting) .Values.mixer.adapters.stackdriver.contextGraph.enabled, defaults to false .Values.telemetry.v2.stackdriver.topology, defaults to false
+| boolean
+
+| enableLogging
+| EnableLogging for stackdriver adapter .Values.mixer.adapters.stackdriver.logging.enabled, defaults to true .Values.telemetry.v2.stackdriver.logging, defaults to false
+| boolean
+
+| enableMetrics
+| EnableMetrics for stackdriver adapter .Values.mixer.adapters.stackdriver.metrics.enabled, defaults to true .Values.telemetry.v2.stackdriver.monitoring??? defaults to false
+| boolean
+
+|===
+
+
+[#StackdriverAccessLogTelemetryConfig]
+== StackdriverAccessLogTelemetryConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+StackdriverAccessLogTelemetryConfig for v2 telemetry.
+
+.Table StackdriverAccessLogTelemetryConfig Fields
+|===
+| Name | Description | Type
+
+| enabled
+| Enabled specifies whether or not this feature is enabled
+| boolean
+
+| logWindowDuration
+| LogWindowDuration configures the log window duration for access logs. defaults to 43200s To reduce the number of successful logs, default log window duration is set to 12 hours. .Values.telemetry.v2.accessLogPolicy.logWindowDuration
+| string
+
+|===
+
+
+[#StackdriverAuthConfig]
+== StackdriverAuthConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+StackdriverAuthConfig is the auth config for stackdriver.  Only one field may be set
+
+.Table StackdriverAuthConfig Fields
+|===
+| Name | Description | Type
+
+| apiKey
+| APIKey use the specified key. .Values.mixer.adapters.stackdriver.auth.apiKey
+| string
+
+| appCredentials
+| AppCredentials if true, use default app credentials. .Values.mixer.adapters.stackdriver.auth.appCredentials, defaults to false
+| boolean
+
+| serviceAccountPath
+| ServiceAccountPath use the path to the service account. .Values.mixer.adapters.stackdriver.auth.serviceAccountPath
+| string
+
+|===
+
+
+[#StackdriverTracerConfig]
+== StackdriverTracerConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+StackdriverTracerConfig configures the Stackdriver tracer
+
+.Table StackdriverTracerConfig Fields
+|===
+| Name | Description | Type
+
+| debug
+| .Values.global.tracer.stackdriver.debug
+| boolean
+
+| maxNumberOfAnnotations
+| .Values.global.tracer.stackdriver.maxNumberOfAnnotations
+| integer
+
+| maxNumberOfAttributes
+| .Values.global.tracer.stackdriver.maxNumberOfAttributes
+| integer
+
+| maxNumberOfMessageEvents
+| .Values.global.tracer.stackdriver.maxNumberOfMessageEvents
+| integer
+
+|===
+
+

@@ -1,0 +1,345 @@
+
+
+= SecurityConfig
+
+:toc: right
+
+Used by link:maistra.io_ServiceMeshControlPlane_v2.adoc[ServiceMeshControlPlane(maistra.io/v2)]
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+SecurityConfig specifies security aspects of the control plane.
+
+.Table SecurityConfig Fields
+|===
+| Name | Description | Type
+
+| certificateAuthority
+| CertificateAuthority configures the certificate authority used by the control plane to create and sign client certs and server keys.
+| <<CertificateAuthorityConfig>>
+
+| controlPlane
+| ControlPlane configures mutual TLS for control plane communication.
+| <<ControlPlaneSecurityConfig>>
+
+| dataPlane
+| DataPlane configures mutual TLS for data plane communication.
+| <<DataPlaneSecurityConfig>>
+
+| identity
+| Identity configures the types of user tokens used by clients.
+| <<IdentityConfig>>
+
+| trust
+| Trust configures trust aspects associated with mutual TLS clients.
+| <<TrustConfig>>
+
+|===
+
+
+[#CertificateAuthorityConfig]
+== CertificateAuthorityConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+CertificateAuthorityConfig configures the certificate authority implementation used by the control plane.
+
+.Table CertificateAuthorityConfig Fields
+|===
+| Name | Description | Type
+
+| custom
+| Custom is the configuration for a custom certificate authority.
+| <<CustomCertificateAuthorityConfig>>
+
+| istiod
+| Istiod is the configuration for Istio's internal certificate authority implementation. each of these produces a CAEndpoint, i.e. CA_ADDR
+| <<IstiodCertificateAuthorityConfig>>
+
+| type
+| Type is the certificate authority to use.
+| <<CertificateAuthorityType>>
+
+|===
+
+
+[#CustomCertificateAuthorityConfig]
+== CustomCertificateAuthorityConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+CustomCertificateAuthorityConfig is the configuration for a custom certificate authority.
+
+.Table CustomCertificateAuthorityConfig Fields
+|===
+| Name | Description | Type
+
+| address
+| Address is the grpc address for an Istio compatible certificate authority endpoint. .Values.global.caAddress XXX: assumption is this is a grpc endpoint that provides methods like istio.v1.auth.IstioCertificateService/CreateCertificate
+| string
+
+|===
+
+
+[#IstiodCertificateAuthorityConfig]
+== IstiodCertificateAuthorityConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+IstiodCertificateAuthorityConfig is the configuration for Istio's internal certificate authority implementation.
+
+.Table IstiodCertificateAuthorityConfig Fields
+|===
+| Name | Description | Type
+
+| privateKey
+| PrivateKey configures istiod to use a user specified private key/cert when signing certificates.
+| <<IstioPrivateKeyCertificateSignerConfig>>
+
+| selfSigned
+| SelfSigned configures istiod to generate and use a self-signed certificate for the root.
+| <<IstioSelfSignedCertificateSignerConfig>>
+
+| type
+| Type of certificate signer to use.
+| <<IstioCertificateSignerType>>
+
+| workloadCertTTLDefault
+| WorkloadCertTTLDefault is the default TTL for generated workload certificates.  Used if not specified in CSR (<= 0) env DEFAULT_WORKLOAD_CERT_TTL, 1.6 --workload-cert-ttl, citadel, pre-1.6 defaults to 24 hours
+| string
+
+| workloadCertTTLMax
+| WorkloadCertTTLMax is the maximum TTL for generated workload certificates. env MAX_WORKLOAD_CERT_TTL --max-workload-cert-ttl, citadel, pre-1.6 defaults to 90 days
+| string
+
+|===
+
+
+[#IstioPrivateKeyCertificateSignerConfig]
+== IstioPrivateKeyCertificateSignerConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+IstioPrivateKeyCertificateSignerConfig is the configuration when using a user supplied private key/cert for signing. XXX: nothing in here is currently configurable, except RootCADir
+
+.Table IstioPrivateKeyCertificateSignerConfig Fields
+|===
+| Name | Description | Type
+
+| rootCADir
+| hard coded to use a secret named cacerts EncryptionSecret string `json:"encryptionSecret,omitempty"` ROOT_CA_DIR, defaults to /etc/cacerts Mount directory for encryption secret XXX: currently, not configurable in the charts
+| string
+
+|===
+
+
+[#IstioSelfSignedCertificateSignerConfig]
+== IstioSelfSignedCertificateSignerConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+IstioSelfSignedCertificateSignerConfig is the configuration for using a self-signed root certificate.
+
+.Table IstioSelfSignedCertificateSignerConfig Fields
+|===
+| Name | Description | Type
+
+| checkPeriod
+| CheckPeriod is the interval with which certificate is checked for rotation env CITADEL_SELF_SIGNED_ROOT_CERT_CHECK_INTERVAL default is 1 hour, zero or negative value disables cert rotation
+| string
+
+| enableJitter
+| EnableJitter to use jitter for cert rotation env CITADEL_ENABLE_JITTER_FOR_ROOT_CERT_ROTATOR defaults to true
+| boolean
+
+| gracePeriod
+| GracePeriod percentile for self-signed cert env CITADEL_SELF_SIGNED_ROOT_CERT_GRACE_PERIOD_PERCENTILE default is 20%
+| string
+
+| ttl
+| TTL for self-signed root certificate env CITADEL_SELF_SIGNED_CA_CERT_TTL default is 10 years
+| string
+
+|===
+
+
+[#IstioCertificateSignerType]
+== IstioCertificateSignerType
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+IstioCertificateSignerType represents the certificate signer implementation used by istiod.
+
+Type: string
+
+[#CertificateAuthorityType]
+== CertificateAuthorityType
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+CertificateAuthorityType represents the type of CertificateAuthority implementation.
+
+Type: string
+
+[#ControlPlaneSecurityConfig]
+== ControlPlaneSecurityConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+ControlPlaneSecurityConfig is the mutual TLS configuration specific to the control plane.
+
+.Table ControlPlaneSecurityConfig Fields
+|===
+| Name | Description | Type
+
+| certProvider
+| CertProvider is the certificate authority used to generate the serving certificates for the control plane components. .Values.global.pilotCertProvider Provider used to generate serving certs for istiod (pilot)
+| <<ControlPlaneCertProviderType>>
+
+| mtls
+| Enable mutual TLS for the control plane components. .Values.global.controlPlaneSecurityEnabled
+| boolean
+
+| tls
+| TLS configures aspects of TLS listeners created by control plane components.
+| <<ControlPlaneTLSConfig>>
+
+|===
+
+
+[#ControlPlaneCertProviderType]
+== ControlPlaneCertProviderType
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+ControlPlaneCertProviderType represents the provider used to generate serving certificates for the control plane.
+
+Type: string
+
+[#ControlPlaneTLSConfig]
+== ControlPlaneTLSConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+ControlPlaneTLSConfig configures settings on TLS listeners created by control plane components, e.g. webhooks, grpc (if mtls is enabled), etc.
+
+.Table ControlPlaneTLSConfig Fields
+|===
+| Name | Description | Type
+
+| cipherSuites
+| CipherSuites configures the cipher suites that are available for use by TLS listeners. .Values.global.tls.cipherSuites
+| []string
+
+| ecdhCurves
+| ECDHCurves configures the ECDH curves that are available for use by TLS listeners. .Values.global.tls.ecdhCurves
+| []string
+
+| maxProtocolVersion
+| MaxProtocolVersion the maximum TLS version that should be supported by the listeners. .Values.global.tls.maxProtocolVersion
+| string
+
+| minProtocolVersion
+| MinProtocolVersion the minimum TLS version that should be supported by the listeners. .Values.global.tls.minProtocolVersion
+| string
+
+|===
+
+
+[#DataPlaneSecurityConfig]
+== DataPlaneSecurityConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+DataPlaneSecurityConfig is the mutual TLS configuration specific to the control plane.
+
+.Table DataPlaneSecurityConfig Fields
+|===
+| Name | Description | Type
+
+| automtls
+| Auto configures the mesh to automatically detect whether or not mutual TLS is required for a specific connection. .Values.global.mtls.auto
+| boolean
+
+| mtls
+| Enable mutual TLS by default. .Values.global.mtls.enabled
+| boolean
+
+|===
+
+
+[#IdentityConfig]
+== IdentityConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+IdentityConfig configures the types of user tokens used by clients
+
+.Table IdentityConfig Fields
+|===
+| Name | Description | Type
+
+| thirdParty
+| ThirdParty configures istiod to use a third-party token provider for identifying users. (basically uses a custom audience, e.g. istio-ca) XXX: this is only supported on OCP 4.4+
+| <<ThirdPartyIdentityConfig>>
+
+| type
+| Type is the type of identity tokens being used. .Values.global.jwtPolicy
+| <<IdentityConfigType>>
+
+|===
+
+
+[#ThirdPartyIdentityConfig]
+== ThirdPartyIdentityConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+ThirdPartyIdentityConfig configures a third-party token provider for use with istiod.
+
+.Table ThirdPartyIdentityConfig Fields
+|===
+| Name | Description | Type
+
+| audience
+| Audience is the audience for whom the token is intended. env AUDIENCE .Values.global.sds.token.aud, defaults to istio-ca
+| string
+
+| issuer
+| Issuer is the URL of the issuer. env TOKEN_ISSUER, defaults to iss in specified token only supported in 1.6+
+| string
+
+|===
+
+
+[#IdentityConfigType]
+== IdentityConfigType
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+IdentityConfigType represents the identity implementation being used.
+
+Type: string
+
+[#TrustConfig]
+== TrustConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+TrustConfig configures trust aspects associated with mutual TLS clients
+
+.Table TrustConfig Fields
+|===
+| Name | Description | Type
+
+| additionalDomains
+| AdditionalDomains are additional SPIFFE trust domains that are accepted as trusted. .Values.global.trustDomainAliases, maps to trustDomainAliases  Any service with the identity "td1/ns/foo/sa/a-service-account", "td2/ns/foo/sa/a-service-account",  or "td3/ns/foo/sa/a-service-account" will be treated the same in the Istio mesh.
+| []string
+
+| domain
+| Domain specifies the trust domain to be used by the mesh. .Values.global.trustDomain, maps to trustDomain The trust domain corresponds to the trust root of a system. Refer to https://github.com/spiffe/spiffe/blob/master/standards/SPIFFE-ID.md#21-trust-domain
+| string
+
+|===
+
+
