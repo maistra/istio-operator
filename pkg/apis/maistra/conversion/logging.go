@@ -54,17 +54,20 @@ func componentLogLevelsToString(logLevels v2.ComponentLogLevels) string {
 	return strings.Join(componentLogLevels, ",")
 }
 
-func componentLogLevelsFromString(levels string) v2.ComponentLogLevels {
+func componentLogLevelsFromString(levels string) (v2.ComponentLogLevels, error) {
 	componentLevels := strings.Split(levels, ",")
 	if len(componentLevels) == 0 {
-		return nil
+		return nil, nil
 	}
 	logLevels := v2.ComponentLogLevels{}
 	for _, componentLevel := range componentLevels {
 		pair := strings.SplitN(componentLevel, ":", 2)
+		if len(pair) < 2 || pair[0] == "" || pair[1] == "" {
+			return nil, fmt.Errorf("Invalid entry %q in spec.istio.globals.logging.level. The correct format is 'component:level[,component:level]'.", componentLevel)
+		}
 		logLevels[v2.EnvoyComponent(pair[0])] = v2.LogLevel(pair[1])
 	}
-	return logLevels
+	return logLevels, nil
 }
 
 func populateControlPlaneLoggingConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
@@ -72,7 +75,10 @@ func populateControlPlaneLoggingConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 	setLogging := false
 
 	if componentLevels, ok, err := in.GetAndRemoveString("global.logging.level"); ok && len(componentLevels) > 0 {
-		logging.ComponentLevels = componentLogLevelsFromString(componentLevels)
+		logging.ComponentLevels, err = componentLogLevelsFromString(componentLevels)
+		if err != nil {
+			return err
+		}
 		setLogging = true
 	} else if err != nil {
 		return err
@@ -103,7 +109,10 @@ func populateProxyLoggingConfig(proxyValues *v1.HelmValues, logging *v2.ProxyLog
 		return false, err
 	}
 	if componentLevels, ok, err := proxyValues.GetAndRemoveString("componentLogLevel"); ok && len(componentLevels) > 0 {
-		logging.ComponentLevels = componentLogLevelsFromString(componentLevels)
+		logging.ComponentLevels, err = componentLogLevelsFromString(componentLevels)
+		if err != nil {
+			return false, err
+		}
 		setLogging = true
 	} else if err != nil {
 		return false, err

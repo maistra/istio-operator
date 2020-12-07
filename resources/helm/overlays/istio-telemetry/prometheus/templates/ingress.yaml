@@ -17,4 +17,5 @@ spec:
     name: prometheus
   tls:
     termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect
 {{- end -}}

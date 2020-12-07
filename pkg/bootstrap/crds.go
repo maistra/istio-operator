@@ -8,6 +8,8 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"regexp"
+	"strings"
 	"sync"
 
 	"github.com/Masterminds/semver"
@@ -29,6 +31,11 @@ import (
 )
 
 var crdMutex sync.Mutex // ensure two workers don't deploy CRDs at same time
+var badVersionRegex *regexp.Regexp
+
+func init() {
+	badVersionRegex = regexp.MustCompile(`^(v?)([0-9]+\.[0-9]+\.[0-9]+)(\.([0-9]+))$`)
+}
 
 // InstallCRDs makes sure all CRDs from the specified chartsDir have been
 // installed. CRDs are loaded from chartsDir/istio-init/files
@@ -236,6 +243,11 @@ func getMaistraVersion(crd *apiextensionsv1beta1.CustomResourceDefinition) (*sem
 	versionLabel := crd.Labels["maistra-version"]
 	if versionLabel == "" {
 		return nil, fmt.Errorf("Label maistra-version not found")
+	}
+	versionLabel = badVersionRegex.ReplaceAllString(versionLabel, "$1$2-$4")
+	if !strings.Contains(versionLabel, "-") {
+		// for proper comparisons, all versions must have - suffix
+		versionLabel = versionLabel + "-0"
 	}
 	return semver.NewVersion(versionLabel)
 }

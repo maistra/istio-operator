@@ -502,6 +502,19 @@ func TestValidation(t *testing.T) {
 			},
 			expectValid: true,
 		},
+		{
+			name: "conversion-error-present",
+			spec: maistrav2.ControlPlaneSpec{
+				Version:  versions.V1_1.String(),
+				Profiles: []string{"maistra"},
+				TechPreview:maistrav1.NewHelmValues(map[string]interface{}{
+					"errored": map[string]interface{}{
+						"message": "spec in v1 SMCP was bad",
+					},
+				}),
+			},
+			expectValid: false,
+		},
 	}
 
 	for _, tc := range testCases {

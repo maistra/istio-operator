@@ -82,24 +82,39 @@ func TestAdminClusterRoleIsCreated(t *testing.T) {
 
 func TestNewerCRDVersionAlwaysWinsRegardlessDeploymentOrder(t *testing.T) {
 	olderCRD := newCRDYAML("test", "1.0.7")
+	olderBadCRD := newCRDYAML("test", "1.0.7.1")
 	newerCRD := newCRDYAML("test", "1.1.0")
 	noVersionCRD := newCRDYAML("test", "")
 
 	testCases := []struct {
 		name        string
 		deployOrder []string
+		newCRD      string
 	}{
 		{
 			name:        "older-then-newer",
 			deployOrder: []string{olderCRD, newerCRD},
+			newCRD:      "1.1.0",
 		},
 		{
 			name:        "newer-then-older",
 			deployOrder: []string{newerCRD, olderCRD},
+			newCRD:      "1.1.0",
 		},
 		{
 			name:        "existing-without-version",
 			deployOrder: []string{noVersionCRD, newerCRD},
+			newCRD:      "1.1.0",
+		},
+		{
+			name:        "newer-then-older-bad",
+			deployOrder: []string{newerCRD, olderBadCRD},
+			newCRD:      "1.1.0",
+		},
+		{
+			name:        "newer-bad-then-older",
+			deployOrder: []string{olderBadCRD, olderCRD},
+			newCRD:      "1.0.7.1",
 		},
 	}
 
@@ -119,7 +134,7 @@ func TestNewerCRDVersionAlwaysWinsRegardlessDeploymentOrder(t *testing.T) {
 
 			crd := crdList.Items[0]
 			assert.Equals(crd.Name, "test", "Unexpected CRD name", t)
-			assert.Equals(crd.Labels["maistra-version"], "1.1.0", "Expected newer version of CRD", t)
+			assert.Equals(crd.Labels["maistra-version"], tc.newCRD, "Expected newer version of CRD", t)
 		})
 	}
 }
