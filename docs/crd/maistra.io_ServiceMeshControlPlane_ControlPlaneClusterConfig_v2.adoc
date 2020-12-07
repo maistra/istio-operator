@@ -559,6 +559,10 @@ MeshGatewayConfig specifies the gateway which should be used for accessing the n
 | 
 | integer
 
+| registryServiceName
+| 
+| string
+
 | service
 | 
 | string
