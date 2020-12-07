@@ -41,12 +41,23 @@ func (h *HelmValues) GetBool(path string) (bool, bool, error) {
 	if h == nil || h.data == nil {
 		return false, false, nil
 	}
-	return unstructured.NestedBool(h.data, strings.Split(path, ".")...)
+	val, found, err := unstructured.NestedFieldNoCopy(h.data, strings.Split(path, ".")...)
+	if !found || err != nil {
+		return false, found, err
+	}
+	b, ok := val.(bool)
+	if !ok {
+		if val == nil {
+			return false, false, nil
+		}
+		return false, false, fmt.Errorf("%v accessor error: %v is of the type %T, expected bool", path, val, val)
+	}
+	return b, true, nil
 }
 
 func (h *HelmValues) GetAndRemoveBool(path string) (bool, bool, error) {
 	value, ok, err := h.GetBool(path)
-	if ok {
+	if err == nil {
 		h.RemoveField(path)
 	}
 	return value, ok, err
@@ -56,7 +67,18 @@ func (h *HelmValues) GetString(path string) (string, bool, error) {
 	if h == nil || h.data == nil {
 		return "", false, nil
 	}
-	return unstructured.NestedString(h.data, strings.Split(path, ".")...)
+	val, found, err := unstructured.NestedFieldNoCopy(h.data, strings.Split(path, ".")...)
+	if !found || err != nil {
+		return "", found, err
+	}
+	s, ok := val.(string)
+	if !ok {
+		if val == nil {
+			return "", false, nil
+		}
+		return "", false, fmt.Errorf("%v accessor error: %v is of the type %T, expected string", path, val, val)
+	}
+	return s, true, nil
 }
 
 func (h *HelmValues) GetForceNumberToString(path string) (string, bool, error) {
@@ -76,13 +98,15 @@ func (h *HelmValues) GetForceNumberToString(path string) (string, bool, error) {
 		return strconv.FormatFloat(typeValue, 'f', -1, 64), ok, nil
 	case string:
 		return typeValue, ok, nil
+	case nil:
+		return "", false, nil
 	}
 	return "", false, fmt.Errorf("could not convert type to string: %T=%s", value, value)
 }
 
 func (h *HelmValues) GetAndRemoveString(path string) (string, bool, error) {
 	value, ok, err := h.GetString(path)
-	if ok {
+	if err == nil {
 		h.RemoveField(path)
 	}
 	return value, ok, err
@@ -90,7 +114,7 @@ func (h *HelmValues) GetAndRemoveString(path string) (string, bool, error) {
 
 func (h *HelmValues) GetAndRemoveForceNumberToString(path string) (string, bool, error) {
 	value, ok, err := h.GetForceNumberToString(path)
-	if ok {
+	if err == nil {
 		h.RemoveField(path)
 	}
 	return value, ok, err
@@ -100,12 +124,23 @@ func (h *HelmValues) GetInt64(path string) (int64, bool, error) {
 	if h == nil || h.data == nil {
 		return 0, false, nil
 	}
-	return unstructured.NestedInt64(h.data, strings.Split(path, ".")...)
+	val, found, err := unstructured.NestedFieldNoCopy(h.data, strings.Split(path, ".")...)
+	if !found || err != nil {
+		return 0, found, err
+	}
+	i, ok := val.(int64)
+	if !ok {
+		if val == nil {
+			return 0, false, nil
+		}
+		return 0, false, fmt.Errorf("%v accessor error: %v is of the type %T, expected int64", path, val, val)
+	}
+	return i, true, nil
 }
 
 func (h *HelmValues) GetAndRemoveInt64(path string) (int64, bool, error) {
 	value, ok, err := h.GetInt64(path)
-	if ok {
+	if err == nil {
 		h.RemoveField(path)
 	}
 	return value, ok, err
@@ -115,12 +150,23 @@ func (h *HelmValues) GetFloat64(path string) (float64, bool, error) {
 	if h == nil || h.data == nil {
 		return 0, false, nil
 	}
-	return unstructured.NestedFloat64(h.data, strings.Split(path, ".")...)
+	val, found, err := unstructured.NestedFieldNoCopy(h.data, strings.Split(path, ".")...)
+	if !found || err != nil {
+		return 0, found, err
+	}
+	f, ok := val.(float64)
+	if !ok {
+		if val == nil {
+			return 0, false, nil
+		}
+		return 0, false, fmt.Errorf("%v accessor error: %v is of the type %T, expected float64", path, val, val)
+	}
+	return f, true, nil
 }
 
 func (h *HelmValues) GetAndRemoveFloat64(path string) (float64, bool, error) {
 	value, ok, err := h.GetFloat64(path)
-	if ok {
+	if err == nil {
 		h.RemoveField(path)
 	}
 	return value, ok, err
@@ -130,12 +176,18 @@ func (h *HelmValues) GetStringSlice(path string) ([]string, bool, error) {
 	if h == nil || h.data == nil {
 		return nil, false, nil
 	}
-	return unstructured.NestedStringSlice(h.data, strings.Split(path, ".")...)
+	slice, ok, err := unstructured.NestedStringSlice(h.data, strings.Split(path, ".")...)
+	if err != nil {
+		if val, _, _ := h.GetFieldNoCopy(path); val == nil {
+			return nil, false, nil
+		}
+	}
+	return slice, ok, err
 }
 
 func (h *HelmValues) GetAndRemoveStringSlice(path string) ([]string, bool, error) {
 	value, ok, err := h.GetStringSlice(path)
-	if ok {
+	if err == nil {
 		h.RemoveField(path)
 	}
 	return value, ok, err
@@ -145,12 +197,18 @@ func (h *HelmValues) GetSlice(path string) ([]interface{}, bool, error) {
 	if h == nil || h.data == nil {
 		return nil, false, nil
 	}
-	return unstructured.NestedSlice(h.data, strings.Split(path, ".")...)
+	slice, ok, err := unstructured.NestedSlice(h.data, strings.Split(path, ".")...)
+	if err != nil {
+		if val, _, _ := h.GetFieldNoCopy(path); val == nil {
+			return nil, false, nil
+		}
+	}
+	return slice, ok, err
 }
 
 func (h *HelmValues) GetAndRemoveSlice(path string) ([]interface{}, bool, error) {
 	value, ok, err := h.GetSlice(path)
-	if ok {
+	if err == nil {
 		h.RemoveField(path)
 	}
 	return value, ok, err

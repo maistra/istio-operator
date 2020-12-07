@@ -1,0 +1,24 @@
+= Custom Resources
+
+:toc: right
+
+== maistra.io
+
+=== v2
+
+link:maistra.io_ServiceMeshControlPlane_v2.adoc[ServiceMeshControlPlane]:: ServiceMeshControlPlane is the Schema for the controlplanes API
+
+=== v1
+
+link:maistra.io_ServiceMeshControlPlane_v1.adoc[ServiceMeshControlPlane]:: ServiceMeshControlPlane represents a deployment of the service mesh control plane. The control plane components are deployed in the namespace in which the ServiceMeshControlPlane resides. The configuration options for the components that comprise the control plane are specified in this object.
+
+link:maistra.io_ServiceMeshMember_v1.adoc[ServiceMeshMember]:: A ServiceMeshMember object marks the namespace in which it lives as a member of the Service Mesh Control Plane referenced in the object. The ServiceMeshMember object should be created in each application namespace that must be part of the service mesh and must be named "default". 
+ When the ServiceMeshMember object is created, it causes the namespace to be added to the ServiceMeshMemberRoll within the namespace of the ServiceMeshControlPlane object the ServiceMeshMember references. 
+ To reference a ServiceMeshControlPlane, the user creating the ServiceMeshMember object must have the "use" permission on the referenced ServiceMeshControlPlane object. This permission is given via the mesh-users RoleBinding (and mesh-user Role) in the namespace of the referenced ServiceMeshControlPlane object.
+
+link:maistra.io_ServiceMeshMemberRoll_v1.adoc[ServiceMeshMemberRoll]:: The ServiceMeshMemberRoll object configures which namespaces belong to a service mesh. Only namespaces listed in the ServiceMeshMemberRoll will be affected by the control plane. Any number of namespaces can be added, but a namespace may not exist in more than one service mesh. The ServiceMeshMemberRoll object must be created in the same namespace as the ServiceMeshControlPlane object and must be named "default".
+
+=== v1alpha1
+
+link:maistra.io_ServiceMeshExtension_v1alpha1.adoc[ServiceMeshExtension]:: ServiceMeshExtension is the Schema for the servicemeshextensions API
+

@@ -51,6 +51,7 @@ var (
 		gvk("config.istio.io", "v1alpha2", "adapter"):                {supportsDeleteCollection: true},
 		gvk("config.istio.io", "v1alpha2", "attributemanifest"):      {supportsDeleteCollection: true},
 		gvk("config.istio.io", "v1alpha2", "handler"):                {supportsDeleteCollection: true},
+		gvk("config.istio.io", "v1alpha2", "instance"):               {supportsDeleteCollection: true},
 		gvk("config.istio.io", "v1alpha2", "kubernetes"):             {supportsDeleteCollection: true},
 		gvk("config.istio.io", "v1alpha2", "logentry"):               {supportsDeleteCollection: true},
 		gvk("config.istio.io", "v1alpha2", "metric"):                 {supportsDeleteCollection: true},

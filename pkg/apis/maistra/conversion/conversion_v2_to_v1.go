@@ -103,14 +103,6 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 	// Make a copy so we can modify fields as needed
 	in = in.DeepCopy()
 
-	namespace := ""
-	if namespaceScope, ok := s.(*namespaceScope); ok {
-		namespace = namespaceScope.namespace
-	}
-	if namespace == "" {
-		namespace = "istio-system" // a sensible default
-	}
-
 	// Initialize output
 	// we start with techPreview values, which may be overwritten by "real" configuration
 	// this allows us to promote techpreview features into main configuration without
@@ -118,8 +110,25 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 	var values map[string]interface{}
 	if in.TechPreview == nil {
 		values = make(map[string]interface{})
+	} else if errors, ok, _ := in.TechPreview.GetMap("errored"); ok && len(errors) > 0 {
+		// there were errors when converting from original v1, so we just copy them back
+		if istio, ok, _ := in.TechPreview.GetMap("errored.istio"); ok && len(istio) > 0 {
+			out.Istio = v1.NewHelmValues(istio)
+		}
+		if threeScale, ok, _ := in.TechPreview.GetMap("errored.3scale"); ok && len(threeScale) > 0 {
+			out.ThreeScale = v1.NewHelmValues(threeScale)
+		}
+		return nil
 	} else {
 		values = in.TechPreview.GetContent()
+	}
+
+	namespace := ""
+	if namespaceScope, ok := s.(*namespaceScope); ok {
+		namespace = namespaceScope.namespace
+	}
+	if namespace == "" {
+		namespace = "istio-system" // a sensible default
 	}
 
 	// Cluster settings

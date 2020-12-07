@@ -1,0 +1,30 @@
+
+
+= ReadinessStatus
+
+:toc: right
+
+Used by link:maistra.io_ServiceMeshControlPlane_v2.adoc[ServiceMeshControlPlane(maistra.io/v2)]
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+ReadinessStatus contains readiness information for each deployed component.
+
+.Table ReadinessStatus Fields
+|===
+| Name | Description | Type
+
+| components
+| The readiness status of components
+| <<ReadinessMap>>
+
+|===
+
+
+[#ReadinessMap]
+== ReadinessMap
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+Type: map[string][]string
+

@@ -6,10 +6,13 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/yaml"
 
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
+
+var logger = logf.Log.WithName("smcp-converter")
 
 func setMetadataLabels(labels map[string]interface{}, out *v2.MetadataConfig) error {
 	if len(labels) > 0 {

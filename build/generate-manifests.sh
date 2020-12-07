@@ -37,6 +37,12 @@ BUNDLE_DIR=${MANIFESTS_DIR}/${MAISTRA_VERSION}
 OPERATOR_NAME=${BUILD_TYPE}operator
 MY_LOCATION="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+if [[ "${MAISTRA_VERSION}" =~ ^([0-9]+\.[0-9]+\.[0-g]+)\.([0-9]+) ]] ; then
+  MAISTRA_SEMANTIC_VERSION=${BASH_REMATCH[1]}-${BASH_REMATCH[2]}
+else
+  MAISTRA_SEMANTIC_VERSION=${MAISTRA_VERSION}-0
+fi
+
 mkdir -p "$BUNDLE_DIR"
 
 function checkDependencies() {
@@ -98,6 +104,7 @@ function generateCSV() {
 
   sed -i -e 's/__NAME__/'${OPERATOR_NAME}'/g' ${csv_path}
   sed -i -e 's/__VERSION__/'${MAISTRA_VERSION}'/g' ${csv_path}
+  sed -i -e 's/__SEMANTIC_VERSION__/'${MAISTRA_SEMANTIC_VERSION}'/g' ${csv_path}
   sed -i -e 's/__DISPLAY_NAME__/'"$DISPLAY_NAME"'/' ${csv_path}
   sed -i -e 's/__CSV_DESCRIPTION__/'"$CSV_DESCRIPTION"'/' ${csv_path}
   sed -i -e 's/__APP_DESCRIPTION__/'"$APP_DESCRIPTION"'/' ${csv_path}

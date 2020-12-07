@@ -44,55 +44,57 @@ func populateJaegerAddonValues(jaeger *v2.JaegerAddonConfig, values map[string]i
 			if err := setHelmStringValue(jaegerValues, "template", "all-in-one"); err != nil {
 				return err
 			}
-			if jaeger.Install.Storage.Memory != nil {
-				if jaeger.Install.Storage.Memory.MaxTraces != nil {
-					if err := setHelmIntValue(jaegerValues, "memory.max_traces", int64(*jaeger.Install.Storage.Memory.MaxTraces)); err != nil {
-						return err
-					}
-				}
-			}
 		case v2.JaegerStorageTypeElasticsearch:
 			if err := setHelmStringValue(jaegerValues, "template", "production-elasticsearch"); err != nil {
 				return err
 			}
-			if jaeger.Install.Storage.Elasticsearch != nil {
-				elasticSearchValues := make(map[string]interface{})
-				if jaeger.Install.Storage.Elasticsearch.NodeCount != nil {
-					if err := setHelmIntValue(elasticSearchValues, "nodeCount", int64(*jaeger.Install.Storage.Elasticsearch.NodeCount)); err != nil {
-						return err
-					}
-				}
-				if len(jaeger.Install.Storage.Elasticsearch.Storage.GetContent()) > 0 {
-					if storageValues, err := toValues(jaeger.Install.Storage.Elasticsearch.Storage.GetContent()); err == nil {
-						if err := setHelmValue(elasticSearchValues, "storage", storageValues); err != nil {
-							return err
-						}
-					} else {
-						return err
-					}
-				}
-				if jaeger.Install.Storage.Elasticsearch.RedundancyPolicy != "" {
-					if err := setHelmValue(elasticSearchValues, "redundancyPolicy", jaeger.Install.Storage.Elasticsearch.RedundancyPolicy); err != nil {
-						return err
-					}
-				}
-				if len(jaeger.Install.Storage.Elasticsearch.IndexCleaner.GetContent()) > 0 {
-					if cleanerValues, err := toValues(jaeger.Install.Storage.Elasticsearch.IndexCleaner.GetContent()); err == nil {
-						if err := setHelmValue(jaegerValues, "esIndexCleaner", cleanerValues); err != nil {
-							return err
-						}
-					} else {
-						return err
-					}
-				}
-				if len(elasticSearchValues) > 0 {
-					if err := setHelmValue(jaegerValues, "elasticsearch", elasticSearchValues); err != nil {
-						return err
-					}
-				}
-			}
 		case "":
 			// don't configure anything
+		}
+		// Memory settings - for round tripping
+		if jaeger.Install.Storage.Memory != nil {
+			if jaeger.Install.Storage.Memory.MaxTraces != nil {
+				if err := setHelmIntValue(jaegerValues, "memory.max_traces", int64(*jaeger.Install.Storage.Memory.MaxTraces)); err != nil {
+					return err
+				}
+			}
+		}
+		// Elasticsearch settings -for round tripping
+		if jaeger.Install.Storage.Elasticsearch != nil {
+			elasticSearchValues := make(map[string]interface{})
+			if jaeger.Install.Storage.Elasticsearch.NodeCount != nil {
+				if err := setHelmIntValue(elasticSearchValues, "nodeCount", int64(*jaeger.Install.Storage.Elasticsearch.NodeCount)); err != nil {
+					return err
+				}
+			}
+			if len(jaeger.Install.Storage.Elasticsearch.Storage.GetContent()) > 0 {
+				if storageValues, err := toValues(jaeger.Install.Storage.Elasticsearch.Storage.GetContent()); err == nil {
+					if err := setHelmValue(elasticSearchValues, "storage", storageValues); err != nil {
+						return err
+					}
+				} else {
+					return err
+				}
+			}
+			if jaeger.Install.Storage.Elasticsearch.RedundancyPolicy != "" {
+				if err := setHelmValue(elasticSearchValues, "redundancyPolicy", jaeger.Install.Storage.Elasticsearch.RedundancyPolicy); err != nil {
+					return err
+				}
+			}
+			if len(jaeger.Install.Storage.Elasticsearch.IndexCleaner.GetContent()) > 0 {
+				if cleanerValues, err := toValues(jaeger.Install.Storage.Elasticsearch.IndexCleaner.GetContent()); err == nil {
+					if err := setHelmValue(jaegerValues, "esIndexCleaner", cleanerValues); err != nil {
+						return err
+					}
+				} else {
+					return err
+				}
+			}
+			if len(elasticSearchValues) > 0 {
+				if err := setHelmValue(jaegerValues, "elasticsearch", elasticSearchValues); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -173,10 +175,10 @@ func populateJaegerAddonConfig(in *v1.HelmValues, out *v2.JaegerAddonConfig) (bo
 	} else if err != nil {
 		return false, err
 	}
+	elasticsearch := &v2.JaegerElasticsearchStorageConfig{}
+	setElasticsearch := false
 	if rawElasticsearchValues, ok, err := jaegerValues.GetMap("elasticsearch"); ok && len(rawElasticsearchValues) > 0 {
 		elasticsearchValues := v1.NewHelmValues(rawElasticsearchValues)
-		elasticsearch := &v2.JaegerElasticsearchStorageConfig{}
-		setElasticsearch := false
 		if rawNodeCount, ok, err := elasticsearchValues.GetAndRemoveInt64("nodeCount"); ok {
 			nodeCount := int32(rawNodeCount)
 			elasticsearch.NodeCount = &nodeCount
@@ -202,22 +204,6 @@ func populateJaegerAddonConfig(in *v1.HelmValues, out *v2.JaegerAddonConfig) (bo
 		} else if err != nil {
 			return false, err
 		}
-		if rawESIndexCleaner, ok, err := jaegerValues.GetMap("esIndexCleaner"); ok && len(rawESIndexCleaner) > 0 {
-			esIndexCleaner := v1.NewHelmValues(nil)
-			if err := fromValues(rawESIndexCleaner, esIndexCleaner); err == nil {
-				elasticsearch.IndexCleaner = esIndexCleaner
-				setElasticsearch = true
-			} else {
-				return false, err
-			}
-			jaegerValues.RemoveField("esIndexCleaner")
-		} else if err != nil {
-			return false, err
-		}
-		if setElasticsearch {
-			storage.Elasticsearch = elasticsearch
-			setStorage = true
-		}
 		if len(elasticsearchValues.GetContent()) == 0 {
 			jaegerValues.RemoveField("elasticsearch")
 		} else if err := jaegerValues.SetField("elasticsearch", elasticsearchValues.GetContent()); err != nil {
@@ -225,6 +211,22 @@ func populateJaegerAddonConfig(in *v1.HelmValues, out *v2.JaegerAddonConfig) (bo
 		}
 	} else if err != nil {
 		return false, err
+	}
+	if rawESIndexCleaner, ok, err := jaegerValues.GetMap("esIndexCleaner"); ok && len(rawESIndexCleaner) > 0 {
+		esIndexCleaner := v1.NewHelmValues(nil)
+		if err := fromValues(rawESIndexCleaner, esIndexCleaner); err == nil {
+			elasticsearch.IndexCleaner = esIndexCleaner
+			setElasticsearch = true
+		} else {
+			return false, err
+		}
+		jaegerValues.RemoveField("esIndexCleaner")
+	} else if err != nil {
+		return false, err
+	}
+	if setElasticsearch {
+		storage.Elasticsearch = elasticsearch
+		setStorage = true
 	}
 	if setStorage {
 		install.Storage = storage

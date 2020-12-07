@@ -6,7 +6,7 @@ metadata:
   name: istio-multicluster-ingressgateway
   namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
 {{ $gateway.labels | toYaml | indent 4 }}
     release: {{ .Release.Name }}
 spec:
@@ -14,7 +14,7 @@ spec:
     istio: ingressgateway
   servers:
   - hosts:
-    - "*.global"
+    - "*.{{ .Values.global.multiCluster.globalDomainSuffix | trim }}"
     port:
       name: tls
       number: 15443
@@ -22,13 +22,14 @@ spec:
     tls:
       mode: AUTO_PASSTHROUGH
 ---
+{{- if .Values.global.multiCluster.includeEnvoyFilter }}
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
   name: istio-multicluster-ingressgateway
   namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
 {{ $gateway.labels | toYaml | indent 4 }}
     release: {{ .Release.Name }}
 spec:
@@ -49,21 +50,22 @@ spec:
       value:
         name: "envoy.filters.network.tcp_cluster_rewrite"
         config:
-          cluster_pattern: "\\.global$"
+          cluster_pattern: "\\.{{ .Values.global.multiCluster.globalDomainSuffix | trim }}$"
           cluster_replacement: ".svc.{{ .Values.global.proxy.clusterDomain }}"
 ---
-## To ensure all traffic to *.global is using mTLS
+{{- end }}
+## To ensure all traffic to globalDomainSuffix is using mTLS
 apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
 metadata:
   name: istio-multicluster-ingressgateway
   namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
 {{ $gateway.labels | toYaml | indent 4 }}
     release: {{ .Release.Name }}
 spec:
-  host: "*.global"
+  host: "*.{{ .Values.global.multiCluster.globalDomainSuffix | trim }}"
   {{- if .Values.global.defaultConfigVisibilitySettings }}
   exportTo:
   - '*'

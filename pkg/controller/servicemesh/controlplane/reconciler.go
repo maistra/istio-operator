@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
 
+	"github.com/maistra/istio-operator/pkg/apis/maistra/conversion"
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -118,6 +119,19 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 
 		if r.Status.Annotations != nil {
 			r.Status.Annotations[statusAnnotationAlwaysReadyComponents] = ""
+		}
+
+		conversionError, exists, err2 := r.Instance.Spec.TechPreview.GetString(conversion.TechPreviewErroredMessage)
+		if err2 != nil {
+			log.Error(err2, "could not read conversion error message")
+			err = err2
+			return
+		}
+		if exists {
+			reconciliationReason = status.ConditionReasonValidationError
+			reconciliationMessage = "Reconciliation skipped due to presence of a conversion error"
+			err = fmt.Errorf("conversion error: %s", conversionError)
+			return
 		}
 
 		// Render the templates

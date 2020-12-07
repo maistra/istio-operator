@@ -6,7 +6,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     app: istiod
     istio.io/rev: default
     release: istio
@@ -25,7 +25,7 @@ metadata:
   name: istio
   namespace: istio-system
   labels:
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     istio.io/rev: default
     release: istio
 data:
@@ -73,7 +73,7 @@ data:
       enabled: true
     outboundTrafficPolicy:
       mode: ALLOW_ANY
-    protocolDetectionTimeout: 100ms
+    protocolDetectionTimeout: 5000ms
     reportBatchMaxEntries: 100
     reportBatchMaxTime: 1s
     sdsUdsPath: unix:/etc/istio/proxy/SDS
@@ -87,7 +87,7 @@ metadata:
   name: istio-sidecar-injector
   namespace: istio-system
   labels:
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     istio.io/rev: default
     release: istio
 data:
@@ -150,7 +150,9 @@ data:
         },
         "multiCluster": {
           "clusterName": "",
-          "enabled": false
+          "enabled": false,
+          "globalDomainSuffix": "global",
+          "includeEnvoyFilter": true
         },
         "network": "",
         "omitSidecarInjectorConfigMap": false,
@@ -221,7 +223,7 @@ data:
           "includeIPRanges": "*",
           "logLevel": "warning",
           "privileged": false,
-          "protocolDetectionTimeout": "100ms",
+          "protocolDetectionTimeout": "5000ms",
           "readinessFailureThreshold": 30,
           "readinessInitialDelaySeconds": 1,
           "readinessPeriodSeconds": 2,
@@ -530,13 +532,7 @@ data:
             {{- end}}
             ]
         - name: ISTIO_META_APP_CONTAINERS
-          value: |-
-            [
-              {{- range $index, $container := .Spec.Containers }}
-                {{- if ne $index 0}},{{- end}}
-                {{ $container.Name }}
-              {{- end}}
-            ]
+          value: "{{- range $index, $container := .Spec.Containers }}{{- if ne $index 0}},{{- end}}{{ $container.Name }}{{- end}}"
         - name: ISTIO_META_CLUSTER_ID
           value: "{{ valueOrDefault .Values.global.multiCluster.clusterName `Kubernetes` }}"
         - name: ISTIO_META_INTERCEPTION_MODE
@@ -772,7 +768,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     istio.io/rev: default
     app: istiod
     istio: pilot
@@ -805,7 +801,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     app: istiod
     istio.io/rev: default
     istio: pilot
@@ -953,7 +949,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     app: istiod
     release: istio
     istio.io/rev: default
@@ -978,7 +974,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1011,7 +1007,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1109,7 +1105,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1146,7 +1142,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1203,7 +1199,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1313,7 +1309,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1416,7 +1412,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1454,7 +1450,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1514,7 +1510,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1624,7 +1620,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1728,7 +1724,7 @@ metadata:
 
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: 2.0.0
+    maistra-version: "2.0.0.2"
     istio.io/rev: default
     app: sidecar-injector
     release: istio
