@@ -105,8 +105,8 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 		allComponents.Insert(comp.Resource)
 	}
 
-	r.Status.Readiness.Components = map[string][]string {
-		"ready": readyComponents.List(),
+	r.Status.Readiness.Components = map[string][]string{
+		"ready":   readyComponents.List(),
 		"unready": unreadyComponents.List(),
 		"pending": allComponents.Difference(readyComponents).Difference(unreadyComponents).List(),
 	}
@@ -152,6 +152,9 @@ func (r *controlPlaneInstanceReconciler) calculateComponentReadinessMap(ctx cont
 			list: &appsv1.DeploymentList{},
 			ready: func(obj runtime.Object) bool {
 				deployment := obj.(*appsv1.Deployment)
+				if deployment.Status.ReadyReplicas < deployment.Status.Replicas || deployment.Status.ObservedGeneration < deployment.Generation {
+					return false
+				}
 				for _, condition := range deployment.Status.Conditions {
 					if condition.Type == appsv1.DeploymentAvailable {
 						return condition.Status == corev1.ConditionTrue
