@@ -62,6 +62,21 @@ func v1ToV2Hacks(in *v1.ControlPlaneSpec, values *v1.HelmValues) error {
 		return err
 	}
 
+	if in.Version == versions.V1_1.String() {
+		// external jaeger in v1.1
+		if zipkinAddress, ok, err := values.GetString("global.tracer.zipkin.address"); ok && zipkinAddress != "" {
+			jaegerCollectorService := strings.SplitN(zipkinAddress, ".", 2)[0]
+			if strings.HasSuffix(jaegerCollectorService, "-collector") {
+				jaegerName := jaegerCollectorService[:len(jaegerCollectorService)-10]
+				if err := setHelmStringValue(values.GetContent(), "tracing.jaeger.resourceName", jaegerName); err != nil {
+					return err
+				}
+			} // else don't set jaeger name, will default to jaeger
+		} else if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

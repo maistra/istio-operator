@@ -40,7 +40,7 @@ type IntegrationTestValidation struct {
 
 type IntegrationTestCase struct {
 	name      string
-	smcp      *v2.ServiceMeshControlPlane
+	smcp      runtime.Object
 	resources []runtime.Object
 	create    IntegrationTestValidation
 	delete    IntegrationTestValidation
@@ -110,11 +110,16 @@ func RunSimpleInstallTest(t *testing.T, testCases []IntegrationTestCase) {
 }
 
 func New20SMCPResource(name, namespace string, spec *v2.ControlPlaneSpec) *v2.ServiceMeshControlPlane {
+	smcp := NewV2SMCPResource(name, namespace, spec)
+	smcp.Spec.Version = versions.V2_0.String()
+	return smcp
+}
+
+func NewV2SMCPResource(name, namespace string, spec *v2.ControlPlaneSpec) *v2.ServiceMeshControlPlane {
 	smcp := &maistrav2.ServiceMeshControlPlane{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
 	}
 	spec.DeepCopyInto(&smcp.Spec)
-	smcp.Spec.Version = versions.V2_0.String()
 	smcp.Spec.Profiles = []string{"maistra"}
 	return smcp
 }

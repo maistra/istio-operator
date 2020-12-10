@@ -8,6 +8,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 func v2ToV1Hacks(values map[string]interface{}, out *v1.ControlPlaneSpec) error {
@@ -73,6 +74,17 @@ func v2ToV1Hacks(values map[string]interface{}, out *v1.ControlPlaneSpec) error 
 		delete(jaegerValues, "query")
 	} else if err != nil {
 		return err
+	}
+
+	if out.Version == versions.V1_1.String() {
+		// external jaeger for v1.1
+		if zipkinAddress, ok, err := hv.GetString("global.tracer.zipkin.address"); ok && zipkinAddress != "" {
+			if err := setHelmBoolValue(values, "tracing.enabled", false); err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		}
 	}
 
 	return nil
