@@ -29,32 +29,29 @@ const (
 	galleySecretName                 = "istio.istio-galley-service-account"
 	galleyWebhookNamePrefix          = "istio-galley-"
 	istiodSecretName                 = "istio-ca-secret"
+	istiodCustomCertSecretName       = "cacerts"
 	istiodWebhookNamePrefix          = "istiod-"
 	sidecarInjectorSecretName        = "istio.istio-sidecar-injector-service-account"
 	sidecarInjectorWebhookNamePrefix = "istio-sidecar-injector-"
 	ServiceMeshControlPlaneCRDName   = "servicemeshcontrolplanes.maistra.io"
 )
 
-// autoRegistrationMap maps webhook name prefixes to a secret name. This
-// is used to auto register the webhook with the WebhookCABundleManager.
-var autoRegistrationMap = map[string]registrationMapEntry{
-	galleyWebhookNamePrefix: {
-		secretName: galleySecretName,
-		caFileName: common.IstioRootCertKey,
+// autoRegistrationMap maps webhook name prefixes to a list of secret names. This
+// is used to auto register the webhook with the WebhookCABundleManager. Order of
+// secretNames determines priority.
+var autoRegistrationMap = map[string]CABundleSource{
+	galleyWebhookNamePrefix: &SecretCABundleSource{
+		SecretNames: []string{galleySecretName},
+		Key:         common.IstioRootCertKey,
 	},
-	sidecarInjectorWebhookNamePrefix: {
-		secretName: sidecarInjectorSecretName,
-		caFileName: common.IstioRootCertKey,
+	sidecarInjectorWebhookNamePrefix: &SecretCABundleSource{
+		SecretNames: []string{sidecarInjectorSecretName},
+		Key:         common.IstioRootCertKey,
 	},
-	istiodWebhookNamePrefix: {
-		secretName: istiodSecretName,
-		caFileName: common.IstiodCertKey,
+	istiodWebhookNamePrefix: &SecretCABundleSource{
+		SecretNames: []string{istiodCustomCertSecretName, istiodSecretName},
+		Key:         common.IstiodCertKey,
 	},
-}
-
-type registrationMapEntry struct {
-	secretName string
-	caFileName string
 }
 
 // Add creates a new Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -83,10 +80,12 @@ func add(mgr manager.Manager, r *reconciler) error {
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
 			return r.webhookCABundleManager.ReconcileRequestsFromSource(
-				CABundleSource{
-					Kind:           CABundleSourceKindSecret,
-					NamespacedName: common.ToNamespacedName(obj.Meta)})
-		})}, sourceWatchPredicates(r, CABundleSourceKindSecret))
+				ObjectRef{
+					Kind:      "Secret",
+					Namespace: obj.Meta.GetNamespace(),
+					Name:      obj.Meta.GetName(),
+				})
+		})}, sourceWatchPredicates(r))
 	if err != nil {
 		return err
 	}
@@ -95,10 +94,12 @@ func add(mgr manager.Manager, r *reconciler) error {
 	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
 			return r.webhookCABundleManager.ReconcileRequestsFromSource(
-				CABundleSource{
-					Kind:           CABundleSourceKindConfigMap,
-					NamespacedName: common.ToNamespacedName(obj.Meta)})
-		})}, sourceWatchPredicates(r, CABundleSourceKindConfigMap))
+				ObjectRef{
+					Kind:      "ConfigMap",
+					Namespace: obj.Meta.GetNamespace(),
+					Name:      obj.Meta.GetName(),
+				})
+		})}, sourceWatchPredicates(r))
 	if err != nil {
 		return err
 	}
@@ -133,19 +134,23 @@ func add(mgr manager.Manager, r *reconciler) error {
 	return nil
 }
 
-func sourceWatchPredicates(r *reconciler, sourceKind CABundleSourceKind) predicate.Funcs {
+func sourceWatchPredicates(r *reconciler) predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(event event.CreateEvent) bool {
 			return r.webhookCABundleManager.IsManagingWebhooksForSource(
-				CABundleSource{
-					Kind:           sourceKind,
-					NamespacedName: common.ToNamespacedName(event.Meta)})
+				ObjectRef{
+					Kind:      event.Object.GetObjectKind().GroupVersionKind().Kind,
+					Namespace: event.Meta.GetNamespace(),
+					Name:      event.Meta.GetName(),
+				})
 		},
 		UpdateFunc: func(event event.UpdateEvent) bool {
 			return r.webhookCABundleManager.IsManagingWebhooksForSource(
-				CABundleSource{
-					Kind:           sourceKind,
-					NamespacedName: common.ToNamespacedName(event.MetaNew)})
+				ObjectRef{
+					Kind:      event.ObjectNew.GetObjectKind().GroupVersionKind().Kind,
+					Namespace: event.MetaNew.GetNamespace(),
+					Name:      event.MetaNew.GetName(),
+				})
 		},
 		// deletion and generic events don't interest us
 		DeleteFunc: func(event event.DeleteEvent) bool {
@@ -169,16 +174,9 @@ func webhookWatchPredicates(webhookCABundleManager WebhookCABundleManager) predi
 		CreateFunc: func(event event.CreateEvent) (ok bool) {
 			objName := event.Meta.GetName()
 			if _, isCRD := event.Object.(*apixv1.CustomResourceDefinition); !isCRD {
-				for prefix, registration := range autoRegistrationMap {
+				for prefix, source := range autoRegistrationMap {
 					if strings.HasPrefix(objName, prefix) {
-						if err := webhookCABundleManager.ManageWebhookCABundle(
-							event.Object,
-							CABundleSource{
-								Kind: CABundleSourceKindSecret,
-								NamespacedName: types.NamespacedName{
-									Namespace: "",
-									Name:      registration.secretName,
-								}}, registration.caFileName); err == nil {
+						if err := webhookCABundleManager.ManageWebhookCABundle(event.Object, source); err == nil {
 							return true
 						}
 						// XXX: should we log an error here?
@@ -237,30 +235,18 @@ func (wm *webhookCABundleManager) UpdateCABundle(ctx context.Context, cl client.
 		logger.Info("WebhookConfiguration does not exist yet. No action taken")
 		return nil
 	}
-	caBundleSourceConfig, ok := wm.caBundleSourceForWebhook(webhookName)
+	caBundleSource, ok := wm.caBundleSourceForWebhook(webhookName)
 	if !ok {
 		logger.Error(nil, "webhook is not registered with the caBundle manager")
 		return nil
 	}
 
-	caBundle, err := wm.getCABundleFromSource(ctx, cl, caBundleSourceConfig)
+	caBundle, err := caBundleSource.GetCABundle(ctx, cl)
 	if err != nil {
-		logger.Info("could not get CA bundle", "caBundleSourceConfig", caBundleSourceConfig, "error", err)
+		logger.Info("could not get CA bundle", "caBundleSourceConfig", caBundleSource, "error", err)
 		return nil
 	}
 	return currentConfig.UpdateCABundle(ctx, cl, caBundle)
-}
-
-// GetCABundleFromSource retrieves the CA bundle from a secret or config map
-func (wm *webhookCABundleManager) getCABundleFromSource(ctx context.Context, cl client.Client, config caBundleSourceConfig) ([]byte, error) {
-	switch config.Kind {
-	case CABundleSourceKindSecret:
-		return common.GetCABundleFromSecret(ctx, cl, config.NamespacedName, config.keyName)
-	case CABundleSourceKindConfigMap:
-		return common.GetCABundleFromConfigMap(ctx, cl, config.NamespacedName, config.keyName)
-	default:
-		panic("Invalid source type " + config.Kind)
-	}
 }
 
 // Don't use this function to obtain a logger. Get it by invoking
