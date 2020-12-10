@@ -1,4 +1,4 @@
-package memberroll
+package member
 
 import "context"
 

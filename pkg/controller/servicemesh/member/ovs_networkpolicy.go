@@ -1,4 +1,4 @@
-package memberroll
+package member
 
 import (
 	"context"
@@ -71,7 +71,7 @@ func (s *networkPolicyStrategy) reconcileNamespaceInMesh(ctx context.Context, na
 	allErrors := []error{}
 
 	// add required network policies
-	existingNetworkPolicies := nameSet(namespaceNetworkPolicies)
+	existingNetworkPolicies := common.NameSet(namespaceNetworkPolicies)
 	addedNetworkPolicies := sets.NewString()
 	for _, meshNetworkPolicy := range s.networkPoliciesList.Items {
 		networkPolicyName := meshNetworkPolicy.GetName()

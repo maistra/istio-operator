@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -74,6 +75,9 @@ func NewFakeClientWithScheme(clientScheme *runtime.Scheme, initObjs ...runtime.O
 // You can choose to initialize it with a slice of runtime.Object.
 func NewFakeClientWithSchemeAndTracker(clientScheme *runtime.Scheme, tracker testing.ObjectTracker, initObjs ...runtime.Object) client.Client {
 	for _, obj := range initObjs {
+		if obj == nil || reflect.ValueOf(obj).IsNil() {
+			continue
+		}
 		err := tracker.Add(obj)
 		if err != nil {
 			log.Error(err, "failed to add object to fake client", "object", obj)

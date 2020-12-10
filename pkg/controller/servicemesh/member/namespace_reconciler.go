@@ -1,4 +1,4 @@
-package memberroll
+package member
 
 import (
 	"context"
@@ -119,6 +119,9 @@ func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) 
 						r.networkingStrategy, err = newMultitenantStrategy(r.Client, r.meshNamespace)
 					default:
 						return fmt.Errorf("unsupported cluster network plugin: %s", networkPlugin)
+					}
+					if err != nil {
+						return pkgerrors.Wrap(err, "failed to instantiate network policy strategy")
 					}
 				} else {
 					log.Info("cluster network plugin not defined, skipping network configuration")
@@ -244,7 +247,8 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(ctx context.Context, name
 
 	if r.isCNIEnabled {
 		// add NetworkAttachmentDefinition to tell Multus to invoke Istio CNI for pods in this namespace
-		err = r.addNetworkAttachmentDefinition(ctx, namespace)
+		netAttachDefName := r.meshVersion.GetCNINetworkName()
+		err = r.addNetworkAttachmentDefinition(ctx, namespace, netAttachDefName)
 	} else {
 		err = r.removeNetworkAttachmentDefinition(ctx, namespace)
 	}
@@ -285,7 +289,7 @@ func (r *namespaceReconciler) reconcileRoleBindings(ctx context.Context, namespa
 	allErrors := []error{}
 
 	// add required role bindings
-	existingRoleBindings := nameSet(&namespaceRoleBindings)
+	existingRoleBindings := common.NameSet(&namespaceRoleBindings)
 	addedRoleBindings := sets.NewString()
 	for _, meshRoleBinding := range r.roleBindingsList.Items {
 		roleBindingName := meshRoleBinding.GetName()
@@ -330,9 +334,7 @@ func (r *namespaceReconciler) reconcileRoleBindings(ctx context.Context, namespa
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context, namespace string) error {
-	netAttachDefName := r.meshVersion.GetCNINetworkName()
-
+func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context, namespace string, netAttachDefName string) error {
 	nadList, err := common.FetchMeshResources(ctx, r.Client, schema.GroupVersionKind{
 		Group:   "k8s.cni.cncf.io",
 		Version: "v1",

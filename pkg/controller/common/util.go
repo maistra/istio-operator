@@ -6,6 +6,7 @@ import (
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -162,3 +163,22 @@ func GetMeshNamespaces(controlPlaneNamespace string, smmr *v1.ServiceMeshMemberR
 	}
 	return meshNamespaces
 }
+
+func NameSet(list runtime.Object) sets.String {
+	set := sets.NewString()
+	err := meta.EachListItem(list, func(obj runtime.Object) error {
+		o, err := meta.Accessor(obj)
+		if err != nil {
+			return err
+		}
+		set.Insert(o.GetName())
+		return nil
+	})
+	if err != nil {
+		// meta.EachListItem only returns an error if you pass in something that's not a ResourceList, so
+		// it we don't expect it to ever return an error.
+		panic(err)
+	}
+	return set
+}
+

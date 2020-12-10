@@ -74,6 +74,14 @@ ServiceMeshMemberStatus represents the current state of a ServiceMeshMember.
 | Represents the latest available observations of a ServiceMeshMember's current state.
 | []ServiceMeshMemberCondition
 
+| meshGeneration
+| The generation of the ServiceMeshControlPlane object observed by the controller during the most recent reconciliation of this ServiceMeshMember.
+| integer
+
+| meshReconciledVersion
+| The reconciled version of the ServiceMeshControlPlane object observed by the controller during the most recent reconciliation of this ServiceMeshMember.
+| string
+
 | observedGeneration
 | The generation observed by the controller during the most recent reconciliation. The information in the status pertains to this particular generation of the object.
 | integer

@@ -28,7 +28,7 @@ func init() {
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.annotations.configuredMemberCount",description="How many of the total number of member namespaces are configured"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].reason",description="Whether all member namespaces have been configured or why that's not the case"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="The age of the object"
-// +kubebuilder:printcolumn:name="Members",type="string",JSONPath=".spec.members",description="Namespaces that are members of this Control Plane",priority=1
+// +kubebuilder:printcolumn:name="Members",type="string",JSONPath=".status.members",description="Namespaces that are members of this Control Plane",priority=1
 type ServiceMeshMemberRoll struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -80,6 +80,13 @@ type ServiceMeshMemberRollStatus struct {
 	// ServiceMeshMemberRoll.
 	ServiceMeshReconciledVersion string `json:"meshReconciledVersion,omitempty"`
 
+	// Complete list of namespaces that are configured as members of the service
+	// mesh	- this includes namespaces specified in spec.members and those that
+	// contain a ServiceMeshMember object
+	// +optional
+	// +nullable
+	Members []string `json:"members"`
+
 	// List of namespaces that are configured as members of the service mesh.
 	// +optional
 	// +nullable
@@ -91,11 +98,29 @@ type ServiceMeshMemberRollStatus struct {
 	// +nullable
 	PendingMembers []string `json:"pendingMembers"`
 
+	// List of namespaces that are being removed as members of the service
+	// mesh.
+	// +optional
+	// +nullable
+	TerminatingMembers []string `json:"terminatingMembers"`
+
 	// Represents the latest available observations of this ServiceMeshMemberRoll's
 	// current state.
 	// +optional
 	// +nullable
 	Conditions []ServiceMeshMemberRollCondition `json:"conditions"`
+
+	// Represents the latest available observations of each member's
+	// current state.
+	// +optional
+	// +nullable
+	MemberStatuses []ServiceMeshMemberStatusSummary `json:"memberStatuses"`
+}
+
+// ServiceMeshMemberStatusSummary represents a summary status of a ServiceMeshMember.
+type ServiceMeshMemberStatusSummary struct {
+	Namespace  string                       `json:"namespace"`
+	Conditions []ServiceMeshMemberCondition `json:"conditions"`
 }
 
 // ServiceMeshMemberRollConditionType represents the type of the condition.  Condition types are:
