@@ -87,7 +87,7 @@ func RunSimpleInstallTest(t *testing.T, testCases []IntegrationTestCase) {
 						// create jaeger routes and services
 						test.ReactTo("create").On("jaegers").In(controlPlaneNamespace).With(SimulateJaegerInstall(domain, nil)),
 					},
-					Timeout: 10 * time.Second,
+					Timeout: 20 * time.Second,
 				},
 				{
 					Name: "delete-smcp",
