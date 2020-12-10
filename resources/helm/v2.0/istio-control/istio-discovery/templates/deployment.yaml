@@ -150,6 +150,8 @@ spec:
             value: ""
           - name: ISTIOD_ADDR
             value: istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc:15012
+          - name: PILOT_ENABLE_STATUS
+            value: "{{ .Values.global.istiod.enableAnalysis }}"
           - name: PILOT_ENABLE_ANALYSIS
             value: "{{ .Values.global.istiod.enableAnalysis }}"
           - name: CLUSTER_ID

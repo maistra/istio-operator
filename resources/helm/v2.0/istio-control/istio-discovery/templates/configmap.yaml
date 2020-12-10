@@ -150,7 +150,7 @@
     defaultConfig:
       #
       # TCP connection timeout between Envoy & the application, and between Envoys.
-      connectTimeout: 10s
+      #connectTimeout: 10s
       #
       ### ADVANCED SETTINGS #############
       # Where should envoy's configuration be stored in the istio-proxy container
