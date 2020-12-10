@@ -146,7 +146,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 				reconciliationMessage = "Spec is invalid"
 			} else if versions.IsDependencyMissingError(err) {
 				reconciliationReason = status.ConditionReasonDependencyMissingError
-				reconciliationMessage = fmt.Sprintf( "Dependency %q is missing", versions.GetMissingDependency(err))
+				reconciliationMessage = fmt.Sprintf("Dependency %q is missing", versions.GetMissingDependency(err))
 			} else {
 				reconciliationReason = status.ConditionReasonReconcileError
 				reconciliationMessage = "Error rendering helm charts"
@@ -304,6 +304,10 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		}
 
 		if r.waitForComponents.Len() > 0 {
+			// We'll have to wait for the cache before we calculate readiness in case we updated an existing
+			// resource. Otherwise we'd get a stale status that suggests it's ready when it's really not.
+			hacks.ReduceLikelihoodOfRepeatedReconciliation(ctx)
+
 			readyComponents, _, readyErr := r.calculateComponentReadiness(ctx)
 			if readyErr != nil {
 				reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx)
