@@ -199,7 +199,7 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 			}
 		}
 		if len(in.Service.Metadata.Annotations) > 0 {
-			if err := setHelmStringMapValue(gatewayValues, "annotations", in.Service.Metadata.Annotations); err != nil {
+			if err := setHelmStringMapValue(gatewayValues, "serviceAnnotations", in.Service.Metadata.Annotations); err != nil {
 				return nil, err
 			}
 		}
@@ -487,7 +487,7 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 		return err
 	}
 	in.RemoveField("labels")
-	if rawAnnotations, ok, err := in.GetMap("annotations"); ok && len(rawAnnotations) > 0 {
+	if rawAnnotations, ok, err := in.GetMap("serviceAnnotations"); ok && len(rawAnnotations) > 0 {
 		setMetadata = true
 		if err := setMetadataAnnotations(rawAnnotations, metadata); err != nil {
 			return err
@@ -495,7 +495,7 @@ func gatewayValuesToConfig(in *v1.HelmValues, out *v2.GatewayConfig) error {
 	} else if err != nil {
 		return err
 	}
-	in.RemoveField("annotations")
+	in.RemoveField("serviceAnnotations")
 	if setMetadata {
 		out.Service.Metadata = metadata
 	}
