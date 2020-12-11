@@ -15,7 +15,14 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
+const (
+	PRODUCT_IMAGE_2_0   = "2.0.1"
+	COMMUNITY_IMAGE_2_0 = "2.0.0"
+	PRODUCT_IMAGE_1_1   = "1.1.10"
+)
+
 func TestProfiles(t *testing.T) {
+
 	profileTestCases := []struct {
 		name            string
 		v               versions.Version
@@ -87,6 +94,7 @@ func TestProfiles(t *testing.T) {
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.ImageRegistry = "registry.redhat.io/openshift4"
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.Image = "ose-oauth-proxy"
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.ImageTag = "v4.4"
+				smcp.Spec.Runtime.Defaults.Container.ImageTag = PRODUCT_IMAGE_2_0
 			},
 		},
 	}
@@ -275,7 +283,7 @@ var (
 				},
 				Container: &v2.CommonContainerConfig{
 					ImageRegistry: "docker.io/maistra",
-					ImageTag:      "1.1.10",
+					ImageTag:      PRODUCT_IMAGE_1_1,
 					Resources: &corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("10m"),
@@ -582,7 +590,7 @@ var (
 				},
 				Container: &v2.CommonContainerConfig{
 					ImageRegistry: "docker.io/maistra",
-					ImageTag:      "2.0.0",
+					ImageTag:      COMMUNITY_IMAGE_2_0,
 					Resources: &corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("10m"),
