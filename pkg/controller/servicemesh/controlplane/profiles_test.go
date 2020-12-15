@@ -18,7 +18,7 @@ import (
 const (
 	PRODUCT_IMAGE_2_0   = "2.0.1"
 	COMMUNITY_IMAGE_2_0 = "2.0.0"
-	PRODUCT_IMAGE_1_1   = "1.1.10"
+	PRODUCT_IMAGE_1_1   = "1.1.11"
 )
 
 func TestProfiles(t *testing.T) {
