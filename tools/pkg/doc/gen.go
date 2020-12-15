@@ -176,7 +176,7 @@ func (g Generator) Generate(ctx *genall.GenerationContext) error {
 	}
 
 	// Calculate cross references
-	locations, external := g.initializeCrossReferences(kindToSchema)
+	locations, external := g.initializeCrossReferences(gvToKinds, kindToSchema)
 
 	// Write out Kind
 	for _, group := range groups {
@@ -237,17 +237,23 @@ func (g Generator) Generate(ctx *genall.GenerationContext) error {
 	return nil
 }
 
-func (g Generator) initializeCrossReferences(schemasByKind map[schema.GroupVersionKind]*apiext.JSONSchemaProps) (map[string]string, map[schema.GroupVersionKind][]*apiext.JSONSchemaProps) {
+func (g Generator) initializeCrossReferences(gvToKinds map[schema.GroupVersion][]schema.GroupVersionKind, schemasByKind map[schema.GroupVersionKind]*apiext.JSONSchemaProps) (map[string]string, map[schema.GroupVersionKind][]*apiext.JSONSchemaProps) {
 	external := make(map[schema.GroupVersionKind][]*apiext.JSONSchemaProps)
 	locations := make(map[string]string)
 	seen := sets.NewString()
-	for kind, schema := range schemasByKind {
-		kindLocations, kindExternal := g.traverseSchemaProperties(schema, schema, kind, seen, 1, *g.Depth)
-		if kindExternal != nil {
-			external[kind] = kindExternal
-		}
-		for key, val := range kindLocations {
-			locations[key] = val
+	for _, kinds := range gvToKinds {
+		for _, kind := range kinds {
+			schema, exists := schemasByKind[kind]
+			if !exists {
+				continue
+			}
+			kindLocations, kindExternal := g.traverseSchemaProperties(schema, schema, kind, seen, 1, *g.Depth)
+			if kindExternal != nil {
+				external[kind] = kindExternal
+			}
+			for key, val := range kindLocations {
+				locations[key] = val
+			}
 		}
 	}
 	return locations, external
@@ -257,6 +263,7 @@ func (g Generator) traverseSchemaProperties(root, schema *apiext.JSONSchemaProps
 	var props []*apiext.JSONSchemaProps
 	locations := make(map[string]string)
 	kindFile := fileForKind(kind, g.Format)
+	refs := []apiext.JSONSchemaProps{}
 	for _, dep := range schema.Properties {
 		if dep.Ref == nil {
 			continue
@@ -274,14 +281,17 @@ func (g Generator) traverseSchemaProperties(root, schema *apiext.JSONSchemaProps
 			props = append(props, &tmp)
 			locations[ref.ID] = fileForExternalReference(kind, *dep.Ref, g.Format)
 		} else {
-			refLocations, externalProps := g.traverseSchemaProperties(root, &ref, kind, seen, level+1, depth)
-			if externalProps != nil {
-				props = append(props, externalProps...)
-			}
-			for key, val := range refLocations {
-				locations[key] = val
-			}
 			locations[ref.ID] = fmt.Sprintf("%s#%s", kindFile, refName(*dep.Ref))
+			refs = append(refs, ref)
+		}
+	}
+	for _, ref := range refs {
+		refLocations, externalProps := g.traverseSchemaProperties(root, &ref, kind, seen, level+1, depth)
+		if externalProps != nil {
+			props = append(props, externalProps...)
+		}
+		for key, val := range refLocations {
+			locations[key] = val
 		}
 	}
 	return locations, props
