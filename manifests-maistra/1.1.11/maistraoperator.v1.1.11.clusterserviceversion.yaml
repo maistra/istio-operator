@@ -11,8 +11,8 @@ metadata:
     description: |-
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
-    containerImage: maistra/istio-ubi8-operator:1.1.10
-    createdAt: 2020-12-11T10:25:26MST
+    containerImage: maistra/istio-ubi8-operator:1.1.11
+    createdAt: 2020-12-14T23:54:09UTC
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <1.1.11"
     operators.openshift.io/infrastructure-features: '[]'
@@ -203,7 +203,7 @@ spec:
     url: https://github.com/Maistra/istio-operator
   - name: Bugs
     url: https://issues.redhat.com/projects/MAISTRA
-  replaces: maistraoperator.v1.1.5
+  replaces: maistraoperator.v1.1.10
   installModes:
   - type: OwnNamespace
     supported: false
@@ -239,27 +239,27 @@ spec:
   - name: v1_1.3scale-istio-adapter
     image: quay.io/3scale/3scale-istio-adapter:v1.0.0
   - name: v1_1.citadel
-    image: docker.io/maistra/citadel-ubi8:1.1.10
+    image: docker.io/maistra/citadel-ubi8:1.1.11
   - name: v1_1.cni
-    image: docker.io/maistra/istio-cni-ubi8:1.1.10
+    image: docker.io/maistra/istio-cni-ubi8:1.1.11
   - name: v1_1.galley
-    image: docker.io/maistra/galley-ubi8:1.1.10
+    image: docker.io/maistra/galley-ubi8:1.1.11
   - name: v1_1.grafana
-    image: docker.io/maistra/grafana-ubi8:1.1.10
+    image: docker.io/maistra/grafana-ubi8:1.1.11
   - name: v1_1.ior
-    image: docker.io/maistra/istio-ior-ubi8:1.1.10
+    image: docker.io/maistra/istio-ior-ubi8:1.1.11
   - name: v1_1.mixer
-    image: docker.io/maistra/mixer-ubi8:1.1.10
+    image: docker.io/maistra/mixer-ubi8:1.1.11
   - name: v1_1.pilot
-    image: docker.io/maistra/pilot-ubi8:1.1.10
+    image: docker.io/maistra/pilot-ubi8:1.1.11
   - name: v1_1.prometheus
-    image: docker.io/maistra/prometheus-ubi8:1.1.10
+    image: docker.io/maistra/prometheus-ubi8:1.1.11
   - name: v1_1.proxy-init
-    image: docker.io/maistra/proxy-init-centos7:1.1.10
+    image: docker.io/maistra/proxy-init-centos7:1.1.11
   - name: v1_1.proxyv2
-    image: docker.io/maistra/proxyv2-ubi8:1.1.10
+    image: docker.io/maistra/proxyv2-ubi8:1.1.11
   - name: v1_1.sidecar-injector
-    image: docker.io/maistra/sidecar-injector-ubi8:1.1.10
+    image: docker.io/maistra/sidecar-injector-ubi8:1.1.11
   install:
     strategy: deployment
     spec:
@@ -506,22 +506,22 @@ spec:
                 olm.relatedImage.v1_0.proxyv2: docker.io/maistra/proxyv2-ubi8:1.0.8
                 olm.relatedImage.v1_0.sidecar-injector: docker.io/maistra/sidecar-injector-ubi8:1.0.8
                 olm.relatedImage.v1_1.3scale-istio-adapter: quay.io/3scale/3scale-istio-adapter:v1.0.0
-                olm.relatedImage.v1_1.citadel: docker.io/maistra/citadel-ubi8:1.1.10
-                olm.relatedImage.v1_1.cni: docker.io/maistra/istio-cni-ubi8:1.1.10
-                olm.relatedImage.v1_1.galley: docker.io/maistra/galley-ubi8:1.1.10
-                olm.relatedImage.v1_1.grafana: docker.io/maistra/grafana-ubi8:1.1.10
-                olm.relatedImage.v1_1.ior: docker.io/maistra/istio-ior-ubi8:1.1.10
-                olm.relatedImage.v1_1.mixer: docker.io/maistra/mixer-ubi8:1.1.10
-                olm.relatedImage.v1_1.pilot: docker.io/maistra/pilot-ubi8:1.1.10
-                olm.relatedImage.v1_1.prometheus: docker.io/maistra/prometheus-ubi8:1.1.10
-                olm.relatedImage.v1_1.proxy-init: docker.io/maistra/proxy-init-centos7:1.1.10
-                olm.relatedImage.v1_1.proxyv2: docker.io/maistra/proxyv2-ubi8:1.1.10
-                olm.relatedImage.v1_1.sidecar-injector: docker.io/maistra/sidecar-injector-ubi8:1.1.10
+                olm.relatedImage.v1_1.citadel: docker.io/maistra/citadel-ubi8:1.1.11
+                olm.relatedImage.v1_1.cni: docker.io/maistra/istio-cni-ubi8:1.1.11
+                olm.relatedImage.v1_1.galley: docker.io/maistra/galley-ubi8:1.1.11
+                olm.relatedImage.v1_1.grafana: docker.io/maistra/grafana-ubi8:1.1.11
+                olm.relatedImage.v1_1.ior: docker.io/maistra/istio-ior-ubi8:1.1.11
+                olm.relatedImage.v1_1.mixer: docker.io/maistra/mixer-ubi8:1.1.11
+                olm.relatedImage.v1_1.pilot: docker.io/maistra/pilot-ubi8:1.1.11
+                olm.relatedImage.v1_1.prometheus: docker.io/maistra/prometheus-ubi8:1.1.11
+                olm.relatedImage.v1_1.proxy-init: docker.io/maistra/proxy-init-centos7:1.1.11
+                olm.relatedImage.v1_1.proxyv2: docker.io/maistra/proxyv2-ubi8:1.1.11
+                olm.relatedImage.v1_1.sidecar-injector: docker.io/maistra/sidecar-injector-ubi8:1.1.11
             spec:
               serviceAccountName: istio-operator
               containers:
               - name: istio-operator
-                image: maistra/istio-ubi8-operator:1.1.10
+                image: maistra/istio-ubi8-operator:1.1.11
                 ports:
                 - containerPort: 11999
                   name: validation
