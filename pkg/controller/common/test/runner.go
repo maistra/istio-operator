@@ -44,8 +44,17 @@ func RunControllerTestCase(t *testing.T, testCase ControllerTestCase) {
 	func() {
 		t.Helper()
 		defer stop()
+		if len(testCase.Events) == 0 {
+			t.Errorf("no events specified for test")
+			return
+		}
+		failedTest := false
 		for _, event := range testCase.Events {
-			t.Run(event.Name, func(t *testing.T) {
+			failedTest = !t.Run(event.Name, func(t *testing.T) {
+				if failedTest {
+					t.Skipf("skipping event because of previous test failure")
+					return
+				}
 				extraneousActionFilter := &extraneousActionFailure{verifier: event.Verifier, t: t}
 				defer func() {
 					if event.AssertExtraneousActions {
@@ -76,19 +85,20 @@ func RunControllerTestCase(t *testing.T, testCase ControllerTestCase) {
 					tracker.PrependReaction(extraneousActionFilter)
 				}
 				if err := event.Execute(mgr, tracker); err != nil {
-					t.Fatal(err)
-				}
-				// wait for the first event to show up on the queue
-				mgr.WaitForFirstEvent()
-				if event.Verifier == nil || !event.Verifier.Wait(event.Timeout) {
-					// no need to process assertions if there was a problem with the event processing
-					// just need to wait for Reconcile() to complete before processing assertions
-					mgr.WaitForReconcileCompletion()
-					for _, assertion := range event.Assertions {
-						assertion.Assert(t)
+					t.Error(err)
+				} else {
+					// wait for the first event to show up on the queue
+					mgr.WaitForFirstEvent()
+					if event.Verifier == nil || !event.Verifier.Wait(event.Timeout) {
+						// no need to process assertions if there was a problem with the event processing
+						// just need to wait for Reconcile() to complete before processing assertions
+						mgr.WaitForReconcileCompletion()
+						for _, assertion := range event.Assertions {
+							assertion.Assert(t)
+						}
 					}
 				}
-			})
+			}) || failedTest
 		}
 	}()
 }

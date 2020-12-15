@@ -2,12 +2,14 @@ package webhookca
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -137,20 +139,10 @@ func add(mgr manager.Manager, r *reconciler) error {
 func sourceWatchPredicates(r *reconciler) predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(event event.CreateEvent) bool {
-			return r.webhookCABundleManager.IsManagingWebhooksForSource(
-				ObjectRef{
-					Kind:      event.Object.GetObjectKind().GroupVersionKind().Kind,
-					Namespace: event.Meta.GetNamespace(),
-					Name:      event.Meta.GetName(),
-				})
+			return r.isWatchingSourceObject(event.Meta, event.Object)
 		},
 		UpdateFunc: func(event event.UpdateEvent) bool {
-			return r.webhookCABundleManager.IsManagingWebhooksForSource(
-				ObjectRef{
-					Kind:      event.ObjectNew.GetObjectKind().GroupVersionKind().Kind,
-					Namespace: event.MetaNew.GetNamespace(),
-					Name:      event.MetaNew.GetName(),
-				})
+			return r.isWatchingSourceObject(event.MetaNew, event.ObjectNew)
 		},
 		// deletion and generic events don't interest us
 		DeleteFunc: func(event event.DeleteEvent) bool {
@@ -160,6 +152,24 @@ func sourceWatchPredicates(r *reconciler) predicate.Funcs {
 			return false
 		},
 	}
+}
+
+func (r *reconciler) isWatchingSourceObject(meta metav1.Object, object runtime.Object) bool {
+	ref := ObjectRef{
+		Namespace: meta.GetNamespace(),
+		Name:      meta.GetName(),
+	}
+	kinds, _, err := r.Scheme.ObjectKinds(object)
+	if err != nil {
+		createLogger().Error(err, fmt.Sprintf("error retrieving object type for %s/%s", meta.GetNamespace(), meta.GetName()))
+	}
+	for _, kind := range kinds {
+		ref.Kind = kind.Kind
+		if r.webhookCABundleManager.IsManagingWebhooksForSource(ref) {
+			return true
+		}
+	}
+	return false
 }
 
 func enqueueWebhookRequests(webhookCABundleManager WebhookCABundleManager) handler.EventHandler {

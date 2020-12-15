@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	arv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	rbac "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,6 +31,9 @@ func GetScheme() *runtime.Scheme {
 		panic(fmt.Sprintf("Could not add to scheme: %v", err))
 	}
 	if err := rbac.AddToScheme(s); err != nil {
+		panic(fmt.Sprintf("Could not add to scheme: %v", err))
+	}
+	if err := arv1beta1.AddToScheme(s); err != nil {
 		panic(fmt.Sprintf("Could not add to scheme: %v", err))
 	}
 	s.AddKnownTypeWithName(schema.GroupVersionKind{
