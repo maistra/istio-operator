@@ -26,7 +26,7 @@ func TestEmptyYAMLBlocks(t *testing.T) {
 
 	processor := NewManifestProcessor(common.ControllerResources{}, &PatchFactory{}, "app", "version", "owner", nil, nil)
 
-	err := processor.ProcessManifest(context.TODO(), manifest, "bad")
+	_, err := processor.ProcessManifest(context.TODO(), manifest, "bad")
 
     if len(err) > 0 {
         t.Errorf("expected empty yaml blocks to process without error")

@@ -49,7 +49,7 @@ func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config
 	}
 
 	mp := helm.NewManifestProcessor(controllerResources, helm.NewPatchFactory(cl), "istio_cni", "TODO", "maistra-istio-operator", preProcessObject, postProcessObject)
-	if err = mp.ProcessManifests(ctx, renderings["istio_cni"], "istio_cni"); err != nil {
+	if _, err = mp.ProcessManifests(ctx, renderings["istio_cni"], "istio_cni"); err != nil {
 		return err
 	}
 
