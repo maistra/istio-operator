@@ -440,7 +440,7 @@ function patchSidecarInjector() {
   sed_wrap -i -e 's${{ if ne (annotation .ObjectMeta `sidecar.istio.io/interceptionMode` .ProxyConfig.InterceptionMode) `NONE` }}${{ if not .Values.istio_cni.enabled -}}$' \
       ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
   # use the correct cni network defintion
-  sed_wrap -i -e '/podRedirectAnnot:/,$s/istio-cni/{{ .Values.istio_cni.istio_cni_network }}/' \
+  sed_wrap -i -e '/podRedirectAnnot:/,$s/`istio-cni`/.Values.istio_cni.istio_cni_network/' \
       ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
   # use global.proxy.includedInboundPorts if specified
   sed_wrap -i -e 's$traffic.sidecar.istio.io/includeInboundPorts: "{{ annotation .ObjectMeta `traffic.sidecar.istio.io/includeInboundPorts` (includeInboundPorts .Spec.Containers) }}"$traffic.sidecar.istio.io/includeInboundPorts: "{{ annotation .ObjectMeta `traffic.sidecar.istio.io/includeInboundPorts` (valueOrDefault .Values.global.proxy.includeInboundPorts (includeInboundPorts .Spec.Containers)) }}"$' \
