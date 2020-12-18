@@ -214,9 +214,22 @@ func (t *EnhancedTracker) Update(gvr schema.GroupVersionResource, obj runtime.Ob
 // Delete deltes the obj in the embedded ObjectTracker.  Before returning, we
 // yield the processor to ensure watches have a chance to run before.
 func (t *EnhancedTracker) Delete(gvr schema.GroupVersionResource, ns, name string) (err error) {
+	defer func() {
+		// yeild to allow watches to process the change before returning
+		t.yeild()
+	}()
 	err = t.ObjectTracker.Delete(gvr, ns, name)
-	// yeild to allow watches to process the change before returning
-	t.yeild()
+	if !errors.IsNotFound(err) {
+		return err
+	}
+	// maybe stored as a preferred version
+	versions := t.Scheme.PrioritizedVersionsForGroup(gvr.Group)
+	if len(versions) == 0 || versions[0].Version == gvr.Version {
+		return err
+	}
+	// get the stored version
+	preferredGVR := schema.GroupVersionResource{Group: gvr.Group, Resource: gvr.Resource, Version: versions[0].Version}
+	err = t.ObjectTracker.Delete(preferredGVR, ns, name)
 	return err
 }
 
