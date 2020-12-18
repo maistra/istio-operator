@@ -186,7 +186,7 @@ func webhookWatchPredicates(webhookCABundleManager WebhookCABundleManager) predi
 			if _, isCRD := event.Object.(*apixv1.CustomResourceDefinition); !isCRD {
 				for prefix, source := range autoRegistrationMap {
 					if strings.HasPrefix(objName, prefix) {
-						if err := webhookCABundleManager.ManageWebhookCABundle(event.Object, source); err == nil {
+						if err := webhookCABundleManager.ManageWebhookCABundle(event.Object, source.Copy()); err == nil {
 							return true
 						}
 						// XXX: should we log an error here?
