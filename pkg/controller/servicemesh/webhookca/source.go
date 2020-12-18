@@ -21,6 +21,7 @@ type CABundleSource interface {
 	GetNamespace() string
 	SetNamespace(string)
 	MatchedObjects() []ObjectRef
+	Copy() CABundleSource
 }
 
 type SecretCABundleSource struct {
@@ -28,6 +29,8 @@ type SecretCABundleSource struct {
 	Namespace   string
 	Key         string
 }
+
+var _ CABundleSource = (*SecretCABundleSource)(nil)
 
 func (s *SecretCABundleSource) GetCABundle(ctx context.Context, client client.Client) ([]byte, error) {
 	var caBundle []byte
@@ -81,11 +84,18 @@ func (s *SecretCABundleSource) MatchedObjects() []ObjectRef {
 	return refs
 }
 
+func (s *SecretCABundleSource) Copy() CABundleSource {
+	new := *s
+	return &new
+}
+
 type ConfigMapCABundleSource struct {
 	ConfigMapName string
 	Key           string
 	Namespace     string
 }
+
+var _ CABundleSource = (*ConfigMapCABundleSource)(nil)
 
 func (s *ConfigMapCABundleSource) GetCABundle(ctx context.Context, client client.Client) ([]byte, error) {
 	namespacedName := types.NamespacedName{s.Namespace, s.ConfigMapName}
@@ -115,10 +125,15 @@ func (s *ConfigMapCABundleSource) SetNamespace(namespace string) {
 
 func (s *ConfigMapCABundleSource) MatchedObjects() []ObjectRef {
 	return []ObjectRef{
-		ObjectRef{
+		{
 			Kind:      "ConfigMap",
 			Namespace: s.Namespace,
 			Name:      s.ConfigMapName,
 		},
 	}
+}
+
+func (s *ConfigMapCABundleSource) Copy() CABundleSource {
+	new := *s
+	return &new
 }

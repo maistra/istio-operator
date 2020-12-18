@@ -117,6 +117,8 @@ func (wm *webhookCABundleManager) IsManaged(obj runtime.Object) bool {
 }
 
 func (wm *webhookCABundleManager) IsManagingWebhooksForSource(obj ObjectRef) bool {
+	wm.mu.Lock()
+	defer wm.mu.Unlock()
 	return len(wm.objectRefsToWebhooks[obj]) > 0
 }
 
