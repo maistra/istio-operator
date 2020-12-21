@@ -4,12 +4,6 @@
 
 set -e
 
-if [ "${GOPATH}" != "" ]; then
-  YQ=`which yq -a | grep -v ${GOPATH} | grep -v go | head -1`
-else
-  YQ=`which yq -a | grep -v go | head -1`
-fi
-
 : ${COMMUNITY:-"true"}
 : ${MAISTRA_VERSION:?"Need to set maistra version, e.g. 1.0.1"}
 if [[ ${COMMUNITY} == "true" ]]; then
@@ -51,9 +45,19 @@ function checkDependencies() {
     exit 1
   fi
 
+  # Looks for yq-python (https://github.com/kislyuk/yq) first, as installed in CI image, fallbacks to yq.
+  # Note there's another yq package, written in golang, which is not the one we want: https://github.com/mikefarah/yq
+  YQ=$(which yq-python 2>/dev/null || which yq 2>/dev/null || echo "")
+
   if ! [ -x "$(command -v ${YQ})" ]; then
-    echo "Please install yq package, e.g. 'pip install --user yq'"
+    echo "Please install the python yq package, e.g. 'pip install --user yq'"
     exit 1
+  else
+    s="yq 2.*"
+    if ! [[ $(${YQ} --version) =~ $s ]]; then
+      echo "Install the correct (python) yq package, e.g. 'pip install --user yq'"
+      exit 1
+    fi
   fi
 }
 
