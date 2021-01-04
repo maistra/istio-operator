@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+
+contact_links:
+- name: "Issues"
+  url: https://issues.redhat.com/browse/MAISTRA
+  about: "Issues for this repository are tracked in Red Hat Jira."

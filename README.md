@@ -1,3 +1,7 @@
+# Issues for this repository are disabled
+
+Issues for this repository are tracked in Red Hat Jira. Please head to <https://issues.redhat.com/browse/MAISTRA> in order to browse or open an issue.
+
 # Maistra Istio Operator
 
 This project is an operator that can be used to manage the installation of an [Istio](https://istio.io) control plane.
