@@ -24,7 +24,7 @@ const (
 	// GenerationKey represents the generation to which the resource was last reconciled
 	GenerationKey = MetadataNamespace + "/generation"
 
-	// MeshGenerationKey represents the generation of the service mesh operator to which the resource was last reconciled. The operator will look at the operator version and generation to determine whether a control plane should be upgraded.
+	// MeshGenerationKey represents the generation of the service mesh to which the resource was last reconciled.  This uniquely identifies an installation, incorporating the operator version and the smcp resource generation.
 	MeshGenerationKey = MetadataNamespace + "/mesh-generation"
 
 	// InternalKey is used to identify the resource as being internal to the mesh itself (i.e. should not be applied to members)
