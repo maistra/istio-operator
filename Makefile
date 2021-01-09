@@ -14,10 +14,11 @@
 
 -include Makefile.overrides
 
+PRODUCT_VERSION        ?= 2.0.1.1
+REPLACES_PRODUCT_CSV   ?= 2.0.1
 MAISTRA_VERSION        ?= 2.0.1
-MAISTRA_BRANCH         ?= maistra-2.0
-REPLACES_PRODUCT_CSV   ?= 2.0.0.2
 REPLACES_COMMUNITY_CSV ?= 2.0.0
+MAISTRA_BRANCH         ?= maistra-2.0
 VERSION                ?= development
 IMAGE                  ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}
 CONTAINER_CLI          ?= docker
@@ -36,7 +37,7 @@ OFFLINE_BUILD       ?= false
 GIT_UPSTREAM_REMOTE ?= $(shell git remote -v |grep --color=never '[/:][Mm]aistra/istio-operator\.git.*(fetch)' |grep --color=never -o '^[^[:space:]]*')
 
 MAISTRA_MANIFEST_DATE := $(shell cat manifests-maistra/${MAISTRA_VERSION}/maistraoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml 2>/dev/null | grep createdAt | awk '{print $$2}')
-OSSM_MANIFEST_DATE := $(shell cat manifests-servicemesh/${MAISTRA_VERSION}/servicemeshoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml 2>/dev/null | grep createdAt | awk '{print $$2}')
+OSSM_MANIFEST_DATE := $(shell cat manifests-servicemesh/${PRODUCT_VERSION}/servicemeshoperator.v${PRODUCT_VERSION}.clusterserviceversion.yaml 2>/dev/null | grep createdAt | awk '{print $$2}')
 
 ifeq "${GIT_UPSTREAM_REMOTE}" ""
 GIT_UPSTREAM_REMOTE = "ci-upstream"
@@ -52,7 +53,7 @@ endif
 
 $(info   Building $(BUILD_TYPE) operator)
 
-export SOURCE_DIR OUT_DIR MAISTRA_BRANCH MAISTRA_VERSION VERSION COMMUNITY BUILD_TYPE
+export SOURCE_DIR OUT_DIR MAISTRA_BRANCH VERSION COMMUNITY BUILD_TYPE
 
 ################################################################################
 # clean ./tmp/_output
@@ -156,7 +157,7 @@ collect-1.1-templates:
 ################################################################################
 .PHONY: update-2.0-charts
 update-2.0-charts:
-	HELM_DIR=${RESOURCES_DIR}/helm/v2.0 ISTIO_VERSION=1.6.0 ${SOURCE_DIR}/build/download-charts.sh
+	MAISTRA_VERSION=${PRODUCT_VERSION} HELM_DIR=${RESOURCES_DIR}/helm/v2.0 ISTIO_VERSION=1.6.0 ${SOURCE_DIR}/build/download-charts.sh
 	CRD_DIR=${RESOURCES_DIR}/helm/v2.0/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
 	rm ${RESOURCES_DIR}/helm/v2.0/istio-init/files/clusterrbacconfigs.rbac.istio.io.crd.yaml
 
@@ -177,11 +178,11 @@ collect-2.0-templates:
 ################################################################################
 .PHONY: generate-community-manifests
 generate-community-manifests:
-	COMMUNITY=true REPLACES_CSV=${REPLACES_COMMUNITY_CSV} ${SOURCE_DIR}/build/generate-manifests.sh
+	COMMUNITY=true MAISTRA_VERSION=${MAISTRA_VERSION} REPLACES_CSV=${REPLACES_COMMUNITY_CSV} ${SOURCE_DIR}/build/generate-manifests.sh
 
 .PHONY: generate-product-manifests
 generate-product-manifests:
-	COMMUNITY=false REPLACES_CSV=${REPLACES_PRODUCT_CSV} ${SOURCE_DIR}/build/generate-manifests.sh
+	COMMUNITY=false MAISTRA_VERSION=${PRODUCT_VERSION} REPLACES_CSV=${REPLACES_PRODUCT_CSV} ${SOURCE_DIR}/build/generate-manifests.sh
 
 ################################################################################
 # resource generation
@@ -201,7 +202,7 @@ generate-manifests: generate-community-manifests generate-product-manifests
 
 .PHONY: generate-crds
 generate-crds:
-	${SOURCE_DIR}/build/generate-crds.sh
+	PRODUCT_VERSION=${PRODUCT_VERSION} MAISTRA_VERSION=${MAISTRA_VERSION} ${SOURCE_DIR}/build/generate-crds.sh
 
 .PHONY: generate-docs
 generate-docs:
@@ -214,7 +215,7 @@ ifneq "${MAISTRA_MANIFEST_DATE}" ""
 	sed -i -e "s/\(createdAt:\).*/\1 ${MAISTRA_MANIFEST_DATE}/" manifests-maistra/${MAISTRA_VERSION}/maistraoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml
 endif
 ifneq "${OSSM_MANIFEST_DATE}" ""
-	sed -i -e "s/\(createdAt:\).*/\1 ${OSSM_MANIFEST_DATE}/" manifests-servicemesh/${MAISTRA_VERSION}/servicemeshoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml
+	sed -i -e "s/\(createdAt:\).*/\1 ${OSSM_MANIFEST_DATE}/" manifests-servicemesh/${PRODUCT_VERSION}/servicemeshoperator.v${PRODUCT_VERSION}.clusterserviceversion.yaml
 endif
 
 .PHONY: update-charts

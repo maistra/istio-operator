@@ -3,7 +3,8 @@
 set -e
 
 : ${MAISTRA_VERSION:?"Need to set maistra version, e.g. 1.0.1"}
-BUNDLE_DIRS="manifests-maistra/${MAISTRA_VERSION} manifests-servicemesh/${MAISTRA_VERSION}"
+: ${PRODUCT_VERSION:?"Need to set product version, e.g. 1.0.1"}
+BUNDLE_DIRS="manifests-maistra/${MAISTRA_VERSION} manifests-servicemesh/${PRODUCT_VERSION}"
 
 for bundle_dir in ${BUNDLE_DIRS}; do
   mkdir -p "$bundle_dir"
