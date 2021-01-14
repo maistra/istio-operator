@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	v2_0ChartMapping = map[string]chartRenderingDetails{
+	v2_1ChartMapping = map[string]chartRenderingDetails{
 		DiscoveryChart: {
 			path:         "istio-control/istio-discovery",
 			enabledField: "",
@@ -82,7 +82,7 @@ var (
 	}
 )
 
-var v2_0ChartOrder = [][]string{
+var v2_1ChartOrder = [][]string{
 	{DiscoveryChart},
 	{MeshConfigChart},
 	{TelemetryCommonChart, PrometheusChart},
@@ -91,31 +91,31 @@ var v2_0ChartOrder = [][]string{
 	{ThreeScaleChart, WASMExtensionsChart},
 }
 
-type versionStrategyV2_0 struct {
+type versionStrategyV2_1 struct {
 	version
 }
 
-var _ VersionStrategy = (*versionStrategyV2_0)(nil)
+var _ VersionStrategy = (*versionStrategyV2_1)(nil)
 
-func (v *versionStrategyV2_0) SetImageValues(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec) error {
-	common.UpdateField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V2_0.Grafana)
-	common.UpdateField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V2_0.Mixer)
-	common.UpdateField(smcpSpec.Istio, "mixer.policy.image", common.Config.OLM.Images.V2_0.Mixer)
-	common.UpdateField(smcpSpec.Istio, "mixer.telemetry.image", common.Config.OLM.Images.V2_0.Mixer)
-	common.UpdateField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V2_0.Pilot)
-	common.UpdateField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V2_0.Prometheus)
-	common.UpdateField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V2_0.ProxyInit)
-	common.UpdateField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V2_0.ProxyV2)
-	common.UpdateField(smcpSpec.Istio, "wasmExtensions.cacher.image", common.Config.OLM.Images.V2_0.WASMCacher)
-	common.UpdateField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V2_0.ThreeScale)
+func (v *versionStrategyV2_1) SetImageValues(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec) error {
+	common.UpdateField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V2_1.Grafana)
+	common.UpdateField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V2_1.Mixer)
+	common.UpdateField(smcpSpec.Istio, "mixer.policy.image", common.Config.OLM.Images.V2_1.Mixer)
+	common.UpdateField(smcpSpec.Istio, "mixer.telemetry.image", common.Config.OLM.Images.V2_1.Mixer)
+	common.UpdateField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V2_1.Pilot)
+	common.UpdateField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V2_1.Prometheus)
+	common.UpdateField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V2_1.ProxyInit)
+	common.UpdateField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V2_1.ProxyV2)
+	common.UpdateField(smcpSpec.Istio, "wasmExtensions.cacher.image", common.Config.OLM.Images.V2_1.WASMCacher)
+	common.UpdateField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V2_1.ThreeScale)
 	return nil
 }
 
-func (v *versionStrategyV2_0) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
+func (v *versionStrategyV2_1) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	return fmt.Errorf("must use v2 ServiceMeshControlPlane resource for v2.0+ installations")
 }
 
-func (v *versionStrategyV2_0) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
+func (v *versionStrategyV2_1) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
 	allErrors = validateGateways(ctx, meta, spec, v.version, cl, allErrors)
 	allErrors = validatePolicyType(ctx, meta, spec, v.version, allErrors)
@@ -124,7 +124,7 @@ func (v *versionStrategyV2_0) ValidateV2(ctx context.Context, cl client.Client, 
 	return NewValidationError(allErrors...)
 }
 
-func (v *versionStrategyV2_0) validateProtocolDetection(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, allErrors []error) []error {
+func (v *versionStrategyV2_1) validateProtocolDetection(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, allErrors []error) []error {
 	if spec.Proxy == nil || spec.Proxy.Networking == nil || spec.Proxy.Networking.Protocol == nil || spec.Proxy.Networking.Protocol.AutoDetect == nil {
 		return allErrors
 	}
@@ -138,7 +138,7 @@ func (v *versionStrategyV2_0) validateProtocolDetection(ctx context.Context, met
 	return allErrors
 }
 
-func (v *versionStrategyV2_0) ValidateV2Full(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
+func (v *versionStrategyV2_1) ValidateV2Full(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
 	err := v.ValidateV2(ctx, cl, meta, spec)
 	if err != nil {
@@ -153,19 +153,22 @@ func (v *versionStrategyV2_0) ValidateV2Full(ctx context.Context, cl client.Clie
 	return NewValidationError(allErrors...)
 }
 
-func (v *versionStrategyV2_0) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
-	return fmt.Errorf("inplace downgrade from v2.0 to v1.x is not supported")
+func (v *versionStrategyV2_1) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+	// TODO: what might prevent us from downgrading?
+	return nil
 }
 
-func (v *versionStrategyV2_0) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
-	return fmt.Errorf("inplace upgrade from v1.x to v2.0 is not supported")
+func (v *versionStrategyV2_1) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+	// TODO: what might prevent us from upgrading?
+	return nil
 }
 
-func (v *versionStrategyV2_0) GetChartInstallOrder() [][]string {
-	return v2_0ChartOrder
+func (v *versionStrategyV2_1) GetChartInstallOrder() [][]string {
+	return v2_1ChartOrder
 }
 
-func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
+// TODO: consider consolidating this with 2.0 rendering logic
+func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
 	log := common.LogFromContext(ctx)
 	//Generate the spec
 	// XXX: we should apply v2 templates first, then convert to values.yaml (v1)
@@ -235,7 +238,7 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 	}
 
 	// XXX: using values.yaml settings, as things may have been overridden in profiles/templates
-	if isComponentEnabled(spec.Istio, v2_0ChartMapping[TracingChart].enabledField) {
+	if isComponentEnabled(spec.Istio, v2_1ChartMapping[TracingChart].enabledField) {
 		if provider, _, _ := spec.Istio.GetString("tracing.provider"); provider == "jaeger" {
 			// if we're not installing the jaeger resource, we need to determine what has been installed,
 			// so control plane rules are created correctly
@@ -278,7 +281,7 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 			}
 		}
 	}
-	if isComponentEnabled(spec.Istio, v2_0ChartMapping[KialiChart].enabledField) {
+	if isComponentEnabled(spec.Istio, v2_1ChartMapping[KialiChart].enabledField) {
 		kialiResource, _, _ := spec.Istio.GetString("kiali.resourceName")
 		if kialiResource == "" {
 			kialiResource = "kiali"
@@ -335,13 +338,13 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 	allErrors := []error{}
 	renderings := make(map[string][]manifest.Manifest)
 	log.Info("rendering helm charts")
-	for name, chartDetails := range v2_0ChartMapping {
+	for name, chartDetails := range v2_1ChartMapping {
 		if specialCharts.Has(name) {
 			continue
 		}
 		if chartDetails.enabledField == "" || isComponentEnabled(spec.Istio, chartDetails.enabledField) {
 			log.V(2).Info(fmt.Sprintf("rendering %s chart", name))
-			if chartRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), v2_0ChartMapping[name].path), smcp.GetNamespace(), values); err == nil {
+			if chartRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), v2_1ChartMapping[name].path), smcp.GetNamespace(), values); err == nil {
 				renderings[name] = chartRenderings[name]
 			} else {
 				allErrors = append(allErrors, err)
@@ -402,7 +405,7 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 
 	if isEnabled(spec.ThreeScale) {
 		log.V(2).Info("rendering 3scale charts")
-		if chartRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), v2_0ChartMapping[ThreeScaleChart].path), smcp.GetNamespace(), spec.ThreeScale.GetContent()); err == nil {
+		if chartRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), v2_1ChartMapping[ThreeScaleChart].path), smcp.GetNamespace(), spec.ThreeScale.GetContent()); err == nil {
 			renderings[ThreeScaleChart] = chartRenderings[ThreeScaleChart]
 		} else {
 			allErrors = append(allErrors, err)
@@ -416,15 +419,15 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 	return renderings, nil
 }
 
-func (v *versionStrategyV2_0) renderIngressGateway(name string, namespace string, gateways map[string]interface{}, values *v1.HelmValues) (map[string][]manifest.Manifest, map[string]interface{}, error) {
-	return v.renderGateway(name, namespace, v2_0ChartMapping[GatewayIngressChart].path, "istio-ingressgateway", gateways, values)
+func (v *versionStrategyV2_1) renderIngressGateway(name string, namespace string, gateways map[string]interface{}, values *v1.HelmValues) (map[string][]manifest.Manifest, map[string]interface{}, error) {
+	return v.renderGateway(name, namespace, v2_1ChartMapping[GatewayIngressChart].path, "istio-ingressgateway", gateways, values)
 }
 
-func (v *versionStrategyV2_0) renderEgressGateway(name string, namespace string, gateways map[string]interface{}, values *v1.HelmValues) (map[string][]manifest.Manifest, map[string]interface{}, error) {
-	return v.renderGateway(name, namespace, v2_0ChartMapping[GatewayEgressChart].path, "istio-egressgateway", gateways, values)
+func (v *versionStrategyV2_1) renderEgressGateway(name string, namespace string, gateways map[string]interface{}, values *v1.HelmValues) (map[string][]manifest.Manifest, map[string]interface{}, error) {
+	return v.renderGateway(name, namespace, v2_1ChartMapping[GatewayEgressChart].path, "istio-egressgateway", gateways, values)
 }
 
-func (v *versionStrategyV2_0) renderGateway(name string, namespace string, chartPath string, typeName string, gateways map[string]interface{}, values *v1.HelmValues) (map[string][]manifest.Manifest, map[string]interface{}, error) {
+func (v *versionStrategyV2_1) renderGateway(name string, namespace string, chartPath string, typeName string, gateways map[string]interface{}, values *v1.HelmValues) (map[string][]manifest.Manifest, map[string]interface{}, error) {
 	gateway, ok, _ := unstructured.NestedMap(gateways, name)
 	if !ok {
 		// XXX: return an error?
