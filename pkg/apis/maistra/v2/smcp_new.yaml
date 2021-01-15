@@ -336,23 +336,23 @@ spec:
           resources:
             limits: {}
             requirements: {}
-        security: {} # for configuring citadel,, similar to pilot above
-        galley: {} # similar to pilot above
-        mixer: {} # v1.x mixer, similar to pilot above
-        mixer.policy: {} # v2.x mixer policy, similar to pilot above
-        mixer.telemetry: {} # v2.x mixer telemetry, similar to pilot above
-        sidecarInjectorWebhook: {} # similar to pilot above
-        tracing: {} # similar to pilot above
-        tracing.jaeger: {} # similar to pilot above
-        tracing.jaeger.elasticsearch: {} # similar to pilot above
-        tracing.jaeger.agent: {} # similar to pilot above
-        tracing.jaeger.allInOne: {} # similar to pilot above
-        tracing.jaeger.collector: {} # similar to pilot above
-        tracing.jaeger.query: {} # similar to pilot above
-        prometheus: {} # similar to pilot above
-        kiali: {} # similar to pilot above
-        grafana: {} # similar to pilot above
-        prometheus: {} # similar to pilot above
+      security: {} # for configuring citadel,, similar to pilot above
+      galley: {} # similar to pilot above
+      mixer: {} # v1.x mixer, similar to pilot above
+      mixer.policy: {} # v2.x mixer policy, similar to pilot above
+      mixer.telemetry: {} # v2.x mixer telemetry, similar to pilot above
+      sidecarInjectorWebhook: {} # similar to pilot above
+      tracing: {} # similar to pilot above
+      tracing.jaeger: {} # similar to pilot above
+      tracing.jaeger.elasticsearch: {} # similar to pilot above
+      tracing.jaeger.agent: {} # similar to pilot above
+      tracing.jaeger.allInOne: {} # similar to pilot above
+      tracing.jaeger.collector: {} # similar to pilot above
+      tracing.jaeger.query: {} # similar to pilot above
+      prometheus: {} # similar to pilot above
+      kiali: {} # similar to pilot above
+      grafana: {} # similar to pilot above
+      prometheus: {} # similar to pilot above
     # default runtime settings
     defaults: # merged into any component specific overrides. component specific overrides take precedence
       deployment: {} # similar to gateway.runtime.deployment
