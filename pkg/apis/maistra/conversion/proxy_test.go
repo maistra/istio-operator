@@ -1,7 +1,6 @@
 package conversion
 
 import (
-	"reflect"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -90,6 +89,12 @@ var proxyTestCases = []conversionTestCase{
 					"adminPort":   12345,
 				},
 			},
+			"meshConfig": map[string]interface{}{
+				"concurrency": 4,
+				"defaultConfig": map[string]interface{}{
+					"proxyAdminPort": 12345,
+				},
+			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -175,6 +180,9 @@ var proxyTestCases = []conversionTestCase{
 				"proxy": map[string]interface{}{
 					"dnsRefreshRate": "120s",
 				},
+			},
+			"meshConfig": map[string]interface{}{
+				"dnsRefreshRate": "120s",
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -393,6 +401,9 @@ var proxyTestCases = []conversionTestCase{
 					"protocolDetectionTimeout": "500ms",
 				},
 			},
+			"meshConfig": map[string]interface{}{
+				"protocolDetectionTimeout": "500ms",
+			},
 			"pilot": map[string]interface{}{
 				"enableProtocolSniffingForInbound":  true,
 				"enableProtocolSniffingForOutbound": false,
@@ -557,6 +568,11 @@ var proxyTestCases = []conversionTestCase{
 					"mode": "ALLOW_ANY",
 				},
 			},
+			"meshConfig": map[string]interface{}{
+				"outboundTrafficPolicy": map[string]interface{}{
+					"mode": "ALLOW_ANY",
+				},
+			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -581,6 +597,11 @@ var proxyTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
+				"outboundTrafficPolicy": map[string]interface{}{
+					"mode": "REGISTRY_ONLY",
+				},
+			},
+			"meshConfig": map[string]interface{}{
 				"outboundTrafficPolicy": map[string]interface{}{
 					"mode": "REGISTRY_ONLY",
 				},
@@ -784,6 +805,11 @@ var proxyTestCases = []conversionTestCase{
 					"accessLogFormat":   "[%START_TIME%] %REQ(:METHOD)%",
 				},
 			},
+			"meshConfig": map[string]interface{}{
+				"accessLogFile":     "/dev/stdout",
+				"accessLogEncoding": "JSON",
+				"accessLogFormat":   "[%START_TIME%] %REQ(:METHOD)%",
+			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -847,6 +873,31 @@ var proxyTestCases = []conversionTestCase{
 					},
 				},
 			},
+			"meshConfig": map[string]interface{}{
+				"enableEnvoyAccessLogService": true,
+				"defaultConfig": map[string]interface{}{
+					"envoyAccessLogService": map[string]interface{}{
+						"enabled": true,
+						"host":    "some.host.com",
+						"port":    "8080",
+						"tcpKeepalive": map[string]interface{}{
+							"interval": "10s",
+							"probes":   3,
+							"time":     "20s",
+						},
+						"tlsSettings": map[string]interface{}{
+							"caCertificates":    "/etc/istio/als/root-cert.pem",
+							"clientCertificate": "/etc/istio/als/cert-chain.pem",
+							"mode":              "DISABLED",
+							"privateKey":        "/etc/istio/als/key.pem",
+							"sni":               "als.somedomain",
+							"subjectAltNames": []interface{}{
+								"als.somedomain",
+							},
+						},
+					},
+				},
+			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -886,6 +937,30 @@ var proxyTestCases = []conversionTestCase{
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"proxy": map[string]interface{}{
+					"envoyMetricsService": map[string]interface{}{
+						"enabled": true,
+						"host":    "some.host.com",
+						"port":    "8080",
+						"tcpKeepalive": map[string]interface{}{
+							"interval": "10s",
+							"probes":   3,
+							"time":     "20s",
+						},
+						"tlsSettings": map[string]interface{}{
+							"caCertificates":    "/etc/istio/als/root-cert.pem",
+							"clientCertificate": "/etc/istio/als/cert-chain.pem",
+							"mode":              "DISABLED",
+							"privateKey":        "/etc/istio/als/key.pem",
+							"sni":               "als.somedomain",
+							"subjectAltNames": []interface{}{
+								"als.somedomain",
+							},
+						},
+					},
+				},
+			},
+			"meshConfig": map[string]interface{}{
+				"defaultConfig": map[string]interface{}{
 					"envoyMetricsService": map[string]interface{}{
 						"enabled": true,
 						"host":    "some.host.com",
@@ -1024,9 +1099,7 @@ func TestProxyConversionFromV2(t *testing.T) {
 			if err := populateProxyValues(specCopy, helmValues.GetContent()); err != nil {
 				t.Fatalf("error converting to values: %s", err)
 			}
-			if !reflect.DeepEqual(tc.isolatedIstio.DeepCopy(), helmValues.DeepCopy()) {
-				t.Errorf("unexpected output converting v2 to values:\n\texpected:\n%#v\n\tgot:\n%#v", tc.isolatedIstio.GetContent(), helmValues.GetContent())
-			}
+			assertEquals(t, tc.isolatedIstio.DeepCopy(), helmValues.DeepCopy())
 			specv2 := &v2.ControlPlaneSpec{}
 			// use expected values
 			helmValues = tc.isolatedIstio.DeepCopy()

@@ -23,7 +23,7 @@ ISTIO_NAME=istio-${ISTIO_VERSION}
 ISTIO_FILE="${MAISTRA_BRANCH}.zip"
 ISTIO_URL="${MAISTRA_REPO}/archive/${MAISTRA_BRANCH}.zip"
 EXTRACT_DIR="${MAISTRA_REPO##*/}-${MAISTRA_BRANCH}"
-EXTRACT_CMD="unzip ${ISTIO_FILE} ${EXTRACT_DIR}/manifests/charts/*"
+EXTRACT_CMD="unzip ${ISTIO_FILE} ${EXTRACT_DIR}/manifests/charts/* ${EXTRACT_DIR}/manifests/addons/dashboards/*"
 RELEASE_DIR="${RELEASES_DIR}/${ISTIO_NAME}"
 
 ISTIO_NAME=${ISTIO_NAME//./-}
@@ -57,6 +57,9 @@ function retrieveIstioRelease() {
       rm -rf ${EXTRACT_DIR}
       ${EXTRACT_CMD}
       cp -rf ${EXTRACT_DIR}/manifests/charts/* ${HELM_DIR}/
+      # grafana dashboards
+      mkdir -p ${HELM_DIR}/istio-telemetry/grafana/dashboards
+      cp -rf ${EXTRACT_DIR}/manifests/addons/dashboards/* ${HELM_DIR}/istio-telemetry/grafana/dashboards/
       #(
       #  cd "${HELM_DIR}/istio"
       #  helm dep update

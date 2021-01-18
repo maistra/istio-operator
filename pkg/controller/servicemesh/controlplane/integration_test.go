@@ -38,7 +38,22 @@ func TestDefaultInstall(t *testing.T) {
 		{
 			// TODO: add more assertions to verify default component installation
 			name: "default." + versions.V2_0.String(),
-			smcp: New20SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{}),
+			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{Version: versions.V2_0.String()}),
+			create: IntegrationTestValidation{
+				Assertions: ActionAssertions{
+					Assert("create").On("deployments").Named("wasm-cacher-test").In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+			delete: IntegrationTestValidation{
+				Assertions: ActionAssertions{
+					Assert("delete").On("deployments").Named("wasm-cacher-test").In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+		},
+		{
+			// TODO: add more assertions to verify default component installation
+			name: "default." + versions.V2_1.String(),
+			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{Version: versions.V2_1.String()}),
 			create: IntegrationTestValidation{
 				Assertions: ActionAssertions{
 					Assert("create").On("deployments").Named("wasm-cacher-test").In(controlPlaneNamespace).IsNotSeen(),
@@ -106,6 +121,17 @@ func TestBootstrapping(t *testing.T) {
 				},
 			},
 			crdCount: 26,
+		},
+		{
+			name: "v2.1",
+			smcp: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version:  versions.V2_1.String(),
+					Profiles: []string{"maistra"},
+				},
+			},
+			crdCount: 14,
 		},
 	}
 

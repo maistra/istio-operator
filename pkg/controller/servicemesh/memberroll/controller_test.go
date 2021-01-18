@@ -47,7 +47,8 @@ const (
 	cniNetwork1_0     = "istio-cni"
 	cniNetwork1_1     = "v1-1-istio-cni"
 	cniNetwork2_0     = "v2-0-istio-cni"
-	cniNetworkDefault = cniNetwork2_0
+	cniNetwork2_1     = "v2-1-istio-cni"
+	cniNetworkDefault = cniNetwork2_1
 )
 
 var (

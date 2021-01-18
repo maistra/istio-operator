@@ -99,9 +99,6 @@ var _ VersionStrategy = (*versionStrategyV2_1)(nil)
 
 func (v *versionStrategyV2_1) SetImageValues(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec) error {
 	common.UpdateField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V2_1.Grafana)
-	common.UpdateField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V2_1.Mixer)
-	common.UpdateField(smcpSpec.Istio, "mixer.policy.image", common.Config.OLM.Images.V2_1.Mixer)
-	common.UpdateField(smcpSpec.Istio, "mixer.telemetry.image", common.Config.OLM.Images.V2_1.Mixer)
 	common.UpdateField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V2_1.Pilot)
 	common.UpdateField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V2_1.Prometheus)
 	common.UpdateField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V2_1.ProxyInit)
@@ -216,17 +213,13 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 	if err != nil {
 		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.istioNamespace: %v", err)
 	}
-	err = spec.Istio.SetField("global.telemetryNamespace", smcp.GetNamespace())
+	err = spec.Istio.SetField("meshConfig.rootNamespace", smcp.GetNamespace())
 	if err != nil {
-		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.telemetryNamespace: %v", err)
+		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.meshConfig.rootNamespace: %v", err)
 	}
 	err = spec.Istio.SetField("global.prometheusNamespace", smcp.GetNamespace())
 	if err != nil {
 		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.prometheusNamespace: %v", err)
-	}
-	err = spec.Istio.SetField("global.policyNamespace", smcp.GetNamespace())
-	if err != nil {
-		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.policyNamespace: %v", err)
 	}
 	err = spec.Istio.SetField("global.configRootNamespace", smcp.GetNamespace())
 	if err != nil {

@@ -81,7 +81,6 @@ type v2_1ImageNames struct {
 	ThreeScale string `json:"3scale-istio-adapter,omitempty"`
 	CNI        string `json:"cni,omitempty"`
 	Grafana    string `json:"grafana,omitempty"`
-	Mixer      string `json:"mixer,omitempty"`
 	Pilot      string `json:"pilot,omitempty"`
 	Prometheus string `json:"prometheus,omitempty"`
 	ProxyInit  string `json:"proxy-init,omitempty"`

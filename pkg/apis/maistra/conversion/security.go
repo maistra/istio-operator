@@ -27,6 +27,9 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			if err := setHelmBoolValue(values, "global.mtls.auto", *security.DataPlane.AutoMTLS); err != nil {
 				return err
 			}
+			if err := setHelmBoolValue(values, "meshConfig.enableAutoMtls", *security.DataPlane.AutoMTLS); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -39,6 +42,9 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 		}
 		if security.Trust.AdditionalDomains != nil {
 			if err := setHelmStringSliceValue(values, "global.trustDomainAliases", security.Trust.AdditionalDomains); err != nil {
+				return err
+			}
+			if err := setHelmStringSliceValue(values, "meshConfig.trustDomainAliases", security.Trust.AdditionalDomains); err != nil {
 				return err
 			}
 		}
@@ -241,6 +247,13 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	} else if err != nil {
 		return err
 	}
+	// meshConfig always takes precedence over global.mtls.auto
+	if autoMtlsEnabled, ok, err := in.GetAndRemoveBool("meshConfig.enableAutoMtls"); ok {
+		dataPlane.AutoMTLS = &autoMtlsEnabled
+		setMutualTLS = true
+	} else if err != nil {
+		return err
+	}
 	if setMutualTLS {
 		security.DataPlane = dataPlane
 		setSecurity = true
@@ -256,6 +269,13 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 		return err
 	}
 	if trustDomainAliases, ok, err := in.GetAndRemoveStringSlice("global.trustDomainAliases"); ok {
+		trust.AdditionalDomains = trustDomainAliases
+		setTrust = true
+	} else if err != nil {
+		return err
+	}
+	// meshConfig settings take precedence
+	if trustDomainAliases, ok, err := in.GetAndRemoveStringSlice("meshConfig.trustDomainAliases"); ok {
 		trust.AdditionalDomains = trustDomainAliases
 		setTrust = true
 	} else if err != nil {

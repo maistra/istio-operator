@@ -1,0 +1,67 @@
+{{- if .Values.global.configValidation }}
+{{- if .Values.global.configValidation }}
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
+  labels:
+    istio.io/rev: {{ .Values.revision | default "default" }}
+    maistra-version: "2.1.0"
+    app: istiod
+    release: {{ .Release.Name }}
+    istio: istiod
+webhooks:
+  - name: validation.istio.io
+    clientConfig:
+      {{- if .Values.base.validationURL }}
+      url: {{ .Values.base.validationURL }}
+      {{- else }}
+      service:
+        name: istiod-{{ .Values.revision | default "default" }}
+        namespace: {{ .Release.Namespace }}
+        path: "/validate"
+      {{- end }}
+      caBundle: "" # patched at runtime when the webhook is ready.
+    namespaceSelector:
+      matchExpressions:
+      - key: maistra.io/member-of
+        operator: In
+        values:
+        - {{ .Release.Namespace }}
+    rules:
+      - operations:
+        - CREATE
+        - UPDATE
+        apiGroups:
+        - authentication.maistra.io
+        apiVersions:
+        - "*"
+        resources:
+        - "*"
+      - operations:
+        - CREATE
+        - UPDATE
+        apiGroups:
+        - rbac.maistra.io
+        apiVersions:
+        - "*"
+        resources:
+        - "*"
+      - operations:
+        - CREATE
+        - UPDATE
+        apiGroups:
+        - security.istio.io
+        - networking.istio.io
+        apiVersions:
+        - "*"
+        resources:
+        - "*"
+    # Fail open until the validation webhook is ready. The webhook controller
+    # will update this to `Fail` and patch in the `caBundle` when the webhook
+    # endpoint is ready.
+    failurePolicy: Fail
+    sideEffects: None
+    admissionReviewVersions: ["v1beta1", "v1"]
+{{- end }}
+{{- end }}

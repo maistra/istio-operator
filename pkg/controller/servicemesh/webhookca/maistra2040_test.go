@@ -35,6 +35,7 @@ func TestMAISTRA_2040(t *testing.T) {
 		v20PrivateKeySecretName           = "cacerts"
 	)
 
+	var eventTimeout = 10 * time.Second
 	var testCases = []struct {
 		name        string
 		description string
@@ -53,7 +54,7 @@ func TestMAISTRA_2040(t *testing.T) {
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsSeen(),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-galley-secret",
@@ -65,7 +66,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(galleyWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(galleySecretName, testNamespace))),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-injector-webhook",
@@ -75,7 +76,7 @@ func TestMAISTRA_2040(t *testing.T) {
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsSeen(),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-injector-secret",
@@ -87,7 +88,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(sidecarInjectorWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(sidecarInjectorSecretName, testNamespace))),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 			},
 		},
@@ -104,7 +105,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-validating-webhook",
@@ -115,7 +116,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-istio-ca-secret",
@@ -132,7 +133,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(istiodValidatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 			},
 		},
@@ -153,7 +154,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(galleyWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(galleySecretName, testNamespace))),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-injector-webhook",
@@ -164,7 +165,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(sidecarInjectorWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(sidecarInjectorSecretName, testNamespace))),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 			},
 		},
@@ -185,7 +186,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(istiodMutatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-validating-webhook",
@@ -197,7 +198,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(istiodValidatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 			},
 		},
@@ -217,7 +218,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(istiodMutatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-validating-webhook",
@@ -228,7 +229,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(istiodValidatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 			},
 		},
@@ -249,7 +250,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(istiodMutatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-validating-webhook",
@@ -260,7 +261,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(istiodValidatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 			},
 		},
@@ -277,7 +278,7 @@ func TestMAISTRA_2040(t *testing.T) {
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsSeen(),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-galley-secret",
@@ -289,7 +290,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(galleyWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(galleySecretName, testNamespace))),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-injector-webhook",
@@ -299,7 +300,7 @@ func TestMAISTRA_2040(t *testing.T) {
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsSeen(),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-injector-secret",
@@ -311,7 +312,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(sidecarInjectorWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(sidecarInjectorSecretName, testNamespace))),
 					),
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-galley-webhook-ns2",
@@ -325,7 +326,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Assert("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsNotSeen(),
 						Assert("update").On("validatingwebhookconfigurations").Named(webhookName(galleyWebhookNamePrefix, test2Namespace)).IsNotSeen(),
 					},
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-galley-secret-ns2",
@@ -340,7 +341,7 @@ func TestMAISTRA_2040(t *testing.T) {
 					Assertions: []ActionAssertion{
 						Assert("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsNotSeen(),
 					},
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-injector-webhook-ns2",
@@ -354,7 +355,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Assert("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsNotSeen(),
 						Assert("update").On("mutatingwebhookconfigurations").Named(webhookName(sidecarInjectorWebhookNamePrefix, test2Namespace)).IsNotSeen(),
 					},
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "create-injector-secret-ns2",
@@ -369,7 +370,7 @@ func TestMAISTRA_2040(t *testing.T) {
 					Assertions: []ActionAssertion{
 						Assert("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsNotSeen(),
 					},
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "update-galley-webhook",
@@ -383,7 +384,7 @@ func TestMAISTRA_2040(t *testing.T) {
 					Assertions: []ActionAssertion{
 						Assert("get").On("secrets").Named(v11GalleySecretName).In(test2Namespace).IsNotSeen(),
 					},
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 				{
 					Name: "update-injector-webhook",
@@ -397,7 +398,7 @@ func TestMAISTRA_2040(t *testing.T) {
 					Assertions: []ActionAssertion{
 						Assert("get").On("secrets").Named(v11SidecarInjectorSecretName).In(test2Namespace).IsNotSeen(),
 					},
-					Timeout: 5 * time.Second,
+					Timeout: eventTimeout,
 				},
 			},
 		},

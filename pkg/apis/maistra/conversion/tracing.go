@@ -23,6 +23,9 @@ func populateTracingValues(in *v2.ControlPlaneSpec, values map[string]interface{
 			if err := setHelmBoolValue(values, "global.enableTracing", false); err != nil {
 				return err
 			}
+			if err := setHelmBoolValue(values, "meshConfig.enableTracing", false); err != nil {
+				return err
+			}
 			if err := setHelmStringValue(values, "tracing.provider", "none"); err != nil {
 				return err
 			}
@@ -37,6 +40,9 @@ func populateTracingValues(in *v2.ControlPlaneSpec, values map[string]interface{
 				return err
 			}
 			if err := setHelmBoolValue(values, "global.enableTracing", true); err != nil {
+				return err
+			}
+			if err := setHelmBoolValue(values, "meshConfig.enableTracing", true); err != nil {
 				return err
 			}
 			if err := setHelmStringValue(values, "global.proxy.tracer", "zipkin"); err != nil {
@@ -117,6 +123,7 @@ func populateTracingConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 
 	// remove auto-populated fields
 	in.RemoveField("global.enableTracing")
+	in.RemoveField("meshConfig.enableTracing")
 	in.RemoveField("global.proxy.tracer")
 	in.RemoveField("tracing.enabled")
 

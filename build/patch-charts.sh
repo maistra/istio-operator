@@ -42,6 +42,9 @@ function patchTemplates() {
     if grep -l '{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}' $file; then
       sed_wrap -i -e 's/{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}/-{{ .Values.revision | default "default" }}/' $file
     fi
+    if grep -l 'operator\.istio\.io' $file; then
+      sed_wrap -i -e '/operator\.istio\.io/d' $file
+    fi
   done
 
   # MAISTRA-506 add a maistra-control-plane label for deployment specs
@@ -146,7 +149,7 @@ function patchGalley() {
 \1  containerPort: 15017/' $deployment
 
   # always istiod
-  sed_wrap -i -e '/{{- if eq .Values.revision ""}}/,/{{- end }}/d' $deployment
+  sed_wrap -i -e '/{{- if eq .Values.revision ""}}/,/{{- end }}/ { /istiod/! d }' $deployment
 
   # multitenant
   echo '
@@ -175,12 +178,31 @@ function patchGalley() {
           - --podLocalitySource=pod' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
   # disable webhook config updates
   sed_wrap -i -r -e '/INJECTION_WEBHOOK_CONFIG_NAME/,/ISTIOD_ADDR/ {
-      /INJECTION_WEBHOOK_CONFIG_NAME/a\
+      /name: INJECTION_WEBHOOK_CONFIG_NAME/a\
 \            value: ""\
 \          - name: VALIDATION_WEBHOOK_CONFIG_NAME\
 \            value: ""
-      /INJECTION_WEBHOOK_CONFIG_NAME|ISTIOD_ADDR/! d
+      /name: INJECTION_WEBHOOK_CONFIG_NAME|ISTIOD_ADDR/! d
     }' $deployment
+  sed_wrap -i -e '/telemetry\.v2\.enabled/i\
+{{- if .Values.global.tls }}\
+{{- if .Values.global.tls.minProtocolVersion }}\
+          - name: TLS_MIN_PROTOCOL_VERSION\
+            value: {{ .Values.global.tls.minProtocolVersion }}\
+{{- end }}\
+{{- if .Values.global.tls.maxProtocolVersion }}\
+          - name: TLS_MAX_PROTOCOL_VERSION\
+            value: {{ .Values.global.tls.maxProtocolVersion }}\
+{{- end }}\
+{{- if .Values.global.tls.cipherSuites }}\
+          - name: TLS_CIPHER_SUITES\
+            value: {{ .Values.global.tls.cipherSuites }}\
+{{- end }}\
+{{- if .Values.global.tls.ecdhCurves }}\
+          - name: TLS_ECDH_CURVES\
+            value: {{ .Values.global.tls.ecdhCurves }}\
+{{- end }}\
+{{- end }}' $deployment
   # remove privileged security settings
   sed_wrap -i -r -e '/template:/,/containers:/ { /securityContext:/,/containers:/ { /containers:/! d }}' \
       -e '/containers:/,$ { /securityContext:/,/capabilities:/ { /capabilities:|securityContext:/! d }}' \
@@ -210,53 +232,16 @@ base:
           - name: ENABLE_MAISTRA_EXTENSIONS\
             value: "{{ .Values.wasmExtensions.enabled }}"' "${deployment}"
 
-  # rootNamespace
-  sed_wrap -i -e '/defaultConfig:/ i\
-    # The namespace to treat as the administrative root namespace for istio\
-    # configuration.\
-{{- if .Values.global.configRootNamespace }}\
-    rootNamespace: {{ .Values.global.configRootNamespace }}\
-{{- else }}\
-    rootNamespace: {{ .Release.Namespace }}\
-{{- end }}\
-{{- if and (.Values.mixer.policy.enabled) (not .Values.global.disablePolicyChecks) }}\
-    enableClientSidePolicyCheck: true\
-{{- end }}' \
-    -e '/{{- if .Values.global.remotePolicyAddress }}/,/{{- if and .Values.telemetry.v1.enabled .Values.telemetry.enabled }}/ {
-        /{{- if .Values.mixer.policy.enabled }}/,/{{- if and .Values.telemetry.v1.enabled .Values.telemetry.enabled }}/ {
-        d
-      }
-      /{{- if .Values.global.remotePolicyAddress }}/,/{{- if .Values.global.remoteTelemetryAddress }}/ {
-        /.Values.global.remoteTelemetryAddress/i\
-    \{\{- if and .Values.telemetry.v1.enabled .Values.telemetry.enabled \}\}
-        /{{- else }}/,/{{- end }}/ {
-          /{{- end }}/ a\
-    \{\{- else \}\}\
-    \{\{- if .Values.mixer.policy.enabled \}\}\
-    \{\{- if .Values.global.controlPlaneSecurityEnabled \}\}\
-    mixerCheckServer: istio-policy.\{\{ .Values.global.policyNamespace \}\}.svc.\{\{ .Values.global.proxy.clusterDomain \}\}:15004\
-    \{\{- else \}\}\
-    mixerCheckServer: istio-policy.\{\{ .Values.global.policyNamespace \}\}.svc.\{\{ .Values.global.proxy.clusterDomain \}\}:9091\
-    \{\{- end \}\}\
-    \{\{- end \}\}
-        }
-      }
-    }' \
-    -e 's/{{ .Values.global.disablePolicyChecks | default "true" }}/{{ hasKey .Values.global "disablePolicyChecks" | ternary .Values.global.disablePolicyChecks true }}/' \
-    ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml
-
   # analysis
   sed_wrap -i -e '/PILOT_ENABLE_ANALYSIS/ i\
           - name: PILOT_ENABLE_STATUS\
             value: "{{ .Values.global.istiod.enableAnalysis }}"
   ' $deployment
-  # connectionTimeout not supported for proxy config
-  sed_wrap -i -e '/defaultConfig:/,/connectTimeout:/s/connectTimeout:/#connectTimeout:/' ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml
 }
 
 function patchGateways() {
   echo "patching Gateways specific Helm charts"
-  sed_wrap -i -e 's/type: LoadBalancer$/type: ClusterIP/' ${HELM_DIR}/gateways/istio-ingress/values.yaml
+  sed_wrap -i -r -e 's/type: LoadBalancer *(#.*)?$/type: ClusterIP/' ${HELM_DIR}/gateways/istio-ingress/values.yaml
 
   sed_wrap -i -e 's/\(^ *\)- containerPort: {{ $val.targetPort | default $val.port }}/\1- name: {{ $val.name }}\
 \1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
@@ -454,85 +439,6 @@ function patchSidecarInjector() {
       ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
 }
 
-function patchMixer() {
-  echo "patching Mixer specific Helm charts"
-
-  # multitenant
-  sed_wrap -i -e 's/^---.*$/\
-- apiGroups: ["maistra.io"]\
-  resources: ["servicemeshmemberrolls"]\
-  verbs: ["get", "list", "watch"]/' \
-    -e 's/name: istio-policy/name: istio-policy-{{ .Release.Namespace }}/' ${HELM_DIR}/istio-policy/templates/clusterrole.yaml
-  sed_wrap -i -e 's/name: istio-policy$/name: istio-policy-{{ .Release.Namespace }}/' ${HELM_DIR}/istio-policy/templates/clusterrolebinding.yaml
-  sed_wrap -i -e 's/^---.*$/\
-- apiGroups: ["maistra.io"]\
-  resources: ["servicemeshmemberrolls"]\
-  verbs: ["get", "list", "watch"]/' ${HELM_DIR}/istio-telemetry/mixer-telemetry/templates/clusterrole.yaml
-  convertClusterRoleBinding ${HELM_DIR}/istio-policy/templates/clusterrolebinding.yaml
-  convertClusterRoleBinding ${HELM_DIR}/istio-telemetry/mixer-telemetry/templates/clusterrolebinding.yaml
-  sed_wrap -i -e '/name: *mixer/,/args:/ {
-    /args/ a\
-\          - --memberRollName=default\
-\          - --memberRollNamespace=\{\{ .Release.Namespace \}\}
-  }' \
-    -e '0,/volumes:/ {/securityContext:/,/volumes:/ {/volumes:/! d}}' \
-    -e '/securityContext:/,/volumeMounts:/ {/volumeMounts:/! d}' \
-    ${HELM_DIR}/istio-telemetry/mixer-telemetry/templates/deployment.yaml \
-    ${HELM_DIR}/istio-policy/templates/deployment.yaml
-  # need to add mount for policy proxy's envoy config
-  sed_wrap -i -e '/- name: istio-proxy/,/- name: uds-socket/ {
-    /- name: uds-socket/ i\
-        - name: policy-envoy-config\
-          mountPath: /var/lib/istio/envoy
-    }' \
-    -e '/volumes:/,/affinity:/ {
-    /affinity:/ i\
-      - name: policy-envoy-config\
-        configMap:\
-          name: policy-envoy-config
-    }' \
-    -e 's/istiod.{{ .Release.Namespace }}.svc:15012/istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc:15012/' ${HELM_DIR}/istio-policy/templates/deployment.yaml
-
-  # MAISTRA-1902
-  # move attribute installation to mesh-config
-  echo '{{ if (or .Values.mixer.policy.enabled .Values.mixer.telemetry.enabled) }}' > ${HELM_DIR}/mesh-config/templates/mixer-config.yaml
-  sed_nowrap -n -e '
-    /{{ if not (eq .Release.Namespace "istio-system") }}/,/{{- end }}/ {
-      /{{ if not (eq .Release.Namespace "istio-system") }}/ b noprint
-      $ b noprint
-      s/app: istio-policy/app: istio-mixer/
-      s/{{- if .Values.mixer.policy.adapters.kubernetesenv.enabled }}/{{- if (or .Values.mixer.policy.adapters.kubernetesenv.enabled .Values.mixer.adapters.kubernetesenv.enabled ) }}/
-      p
-      :noprint
-    }
-    :end' ${HELM_DIR}/istio-policy/templates/config.yaml >> ${HELM_DIR}/mesh-config/templates/mixer-config.yaml
-  echo '{{- end }}' >> ${HELM_DIR}/mesh-config/templates/mixer-config.yaml
-  # now delete it from policy and telemetry config
-  sed_wrap -i -e '/{{ if not (eq .Release.Namespace "istio-system") }}/,/{{- end }}/ d' \
-      -e '/^{{- end }}/,/---/ d' ${HELM_DIR}/istio-policy/templates/config.yaml
-  sed_wrap -i -e '
-    /{{- if .Values.mixer.adapters.kubernetesenv.enabled }}/,/apiVersion: networking.istio.io\/v1alpha3/ {
-      /apiVersion: networking.istio.io\/v1alpha3/ b nodelete
-      d
-      :nodelete
-    }
-    1,/{{- if .Values.mixer.adapters.stdio.enabled }}/ {
-      /{{- if .Values.mixer.adapters.stdio.enabled }}/ b nodelete
-      d
-      :nodelete
-    }' ${HELM_DIR}/istio-telemetry/mixer-telemetry/templates/config.yaml
-  # make sure values exist for kubernetesenv.enabled
-  echo '
-mixer:
-  policy:
-    adapters:
-      kubernetesenv:
-        enabled: true
-  adapters:
-    kubernetesenv:
-      enabled: true' >> ${HELM_DIR}/global.yaml
-}
-
 # The following modifications are made to the generated helm template for the Kiali yaml file
 # - remove all non-kiali operator configuration
 # - remove values.yaml from community
@@ -571,7 +477,6 @@ function convertClusterRoleBinding() {
 function removeUnsupportedCharts() {
   echo "removing unsupported Helm charts"
   rm -rf ${HELM_DIR}/istio-cni
-  rm -rf ${HELM_DIR}/istio-telemetry/prometheusOperator
   rm -rf ${HELM_DIR}/istiocoredns
   rm -rf ${HELM_DIR}/istiod-remote
   rm -rf ${HELM_DIR}/istio-operator
@@ -584,6 +489,17 @@ function moveEnvoyFiltersToMeshConfigChart() {
   echo >> ${HELM_DIR}/global.yaml
   sed_nowrap -n -e '/^telemetry:/,/^      logWindowDuration/ p' ${HELM_DIR}/istio-control/istio-discovery/values.yaml >> ${HELM_DIR}/global.yaml
   sed_wrap -i -n -e '/^telemetry:/,/^      logWindowDuration/ d; p' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
+  sed_wrap -i -e '/maxNumberOfMessageEvents/a\
+  # Default mtls policy. If true, mtls between services will be enabled by default.\
+  mtls:\
+    # Default setting for service-to-service mtls. Can be set explicitly using\
+    # destination rules or service annotations.\
+    enabled: false\
+    # If set to true, and a given service does not have a corresponding DestinationRule configured,\
+    # or its DestinationRule does not have TLSSettings specified, Istio configures client side\
+    # TLS configuration automatically, based on the server side mTLS authentication policy and the\
+    # availibity of sidecars.\
+    auto: true' ${HELM_DIR}/global.yaml
 }
 
 function hacks() {
@@ -602,14 +518,10 @@ patchTemplates
 patchGalley
 patchGateways
 patchSidecarInjector
-patchMixer
-patchKialiTemplate
-patchKialiOpenShift
+#patchMixer # no longer present in 2.1
+#patchKialiTemplate # no longer present upstream
+#patchKialiOpenShift
 moveEnvoyFiltersToMeshConfigChart
-
-source ${SOURCE_DIR}/build/patch-grafana.sh
-source ${SOURCE_DIR}/build/patch-jaeger.sh
-source ${SOURCE_DIR}/build/patch-prometheus.sh
 
 # XXX: hacks - remove before 2.0 release
 hacks

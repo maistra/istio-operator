@@ -55,6 +55,9 @@ var securityTestCases = []conversionTestCase{
 					"auto":    true,
 				},
 			},
+			"meshConfig": map[string]interface{}{
+				"enableAutoMtls": true,
+			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -1039,6 +1042,9 @@ var securityTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"trustDomainAliases": []interface{}{},
 			},
+			"meshConfig": map[string]interface{}{
+				"trustDomainAliases": []interface{}{},
+			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -1062,6 +1068,12 @@ var securityTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
+				"trustDomainAliases": []interface{}{
+					"extra-trust.mydomain.com",
+					"another-trusted.anotherdomain.com",
+				},
+			},
+			"meshConfig": map[string]interface{}{
 				"trustDomainAliases": []interface{}{
 					"extra-trust.mydomain.com",
 					"another-trusted.anotherdomain.com",
@@ -1111,6 +1123,9 @@ var securityTestCases = []conversionTestCase{
 			"global": map[string]interface{}{
 				"trustDomainAliases": []interface{}{},
 			},
+			"meshConfig": map[string]interface{}{
+				"trustDomainAliases": []interface{}{},
+			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
@@ -1134,6 +1149,12 @@ var securityTestCases = []conversionTestCase{
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
+				"trustDomainAliases": []interface{}{
+					"extra-trust.mydomain.com",
+					"another-trusted.anotherdomain.com",
+				},
+			},
+			"meshConfig": map[string]interface{}{
 				"trustDomainAliases": []interface{}{
 					"extra-trust.mydomain.com",
 					"another-trusted.anotherdomain.com",
