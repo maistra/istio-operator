@@ -16,8 +16,8 @@
 
 MAISTRA_VERSION        ?= 2.1.0
 MAISTRA_BRANCH         ?= maistra-2.1
-REPLACES_PRODUCT_CSV   ?= 2.0.0.2
-REPLACES_COMMUNITY_CSV ?= 2.0.0
+REPLACES_PRODUCT_CSV   ?= 2.0.2
+REPLACES_COMMUNITY_CSV ?= 2.0.2
 VERSION                ?= development
 IMAGE                  ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}
 CONTAINER_CLI          ?= docker
