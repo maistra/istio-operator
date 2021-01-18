@@ -23,132 +23,18 @@ import (
 
 func TestMAISTRA_2040(t *testing.T) {
 	const (
-		testNamespace                = "test-namespace"
-		galleyWebhookName            = "istio-galley-" + testNamespace
-		sidecarInjectorWebhookName   = "istio-sidecar-injector-" + testNamespace
-		istiodMutatingWebhookName    = "istiod-foo-" + testNamespace
-		istiodValidatingWebhookName  = "istiod-foo-" + testNamespace
-		validatingGeneratedCert      = "generated-validating"
-		mutatingGeneratedCert        = "generated-mutating"
-		istiodGeneratedCert          = "custom-validating"
-		istiodCustomCert             = "custom-cert"
-		v11GalleySecretName          = "istio.istio-galley-service-account"
-		v11SidecarInjectorSecretName = "istio.istio-sidecar-injector-service-account"
-		v20SelfSignedSecretName      = "istio-ca-secret"
-		v20PrivateKeySecretName      = "cacerts"
+		testNamespace                     = "test-namespace-1"
+		test2Namespace                    = "test-namespace-2"
+		galleyWebhookNamePrefix           = "istio-galley"
+		sidecarInjectorWebhookNamePrefix  = "istio-sidecar-injector"
+		istiodMutatingWebhookNamePrefix   = "istiod-foo"
+		istiodValidatingWebhookNamePrefix = "istiod-foo"
+		v11GalleySecretName               = "istio.istio-galley-service-account"
+		v11SidecarInjectorSecretName      = "istio.istio-sidecar-injector-service-account"
+		v20SelfSignedSecretName           = "istio-ca-secret"
+		v20PrivateKeySecretName           = "cacerts"
 	)
 
-	var (
-		galleyWebhook = &arv1beta1.ValidatingWebhookConfiguration{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: galleyWebhookName,
-			},
-			Webhooks: []arv1beta1.ValidatingWebhook{
-				{
-					Name: "pilot.validation.istio.io",
-					ClientConfig: arv1beta1.WebhookClientConfig{
-						Service: &arv1beta1.ServiceReference{
-							Namespace: testNamespace,
-							Name:      "istio-galley",
-						},
-					},
-				},
-				{
-					Name: "mixer.validation.istio.io",
-					ClientConfig: arv1beta1.WebhookClientConfig{
-						Service: &arv1beta1.ServiceReference{
-							Namespace: testNamespace,
-							Name:      "istio-galley",
-						},
-					},
-				},
-			},
-		}
-		galleySecret = &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      v11GalleySecretName,
-				Namespace: testNamespace,
-			},
-			Data: map[string][]byte{
-				"root-cert.pem": []byte(validatingGeneratedCert),
-			},
-		}
-		sidecarInjectorWebhook = &arv1beta1.MutatingWebhookConfiguration{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: sidecarInjectorWebhookName,
-			},
-			Webhooks: []arv1beta1.MutatingWebhook{
-				{
-					Name: "sidecar-injector.istio.io",
-					ClientConfig: arv1beta1.WebhookClientConfig{
-						Service: &arv1beta1.ServiceReference{
-							Namespace: testNamespace,
-							Name:      "istio-sidecar-injector",
-						},
-					},
-				},
-			},
-		}
-		sidecarInjectorSecret = &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      v11SidecarInjectorSecretName,
-				Namespace: testNamespace,
-			},
-			Data: map[string][]byte{
-				"root-cert.pem": []byte(mutatingGeneratedCert),
-			},
-		}
-		istiodMutatingWebhook = &arv1beta1.MutatingWebhookConfiguration{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: istiodMutatingWebhookName,
-			},
-			Webhooks: []arv1beta1.MutatingWebhook{
-				{
-					Name: "sidecar-injector.istio.io",
-					ClientConfig: arv1beta1.WebhookClientConfig{
-						Service: &arv1beta1.ServiceReference{
-							Namespace: testNamespace,
-							Name:      "istiod-foo",
-						},
-					},
-				},
-			},
-		}
-		istiodValidatingWebhook = &arv1beta1.ValidatingWebhookConfiguration{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: istiodValidatingWebhookName,
-			},
-			Webhooks: []arv1beta1.ValidatingWebhook{
-				{
-					Name: "validation.istio.io",
-					ClientConfig: arv1beta1.WebhookClientConfig{
-						Service: &arv1beta1.ServiceReference{
-							Namespace: testNamespace,
-							Name:      "istiod-foo",
-						},
-					},
-				},
-			},
-		}
-		istiodSelfSignedSecret = &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      v20SelfSignedSecretName,
-				Namespace: testNamespace,
-			},
-			Data: map[string][]byte{
-				"ca-cert.pem": []byte(istiodGeneratedCert),
-			},
-		}
-		istiodPrivateKeySecret = &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      v20PrivateKeySecretName,
-				Namespace: testNamespace,
-			},
-			Data: map[string][]byte{
-				"ca-cert.pem": []byte(istiodCustomCert),
-			},
-		}
-	)
 	var testCases = []struct {
 		name        string
 		description string
@@ -162,46 +48,46 @@ func TestMAISTRA_2040(t *testing.T) {
 				{
 					Name: "create-galley-webhook",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), galleyWebhook.DeepCopy())
+						return mgr.GetClient().Create(context.TODO(), create1xValidatingWebhook(galleyWebhookNamePrefix, testNamespace))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsSeen(),
 					),
-					Timeout: 2 * time.Second,
+					Timeout: 5 * time.Second,
 				},
 				{
 					Name: "create-galley-secret",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), galleySecret.DeepCopy())
+						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(galleySecretName, testNamespace, "root-cert.pem"))
 					},
 					Verifier: VerifyActions(
-						Verify("get").On("validatingwebhookconfigurations").Named(galleyWebhookName).IsSeen(),
+						Verify("get").On("validatingwebhookconfigurations").Named(webhookName(galleyWebhookNamePrefix, testNamespace)).IsSeen(),
 						Verify("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("validatingwebhookconfigurations").Named(galleyWebhookName).Passes(verifyCABundle(validatingGeneratedCert)),
+						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(galleyWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(galleySecretName, testNamespace))),
 					),
-					Timeout: 2 * time.Second,
+					Timeout: 5 * time.Second,
 				},
 				{
 					Name: "create-injector-webhook",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), sidecarInjectorWebhook.DeepCopy())
+						return mgr.GetClient().Create(context.TODO(), create1xMutatingWebhook(sidecarInjectorWebhookNamePrefix, testNamespace))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsSeen(),
 					),
-					Timeout: 2 * time.Second,
+					Timeout: 5 * time.Second,
 				},
 				{
 					Name: "create-injector-secret",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), sidecarInjectorSecret.DeepCopy())
+						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(sidecarInjectorSecretName, testNamespace, "root-cert.pem"))
 					},
 					Verifier: VerifyActions(
-						Verify("get").On("mutatingwebhookconfigurations").Named(sidecarInjectorWebhookName).IsSeen(),
+						Verify("get").On("mutatingwebhookconfigurations").Named(webhookName(sidecarInjectorWebhookNamePrefix, testNamespace)).IsSeen(),
 						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("mutatingwebhookconfigurations").Named(sidecarInjectorWebhookName).Passes(verifyCABundle(mutatingGeneratedCert)),
+						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(sidecarInjectorWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(sidecarInjectorSecretName, testNamespace))),
 					),
-					Timeout: 2 * time.Second,
+					Timeout: 5 * time.Second,
 				},
 			},
 		},
@@ -212,41 +98,41 @@ func TestMAISTRA_2040(t *testing.T) {
 				{
 					Name: "create-mutating-webhook",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), istiodMutatingWebhook.DeepCopy())
+						return mgr.GetClient().Create(context.TODO(), create2xMutatingWebhook(istiodMutatingWebhookNamePrefix, testNamespace))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 					),
-					Timeout: 2 * time.Second,
+					Timeout: 5 * time.Second,
 				},
 				{
 					Name: "create-validating-webhook",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), istiodValidatingWebhook.DeepCopy())
+						return mgr.GetClient().Create(context.TODO(), create2xValidatingWebhook(istiodValidatingWebhookNamePrefix, testNamespace))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 					),
-					Timeout: 2 * time.Second,
+					Timeout: 5 * time.Second,
 				},
 				{
 					Name: "create-istio-ca-secret",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), istiodSelfSignedSecret.DeepCopy())
+						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(v20SelfSignedSecretName, testNamespace, "ca-cert.pem"))
 					},
 					Verifier: VerifyActions(
-						Verify("get").On("mutatingwebhookconfigurations").Named(istiodMutatingWebhookName).IsSeen(),
+						Verify("get").On("mutatingwebhookconfigurations").Named(webhookName(istiodMutatingWebhookNamePrefix, testNamespace)).IsSeen(),
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("mutatingwebhookconfigurations").Named(istiodMutatingWebhookName).Passes(verifyCABundle(istiodGeneratedCert)),
-						Verify("get").On("validatingwebhookconfigurations").Named(istiodValidatingWebhookName).IsSeen(),
+						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(istiodMutatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
+						Verify("get").On("validatingwebhookconfigurations").Named(webhookName(istiodValidatingWebhookNamePrefix, testNamespace)).IsSeen(),
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("validatingwebhookconfigurations").Named(istiodValidatingWebhookName).Passes(verifyCABundle(istiodGeneratedCert)),
+						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(istiodValidatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
 					),
-					Timeout: 2 * time.Second,
+					Timeout: 5 * time.Second,
 				},
 			},
 		},
@@ -254,31 +140,31 @@ func TestMAISTRA_2040(t *testing.T) {
 			name:        "preexisting_secret.v1.1",
 			description: "testing webhook controller with a pre-existing secret",
 			resources: []runtime.Object{
-				galleySecret.DeepCopy(),
-				sidecarInjectorSecret.DeepCopy(),
+				createWebhookSecret(galleySecretName, testNamespace, "root-cert.pem"),
+				createWebhookSecret(sidecarInjectorSecretName, testNamespace, "root-cert.pem"),
 			},
 			events: []ControllerTestEvent{
 				{
 					Name: "create-galley-webhook",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), galleyWebhook.DeepCopy())
+						return mgr.GetClient().Create(context.TODO(), create1xValidatingWebhook(galleyWebhookNamePrefix, testNamespace))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("validatingwebhookconfigurations").Named(galleyWebhookName).Passes(verifyCABundle(validatingGeneratedCert)),
+						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(galleyWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(galleySecretName, testNamespace))),
 					),
-					Timeout: 2 * time.Second,
+					Timeout: 5 * time.Second,
 				},
 				{
 					Name: "create-injector-webhook",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), sidecarInjectorWebhook.DeepCopy())
+						return mgr.GetClient().Create(context.TODO(), create1xMutatingWebhook(sidecarInjectorWebhookNamePrefix, testNamespace))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("mutatingwebhookconfigurations").Named(sidecarInjectorWebhookName).Passes(verifyCABundle(mutatingGeneratedCert)),
+						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(sidecarInjectorWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(sidecarInjectorSecretName, testNamespace))),
 					),
-					Timeout: 2 * time.Second,
+					Timeout: 5 * time.Second,
 				},
 			},
 		},
@@ -286,32 +172,32 @@ func TestMAISTRA_2040(t *testing.T) {
 			name:        "preexisting_secret.v2.0.self-signed",
 			description: "testing webhook controller with a pre-existing self-signed secret",
 			resources: []runtime.Object{
-				istiodSelfSignedSecret.DeepCopy(),
+				createWebhookSecret(v20SelfSignedSecretName, testNamespace, "ca-cert.pem"),
 			},
 			events: []ControllerTestEvent{
 				{
 					Name: "create-mutating-webhook",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), istiodMutatingWebhook.DeepCopy())
+						return mgr.GetClient().Create(context.TODO(), create2xMutatingWebhook(istiodMutatingWebhookNamePrefix, testNamespace))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("mutatingwebhookconfigurations").Named(istiodMutatingWebhookName).Passes(verifyCABundle(istiodGeneratedCert)),
+						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(istiodMutatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
 					),
-					Timeout: 2 * time.Second,
+					Timeout: 5 * time.Second,
 				},
 				{
 					Name: "create-validating-webhook",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), istiodValidatingWebhook.DeepCopy())
+						return mgr.GetClient().Create(context.TODO(), create2xValidatingWebhook(istiodValidatingWebhookNamePrefix, testNamespace))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("validatingwebhookconfigurations").Named(istiodValidatingWebhookName).Passes(verifyCABundle(istiodGeneratedCert)),
+						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(istiodValidatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
 					),
-					Timeout: 2 * time.Second,
+					Timeout: 5 * time.Second,
 				},
 			},
 		},
@@ -319,30 +205,30 @@ func TestMAISTRA_2040(t *testing.T) {
 			name:        "preexisting_secret.v2.0.private-key",
 			description: "testing webhook controller with a pre-existing private-key secret",
 			resources: []runtime.Object{
-				istiodPrivateKeySecret.DeepCopy(),
+				createWebhookSecret(v20PrivateKeySecretName, testNamespace, "ca-cert.pem"),
 			},
 			events: []ControllerTestEvent{
 				{
 					Name: "create-mutating-webhook",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), istiodMutatingWebhook.DeepCopy())
+						return mgr.GetClient().Create(context.TODO(), create2xMutatingWebhook(istiodMutatingWebhookNamePrefix, testNamespace))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("mutatingwebhookconfigurations").Named(istiodMutatingWebhookName).Passes(verifyCABundle(istiodCustomCert)),
+						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(istiodMutatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
 					),
-					Timeout: 2 * time.Second,
+					Timeout: 5 * time.Second,
 				},
 				{
 					Name: "create-validating-webhook",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), istiodValidatingWebhook.DeepCopy())
+						return mgr.GetClient().Create(context.TODO(), create2xValidatingWebhook(istiodValidatingWebhookNamePrefix, testNamespace))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("validatingwebhookconfigurations").Named(istiodValidatingWebhookName).Passes(verifyCABundle(istiodCustomCert)),
+						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(istiodValidatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
 					),
-					Timeout: 2 * time.Second,
+					Timeout: 5 * time.Second,
 				},
 			},
 		},
@@ -350,31 +236,168 @@ func TestMAISTRA_2040(t *testing.T) {
 			name:        "preexisting_secret.v2.0.both",
 			description: "testing webhook controller with a pre-existing self-signed and private-key secret",
 			resources: []runtime.Object{
-				istiodSelfSignedSecret.DeepCopy(),
-				istiodPrivateKeySecret.DeepCopy(),
+				createWebhookSecret(v20SelfSignedSecretName, testNamespace, "ca-cert.pem"),
+				createWebhookSecret(v20PrivateKeySecretName, testNamespace, "ca-cert.pem"),
 			},
 			events: []ControllerTestEvent{
 				{
 					Name: "create-mutating-webhook",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), istiodMutatingWebhook.DeepCopy())
+						return mgr.GetClient().Create(context.TODO(), create2xMutatingWebhook(istiodMutatingWebhookNamePrefix, testNamespace))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("mutatingwebhookconfigurations").Named(istiodMutatingWebhookName).Passes(verifyCABundle(istiodCustomCert)),
+						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(istiodMutatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
 					),
-					Timeout: 2 * time.Second,
+					Timeout: 5 * time.Second,
 				},
 				{
 					Name: "create-validating-webhook",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), istiodValidatingWebhook.DeepCopy())
+						return mgr.GetClient().Create(context.TODO(), create2xValidatingWebhook(istiodValidatingWebhookNamePrefix, testNamespace))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("validatingwebhookconfigurations").Named(istiodValidatingWebhookName).Passes(verifyCABundle(istiodCustomCert)),
+						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(istiodValidatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
 					),
-					Timeout: 2 * time.Second,
+					Timeout: 5 * time.Second,
+				},
+			},
+		},
+		{
+			name:        "maistra-2053",
+			description: "multiple installs should use the correct secret for their install",
+			resources:   []runtime.Object{&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: test2Namespace}}},
+			events: []ControllerTestEvent{
+				{
+					Name: "create-galley-webhook",
+					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
+						return mgr.GetClient().Create(context.TODO(), create1xValidatingWebhook(galleyWebhookNamePrefix, testNamespace))
+					},
+					Verifier: VerifyActions(
+						Verify("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsSeen(),
+					),
+					Timeout: 5 * time.Second,
+				},
+				{
+					Name: "create-galley-secret",
+					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
+						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(galleySecretName, testNamespace, "root-cert.pem"))
+					},
+					Verifier: VerifyActions(
+						Verify("get").On("validatingwebhookconfigurations").Named(webhookName(galleyWebhookNamePrefix, testNamespace)).IsSeen(),
+						Verify("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsSeen(),
+						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(galleyWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(galleySecretName, testNamespace))),
+					),
+					Timeout: 5 * time.Second,
+				},
+				{
+					Name: "create-injector-webhook",
+					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
+						return mgr.GetClient().Create(context.TODO(), create1xMutatingWebhook(sidecarInjectorWebhookNamePrefix, testNamespace))
+					},
+					Verifier: VerifyActions(
+						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsSeen(),
+					),
+					Timeout: 5 * time.Second,
+				},
+				{
+					Name: "create-injector-secret",
+					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
+						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(sidecarInjectorSecretName, testNamespace, "root-cert.pem"))
+					},
+					Verifier: VerifyActions(
+						Verify("get").On("mutatingwebhookconfigurations").Named(webhookName(sidecarInjectorWebhookNamePrefix, testNamespace)).IsSeen(),
+						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsSeen(),
+						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(sidecarInjectorWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(sidecarInjectorSecretName, testNamespace))),
+					),
+					Timeout: 5 * time.Second,
+				},
+				{
+					Name: "create-galley-webhook-ns2",
+					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
+						return mgr.GetClient().Create(context.TODO(), create1xValidatingWebhook(galleyWebhookNamePrefix, test2Namespace))
+					},
+					Verifier: VerifyActions(
+						Verify("get").On("secrets").Named(v11GalleySecretName).In(test2Namespace).IsSeen(),
+					),
+					Assertions: []ActionAssertion{
+						Assert("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsNotSeen(),
+						Assert("update").On("validatingwebhookconfigurations").Named(webhookName(galleyWebhookNamePrefix, test2Namespace)).IsNotSeen(),
+					},
+					Timeout: 5 * time.Second,
+				},
+				{
+					Name: "create-galley-secret-ns2",
+					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
+						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(galleySecretName, test2Namespace, "root-cert.pem"))
+					},
+					Verifier: VerifyActions(
+						Verify("get").On("validatingwebhookconfigurations").Named(webhookName(galleyWebhookNamePrefix, test2Namespace)).IsSeen(),
+						Verify("get").On("secrets").Named(v11GalleySecretName).In(test2Namespace).IsSeen(),
+						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(galleyWebhookNamePrefix, test2Namespace)).Passes(verifyCABundle(certForSecret(galleySecretName, test2Namespace))),
+					),
+					Assertions: []ActionAssertion{
+						Assert("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsNotSeen(),
+					},
+					Timeout: 5 * time.Second,
+				},
+				{
+					Name: "create-injector-webhook-ns2",
+					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
+						return mgr.GetClient().Create(context.TODO(), create1xMutatingWebhook(sidecarInjectorWebhookNamePrefix, test2Namespace))
+					},
+					Verifier: VerifyActions(
+						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(test2Namespace).IsSeen(),
+					),
+					Assertions: []ActionAssertion{
+						Assert("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsNotSeen(),
+						Assert("update").On("mutatingwebhookconfigurations").Named(webhookName(sidecarInjectorWebhookNamePrefix, test2Namespace)).IsNotSeen(),
+					},
+					Timeout: 5 * time.Second,
+				},
+				{
+					Name: "create-injector-secret-ns2",
+					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
+						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(sidecarInjectorSecretName, test2Namespace, "root-cert.pem"))
+					},
+					Verifier: VerifyActions(
+						Verify("get").On("mutatingwebhookconfigurations").Named(webhookName(sidecarInjectorWebhookNamePrefix, test2Namespace)).IsSeen(),
+						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(test2Namespace).IsSeen(),
+						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(sidecarInjectorWebhookNamePrefix, test2Namespace)).Passes(verifyCABundle(certForSecret(sidecarInjectorSecretName, test2Namespace))),
+					),
+					Assertions: []ActionAssertion{
+						Assert("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsNotSeen(),
+					},
+					Timeout: 5 * time.Second,
+				},
+				{
+					Name: "update-galley-webhook",
+					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
+						return mgr.GetClient().Update(context.TODO(), create1xValidatingWebhook(galleyWebhookNamePrefix, testNamespace))
+					},
+					Verifier: VerifyActions(
+						Verify("get").On("validatingwebhookconfigurations").Named(webhookName(galleyWebhookNamePrefix, testNamespace)).IsSeen(),
+						Verify("update").On("validatingwebhookconfigurations").Named(webhookName(galleyWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(galleySecretName, testNamespace))),
+					),
+					Assertions: []ActionAssertion{
+						Assert("get").On("secrets").Named(v11GalleySecretName).In(test2Namespace).IsNotSeen(),
+					},
+					Timeout: 5 * time.Second,
+				},
+				{
+					Name: "update-injector-webhook",
+					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
+						return mgr.GetClient().Update(context.TODO(), create1xMutatingWebhook(sidecarInjectorWebhookNamePrefix, testNamespace))
+					},
+					Verifier: VerifyActions(
+						Verify("get").On("mutatingwebhookconfigurations").Named(webhookName(sidecarInjectorWebhookNamePrefix, testNamespace)).IsSeen(),
+						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(sidecarInjectorWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(sidecarInjectorSecretName, testNamespace))),
+					),
+					Assertions: []ActionAssertion{
+						Assert("get").On("secrets").Named(v11SidecarInjectorSecretName).In(test2Namespace).IsNotSeen(),
+					},
+					Timeout: 5 * time.Second,
 				},
 			},
 		},
@@ -385,9 +408,9 @@ func TestMAISTRA_2040(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-            t.Log(tc.description)
-            // this is global singleton, so we need to reset it each time
-            WebhookCABundleManagerInstance = newWebhookCABundleManager()
+			t.Log(tc.description)
+			// this is global singleton, so we need to reset it each time
+			WebhookCABundleManagerInstance = newWebhookCABundleManager()
 			RunControllerTestCase(t, ControllerTestCase{
 				Name:            tc.name,
 				AddControllers:  []AddControllerFunc{Add},
@@ -421,4 +444,109 @@ func verifyCABundle(caBundle string) func(action clienttesting.Action) error {
 		}
 		return nil
 	}
+}
+
+func webhookName(prefix, namespace string) string {
+	return fmt.Sprintf("%s-%s", prefix, namespace)
+}
+
+func create1xValidatingWebhook(prefix, namespace string) *arv1beta1.ValidatingWebhookConfiguration {
+	return &arv1beta1.ValidatingWebhookConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: webhookName(prefix, namespace),
+		},
+		Webhooks: []arv1beta1.ValidatingWebhook{
+			{
+				Name: "pilot.validation.istio.io",
+				ClientConfig: arv1beta1.WebhookClientConfig{
+					Service: &arv1beta1.ServiceReference{
+						Namespace: namespace,
+						Name:      "istio-galley",
+					},
+				},
+			},
+			{
+				Name: "mixer.validation.istio.io",
+				ClientConfig: arv1beta1.WebhookClientConfig{
+					Service: &arv1beta1.ServiceReference{
+						Namespace: namespace,
+						Name:      "istio-galley",
+					},
+				},
+			},
+		},
+	}
+}
+
+func create1xMutatingWebhook(prefix, namespace string) *arv1beta1.MutatingWebhookConfiguration {
+	return &arv1beta1.MutatingWebhookConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: webhookName(prefix, namespace),
+		},
+		Webhooks: []arv1beta1.MutatingWebhook{
+			{
+				Name: "sidecar-injector.istio.io",
+				ClientConfig: arv1beta1.WebhookClientConfig{
+					Service: &arv1beta1.ServiceReference{
+						Namespace: namespace,
+						Name:      "istio-sidecar-injector",
+					},
+				},
+			},
+		},
+	}
+}
+
+func create2xValidatingWebhook(prefix, namespace string) *arv1beta1.ValidatingWebhookConfiguration {
+	return &arv1beta1.ValidatingWebhookConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: webhookName(prefix, namespace),
+		},
+		Webhooks: []arv1beta1.ValidatingWebhook{
+			{
+				Name: "validation.istio.io",
+				ClientConfig: arv1beta1.WebhookClientConfig{
+					Service: &arv1beta1.ServiceReference{
+						Namespace: namespace,
+						Name:      "istiod-foo",
+					},
+				},
+			},
+		},
+	}
+}
+
+func create2xMutatingWebhook(prefix, namespace string) *arv1beta1.MutatingWebhookConfiguration {
+	return &arv1beta1.MutatingWebhookConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: webhookName(prefix, namespace),
+		},
+		Webhooks: []arv1beta1.MutatingWebhook{
+			{
+				Name: "sidecar-injector.istio.io",
+				ClientConfig: arv1beta1.WebhookClientConfig{
+					Service: &arv1beta1.ServiceReference{
+						Namespace: namespace,
+						Name:      "istiod-foo",
+					},
+				},
+			},
+		},
+	}
+}
+
+func createWebhookSecret(name, namespace, key string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			key: []byte(certForSecret(name, namespace)),
+		},
+	}
+}
+
+func certForSecret(name, namespace string) string {
+	return fmt.Sprintf("%s-%s", name, namespace)
 }
