@@ -1,0 +1,18 @@
+{{- if .Values.global.defaultPodDisruptionBudget.enabled }}
+{{ $gateway := index .Values "gateways" "istio-egressgateway" }}
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $gateway.name | default "istio-egressgateway" }}
+  namespace: {{ $gateway.namespace | default .Release.Namespace }}
+  labels:
+    maistra-version: "2.1.0"
+{{ $gateway.labels | toYaml | trim | indent 4 }}
+    release: {{ .Release.Name }}
+    istio.io/rev: {{ .Values.revision | default "default" }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+{{ $gateway.labels | toYaml | trim | indent 6 }}
+{{- end }}

@@ -11,7 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,30 +24,6 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/helm"
 )
-
-const (
-	DiscoveryChart       = "istio-discovery"
-	GatewayEgressChart   = "istio-egress"
-	GatewayIngressChart  = "istio-ingress"
-	GrafanaChart         = "grafana"
-	KialiChart           = "kiali"
-	MeshConfigChart      = "mesh-config"
-	MixerPolicyChart     = "istio-policy"
-	MixerTelemetryChart  = "mixer-telemetry"
-	PrometheusChart      = "prometheus"
-	TelemetryCommonChart = "telemetry-common"
-	ThreeScaleChart      = "maistra-threescale"
-	TracingChart         = "tracing"
-	WASMExtensionsChart  = "wasm-extensions"
-
-	// Event reasons
-	eventReasonRendering = "Rendering"
-)
-
-type chartRenderingDetails struct {
-	path         string
-	enabledField string
-}
 
 var (
 	v2_0ChartMapping = map[string]chartRenderingDetails{
@@ -106,8 +81,6 @@ var (
 		},
 	}
 )
-
-var specialCharts = sets.NewString(GatewayIngressChart, GatewayEgressChart, ThreeScaleChart)
 
 var v2_0ChartOrder = [][]string{
 	{DiscoveryChart},

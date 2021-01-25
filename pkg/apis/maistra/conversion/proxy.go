@@ -14,16 +14,23 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 		proxy = &v2.ProxyConfig{}
 	}
 	proxyValues := make(map[string]interface{})
+	meshConfigValues := make(map[string]interface{})
 
 	// General
 	if proxy.Concurrency != nil {
 		if err := setHelmIntValue(proxyValues, "concurrency", int64(*proxy.Concurrency)); err != nil {
 			return err
 		}
+		if err := setHelmIntValue(meshConfigValues, "concurrency", int64(*proxy.Concurrency)); err != nil {
+			return err
+		}
 	}
-	// XXX: admin port is not configurable
 	if proxy.AdminPort > 0 {
+		// admin port is only configurable through .Values.meshConfig.proxyAdminPort
 		if err := setHelmIntValue(proxyValues, "adminPort", int64(proxy.AdminPort)); err != nil {
+			return err
+		}
+		if err := setHelmIntValue(meshConfigValues, "defaultConfig.proxyAdminPort", int64(proxy.AdminPort)); err != nil {
 			return err
 		}
 	}
@@ -40,8 +47,8 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 				return err
 			}
 		}
-		// XXX: proxy.Networking.ConnectionTimeout is not exposed through values
 		if proxy.Networking.ConnectionTimeout != "" {
+			// XXX: this is actually MeshConfig.defaultConfig.connectTimeout and is not supported in 2.0+, and wasn't configurable in 1.x
 			if err := setHelmStringValue(proxyValues, "connectionTimeout", proxy.Networking.ConnectionTimeout); err != nil {
 				return err
 			}
@@ -121,6 +128,9 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 				if err := setHelmStringValue(values, "global.outboundTrafficPolicy.mode", string(proxy.Networking.TrafficControl.Outbound.Policy)); err != nil {
 					return err
 				}
+				if err := setHelmStringValue(meshConfigValues, "outboundTrafficPolicy.mode", string(proxy.Networking.TrafficControl.Outbound.Policy)); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -129,6 +139,9 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 			autoDetect := proxy.Networking.Protocol.AutoDetect
 			if autoDetect.Timeout != "" {
 				if err := setHelmStringValue(proxyValues, "protocolDetectionTimeout", autoDetect.Timeout); err != nil {
+					return err
+				}
+				if err := setHelmStringValue(meshConfigValues, "protocolDetectionTimeout", autoDetect.Timeout); err != nil {
 					return err
 				}
 			}
@@ -153,6 +166,9 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 			}
 			if proxy.Networking.DNS.RefreshRate != "" {
 				if err := setHelmStringValue(proxyValues, "dnsRefreshRate", proxy.Networking.DNS.RefreshRate); err != nil {
+					return err
+				}
+				if err := setHelmStringValue(meshConfigValues, "dnsRefreshRate", proxy.Networking.DNS.RefreshRate); err != nil {
 					return err
 				}
 			}
@@ -221,9 +237,15 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 				if err := setHelmStringValue(proxyValues, "accessLogFile", file.Name); err != nil {
 					return err
 				}
+				if err := setHelmStringValue(meshConfigValues, "accessLogFile", file.Name); err != nil {
+					return err
+				}
 			}
 			if file.Encoding != "" {
 				if err := setHelmStringValue(proxyValues, "accessLogEncoding", file.Encoding); err != nil {
+					return err
+				}
+				if err := setHelmStringValue(meshConfigValues, "accessLogEncoding", file.Encoding); err != nil {
 					return err
 				}
 			}
@@ -231,13 +253,30 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 				if err := setHelmStringValue(proxyValues, "accessLogFormat", file.Format); err != nil {
 					return err
 				}
+				if err := setHelmStringValue(meshConfigValues, "accessLogFormat", file.Format); err != nil {
+					return err
+				}
 			}
 		}
 		if proxy.AccessLogging.EnvoyService != nil {
 			accessLogServiceValues := map[string]interface{}{}
-			if err := populateProxyEnvoyServiceValues(proxy.AccessLogging.EnvoyService, accessLogServiceValues); err == nil && len(accessLogServiceValues) > 0 {
-				if err := setHelmValue(proxyValues, "envoyAccessLogService", accessLogServiceValues); err != nil {
-					return err
+			if err := populateProxyEnvoyServiceValues(proxy.AccessLogging.EnvoyService, accessLogServiceValues); err == nil {
+				if len(accessLogServiceValues) > 0 {
+					if err := setHelmValue(proxyValues, "envoyAccessLogService", accessLogServiceValues); err != nil {
+						return err
+					}
+					if proxy.AccessLogging.EnvoyService.Enabled != nil {
+						if err := setHelmValue(meshConfigValues, "enableEnvoyAccessLogService", *proxy.AccessLogging.EnvoyService.Enabled); err != nil {
+							return err
+						}
+						// enableEnvoyAccessLogService does not appear to be checked when configuring the proxy, so this
+						// should only be set if enaabled
+						if *proxy.AccessLogging.EnvoyService.Enabled {
+							if err := setHelmValue(meshConfigValues, "defaultConfig.envoyAccessLogService", accessLogServiceValues); err != nil {
+								return err
+							}
+						}
+					}
 				}
 			} else {
 				return err
@@ -252,6 +291,11 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 			if len(metricsServiceValues) > 0 {
 				if err := setHelmValue(proxyValues, "envoyMetricsService", metricsServiceValues); err != nil {
 					return err
+				}
+				if proxy.EnvoyMetricsService.Enabled != nil && *proxy.EnvoyMetricsService.Enabled {
+					if err := setHelmValue(meshConfigValues, "defaultConfig.envoyMetricsService", metricsServiceValues); err != nil {
+						return err
+					}
 				}
 			}
 		} else {
@@ -295,6 +339,11 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 	// set proxy values
 	if len(proxyValues) > 0 {
 		if err := overwriteHelmValues(values, proxyValues, "global", "proxy"); err != nil {
+			return err
+		}
+	}
+	if len(meshConfigValues) > 0 {
+		if err := overwriteHelmValues(values, meshConfigValues, "meshConfig"); err != nil {
 			return err
 		}
 	}
@@ -357,6 +406,13 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 		rawProxyValues = make(map[string]interface{})
 	}
 	proxyValues := v1.NewHelmValues(rawProxyValues)
+	rawMeshConfigValues, ok, err := in.GetMap("meshConfig")
+	if err != nil {
+		return err
+	} else if !ok || len(rawMeshConfigValues) == 0 {
+		rawMeshConfigValues = make(map[string]interface{})
+	}
+	meshConfigValues := v1.NewHelmValues(rawMeshConfigValues)
 
 	// remove auto-populated values
 	in.RemoveField("istio_cni.enabled")
@@ -369,7 +425,22 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	} else if err != nil {
 		return err
 	}
+	// meshConfig values take precedence
+	if rawConcurrency, ok, err := meshConfigValues.GetAndRemoveInt64("concurrency"); ok {
+		concurrency := int32(rawConcurrency)
+		proxy.Concurrency = &concurrency
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
 	if adminPort, ok, err := proxyValues.GetAndRemoveInt64("adminPort"); ok && adminPort > 0 {
+		proxy.AdminPort = int32(adminPort)
+		setProxy = true
+	} else if err != nil {
+		return err
+	}
+	// meshConfig values take precedence
+	if adminPort, ok, err := meshConfigValues.GetAndRemoveInt64("defaultConfig.proxyAdminPort"); ok && adminPort > 0 {
 		proxy.AdminPort = int32(adminPort)
 		setProxy = true
 	} else if err != nil {
@@ -507,6 +578,13 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	} else if err != nil {
 		return err
 	}
+	// meshConfig takes precedence
+	if outboundTrafficPolicy, ok, err := meshConfigValues.GetAndRemoveString("outboundTrafficPolicy.mode"); ok && outboundTrafficPolicy != "" {
+		trafficControl.Outbound.Policy = v2.ProxyOutboundTrafficPolicy(outboundTrafficPolicy)
+		setTrafficControl = true
+	} else if err != nil {
+		return err
+	}
 
 	if setTrafficControl {
 		networking.TrafficControl = trafficControl
@@ -517,6 +595,13 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	autoDetect := &v2.ProxyNetworkAutoProtocolDetectionConfig{}
 	setProtocol := false
 	if protocolDetectionTimeout, ok, err := proxyValues.GetAndRemoveString("protocolDetectionTimeout"); ok && protocolDetectionTimeout != "" {
+		autoDetect.Timeout = protocolDetectionTimeout
+		setProtocol = true
+	} else if err != nil {
+		return err
+	}
+	// meshConfig takes precedence
+	if protocolDetectionTimeout, ok, err := meshConfigValues.GetAndRemoveString("protocolDetectionTimeout"); ok && protocolDetectionTimeout != "" {
 		autoDetect.Timeout = protocolDetectionTimeout
 		setProtocol = true
 	} else if err != nil {
@@ -565,6 +650,13 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 		return err
 	}
 	if dnsRefreshRate, ok, err := proxyValues.GetAndRemoveString("dnsRefreshRate"); ok && dnsRefreshRate != "" {
+		dns.RefreshRate = dnsRefreshRate
+		setDNS = true
+	} else if err != nil {
+		return err
+	}
+	// meshConfig takes precedence
+	if dnsRefreshRate, ok, err := meshConfigValues.GetAndRemoveString("dnsRefreshRate"); ok && dnsRefreshRate != "" {
 		dns.RefreshRate = dnsRefreshRate
 		setDNS = true
 	} else if err != nil {
@@ -649,7 +741,21 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	} else if err != nil {
 		return err
 	}
+	// meshConfig takes precedence
+	if accessLogFile, ok, err := meshConfigValues.GetAndRemoveString("accessLogFile"); ok && accessLogFile != "" {
+		fileAccessLog.Name = accessLogFile
+		setFileAccessLog = true
+	} else if err != nil {
+		return err
+	}
 	if accessLogEncoding, ok, err := proxyValues.GetAndRemoveString("accessLogEncoding"); ok && accessLogEncoding != "" {
+		fileAccessLog.Encoding = accessLogEncoding
+		setFileAccessLog = true
+	} else if err != nil {
+		return err
+	}
+	// meshConfig takes precedence
+	if accessLogEncoding, ok, err := meshConfigValues.GetAndRemoveString("accessLogEncoding"); ok && accessLogEncoding != "" {
 		fileAccessLog.Encoding = accessLogEncoding
 		setFileAccessLog = true
 	} else if err != nil {
@@ -661,10 +767,18 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	} else if err != nil {
 		return err
 	}
+	// meshConfig takes precedence
+	if accessLogFormat, ok, err := meshConfigValues.GetAndRemoveString("accessLogFormat"); ok && accessLogFormat != "" {
+		fileAccessLog.Format = accessLogFormat
+		setFileAccessLog = true
+	} else if err != nil {
+		return err
+	}
 	if setFileAccessLog {
 		accessLogging.File = fileAccessLog
 		setAccessLogging = true
 	}
+
 	if accessLogServiceValues, ok, err := proxyValues.GetMap("envoyAccessLogService"); ok && len(accessLogServiceValues) > 0 {
 		accessLogService := &v2.ProxyEnvoyServiceConfig{}
 		if updated, err := populateProxyEnvoyServiceConfig(v1.NewHelmValues(accessLogServiceValues), accessLogService); updated {
@@ -681,6 +795,30 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	} else if err != nil {
 		return err
 	}
+	// meshConfig takes precedence
+	if accessLogServiceValues, ok, err := meshConfigValues.GetMap("defaultConfig.envoyAccessLogService"); ok && len(accessLogServiceValues) > 0 {
+		accessLogService := &v2.ProxyEnvoyServiceConfig{}
+		if updated, err := populateProxyEnvoyServiceConfig(v1.NewHelmValues(accessLogServiceValues), accessLogService); updated {
+			accessLogging.EnvoyService = accessLogService
+			setAccessLogging = true
+		} else if err != nil {
+			return err
+		}
+		if enableEnvoyAccessLogService, ok, err := meshConfigValues.GetAndRemoveBool("enableEnvoyAccessLogService"); ok {
+			accessLogService.Enabled = &enableEnvoyAccessLogService
+			setAccessLogging = true
+		} else if err != nil {
+			return err
+		}
+		if len(accessLogServiceValues) == 0 {
+			meshConfigValues.RemoveField("defaultConfig.envoyAccessLogService")
+		} else if err := meshConfigValues.SetField("defaultConfig.envoyAccessLogService", accessLogServiceValues); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
 	if setAccessLogging {
 		proxy.AccessLogging = accessLogging
 		setProxy = true
@@ -698,6 +836,23 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 		if len(metricsServiceValues) == 0 {
 			proxyValues.RemoveField("envoyMetricsService")
 		} else if err := proxyValues.SetField("envoyMetricsService", metricsServiceValues); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	// meshConfig takes precedence
+	if metricsServiceValues, ok, err := meshConfigValues.GetMap("defaultConfig.envoyMetricsService"); ok && len(metricsServiceValues) > 0 {
+		metricsService := &v2.ProxyEnvoyServiceConfig{}
+		if updated, err := populateProxyEnvoyServiceConfig(v1.NewHelmValues(metricsServiceValues), metricsService); updated {
+			proxy.EnvoyMetricsService = metricsService
+			setProxy = true
+		} else if err != nil {
+			return err
+		}
+		if len(metricsServiceValues) == 0 {
+			meshConfigValues.RemoveField("defaultConfig.envoyMetricsService")
+		} else if err := meshConfigValues.SetField("envoyMetricsService", metricsServiceValues); err != nil {
 			return err
 		}
 	} else if err != nil {
@@ -762,6 +917,14 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	if len(proxyValues.GetContent()) == 0 {
 		in.RemoveField("global.proxy")
 	} else if err := in.SetField("global.proxy", proxyValues.GetContent()); err != nil {
+		return err
+	}
+	if defaultConfig, ok, _ := meshConfigValues.GetMap("defaultConfig"); ok && len(defaultConfig) == 0 {
+		meshConfigValues.RemoveField("defaultConfig")
+	}
+	if len(meshConfigValues.GetContent()) == 0 {
+		in.RemoveField("meshConfig")
+	} else if err := in.SetField("meshConfig", meshConfigValues.GetContent()); err != nil {
 		return err
 	}
 

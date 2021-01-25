@@ -108,6 +108,10 @@ var (
 						"tracer": nil,
 					},
 				},
+				"meshConfig": map[string]interface{}{
+					// a result of enabling tracing
+					"enableTracing": nil,
+				},
 				// a result of enabling prometheus
 				"mixer": map[string]interface{}{
 					"adapters": map[string]interface{}{
@@ -824,6 +828,12 @@ var (
 					"kiali": map[string]interface{}{
 						"enabled": true,
 					},
+					"meshConfig": map[string]interface{}{
+						"accessLogFile": "/dev/stdout",
+						"outboundTrafficPolicy": map[string]interface{}{
+							"mode": "REGISTRY_ONLY",
+						},
+					},
 					"mixer": map[string]interface{}{
 						"policy": map[string]interface{}{
 							"autoscaleEnabled": false,
@@ -868,6 +878,10 @@ var (
 						"gatewayType": "ingress",
 						"name":        "istio-ingressgateway",
 					},
+				},
+				"meshConfig": map[string]interface{}{
+					// a result of enabling tracing
+					"enableTracing": nil,
 				},
 				"tracing": map[string]interface{}{
 					"provider": "jaeger",
@@ -1152,6 +1166,10 @@ var (
 					"kiali": map[string]interface{}{
 						"jaegerInClusterURL": "jaeger-query.cp-namespace.svc.cluster.local",
 					},
+					"meshConfig": map[string]interface{}{
+						// a result of enabling tracing
+						"enableTracing": true,
+					},
 					"tracing": map[string]interface{}{
 						"enabled": false,
 					},
@@ -1234,6 +1252,10 @@ var (
 					},
 					"kiali": map[string]interface{}{
 						"jaegerInClusterURL": "custom-jaeger-query.cp-namespace.svc.cluster.local",
+					},
+					"meshConfig": map[string]interface{}{
+						// a result of enabling tracing
+						"enableTracing": true,
 					},
 					"tracing": map[string]interface{}{
 						"enabled": false,

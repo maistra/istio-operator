@@ -16,9 +16,11 @@ import (
 )
 
 const (
-	PRODUCT_IMAGE_2_0   = "2.0.1"
-	COMMUNITY_IMAGE_2_0 = "2.0.0"
-	PRODUCT_IMAGE_1_1   = "1.1.11"
+	PRODUCT_IMAGE_1_1   = "1.1.12"
+	PRODUCT_IMAGE_2_0   = "2.0.2"
+	COMMUNITY_IMAGE_2_0 = "2.0.2"
+	COMMUNITY_IMAGE_2_1 = "2.1.0"
+	PRODUCT_IMAGE_2_1   = "2.1.0"
 )
 
 func TestProfiles(t *testing.T) {
@@ -95,6 +97,63 @@ func TestProfiles(t *testing.T) {
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.Image = "ose-oauth-proxy"
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.ImageTag = "v4.4"
 				smcp.Spec.Runtime.Defaults.Container.ImageTag = PRODUCT_IMAGE_2_0
+			},
+		},
+		{
+			name: "maistra-profile-2.1",
+			v:    versions.V2_1,
+			input: &v2.ServiceMeshControlPlane{
+				Spec: v2.ControlPlaneSpec{
+					Profiles: []string{"maistra"},
+				},
+			},
+			expected: &v2.ServiceMeshControlPlane{
+				Spec: v2_0_ExpectedSpec,
+			},
+			patchupExpected: func(smcp *v2.ServiceMeshControlPlane) {
+				smcp.Spec.Proxy.Networking.Initialization.InitContainer.Runtime.Image = "injected-proxy-init-v2.1"
+				smcp.Spec.Proxy.Runtime.Container.Image = "injected-proxyv2-v2.1"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameThreeScale].Container.Image = "injected-3scale-v2.1"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGrafana].Container.Image = "injected-grafana-v2.1"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNamePilot].Container.Image = "injected-pilot-v2.1"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNamePrometheus].Container.Image = "injected-prometheus-v2.1"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameWASMCacher].Container.Image = "injected-wasm-cacher-v2.1"
+				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixer)
+				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerPolicy)
+				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerTelemetry)
+				smcp.Spec.Runtime.Defaults.Container.ImageTag = COMMUNITY_IMAGE_2_1
+			},
+		},
+		{
+			name: "servicemesh-profile-2.1",
+			v:    versions.V2_1,
+			input: &v2.ServiceMeshControlPlane{
+				Spec: v2.ControlPlaneSpec{
+					Profiles: []string{"servicemesh"},
+				},
+			},
+			expected: &v2.ServiceMeshControlPlane{
+				Spec: v2_0_ExpectedSpec,
+			},
+			patchupExpected: func(smcp *v2.ServiceMeshControlPlane) {
+				// the only thing changing here should be image names/tags/registries
+				smcp.Spec.Proxy.Networking.Initialization.InitContainer.Runtime.Image = "injected-proxy-init-v2.1"
+				smcp.Spec.Proxy.Runtime.Container.Image = "injected-proxyv2-v2.1"
+				smcp.Spec.Runtime.Defaults.Container.ImageRegistry = "registry.redhat.io/openshift-service-mesh"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameThreeScale].Container.ImageRegistry = "registry.redhat.io/openshift-service-mesh"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameThreeScale].Container.Image = "injected-3scale-v2.1"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameThreeScale].Container.ImageTag = "2.0.0"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.ImageRegistry = "registry.redhat.io/openshift4"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.Image = "ose-oauth-proxy"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.ImageTag = "v4.4"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGrafana].Container.Image = "injected-grafana-v2.1"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNamePilot].Container.Image = "injected-pilot-v2.1"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNamePrometheus].Container.Image = "injected-prometheus-v2.1"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameWASMCacher].Container.Image = "injected-wasm-cacher-v2.1"
+				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixer)
+				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerPolicy)
+				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerTelemetry)
+				smcp.Spec.Runtime.Defaults.Container.ImageTag = PRODUCT_IMAGE_2_1
 			},
 		},
 	}
