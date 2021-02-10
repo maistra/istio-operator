@@ -113,6 +113,15 @@ func installCRDRole(ctx context.Context, cl client.Client) error {
 					Resources: []string{rbacv1.ResourceAll},
 					Verbs:     role.verbs,
 				},
+				{
+					APIGroups: []string{
+						"maistra.io",
+					},
+					Resources: []string{
+						"servicemeshextensions",
+					},
+					Verbs: role.verbs,
+				},
 			},
 		}
 		existingRole := crdRole.DeepCopy()
