@@ -4,6 +4,14 @@
 
 set -e
 
+function generateArchitectureLabels() {
+  local labels=""
+  for label in "$@" ; do
+    labels="$labels\\1operatorframework.io/arch.${label}: supported\\n"
+  done
+  echo ${labels}
+}
+
 : ${COMMUNITY:-"true"}
 : ${MAISTRA_VERSION:?"Need to set maistra version, e.g. 1.0.1"}
 if [[ ${COMMUNITY} == "true" ]]; then
@@ -15,6 +23,7 @@ if [[ ${COMMUNITY} == "true" ]]; then
   DOCUMENTATION_URL="https://maistra.io/"
   BUG_URL="https://issues.redhat.com/projects/MAISTRA"
   OLM_FEATURES="[]"
+  ARCHITECTURE_LABELS=$(generateArchitectureLabels amd64)
 else
   BUILD_TYPE="servicemesh"
   JAEGER_STORAGE="Memory"
@@ -24,6 +33,7 @@ else
   DOCUMENTATION_URL="https://docs.openshift.com/container-platform/latest/service_mesh/servicemesh-release-notes.html"
   BUG_URL="https://issues.redhat.com/projects/OSSM"
   OLM_FEATURES="[\"Disconnected\"]"
+  ARCHITECTURE_LABELS=$(generateArchitectureLabels amd64 s390x ppc64le)
 fi
 : ${DEPLOYMENT_FILE:=deploy/${BUILD_TYPE}-operator.yaml}
 : ${MANIFESTS_DIR:=manifests-${BUILD_TYPE}}
@@ -118,6 +128,9 @@ function generateCSV() {
   sed -i -e 's/__JAEGER_STORAGE__/'${JAEGER_STORAGE}'/' ${csv_path}
   sed -i -e 's/__DATE__/'$(date +%Y-%m-%dT%H:%M:%S%Z)'/g' ${csv_path}
   sed -i -e 's+__IMAGE_SRC__+'${IMAGE_SRC}'+g' ${csv_path}
+  sed -i -e '/__ARCHITECTURE_LABELS__/ {
+    s+\(^.*\)__ARCHITECTURE_LABELS__+'"$ARCHITECTURE_LABELS"'+
+  }' ${csv_path}
   sed -i -e '/__RELATED_IMAGES__/{
     r '<(echo "$RELATED_IMAGES")'
     d

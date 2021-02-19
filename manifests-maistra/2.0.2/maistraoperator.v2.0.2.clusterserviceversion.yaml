@@ -5,8 +5,7 @@ metadata:
   namespace: placeholder
   labels:
     operatorframework.io/arch.amd64: supported
-    operatorframework.io/arch.s390x: supported
-    operatorframework.io/arch.ppc64le: supported
+
   annotations:
     categories: "OpenShift Optional, Integration & Delivery"
     capabilities: "Seamless Upgrades"
@@ -16,7 +15,7 @@ metadata:
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: maistra/istio-ubi8-operator:2.0.2
-    createdAt: 2021-01-20T16:30:43UTC
+    createdAt: 2021-02-19T18:57:06UTC
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.0.2-0"
     operators.openshift.io/infrastructure-features: '[]'
