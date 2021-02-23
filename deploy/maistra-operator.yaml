@@ -6613,8 +6613,8 @@ rules:
   resources:
   - servicemonitors
   verbs:
-  - "get"
-  - "create"
+  - get
+  - create
 - apiGroups:
   - ""
   resources:
@@ -6839,7 +6839,7 @@ rules:
   verbs:
   - create
 - nonResourceURLs:
-  - '/metrics'
+  - /metrics
   verbs:
   - get
 
