@@ -364,6 +364,17 @@ global:
   # Currently, two options are supported: "third-party-jwt" and "first-party-jwt".
   jwtPolicy: "third-party-jwt"
 
+  # Configure TLS parameters for listeners
+  tls:
+    # List of supported cipher suites, e.g. TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    cipherSuites: []
+    # List of supported ECDH curves, e.g. CurveP384
+    ecdhCurves: []
+    # min supported protocol version, e.g. TLSv1_2
+    maxProtocolVersion: ""
+    # max supported protocol version, e.g. TLSv1_3
+    minProtocolVersion: ""
+
   # Deprecated, use meshConfig.trustDomain
   trustDomain: ""
 
