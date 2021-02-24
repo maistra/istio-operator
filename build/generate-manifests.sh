@@ -40,21 +40,7 @@ fi
 mkdir -p "$BUNDLE_DIR"
 
 function checkDependencies() {
-  # Looks for go-based yq (https://github.com/mikefarah/yq) first, as installed in CI image.
-  # Note there's another yq package, written in python, which is not the one we want: https://github.com/kislyuk/yq
-  YQ=$(which yq-go 2>/dev/null || which yq 2>/dev/null || echo "")
-  echo "Using yq: ${YQ}"
-  if ! [ -x "$(command -v ${YQ})" ]; then
-    echo "Please install the go-based yq package (https://github.com/mikefarah/yq/releases/tag/v4.6.0)"
-    exit 1
-  else
-    s="yq version 4.*"
-    if ! [[ $(${YQ} --version) =~ $s ]]; then
-      echo "yq version: $(${YQ} --version)"
-      echo "Install the correct (go-based) yq package (https://github.com/mikefarah/yq/releases/tag/v4.6.0)"
-      exit 1
-    fi
-  fi
+  :
 }
 
 function generateDeploymentFile() {
@@ -71,6 +57,8 @@ function generateDeploymentFile() {
 }
 
 function generateCSV() {
+  YQ="go run -mod=vendor github.com/mikefarah/yq/v4"
+
   IMAGE_SRC=$(${YQ} eval 'select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.spec.containers[0].image' ${DEPLOYMENT_FILE})
   if [ "$IMAGE_SRC" == "" ]; then
     echo "generateCSV(): Operator image source is empty, please verify source yaml/path to the field."
