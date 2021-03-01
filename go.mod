@@ -14,6 +14,7 @@ require (
 	github.com/google/go-cmp v0.4.0
 	github.com/gregjones/httpcache v0.0.0-20181110185634-c63ab54fda8f // indirect
 	github.com/magiconair/properties v1.8.1
+	github.com/mikefarah/yq/v4 v4.6.0
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/opencontainers/runtime-spec v1.0.0 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
@@ -22,7 +23,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.6.3
+	github.com/spf13/viper v1.7.0
 	go.uber.org/zap v1.14.1
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899 // indirect
 	golang.org/x/text v0.3.3 // indirect
@@ -32,7 +33,6 @@ require (
 	k8s.io/apimachinery v0.18.3
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/code-generator v0.18.3
-	k8s.io/gengo v0.0.0-20200114144118-36b2048a9120
 	k8s.io/helm v2.16.7+incompatible
 	k8s.io/kubectl v0.18.3
 	sigs.k8s.io/controller-runtime v0.6.0

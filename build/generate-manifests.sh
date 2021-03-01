@@ -40,25 +40,7 @@ fi
 mkdir -p "$BUNDLE_DIR"
 
 function checkDependencies() {
-  if ! [ -x "$(command -v jq)" ]; then
-    echo "Please install jq package.'"
-    exit 1
-  fi
-
-  # Looks for yq-python (https://github.com/kislyuk/yq) first, as installed in CI image, fallbacks to yq.
-  # Note there's another yq package, written in golang, which is not the one we want: https://github.com/mikefarah/yq
-  YQ=$(which yq-python 2>/dev/null || which yq 2>/dev/null || echo "")
-
-  if ! [ -x "$(command -v ${YQ})" ]; then
-    echo "Please install the python yq package, e.g. 'pip install --user yq'"
-    exit 1
-  else
-    s="yq 2.*"
-    if ! [[ $(${YQ} --version) =~ $s ]]; then
-      echo "Install the correct (python) yq package, e.g. 'pip install --user yq'"
-      exit 1
-    fi
-  fi
+  :
 }
 
 function generateDeploymentFile() {
@@ -75,25 +57,27 @@ function generateDeploymentFile() {
 }
 
 function generateCSV() {
-  IMAGE_SRC=$(${YQ} -s -r '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.spec.containers[0].image' ${DEPLOYMENT_FILE})
+  YQ="go run -mod=vendor github.com/mikefarah/yq/v4"
+
+  IMAGE_SRC=$(${YQ} eval 'select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.spec.containers[0].image' ${DEPLOYMENT_FILE})
   if [ "$IMAGE_SRC" == "" ]; then
     echo "generateCSV(): Operator image source is empty, please verify source yaml/path to the field."
     exit 1
   fi
 
-  DEPLOYMENT_SPEC=$(${YQ} -s -r -y --indentless '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec' ${DEPLOYMENT_FILE} | sed 's/^/          /')
+  DEPLOYMENT_SPEC=$(${YQ} eval 'select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec' ${DEPLOYMENT_FILE} | sed 's/^/          /')
   if [ "$DEPLOYMENT_SPEC" == "" ]; then
     echo "generateCSV(): Operator deployment spec is empty, please verify source yaml/path to the field."
     exit 1
   fi
 
-  CLUSTER_ROLE_RULES=$(${YQ} -s -y --indentless '.[] | select(.kind=="ClusterRole" and .metadata.name=="istio-operator") | .rules' ${DEPLOYMENT_FILE} | sed 's/^/        /')
+  CLUSTER_ROLE_RULES=$(${YQ} eval 'select(.kind=="ClusterRole" and .metadata.name=="istio-operator") | .rules' ${DEPLOYMENT_FILE} | sed 's/^/        /')
   if [ "$CLUSTER_ROLE_RULES" == "null" ]; then
     echo "generateCSV(): istio-operator cluster role source is empty, please verify source yaml/path to the field."
     exit 1
   fi
 
-  RELATED_IMAGES=$(${YQ} -s -y --indentless '.[] | select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.metadata.annotations' ${DEPLOYMENT_FILE} | \
+  RELATED_IMAGES=$(${YQ} eval 'select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.metadata.annotations' ${DEPLOYMENT_FILE} | \
     sed -n 's/olm\.relatedImage\.\([^:]*\): *\([^ ]*\)/- name: \1\
   image: \2/p' | \
     sed 's/^/  /')
