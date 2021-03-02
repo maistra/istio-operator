@@ -187,7 +187,6 @@ collect-2.0-templates:
 .PHONY: update-2.1-charts
 update-2.1-charts:
 	HELM_DIR=${RESOURCES_DIR}/helm/v2.1 ISTIO_VERSION=1.8.0 ${SOURCE_DIR}/build/download-charts.sh
-	CRD_DIR=${RESOURCES_DIR}/helm/v2.1/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
 
 .PHONY: collect-2.1-charts
 collect-2.1-charts:

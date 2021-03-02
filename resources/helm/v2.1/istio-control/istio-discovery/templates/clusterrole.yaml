@@ -64,9 +64,6 @@ rules:
   # Istiod and bootstrap.
 
   # Used by Istiod to verify the JWT tokens
-  - apiGroups: ["authentication.k8s.io"]
-    resources: ["tokenreviews"]
-    verbs: ["create"]
 
   # Used by Istiod to verify gateway SDS
   - apiGroups: ["authorization.k8s.io"]
