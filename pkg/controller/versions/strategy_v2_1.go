@@ -84,6 +84,10 @@ var (
 			path:         "rls",
 			enabledField: "rateLimiting.rls",
 		},
+		RemoteChart: {
+			path:         "istiod-remote",
+			enabledField: "remote",
+		},
 	}
 )
 
@@ -94,6 +98,7 @@ var v2_1ChartOrder = [][]string{
 	{MixerPolicyChart, MixerTelemetryChart, TracingChart, GatewayIngressChart, GatewayEgressChart, GrafanaChart},
 	{KialiChart},
 	{ThreeScaleChart, WASMExtensionsChart, RLSChart},
+	{RemoteChart},
 }
 
 type versionStrategyV2_1 struct {
@@ -366,6 +371,19 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 		} else if err := spec.Istio.SetField("kiali.install", true); err != nil {
 			return nil, pkgerrors.Wrapf(err, "error enabling kiali install")
 		}
+	}
+
+	if isComponentEnabled(spec.Istio, v2_1ChartMapping[RemoteChart].enabledField) {
+		log.Info("Remote chart used. Disabling everything else.")
+		discoveryChartDetails := v2_1ChartMapping[DiscoveryChart]
+		discoveryChartDetails.enabledField = "noway"
+		v2_1ChartMapping[DiscoveryChart] = discoveryChartDetails
+		meshConfigChartDetails := v2_1ChartMapping[MeshConfigChart]
+		meshConfigChartDetails.enabledField = "noway"
+		v2_1ChartMapping[MeshConfigChart] = meshConfigChartDetails
+		telemetryCommonChartDetails := v2_1ChartMapping[TelemetryCommonChart]
+		telemetryCommonChartDetails.enabledField = "noway"
+		v2_1ChartMapping[TelemetryCommonChart] = telemetryCommonChartDetails
 	}
 
 	// convert back to the v2 type

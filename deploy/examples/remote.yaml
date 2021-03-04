@@ -1,0 +1,8 @@
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+metadata:
+  name: huszty
+spec:
+  version: "v2.1"
+  profiles:
+    - "remote"
