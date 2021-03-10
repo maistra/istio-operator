@@ -3,6 +3,7 @@ package memberroll
 import (
 	"context"
 	"fmt"
+	"sort"
 	"testing"
 	"time"
 
@@ -462,21 +463,33 @@ func TestReconcileNamespacesIgnoresControlPlaneNamespace(t *testing.T) {
 	namespaces := sets.NewString(controlPlaneNamespace, appNamespace)
 	smmr := maistrav1.ServiceMeshMemberRoll{
 		ObjectMeta: meta.ObjectMeta{
-			Name: "default",
+			Name:      "default",
 			Namespace: controlPlaneNamespace,
 		},
 	}
-	configuredMembers, pendingMembers, err, nsErrors := r.reconcileNamespaces(ctx, namespaces, namespaces, &smmr, versions.DefaultVersion)
+
+	// 1. test namespacesToAdd
+	configuredMembers, pendingMembers, err, nsErrors := r.reconcileNamespaces(ctx, namespaces, sets.NewString(), &smmr, versions.DefaultVersion)
 	if err != nil {
 		t.Fatalf("reconcileNamespaces failed: %v", err)
 	}
 	if len(nsErrors) > 0 {
 		t.Fatalf("reconcileNamespaces returned unexpected nsErrors: %v", nsErrors)
 	}
-
 	assertNamespaceReconcilerInvoked(t, nsReconciler, appNamespace) // NOTE: no controlPlaneNamespace
-	assertNamespaceRemoveInvoked(t, nsReconciler, appNamespace)     // NOTE: no controlPlaneNamespace
 	assert.DeepEquals(configuredMembers, []string{appNamespace}, "reconcileNamespaces returned an unexpected configuredMembers list", t)
+	assert.DeepEquals(pendingMembers, []string{}, "reconcileNamespaces returned an unexpected pendingMembers list", t)
+
+	// 2. test namespacesToRemove
+	configuredMembers, pendingMembers, err, nsErrors = r.reconcileNamespaces(ctx, sets.NewString(), namespaces, &smmr, versions.DefaultVersion)
+	if err != nil {
+		t.Fatalf("reconcileNamespaces failed: %v", err)
+	}
+	if len(nsErrors) > 0 {
+		t.Fatalf("reconcileNamespaces returned unexpected nsErrors: %v", nsErrors)
+	}
+	assertNamespaceRemoveInvoked(t, nsReconciler, appNamespace)     // NOTE: no controlPlaneNamespace
+	assert.DeepEquals(configuredMembers, []string{}, "reconcileNamespaces returned an unexpected configuredMembers list", t)
 	assert.DeepEquals(pendingMembers, []string{}, "reconcileNamespaces returned an unexpected pendingMembers list", t)
 }
 
@@ -501,11 +514,51 @@ func TestReconcileWorksWithMultipleNamespaces(t *testing.T) {
 	kialiReconciler.assertInvokedWith(t, appNamespace, appNamespace2)
 }
 
+func TestReconcileManyNamespaces(t *testing.T) {
+	controlPlane := markControlPlaneReconciled(newControlPlane(""), operatorVersionDefault)
+	roll := newDefaultMemberRoll()
+	addOwnerReference(roll)
+	numNamespaces := 1000
+	namespaces := make([]string, 0, numNamespaces)
+	for i := 0; i < numNamespaces; i++ {
+		namespaces = append(namespaces, fmt.Sprintf("app-namespace-%d", i))
+	}
+
+	roll.Spec.Members = namespaces
+	roll.ObjectMeta.Generation = 2
+	roll.Status.ObservedGeneration = 1
+	roll.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
+
+	cl, tracker, r, _, kialiReconciler := createClientAndReconciler(t, roll, controlPlane)
+	for i := 1; i < len(namespaces); i++ { // intentionally not creating app-namespace-0, so we can create it later
+		test.PanicOnError(tracker.Add(newNamespace(namespaces[i])))
+	}
+
+	assertReconcileSucceedsWithRequeue(r, t)
+	test.PanicOnError(cl.Create(ctx, newNamespace("app-namespace-0")))
+	assertReconcileSucceeds(r, t)
+
+	sortedNamespaces := sortedCopy(namespaces)
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
+	assert.DeepEquals(updatedRoll.Status.ConfiguredMembers, sortedNamespaces, "Expected Status.ConfiguredMembers to contain all namespaces", t)
+	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
+	kialiReconciler.assertInvokedWith(t, sortedNamespaces...)
+}
+
+func sortedCopy(strings []string) []string {
+	sorted := make([]string, len(strings))
+	copy(sorted, strings)
+	sort.Strings(sorted)
+	return sorted
+}
+
 func assertNamespaceReconcilerInvoked(t *testing.T, nsReconciler *fakeNamespaceReconciler, namespaces ...string) {
+	t.Helper();
 	assert.DeepEquals(nsReconciler.reconciledNamespaces, namespaces, "Expected namespace reconciler to be invoked, but it wasn't invoked or wasn't invoked properly", t)
 }
 
 func assertNamespaceRemoveInvoked(t *testing.T, nsReconciler *fakeNamespaceReconciler, namespaces ...string) {
+	t.Helper();
 	assert.DeepEquals(nsReconciler.removedNamespaces, namespaces, "Expected removal to be invoked for namespace, but it wasn't or wasn't invoked properly", t)
 }
 
@@ -899,6 +952,7 @@ func createKialiResource(controlPlaneNamespace string, members ...string) runtim
 }
 
 func (f *fakeKialiReconciler) assertInvokedWith(t *testing.T, namespaces ...string) {
+	t.Helper()
 	assert.True(f.reconcileKialiInvoked, "Expected reconcileKiali to be invoked, but it wasn't", t)
 	if len(namespaces) != 0 || len(f.kialiConfiguredMembers) != 0 {
 		assert.DeepEquals(f.kialiConfiguredMembers, namespaces, "reconcileKiali called with unexpected member list", t)
@@ -906,6 +960,7 @@ func (f *fakeKialiReconciler) assertInvokedWith(t *testing.T, namespaces ...stri
 }
 
 func (f *fakeKialiReconciler) assertNotInvoked(t *testing.T) {
+	t.Helper()
 	assert.False(f.reconcileKialiInvoked, "Expected reconcileKiali not to be invoked, but it was", t)
 }
 

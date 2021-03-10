@@ -331,6 +331,7 @@ func (r *namespaceReconciler) reconcileRoleBindings(ctx context.Context, namespa
 }
 
 func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context, namespace string) error {
+	reqLogger := common.LogFromContext(ctx)
 	netAttachDefName := r.meshVersion.GetCNINetworkName()
 
 	nadList, err := common.FetchMeshResources(ctx, r.Client, schema.GroupVersionKind{
@@ -356,6 +357,7 @@ func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context
 		return utilerrors.NewAggregate(allErrors)
 	}
 
+	reqLogger.Info("creating NetworkAttachmentDefinition", "NetworkAttachmentDefinition", netAttachDefName)
 	netAttachDef := &unstructured.Unstructured{}
 	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "k8s.cni.cncf.io",
@@ -373,6 +375,7 @@ func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context
 }
 
 func (r *namespaceReconciler) removeNetworkAttachmentDefinition(ctx context.Context, namespace string) error {
+	reqLogger := common.LogFromContext(ctx)
 	nadList, err := common.FetchMeshResources(ctx, r.Client, schema.GroupVersionKind{
 		Group:   "k8s.cni.cncf.io",
 		Version: "v1",
@@ -384,6 +387,7 @@ func (r *namespaceReconciler) removeNetworkAttachmentDefinition(ctx context.Cont
 
 	var allErrors []error
 	for _, nad := range nadList.Items {
+		reqLogger.Info("deleting NetworkAttachmentDefinition", "NetworkAttachmentDefinition", nad.GetName())
 		if err := r.Client.Delete(ctx, &nad, client.PropagationPolicy(metav1.DeletePropagationOrphan)); err != nil {
 			allErrors = append(allErrors, err)
 		}

@@ -3,6 +3,7 @@ package memberroll
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
@@ -482,52 +483,75 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 		return nil, nil, err, nil
 	}
 
-	for ns := range namespacesToRemove {
-		if ns == smmr.Namespace {
-			// we never operate on the control plane namespace
-			continue
-		}
-		err = reconciler.removeNamespaceFromMesh(ctx, ns)
-		if err != nil {
-			nsErrors = append(nsErrors, err)
-			pending.Insert(ns) // TODO: do we want to have a separate list for namespaces that are being removed, but haven't yet been?
-			r.EventRecorder.Event(
-				smmr,
-				corev1.EventTypeWarning,
-				string(eventReasonErrorRemovingNamespace),
-				fmt.Sprintf("Error removing namespace %q from mesh: %s", ns, err))
-		} else {
-			configured.Delete(ns)
-		}
+	reqLogger.Info("Reconciling member namespaces")
+	startTime := time.Now()
+
+	namespacesToProcess := namespacesToReconcile.Union(namespacesToRemove)
+	if namespacesToProcess.Has(smmr.Namespace) {
+		// we never operate on the control plane namespace
+		reqLogger.Info("ignoring control plane namespace in members list of ServiceMeshMemberRoll")
+		namespacesToProcess.Delete(smmr.Namespace)
 	}
-	for ns := range namespacesToReconcile {
-		if ns == smmr.Namespace {
-			// we never operate on the control plane namespace
-			reqLogger.Info("ignoring control plane namespace in members list of ServiceMeshMemberRoll")
-			continue
-		}
-		err = reconciler.reconcileNamespaceInMesh(ctx, ns)
-		if err != nil {
-			if errors.IsNotFound(err) || errors.IsGone(err) { // TODO: this check should be performed inside reconcileNamespaceInMesh
-				reqLogger.Info("namespace to configure with mesh is missing", "namespace", ns)
-				r.EventRecorder.Event(
-					smmr,
-					corev1.EventTypeWarning,
-					string(eventReasonNamespaceMissing),
-					fmt.Sprintf("Namespace to configure with mesh is missing: %s", ns))
+
+	// use scatter-gather pattern to process namespaces concurrently
+	type result struct {
+		ns string
+		err error
+	}
+	results := make(chan result, len(namespacesToProcess))
+
+	// scatter
+	for namespace := range namespacesToProcess {
+		go func(ns string) {
+			var err error
+			if namespacesToReconcile.Has(ns) {
+				err = reconciler.reconcileNamespaceInMesh(ctx, ns)
+				if err != nil {
+					if errors.IsNotFound(err) || errors.IsGone(err) { // TODO: this check should be performed inside reconcileNamespaceInMesh
+						reqLogger.Info("namespace to configure with mesh is missing", "namespace", ns)
+						r.EventRecorder.Event(
+							smmr,
+							corev1.EventTypeWarning,
+							string(eventReasonNamespaceMissing),
+							fmt.Sprintf("Namespace to configure with mesh is missing: %s", ns))
+					} else {
+						r.EventRecorder.Event(
+							smmr,
+							corev1.EventTypeWarning,
+							string(eventReasonErrorConfiguringNamespace),
+							fmt.Sprintf("Error configuring namespace %q with mesh: %s", ns, err))
+					}
+				}
 			} else {
-				r.EventRecorder.Event(
-					smmr,
-					corev1.EventTypeWarning,
-					string(eventReasonErrorConfiguringNamespace),
-					fmt.Sprintf("Error configuring namespace %q with mesh: %s", ns, err))
+				err = reconciler.removeNamespaceFromMesh(ctx, ns)
+				if err != nil {
+					r.EventRecorder.Event(
+						smmr,
+						corev1.EventTypeWarning,
+						string(eventReasonErrorRemovingNamespace),
+						fmt.Sprintf("Error removing namespace %q from mesh: %s", ns, err))
+				}
 			}
-			nsErrors = append(nsErrors, err)
-			pending.Insert(ns)
+			results <- result{ns, err}
+		}(namespace)
+	}
+
+	// gather
+	for i := 0; i<cap(results); i++ {
+		res := <-results
+		if res.err == nil {
+			if namespacesToReconcile.Has(res.ns) {
+				configured.Insert(res.ns)
+			} else {
+				configured.Delete(res.ns)
+			}
 		} else {
-			configured.Insert(ns)
+			nsErrors = append(nsErrors, res.err)
+			pending.Insert(res.ns) // TODO: do we want to have a separate list for namespaces that are being removed, but haven't yet been?
 		}
 	}
+
+	reqLogger.Info("Reconciliation of member namespaces complete", "duration", time.Now().Sub(startTime))
 	return configured.List(), pending.List(), nil, nsErrors
 }
 
