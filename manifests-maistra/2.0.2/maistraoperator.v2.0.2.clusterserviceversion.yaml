@@ -15,7 +15,7 @@ metadata:
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: maistra/istio-ubi8-operator:2.0.2
-    createdAt: 2021-02-19T18:57:06UTC
+    createdAt: 2021-03-11T13:42:17CET
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.0.2-0"
     operators.openshift.io/infrastructure-features: '[]'
@@ -700,7 +700,7 @@ spec:
         path: controlPlaneRef.namespace
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Service_Mesh_Control_Plane'
-          - 'urn:alm:descriptor:io.kubernetes:Namespace'
+          - 'urn:alm:descriptor:io.kubernetes:Project'
       - displayName: Name
         description: The name of the ServiceMeshControlPlane to which this namespace belongs
         path: controlPlaneRef.name
