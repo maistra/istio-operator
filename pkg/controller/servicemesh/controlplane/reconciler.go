@@ -171,9 +171,9 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 				namespace.Labels = map[string]string{}
 			}
 			// make sure injection is disabled for the control plane
-			if label, ok := namespace.Labels["maistra.io/ignore-namespace"]; !ok || label != "ignore" {
-				log.Info("Adding maistra.io/ignore-namespace=ignore label to Request.Namespace")
-				namespace.Labels["maistra.io/ignore-namespace"] = "ignore"
+			if label, ok := namespace.Labels[common.IgnoreNamespaceKey]; !ok || label != "ignore" {
+				log.Info("Adding %s=ignore label to Request.Namespace", common.IgnoreNamespaceKey)
+				namespace.Labels[common.IgnoreNamespaceKey] = "ignore"
 				updateLabels = true
 			}
 			// make sure the member-of label is specified, so networking works correctly
