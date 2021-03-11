@@ -291,7 +291,7 @@ __DEPLOYMENT_SPEC__
         path: controlPlaneRef.namespace
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Service_Mesh_Control_Plane'
-          - 'urn:alm:descriptor:io.kubernetes:Namespace'
+          - 'urn:alm:descriptor:io.kubernetes:Project'
       - displayName: Name
         description: The name of the ServiceMeshControlPlane to which this namespace belongs
         path: controlPlaneRef.name
