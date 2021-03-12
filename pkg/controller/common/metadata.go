@@ -21,6 +21,9 @@ const (
 	// MemberOfKey represents the mesh (namespace) to which the resource relates
 	MemberOfKey = MetadataNamespace + "/member-of"
 
+	// IgnoreNamespaceKey indicates that sidecar injection should be disabled for the namespace
+	IgnoreNamespaceKey = MetadataNamespace + "/ignore-namespace"
+
 	// GenerationKey represents the generation to which the resource was last reconciled
 	GenerationKey = MetadataNamespace + "/generation"
 

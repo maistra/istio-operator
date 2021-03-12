@@ -163,29 +163,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		// e.g. spec.pilot.enabled || spec.mixer.enabled || spec.galley.enabled || spec.sidecarInjectorWebhook.enabled || ....
 		// which is all we're supporting atm.  if the scope expands to allow
 		// installing custom gateways, etc., we should revisit this.
-		namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: r.Instance.Namespace}}
-		err = r.Client.Get(ctx, client.ObjectKey{Name: r.Instance.Namespace}, namespace)
-		if err == nil {
-			updateLabels := false
-			if namespace.Labels == nil {
-				namespace.Labels = map[string]string{}
-			}
-			// make sure injection is disabled for the control plane
-			if label, ok := namespace.Labels["maistra.io/ignore-namespace"]; !ok || label != "ignore" {
-				log.Info("Adding maistra.io/ignore-namespace=ignore label to Request.Namespace")
-				namespace.Labels["maistra.io/ignore-namespace"] = "ignore"
-				updateLabels = true
-			}
-			// make sure the member-of label is specified, so networking works correctly
-			if label, ok := namespace.Labels[common.MemberOfKey]; !ok || label != namespace.GetName() {
-				log.Info(fmt.Sprintf("Adding %s label to Request.Namespace", common.MemberOfKey))
-				namespace.Labels[common.MemberOfKey] = namespace.GetName()
-				updateLabels = true
-			}
-			if updateLabels {
-				err = r.Client.Update(ctx, namespace)
-			}
-		}
+		err = addNamespaceLabels(ctx, r.Client, r.Instance.Namespace)
 		if err != nil {
 			// bail if there was an error updating the namespace
 			r.renderings = nil
