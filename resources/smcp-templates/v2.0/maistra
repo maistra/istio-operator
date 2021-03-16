@@ -9,7 +9,7 @@ spec:
     defaults:
       container:
         imageRegistry: docker.io/maistra
-        imageTag: 2.0.2
+        imageTag: 2.0.3
     components:
       grafana:
         container:

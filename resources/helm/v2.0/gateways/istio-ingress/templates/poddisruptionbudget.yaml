@@ -6,7 +6,7 @@ metadata:
   name: {{ $gateway.name | default "istio-ingressgateway" }}
   namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.3"
 {{ $gateway.labels | toYaml | trim | indent 4 }}
     release: {{ .Release.Name }}
 spec:
