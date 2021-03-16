@@ -4,7 +4,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.3"
     istio.io/rev: {{ .Values.revision | default "default" }}
     app: sidecar-injector
     release: {{ .Release.Name }}
