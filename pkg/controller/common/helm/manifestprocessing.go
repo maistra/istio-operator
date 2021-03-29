@@ -73,10 +73,15 @@ func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Ma
 			allErrors = append(allErrors, err)
 			continue
 		}
+		if len(rawJSON) == 0 || string(rawJSON) == "{}" || string(rawJSON) == "null" {
+			// MAISTRA-2227 ignore empty objects.  this could happen if charts have in empty blocks, e.g. superfluous "---"
+			continue
+		}
 		obj := &unstructured.Unstructured{}
 		_, _, err = unstructured.UnstructuredJSONScheme.Decode(rawJSON, nil, obj)
 		if err != nil {
 			log.Error(err, "unable to decode object into Unstructured")
+			log.V(2).Info(fmt.Sprintf("raw bytes:\n%s\n", raw))
 			allErrors = append(allErrors, err)
 			continue
 		}
