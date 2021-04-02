@@ -231,6 +231,33 @@ func (h *HelmValues) GetMap(path string) (map[string]interface{}, bool, error) {
 	return nil, ok, err
 }
 
+func (h *HelmValues) GetAndRemoveMap(path string) (map[string]interface{}, bool, error) {
+	value, ok, err := h.GetMap(path)
+	if err == nil {
+		h.RemoveField(path)
+	}
+	return value, ok, err
+}
+
+func (h *HelmValues) GetStringMap(path string) (map[string]string, bool, error) {
+	if h == nil || h.data == nil {
+		return nil, false, nil
+	}
+	mapval, ok, err := unstructured.NestedStringMap(h.data, strings.Split(path, ".")...)
+	if ok {
+		return mapval, ok, err
+	}
+	return nil, ok, err
+}
+
+func (h *HelmValues) GetAndRemoveStringMap(path string) (map[string]string, bool, error) {
+	value, ok, err := h.GetStringMap(path)
+	if err == nil {
+		h.RemoveField(path)
+	}
+	return value, ok, err
+}
+
 func (h *HelmValues) SetField(path string, value interface{}) error {
 	if h == nil {
 		panic("Tried to invoke SetField on nil *HelmValues")

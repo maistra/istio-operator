@@ -627,6 +627,10 @@ KialiInstallConfig is used to configure a kiali installation
 | Dashboard configures the behavior of the kiali dashboard.
 | <<KialiDashboardConfig>>
 
+| deployment
+| Deployment configures the kiali deployment.
+| <<KialiDeploymentConfig>>
+
 | service
 | Service is used to configure the k8s Service associated with the kiali installation. XXX: provided for upstream support, only ingress is used, and then only for enablement and contextPath
 | <<ComponentServiceConfig>>
@@ -660,6 +664,36 @@ KialiDashboardConfig configures the behavior of the kiali dashboard
 | viewOnly
 | ViewOnly configures view_only_mode for the dashboard .Values.kiali.dashboard.viewOnlyMode
 | boolean
+
+|===
+
+
+[#KialiDeploymentConfig]
+== KialiDeploymentConfig
+
+github.com/maistra/istio-operator/pkg/apis/maistra/v2
+
+KialiDeploymentConfig configures the kiali deployment
+
+.Table KialiDeploymentConfig Fields
+|===
+| Name | Description | Type
+
+| affinity
+| If specified, the pod's scheduling constraints
+| <<corev1_Affinity>>
+
+| nodeSelector
+| Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+| map[string]string
+
+| resources
+| 
+| <<corev1_ResourceRequirements>>
+
+| tolerations
+| If specified, the kiali pod's tolerations.
+| []<<corev1_Toleration>>
 
 |===
 
