@@ -80,6 +80,11 @@ spec:
                     type: string
                 type: object
               type: array
+            meshGeneration:
+              format: int64
+              type: integer
+            meshReconciledVersion:
+              type: string
             observedGeneration:
               format: int64
               type: integer

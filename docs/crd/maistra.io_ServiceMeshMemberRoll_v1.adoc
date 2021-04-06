@@ -76,6 +76,14 @@ ServiceMeshMemberRollStatus represents the current state of a ServiceMeshMemberR
 | List of namespaces that are configured as members of the service mesh.
 | []string
 
+| memberStatuses
+| Represents the latest available observations of each member's current state.
+| []ServiceMeshMemberStatusSummary
+
+| members
+| Complete list of namespaces that are configured as members of the service mesh	- this includes namespaces specified in spec.members and those that contain a ServiceMeshMember object
+| []string
+
 | meshGeneration
 | The generation of the ServiceMeshControlPlane object observed by the controller during the most recent reconciliation of this ServiceMeshMemberRoll.
 | integer
@@ -90,6 +98,10 @@ ServiceMeshMemberRollStatus represents the current state of a ServiceMeshMemberR
 
 | pendingMembers
 | List of namespaces that haven't been configured as members of the service mesh yet.
+| []string
+
+| terminatingMembers
+| List of namespaces that are being removed as members of the service mesh.
 | []string
 
 |===

@@ -117,9 +117,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			}
 		}()
 
-		if r.Status.Annotations != nil {
-			r.Status.Annotations[statusAnnotationAlwaysReadyComponents] = ""
-		}
+		r.Status.SetAnnotation(statusAnnotationAlwaysReadyComponents, "")
 
 		conversionError, exists, err2 := r.Instance.Spec.TechPreview.GetString(conversion.TechPreviewErroredMessage)
 		if err2 != nil {
@@ -268,16 +266,13 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			if hasReadiness {
 				r.waitForComponents.Insert(component)
 			} else {
-				if r.Status.Annotations == nil {
-					r.Status.Annotations = make(map[string]string)
-				}
-				alwaysReadyComponents := r.Status.Annotations[statusAnnotationAlwaysReadyComponents]
+				alwaysReadyComponents := r.Status.GetAnnotation(statusAnnotationAlwaysReadyComponents)
 				if alwaysReadyComponents == "" {
 					alwaysReadyComponents = component
 				} else {
 					alwaysReadyComponents = fmt.Sprintf("%s,%s", alwaysReadyComponents, component)
 				}
-				r.Status.Annotations[statusAnnotationAlwaysReadyComponents] = alwaysReadyComponents
+				r.Status.SetAnnotation(statusAnnotationAlwaysReadyComponents, alwaysReadyComponents)
 			}
 		}
 

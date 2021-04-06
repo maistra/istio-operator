@@ -90,6 +90,16 @@ type ServiceMeshMemberStatus struct {
 	// generation of the object.
 	ObservedGeneration int64 `json:"observedGeneration"`
 
+	// The generation of the ServiceMeshControlPlane object observed by the
+	// controller during the most recent reconciliation of this
+	// ServiceMeshMember.
+	ServiceMeshGeneration int64 `json:"meshGeneration,omitempty"`    // TODO: do we need this field at all?
+
+	// The reconciled version of the ServiceMeshControlPlane object observed by
+	// the controller during the most recent reconciliation of this
+	// ServiceMeshMember.
+	ServiceMeshReconciledVersion string `json:"meshReconciledVersion,omitempty"`	// TODO: do we need this field at all?
+
 	// Represents the latest available observations of a ServiceMeshMember's
 	// current state.
 	Conditions []ServiceMeshMemberCondition `json:"conditions"`
@@ -105,7 +115,7 @@ const (
 	ConditionTypeMemberReconciled ServiceMeshMemberConditionType = "Reconciled"
 	// ConditionTypeReady signifies whether the namespace has been configured
 	// to use the mesh
-	ConditionTypeMemberReady ServiceMeshMemberConditionType = "Ready"
+	ConditionTypeMemberReady ServiceMeshMemberConditionType = "Ready"	// TODO: remove the Ready condition in v2
 )
 
 type ServiceMeshMemberConditionReason string
@@ -115,6 +125,9 @@ const (
 	ConditionReasonMemberCannotCreateMemberRoll ServiceMeshMemberConditionReason = "CreateMemberRollFailed"
 	ConditionReasonMemberCannotUpdateMemberRoll ServiceMeshMemberConditionReason = "UpdateMemberRollFailed"
 	ConditionReasonMemberCannotDeleteMemberRoll ServiceMeshMemberConditionReason = "DeleteMemberRollFailed"
+	ConditionReasonMemberNamespaceNotExists ServiceMeshMemberConditionReason = "NamespaceNotExists"
+	ConditionReasonMemberReferencesDifferentControlPlane ServiceMeshMemberConditionReason = "ReferencesDifferentControlPlane"
+	ConditionReasonMemberTerminating ServiceMeshMemberConditionReason = "Terminating"
 )
 
 // Condition represents a specific condition on a resource
