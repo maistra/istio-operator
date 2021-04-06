@@ -190,8 +190,8 @@ func populateGrafanaAddonConfig(in *v1.HelmValues, out *v2.GrafanaAddonConfig) (
 	} else if err != nil {
 		return false, err
 	}
-	if stoargeClassName, ok, err := grafanaValues.GetAndRemoveString("storageClassName"); ok {
-		persistenceConfig.StorageClassName = stoargeClassName
+	if storageClassName, ok, err := grafanaValues.GetAndRemoveString("storageClassName"); ok {
+		persistenceConfig.StorageClassName = storageClassName
 		setPersistenceConfig = true
 	} else if err != nil {
 		return false, err
