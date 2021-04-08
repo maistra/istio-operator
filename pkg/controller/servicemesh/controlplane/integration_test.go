@@ -131,7 +131,7 @@ func TestBootstrapping(t *testing.T) {
 					Profiles: []string{"maistra"},
 				},
 			},
-			crdCount: 14,
+			crdCount: 15,
 		},
 	}
 

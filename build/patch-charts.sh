@@ -52,7 +52,7 @@ function patchTemplates() {
   sed_wrap -i -e '/labels:/ i\
   annotations:\
     "maistra.io/internal": "true"' \
-    -e 's/name: istiod-{{.*/name: istiod-internal-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}/' \
+    -e 's/name: istiod-{{.*/name: istiod-internal-{{ .Values.revision | default "default" }}/' \
       ${HELM_DIR}/base/templates/role.yaml \
       ${HELM_DIR}/base/templates/rolebinding.yaml
   mv ${HELM_DIR}/base/templates/role.yaml ${HELM_DIR}/istio-control/istio-discovery/templates/role.yaml
