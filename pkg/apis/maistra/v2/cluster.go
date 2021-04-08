@@ -58,16 +58,19 @@ type MeshEndpointConfig struct {
 	// +optional
 	FromRegistry string `json:"fromRegistry,omitempty"`
 	// +optional
-	FromCIDR     string `json:"fromCIDR,omitempty"`
+	FromCIDR string `json:"fromCIDR,omitempty"`
 }
 
 // MeshGatewayConfig specifies the gateway which should be used for accessing
 // the network
 type MeshGatewayConfig struct {
 	// +optional
+	// +deprecated
 	Service string `json:"service,omitempty"`
+	// +optional
+	RegistryServiceName string `json:"registryServiceName,omitempty"`
 	// +optional
 	Address string `json:"address,omitempty"`
 	// +optional
-	Port    int32  `json:"port,omitempty"`
+	Port int32 `json:"port,omitempty"`
 }

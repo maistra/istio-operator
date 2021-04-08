@@ -286,7 +286,8 @@ function patchGateways() {
     i \{\{ $gateway := index .Values "gateways" "istio-ingressgateway" \}\}\
 \{\{- if and .Values.global.meshExpansion.enabled (eq $gateway.name "istio-ingressgateway") \}\}
     d
-    }' ${HELM_DIR}/gateways/istio-ingress/templates/meshexpansion.yaml
+    }' \
+    -e 's/istiod\.{{ .Release.Namespace }}/istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}/' ${HELM_DIR}/gateways/istio-ingress/templates/meshexpansion.yaml
 }
 
 function patchSidecarInjector() {
