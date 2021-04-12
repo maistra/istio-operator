@@ -325,7 +325,7 @@ func TestReconcileCreatesMemberWhenAppNamespaceIsCreated(t *testing.T) {
 	assertStatusMembers(updatedRoll, []string{appNamespace}, []string{appNamespace}, []string{}, []string{}, t)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 
-	kialiReconciler.assertInvokedWith(t, /* no namespaces */)
+	kialiReconciler.assertInvokedWith(t, appNamespace)
 }
 
 func TestReconcileDeletesMemberWhenRemovedFromSpecMembers(t *testing.T) {
@@ -422,7 +422,7 @@ func TestReconcileFailsIfMemberRollUpdateFails(t *testing.T) {
 	assertReconcileFails(r, t)
 
 	// assertNamespaceReconcilerInvoked(t, nsReconciler, appNamespace)
-	kialiReconciler.assertInvokedWith(t, /* no namespaces */)
+	kialiReconciler.assertInvokedWith(t, appNamespace)
 }
 
 func TestReconcileFailsIfKialiReconcileFails(t *testing.T) {
@@ -436,7 +436,7 @@ func TestReconcileFailsIfKialiReconcileFails(t *testing.T) {
 
 	assertReconcileFails(r, t)
 
-	kialiReconciler.assertInvokedWith(t, /* no namespaces */)
+	kialiReconciler.assertInvokedWith(t, appNamespace)
 }
 
 func TestReconcileUpdatesMembersInStatusWhenMemberIsDeleted(t *testing.T) {
@@ -456,7 +456,7 @@ func TestReconcileUpdatesMembersInStatusWhenMemberIsDeleted(t *testing.T) {
 	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
 	assertStatusMembers(updatedRoll, []string{appNamespace}, []string{appNamespace}, []string{}, []string{}, t)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
-	kialiReconciler.assertInvokedWith(t, /* no namespaces */)
+	kialiReconciler.assertInvokedWith(t, appNamespace)
 }
 
 func TestReconcileRemovesFinalizerFromMemberRoll(t *testing.T) {
