@@ -7,6 +7,10 @@ import (
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 )
 
 var (
@@ -289,6 +293,348 @@ func kialiTestCasesV2(version versions.Version) []conversionTestCase{
 						"nodePort": map[string]interface{}{
 							"enabled": true,
 							"port":    12345,
+						},
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "deployment.resources." + versions.V2_0.String(),
+			spec: &v2.ControlPlaneSpec{
+				Version: versions.V2_0.String(),
+				Addons: &v2.AddonsConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Name: "my-kiali",
+						Install: &v2.KialiInstallConfig{
+							Deployment: &v2.KialiDeploymentConfig{
+								Resources: &corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("128Mi"),
+									},
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("100m"),
+										corev1.ResourceMemory: resource.MustParse("1Gi"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"kiali": map[string]interface{}{
+					"resourceName": "my-kiali",
+					"deployment": map[string]interface{}{
+						"resources": map[string]interface{}{
+							"requests": map[string]interface{}{
+								"cpu":    "10m",
+								"memory": "128Mi",
+							},
+							"limits": map[string]interface{}{
+								"cpu":    "100m",
+								"memory": "1Gi",
+							},
+						},
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "deployment.affinity." + versions.V2_0.String(),
+			spec: &v2.ControlPlaneSpec{
+				Version: versions.V2_0.String(),
+				Addons: &v2.AddonsConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Name: "my-kiali",
+						Install: &v2.KialiInstallConfig{
+							Deployment: &v2.KialiDeploymentConfig{
+								Affinity: &corev1.Affinity{
+									NodeAffinity: &corev1.NodeAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+											NodeSelectorTerms: []corev1.NodeSelectorTerm{
+												{
+													MatchFields: []corev1.NodeSelectorRequirement{
+														{
+															Key:      "key1",
+															Operator: "op1",
+															Values:   []string{"value11", "value12"},
+														},
+													},
+												},
+											},
+										},
+										PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{
+											{
+												Weight: 1,
+												Preference: corev1.NodeSelectorTerm{
+													MatchFields: []corev1.NodeSelectorRequirement{
+														{
+															Key:      "key2",
+															Operator: "op2",
+															Values:   []string{"value21", "value22"},
+														},
+													},
+												},
+											},
+										},
+									},
+									PodAffinity: &corev1.PodAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+											{
+												LabelSelector: &metav1.LabelSelector{
+													MatchLabels: map[string]string{
+														"fookey": "foovalue",
+													},
+												},
+												Namespaces:  []string{"ns1", "ns2"},
+												TopologyKey: "my-topology-key",
+											},
+										},
+										PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+											{
+												Weight: 2,
+												PodAffinityTerm: corev1.PodAffinityTerm{
+													LabelSelector: &metav1.LabelSelector{
+														MatchLabels: map[string]string{
+															"barkey": "barvalue",
+														},
+													},
+													Namespaces:  []string{"ns3", "ns4"},
+													TopologyKey: "my-topology-key2",
+												},
+											},
+										},
+									},
+									PodAntiAffinity: &corev1.PodAntiAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+											{
+												LabelSelector: &metav1.LabelSelector{
+													MatchLabels: map[string]string{
+														"bazkey": "bazvalue",
+													},
+												},
+												Namespaces:  []string{"ns5", "ns6"},
+												TopologyKey: "my-topology-key3",
+											},
+										},
+										PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+											{
+												Weight: 3,
+												PodAffinityTerm: corev1.PodAffinityTerm{
+													LabelSelector: &metav1.LabelSelector{
+														MatchLabels: map[string]string{
+															"quxkey": "quxvalue",
+														},
+													},
+													Namespaces:  []string{"ns7", "ns8"},
+													TopologyKey: "my-topology-key4",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"kiali": map[string]interface{}{
+					"resourceName": "my-kiali",
+					"deployment": map[string]interface{}{
+						"affinity": map[string]interface{}{
+							"node": map[string]interface{}{
+								"requiredDuringSchedulingIgnoredDuringExecution": map[string]interface{}{
+									"nodeSelectorTerms": []interface{}{
+										map[string]interface{}{
+											"matchFields": []interface{}{
+												map[string]interface{}{
+													"key":      "key1",
+													"operator": "op1",
+													"values":   []string{"value11", "value12"},
+												},
+											},
+										},
+									},
+								},
+								"preferredDuringSchedulingIgnoredDuringExecution": []interface{}{
+									map[string]interface{}{
+										"weight": 1,
+										"preference": map[string]interface{}{
+											"matchFields": []interface{}{
+												map[string]interface{}{
+													"key":      "key2",
+													"operator": "op2",
+													"values":   []string{"value21", "value22"},
+												},
+											},
+										},
+									},
+								},
+							},
+							"pod": map[string]interface{}{
+								"requiredDuringSchedulingIgnoredDuringExecution": []interface{}{
+									map[string]interface{}{
+										"labelSelector": map[string]interface{}{
+											"matchLabels": map[string]interface{}{
+												"fookey": "foovalue",
+											},
+										},
+										"namespaces":  []string{"ns1", "ns2"},
+										"topologyKey": "my-topology-key",
+									},
+								},
+								"preferredDuringSchedulingIgnoredDuringExecution": []interface{}{
+									map[string]interface{}{
+										"weight": 2,
+										"podAffinityTerm": map[string]interface{}{
+											"labelSelector": map[string]interface{}{
+												"matchLabels": map[string]interface{}{
+													"barkey": "barvalue",
+												},
+											},
+											"namespaces":  []string{"ns3", "ns4"},
+											"topologyKey": "my-topology-key2",
+										},
+									},
+								},
+							},
+							"pod_anti": map[string]interface{}{
+								"requiredDuringSchedulingIgnoredDuringExecution": []interface{}{
+									map[string]interface{}{
+										"labelSelector": map[string]interface{}{
+											"matchLabels": map[string]interface{}{
+												"bazkey": "bazvalue",
+											},
+										},
+										"namespaces":  []string{"ns5", "ns6"},
+										"topologyKey": "my-topology-key3",
+									},
+								},
+								"preferredDuringSchedulingIgnoredDuringExecution": []interface{}{
+									map[string]interface{}{
+										"weight": 3,
+										"podAffinityTerm": map[string]interface{}{
+											"labelSelector": map[string]interface{}{
+												"matchLabels": map[string]interface{}{
+													"quxkey": "quxvalue",
+												},
+											},
+											"namespaces":  []string{"ns7", "ns8"},
+											"topologyKey": "my-topology-key4",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "deployment.nodeSelector." + versions.V2_0.String(),
+			spec: &v2.ControlPlaneSpec{
+				Version: versions.V2_0.String(),
+				Addons: &v2.AddonsConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Name: "my-kiali",
+						Install: &v2.KialiInstallConfig{
+							Deployment: &v2.KialiDeploymentConfig{
+								NodeSelector: map[string]string{
+									"fookey": "foovalue",
+									"barkey": "barvalue",
+								},
+							},
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"kiali": map[string]interface{}{
+					"resourceName": "my-kiali",
+					"deployment": map[string]interface{}{
+						"nodeSelector": map[string]interface{}{
+							"fookey": "foovalue",
+							"barkey": "barvalue",
+						},
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "deployment.tolerations." + versions.V2_0.String(),
+			spec: &v2.ControlPlaneSpec{
+				Version: versions.V2_0.String(),
+				Addons: &v2.AddonsConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Name: "my-kiali",
+						Install: &v2.KialiInstallConfig{
+							Deployment: &v2.KialiDeploymentConfig{
+								Tolerations: []corev1.Toleration{
+									{
+										Key:               "key1",
+										Operator:          "op1",
+										Value:             "value1",
+										Effect:            "effect1",
+										TolerationSeconds: pointer.Int64Ptr(1),
+									},
+									{
+										Key:               "key2",
+										Operator:          "op2",
+										Value:             "value2",
+										Effect:            "effect2",
+										TolerationSeconds: pointer.Int64Ptr(2),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"kiali": map[string]interface{}{
+					"resourceName": "my-kiali",
+					"deployment": map[string]interface{}{
+						"tolerations": []interface{}{
+							map[string]interface{}{
+								"key":               "key1",
+								"operator":          "op1",
+								"value":             "value1",
+								"effect":            "effect1",
+								"tolerationSeconds": 1,
+							},
+							map[string]interface{}{
+								"key":               "key2",
+								"operator":          "op2",
+								"value":             "value2",
+								"effect":            "effect2",
+								"tolerationSeconds": 2,
+							},
 						},
 					},
 				},
