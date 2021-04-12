@@ -36,6 +36,24 @@ spec:
     view_only_mode: {{ .Values.kiali.dashboard.viewOnlyMode }}
 {{- end }}
 {{- end }}
+{{- if .Values.kiali.deployment }}
+{{- if .Values.kiali.deployment.resources }}
+    resources:
+{{ toYaml .Values.kiali.deployment.resources | indent 6 }}
+{{- end }}
+{{- if .Values.kiali.deployment.tolerations }}
+    tolerations:
+{{ toYaml .Values.kiali.deployment.tolerations | indent 6 }}
+{{- end }}
+{{- if .Values.kiali.deployment.nodeSelector }}
+    node_selector:
+{{ toYaml .Values.kiali.deployment.nodeSelector | indent 6 }}
+{{- end }}
+{{- if .Values.kiali.deployment.affinity }}
+    affinity:
+{{ toYaml .Values.kiali.deployment.affinity | indent 6 }}
+{{- end }}
+{{- end }}
 
   external_services:
     istio:

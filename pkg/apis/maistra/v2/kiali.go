@@ -1,5 +1,7 @@
 package v2
 
+import corev1 "k8s.io/api/core/v1"
+
 // KialiAddonConfig is used to configure a kiali instance for use with the mesh
 type KialiAddonConfig struct {
 	Enablement `json:",inline"`
@@ -21,6 +23,10 @@ type KialiInstallConfig struct {
 	// for enablement and contextPath
 	// +optional
 	Service *ComponentServiceConfig `json:"service,omitempty"`
+
+	// Deployment configures the kiali deployment.
+	// +optional
+	Deployment *KialiDeploymentConfig `json:"deployment,omitempty"`
 }
 
 // KialiDashboardConfig configures the behavior of the kiali dashboard
@@ -40,6 +46,25 @@ type KialiDashboardConfig struct {
 	// Tracing endpoint will be configured based on Tracing configuration
 	// +optional
 	EnableTracing *bool `json:"enableTracing,omitempty"`
+}
+
+// KialiDeploymentConfig configures the kiali deployment
+type KialiDeploymentConfig struct {
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// If specified, the pod's scheduling constraints
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+
+	// Selector which must match a node's labels for the pod to be scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// If specified, the kiali pod's tolerations.
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
 // ResourceName returns the resource name for the Kiali resource, returning a
