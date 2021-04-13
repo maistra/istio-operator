@@ -107,7 +107,7 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 	// watch SMCPs so we can update the resources in the app namespace when the SMCP is updated
 	err = c.Watch(&source.Kind{Type: &maistrav2.ServiceMeshControlPlane{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(ns handler.MapObject) []reconcile.Request {
-			return r.getRequestsForMembersWithReferenceToNamespace(ctx, ns.Meta.GetName(), mgr.GetClient())
+			return r.getRequestsForMembersWithReferenceToNamespace(ctx, ns.Meta.GetNamespace(), mgr.GetClient())
 		}),
 	}, predicate.Funcs{
 		GenericFunc: func(_ event.GenericEvent) bool { return false }, // no need to process member on generic SMCP events
