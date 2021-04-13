@@ -290,6 +290,7 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	}
 
 	// 5. check each ServiceMeshMember object to see if it's configured or terminating
+	allKnownMembers := sets.NewString(roll.Spec.Members...).Insert(getNamespaces(members)...).Delete(meshNamespace)
 	var configuredMembers = sets.NewString()
 	var terminatingMembers = sets.NewString()
 	for _, member := range members.Items {
@@ -306,11 +307,10 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	if mesh.Status.AppliedSpec.IsKialiEnabled() {
 		kialiName := mesh.Status.AppliedSpec.Addons.Kiali.ResourceName()
 		roll.Status.SetAnnotation(statusAnnotationKialiName, kialiName)
-		kialiErr = r.kialiReconciler.reconcileKiali(ctx, kialiName, meshNamespace, configuredMembers.List()) // TODO: should Kiali know about all known members or just configured members?
+		kialiErr = r.kialiReconciler.reconcileKiali(ctx, kialiName, meshNamespace, allKnownMembers.List())
 	}
 
 	// 7. update the status
-	allKnownMembers := sets.NewString(roll.Spec.Members...).Insert(getNamespaces(members)...).Delete(meshNamespace)
 	roll.Status.Members = allKnownMembers.List()
 	roll.Status.PendingMembers = allKnownMembers.Difference(configuredMembers).Difference(terminatingMembers).List()
 	roll.Status.ConfiguredMembers = configuredMembers.List()
@@ -527,7 +527,7 @@ type defaultKialiReconciler struct {
 	Client client.Client
 }
 
-func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName, kialiCRNamespace string, configuredMembers []string) error {
+func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName, kialiCRNamespace string, members []string) error {
 	reqLogger := common.LogFromContext(ctx)
 	reqLogger.Info("Attempting to get Kiali CR", "kialiCRNamespace", kialiCRNamespace, "kialiCRName", kialiCRName)
 
@@ -544,12 +544,7 @@ func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName
 	}
 
 	// just get an array of strings consisting of the list of namespaces to be accessible to Kiali
-	accessibleNamespaces := sets.NewString(configuredMembers...)
-	if len(accessibleNamespaces) == 0 { // TODO: this may not be necessary at all
-		// no configured members available - just allow access only to the control plane namespace
-		accessibleNamespaces.Insert(kialiCRNamespace)
-	}
-
+	accessibleNamespaces := sets.NewString(members...)
 	if existingNamespaces, found, _ := kialiCR.Spec.GetStringSlice("deployment.accessible_namespaces"); found &&
 		accessibleNamespaces.Equal(sets.NewString(existingNamespaces...)) {
 		reqLogger.Info("Kiali CR deployment.accessible_namespaces already up to date")
