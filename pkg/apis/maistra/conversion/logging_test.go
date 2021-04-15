@@ -9,67 +9,79 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
-var loggingTestCases = []conversionTestCase{
-	{
-		name: "nil." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			General: &v2.GeneralConfig{
-				Logging: &v2.LoggingConfig{},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "all." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			General: &v2.GeneralConfig{
-				Logging: &v2.LoggingConfig{
-					ComponentLevels: v2.ComponentLogLevels{
-						v2.EnvoyComponentAdmin:  v2.LogLevelDebug,
-						v2.EnvoyComponentClient: v2.LogLevelTrace,
-					},
-					LogAsJSON: &featureEnabled,
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
+var loggingTestCases []conversionTestCase
 
-				"logAsJson": true,
-				"logging": map[string]interface{}{
-					"level": "admin:debug,client:trace",
+func loggingTestCasesV2(version versions.Version) []conversionTestCase{
+	ver := version.String()
+	return []conversionTestCase{
+		{
+			name: "nil." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "defaults." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				General: &v2.GeneralConfig{
+					Logging: &v2.LoggingConfig{},
 				},
 			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "all." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				General: &v2.GeneralConfig{
+					Logging: &v2.LoggingConfig{
+						ComponentLevels: v2.ComponentLogLevels{
+							v2.EnvoyComponentAdmin:  v2.LogLevelDebug,
+							v2.EnvoyComponentClient: v2.LogLevelTrace,
+						},
+						LogAsJSON: &featureEnabled,
+					},
+				},
 			},
-		}),
-	},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+
+					"logAsJson": true,
+					"logging": map[string]interface{}{
+						"level": "admin:debug,client:trace",
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+	}
 }
+
+func init() {
+	for _, v := range versions.AllV2Versions {
+		loggingTestCases = append(loggingTestCases, loggingTestCasesV2(v)...)
+	}
+}
+
 
 func TestLoggingConversionFromV2(t *testing.T) {
 	for _, tc := range loggingTestCases {

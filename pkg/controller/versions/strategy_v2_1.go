@@ -6,6 +6,7 @@ import (
 	"path"
 
 	pkgerrors "github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -93,6 +94,7 @@ var v2_1ChartOrder = [][]string{
 
 type versionStrategyV2_1 struct {
 	version
+	conversionImpl v2xConversionStrategy
 }
 
 var _ VersionStrategy = (*versionStrategyV2_1)(nil)
@@ -437,4 +439,16 @@ func (v *versionStrategyV2_1) renderGateway(name string, namespace string, chart
 		return nil, nil, err
 	}
 	return helm.RenderChart(path.Join(v.GetChartsDir(), chartPath), namespace, values)
+}
+
+func (v *versionStrategyV2_1) GetExpansionPorts() []corev1.ServicePort {
+	return v.conversionImpl.GetExpansionPorts()
+}
+
+func (v *versionStrategyV2_1) GetTelemetryType(in *v1.HelmValues, mixerTelemetryEnabled, mixerTelemetryEnabledSet, remoteEnabled bool) v2.TelemetryType {
+	return v.conversionImpl.GetTelemetryType(in, mixerTelemetryEnabled, mixerTelemetryEnabledSet, remoteEnabled)
+}
+
+func (v *versionStrategyV2_1) GetPolicyType(in *v1.HelmValues, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled bool) v2.PolicyType {
+	return v.conversionImpl.GetPolicyType(in, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled)
 }

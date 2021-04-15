@@ -200,35 +200,7 @@ func populatePolicyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version v
 			return err
 		}
 		// if mixer.policy.enabled is unset, assume version specific default
-		switch version {
-		case versions.V1_0:
-			fallthrough
-		case versions.V1_1:
-			if remoteEnabled {
-				// using remote policy, which takes precedence over mixer (in the charts, at least)
-				policyType = v2.PolicyTypeRemote
-			} else if mixerPolicyEnabled {
-				// mixer policy explicitly enabled
-				policyType = v2.PolicyTypeMixer
-			} else if mixerPolicyEnabledSet {
-				// mixer is explicitly disabled
-				policyType = v2.PolicyTypeNone
-			} else {
-				// don't set policy type, let the defaults do their thing
-				policyType = ""
-			}
-		case versions.V2_0:
-			remotePolicyAddress, _, _ := in.GetString("global.remotePolicyAddress")
-			if remoteEnabled || remotePolicyAddress != "" {
-				// special case if copying over an old v1 resource an bumping the version to v2.0
-				policyType = v2.PolicyTypeRemote
-			} else {
-				// leave the defaults
-				policyType = ""
-			}
-		default:
-			return fmt.Errorf("Unknown version")
-		}
+		policyType = version.Strategy().GetPolicyType(in, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled)
 	}
 
 	istiod := !(version == versions.V1_0 || version == versions.V1_1)

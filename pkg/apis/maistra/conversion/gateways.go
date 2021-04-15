@@ -4,53 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
-
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	"github.com/maistra/istio-operator/pkg/controller/versions"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
 	imageNameSDS = "node-agent-k8s"
-)
-
-var (
-	meshExpansionPortsV11 = []corev1.ServicePort{
-		{
-			Name:       "tcp-pilot-grpc-tls",
-			Port:       15011,
-			TargetPort: intstr.FromInt(15011),
-		},
-		{
-			Name:       "tcp-mixer-grpc-tls",
-			Port:       15004,
-			TargetPort: intstr.FromInt(15004),
-		},
-		{
-			Name:       "tcp-citadel-grpc-tls",
-			Port:       8060,
-			TargetPort: intstr.FromInt(8060),
-		},
-		{
-			Name:       "tcp-dns-tls",
-			Port:       853,
-			TargetPort: intstr.FromInt(8853),
-		},
-	}
-	meshExpansionPortsV20 = []corev1.ServicePort{
-		{
-			Name:       "tcp-istiod",
-			Port:       15012,
-			TargetPort: intstr.FromInt(15012),
-		},
-		{
-			Name:       "tcp-dns-tls",
-			Port:       853,
-			TargetPort: intstr.FromInt(8853),
-		},
-	}
 )
 
 func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
@@ -596,29 +556,3 @@ func addEnvToGateway(in *v2.GatewayConfig, name, value string) {
 	in.Runtime.Container.Env[name] = value
 }
 
-func expansionPortsForVersion(version string) ([]corev1.ServicePort, error) {
-	switch version {
-	case "":
-		fallthrough
-	case versions.V1_0.String():
-		fallthrough
-	case versions.V1_1.String():
-		return meshExpansionPortsV11, nil
-	case versions.V2_0.String():
-		return meshExpansionPortsV20, nil
-	default:
-		return nil, fmt.Errorf("cannot convert for unknown version: %s", version)
-	}
-}
-func addExpansionPorts(in *[]corev1.ServicePort, ports []corev1.ServicePort) {
-	portCount := len(*in)
-PortsLoop:
-	for _, port := range ports {
-		for index := 0; index < portCount; index++ {
-			if port.Port == (*in)[index].Port {
-				continue PortsLoop
-			}
-			*in = append(*in, port)
-		}
-	}
-}

@@ -14,7 +14,9 @@ import (
 
 const clusterTestNamespace = "cp-namespace"
 
-var clusterTestCases = []conversionTestCase{
+var clusterTestCases []conversionTestCase
+
+var clusterTestCasesV1 = []conversionTestCase{
 	{
 		name:      "nil." + versions.V1_0.String(),
 		namespace: clusterTestNamespace,
@@ -62,62 +64,10 @@ var clusterTestCases = []conversionTestCase{
 		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
 	},
 	{
-		name:      "nil." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-					"multiClusterOverrides": map[string]interface{}{
-						"expansionEnabled":    nil,
-						"multiClusterEnabled": nil,
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
-	},
-	{
 		name:      "simple." + versions.V1_1.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     false,
-					"multiClusterOverrides": map[string]interface{}{
-						"expansionEnabled":    nil,
-						"multiClusterEnabled": nil,
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-				"network": "my-network",
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
-	},
-	{
-		name:      "simple." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
 			Cluster: &v2.ControlPlaneClusterConfig{
 				Name:    "my-cluster",
 				Network: "my-network",
@@ -233,1488 +183,1553 @@ var clusterTestCases = []conversionTestCase{
 			},
 		}),
 	},
-	{
-		name:      "multicluster.simple." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
-					},
-				},
+}
+
+func clusterTestCasesV2(version versions.Version) []conversionTestCase {
+	ver := version.String()
+	return []conversionTestCase{
+		{
+			name:      "nil." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
 			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName":       "my-cluster",
-					"enabled":           true,
-					"addedLocalNetwork": "my-network",
-					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-						"global",
-					},
-					"multiClusterOverrides": map[string]interface{}{
-						"addedExternal":     true,
-						"egressEnabled":     nil,
-						"expansionEnabled":  nil,
-						"gatewaysEnabled":   nil,
-						"ilbEnabled":        nil,
-						"ingressEnabled":    nil,
-						"k8sIngressEnabled": nil,
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": true,
-					"useILB":  false,
-				},
-				"meshNetworks": map[string]interface{}{
-					"my-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "my-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    443,
-								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
-							},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"enabled": false,
+						"multiClusterOverrides": map[string]interface{}{
+							"expansionEnabled":    nil,
+							"multiClusterEnabled": nil,
 						},
 					},
-				},
-				"network": "my-network",
-			},
-			"gateways": map[string]interface{}{
-				"istio-ilbgateway": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"podDNSSearchNamespaces": []interface{}{
-					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-				},
-				"k8sIngress": map[string]interface{}{
-					"enabled":     true,
-					"enableHttps": false,
-					"gatewayName": "ingressgateway",
-				},
-			},
-			"gateways": map[string]interface{}{
-				"enabled": true,
-				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
-					},
-					"name":        "istio-egressgateway",
-					"gatewayType": "egress",
-				},
-				"istio-ingressgateway": map[string]interface{}{
-					"enabled":     true,
-					"name":        "istio-ingressgateway",
-					"gatewayType": "ingress",
-				},
-			},
-		}),
-	},
-	{
-		name:      "multicluster.ilb." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
+					"meshExpansion": map[string]interface{}{
+						"enabled": false,
+						"useILB":  false,
 					},
 				},
-				MeshExpansion: &v2.MeshExpansionConfig{
-					ILBGateway: &v2.GatewayConfig{
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{}),
+		},
+		{
+			name:      "simple." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName": "my-cluster",
+						"enabled":     false,
+						"multiClusterOverrides": map[string]interface{}{
+							"expansionEnabled":    nil,
+							"multiClusterEnabled": nil,
+						},
+					},
+					"meshExpansion": map[string]interface{}{
+						"enabled": false,
+						"useILB":  false,
+					},
+					"network": "my-network",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{}),
+		},
+		{
+			name:      "multicluster.simple." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+					MultiCluster: &v2.MultiClusterConfig{
 						Enablement: v2.Enablement{
 							Enabled: &featureEnabled,
 						},
 					},
 				},
 			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName":       "my-cluster",
-					"enabled":           true,
-					"addedLocalNetwork": "my-network",
-					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-						"global",
-					},
-					"multiClusterOverrides": map[string]interface{}{
-						"addedExternal":    true,
-						"egressEnabled":    nil,
-						"expansionEnabled": nil,
-						"gatewaysEnabled":  nil,
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": true,
-					"useILB":  true,
-				},
-				"meshNetworks": map[string]interface{}{
-					"my-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "my-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    443,
-								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
-							},
-						},
-					},
-				},
-				"network": "my-network",
-			},
-			"gateways": map[string]interface{}{
-				"istio-ilbgateway": map[string]interface{}{
-					"enabled": true,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"podDNSSearchNamespaces": []interface{}{
-					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-				},
-			},
-			"gateways": map[string]interface{}{
-				"enabled": true,
-				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
-					},
-					"name":        "istio-egressgateway",
-					"gatewayType": "egress",
-				},
-			},
-		}),
-	},
-	{
-		name:      "multicluster.meshNetwork.override." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
-					},
-					MeshNetworks: map[string]v2.MeshNetworkConfig{
-						"my-network": {
-							Endpoints: []v2.MeshEndpointConfig{
-								{
-									FromRegistry: "my-cluster",
-								},
-							},
-							Gateways: []v2.MeshGatewayConfig{
-								{
-									Service: "istio-ingressgateway.my-ns.svc.cluster.local",
-									Port:    9443,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName": "my-cluster",
-					"enabled":     true,
-					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-						"global",
-					},
-					"multiClusterOverrides": map[string]interface{}{
-						"addedExternal":     true,
-						"egressEnabled":     interface{}(nil),
-						"expansionEnabled":  nil,
-						"gatewaysEnabled":   interface{}(nil),
-						"ilbEnabled":        nil,
-						"ingressEnabled":    interface{}(nil),
-						"k8sIngressEnabled": interface{}(nil),
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": true,
-					"useILB":  false,
-				},
-				"meshNetworks": map[string]interface{}{
-					"my-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "my-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    9443,
-								"service": "istio-ingressgateway.my-ns.svc.cluster.local",
-							},
-						},
-					},
-				},
-				"network": "my-network",
-			},
-			"gateways": map[string]interface{}{
-				"istio-ilbgateway": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"podDNSSearchNamespaces": []interface{}{
-					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-				},
-				"k8sIngress": map[string]interface{}{
-					"enabled":     true,
-					"enableHttps": false,
-					"gatewayName": "ingressgateway",
-				},
-			},
-			"gateways": map[string]interface{}{
-				"enabled": true,
-				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
-					},
-					"name":        "istio-egressgateway",
-					"gatewayType": "egress",
-				},
-				"istio-ingressgateway": map[string]interface{}{
-					"enabled":     true,
-					"name":        "istio-ingressgateway",
-					"gatewayType": "ingress",
-				},
-			},
-		}),
-	},
-	{
-		name:      "multicluster.meshNetwork.additional." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
-					},
-					MeshNetworks: map[string]v2.MeshNetworkConfig{
-						"other-network": {
-							Endpoints: []v2.MeshEndpointConfig{
-								{
-									FromRegistry: "other-cluster",
-								},
-							},
-							Gateways: []v2.MeshGatewayConfig{
-								{
-									Service: "istio-ingressgateway.other-ns.svc.cluster.local",
-									Port:    443,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName":       "my-cluster",
-					"enabled":           true,
-					"addedLocalNetwork": "my-network",
-					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-						"global",
-					},
-					"multiClusterOverrides": map[string]interface{}{
-						"addedExternal":     true,
-						"egressEnabled":     interface{}(nil),
-						"expansionEnabled":  nil,
-						"gatewaysEnabled":   interface{}(nil),
-						"ilbEnabled":        nil,
-						"ingressEnabled":    interface{}(nil),
-						"k8sIngressEnabled": interface{}(nil),
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": true,
-					"useILB":  false,
-				},
-				"meshNetworks": map[string]interface{}{
-					"my-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "my-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    443,
-								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
-							},
-						},
-					},
-					"other-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "other-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    443,
-								"service": "istio-ingressgateway.other-ns.svc.cluster.local",
-							},
-						},
-					},
-				},
-				"network": "my-network",
-			},
-			"gateways": map[string]interface{}{
-				"istio-ilbgateway": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"podDNSSearchNamespaces": []interface{}{
-					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-				},
-				"k8sIngress": map[string]interface{}{
-					"enabled":     true,
-					"enableHttps": false,
-					"gatewayName": "ingressgateway",
-				},
-			},
-			"gateways": map[string]interface{}{
-				"enabled": true,
-				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
-					},
-					"name":        "istio-egressgateway",
-					"gatewayType": "egress",
-				},
-				"istio-ingressgateway": map[string]interface{}{
-					"enabled":     true,
-					"name":        "istio-ingressgateway",
-					"gatewayType": "ingress",
-				},
-			},
-		}),
-	},
-	{
-		name:      "multicluster.clusterDomain.override." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Proxy: &v2.ProxyConfig{
-				Networking: &v2.ProxyNetworkingConfig{
-					ClusterDomain: "example.com",
-				},
-			},
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName":       "my-cluster",
-					"enabled":           true,
-					"addedLocalNetwork": "my-network",
-					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-						"global",
-					},
-					"multiClusterOverrides": map[string]interface{}{
-						"addedExternal":     true,
-						"egressEnabled":     interface{}(nil),
-						"expansionEnabled":  nil,
-						"gatewaysEnabled":   interface{}(nil),
-						"ilbEnabled":        nil,
-						"ingressEnabled":    interface{}(nil),
-						"k8sIngressEnabled": interface{}(nil),
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": true,
-					"useILB":  false,
-				},
-				"meshNetworks": map[string]interface{}{
-					"my-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "my-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    443,
-								"service": "istio-ingressgateway.cp-namespace.svc.example.com",
-							},
-						},
-					},
-				},
-				"network": "my-network",
-			},
-			"gateways": map[string]interface{}{
-				"istio-ilbgateway": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"podDNSSearchNamespaces": []interface{}{
-					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-				},
-				"proxy": map[string]interface{}{
-					"clusterDomain": "example.com",
-				},
-				"k8sIngress": map[string]interface{}{
-					"enabled":     true,
-					"enableHttps": false,
-					"gatewayName": "ingressgateway",
-				},
-			},
-			"gateways": map[string]interface{}{
-				"enabled": true,
-				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
-					},
-					"name":        "istio-egressgateway",
-					"gatewayType": "egress",
-				},
-				"istio-ingressgateway": map[string]interface{}{
-					"enabled":     true,
-					"name":        "istio-ingressgateway",
-					"gatewayType": "ingress",
-				},
-			},
-		}),
-	},
-	{
-		name:      "multicluster.searchSuffix.global." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Proxy: &v2.ProxyConfig{
-				Networking: &v2.ProxyNetworkingConfig{
-					DNS: &v2.ProxyDNSConfig{
-						SearchSuffixes: []string{
-							"global",
-						},
-					},
-				},
-			},
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName":       "my-cluster",
-					"enabled":           true,
-					"addedLocalNetwork": "my-network",
-					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-					},
-					"multiClusterOverrides": map[string]interface{}{
-						"addedExternal":     true,
-						"egressEnabled":     interface{}(nil),
-						"expansionEnabled":  nil,
-						"gatewaysEnabled":   interface{}(nil),
-						"ilbEnabled":        nil,
-						"ingressEnabled":    interface{}(nil),
-						"k8sIngressEnabled": interface{}(nil),
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": true,
-					"useILB":  false,
-				},
-				"meshNetworks": map[string]interface{}{
-					"my-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "my-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    443,
-								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
-							},
-						},
-					},
-				},
-				"network": "my-network",
-			},
-			"gateways": map[string]interface{}{
-				"istio-ilbgateway": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"podDNSSearchNamespaces": []interface{}{
-					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-				},
-				"k8sIngress": map[string]interface{}{
-					"enabled":     true,
-					"enableHttps": false,
-					"gatewayName": "ingressgateway",
-				},
-			},
-			"gateways": map[string]interface{}{
-				"enabled": true,
-				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
-					},
-					"name":        "istio-egressgateway",
-					"gatewayType": "egress",
-				},
-				"istio-ingressgateway": map[string]interface{}{
-					"enabled":     true,
-					"name":        "istio-ingressgateway",
-					"gatewayType": "ingress",
-				},
-			},
-		}),
-	},
-	{
-		name:      "multicluster.searchSuffix.namespace." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Proxy: &v2.ProxyConfig{
-				Networking: &v2.ProxyNetworkingConfig{
-					DNS: &v2.ProxyDNSConfig{
-						SearchSuffixes: []string{
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName":       "my-cluster",
+						"enabled":           true,
+						"addedLocalNetwork": "my-network",
+						"addedSearchSuffixes": []interface{}{
 							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-						},
-					},
-				},
-			},
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName":       "my-cluster",
-					"enabled":           true,
-					"addedLocalNetwork": "my-network",
-					"addedSearchSuffixes": []interface{}{
-						"global",
-					},
-					"multiClusterOverrides": map[string]interface{}{
-						"addedExternal":     true,
-						"egressEnabled":     interface{}(nil),
-						"expansionEnabled":  nil,
-						"gatewaysEnabled":   interface{}(nil),
-						"ilbEnabled":        nil,
-						"ingressEnabled":    interface{}(nil),
-						"k8sIngressEnabled": interface{}(nil),
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": true,
-					"useILB":  false,
-				},
-				"meshNetworks": map[string]interface{}{
-					"my-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "my-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    443,
-								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
-							},
-						},
-					},
-				},
-				"network": "my-network",
-			},
-			"gateways": map[string]interface{}{
-				"istio-ilbgateway": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"podDNSSearchNamespaces": []interface{}{
-					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-				},
-				"k8sIngress": map[string]interface{}{
-					"enabled":     true,
-					"enableHttps": false,
-					"gatewayName": "ingressgateway",
-				},
-			},
-			"gateways": map[string]interface{}{
-				"enabled": true,
-				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
-					},
-					"name":        "istio-egressgateway",
-					"gatewayType": "egress",
-				},
-				"istio-ingressgateway": map[string]interface{}{
-					"enabled":     true,
-					"name":        "istio-ingressgateway",
-					"gatewayType": "ingress",
-				},
-			},
-		}),
-	},
-	{
-		name:      "multicluster.searchSuffix.all." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Proxy: &v2.ProxyConfig{
-				Networking: &v2.ProxyNetworkingConfig{
-					DNS: &v2.ProxyDNSConfig{
-						SearchSuffixes: []string{
-							"global",
-							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-						},
-					},
-				},
-			},
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName":       "my-cluster",
-					"enabled":           true,
-					"addedLocalNetwork": "my-network",
-					"multiClusterOverrides": map[string]interface{}{
-						"addedExternal":     true,
-						"egressEnabled":     interface{}(nil),
-						"expansionEnabled":  nil,
-						"gatewaysEnabled":   interface{}(nil),
-						"ilbEnabled":        nil,
-						"ingressEnabled":    interface{}(nil),
-						"k8sIngressEnabled": interface{}(nil),
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": true,
-					"useILB":  false,
-				},
-				"meshNetworks": map[string]interface{}{
-					"my-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "my-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    443,
-								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
-							},
-						},
-					},
-				},
-				"network": "my-network",
-			},
-			"gateways": map[string]interface{}{
-				"istio-ilbgateway": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"podDNSSearchNamespaces": []interface{}{
-					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-				},
-				"k8sIngress": map[string]interface{}{
-					"enabled":     true,
-					"enableHttps": false,
-					"gatewayName": "ingressgateway",
-				},
-			},
-			"gateways": map[string]interface{}{
-				"enabled": true,
-				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
-					},
-					"name":        "istio-egressgateway",
-					"gatewayType": "egress",
-				},
-				"istio-ingressgateway": map[string]interface{}{
-					"enabled":     true,
-					"name":        "istio-ingressgateway",
-					"gatewayType": "ingress",
-				},
-			},
-		}),
-	},
-	{
-		name:      "multicluster.searchSuffix.custom." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Proxy: &v2.ProxyConfig{
-				Networking: &v2.ProxyNetworkingConfig{
-					DNS: &v2.ProxyDNSConfig{
-						SearchSuffixes: []string{
-							"custom",
-						},
-					},
-				},
-			},
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName":       "my-cluster",
-					"enabled":           true,
-					"addedLocalNetwork": "my-network",
-					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-						"global",
-					},
-					"multiClusterOverrides": map[string]interface{}{
-						"addedExternal":     true,
-						"egressEnabled":     interface{}(nil),
-						"expansionEnabled":  nil,
-						"gatewaysEnabled":   interface{}(nil),
-						"ilbEnabled":        nil,
-						"ingressEnabled":    interface{}(nil),
-						"k8sIngressEnabled": interface{}(nil),
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": true,
-					"useILB":  false,
-				},
-				"meshNetworks": map[string]interface{}{
-					"my-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "my-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    443,
-								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
-							},
-						},
-					},
-				},
-				"network": "my-network",
-			},
-			"gateways": map[string]interface{}{
-				"istio-ilbgateway": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"podDNSSearchNamespaces": []interface{}{
-					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-					"custom",
-				},
-				"k8sIngress": map[string]interface{}{
-					"enabled":     true,
-					"enableHttps": false,
-					"gatewayName": "ingressgateway",
-				},
-			},
-			"gateways": map[string]interface{}{
-				"enabled": true,
-				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
-					},
-					"name":        "istio-egressgateway",
-					"gatewayType": "egress",
-				},
-				"istio-ingressgateway": map[string]interface{}{
-					"enabled":     true,
-					"name":        "istio-ingressgateway",
-					"gatewayType": "ingress",
-				},
-			},
-		}),
-	},
-	{
-		name:      "multicluster.searchSuffix.custom.insert." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Proxy: &v2.ProxyConfig{
-				Networking: &v2.ProxyNetworkingConfig{
-					DNS: &v2.ProxyDNSConfig{
-						SearchSuffixes: []string{
-							"custom",
 							"global",
 						},
+						"multiClusterOverrides": map[string]interface{}{
+							"addedExternal":     true,
+							"egressEnabled":     nil,
+							"expansionEnabled":  nil,
+							"gatewaysEnabled":   nil,
+							"ilbEnabled":        nil,
+							"ingressEnabled":    nil,
+							"k8sIngressEnabled": nil,
+						},
 					},
-				},
-			},
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
+					"meshExpansion": map[string]interface{}{
+						"enabled": true,
+						"useILB":  false,
 					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName":       "my-cluster",
-					"enabled":           true,
-					"addedLocalNetwork": "my-network",
-					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-					},
-					"multiClusterOverrides": map[string]interface{}{
-						"addedExternal":     true,
-						"egressEnabled":     interface{}(nil),
-						"expansionEnabled":  nil,
-						"gatewaysEnabled":   interface{}(nil),
-						"ilbEnabled":        nil,
-						"ingressEnabled":    interface{}(nil),
-						"k8sIngressEnabled": interface{}(nil),
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": true,
-					"useILB":  false,
-				},
-				"meshNetworks": map[string]interface{}{
-					"my-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "my-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    443,
-								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
+					"meshNetworks": map[string]interface{}{
+						"my-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "my-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    443,
+									"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
+								},
 							},
 						},
 					},
+					"network": "my-network",
 				},
-				"network": "my-network",
-			},
-			"gateways": map[string]interface{}{
-				"istio-ilbgateway": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"podDNSSearchNamespaces": []interface{}{
-					"custom",
-					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-				},
-				"k8sIngress": map[string]interface{}{
-					"enabled":     true,
-					"enableHttps": false,
-					"gatewayName": "ingressgateway",
-				},
-			},
-			"gateways": map[string]interface{}{
-				"enabled": true,
-				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
-					},
-					"name":        "istio-egressgateway",
-					"gatewayType": "egress",
-				},
-				"istio-ingressgateway": map[string]interface{}{
-					"enabled":     true,
-					"name":        "istio-ingressgateway",
-					"gatewayType": "ingress",
-				},
-			},
-		}),
-	},
-	{
-		name:      "multicluster.gateways.egress.unconfigured" + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
+				"gateways": map[string]interface{}{
+					"istio-ilbgateway": map[string]interface{}{
+						"enabled": false,
 					},
 				},
-			},
-			Gateways: &v2.GatewaysConfig{},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName":       "my-cluster",
-					"enabled":           true,
-					"addedLocalNetwork": "my-network",
-					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"podDNSSearchNamespaces": []interface{}{
 						"global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 					},
-					"multiClusterOverrides": map[string]interface{}{
-						"addedExternal":     true,
-						"egressEnabled":     interface{}(nil),
-						"expansionEnabled":  nil,
-						"gatewaysEnabled":   interface{}(nil),
-						"ilbEnabled":        nil,
-						"ingressEnabled":    interface{}(nil),
-						"k8sIngressEnabled": interface{}(nil),
+					"k8sIngress": map[string]interface{}{
+						"enabled":     true,
+						"enableHttps": false,
+						"gatewayName": "ingressgateway",
 					},
 				},
-				"meshExpansion": map[string]interface{}{
+				"gateways": map[string]interface{}{
 					"enabled": true,
-					"useILB":  false,
-				},
-				"meshNetworks": map[string]interface{}{
-					"my-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "my-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    443,
-								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
-							},
+					"istio-egressgateway": map[string]interface{}{
+						"enabled": true, "env": map[string]interface{}{
+							"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
 						},
+						"name":        "istio-egressgateway",
+						"gatewayType": "egress",
+					},
+					"istio-ingressgateway": map[string]interface{}{
+						"enabled":     true,
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
 					},
 				},
-				"network": "my-network",
-			},
-			"gateways": map[string]interface{}{
-				"istio-ilbgateway": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"podDNSSearchNamespaces": []interface{}{
-					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-				},
-				"k8sIngress": map[string]interface{}{
-					"enabled":     true,
-					"enableHttps": false,
-					"gatewayName": "ingressgateway",
-				},
-			},
-			"gateways": map[string]interface{}{
-				"enabled": true,
-				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
-					},
-					"name":        "istio-egressgateway",
-					"gatewayType": "egress",
-				},
-				"istio-ingressgateway": map[string]interface{}{
-					"enabled":     true,
-					"name":        "istio-ingressgateway",
-					"gatewayType": "ingress",
-				},
-			},
-		}),
-	},
-	{
-		name:      "multicluster.gateways.egress.enabled." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
-					},
-				},
-			},
-			Gateways: &v2.GatewaysConfig{
-				ClusterEgress: &v2.EgressGatewayConfig{
-					GatewayConfig: v2.GatewayConfig{
+			}),
+		},
+		{
+			name:      "multicluster.ilb." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+					MultiCluster: &v2.MultiClusterConfig{
 						Enablement: v2.Enablement{
 							Enabled: &featureEnabled,
 						},
 					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName":       "my-cluster",
-					"enabled":           true,
-					"addedLocalNetwork": "my-network",
-					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-						"global",
-					},
-					"multiClusterOverrides": map[string]interface{}{
-						"addedExternal":     true,
-						"expansionEnabled":  nil,
-						"gatewaysEnabled":   interface{}(nil),
-						"ilbEnabled":        nil,
-						"ingressEnabled":    interface{}(nil),
-						"k8sIngressEnabled": interface{}(nil),
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": true,
-					"useILB":  false,
-				},
-				"meshNetworks": map[string]interface{}{
-					"my-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "my-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    443,
-								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
-							},
-						},
-					},
-				},
-				"network": "my-network",
-			},
-			"gateways": map[string]interface{}{
-				"istio-ilbgateway": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"podDNSSearchNamespaces": []interface{}{
-					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-				},
-				"k8sIngress": map[string]interface{}{
-					"enabled":     true,
-					"enableHttps": false,
-					"gatewayName": "ingressgateway",
-				},
-			},
-			"gateways": map[string]interface{}{
-				"enabled": true,
-				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
-					},
-					"name":        "istio-egressgateway",
-					"gatewayType": "egress",
-				},
-				"istio-ingressgateway": map[string]interface{}{
-					"enabled":     true,
-					"name":        "istio-ingressgateway",
-					"gatewayType": "ingress",
-				},
-			},
-		}),
-	},
-	{
-		name:      "multicluster.gateways.egress.configured." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
-					},
-				},
-			},
-			Gateways: &v2.GatewaysConfig{
-				ClusterEgress: &v2.EgressGatewayConfig{
-					GatewayConfig: v2.GatewayConfig{
-						Enablement: v2.Enablement{
-							Enabled: &featureEnabled,
-						},
-					},
-					RequestedNetworkView: []string{
-						"external",
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName":       "my-cluster",
-					"enabled":           true,
-					"addedLocalNetwork": "my-network",
-					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-						"global",
-					},
-					"multiClusterOverrides": map[string]interface{}{
-						"expansionEnabled":  nil,
-						"gatewaysEnabled":   interface{}(nil),
-						"ilbEnabled":        nil,
-						"ingressEnabled":    interface{}(nil),
-						"k8sIngressEnabled": interface{}(nil),
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": true,
-					"useILB":  false,
-				},
-				"meshNetworks": map[string]interface{}{
-					"my-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "my-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    443,
-								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
-							},
-						},
-					},
-				},
-				"network": "my-network",
-			},
-			"gateways": map[string]interface{}{
-				"istio-ilbgateway": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"podDNSSearchNamespaces": []interface{}{
-					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-				},
-				"k8sIngress": map[string]interface{}{
-					"enabled":     true,
-					"enableHttps": false,
-					"gatewayName": "ingressgateway",
-				},
-			},
-			"gateways": map[string]interface{}{
-				"enabled": true,
-				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
-					},
-					"name":        "istio-egressgateway",
-					"gatewayType": "egress",
-				},
-				"istio-ingressgateway": map[string]interface{}{
-					"enabled":     true,
-					"name":        "istio-ingressgateway",
-					"gatewayType": "ingress",
-				},
-			},
-		}),
-	},
-	{
-		name:      "multicluster.ingress.http." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName":       "my-cluster",
-					"enabled":           true,
-					"addedLocalNetwork": "my-network",
-					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-						"global",
-					},
-					"multiClusterOverrides": map[string]interface{}{
-						"addedExternal":     true,
-						"egressEnabled":     interface{}(nil),
-						"expansionEnabled":  nil,
-						"gatewaysEnabled":   interface{}(nil),
-						"ilbEnabled":        nil,
-						"ingressEnabled":    interface{}(nil),
-						"k8sIngressEnabled": interface{}(nil),
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": true,
-					"useILB":  false,
-				},
-				"meshNetworks": map[string]interface{}{
-					"my-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "my-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    443,
-								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
-							},
-						},
-					},
-				},
-				"network": "my-network",
-			},
-			"gateways": map[string]interface{}{
-				"istio-ilbgateway": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"podDNSSearchNamespaces": []interface{}{
-					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-				},
-				"k8sIngress": map[string]interface{}{
-					"enabled":     true,
-					"enableHttps": false,
-					"gatewayName": "ingressgateway",
-				},
-			},
-			"gateways": map[string]interface{}{
-				"enabled": true,
-				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
-					},
-					"name":        "istio-egressgateway",
-					"gatewayType": "egress",
-				},
-				"istio-ingressgateway": map[string]interface{}{
-					"enabled":     true,
-					"name":        "istio-ingressgateway",
-					"gatewayType": "ingress",
-				},
-			},
-		}),
-	},
-	{
-		name:      "multicluster.ingress.https." + versions.V2_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Cluster: &v2.ControlPlaneClusterConfig{
-				Name:    "my-cluster",
-				Network: "my-network",
-				MultiCluster: &v2.MultiClusterConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
-					},
-				},
-			},
-			Gateways: &v2.GatewaysConfig{
-				ClusterIngress: &v2.ClusterIngressGatewayConfig{
-					IngressGatewayConfig: v2.IngressGatewayConfig{
-						GatewayConfig: v2.GatewayConfig{
+					MeshExpansion: &v2.MeshExpansionConfig{
+						ILBGateway: &v2.GatewayConfig{
 							Enablement: v2.Enablement{
 								Enabled: &featureEnabled,
 							},
-							Service: v2.GatewayServiceConfig{
-								ServiceSpec: corev1.ServiceSpec{
-									Ports: []corev1.ServicePort{
-										{
-											Name:       "https",
-											Port:       443,
-											TargetPort: intstr.FromInt(8443),
-										},
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName":       "my-cluster",
+						"enabled":           true,
+						"addedLocalNetwork": "my-network",
+						"addedSearchSuffixes": []interface{}{
+							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+							"global",
+						},
+						"multiClusterOverrides": map[string]interface{}{
+							"addedExternal":    true,
+							"egressEnabled":    nil,
+							"expansionEnabled": nil,
+							"gatewaysEnabled":  nil,
+						},
+					},
+					"meshExpansion": map[string]interface{}{
+						"enabled": true,
+						"useILB":  true,
+					},
+					"meshNetworks": map[string]interface{}{
+						"my-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "my-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    443,
+									"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
+								},
+							},
+						},
+					},
+					"network": "my-network",
+				},
+				"gateways": map[string]interface{}{
+					"istio-ilbgateway": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"podDNSSearchNamespaces": []interface{}{
+						"global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+					},
+				},
+				"gateways": map[string]interface{}{
+					"enabled": true,
+					"istio-egressgateway": map[string]interface{}{
+						"enabled": true, "env": map[string]interface{}{
+							"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
+						},
+						"name":        "istio-egressgateway",
+						"gatewayType": "egress",
+					},
+				},
+			}),
+		},
+		{
+			name:      "multicluster.meshNetwork.override." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+					MultiCluster: &v2.MultiClusterConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+						MeshNetworks: map[string]v2.MeshNetworkConfig{
+							"my-network": {
+								Endpoints: []v2.MeshEndpointConfig{
+									{
+										FromRegistry: "my-cluster",
+									},
+								},
+								Gateways: []v2.MeshGatewayConfig{
+									{
+										Service: "istio-ingressgateway.my-ns.svc.cluster.local",
+										Port:    9443,
 									},
 								},
 							},
 						},
 					},
-					IngressEnabled: &featureEnabled,
 				},
 			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"clusterName":       "my-cluster",
-					"enabled":           true,
-					"addedLocalNetwork": "my-network",
-					"addedSearchSuffixes": []interface{}{
-						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName": "my-cluster",
+						"enabled":     true,
+						"addedSearchSuffixes": []interface{}{
+							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+							"global",
+						},
+						"multiClusterOverrides": map[string]interface{}{
+							"addedExternal":     true,
+							"egressEnabled":     interface{}(nil),
+							"expansionEnabled":  nil,
+							"gatewaysEnabled":   interface{}(nil),
+							"ilbEnabled":        nil,
+							"ingressEnabled":    interface{}(nil),
+							"k8sIngressEnabled": interface{}(nil),
+						},
+					},
+					"meshExpansion": map[string]interface{}{
+						"enabled": true,
+						"useILB":  false,
+					},
+					"meshNetworks": map[string]interface{}{
+						"my-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "my-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    9443,
+									"service": "istio-ingressgateway.my-ns.svc.cluster.local",
+								},
+							},
+						},
+					},
+					"network": "my-network",
+				},
+				"gateways": map[string]interface{}{
+					"istio-ilbgateway": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"podDNSSearchNamespaces": []interface{}{
 						"global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
 					},
-					"multiClusterOverrides": map[string]interface{}{
-						"addedExternal":    true,
-						"egressEnabled":    interface{}(nil),
-						"expansionEnabled": nil,
-						"gatewaysEnabled":  interface{}(nil),
-						"ilbEnabled":       nil,
+					"k8sIngress": map[string]interface{}{
+						"enabled":     true,
+						"enableHttps": false,
+						"gatewayName": "ingressgateway",
 					},
 				},
-				"meshExpansion": map[string]interface{}{
+				"gateways": map[string]interface{}{
 					"enabled": true,
-					"useILB":  false,
+					"istio-egressgateway": map[string]interface{}{
+						"enabled": true, "env": map[string]interface{}{
+							"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
+						},
+						"name":        "istio-egressgateway",
+						"gatewayType": "egress",
+					},
+					"istio-ingressgateway": map[string]interface{}{
+						"enabled":     true,
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+					},
 				},
-				"meshNetworks": map[string]interface{}{
-					"my-network": map[string]interface{}{
-						"endpoints": []interface{}{
-							map[string]interface{}{
-								"fromRegistry": "my-cluster",
-							},
-						}, "gateways": []interface{}{
-							map[string]interface{}{
-								"port":    443,
-								"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
+			}),
+		},
+		{
+			name:      "multicluster.meshNetwork.additional." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+					MultiCluster: &v2.MultiClusterConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+						MeshNetworks: map[string]v2.MeshNetworkConfig{
+							"other-network": {
+								Endpoints: []v2.MeshEndpointConfig{
+									{
+										FromRegistry: "other-cluster",
+									},
+								},
+								Gateways: []v2.MeshGatewayConfig{
+									{
+										Service: "istio-ingressgateway.other-ns.svc.cluster.local",
+										Port:    443,
+									},
+								},
 							},
 						},
 					},
 				},
-				"network": "my-network",
 			},
-			"gateways": map[string]interface{}{
-				"istio-ilbgateway": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"podDNSSearchNamespaces": []interface{}{
-					"global",
-					"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
-				},
-				"k8sIngress": map[string]interface{}{
-					"enabled":     true,
-					"enableHttps": true,
-					"gatewayName": "ingressgateway",
-				},
-			},
-			"gateways": map[string]interface{}{
-				"enabled": true,
-				"istio-egressgateway": map[string]interface{}{
-					"enabled": true, "env": map[string]interface{}{
-						"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName":       "my-cluster",
+						"enabled":           true,
+						"addedLocalNetwork": "my-network",
+						"addedSearchSuffixes": []interface{}{
+							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+							"global",
+						},
+						"multiClusterOverrides": map[string]interface{}{
+							"addedExternal":     true,
+							"egressEnabled":     interface{}(nil),
+							"expansionEnabled":  nil,
+							"gatewaysEnabled":   interface{}(nil),
+							"ilbEnabled":        nil,
+							"ingressEnabled":    interface{}(nil),
+							"k8sIngressEnabled": interface{}(nil),
+						},
 					},
-					"name":        "istio-egressgateway",
-					"gatewayType": "egress",
+					"meshExpansion": map[string]interface{}{
+						"enabled": true,
+						"useILB":  false,
+					},
+					"meshNetworks": map[string]interface{}{
+						"my-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "my-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    443,
+									"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
+								},
+							},
+						},
+						"other-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "other-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    443,
+									"service": "istio-ingressgateway.other-ns.svc.cluster.local",
+								},
+							},
+						},
+					},
+					"network": "my-network",
 				},
-				"istio-ingressgateway": map[string]interface{}{
-					"enabled":     true,
-					"name":        "istio-ingressgateway",
-					"gatewayType": "ingress",
-					"ports": []interface{}{
-						map[string]interface{}{
-							"name":       "https",
-							"port":       443,
-							"targetPort": 8443,
+				"gateways": map[string]interface{}{
+					"istio-ilbgateway": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"podDNSSearchNamespaces": []interface{}{
+						"global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+					},
+					"k8sIngress": map[string]interface{}{
+						"enabled":     true,
+						"enableHttps": false,
+						"gatewayName": "ingressgateway",
+					},
+				},
+				"gateways": map[string]interface{}{
+					"enabled": true,
+					"istio-egressgateway": map[string]interface{}{
+						"enabled": true, "env": map[string]interface{}{
+							"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
+						},
+						"name":        "istio-egressgateway",
+						"gatewayType": "egress",
+					},
+					"istio-ingressgateway": map[string]interface{}{
+						"enabled":     true,
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+					},
+				},
+			}),
+		},
+		{
+			name:      "multicluster.clusterDomain.override." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Proxy: &v2.ProxyConfig{
+					Networking: &v2.ProxyNetworkingConfig{
+						ClusterDomain: "example.com",
+					},
+				},
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+					MultiCluster: &v2.MultiClusterConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
 						},
 					},
 				},
 			},
-		}),
-	},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName":       "my-cluster",
+						"enabled":           true,
+						"addedLocalNetwork": "my-network",
+						"addedSearchSuffixes": []interface{}{
+							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+							"global",
+						},
+						"multiClusterOverrides": map[string]interface{}{
+							"addedExternal":     true,
+							"egressEnabled":     interface{}(nil),
+							"expansionEnabled":  nil,
+							"gatewaysEnabled":   interface{}(nil),
+							"ilbEnabled":        nil,
+							"ingressEnabled":    interface{}(nil),
+							"k8sIngressEnabled": interface{}(nil),
+						},
+					},
+					"meshExpansion": map[string]interface{}{
+						"enabled": true,
+						"useILB":  false,
+					},
+					"meshNetworks": map[string]interface{}{
+						"my-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "my-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    443,
+									"service": "istio-ingressgateway.cp-namespace.svc.example.com",
+								},
+							},
+						},
+					},
+					"network": "my-network",
+				},
+				"gateways": map[string]interface{}{
+					"istio-ilbgateway": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"podDNSSearchNamespaces": []interface{}{
+						"global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+					},
+					"proxy": map[string]interface{}{
+						"clusterDomain": "example.com",
+					},
+					"k8sIngress": map[string]interface{}{
+						"enabled":     true,
+						"enableHttps": false,
+						"gatewayName": "ingressgateway",
+					},
+				},
+				"gateways": map[string]interface{}{
+					"enabled": true,
+					"istio-egressgateway": map[string]interface{}{
+						"enabled": true, "env": map[string]interface{}{
+							"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
+						},
+						"name":        "istio-egressgateway",
+						"gatewayType": "egress",
+					},
+					"istio-ingressgateway": map[string]interface{}{
+						"enabled":     true,
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+					},
+				},
+			}),
+		},
+		{
+			name:      "multicluster.searchSuffix.global." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Proxy: &v2.ProxyConfig{
+					Networking: &v2.ProxyNetworkingConfig{
+						DNS: &v2.ProxyDNSConfig{
+							SearchSuffixes: []string{
+								"global",
+							},
+						},
+					},
+				},
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+					MultiCluster: &v2.MultiClusterConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName":       "my-cluster",
+						"enabled":           true,
+						"addedLocalNetwork": "my-network",
+						"addedSearchSuffixes": []interface{}{
+							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+						},
+						"multiClusterOverrides": map[string]interface{}{
+							"addedExternal":     true,
+							"egressEnabled":     interface{}(nil),
+							"expansionEnabled":  nil,
+							"gatewaysEnabled":   interface{}(nil),
+							"ilbEnabled":        nil,
+							"ingressEnabled":    interface{}(nil),
+							"k8sIngressEnabled": interface{}(nil),
+						},
+					},
+					"meshExpansion": map[string]interface{}{
+						"enabled": true,
+						"useILB":  false,
+					},
+					"meshNetworks": map[string]interface{}{
+						"my-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "my-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    443,
+									"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
+								},
+							},
+						},
+					},
+					"network": "my-network",
+				},
+				"gateways": map[string]interface{}{
+					"istio-ilbgateway": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"podDNSSearchNamespaces": []interface{}{
+						"global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+					},
+					"k8sIngress": map[string]interface{}{
+						"enabled":     true,
+						"enableHttps": false,
+						"gatewayName": "ingressgateway",
+					},
+				},
+				"gateways": map[string]interface{}{
+					"enabled": true,
+					"istio-egressgateway": map[string]interface{}{
+						"enabled": true, "env": map[string]interface{}{
+							"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
+						},
+						"name":        "istio-egressgateway",
+						"gatewayType": "egress",
+					},
+					"istio-ingressgateway": map[string]interface{}{
+						"enabled":     true,
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+					},
+				},
+			}),
+		},
+		{
+			name:      "multicluster.searchSuffix.namespace." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Proxy: &v2.ProxyConfig{
+					Networking: &v2.ProxyNetworkingConfig{
+						DNS: &v2.ProxyDNSConfig{
+							SearchSuffixes: []string{
+								"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+							},
+						},
+					},
+				},
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+					MultiCluster: &v2.MultiClusterConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName":       "my-cluster",
+						"enabled":           true,
+						"addedLocalNetwork": "my-network",
+						"addedSearchSuffixes": []interface{}{
+							"global",
+						},
+						"multiClusterOverrides": map[string]interface{}{
+							"addedExternal":     true,
+							"egressEnabled":     interface{}(nil),
+							"expansionEnabled":  nil,
+							"gatewaysEnabled":   interface{}(nil),
+							"ilbEnabled":        nil,
+							"ingressEnabled":    interface{}(nil),
+							"k8sIngressEnabled": interface{}(nil),
+						},
+					},
+					"meshExpansion": map[string]interface{}{
+						"enabled": true,
+						"useILB":  false,
+					},
+					"meshNetworks": map[string]interface{}{
+						"my-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "my-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    443,
+									"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
+								},
+							},
+						},
+					},
+					"network": "my-network",
+				},
+				"gateways": map[string]interface{}{
+					"istio-ilbgateway": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"podDNSSearchNamespaces": []interface{}{
+						"global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+					},
+					"k8sIngress": map[string]interface{}{
+						"enabled":     true,
+						"enableHttps": false,
+						"gatewayName": "ingressgateway",
+					},
+				},
+				"gateways": map[string]interface{}{
+					"enabled": true,
+					"istio-egressgateway": map[string]interface{}{
+						"enabled": true, "env": map[string]interface{}{
+							"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
+						},
+						"name":        "istio-egressgateway",
+						"gatewayType": "egress",
+					},
+					"istio-ingressgateway": map[string]interface{}{
+						"enabled":     true,
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+					},
+				},
+			}),
+		},
+		{
+			name:      "multicluster.searchSuffix.all." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Proxy: &v2.ProxyConfig{
+					Networking: &v2.ProxyNetworkingConfig{
+						DNS: &v2.ProxyDNSConfig{
+							SearchSuffixes: []string{
+								"global",
+								"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+							},
+						},
+					},
+				},
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+					MultiCluster: &v2.MultiClusterConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName":       "my-cluster",
+						"enabled":           true,
+						"addedLocalNetwork": "my-network",
+						"multiClusterOverrides": map[string]interface{}{
+							"addedExternal":     true,
+							"egressEnabled":     interface{}(nil),
+							"expansionEnabled":  nil,
+							"gatewaysEnabled":   interface{}(nil),
+							"ilbEnabled":        nil,
+							"ingressEnabled":    interface{}(nil),
+							"k8sIngressEnabled": interface{}(nil),
+						},
+					},
+					"meshExpansion": map[string]interface{}{
+						"enabled": true,
+						"useILB":  false,
+					},
+					"meshNetworks": map[string]interface{}{
+						"my-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "my-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    443,
+									"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
+								},
+							},
+						},
+					},
+					"network": "my-network",
+				},
+				"gateways": map[string]interface{}{
+					"istio-ilbgateway": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"podDNSSearchNamespaces": []interface{}{
+						"global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+					},
+					"k8sIngress": map[string]interface{}{
+						"enabled":     true,
+						"enableHttps": false,
+						"gatewayName": "ingressgateway",
+					},
+				},
+				"gateways": map[string]interface{}{
+					"enabled": true,
+					"istio-egressgateway": map[string]interface{}{
+						"enabled": true, "env": map[string]interface{}{
+							"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
+						},
+						"name":        "istio-egressgateway",
+						"gatewayType": "egress",
+					},
+					"istio-ingressgateway": map[string]interface{}{
+						"enabled":     true,
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+					},
+				},
+			}),
+		},
+		{
+			name:      "multicluster.searchSuffix.custom." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Proxy: &v2.ProxyConfig{
+					Networking: &v2.ProxyNetworkingConfig{
+						DNS: &v2.ProxyDNSConfig{
+							SearchSuffixes: []string{
+								"custom",
+							},
+						},
+					},
+				},
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+					MultiCluster: &v2.MultiClusterConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName":       "my-cluster",
+						"enabled":           true,
+						"addedLocalNetwork": "my-network",
+						"addedSearchSuffixes": []interface{}{
+							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+							"global",
+						},
+						"multiClusterOverrides": map[string]interface{}{
+							"addedExternal":     true,
+							"egressEnabled":     interface{}(nil),
+							"expansionEnabled":  nil,
+							"gatewaysEnabled":   interface{}(nil),
+							"ilbEnabled":        nil,
+							"ingressEnabled":    interface{}(nil),
+							"k8sIngressEnabled": interface{}(nil),
+						},
+					},
+					"meshExpansion": map[string]interface{}{
+						"enabled": true,
+						"useILB":  false,
+					},
+					"meshNetworks": map[string]interface{}{
+						"my-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "my-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    443,
+									"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
+								},
+							},
+						},
+					},
+					"network": "my-network",
+				},
+				"gateways": map[string]interface{}{
+					"istio-ilbgateway": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"podDNSSearchNamespaces": []interface{}{
+						"global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+						"custom",
+					},
+					"k8sIngress": map[string]interface{}{
+						"enabled":     true,
+						"enableHttps": false,
+						"gatewayName": "ingressgateway",
+					},
+				},
+				"gateways": map[string]interface{}{
+					"enabled": true,
+					"istio-egressgateway": map[string]interface{}{
+						"enabled": true, "env": map[string]interface{}{
+							"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
+						},
+						"name":        "istio-egressgateway",
+						"gatewayType": "egress",
+					},
+					"istio-ingressgateway": map[string]interface{}{
+						"enabled":     true,
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+					},
+				},
+			}),
+		},
+		{
+			name:      "multicluster.searchSuffix.custom.insert." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Proxy: &v2.ProxyConfig{
+					Networking: &v2.ProxyNetworkingConfig{
+						DNS: &v2.ProxyDNSConfig{
+							SearchSuffixes: []string{
+								"custom",
+								"global",
+							},
+						},
+					},
+				},
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+					MultiCluster: &v2.MultiClusterConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName":       "my-cluster",
+						"enabled":           true,
+						"addedLocalNetwork": "my-network",
+						"addedSearchSuffixes": []interface{}{
+							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+						},
+						"multiClusterOverrides": map[string]interface{}{
+							"addedExternal":     true,
+							"egressEnabled":     interface{}(nil),
+							"expansionEnabled":  nil,
+							"gatewaysEnabled":   interface{}(nil),
+							"ilbEnabled":        nil,
+							"ingressEnabled":    interface{}(nil),
+							"k8sIngressEnabled": interface{}(nil),
+						},
+					},
+					"meshExpansion": map[string]interface{}{
+						"enabled": true,
+						"useILB":  false,
+					},
+					"meshNetworks": map[string]interface{}{
+						"my-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "my-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    443,
+									"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
+								},
+							},
+						},
+					},
+					"network": "my-network",
+				},
+				"gateways": map[string]interface{}{
+					"istio-ilbgateway": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"podDNSSearchNamespaces": []interface{}{
+						"custom",
+						"global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+					},
+					"k8sIngress": map[string]interface{}{
+						"enabled":     true,
+						"enableHttps": false,
+						"gatewayName": "ingressgateway",
+					},
+				},
+				"gateways": map[string]interface{}{
+					"enabled": true,
+					"istio-egressgateway": map[string]interface{}{
+						"enabled": true, "env": map[string]interface{}{
+							"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
+						},
+						"name":        "istio-egressgateway",
+						"gatewayType": "egress",
+					},
+					"istio-ingressgateway": map[string]interface{}{
+						"enabled":     true,
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+					},
+				},
+			}),
+		},
+		{
+			name:      "multicluster.gateways.egress.unconfigured" + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+					MultiCluster: &v2.MultiClusterConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+					},
+				},
+				Gateways: &v2.GatewaysConfig{},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName":       "my-cluster",
+						"enabled":           true,
+						"addedLocalNetwork": "my-network",
+						"addedSearchSuffixes": []interface{}{
+							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+							"global",
+						},
+						"multiClusterOverrides": map[string]interface{}{
+							"addedExternal":     true,
+							"egressEnabled":     interface{}(nil),
+							"expansionEnabled":  nil,
+							"gatewaysEnabled":   interface{}(nil),
+							"ilbEnabled":        nil,
+							"ingressEnabled":    interface{}(nil),
+							"k8sIngressEnabled": interface{}(nil),
+						},
+					},
+					"meshExpansion": map[string]interface{}{
+						"enabled": true,
+						"useILB":  false,
+					},
+					"meshNetworks": map[string]interface{}{
+						"my-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "my-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    443,
+									"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
+								},
+							},
+						},
+					},
+					"network": "my-network",
+				},
+				"gateways": map[string]interface{}{
+					"istio-ilbgateway": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"podDNSSearchNamespaces": []interface{}{
+						"global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+					},
+					"k8sIngress": map[string]interface{}{
+						"enabled":     true,
+						"enableHttps": false,
+						"gatewayName": "ingressgateway",
+					},
+				},
+				"gateways": map[string]interface{}{
+					"enabled": true,
+					"istio-egressgateway": map[string]interface{}{
+						"enabled": true, "env": map[string]interface{}{
+							"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
+						},
+						"name":        "istio-egressgateway",
+						"gatewayType": "egress",
+					},
+					"istio-ingressgateway": map[string]interface{}{
+						"enabled":     true,
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+					},
+				},
+			}),
+		},
+		{
+			name:      "multicluster.gateways.egress.enabled." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+					MultiCluster: &v2.MultiClusterConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+					},
+				},
+				Gateways: &v2.GatewaysConfig{
+					ClusterEgress: &v2.EgressGatewayConfig{
+						GatewayConfig: v2.GatewayConfig{
+							Enablement: v2.Enablement{
+								Enabled: &featureEnabled,
+							},
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName":       "my-cluster",
+						"enabled":           true,
+						"addedLocalNetwork": "my-network",
+						"addedSearchSuffixes": []interface{}{
+							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+							"global",
+						},
+						"multiClusterOverrides": map[string]interface{}{
+							"addedExternal":     true,
+							"expansionEnabled":  nil,
+							"gatewaysEnabled":   interface{}(nil),
+							"ilbEnabled":        nil,
+							"ingressEnabled":    interface{}(nil),
+							"k8sIngressEnabled": interface{}(nil),
+						},
+					},
+					"meshExpansion": map[string]interface{}{
+						"enabled": true,
+						"useILB":  false,
+					},
+					"meshNetworks": map[string]interface{}{
+						"my-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "my-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    443,
+									"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
+								},
+							},
+						},
+					},
+					"network": "my-network",
+				},
+				"gateways": map[string]interface{}{
+					"istio-ilbgateway": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"podDNSSearchNamespaces": []interface{}{
+						"global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+					},
+					"k8sIngress": map[string]interface{}{
+						"enabled":     true,
+						"enableHttps": false,
+						"gatewayName": "ingressgateway",
+					},
+				},
+				"gateways": map[string]interface{}{
+					"enabled": true,
+					"istio-egressgateway": map[string]interface{}{
+						"enabled": true, "env": map[string]interface{}{
+							"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
+						},
+						"name":        "istio-egressgateway",
+						"gatewayType": "egress",
+					},
+					"istio-ingressgateway": map[string]interface{}{
+						"enabled":     true,
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+					},
+				},
+			}),
+		},
+		{
+			name:      "multicluster.gateways.egress.configured." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+					MultiCluster: &v2.MultiClusterConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+					},
+				},
+				Gateways: &v2.GatewaysConfig{
+					ClusterEgress: &v2.EgressGatewayConfig{
+						GatewayConfig: v2.GatewayConfig{
+							Enablement: v2.Enablement{
+								Enabled: &featureEnabled,
+							},
+						},
+						RequestedNetworkView: []string{
+							"external",
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName":       "my-cluster",
+						"enabled":           true,
+						"addedLocalNetwork": "my-network",
+						"addedSearchSuffixes": []interface{}{
+							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+							"global",
+						},
+						"multiClusterOverrides": map[string]interface{}{
+							"expansionEnabled":  nil,
+							"gatewaysEnabled":   interface{}(nil),
+							"ilbEnabled":        nil,
+							"ingressEnabled":    interface{}(nil),
+							"k8sIngressEnabled": interface{}(nil),
+						},
+					},
+					"meshExpansion": map[string]interface{}{
+						"enabled": true,
+						"useILB":  false,
+					},
+					"meshNetworks": map[string]interface{}{
+						"my-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "my-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    443,
+									"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
+								},
+							},
+						},
+					},
+					"network": "my-network",
+				},
+				"gateways": map[string]interface{}{
+					"istio-ilbgateway": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"podDNSSearchNamespaces": []interface{}{
+						"global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+					},
+					"k8sIngress": map[string]interface{}{
+						"enabled":     true,
+						"enableHttps": false,
+						"gatewayName": "ingressgateway",
+					},
+				},
+				"gateways": map[string]interface{}{
+					"enabled": true,
+					"istio-egressgateway": map[string]interface{}{
+						"enabled": true, "env": map[string]interface{}{
+							"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
+						},
+						"name":        "istio-egressgateway",
+						"gatewayType": "egress",
+					},
+					"istio-ingressgateway": map[string]interface{}{
+						"enabled":     true,
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+					},
+				},
+			}),
+		},
+		{
+			name:      "multicluster.ingress.http." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+					MultiCluster: &v2.MultiClusterConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName":       "my-cluster",
+						"enabled":           true,
+						"addedLocalNetwork": "my-network",
+						"addedSearchSuffixes": []interface{}{
+							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+							"global",
+						},
+						"multiClusterOverrides": map[string]interface{}{
+							"addedExternal":     true,
+							"egressEnabled":     interface{}(nil),
+							"expansionEnabled":  nil,
+							"gatewaysEnabled":   interface{}(nil),
+							"ilbEnabled":        nil,
+							"ingressEnabled":    interface{}(nil),
+							"k8sIngressEnabled": interface{}(nil),
+						},
+					},
+					"meshExpansion": map[string]interface{}{
+						"enabled": true,
+						"useILB":  false,
+					},
+					"meshNetworks": map[string]interface{}{
+						"my-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "my-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    443,
+									"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
+								},
+							},
+						},
+					},
+					"network": "my-network",
+				},
+				"gateways": map[string]interface{}{
+					"istio-ilbgateway": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"podDNSSearchNamespaces": []interface{}{
+						"global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+					},
+					"k8sIngress": map[string]interface{}{
+						"enabled":     true,
+						"enableHttps": false,
+						"gatewayName": "ingressgateway",
+					},
+				},
+				"gateways": map[string]interface{}{
+					"enabled": true,
+					"istio-egressgateway": map[string]interface{}{
+						"enabled": true, "env": map[string]interface{}{
+							"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
+						},
+						"name":        "istio-egressgateway",
+						"gatewayType": "egress",
+					},
+					"istio-ingressgateway": map[string]interface{}{
+						"enabled":     true,
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+					},
+				},
+			}),
+		},
+		{
+			name:      "multicluster.ingress.https." + ver,
+			namespace: clusterTestNamespace,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Cluster: &v2.ControlPlaneClusterConfig{
+					Name:    "my-cluster",
+					Network: "my-network",
+					MultiCluster: &v2.MultiClusterConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+					},
+				},
+				Gateways: &v2.GatewaysConfig{
+					ClusterIngress: &v2.ClusterIngressGatewayConfig{
+						IngressGatewayConfig: v2.IngressGatewayConfig{
+							GatewayConfig: v2.GatewayConfig{
+								Enablement: v2.Enablement{
+									Enabled: &featureEnabled,
+								},
+								Service: v2.GatewayServiceConfig{
+									ServiceSpec: corev1.ServiceSpec{
+										Ports: []corev1.ServicePort{
+											{
+												Name:       "https",
+												Port:       443,
+												TargetPort: intstr.FromInt(8443),
+											},
+										},
+									},
+								},
+							},
+						},
+						IngressEnabled: &featureEnabled,
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster": map[string]interface{}{
+						"clusterName":       "my-cluster",
+						"enabled":           true,
+						"addedLocalNetwork": "my-network",
+						"addedSearchSuffixes": []interface{}{
+							"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+							"global",
+						},
+						"multiClusterOverrides": map[string]interface{}{
+							"addedExternal":    true,
+							"egressEnabled":    interface{}(nil),
+							"expansionEnabled": nil,
+							"gatewaysEnabled":  interface{}(nil),
+							"ilbEnabled":       nil,
+						},
+					},
+					"meshExpansion": map[string]interface{}{
+						"enabled": true,
+						"useILB":  false,
+					},
+					"meshNetworks": map[string]interface{}{
+						"my-network": map[string]interface{}{
+							"endpoints": []interface{}{
+								map[string]interface{}{
+									"fromRegistry": "my-cluster",
+								},
+							}, "gateways": []interface{}{
+								map[string]interface{}{
+									"port":    443,
+									"service": "istio-ingressgateway.cp-namespace.svc.cluster.local",
+								},
+							},
+						},
+					},
+					"network": "my-network",
+				},
+				"gateways": map[string]interface{}{
+					"istio-ilbgateway": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"podDNSSearchNamespaces": []interface{}{
+						"global",
+						"{{ valueOrDefault .DeploymentMeta.Namespace \"cp-namespace\" }}.global",
+					},
+					"k8sIngress": map[string]interface{}{
+						"enabled":     true,
+						"enableHttps": true,
+						"gatewayName": "ingressgateway",
+					},
+				},
+				"gateways": map[string]interface{}{
+					"enabled": true,
+					"istio-egressgateway": map[string]interface{}{
+						"enabled": true, "env": map[string]interface{}{
+							"ISTIO_META_REQUESTED_NETWORK_VIEW": "external",
+						},
+						"name":        "istio-egressgateway",
+						"gatewayType": "egress",
+					},
+					"istio-ingressgateway": map[string]interface{}{
+						"enabled":     true,
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+						"ports": []interface{}{
+							map[string]interface{}{
+								"name":       "https",
+								"port":       443,
+								"targetPort": 8443,
+							},
+						},
+					},
+				},
+			}),
+		},
+	}
+}
+
+func init() {
+	clusterTestCases = append(clusterTestCases, clusterTestCasesV1...)
+	for _, v := range versions.AllV2Versions {
+		clusterTestCases = append(clusterTestCases, clusterTestCasesV2(v)...)
+	}
 }
 
 func TestClusterConversionFromV2(t *testing.T) {

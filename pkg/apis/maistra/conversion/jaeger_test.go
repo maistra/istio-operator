@@ -18,617 +18,628 @@ var (
 	traceSamplingInt10000         = int32(10000)
 )
 
-var jaegerTestCases = []conversionTestCase{
-	{
-		name: "none." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Tracing: &v2.TracingConfig{
-				Type:     v2.TracerTypeNone,
-				Sampling: &traceSampling,
+var jaegerTestCases []conversionTestCase
+
+func jaegerTestCasesV2(version versions.Version) []conversionTestCase{
+	ver := version.String()
+	return []conversionTestCase{
+		{
+			name: "none." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Tracing: &v2.TracingConfig{
+					Type:     v2.TracerTypeNone,
+					Sampling: &traceSampling,
+				},
 			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+					"enableTracing": false,
+					"proxy": map[string]interface{}{
+						"tracer": "none",
+					},
+				},
+				"meshConfig": map[string]interface{}{
+					"enableTracing": false,
+				},
+				"pilot": map[string]interface{}{
+					"traceSampling": 0.01,
+				},
+				"tracing": map[string]interface{}{
+					"enabled":  false,
+					"provider": "none",
+				},
+			}),
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-				"enableTracing": false,
-				"proxy": map[string]interface{}{
-					"tracer": "none",
+		{
+			name: "nil." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
 				},
 			},
-			"meshConfig": map[string]interface{}{
-				"enableTracing": false,
-			},
-			"pilot": map[string]interface{}{
-				"traceSampling": 0.01,
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  false,
-				"provider": "none",
-			},
-		}),
-	},
-	{
-		name: "nil." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Tracing: &v2.TracingConfig{
-				Type: v2.TracerTypeJaeger,
-			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+					"enableTracing": true,
+					"proxy": map[string]interface{}{
+						"tracer": "zipkin",
+					},
+				},
+				"meshConfig": map[string]interface{}{
+					"enableTracing": true,
+				},
+				"tracing": map[string]interface{}{
+					"enabled":  true,
+					"provider": "jaeger",
+				},
+			}),
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-				"enableTracing": true,
-				"proxy": map[string]interface{}{
-					"tracer": "zipkin",
+		{
+			name: "defaults." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Tracing: &v2.TracingConfig{
+					Sampling: &traceSamplingInt,
+					Type:     v2.TracerTypeJaeger,
+				},
+				Addons: &v2.AddonsConfig{
+					Jaeger: &v2.JaegerAddonConfig{},
 				},
 			},
-			"meshConfig": map[string]interface{}{
-				"enableTracing": true,
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-			},
-		}),
-	},
-	{
-		name: "defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Tracing: &v2.TracingConfig{
-				Sampling: &traceSamplingInt,
-				Type:     v2.TracerTypeJaeger,
-			},
-			Addons: &v2.AddonsConfig{
-				Jaeger: &v2.JaegerAddonConfig{},
-			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+					"enableTracing": true,
+					"proxy": map[string]interface{}{
+						"tracer": "zipkin",
+					},
+				},
+				"meshConfig": map[string]interface{}{
+					"enableTracing": true,
+				},
+				"pilot": map[string]interface{}{
+					"traceSampling": 1,
+				},
+				"tracing": map[string]interface{}{
+					"enabled":  true,
+					"provider": "jaeger",
+				},
+			}),
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-				"enableTracing": true,
-				"proxy": map[string]interface{}{
-					"tracer": "zipkin",
+		{
+			name: "simple." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
 				},
-			},
-			"meshConfig": map[string]interface{}{
-				"enableTracing": true,
-			},
-			"pilot": map[string]interface{}{
-				"traceSampling": 1,
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-			},
-		}),
-	},
-	{
-		name: "simple." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Tracing: &v2.TracingConfig{
-				Type: v2.TracerTypeJaeger,
-			},
-			Addons: &v2.AddonsConfig{
-				Jaeger: &v2.JaegerAddonConfig{
-					Name: "my-jaeger",
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"tracing": map[string]interface{}{
-				"jaeger": map[string]interface{}{
-					"resourceName": "my-jaeger",
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-				"enableTracing": true,
-				"proxy": map[string]interface{}{
-					"tracer": "zipkin",
-				},
-			},
-			"meshConfig": map[string]interface{}{
-				"enableTracing": true,
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-			},
-		}),
-	},
-	{
-		name: "install.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Tracing: &v2.TracingConfig{
-				Type: v2.TracerTypeJaeger,
-			},
-			Addons: &v2.AddonsConfig{
-				Jaeger: &v2.JaegerAddonConfig{
-					Name:    "my-jaeger",
-					Install: &v2.JaegerInstallConfig{},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"tracing": map[string]interface{}{
-				"jaeger": map[string]interface{}{
-					"resourceName": "my-jaeger",
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-				"enableTracing": true,
-				"proxy": map[string]interface{}{
-					"tracer": "zipkin",
-				},
-			},
-			"meshConfig": map[string]interface{}{
-				"enableTracing": true,
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-			},
-		}),
-	},
-	{
-		name: "install.storage.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Tracing: &v2.TracingConfig{
-				Type: v2.TracerTypeJaeger,
-			},
-			Addons: &v2.AddonsConfig{
-				Jaeger: &v2.JaegerAddonConfig{
-					Name: "my-jaeger",
-					Install: &v2.JaegerInstallConfig{
-						Storage: &v2.JaegerStorageConfig{},
+				Addons: &v2.AddonsConfig{
+					Jaeger: &v2.JaegerAddonConfig{
+						Name: "my-jaeger",
 					},
 				},
 			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"tracing": map[string]interface{}{
+					"jaeger": map[string]interface{}{
+						"resourceName": "my-jaeger",
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+					"enableTracing": true,
+					"proxy": map[string]interface{}{
+						"tracer": "zipkin",
+					},
+				},
+				"meshConfig": map[string]interface{}{
+					"enableTracing": true,
+				},
+				"tracing": map[string]interface{}{
+					"enabled":  true,
+					"provider": "jaeger",
+				},
+			}),
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"tracing": map[string]interface{}{
-				"jaeger": map[string]interface{}{
-					"resourceName": "my-jaeger",
+		{
+			name: "install.defaults." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
+				},
+				Addons: &v2.AddonsConfig{
+					Jaeger: &v2.JaegerAddonConfig{
+						Name:    "my-jaeger",
+						Install: &v2.JaegerInstallConfig{},
+					},
 				},
 			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-				"enableTracing": true,
-				"proxy": map[string]interface{}{
-					"tracer": "zipkin",
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"tracing": map[string]interface{}{
+					"jaeger": map[string]interface{}{
+						"resourceName": "my-jaeger",
+					},
 				},
-			},
-			"meshConfig": map[string]interface{}{
-				"enableTracing": true,
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-			},
-		}),
-	},
-	{
-		name: "install.storage.memory.nil." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Tracing: &v2.TracingConfig{
-				Type: v2.TracerTypeJaeger,
-			},
-			Addons: &v2.AddonsConfig{
-				Jaeger: &v2.JaegerAddonConfig{
-					Name: "my-jaeger",
-					Install: &v2.JaegerInstallConfig{
-						Storage: &v2.JaegerStorageConfig{
-							Type: v2.JaegerStorageTypeMemory,
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+					"enableTracing": true,
+					"proxy": map[string]interface{}{
+						"tracer": "zipkin",
+					},
+				},
+				"meshConfig": map[string]interface{}{
+					"enableTracing": true,
+				},
+				"tracing": map[string]interface{}{
+					"enabled":  true,
+					"provider": "jaeger",
+				},
+			}),
+		},
+		{
+			name: "install.storage.defaults." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
+				},
+				Addons: &v2.AddonsConfig{
+					Jaeger: &v2.JaegerAddonConfig{
+						Name: "my-jaeger",
+						Install: &v2.JaegerInstallConfig{
+							Storage: &v2.JaegerStorageConfig{},
 						},
 					},
 				},
 			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"tracing": map[string]interface{}{
-				"jaeger": map[string]interface{}{
-					"resourceName": "my-jaeger",
-					"template":     "all-in-one",
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-				"enableTracing": true,
-				"proxy": map[string]interface{}{
-					"tracer": "zipkin",
-				},
-			},
-			"meshConfig": map[string]interface{}{
-				"enableTracing": true,
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-			},
-		}),
-	},
-	{
-		name: "install.storage.memory.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Tracing: &v2.TracingConfig{
-				Type: v2.TracerTypeJaeger,
-			},
-			Addons: &v2.AddonsConfig{
-				Jaeger: &v2.JaegerAddonConfig{
-					Name: "my-jaeger",
-					Install: &v2.JaegerInstallConfig{
-						Storage: &v2.JaegerStorageConfig{
-							Type:   v2.JaegerStorageTypeMemory,
-							Memory: &v2.JaegerMemoryStorageConfig{},
-						},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"tracing": map[string]interface{}{
+					"jaeger": map[string]interface{}{
+						"resourceName": "my-jaeger",
 					},
 				},
-			},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+					"enableTracing": true,
+					"proxy": map[string]interface{}{
+						"tracer": "zipkin",
+					},
+				},
+				"meshConfig": map[string]interface{}{
+					"enableTracing": true,
+				},
+				"tracing": map[string]interface{}{
+					"enabled":  true,
+					"provider": "jaeger",
+				},
+			}),
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"tracing": map[string]interface{}{
-				"jaeger": map[string]interface{}{
-					"resourceName": "my-jaeger",
-					"template":     "all-in-one",
+		{
+			name: "install.storage.memory.nil." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
 				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-				"enableTracing": true,
-				"proxy": map[string]interface{}{
-					"tracer": "zipkin",
-				},
-			},
-			"meshConfig": map[string]interface{}{
-				"enableTracing": true,
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-			},
-		}),
-	},
-	{
-		name: "install.storage.memory.full." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Tracing: &v2.TracingConfig{
-				Type: v2.TracerTypeJaeger,
-			},
-			Addons: &v2.AddonsConfig{
-				Jaeger: &v2.JaegerAddonConfig{
-					Name: "my-jaeger",
-					Install: &v2.JaegerInstallConfig{
-						Storage: &v2.JaegerStorageConfig{
-							Type: v2.JaegerStorageTypeMemory,
-							Memory: &v2.JaegerMemoryStorageConfig{
-								MaxTraces: &jaegerMaxTraces,
+				Addons: &v2.AddonsConfig{
+					Jaeger: &v2.JaegerAddonConfig{
+						Name: "my-jaeger",
+						Install: &v2.JaegerInstallConfig{
+							Storage: &v2.JaegerStorageConfig{
+								Type: v2.JaegerStorageTypeMemory,
 							},
 						},
 					},
 				},
 			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"tracing": map[string]interface{}{
-				"jaeger": map[string]interface{}{
-					"resourceName": "my-jaeger",
-					"template":     "all-in-one",
-					"memory": map[string]interface{}{
-						"max_traces": 15000,
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"tracing": map[string]interface{}{
+					"jaeger": map[string]interface{}{
+						"resourceName": "my-jaeger",
+						"template":     "all-in-one",
 					},
 				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-				"enableTracing": true,
-				"proxy": map[string]interface{}{
-					"tracer": "zipkin",
-				},
-			},
-			"meshConfig": map[string]interface{}{
-				"enableTracing": true,
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-			},
-		}),
-	},
-	{
-		name: "install.storage.elasticsearch.nil." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Tracing: &v2.TracingConfig{
-				Type: v2.TracerTypeJaeger,
-			},
-			Addons: &v2.AddonsConfig{
-				Jaeger: &v2.JaegerAddonConfig{
-					Name: "my-jaeger",
-					Install: &v2.JaegerInstallConfig{
-						Storage: &v2.JaegerStorageConfig{
-							Type: v2.JaegerStorageTypeElasticsearch,
-						},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+					"enableTracing": true,
+					"proxy": map[string]interface{}{
+						"tracer": "zipkin",
 					},
 				},
-			},
+				"meshConfig": map[string]interface{}{
+					"enableTracing": true,
+				},
+				"tracing": map[string]interface{}{
+					"enabled":  true,
+					"provider": "jaeger",
+				},
+			}),
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"tracing": map[string]interface{}{
-				"jaeger": map[string]interface{}{
-					"resourceName": "my-jaeger",
-					"template":     "production-elasticsearch",
+		{
+			name: "install.storage.memory.defaults." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
 				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-				"enableTracing": true,
-				"proxy": map[string]interface{}{
-					"tracer": "zipkin",
-				},
-			},
-			"meshConfig": map[string]interface{}{
-				"enableTracing": true,
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-			},
-		}),
-	},
-	{
-		name: "install.storage.elasticsearch.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Tracing: &v2.TracingConfig{
-				Type: v2.TracerTypeJaeger,
-			},
-			Addons: &v2.AddonsConfig{
-				Jaeger: &v2.JaegerAddonConfig{
-					Name: "my-jaeger",
-					Install: &v2.JaegerInstallConfig{
-						Storage: &v2.JaegerStorageConfig{
-							Type:          v2.JaegerStorageTypeElasticsearch,
-							Elasticsearch: &v2.JaegerElasticsearchStorageConfig{},
-						},
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"tracing": map[string]interface{}{
-				"jaeger": map[string]interface{}{
-					"resourceName": "my-jaeger",
-					"template":     "production-elasticsearch",
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-				"enableTracing": true,
-				"proxy": map[string]interface{}{
-					"tracer": "zipkin",
-				},
-			},
-			"meshConfig": map[string]interface{}{
-				"enableTracing": true,
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-			},
-		}),
-	},
-	{
-		name: "install.storage.elasticsearch.basic." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Tracing: &v2.TracingConfig{
-				Type: v2.TracerTypeJaeger,
-			},
-			Addons: &v2.AddonsConfig{
-				Jaeger: &v2.JaegerAddonConfig{
-					Name: "my-jaeger",
-					Install: &v2.JaegerInstallConfig{
-						Storage: &v2.JaegerStorageConfig{
-							Type: v2.JaegerStorageTypeElasticsearch,
-							Elasticsearch: &v2.JaegerElasticsearchStorageConfig{
-								NodeCount: &jaegerElasticsearchNodeCount,
-								IndexCleaner: v1.NewHelmValues(map[string]interface{}{
-									"enabled":      true,
-									"numberOfDays": 7,
-									"schedule":     "55 23 * * *",
-								}).DeepCopy(),
-								RedundancyPolicy: "ZeroRedundancy",
-								Storage: v1.NewHelmValues(map[string]interface{}{
-									"storageClassName": "gp2",
-									"size":             "5Gi",
-								}).DeepCopy(),
+				Addons: &v2.AddonsConfig{
+					Jaeger: &v2.JaegerAddonConfig{
+						Name: "my-jaeger",
+						Install: &v2.JaegerInstallConfig{
+							Storage: &v2.JaegerStorageConfig{
+								Type:   v2.JaegerStorageTypeMemory,
+								Memory: &v2.JaegerMemoryStorageConfig{},
 							},
 						},
 					},
 				},
 			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"tracing": map[string]interface{}{
-				"jaeger": map[string]interface{}{
-					"resourceName": "my-jaeger",
-					"template":     "production-elasticsearch",
-					"elasticsearch": map[string]interface{}{
-						"nodeCount":        5,
-						"redundancyPolicy": "ZeroRedundancy",
-						"storage": map[string]interface{}{
-							"size":             "5Gi",
-							"storageClassName": "gp2",
-						},
-					},
-					"esIndexCleaner": map[string]interface{}{
-						"enabled":      true,
-						"numberOfDays": 7,
-						"schedule":     "55 23 * * *"},
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-				"enableTracing": true,
-				"proxy": map[string]interface{}{
-					"tracer": "zipkin",
-				},
-			},
-			"meshConfig": map[string]interface{}{
-				"enableTracing": true,
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-			},
-		}),
-	},
-	{
-		name: "install.ingress.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Tracing: &v2.TracingConfig{
-				Type: v2.TracerTypeJaeger,
-			},
-			Addons: &v2.AddonsConfig{
-				Jaeger: &v2.JaegerAddonConfig{
-					Name: "my-jaeger",
-					Install: &v2.JaegerInstallConfig{
-						Ingress: &v2.JaegerIngressConfig{},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"tracing": map[string]interface{}{
+					"jaeger": map[string]interface{}{
+						"resourceName": "my-jaeger",
+						"template":     "all-in-one",
 					},
 				},
-			},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+					"enableTracing": true,
+					"proxy": map[string]interface{}{
+						"tracer": "zipkin",
+					},
+				},
+				"meshConfig": map[string]interface{}{
+					"enableTracing": true,
+				},
+				"tracing": map[string]interface{}{
+					"enabled":  true,
+					"provider": "jaeger",
+				},
+			}),
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"tracing": map[string]interface{}{
-				"jaeger": map[string]interface{}{
-					"resourceName": "my-jaeger",
+		{
+			name: "install.storage.memory.full." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
 				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-				"enableTracing": true,
-				"proxy": map[string]interface{}{
-					"tracer": "zipkin",
-				},
-			},
-			"meshConfig": map[string]interface{}{
-				"enableTracing": true,
-			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
-			},
-		}),
-	},
-	{
-		name: "install.ingress.full." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Tracing: &v2.TracingConfig{
-				Type: v2.TracerTypeJaeger,
-			},
-			Addons: &v2.AddonsConfig{
-				Jaeger: &v2.JaegerAddonConfig{
-					Name: "my-jaeger",
-					Install: &v2.JaegerInstallConfig{
-						Ingress: &v2.JaegerIngressConfig{
-							Enablement: v2.Enablement{
-								Enabled: &featureEnabled,
-							},
-							Metadata: &v2.MetadataConfig{
-								Annotations: map[string]string{
-									"ingress-annotation": "ingress-annotation-value",
-								},
-								Labels: map[string]string{
-									"ingress-label": "ingress-label-value",
+				Addons: &v2.AddonsConfig{
+					Jaeger: &v2.JaegerAddonConfig{
+						Name: "my-jaeger",
+						Install: &v2.JaegerInstallConfig{
+							Storage: &v2.JaegerStorageConfig{
+								Type: v2.JaegerStorageTypeMemory,
+								Memory: &v2.JaegerMemoryStorageConfig{
+									MaxTraces: &jaegerMaxTraces,
 								},
 							},
 						},
 					},
 				},
 			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"tracing": map[string]interface{}{
+					"jaeger": map[string]interface{}{
+						"resourceName": "my-jaeger",
+						"template":     "all-in-one",
+						"memory": map[string]interface{}{
+							"max_traces": 15000,
+						},
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+					"enableTracing": true,
+					"proxy": map[string]interface{}{
+						"tracer": "zipkin",
+					},
+				},
+				"meshConfig": map[string]interface{}{
+					"enableTracing": true,
+				},
+				"tracing": map[string]interface{}{
+					"enabled":  true,
+					"provider": "jaeger",
+				},
+			}),
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"tracing": map[string]interface{}{
-				"jaeger": map[string]interface{}{
-					"resourceName": "my-jaeger",
+		{
+			name: "install.storage.elasticsearch.nil." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
 				},
-				"ingress": map[string]interface{}{
-					"enabled": true,
-					"annotations": map[string]interface{}{
-						"ingress-annotation": "ingress-annotation-value",
+				Addons: &v2.AddonsConfig{
+					Jaeger: &v2.JaegerAddonConfig{
+						Name: "my-jaeger",
+						Install: &v2.JaegerInstallConfig{
+							Storage: &v2.JaegerStorageConfig{
+								Type: v2.JaegerStorageTypeElasticsearch,
+							},
+						},
 					},
-					"labels": map[string]interface{}{
-						"ingress-label": "ingress-label-value",
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"tracing": map[string]interface{}{
+					"jaeger": map[string]interface{}{
+						"resourceName": "my-jaeger",
+						"template":     "production-elasticsearch",
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+					"enableTracing": true,
+					"proxy": map[string]interface{}{
+						"tracer": "zipkin",
+					},
+				},
+				"meshConfig": map[string]interface{}{
+					"enableTracing": true,
+				},
+				"tracing": map[string]interface{}{
+					"enabled":  true,
+					"provider": "jaeger",
+				},
+			}),
+		},
+		{
+			name: "install.storage.elasticsearch.defaults." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
+				},
+				Addons: &v2.AddonsConfig{
+					Jaeger: &v2.JaegerAddonConfig{
+						Name: "my-jaeger",
+						Install: &v2.JaegerInstallConfig{
+							Storage: &v2.JaegerStorageConfig{
+								Type:          v2.JaegerStorageTypeElasticsearch,
+								Elasticsearch: &v2.JaegerElasticsearchStorageConfig{},
+							},
+						},
 					},
 				},
 			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-				"enableTracing": true,
-				"proxy": map[string]interface{}{
-					"tracer": "zipkin",
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"tracing": map[string]interface{}{
+					"jaeger": map[string]interface{}{
+						"resourceName": "my-jaeger",
+						"template":     "production-elasticsearch",
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+					"enableTracing": true,
+					"proxy": map[string]interface{}{
+						"tracer": "zipkin",
+					},
+				},
+				"meshConfig": map[string]interface{}{
+					"enableTracing": true,
+				},
+				"tracing": map[string]interface{}{
+					"enabled":  true,
+					"provider": "jaeger",
+				},
+			}),
+		},
+		{
+			name: "install.storage.elasticsearch.basic." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
+				},
+				Addons: &v2.AddonsConfig{
+					Jaeger: &v2.JaegerAddonConfig{
+						Name: "my-jaeger",
+						Install: &v2.JaegerInstallConfig{
+							Storage: &v2.JaegerStorageConfig{
+								Type: v2.JaegerStorageTypeElasticsearch,
+								Elasticsearch: &v2.JaegerElasticsearchStorageConfig{
+									NodeCount: &jaegerElasticsearchNodeCount,
+									IndexCleaner: v1.NewHelmValues(map[string]interface{}{
+										"enabled":      true,
+										"numberOfDays": 7,
+										"schedule":     "55 23 * * *",
+									}).DeepCopy(),
+									RedundancyPolicy: "ZeroRedundancy",
+									Storage: v1.NewHelmValues(map[string]interface{}{
+										"storageClassName": "gp2",
+										"size":             "5Gi",
+									}).DeepCopy(),
+								},
+							},
+						},
+					},
 				},
 			},
-			"meshConfig": map[string]interface{}{
-				"enableTracing": true,
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"tracing": map[string]interface{}{
+					"jaeger": map[string]interface{}{
+						"resourceName": "my-jaeger",
+						"template":     "production-elasticsearch",
+						"elasticsearch": map[string]interface{}{
+							"nodeCount":        5,
+							"redundancyPolicy": "ZeroRedundancy",
+							"storage": map[string]interface{}{
+								"size":             "5Gi",
+								"storageClassName": "gp2",
+							},
+						},
+						"esIndexCleaner": map[string]interface{}{
+							"enabled":      true,
+							"numberOfDays": 7,
+							"schedule":     "55 23 * * *"},
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+					"enableTracing": true,
+					"proxy": map[string]interface{}{
+						"tracer": "zipkin",
+					},
+				},
+				"meshConfig": map[string]interface{}{
+					"enableTracing": true,
+				},
+				"tracing": map[string]interface{}{
+					"enabled":  true,
+					"provider": "jaeger",
+				},
+			}),
+		},
+		{
+			name: "install.ingress.defaults." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
+				},
+				Addons: &v2.AddonsConfig{
+					Jaeger: &v2.JaegerAddonConfig{
+						Name: "my-jaeger",
+						Install: &v2.JaegerInstallConfig{
+							Ingress: &v2.JaegerIngressConfig{},
+						},
+					},
+				},
 			},
-			"tracing": map[string]interface{}{
-				"enabled":  true,
-				"provider": "jaeger",
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"tracing": map[string]interface{}{
+					"jaeger": map[string]interface{}{
+						"resourceName": "my-jaeger",
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+					"enableTracing": true,
+					"proxy": map[string]interface{}{
+						"tracer": "zipkin",
+					},
+				},
+				"meshConfig": map[string]interface{}{
+					"enableTracing": true,
+				},
+				"tracing": map[string]interface{}{
+					"enabled":  true,
+					"provider": "jaeger",
+				},
+			}),
+		},
+		{
+			name: "install.ingress.full." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
+				},
+				Addons: &v2.AddonsConfig{
+					Jaeger: &v2.JaegerAddonConfig{
+						Name: "my-jaeger",
+						Install: &v2.JaegerInstallConfig{
+							Ingress: &v2.JaegerIngressConfig{
+								Enablement: v2.Enablement{
+									Enabled: &featureEnabled,
+								},
+								Metadata: &v2.MetadataConfig{
+									Annotations: map[string]string{
+										"ingress-annotation": "ingress-annotation-value",
+									},
+									Labels: map[string]string{
+										"ingress-label": "ingress-label-value",
+									},
+								},
+							},
+						},
+					},
+				},
 			},
-		}),
-	},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"tracing": map[string]interface{}{
+					"jaeger": map[string]interface{}{
+						"resourceName": "my-jaeger",
+					},
+					"ingress": map[string]interface{}{
+						"enabled": true,
+						"annotations": map[string]interface{}{
+							"ingress-annotation": "ingress-annotation-value",
+						},
+						"labels": map[string]interface{}{
+							"ingress-label": "ingress-label-value",
+						},
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+					"enableTracing": true,
+					"proxy": map[string]interface{}{
+						"tracer": "zipkin",
+					},
+				},
+				"meshConfig": map[string]interface{}{
+					"enableTracing": true,
+				},
+				"tracing": map[string]interface{}{
+					"enabled":  true,
+					"provider": "jaeger",
+				},
+			}),
+		},
+	}
+}
+
+func init() {
+	for _, v := range versions.AllV2Versions {
+		jaegerTestCases = append(jaegerTestCases, jaegerTestCasesV2(v)...)
+	}
 }
 
 func TestJaegerConversionFromV2(t *testing.T) {
