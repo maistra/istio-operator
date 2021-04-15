@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,6 +30,8 @@ const (
 	lastKnownVersion version = iota - 1
 )
 
+var AllV2Versions = []Version{V2_0, V2_1}
+
 func init() {
 	versionToString = map[version]string{
 		InvalidVersion: "InvalidVersion",
@@ -42,8 +45,8 @@ func init() {
 		InvalidVersion: &invalidVersionStrategy{InvalidVersion},
 		V1_0:           &versionStrategyV1_0{version: V1_0},
 		V1_1:           &versionStrategyV1_1{version: V1_1},
-		V2_0:           &versionStrategyV2_0{V2_0},
-		V2_1:           &versionStrategyV2_1{V2_1},
+		V2_0:           &versionStrategyV2_0{version: V2_0},
+		V2_1:           &versionStrategyV2_1{version: V2_1},
 	}
 
 	versionToCNINetwork = map[version]string{
@@ -110,12 +113,20 @@ type RenderingStrategy interface {
 	ApplyProfiles(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec, targetNamespace string) (v1.ControlPlaneSpec, error)
 }
 
+// ConversionStrategy is an interface used when converting between v1 and v2 of the SMCP resource.
+type ConversionStrategy interface {
+	GetExpansionPorts() []corev1.ServicePort
+	GetTelemetryType(in *v1.HelmValues, mixerTelemetryEnabled, mixerTelemetryEnabledSet, remoteEnabled bool) v2.TelemetryType
+	GetPolicyType(in *v1.HelmValues, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled bool) v2.PolicyType
+}
+
 // VersionStrategy provides encapsulates customization required for a particular
 // version.
 type VersionStrategy interface {
 	Version
 	RenderingStrategy
 	ValidationStrategy
+	ConversionStrategy
 }
 
 // GetSupportedVersions returns a list of versions supported by this operator
@@ -192,6 +203,19 @@ func (v *nilVersionStrategy) Render(ctx context.Context, cr *common.ControllerRe
 	return nil, fmt.Errorf("nil version does not support rendering")
 }
 
+func (v *nilVersionStrategy) GetExpansionPorts() []corev1.ServicePort {
+	return nil
+}
+
+func (v *nilVersionStrategy) GetTelemetryType(in *v1.HelmValues, mixerTelemetryEnabled, mixerTelemetryEnabledSet, remoteEnabled bool) v2.TelemetryType {
+	return ""
+}
+
+func (v *nilVersionStrategy) GetPolicyType(in *v1.HelmValues, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled bool) v2.PolicyType {
+	return ""
+}
+
+
 type invalidVersionStrategy struct {
 	version
 }
@@ -219,6 +243,18 @@ func (v *invalidVersionStrategy) GetChartInstallOrder() [][]string {
 
 func (v *invalidVersionStrategy) Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
 	return nil, fmt.Errorf("invalid version: %s", v.version)
+}
+
+func (v *invalidVersionStrategy) GetExpansionPorts() []corev1.ServicePort {
+	return nil
+}
+
+func (v *invalidVersionStrategy) GetTelemetryType(in *v1.HelmValues, mixerTelemetryEnabled, mixerTelemetryEnabledSet, remoteEnabled bool) v2.TelemetryType {
+	return ""
+}
+
+func (v *invalidVersionStrategy) GetPolicyType(in *v1.HelmValues, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled bool) v2.PolicyType {
+	return ""
 }
 
 var versionToString = make(map[version]string)

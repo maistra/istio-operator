@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/helm/pkg/manifest"
@@ -30,6 +31,7 @@ var v1_0ChartOrder = [][]string{
 type versionStrategyV1_0 struct {
 	version
 	renderImpl v1xRenderingStrategy
+	conversionImpl v1xConversionStrategy
 }
 
 var _ VersionStrategy = (*versionStrategyV1_0)(nil)
@@ -115,3 +117,16 @@ func (v *versionStrategyV1_0) GetChartInstallOrder() [][]string {
 func (v *versionStrategyV1_0) Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
 	return v.renderImpl.render(ctx, v.version, cr, cniConfig, smcp)
 }
+
+func (v *versionStrategyV1_0) GetExpansionPorts() []corev1.ServicePort {
+	return v.conversionImpl.GetExpansionPorts()
+}
+
+func (v *versionStrategyV1_0) GetTelemetryType(in *v1.HelmValues, mixerTelemetryEnabled, mixerTelemetryEnabledSet, remoteEnabled bool) v2.TelemetryType {
+	return v.conversionImpl.GetTelemetryType(in, mixerTelemetryEnabled, mixerTelemetryEnabledSet, remoteEnabled)
+}
+
+func (v *versionStrategyV1_0) GetPolicyType(in *v1.HelmValues, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled bool) v2.PolicyType {
+	return v.conversionImpl.GetPolicyType(in, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled)
+}
+

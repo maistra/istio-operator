@@ -7,6 +7,8 @@ import (
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -180,72 +182,75 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 				return err
 			}
 		}
-		if expansionPorts, err := expansionPortsForVersion(in.Version); err == nil {
-			if cluster.MeshExpansion.ILBGateway == nil ||
-				cluster.MeshExpansion.ILBGateway.Enabled == nil || !*cluster.MeshExpansion.ILBGateway.Enabled {
-				if in.Gateways.ClusterIngress == nil {
-					multiClusterOverrides.SetField("ingressEnabled", nil)
-					multiClusterOverrides.SetField("k8sIngressEnabled", nil)
-					enabled := true
-					in.Gateways.ClusterIngress = &v2.ClusterIngressGatewayConfig{
-						IngressGatewayConfig: v2.IngressGatewayConfig{
-							GatewayConfig: v2.GatewayConfig{
-								Enablement: v2.Enablement{
-									Enabled: &enabled,
-								},
+
+		version, err := versions.ParseVersion(in.Version)
+		if err != nil {
+			return err
+		}
+
+		expansionPorts := version.Strategy().GetExpansionPorts()
+		if cluster.MeshExpansion.ILBGateway == nil ||
+			cluster.MeshExpansion.ILBGateway.Enabled == nil || !*cluster.MeshExpansion.ILBGateway.Enabled {
+			if in.Gateways.ClusterIngress == nil {
+				multiClusterOverrides.SetField("ingressEnabled", nil)
+				multiClusterOverrides.SetField("k8sIngressEnabled", nil)
+				enabled := true
+				in.Gateways.ClusterIngress = &v2.ClusterIngressGatewayConfig{
+					IngressGatewayConfig: v2.IngressGatewayConfig{
+						GatewayConfig: v2.GatewayConfig{
+							Enablement: v2.Enablement{
+								Enabled: &enabled,
 							},
 						},
-						IngressEnabled: &enabled,
-					}
-				} else {
-					if in.Gateways.ClusterIngress.Enabled == nil || !*in.Gateways.ClusterIngress.Enabled {
-						enabled := true
-						in.Gateways.ClusterIngress.Enabled = &enabled
-						multiClusterOverrides.SetField("ingressEnabled", *in.Gateways.ClusterIngress.Enabled)
-					}
-					if in.Gateways.ClusterIngress.IngressEnabled == nil || !*in.Gateways.ClusterIngress.IngressEnabled {
-						k8sIngressEnabled := true
-						in.Gateways.ClusterIngress.IngressEnabled = &k8sIngressEnabled
-						multiClusterOverrides.SetField("k8sIngressEnabled", *in.Gateways.ClusterIngress.Enabled)
-					}
+					},
+					IngressEnabled: &enabled,
 				}
-				addExpansionPorts(&in.Gateways.ClusterIngress.MeshExpansionPorts, expansionPorts)
-				if cluster.MeshExpansion.ILBGateway == nil {
+			} else {
+				if in.Gateways.ClusterIngress.Enabled == nil || !*in.Gateways.ClusterIngress.Enabled {
+					enabled := true
+					in.Gateways.ClusterIngress.Enabled = &enabled
+					multiClusterOverrides.SetField("ingressEnabled", *in.Gateways.ClusterIngress.Enabled)
+				}
+				if in.Gateways.ClusterIngress.IngressEnabled == nil || !*in.Gateways.ClusterIngress.IngressEnabled {
+					k8sIngressEnabled := true
+					in.Gateways.ClusterIngress.IngressEnabled = &k8sIngressEnabled
+					multiClusterOverrides.SetField("k8sIngressEnabled", *in.Gateways.ClusterIngress.Enabled)
+				}
+			}
+			addExpansionPorts(&in.Gateways.ClusterIngress.MeshExpansionPorts, expansionPorts)
+			if cluster.MeshExpansion.ILBGateway == nil {
+				multiClusterOverrides.SetField("ilbEnabled", nil)
+				disabled := false
+				cluster.MeshExpansion.ILBGateway = &v2.GatewayConfig{
+					Enablement: v2.Enablement{
+						Enabled: &disabled,
+					},
+				}
+			} else {
+				if cluster.MeshExpansion.ILBGateway.Enabled == nil {
 					multiClusterOverrides.SetField("ilbEnabled", nil)
-					disabled := false
-					cluster.MeshExpansion.ILBGateway = &v2.GatewayConfig{
-						Enablement: v2.Enablement{
-							Enabled: &disabled,
-						},
-					}
-				} else {
-					if cluster.MeshExpansion.ILBGateway.Enabled == nil {
-						multiClusterOverrides.SetField("ilbEnabled", nil)
-					} else if *cluster.MeshExpansion.ILBGateway.Enabled {
-						multiClusterOverrides.SetField("ilbEnabled", *cluster.MeshExpansion.ILBGateway.Enabled)
-					}
+				} else if *cluster.MeshExpansion.ILBGateway.Enabled {
+					multiClusterOverrides.SetField("ilbEnabled", *cluster.MeshExpansion.ILBGateway.Enabled)
 				}
-				if err := setHelmBoolValue(values, "global.meshExpansion.useILB", false); err != nil {
+			}
+			if err := setHelmBoolValue(values, "global.meshExpansion.useILB", false); err != nil {
+				return err
+			}
+		} else {
+			if err := setHelmBoolValue(values, "global.meshExpansion.useILB", true); err != nil {
+				return err
+			}
+			addExpansionPorts(&cluster.MeshExpansion.ILBGateway.Service.Ports, expansionPorts)
+		}
+		// serialize ilb gateway settings
+		if cluster.MeshExpansion.ILBGateway != nil {
+			if ilbGatewayValues, err := gatewayConfigToValues(cluster.MeshExpansion.ILBGateway); err == nil {
+				if err := overwriteHelmValues(values, ilbGatewayValues, strings.Split("gateways.istio-ilbgateway", ".")...); err != nil {
 					return err
 				}
 			} else {
-				if err := setHelmBoolValue(values, "global.meshExpansion.useILB", true); err != nil {
-					return err
-				}
-				addExpansionPorts(&cluster.MeshExpansion.ILBGateway.Service.Ports, expansionPorts)
+				return err
 			}
-			// serialize ilb gateway settings
-			if cluster.MeshExpansion.ILBGateway != nil {
-				if ilbGatewayValues, err := gatewayConfigToValues(cluster.MeshExpansion.ILBGateway); err == nil {
-					if err := overwriteHelmValues(values, ilbGatewayValues, strings.Split("gateways.istio-ilbgateway", ".")...); err != nil {
-						return err
-					}
-				} else {
-					return err
-				}
-			}
-		} else {
-			return err
 		}
 	} else {
 		// mesh expansion disabled by default
@@ -309,6 +314,19 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 	}
 
 	return nil
+}
+
+func addExpansionPorts(in *[]corev1.ServicePort, ports []corev1.ServicePort) {
+	portCount := len(*in)
+PortsLoop:
+	for _, port := range ports {
+		for index := 0; index < portCount; index++ {
+			if port.Port == (*in)[index].Port {
+				continue PortsLoop
+			}
+			*in = append(*in, port)
+		}
+	}
 }
 
 func getLocalNetworkService(gatewayService, namespace, clusterDomain string) string {

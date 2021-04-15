@@ -9,34 +9,9 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
-var policyTestCases = []conversionTestCase{
-	{
-		name: "nil." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Policy:  &v2.PolicyConfig{},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
+var policyTestCases []conversionTestCase
+
+var policyTestCasesV1 = []conversionTestCase{
 	{
 		name: "defaults." + versions.V1_1.String(),
 		spec: &v2.ControlPlaneSpec{
@@ -44,31 +19,6 @@ var policyTestCases = []conversionTestCase{
 			Policy:  &v2.PolicyConfig{},
 		},
 		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "none." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Policy: &v2.PolicyConfig{
-				Type: v2.PolicyTypeNone,
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"mixer": map[string]interface{}{
-				"policy": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-			"policy": map[string]interface{}{
-				"implementation": "None",
-			},
-		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
 			"global": map[string]interface{}{
 				"multiCluster":  globalMultiClusterDefaults,
@@ -95,182 +45,6 @@ var policyTestCases = []conversionTestCase{
 			},
 			"policy": map[string]interface{}{
 				"implementation": "None",
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "istiod.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Policy: &v2.PolicyConfig{
-				Type: v2.PolicyTypeIstiod,
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"mixer": map[string]interface{}{
-				"policy": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-			"policy": map[string]interface{}{
-				"implementation": "Istiod",
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "mixer.nil." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Policy: &v2.PolicyConfig{
-				Type: v2.PolicyTypeMixer,
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"mixer": map[string]interface{}{
-				"policy": map[string]interface{}{
-					"enabled": true,
-				},
-			},
-			"policy": map[string]interface{}{
-				"implementation": "Mixer",
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "mixer.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Policy: &v2.PolicyConfig{
-				Type:  v2.PolicyTypeMixer,
-				Mixer: &v2.MixerPolicyConfig{},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"mixer": map[string]interface{}{
-				"policy": map[string]interface{}{
-					"enabled": true,
-				},
-			},
-			"policy": map[string]interface{}{
-				"implementation": "Mixer",
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "mixer.misc." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Policy: &v2.PolicyConfig{
-				Type: v2.PolicyTypeMixer,
-				Mixer: &v2.MixerPolicyConfig{
-					EnableChecks:    &featureEnabled,
-					FailOpen:        &featureDisabled,
-					SessionAffinity: &featureEnabled,
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"disablePolicyChecks": false,
-				"policyCheckFailOpen": false,
-			},
-			"mixer": map[string]interface{}{
-				"policy": map[string]interface{}{
-					"enabled":                true,
-					"sessionAffinityEnabled": true,
-				},
-			},
-			"policy": map[string]interface{}{
-				"implementation": "Mixer",
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "mixer.adapters.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Policy: &v2.PolicyConfig{
-				Type: v2.PolicyTypeMixer,
-				Mixer: &v2.MixerPolicyConfig{
-					Adapters: &v2.MixerPolicyAdaptersConfig{},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"mixer": map[string]interface{}{
-				"policy": map[string]interface{}{
-					"enabled": true,
-				},
-			},
-			"policy": map[string]interface{}{
-				"implementation": "Mixer",
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "mixer.adapters." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Policy: &v2.PolicyConfig{
-				Type: v2.PolicyTypeMixer,
-				Mixer: &v2.MixerPolicyConfig{
-					Adapters: &v2.MixerPolicyAdaptersConfig{
-						KubernetesEnv:  &featureEnabled,
-						UseAdapterCRDs: &featureDisabled,
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"mixer": map[string]interface{}{
-				"policy": map[string]interface{}{
-					"enabled": true,
-					"adapters": map[string]interface{}{
-						"kubernetesenv": map[string]interface{}{
-							"enabled": true,
-						},
-						"useAdapterCRDs": false,
-					},
-				},
-			},
-			"policy": map[string]interface{}{
-				"implementation": "Mixer",
 			},
 		}),
 		completeIstio: v1.NewHelmValues(map[string]interface{}{
@@ -465,111 +239,6 @@ var policyTestCases = []conversionTestCase{
 		}),
 	},
 	{
-		name: "remote.nil." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Policy: &v2.PolicyConfig{
-				Type: v2.PolicyTypeRemote,
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"mixer": map[string]interface{}{
-				"policy": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-			"policy": map[string]interface{}{
-				"implementation": "Remote",
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "remote.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Policy: &v2.PolicyConfig{
-				Type:   v2.PolicyTypeRemote,
-				Remote: &v2.RemotePolicyConfig{},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"mixer": map[string]interface{}{
-				"policy": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-			"policy": map[string]interface{}{
-				"implementation": "Remote",
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "remote.full." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Policy: &v2.PolicyConfig{
-				Type: v2.PolicyTypeRemote,
-				Remote: &v2.RemotePolicyConfig{
-					Address:       "mixer-policy.some-namespace.svc.cluster.local",
-					CreateService: &featureEnabled,
-					EnableChecks:  &featureEnabled,
-					FailOpen:      &featureDisabled,
-				},
-			},
-		},
-		roundTripSpec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Policy: &v2.PolicyConfig{
-				Type: v2.PolicyTypeRemote,
-				Remote: &v2.RemotePolicyConfig{
-					Address:       "mixer-policy.some-namespace.svc.cluster.local",
-					CreateService: &featureEnabled,
-					EnableChecks:  &featureEnabled,
-					FailOpen:      &featureDisabled,
-				},
-			},
-			Telemetry: &v2.TelemetryConfig{
-				Remote: &v2.RemoteTelemetryConfig{
-					CreateService: &featureEnabled,
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"createRemoteSvcEndpoints": true,
-				"remotePolicyAddress":      "mixer-policy.some-namespace.svc.cluster.local",
-				"disablePolicyChecks":      false,
-				"policyCheckFailOpen":      false,
-			},
-			"mixer": map[string]interface{}{
-				"policy": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-			"policy": map[string]interface{}{
-				"implementation": "Remote",
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
 		name: "remote.nil." + versions.V1_1.String(),
 		spec: &v2.ControlPlaneSpec{
 			Version: versions.V1_1.String(),
@@ -700,6 +369,352 @@ var policyTestCases = []conversionTestCase{
 			},
 		}),
 	},
+}
+
+func policyTestCasesV2(version versions.Version) []conversionTestCase {
+	ver := version.String()
+	return []conversionTestCase{
+		{
+			name: "nil." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "defaults." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Policy:  &v2.PolicyConfig{},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "none." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Policy: &v2.PolicyConfig{
+					Type: v2.PolicyTypeNone,
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"mixer": map[string]interface{}{
+					"policy": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+				"policy": map[string]interface{}{
+					"implementation": "None",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "istiod.defaults." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Policy: &v2.PolicyConfig{
+					Type: v2.PolicyTypeIstiod,
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"mixer": map[string]interface{}{
+					"policy": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+				"policy": map[string]interface{}{
+					"implementation": "Istiod",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "mixer.nil." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Policy: &v2.PolicyConfig{
+					Type: v2.PolicyTypeMixer,
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"mixer": map[string]interface{}{
+					"policy": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+				"policy": map[string]interface{}{
+					"implementation": "Mixer",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "mixer.defaults." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Policy: &v2.PolicyConfig{
+					Type:  v2.PolicyTypeMixer,
+					Mixer: &v2.MixerPolicyConfig{},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"mixer": map[string]interface{}{
+					"policy": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+				"policy": map[string]interface{}{
+					"implementation": "Mixer",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "mixer.misc." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Policy: &v2.PolicyConfig{
+					Type: v2.PolicyTypeMixer,
+					Mixer: &v2.MixerPolicyConfig{
+						EnableChecks:    &featureEnabled,
+						FailOpen:        &featureDisabled,
+						SessionAffinity: &featureEnabled,
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"disablePolicyChecks": false,
+					"policyCheckFailOpen": false,
+				},
+				"mixer": map[string]interface{}{
+					"policy": map[string]interface{}{
+						"enabled":                true,
+						"sessionAffinityEnabled": true,
+					},
+				},
+				"policy": map[string]interface{}{
+					"implementation": "Mixer",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "mixer.adapters.defaults." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Policy: &v2.PolicyConfig{
+					Type: v2.PolicyTypeMixer,
+					Mixer: &v2.MixerPolicyConfig{
+						Adapters: &v2.MixerPolicyAdaptersConfig{},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"mixer": map[string]interface{}{
+					"policy": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+				"policy": map[string]interface{}{
+					"implementation": "Mixer",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "mixer.adapters." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Policy: &v2.PolicyConfig{
+					Type: v2.PolicyTypeMixer,
+					Mixer: &v2.MixerPolicyConfig{
+						Adapters: &v2.MixerPolicyAdaptersConfig{
+							KubernetesEnv:  &featureEnabled,
+							UseAdapterCRDs: &featureDisabled,
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"mixer": map[string]interface{}{
+					"policy": map[string]interface{}{
+						"enabled": true,
+						"adapters": map[string]interface{}{
+							"kubernetesenv": map[string]interface{}{
+								"enabled": true,
+							},
+							"useAdapterCRDs": false,
+						},
+					},
+				},
+				"policy": map[string]interface{}{
+					"implementation": "Mixer",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "remote.nil." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Policy: &v2.PolicyConfig{
+					Type: v2.PolicyTypeRemote,
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"mixer": map[string]interface{}{
+					"policy": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+				"policy": map[string]interface{}{
+					"implementation": "Remote",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "remote.defaults." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Policy: &v2.PolicyConfig{
+					Type:   v2.PolicyTypeRemote,
+					Remote: &v2.RemotePolicyConfig{},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"mixer": map[string]interface{}{
+					"policy": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+				"policy": map[string]interface{}{
+					"implementation": "Remote",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "remote.full." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Policy: &v2.PolicyConfig{
+					Type: v2.PolicyTypeRemote,
+					Remote: &v2.RemotePolicyConfig{
+						Address:       "mixer-policy.some-namespace.svc.cluster.local",
+						CreateService: &featureEnabled,
+						EnableChecks:  &featureEnabled,
+						FailOpen:      &featureDisabled,
+					},
+				},
+			},
+			roundTripSpec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Policy: &v2.PolicyConfig{
+					Type: v2.PolicyTypeRemote,
+					Remote: &v2.RemotePolicyConfig{
+						Address:       "mixer-policy.some-namespace.svc.cluster.local",
+						CreateService: &featureEnabled,
+						EnableChecks:  &featureEnabled,
+						FailOpen:      &featureDisabled,
+					},
+				},
+				Telemetry: &v2.TelemetryConfig{
+					Remote: &v2.RemoteTelemetryConfig{
+						CreateService: &featureEnabled,
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"createRemoteSvcEndpoints": true,
+					"remotePolicyAddress":      "mixer-policy.some-namespace.svc.cluster.local",
+					"disablePolicyChecks":      false,
+					"policyCheckFailOpen":      false,
+				},
+				"mixer": map[string]interface{}{
+					"policy": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+				"policy": map[string]interface{}{
+					"implementation": "Remote",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+	}
+}
+
+func init() {
+	policyTestCases = append(policyTestCases, policyTestCasesV1...)
+	for _, v := range versions.AllV2Versions {
+		policyTestCases = append(policyTestCases, policyTestCasesV2(v)...)
+	}
 }
 
 func TestPolicyConversionFromV2(t *testing.T) {
