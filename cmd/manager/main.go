@@ -56,7 +56,7 @@ func main() {
 	// number of concurrent reconciler for each controller
 	pflag.Int("controlPlaneReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshControlPlane resources")
 	pflag.Int("memberRollReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMemberRoll resources")
-	pflag.Int("memberReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMember resources")
+	pflag.Int("memberReconcilers", 10, "The number of concurrent reconcilers for ServiceMeshMember resources")
 
 	// flags to configure API request throttling
 	pflag.Int("apiBurst", 50, "The number of API requests the operator can make before throttling is activated")
