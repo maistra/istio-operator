@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/maistra/istio-operator/pkg/controller/hacks"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -300,7 +301,7 @@ func TestManifestValidation(t *testing.T) {
 					tc.setupFn(cl, tracker)
 				}
 				// run initial reconcile to update the SMCP status
-				_, err := r.Reconcile(ctx)
+				_, err := r.Reconcile(hacks.WrapContext(ctx, map[types.NamespacedName]time.Time{}))
 
 				expectedErrorMessage := tc.errorMessages[version]
 				if expectedErrorMessage == "" {
@@ -328,7 +329,7 @@ func TestManifestValidation(t *testing.T) {
 }
 
 func assertInstanceReconcilerFails(r ControlPlaneInstanceReconciler, t *testing.T) {
-	_, err := r.Reconcile(ctx)
+	_, err := r.Reconcile(hacks.WrapContext(ctx, map[types.NamespacedName]time.Time{}))
 	if err == nil {
 		t.Fatal("Expected reconcile to fail, but it didn't")
 	}
@@ -431,8 +432,7 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 
 				if tc.expectFirstReconcileToFail {
 					// first reconcile should fail
-					_, err := r.Reconcile(ctx)
-					assert.Failure(err, "Reconcile", t)
+					assertInstanceReconcilerFails(r, t)
 				} else {
 					assertInstanceReconcilerSucceeds(r, t)
 				}
@@ -591,7 +591,7 @@ func TestNamespaceLabels(t *testing.T) {
 }
 
 func assertDeleteSucceeds(r ControlPlaneInstanceReconciler, t *testing.T) {
-	err := r.Delete(ctx)
+	err := r.Delete(hacks.WrapContext(ctx, map[types.NamespacedName]time.Time{}))
 	assert.Success(err, "Delete", t)
 }
 
@@ -633,7 +633,7 @@ func newReconcilerTestFixture(smcp *maistrav2.ServiceMeshControlPlane) (client.C
 
 func assertInstanceReconcilerSucceeds(r ControlPlaneInstanceReconciler, t *testing.T) {
 	t.Helper()
-	_, err := r.Reconcile(ctx)
+	_, err := r.Reconcile(hacks.WrapContext(ctx, map[types.NamespacedName]time.Time{}))
 	assert.Success(err, "Reconcile", t)
 }
 
