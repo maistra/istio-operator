@@ -33,6 +33,9 @@ spec:
         app: istiod
         istio.io/rev: {{ .Values.revision | default "default" }}
         istio: istiod
+        {{- if .Values.pilot.podLabels }}
+{{ toYaml .Values.pilot.podLabels | indent 8 }}
+        {{- end }}
       annotations:
         {{- if .Values.meshConfig.enablePrometheusMerge }}
         prometheus.io/port: "15014"
