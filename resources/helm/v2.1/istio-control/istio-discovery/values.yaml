@@ -33,6 +33,7 @@ pilot:
   enableProtocolSniffingForInbound: false
 
   nodeSelector: {}
+  podLabels: {}
   podAnnotations: {}
 
   tolerations: []
