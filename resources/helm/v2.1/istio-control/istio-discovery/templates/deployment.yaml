@@ -144,6 +144,8 @@ spec:
             value: "{{ $val }}"
           {{- end }}
           {{- end }}
+          - name: PILOT_ENABLE_FEDERATION
+            value: "{{ .Values.pilot.enableFederation }}"
 {{- if .Values.pilot.traceSampling }}
           - name: PILOT_TRACE_SAMPLING
             value: "{{ .Values.pilot.traceSampling }}"
