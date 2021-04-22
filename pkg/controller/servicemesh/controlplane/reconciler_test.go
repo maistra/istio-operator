@@ -372,8 +372,10 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			disabled := false
-			enabled := true
+			falseVal := false
+			trueVal := true
+			disabled := maistrav2.Enablement{Enabled: &falseVal}
+			enabled := maistrav2.Enablement{Enabled: &trueVal}
 			smcp := newControlPlane()
 			smcp.Spec = maistrav2.ControlPlaneSpec{
 				Profiles: []string{"maistra"},
@@ -388,27 +390,27 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 					ClusterIngress: &maistrav2.ClusterIngressGatewayConfig{
 						IngressGatewayConfig: maistrav2.IngressGatewayConfig{
 							GatewayConfig: maistrav2.GatewayConfig{
-								Enablement: maistrav2.Enablement{Enabled: &disabled},
+								Enablement: disabled,
 							},
 						},
 					},
 					ClusterEgress: &maistrav2.EgressGatewayConfig{
 						GatewayConfig: maistrav2.GatewayConfig{
-							Enablement: maistrav2.Enablement{Enabled: &disabled},
+							Enablement: disabled,
 						},
 					},
 				},
 				Tracing: &maistrav2.TracingConfig{Type: maistrav2.TracerTypeNone},
 				Addons: &maistrav2.AddonsConfig{
 					Prometheus: &maistrav2.PrometheusAddonConfig{
-						Enablement: maistrav2.Enablement{Enabled: &disabled},
+						Enablement: disabled,
 					},
 					Grafana: &maistrav2.GrafanaAddonConfig{
-						Enablement: maistrav2.Enablement{Enabled: &enabled},
+						Enablement: enabled,
 						Install:    &maistrav2.GrafanaInstallConfig{},
 					},
 					Kiali: &maistrav2.KialiAddonConfig{
-						Enablement: maistrav2.Enablement{Enabled: &disabled},
+						Enablement: disabled,
 					},
 				},
 			}
@@ -442,6 +444,10 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 			// this reconcile must succeed
 			assertInstanceReconcilerSucceeds(r, t)
 
+			// the previous reconcile won't calculate readiness in order to wait for the cache to sync.
+			// readiness is calculated in the next reconcile attempt, so let's invoke it
+			assertInstanceReconcilerSucceeds(r, t)
+
 			// check that both galley and citadel deployments have been created
 			pilotDeployment := assertDeploymentExists(cl, "istio-pilot", t)
 			sidecarInjectorWebhookDeployment := assertDeploymentExists(cl, "istio-sidecar-injector", t)
@@ -459,6 +465,11 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 
 			// run reconcile again to see if the Reconciled condition is updated
 			assertInstanceReconcilerSucceeds(r, t)
+
+			// the previous reconcile won't calculate readiness in order to wait for the cache to sync.
+			// readiness is calculated in the next reconcile attempt, so let's invoke it
+			assertInstanceReconcilerSucceeds(r, t)
+
 			assertDeploymentExists(cl, "grafana", t)
 			assertReconciledConditionMatches(cl, smcp, status.ConditionReasonPausingInstall, "[grafana]", t)
 		})
