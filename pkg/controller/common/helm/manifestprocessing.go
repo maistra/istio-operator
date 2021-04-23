@@ -40,27 +40,27 @@ func NewManifestProcessor(controllerResources common.ControllerResources, patchF
 	}
 }
 
-func (p *ManifestProcessor) ProcessManifests(ctx context.Context, manifests []manifest.Manifest, component string) error {
+func (p *ManifestProcessor) ProcessManifests(ctx context.Context, manifests []manifest.Manifest, component string) (madeChanges bool, err error) {
 	log := common.LogFromContext(ctx)
 
 	allErrors := []error{}
 	for _, man := range manifests {
 		childCtx := common.NewContextWithLog(ctx, log.WithValues("manifest", man.Name))
-		errs := p.ProcessManifest(childCtx, man, component)
+		changes, errs := p.ProcessManifest(childCtx, man, component)
+		madeChanges = madeChanges || changes
 		allErrors = append(allErrors, errs...)
 	}
-	return utilerrors.NewAggregate(allErrors)
+	return madeChanges, utilerrors.NewAggregate(allErrors)
 }
 
-func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Manifest, component string) []error {
+func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Manifest, component string) (madeChanges bool, allErrors []error) {
 	log := common.LogFromContext(ctx)
 	if !strings.HasSuffix(man.Name, ".yaml") {
 		log.V(2).Info("Skipping rendering of manifest")
-		return nil
+		return false, nil
 	}
 	log.V(2).Info("Processing resources from manifest")
 
-	allErrors := []error{}
 	// split the manifest into individual objects
 	objects := releaseutil.SplitManifests(man.Content)
 	for _, raw := range objects {
@@ -87,15 +87,16 @@ func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Ma
 		}
 
 		childCtx := common.NewContextWithLog(ctx, log.WithValues("Resource", status.NewResourceKey(obj, obj)))
-		err = p.processObject(childCtx, obj, component)
+		changes, err := p.processObject(childCtx, obj, component)
+		madeChanges = madeChanges || changes
 		if err != nil {
 			allErrors = append(allErrors, err)
 		}
 	}
-	return allErrors
+	return madeChanges, allErrors
 }
 
-func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured.Unstructured, component string) error {
+func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured.Unstructured, component string) (madeChanges bool, err error) {
 	log := common.LogFromContext(ctx)
 
 	if obj.GetKind() == "List" {
@@ -103,26 +104,27 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 		list, err := obj.ToList()
 		if err != nil {
 			log.Error(err, "error converting List object")
-			return err
+			return false, err
 		}
 		for _, item := range list.Items {
 			childCtx := common.NewContextWithLog(ctx, log.WithValues("Resource", status.NewResourceKey(obj, obj)))
-			err = p.processObject(childCtx, &item, component)
+			changes, err := p.processObject(childCtx, &item, component)
+			madeChanges = madeChanges || changes
 			if err != nil {
 				allErrors = append(allErrors, err)
 			}
 		}
-		return utilerrors.NewAggregate(allErrors)
+		return madeChanges, utilerrors.NewAggregate(allErrors)
 	}
 
 	p.addMetadata(obj, component)
 
 	log.V(2).Info("beginning reconciliation of resource")
 
-	err := p.preprocessObject(ctx, obj)
+	err = p.preprocessObject(ctx, obj)
 	if err != nil {
 		log.Error(err, "error preprocessing object")
-		return err
+		return false, err
 	}
 
 	err = kubectl.CreateApplyAnnotation(obj, unstructured.UnstructuredJSONScheme)
@@ -136,7 +138,7 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 		log.Error(err, "client.ObjectKeyFromObject() failed for resource")
 		// This can only happen if reciever isn't an unstructured.Unstructured
 		// i.e. this should never happen
-		return err
+		return madeChanges, err
 	}
 
 	var patch Patch
@@ -147,6 +149,7 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 			log.Info("creating resource")
 			err = p.Client.Create(ctx, obj)
 			if err == nil {
+				madeChanges = true
 				// special handling
 				if err := p.processNewObject(ctx, obj); err != nil {
 					// just log for now
@@ -163,6 +166,7 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 			// patch was invalid, try delete/create
 			log.Info(fmt.Sprintf("patch failed: %v.  attempting to delete and recreate the resource", err))
 			if deleteErr := p.Client.Delete(ctx, obj, client.PropagationPolicy(metav1.DeletePropagationBackground)); deleteErr == nil {
+				madeChanges = true
 				// we need to remove the resource version, which was updated by the patching process
 				obj.SetResourceVersion("")
 				if createErr := p.Client.Create(ctx, obj); createErr == nil {
@@ -174,13 +178,15 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 			} else {
 				log.Error(deleteErr, "error deleting resource for recreation")
 			}
+		} else {
+			madeChanges = true
 		}
 	}
 	log.V(2).Info("resource reconciliation complete")
 	if err != nil {
 		log.Error(err, "error occurred reconciling resource")
 	}
-	return err
+	return madeChanges, err
 }
 
 func (p *ManifestProcessor) addMetadata(obj *unstructured.Unstructured, component string) {

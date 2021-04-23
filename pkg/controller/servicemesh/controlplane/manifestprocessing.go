@@ -7,13 +7,13 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common/helm"
 )
 
-func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.Context, chartName string) (hasReadiness bool, err error) {
+func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.Context, chartName string) (madeChanges bool, err error) {
 	componentName := componentFromChartName(chartName)
 	log := common.LogFromContext(ctx).WithValues("Component", componentName)
 	ctx = common.NewContextWithLog(ctx, log)
 
-	renderings, hasRenderings := r.renderings[chartName]
-	if !hasRenderings {
+	renderings, found := r.renderings[chartName]
+	if !found {
 		log.V(5).Info("no renderings for component")
 		return false, nil
 	}
@@ -26,21 +26,22 @@ func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.C
 	}()
 
 	mp := helm.NewManifestProcessor(r.ControllerResources, helm.NewPatchFactory(r.Client), r.Instance.GetNamespace(), r.meshGeneration, r.Instance.GetNamespace(), r.preprocessObject, r.processNewObject)
-	if err = mp.ProcessManifests(ctx, renderings, status.Resource); err != nil {
-		return false, err
+	if madeChanges, err = mp.ProcessManifests(ctx, renderings, status.Resource); err != nil {
+		return madeChanges, err
 	}
 	if err = r.processNewComponent(componentName, status); err != nil {
 		log.Error(err, "error during postprocessing of component")
-		return false, err
+		return madeChanges, err
 	}
 
-	// if we get here, the component has been successfully installed
-	delete(r.renderings, chartName)
+	return madeChanges, nil
+}
 
-	for _, rendering := range renderings {
+func (r *controlPlaneInstanceReconciler) anyComponentHasReadiness(chartName string) bool {
+	for _, rendering := range r.renderings[chartName] {
 		if r.hasReadiness(rendering.Head.Kind) {
-			return true, nil
+			return true
 		}
 	}
-	return false, nil
+	return false
 }

@@ -80,13 +80,14 @@ func (r *controlPlaneInstanceReconciler) Delete(ctx context.Context) error {
 	// remove finalizer from SMCP
 	// get fresh SMCP from cache to minimize the chance of a conflict during update (the SMCP might have been updated during the execution of reconciler.Delete())
 	instance := &maistrav2.ServiceMeshControlPlane{}
-	if err := r.Client.Get(ctx, common.ToNamespacedName(r.Instance), instance); err == nil {
+	smcpNamespacedName := common.ToNamespacedName(r.Instance)
+	if err := r.Client.Get(ctx, smcpNamespacedName, instance); err == nil {
 		finalizers := sets.NewString(instance.Finalizers...)
 		finalizers.Delete(common.FinalizerName)
 		instance.SetFinalizers(finalizers.List())
 		if err := r.Client.Update(ctx, instance); err == nil {
 			log.Info("Removed finalizer")
-			hacks.ReduceLikelihoodOfRepeatedReconciliation(ctx)
+			hacks.SkipReconciliationUntilCacheSynced(ctx, smcpNamespacedName)
 		} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
 			r.EventRecorder.Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", err)) // TODO: this event probably isn't needed at all
 			return errors.Wrap(err, "Error removing ServiceMeshControlPlane finalizer")

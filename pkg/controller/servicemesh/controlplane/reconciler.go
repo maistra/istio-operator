@@ -86,7 +86,6 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 	reconciledCondition := r.Status.GetCondition(status.ConditionTypeReconciled)
 	reconciliationMessage := reconciledCondition.Message
 	reconciliationReason := reconciledCondition.Reason
-	reconciliationComplete := false
 	defer func() {
 		// this ensures we're updating status (if necessary) and recording events on exit
 		if statusErr := r.postReconciliationStatus(ctx, reconciliationReason, reconciliationMessage, err); statusErr != nil {
@@ -95,9 +94,6 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			} else {
 				log.Error(statusErr, "Error posting reconciliation status")
 			}
-		}
-		if reconciliationComplete {
-			hacks.ReduceLikelihoodOfRepeatedReconciliation(ctx)
 		}
 	}()
 
@@ -253,17 +249,20 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 
 	// create components
 	for _, charts := range r.getChartsInInstallationOrder(version.Strategy().GetChartInstallOrder()) {
+		var madeChanges bool
 		r.waitForComponents = sets.NewString()
 		for _, chart := range charts {
 			component := componentFromChartName(chart)
-			var hasReadiness bool
-			hasReadiness, err = r.processComponentManifests(ctx, chart)
+			var changes bool
+			changes, err = r.processComponentManifests(ctx, chart)
+			madeChanges = madeChanges || changes
 			if err != nil {
 				reconciliationReason = status.ConditionReasonReconcileError
 				reconciliationMessage = fmt.Sprintf("Error processing component %s: %v", component, err)
 				return
 			}
-			if hasReadiness {
+
+			if r.anyComponentHasReadiness(chart) {
 				r.waitForComponents.Insert(component)
 			} else {
 				alwaysReadyComponents := r.Status.GetAnnotation(statusAnnotationAlwaysReadyComponents)
@@ -274,12 +273,19 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 				}
 				r.Status.SetAnnotation(statusAnnotationAlwaysReadyComponents, alwaysReadyComponents)
 			}
+
+			// if we get here, the component has been successfully installed
+			delete(r.renderings, chart)
 		}
 
 		if r.waitForComponents.Len() > 0 {
-			// We'll have to wait for the cache before we calculate readiness in case we updated an existing
-			// resource. Otherwise we'd get a stale status that suggests it's ready when it's really not.
-			hacks.ReduceLikelihoodOfRepeatedReconciliation(ctx)
+			if madeChanges {
+				// We have to stop the reconcile here and then wait until all the watch events for all the object
+				// changes that we've made are received by the operator before we calculate readiness. Otherwise
+				// we'd calculate readiness with a stale object state that will show the object as ready when it isn't.
+				hacks.SkipReconciliationUntilCacheSynced(ctx, common.ToNamespacedName(r.Instance))
+				return
+			}
 
 			readyComponents, _, readyErr := r.calculateComponentReadiness(ctx)
 			if readyErr != nil {
@@ -323,7 +329,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 	r.Status.ChartVersion = r.chartVersion
 	updateControlPlaneConditions(r.Status, nil)
 
-	reconciliationComplete = true
+	hacks.SkipReconciliationUntilCacheSynced(ctx, common.ToNamespacedName(r.Instance))
 	log.Info("Completed ServiceMeshControlPlane reconcilation")
 	return
 }
