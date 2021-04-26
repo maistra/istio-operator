@@ -29,7 +29,9 @@ func populateTracingValues(in *v2.ControlPlaneSpec, values map[string]interface{
 			if err := setHelmStringValue(values, "tracing.provider", "none"); err != nil {
 				return err
 			}
-			if err := setHelmStringValue(values, "global.proxy.tracer", "none"); err != nil {
+			// Istio doesn't support "none". "zipkin" is the default.
+			// See https://github.com/istio/istio/blob/d4d148f1c923bd9226c581b81067965daa4060df/operator/pkg/apis/istio/v1alpha1/values_types.pb.go#L66-L70
+			if err := setHelmStringValue(values, "global.proxy.tracer", "zipkin"); err != nil {
 				return err
 			}
 		case v2.TracerTypeJaeger:
