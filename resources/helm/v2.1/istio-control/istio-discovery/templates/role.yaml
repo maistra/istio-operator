@@ -1,7 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: istiod-internal-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
+  name: istiod-internal-{{ .Values.revision | default "default" }}
   namespace: {{ .Release.Namespace }}
   annotations:
     "maistra.io/internal": "true"
@@ -21,3 +21,8 @@ rules:
   resources: ["secrets"]
   # TODO lock this down to istio-ca-cert if not using the DNS cert mesh config
   verbs: ["create", "get", "watch", "list", "update", "delete"]
+
+# For MeshFederation support
+- apiGroups: ["maistra.io"]
+  resources: ["meshfederations", "meshfederations/finalizers", "meshfederations/status"]
+  verbs: ["get", "list", "watch", "patch", "update"]

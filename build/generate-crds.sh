@@ -44,7 +44,6 @@ function generateCRDs() {
     cp deploy/crds/maistra.io_servicemeshcontrolplanes.yaml ${bundle_dir}/servicemeshcontrolplanes.crd.yaml
     cp deploy/crds/maistra.io_servicemeshmemberrolls.yaml ${bundle_dir}/servicemeshmemberrolls.crd.yaml
     cp deploy/crds/maistra.io_servicemeshmembers.yaml ${bundle_dir}/servicemeshmembers.crd.yaml
-    cp deploy/crds/maistra.io_servicemeshextensions.yaml resources/helm/overlays/istio-init/files/servicemeshextensions.maistra.io.crd.yaml
   done
 
   echo "Writing CRDs to file deploy/src/crd.yaml"

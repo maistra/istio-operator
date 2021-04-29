@@ -37,7 +37,7 @@ metadata:
     release: {{ .Release.Name }}
 spec:
   hosts:
-  - istiod.{{ .Release.Namespace }}.svc.{{ .Values.global.proxy.clusterDomain }}
+  - istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.{{ .Values.global.proxy.clusterDomain }}
   gateways:
   - meshexpansion-gateway
   tcp:
@@ -45,14 +45,14 @@ spec:
     - port: 15012
     route:
     - destination:
-        host: istiod.{{ .Release.Namespace }}.svc.{{ .Values.global.proxy.clusterDomain }}
+        host: istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.{{ .Values.global.proxy.clusterDomain }}
         port:
           number: 15012
   - match:
     - port: 15017
     route:
     - destination:
-        host: istiod.{{ .Release.Namespace }}.svc.{{ .Values.global.proxy.clusterDomain }}
+        host: istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.{{ .Values.global.proxy.clusterDomain }}
         port:
           number: 443
 ---
@@ -66,7 +66,7 @@ metadata:
     maistra-version: "2.1.0"
     release: {{ .Release.Name }}
 spec:
-  host: istiod.{{ .Release.Namespace }}.svc.{{ .Values.global.proxy.clusterDomain }}
+  host: istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.{{ .Values.global.proxy.clusterDomain }}
   trafficPolicy:
     portLevelSettings:
     - port:

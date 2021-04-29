@@ -1,50 +1,53 @@
-
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   labels:
     maistra-version: "2.1.0"
-    chart: istio
-    release: istio
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.2.4
   creationTimestamp: null
   name: servicemeshextensions.maistra.io
 spec:
   group: maistra.io
   names:
-    categories:
-    - maistra-io
     kind: ServiceMeshExtension
     listKind: ServiceMeshExtensionList
     plural: servicemeshextensions
-    shortNames:
-    - sme
     singular: servicemeshextension
   preserveUnknownFields: false
   scope: Namespaced
-  subresources:
-    status: {}
   validation:
     openAPIV3Schema:
+      description: ServiceMeshExtension is the Schema for the servicemeshextensions
+        API
       properties:
         apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
           type: string
         kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
           type: string
         metadata:
           type: object
         spec:
+          description: ServiceMeshExtensionSpec defines the desired state of ServiceMeshExtension
           properties:
             config:
               type: string
             image:
               type: string
             phase:
+              description: FilterPhase defines point of injection of Envoy filter
               type: string
             priority:
               type: integer
             workloadSelector:
+              description: WorkloadSelector is used to match workloads based on pod
+                labels
               properties:
                 labels:
                   additionalProperties:
@@ -53,8 +56,11 @@ spec:
               required:
               - labels
               type: object
+          required:
+          - phase
           type: object
         status:
+          description: ServiceMeshExtensionStatus defines the observed state of ServiceMeshExtension
           properties:
             deployment:
               properties:
@@ -71,6 +77,7 @@ spec:
               format: int64
               type: integer
             phase:
+              description: FilterPhase defines point of injection of Envoy filter
               type: string
             priority:
               type: integer

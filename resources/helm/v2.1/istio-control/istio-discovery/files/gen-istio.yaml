@@ -711,6 +711,9 @@ spec:
     - port: 15014
       name: http-monitoring # prometheus stats
       protocol: TCP
+    - port: 8188
+      name: http-discovery # federation discovery
+      protocol: TCP
   selector:
     app: istiod
     # Label used by the 'default' service. For versioned deployments we match with app and version.
@@ -771,6 +774,8 @@ spec:
           - containerPort: 15017
             protocol: TCP
           - containerPort: 15053
+            protocol: TCP
+          - containerPort: 8188
             protocol: TCP
           readinessProbe:
             httpGet:
