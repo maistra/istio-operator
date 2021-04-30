@@ -17,8 +17,8 @@ require (
 	github.com/mikefarah/yq/v4 v4.6.0
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/opencontainers/runtime-spec v1.0.0 // indirect
-	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
-	github.com/openshift/library-go v0.0.0-20200214084717-e77ad9dd8ebd
+	github.com/openshift/api v0.0.0-20200326160804-ecb9283fe820
+	github.com/openshift/library-go v0.0.0-20200423123937-d1360419413d
 	github.com/operator-framework/operator-sdk v0.18.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
@@ -41,8 +41,6 @@ require (
 )
 
 replace github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309 // Required by Helm
-
-replace github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad // Required until https://github.com/operator-framework/operator-lifecycle-manager/pull/1241 is resolved
 
 // not sure why this is required, maybe scanning of yaml files?
 replace istio.io/api => istio.io/api v0.0.0-20191111210003-35e06ef8d838
