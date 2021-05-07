@@ -7522,27 +7522,27 @@ spec:
         olm.relatedImage.v1_0.sidecar-injector: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.0.11
 
         olm.relatedImage.v1_1.3scale-istio-adapter: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:1.0.0
-        olm.relatedImage.v1_1.citadel: registry.redhat.io/openshift-service-mesh/citadel-rhel8:1.1.13
-        olm.relatedImage.v1_1.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.1.13
-        olm.relatedImage.v1_1.galley: registry.redhat.io/openshift-service-mesh/galley-rhel8:1.1.13
-        olm.relatedImage.v1_1.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:1.1.13
-        olm.relatedImage.v1_1.ior: registry.redhat.io/openshift-service-mesh/ior-rhel8:1.1.13
-        olm.relatedImage.v1_1.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:1.1.13
-        olm.relatedImage.v1_1.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:1.1.13
-        olm.relatedImage.v1_1.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:1.1.13
-        olm.relatedImage.v1_1.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.1.13
-        olm.relatedImage.v1_1.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.1.13
-        olm.relatedImage.v1_1.sidecar-injector: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.1.13
+        olm.relatedImage.v1_1.citadel: registry.redhat.io/openshift-service-mesh/citadel-rhel8:1.1.14
+        olm.relatedImage.v1_1.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:1.1.14
+        olm.relatedImage.v1_1.galley: registry.redhat.io/openshift-service-mesh/galley-rhel8:1.1.14
+        olm.relatedImage.v1_1.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:1.1.14
+        olm.relatedImage.v1_1.ior: registry.redhat.io/openshift-service-mesh/ior-rhel8:1.1.14
+        olm.relatedImage.v1_1.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:1.1.14
+        olm.relatedImage.v1_1.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:1.1.14
+        olm.relatedImage.v1_1.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:1.1.14
+        olm.relatedImage.v1_1.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:1.1.14
+        olm.relatedImage.v1_1.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:1.1.14
+        olm.relatedImage.v1_1.sidecar-injector: registry.redhat.io/openshift-service-mesh/sidecar-injector-rhel8:1.1.14
 
         olm.relatedImage.v2_0.3scale-istio-adapter: registry.redhat.io/openshift-service-mesh/3scale-istio-adapter-rhel8:2.0.0
-        olm.relatedImage.v2_0.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:2.0.3
-        olm.relatedImage.v2_0.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:2.0.3
-        olm.relatedImage.v2_0.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:2.0.3
-        olm.relatedImage.v2_0.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.0.3
-        olm.relatedImage.v2_0.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:2.0.3
-        olm.relatedImage.v2_0.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:2.0.3
-        olm.relatedImage.v2_0.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:2.0.3
-        olm.relatedImage.v2_0.wasm-cacher: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.0.3
+        olm.relatedImage.v2_0.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:2.0.4
+        olm.relatedImage.v2_0.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:2.0.4
+        olm.relatedImage.v2_0.mixer: registry.redhat.io/openshift-service-mesh/mixer-rhel8:2.0.4
+        olm.relatedImage.v2_0.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.0.4
+        olm.relatedImage.v2_0.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:2.0.4
+        olm.relatedImage.v2_0.proxy-init: registry.redhat.io/openshift-service-mesh/proxy-init-rhel7:2.0.4
+        olm.relatedImage.v2_0.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:2.0.4
+        olm.relatedImage.v2_0.wasm-cacher: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.0.4
 
         oauth-proxy.query: "true"
         oauth-proxy.namespace: openshift
@@ -7552,7 +7552,7 @@ spec:
       serviceAccountName: istio-operator
       containers:
       - name: istio-operator
-        image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.0.3
+        image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.0.4
         ports:
         - containerPort: 11999
           name: validation
