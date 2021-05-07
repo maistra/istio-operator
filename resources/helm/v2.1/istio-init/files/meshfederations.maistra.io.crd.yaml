@@ -73,13 +73,14 @@ spec:
               properties:
                 allowDirectInbound:
                   description: 'AllowDirectInbound determines whether or not external
-                    service invocations will be terminated at the ingress the gateway.
+                    service invocations will be terminated at the ingress gateway.
                     XXX: should this also be configurable per exported service?'
                   type: boolean
                 allowDirectOutbound:
                   description: 'AllowDirectOutbound determines whether or not external
-                    service invocations will be proxied through the gateway XXX: should
-                    this also be configurable per imported service?'
+                    service invocations will be proxied through and terminated at
+                    the egress gateway XXX: should this also be configurable per imported
+                    service?'
                   type: boolean
                 certificateChain:
                   description: 'Name of secret containing certificate chain to be
