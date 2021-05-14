@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# to generate Maistra OLM metadata: COMMUNITY=true MAISTRA_VERSION=1.1.14 REPLACES_CSV=1.1.13 build/generate-manifests.sh
-# to generate ServiceMesh OLM metadata: COMMUNITY=false MAISTRA_VERSION=1.1.14 REPLACES_CSV=1.1.13 build/generate-manifests.sh
+# to generate Maistra OLM metadata: COMMUNITY=true MAISTRA_VERSION=1.1.15 REPLACES_CSV=1.1.14 build/generate-manifests.sh
+# to generate ServiceMesh OLM metadata: COMMUNITY=false MAISTRA_VERSION=1.1.15 REPLACES_CSV=1.1.14 build/generate-manifests.sh
 
 set -e
 
