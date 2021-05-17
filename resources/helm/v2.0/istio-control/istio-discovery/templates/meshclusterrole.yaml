@@ -4,7 +4,7 @@ kind: ClusterRole
 metadata:
   name: istiod-internal-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.4"
+    maistra-version: "2.0.5"
     app: istiod
     release: {{ .Release.Name }}
 rules:

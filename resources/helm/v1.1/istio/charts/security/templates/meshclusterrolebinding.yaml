@@ -6,7 +6,7 @@ metadata:
     app: {{ template "security.name" . }}
     chart: {{ template "security.chart" . }}
     heritage: {{ .Release.Service }}
-    maistra-version: 1.1.14
+    maistra-version: 1.1.15
     release: {{ .Release.Name }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io

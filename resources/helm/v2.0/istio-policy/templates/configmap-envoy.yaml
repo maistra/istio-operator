@@ -4,7 +4,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   name: policy-envoy-config
   labels:
-    maistra-version: "2.0.4"
+    maistra-version: "2.0.5"
     release: {{ .Release.Name }}
 data:
   # Explicitly defined - moved from istio/istio/pilot/docker/envoy_policy.yaml.tmpl.

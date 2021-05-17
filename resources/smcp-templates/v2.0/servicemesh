@@ -9,7 +9,7 @@ spec:
     defaults:
       container:
         imageRegistry: registry.redhat.io/openshift-service-mesh
-        imageTag: 2.0.4
+        imageTag: 2.0.5
     components:
       grafana:
         container:

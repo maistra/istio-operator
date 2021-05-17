@@ -242,7 +242,7 @@ spec:
     url: https://github.com/Maistra/istio-operator
   - name: Bugs
     url: https://issues.redhat.com/projects/OSSM
-  replaces: servicemeshoperator.v2.0.3
+  replaces: servicemeshoperator.v2.0.5
   installModes:
   - type: OwnNamespace
     supported: false
