@@ -34,11 +34,6 @@ function generateCRDs() {
     sed -i -e '/^  version:/d' $crd
   done
 
-  sed -i -e 's/^metadata:/metadata:\
-  labels:\
-    chart: istio\
-    release: istio/' deploy/crds/maistra.io_servicemeshextensions.yaml
-
   for bundle_dir in ${BUNDLE_DIRS}; do
     echo "Writing CRDs to directory ${bundle_dir}"
     cp deploy/crds/maistra.io_servicemeshcontrolplanes.yaml ${bundle_dir}/servicemeshcontrolplanes.crd.yaml

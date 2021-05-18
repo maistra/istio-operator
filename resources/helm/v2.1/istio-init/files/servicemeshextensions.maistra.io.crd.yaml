@@ -4,35 +4,36 @@ metadata:
   labels:
     maistra-version: "2.1.0"
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.4
+    controller-gen.kubebuilder.io/version: (devel)
   creationTimestamp: null
   name: servicemeshextensions.maistra.io
 spec:
   group: maistra.io
   names:
+    categories:
+    - maistra-io
     kind: ServiceMeshExtension
     listKind: ServiceMeshExtensionList
     plural: servicemeshextensions
+    shortNames:
+    - sme
     singular: servicemeshextension
   preserveUnknownFields: false
   scope: Namespaced
+  subresources:
+    status: {}
   version: v1
   versions:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: ServiceMeshExtension is the Schema for the servicemeshextensions
-          API
+        description: ServiceMeshExtension is the Schema for the servicemeshextensions API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
@@ -45,17 +46,14 @@ spec:
               image:
                 type: string
               imagePullPolicy:
-                description: PullPolicy describes a policy for if/when to pull a container
-                  image
+                description: PullPolicy describes a policy for if/when to pull a container image
                 type: string
               imagePullSecrets:
                 items:
-                  description: LocalObjectReference contains enough information to
-                    let you locate the referenced object inside the same namespace.
+                  description: LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.
                   properties:
                     name:
-                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
                       type: string
                   type: object
                 type: array
@@ -65,8 +63,7 @@ spec:
               priority:
                 type: integer
               workloadSelector:
-                description: WorkloadSelector is used to match workloads based on
-                  pod labels
+                description: WorkloadSelector is used to match workloads based on pod labels
                 properties:
                   labels:
                     additionalProperties:
@@ -79,8 +76,7 @@ spec:
             - phase
             type: object
           status:
-            description: ServiceMeshExtensionStatus defines the observed state of
-              ServiceMeshExtension
+            description: ServiceMeshExtensionStatus defines the observed state of ServiceMeshExtension
             properties:
               deployment:
                 properties:
@@ -105,23 +101,16 @@ spec:
         type: object
     served: true
     storage: true
-    subresources:
-      status: {}
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ServiceMeshExtension is the Schema for the servicemeshextensions
-          API
+        description: ServiceMeshExtension is the Schema for the servicemeshextensions API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
@@ -138,8 +127,7 @@ spec:
               priority:
                 type: integer
               workloadSelector:
-                description: WorkloadSelector is used to match workloads based on
-                  pod labels
+                description: WorkloadSelector is used to match workloads based on pod labels
                 properties:
                   labels:
                     additionalProperties:
@@ -152,8 +140,7 @@ spec:
             - phase
             type: object
           status:
-            description: ServiceMeshExtensionStatus defines the observed state of
-              ServiceMeshExtension
+            description: ServiceMeshExtensionStatus defines the observed state of ServiceMeshExtension
             properties:
               deployment:
                 properties:

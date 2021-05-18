@@ -4,7 +4,7 @@ metadata:
   labels:
     maistra-version: "2.1.0"
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.4
+    controller-gen.kubebuilder.io/version: (devel)
   creationTimestamp: null
   name: meshfederations.maistra.io
 spec:
@@ -22,19 +22,13 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: MeshFederation is the Schema for joining two meshes together.  The
-        resource name will be used to identify the 'cluster' to which imported services
-        belong.
+      description: MeshFederation is the Schema for joining two meshes together.  The resource name will be used to identify the 'cluster' to which imported services belong.
       properties:
         apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
           type: string
         kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
           type: string
         metadata:
           type: object
@@ -44,56 +38,36 @@ spec:
             gateways:
               properties:
                 egress:
-                  description: Gateway through which outbound federated service traffic
-                    will travel. This is not required if AllowDirectOutbound is set
-                    to true.
+                  description: Gateway through which outbound federated service traffic will travel. This is not required if AllowDirectOutbound is set to true.
                   properties:
                     name:
-                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
                       type: string
                   type: object
                 ingress:
-                  description: Gateway through which inbound federated service traffic
-                    will travel.
+                  description: Gateway through which inbound federated service traffic will travel.
                   properties:
                     name:
-                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
                       type: string
                   type: object
               type: object
             networkAddress:
-              description: 'NetworkAddress is the address used to communicate with
-                the external mesh. Port 15443 will be used for service traffic and
-                port 8188 will be used for service discovery. XXX: should this be
-                an array?'
+              description: 'NetworkAddress is the address used to communicate with the external mesh. Port 15443 will be used for service traffic and port 8188 will be used for service discovery. XXX: should this be an array?'
               type: string
             security:
               properties:
                 allowDirectInbound:
-                  description: 'AllowDirectInbound determines whether or not external
-                    service invocations will be terminated at the ingress gateway.
-                    XXX: should this also be configurable per exported service?'
+                  description: 'AllowDirectInbound determines whether or not external service invocations will be terminated at the ingress gateway. XXX: should this also be configurable per exported service?'
                   type: boolean
                 allowDirectOutbound:
-                  description: 'AllowDirectOutbound determines whether or not external
-                    service invocations will be proxied through and terminated at
-                    the egress gateway XXX: should this also be configurable per imported
-                    service?'
+                  description: 'AllowDirectOutbound determines whether or not external service invocations will be proxied through and terminated at the egress gateway XXX: should this also be configurable per imported service?'
                   type: boolean
                 certificateChain:
-                  description: 'Name of secret containing certificate chain to be
-                    used to validate the remote.  This is also used to validate certificates
-                    used by the remote services (both client and server certificates).
-                    XXX: maybe this is only used to initiate a connection, with the
-                    actual certs stored in the status field, as retrieved from the
-                    remote mesh, or maybe this identifies an endpoint used to retrieve
-                    a cert chain, a la jwks'
+                  description: 'Name of secret containing certificate chain to be used to validate the remote.  This is also used to validate certificates used by the remote services (both client and server certificates). XXX: maybe this is only used to initiate a connection, with the actual certs stored in the status field, as retrieved from the remote mesh, or maybe this identifies an endpoint used to retrieve a cert chain, a la jwks'
                   type: string
                 clientID:
-                  description: ClientID of the remote mesh.  This is used to authenticate
-                    incoming requrests from the remote mesh's discovery client.
+                  description: ClientID of the remote mesh.  This is used to authenticate incoming requrests from the remote mesh's discovery client.
                   type: string
                 trustDomain:
                   description: TrustDomain of remote mesh.
@@ -107,21 +81,17 @@ spec:
               items:
                 properties:
                   lastTransitionTime:
-                    description: Last time the condition transitioned from one status
-                      to another.
+                    description: Last time the condition transitioned from one status to another.
                     format: date-time
                     type: string
                   message:
-                    description: Human-readable message indicating details about the
-                      last transition.
+                    description: Human-readable message indicating details about the last transition.
                     type: string
                   reason:
-                    description: Unique, single-word, CamelCase reason for the condition's
-                      last transition.
+                    description: Unique, single-word, CamelCase reason for the condition's last transition.
                     type: string
                   status:
-                    description: The status of this condition. Can be True, False
-                      or Unknown.
+                    description: The status of this condition. Can be True, False or Unknown.
                     type: string
                   type:
                     description: The type of this condition.

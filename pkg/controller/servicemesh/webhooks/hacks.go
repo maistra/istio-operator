@@ -122,45 +122,10 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 		return err
 	}
 
-	log.Info("Adding conversion webhook to SMCP CRD")
-	if apixclient, err := clientapixv1.NewForConfig(mgr.GetConfig()); err == nil {
-		if crdPatchBytes, err := json.Marshal(map[string]interface{}{
-			"spec": map[string]interface{}{
-				"conversion": &apixv1.CustomResourceConversion{
-					Strategy: apixv1.WebhookConverter,
-					Webhook: &apixv1.WebhookConversion{
-						ConversionReviewVersions: []string{"v1beta1"},
-						ClientConfig: &apixv1.WebhookClientConfig{
-							URL: nil,
-							Service: &apixv1.ServiceReference{
-								Name:      webhookServiceName,
-								Namespace: operatorNamespace,
-								Path:      &smcpConverterServicePath,
-							},
-						},
-					},
-				},
-			},
-		}); err == nil {
-			if smcpcrd, err := apixclient.CustomResourceDefinitions().Patch(ctx, webhookca.ServiceMeshControlPlaneCRDName,
-				pttypes.MergePatchType, crdPatchBytes, metav1.PatchOptions{FieldManager: common.FinalizerName}); err == nil {
-				log.Info("Registering Maistra ServiceMeshControlPlane CRD conversion webhook with CABundle reconciler")
-				if err := webhookca.WebhookCABundleManagerInstance.ManageWebhookCABundle(
-					smcpcrd,
-					&webhookca.ConfigMapCABundleSource{
-						Namespace:     operatorNamespace,
-						ConfigMapName: webhookConfigMapName,
-						Key:           common.ServiceCABundleKey,
-					}); err != nil {
-					return err
-				}
-			} else {
-				return err
-			}
-		} else {
-			return err
-		}
-	} else {
+	if err := registerConversionWebhook(ctx, mgr, log, operatorNamespace, &smcpConverterServicePath, webhookca.ServiceMeshControlPlaneCRDName); err != nil {
+		return err
+	}
+	if err := registerConversionWebhook(ctx, mgr, log, operatorNamespace, &smeConverterServicePath, webhookca.ServiceMeshExtensionCRDName); err != nil {
 		return err
 	}
 
@@ -205,6 +170,62 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 	}()
 
 	return nil
+}
+
+func registerConversionWebhook(
+	ctx context.Context,
+	mgr manager.Manager,
+	log logr.Logger,
+	operatorNamespace string,
+	path *string,
+	crdName string) error {
+
+	log.Info(fmt.Sprintf("Adding conversion webhook to %s CRD", crdName))
+	apixclient, err := clientapixv1.NewForConfig(mgr.GetConfig())
+	if err != nil {
+		return err
+	}
+
+	crdPatchBytes, err := json.Marshal(map[string]interface{}{
+		"spec": map[string]interface{}{
+			"conversion": &apixv1.CustomResourceConversion{
+				Strategy: apixv1.WebhookConverter,
+				Webhook: &apixv1.WebhookConversion{
+					ConversionReviewVersions: []string{"v1beta1"},
+					ClientConfig: &apixv1.WebhookClientConfig{
+						URL: nil,
+						Service: &apixv1.ServiceReference{
+							Name:      webhookServiceName,
+							Namespace: operatorNamespace,
+							Path:      path,
+						},
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	crd, err := apixclient.CustomResourceDefinitions().Patch(
+		ctx,
+		crdName,
+		pttypes.MergePatchType,
+		crdPatchBytes,
+		metav1.PatchOptions{FieldManager: common.FinalizerName})
+	if err != nil {
+		return err
+	}
+
+	log.Info(fmt.Sprintf("Registering Maistra %s CRD conversion webhook with CABundle reconciler", crdName))
+	return webhookca.WebhookCABundleManagerInstance.ManageWebhookCABundle(
+		crd,
+		&webhookca.ConfigMapCABundleSource{
+			Namespace:     operatorNamespace,
+			ConfigMapName: webhookConfigMapName,
+			Key:           common.ServiceCABundleKey,
+		})
 }
 
 func newWebhookService(namespace string) *corev1.Service {

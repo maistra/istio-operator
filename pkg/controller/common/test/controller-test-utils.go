@@ -19,10 +19,11 @@ import (
 
 	"github.com/maistra/istio-operator/pkg/apis"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	"github.com/maistra/istio-operator/pkg/apis/maistra/v1alpha1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
+
+	"maistra.io/api/core/v1alpha1"
 )
 
 func GetScheme() *runtime.Scheme {
@@ -46,7 +47,7 @@ func GetScheme() *runtime.Scheme {
 		Version: "v1",
 		Kind:    "NetworkAttachmentDefinitionList",
 	}, &unstructured.UnstructuredList{})
-	s.SetVersionPriority(v2.SchemeGroupVersion, v1.SchemeGroupVersion, v1alpha1.GroupVersion)
+	s.SetVersionPriority(v2.SchemeGroupVersion, v1.SchemeGroupVersion, v1alpha1.SchemeGroupVersion)
 	return s
 }
 

@@ -1,0 +1,109 @@
+
+
+= ServiceMeshExtension - maistra.io/v1
+
+:toc: right
+
+maistra.io/api/core/v1
+
+ServiceMeshExtension is the Schema for the servicemeshextensions API
+
+.Table ServiceMeshExtension Fields
+|===
+| Name | Description | Type
+
+| apiVersion
+| APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+| string
+
+| kind
+| Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+| string
+
+| metadata
+| 
+| <<metav1_ObjectMeta>>
+
+| spec
+| 
+| <<ServiceMeshExtensionSpec>>
+
+| status
+| 
+| <<ServiceMeshExtensionStatus>>
+
+|===
+
+
+[#ServiceMeshExtensionSpec]
+== ServiceMeshExtensionSpec
+
+maistra.io/api/core/v1
+
+ServiceMeshExtensionSpec defines the desired state of ServiceMeshExtension
+
+.Table ServiceMeshExtensionSpec Fields
+|===
+| Name | Description | Type
+
+| config
+| 
+| link:maistra.io_ServiceMeshExtension_ServiceMeshExtensionConfig_v1.adoc[ServiceMeshExtensionConfig]
+
+| image
+| 
+| string
+
+| imagePullPolicy
+| 
+| PullPolicy
+
+| imagePullSecrets
+| 
+| []LocalObjectReference
+
+| phase
+| 
+| link:maistra.io_ServiceMeshExtension_FilterPhase_v1.adoc[FilterPhase]
+
+| priority
+| 
+| integer
+
+| workloadSelector
+| 
+| link:maistra.io_ServiceMeshExtension_WorkloadSelector_v1.adoc[WorkloadSelector]
+
+|===
+
+
+[#ServiceMeshExtensionStatus]
+== ServiceMeshExtensionStatus
+
+maistra.io/api/core/v1
+
+ServiceMeshExtensionStatus defines the observed state of ServiceMeshExtension
+
+.Table ServiceMeshExtensionStatus Fields
+|===
+| Name | Description | Type
+
+| deployment
+| 
+| link:maistra.io_ServiceMeshExtension_DeploymentStatus_v1.adoc[DeploymentStatus]
+
+| observedGeneration
+| 
+| integer
+
+| phase
+| 
+| link:maistra.io_ServiceMeshExtension_FilterPhase_v1.adoc[FilterPhase]
+
+| priority
+| 
+| integer
+
+|===
+
+

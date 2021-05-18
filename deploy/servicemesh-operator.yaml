@@ -5,7 +5,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     service.beta.openshift.io/inject-cabundle: "true"
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
   name: servicemeshcontrolplanes.maistra.io
 spec:
@@ -182,8 +182,7 @@ spec:
       name: Ready
       type: string
     - JSONPath: .status.conditions[?(@.type=="Ready")].reason
-      description: Whether or not the control plane installation is up to date and
-        ready to handle requests.
+      description: Whether or not the control plane installation is up to date and ready to handle requests.
       name: Status
       type: string
     - JSONPath: .status.appliedSpec.profiles
@@ -1204,6 +1203,7 @@ spec:
                                     format: int32
                                     type: integer
                                   protocol:
+                                    default: TCP
                                     type: string
                                   targetPort:
                                     anyOf:
@@ -1582,6 +1582,7 @@ spec:
                                     format: int32
                                     type: integer
                                   protocol:
+                                    default: TCP
                                     type: string
                                   targetPort:
                                     anyOf:
@@ -4224,6 +4225,7 @@ spec:
                                         format: int32
                                         type: integer
                                       protocol:
+                                        default: TCP
                                         type: string
                                       targetPort:
                                         anyOf:
@@ -4602,6 +4604,7 @@ spec:
                                         format: int32
                                         type: integer
                                       protocol:
+                                        default: TCP
                                         type: string
                                       targetPort:
                                         anyOf:
@@ -6364,7 +6367,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
   name: servicemeshmemberrolls.maistra.io
 spec:
@@ -6374,8 +6377,7 @@ spec:
     name: Ready
     type: string
   - JSONPath: .status.conditions[?(@.type=="Ready")].reason
-    description: Whether all member namespaces have been configured or why that's
-      not the case
+    description: Whether all member namespaces have been configured or why that's not the case
     name: Status
     type: string
   - JSONPath: .metadata.creationTimestamp
@@ -6518,7 +6520,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
   name: servicemeshmembers.maistra.io
 spec:

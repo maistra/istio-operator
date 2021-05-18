@@ -4,7 +4,7 @@
 
 :toc: right
 
-github.com/maistra/istio-operator/pkg/apis/maistra/v1alpha1
+maistra.io/api/core/v1alpha1
 
 ServiceMeshExtension is the Schema for the servicemeshextensions API
 
@@ -38,7 +38,7 @@ ServiceMeshExtension is the Schema for the servicemeshextensions API
 [#ServiceMeshExtensionSpec]
 == ServiceMeshExtensionSpec
 
-github.com/maistra/istio-operator/pkg/apis/maistra/v1alpha1
+maistra.io/api/core/v1alpha1
 
 ServiceMeshExtensionSpec defines the desired state of ServiceMeshExtension
 
@@ -53,6 +53,14 @@ ServiceMeshExtensionSpec defines the desired state of ServiceMeshExtension
 | image
 | 
 | string
+
+| imagePullPolicy
+| 
+| PullPolicy
+
+| imagePullSecrets
+| 
+| []LocalObjectReference
 
 | phase
 | 
@@ -72,7 +80,7 @@ ServiceMeshExtensionSpec defines the desired state of ServiceMeshExtension
 [#ServiceMeshExtensionStatus]
 == ServiceMeshExtensionStatus
 
-github.com/maistra/istio-operator/pkg/apis/maistra/v1alpha1
+maistra.io/api/core/v1alpha1
 
 ServiceMeshExtensionStatus defines the observed state of ServiceMeshExtension
 

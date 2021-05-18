@@ -6,7 +6,7 @@
 
 Used by link:maistra.io_ServiceMeshExtension_v1alpha1.adoc[ServiceMeshExtension(maistra.io/v1alpha1)]
 
-github.com/maistra/istio-operator/pkg/apis/maistra/v1alpha1
+maistra.io/api/core/v1alpha1
 
 FilterPhase defines point of injection of Envoy filter
 

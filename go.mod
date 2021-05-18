@@ -1,6 +1,6 @@
 module github.com/maistra/istio-operator
 
-go 1.13
+go 1.15
 
 require (
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
@@ -10,8 +10,8 @@ require (
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
-	github.com/go-logr/logr v0.1.0
-	github.com/google/go-cmp v0.4.0
+	github.com/go-logr/logr v0.2.1
+	github.com/google/go-cmp v0.5.2
 	github.com/gregjones/httpcache v0.0.0-20181110185634-c63ab54fda8f // indirect
 	github.com/magiconair/properties v1.8.1
 	github.com/mikefarah/yq/v4 v4.6.0
@@ -26,17 +26,17 @@ require (
 	github.com/spf13/viper v1.7.0
 	go.uber.org/zap v1.14.1
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899 // indirect
-	golang.org/x/text v0.3.3 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.0.1
-	k8s.io/api v0.18.3
-	k8s.io/apiextensions-apiserver v0.18.3
-	k8s.io/apimachinery v0.18.3
+	k8s.io/api v0.19.3
+	k8s.io/apiextensions-apiserver v0.18.6
+	k8s.io/apimachinery v0.19.3
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/code-generator v0.18.3
+	k8s.io/code-generator v0.19.3
 	k8s.io/helm v2.16.7+incompatible
 	k8s.io/kubectl v0.18.3
-	sigs.k8s.io/controller-runtime v0.6.0
-	sigs.k8s.io/controller-tools v0.4.0
+	maistra.io/api v0.0.0-20210601141927-1cbee4cb8ce8
+	sigs.k8s.io/controller-runtime v0.6.3
+	sigs.k8s.io/controller-tools v0.4.1
 	sigs.k8s.io/yaml v1.2.0
 )
 
@@ -53,6 +53,16 @@ replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.2+inc
 replace k8s.io/cli-runtime => k8s.io/cli-runtime v0.18.3
 
 replace k8s.io/client-go => k8s.io/client-go v0.18.3
+
+replace k8s.io/api => k8s.io/api v0.18.3
+
+replace k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.18.3
+
+replace k8s.io/apimachinery => k8s.io/apimachinery v0.18.3
+
+replace k8s.io/code-generator => k8s.io/code-generator v0.18.3
+
+replace github.com/go-logr/zapr => github.com/go-logr/zapr v0.2.0
 
 // use json-patch 4.6.0+, since earlier versions cause json patch generation to be very slow (MAISTRA-1780)
 // can't use 4.6.0-4.8.0, because it contains a go.mod file and thus can't be referenced by tag, so we use 4.9.0 (see https://github.com/evanphx/json-patch/pull/113)

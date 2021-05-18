@@ -1,0 +1,25 @@
+
+
+= MeshFederationGateways
+
+:toc: right
+
+Used by link:maistra.io_MeshFederation_v1alpha1.adoc[MeshFederation(maistra.io/v1alpha1)]
+
+maistra.io/api/core/v1alpha1
+
+.Table MeshFederationGateways Fields
+|===
+| Name | Description | Type
+
+| egress
+| Gateway through which outbound federated service traffic will travel. This is not required if AllowDirectOutbound is set to true.
+| <<corev1_LocalObjectReference>>
+
+| ingress
+| Gateway through which inbound federated service traffic will travel.
+| <<corev1_LocalObjectReference>>
+
+|===
+
+
