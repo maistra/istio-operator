@@ -5,7 +5,7 @@ metadata:
   name: stdio
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -19,7 +19,7 @@ metadata:
   name: accesslog
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -77,7 +77,7 @@ metadata:
   name: tcpaccesslog
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -120,7 +120,7 @@ metadata:
   name: stdio
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -136,7 +136,7 @@ metadata:
   name: stdiotcp
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -154,7 +154,7 @@ metadata:
   name: requestcount
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -189,7 +189,7 @@ metadata:
   name: requestduration
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -224,7 +224,7 @@ metadata:
   name: requestsize
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -259,7 +259,7 @@ metadata:
   name: responsesize
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -294,7 +294,7 @@ metadata:
   name: tcpbytesent
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -326,7 +326,7 @@ metadata:
   name: tcpbytereceived
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -358,7 +358,7 @@ metadata:
   name: tcpconnectionsopened
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -390,7 +390,7 @@ metadata:
   name: tcpconnectionsclosed
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -422,7 +422,7 @@ metadata:
   name: prometheus
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -623,7 +623,7 @@ metadata:
   name: promhttp
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -642,7 +642,7 @@ metadata:
   name: promtcp
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -659,7 +659,7 @@ metadata:
   name: promtcpconnectionopen
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -675,7 +675,7 @@ metadata:
   name: promtcpconnectionclosed
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -692,7 +692,7 @@ metadata:
   name: istio-telemetry
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5"
+    maistra-version: "2.0.5.1"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
