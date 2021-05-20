@@ -38,24 +38,48 @@ func newMultitenantStrategy(cl client.Client, meshNamespace string) (*multitenan
 }
 
 func (s *multitenantStrategy) reconcileNamespaceInMesh(ctx context.Context, namespace string) error {
-	log := s.getLogger(ctx)
-	log.Info("joining network to mesh")
 	return s.updateNetworkNamespace(ctx, namespace, networkapihelpers.JoinPodNetwork, s.meshNamespace)
 }
 
 func (s *multitenantStrategy) removeNamespaceFromMesh(ctx context.Context, namespace string) error {
-	log := s.getLogger(ctx)
-	log.Info("isolating network")
 	return s.updateNetworkNamespace(ctx, namespace, networkapihelpers.IsolatePodNetwork, "")
 }
 
 // adapted from github.com/openshift/oc/pkg/cli/admin/network/project_options.go#UpdatePodNetwork()
 func (s *multitenantStrategy) updateNetworkNamespace(ctx context.Context, namespace string, action networkapihelpers.PodNetworkAction, args string) error {
+	log := s.getLogger(ctx)
+
 	netns := &network.NetNamespace{}
 	err := s.Client.Get(ctx, client.ObjectKey{Name: namespace}, netns)
 	if err != nil {
 		return err
 	}
+
+	meshNetns := &network.NetNamespace{}
+	err = s.Client.Get(ctx, client.ObjectKey{Name: s.meshNamespace}, meshNetns)
+	if err != nil {
+		return err
+	}
+
+	pendingAction, pendingNamespace, _ := networkapihelpers.GetChangePodNetworkAnnotation(netns)
+
+	isJoinedToMesh := netns.NetID == meshNetns.NetID
+	if action == networkapihelpers.JoinPodNetwork {
+		// if the pod network is already joined to the mesh or pending to be, we don't need to do anything
+		if isJoinedToMesh || (pendingAction == networkapihelpers.JoinPodNetwork && pendingNamespace == s.meshNamespace) {
+			log.V(2).Info("Not joining pod network as it is already joined or pending")
+			return nil
+		}
+		log.Info("Joining pod network to mesh")
+	} else if action == networkapihelpers.IsolatePodNetwork {
+		// if the pod network is already isolated or pending to be, we don't need to do anything
+		if !isJoinedToMesh || pendingAction == networkapihelpers.IsolatePodNetwork {
+			log.V(2).Info("Not isolating pod network as it is already isolated or pending")
+			return nil
+		}
+		log.Info("Isolating pod network")
+	}
+
 	networkapihelpers.SetChangePodNetworkAnnotation(netns, action, args)
 	err = s.Client.Update(ctx, netns)
 	if err != nil {
