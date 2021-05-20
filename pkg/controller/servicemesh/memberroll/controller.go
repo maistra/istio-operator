@@ -305,7 +305,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		instance.Status.ServiceMeshGeneration = mesh.Status.ObservedGeneration
 		instance.Status.ServiceMeshReconciledVersion = mesh.Status.GetReconciledVersion()
 	} else if len(unconfiguredMembers) > 0 { // required namespace that was missing has been created
-		reqLogger.Info("Reconciling newly created namespaces associated with this ServiceMeshMemberRoll")
+		reqLogger.Info("Reconciling newly created namespaces associated with this ServiceMeshMemberRoll", "unconfiguredMembers", unconfiguredMembers)
 
 		newConfiguredMembers, pendingMembers, err, nsErrors = r.reconcileNamespaces(ctx, requiredMembers, nil, instance, meshVersion)
 		if err != nil {
@@ -314,7 +314,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		// we don't update the ServiceMeshGeneration in case the other members need to be updated
 	} else if len(deletedMembers) > 0 { // namespace that was configured has been deleted
 		// nothing to do, but we need to update the ConfiguredMembers field
-		reqLogger.Info("Removing deleted namespaces from ConfiguredMembers")
+		reqLogger.Info("Removing deleted namespaces from ConfiguredMembers", "deletedMembers", deletedMembers)
 		configured := sets.NewString()
 		pending := sets.NewString()
 
@@ -476,6 +476,7 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 	configured := sets.NewString(namespacesToRemove.List()...)
 	configured.Delete(smmr.Namespace)
 
+	removed := sets.NewString()
 	pending := sets.NewString()
 	// create reconciler
 	reconciler, err := r.namespaceReconcilerFactory(ctx, r.Client, smmr.Namespace, controlPlaneVersion, r.cniConfig.Enabled)
@@ -483,7 +484,9 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 		return nil, nil, err, nil
 	}
 
-	reqLogger.Info("Reconciling member namespaces")
+	reqLogger.Info("Reconciling member namespaces",
+		"namespacesToReconcile", namespacesToReconcile.List(),
+		"namespacesToRemove", namespacesToRemove.List())
 	startTime := time.Now()
 
 	namespacesToProcess := namespacesToReconcile.Union(namespacesToRemove)
@@ -515,6 +518,7 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 							string(eventReasonNamespaceMissing),
 							fmt.Sprintf("Namespace to configure with mesh is missing: %s", ns))
 					} else {
+						reqLogger.Info("Failed to configure namespace with mesh", "namespace", ns, "error", err.Error())
 						r.EventRecorder.Event(
 							smmr,
 							corev1.EventTypeWarning,
@@ -525,6 +529,7 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 			} else {
 				err = reconciler.removeNamespaceFromMesh(ctx, ns)
 				if err != nil {
+					reqLogger.Info("Failed to remove namespace from mesh", "namespace", ns, "error", err.Error())
 					r.EventRecorder.Event(
 						smmr,
 						corev1.EventTypeWarning,
@@ -543,6 +548,7 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 			if namespacesToReconcile.Has(res.ns) {
 				configured.Insert(res.ns)
 			} else {
+				removed.Insert(res.ns)
 				configured.Delete(res.ns)
 			}
 		} else {
@@ -551,7 +557,18 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 		}
 	}
 
-	reqLogger.Info("Reconciliation of member namespaces complete", "duration", time.Now().Sub(startTime))
+	if len(pending) > 0 {
+		reqLogger.Info("Reconciliation of member namespaces complete",
+			"configured", configured.List(),
+			"removed", removed.List(),
+			"duration", time.Now().Sub(startTime))
+	} else {
+		reqLogger.Info("Failed to reconcile all member namespaces",
+			"configured", configured.List(),
+			"removed", removed.List(),
+			"pending", pending.List(),
+			"duration", time.Now().Sub(startTime))
+	}
 	return configured.List(), pending.List(), nil, nsErrors
 }
 
