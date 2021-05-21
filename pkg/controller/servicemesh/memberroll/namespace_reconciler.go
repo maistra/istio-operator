@@ -209,7 +209,7 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(ctx context.Context, names
 
 func (r *namespaceReconciler) reconcileNamespaceInMesh(ctx context.Context, namespace string) error {
 	logger := common.LogFromContext(ctx).WithValues("namespace", namespace)
-	logger.Info("configuring namespace for use with mesh")
+	logger.V(2).Info("Configuring namespace for use with mesh")
 	ctx = common.NewContextWithLog(ctx, logger)
 
 	// get namespace
