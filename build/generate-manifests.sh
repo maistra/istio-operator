@@ -21,7 +21,7 @@ else
   CSV_DESCRIPTION="The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project."
   APP_DESCRIPTION="Red Hat OpenShift Service Mesh is a platform that provides behavioral insight and operational control over a service mesh, providing a uniform way to connect, secure, and monitor microservice applications."
   DISPLAY_NAME="Red Hat OpenShift Service Mesh"
-  DOCUMENTATION_URL="https://docs.openshift.com/container-platform/latest/service_mesh/servicemesh-release-notes.html"
+  DOCUMENTATION_URL="https://docs.openshift.com/container-platform/latest/service_mesh/v2x/servicemesh-release-notes.html"
   BUG_URL="https://issues.redhat.com/projects/OSSM"
   OLM_FEATURES="[\"Disconnected\"]"
 fi

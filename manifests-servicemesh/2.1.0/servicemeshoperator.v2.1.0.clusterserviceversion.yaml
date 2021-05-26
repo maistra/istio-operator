@@ -140,7 +140,7 @@ spec:
 
     ### More Information
 
-    * [Documentation](https://docs.openshift.com/container-platform/latest/service_mesh/servicemesh-release-notes.html)
+    * [Documentation](https://docs.openshift.com/container-platform/latest/service_mesh/v2x/servicemesh-release-notes.html)
     * [Bugs](https://issues.redhat.com/projects/OSSM)
 
   icon:
@@ -235,7 +235,7 @@ spec:
     name: Red Hat, Inc.
   links:
   - name: Red Hat OpenShift Service Mesh
-    url: https://docs.openshift.com/container-platform/latest/service_mesh/servicemesh-release-notes.html
+    url: https://docs.openshift.com/container-platform/latest/service_mesh/v2x/servicemesh-release-notes.html
   - name: Istio
     url: https://istio.io/
   - name: Operator Source Code
