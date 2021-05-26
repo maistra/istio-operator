@@ -22,52 +22,165 @@ var fastBackoff = wait.Backoff{
 	Factor:   1.1,
 }
 
-func TestReconcileNamespaceInMeshAddsJoinActionToNetNamespaceObject(t *testing.T) {
-	netns := newNetNamespace(appNamespace)
-	cl, _ := test.CreateClient(netns)
+func TestOVSMultitenantReconcileNamespaceInMesh(t *testing.T) {
+	var meshNetID uint32 = 1
 
-	fakeNetNamespaceController := fakeNetNamespaceController{}
-	go fakeNetNamespaceController.run(cl, t)
+	testCases := []struct {
+		name                          string
+		memberNetID                   uint32
+		pendingAction                 networkapihelpers.PodNetworkAction
+		pendingNamespace              string
+		runFakeNetNamespaceController bool
+		expectSuccess                 bool
+		expectAction                  bool
+	}{
+		{
+			name:                          "success",
+			memberNetID:                   2,
+			runFakeNetNamespaceController: true,
+			expectSuccess:                 true,
+			expectAction:                  true,
+		},
+		{
+			name:          "already joined",
+			memberNetID:   meshNetID,
+			expectSuccess: true,
+			expectAction:  false,
+		},
+		{
+			name:                          "joined to another pod network",
+			memberNetID:                   3,
+			runFakeNetNamespaceController: true,
+			expectSuccess:                 true,
+			expectAction:                  true,
+		},
+		{
+			name:             "join pending",
+			memberNetID:      2,
+			pendingAction:    networkapihelpers.JoinPodNetwork,
+			pendingNamespace: controlPlaneNamespace,
+			expectSuccess:    true,
+			expectAction:     false,
+		},
+		{
+			name:                          "timeout",
+			memberNetID:                   2,
+			runFakeNetNamespaceController: false,
+			expectSuccess:                 false,
+			expectAction:                  true,
+		},
+	}
 
-	strategy := createAndConfigureMultitenantStrategy(cl, t)
-	assert.Success(strategy.reconcileNamespaceInMesh(ctx, appNamespace), "reconcileNamespaceInMesh", t)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			meshNetns := newNetNamespace(controlPlaneNamespace, meshNetID)
+			netns := newNetNamespace(appNamespace, tc.memberNetID)
+			if tc.pendingAction != networkapihelpers.PodNetworkAction("") {
+				networkapihelpers.SetChangePodNetworkAnnotation(netns, tc.pendingAction, tc.pendingNamespace)
+			}
+			cl, tracker := test.CreateClient(meshNetns, netns)
 
-	assert.Equals(fakeNetNamespaceController.action, networkapihelpers.JoinPodNetwork, "Unexpected action in NetNamespace annotation", t)
-	assert.Equals(fakeNetNamespaceController.namespace, controlPlaneNamespace, "Unexpected namespace in NetNamespace annotation", t)
+			fakeNetNamespaceController := fakeNetNamespaceController{}
+			if tc.runFakeNetNamespaceController {
+				go fakeNetNamespaceController.run(cl, t)
+			}
+
+			strategy := createAndConfigureMultitenantStrategy(cl, t)
+			if tc.expectSuccess {
+				assert.Success(strategy.reconcileNamespaceInMesh(ctx, appNamespace), "reconcileNamespaceInMesh", t)
+			} else {
+				assert.Failure(strategy.reconcileNamespaceInMesh(ctx, appNamespace), "reconcileNamespaceInMesh", t)
+			}
+
+			if tc.expectAction {
+				if tc.runFakeNetNamespaceController {
+					test.AssertNumberOfWriteActions(t, tracker.Actions(), 2) // 2 = annotation added by strategy + removed by fake controller
+					assert.Equals(fakeNetNamespaceController.action, networkapihelpers.JoinPodNetwork, "Unexpected action in NetNamespace annotation", t)
+					assert.Equals(fakeNetNamespaceController.namespace, controlPlaneNamespace, "Unexpected namespace in NetNamespace annotation", t)
+				} else {
+					test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
+				}
+			} else {
+				test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
+			}
+		})
+	}
 }
 
-func TestRemoveNamespaceFromMeshAddsIsolateActionToNetNamespaceObject(t *testing.T) {
-	netns := newNetNamespace(appNamespace)
-	cl, _ := test.CreateClient(netns)
+func TestOVSMultitenantRemoveNamespaceFromMesh(t *testing.T) {
+	var meshNetID uint32 = 1
 
-	fakeNetNamespaceController := fakeNetNamespaceController{}
-	go fakeNetNamespaceController.run(cl, t)
+	testCases := []struct {
+		name                          string
+		memberNetID                   uint32
+		pendingAction                 networkapihelpers.PodNetworkAction
+		pendingNamespace              string
+		runFakeNetNamespaceController bool
+		expectSuccess                 bool
+		expectAction                  bool
+	}{
+		{
+			name:                          "success",
+			memberNetID:                   meshNetID,
+			runFakeNetNamespaceController: true,
+			expectSuccess:                 true,
+			expectAction:                  true,
+		},
+		{
+			name:          "already isolated",
+			memberNetID:   2,
+			expectSuccess: true,
+			expectAction:  false,
+		},
+		{
+			name:          "isolation pending",
+			memberNetID:   meshNetID,
+			pendingAction: networkapihelpers.IsolatePodNetwork,
+			expectSuccess: true,
+			expectAction:  false,
+		},
+		{
+			name:                          "timeout",
+			memberNetID:                   meshNetID,
+			runFakeNetNamespaceController: false,
+			expectSuccess:                 false,
+			expectAction:                  true,
+		},
+	}
 
-	strategy := createAndConfigureMultitenantStrategy(cl, t)
-	assert.Success(strategy.removeNamespaceFromMesh(ctx, appNamespace), "removeNamespaceFromMesh", t)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			meshNetns := newNetNamespace(controlPlaneNamespace, meshNetID)
+			netns := newNetNamespace(appNamespace, tc.memberNetID)
+			if tc.pendingAction != networkapihelpers.PodNetworkAction("") {
+				networkapihelpers.SetChangePodNetworkAnnotation(netns, tc.pendingAction, tc.pendingNamespace)
+			}
+			cl, tracker := test.CreateClient(meshNetns, netns)
 
-	assert.Equals(fakeNetNamespaceController.action, networkapihelpers.IsolatePodNetwork, "Unexpected action in NetNamespace annotation", t)
-}
+			fakeNetNamespaceController := fakeNetNamespaceController{}
+			if tc.runFakeNetNamespaceController {
+				go fakeNetNamespaceController.run(cl, t)
+			}
 
-func TestReconcileNamespaceInMeshFailsIfNetNamespaceControllerDoesntProcessNetNamespaceInTime(t *testing.T) {
-	netns := newNetNamespace(appNamespace)
-	cl, _ := test.CreateClient(netns)
+			strategy := createAndConfigureMultitenantStrategy(cl, t)
+			if tc.expectSuccess {
+				assert.Success(strategy.removeNamespaceFromMesh(ctx, appNamespace), "removeNamespaceFromMesh", t)
+			} else {
+				assert.Failure(strategy.removeNamespaceFromMesh(ctx, appNamespace), "removeNamespaceFromMesh", t)
+			}
 
-	// NOTE: this test doesn't run any fake NetNamespace controller
-
-	strategy := createAndConfigureMultitenantStrategy(cl, t)
-
-	assert.Failure(strategy.reconcileNamespaceInMesh(ctx, appNamespace), "reconcileNamespaceInMesh", t)
-}
-
-func TestRemoveNamespaceFromMeshFailsIfNetNAmespaceControllerDoesntProcessNetNamespaceInTime(t *testing.T) {
-	netns := newNetNamespace(appNamespace)
-	cl, _ := test.CreateClient(netns)
-
-	// NOTE: this test doesn't run any fake NetNamespace controller
-
-	strategy := createAndConfigureMultitenantStrategy(cl, t)
-	assert.Failure(strategy.removeNamespaceFromMesh(ctx, appNamespace), "removeNamespaceFromMesh", t)
+			if tc.expectAction {
+				if tc.runFakeNetNamespaceController {
+					test.AssertNumberOfWriteActions(t, tracker.Actions(), 2) // 2 = annotation added by strategy + removed by fake controller
+					assert.Equals(fakeNetNamespaceController.action, networkapihelpers.IsolatePodNetwork, "Unexpected action in NetNamespace annotation", t)
+				} else {
+					test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
+				}
+			} else {
+				test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
+			}
+		})
+	}
 }
 
 func createAndConfigureMultitenantStrategy(cl client.Client, t *testing.T) *multitenantStrategy {
@@ -80,11 +193,12 @@ func createAndConfigureMultitenantStrategy(cl client.Client, t *testing.T) *mult
 	return strategy
 }
 
-func newNetNamespace(name string) *network.NetNamespace {
+func newNetNamespace(name string, netID uint32) *network.NetNamespace {
 	netns := &network.NetNamespace{
 		ObjectMeta: meta.ObjectMeta{
 			Name: name,
 		},
+		NetID: netID,
 	}
 	return netns
 }
@@ -119,6 +233,6 @@ func (c *fakeNetNamespaceController) run(cl client.Client, t *testing.T) {
 		return true, nil
 	})
 	if err != nil {
-		t.Fatalf("fakeNetNamespaceController never successfully removed annotation from NetNamespace")
+		t.Fatalf("fakeNetNamespaceController never found valid annotation in NetNamespace")
 	}
 }
