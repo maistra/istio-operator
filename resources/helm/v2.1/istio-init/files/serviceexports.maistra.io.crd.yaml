@@ -70,14 +70,14 @@ spec:
                           properties:
                             alias:
                               properties:
-                                names:
+                                name:
                                   type: string
                                 namespace:
                                   type: string
                               type: object
                             name:
                               properties:
-                                names:
+                                name:
                                   type: string
                                 namespace:
                                   type: string
@@ -142,20 +142,21 @@ spec:
                     properties:
                       alias:
                         properties:
-                          names:
+                          name:
                             type: string
                           namespace:
                             type: string
                         type: object
                       name:
                         properties:
-                          names:
+                          name:
                             type: string
                           namespace:
                             type: string
                         type: object
                     type: object
                   type:
+                    description: Type of rule.  One of Name or Label.
                     type: string
                 required:
                 - type
