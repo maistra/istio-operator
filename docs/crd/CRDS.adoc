@@ -12,6 +12,20 @@ link:maistra.io_ServiceMeshControlPlane_v2.adoc[ServiceMeshControlPlane]:: Servi
 
 link:maistra.io_ServiceMeshControlPlane_v1.adoc[ServiceMeshControlPlane]:: ServiceMeshControlPlane represents a deployment of the service mesh control plane. The control plane components are deployed in the namespace in which the ServiceMeshControlPlane resides. The configuration options for the components that comprise the control plane are specified in this object.
 
+link:maistra.io_ServiceMeshExtension_v1.adoc[ServiceMeshExtension]:: ServiceMeshExtension is the Schema for the servicemeshextensions API
+
+link:maistra.io_ServiceMeshMember_v1.adoc[ServiceMeshMember]:: A ServiceMeshMember object marks the namespace in which it lives as a member of the Service Mesh Control Plane referenced in the object. The ServiceMeshMember object should be created in each application namespace that must be part of the service mesh and must be named "default". 
+ When the ServiceMeshMember object is created, it causes the namespace to be added to the ServiceMeshMemberRoll within the namespace of the ServiceMeshControlPlane object the ServiceMeshMember references. 
+ To reference a ServiceMeshControlPlane, the user creating the ServiceMeshMember object must have the "use" permission on the referenced ServiceMeshControlPlane object. This permission is given via the mesh-users RoleBinding (and mesh-user Role) in the namespace of the referenced ServiceMeshControlPlane object.
+
+link:maistra.io_ServiceMeshMemberRoll_v1.adoc[ServiceMeshMemberRoll]:: The ServiceMeshMemberRoll object configures which namespaces belong to a service mesh. Only namespaces listed in the ServiceMeshMemberRoll will be affected by the control plane. Any number of namespaces can be added, but a namespace may not exist in more than one service mesh. The ServiceMeshMemberRoll object must be created in the same namespace as the ServiceMeshControlPlane object and must be named "default".
+
+=== v1
+
+link:maistra.io_ServiceMeshControlPlane_v1.adoc[ServiceMeshControlPlane]:: ServiceMeshControlPlane represents a deployment of the service mesh control plane. The control plane components are deployed in the namespace in which the ServiceMeshControlPlane resides. The configuration options for the components that comprise the control plane are specified in this object.
+
+link:maistra.io_ServiceMeshExtension_v1.adoc[ServiceMeshExtension]:: ServiceMeshExtension is the Schema for the servicemeshextensions API
+
 link:maistra.io_ServiceMeshMember_v1.adoc[ServiceMeshMember]:: A ServiceMeshMember object marks the namespace in which it lives as a member of the Service Mesh Control Plane referenced in the object. The ServiceMeshMember object should be created in each application namespace that must be part of the service mesh and must be named "default". 
  When the ServiceMeshMember object is created, it causes the namespace to be added to the ServiceMeshMemberRoll within the namespace of the ServiceMeshControlPlane object the ServiceMeshMember references. 
  To reference a ServiceMeshControlPlane, the user creating the ServiceMeshMember object must have the "use" permission on the referenced ServiceMeshControlPlane object. This permission is given via the mesh-users RoleBinding (and mesh-user Role) in the namespace of the referenced ServiceMeshControlPlane object.
@@ -19,6 +33,14 @@ link:maistra.io_ServiceMeshMember_v1.adoc[ServiceMeshMember]:: A ServiceMeshMemb
 link:maistra.io_ServiceMeshMemberRoll_v1.adoc[ServiceMeshMemberRoll]:: The ServiceMeshMemberRoll object configures which namespaces belong to a service mesh. Only namespaces listed in the ServiceMeshMemberRoll will be affected by the control plane. Any number of namespaces can be added, but a namespace may not exist in more than one service mesh. The ServiceMeshMemberRoll object must be created in the same namespace as the ServiceMeshControlPlane object and must be named "default".
 
 === v1alpha1
+
+link:maistra.io_FederationStatus_v1alpha1.adoc[FederationStatus]:: FederationStatus is the Schema for reporting the status of a MeshFederation. The name of the FederationStatus will match the name of the istiod pod to which it is associated.  There will be one FederationStatus resource for each istiod pod.
+
+link:maistra.io_MeshFederation_v1alpha1.adoc[MeshFederation]:: MeshFederation is the Schema for joining two meshes together.  The resource name will be used to identify the 'cluster' to which imported services belong.
+
+link:maistra.io_ServiceExports_v1alpha1.adoc[ServiceExports]:: ServiceExport is the Schema for configuring exported services.  The name of the ServiceExports resource must match the name of a MeshFederation resource defining the remote mesh to which the services will be exported.
+
+link:maistra.io_ServiceImports_v1alpha1.adoc[ServiceImports]:: ServiceImports is the Schema for configuring imported services.  The name of the ServiceImports resource must match the name of a MeshFederation resource defining the remote mesh from which the services will be imported.
 
 link:maistra.io_ServiceMeshExtension_v1alpha1.adoc[ServiceMeshExtension]:: ServiceMeshExtension is the Schema for the servicemeshextensions API
 

@@ -41,9 +41,14 @@ const (
 )
 
 var _ genall.Generator = (*Generator)(nil)
+var _ genall.NeedsTypeChecking = (*Generator)(nil)
 
 func (Generator) RegisterMarkers(into *markers.Registry) error {
 	return crd.Generator{}.RegisterMarkers(into)
+}
+
+func (Generator) CheckFilter() loader.NodeFilter {
+	return crd.Generator{}.CheckFilter()
 }
 
 func (g Generator) Generate(ctx *genall.GenerationContext) error {

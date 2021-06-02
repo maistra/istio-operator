@@ -8,5 +8,7 @@ Used by link:maistra.io_ServiceMeshControlPlane_v1.adoc[ServiceMeshControlPlane(
 
 github.com/maistra/istio-operator/pkg/apis/maistra/v1
 
+HelmValues is typedef for Helm .Values
+
 Type: object
 
