@@ -24,5 +24,8 @@ rules:
 
 # For MeshFederation support
 - apiGroups: ["maistra.io"]
-  resources: ["meshfederations", "meshfederations/status", "serviceexports", "serviceexports/status", "serviceimports", "serviceimports/status"]
+  resources: ["meshfederations", "meshfederations/status", "federationstatuses", "federationstatuses/status", "serviceexports", "serviceexports/status", "serviceimports", "serviceimports/status"]
   verbs: ["get", "list", "watch", "patch", "update"]
+- apiGroups: ["maistra.io"]
+  resources: ["federationstatuses", "federationstatuses/status"]
+  verbs: ["create"]
