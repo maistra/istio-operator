@@ -16,6 +16,10 @@ function generateCRDs() {
       crd:maxDescLen=0,preserveUnknownFields=false,crdVersions=v1beta1 \
       output:dir=./deploy/crds
 
+# FIXME: Remove when generating v1 above
+ echo "Removing default values"
+ sed -i '/default: TCP/d' deploy/crds/*
+
   echo "Patching CRDs to add attributes not supported by controller-gen"
    # workaround for https://github.com/kubernetes-sigs/controller-tools/issues/457
   #sed -i -e "s/\( *\)\(description\: The IP protocol for this port\)/\1default: TCP\n\1\2/" \
