@@ -1,4 +1,4 @@
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   labels:
@@ -18,11 +18,7 @@ spec:
     shortNames:
     - sme
     singular: servicemeshextension
-  preserveUnknownFields: false
   scope: Namespaced
-  subresources:
-    status: {}
-  version: v1
   versions:
   - name: v1
     schema:
@@ -101,6 +97,8 @@ spec:
         type: object
     served: true
     storage: true
+    subresources:
+      status: {}
   - name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -177,6 +175,8 @@ spec:
         type: object
     served: true
     storage: false
+    subresources:
+      status: {}
 status:
   acceptedNames:
     kind: ""
