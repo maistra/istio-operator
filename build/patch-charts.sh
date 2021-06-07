@@ -196,21 +196,28 @@ function patchGalley() {
           - --enableCRDScan=false\
           - --enableIngressClassName=false\
           - --disableNodeAccess=true' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
-  # disable webhook config updates
-  sed_wrap -i -r -e '/INJECTION_WEBHOOK_CONFIG_NAME/,/ISTIOD_ADDR/ {
-      /name: INJECTION_WEBHOOK_CONFIG_NAME/a\
-\            value: ""\
-\          - name: VALIDATION_WEBHOOK_CONFIG_NAME\
-\            value: ""
-      /name: INJECTION_WEBHOOK_CONFIG_NAME|ISTIOD_ADDR/! d
-    }' $deployment
+
+  ############## disable webhook config updates ############################
+  # Name of the mutatingwebhookconfiguration to patch, if istioctl is not used.
+  sed_wrap -i -e '/env:/ a\
+          - name: INJECTION_WEBHOOK_CONFIG_NAME\
+            value: ""' "${deployment}"
+
+  # Name of validatingwebhookconfiguration to patch.
+  # Empty will skip using cluster admin to patch.
+  sed_wrap -i -e '/env:/ a\
+          - name: VALIDATION_WEBHOOK_CONFIG_NAME\
+            value: ""' "${deployment}"
+  ##############################################################################
+
   # remove privileged security settings
   sed_wrap -i -r -e '/template:/,/containers:/ { /securityContext:/,/containers:/ { /containers:/! d }}' \
       -e '/containers:/,$ { /securityContext:/,/capabilities:/ { /capabilities:|securityContext:/! d }}' \
       $deployment
-  echo '
-base:
-  validationURL: ""' >> ${HELM_DIR}/global.yaml
+
+  sed_wrap -i -e '/base:/ a\
+  validationURL: ""' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
+
   # always istiod
   sed_wrap -i -e '/{{- if ne .Values.revision ""}}/,/{{- end }}/d' \
       -e '/matchLabels:/a\
@@ -275,19 +282,6 @@ function patchGateways() {
   # remove special users/groups
   sed_wrap -i -e '/: *1337 *$/d' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
-  # install in specified namespace
-  for file in $(find ${HELM_DIR}/gateways/istio-ingress/templates -type f -name "*.yaml" ! -name "meshexpansion.yaml"); do
-    sed_wrap -i -e 's/^\( *\)namespace:.*/\1namespace: {{ $gateway.namespace | default .Release.Namespace }}/' $file
-  done
-  for file in $(find ${HELM_DIR}/gateways/istio-egress/templates -type f -name "*.yaml"); do
-    sed_wrap -i -e 's/^\( *\)namespace:.*/\1namespace: {{ $gateway.namespace | default .Release.Namespace }}/' $file
-  done
-  sed_wrap -i -e '1 {
-    i \{\{ $gateway := index .Values "gateways" "istio-ingressgateway" \}\}\
-\{\{- if and .Values.global.meshExpansion.enabled (eq $gateway.name "istio-ingressgateway") \}\}
-    d
-    }' \
-    -e 's/istiod\.{{ .Release.Namespace }}/istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}/' ${HELM_DIR}/gateways/istio-ingress/templates/meshexpansion.yaml
 }
 
 function patchSidecarInjector() {
@@ -368,15 +362,12 @@ function patchSidecarInjector() {
   sed_wrap -i -e 's${{ if ne (annotation .ObjectMeta `sidecar.istio.io/interceptionMode` .ProxyConfig.InterceptionMode) `NONE` }}${{ if not .Values.istio_cni.enabled -}}$' \
       ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
   # use the correct cni network defintion
-  sed_wrap -i -e '/podRedirectAnnot:/,$s/`istio-cni`/.Values.istio_cni.istio_cni_network/' \
-      ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
-  # use global.proxy.includedInboundPorts if specified
-  sed_wrap -i -e 's$traffic.sidecar.istio.io/includeInboundPorts: "{{ annotation .ObjectMeta `traffic.sidecar.istio.io/includeInboundPorts` (includeInboundPorts .Spec.Containers) }}"$traffic.sidecar.istio.io/includeInboundPorts: "{{ annotation .ObjectMeta `traffic.sidecar.istio.io/includeInboundPorts` (valueOrDefault .Values.global.proxy.includeInboundPorts (includeInboundPorts .Spec.Containers)) }}"$' \
+  sed_wrap -i -e '/annotations:/,$s/`istio-cni`/.Values.istio_cni.istio_cni_network/' \
       ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
   sed_wrap -i -e '/excludeInboundPorts/a\
-    includeInboundPorts: "*"' ${HELM_DIR}/global.yaml
+    includeInboundPorts: "*"' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
   # status port is incorrect
-  sed_wrap -i -e 's/statusPort: 15020$/statusPort: 15021/' ${HELM_DIR}/global.yaml
+  sed_wrap -i -e 's/statusPort: 15020$/statusPort: 15021/' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
   # exclude 15090 from inbound ports
   sed_wrap -i -e 's$traffic.sidecar.istio.io/excludeInboundPorts: "{{ excludeInboundPort (annotation .ObjectMeta `status.sidecar.istio.io/port` .Values.global.proxy.statusPort) (annotation .ObjectMeta `traffic.sidecar.istio.io/excludeInboundPorts` .Values.global.proxy.excludeInboundPorts) }}"$traffic.sidecar.istio.io/excludeInboundPorts: "15090,{{ excludeInboundPort (annotation .ObjectMeta `status.sidecar.istio.io/port` .Values.global.proxy.statusPort) (annotation .ObjectMeta `traffic.sidecar.istio.io/excludeInboundPorts` .Values.global.proxy.excludeInboundPorts) }}"$' \
       ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
@@ -429,8 +420,7 @@ function moveEnvoyFiltersToMeshConfigChart() {
   echo "moving EnvoyFilter manifests to mesh-config"
   mv ${HELM_DIR}/istio-control/istio-discovery/templates/telemetry*.yaml ${HELM_DIR}/mesh-config/templates
 
-  echo >> ${HELM_DIR}/global.yaml
-  sed_nowrap -n -e '/^telemetry:/,/^      logWindowDuration/ p' ${HELM_DIR}/istio-control/istio-discovery/values.yaml >> ${HELM_DIR}/global.yaml
+  sed_nowrap -n -e '/^telemetry:/,/^      logWindowDuration/ p' ${HELM_DIR}/istio-control/istio-discovery/values.yaml > ${HELM_DIR}/mesh-config/values.yaml
   sed_wrap -i -n -e '/^telemetry:/,/^      logWindowDuration/ d; p' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
   sed_wrap -i -e '/maxNumberOfMessageEvents/a\
   # Default mtls policy. If true, mtls between services will be enabled by default.\
@@ -442,7 +432,7 @@ function moveEnvoyFiltersToMeshConfigChart() {
     # or its DestinationRule does not have TLSSettings specified, Istio configures client side\
     # TLS configuration automatically, based on the server side mTLS authentication policy and the\
     # availibity of sidecars.\
-    auto: true' ${HELM_DIR}/global.yaml
+    auto: true' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
 }
 
 function hacks() {
