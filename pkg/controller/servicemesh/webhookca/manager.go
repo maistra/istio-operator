@@ -8,8 +8,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
+
+const managerName = "webhookca-manager"
+
+var logger = logf.Log.WithName(managerName)
 
 // WebhookCABundleManager is the public interface for managing webhook caBundle.
 type WebhookCABundleManager interface {
@@ -66,7 +71,7 @@ func (wm *webhookCABundleManager) ManageWebhookCABundle(obj runtime.Object, sour
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 	if _, ok := wm.webhooksToBundleSource[webhookName]; ok {
-		return fmt.Errorf("Already watching webhook %s", webhookName)
+		logger.Info(fmt.Sprintf("Already watching webhook %s", webhookName))
 	}
 	wm.webhooksToBundleSource[webhookName] = source
 

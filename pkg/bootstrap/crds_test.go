@@ -25,6 +25,9 @@ import (
 var ctx = context.Background()
 
 func TestMultipleFilesInDir(t *testing.T) {
+	// Play nice with common.GetOperatorNamespace()
+	os.Setenv("POD_NAMESPACE", "istio-operator")
+
 	dir := createTempDirectoryWithCRDFiles(
 		newCRDYAML("test", "1.0.7"),
 		newCRDYAML("test2", "1.0.7"))
