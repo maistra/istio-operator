@@ -4,7 +4,7 @@ metadata:
   name: istiod-pilot-{{ .Values.revision | default "default" }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.5.1"
+    maistra-version: "2.0.5.2"
     app: pilot
     release: {{ .Release.Name }}
 roleRef:
