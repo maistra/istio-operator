@@ -5,9 +5,9 @@ kind: Route
 metadata:
   name: {{ $gateway.name | default "istio-ingressgateway" }}
 {{- if or (not $gateway.namespace) (eq $gateway.name "istio-ingressgateway") }}
-  namespace: {{ $gateway.namespace | default .Release.Namespace }}
+  namespace: {{ .Release.Namespace }}
 {{- else }}
-  namespace: {{ $gateway.namespace | default .Release.Namespace }}
+  namespace: {{ $gateway.namespace }}
 {{- end }}
   labels:
     maistra-version: "2.1.0"

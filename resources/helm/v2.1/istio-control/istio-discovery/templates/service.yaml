@@ -24,9 +24,6 @@ spec:
     - port: 15014
       name: http-monitoring # prometheus stats
       protocol: TCP
-    - port: 8188
-      name: http-discovery # federation discovery
-      protocol: TCP
   selector:
     app: istiod
     {{- if ne .Values.revision ""}}

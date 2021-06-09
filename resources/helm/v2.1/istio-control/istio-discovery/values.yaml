@@ -2,7 +2,6 @@
 
 ## Discovery Settings
 pilot:
-  enableFederation: true
   autoscaleEnabled: true
   autoscaleMin: 1
   autoscaleMax: 5
@@ -34,31 +33,7 @@ pilot:
   enableProtocolSniffingForInbound: false
 
   nodeSelector: {}
-  podLabels: {}
   podAnnotations: {}
-
-  tolerations: []
-
-  # Specify the pod anti-affinity that allows you to constrain which nodes
-  # your pod is eligible to be scheduled based on labels on pods that are
-  # already running on the node rather than based on labels on nodes.
-  # There are currently two types of anti-affinity:
-  #    "requiredDuringSchedulingIgnoredDuringExecution"
-  #    "preferredDuringSchedulingIgnoredDuringExecution"
-  # which denote "hard" vs. "soft" requirements, you can define your values
-  # in "podAntiAffinityLabelSelector" and "podAntiAffinityTermLabelSelector"
-  # correspondingly.
-  # For example:
-  # podAntiAffinityLabelSelector:
-  # - key: security
-  #   operator: In
-  #   values: S1,S2
-  #   topologyKey: "kubernetes.io/hostname"
-  # This pod anti-affinity rule says that the pod requires not to be scheduled
-  # onto a node if that node is already running a pod with label having key
-  # "security" and value "S1".
-  podAntiAffinityLabelSelector: []
-  podAntiAffinityTermLabelSelector: []
 
   # You can use jwksResolverExtraRootCA to provide a root certificate
   # in PEM format. This will then be trusted by pilot when resolving
@@ -90,6 +65,10 @@ pilot:
 
 
 sidecarInjectorWebhook:
+  # If enabled, the legacy webhook selection logic will be used. This relies on filtering of webhook
+  # requests in Istiod, rather than at the webhook selection level.
+  # This is option is intended for migration purposes only and will be removed in Istio 1.10.
+  useLegacySelectors: true
   # You can use the field called alwaysInjectSelector and neverInjectSelector which will always inject the sidecar or
   # always skip the injection on pods that match that label selector, regardless of the global policy.
   # See https://istio.io/docs/setup/kubernetes/additional-setup/sidecar-injection/#more-control-adding-exceptions
@@ -115,13 +94,41 @@ sidecarInjectorWebhook:
   # Only one environment should have this enabled.
   enableNamespacesByDefault: false
 
-  # Enable objectSelector to filter out pods with no need for sidecar before calling istio-sidecar-injector.
-  # It is disabled by default since this function will only work after k8s v1.15.
+  # Enable objectSelector to filter out pods with no need for sidecar before calling istiod.
+  # It is enabled by default as the minimum supported Kubernetes version is 1.15+
   objectSelector:
-    enabled: false
+    enabled: true
     autoInject: true
 
   rewriteAppHTTPProbe: true
+
+  # Templates defines a set of custom injection templates that can be used. For example, defining:
+  #
+  # templates:
+  #   hello: |
+  #     metadata:
+  #       labels:
+  #         hello: world
+  #
+  # Then starting a pod with the `inject.istio.io/templates: hello` annotation, will result in the pod
+  # being injected with the hello=world labels.
+  # This is intended for advanced configuration only; most users should use the built in template
+  templates: {}
+
+  # Default templates specifies a set of default templates that are used in sidecar injection.
+  # By default, a template `sidecar` is always provided, which contains the template of default sidecar. 
+  # To inject other additional templates, define it using the `templates` option, and add it to 
+  # the default templates list.
+  # For example:
+  #
+  # templates:
+  #   hello: |
+  #     metadata:
+  #       labels:
+  #         hello: world
+  #
+  # defaultTemplates: ["sidecar", "hello"]
+  defaultTemplates: []
 istiodRemote:
   # Sidecar injector mutating webhook configuration url
   # For example: https://$remotePilotAddress:15017/inject
@@ -135,26 +142,20 @@ ownerName: ""
 # meshConfig defines runtime configuration of components, including Istiod and istio-agent behavior
 # See https://istio.io/docs/reference/config/istio.mesh.v1alpha1/ for all available options
 meshConfig:
-
+  enablePrometheusMerge: true
   # Config for the default ProxyConfig.
   # Initially using directly the proxy metadata - can also be activated using annotations
   # on the pod. This is an unsupported low-level API, pending review and decisions on
   # enabling the feature. Enabling the DNS listener is safe - and allows further testing
   # and gradual adoption by setting capture only on specific workloads. It also allows
   # VMs to use other DNS options, like dnsmasq or unbound.
-  defaultConfig:
-    proxyMetadata:
-      # If empty, agent will not start :15013 DNS listener and will not attempt
-      # to connect to Istiod DNS-TLS. This will also disable the core dns sidecar in
-      # istiod and the dns-over-tls listener.
-      # DNS_AGENT: DNS-TLS
-      DNS_AGENT: ""
 
   # The namespace to treat as the administrative root namespace for Istio configuration.
   # When processing a leaf namespace Istio will search for declarations in that namespace first
   # and if none are found it will search in the root namespace. Any matching declaration found in the root namespace
   # is processed as if it were declared in the leaf namespace.
-  rootNamespace: "istio-system"
+
+  rootNamespace:
 
   # TODO: the intent is to eventually have this enabled by default when security is used.
   # It is not clear if user should normally need to configure - the metadata is typically
@@ -165,6 +166,8 @@ meshConfig:
   # No hurry to do this in 1.6, we're trying to prove the code.
 
 global:
+  # Used to locate istiod.
+  istioNamespace: istio-system
   # enable pod disruption budget for the control plane, which is used to
   # ensure Istio control plane components are gradually upgraded or recovered.
   defaultPodDisruptionBudget:
@@ -183,27 +186,6 @@ global:
     # limits:
     #   cpu: 100m
     #   memory: 128Mi
-
-  # Default node tolerations to be applied to all deployments so that all pods can be
-  # scheduled to a particular nodes with matching taints. Each component can overwrite
-  # these default values by adding its tolerations block in the relevant section below
-  # and setting the desired values.
-  # Configure this field in case that all pods of Istio control plane are expected to
-  # be scheduled to particular nodes with specified taints.
-  defaultTolerations: []
-
-  # Specify pod scheduling arch(amd64, ppc64le, s390x) and weight as follows:
-  #   0 - Never scheduled
-  #   1 - Least preferred
-  #   2 - No preference
-  #   3 - Most preferred
-  arch:
-    amd64: 2
-    s390x: 2
-    ppc64le: 2
-
-  # Used to locate istiod.
-  istioNamespace: istio-system
 
   # Default hub for Istio images.
   # Releases are published to docker hub under 'istio' project.
@@ -290,6 +272,7 @@ global:
     # examples:
     #     Redirect only selected ports:            --includeInboundPorts="80,8080"
     excludeInboundPorts: ""
+    includeInboundPorts: "*"
 
     # istio egress capture allowlist
     # https://istio.io/docs/tasks/traffic-management/egress.html#calling-external-services-directly
@@ -326,7 +309,7 @@ global:
         memory: 1024Mi
 
     # Default port for Pilot agent health checks. A value of 0 will disable health checking.
-    statusPort: 15020
+    statusPort: 15021
 
     # Specify which tracer to use. One of: zipkin, lightstep, datadog, stackdriver.
     # If using stackdriver tracer outside GCP, set env GOOGLE_APPLICATION_CREDENTIALS to the GCP credential file.
@@ -356,12 +339,11 @@ global:
 
   # The customized CA address to retrieve certificates for the pods in the cluster.
   # CSR clients such as the Istio Agent and ingress gateways can use this to specify the CA endpoint.
+  # If not set explicitly, default to the Istio discovery address.
   caAddress: ""
 
   # External istiod controls all remote clusters: disabled by default
   externalIstiod: false
-  # Central istiod controls all remote clusters: disabled by default
-  centralIstiod: false
 
   # Configure the policy for validating JWT.
   # Currently, two options are supported: "third-party-jwt" and "first-party-jwt".
@@ -472,6 +454,16 @@ global:
       debug: false
       # The global default max number of message events per span.
       maxNumberOfMessageEvents: 200
+  # Default mtls policy. If true, mtls between services will be enabled by default.
+  mtls:
+    # Default setting for service-to-service mtls. Can be set explicitly using
+    # destination rules or service annotations.
+    enabled: false
+    # If set to true, and a given service does not have a corresponding DestinationRule configured,
+    # or its DestinationRule does not have TLSSettings specified, Istio configures client side
+    # TLS configuration automatically, based on the server side mTLS authentication policy and the
+    # availibity of sidecars.
+    auto: true
       # The global default max number of annotation events per span.
       maxNumberOfAnnotations: 200
       # The global default max number of attributes per span.
@@ -486,3 +478,7 @@ global:
 
   # Deprecated, use meshConfig.trustDomain
   trustDomain: ""
+base:
+  validationURL: ""
+  # For istioctl usage to disable istio config crds in base
+  enableIstioConfigCRDs: true

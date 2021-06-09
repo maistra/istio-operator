@@ -3,8 +3,8 @@
 apiVersion: policy/v1beta1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ $gateway.name | default "istio-ingressgateway" }}
-  namespace: {{ $gateway.namespace | default .Release.Namespace }}
+  name: {{ $gateway.name }}
+  namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: "2.1.0"
 {{ $gateway.labels | toYaml | trim | indent 4 }}
