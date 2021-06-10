@@ -24,10 +24,6 @@ gateways:
       targetPort: 8443
       name: https
       protocol: TCP
-    - port: 15012
-      targetPort: 15012
-      name: tcp-istiod
-      protocol: TCP
     # This is the port where sni routing happens
     - port: 15443
       targetPort: 15443
