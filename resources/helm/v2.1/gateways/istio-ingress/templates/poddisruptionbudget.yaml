@@ -4,7 +4,7 @@ apiVersion: policy/v1beta1
 kind: PodDisruptionBudget
 metadata:
   name: {{ $gateway.name }}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
     maistra-version: "2.1.0"
 {{ $gateway.labels | toYaml | trim | indent 4 }}

@@ -75,7 +75,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ $gateway.name }}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
     maistra.io/gateway: {{ $gateway.name | default "istio-ingressgateway" }}.{{ $gateway.namespace | default .Release.Namespace }}
     maistra-version: "2.1.0"

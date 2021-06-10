@@ -282,6 +282,13 @@ function patchGateways() {
   # remove special users/groups
   sed_wrap -i -e '/: *1337 *$/d' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
+  # install in specified namespace
+  for file in $(find ${HELM_DIR}/gateways/istio-ingress/templates -type f -name "*.yaml"); do
+    sed_wrap -i -e 's/^\( *\)namespace:.*/\1namespace: {{ $gateway.namespace | default .Release.Namespace }}/' $file
+  done
+  for file in $(find ${HELM_DIR}/gateways/istio-egress/templates -type f -name "*.yaml"); do
+    sed_wrap -i -e 's/^\( *\)namespace:.*/\1namespace: {{ $gateway.namespace | default .Release.Namespace }}/' $file
+  done
 }
 
 function patchSidecarInjector() {

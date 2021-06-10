@@ -8,7 +8,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ $gateway.name | default "istio-egressgateway" }}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
     maistra-version: "2.1.0"
 {{ $gateway.labels | toYaml | indent 4 }}
