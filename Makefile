@@ -19,7 +19,6 @@ MAISTRA_BRANCH         ?= maistra-2.1
 REPLACES_PRODUCT_CSV   ?= 2.0.5
 REPLACES_COMMUNITY_CSV ?= 2.0.5
 VERSION                ?= development
-IMAGE                  ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}
 CONTAINER_CLI          ?= docker
 COMMUNITY              ?= true
 TEST_TIMEOUT           ?= 5m
@@ -291,6 +290,7 @@ build: update-generated-code update-charts update-templates compile
 ################################################################################
 .PHONY: image
 image: build collect-resources
+	@if [ -z "${IMAGE}" ]; then echo "Please set the IMAGE variable" && exit 1; fi
 	${CONTAINER_CLI} build --no-cache -t "${IMAGE}" -f ${SOURCE_DIR}/build/Dockerfile --build-arg build_type=${BUILD_TYPE} .
 
 .DEFAULT_GOAL := build
