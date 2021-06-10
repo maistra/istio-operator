@@ -251,6 +251,13 @@ function patchGateways() {
   echo "patching Gateways specific Helm charts"
   sed_wrap -i -r -e 's/type: LoadBalancer *(#.*)?$/type: ClusterIP/' ${HELM_DIR}/gateways/istio-ingress/values.yaml
 
+  # Disable defaultTemplates to avoid injection of arbitrary things
+  sed_wrap -i -e 's/defaultTemplates: \[\]/\# defaultTemplates: \[\]/' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
+  sed_wrap -i -e '/{{- if .Values.sidecarInjectorWebhook.defaultTemplates }}/,+7d' ${HELM_DIR}/istio-control/istio-discovery/templates/istiod-injector-configmap.yaml
+  sed_wrap -i -e '/policy:/ i\
+    defaultTemplates: [sidecar]
+' ${HELM_DIR}/istio-control/istio-discovery/templates/istiod-injector-configmap.yaml
+
   sed_wrap -i -e 's/\(^ *\)- containerPort: {{ $val.targetPort | default $val.port }}/\1- name: {{ $val.name }}\
 \1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 

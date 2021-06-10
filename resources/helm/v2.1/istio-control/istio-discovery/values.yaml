@@ -128,7 +128,7 @@ sidecarInjectorWebhook:
   #         hello: world
   #
   # defaultTemplates: ["sidecar", "hello"]
-  defaultTemplates: []
+  # defaultTemplates: []
 istiodRemote:
   # Sidecar injector mutating webhook configuration url
   # For example: https://$remotePilotAddress:15017/inject
