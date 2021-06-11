@@ -558,15 +558,15 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 	}
 
 	if len(pending) > 0 {
-		reqLogger.Info("Reconciliation of member namespaces complete",
-			"configured", configured.List(),
-			"removed", removed.List(),
-			"duration", time.Now().Sub(startTime))
-	} else {
 		reqLogger.Info("Failed to reconcile all member namespaces",
 			"configured", configured.List(),
 			"removed", removed.List(),
 			"pending", pending.List(),
+			"duration", time.Now().Sub(startTime))
+	} else {
+		reqLogger.Info("Reconciliation of member namespaces complete",
+			"configured", configured.List(),
+			"removed", removed.List(),
 			"duration", time.Now().Sub(startTime))
 	}
 	return configured.List(), pending.List(), nil, nsErrors
