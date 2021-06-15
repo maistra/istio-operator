@@ -101,6 +101,8 @@ func processFile(fileName string, written sets.String) {
 				}
 			}
 		}
+	} else {
+		panic(err)
 	}
 }
 
