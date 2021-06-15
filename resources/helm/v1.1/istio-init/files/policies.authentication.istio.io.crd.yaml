@@ -7,7 +7,7 @@ metadata:
     app: istio-citadel
     chart: istio
     heritage: Tiller
-    maistra-version: 1.1.15
+    maistra-version: 1.1.16
     release: istio
   name: policies.authentication.istio.io
 spec:
