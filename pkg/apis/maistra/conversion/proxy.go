@@ -328,24 +328,24 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 				if err := setHelmIntValue(proxyValues, "statusPort", int64(proxy.Runtime.Readiness.StatusPort)); err != nil {
 					return err
 				}
-				if proxy.Runtime.Readiness.InitialDelaySeconds > 0 {
-					if err := setHelmIntValue(proxyValues, "readinessInitialDelaySeconds", int64(proxy.Runtime.Readiness.InitialDelaySeconds)); err != nil {
-						return err
-					}
-				}
-				if proxy.Runtime.Readiness.PeriodSeconds > 0 {
-					if err := setHelmIntValue(proxyValues, "readinessPeriodSeconds", int64(proxy.Runtime.Readiness.PeriodSeconds)); err != nil {
-						return err
-					}
-				}
-				if proxy.Runtime.Readiness.FailureThreshold > 0 {
-					if err := setHelmIntValue(proxyValues, "readinessFailureThreshold", int64(proxy.Runtime.Readiness.FailureThreshold)); err != nil {
-						return err
-					}
-				}
-				if err := setHelmBoolValue(values, "sidecarInjectorWebhook.rewriteAppHTTPProbe", proxy.Runtime.Readiness.RewriteApplicationProbes); err != nil {
+			}
+			if proxy.Runtime.Readiness.InitialDelaySeconds > 0 {
+				if err := setHelmIntValue(proxyValues, "readinessInitialDelaySeconds", int64(proxy.Runtime.Readiness.InitialDelaySeconds)); err != nil {
 					return err
 				}
+			}
+			if proxy.Runtime.Readiness.PeriodSeconds > 0 {
+				if err := setHelmIntValue(proxyValues, "readinessPeriodSeconds", int64(proxy.Runtime.Readiness.PeriodSeconds)); err != nil {
+					return err
+				}
+			}
+			if proxy.Runtime.Readiness.FailureThreshold > 0 {
+				if err := setHelmIntValue(proxyValues, "readinessFailureThreshold", int64(proxy.Runtime.Readiness.FailureThreshold)); err != nil {
+					return err
+				}
+			}
+			if err := setHelmBoolValue(values, "sidecarInjectorWebhook.rewriteAppHTTPProbe", proxy.Runtime.Readiness.RewriteApplicationProbes); err != nil {
+				return err
 			}
 		}
 	}
