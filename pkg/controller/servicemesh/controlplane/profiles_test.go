@@ -160,6 +160,37 @@ func TestProfiles(t *testing.T) {
 				smcp.Spec.TechPreview.RemoveField("wasmExtensions")
 			},
 		},
+		{
+			name: "MAISTRA-2409",
+			v:    versions.V2_0,
+			input: &v2.ServiceMeshControlPlane{
+				Spec: v2.ControlPlaneSpec{
+					Profiles: []string{"servicemesh"},
+					Proxy: &v2.ProxyConfig{
+						Runtime: &v2.ProxyRuntimeConfig{
+							Readiness: &v2.ProxyReadinessConfig{
+								RewriteApplicationProbes: true,
+							},
+						},
+					},
+				},
+			},
+			expected: &v2.ServiceMeshControlPlane{
+				Spec: v2_0_ExpectedSpec,
+			},
+			patchupExpected: func(smcp *v2.ServiceMeshControlPlane) {
+				// the only thing changing here should be image names/tags/registries
+				smcp.Spec.Proxy.Runtime.Readiness = &v2.ProxyReadinessConfig{RewriteApplicationProbes: true}
+				smcp.Spec.Runtime.Defaults.Container.ImageRegistry = "registry.redhat.io/openshift-service-mesh"
+				smcp.Spec.Runtime.Defaults.Container.ImageRegistry = "registry.redhat.io/openshift-service-mesh"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameThreeScale].Container.ImageRegistry = "registry.redhat.io/openshift-service-mesh"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameThreeScale].Container.ImageTag = "2.0.0"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.ImageRegistry = "registry.redhat.io/openshift4"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.Image = "ose-oauth-proxy"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.ImageTag = "v4.4"
+				smcp.Spec.Runtime.Defaults.Container.ImageTag = PRODUCT_IMAGE_2_0
+			},
+		},
 	}
 	testNamespace := "test-namespace"
 	testName := "test"
