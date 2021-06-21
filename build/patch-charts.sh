@@ -439,7 +439,7 @@ function moveEnvoyFiltersToMeshConfigChart() {
 
   sed_nowrap -n -e '/^telemetry:/,/^      logWindowDuration/ p' ${HELM_DIR}/istio-control/istio-discovery/values.yaml > ${HELM_DIR}/mesh-config/values.yaml
   sed_wrap -i -n -e '/^telemetry:/,/^      logWindowDuration/ d; p' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
-  sed_wrap -i -e '/maxNumberOfMessageEvents/a\
+  sed_wrap -i -e '/multiCluster:/ i\
   # Default mtls policy. If true, mtls between services will be enabled by default.\
   mtls:\
     # Default setting for service-to-service mtls. Can be set explicitly using\
@@ -449,7 +449,22 @@ function moveEnvoyFiltersToMeshConfigChart() {
     # or its DestinationRule does not have TLSSettings specified, Istio configures client side\
     # TLS configuration automatically, based on the server side mTLS authentication policy and the\
     # availibity of sidecars.\
-    auto: true' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
+    auto: true\
+' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
+
+  sed_wrap -i -e '/telemetry:/ i\
+global:\
+  # Default mtls policy. If true, mtls between services will be enabled by default.\
+  mtls:\
+    # Default setting for service-to-service mtls. Can be set explicitly using\
+    # destination rules or service annotations.\
+    enabled: false\
+    # If set to true, and a given service does not have a corresponding DestinationRule configured,\
+    # or its DestinationRule does not have TLSSettings specified, Istio configures client side\
+    # TLS configuration automatically, based on the server side mTLS authentication policy and the\
+    # availibity of sidecars.\
+    auto: true' ${HELM_DIR}/mesh-config/values.yaml
+
 }
 
 function hacks() {
