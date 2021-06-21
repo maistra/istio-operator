@@ -341,6 +341,8 @@ function patchSidecarInjector() {
 \{\{- end \}\}
       d
     }' $webhookconfig
+
+  echo "{{- end }}" >> $webhookconfig
   # remove {{- if not .Values.global.operatorManageWebhooks }} ... {{- end }}
   sed_wrap -i -e '/operatorManageWebhooks/ d' $webhookconfig
 
