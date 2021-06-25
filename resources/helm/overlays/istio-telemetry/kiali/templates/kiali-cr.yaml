@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.kiali.resourceName | default "kiali" }}
   namespace: {{ .Release.Namespace }}
 spec:
-  version: "v1.33"
+  version: "v1.36"
   installation_tag: "Kiali [{{ .Release.Namespace }}]"
   istio_namespace: "{{ .Release.Namespace }}"
 
