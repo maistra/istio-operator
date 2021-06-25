@@ -348,7 +348,7 @@ spec:
       privileged: {{ .Values.global.proxy.privileged }}
       readOnlyRootFilesystem: {{ not .Values.global.proxy.enableCoreDump }}
       runAsGroup: {{ .ProxyUID }}
-      fsGroup: {{ .ProxyUID }}
+      fsGroup: {{ .ProxyGID }}
       {{ if or (eq (annotation .ObjectMeta `sidecar.istio.io/interceptionMode` .ProxyConfig.InterceptionMode) `TPROXY`) (eq (annotation .ObjectMeta `sidecar.istio.io/capNetBindService` .Values.global.proxy.capNetBindService) `true`) -}}
       runAsNonRoot: false
       runAsUser: 0
@@ -494,5 +494,5 @@ spec:
   {{- end }}
   {{- if eq (env "ENABLE_LEGACY_FSGROUP_INJECTION" "true") "true" }}
   securityContext:
-    fsGroup: {{ .ProxyUID }}
+    fsGroup: {{ .ProxyGID }}
   {{- end }}
