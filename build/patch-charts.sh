@@ -254,6 +254,38 @@ function patchGateways() {
   # do not expose port 15012, support for mesh expansion will automatically add this port
   sed_wrap -i -e '/port: 15012/,+3d' ${HELM_DIR}/gateways/istio-ingress/values.yaml
 
+  # add tracer config
+  tracerConfig='\
+  # Configuration for each of the supported tracers\
+  tracer:\
+    # Configuration for envoy to send trace data to LightStep.\
+    # Disabled by default.\
+    # address: the <host>:<port> of the satellite pool\
+    # accessToken: required for sending data to the pool\
+    #\
+    datadog:\
+      # Host:Port for submitting traces to the Datadog agent.\
+      address: "$(HOST_IP):8126"\
+    lightstep:\
+      address: ""                # example: lightstep-satellite:443\
+      accessToken: ""            # example: abcdefg1234567\
+    stackdriver:\
+      # enables trace output to stdout.\
+      debug: false\
+      # The global default max number of message events per span.\
+      maxNumberOfMessageEvents: 200\
+      # The global default max number of annotation events per span.\
+      maxNumberOfAnnotations: 200\
+      # The global default max number of attributes per span.\
+      maxNumberOfAttributes: 200\
+    zipkin:\
+      # Host:Port for reporting trace data in zipkin format. If not specified, will default to\
+      # zipkin service (port 9411) in the same namespace as the other istio components.\
+      address: ""\
+'
+  sed_wrap -i -e "/# Deprecated, use meshConfig.trustDomain/ i$tracerConfig" ${HELM_DIR}/gateways/istio-ingress/values.yaml
+  sed_wrap -i -e "/# Deprecated, use meshConfig.trustDomain/ i$tracerConfig" ${HELM_DIR}/gateways/istio-egress/values.yaml
+
   # Disable defaultTemplates to avoid injection of arbitrary things
   sed_wrap -i -e 's/defaultTemplates: \[\]/\# defaultTemplates: \[\]/' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
   sed_wrap -i -e '/{{- if .Values.sidecarInjectorWebhook.defaultTemplates }}/,+7d' ${HELM_DIR}/istio-control/istio-discovery/templates/istiod-injector-configmap.yaml
