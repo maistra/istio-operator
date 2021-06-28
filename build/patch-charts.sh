@@ -501,6 +501,11 @@ global:\
 
 }
 
+function copyGlobalValues() {
+  echo "copying global.yaml file from overlay charts as global.yaml file is removed in upstream but it's still needed."
+  cp ${SOURCE_DIR}/resources/helm/overlays/global.yaml ${SOURCE_DIR}/resources/helm/v2.1/
+}
+
 function hacks() {
   echo "XXXXXXXX HACKS THAT NEED TO BE RESOLVED BEFORE 2.0 RELEASE XXXXXXXX"
   sed_wrap -i -e '/containers:/,/name: discovery/ {
@@ -521,6 +526,6 @@ patchSidecarInjector
 #patchKialiTemplate # no longer present upstream
 #patchKialiOpenShift
 moveEnvoyFiltersToMeshConfigChart
-
+copyGlobalValues
 # XXX: hacks - remove before 2.0 release
 hacks
