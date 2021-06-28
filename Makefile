@@ -185,7 +185,7 @@ collect-2.0-templates:
 ################################################################################
 .PHONY: update-2.1-charts
 update-2.1-charts:
-	HELM_DIR=${RESOURCES_DIR}/helm/v2.1 ISTIO_VERSION=1.8.0 ${SOURCE_DIR}/build/download-charts.sh
+	HELM_DIR=${RESOURCES_DIR}/helm/v2.1 ISTIO_VERSION=1.9.5 ${SOURCE_DIR}/build/download-charts.sh
 
 .PHONY: collect-2.1-charts
 collect-2.1-charts:
