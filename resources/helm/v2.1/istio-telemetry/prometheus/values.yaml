@@ -54,3 +54,8 @@ prometheus:
   provisionPrometheusCert: true
 
 revision: ""
+
+meshConfig:
+  enablePrometheusMerge: false
+  defaultConfig:
+    proxyMetadata: {}
