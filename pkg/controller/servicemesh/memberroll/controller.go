@@ -489,12 +489,16 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 		"namespacesToRemove", namespacesToRemove.List())
 	startTime := time.Now()
 
-	namespacesToProcess := namespacesToReconcile.Union(namespacesToRemove)
-	if namespacesToProcess.Has(smmr.Namespace) {
+	if namespacesToRemove.Has(smmr.Namespace) {
+		namespacesToRemove.Delete(smmr.Namespace)
+	}
+	if namespacesToReconcile.Has(smmr.Namespace) {
 		// we never operate on the control plane namespace
 		reqLogger.Info("ignoring control plane namespace in members list of ServiceMeshMemberRoll")
-		namespacesToProcess.Delete(smmr.Namespace)
+		namespacesToReconcile.Delete(smmr.Namespace)
 	}
+
+	namespacesToProcess := namespacesToReconcile.Union(namespacesToRemove)
 
 	// use scatter-gather pattern to process namespaces concurrently
 	type result struct {
