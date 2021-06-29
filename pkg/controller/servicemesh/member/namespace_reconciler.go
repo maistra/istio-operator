@@ -124,6 +124,7 @@ func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) 
 func (r *namespaceReconciler) removeNamespaceFromMesh(ctx context.Context, namespace string) error {
 	logger := common.LogFromContext(ctx).WithValues("namespace", namespace)
 	logger.Info("cleaning up resources in namespace removed from mesh")
+	ctx = common.NewContextWithLog(ctx, logger)
 
 	// get namespace
 	namespaceResource := &core.Namespace{}
