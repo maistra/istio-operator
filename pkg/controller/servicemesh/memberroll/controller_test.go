@@ -420,6 +420,35 @@ func TestReconcileUpdatesMemberListWhenNamespaceIsDeleted(t *testing.T) {
 	kialiReconciler.assertInvokedWith(t, appNamespace)
 }
 
+func TestMAISTRA2468(t *testing.T) {
+	roll := newMemberRoll(2, 1, 1, operatorVersionDefault) // note generation is 2 and observedGeneration is 1, which means the SMMR has been updated
+	addOwnerReference(roll)
+	roll.Spec.Members = []string{appNamespace}
+	roll.Status.ConfiguredMembers = []string{appNamespace}
+	controlPlane := markControlPlaneReconciled(newControlPlane(""), operatorVersionDefault)
+
+	namespace := newNamespace(appNamespace)
+	common.SetLabel(namespace, common.MemberOfKey, controlPlaneNamespace)
+
+	namespace2 := newNamespace(appNamespace2)
+	common.SetLabel(namespace2, common.MemberOfKey, controlPlaneNamespace)
+
+	cl, tracker, r, _, _ := createClientAndReconciler(t, roll, controlPlane, namespace, namespace2)
+	tracker.AddReactor("update", "namespaces", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+		updateAction := action.(clienttesting.UpdateAction)
+		if updateAction.GetObject().(*core.Namespace).Name == appNamespace2 {
+			return true, nil, fmt.Errorf("induced failure")
+		} else {
+			return false, nil, nil
+		}
+	})
+	assertReconcileSucceedsWithRequeue(r, t)
+
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
+	assert.DeepEquals(updatedRoll.Status.ConfiguredMembers, []string{appNamespace}, "Unexpected Status.ConfiguredMembers in SMMR", t)
+	assert.DeepEquals(updatedRoll.Status.PendingMembers, []string{appNamespace2}, "Unexpected Status.PendingMembers in SMMR", t)
+}
+
 func TestReconcileDoesNotUpdateMemberRollWhenNothingToReconcile(t *testing.T) {
 	roll := newMemberRoll(2, 2, 1, operatorVersionDefault)
 	addOwnerReference(roll)

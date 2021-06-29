@@ -472,10 +472,7 @@ func (r *MemberRollReconciler) findConfiguredNamespaces(ctx context.Context, mes
 
 func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespacesToReconcile, namespacesToRemove sets.String, smmr *v1.ServiceMeshMemberRoll, controlPlaneVersion versions.Version) (configuredMembers, pendingMembers []string, err error, nsErrors []error) {
 	reqLogger := common.LogFromContext(ctx)
-	// current configuredNamespaces are namespacesToRemove minus control plane namespace
-	configured := sets.NewString(namespacesToRemove.List()...)
-	configured.Delete(smmr.Namespace)
-
+	configured := sets.NewString()
 	removed := sets.NewString()
 	pending := sets.NewString()
 	// create reconciler
@@ -553,7 +550,6 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 				configured.Insert(res.ns)
 			} else {
 				removed.Insert(res.ns)
-				configured.Delete(res.ns)
 			}
 		} else {
 			nsErrors = append(nsErrors, res.err)
