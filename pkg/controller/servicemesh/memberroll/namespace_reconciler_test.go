@@ -59,6 +59,16 @@ func TestReconcileNamespaceInMesh(t *testing.T) {
 	assert.DeepEquals(fakeNetworkStrategy.reconciledNamespaces, []string{appNamespace}, "Expected reconcileNamespaceInMesh to invoke the networkStrategy with only the appNamespace, but it didn't", t)
 }
 
+func TestReconcileTerminatingNamespace(t *testing.T) {
+	namespace := newNamespace(appNamespace)
+	namespace.DeletionTimestamp = &oneMinuteAgo
+	cl, tracker := test.CreateClient(namespace)
+
+	assertReconcileNamespaceFails(t, cl)
+
+	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
+}
+
 func TestReconcileFailsIfNamespaceIsPartOfAnotherMesh(t *testing.T) {
 	namespace := newNamespace(appNamespace)
 	namespace.Labels = map[string]string{
@@ -96,6 +106,16 @@ func TestRemoveNamespaceFromMesh(t *testing.T) {
 	assertNotFound(err, "Expected RoleBinding to be deleted, but it is still present", t)
 
 	assert.DeepEquals(fakeNetworkStrategy.removedNamespaces, []string{appNamespace}, "Expected removeNamespaceFromMesh to invoke the networkStrategy with only the appNamespace, but it didn't", t)
+}
+
+func TestRemoveTerminatingNamespace(t *testing.T) {
+	namespace := newNamespace(appNamespace)
+	namespace.DeletionTimestamp = &oneMinuteAgo
+	cl, tracker := test.CreateClient(namespace)
+
+	assertRemoveNamespaceFails(t, cl)
+
+	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 }
 
 func TestReconcileUpdatesModifiedRoleBindings(t *testing.T) {
@@ -304,6 +324,17 @@ func assertReconcileNamespaceFails(t *testing.T, cl client.Client) {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
 	err = reconciler.reconcileNamespaceInMesh(ctx, appNamespace)
+	if err == nil {
+		t.Fatal("Expected reconcileNamespaceInMesh to fail, but it didn't.")
+	}
+}
+
+func assertRemoveNamespaceFails(t *testing.T, cl client.Client) {
+	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, versions.DefaultVersion, true)
+	if err != nil {
+		t.Fatalf("Error creating namespace reconciler: %v", err)
+	}
+	err = reconciler.removeNamespaceFromMesh(ctx, appNamespace)
 	if err == nil {
 		t.Fatal("Expected reconcileNamespaceInMesh to fail, but it didn't.")
 	}

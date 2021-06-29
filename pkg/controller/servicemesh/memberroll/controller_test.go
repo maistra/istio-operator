@@ -449,6 +449,41 @@ func TestMAISTRA2468(t *testing.T) {
 	assert.DeepEquals(updatedRoll.Status.PendingMembers, []string{appNamespace2}, "Unexpected Status.PendingMembers in SMMR", t)
 }
 
+func TestReconciliationOfTerminatingNamespace(t *testing.T) {
+	roll := newMemberRoll(2, 1, 1, operatorVersionDefault) // note generation is 2 and observedGeneration is 1, which means the SMMR has been updated
+	addOwnerReference(roll)
+	roll.Spec.Members = []string{appNamespace}
+	controlPlane := markControlPlaneReconciled(newControlPlane(""), operatorVersionDefault)
+
+	namespace := newNamespace(appNamespace)
+	namespace.DeletionTimestamp = &oneMinuteAgo
+	cl, _, r, _, _ := createClientAndReconciler(t, roll, controlPlane, namespace)
+	assertReconcileSucceeds(r, t)
+
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
+	assert.DeepEquals(updatedRoll.Status.ConfiguredMembers, []string{}, "Unexpected Status.ConfiguredMembers in SMMR", t)
+	assert.DeepEquals(updatedRoll.Status.PendingMembers, []string{appNamespace}, "Unexpected Status.PendingMembers in SMMR", t)
+}
+
+func TestRemovalOfTerminatingNamespace(t *testing.T) {
+	roll := newMemberRoll(2, 1, 1, operatorVersionDefault) // note generation is 2 and observedGeneration is 1, which means the SMMR has been updated
+	addOwnerReference(roll)
+	roll.Spec.Members = []string{}
+	roll.Status.ConfiguredMembers = []string{appNamespace}
+	controlPlane := markControlPlaneReconciled(newControlPlane(""), operatorVersionDefault)
+
+	namespace := newNamespace(appNamespace)
+	namespace.DeletionTimestamp = &oneMinuteAgo
+	common.SetLabel(namespace, common.MemberOfKey, controlPlaneNamespace)
+
+	cl, _, r, _, _ := createClientAndReconciler(t, roll, controlPlane, namespace)
+	assertReconcileSucceeds(r, t)
+
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
+	assert.DeepEquals(updatedRoll.Status.ConfiguredMembers, []string{}, "Unexpected Status.ConfiguredMembers in SMMR", t)
+	assert.DeepEquals(updatedRoll.Status.PendingMembers, []string{appNamespace}, "Unexpected Status.PendingMembers in SMMR", t)
+}
+
 func TestReconcileDoesNotUpdateMemberRollWhenNothingToReconcile(t *testing.T) {
 	roll := newMemberRoll(2, 2, 1, operatorVersionDefault)
 	addOwnerReference(roll)

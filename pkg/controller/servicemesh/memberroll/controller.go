@@ -511,13 +511,21 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 			if namespacesToReconcile.Has(ns) {
 				err = reconciler.reconcileNamespaceInMesh(ctx, ns)
 				if err != nil {
-					if errors.IsNotFound(err) || errors.IsGone(err) { // TODO: this check should be performed inside reconcileNamespaceInMesh
+					if errors.IsNotFound(err) || errors.IsGone(err) {
 						reqLogger.Info("namespace to configure with mesh is missing", "namespace", ns)
 						r.EventRecorder.Event(
 							smmr,
 							corev1.EventTypeWarning,
 							string(eventReasonNamespaceMissing),
 							fmt.Sprintf("Namespace to configure with mesh is missing: %s", ns))
+					} else if IsTerminating(err) {
+						// We don't treat terminating namespaces as errors, because they are eventually deleted and we'll
+						// then log the NotFound error. If we were to log terminating namespaces as errors, we'd
+						// end up logging a bunch of transient errors that no-one cares about. This typically happens
+						// when someone deletes a member namespace that contains a ServiceMeshMember. The namespace
+						// is immediately marked as Terminating, but the servicemeshmember controller doesn't immediately
+						// remove it from SMMR.spec.members. The servicemeshmemberroll controller would then try to
+						// reconcile the namespace and log an error.
 					} else {
 						reqLogger.Info("Failed to configure namespace with mesh", "namespace", ns, "error", err.Error())
 						r.EventRecorder.Event(
@@ -529,7 +537,7 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 				}
 			} else {
 				err = reconciler.removeNamespaceFromMesh(ctx, ns)
-				if err != nil {
+				if err != nil && !IsTerminating(err) {
 					reqLogger.Info("Failed to remove namespace from mesh", "namespace", ns, "error", err.Error())
 					r.EventRecorder.Event(
 						smmr,
@@ -552,21 +560,24 @@ func (r *MemberRollReconciler) reconcileNamespaces(ctx context.Context, namespac
 				removed.Insert(res.ns)
 			}
 		} else {
-			nsErrors = append(nsErrors, res.err)
+			if !IsTerminating(res.err) {
+				nsErrors = append(nsErrors, res.err)
+			}
 			pending.Insert(res.ns) // TODO: do we want to have a separate list for namespaces that are being removed, but haven't yet been?
 		}
 	}
 
-	if len(pending) > 0 {
+	if len(nsErrors) > 0 {
 		reqLogger.Info("Failed to reconcile all member namespaces",
 			"configured", configured.List(),
 			"removed", removed.List(),
 			"pending", pending.List(),
 			"duration", time.Now().Sub(startTime))
 	} else {
-		reqLogger.Info("Reconciliation of member namespaces complete",
+		reqLogger.Info("Reconciliation of member namespaces finished",
 			"configured", configured.List(),
 			"removed", removed.List(),
+			"pending", pending.List(),
 			"duration", time.Now().Sub(startTime))
 	}
 	return configured.List(), pending.List(), nil, nsErrors
