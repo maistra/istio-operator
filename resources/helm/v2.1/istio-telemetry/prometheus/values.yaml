@@ -53,16 +53,4 @@ prometheus:
   # When this option is set as false, this certificate provisioning mechanism is disabled.
   provisionPrometheusCert: true
 
-global:
-  # Configure the certificate provider for control plane communication.
-  # Currently, two providers are supported: "kubernetes" and "istiod".
-  # As some platforms may not have kubernetes signing APIs,
-  # Istiod is the default
-  pilotCertProvider: istiod
-
 revision: ""
-
-meshConfig:
-  enablePrometheusMerge: false
-  defaultConfig:
-    proxyMetadata: {}
