@@ -59,7 +59,13 @@ data:
   values: |-
     {
       "global": {
+        "arch": {
+          "amd64": 2,
+          "ppc64le": 2,
+          "s390x": 2
+        },
         "caAddress": "",
+        "defaultNodeSelector": {},
         "defaultPodDisruptionBudget": {
           "enabled": true
         },
@@ -68,6 +74,7 @@ data:
             "cpu": "10m"
           }
         },
+        "defaultTolerations": [],
         "externalIstiod": false,
         "hub": "gcr.io/istio-testing",
         "imagePullPolicy": "",
@@ -146,6 +153,12 @@ data:
           "servicePort": 0
         },
         "tag": "latest",
+        "tls": {
+          "cipherSuites": [],
+          "ecdhCurves": [],
+          "maxProtocolVersion": "",
+          "minProtocolVersion": ""
+        },
         "tracer": {
           "datadog": {
             "address": "$(HOST_IP):8126"
@@ -954,6 +967,9 @@ spec:
     - port: 15014
       name: http-monitoring # prometheus stats
       protocol: TCP
+    - port: 8188
+      name: http-discovery # federation discovery
+      protocol: TCP
   selector:
     app: istiod
     # Label used by the 'default' service. For versioned deployments we match with app and version.
@@ -1014,6 +1030,8 @@ spec:
             protocol: TCP
           - containerPort: 15017
             protocol: TCP
+          - containerPort: 8188
+            protocol: TCP
           readinessProbe:
             httpGet:
               path: /ready
@@ -1045,6 +1063,8 @@ spec:
                 fieldPath: spec.serviceAccountName
           - name: KUBECONFIG
             value: /var/run/secrets/remote/config
+          - name: PILOT_ENABLE_FEDERATION
+            value: "true"
           - name: PILOT_TRACE_SAMPLING
             value: "1"
           - name: PILOT_ENABLE_PROTOCOL_SNIFFING_FOR_OUTBOUND
@@ -1087,6 +1107,41 @@ spec:
           - name: inject
             mountPath: /var/lib/istio/inject
             readOnly: true
+      affinity:
+
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - "amd64"
+                - "ppc64le"
+                - "s390x"
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - "amd64"
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - "ppc64le"
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - "s390x"
+
       volumes:
       # Technically not needed on this pod - but it helps debugging/testing SDS
       # Should be removed after everything works.

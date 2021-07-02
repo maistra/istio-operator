@@ -39,10 +39,10 @@ spec:
                 vm_config:
                   {{- if .Values.telemetry.v2.metadataExchange.wasmEnabled }}
                   runtime: envoy.wasm.runtime.v8
-                  allow_precompiled: true
+                  allow_precompiled: false
                   code:
                     local:
-                      filename: /etc/istio/extensions/metadata-exchange-filter.compiled.wasm
+                      filename: /etc/istio/extensions/metadata-exchange-filter.wasm
                   {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:
@@ -74,10 +74,10 @@ spec:
                 vm_config:
                   {{- if .Values.telemetry.v2.metadataExchange.wasmEnabled }}
                   runtime: envoy.wasm.runtime.v8
-                  allow_precompiled: true
+                  allow_precompiled: false
                   code:
                     local:
-                      filename: /etc/istio/extensions/metadata-exchange-filter.compiled.wasm
+                      filename: /etc/istio/extensions/metadata-exchange-filter.wasm
                   {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:
@@ -109,10 +109,10 @@ spec:
                 vm_config:
                   {{- if .Values.telemetry.v2.metadataExchange.wasmEnabled }}
                   runtime: envoy.wasm.runtime.v8
-                  allow_precompiled: true
+                  allow_precompiled: false
                   code:
                     local:
-                      filename: /etc/istio/extensions/metadata-exchange-filter.compiled.wasm
+                      filename: /etc/istio/extensions/metadata-exchange-filter.wasm
                   {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:
@@ -242,10 +242,10 @@ spec:
                   vm_id: stats_outbound
                   {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
                   runtime: envoy.wasm.runtime.v8
-                  allow_precompiled: true
+                  allow_precompiled: false
                   code:
                     local:
-                      filename: /etc/istio/extensions/stats-filter.compiled.wasm
+                      filename: /etc/istio/extensions/stats-filter.wasm
                   {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:
@@ -296,10 +296,10 @@ spec:
                   vm_id: stats_inbound
                   {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
                   runtime: envoy.wasm.runtime.v8
-                  allow_precompiled: true
+                  allow_precompiled: false
                   code:
                     local:
-                      filename: /etc/istio/extensions/stats-filter.compiled.wasm
+                      filename: /etc/istio/extensions/stats-filter.wasm
                   {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:
@@ -418,10 +418,10 @@ spec:
                   vm_id: tcp_stats_inbound
                   {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
                   runtime: envoy.wasm.runtime.v8
-                  allow_precompiled: true
+                  allow_precompiled: false
                   code:
                     local:
-                      filename: /etc/istio/extensions/stats-filter.compiled.wasm
+                      filename: /etc/istio/extensions/stats-filter.wasm
                   {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:
@@ -470,10 +470,10 @@ spec:
                   vm_id: tcp_stats_outbound
                   {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
                   runtime: envoy.wasm.runtime.v8
-                  allow_precompiled: true
+                  allow_precompiled: false
                   code:
                     local:
-                      filename: /etc/istio/extensions/stats-filter.compiled.wasm
+                      filename: /etc/istio/extensions/stats-filter.wasm
                   {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:

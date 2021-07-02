@@ -34,6 +34,9 @@ spec:
         istio.io/rev: {{ .Values.revision | default "default" }}
         sidecar.istio.io/inject: "false"
         istio: istiod
+        {{- if .Values.pilot.podLabels }}
+{{ toYaml .Values.pilot.podLabels | indent 8 }}
+        {{- end }}
       annotations:
         {{- if .Values.meshConfig.enablePrometheusMerge }}
         prometheus.io/port: "15014"
@@ -92,6 +95,8 @@ spec:
           - name: webhook
             containerPort: 15017
             protocol: TCP
+          - containerPort: 8188
+            protocol: TCP
           readinessProbe:
             httpGet:
               path: /ready
@@ -142,6 +147,8 @@ spec:
             value: "{{ $val }}"
           {{- end }}
           {{- end }}
+          - name: PILOT_ENABLE_FEDERATION
+            value: "{{ .Values.pilot.enableFederation }}"
 {{- if .Values.pilot.traceSampling }}
           - name: PILOT_TRACE_SAMPLING
             value: "{{ .Values.pilot.traceSampling }}"
@@ -160,6 +167,24 @@ spec:
             value: "{{ $.Values.global.multiCluster.clusterName | default `Kubernetes` }}"
           - name: EXTERNAL_ISTIOD
             value: "{{ $.Values.global.externalIstiod | default "false" }}"
+{{- if .Values.global.tls }}
+{{- if .Values.global.tls.minProtocolVersion }}
+          - name: TLS_MIN_PROTOCOL_VERSION
+            value: {{ .Values.global.tls.minProtocolVersion }}
+{{- end }}
+{{- if .Values.global.tls.maxProtocolVersion }}
+          - name: TLS_MAX_PROTOCOL_VERSION
+            value: {{ .Values.global.tls.maxProtocolVersion }}
+{{- end }}
+{{- if .Values.global.tls.cipherSuites }}
+          - name: TLS_CIPHER_SUITES
+            value: {{ .Values.global.tls.cipherSuites }}
+{{- end }}
+{{- if .Values.global.tls.ecdhCurves }}
+          - name: TLS_ECDH_CURVES
+            value: {{ .Values.global.tls.ecdhCurves }}
+{{- end }}
+{{- end }}
 {{- if not .Values.telemetry.v2.enabled }}
           - name: PILOT_ENDPOINT_TELEMETRY_LABEL
             value: "false"
@@ -197,6 +222,16 @@ spec:
           - name: extracacerts
             mountPath: /cacerts
           {{- end }}
+      affinity:
+{{ include "nodeaffinity" (dict "global" .Values.global "nodeSelector" .Values.pilot.nodeSelector) }}
+{{ include "podAntiAffinity" .Values.pilot }}
+{{- if .Values.pilot.tolerations }}
+      tolerations:
+{{ toYaml .Values.pilot.tolerations | indent 6 }}
+{{- else if .Values.global.defaultTolerations }}
+      tolerations:
+{{ toYaml .Values.global.defaultTolerations | indent 6 }}
+{{- end }}
       volumes:
       # Technically not needed on this pod - but it helps debugging/testing SDS
       # Should be removed after everything works.

@@ -1,0 +1,85 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  labels:
+    maistra-version: "2.1.0"
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: meshfederations.maistra.io
+spec:
+  group: maistra.io
+  names:
+    categories:
+    - maistra-io
+    kind: MeshFederation
+    listKind: MeshFederationList
+    plural: meshfederations
+    singular: meshfederation
+  preserveUnknownFields: false
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: MeshFederation is the Schema for joining two meshes together.  The resource name will be used to identify the 'cluster' to which imported services belong.
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: TODO
+          properties:
+            gateways:
+              properties:
+                egress:
+                  description: Gateway through which outbound federated service traffic will travel. This is not required if AllowDirectOutbound is set to true.
+                  properties:
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                      type: string
+                  type: object
+                ingress:
+                  description: Gateway through which inbound federated service traffic will travel.
+                  properties:
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                      type: string
+                  type: object
+              type: object
+            networkAddress:
+              description: 'NetworkAddress is the address used to communicate with the external mesh. Port 15443 will be used for service traffic and port 8188 will be used for service discovery. XXX: should this be an array?'
+              type: string
+            security:
+              properties:
+                certificateChain:
+                  description: 'Name of secret containing certificate chain to be used to validate the remote.  This is also used to validate certificates used by the remote services (both client and server certificates). XXX: maybe this is only used to initiate a connection, with the actual certs stored in the status field, as retrieved from the remote mesh, or maybe this identifies an endpoint used to retrieve a cert chain, a la jwks'
+                  type: string
+                clientID:
+                  description: ClientID of the remote mesh.  This is used to authenticate incoming requrests from the remote mesh's discovery client.
+                  type: string
+                trustDomain:
+                  description: TrustDomain of remote mesh.
+                  type: string
+              type: object
+          type: object
+        status:
+          description: TODO
+          type: object
+      type: object
+  version: v1
+  versions:
+  - name: v1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

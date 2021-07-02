@@ -297,6 +297,17 @@ global:
     # Setting this port to a non-zero value enables STS server.
     servicePort: 0
 
+  # Configure TLS parameters for listeners
+  tls:
+    # List of supported cipher suites, e.g. TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    cipherSuites: []
+    # List of supported ECDH curves, e.g. CurveP384
+    ecdhCurves: []
+    # min supported protocol version, e.g. TLSv1_2
+    maxProtocolVersion: ""
+    # max supported protocol version, e.g. TLSv1_3
+    minProtocolVersion: ""
+
   # Configuration for each of the supported tracers
   tracer:
     # Configuration for envoy to send trace data to LightStep.

@@ -2,6 +2,7 @@
 
 ## Discovery Settings
 pilot:
+  enableFederation: true
   autoscaleEnabled: true
   autoscaleMin: 1
   autoscaleMax: 5
@@ -33,7 +34,31 @@ pilot:
   enableProtocolSniffingForInbound: false
 
   nodeSelector: {}
+  podLabels: {}
   podAnnotations: {}
+
+  tolerations: []
+
+  # Specify the pod anti-affinity that allows you to constrain which nodes
+  # your pod is eligible to be scheduled based on labels on pods that are
+  # already running on the node rather than based on labels on nodes.
+  # There are currently two types of anti-affinity:
+  #    "requiredDuringSchedulingIgnoredDuringExecution"
+  #    "preferredDuringSchedulingIgnoredDuringExecution"
+  # which denote "hard" vs. "soft" requirements, you can define your values
+  # in "podAntiAffinityLabelSelector" and "podAntiAffinityTermLabelSelector"
+  # correspondingly.
+  # For example:
+  # podAntiAffinityLabelSelector:
+  # - key: security
+  #   operator: In
+  #   values: S1,S2
+  #   topologyKey: "kubernetes.io/hostname"
+  # This pod anti-affinity rule says that the pod requires not to be scheduled
+  # onto a node if that node is already running a pod with label having key
+  # "security" and value "S1".
+  podAntiAffinityLabelSelector: []
+  podAntiAffinityTermLabelSelector: []
 
   # You can use jwksResolverExtraRootCA to provide a root certificate
   # in PEM format. This will then be trusted by pilot when resolving
@@ -116,8 +141,8 @@ sidecarInjectorWebhook:
   templates: {}
 
   # Default templates specifies a set of default templates that are used in sidecar injection.
-  # By default, a template `sidecar` is always provided, which contains the template of default sidecar. 
-  # To inject other additional templates, define it using the `templates` option, and add it to 
+  # By default, a template `sidecar` is always provided, which contains the template of default sidecar.
+  # To inject other additional templates, define it using the `templates` option, and add it to
   # the default templates list.
   # For example:
   #
@@ -186,6 +211,27 @@ global:
     # limits:
     #   cpu: 100m
     #   memory: 128Mi
+
+  # Default node tolerations to be applied to all deployments so that all pods can be
+  # scheduled to a particular nodes with matching taints. Each component can overwrite
+  # these default values by adding its tolerations block in the relevant section below
+  # and setting the desired values.
+  # Configure this field in case that all pods of Istio control plane are expected to
+  # be scheduled to particular nodes with specified taints.
+  defaultTolerations: []
+
+  # Default node selector key-value pairs to set in the pod's nodeAffinity field
+  defaultNodeSelector: {}
+
+  # Specify pod scheduling arch(amd64, ppc64le, s390x) and weight as follows:
+  #   0 - Never scheduled
+  #   1 - Least preferred
+  #   2 - No preference
+  #   3 - Most preferred
+  arch:
+    amd64: 2
+    s390x: 2
+    ppc64le: 2
 
   # Default hub for Istio images.
   # Releases are published to docker hub under 'istio' project.
@@ -476,6 +522,17 @@ global:
 
   # Use the Mesh Control Protocol (MCP) for configuring Istiod. Requires an MCP source.
   useMCP: false
+
+  # Configure TLS parameters for listeners
+  tls:
+    # List of supported cipher suites, e.g. TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    cipherSuites: []
+    # List of supported ECDH curves, e.g. CurveP384
+    ecdhCurves: []
+    # min supported protocol version, e.g. TLSv1_2
+    maxProtocolVersion: ""
+    # max supported protocol version, e.g. TLSv1_3
+    minProtocolVersion: ""
 
   # Deprecated, use meshConfig.trustDomain
   trustDomain: ""
