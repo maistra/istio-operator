@@ -24,7 +24,7 @@ gateways:
       targetPort: 8443
       name: https
       protocol: TCP
-      # This is the port where sni routing happens
+    # This is the port where sni routing happens
     - port: 15443
       targetPort: 15443
       name: tls
@@ -66,18 +66,6 @@ gateways:
     podAnnotations: {}
     type: ClusterIP
 
-    #### MESH EXPANSION PORTS  ########
-    # Pilot and Citadel MTLS ports are enabled in gateway - but will only redirect
-    # to pilot/citadel if global.meshExpansion settings are enabled.
-    # Delete these ports if mesh expansion is not enabled, to avoid
-    # exposing unnecessary ports on the web.
-    # You can remove these ports if you are not using mesh expansion
-    meshExpansionPorts:
-    - port: 15012
-      targetPort: 15012
-      name: tcp-istiod
-    ####### end MESH EXPANSION PORTS ######
-
     ##############
     secretVolumes:
     - name: ingressgateway-certs
@@ -99,7 +87,7 @@ gateways:
       # A gateway with this mode ensures that pilot generates an additional
       # set of clusters for internal services but without Istio mTLS, to
       # enable cross cluster routing.
-      ISTIO_META_ROUTER_MODE: "sni-dnat"
+      ISTIO_META_ROUTER_MODE: "standard"
 
     nodeSelector: {}
     tolerations: []
@@ -128,6 +116,9 @@ gateways:
     # whether to run the gateway in a privileged container
     runAsRoot: false
 
+    # The injection template to use for the gateway. If not set, no injection will be performed.
+    injectionTemplate: ""
+
 # Revision is set as 'version' label and part of the resource names when installing multiple control planes.
 revision: ""
 
@@ -141,6 +132,12 @@ global:
   # * implies these objects are visible to all namespaces, enabling any sidecar to talk to any other sidecar.
   # . implies these objects are visible to only to sidecars in the same namespace, or if imported as a Sidecar.egress.host
   defaultConfigVisibilitySettings: []
+
+  # Default node selector to be applied to all deployments so that all pods can be
+  # constrained to run a particular nodes. Each component can overwrite these default
+  # values by adding its node selector block in the relevant section below and setting
+  # the desired values.
+  defaultNodeSelector: {}
 
   # enable pod disruption budget for the control plane, which is used to
   # ensure Istio control plane components are gradually upgraded or recovered.
@@ -205,14 +202,6 @@ global:
   # If empty, default scope and level will be used as configured in code
   logging:
     level: "default:info"
-
-  # If set to true, the pilot and citadel mtls will be exposed on the
-  # ingress gateway
-  meshExpansion:
-    enabled: false
-    # If set to true, the pilot and citadel mtls and the plain text pilot ports
-    # will be exposed on an internal gateway
-    useILB: false
 
   # Kubernetes >=v1.11.0 will create two PriorityClass, including system-cluster-critical and
   # system-node-critical, it is better to configure this in order to make sure your Istio pods
@@ -317,12 +306,49 @@ global:
     # Setting this port to a non-zero value enables STS server.
     servicePort: 0
 
+  # Configure TLS parameters for listeners
+  tls:
+    # List of supported cipher suites, e.g. TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    cipherSuites: []
+    # List of supported ECDH curves, e.g. CurveP384
+    ecdhCurves: []
+    # min supported protocol version, e.g. TLSv1_2
+    maxProtocolVersion: ""
+    # max supported protocol version, e.g. TLSv1_3
+    minProtocolVersion: ""
+
+  # Configuration for each of the supported tracers
+  tracer:
+    # Configuration for envoy to send trace data to LightStep.
+    # Disabled by default.
+    # address: the <host>:<port> of the satellite pool
+    # accessToken: required for sending data to the pool
+    #
+    datadog:
+      # Host:Port for submitting traces to the Datadog agent.
+      address: "$(HOST_IP):8126"
+    lightstep:
+      address: ""                # example: lightstep-satellite:443
+      accessToken: ""            # example: abcdefg1234567
+    stackdriver:
+      # enables trace output to stdout.
+      debug: false
+      # The global default max number of message events per span.
+      maxNumberOfMessageEvents: 200
+      # The global default max number of annotation events per span.
+      maxNumberOfAnnotations: 200
+      # The global default max number of attributes per span.
+      maxNumberOfAttributes: 200
+    zipkin:
+      # Host:Port for reporting trace data in zipkin format. If not specified, will default to
+      # zipkin service (port 9411) in the same namespace as the other istio components.
+      address: ""
+
   # Deprecated, use meshConfig.trustDomain
-#  trustDomain: ""
+  trustDomain: ""
 
 meshConfig:
   enablePrometheusMerge: true
-#  trustDomain: ""
   defaultConfig:
     proxyMetadata: {}
     tracing:

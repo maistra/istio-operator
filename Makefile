@@ -15,7 +15,7 @@
 -include Makefile.overrides
 
 MAISTRA_VERSION        ?= 2.1.0
-MAISTRA_BRANCH         ?= maistra-2.1
+MAISTRA_BRANCH         ?= maistra-2.1-istio-1.9
 REPLACES_PRODUCT_CSV   ?= 2.0.5
 REPLACES_COMMUNITY_CSV ?= 2.0.5
 VERSION                ?= development
@@ -185,7 +185,7 @@ collect-2.0-templates:
 ################################################################################
 .PHONY: update-2.1-charts
 update-2.1-charts:
-	HELM_DIR=${RESOURCES_DIR}/helm/v2.1 ISTIO_VERSION=1.8.0 ${SOURCE_DIR}/build/download-charts.sh
+	HELM_DIR=${RESOURCES_DIR}/helm/v2.1 ISTIO_VERSION=1.9.5 ${SOURCE_DIR}/build/download-charts.sh
 
 .PHONY: collect-2.1-charts
 collect-2.1-charts:
@@ -197,7 +197,6 @@ collect-2.1-templates:
 	mkdir -p ${TEMPLATES_OUT_DIR}/v2.1
 	cp ${RESOURCES_DIR}/smcp-templates/v2.1/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v2.1/default
 	find ${RESOURCES_DIR}/smcp-templates/v2.1/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" |xargs cp -t ${TEMPLATES_OUT_DIR}/v2.1
-
 
 ################################################################################
 # OLM manifest generation

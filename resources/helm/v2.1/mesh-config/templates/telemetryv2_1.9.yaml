@@ -3,7 +3,7 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: metadata-exchange-1.7-{{ .Values.revision | default "default" }}
+  name: metadata-exchange-1.9-{{ .Values.revision | default "default" }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
@@ -18,11 +18,11 @@ spec:
       match:
         context: SIDECAR_INBOUND
         proxy:
-          proxyVersion: '^1\.7.*'
+          proxyVersion: '^1\.9.*'
         listener:
           filterChain:
             filter:
-              name: "envoy.http_connection_manager"
+              name: "envoy.filters.network.http_connection_manager"
       patch:
         operation: INSERT_BEFORE
         value:
@@ -53,11 +53,11 @@ spec:
       match:
         context: SIDECAR_OUTBOUND
         proxy:
-          proxyVersion: '^1\.7.*'
+          proxyVersion: '^1\.9.*'
         listener:
           filterChain:
             filter:
-              name: "envoy.http_connection_manager"
+              name: "envoy.filters.network.http_connection_manager"
       patch:
         operation: INSERT_BEFORE
         value:
@@ -88,11 +88,11 @@ spec:
       match:
         context: GATEWAY
         proxy:
-          proxyVersion: '^1\.7.*'
+          proxyVersion: '^1\.9.*'
         listener:
           filterChain:
             filter:
-              name: "envoy.http_connection_manager"
+              name: "envoy.filters.network.http_connection_manager"
       patch:
         operation: INSERT_BEFORE
         value:
@@ -107,15 +107,23 @@ spec:
                   value: |
                     {}
                 vm_config:
+                  {{- if .Values.telemetry.v2.metadataExchange.wasmEnabled }}
+                  runtime: envoy.wasm.runtime.v8
+                  allow_precompiled: false
+                  code:
+                    local:
+                      filename: /etc/istio/extensions/metadata-exchange-filter.wasm
+                  {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:
                     local:
                       inline_string: envoy.wasm.metadata_exchange
+                  {{- end }}
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: tcp-metadata-exchange-1.7-{{ .Values.revision | default "default" }}
+  name: tcp-metadata-exchange-1.9-{{ .Values.revision | default "default" }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
@@ -130,7 +138,7 @@ spec:
       match:
         context: SIDECAR_INBOUND
         proxy:
-          proxyVersion: '^1\.7.*'
+          proxyVersion: '^1\.9.*'
         listener: {}
       patch:
         operation: INSERT_BEFORE
@@ -145,7 +153,7 @@ spec:
       match:
         context: SIDECAR_OUTBOUND
         proxy:
-          proxyVersion: '^1\.7.*'
+          proxyVersion: '^1\.9.*'
         cluster: {}
       patch:
         operation: MERGE
@@ -161,7 +169,7 @@ spec:
       match:
         context: GATEWAY
         proxy:
-          proxyVersion: '^1\.7.*'
+          proxyVersion: '^1\.9.*'
         cluster: {}
       patch:
         operation: MERGE
@@ -179,7 +187,7 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: stats-filter-1.7-{{ .Values.revision | default "default" }}
+  name: stats-filter-1.9-{{ .Values.revision | default "default" }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
@@ -194,13 +202,13 @@ spec:
       match:
         context: SIDECAR_OUTBOUND
         proxy:
-          proxyVersion: '^1\.7.*'
+          proxyVersion: '^1\.9.*'
         listener:
           filterChain:
             filter:
-              name: "envoy.http_connection_manager"
+              name: "envoy.filters.network.http_connection_manager"
               subFilter:
-                name: "envoy.router"
+                name: "envoy.filters.http.router"
       patch:
         operation: INSERT_BEFORE
         value:
@@ -217,7 +225,7 @@ spec:
                     {{- if not .Values.telemetry.v2.prometheus.configOverride.outboundSidecar }}
                     {
                       "debug": "false",
-                      "stat_prefix": "istio"{{- if .Values.global.multiCluster.clusterName }},
+                      "stat_prefix": "istio",
                       "metrics": [
                         {
                           "dimensions": {
@@ -226,7 +234,6 @@ spec:
                           }
                         }
                       ]
-                      {{- end }}
                     }
                     {{- else }}
                     {{ toJson .Values.telemetry.v2.prometheus.configOverride.outboundSidecar | indent 18 }}
@@ -249,13 +256,13 @@ spec:
       match:
         context: SIDECAR_INBOUND
         proxy:
-          proxyVersion: '^1\.7.*'
+          proxyVersion: '^1\.9.*'
         listener:
           filterChain:
             filter:
-              name: "envoy.http_connection_manager"
+              name: "envoy.filters.network.http_connection_manager"
               subFilter:
-                name: "envoy.router"
+                name: "envoy.filters.http.router"
       patch:
         operation: INSERT_BEFORE
         value:
@@ -272,7 +279,7 @@ spec:
                     {{- if not .Values.telemetry.v2.prometheus.configOverride.inboundSidecar }}
                     {
                       "debug": "false",
-                      "stat_prefix": "istio"{{- if .Values.global.multiCluster.clusterName }},
+                      "stat_prefix": "istio",
                       "metrics": [
                         {
                           "dimensions": {
@@ -281,7 +288,6 @@ spec:
                           }
                         }
                       ]
-                      {{- end }}
                     }
                     {{- else }}
                     {{ toJson .Values.telemetry.v2.prometheus.configOverride.inboundSidecar | indent 18 }}
@@ -304,13 +310,13 @@ spec:
       match:
         context: GATEWAY
         proxy:
-          proxyVersion: '^1\.7.*'
+          proxyVersion: '^1\.9.*'
         listener:
           filterChain:
             filter:
-              name: "envoy.http_connection_manager"
+              name: "envoy.filters.network.http_connection_manager"
               subFilter:
-                name: "envoy.router"
+                name: "envoy.filters.http.router"
       patch:
         operation: INSERT_BEFORE
         value:
@@ -328,7 +334,7 @@ spec:
                     {
                       "debug": "false",
                       "stat_prefix": "istio",
-                      "disable_host_header_fallback": true{{- if .Values.global.multiCluster.clusterName }},
+                      "disable_host_header_fallback": true,
                       "metrics": [
                         {
                           "dimensions": {
@@ -337,23 +343,30 @@ spec:
                           }
                         }
                       ]
-                      {{- end }}
                     }
                     {{- else }}
                     {{ toJson .Values.telemetry.v2.prometheus.configOverride.gateway | indent 18 }}
                     {{- end }}
                 vm_config:
                   vm_id: stats_outbound
+                  {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
+                  runtime: envoy.wasm.runtime.v8
+                  allow_precompiled: false
+                  code:
+                    local:
+                      filename: /etc/istio/extensions/stats-filter.wasm
+                  {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:
                     local:
                       inline_string: envoy.wasm.stats
+                  {{- end }}
 ---
 # Note: tcp stats filter is wasm enabled only in sidecars.
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: tcp-stats-filter-1.7-{{ .Values.revision | default "default" }}
+  name: tcp-stats-filter-1.9-{{ .Values.revision | default "default" }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
@@ -368,11 +381,11 @@ spec:
       match:
         context: SIDECAR_INBOUND
         proxy:
-          proxyVersion: '^1\.7.*'
+          proxyVersion: '^1\.9.*'
         listener:
           filterChain:
             filter:
-              name: "envoy.tcp_proxy"
+              name: "envoy.filters.network.tcp_proxy"
       patch:
         operation: INSERT_BEFORE
         value:
@@ -389,7 +402,7 @@ spec:
                     {{- if not .Values.telemetry.v2.prometheus.configOverride.inboundSidecar }}
                     {
                       "debug": "false",
-                      "stat_prefix": "istio"{{- if .Values.global.multiCluster.clusterName }},
+                      "stat_prefix": "istio",
                       "metrics": [
                         {
                           "dimensions": {
@@ -398,7 +411,6 @@ spec:
                           }
                         }
                       ]
-                      {{- end }}
                     }
                     {{- else }}
                     {{ toJson .Values.telemetry.v2.prometheus.configOverride.inboundSidecar | indent 18 }}
@@ -421,11 +433,11 @@ spec:
       match:
         context: SIDECAR_OUTBOUND
         proxy:
-          proxyVersion: '^1\.7.*'
+          proxyVersion: '^1\.9.*'
         listener:
           filterChain:
             filter:
-              name: "envoy.tcp_proxy"
+              name: "envoy.filters.network.tcp_proxy"
       patch:
         operation: INSERT_BEFORE
         value:
@@ -442,7 +454,7 @@ spec:
                     {{- if not .Values.telemetry.v2.prometheus.configOverride.outboundSidecar }}
                     {
                       "debug": "false",
-                      "stat_prefix": "istio"{{- if .Values.global.multiCluster.clusterName }},
+                      "stat_prefix": "istio",
                       "metrics": [
                         {
                           "dimensions": {
@@ -451,7 +463,6 @@ spec:
                           }
                         }
                       ]
-                      {{- end }}
                     }
                     {{- else }}
                     {{ toJson .Values.telemetry.v2.prometheus.configOverride.outboundSidecar | indent 18 }}
@@ -474,11 +485,11 @@ spec:
       match:
         context: GATEWAY
         proxy:
-          proxyVersion: '^1\.7.*'
+          proxyVersion: '^1\.9.*'
         listener:
           filterChain:
             filter:
-              name: "envoy.tcp_proxy"
+              name: "envoy.filters.network.tcp_proxy"
       patch:
         operation: INSERT_BEFORE
         value:
@@ -495,7 +506,7 @@ spec:
                     {{- if not .Values.telemetry.v2.prometheus.configOverride.gateway }}
                     {
                       "debug": "false",
-                      "stat_prefix": "istio"{{- if .Values.global.multiCluster.clusterName }},
+                      "stat_prefix": "istio",
                       "metrics": [
                         {
                           "dimensions": {
@@ -504,26 +515,31 @@ spec:
                           }
                         }
                       ]
-                      {{- end }}
                     }
                     {{- else }}
                     {{ toJson .Values.telemetry.v2.prometheus.configOverride.gateway | indent 18 }}
                     {{- end }}
                 vm_config:
                   vm_id: tcp_stats_outbound
+                  {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
+                  runtime: envoy.wasm.runtime.v8
+                  allow_precompiled: false
+                  code:
+                    local:
+                      filename: /etc/istio/extensions/stats-filter.wasm
+                  {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:
                     local:
                       inline_string: "envoy.wasm.stats"
+                  {{- end }}
 ---
-
 {{- end }}
-
 {{- if .Values.telemetry.v2.stackdriver.enabled }}
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: stackdriver-filter-1.7-{{ .Values.revision | default "default" }}
+  name: stackdriver-filter-1.9-{{ .Values.revision | default "default" }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
@@ -539,13 +555,13 @@ spec:
       match:
         context: SIDECAR_OUTBOUND
         proxy:
-          proxyVersion: '^1\.7.*'
+          proxyVersion: '^1\.9.*'
         listener:
           filterChain:
             filter:
-              name: "envoy.http_connection_manager"
+              name: "envoy.filters.network.http_connection_manager"
               subFilter:
-                name: "envoy.router"
+                name: "envoy.filters.http.router"
       patch:
         operation: INSERT_BEFORE
         value:
@@ -560,7 +576,7 @@ spec:
                   "@type": "type.googleapis.com/google.protobuf.StringValue"
                   value: |
                     {{- if not .Values.telemetry.v2.stackdriver.configOverride }}
-                    {"enable_mesh_edges_reporting": {{ .Values.telemetry.v2.stackdriver.topology }}, "disable_server_access_logging": {{ not .Values.telemetry.v2.stackdriver.logging }}, "meshEdgesReportingDuration": "600s"}
+                    {"access_logging": "{{ .Values.telemetry.v2.stackdriver.outboundAccessLogging }}"}
                     {{- else }}
                     {{ toJson .Values.telemetry.v2.stackdriver.configOverride | indent 18 }}
                     {{- end }}
@@ -574,13 +590,13 @@ spec:
       match:
         context: SIDECAR_INBOUND
         proxy:
-          proxyVersion: '^1\.7.*'
+          proxyVersion: '^1\.9.*'
         listener:
           filterChain:
             filter:
-              name: "envoy.http_connection_manager"
+              name: "envoy.filters.network.http_connection_manager"
               subFilter:
-                name: "envoy.router"
+                name: "envoy.filters.http.router"
       patch:
         operation: INSERT_BEFORE
         value:
@@ -595,7 +611,7 @@ spec:
                   "@type": "type.googleapis.com/google.protobuf.StringValue"
                   value: |
                     {{- if not .Values.telemetry.v2.stackdriver.configOverride }}
-                    {"enable_mesh_edges_reporting": {{ .Values.telemetry.v2.stackdriver.topology }}, "disable_server_access_logging": {{ not .Values.telemetry.v2.stackdriver.logging }}, "meshEdgesReportingDuration": "600s", "disable_host_header_fallback": true}
+                    {"disable_server_access_logging": {{ not .Values.telemetry.v2.stackdriver.logging }}, "access_logging": "{{ .Values.telemetry.v2.stackdriver.inboundAccessLogging }}", "disable_host_header_fallback": true}
                     {{- else }}
                     {{ toJson .Values.telemetry.v2.stackdriver.configOverride | indent 18 }}
                     {{- end }}
@@ -608,13 +624,13 @@ spec:
       match:
         context: GATEWAY
         proxy:
-          proxyVersion: '^1\.7.*'
+          proxyVersion: '^1\.9.*'
         listener:
           filterChain:
             filter:
-              name: "envoy.http_connection_manager"
+              name: "envoy.filters.network.http_connection_manager"
               subFilter:
-                name: "envoy.router"
+                name: "envoy.filters.http.router"
       patch:
         operation: INSERT_BEFORE
         value:
@@ -629,7 +645,7 @@ spec:
                   "@type": "type.googleapis.com/google.protobuf.StringValue"
                   value: |
                     {{- if not .Values.telemetry.v2.stackdriver.configOverride }}
-                    {"enable_mesh_edges_reporting": {{ .Values.telemetry.v2.stackdriver.topology }}, "disable_server_access_logging": {{ not .Values.telemetry.v2.stackdriver.logging }}, "meshEdgesReportingDuration": "600s", "disable_host_header_fallback": true}
+                    {"access_logging": "{{ .Values.telemetry.v2.stackdriver.outboundAccessLogging }}", "disable_host_header_fallback": true}
                     {{- else }}
                     {{ toJson .Values.telemetry.v2.stackdriver.configOverride | indent 18 }}
                     {{- end }}
@@ -639,11 +655,10 @@ spec:
                   code:
                     local: { inline_string: envoy.wasm.null.stackdriver }
 ---
-
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: tcp-stackdriver-filter-1.7-{{ .Values.revision | default "default" }}
+  name: tcp-stackdriver-filter-1.9-{{ .Values.revision | default "default" }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
@@ -659,11 +674,11 @@ spec:
     match:
       context: SIDECAR_OUTBOUND
       proxy:
-        proxyVersion: '^1\.7.*'
+        proxyVersion: '^1\.9.*'
       listener:
         filterChain:
           filter:
-            name: "envoy.tcp_proxy"
+            name: "envoy.filters.network.tcp_proxy"
     patch:
       operation: INSERT_BEFORE
       value:
@@ -678,7 +693,7 @@ spec:
                 "@type": "type.googleapis.com/google.protobuf.StringValue"
                 value: |
                   {{- if not .Values.telemetry.v2.stackdriver.configOverride }}
-                  {"disable_server_access_logging": {{ not .Values.telemetry.v2.stackdriver.logging }}}
+                  {"access_logging": "{{ .Values.telemetry.v2.stackdriver.outboundAccessLogging }}"}
                   {{- else }}
                   {{ toJson .Values.telemetry.v2.stackdriver.configOverride | indent 18 }}
                   {{- end }}
@@ -692,11 +707,11 @@ spec:
     match:
       context: SIDECAR_INBOUND
       proxy:
-        proxyVersion: '^1\.7.*'
+        proxyVersion: '^1\.9.*'
       listener:
         filterChain:
           filter:
-            name: "envoy.tcp_proxy"
+            name: "envoy.filters.network.tcp_proxy"
     patch:
       operation: INSERT_BEFORE
       value:
@@ -711,7 +726,7 @@ spec:
                 "@type": "type.googleapis.com/google.protobuf.StringValue"
                 value: |
                   {{- if not .Values.telemetry.v2.stackdriver.configOverride }}
-                  {"disable_server_access_logging": {{ not .Values.telemetry.v2.stackdriver.logging }}}
+                  {"disable_server_access_logging": {{ not .Values.telemetry.v2.stackdriver.logging }}, "access_logging": "{{ .Values.telemetry.v2.stackdriver.inboundAccessLogging }}"}
                   {{- else }}
                   {{ toJson .Values.telemetry.v2.stackdriver.configOverride | indent 18 }}
                   {{- end }}
@@ -724,11 +739,11 @@ spec:
     match:
       context: GATEWAY
       proxy:
-        proxyVersion: '^1\.7.*'
+        proxyVersion: '^1\.9.*'
       listener:
         filterChain:
           filter:
-            name: "envoy.tcp_proxy"
+            name: "envoy.filters.network.tcp_proxy"
     patch:
       operation: INSERT_BEFORE
       value:
@@ -743,7 +758,7 @@ spec:
                 "@type": "type.googleapis.com/google.protobuf.StringValue"
                 value: |
                   {{- if not .Values.telemetry.v2.stackdriver.configOverride }}
-                  {"disable_server_access_logging": {{ not .Values.telemetry.v2.stackdriver.logging }}}
+                  {"access_logging": "{{ .Values.telemetry.v2.stackdriver.outboundAccessLogging }}"}
                   {{- else }}
                   {{ toJson .Values.telemetry.v2.stackdriver.configOverride | indent 18 }}
                   {{- end }}
@@ -757,7 +772,7 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: stackdriver-sampling-accesslog-filter-1.7-{{ .Values.revision | default "default" }}
+  name: stackdriver-sampling-accesslog-filter-1.9-{{ .Values.revision | default "default" }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
@@ -772,11 +787,11 @@ spec:
       match:
         context: SIDECAR_INBOUND
         proxy:
-          proxyVersion: '1\.7.*'
+          proxyVersion: '1\.9.*'
         listener:
           filterChain:
             filter:
-              name: "envoy.http_connection_manager"
+              name: "envoy.filters.network.http_connection_manager"
               subFilter:
                 name: "istio.stackdriver"
       patch:
@@ -799,6 +814,6 @@ spec:
                   code:
                     local: { inline_string: "envoy.wasm.access_log_policy" }
 ---
-{{- end}}
-{{- end}}
-{{- end}}
+{{- end }}
+{{- end }}
+{{- end }}

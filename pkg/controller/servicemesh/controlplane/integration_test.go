@@ -229,8 +229,8 @@ func FinalizerAddedTest(finalizer string) VerifierTestFunc {
 }
 
 type jsonPatchOperation struct {
-	Operation string      `json:"op"`
-	Path      string      `json:"path"`
+	Operation string                       `json:"op"`
+	Path      string                       `json:"path"`
 	Value     maistrav1.ControlPlaneStatus `json:"value,omitempty"`
 }
 
