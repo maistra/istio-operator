@@ -33,9 +33,10 @@ spec:
         metadata:
           type: object
         spec:
-          description: TODO
+          description: MeshFederationSpec configures details required to support federation with another service mesh.
           properties:
             gateways:
+              description: Gateways configures the gateways used to facilitate ingress and egress with the other mesh.
               properties:
                 egress:
                   description: Gateway through which outbound federated service traffic will travel. This is not required if AllowDirectOutbound is set to true.
@@ -70,6 +71,7 @@ spec:
                   type: integer
               type: object
             security:
+              description: Security configures details for securing communication with the other mesh.
               properties:
                 certificateChain:
                   description: Name of ConfigMap containing certificate chain to be used to validate the remote.  This is also used to validate certificates used by the remote services (both client and server certificates).  The name of the entry should be root-cert.pem.  If unspecified, it will look for a ConfigMap named <meshfederation-name>-ca-root-cert, e.g. if this resource is named mesh1, it will look for a ConfigMap named mesh1-ca-root-cert.
@@ -96,7 +98,245 @@ spec:
               type: object
           type: object
         status:
-          description: TODO
+          description: MeshFederationStatus provides information related to the other mesh.
+          properties:
+            discoveryStatus:
+              description: DiscoveryStatus represents the discovery status of each pilot/istiod pod in the mesh.
+              properties:
+                active:
+                  description: Active represents the pilot/istiod pods actively watching the other mesh for discovery.
+                  items:
+                    description: FederationPodDiscoveryStatus provides discovery details related to a specific pilot/istiod pod.
+                    properties:
+                      pod:
+                        description: Pod is the pod name to which these details apply.  This maps to a a pilot/istiod pod.
+                        type: string
+                      remotes:
+                        description: Remotes represents details related to the inbound connections from remote meshes.
+                        items:
+                          description: DiscoveryRemoteStatus represents details related to an inbound connection from a remote mesh.
+                          properties:
+                            connected:
+                              description: Connected identfies an active connection with the remote mesh.
+                              type: boolean
+                            lastConnected:
+                              description: LastConnected represents the last time a connection with the remote mesh was successful.
+                              format: date-time
+                              type: string
+                            lastDisconnect:
+                              description: LastDisconnect represents the last time the connection with the remote mesh was disconnected.
+                              format: date-time
+                              type: string
+                            lastDisconnectStatus:
+                              description: LastDisconnectStatus is the status returned the last time the connection with the remote mesh was terminated.
+                              type: string
+                            lastEvent:
+                              description: LastEvent represents the last time an event was received from the remote mesh.
+                              format: date-time
+                              type: string
+                            lastFullSync:
+                              description: LastFullSync represents the last time a full sync was performed with the remote mesh.
+                              format: date-time
+                              type: string
+                            source:
+                              description: Source represents the source of the remote watch.
+                              type: string
+                          required:
+                          - connected
+                          - source
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - source
+                        x-kubernetes-list-type: map
+                      watch:
+                        description: Watch represents details related to the outbound connection to the remote mesh.
+                        properties:
+                          connected:
+                            description: Connected identfies an active connection with the remote mesh.
+                            type: boolean
+                          lastConnected:
+                            description: LastConnected represents the last time a connection with the remote mesh was successful.
+                            format: date-time
+                            type: string
+                          lastDisconnect:
+                            description: LastDisconnect represents the last time the connection with the remote mesh was disconnected.
+                            format: date-time
+                            type: string
+                          lastDisconnectStatus:
+                            description: LastDisconnectStatus is the status returned the last time the connection with the remote mesh was terminated.
+                            type: string
+                          lastEvent:
+                            description: LastEvent represents the last time an event was received from the remote mesh.
+                            format: date-time
+                            type: string
+                          lastFullSync:
+                            description: LastFullSync represents the last time a full sync was performed with the remote mesh.
+                            format: date-time
+                            type: string
+                        required:
+                        - connected
+                        type: object
+                    required:
+                    - pod
+                    type: object
+                  nullable: true
+                  type: array
+                  x-kubernetes-list-map-keys:
+                  - pod
+                  x-kubernetes-list-type: map
+                inactive:
+                  description: Inactive represents the pilot/istiod pods not actively watching the other mesh for discovery.
+                  items:
+                    description: FederationPodDiscoveryStatus provides discovery details related to a specific pilot/istiod pod.
+                    properties:
+                      pod:
+                        description: Pod is the pod name to which these details apply.  This maps to a a pilot/istiod pod.
+                        type: string
+                      remotes:
+                        description: Remotes represents details related to the inbound connections from remote meshes.
+                        items:
+                          description: DiscoveryRemoteStatus represents details related to an inbound connection from a remote mesh.
+                          properties:
+                            connected:
+                              description: Connected identfies an active connection with the remote mesh.
+                              type: boolean
+                            lastConnected:
+                              description: LastConnected represents the last time a connection with the remote mesh was successful.
+                              format: date-time
+                              type: string
+                            lastDisconnect:
+                              description: LastDisconnect represents the last time the connection with the remote mesh was disconnected.
+                              format: date-time
+                              type: string
+                            lastDisconnectStatus:
+                              description: LastDisconnectStatus is the status returned the last time the connection with the remote mesh was terminated.
+                              type: string
+                            lastEvent:
+                              description: LastEvent represents the last time an event was received from the remote mesh.
+                              format: date-time
+                              type: string
+                            lastFullSync:
+                              description: LastFullSync represents the last time a full sync was performed with the remote mesh.
+                              format: date-time
+                              type: string
+                            source:
+                              description: Source represents the source of the remote watch.
+                              type: string
+                          required:
+                          - connected
+                          - source
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - source
+                        x-kubernetes-list-type: map
+                      watch:
+                        description: Watch represents details related to the outbound connection to the remote mesh.
+                        properties:
+                          connected:
+                            description: Connected identfies an active connection with the remote mesh.
+                            type: boolean
+                          lastConnected:
+                            description: LastConnected represents the last time a connection with the remote mesh was successful.
+                            format: date-time
+                            type: string
+                          lastDisconnect:
+                            description: LastDisconnect represents the last time the connection with the remote mesh was disconnected.
+                            format: date-time
+                            type: string
+                          lastDisconnectStatus:
+                            description: LastDisconnectStatus is the status returned the last time the connection with the remote mesh was terminated.
+                            type: string
+                          lastEvent:
+                            description: LastEvent represents the last time an event was received from the remote mesh.
+                            format: date-time
+                            type: string
+                          lastFullSync:
+                            description: LastFullSync represents the last time a full sync was performed with the remote mesh.
+                            format: date-time
+                            type: string
+                        required:
+                        - connected
+                        type: object
+                    required:
+                    - pod
+                    type: object
+                  nullable: true
+                  type: array
+                  x-kubernetes-list-map-keys:
+                  - pod
+                  x-kubernetes-list-type: map
+              type: object
+            exports:
+              description: Exports provides details about the services exported by this mesh.
+              items:
+                description: MeshServiceMapping represents the name mapping between an exported service and its local counterpart.
+                properties:
+                  exportedName:
+                    description: ExportedName represents the fully qualified domain name (FQDN) of an exported service.  For an exporting mesh, this is the name that is exported to the remote mesh. For an importing mesh, this would be the name of the service exported by the remote mesh.
+                    type: string
+                  localService:
+                    description: LocalService represents the service in the local (i.e. this) mesh. For an exporting mesh, this would be the service being exported. For an importing mesh, this would be the imported service.
+                    properties:
+                      hostname:
+                        description: Hostname represents fully qualified domain name (FQDN) used to access the service.
+                        type: string
+                      name:
+                        description: Name represents the simple name of the service, e.g. the metadata.name field of a kubernetes Service.
+                        type: string
+                      namespace:
+                        description: Namespace represents the namespace within which the service resides.
+                        type: string
+                    required:
+                    - hostname
+                    - name
+                    - namespace
+                    type: object
+                required:
+                - exportedName
+                - localService
+                type: object
+              type: array
+              x-kubernetes-list-map-keys:
+              - exportedName
+              x-kubernetes-list-type: map
+            imports:
+              description: Imports provides details about the services imported by this mesh.
+              items:
+                description: MeshServiceMapping represents the name mapping between an exported service and its local counterpart.
+                properties:
+                  exportedName:
+                    description: ExportedName represents the fully qualified domain name (FQDN) of an exported service.  For an exporting mesh, this is the name that is exported to the remote mesh. For an importing mesh, this would be the name of the service exported by the remote mesh.
+                    type: string
+                  localService:
+                    description: LocalService represents the service in the local (i.e. this) mesh. For an exporting mesh, this would be the service being exported. For an importing mesh, this would be the imported service.
+                    properties:
+                      hostname:
+                        description: Hostname represents fully qualified domain name (FQDN) used to access the service.
+                        type: string
+                      name:
+                        description: Name represents the simple name of the service, e.g. the metadata.name field of a kubernetes Service.
+                        type: string
+                      namespace:
+                        description: Namespace represents the namespace within which the service resides.
+                        type: string
+                    required:
+                    - hostname
+                    - name
+                    - namespace
+                    type: object
+                required:
+                - exportedName
+                - localService
+                type: object
+              type: array
+              x-kubernetes-list-map-keys:
+              - exportedName
+              x-kubernetes-list-type: map
+          required:
+          - exports
+          - imports
           type: object
       type: object
   version: v1
