@@ -37,7 +37,7 @@ webhooks:
 {{- /* Setup the "legacy" selectors. These are for backwards compatibility, will be removed in the future. */}}
 {{- include "core" (mergeOverwrite (deepCopy .) (dict "Prefix" "")) }}
   namespaceSelector:
-      matchExpressions:
+    matchExpressions:
       - key: maistra.io/member-of
         operator: In
         values:
@@ -51,46 +51,18 @@ webhooks:
       - key: istio-env
         operator: DoesNotExist
 {{- if .Values.sidecarInjectorWebhook.objectSelector.enabled }}
-    objectSelector:
-      matchExpressions:
+  objectSelector:
+    matchExpressions:
 {{- if eq .Values.global.proxy.autoInject "enabled" }}
-      - key: "sidecar.istio.io/inject"
-        operator: NotIn
-        values:
-        - "false"
+    - key: "sidecar.istio.io/inject"
+      operator: NotIn
+      values:
+      - "false"
 {{- else }}
-      - key: "sidecar.istio.io/inject"
-        operator: In
-        values:
-        - "true"
-{{- end }}
-{{- end }}
-      matchExpressions:
-      - key: maistra.io/member-of
-        operator: In
-        values:
-        - {{ .Release.Namespace }}
-      - key: maistra.io/ignore-namespace
-        operator: DoesNotExist
-      - key: istio-injection
-        operator: NotIn
-        values:
-        - disabled
-      - key: istio-env
-        operator: DoesNotExist
-{{- if .Values.sidecarInjectorWebhook.objectSelector.enabled }}
-    objectSelector:
-      matchExpressions:
-{{- if eq .Values.global.proxy.autoInject "enabled" }}
-      - key: "sidecar.istio.io/inject"
-        operator: NotIn
-        values:
-        - "false"
-{{- else }}
-      - key: "sidecar.istio.io/inject"
-        operator: In
-        values:
-        - "true"
+    - key: "sidecar.istio.io/inject"
+      operator: In
+      values:
+      - "true"
 {{- end }}
 {{- end }}
 {{- end }}

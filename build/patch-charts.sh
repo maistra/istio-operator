@@ -341,9 +341,9 @@ function patchSidecarInjector() {
       -e '/metadata:/a\
 \  name: istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}' \
     $webhookconfig
-  sed_wrap -i -e '/if .Values.sidecarInjectorWebhook.enableNamespacesByDefault/,$ {
-      /enableNamespacesByDefault/i\
-      matchExpressions:\
+
+  matchExpr='\
+    matchExpressions:\
       - key: maistra.io\/member-of\
         operator: In\
         values:\
@@ -357,22 +357,24 @@ function patchSidecarInjector() {
       - key: istio-env\
         operator: DoesNotExist\
 \{\{- if .Values.sidecarInjectorWebhook.objectSelector.enabled \}\}\
-    objectSelector:\
-      matchExpressions:\
+  objectSelector:\
+    matchExpressions:\
 \{\{- if eq .Values.global.proxy.autoInject "enabled" \}\}\
-      - key: "sidecar.istio.io/inject"\
-        operator: NotIn\
-        values:\
-        - "false"\
+    - key: "sidecar.istio.io/inject"\
+      operator: NotIn\
+      values:\
+      - "false"\
 \{\{- else \}\}\
-      - key: "sidecar.istio.io/inject"\
-        operator: In\
-        values:\
-        - "true"\
+    - key: "sidecar.istio.io/inject"\
+      operator: In\
+      values:\
+      - "true"\
 \{\{- end \}\}\
 \{\{- end \}\}
-      d
-    }' $webhookconfig
+'
+  sed_wrap -i -e "/if .Values.sidecarInjectorWebhook.enableNamespacesByDefault/ i$matchExpr" $webhookconfig
+  # Delete everything after the match
+  sed_wrap -i -e '/if .Values.sidecarInjectorWebhook.enableNamespacesByDefault/,$d' $webhookconfig
 
   echo "{{- end }}" >> $webhookconfig
   # remove {{- if not .Values.global.operatorManageWebhooks }} ... {{- end }}
