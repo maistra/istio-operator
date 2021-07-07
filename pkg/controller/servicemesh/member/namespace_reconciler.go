@@ -7,12 +7,12 @@ import (
 
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 
+	multusv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -335,12 +335,8 @@ func (r *namespaceReconciler) reconcileRoleBindings(ctx context.Context, namespa
 }
 
 func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context, namespace string, netAttachDefName string) error {
-	nadList, err := common.FetchMeshResources(ctx, r.Client, schema.GroupVersionKind{
-		Group:   "k8s.cni.cncf.io",
-		Version: "v1",
-		Kind:    "NetworkAttachmentDefinitionList",
-	}, r.meshNamespace, namespace)
-	if err != nil {
+	nadList := &multusv1.NetworkAttachmentDefinitionList{}
+	if err := r.Client.List(ctx, nadList, client.InNamespace(namespace), client.MatchingLabels{common.MemberOfKey: r.meshNamespace}); err != nil {
 		return fmt.Errorf("Could not list NetworkAttachmentDefinition resources in member namespace %s: %v", namespace, err)
 	}
 
@@ -358,29 +354,19 @@ func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context
 		return utilerrors.NewAggregate(allErrors)
 	}
 
-	netAttachDef := &unstructured.Unstructured{}
-	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "k8s.cni.cncf.io",
-		Version: "v1",
-		Kind:    "NetworkAttachmentDefinition",
-	})
+	netAttachDef := &multusv1.NetworkAttachmentDefinition{}
 	netAttachDef.SetNamespace(namespace)
 	netAttachDef.SetName(netAttachDefName)
 	common.SetLabel(netAttachDef, common.MemberOfKey, r.meshNamespace)
-	err = r.Client.Create(ctx, netAttachDef)
-	if err != nil {
+	if err := r.Client.Create(ctx, netAttachDef); err != nil {
 		allErrors = append(allErrors, fmt.Errorf("Could not create NetworkAttachmentDefinition %s/%s: %v", namespace, netAttachDefName, err))
 	}
 	return utilerrors.NewAggregate(allErrors)
 }
 
 func (r *namespaceReconciler) removeNetworkAttachmentDefinition(ctx context.Context, namespace string) error {
-	nadList, err := common.FetchMeshResources(ctx, r.Client, schema.GroupVersionKind{
-		Group:   "k8s.cni.cncf.io",
-		Version: "v1",
-		Kind:    "NetworkAttachmentDefinitionList",
-	}, r.meshNamespace, namespace)
-	if err != nil {
+	nadList := &multusv1.NetworkAttachmentDefinitionList{}
+	if err := r.Client.List(ctx, nadList, client.InNamespace(namespace), client.MatchingLabels{common.MemberOfKey: r.meshNamespace}); err != nil {
 		return fmt.Errorf("Could not list NetworkAttachmentDefinition resources in member namespace %s: %v", namespace, err)
 	}
 

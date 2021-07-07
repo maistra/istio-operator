@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
+	multusv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -345,7 +345,7 @@ func TestReconcileReconcilesAfterOperatorUpgradeFromV1_0(t *testing.T) {
 	nad := createNAD(cniNetwork1_0, appNamespace, controlPlaneNamespace)
 
 	cl, tracker, r := createClientAndReconciler(t, member, controlPlane, namespace, meshRoleBinding, appRoleBinding, nad)
-	tracker.AddReactor("delete", "k8s.cni.cncf.io/v1, Resource=networkattachmentdefinitions", assertNADNotDeleted(t))
+	tracker.AddReactor("delete", multusv1.SchemeGroupVersion.WithResource("networkattachmentdefinitions").String(), assertNADNotDeleted(t))
 	tracker.AddReactor("create", rbac.SchemeGroupVersion.WithResource("rolebindings").String(), assertRBNotCreated(t))
 
 	assert.Equals(member.Status.ServiceMeshReconciledVersion != controlPlane.Status.GetReconciledVersion(), true, "Unexpected Status.ServiceMeshReconciledVersion in SMMR already matches SMCP reconciled version", t)
@@ -446,12 +446,7 @@ func assertNADNotDeleted(t *testing.T) clienttesting.ReactionFunc {
 }
 
 func createNAD(name, appNamespace, cpNamespace string) runtime.Object {
-	netAttachDef := &unstructured.Unstructured{}
-	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "k8s.cni.cncf.io",
-		Version: "v1",
-		Kind:    "NetworkAttachmentDefinition",
-	})
+	netAttachDef := &multusv1.NetworkAttachmentDefinition{}
 	netAttachDef.SetNamespace(appNamespace)
 	netAttachDef.SetName(name)
 	common.SetLabel(netAttachDef, common.MemberOfKey, cpNamespace)
@@ -642,12 +637,7 @@ func assertNamespaceReconciled(t *testing.T, cl client.Client, namespace, meshNa
 	assert.Equals(ns.Labels[common.MemberOfKey], meshNamespace, "Unexpected or missing member-of label in namespace", t)
 
 	// check if net-attach-def exists
-	netAttachDef := &unstructured.Unstructured{}
-	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "k8s.cni.cncf.io",
-		Version: "v1",
-		Kind:    "NetworkAttachmentDefinition",
-	})
+	netAttachDef := &multusv1.NetworkAttachmentDefinition{}
 	err := cl.Get(ctx, types.NamespacedName{Namespace: namespace, Name: meshNetAttachDefName}, netAttachDef)
 	if err != nil {
 		t.Fatalf("Couldn't get NetworkAttachmentDefinition from client: %v", err)

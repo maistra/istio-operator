@@ -13,6 +13,7 @@ require (
 	github.com/go-logr/logr v0.2.1
 	github.com/google/go-cmp v0.5.2
 	github.com/gregjones/httpcache v0.0.0-20181110185634-c63ab54fda8f // indirect
+	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.1.0
 	github.com/magiconair/properties v1.8.1
 	github.com/mikefarah/yq/v4 v4.6.0
 	github.com/mitchellh/mapstructure v1.1.2
