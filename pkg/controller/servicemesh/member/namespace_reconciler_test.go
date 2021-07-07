@@ -4,11 +4,10 @@ import (
 	"context"
 	"testing"
 
+	multusv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -34,7 +33,7 @@ func TestReconcileNamespaceInMesh(t *testing.T) {
 
 	// check if net-attach-def exists
 	netAttachDefName := versions.DefaultVersion.GetCNINetworkName()
-	netAttachDef := newNetworkAttachmentDefinition()
+	netAttachDef := &multusv1.NetworkAttachmentDefinition{}
 	err := cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: netAttachDefName}, netAttachDef)
 	if err != nil {
 		t.Fatalf("Couldn't get NetworkAttachmentDefinition from client: %v", err)
@@ -86,7 +85,7 @@ func TestRemoveNamespaceFromMesh(t *testing.T) {
 
 	// check that net-attach-def was removed
 	netAttachDefName := versions.DefaultVersion.GetCNINetworkName()
-	netAttachDef := newNetworkAttachmentDefinition()
+	netAttachDef := &multusv1.NetworkAttachmentDefinition{}
 	err := cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: netAttachDefName}, netAttachDef)
 	assertNotFound(err, "Expected NetworkAttachmentDefinition to be deleted, but it is still present", t)
 
@@ -171,7 +170,7 @@ func TestOtherResourcesArePreserved(t *testing.T) {
 	meshRoleBinding := newMeshRoleBinding()
 
 	otherNetAttachDefNamme := "some-other-net-attach-def"
-	otherNetAttachDef := newNetworkAttachmentDefinition()
+	otherNetAttachDef := &multusv1.NetworkAttachmentDefinition{}
 	otherNetAttachDef.SetNamespace(appNamespace)
 	otherNetAttachDef.SetName(otherNetAttachDefNamme)
 
@@ -191,7 +190,7 @@ func TestOtherResourcesArePreserved(t *testing.T) {
 	assert.Equals(ns.Labels[otherLabelName], otherLabelValue, "Expected reconcileNamespaceInMesh to preserve other namespace labels, but it didn't", t)
 
 	// 1b. check if other NetworkAttachmentDefinitions were preserved
-	nad := newNetworkAttachmentDefinition()
+	nad := &multusv1.NetworkAttachmentDefinition{}
 	err := cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: otherNetAttachDefNamme}, nad)
 	if errors.IsNotFound(err) {
 		t.Fatalf("Expected reconcileNamespaceInMesh to preserve other NetworkAttachmentDefinition, but it deleted it")
@@ -219,7 +218,7 @@ func TestOtherResourcesArePreserved(t *testing.T) {
 	assert.Equals(ns.Labels[otherLabelName], otherLabelValue, "Expected removeNamespaceFromMesh to preserve other namespace labels, but it didn't", t)
 
 	// 2b. check if other NetworkAttachmentDefinitions were preserved
-	nad = newNetworkAttachmentDefinition()
+	nad = &multusv1.NetworkAttachmentDefinition{}
 	err = cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: otherNetAttachDefNamme}, nad)
 	if errors.IsNotFound(err) {
 		t.Fatalf("Expected removeNamespaceFromMesh to preserve other NetworkAttachmentDefinition, but it deleted it")
@@ -237,16 +236,6 @@ func TestOtherResourcesArePreserved(t *testing.T) {
 		panic(err)
 	}
 	assert.DeepEquals(rb, otherRoleBinding, "Expected removeNamespaceFromMesh to preserve other RoleBinding, but it modified it", t)
-}
-
-func newNetworkAttachmentDefinition() *unstructured.Unstructured {
-	netAttachDef := &unstructured.Unstructured{}
-	netAttachDef.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "k8s.cni.cncf.io",
-		Version: "v1",
-		Kind:    "NetworkAttachmentDefinition",
-	})
-	return netAttachDef
 }
 
 func setupReconciledNamespace(t *testing.T, cl client.Client, namespace string) {
