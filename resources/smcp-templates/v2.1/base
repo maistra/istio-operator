@@ -83,8 +83,6 @@ spec:
           ingress:
             enabled: true
   techPreview:
-    wasmExtensions:
-      enabled: false
     sidecarInjectorWebhook:
       objectSelector:
         enabled: false

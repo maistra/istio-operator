@@ -122,6 +122,7 @@ func TestProfiles(t *testing.T) {
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerPolicy)
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerTelemetry)
 				smcp.Spec.Runtime.Defaults.Container.ImageTag = COMMUNITY_IMAGE_2_1
+				smcp.Spec.TechPreview.RemoveField("wasmExtensions")
 			},
 		},
 		{
@@ -154,6 +155,7 @@ func TestProfiles(t *testing.T) {
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerPolicy)
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerTelemetry)
 				smcp.Spec.Runtime.Defaults.Container.ImageTag = PRODUCT_IMAGE_2_1
+				smcp.Spec.TechPreview.RemoveField("wasmExtensions")
 			},
 		},
 	}
