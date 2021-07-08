@@ -144,7 +144,7 @@ For more details on uninstalling the Kiali operator, see the [Kiali documentaton
 
 ## API documentation
 
-The API reference documentation is available in the [maistra/api repository](https://github.com/maistra/api/docs/crd/CRDS.adoc).
+The API reference documentation is available in the [maistra/api repository](https://github.com/maistra/api/blob/maistra-2.1/docs/crd/CRDS.adoc).
 
 ## Multitenancy
 
