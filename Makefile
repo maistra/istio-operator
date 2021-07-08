@@ -213,7 +213,7 @@ generate-product-manifests:
 # resource generation
 ################################################################################
 .PHONY: gen
-gen:  generate-crds update-charts update-templates update-generated-code generate-manifests generate-docs
+gen:  generate-crds update-charts update-templates update-generated-code generate-manifests
 
 .PHONY: gen-check
 gen-check: gen restore-manifest-dates check-clean-repo
@@ -228,15 +228,6 @@ generate-manifests: generate-community-manifests generate-product-manifests
 .PHONY: generate-crds
 generate-crds:
 	${SOURCE_DIR}/build/generate-crds.sh
-
-.PHONY: generate-docs
-generate-docs:
-	rm -rf ${SOURCE_DIR}/docs/crd
-	# Hack: Remove v1 files so that docs don't get duplicated. Remove this hack as part of https://issues.redhat.com/browse/MAISTRA-2331
-	mkdir -p tmp/v1-bk
-	mv vendor/maistra.io/api/core/v1/{controlplane_types.go,helmvalues.go,memberroll_types.go,member_types.go,status.go} tmp/v1-bk/
-	go run -mod=vendor github.com/maistra/istio-operator/tools/doc/ paths=github.com/maistra/istio-operator/pkg/apis/maistra/... paths=maistra.io/api/core/... output:dir=${SOURCE_DIR}/docs/crd doc:format=adoc,depth=2
-	mv tmp/v1-bk/{controlplane_types.go,helmvalues.go,memberroll_types.go,member_types.go,status.go} vendor/maistra.io/api/core/v1/
 
 .PHONY: restore-manifest-dates
 restore-manifest-dates:
