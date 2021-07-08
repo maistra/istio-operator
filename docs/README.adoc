@@ -1,3 +1,0 @@
-= Maistra Operator Documenation
-
-include::crd/CRDS.adoc[leveoffset=1]
