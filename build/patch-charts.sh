@@ -509,7 +509,6 @@ function copyGlobalValues() {
 }
 
 function hacks() {
-  echo "XXXXXXXX HACKS THAT NEED TO BE RESOLVED BEFORE 2.0 RELEASE XXXXXXXX"
   sed_wrap -i -e '/containers:/,/name: discovery/ {
       /name: discovery/a\
 \          workingDir: "/"
@@ -529,5 +528,5 @@ patchSidecarInjector
 #patchKialiOpenShift
 moveEnvoyFiltersToMeshConfigChart
 copyGlobalValues
-# XXX: hacks - remove before 2.0 release
+# TODO: remove this hack once the image is updated to include workingDir
 hacks
