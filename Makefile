@@ -15,7 +15,7 @@
 -include Makefile.overrides
 
 MAISTRA_VERSION        ?= 2.1.0
-MAISTRA_BRANCH         ?= maistra-2.1-istio-1.9
+MAISTRA_BRANCH         ?= maistra-2.1
 REPLACES_PRODUCT_CSV   ?= 2.0.5
 REPLACES_COMMUNITY_CSV ?= 2.0.5
 VERSION                ?= development
