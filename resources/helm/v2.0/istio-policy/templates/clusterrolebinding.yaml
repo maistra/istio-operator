@@ -4,7 +4,7 @@ metadata:
   name: istio-policy-admin-role-binding-{{ .Release.Namespace }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.6.1"
+    maistra-version: "2.0.6.2"
     app: istio-policy
     release: {{ .Release.Name }}
 roleRef:
