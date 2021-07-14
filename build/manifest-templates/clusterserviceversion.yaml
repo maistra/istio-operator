@@ -3,6 +3,8 @@ kind: ClusterServiceVersion
 metadata:
   name: __NAME__.v__VERSION__
   namespace: placeholder
+  labels:
+    __ARCHITECTURE_LABELS__
   annotations:
     categories: "OpenShift Optional, Integration & Delivery"
     capabilities: "Seamless Upgrades"
