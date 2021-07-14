@@ -21,7 +21,8 @@ type config struct {
 
 // OLM is intermediate struct for serialization
 type olm struct {
-	Images images `json:"relatedImage,omitempty"`
+	Images                    images `json:"relatedImage,omitempty"`
+	WebhookManagementDisabled bool   `json:"webhookManagementDisabled,omitempty"`
 }
 
 // Images for various versions
