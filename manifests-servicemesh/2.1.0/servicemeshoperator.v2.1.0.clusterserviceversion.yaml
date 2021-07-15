@@ -3,6 +3,11 @@ kind: ClusterServiceVersion
 metadata:
   name: servicemeshoperator.v2.1.0
   namespace: placeholder
+  labels:
+    operatorframework.io/arch.amd64: supported
+    operatorframework.io/arch.s390x: supported
+    operatorframework.io/arch.ppc64le: supported
+
   annotations:
     categories: "OpenShift Optional, Integration & Delivery"
     capabilities: "Seamless Upgrades"
@@ -12,7 +17,7 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
 
     containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.1.0
-    createdAt: 2021-06-10T10:42:30IST
+    createdAt: 2021-07-14T16:40:07UTC
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.1.0-0"
     operators.openshift.io/infrastructure-features: '["Disconnected"]'
