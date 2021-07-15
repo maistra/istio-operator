@@ -323,6 +323,9 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 		log.V(5).Info(fmt.Sprintf("rendering values:\n%s", string(rawValues)))
 	}
 
+	// Update spec.Istio back with the previous content merged with global.yaml
+	spec.Istio = v1.NewHelmValues(values)
+
 	// Validate the final AppliedSpec
 	err = v.ValidateV2Full(ctx, cr.Client, &smcp.ObjectMeta, &smcp.Status.AppliedSpec)
 	if err != nil {
@@ -354,13 +357,13 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 		if origGateways, ok := values.AsMap()["gateways"]; ok {
 			if origGatewaysMap, ok := origGateways.(map[string]interface{}); ok {
 				log.V(2).Info("rendering ingress gateway chart for istio-ingressgateway")
-				if ingressRenderings, _, err := v.renderIngressGateway("istio-ingressgateway", smcp.GetNamespace(), origGatewaysMap, v1.NewHelmValues(values)); err == nil {
+				if ingressRenderings, _, err := v.renderIngressGateway("istio-ingressgateway", smcp.GetNamespace(), origGatewaysMap, spec.Istio); err == nil {
 					renderings[GatewayIngressChart] = ingressRenderings[GatewayIngressChart]
 				} else {
 					allErrors = append(allErrors, err)
 				}
 				log.V(2).Info("rendering egress gateway chart for istio-egressgateway")
-				if egressRenderings, _, err := v.renderEgressGateway("istio-egressgateway", smcp.GetNamespace(), origGatewaysMap, v1.NewHelmValues(values)); err == nil {
+				if egressRenderings, _, err := v.renderEgressGateway("istio-egressgateway", smcp.GetNamespace(), origGatewaysMap, spec.Istio); err == nil {
 					renderings[GatewayEgressChart] = egressRenderings[GatewayEgressChart]
 				} else {
 					allErrors = append(allErrors, err)
@@ -371,7 +374,7 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 							continue
 						}
 						log.V(2).Info(fmt.Sprintf("rendering ingress gateway chart for %s", name))
-						if ingressRenderings, _, err := v.renderIngressGateway(name, smcp.GetNamespace(), origGatewaysMap, v1.NewHelmValues(values)); err == nil {
+						if ingressRenderings, _, err := v.renderIngressGateway(name, smcp.GetNamespace(), origGatewaysMap, spec.Istio); err == nil {
 							renderings[GatewayIngressChart] = append(renderings[GatewayIngressChart], ingressRenderings[GatewayIngressChart]...)
 						} else {
 							allErrors = append(allErrors, err)
@@ -382,14 +385,14 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 							continue
 						}
 						log.V(2).Info(fmt.Sprintf("rendering egress gateway chart for %s", name))
-						if egressRenderings, _, err := v.renderEgressGateway(name, smcp.GetNamespace(), origGatewaysMap, v1.NewHelmValues(values)); err == nil {
+						if egressRenderings, _, err := v.renderEgressGateway(name, smcp.GetNamespace(), origGatewaysMap, spec.Istio); err == nil {
 							renderings[GatewayEgressChart] = append(renderings[GatewayEgressChart], egressRenderings[GatewayEgressChart]...)
 						} else {
 							allErrors = append(allErrors, err)
 						}
 					}
 				}
-				v1.NewHelmValues(values).SetField("gateways", origGateways)
+				spec.Istio.SetField("gateways", origGateways)
 			}
 		} else {
 			allErrors = append(allErrors, fmt.Errorf("error retrieving values for gateways charts"))
