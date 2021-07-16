@@ -23,9 +23,6 @@ rules:
   verbs: ["create", "get", "watch", "list", "update", "delete"]
 
 # For MeshFederation support
-- apiGroups: ["maistra.io"]
-  resources: ["meshfederations", "meshfederations/status", "federationstatuses", "federationstatuses/status", "serviceexports", "serviceexports/status", "serviceimports", "serviceimports/status"]
+- apiGroups: ["federation.maistra.io"]
+  resources: ["servicemeshpeers", "servicemeshpeers/status", "exportedservicesets", "exportedservicesets/status", "importedservicesets", "importedservicesets/status"]
   verbs: ["get", "list", "watch", "patch", "update"]
-- apiGroups: ["maistra.io"]
-  resources: ["federationstatuses", "federationstatuses/status"]
-  verbs: ["create"]
