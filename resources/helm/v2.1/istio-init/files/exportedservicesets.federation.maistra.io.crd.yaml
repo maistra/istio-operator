@@ -6,21 +6,21 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: serviceexports.maistra.io
+  name: exportedservicesets.federation.maistra.io
 spec:
-  group: maistra.io
+  group: federation.maistra.io
   names:
-    kind: ServiceExports
-    listKind: ServiceExportsList
-    plural: serviceexports
-    singular: serviceexports
+    kind: ExportedServiceSet
+    listKind: ExportedServiceSetList
+    plural: exportedservicesets
+    singular: exportedserviceset
   preserveUnknownFields: false
   scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: ServiceExport is the Schema for configuring exported services.  The name of the ServiceExports resource must match the name of a MeshFederation resource defining the remote mesh to which the services will be exported.
+      description: ExportedServiceSet is the Schema for configuring exported services.  The name of the ExportedServiceSet resource must match the name of a ServiceMeshPeer resource defining the remote mesh to which the services will be exported.
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
@@ -33,8 +33,8 @@ spec:
         spec:
           description: Spec defines rules for matching services to be exported.
           properties:
-            exports:
-              description: Exports are the rules that determine which services are exported from the mesh.  The list is processed in order and the first spec in the list that applies to a service is the one that will be applied.  This allows more specific selectors to be placed before more general selectors.
+            exportRules:
+              description: ExportRules are the rules that determine which services are exported from the mesh.  The list is processed in order and the first spec in the list that applies to a service is the one that will be applied.  This allows more specific selectors to be placed before more general selectors.
               items:
                 properties:
                   labelSelector:
@@ -52,12 +52,9 @@ spec:
                                   type: string
                               type: object
                             name:
-                              properties:
-                                name:
-                                  type: string
-                                namespace:
-                                  type: string
-                              type: object
+                              type: string
+                            namespace:
+                              type: string
                           type: object
                         type: array
                       namespace:
@@ -105,12 +102,9 @@ spec:
                             type: string
                         type: object
                       name:
-                        properties:
-                          name:
-                            type: string
-                          namespace:
-                            type: string
-                        type: object
+                        type: string
+                      namespace:
+                        type: string
                     type: object
                   type:
                     description: Type of rule.  One of Name or Label.
@@ -121,6 +115,42 @@ spec:
               type: array
           type: object
         status:
+          properties:
+            exportedServices:
+              description: Exports provides details about the services exported by this mesh.
+              items:
+                description: PeerServiceMapping represents the name mapping between an exported service and its local counterpart.
+                properties:
+                  exportedName:
+                    description: ExportedName represents the fully qualified domain name (FQDN) of an exported service.  For an exporting mesh, this is the name that is exported to the remote mesh. For an importing mesh, this would be the name of the service exported by the remote mesh.
+                    type: string
+                  localService:
+                    description: LocalService represents the service in the local (i.e. this) mesh. For an exporting mesh, this would be the service being exported. For an importing mesh, this would be the imported service.
+                    properties:
+                      hostname:
+                        description: Hostname represents fully qualified domain name (FQDN) used to access the service.
+                        type: string
+                      name:
+                        description: Name represents the simple name of the service, e.g. the metadata.name field of a kubernetes Service.
+                        type: string
+                      namespace:
+                        description: Namespace represents the namespace within which the service resides.
+                        type: string
+                    required:
+                    - hostname
+                    - name
+                    - namespace
+                    type: object
+                required:
+                - exportedName
+                - localService
+                type: object
+              type: array
+              x-kubernetes-list-map-keys:
+              - exportedName
+              x-kubernetes-list-type: map
+          required:
+          - exportedServices
           type: object
       type: object
   version: v1
