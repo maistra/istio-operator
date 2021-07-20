@@ -21,22 +21,24 @@ import (
 
 type ManifestProcessor struct {
 	common.ControllerResources
-	PatchFactory     *PatchFactory
-	preprocessObject func(ctx context.Context, obj *unstructured.Unstructured) error
-	processNewObject func(ctx context.Context, obj *unstructured.Unstructured) error
+	PatchFactory             *PatchFactory
+	preprocessObject         func(ctx context.Context, obj *unstructured.Unstructured) error
+	processNewObject         func(ctx context.Context, obj *unstructured.Unstructured) error
+	preprocessObjectForPatch func(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error)
 
 	appInstance, appVersion, owner string
 }
 
-func NewManifestProcessor(controllerResources common.ControllerResources, patchFactory *PatchFactory, appInstance, appVersion, owner string, preprocessObjectFunc, postProcessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) error) *ManifestProcessor {
+func NewManifestProcessor(controllerResources common.ControllerResources, patchFactory *PatchFactory, appInstance, appVersion, owner string, preprocessObjectFunc, postProcessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) error, preprocessObjectForPatchFunc func(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error)) *ManifestProcessor {
 	return &ManifestProcessor{
-		ControllerResources: controllerResources,
-		PatchFactory:        patchFactory,
-		preprocessObject:    preprocessObjectFunc,
-		processNewObject:    postProcessObjectFunc,
-		appInstance:         appInstance,
-		appVersion:          appVersion,
-		owner:               owner,
+		ControllerResources:      controllerResources,
+		PatchFactory:             patchFactory,
+		preprocessObject:         preprocessObjectFunc,
+		processNewObject:         postProcessObjectFunc,
+		preprocessObjectForPatch: preprocessObjectForPatchFunc,
+		appInstance:              appInstance,
+		appVersion:               appVersion,
+		owner:                    owner,
 	}
 }
 
@@ -159,27 +161,33 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 				log.Error(err, "error during creation of new resource")
 			}
 		}
-	} else if patch, err = p.PatchFactory.CreatePatch(receiver, obj); err == nil && patch != nil {
-		log.Info("updating existing resource")
-		_, err = patch.Apply(ctx)
-		if errors.IsInvalid(err) {
-			// patch was invalid, try delete/create
-			log.Info(fmt.Sprintf("patch failed: %v.  attempting to delete and recreate the resource", err))
-			if deleteErr := p.Client.Delete(ctx, obj, client.PropagationPolicy(metav1.DeletePropagationBackground)); deleteErr == nil {
-				madeChanges = true
-				// we need to remove the resource version, which was updated by the patching process
-				obj.SetResourceVersion("")
-				if createErr := p.Client.Create(ctx, obj); createErr == nil {
-					log.Info("successfully recreated resource after patch failure")
-					err = nil
+	} else {
+		preprocessedObj, err := p.preprocessObjectForPatch(ctx, receiver, obj)
+		if err != nil {
+			return madeChanges, err
+		}
+		if patch, err = p.PatchFactory.CreatePatch(receiver, preprocessedObj); err == nil && patch != nil {
+			log.Info("updating existing resource")
+			_, err = patch.Apply(ctx)
+			if errors.IsInvalid(err) {
+				// patch was invalid, try delete/create
+				log.Info(fmt.Sprintf("patch failed: %v.  attempting to delete and recreate the resource", err))
+				if deleteErr := p.Client.Delete(ctx, obj, client.PropagationPolicy(metav1.DeletePropagationBackground)); deleteErr == nil {
+					madeChanges = true
+					// we need to remove the resource version, which was updated by the patching process
+					obj.SetResourceVersion("")
+					if createErr := p.Client.Create(ctx, obj); createErr == nil {
+						log.Info("successfully recreated resource after patch failure")
+						err = nil
+					} else {
+						log.Error(createErr, "error trying to recreate resource after patch failure")
+					}
 				} else {
-					log.Error(createErr, "error trying to recreate resource after patch failure")
+					log.Error(deleteErr, "error deleting resource for recreation")
 				}
 			} else {
-				log.Error(deleteErr, "error deleting resource for recreation")
+				madeChanges = true
 			}
-		} else {
-			madeChanges = true
 		}
 	}
 	log.V(2).Info("resource reconciliation complete")

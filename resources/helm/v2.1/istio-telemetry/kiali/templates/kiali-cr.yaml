@@ -15,6 +15,7 @@ spec:
     strategy: "openshift"
 
   deployment:
+    accessible_namespaces: []
 {{- if and .Values.kiali.hub .Values.kiali.image }}
     image_name: "{{ .Values.kiali.hub }}/{{ .Values.kiali.image }}"
 {{- end }}

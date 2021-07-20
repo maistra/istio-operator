@@ -24,7 +24,7 @@ func TestEmptyYAMLBlocks(t *testing.T) {
 		Head: &releaseutil.SimpleHead{},
 	}
 
-	processor := NewManifestProcessor(common.ControllerResources{}, &PatchFactory{}, "app", "version", "owner", nil, nil)
+	processor := NewManifestProcessor(common.ControllerResources{}, &PatchFactory{}, "app", "version", "owner", nil, nil, nil)
 
 	_, err := processor.ProcessManifest(context.TODO(), manifest, "bad")
 

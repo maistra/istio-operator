@@ -2,8 +2,9 @@ package bootstrap
 
 import (
 	"context"
-	"k8s.io/helm/pkg/manifest"
 	"path"
+
+	"k8s.io/helm/pkg/manifest"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -65,7 +66,7 @@ func internalProcessManifests(ctx context.Context, cl client.Client, rendering [
 		OperatorNamespace: operatorNamespace,
 	}
 
-	mp := helm.NewManifestProcessor(controllerResources, helm.NewPatchFactory(cl), "istio_cni", "TODO", "maistra-istio-operator", preProcessObject, postProcessObject)
+	mp := helm.NewManifestProcessor(controllerResources, helm.NewPatchFactory(cl), "istio_cni", "TODO", "maistra-istio-operator", preProcessObject, postProcessObject, preProcessObjectForPatch)
 	if _, err := mp.ProcessManifests(ctx, rendering, "istio_cni"); err != nil {
 		return err
 	}
@@ -79,4 +80,8 @@ func preProcessObject(ctx context.Context, obj *unstructured.Unstructured) error
 
 func postProcessObject(ctx context.Context, obj *unstructured.Unstructured) error {
 	return nil
+}
+
+func preProcessObjectForPatch(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error) {
+	return newObj, nil
 }
