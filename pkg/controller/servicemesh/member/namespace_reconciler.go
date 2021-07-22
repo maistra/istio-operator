@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	configv1 "github.com/openshift/api/config/v1"
+	networkv1 "github.com/openshift/api/network/v1"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -17,7 +19,6 @@ import (
 	rbac "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -70,10 +71,8 @@ func newNamespaceReconciler(ctx context.Context, cl client.Client, meshNamespace
 func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) error {
 	log := common.LogFromContext(ctx)
 	// configure networks
-	network := &unstructured.Unstructured{}
-	network.SetAPIVersion("config.openshift.io/v1")
-	network.SetKind("Network")
 	r.networkingStrategy = &subnetStrategy{}
+	network := &configv1.Network{}
 	err := r.Client.Get(ctx, client.ObjectKey{Name: "cluster"}, network)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -82,64 +81,42 @@ func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) 
 		}
 		return err
 	}
-	networkSpec, ok, err := unstructured.NestedMap(network.UnstructuredContent(), "spec")
-	if err != nil {
-		return pkgerrors.Wrap(err, "network spec not defined")
-	}
-	if ok {
-		networkType, ok := networkSpec["networkType"]
-		if ok {
-			switch strings.ToLower(fmt.Sprintf("%v", networkType)) {
-			case strings.ToLower(networkTypeOpenShiftSDN):
-				clusterNetwork := &unstructured.Unstructured{}
-				clusterNetwork.SetAPIVersion("network.openshift.io/v1")
-				clusterNetwork.SetKind("ClusterNetwork")
-				err = r.Client.Get(ctx, client.ObjectKey{Name: "default"}, clusterNetwork)
-				if err != nil {
-					if apierrors.IsNotFound(err) {
-						log.Info("default cluster network not defined, skipping network configuration")
-						return nil
-					}
-					return err
-				}
-				networkPlugin, ok, err := unstructured.NestedString(clusterNetwork.UnstructuredContent(), "pluginName")
-				if err != nil {
-					return pkgerrors.Wrap(err, "cluster network plugin not defined")
-				}
-				if ok {
-					switch networkPlugin {
-					case "redhat/openshift-ovs-subnet":
-						log.Info("Network Strategy OpenShiftSDN:subnet")
-						// nothing to do
-					case "redhat/openshift-ovs-networkpolicy":
-						log.Info("Network Strategy OpenShiftSDN:NetworkPolicy")
-						r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
-					case "redhat/openshift-ovs-multitenant":
-						log.Info("Network Strategy OpenShiftSDN:MultiTenant")
-						r.networkingStrategy, err = newMultitenantStrategy(r.Client, r.meshNamespace)
-					default:
-						return fmt.Errorf("unsupported cluster network plugin: %s", networkPlugin)
-					}
-					if err != nil {
-						return pkgerrors.Wrap(err, "failed to instantiate network policy strategy")
-					}
-				} else {
-					log.Info("cluster network plugin not defined, skipping network configuration")
-				}
-			case strings.ToLower(networkTypeCalico):
-				log.Info("Network Strategy Calico:NetworkPolicy")
-				r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
-			case strings.ToLower(networkTypeOVNKubernetes):
-				log.Info("Network Strategy OVNKubernetes:NetworkPolicy")
-				r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
-			default:
-				return fmt.Errorf("unsupported network type: %s", networkType)
+
+	switch strings.ToLower(network.Spec.NetworkType) {
+	case strings.ToLower(networkTypeOpenShiftSDN):
+		clusterNetwork := &networkv1.ClusterNetwork{}
+		err = r.Client.Get(ctx, client.ObjectKey{Name: "default"}, clusterNetwork)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				log.Info("default cluster network not defined, skipping network configuration")
+				return nil
 			}
-		} else {
-			log.Info("networkType not defined, skipping network configuration")
+			return err
 		}
-	} else {
-		log.Info("network spec not defined, skipping network configuration")
+		switch clusterNetwork.PluginName {
+		case "redhat/openshift-ovs-subnet":
+			log.Info("Network Strategy OpenShiftSDN:subnet")
+			// nothing to do
+		case "redhat/openshift-ovs-networkpolicy":
+			log.Info("Network Strategy OpenShiftSDN:NetworkPolicy")
+			r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
+		case "redhat/openshift-ovs-multitenant":
+			log.Info("Network Strategy OpenShiftSDN:MultiTenant")
+			r.networkingStrategy, err = newMultitenantStrategy(r.Client, r.meshNamespace)
+		default:
+			return fmt.Errorf("unsupported cluster network plugin: %s", clusterNetwork.PluginName)
+		}
+		if err != nil {
+			return pkgerrors.Wrap(err, "failed to instantiate network policy strategy")
+		}
+	case strings.ToLower(networkTypeCalico):
+		log.Info("Network Strategy Calico:NetworkPolicy")
+		r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
+	case strings.ToLower(networkTypeOVNKubernetes):
+		log.Info("Network Strategy OVNKubernetes:NetworkPolicy")
+		r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
+	default:
+		return fmt.Errorf("unsupported network type: %s", network.Spec.NetworkType)
 	}
 	return err
 }

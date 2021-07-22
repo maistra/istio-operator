@@ -401,6 +401,7 @@ github.com/opencontainers/runc/libcontainer/user
 ## explicit
 # github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
 ## explicit
+github.com/openshift/api/config/v1
 github.com/openshift/api/image/docker10
 github.com/openshift/api/image/dockerpre012
 github.com/openshift/api/image/v1
