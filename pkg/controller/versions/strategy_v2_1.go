@@ -243,7 +243,10 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 			}
 
 			// set the correct zipkin address
-			spec.Istio.SetField("global.tracer.zipkin.address", fmt.Sprintf("%s-collector.%s.svc:9411", jaegerResource, smcp.GetNamespace()))
+			err = spec.Istio.SetField("meshConfig.defaultConfig.tracing.zipkin.address", fmt.Sprintf("%s-collector.%s.svc:9411", jaegerResource, smcp.GetNamespace()))
+			if err != nil {
+				return nil, fmt.Errorf("Could not set field istio.meshConfig.defaultConfig.tracing.zipkin.address: %v", err)
+			}
 
 			jaeger := &jaegerv1.Jaeger{}
 			jaeger.SetName(jaegerResource)
