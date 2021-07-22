@@ -36,7 +36,6 @@ spec:
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
-      hostNetwork: true
       tolerations:
         # Make sure istio-node gets scheduled on all nodes.
         - effect: NoSchedule
@@ -67,6 +66,8 @@ spec:
           image: "{{ .Values.image_v1_0 }}"
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           command: ["/install-cni.sh"]
+          securityContext:
+            privileged: true
           env:
             # Directory where the CNI config file should be created in
             - name: CNI_NET_DIR
@@ -110,6 +111,8 @@ spec:
           image: "{{ .Values.image_v1_1 }}"
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           command: ["/install-cni.sh"]
+          securityContext:
+            privileged: true
           env:
             # Directory where the CNI config file should be created in
             - name: CNI_NET_DIR
@@ -153,6 +156,8 @@ spec:
           image: "{{ .Values.image_v2_0 }}"
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           command: ["/install-cni.sh"]
+          securityContext:
+            privileged: true
           env:
             # Directory where the CNI config file should be created in
             - name: CNI_NET_DIR
@@ -196,6 +201,8 @@ spec:
           image: "{{ .Values.image_v2_1 }}"
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           command: ["install-cni"]
+          securityContext:
+            privileged: true
           env:
             # Directory in which the CNI config file should be created
             - name: CNI_NET_DIR
