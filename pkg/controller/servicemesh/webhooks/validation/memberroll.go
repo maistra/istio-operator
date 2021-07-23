@@ -78,7 +78,8 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request)
 		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("ServiceMeshMemberRoll must be named '%s'", common.MemberRollName))
 	}
 
-	if smmr.Namespace == common.GetOperatorNamespace() {
+	// TODO: Need switch for external/split control plane detection (Dataplane is in a different clustern than the operator)
+	if !common.Config.OLM.SplitModeEnabled && smmr.Namespace == common.GetOperatorNamespace() {
 		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("ServiceMeshMemberRoll may not be created in the same project/namespace as the operator"))
 	}
 

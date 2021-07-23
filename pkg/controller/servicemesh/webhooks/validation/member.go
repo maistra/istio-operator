@@ -53,7 +53,8 @@ func (v *MemberValidator) Handle(ctx context.Context, req admission.Request) adm
 		return admission.Errored(http.StatusBadRequest, fmt.Errorf("ServiceMeshMember must be named %q", common.MemberName))
 	}
 
-	if smm.Namespace == common.GetOperatorNamespace() {
+	// TODO: Need switch for external/split control plane detection (Dataplane is in a different clustern than the operator)
+	if !common.Config.OLM.SplitModeEnabled && smm.Namespace == common.GetOperatorNamespace() {
 		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("namespace where operator is installed cannot be added to any mesh"))
 	}
 
