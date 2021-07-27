@@ -18,7 +18,7 @@ var (
 
 var proxyTestCases []conversionTestCase
 
-func proxyTestCasesV2(version versions.Version) []conversionTestCase{
+func proxyTestCasesV2(version versions.Version) []conversionTestCase {
 	ver := version.String()
 	return []conversionTestCase{
 		{
@@ -1059,6 +1059,9 @@ func proxyTestCasesV2(version versions.Version) []conversionTestCase{
 								},
 							},
 							Image: "custom-proxy",
+							Env: map[string]string{
+								"custom-env": "custom-env-value",
+							},
 						},
 					},
 				},
@@ -1083,6 +1086,11 @@ func proxyTestCasesV2(version versions.Version) []conversionTestCase{
 								"memory": "64Mi",
 							},
 						},
+					},
+				},
+				"meshConfig": map[string]interface{}{
+					"defaultConfig": map[string]interface{}{
+						"proxyMetadata": map[string]interface{}{"custom-env": "custom-env-value"},
 					},
 				},
 			}),
