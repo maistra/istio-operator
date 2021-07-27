@@ -312,6 +312,12 @@ spec:
       value: "{{ $value }}"
     {{- end }}
     {{- end }}
+    {{- if isset .ObjectMeta.Annotations `sidecar.maistra.io/proxyEnv` }}
+    {{- range $key, $value := fromJSON (index .ObjectMeta.Annotations `sidecar.maistra.io/proxyEnv`) }}
+    - name: {{ $key }}
+      value: "{{ $value }}"
+    {{- end }}
+    {{- end }}
     {{- range $key, $value := .ProxyConfig.ProxyMetadata }}
     - name: {{ $key }}
       value: "{{ $value }}"
