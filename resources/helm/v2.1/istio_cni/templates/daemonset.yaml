@@ -36,7 +36,6 @@ spec:
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
-      hostNetwork: true
       tolerations:
         # Make sure istio-node gets scheduled on all nodes.
         - effect: NoSchedule
@@ -62,10 +61,13 @@ spec:
       containers:
         # This container installs the Istio CNI binaries
         # and CNI network config file on each node.
+{{- if and (.Values.supportedReleases) (has "v1.0" .Values.supportedReleases) }}
         - name: install-cni-v1-0
           image: "{{ .Values.image_v1_0 }}"
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           command: ["/install-cni.sh"]
+          securityContext:
+            privileged: true
           env:
             # Directory where the CNI config file should be created in
             - name: CNI_NET_DIR
@@ -103,10 +105,14 @@ spec:
               cpu: 10m
               memory: 100Mi
 {{- end }}
+{{- end }}
+{{- if and (.Values.supportedReleases) (has "v1.1" .Values.supportedReleases) }}
         - name: install-cni-v1-1
           image: "{{ .Values.image_v1_1 }}"
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           command: ["/install-cni.sh"]
+          securityContext:
+            privileged: true
           env:
             # Directory where the CNI config file should be created in
             - name: CNI_NET_DIR
@@ -144,10 +150,14 @@ spec:
               cpu: 10m
               memory: 100Mi
 {{- end }}
+{{- end }}
+{{- if and (.Values.supportedReleases) (has "v2.0" .Values.supportedReleases) }}
         - name: install-cni-v2-0
           image: "{{ .Values.image_v2_0 }}"
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           command: ["/install-cni.sh"]
+          securityContext:
+            privileged: true
           env:
             # Directory where the CNI config file should be created in
             - name: CNI_NET_DIR
@@ -185,10 +195,14 @@ spec:
               cpu: 10m
               memory: 100Mi
 {{- end }}
+{{- end }}
+{{- if and (.Values.supportedReleases) (has "v2.1" .Values.supportedReleases) }}
         - name: install-cni-v2-1
           image: "{{ .Values.image_v2_1 }}"
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           command: ["install-cni"]
+          securityContext:
+            privileged: true
           env:
             # Directory in which the CNI config file should be created
             - name: CNI_NET_DIR
@@ -226,6 +240,7 @@ spec:
             requests:
               cpu: 10m
               memory: 100Mi
+{{- end }}
 {{- end }}
       volumes:
         # Used to install CNI.

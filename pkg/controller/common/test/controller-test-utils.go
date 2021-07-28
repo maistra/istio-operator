@@ -6,10 +6,8 @@ import (
 	"testing"
 
 	arv1beta1 "k8s.io/api/admissionregistration/v1beta1"
-	rbac "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -19,10 +17,11 @@ import (
 
 	"github.com/maistra/istio-operator/pkg/apis"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	"github.com/maistra/istio-operator/pkg/apis/maistra/v1alpha1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
+
+	"maistra.io/api/core/v1alpha1"
 )
 
 func GetScheme() *runtime.Scheme {
@@ -30,23 +29,10 @@ func GetScheme() *runtime.Scheme {
 	if err := apis.AddToScheme(s); err != nil {
 		panic(fmt.Sprintf("Could not add to scheme: %v", err))
 	}
-	if err := rbac.AddToScheme(s); err != nil {
-		panic(fmt.Sprintf("Could not add to scheme: %v", err))
-	}
 	if err := arv1beta1.AddToScheme(s); err != nil {
 		panic(fmt.Sprintf("Could not add to scheme: %v", err))
 	}
-	s.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "k8s.cni.cncf.io",
-		Version: "v1",
-		Kind:    "NetworkAttachmentDefinition",
-	}, &unstructured.Unstructured{})
-	s.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "k8s.cni.cncf.io",
-		Version: "v1",
-		Kind:    "NetworkAttachmentDefinitionList",
-	}, &unstructured.UnstructuredList{})
-	s.SetVersionPriority(v2.SchemeGroupVersion, v1.SchemeGroupVersion, v1alpha1.GroupVersion)
+	s.SetVersionPriority(v2.SchemeGroupVersion, v1.SchemeGroupVersion, v1alpha1.SchemeGroupVersion)
 	return s
 }
 

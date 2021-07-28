@@ -3,6 +3,11 @@ kind: ClusterServiceVersion
 metadata:
   name: servicemeshoperator.v2.1.0
   namespace: placeholder
+  labels:
+    operatorframework.io/arch.amd64: supported
+    operatorframework.io/arch.s390x: supported
+    operatorframework.io/arch.ppc64le: supported
+
   annotations:
     categories: "OpenShift Optional, Integration & Delivery"
     capabilities: "Seamless Upgrades"
@@ -12,7 +17,7 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
 
     containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.1.0
-    createdAt: 2021-02-24T12:16:14CET
+    createdAt: 2021-07-22T17:44:51CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.1.0-0"
     operators.openshift.io/infrastructure-features: '["Disconnected"]'
@@ -140,7 +145,7 @@ spec:
 
     ### More Information
 
-    * [Documentation](https://docs.openshift.com/container-platform/latest/service_mesh/servicemesh-release-notes.html)
+    * [Documentation](https://docs.openshift.com/container-platform/latest/service_mesh/v2x/servicemesh-release-notes.html)
     * [Bugs](https://issues.redhat.com/projects/OSSM)
 
   icon:
@@ -235,14 +240,14 @@ spec:
     name: Red Hat, Inc.
   links:
   - name: Red Hat OpenShift Service Mesh
-    url: https://docs.openshift.com/container-platform/latest/service_mesh/servicemesh-release-notes.html
+    url: https://docs.openshift.com/container-platform/latest/service_mesh/v2x/servicemesh-release-notes.html
   - name: Istio
     url: https://istio.io/
   - name: Operator Source Code
     url: https://github.com/Maistra/istio-operator
   - name: Bugs
     url: https://issues.redhat.com/projects/OSSM
-  replaces: servicemeshoperator.v2.0.2
+  replaces: servicemeshoperator.v2.0.5
   installModes:
   - type: OwnNamespace
     supported: false
@@ -511,12 +516,16 @@ spec:
             - clusternetworks
           verbs:
             - get
+            - list
+            - watch
         - apiGroups:
             - config.openshift.io
           resources:
             - networks
           verbs:
             - get
+            - list
+            - watch
         - apiGroups:
             - image.openshift.io
           resources:
@@ -781,7 +790,7 @@ spec:
         path: controlPlaneRef.namespace
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Service_Mesh_Control_Plane'
-          - 'urn:alm:descriptor:io.kubernetes:Namespace'
+          - 'urn:alm:descriptor:io.kubernetes:Project'
       - displayName: Name
         description: The name of the ServiceMeshControlPlane to which this namespace belongs
         path: controlPlaneRef.name

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -12,6 +13,7 @@ import (
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
+	ver "github.com/maistra/istio-operator/pkg/version"
 )
 
 const (
@@ -29,6 +31,8 @@ const (
 	lastKnownVersion version = iota - 1
 )
 
+var AllV2Versions = []Version{V2_0, V2_1}
+
 func init() {
 	versionToString = map[version]string{
 		InvalidVersion: "InvalidVersion",
@@ -42,8 +46,8 @@ func init() {
 		InvalidVersion: &invalidVersionStrategy{InvalidVersion},
 		V1_0:           &versionStrategyV1_0{version: V1_0},
 		V1_1:           &versionStrategyV1_1{version: V1_1},
-		V2_0:           &versionStrategyV2_0{V2_0},
-		V2_1:           &versionStrategyV2_1{V2_1},
+		V2_0:           &versionStrategyV2_0{version: V2_0},
+		V2_1:           &versionStrategyV2_1{version: V2_1},
 	}
 
 	versionToCNINetwork = map[version]string{
@@ -61,7 +65,18 @@ func init() {
 				// special handling for legacy case
 				stringToVersion[""] = v
 			}
+		}
+	}
+	minimumSupportedVersion := ver.Info.MinimumSupportedVersion
+	minVersion := stringToVersion[minimumSupportedVersion]
+	if minVersion == InvalidVersion {
+		panic(fmt.Sprintf("invalid minimum supported version: %v", minimumSupportedVersion))
+	}
+
+	for v := range versionToString {
+		if v >= minVersion {
 			supportedVersions = append(supportedVersions, v)
+			supportedVersionNames = append(supportedVersionNames, v.String())
 		}
 	}
 }
@@ -91,6 +106,7 @@ type Version interface {
 	GetUserTemplatesDir() string
 	GetDefaultTemplatesDir() string
 	GetCNINetworkName() string
+	IsSupported() bool
 }
 
 // ValidationStrategy is an interface used by the validating webhook for validating SMCP resources.
@@ -110,17 +126,29 @@ type RenderingStrategy interface {
 	ApplyProfiles(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec, targetNamespace string) (v1.ControlPlaneSpec, error)
 }
 
+// ConversionStrategy is an interface used when converting between v1 and v2 of the SMCP resource.
+type ConversionStrategy interface {
+	GetExpansionPorts() []corev1.ServicePort
+	GetTelemetryType(in *v1.HelmValues, mixerTelemetryEnabled, mixerTelemetryEnabledSet, remoteEnabled bool) v2.TelemetryType
+	GetPolicyType(in *v1.HelmValues, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled bool) v2.PolicyType
+}
+
 // VersionStrategy provides encapsulates customization required for a particular
 // version.
 type VersionStrategy interface {
 	Version
 	RenderingStrategy
 	ValidationStrategy
+	ConversionStrategy
 }
 
 // GetSupportedVersions returns a list of versions supported by this operator
 func GetSupportedVersions() []Version {
 	return supportedVersions
+}
+
+func GetSupportedVersionNames() []string {
+	return supportedVersionNames
 }
 
 type version int
@@ -154,6 +182,16 @@ func (v version) GetCNINetworkName() string {
 		return network
 	}
 	panic(fmt.Sprintf("invalid version: %d", v))
+}
+
+func (v version) IsSupported() (supported bool) {
+	for _, version := range supportedVersions {
+		if version == v {
+			supported = true
+			return
+		}
+	}
+	return
 }
 
 // ParseVersion returns a version for the specified string
@@ -192,6 +230,19 @@ func (v *nilVersionStrategy) Render(ctx context.Context, cr *common.ControllerRe
 	return nil, fmt.Errorf("nil version does not support rendering")
 }
 
+func (v *nilVersionStrategy) GetExpansionPorts() []corev1.ServicePort {
+	return nil
+}
+
+func (v *nilVersionStrategy) GetTelemetryType(in *v1.HelmValues, mixerTelemetryEnabled, mixerTelemetryEnabledSet, remoteEnabled bool) v2.TelemetryType {
+	return ""
+}
+
+func (v *nilVersionStrategy) GetPolicyType(in *v1.HelmValues, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled bool) v2.PolicyType {
+	return ""
+}
+
+
 type invalidVersionStrategy struct {
 	version
 }
@@ -221,8 +272,21 @@ func (v *invalidVersionStrategy) Render(ctx context.Context, cr *common.Controll
 	return nil, fmt.Errorf("invalid version: %s", v.version)
 }
 
+func (v *invalidVersionStrategy) GetExpansionPorts() []corev1.ServicePort {
+	return nil
+}
+
+func (v *invalidVersionStrategy) GetTelemetryType(in *v1.HelmValues, mixerTelemetryEnabled, mixerTelemetryEnabledSet, remoteEnabled bool) v2.TelemetryType {
+	return ""
+}
+
+func (v *invalidVersionStrategy) GetPolicyType(in *v1.HelmValues, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled bool) v2.PolicyType {
+	return ""
+}
+
 var versionToString = make(map[version]string)
 var versionToCNINetwork = make(map[version]string)
 var versionToStrategy = make(map[version]VersionStrategy)
 var stringToVersion = make(map[string]version)
 var supportedVersions []Version
+var supportedVersionNames []string

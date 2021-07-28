@@ -5,7 +5,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     service.beta.openshift.io/inject-cabundle: "true"
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
   name: servicemeshcontrolplanes.maistra.io
 spec:
@@ -182,8 +182,7 @@ spec:
       name: Ready
       type: string
     - JSONPath: .status.conditions[?(@.type=="Ready")].reason
-      description: Whether or not the control plane installation is up to date and
-        ready to handle requests.
+      description: Whether or not the control plane installation is up to date and ready to handle requests.
       name: Status
       type: string
     - JSONPath: .status.appliedSpec.profiles
@@ -967,6 +966,8 @@ spec:
                                   port:
                                     format: int32
                                     type: integer
+                                  registryServiceName:
+                                    type: string
                                   service:
                                     type: string
                                 type: object
@@ -3985,6 +3986,8 @@ spec:
                                       port:
                                         format: int32
                                         type: integer
+                                      registryServiceName:
+                                        type: string
                                       service:
                                         type: string
                                     type: object
@@ -6360,7 +6363,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
   name: servicemeshmemberrolls.maistra.io
 spec:
@@ -6370,15 +6373,14 @@ spec:
     name: Ready
     type: string
   - JSONPath: .status.conditions[?(@.type=="Ready")].reason
-    description: Whether all member namespaces have been configured or why that's
-      not the case
+    description: Whether all member namespaces have been configured or why that's not the case
     name: Status
     type: string
   - JSONPath: .metadata.creationTimestamp
     description: The age of the object
     name: Age
     type: date
-  - JSONPath: .spec.members
+  - JSONPath: .status.members
     description: Namespaces that are members of this Control Plane
     name: Members
     priority: 1
@@ -6442,6 +6444,38 @@ spec:
                 type: string
               nullable: true
               type: array
+            memberStatuses:
+              items:
+                properties:
+                  conditions:
+                    items:
+                      properties:
+                        lastTransitionTime:
+                          format: date-time
+                          type: string
+                        message:
+                          type: string
+                        reason:
+                          type: string
+                        status:
+                          type: string
+                        type:
+                          type: string
+                      type: object
+                    type: array
+                  namespace:
+                    type: string
+                required:
+                - conditions
+                - namespace
+                type: object
+              nullable: true
+              type: array
+            members:
+              items:
+                type: string
+              nullable: true
+              type: array
             meshGeneration:
               format: int64
               type: integer
@@ -6451,6 +6485,11 @@ spec:
               format: int64
               type: integer
             pendingMembers:
+              items:
+                type: string
+              nullable: true
+              type: array
+            terminatingMembers:
               items:
                 type: string
               nullable: true
@@ -6477,7 +6516,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
   name: servicemeshmembers.maistra.io
 spec:
@@ -6554,6 +6593,11 @@ spec:
                     type: string
                 type: object
               type: array
+            meshGeneration:
+              format: int64
+              type: integer
+            meshReconciledVersion:
+              type: string
             observedGeneration:
               format: int64
               type: integer
@@ -6777,12 +6821,16 @@ rules:
   - clusternetworks
   verbs:
   - get
+  - list
+  - watch
 - apiGroups:
   - config.openshift.io
   resources:
   - networks
   verbs:
   - get
+  - list
+  - watch
 - apiGroups:
   - image.openshift.io
   resources:

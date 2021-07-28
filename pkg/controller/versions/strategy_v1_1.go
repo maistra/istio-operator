@@ -42,6 +42,7 @@ var v1_1ChartOrder = [][]string{
 type versionStrategyV1_1 struct {
 	version
 	renderImpl v1xRenderingStrategy
+	conversionImpl v1xConversionStrategy
 }
 
 var _ VersionStrategy = (*versionStrategyV1_1)(nil)
@@ -334,3 +335,16 @@ func (v *versionStrategyV1_1) GetChartInstallOrder() [][]string {
 func (v *versionStrategyV1_1) Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
 	return v.renderImpl.render(ctx, v.version, cr, cniConfig, smcp)
 }
+
+func (v *versionStrategyV1_1) GetExpansionPorts() []corev1.ServicePort {
+	return v.conversionImpl.GetExpansionPorts()
+}
+
+func (v *versionStrategyV1_1) GetTelemetryType(in *v1.HelmValues, mixerTelemetryEnabled, mixerTelemetryEnabledSet, remoteEnabled bool) v2.TelemetryType {
+	return v.conversionImpl.GetTelemetryType(in, mixerTelemetryEnabled, mixerTelemetryEnabledSet, remoteEnabled)
+}
+
+func (v *versionStrategyV1_1) GetPolicyType(in *v1.HelmValues, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled bool) v2.PolicyType {
+	return v.conversionImpl.GetPolicyType(in, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled)
+}
+

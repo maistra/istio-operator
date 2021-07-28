@@ -16,10 +16,9 @@
 
 MAISTRA_VERSION        ?= 2.1.0
 MAISTRA_BRANCH         ?= maistra-2.1
-REPLACES_PRODUCT_CSV   ?= 2.0.2
-REPLACES_COMMUNITY_CSV ?= 2.0.2
+REPLACES_PRODUCT_CSV   ?= 2.0.5
+REPLACES_COMMUNITY_CSV ?= 2.0.5
 VERSION                ?= development
-IMAGE                  ?= docker.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}
 CONTAINER_CLI          ?= docker
 COMMUNITY              ?= true
 TEST_TIMEOUT           ?= 5m
@@ -186,8 +185,7 @@ collect-2.0-templates:
 ################################################################################
 .PHONY: update-2.1-charts
 update-2.1-charts:
-	HELM_DIR=${RESOURCES_DIR}/helm/v2.1 ISTIO_VERSION=1.8.0 ${SOURCE_DIR}/build/download-charts.sh
-	CRD_DIR=${RESOURCES_DIR}/helm/v2.1/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
+	HELM_DIR=${RESOURCES_DIR}/helm/v2.1 ISTIO_VERSION=1.9.5 ${SOURCE_DIR}/build/download-charts.sh
 
 .PHONY: collect-2.1-charts
 collect-2.1-charts:
@@ -199,7 +197,6 @@ collect-2.1-templates:
 	mkdir -p ${TEMPLATES_OUT_DIR}/v2.1
 	cp ${RESOURCES_DIR}/smcp-templates/v2.1/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v2.1/default
 	find ${RESOURCES_DIR}/smcp-templates/v2.1/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" |xargs cp -t ${TEMPLATES_OUT_DIR}/v2.1
-
 
 ################################################################################
 # OLM manifest generation
@@ -216,7 +213,7 @@ generate-product-manifests:
 # resource generation
 ################################################################################
 .PHONY: gen
-gen:  generate-crds update-charts update-templates update-generated-code generate-manifests generate-docs
+gen:  generate-crds update-charts update-templates update-generated-code generate-manifests
 
 .PHONY: gen-check
 gen-check: gen restore-manifest-dates check-clean-repo
@@ -231,11 +228,6 @@ generate-manifests: generate-community-manifests generate-product-manifests
 .PHONY: generate-crds
 generate-crds:
 	${SOURCE_DIR}/build/generate-crds.sh
-
-.PHONY: generate-docs
-generate-docs:
-	rm -rf ${SOURCE_DIR}/docs/crd
-	go run -mod=vendor github.com/maistra/istio-operator/tools/doc/ paths=github.com/maistra/istio-operator/pkg/apis/maistra/... output:dir=${SOURCE_DIR}/docs/crd doc:format=adoc,depth=2
 
 .PHONY: restore-manifest-dates
 restore-manifest-dates:
@@ -288,6 +280,7 @@ build: update-generated-code update-charts update-templates compile
 ################################################################################
 .PHONY: image
 image: build collect-resources
+	@if [ -z "${IMAGE}" ]; then echo "Please set the IMAGE variable" && exit 1; fi
 	${CONTAINER_CLI} build --no-cache -t "${IMAGE}" -f ${SOURCE_DIR}/build/Dockerfile --build-arg build_type=${BUILD_TYPE} .
 
 .DEFAULT_GOAL := build

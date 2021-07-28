@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/maistra/istio-operator/pkg/controller/hacks"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -32,6 +33,10 @@ import (
 )
 
 var ctx = common.NewContextWithLog(context.Background(), logf.Log)
+
+func init() {
+	hacks.CacheSyncWaitDuration = 0
+}
 
 type IntegrationTestValidation struct {
 	Assertions []test.ActionAssertion

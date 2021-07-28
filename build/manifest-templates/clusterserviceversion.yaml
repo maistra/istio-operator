@@ -3,6 +3,8 @@ kind: ClusterServiceVersion
 metadata:
   name: __NAME__.v__VERSION__
   namespace: placeholder
+  labels:
+    __ARCHITECTURE_LABELS__
   annotations:
     categories: "OpenShift Optional, Integration & Delivery"
     capabilities: "Seamless Upgrades"
@@ -289,7 +291,7 @@ __DEPLOYMENT_SPEC__
         path: controlPlaneRef.namespace
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Service_Mesh_Control_Plane'
-          - 'urn:alm:descriptor:io.kubernetes:Namespace'
+          - 'urn:alm:descriptor:io.kubernetes:Project'
       - displayName: Name
         description: The name of the ServiceMeshControlPlane to which this namespace belongs
         path: controlPlaneRef.name

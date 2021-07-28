@@ -33,7 +33,7 @@ spec:
           imagePullPolicy: IfNotPresent
       wasmExtensions.cacher:
         container:
-          image: pilot-rhel8
+          imageName: pilot-rhel8
 
   proxy:
     runtime:

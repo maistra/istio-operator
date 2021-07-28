@@ -4,6 +4,8 @@ import (
 	"context"
 	"path"
 
+	"k8s.io/helm/pkg/manifest"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -21,6 +23,14 @@ func InstallCNI(ctx context.Context, cl client.Client, config cni.Config) error 
 }
 
 func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config) error {
+	renderings, err := internalRenderCNI(ctx, cl, config, versions.GetSupportedVersions())
+	if err != nil {
+		return err
+	}
+	return internalProcessManifests(ctx, cl, renderings["istio_cni"])
+}
+
+func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config, supportedVersions []versions.Version) (renderings map[string][]manifest.Manifest, err error) {
 	log := common.LogFromContext(ctx)
 	log.Info("ensuring Istio CNI has been installed")
 
@@ -37,19 +47,27 @@ func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config
 	values["imagePullSecrets"] = config.ImagePullSecrets
 	// TODO: imagePullPolicy, resources
 
-	// always install the latest version of the CNI image
-	renderings, _, err := helm.RenderChart(path.Join(versions.DefaultVersion.GetChartsDir(), "istio_cni"), operatorNamespace, values)
-	if err != nil {
-		return err
+	var releases []string
+	for _, version := range supportedVersions {
+		releases = append(releases, version.String())
 	}
+	values["supportedReleases"] = releases
+
+	// always install the latest version of the CNI image
+	renderings, _, err = helm.RenderChart(path.Join(versions.DefaultVersion.GetChartsDir(), "istio_cni"), operatorNamespace, values)
+	return
+}
+
+func internalProcessManifests(ctx context.Context, cl client.Client, rendering []manifest.Manifest) error {
+	operatorNamespace := common.GetOperatorNamespace()
 
 	controllerResources := common.ControllerResources{
 		Client:            cl,
 		OperatorNamespace: operatorNamespace,
 	}
 
-	mp := helm.NewManifestProcessor(controllerResources, helm.NewPatchFactory(cl), "istio_cni", "TODO", "maistra-istio-operator", preProcessObject, postProcessObject)
-	if err = mp.ProcessManifests(ctx, renderings["istio_cni"], "istio_cni"); err != nil {
+	mp := helm.NewManifestProcessor(controllerResources, helm.NewPatchFactory(cl), "istio_cni", "TODO", "maistra-istio-operator", preProcessObject, postProcessObject, preProcessObjectForPatch)
+	if _, err := mp.ProcessManifests(ctx, rendering, "istio_cni"); err != nil {
 		return err
 	}
 
@@ -62,4 +80,8 @@ func preProcessObject(ctx context.Context, obj *unstructured.Unstructured) error
 
 func postProcessObject(ctx context.Context, obj *unstructured.Unstructured) error {
 	return nil
+}
+
+func preProcessObjectForPatch(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error) {
+	return newObj, nil
 }

@@ -2,10 +2,12 @@
 apiVersion: kiali.io/v1alpha1
 kind: Kiali
 metadata:
+  labels:
+    maistra-version: "2.1.0"
   name: {{ .Values.kiali.resourceName | default "kiali" }}
   namespace: {{ .Release.Namespace }}
 spec:
-  version: "v1.24"
+  version: "v1.36"
   installation_tag: "Kiali [{{ .Release.Namespace }}]"
   istio_namespace: "{{ .Release.Namespace }}"
 
@@ -13,8 +15,7 @@ spec:
     strategy: "openshift"
 
   deployment:
-    accessible_namespaces:
-    - "{{ .Release.Namespace }}"
+    accessible_namespaces: []
 {{- if and .Values.kiali.hub .Values.kiali.image }}
     image_name: "{{ .Values.kiali.hub }}/{{ .Values.kiali.image }}"
 {{- end }}

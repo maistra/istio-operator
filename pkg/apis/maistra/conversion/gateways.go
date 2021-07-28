@@ -51,6 +51,13 @@ var (
 			TargetPort: intstr.FromInt(8853),
 		},
 	}
+	meshExpansionPortsV21 = []corev1.ServicePort{
+		{
+			Name:       "tcp-istiod",
+			Port:       15012,
+			TargetPort: intstr.FromInt(15012),
+		},
+	}
 )
 
 func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
@@ -606,19 +613,9 @@ func expansionPortsForVersion(version string) ([]corev1.ServicePort, error) {
 		return meshExpansionPortsV11, nil
 	case versions.V2_0.String():
 		return meshExpansionPortsV20, nil
+	case versions.V2_1.String():
+		return meshExpansionPortsV21, nil
 	default:
 		return nil, fmt.Errorf("cannot convert for unknown version: %s", version)
-	}
-}
-func addExpansionPorts(in *[]corev1.ServicePort, ports []corev1.ServicePort) {
-	portCount := len(*in)
-PortsLoop:
-	for _, port := range ports {
-		for index := 0; index < portCount; index++ {
-			if port.Port == (*in)[index].Port {
-				continue PortsLoop
-			}
-			*in = append(*in, port)
-		}
 	}
 }

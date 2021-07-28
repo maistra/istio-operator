@@ -13,290 +13,302 @@ var (
 	kialiTestNodePort = int32(12345)
 )
 
-var kialiTestCases = []conversionTestCase{
-	{
-		name: "nil." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Kiali: nil,
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Kiali: &v2.KialiAddonConfig{},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "simple." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Kiali: &v2.KialiAddonConfig{
-					Enablement: v2.Enablement{
-						Enabled: &featureEnabled,
-					},
-					Name: "my-kiali",
+var kialiTestCases []conversionTestCase
+
+func kialiTestCasesV2(version versions.Version) []conversionTestCase{
+	ver := version.String()
+	return []conversionTestCase{
+		{
+			name: "nil." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Addons: &v2.AddonsConfig{
+					Kiali: nil,
 				},
 			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"kiali": map[string]interface{}{
-				"enabled":      true,
-				"resourceName": "my-kiali",
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "install.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Kiali: &v2.KialiAddonConfig{
-					Name:    "my-kiali",
-					Install: &v2.KialiInstallConfig{},
+		{
+			name: "defaults." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Addons: &v2.AddonsConfig{
+					Kiali: &v2.KialiAddonConfig{},
 				},
 			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"kiali": map[string]interface{}{
-				"resourceName": "my-kiali",
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "install.config.simple." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Kiali: &v2.KialiAddonConfig{
-					Name: "my-kiali",
-					Install: &v2.KialiInstallConfig{
-						Dashboard: &v2.KialiDashboardConfig{
-							EnableGrafana:    &featureEnabled,
-							EnablePrometheus: &featureEnabled,
-							EnableTracing:    &featureDisabled,
-							ViewOnly:         &featureEnabled,
+		{
+			name: "simple." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Addons: &v2.AddonsConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Enablement: v2.Enablement{
+							Enabled: &featureEnabled,
 						},
+						Name: "my-kiali",
 					},
 				},
 			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"kiali": map[string]interface{}{
+					"enabled":      true,
+					"resourceName": "my-kiali",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"kiali": map[string]interface{}{
-				"resourceName": "my-kiali",
-				"dashboard": map[string]interface{}{
-					"enableGrafana":    true,
-					"enablePrometheus": true,
-					"enableTracing":    false,
-					"viewOnlyMode":     true,
+		{
+			name: "install.defaults." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Addons: &v2.AddonsConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Name:    "my-kiali",
+						Install: &v2.KialiInstallConfig{},
+					},
 				},
 			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "install.service.misc." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Kiali: &v2.KialiAddonConfig{
-					Name: "my-kiali",
-					Install: &v2.KialiInstallConfig{
-						Service: &v2.ComponentServiceConfig{
-							Metadata: &v2.MetadataConfig{
-								Annotations: map[string]string{
-									"some-service-annotation": "service-annotation-value",
-								},
-								Labels: map[string]string{
-									"some-service-label": "service-label-value",
-								},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"kiali": map[string]interface{}{
+					"resourceName": "my-kiali",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "install.config.simple." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Addons: &v2.AddonsConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Name: "my-kiali",
+						Install: &v2.KialiInstallConfig{
+							Dashboard: &v2.KialiDashboardConfig{
+								EnableGrafana:    &featureEnabled,
+								EnablePrometheus: &featureEnabled,
+								EnableTracing:    &featureDisabled,
+								ViewOnly:         &featureEnabled,
 							},
 						},
 					},
 				},
 			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"kiali": map[string]interface{}{
-				"resourceName": "my-kiali",
-				"service": map[string]interface{}{
-					"annotations": map[string]interface{}{
-						"some-service-annotation": "service-annotation-value",
-					},
-					"labels": map[string]interface{}{
-						"some-service-label": "service-label-value",
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"kiali": map[string]interface{}{
+					"resourceName": "my-kiali",
+					"dashboard": map[string]interface{}{
+						"enableGrafana":    true,
+						"enablePrometheus": true,
+						"enableTracing":    false,
+						"viewOnlyMode":     true,
 					},
 				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "install.service.ingress.defaults." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Kiali: &v2.KialiAddonConfig{
-					Name: "my-kiali",
-					Install: &v2.KialiInstallConfig{
-						Service: &v2.ComponentServiceConfig{
-							Ingress: &v2.ComponentIngressConfig{},
-						},
-					},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
 				},
-			},
+			}),
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"kiali": map[string]interface{}{
-				"resourceName": "my-kiali",
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "install.service.ingress.full." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Kiali: &v2.KialiAddonConfig{
-					Name: "my-kiali",
-					Install: &v2.KialiInstallConfig{
-						Service: &v2.ComponentServiceConfig{
-							Ingress: &v2.ComponentIngressConfig{
-								Enablement: v2.Enablement{
-									Enabled: &featureEnabled,
-								},
-								ContextPath: "/kiali",
-								Hosts: []string{
-									"kiali.example.com",
-								},
+		{
+			name: "install.service.misc." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Addons: &v2.AddonsConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Name: "my-kiali",
+						Install: &v2.KialiInstallConfig{
+							Service: &v2.ComponentServiceConfig{
 								Metadata: &v2.MetadataConfig{
 									Annotations: map[string]string{
-										"ingress-annotation": "ingress-annotation-value",
+										"some-service-annotation": "service-annotation-value",
 									},
 									Labels: map[string]string{
-										"ingress-label": "ingress-label-value",
+										"some-service-label": "service-label-value",
 									},
 								},
-								TLS: v1.NewHelmValues(map[string]interface{}{
-									"termination": "reencrypt",
-								}),
 							},
 						},
 					},
 				},
 			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"kiali": map[string]interface{}{
-				"resourceName": "my-kiali",
-				"contextPath":  "/kiali",
-				"ingress": map[string]interface{}{
-					"enabled":     true,
-					"contextPath": "/kiali",
-					"annotations": map[string]interface{}{
-						"ingress-annotation": "ingress-annotation-value",
-					},
-					"labels": map[string]interface{}{
-						"ingress-label": "ingress-label-value",
-					},
-					"hosts": []interface{}{
-						"kiali.example.com",
-					},
-					"tls": map[string]interface{}{
-						"termination": "reencrypt",
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"kiali": map[string]interface{}{
+					"resourceName": "my-kiali",
+					"service": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"some-service-annotation": "service-annotation-value",
+						},
+						"labels": map[string]interface{}{
+							"some-service-label": "service-label-value",
+						},
 					},
 				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-	{
-		name: "install.service.nodeport." + versions.V2_0.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V2_0.String(),
-			Addons: &v2.AddonsConfig{
-				Kiali: &v2.KialiAddonConfig{
-					Name: "my-kiali",
-					Install: &v2.KialiInstallConfig{
-						Service: &v2.ComponentServiceConfig{
-							NodePort: &kialiTestNodePort,
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "install.service.ingress.defaults." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Addons: &v2.AddonsConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Name: "my-kiali",
+						Install: &v2.KialiInstallConfig{
+							Service: &v2.ComponentServiceConfig{
+								Ingress: &v2.ComponentIngressConfig{},
+							},
 						},
 					},
 				},
 			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"kiali": map[string]interface{}{
+					"resourceName": "my-kiali",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
 		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"kiali": map[string]interface{}{
-				"resourceName": "my-kiali",
-				"service": map[string]interface{}{
-					"nodePort": map[string]interface{}{
-						"enabled": true,
-						"port":    12345,
+		{
+			name: "install.service.ingress.full." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Addons: &v2.AddonsConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Name: "my-kiali",
+						Install: &v2.KialiInstallConfig{
+							Service: &v2.ComponentServiceConfig{
+								Ingress: &v2.ComponentIngressConfig{
+									Enablement: v2.Enablement{
+										Enabled: &featureEnabled,
+									},
+									ContextPath: "/kiali",
+									Hosts: []string{
+										"kiali.example.com",
+									},
+									Metadata: &v2.MetadataConfig{
+										Annotations: map[string]string{
+											"ingress-annotation": "ingress-annotation-value",
+										},
+										Labels: map[string]string{
+											"ingress-label": "ingress-label-value",
+										},
+									},
+									TLS: v1.NewHelmValues(map[string]interface{}{
+										"termination": "reencrypt",
+									}),
+								},
+							},
+						},
 					},
 				},
 			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"kiali": map[string]interface{}{
+					"resourceName": "my-kiali",
+					"contextPath":  "/kiali",
+					"ingress": map[string]interface{}{
+						"enabled":     true,
+						"contextPath": "/kiali",
+						"annotations": map[string]interface{}{
+							"ingress-annotation": "ingress-annotation-value",
+						},
+						"labels": map[string]interface{}{
+							"ingress-label": "ingress-label-value",
+						},
+						"hosts": []interface{}{
+							"kiali.example.com",
+						},
+						"tls": map[string]interface{}{
+							"termination": "reencrypt",
+						},
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "install.service.nodeport." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Addons: &v2.AddonsConfig{
+					Kiali: &v2.KialiAddonConfig{
+						Name: "my-kiali",
+						Install: &v2.KialiInstallConfig{
+							Service: &v2.ComponentServiceConfig{
+								NodePort: &kialiTestNodePort,
+							},
+						},
+					},
+				},
 			},
-		}),
-	},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"kiali": map[string]interface{}{
+					"resourceName": "my-kiali",
+					"service": map[string]interface{}{
+						"nodePort": map[string]interface{}{
+							"enabled": true,
+							"port":    12345,
+						},
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+	}
 }
+
+func init() {
+	for _, v := range versions.AllV2Versions {
+		kialiTestCases = append(kialiTestCases, kialiTestCasesV2(v)...)
+	}
+}
+
 
 func TestKialiConversionFromV2(t *testing.T) {
 	for _, tc := range kialiTestCases {

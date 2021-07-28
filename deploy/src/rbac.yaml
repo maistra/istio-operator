@@ -198,12 +198,16 @@ rules:
   - clusternetworks
   verbs:
   - get
+  - list
+  - watch
 - apiGroups:
   - config.openshift.io
   resources:
   - networks
   verbs:
   - get
+  - list
+  - watch
 - apiGroups:
   - image.openshift.io
   resources:

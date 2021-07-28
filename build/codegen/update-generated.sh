@@ -8,7 +8,7 @@ bash vendor/k8s.io/code-generator/generate-groups.sh \
 deepcopy \
 github.com/maistra/istio-operator/pkg/generated \
 github.com/maistra/istio-operator/pkg/apis \
-"maistra:v1,v2,v1alpha1" \
+"maistra:v1,v2" \
 --go-header-file "./build/codegen/boilerplate.go.txt"
 
 go run -mod=vendor k8s.io/code-generator/cmd/deepcopy-gen \

@@ -5,7 +5,7 @@ metadata:
   name: stackdriver
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -192,7 +192,7 @@ metadata:
   name: stackdriver-server
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -211,7 +211,7 @@ metadata:
   name: stackdriver-client
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -230,7 +230,7 @@ metadata:
   name: stackdriver-tcp-server
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -247,7 +247,7 @@ metadata:
   name: stackdriver-tcp-client
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -264,7 +264,7 @@ metadata:
   name: server-request-count
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -305,7 +305,7 @@ metadata:
   name: client-request-count
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -345,7 +345,7 @@ metadata:
   name: server-request-bytes
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -386,7 +386,7 @@ metadata:
   name: client-request-bytes
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -426,7 +426,7 @@ metadata:
   name: server-response-bytes
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -467,7 +467,7 @@ metadata:
   name: client-response-bytes
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -507,7 +507,7 @@ metadata:
   name: server-response-latencies
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -548,7 +548,7 @@ metadata:
   name: client-roundtrip-latencies
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -588,7 +588,7 @@ metadata:
   name: server-received-bytes-count
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -625,7 +625,7 @@ metadata:
   name: client-received-bytes-count
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -661,7 +661,7 @@ metadata:
   name: server-sent-bytes-count
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -698,7 +698,7 @@ metadata:
   name: client-sent-bytes-count
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -736,7 +736,7 @@ metadata:
   name: server-accesslog-stackdriver
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -797,7 +797,7 @@ metadata:
   name: server-tcp-accesslog-stackdriver
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -848,7 +848,7 @@ metadata:
   name: stackdriver-log
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -864,7 +864,7 @@ metadata:
   name: stackdriver-log-tcp
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -882,7 +882,7 @@ metadata:
   name: stackdriver-span
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -923,7 +923,7 @@ metadata:
   name: stackdriver-tracing-rule
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -941,7 +941,7 @@ metadata:
   name: stackdriver-edge
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:
@@ -967,7 +967,7 @@ metadata:
   name: stackdriver-edge
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istio-telemetry
     release: {{ .Release.Name }}
 spec:

@@ -36,6 +36,7 @@ const (
 	sidecarInjectorSecretName        = "istio.istio-sidecar-injector-service-account"
 	sidecarInjectorWebhookNamePrefix = "istio-sidecar-injector-"
 	ServiceMeshControlPlaneCRDName   = "servicemeshcontrolplanes.maistra.io"
+	ServiceMeshExtensionCRDName      = "servicemeshextensions.maistra.io"
 )
 
 // autoRegistrationMap maps webhook name prefixes to a list of secret names. This

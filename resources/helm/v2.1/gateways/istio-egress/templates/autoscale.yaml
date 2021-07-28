@@ -3,7 +3,7 @@
 apiVersion: autoscaling/v2beta1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ $gateway.name | default "istio-egressgateway" }}
+  name: {{ $gateway.name }}
   namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
     maistra-version: "2.1.0"
@@ -16,7 +16,7 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ $gateway.name | default "istio-egressgateway" }}
+    name: {{ $gateway.name }}
   metrics:
     - type: Resource
       resource:
