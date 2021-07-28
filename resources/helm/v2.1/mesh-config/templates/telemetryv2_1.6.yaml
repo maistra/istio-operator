@@ -3,12 +3,13 @@ apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
   name: metadata-exchange-1.6-{{ .Values.revision | default "default" }}
-  {{- if .Values.meshConfig.rootNamespace }}
-  namespace: {{ .Values.meshConfig.rootNamespace }}
+  {{- if .Values.global.configRootNamespace }}
+  namespace: {{ .Values.global.configRootNamespace }}
   {{- else }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
+    maistra-version: "2.1.0"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   configPatches:
@@ -49,12 +50,13 @@ apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
   name: tcp-metadata-exchange-1.6-{{ .Values.revision | default "default" }}
-  {{- if .Values.meshConfig.rootNamespace }}
-  namespace: {{ .Values.meshConfig.rootNamespace }}
+  {{- if .Values.global.configRootNamespace }}
+  namespace: {{ .Values.global.configRootNamespace }}
   {{- else }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
+    maistra-version: "2.1.0"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   configPatches:
@@ -111,12 +113,13 @@ apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
   name: stats-filter-1.6-{{ .Values.revision | default "default" }}
-  {{- if .Values.meshConfig.rootNamespace }}
-  namespace: {{ .Values.meshConfig.rootNamespace }}
+  {{- if .Values.global.configRootNamespace }}
+  namespace: {{ .Values.global.configRootNamespace }}
   {{- else }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
+    maistra-version: "2.1.0"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   configPatches:
@@ -142,7 +145,6 @@ spec:
               config:
                 root_id: stats_outbound
                 configuration: |
-                  {{- if not .Values.telemetry.v2.prometheus.configOverride.outboundSidecar }}
                   {
                     "debug": "false",
                     "stat_prefix": "istio"{{- if .Values.global.multiCluster.clusterName }},
@@ -156,9 +158,6 @@ spec:
                     ]
                     {{- end }}
                   }
-                  {{- else }}
-                  {{ toJson .Values.telemetry.v2.prometheus.configOverride.outboundSidecar | indent 18 }}
-                  {{- end }}
                 vm_config:
                   vm_id: stats_outbound
                   {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
@@ -194,7 +193,6 @@ spec:
               config:
                 root_id: stats_inbound
                 configuration: |
-                  {{- if not .Values.telemetry.v2.prometheus.configOverride.inboundSidecar }}
                   {
                     "debug": "false",
                     "stat_prefix": "istio"{{- if .Values.global.multiCluster.clusterName }},
@@ -208,9 +206,6 @@ spec:
                     ]
                     {{- end }}
                   }
-                  {{- else }}
-                  {{ toJson .Values.telemetry.v2.prometheus.configOverride.inboundSidecar | indent 18 }}
-                  {{- end }}
                 vm_config:
                   vm_id: stats_inbound
                   {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
@@ -246,7 +241,6 @@ spec:
               config:
                 root_id: stats_outbound
                 configuration: |
-                  {{- if not .Values.telemetry.v2.prometheus.configOverride.gateway }}
                   {
                     "debug": "false",
                     "stat_prefix": "istio",
@@ -261,9 +255,6 @@ spec:
                     ]
                     {{- end }}
                   }
-                  {{- else }}
-                  {{ toJson .Values.telemetry.v2.prometheus.configOverride.gateway | indent 18 }}
-                  {{- end }}
                 vm_config:
                   vm_id: stats_outbound
                   {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
@@ -282,12 +273,13 @@ apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
   name: tcp-stats-filter-1.6-{{ .Values.revision | default "default" }}
-  {{- if .Values.meshConfig.rootNamespace }}
-  namespace: {{ .Values.meshConfig.rootNamespace }}
+  {{- if .Values.global.configRootNamespace }}
+  namespace: {{ .Values.global.configRootNamespace }}
   {{- else }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
+    maistra-version: "2.1.0"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   configPatches:
@@ -311,7 +303,6 @@ spec:
               config:
                 root_id: stats_inbound
                 configuration: |
-                  {{- if not .Values.telemetry.v2.prometheus.configOverride.inboundSidecar }}
                   {
                     "debug": "false",
                     "stat_prefix": "istio"{{- if .Values.global.multiCluster.clusterName }},
@@ -325,9 +316,6 @@ spec:
                     ]
                     {{- end }}
                   }
-                  {{- else }}
-                  {{ toJson .Values.telemetry.v2.prometheus.configOverride.inboundSidecar | indent 18 }}
-                  {{- end }}
                 vm_config:
                   vm_id: tcp_stats_inbound
                   {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
@@ -361,7 +349,6 @@ spec:
               config:
                 root_id: stats_outbound
                 configuration: |
-                  {{- if not .Values.telemetry.v2.prometheus.configOverride.outboundSidecar }}
                   {
                     "debug": "false",
                     "stat_prefix": "istio"{{- if .Values.global.multiCluster.clusterName }},
@@ -375,9 +362,6 @@ spec:
                     ]
                     {{- end }}
                   }
-                  {{- else }}
-                  {{ toJson .Values.telemetry.v2.prometheus.configOverride.outboundSidecar | indent 18 }}
-                  {{- end }}
                 vm_config:
                   vm_id: tcp_stats_outbound
                   {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
@@ -411,7 +395,6 @@ spec:
               config:
                 root_id: stats_outbound
                 configuration: |
-                  {{- if not .Values.telemetry.v2.prometheus.configOverride.gateway }}
                   {
                     "debug": "false",
                     "stat_prefix": "istio"{{- if .Values.global.multiCluster.clusterName }},
@@ -425,9 +408,6 @@ spec:
                     ]
                     {{- end }}
                   }
-                  {{- else }}
-                  {{ toJson .Values.telemetry.v2.prometheus.configOverride.gateway | indent 18 }}
-                  {{- end }}
                 vm_config:
                   vm_id: tcp_stats_outbound
                   {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
@@ -450,12 +430,13 @@ apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
   name: stackdriver-filter-1.6-{{ .Values.revision | default "default" }}
-  {{- if .Values.meshConfig.rootNamespace }}
-  namespace: {{ .Values.meshConfig.rootNamespace }}
+  {{- if .Values.global.configRootNamespace }}
+  namespace: {{ .Values.global.configRootNamespace }}
   {{- else }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
+    maistra-version: "2.1.0"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   configPatches:
@@ -516,7 +497,7 @@ spec:
                 root_id: stackdriver_inbound
                 configuration: |
                   {{- if not .Values.telemetry.v2.stackdriver.configOverride }}
-                  {"enable_mesh_edges_reporting": {{ .Values.telemetry.v2.stackdriver.topology }}, "disable_server_access_logging": {{ not .Values.telemetry.v2.stackdriver.logging }}, "meshEdgesReportingDuration": "600s", "disable_host_header_fallback": true}
+                  {"enable_mesh_edges_reporting": {{ .Values.telemetry.v2.stackdriver.topology }}, "disable_server_access_logging": {{ not .Values.telemetry.v2.stackdriver.logging }}, "meshEdgesReportingDuration": "600s"}
                   {{- else }}
                   {{ toJson .Values.telemetry.v2.stackdriver.configOverride | indent 18 }}
                   {{- end }}
@@ -563,12 +544,13 @@ apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
   name: stackdriver-sampling-accesslog-filter-1.6-{{ .Values.revision | default "default" }}
-  {{- if .Values.meshConfig.rootNamespace }}
-  namespace: {{ .Values.meshConfig.rootNamespace }}
+  {{- if .Values.global.configRootNamespace }}
+  namespace: {{ .Values.global.configRootNamespace }}
   {{- else }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
+    maistra-version: "2.1.0"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   configPatches:

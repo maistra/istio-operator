@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	PRODUCT_IMAGE_1_1   = "1.1.12"
-	PRODUCT_IMAGE_2_0   = "2.0.2"
-	COMMUNITY_IMAGE_2_0 = "2.0.2"
+	PRODUCT_IMAGE_1_1   = "1.1.16"
+	PRODUCT_IMAGE_2_0   = "2.0.6"
+	COMMUNITY_IMAGE_2_0 = "2.0.6"
 	COMMUNITY_IMAGE_2_1 = "2.1.0"
 	PRODUCT_IMAGE_2_1   = "2.1.0"
 )
@@ -122,6 +122,7 @@ func TestProfiles(t *testing.T) {
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerPolicy)
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerTelemetry)
 				smcp.Spec.Runtime.Defaults.Container.ImageTag = COMMUNITY_IMAGE_2_1
+				smcp.Spec.TechPreview.RemoveField("wasmExtensions")
 			},
 		},
 		{
@@ -154,6 +155,7 @@ func TestProfiles(t *testing.T) {
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerPolicy)
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerTelemetry)
 				smcp.Spec.Runtime.Defaults.Container.ImageTag = PRODUCT_IMAGE_2_1
+				smcp.Spec.TechPreview.RemoveField("wasmExtensions")
 			},
 		},
 	}

@@ -267,35 +267,7 @@ func populateTelemetryConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, versio
 			return err
 		}
 		// if mixer.telemetry.enabled is unset, assume version specific default
-		switch version {
-		case versions.V1_0:
-			fallthrough
-		case versions.V1_1:
-			if remoteEnabled {
-				// using remote telemetry, which takes precedence over mixer (in the charts, at least)
-				telemetryType = v2.TelemetryTypeRemote
-			} else if mixerTelemetryEnabled {
-				// mixer telemetry explicitly enabled
-				telemetryType = v2.TelemetryTypeMixer
-			} else if mixerTelemetryEnabledSet {
-				// mixer is explicitly disabled
-				telemetryType = v2.TelemetryTypeNone
-			} else {
-				// don't set telemetry type, let the defaults do their thing
-				telemetryType = ""
-			}
-		case versions.V2_0:
-			remoteTelemetryAddress, _, _ := in.GetString("global.remoteTelemetryAddress")
-			if remoteEnabled || remoteTelemetryAddress != "" {
-				// special case if copying over an old v1 resource an bumping the version to v2.0
-				telemetryType = v2.TelemetryTypeRemote
-			} else {
-				// leave the defaults
-				telemetryType = ""
-			}
-		default:
-			return fmt.Errorf("Unknown version")
-		}
+		telemetryType = version.Strategy().GetTelemetryType(in, mixerTelemetryEnabled, mixerTelemetryEnabledSet, remoteEnabled)
 	}
 
 	telemetry := &v2.TelemetryConfig{}

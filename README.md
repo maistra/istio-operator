@@ -142,6 +142,10 @@ bash <(curl -L https://kiali.io/getLatestKialiOperator) --uninstall-mode true --
 
 For more details on uninstalling the Kiali operator, see the [Kiali documentaton](https://www.kiali.io/documentation/getting-started/#_uninstall_kiali_operator_and_kiali).
 
+## API documentation
+
+The API reference documentation is available in the [maistra/api repository](https://github.com/maistra/api/blob/maistra-2.1/docs/crd/CRDS.adoc).
+
 ## Multitenancy
 
 The operator installs a control plane configured for multitenancy.  This installation reduces the scope of the control plane

@@ -69,12 +69,13 @@ spec:`,
 		},
 	}
 
-	hasReadiness, err := instanceReconciler.processComponentManifests(ctx, "security")
+	madeChanges, err := instanceReconciler.processComponentManifests(ctx, "security")
 	if err != nil {
 		t.Fatalf("Unexpected error in processComponentManifests: %v", err)
 	}
 
-	assert.True(hasReadiness, "expected component to have readiness", t)
+	assert.True(madeChanges, "expected processComponentManifests() to make changes to objects", t)
+	assert.True(instanceReconciler.anyComponentHasReadiness("security"), "expected component to have readiness", t)
 
 	_, unreadyComponents, err := instanceReconciler.calculateComponentReadiness(ctx)
 	if err != nil {

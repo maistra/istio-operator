@@ -1,5 +1,5 @@
 wasmExtensions:
-  enabled: false
+  enabled: true
 
   cacher:
     image: pilot

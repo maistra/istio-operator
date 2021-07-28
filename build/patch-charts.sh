@@ -30,23 +30,6 @@ function copyOverlay() {
 function patchTemplates() {
   echo "patching Istio Helm charts"
 
-  # - add a maistra-version label to all objects which have a release label
-  for file in $(find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl"); do
-    if grep -l 'release: ' $file; then
-      sed_wrap -i -e '/^metadata:/,/^[^ {]/ { s/^\(.*\)labels:/\1labels:\
-\1  maistra-version: "'${MAISTRA_VERSION}'"/ }' $file
-    fi
-    if grep -l '\.Values\.global\.istioNamespace' $file; then
-      sed_wrap -i -e 's/\.Values\.global\.istioNamespace/.Release.Namespace/' $file
-    fi
-    if grep -l '{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}' $file; then
-      sed_wrap -i -e 's/{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}/-{{ .Values.revision | default "default" }}/' $file
-    fi
-    if grep -l 'operator\.istio\.io' $file; then
-      sed_wrap -i -e '/operator\.istio\.io/d' $file
-    fi
-  done
-
   # MAISTRA-506 add a maistra-control-plane label for deployment specs
   for file in $(find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl" | xargs grep -Hl '^kind: Deployment'); do
     sed_wrap -i -e '/^spec:/,$ { /template:$/,$ { /metadata:$/,$ { s/^\(.*\)labels:/\1labels:\
@@ -57,6 +40,7 @@ function patchTemplates() {
   # - for 1.6, this contains the sa for istiod, so need to do some munging
   sed_wrap -i -e 's/\(: istiod-service-account\)/\1-{{ .Values.revision | default "default" }}/' \
       ${HELM_DIR}/base/templates/serviceaccount.yaml \
+      ${HELM_DIR}/base/templates/rolebinding.yaml \
       ${HELM_DIR}/base/templates/clusterrolebinding.yaml \
       ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
 
@@ -64,18 +48,27 @@ function patchTemplates() {
     ${HELM_DIR}/base/templates/serviceaccount.yaml \
     ${HELM_DIR}/base/templates/clusterrolebinding.yaml
 
+  # role and role binding are for istiod only
+  sed_wrap -i -e '/labels:/ i\
+  annotations:\
+    "maistra.io/internal": "true"' \
+    -e 's/name: istiod-{{.*/name: istiod-internal-{{ .Values.revision | default "default" }}/' \
+      ${HELM_DIR}/base/templates/role.yaml \
+      ${HELM_DIR}/base/templates/rolebinding.yaml
+  mv ${HELM_DIR}/base/templates/role.yaml ${HELM_DIR}/istio-control/istio-discovery/templates/role.yaml
+  mv ${HELM_DIR}/base/templates/rolebinding.yaml ${HELM_DIR}/istio-control/istio-discovery/templates/rolebinding.yaml
+
   # update role reference too
-  sed_wrap -i -e 's/\(: istiod-pilot\).*$/\1-{{ .Values.revision | default "default" }}/' \
-      -e 's/istiod-{{ .Release.Namespace }}/istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}/' \
-      ${HELM_DIR}/base/templates/clusterrolebinding.yaml \
-  
+  sed_wrap -i -e 's/istiod-{{.*/istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}/' \
+      ${HELM_DIR}/base/templates/clusterrolebinding.yaml
+
   mv ${HELM_DIR}/base/templates/serviceaccount.yaml ${HELM_DIR}/istio-control/istio-discovery/templates/serviceaccount.yaml
   mv ${HELM_DIR}/base/templates/clusterrolebinding.yaml ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrolebinding.yaml
-  
+
   # - remove istio-reader cluster role
   # - and again....
   sed_wrap -i -e '/^---/,$ d' \
-      -e 's/name: istiod-.*$/name: istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}/' \
+      -e 's/name: istiod-{{.*$/name: istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}/' \
       ${HELM_DIR}/base/templates/clusterrole.yaml
   mv ${HELM_DIR}/base/templates/clusterrole.yaml ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
 
@@ -88,9 +81,36 @@ function patchTemplates() {
   # rename base/crds to istio-init/files
   mv ${HELM_DIR}/base/crds/* ${HELM_DIR}/istio-init/files
   rm -rf ${HELM_DIR}/base
+  CRD_DIR=${HELM_DIR}/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
 
   # MAISTRA-1972 - disable protocol sniffing
   sed_wrap -i -e 's/\(enableProtocolSniffing.*:\).*$/\1 false/' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
+
+
+  # - add a maistra-version label to all objects which have a release label
+  # do this after we've separated crds
+  for file in $(find ${HELM_DIR} -name "*.yaml" -o -name "*.yaml.tpl"); do
+    if grep -l 'release: ' $file; then
+      sed_wrap -i -e '/^metadata:/,/^[^ {]/ { s/^\(.*\)labels:/\1labels:\
+\1  maistra-version: "'${MAISTRA_VERSION}'"/ }' $file
+    elif sed_nowrap -ne '/^metadata:/,/^spec:/p' $file | grep -l "labels:"; then
+      sed_wrap -i -e 's/^\(.*\)labels:/\1labels:\
+\1  maistra-version: "'${MAISTRA_VERSION}'"/' $file
+    elif grep -l '^metadata:' $file; then
+      sed_wrap -i -e '/^metadata:/ a\
+  labels:\
+    maistra-version: "'${MAISTRA_VERSION}'"' $file
+    fi
+    if grep -l '\.Values\.global\.istioNamespace' $file; then
+      sed_wrap -i -e 's/\.Values\.global\.istioNamespace/.Release.Namespace/' $file
+    fi
+    if grep -l '{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}' $file; then
+      sed_wrap -i -e 's/{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}/-{{ .Values.revision | default "default" }}/' $file
+    fi
+    if grep -l 'operator\.istio\.io' $file; then
+      sed_wrap -i -e '/operator\.istio\.io/d' $file
+    fi
+  done
 }
 
 function patchGalley() {
@@ -167,49 +187,37 @@ function patchGalley() {
   sed_wrap -i -e '/- apiGroups:.*admissionregistration\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e '/- apiGroups:.*certificates\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e '/- apiGroups:.*apiextensions\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
+  sed_wrap -i -e '/- apiGroups:.*authentication\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
 
   convertClusterRoleBinding ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrolebinding.yaml
   sed_wrap -i -e '/- "discovery"/ a\
           - --memberRollName=default\
           - --cacheCluster=outbound|80||wasm-cacher-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.cluster.local\
-          - --enableNodePortGateways=false\
           - --enableCRDScan=false\
           - --enableIngressClassName=false\
-          - --podLocalitySource=pod' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
-  # disable webhook config updates
-  sed_wrap -i -r -e '/INJECTION_WEBHOOK_CONFIG_NAME/,/ISTIOD_ADDR/ {
-      /name: INJECTION_WEBHOOK_CONFIG_NAME/a\
-\            value: ""\
-\          - name: VALIDATION_WEBHOOK_CONFIG_NAME\
-\            value: ""
-      /name: INJECTION_WEBHOOK_CONFIG_NAME|ISTIOD_ADDR/! d
-    }' $deployment
-  sed_wrap -i -e '/telemetry\.v2\.enabled/i\
-{{- if .Values.global.tls }}\
-{{- if .Values.global.tls.minProtocolVersion }}\
-          - name: TLS_MIN_PROTOCOL_VERSION\
-            value: {{ .Values.global.tls.minProtocolVersion }}\
-{{- end }}\
-{{- if .Values.global.tls.maxProtocolVersion }}\
-          - name: TLS_MAX_PROTOCOL_VERSION\
-            value: {{ .Values.global.tls.maxProtocolVersion }}\
-{{- end }}\
-{{- if .Values.global.tls.cipherSuites }}\
-          - name: TLS_CIPHER_SUITES\
-            value: {{ .Values.global.tls.cipherSuites }}\
-{{- end }}\
-{{- if .Values.global.tls.ecdhCurves }}\
-          - name: TLS_ECDH_CURVES\
-            value: {{ .Values.global.tls.ecdhCurves }}\
-{{- end }}\
-{{- end }}' $deployment
+          - --disableNodeAccess=true' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
+
+  ############## disable webhook config updates ############################
+  # Name of the mutatingwebhookconfiguration to patch, if istioctl is not used.
+  sed_wrap -i -e '/env:/ a\
+          - name: INJECTION_WEBHOOK_CONFIG_NAME\
+            value: ""' "${deployment}"
+
+  # Name of validatingwebhookconfiguration to patch.
+  # Empty will skip using cluster admin to patch.
+  sed_wrap -i -e '/env:/ a\
+          - name: VALIDATION_WEBHOOK_CONFIG_NAME\
+            value: ""' "${deployment}"
+  ##############################################################################
+
   # remove privileged security settings
   sed_wrap -i -r -e '/template:/,/containers:/ { /securityContext:/,/containers:/ { /containers:/! d }}' \
       -e '/containers:/,$ { /securityContext:/,/capabilities:/ { /capabilities:|securityContext:/! d }}' \
       $deployment
-  echo '
-base:
-  validationURL: ""' >> ${HELM_DIR}/global.yaml
+
+  sed_wrap -i -e '/base:/ a\
+  validationURL: ""' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
+
   # always istiod
   sed_wrap -i -e '/{{- if ne .Values.revision ""}}/,/{{- end }}/d' \
       -e '/matchLabels:/a\
@@ -243,6 +251,48 @@ function patchGateways() {
   echo "patching Gateways specific Helm charts"
   sed_wrap -i -r -e 's/type: LoadBalancer *(#.*)?$/type: ClusterIP/' ${HELM_DIR}/gateways/istio-ingress/values.yaml
 
+  # do not expose port 15012, support for mesh expansion will automatically add this port
+  sed_wrap -i -e '/port: 15012/,+3d' ${HELM_DIR}/gateways/istio-ingress/values.yaml
+
+  # add tracer config
+  tracerConfig='\
+  # Configuration for each of the supported tracers\
+  tracer:\
+    # Configuration for envoy to send trace data to LightStep.\
+    # Disabled by default.\
+    # address: the <host>:<port> of the satellite pool\
+    # accessToken: required for sending data to the pool\
+    #\
+    datadog:\
+      # Host:Port for submitting traces to the Datadog agent.\
+      address: "$(HOST_IP):8126"\
+    lightstep:\
+      address: ""                # example: lightstep-satellite:443\
+      accessToken: ""            # example: abcdefg1234567\
+    stackdriver:\
+      # enables trace output to stdout.\
+      debug: false\
+      # The global default max number of message events per span.\
+      maxNumberOfMessageEvents: 200\
+      # The global default max number of annotation events per span.\
+      maxNumberOfAnnotations: 200\
+      # The global default max number of attributes per span.\
+      maxNumberOfAttributes: 200\
+    zipkin:\
+      # Host:Port for reporting trace data in zipkin format. If not specified, will default to\
+      # zipkin service (port 9411) in the same namespace as the other istio components.\
+      address: ""\
+'
+  sed_wrap -i -e "/# Deprecated, use meshConfig.trustDomain/ i$tracerConfig" ${HELM_DIR}/gateways/istio-ingress/values.yaml
+  sed_wrap -i -e "/# Deprecated, use meshConfig.trustDomain/ i$tracerConfig" ${HELM_DIR}/gateways/istio-egress/values.yaml
+
+  # Disable defaultTemplates to avoid injection of arbitrary things
+  sed_wrap -i -e 's/defaultTemplates: \[\]/\# defaultTemplates: \[\]/' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
+  sed_wrap -i -e '/{{- if .Values.sidecarInjectorWebhook.defaultTemplates }}/,+7d' ${HELM_DIR}/istio-control/istio-discovery/templates/istiod-injector-configmap.yaml
+  sed_wrap -i -e '/policy:/ i\
+    defaultTemplates: [sidecar]
+' ${HELM_DIR}/istio-control/istio-discovery/templates/istiod-injector-configmap.yaml
+
   sed_wrap -i -e 's/\(^ *\)- containerPort: {{ $val.targetPort | default $val.port }}/\1- name: {{ $val.name }}\
 \1  containerPort: {{ $val.targetPort | default $val.port }}/' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
@@ -259,92 +309,28 @@ function patchGateways() {
 ' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
   # gateways in other namespaces need proxy config
+  echo "$(sed_nowrap -ne '1,/\$mesh :=/p' ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml; cat ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml)" > ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
+  echo "$(sed_nowrap -ne '1,/\$mesh :=/p' ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml; cat ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml)" > ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml
   sed_wrap -i -e '/env:/ a\
 {{- if $gateway.namespace }}\
 {{- if ne $gateway.namespace .Release.Namespace }}\
           - name: PROXY_CONFIG\
             value: |-\
-              concurrency: {{ .Values.global.proxy.concurrency | default 2 }}\
-              tracing:\
-              {{- if eq .Values.global.proxy.tracer "lightstep" }}\
-                lightstep:\
-                  address: {{ .Values.global.tracer.lightstep.address }}\
-                  accessToken: {{ .Values.global.tracer.lightstep.accessToken }}\
-              {{- else if eq .Values.global.proxy.tracer "zipkin" }}\
-                zipkin:\
-                {{- if .Values.global.tracer.zipkin.address }}\
-                  address: {{ .Values.global.tracer.zipkin.address }}\
-                {{- else }}\
-                  address: zipkin.{{ .Values.global.telemetryNamespace }}:9411\
-                {{- end }}\
-              {{- else if eq .Values.global.proxy.tracer "datadog" }}\
-                datadog:\
-                  address: {{ .Values.global.tracer.datadog.address }}\
-              {{- else if eq .Values.global.proxy.tracer "stackdriver" }}\
-                stackdriver:\
-                {{- if $.Values.global.tracer.stackdriver.debug }}\
-                  debug: {{ $.Values.global.tracer.stackdriver.debug }}\
-                {{- end }}\
-                {{- if $.Values.global.tracer.stackdriver.maxNumberOfAttributes }}\
-                  maxNumberOfAttributes: {{ $.Values.global.tracer.stackdriver.maxNumberOfAttributes }}\
-                {{- end }}\
-                {{- if $.Values.global.tracer.stackdriver.maxNumberOfAnnotations }}\
-                  maxNumberOfAnnotations: {{ $.Values.global.tracer.stackdriver.maxNumberOfAnnotations }}\
-                {{- end }}\
-                {{- if $.Values.global.tracer.stackdriver.maxNumberOfMessageEvents }}\
-                  maxNumberOfMessageEvents: {{ $.Values.global.tracer.stackdriver.maxNumberOfMessageEvents }}\
-                {{- end }}\
-              {{- end }}\
-              controlPlaneAuthPolicy: NONE\
-              {{- if .Values.global.remotePilotAddress }}\
-              discoveryAddress: {{ printf "istiod-remote.%s.svc" .Release.Namespace }}:15012\
-              {{- else }}\
-              discoveryAddress: istiod-{{ .Values.revision | default "default" }}.{{.Release.Namespace}}.svc:15012\
-              {{- end }}\
-              {{- if .Values.global.proxy.envoyMetricsService }}\
-              {{- if .Values.global.proxy.envoyMetricsService.enabled }}\
-              envoyMetricsService:\
-                address: {{ .Values.global.proxy.envoyMetricsService.host }}:{{ .Values.global.proxy.envoyMetricsService.port }}\
-              {{- if .Values.global.proxy.envoyMetricsService.tlsSettings }}\
-                tlsSettings:\
-                  {{ toYaml .Values.global.proxy.envoyMetricsService.tlsSettings | trim | indent 18 }}\
-              {{- end}}\
-              {{- if .Values.global.proxy.envoyMetricsService.tcpKeepalive }}\
-                tcpKeepalive:\
-                  {{ toYaml .Values.global.proxy.envoyMetricsService.tcpKeepalive | trim | indent 18 }}\
-              {{- end}}\
-              {{- end}}\
-              {{- end}}\
-              {{- if .Values.global.proxy.envoyAccessLogService }}\
-              {{- if .Values.global.proxy.envoyAccessLogService.enabled }}\
-              envoyAccessLogService:\
-                address: {{ .Values.global.proxy.envoyAccessLogService.host }}:{{ .Values.global.proxy.envoyAccessLogService.port }}\
-              {{- if .Values.global.proxy.envoyAccessLogService.tlsSettings }}\
-                tlsSettings:\
-                  {{ toYaml .Values.global.proxy.envoyAccessLogService.tlsSettings | trim | indent 18 }}\
-              {{- end}}\
-              {{- if .Values.global.proxy.envoyAccessLogService.tcpKeepalive }}\
-                tcpKeepalive:\
-                  {{ toYaml .Values.global.proxy.envoyAccessLogService.tcpKeepalive | trim | indent 18 }}\
-              {{- end}}\
-              {{- end}}\
-              {{- end}}\
+{{ toYaml $mesh.defaultConfig | trim | indent 14 }}\
 {{- end }}\
 {{- end }}\
 ' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
+  # remove special users/groups
+  sed_wrap -i -e '/: *1337 *$/d' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/injected-deployment.yaml ${HELM_DIR}/gateways/istio-ingress/templates/injected-deployment.yaml
+
   # install in specified namespace
-  for file in $(find ${HELM_DIR}/gateways/istio-ingress/templates -type f -name "*.yaml" ! -name "meshexpansion.yaml"); do
+  for file in $(find ${HELM_DIR}/gateways/istio-ingress/templates -type f -name "*.yaml"); do
     sed_wrap -i -e 's/^\( *\)namespace:.*/\1namespace: {{ $gateway.namespace | default .Release.Namespace }}/' $file
   done
   for file in $(find ${HELM_DIR}/gateways/istio-egress/templates -type f -name "*.yaml"); do
     sed_wrap -i -e 's/^\( *\)namespace:.*/\1namespace: {{ $gateway.namespace | default .Release.Namespace }}/' $file
   done
-  sed_wrap -i -e '1 {
-    i \{\{ $gateway := index .Values "gateways" "istio-ingressgateway" \}\}\
-\{\{- if and .Values.global.meshExpansion.enabled (eq $gateway.name "istio-ingressgateway") \}\}
-    d
-    }' ${HELM_DIR}/gateways/istio-ingress/templates/meshexpansion.yaml
 }
 
 function patchSidecarInjector() {
@@ -355,9 +341,9 @@ function patchSidecarInjector() {
       -e '/metadata:/a\
 \  name: istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}' \
     $webhookconfig
-  sed_wrap -i -e '/if .Values.sidecarInjectorWebhook.enableNamespacesByDefault/,$ {
-      /enableNamespacesByDefault/i\
-      matchExpressions:\
+
+  matchExpr='\
+    matchExpressions:\
       - key: maistra.io\/member-of\
         operator: In\
         values:\
@@ -371,22 +357,26 @@ function patchSidecarInjector() {
       - key: istio-env\
         operator: DoesNotExist\
 \{\{- if .Values.sidecarInjectorWebhook.objectSelector.enabled \}\}\
-    objectSelector:\
-      matchExpressions:\
+  objectSelector:\
+    matchExpressions:\
 \{\{- if eq .Values.global.proxy.autoInject "enabled" \}\}\
-      - key: "sidecar.istio.io/inject"\
-        operator: NotIn\
-        values:\
-        - "false"\
+    - key: "sidecar.istio.io/inject"\
+      operator: NotIn\
+      values:\
+      - "false"\
 \{\{- else \}\}\
-      - key: "sidecar.istio.io/inject"\
-        operator: In\
-        values:\
-        - "true"\
+    - key: "sidecar.istio.io/inject"\
+      operator: In\
+      values:\
+      - "true"\
 \{\{- end \}\}\
 \{\{- end \}\}
-      d
-    }' $webhookconfig
+'
+  sed_wrap -i -e "/if .Values.sidecarInjectorWebhook.enableNamespacesByDefault/ i$matchExpr" $webhookconfig
+  # Delete everything after the match
+  sed_wrap -i -e '/if .Values.sidecarInjectorWebhook.enableNamespacesByDefault/,$d' $webhookconfig
+
+  echo "{{- end }}" >> $webhookconfig
   # remove {{- if not .Values.global.operatorManageWebhooks }} ... {{- end }}
   sed_wrap -i -e '/operatorManageWebhooks/ d' $webhookconfig
 
@@ -407,7 +397,7 @@ function patchSidecarInjector() {
 
   sed_wrap -i -e 's/runAsUser: 1337/runAsUser: {{ .ProxyUID }}/g' ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
   sed_wrap -i -e 's/runAsGroup: 1337/runAsGroup: {{ .ProxyUID }}/g' ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
-  sed_wrap -i -e 's/fsGroup: 1337/fsGroup: {{ .ProxyUID }}/g' ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
+  sed_wrap -i -e 's/fsGroup: 1337/fsGroup: {{ .ProxyGID }}/g' ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
 
   sed_wrap -i -e '/- name: istio-proxy/,/resources:/ {
     / *- ALL/a\
@@ -425,15 +415,12 @@ function patchSidecarInjector() {
   sed_wrap -i -e 's${{ if ne (annotation .ObjectMeta `sidecar.istio.io/interceptionMode` .ProxyConfig.InterceptionMode) `NONE` }}${{ if not .Values.istio_cni.enabled -}}$' \
       ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
   # use the correct cni network defintion
-  sed_wrap -i -e '/podRedirectAnnot:/,$s/`istio-cni`/.Values.istio_cni.istio_cni_network/' \
-      ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
-  # use global.proxy.includedInboundPorts if specified
-  sed_wrap -i -e 's$traffic.sidecar.istio.io/includeInboundPorts: "{{ annotation .ObjectMeta `traffic.sidecar.istio.io/includeInboundPorts` (includeInboundPorts .Spec.Containers) }}"$traffic.sidecar.istio.io/includeInboundPorts: "{{ annotation .ObjectMeta `traffic.sidecar.istio.io/includeInboundPorts` (valueOrDefault .Values.global.proxy.includeInboundPorts (includeInboundPorts .Spec.Containers)) }}"$' \
+  sed_wrap -i -e '/annotations:/,$s/`istio-cni`/.Values.istio_cni.istio_cni_network/' \
       ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
   sed_wrap -i -e '/excludeInboundPorts/a\
-    includeInboundPorts: "*"' ${HELM_DIR}/global.yaml
+    includeInboundPorts: "*"' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
   # status port is incorrect
-  sed_wrap -i -e 's/statusPort: 15020$/statusPort: 15021/' ${HELM_DIR}/global.yaml
+  sed_wrap -i -e 's/statusPort: 15020$/statusPort: 15021/' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
   # exclude 15090 from inbound ports
   sed_wrap -i -e 's$traffic.sidecar.istio.io/excludeInboundPorts: "{{ excludeInboundPort (annotation .ObjectMeta `status.sidecar.istio.io/port` .Values.global.proxy.statusPort) (annotation .ObjectMeta `traffic.sidecar.istio.io/excludeInboundPorts` .Values.global.proxy.excludeInboundPorts) }}"$traffic.sidecar.istio.io/excludeInboundPorts: "15090,{{ excludeInboundPort (annotation .ObjectMeta `status.sidecar.istio.io/port` .Values.global.proxy.statusPort) (annotation .ObjectMeta `traffic.sidecar.istio.io/excludeInboundPorts` .Values.global.proxy.excludeInboundPorts) }}"$' \
       ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
@@ -486,10 +473,9 @@ function moveEnvoyFiltersToMeshConfigChart() {
   echo "moving EnvoyFilter manifests to mesh-config"
   mv ${HELM_DIR}/istio-control/istio-discovery/templates/telemetry*.yaml ${HELM_DIR}/mesh-config/templates
 
-  echo >> ${HELM_DIR}/global.yaml
-  sed_nowrap -n -e '/^telemetry:/,/^      logWindowDuration/ p' ${HELM_DIR}/istio-control/istio-discovery/values.yaml >> ${HELM_DIR}/global.yaml
+  sed_nowrap -n -e '/^telemetry:/,/^      logWindowDuration/ p' ${HELM_DIR}/istio-control/istio-discovery/values.yaml > ${HELM_DIR}/mesh-config/values.yaml
   sed_wrap -i -n -e '/^telemetry:/,/^      logWindowDuration/ d; p' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
-  sed_wrap -i -e '/maxNumberOfMessageEvents/a\
+  sed_wrap -i -e '/multiCluster:/ i\
   # Default mtls policy. If true, mtls between services will be enabled by default.\
   mtls:\
     # Default setting for service-to-service mtls. Can be set explicitly using\
@@ -499,11 +485,30 @@ function moveEnvoyFiltersToMeshConfigChart() {
     # or its DestinationRule does not have TLSSettings specified, Istio configures client side\
     # TLS configuration automatically, based on the server side mTLS authentication policy and the\
     # availibity of sidecars.\
-    auto: true' ${HELM_DIR}/global.yaml
+    auto: true\
+' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
+
+  sed_wrap -i -e '/telemetry:/ i\
+global:\
+  # Default mtls policy. If true, mtls between services will be enabled by default.\
+  mtls:\
+    # Default setting for service-to-service mtls. Can be set explicitly using\
+    # destination rules or service annotations.\
+    enabled: false\
+    # If set to true, and a given service does not have a corresponding DestinationRule configured,\
+    # or its DestinationRule does not have TLSSettings specified, Istio configures client side\
+    # TLS configuration automatically, based on the server side mTLS authentication policy and the\
+    # availibity of sidecars.\
+    auto: true' ${HELM_DIR}/mesh-config/values.yaml
+
+}
+
+function copyGlobalValues() {
+  echo "copying global.yaml file from overlay charts as global.yaml file is removed in upstream but it's still needed."
+  cp ${SOURCE_DIR}/resources/helm/overlays/global.yaml ${SOURCE_DIR}/resources/helm/v2.1/
 }
 
 function hacks() {
-  echo "XXXXXXXX HACKS THAT NEED TO BE RESOLVED BEFORE 2.0 RELEASE XXXXXXXX"
   sed_wrap -i -e '/containers:/,/name: discovery/ {
       /name: discovery/a\
 \          workingDir: "/"
@@ -522,6 +527,6 @@ patchSidecarInjector
 #patchKialiTemplate # no longer present upstream
 #patchKialiOpenShift
 moveEnvoyFiltersToMeshConfigChart
-
-# XXX: hacks - remove before 2.0 release
+copyGlobalValues
+# TODO: remove this hack once the image is updated to include workingDir
 hacks

@@ -86,7 +86,6 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 	reconciledCondition := r.Status.GetCondition(status.ConditionTypeReconciled)
 	reconciliationMessage := reconciledCondition.Message
 	reconciliationReason := reconciledCondition.Reason
-	reconciliationComplete := false
 	defer func() {
 		// this ensures we're updating status (if necessary) and recording events on exit
 		if statusErr := r.postReconciliationStatus(ctx, reconciliationReason, reconciliationMessage, err); statusErr != nil {
@@ -95,9 +94,6 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			} else {
 				log.Error(statusErr, "Error posting reconciliation status")
 			}
-		}
-		if reconciliationComplete {
-			hacks.ReduceLikelihoodOfRepeatedReconciliation(ctx)
 		}
 	}()
 
@@ -117,9 +113,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			}
 		}()
 
-		if r.Status.Annotations != nil {
-			r.Status.Annotations[statusAnnotationAlwaysReadyComponents] = ""
-		}
+		r.Status.SetAnnotation(statusAnnotationAlwaysReadyComponents, "")
 
 		conversionError, exists, err2 := r.Instance.Spec.TechPreview.GetString(conversion.TechPreviewErroredMessage)
 		if err2 != nil {
@@ -163,29 +157,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		// e.g. spec.pilot.enabled || spec.mixer.enabled || spec.galley.enabled || spec.sidecarInjectorWebhook.enabled || ....
 		// which is all we're supporting atm.  if the scope expands to allow
 		// installing custom gateways, etc., we should revisit this.
-		namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: r.Instance.Namespace}}
-		err = r.Client.Get(ctx, client.ObjectKey{Name: r.Instance.Namespace}, namespace)
-		if err == nil {
-			updateLabels := false
-			if namespace.Labels == nil {
-				namespace.Labels = map[string]string{}
-			}
-			// make sure injection is disabled for the control plane
-			if label, ok := namespace.Labels["maistra.io/ignore-namespace"]; !ok || label != "ignore" {
-				log.Info("Adding maistra.io/ignore-namespace=ignore label to Request.Namespace")
-				namespace.Labels["maistra.io/ignore-namespace"] = "ignore"
-				updateLabels = true
-			}
-			// make sure the member-of label is specified, so networking works correctly
-			if label, ok := namespace.Labels[common.MemberOfKey]; !ok || label != namespace.GetName() {
-				log.Info(fmt.Sprintf("Adding %s label to Request.Namespace", common.MemberOfKey))
-				namespace.Labels[common.MemberOfKey] = namespace.GetName()
-				updateLabels = true
-			}
-			if updateLabels {
-				err = r.Client.Update(ctx, namespace)
-			}
-		}
+		err = addNamespaceLabels(ctx, r.Client, r.Instance.Namespace)
 		if err != nil {
 			// bail if there was an error updating the namespace
 			r.renderings = nil
@@ -277,36 +249,43 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 
 	// create components
 	for _, charts := range r.getChartsInInstallationOrder(version.Strategy().GetChartInstallOrder()) {
+		var madeChanges bool
 		r.waitForComponents = sets.NewString()
 		for _, chart := range charts {
 			component := componentFromChartName(chart)
-			var hasReadiness bool
-			hasReadiness, err = r.processComponentManifests(ctx, chart)
+			var changes bool
+			changes, err = r.processComponentManifests(ctx, chart)
+			madeChanges = madeChanges || changes
 			if err != nil {
 				reconciliationReason = status.ConditionReasonReconcileError
 				reconciliationMessage = fmt.Sprintf("Error processing component %s: %v", component, err)
 				return
 			}
-			if hasReadiness {
+
+			if r.anyComponentHasReadiness(chart) {
 				r.waitForComponents.Insert(component)
 			} else {
-				if r.Status.Annotations == nil {
-					r.Status.Annotations = make(map[string]string)
-				}
-				alwaysReadyComponents := r.Status.Annotations[statusAnnotationAlwaysReadyComponents]
+				alwaysReadyComponents := r.Status.GetAnnotation(statusAnnotationAlwaysReadyComponents)
 				if alwaysReadyComponents == "" {
 					alwaysReadyComponents = component
 				} else {
 					alwaysReadyComponents = fmt.Sprintf("%s,%s", alwaysReadyComponents, component)
 				}
-				r.Status.Annotations[statusAnnotationAlwaysReadyComponents] = alwaysReadyComponents
+				r.Status.SetAnnotation(statusAnnotationAlwaysReadyComponents, alwaysReadyComponents)
 			}
+
+			// if we get here, the component has been successfully installed
+			delete(r.renderings, chart)
 		}
 
 		if r.waitForComponents.Len() > 0 {
-			// We'll have to wait for the cache before we calculate readiness in case we updated an existing
-			// resource. Otherwise we'd get a stale status that suggests it's ready when it's really not.
-			hacks.ReduceLikelihoodOfRepeatedReconciliation(ctx)
+			if madeChanges {
+				// We have to stop the reconcile here and then wait until all the watch events for all the object
+				// changes that we've made are received by the operator before we calculate readiness. Otherwise
+				// we'd calculate readiness with a stale object state that will show the object as ready when it isn't.
+				hacks.SkipReconciliationUntilCacheSynced(ctx, common.ToNamespacedName(r.Instance))
+				return
+			}
 
 			readyComponents, _, readyErr := r.calculateComponentReadiness(ctx)
 			if readyErr != nil {
@@ -350,7 +329,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 	r.Status.ChartVersion = r.chartVersion
 	updateControlPlaneConditions(r.Status, nil)
 
-	reconciliationComplete = true
+	hacks.SkipReconciliationUntilCacheSynced(ctx, common.ToNamespacedName(r.Instance))
 	log.Info("Completed ServiceMeshControlPlane reconcilation")
 	return
 }

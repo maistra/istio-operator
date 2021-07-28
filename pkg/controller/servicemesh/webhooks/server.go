@@ -23,6 +23,7 @@ var (
 	smcpValidatorServicePath = "/validate-smcp"
 	smcpMutatorServicePath   = "/mutate-smcp"
 	smcpConverterServicePath = "/convert-smcp"
+	SmeConverterServicePath  = "/convert-sme"
 	smmrValidatorServicePath = "/validate-smmr"
 	smmrMutatorServicePath   = "/mutate-smmr"
 	smmValidatorServicePath  = "/validate-smm"
@@ -52,6 +53,9 @@ func Add(mgr manager.Manager) error {
 
 	log.Info("Adding Maistra ServiceMeshControlPlane conversion handler")
 	hookServer.Register(smcpConverterServicePath, &conversion.Webhook{})
+
+	log.Info("Adding Maistra ServiceMeshExtension conversion handler")
+	hookServer.Register(SmeConverterServicePath, &conversion.Webhook{})
 
 	log.Info("Adding Maistra ServiceMeshControlPlane validation handler")
 	hookServer.Register(smcpValidatorServicePath, &webhook.Admission{

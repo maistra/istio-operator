@@ -131,7 +131,7 @@ func TestBootstrapping(t *testing.T) {
 					Profiles: []string{"maistra"},
 				},
 			},
-			crdCount: 14,
+			crdCount: 17,
 		},
 	}
 
@@ -229,8 +229,8 @@ func FinalizerAddedTest(finalizer string) VerifierTestFunc {
 }
 
 type jsonPatchOperation struct {
-	Operation string      `json:"op"`
-	Path      string      `json:"path"`
+	Operation string                       `json:"op"`
+	Path      string                       `json:"path"`
 	Value     maistrav1.ControlPlaneStatus `json:"value,omitempty"`
 }
 

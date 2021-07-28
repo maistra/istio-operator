@@ -6,7 +6,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istiod
     istio.io/rev: default
     release: istio
@@ -25,7 +25,7 @@ metadata:
   name: istio
   namespace: istio-system
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     istio.io/rev: default
     release: istio
 data:
@@ -87,7 +87,7 @@ metadata:
   name: istio-sidecar-injector
   namespace: istio-system
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     istio.io/rev: default
     release: istio
 data:
@@ -571,6 +571,12 @@ data:
           value: "{{ $value }}"
         {{- end }}
         {{- end }}
+        {{- if isset .ObjectMeta.Annotations `sidecar.maistra.io/proxyEnv` }}
+        {{- range $key, $value := fromJSON (index .ObjectMeta.Annotations `sidecar.maistra.io/proxyEnv`) }}
+        - name: {{ $key }}
+          value: "{{ $value }}"
+        {{- end }}
+        {{- end }}
         {{- range $key, $value := .ProxyConfig.ProxyMetadata }}
         - name: {{ $key }}
           value: "{{ $value }}"
@@ -764,7 +770,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     istio.io/rev: default
     app: istiod
     istio: pilot
@@ -797,7 +803,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istiod
     istio.io/rev: default
     istio: pilot
@@ -910,6 +916,39 @@ spec:
           - name: inject
             mountPath: /var/lib/istio/inject
             readOnly: true
+      affinity:      
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - "amd64"
+                - "ppc64le"
+                - "s390x"
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - "amd64"
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - "ppc64le"
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - "s390x"      
       volumes:
       # Technically not needed on this pod - but it helps debugging/testing SDS
       # Should be removed after everything works.
@@ -945,7 +984,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     app: istiod
     release: istio
     istio.io/rev: default
@@ -970,7 +1009,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1003,7 +1042,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1101,7 +1140,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1138,7 +1177,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1195,7 +1234,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1305,7 +1344,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1408,7 +1447,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1446,7 +1485,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1506,7 +1545,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1616,7 +1655,7 @@ metadata:
   namespace: istio-system
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     istio.io/rev: default
 spec:
   configPatches:
@@ -1720,7 +1759,7 @@ metadata:
 
   labels:
     maistra-control-plane: {{ .Release.Namespace }}
-    maistra-version: "2.0.2"
+    maistra-version: "2.0.6.2"
     istio.io/rev: default
     app: sidecar-injector
     release: istio

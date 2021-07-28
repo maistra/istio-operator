@@ -4,5 +4,5 @@ metadata:
   name: default
 spec:
   controlPlaneRef:
-    name: minimal-install
+    name: minimal
     namespace: istio-system

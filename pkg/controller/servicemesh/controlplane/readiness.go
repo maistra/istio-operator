@@ -95,10 +95,7 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 		}
 	}
 
-	if r.Status.Annotations == nil {
-		r.Status.Annotations = map[string]string{}
-	}
-	r.Status.Annotations[statusAnnotationReadyComponentCount] = fmt.Sprintf("%d/%d", len(readyComponents), len(r.Status.ComponentStatus))
+	r.Status.SetAnnotation(statusAnnotationReadyComponentCount, fmt.Sprintf("%d/%d", len(readyComponents), len(r.Status.ComponentStatus)))
 
 	allComponents := sets.NewString()
 	for _, comp := range r.Status.ComponentStatus {
@@ -185,12 +182,10 @@ func (r *controlPlaneInstanceReconciler) calculateComponentReadinessMap(ctx cont
 		}
 	}
 
-	if r.Status.Annotations != nil {
-		alwaysReadyComponents := r.Status.Annotations[statusAnnotationAlwaysReadyComponents]
-		if alwaysReadyComponents != "" {
-			for _, c := range strings.Split(alwaysReadyComponents, ",") {
-				readinessMap[c] = true
-			}
+	alwaysReadyComponents := r.Status.GetAnnotation(statusAnnotationAlwaysReadyComponents)
+	if alwaysReadyComponents != "" {
+		for _, c := range strings.Split(alwaysReadyComponents, ",") {
+			readinessMap[c] = true
 		}
 	}
 	return readinessMap, nil

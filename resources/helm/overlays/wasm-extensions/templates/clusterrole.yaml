@@ -12,6 +12,7 @@ rules:
   resources:
   - servicemeshextensions
   - servicemeshextensions/status
+  - servicemeshextensions/finalizers
   verbs:
   - get
   - list
@@ -31,8 +32,4 @@ rules:
   - imagestreams
   - imagestreamimports
   verbs:
-  - create
-  - update
-  - get
-  - list
-  - watch
+  - '*'

@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/client-go/tools/record"
@@ -27,6 +28,7 @@ import (
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
+	"github.com/maistra/istio-operator/pkg/controller/hacks"
 )
 
 const (
@@ -55,8 +57,9 @@ func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder recor
 			EventRecorder:     eventRecorder,
 			OperatorNamespace: operatorNamespace,
 		},
-		cniConfig:   cniConfig,
-		reconcilers: map[types.NamespacedName]ControlPlaneInstanceReconciler{},
+		cniConfig:                   cniConfig,
+		earliestReconciliationTimes: map[types.NamespacedName]time.Time{},
+		reconcilers:                 map[types.NamespacedName]ControlPlaneInstanceReconciler{},
 	}
 	reconciler.instanceReconcilerFactory = NewControlPlaneInstanceReconciler
 	return reconciler
@@ -156,8 +159,9 @@ type ControlPlaneReconciler struct {
 	common.ControllerResources
 	cniConfig cni.Config
 
-	reconcilers map[types.NamespacedName]ControlPlaneInstanceReconciler
-	mu          sync.Mutex
+	earliestReconciliationTimes map[types.NamespacedName]time.Time
+	reconcilers                 map[types.NamespacedName]ControlPlaneInstanceReconciler
+	mu                          sync.Mutex
 
 	instanceReconcilerFactory func(common.ControllerResources, *v2.ServiceMeshControlPlane, cni.Config) ControlPlaneInstanceReconciler
 }
@@ -178,6 +182,18 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 	log := createLogger().WithValues("ServiceMeshControlPlane", request)
 	ctx := common.NewReconcileContext(log)
 
+	if earliestReconciliationTime, ok := r.earliestReconciliationTimes[request.NamespacedName]; ok {
+		if earliestReconciliationTime.After(time.Now()) {
+			log.Info("Skipping reconciliation of ServiceMeshControlPlane because reconciliation is paused")
+			return reconcile.Result{
+				Requeue:      true,
+				RequeueAfter: earliestReconciliationTime.Sub(time.Now()),
+			}, nil
+		}
+		delete(r.earliestReconciliationTimes, request.NamespacedName)
+	}
+	ctx = hacks.WrapContext(ctx, r.earliestReconciliationTimes)
+
 	log.Info("Processing ServiceMeshControlPlane")
 	defer func() {
 		log.Info("Completed ServiceMeshControlPlane processing")
@@ -192,6 +208,7 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
 			log.Info("ServiceMeshControlPlane deleted")
+			delete(r.earliestReconciliationTimes, request.NamespacedName)
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object

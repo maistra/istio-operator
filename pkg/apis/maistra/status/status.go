@@ -23,6 +23,27 @@ type StatusBase struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
+func (s *StatusBase) GetAnnotation(name string) string {
+	if s.Annotations == nil {
+		return ""
+	}
+	return s.Annotations[name]
+}
+
+func (s *StatusBase) SetAnnotation(name string, value string) {
+	if s.Annotations == nil {
+		s.Annotations = map[string]string{}
+	}
+	s.Annotations[name] = value
+}
+
+func (s *StatusBase) RemoveAnnotation(name string) {
+	if s.Annotations != nil {
+		delete(s.Annotations, name)
+	}
+}
+
+
 // StatusType represents the status for a control plane, component, or resource
 type StatusType struct {
 

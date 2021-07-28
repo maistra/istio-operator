@@ -57,6 +57,23 @@ func (r *controlPlaneInstanceReconciler) preprocessObject(ctx context.Context, o
 	return nil
 }
 
+func (r *controlPlaneInstanceReconciler) preprocessObjectForPatch(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error) {
+	if newObj.GetKind() == "Kiali" {
+		accessibleNamespaces, found, err := unstructured.NestedStringSlice(oldObj.UnstructuredContent(), "spec", "deployment", "accessible_namespaces")
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			newObj = newObj.DeepCopy() // we make a copy in case the patch fails and a full CREATE is then performed; the accessible_namespaces field must be present when creating the object
+			err = unstructured.SetNestedStringSlice(newObj.UnstructuredContent(), accessibleNamespaces, "spec", "deployment", "accessible_namespaces")
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return newObj, nil
+}
+
 func (r *controlPlaneInstanceReconciler) processNewObject(ctx context.Context, object *unstructured.Unstructured) error {
 	return nil
 }

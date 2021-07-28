@@ -3,6 +3,9 @@ kind: ClusterServiceVersion
 metadata:
   name: maistraoperator.v2.1.0
   namespace: placeholder
+  labels:
+    operatorframework.io/arch.amd64: supported
+
   annotations:
     categories: "OpenShift Optional, Integration & Delivery"
     capabilities: "Seamless Upgrades"
@@ -12,7 +15,7 @@ metadata:
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: maistra/istio-ubi8-operator:2.1.0
-    createdAt: 2021-02-24T12:16:11CET
+    createdAt: 2021-07-22T17:44:49CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.1.0-0"
     operators.openshift.io/infrastructure-features: '[]'
@@ -196,7 +199,7 @@ spec:
     url: https://github.com/Maistra/istio-operator
   - name: Bugs
     url: https://issues.redhat.com/projects/MAISTRA
-  replaces: maistraoperator.v2.0.2
+  replaces: maistraoperator.v2.0.5
   installModes:
   - type: OwnNamespace
     supported: false
@@ -465,12 +468,16 @@ spec:
             - clusternetworks
           verbs:
             - get
+            - list
+            - watch
         - apiGroups:
             - config.openshift.io
           resources:
             - networks
           verbs:
             - get
+            - list
+            - watch
         - apiGroups:
             - image.openshift.io
           resources:
@@ -731,7 +738,7 @@ spec:
         path: controlPlaneRef.namespace
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Service_Mesh_Control_Plane'
-          - 'urn:alm:descriptor:io.kubernetes:Namespace'
+          - 'urn:alm:descriptor:io.kubernetes:Project'
       - displayName: Name
         description: The name of the ServiceMeshControlPlane to which this namespace belongs
         path: controlPlaneRef.name

@@ -93,24 +93,13 @@ func TestMAISTRA_2040(t *testing.T) {
 			},
 		},
 		{
-			name:        "default.v2.0",
-			description: "testing webhook controller using a default installation",
+			name:        "default.v2.0.mutating",
+			description: "testing mutating webhook update by webhook controller using a default installation",
 			events: []ControllerTestEvent{
 				{
 					Name: "create-mutating-webhook",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
 						return mgr.GetClient().Create(context.TODO(), create2xMutatingWebhook(istiodMutatingWebhookNamePrefix, testNamespace))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
-						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
-					),
-					Timeout: eventTimeout,
-				},
-				{
-					Name: "create-validating-webhook",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), create2xValidatingWebhook(istiodValidatingWebhookNamePrefix, testNamespace))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
@@ -128,6 +117,32 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("mutatingwebhookconfigurations").Named(webhookName(istiodMutatingWebhookNamePrefix, testNamespace)).Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
+					),
+					Timeout: eventTimeout,
+				},
+			},
+		},
+		{
+			name:        "default.v2.0.validating",
+			description: "testing validating webhook update by webhook controller using a default installation",
+			events: []ControllerTestEvent{
+				{
+					Name: "create-validating-webhook",
+					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
+						return mgr.GetClient().Create(context.TODO(), create2xValidatingWebhook(istiodValidatingWebhookNamePrefix, testNamespace))
+					},
+					Verifier: VerifyActions(
+						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
+						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
+					),
+					Timeout: eventTimeout,
+				},
+				{
+					Name: "create-istio-ca-secret",
+					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
+						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(v20SelfSignedSecretName, testNamespace, "ca-cert.pem"))
+					},
+					Verifier: VerifyActions(
 						Verify("get").On("validatingwebhookconfigurations").Named(webhookName(istiodValidatingWebhookNamePrefix, testNamespace)).IsSeen(),
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
