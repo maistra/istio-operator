@@ -214,6 +214,37 @@ func (h *HelmValues) GetAndRemoveSlice(path string) ([]interface{}, bool, error)
 	return value, ok, err
 }
 
+func (h *HelmValues) GetAndRemoveStringToStringMap(path string) (map[string]string, bool, error) {
+	var stringToStringMap map[string]string
+	var found bool
+	if rawValues, ok, err := h.GetMap(path); ok {
+		if len(rawValues) > 0 {
+			stringToStringMap = make(map[string]string)
+			for name, rawValue := range rawValues {
+				if rawValue == nil {
+					continue
+				}
+				switch value := rawValue.(type) {
+				case string:
+					stringToStringMap[name] = value
+				default:
+					return nil, false, fmt.Errorf("unknown type for %s.%s value, expected string: %T", path, name, rawValue)
+				}
+			}
+			if len(stringToStringMap) == 0 {
+				// this can happen if there are nil values
+				stringToStringMap = nil
+			} else {
+				found = true
+			}
+		}
+	} else if err != nil {
+		return nil, false, err
+	}
+	h.RemoveField(path)
+	return stringToStringMap, found, nil
+}
+
 func (h *HelmValues) GetMap(path string) (map[string]interface{}, bool, error) {
 	if h == nil || h.data == nil {
 		return nil, false, nil
@@ -285,3 +316,4 @@ func (in *HelmValues) DeepCopyInto(out *HelmValues) {
 	}
 	return
 }
+

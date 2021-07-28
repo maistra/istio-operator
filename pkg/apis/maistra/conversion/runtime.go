@@ -302,11 +302,9 @@ func populateContainerConfigValues(containerConfig *v2.ContainerConfig, componen
 			return err
 		}
 	}
-	if len(containerConfig.Env) > 0 {
-		for key, value := range containerConfig.Env {
-			if err := setHelmValue(componentValues, "env."+key, value); err != nil {
-				return err
-			}
+	for key, value := range containerConfig.Env {
+		if err := setHelmValue(componentValues, "env."+key, value); err != nil {
+			return err
 		}
 	}
 
@@ -773,31 +771,14 @@ func populateContainerConfig(in *v1.HelmValues, out *v2.ContainerConfig) (bool, 
 	} else if err != nil {
 		return false, err
 	}
-	if rawEnvValues, ok, err := in.GetMap("env"); ok {
-		if len(rawEnvValues) > 0 {
-			out.Env = make(map[string]string)
-			for name, rawValue := range rawEnvValues {
-				if rawValue == nil {
-					continue
-				}
-				switch value := rawValue.(type) {
-				case string:
-					out.Env[name] = value
-				default:
-					return false, fmt.Errorf("unknown type for env.%s value, expected string: %T", name, rawValue)
-				}
-			}
-			if len(out.Env) == 0 {
-				// this can happen if there are nil values
-				out.Env = nil
-			} else {
-				setContainer = true
-			}
-		}
+
+	if envMap, ok, err := in.GetAndRemoveStringToStringMap("env"); ok {
+		out.Env = envMap
+		setContainer = true
 	} else if err != nil {
 		return false, err
 	}
-	in.RemoveField("env")
+
 	if applied, err := populateCommonContainerConfig(in, &out.CommonContainerConfig); err == nil {
 		setContainer = setContainer || applied
 	} else {

@@ -305,9 +305,23 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 
 	// Runtime
 	if proxy.Runtime != nil {
-		if err := populateContainerConfigValues(proxy.Runtime.Container, proxyValues); err != nil {
-			return err
+		containerConfig := proxy.Runtime.Container
+		if containerConfig != nil {
+			if err := populateCommonContainerConfigValues(&containerConfig.CommonContainerConfig, proxyValues); err != nil {
+				return err
+			}
+			if containerConfig.Image != "" {
+				if err := setHelmStringValue(proxyValues, "image", containerConfig.Image); err != nil {
+					return err
+				}
+			}
+			for key, value := range containerConfig.Env {
+				if err := setHelmValue(meshConfigValues, "defaultConfig.proxyMetadata."+key, value); err != nil {
+					return err
+				}
+			}
 		}
+
 		// Readiness
 		if proxy.Runtime.Readiness != nil {
 			if proxy.Runtime.Readiness.StatusPort > 0 {
@@ -863,12 +877,25 @@ func populateProxyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	runtime := &v2.ProxyRuntimeConfig{}
 	setRuntime := false
 	container := &v2.ContainerConfig{}
+	setContainer := false
 	if applied, err := populateContainerConfig(proxyValues, container); err != nil {
 		return err
 	} else if applied {
+		setContainer = true
+	}
+
+	if envMap, ok, err := meshConfigValues.GetAndRemoveStringToStringMap("defaultConfig.proxyMetadata"); ok {
+		container.Env = envMap
+		setContainer = true
+	} else if err != nil {
+		return err
+	}
+
+	if setContainer {
 		runtime.Container = container
 		setRuntime = true
 	}
+
 	// Readiness
 	readiness := &v2.ProxyReadinessConfig{}
 	setReadiness := false
