@@ -13,10 +13,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
+	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 const statusAnnotationReadyComponentCount = "readyComponentCount"
@@ -53,7 +54,7 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 		}
 		r.Status.SetCondition(condition)
 		r.EventRecorder.Event(r.Instance, corev1.EventTypeWarning, eventReasonNotReady, condition.Message)
-		return true, err
+		return true, nil
 	}
 
 	readyCondition := r.Status.GetCondition(status.ConditionTypeReady)
@@ -149,6 +150,8 @@ func (r *controlPlaneInstanceReconciler) calculateComponentReadiness(ctx context
 }
 
 func (r *controlPlaneInstanceReconciler) calculateComponentReadinessMap(ctx context.Context) (map[string]bool, error) {
+	log := common.LogFromContext(ctx)
+
 	readinessMap := map[string]bool{}
 	typesToCheck := []struct {
 		list  runtime.Object
@@ -185,8 +188,16 @@ func (r *controlPlaneInstanceReconciler) calculateComponentReadinessMap(ctx cont
 			},
 		},
 	}
+
+	namespaces, err := r.getNamespacesToCheck()
+	if err != nil {
+		return nil, err
+	}
+
+	log.V(2).Info("Calculating readiness", "namespaces", namespaces)
+
 	for _, check := range typesToCheck {
-		err := r.calculateReadinessForType(ctx, check.list, check.ready, readinessMap)
+		err := r.calculateReadinessForType(ctx, namespaces, check.list, check.ready, readinessMap)
 		if err != nil {
 			return readinessMap, err
 		}
@@ -198,6 +209,8 @@ func (r *controlPlaneInstanceReconciler) calculateComponentReadinessMap(ctx cont
 			readinessMap[c] = true
 		}
 	}
+	log.V(2).Info("Readiness calculated", "readinessMap", readinessMap)
+
 	return readinessMap, nil
 }
 
@@ -219,34 +232,74 @@ func (r *controlPlaneInstanceReconciler) isCNIReady(ctx context.Context) (bool, 
 	return true, nil
 }
 
-func (r *controlPlaneInstanceReconciler) calculateReadinessForType(ctx context.Context, list runtime.Object, isReady isReadyFunc, readinessMap map[string]bool) error {
+func (r *controlPlaneInstanceReconciler) calculateReadinessForType(ctx context.Context, namespaces []string, list runtime.Object, isReady isReadyFunc, readinessMap map[string]bool) error {
 	log := common.LogFromContext(ctx)
 
-	meshNamespace := r.Instance.GetNamespace()
-	selector := map[string]string{common.OwnerKey: meshNamespace}
-	err := r.Client.List(ctx, list, client.InNamespace(meshNamespace), client.MatchingLabels(selector))
-	if err != nil {
-		return err
-	}
-	items, err := meta.ExtractList(list)
-	if err != nil {
-		return err
-	}
-
-	for _, obj := range items {
-		metaObject, err := meta.Accessor(obj)
+	selector := map[string]string{common.OwnerKey: r.Instance.GetNamespace()}
+	for _, ns := range namespaces {
+		err := r.Client.List(ctx, list, client.InNamespace(ns), client.MatchingLabels(selector))
 		if err != nil {
 			return err
 		}
-		if component, ok := metaObject.GetLabels()[common.KubernetesAppComponentKey]; ok {
-			ready, exists := readinessMap[component]
-			readinessMap[component] = (ready || !exists) && isReady(obj)
-		} else {
-			// how do we have an owned resource with no component label?
-			log.Error(nil, "skipping resource for readiness check: resource has no component label", obj.GetObjectKind(), metaObject.GetName())
+		items, err := meta.ExtractList(list)
+		if err != nil {
+			return err
+		}
+
+		for _, obj := range items {
+			log.V(3).Info("Readiness check found object", "object", obj)
+			metaObject, err := meta.Accessor(obj)
+			if err != nil {
+				return err
+			}
+			if component, ok := metaObject.GetLabels()[common.KubernetesAppComponentKey]; ok {
+				ready, exists := readinessMap[component]
+				readinessMap[component] = (ready || !exists) && isReady(obj)
+			} else {
+				// resource was most likely created by user, not by the operator; we can safely ignore it
+				log.V(3).Info("skipping resource for readiness check: resource has no component label", obj.GetObjectKind(), metaObject.GetName())
+			}
 		}
 	}
 	return nil
+}
+
+func (r *controlPlaneInstanceReconciler) getNamespacesToCheck() ([]string, error) {
+	// gather namespaces in SMCP
+	namespaces := sets.NewString(r.Instance.Namespace)
+	if gateways := r.Instance.Spec.Gateways; gateways != nil {
+		if gw := gateways.ClusterIngress; gw != nil {
+			if gw.Namespace != "" {
+				namespaces.Insert(gw.Namespace)
+			}
+		}
+		if gw := gateways.ClusterEgress; gw != nil {
+			if gw.Namespace != "" {
+				namespaces.Insert(gw.Namespace)
+			}
+		}
+		for _, gw := range gateways.IngressGateways {
+			if gw.Namespace != "" {
+				namespaces.Insert(gw.Namespace)
+			}
+		}
+		for _, gw := range gateways.EgressGateways {
+			if gw.Namespace != "" {
+				namespaces.Insert(gw.Namespace)
+			}
+		}
+	}
+
+	// ensure we only check namespaces that are part of the mesh
+	smmr := &maistrav1.ServiceMeshMemberRoll{}
+	if err := r.Client.Get(context.TODO(), client.ObjectKey{Namespace: r.Instance.Namespace, Name: common.MemberRollName}, smmr); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+	}
+
+	namespaces = namespaces.Intersection(common.GetMeshNamespaces(r.Instance.Namespace, smmr))
+	return namespaces.List(), nil
 }
 
 func (r *controlPlaneInstanceReconciler) daemonSetReady(ds *appsv1.DaemonSet) bool {
