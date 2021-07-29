@@ -29,7 +29,12 @@ func init() {
 var scheme *runtime.Scheme
 var decoder runtime.Decoder
 
-var reservedGatewayNames = sets.NewString("istio-ingressgateway", "istio-egressgateway")
+const (
+	clusterIngressName = "istio-ingressgateway"
+	clusterEgressName = "istio-egressgateway"
+)
+
+var reservedGatewayNames = sets.NewString(clusterIngressName, clusterEgressName)
 
 func validatePrometheusEnabledWhenKialiEnabled(spec *v2.ControlPlaneSpec, allErrors []error) []error {
 	if spec.IsKialiEnabled() && !spec.IsPrometheusEnabled() {
@@ -138,27 +143,35 @@ func validateGateways(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.Con
 			return []error{err}
 		}
 	}
+	return validateGatewaysInternal(meta, spec, smmr, allErrors)
+}
 
+func validateGatewaysInternal(meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, smmr *v1.ServiceMeshMemberRoll, allErrors []error) []error {
 	meshNamespaces := common.GetMeshNamespaces(meta.Namespace, smmr)
 	gatewayNames := sets.NewString()
 	if spec.Gateways != nil {
+		if spec.Gateways.ClusterIngress != nil {
+			validateGatewayNamespace(clusterIngressName, &spec.Gateways.ClusterIngress.GatewayConfig, meshNamespaces, &allErrors)
+		}
+		if spec.Gateways.ClusterEgress != nil {
+			validateGatewayNamespace(clusterEgressName, &spec.Gateways.ClusterEgress.GatewayConfig, meshNamespaces, &allErrors)
+		}
 		for name, gateway := range spec.Gateways.IngressGateways {
-			validateGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, meta.Namespace, &allErrors)
+			validateAdditionalGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, meta.Namespace, &allErrors)
 		}
 		for name, gateway := range spec.Gateways.EgressGateways {
-			validateGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, meta.Namespace, &allErrors)
+			validateAdditionalGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, meta.Namespace, &allErrors)
 		}
 	}
 	return allErrors
 }
 
-func validateGateway(name string, gateway *v2.GatewayConfig, gatewayNames sets.String, meshNamespaces sets.String, meshNamespace string, allErrors *[]error) {
+func validateAdditionalGateway(name string, gateway *v2.GatewayConfig, gatewayNames sets.String, meshNamespaces sets.String, meshNamespace string, allErrors *[]error) {
+	validateGatewayNamespace(name, gateway, meshNamespaces, allErrors)
+
 	namespace := gateway.Namespace
 	if namespace == "" {
 		namespace = meshNamespace
-	}
-	if (gateway.Enabled == nil || *gateway.Enabled) && !meshNamespaces.Has(namespace) {
-		*allErrors = append(*allErrors, fmt.Errorf("namespace %q for ingress gateway %q must be part of the mesh", namespace, name))
 	}
 	namespacedName := namespacedNameString(namespace, name)
 	if gatewayNames.Has(namespacedName) {
@@ -166,8 +179,15 @@ func validateGateway(name string, gateway *v2.GatewayConfig, gatewayNames sets.S
 	} else {
 		gatewayNames.Insert(namespacedName)
 	}
+
 	if reservedGatewayNames.Has(name) {
 		*allErrors = append(*allErrors, fmt.Errorf("cannot define additional gateway named %q", name))
+	}
+}
+
+func validateGatewayNamespace(name string, gateway *v2.GatewayConfig, meshNamespaces sets.String, allErrors *[]error) {
+	if (gateway.Enabled == nil || *gateway.Enabled) && gateway.Namespace != "" && !meshNamespaces.Has(gateway.Namespace) {
+		*allErrors = append(*allErrors, fmt.Errorf("namespace %q for gateway %q is not configured as a mesh member", gateway.Namespace, name))
 	}
 }
 
