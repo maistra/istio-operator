@@ -3,8 +3,10 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
+	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -95,17 +97,25 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 		}
 	}
 
-	r.Status.SetAnnotation(statusAnnotationReadyComponentCount, fmt.Sprintf("%d/%d", len(readyComponents), len(r.Status.ComponentStatus)))
+	readyComponentCount := fmt.Sprintf("%d/%d", len(readyComponents), len(r.Status.ComponentStatus))
+	if r.Status.GetAnnotation(statusAnnotationReadyComponentCount) != readyComponentCount {
+		r.Status.SetAnnotation(statusAnnotationReadyComponentCount, readyComponentCount)
+		updateStatus = true
+	}
 
 	allComponents := sets.NewString()
 	for _, comp := range r.Status.ComponentStatus {
 		allComponents.Insert(comp.Resource)
 	}
 
-	r.Status.Readiness.Components = map[string][]string{
+	readinessMap := maistrav2.ReadinessMap{
 		"ready":   readyComponents.List(),
 		"unready": unreadyComponents.List(),
 		"pending": allComponents.Difference(readyComponents).Difference(unreadyComponents).List(),
+	}
+	if !reflect.DeepEqual(r.Status.Readiness.Components, readinessMap) {
+		r.Status.Readiness.Components = readinessMap
+		updateStatus = true
 	}
 	return updateStatus, nil
 }
