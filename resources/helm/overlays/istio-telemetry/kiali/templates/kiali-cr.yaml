@@ -40,6 +40,8 @@ spec:
     istio:
       config_map_name: istio-{{ .Values.revision | default "default" }}
       url_service_version: http://istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}:15014/version
+      istiod_deployment_name: istiod-{{ .Values.revision | default "default" }}
+      istio_sidecar_injector_config_map_name: istio-sidecar-injector-{{ .Values.revision | default "default" }}
     grafana:
       auth:
         type: "basic"
