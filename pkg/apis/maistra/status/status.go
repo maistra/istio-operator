@@ -144,6 +144,9 @@ const (
 	ConditionReasonResourceCreated ConditionReason = "ResourceCreated"
 	// ConditionReasonSpecUpdated ...
 	ConditionReasonSpecUpdated ConditionReason = "SpecUpdated"
+	// ConditionReasonOperatorUpdated indicates that the SMCP is being reconciled
+	// because the operator was upgraded
+	ConditionReasonOperatorUpdated ConditionReason = "OperatorUpdated"
 	// ConditionReasonUpdateSuccessful ...
 	ConditionReasonUpdateSuccessful ConditionReason = "UpdateSuccessful"
 	// ConditionReasonComponentsReady ...
