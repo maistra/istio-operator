@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/helm/pkg/manifest"
 	"k8s.io/helm/pkg/releaseutil"
@@ -26,10 +27,11 @@ type ManifestProcessor struct {
 	processNewObject         func(ctx context.Context, obj *unstructured.Unstructured) error
 	preprocessObjectForPatch func(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error)
 
-	appInstance, appVersion, owner string
+	appInstance, appVersion string
+	owner types.NamespacedName
 }
 
-func NewManifestProcessor(controllerResources common.ControllerResources, patchFactory *PatchFactory, appInstance, appVersion, owner string, preprocessObjectFunc, postProcessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) error, preprocessObjectForPatchFunc func(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error)) *ManifestProcessor {
+func NewManifestProcessor(controllerResources common.ControllerResources, patchFactory *PatchFactory, appInstance, appVersion string, owner types.NamespacedName, preprocessObjectFunc, postProcessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) error, preprocessObjectForPatchFunc func(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error)) *ManifestProcessor {
 	return &ManifestProcessor{
 		ControllerResources:      controllerResources,
 		PatchFactory:             patchFactory,
@@ -204,11 +206,12 @@ func (p *ManifestProcessor) addMetadata(obj *unstructured.Unstructured, componen
 		common.KubernetesAppInstanceKey:  p.appInstance,
 		common.KubernetesAppVersionKey:   p.appVersion,
 		common.KubernetesAppComponentKey: component,
-		common.KubernetesAppPartOfKey:    "istio",
-		common.KubernetesAppManagedByKey: "maistra-istio-operator",
+		common.KubernetesAppPartOfKey:    common.KubernetesAppPartOfValue,
+		common.KubernetesAppManagedByKey: common.KubernetesAppManagedByValue,
 		// legacy
 		// add owner label
-		common.OwnerKey: p.owner,
+		common.OwnerKey: p.owner.Namespace,
+		common.OwnerNameKey: p.owner.Name,
 	}
 	common.SetLabels(obj, labels)
 }

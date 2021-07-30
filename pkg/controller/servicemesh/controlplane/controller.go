@@ -6,10 +6,9 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -84,28 +83,13 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 	}
 
 	// watch created resources for use in synchronizing ready status
-	if err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}},
-		&handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &v2.ServiceMeshControlPlane{},
-		},
-		ownedResourcePredicates); err != nil {
+	if err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, enqueueRequestForSMCP, ownedResourcePredicates); err != nil {
 		return err
 	}
-	if err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}},
-		&handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &v2.ServiceMeshControlPlane{},
-		},
-		ownedResourcePredicates); err != nil {
+	if err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, enqueueRequestForSMCP, ownedResourcePredicates); err != nil {
 		return err
 	}
-	if err = c.Watch(&source.Kind{Type: &appsv1.DaemonSet{}},
-		&handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &v2.ServiceMeshControlPlane{},
-		},
-		ownedResourcePredicates); err != nil {
+	if err = c.Watch(&source.Kind{Type: &appsv1.DaemonSet{}}, enqueueRequestForSMCP, ownedResourcePredicates); err != nil {
 		return err
 	}
 
@@ -136,6 +120,23 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 	}
 
 	return nil
+}
+
+var enqueueRequestForSMCP = &handler.EnqueueRequestsFromMapFunc{
+	ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
+		labels := obj.Meta.GetLabels()
+		if labels[common.KubernetesAppManagedByKey] == common.KubernetesAppManagedByValue {
+			ownerNamespace := labels[common.OwnerKey]
+			ownerName := labels[common.OwnerNameKey]
+			if ownerNamespace != "" && ownerName != "" {
+				return []reconcile.Request{{NamespacedName: types.NamespacedName{
+					Namespace: ownerNamespace,
+					Name:      ownerName,
+				}}}
+			}
+		}
+		return nil
+	}),
 }
 
 var ownedResourcePredicates = predicate.Funcs{
