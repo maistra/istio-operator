@@ -305,8 +305,20 @@ function patchGateways() {
   # MAISTRA-1963 Mark gateways as non-privileged
   sed_wrap -i -e '/env:/ a\
           - name: ISTIO_META_UNPRIVILEGED_POD\
-            value: "true"\
+            value: "true"
 ' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
+
+  # MAISTRA-2528 Enable DNS Capture for proxies by default
+  sed_wrap -i -e '/env:/ a\
+          - name: ISTIO_META_DNS_CAPTURE\
+            value: "true"\
+          - name: PROXY_XDS_VIA_AGENT\
+            value: "true"
+' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
+  sed_wrap -i -e 's/proxyMetadata: {}/proxyMetadata:\
+      ISTIO_META_DNS_CAPTURE: "true"\
+      PROXY_XDS_VIA_AGENT: "true"/
+' ${HELM_DIR}/gateways/istio-ingress/values.yaml ${HELM_DIR}/gateways/istio-egress/values.yaml
 
   # gateways in other namespaces need proxy config
   echo "$(sed_nowrap -ne '1,/\$mesh :=/p' ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml; cat ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml)" > ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
@@ -318,7 +330,7 @@ function patchGateways() {
             value: |-\
 {{ toYaml $mesh.defaultConfig | trim | indent 14 }}\
 {{- end }}\
-{{- end }}\
+{{- end }}
 ' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
   # remove special users/groups

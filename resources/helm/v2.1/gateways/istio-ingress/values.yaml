@@ -350,7 +350,9 @@ global:
 meshConfig:
   enablePrometheusMerge: true
   defaultConfig:
-    proxyMetadata: {}
+    proxyMetadata:
+      ISTIO_META_DNS_CAPTURE: "true"
+      PROXY_XDS_VIA_AGENT: "true"
     tracing:
     #      tlsSettings:
     #        mode: DISABLE # DISABLE, SIMPLE, MUTUAL, ISTIO_MUTUAL
