@@ -388,7 +388,11 @@ clusterResources: true
 meshConfig:
   enablePrometheusMerge: true
   defaultConfig:
-    proxyMetadata: {}
+    proxyMetadata:
+      # required so proxy handles dns requests, which are delegated to istiod
+      ISTIO_META_DNS_CAPTURE: "true"
+      # required to enable dns capture
+      PROXY_XDS_VIA_AGENT: "true"
     tracing:
 #      tlsSettings:
 #        mode: DISABLE # DISABLE, SIMPLE, MUTUAL, ISTIO_MUTUAL
