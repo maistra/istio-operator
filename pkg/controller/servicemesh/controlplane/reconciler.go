@@ -466,14 +466,13 @@ func (r *controlPlaneInstanceReconciler) initializeReconcileStatus() {
 	var conditionReason status.ConditionReason
 	if r.isUpdating() {
 		if r.Status.ObservedGeneration == r.Instance.GetGeneration() {
-			fromVersion := r.Status.OperatorVersion
-			toVersion := buildinfo.Info.Version
-			readyMessage = fmt.Sprintf("Upgrading mesh from version %s to version %s", fromVersion[strings.LastIndex(fromVersion, "-")+1:], toVersion[strings.LastIndex(toVersion, "-")+1:])
+			readyMessage = fmt.Sprintf("Updating mesh due to operator version change (%s to %s)", r.Status.OperatorVersion, buildinfo.Info.Version)
+			conditionReason = status.ConditionReasonOperatorUpdated
 		} else {
 			readyMessage = fmt.Sprintf("Updating mesh from generation %d to generation %d", r.Status.ObservedGeneration, r.Instance.GetGeneration())
+			conditionReason = status.ConditionReasonSpecUpdated
 		}
 		eventReason = eventReasonUpdating
-		conditionReason = status.ConditionReasonSpecUpdated
 	} else {
 		readyMessage = fmt.Sprintf("Installing mesh generation %d", r.Instance.GetGeneration())
 		eventReason = eventReasonInstalling
