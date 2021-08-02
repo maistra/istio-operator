@@ -42,6 +42,9 @@ func InitConfig(m manager.Manager) (Config, error) {
 		if len(common.Config.OLM.Images.V2_0.CNI) == 0 {
 			return config, fmt.Errorf("configuration olm.relatedImage.v2_0.cni must be set")
 		}
+		if len(common.Config.OLM.Images.V2_1.CNI) == 0 {
+			return config, fmt.Errorf("configuration olm.relatedImage.v2_1.cni must be set")
+		}
 
 		secret, _ := os.LookupEnv("ISTIO_CNI_IMAGE_PULL_SECRET")
 		if secret != "" {
