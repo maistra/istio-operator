@@ -40,6 +40,13 @@ func (f *ActionVerifierFactory) On(resource string) *ActionVerifierFactory {
 	return f
 }
 
+// Version initializes the version whithin which the created verifier should apply.
+// Use "*" to match all versions.
+func (f *ActionVerifierFactory) Version(version string) *ActionVerifierFactory {
+	f.AbstractActionFilter.Version(version)
+	return f
+}
+
 // In initializes the namespace whithin which the created verifier should apply.
 // Use "*" to match all namespaces.
 func (f *ActionVerifierFactory) In(namespace string) *ActionVerifierFactory {
@@ -179,7 +186,7 @@ func VerifyActions(verifiers ...ActionVerifier) ActionVerifier {
 }
 
 type verifyActions struct {
-	mu sync.RWMutex
+	mu        sync.RWMutex
 	verifiers []ActionVerifier
 }
 
