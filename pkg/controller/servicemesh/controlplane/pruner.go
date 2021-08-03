@@ -25,28 +25,27 @@ type pruneConfig struct {
 
 var (
 	// XXX: move this into a ConfigMap so users can override things if they add new types in customized charts
-	// ordered by which types should be deleted, first to last
 	namespacedResources = map[schema.GroupVersionKind]pruneConfig{
 		gvk("kiali.io", "v1alpha1", "Kiali"):                         {supportsDeleteCollection: true},
-		gvk("autoscaling", "v2beta1", "HorizontalPodAutoscaler"):     {supportsDeleteCollection: true},
-		gvk("policy", "v1beta1", "PodDisruptionBudget"):              {supportsDeleteCollection: true},
-		gvk("route.openshift.io", "v1", "Route"):                     {supportsDeleteCollection: true},
-		gvk("apps", "v1", "Deployment"):                              {supportsDeleteCollection: true},
-		gvk("apps", "v1", "DaemonSet"):                               {supportsDeleteCollection: true},
-		gvk("apps", "v1", "StatefulSet"):                             {supportsDeleteCollection: true},
-		gvk("extensions", "v1beta1", "Ingress"):                      {supportsDeleteCollection: true},
+		gvk("autoscaling", "v2beta1", "HorizontalPodAutoscaler"):     {supportsDeleteCollection: false},
+		gvk("policy", "v1beta1", "PodDisruptionBudget"):              {supportsDeleteCollection: false},
+		gvk("route.openshift.io", "v1", "Route"):                     {supportsDeleteCollection: false},
+		gvk("apps", "v1", "Deployment"):                              {supportsDeleteCollection: false},
+		gvk("apps", "v1", "DaemonSet"):                               {supportsDeleteCollection: false},
+		gvk("apps", "v1", "StatefulSet"):                             {supportsDeleteCollection: false},
+		gvk("extensions", "v1beta1", "Ingress"):                      {supportsDeleteCollection: false},
 		gvk("", "v1", "Service"):                                     {supportsDeleteCollection: false},
-		gvk("", "v1", "Endpoints"):                                   {supportsDeleteCollection: true},
-		gvk("", "v1", "ConfigMap"):                                   {supportsDeleteCollection: true},
-		gvk("", "v1", "PersistentVolumeClaim"):                       {supportsDeleteCollection: true},
-		gvk("", "v1", "Pod"):                                         {supportsDeleteCollection: true},
-		gvk("", "v1", "Secret"):                                      {supportsDeleteCollection: true},
-		gvk("", "v1", "ServiceAccount"):                              {supportsDeleteCollection: true},
-		gvk("networking.k8s.io", "v1", "NetworkPolicy"):              {supportsDeleteCollection: true},
-		gvk("rbac.authorization.k8s.io", "v1beta1", "RoleBinding"):   {supportsDeleteCollection: true},
-		gvk("rbac.authorization.k8s.io", "v1", "RoleBinding"):        {supportsDeleteCollection: true},
-		gvk("rbac.authorization.k8s.io", "v1beta1", "Role"):          {supportsDeleteCollection: true},
-		gvk("rbac.authorization.k8s.io", "v1", "Role"):               {supportsDeleteCollection: true},
+		gvk("", "v1", "Endpoints"):                                   {supportsDeleteCollection: false},
+		gvk("", "v1", "ConfigMap"):                                   {supportsDeleteCollection: false},
+		gvk("", "v1", "PersistentVolumeClaim"):                       {supportsDeleteCollection: false},
+		gvk("", "v1", "Pod"):                                         {supportsDeleteCollection: false},
+		gvk("", "v1", "Secret"):                                      {supportsDeleteCollection: false},
+		gvk("", "v1", "ServiceAccount"):                              {supportsDeleteCollection: false},
+		gvk("networking.k8s.io", "v1", "NetworkPolicy"):              {supportsDeleteCollection: false},
+		gvk("rbac.authorization.k8s.io", "v1beta1", "RoleBinding"):   {supportsDeleteCollection: false},
+		gvk("rbac.authorization.k8s.io", "v1", "RoleBinding"):        {supportsDeleteCollection: false},
+		gvk("rbac.authorization.k8s.io", "v1beta1", "Role"):          {supportsDeleteCollection: false},
+		gvk("rbac.authorization.k8s.io", "v1", "Role"):               {supportsDeleteCollection: false},
 		gvk("authentication.istio.io", "v1alpha1", "Policy"):         {supportsDeleteCollection: true},
 		gvk("config.istio.io", "v1alpha2", "adapter"):                {supportsDeleteCollection: true},
 		gvk("config.istio.io", "v1alpha2", "attributemanifest"):      {supportsDeleteCollection: true},
@@ -76,7 +75,6 @@ var (
 		gvk("networking.istio.io", "v1alpha3", "WorkloadEntry"):      {supportsDeleteCollection: true},
 	}
 
-	// ordered by which types should be deleted, first to last
 	nonNamespacedResources = map[schema.GroupVersionKind]pruneConfig{
 		gvk("admissionregistration.k8s.io", "v1beta1", "MutatingWebhookConfiguration"):   {supportsDeleteCollection: true},
 		gvk("admissionregistration.k8s.io", "v1beta1", "ValidatingWebhookConfiguration"): {supportsDeleteCollection: true},
@@ -88,22 +86,18 @@ var (
 
 func (r *controlPlaneInstanceReconciler) prune(ctx context.Context, generation string) error {
 	allErrors := []error{}
-	err := r.pruneResources(ctx, namespacedResources, generation, r.Instance.Namespace)
+	err := r.pruneResources(ctx, namespacedResources, generation)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
-	err = r.pruneResources(ctx, namespacedResources, generation, r.OperatorNamespace)
-	if err != nil {
-		allErrors = append(allErrors, err)
-	}
-	err = r.pruneResources(ctx, nonNamespacedResources, generation, "")
+	err = r.pruneResources(ctx, nonNamespacedResources, generation)
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (r *controlPlaneInstanceReconciler) pruneResources(ctx context.Context, gvks map[schema.GroupVersionKind]pruneConfig, instanceGeneration string, namespace string) error {
+func (r *controlPlaneInstanceReconciler) pruneResources(ctx context.Context, gvks map[schema.GroupVersionKind]pruneConfig, instanceGeneration string) error {
 	log := common.LogFromContext(ctx)
 
 	allErrors := []error{}
@@ -111,9 +105,9 @@ func (r *controlPlaneInstanceReconciler) pruneResources(ctx context.Context, gvk
 		log.Info("pruning resources", "type", gvk.String())
 		var err error
 		if pruneConfig.supportsDeleteCollection {
-			err = r.pruneAll(ctx, gvk, instanceGeneration, namespace)
+			err = r.pruneAll(ctx, gvk, instanceGeneration)
 		} else {
-			err = r.pruneIndividually(ctx, gvk, instanceGeneration, namespace)
+			err = r.pruneIndividually(ctx, gvk, instanceGeneration)
 		}
 		if err != nil {
 			log.Error(err, "Error pruning resources", "type", gvk.String())
@@ -123,14 +117,14 @@ func (r *controlPlaneInstanceReconciler) pruneResources(ctx context.Context, gvk
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func (r *controlPlaneInstanceReconciler) pruneIndividually(ctx context.Context, gvk schema.GroupVersionKind, instanceGeneration string, namespace string) error {
+func (r *controlPlaneInstanceReconciler) pruneIndividually(ctx context.Context, gvk schema.GroupVersionKind, instanceGeneration string) error {
 	labelSelector, err := createLabelSelector(r.Instance.Namespace, instanceGeneration)
 	if err != nil {
 		return err
 	}
 	objects := &unstructured.UnstructuredList{}
 	objects.SetGroupVersionKind(gvk)
-	err = r.Client.List(ctx, objects, client.InNamespace(namespace), client.MatchingLabelsSelector{Selector: labelSelector})
+	err = r.Client.List(ctx, objects, client.MatchingLabelsSelector{Selector: labelSelector})
 	if err != nil {
 		if meta.IsNoMatchError(err) || errors.IsNotFound(err) {
 			return nil
@@ -146,7 +140,7 @@ func (r *controlPlaneInstanceReconciler) pruneIndividually(ctx context.Context, 
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) pruneAll(ctx context.Context, gvk schema.GroupVersionKind, instanceGeneration string, namespace string) error {
+func (r *controlPlaneInstanceReconciler) pruneAll(ctx context.Context, gvk schema.GroupVersionKind, instanceGeneration string) error {
 	labelSelector, err := createLabelSelector(r.Instance.Namespace, instanceGeneration)
 	if err != nil {
 		return err
@@ -156,7 +150,6 @@ func (r *controlPlaneInstanceReconciler) pruneAll(ctx context.Context, gvk schem
 	object.SetGroupVersionKind(gvk)
 	err = r.Client.DeleteAllOf(ctx,
 		object,
-		client.InNamespace(namespace),
 		client.MatchingLabelsSelector{Selector: labelSelector},
 		client.PropagationPolicy(metav1.DeletePropagationBackground))
 
