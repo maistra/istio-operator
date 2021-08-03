@@ -124,44 +124,40 @@ func (r *controlPlaneInstanceReconciler) pruneResources(ctx context.Context, gvk
 }
 
 func (r *controlPlaneInstanceReconciler) pruneIndividually(ctx context.Context, gvk schema.GroupVersionKind, instanceGeneration string, namespace string) error {
-	labelSelector := map[string]string{common.OwnerKey: r.Instance.Namespace}
+	labelSelector, err := createLabelSelector(r.Instance.Namespace, instanceGeneration)
+	if err != nil {
+		return err
+	}
 	objects := &unstructured.UnstructuredList{}
 	objects.SetGroupVersionKind(gvk)
-	err := r.Client.List(ctx, objects, client.InNamespace(namespace), client.MatchingLabels(labelSelector))
+	err = r.Client.List(ctx, objects, client.InNamespace(namespace), client.MatchingLabelsSelector{Selector: labelSelector})
 	if err != nil {
 		if meta.IsNoMatchError(err) || errors.IsNotFound(err) {
 			return nil
 		}
-		return fmt.Errorf("Error retrieving resources to prune: %v", err)
+		return fmt.Errorf("error retrieving resources to prune: %v", err)
 	}
 	for _, object := range objects.Items {
-		if generation, ok := common.GetAnnotation(&object, common.MeshGenerationKey); ok && generation != instanceGeneration {
-			err = r.Client.Delete(ctx, &object, client.PropagationPolicy(metav1.DeletePropagationBackground))
-			if err != nil && !errors.IsNotFound(err) {
-				return fmt.Errorf("Error deleting resource: %v", err)
-			}
+		err = r.Client.Delete(ctx, &object, client.PropagationPolicy(metav1.DeletePropagationBackground))
+		if err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("error deleting resource: %v", err)
 		}
 	}
 	return nil
 }
 
 func (r *controlPlaneInstanceReconciler) pruneAll(ctx context.Context, gvk schema.GroupVersionKind, instanceGeneration string, namespace string) error {
-	ownerRequirement, err := labels.NewRequirement(common.OwnerKey, selection.Equals, []string{r.Instance.Namespace})
+	labelSelector, err := createLabelSelector(r.Instance.Namespace, instanceGeneration)
 	if err != nil {
 		return err
 	}
-	generationRequirement, err := labels.NewRequirement(common.KubernetesAppVersionKey, selection.NotEquals, []string{instanceGeneration})
-	if err != nil {
-		return err
-	}
-	selector := labels.NewSelector().Add(*ownerRequirement, *generationRequirement)
 
 	object := &unstructured.Unstructured{}
 	object.SetGroupVersionKind(gvk)
 	err = r.Client.DeleteAllOf(ctx,
 		object,
 		client.InNamespace(namespace),
-		client.MatchingLabelsSelector{Selector: selector},
+		client.MatchingLabelsSelector{Selector: labelSelector},
 		client.PropagationPolicy(metav1.DeletePropagationBackground))
 
 	if meta.IsNoMatchError(err) || errors.IsNotFound(err) {
@@ -176,4 +172,17 @@ func gvk(group, version, kind string) schema.GroupVersionKind {
 		Version: version,
 		Kind:    kind,
 	}
+}
+
+func createLabelSelector(meshNamespace, meshGeneration string) (labels.Selector, error) {
+	ownerRequirement, err := labels.NewRequirement(common.OwnerKey, selection.Equals, []string{meshNamespace})
+	if err != nil {
+		return nil, err
+	}
+	generationRequirement, err := labels.NewRequirement(common.KubernetesAppVersionKey, selection.NotEquals, []string{meshGeneration})
+	if err != nil {
+		return nil, err
+	}
+	labelsSelector := labels.NewSelector().Add(*ownerRequirement, *generationRequirement)
+	return labelsSelector, nil
 }
