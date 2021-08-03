@@ -17,6 +17,7 @@ import (
 func TestPrune(t *testing.T) {
 	operatorNamespace := "operator-namespace"
 	controlPlaneNamespace := "control-plane-namespace"
+	unrelatedNamespace := "unrelated-namespace"
 
 	previousMeshGeneration := "test-1"
 	currentMeshGeneration := "test-2"
@@ -95,60 +96,65 @@ func TestPrune(t *testing.T) {
 
 	for _, tc := range cases {
 		for _, sc := range subcases {
-			var ns string
+			var namespaces []string
 			if tc.namespaced {
-				ns = controlPlaneNamespace
+				// check if object is pruned regardless of the namespace it belongs to
+				namespaces = []string{operatorNamespace, controlPlaneNamespace, unrelatedNamespace}
+			} else {
+				namespaces = []string{""}
 			}
-			t.Run(tc.name+"-"+sc.name, func(t *testing.T) {
-				obj := tc.createObject()
-				o := obj.(metav1.Object)
-				o.SetName("test")
-				o.SetNamespace(ns)
-				if sc.owner != "" {
-					o.SetLabels(map[string]string{
-						common.OwnerKey:                sc.owner,
-						common.KubernetesAppVersionKey: sc.version,
-					})
-					o.SetAnnotations(map[string]string{
-						common.MeshGenerationKey: sc.version,
-					})
-				}
+			for _, ns := range namespaces {
+				t.Run(tc.name+"-"+sc.name+"-in-"+ns, func(t *testing.T) {
+					obj := tc.createObject()
+					o := obj.(metav1.Object)
+					o.SetName("test")
+					o.SetNamespace(ns)
+					if sc.owner != "" {
+						o.SetLabels(map[string]string{
+							common.OwnerKey:                sc.owner,
+							common.KubernetesAppVersionKey: sc.version,
+						})
+						o.SetAnnotations(map[string]string{
+							common.MeshGenerationKey: sc.version,
+						})
+					}
 
-				smcp := newControlPlane()
-				smcp.Namespace = controlPlaneNamespace
+					smcp := newControlPlane()
+					smcp.Namespace = controlPlaneNamespace
 
-				cl, tracker := test.CreateClient(smcp, obj)
-				fakeEventRecorder := &record.FakeRecorder{}
+					cl, tracker := test.CreateClient(smcp, obj)
+					fakeEventRecorder := &record.FakeRecorder{}
 
-				r := &controlPlaneInstanceReconciler{
-					ControllerResources: common.ControllerResources{
-						Client:            cl,
-						Scheme:            tracker.Scheme,
-						EventRecorder:     fakeEventRecorder,
-						OperatorNamespace: operatorNamespace,
-					},
-					Instance:  smcp,
-					Status:    smcp.Status.DeepCopy(),
-					cniConfig: cni.Config{Enabled: true},
-				}
+					r := &controlPlaneInstanceReconciler{
+						ControllerResources: common.ControllerResources{
+							Client:            cl,
+							Scheme:            tracker.Scheme,
+							EventRecorder:     fakeEventRecorder,
+							OperatorNamespace: operatorNamespace,
+						},
+						Instance:  smcp,
+						Status:    smcp.Status.DeepCopy(),
+						cniConfig: cni.Config{Enabled: true},
+					}
 
-				var err error
-				if tc.pruneIndividually {
-					err = r.pruneIndividually(ctx, tc.gvk, currentMeshGeneration, ns)
-				} else {
-					err = r.pruneAll(ctx, tc.gvk, currentMeshGeneration, ns)
-				}
-				if err != nil {
-					t.Fatalf("Unexpected error: %v", err)
-				}
+					var err error
+					if tc.pruneIndividually {
+						err = r.pruneIndividually(ctx, tc.gvk, currentMeshGeneration)
+					} else {
+						err = r.pruneAll(ctx, tc.gvk, currentMeshGeneration)
+					}
+					if err != nil {
+						t.Fatalf("Unexpected error: %v", err)
+					}
 
-				namespacedName := common.ToNamespacedName(obj.(metav1.Object))
-				if sc.expectDeletion {
-					test.AssertNotFound(ctx, cl, namespacedName, obj, "Expected prune() to delete object, but it didn't", t)
-				} else {
-					test.AssertObjectExists(ctx, cl, namespacedName, obj, "Expected prune() to preserve object, but it didn't", t)
-				}
-			})
+					namespacedName := common.ToNamespacedName(obj.(metav1.Object))
+					if sc.expectDeletion {
+						test.AssertNotFound(ctx, cl, namespacedName, obj, "Expected prune() to delete object, but it didn't", t)
+					} else {
+						test.AssertObjectExists(ctx, cl, namespacedName, obj, "Expected prune() to preserve object, but it didn't", t)
+					}
+				})
+			}
 		}
 	}
 }
