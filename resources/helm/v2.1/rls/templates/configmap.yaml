@@ -1,0 +1,24 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  labels:
+    maistra-version: "2.1.0"
+    app: rls
+    istio.io/rev: {{ .Values.revision | default "default" }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: rls-{{ .Values.revision | default "default" }}
+  namespace: {{ .Release.Namespace }}
+data:
+  config.yaml: |
+    #      domain: echo-ratelimit
+    #      descriptors:
+    #        - key: PATH
+    #          value: "/"
+    #          rate_limit:
+    #            unit: minute
+    #            requests_per_unit: 1
+    #        - key: PATH
+    #          rate_limit:
+    #            unit: minute
+    #            requests_per_unit: 100
