@@ -193,8 +193,8 @@ func TestManifestValidation(t *testing.T) {
 			errorMessages: map[versions.Version]string{
 				versions.V1_0: "namespace of manifest b/another-ingress not in mesh",
 				versions.V1_1: "namespace of manifest b/another-ingress not in mesh",
-				versions.V2_0: "Spec is invalid: error: [namespace \"b\" for ingress gateway \"another-ingress\" must be part of the mesh, namespace \"d\" for ingress gateway \"another-egress\" must be part of the mesh]",
-				versions.V2_1: "Spec is invalid: error: [namespace \"b\" for ingress gateway \"another-ingress\" must be part of the mesh, namespace \"d\" for ingress gateway \"another-egress\" must be part of the mesh]",
+				versions.V2_0: "Spec is invalid: error: [namespace \"b\" for gateway \"another-ingress\" is not configured as a mesh member, namespace \"d\" for gateway \"another-egress\" is not configured as a mesh member]",
+				versions.V2_1: "Spec is invalid: error: [namespace \"b\" for gateway \"another-ingress\" is not configured as a mesh member, namespace \"d\" for gateway \"another-egress\" is not configured as a mesh member]",
 			},
 		},
 		{
