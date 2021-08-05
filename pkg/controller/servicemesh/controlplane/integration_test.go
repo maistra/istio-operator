@@ -139,7 +139,7 @@ func TestBootstrapping(t *testing.T) {
 							// initialize status
 							Verify("patch").On("servicemeshcontrolplanes/status").Named(smcpName).In(controlPlaneNamespace).Passes(initalStatusTest),
 							// verify that a CRD is installed
-							Verify("create").On("customresourcedefinitions").IsSeen(),
+							Verify("create").On("customresourcedefinitions").Version("v1").IsSeen(),
 							// verify that CNI is installed
 							Verify("create").On("daemonsets").Named(cniDaemonSetName).In(operatorNamespace).IsSeen(),
 							// verify readiness check triggered daemon set creation
@@ -147,7 +147,7 @@ func TestBootstrapping(t *testing.T) {
 						),
 						Assertions: ActionAssertions{
 							// verify proper number of CRDs is created
-							Assert("create").On("customresourcedefinitions").SeenCountIs(tc.crdCount),
+							Assert("create").On("customresourcedefinitions").Version("v1").SeenCountIs(tc.crdCount),
 						},
 						Reactors: []clienttesting.Reactor{
 							ReactTo("list").On("daemonsets").In(operatorNamespace).With(

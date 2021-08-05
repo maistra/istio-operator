@@ -11,7 +11,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	rbacv1 "k8s.io/api/rbac/v1"
-	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -143,6 +143,7 @@ func TestNewerCRDVersionAlwaysWinsRegardlessDeploymentOrder(t *testing.T) {
 // type:object field in the CRD's OpenAPI schema. This test checks if
 // we remove these fields and retry the create/update operation.
 func TestRemoveTypeObjectFromOpenAPISchema(t *testing.T) {
+	t.Skip("maistra no longer supports running on OpenShift 3.11")
 	CRDnoSchema10 := newCRDYAML("test", "1.0.0")
 	CRDnoSchema11 := newCRDYAML("test", "1.1.0")
 	CRDwithSchemaWithTypeObject := CRDnoSchema11 + `
@@ -285,14 +286,14 @@ func createTempDirectoryWithCRDFiles(crdFileContents ...string) (dirPath string)
 	return dir
 }
 
-func listCRDs(cl client.Client) apiextensionsv1beta1.CustomResourceDefinitionList {
-	crdList := apiextensionsv1beta1.CustomResourceDefinitionList{}
+func listCRDs(cl client.Client) apiextensionsv1.CustomResourceDefinitionList {
+	crdList := apiextensionsv1.CustomResourceDefinitionList{}
 	err := cl.List(ctx, &crdList, &client.ListOptions{})
 	test.PanicOnError(err)
 	return crdList
 }
 
-func extractNames(crdList apiextensionsv1beta1.CustomResourceDefinitionList) sets.String {
+func extractNames(crdList apiextensionsv1.CustomResourceDefinitionList) sets.String {
 	crdNames := sets.NewString()
 	for _, crd := range crdList.Items {
 		crdNames.Insert(crd.Name)

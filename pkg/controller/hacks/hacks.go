@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -41,6 +42,62 @@ func RemoveTypeObjectFieldsFromCRDSchema(ctx context.Context, crd *apiextensions
 // returned by the API server when it doesn't like "type:object" fields in the CRD's OpenAPI Schema.
 func IsTypeObjectProblemInCRDSchemas(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "must only have \"properties\", \"required\" or \"description\" at the root if the status subresource is enabled")
+}
+
+// PatchUpV1beta1CRDs ensures required fields/settings are present, so v1
+// conversion results in a valid CRD
+func PatchUpV1beta1CRDs(crd *apiextensionsv1beta1.CustomResourceDefinition) {
+	// ensure a schema exists
+	ensureSchemaExists(crd)
+}
+
+func ensureSchemaExists(crd *apiextensionsv1beta1.CustomResourceDefinition) {
+	if crd.Spec.Validation != nil && crd.Spec.Validation.OpenAPIV3Schema != nil {
+		return
+	}
+	hasVersionSchema := false
+	for _, version := range crd.Spec.Versions {
+		hasVersionSchema = hasVersionSchema || (version.Schema != nil && version.Schema.OpenAPIV3Schema != nil)
+	}
+	if hasVersionSchema {
+		for index, version := range crd.Spec.Versions {
+			// make sure every version has a schema
+			if version.Schema == nil || version.Schema.OpenAPIV3Schema == nil {
+				preserveUnknownFields := true
+				crd.Spec.Versions[index].Schema = &apiextensionsv1beta1.CustomResourceValidation{
+					OpenAPIV3Schema: &apiextensionsv1beta1.JSONSchemaProps{
+						Type:                   "object",
+						XPreserveUnknownFields: &preserveUnknownFields,
+					},
+				}
+			}
+		}
+	} else {
+		// create a common schema
+		preserveUnknownFields := true
+		crd.Spec.Validation = &apiextensionsv1beta1.CustomResourceValidation{
+			OpenAPIV3Schema: &apiextensionsv1beta1.JSONSchemaProps{
+				Type:                   "object",
+				XPreserveUnknownFields: &preserveUnknownFields,
+			},
+		}
+	}
+}
+
+// FixPreserveUnknownFields changes to false and adds x-kubernetes-preserve-unknown-fields
+// to the schema
+func FixPreserveUnknownFields(crd *apiextensionsv1.CustomResourceDefinition) {
+	if crd.Spec.PreserveUnknownFields {
+		for index, version := range crd.Spec.Versions {
+			if version.Schema == nil || version.Schema.OpenAPIV3Schema == nil ||
+				version.Schema.OpenAPIV3Schema.XPreserveUnknownFields != nil {
+				continue
+			}
+			val := true
+			crd.Spec.Versions[index].Schema.OpenAPIV3Schema.XPreserveUnknownFields = &val
+		}
+		crd.Spec.PreserveUnknownFields = false
+	}
 }
 
 func removeTypeObjectField(schema *apiextensionsv1beta1.JSONSchemaProps) {
