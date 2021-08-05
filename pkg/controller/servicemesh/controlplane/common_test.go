@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -33,6 +34,46 @@ import (
 )
 
 var ctx = common.NewContextWithLog(context.Background(), logf.Log)
+
+var kialiCRD = v1.CustomResourceDefinition{
+	ObjectMeta: metav1.ObjectMeta{Name: "kialis.kiali.io"},
+	Spec: v1.CustomResourceDefinitionSpec{
+		Group: "kiali.io",
+		Names: v1.CustomResourceDefinitionNames{
+			Plural:   "kialis",
+			Singular: "kiali",
+			Kind:     "Kiali",
+			ListKind: "KialiList",
+		},
+		Scope: "Namespaced",
+		Versions: []v1.CustomResourceDefinitionVersion{
+			{
+				Name:   "v1alpha1",
+				Served: true,
+			},
+		},
+	},
+}
+
+var jaegerCRD = v1.CustomResourceDefinition{
+	ObjectMeta: metav1.ObjectMeta{Name: "jaegers.jaegertracing.io"},
+	Spec: v1.CustomResourceDefinitionSpec{
+		Group: "jaegertracing.io",
+		Names: v1.CustomResourceDefinitionNames{
+			Plural:   "jaegers",
+			Singular: "jaeger",
+			Kind:     "Jaeger",
+			ListKind: "JaegerList",
+		},
+		Scope: "Namespaced",
+		Versions: []v1.CustomResourceDefinitionVersion{
+			{
+				Name:   "v1",
+				Served: true,
+			},
+		},
+	},
+}
 
 func init() {
 	hacks.CacheSyncWaitDuration = 0
@@ -70,6 +111,8 @@ func RunSimpleInstallTest(t *testing.T, testCases []IntegrationTestCase) {
 			Resources: []runtime.Object{
 				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: controlPlaneNamespace}},
 				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorNamespace}},
+				&kialiCRD,
+				&jaegerCRD,
 			},
 			GroupResources: []*restmapper.APIGroupResources{
 				CNIGroupResources,
