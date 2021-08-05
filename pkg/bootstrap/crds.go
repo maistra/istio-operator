@@ -14,6 +14,8 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
+	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -52,7 +54,7 @@ func InstallCRDs(ctx context.Context, cl client.Client, chartsDir string) error 
 	crdPath := path.Join(chartsDir, "istio-init", "files")
 	crdDir, err := os.Stat(crdPath)
 	if err != nil || !crdDir.IsDir() {
-		return fmt.Errorf("Cannot locate any CRD files in %s", crdPath)
+		return fmt.Errorf("cannot locate any CRD files in %s", crdPath)
 	}
 	err = filepath.Walk(crdPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
@@ -167,7 +169,7 @@ func processCRDFile(ctx context.Context, cl client.Client, fileName string) erro
 	}
 
 	allErrors := []error{}
-	for index, raw := range releaseutil.SplitManifests(string(buf.Bytes())) {
+	for index, raw := range releaseutil.SplitManifests(buf.String()) {
 		crd, err := decodeCRD(common.NewContextWithLog(ctx, log.WithValues("file", fileName, "index", index)), raw)
 		if err != nil {
 			allErrors = append(allErrors, err)
@@ -181,35 +183,59 @@ func processCRDFile(ctx context.Context, cl client.Client, fileName string) erro
 	return utilerrors.NewAggregate(allErrors)
 }
 
-func decodeCRD(ctx context.Context, raw string) (*apiextensionsv1beta1.CustomResourceDefinition, error) {
+func decodeCRD(ctx context.Context, raw string) (*apiextensionsv1.CustomResourceDefinition, error) {
 	log := common.LogFromContext(ctx)
 	rawJSON, err := yaml.YAMLToJSON([]byte(raw))
 	if err != nil {
 		log.Error(err, "unable to convert raw data to JSON")
 		return nil, err
 	}
-	obj := &apiextensionsv1beta1.CustomResourceDefinition{}
-	_, _, err = unstructured.UnstructuredJSONScheme.Decode(rawJSON, nil, obj)
+	v1beta1obj := &apiextensionsv1beta1.CustomResourceDefinition{}
+	_, _, err = unstructured.UnstructuredJSONScheme.Decode(rawJSON, nil, v1beta1obj)
 	if err != nil {
-		log.Error(err, "unable to decode object into Unstructured")
-		return nil, err
-	}
-	if obj.GroupVersionKind().GroupKind().String() == "CustomResourceDefinition.apiextensions.k8s.io" {
-		return obj, nil
-	} else {
+		v1obj := &apiextensionsv1.CustomResourceDefinition{}
+		_, _, err = unstructured.UnstructuredJSONScheme.Decode(rawJSON, nil, v1obj)
+		if err != nil {
+			log.Error(err, "unable to decode object into CustomResourceDefinition")
+			return nil, err
+		}
+		if v1obj.GroupVersionKind().GroupKind().String() == "CustomResourceDefinition.apiextensions.k8s.io" {
+			return v1obj, nil
+		}
+		log.Error(err, "decoded object is not a CustomResourceDefinition: %s", v1obj.GroupVersionKind().String())
 		return nil, nil
 	}
+	if v1beta1obj.GroupVersionKind().GroupKind().String() != "CustomResourceDefinition.apiextensions.k8s.io" {
+		log.Error(err, "decoded object is not a CustomResourceDefinition: %s", v1beta1obj.GroupVersionKind().String())
+		return nil, nil
+	}
+
+	// make sure we have an object that will result in a valid v1 object after conversion
+	hacks.PatchUpV1beta1CRDs(v1beta1obj)
+
+	internalobj := &apiextensions.CustomResourceDefinition{}
+	err = apiextensionsv1beta1.Convert_v1beta1_CustomResourceDefinition_To_apiextensions_CustomResourceDefinition(v1beta1obj, internalobj, nil)
+	if err != nil {
+		return nil, err
+	}
+	v1obj := &apiextensionsv1.CustomResourceDefinition{}
+	err = apiextensionsv1.Convert_apiextensions_CustomResourceDefinition_To_v1_CustomResourceDefinition(internalobj, v1obj, nil)
+	if err != nil {
+		return nil, err
+	}
+	hacks.FixPreserveUnknownFields(v1obj)
+	return v1obj, nil
 }
 
-func createCRD(ctx context.Context, cl client.Client, crd *apiextensionsv1beta1.CustomResourceDefinition) error {
+func createCRD(ctx context.Context, cl client.Client, crd *apiextensionsv1.CustomResourceDefinition) error {
 	log := common.LogFromContext(ctx)
-	existingCrd := &apiextensionsv1beta1.CustomResourceDefinition{}
+	existingCrd := &apiextensionsv1.CustomResourceDefinition{}
 	existingCrd.SetName(crd.GetName())
 	err := cl.Get(ctx, client.ObjectKey{Name: crd.GetName()}, existingCrd)
 	if err == nil {
 		newVersion, err := getMaistraVersion(crd)
 		if err != nil {
-			return fmt.Errorf("Could not determine version of new CRD %s: %v", crd.GetName(), err)
+			return fmt.Errorf("could not determine version of new CRD %s: %v", crd.GetName(), err)
 		}
 		existingVersion, err := getMaistraVersion(existingCrd)
 		if err != nil {
@@ -221,13 +247,6 @@ func createCRD(ctx context.Context, cl client.Client, crd *apiextensionsv1beta1.
 
 			crd.ResourceVersion = existingCrd.ResourceVersion
 			err = cl.Update(ctx, crd)
-			if hacks.IsTypeObjectProblemInCRDSchemas(err) {
-				err = hacks.RemoveTypeObjectFieldsFromCRDSchema(ctx, crd)
-				if err != nil {
-					return err
-				}
-				err = cl.Update(ctx, crd)
-			}
 			if err != nil {
 				log.Error(err, "error updating CRD")
 				return err
@@ -241,13 +260,6 @@ func createCRD(ctx context.Context, cl client.Client, crd *apiextensionsv1beta1.
 	if errors.IsNotFound(err) {
 		log.Info("creating CRD")
 		err = cl.Create(ctx, crd)
-		if hacks.IsTypeObjectProblemInCRDSchemas(err) {
-			err = hacks.RemoveTypeObjectFieldsFromCRDSchema(ctx, crd)
-			if err != nil {
-				return err
-			}
-			err = cl.Create(ctx, crd)
-		}
 		if err != nil {
 			log.Error(err, "error creating CRD")
 			return err
@@ -257,10 +269,10 @@ func createCRD(ctx context.Context, cl client.Client, crd *apiextensionsv1beta1.
 	return err
 }
 
-func getMaistraVersion(crd *apiextensionsv1beta1.CustomResourceDefinition) (*semver.Version, error) {
+func getMaistraVersion(crd *apiextensionsv1.CustomResourceDefinition) (*semver.Version, error) {
 	versionLabel := crd.Labels["maistra-version"]
 	if versionLabel == "" {
-		return nil, fmt.Errorf("Label maistra-version not found")
+		return nil, fmt.Errorf("label maistra-version not found")
 	}
 	versionLabel = badVersionRegex.ReplaceAllString(versionLabel, "$1$2-$4")
 	if !strings.Contains(versionLabel, "-") {
