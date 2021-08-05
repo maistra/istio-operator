@@ -14,3 +14,5 @@ rateLimiting:
 
     cpu:
       targetAverageUtilization: 80
+
+  rawRules: {}

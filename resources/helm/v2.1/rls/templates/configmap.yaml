@@ -11,14 +11,6 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   config.yaml: |
-    #      domain: echo-ratelimit
-    #      descriptors:
-    #        - key: PATH
-    #          value: "/"
-    #          rate_limit:
-    #            unit: minute
-    #            requests_per_unit: 1
-    #        - key: PATH
-    #          rate_limit:
-    #            unit: minute
-    #            requests_per_unit: 100
+{{- if .Values.rateLimiting.rawRules }}
+{{ toYaml .Values.rateLimiting.rawRules | indent 4 }}
+{{- end }}

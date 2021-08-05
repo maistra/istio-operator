@@ -59,6 +59,10 @@ spec:
           value: /data
         - name: RUNTIME_SUBDIRECTORY
           value: ratelimit
+        - name: RUNTIME_WATCH_ROOT
+          value: "false"
+        - name: RUNTIME_IGNOREDOTFILES
+          value: "true"
         {{- if .Values.rateLimiting.rls.env }}
         {{- range $key, $val := .Values.rateLimiting.rls.env }}
         - name: {{ $key }}
@@ -67,14 +71,18 @@ spec:
         {{- end }}
         ports:
         - containerPort: 8080
+        - containerPort: 8081
+        - containerPort: 6070
         volumeMounts:
         - name: config-volume
-          mountPath: /data/ratelimit/config/config.yaml
-          subPath: config.yaml
+          mountPath: /data/ratelimit/config
       volumes:
       - name: config-volume
         configMap:
           name: rls-{{ .Values.revision | default "default" }}
+          items:
+          - key: config.yaml
+            path: config.yaml
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       securityContext: {}
