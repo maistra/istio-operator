@@ -34,22 +34,29 @@ type ActionAssertionFactory struct {
 // between resource an subresource, e.g. deployments/status.  Use "*" to match
 // all resources.
 func (f *ActionAssertionFactory) On(resource string) *ActionAssertionFactory {
-    f.AbstractActionFilter.On(resource)
-    return f
+	f.AbstractActionFilter.On(resource)
+	return f
+}
+
+// Version initializes the version whithin which the created assertion should apply.
+// Use "*" to match all versions.
+func (f *ActionAssertionFactory) Version(version string) *ActionAssertionFactory {
+	f.AbstractActionFilter.Version(version)
+	return f
 }
 
 // In initializes the namespace whithin which the created assertion should apply.
 // Use "*" to match all namespaces.
 func (f *ActionAssertionFactory) In(namespace string) *ActionAssertionFactory {
-    f.AbstractActionFilter.In(namespace)
-    return f
+	f.AbstractActionFilter.In(namespace)
+	return f
 }
 
 // Named initializes the name of the resource to which the created assertion
 // should apply.  Use "*" to match all names.
 func (f *ActionAssertionFactory) Named(name string) *ActionAssertionFactory {
-    f.AbstractActionFilter.Named(name)
-    return f
+	f.AbstractActionFilter.Named(name)
+	return f
 }
 
 // SeenCountIs returns an ActionAssertion object that asserts the specified event

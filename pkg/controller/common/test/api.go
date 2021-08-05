@@ -105,11 +105,12 @@ type ActionAssertions []ActionAssertion
 // ActionVerifier types that filter actions based on verb, resource,
 // subresource, namespace, and name.
 type AbstractActionFilter struct {
-	Namespace   string
-	Name        string
-	Verb        string
-	Resource    string
-	Subresource string
+	Namespace       string
+	Name            string
+	Verb            string
+	Resource        string
+	Subresource     string
+	ResourceVersion string
 }
 
 // Handles returns true if the action matches the settings for this verifier
@@ -120,7 +121,8 @@ func (a *AbstractActionFilter) Handles(action clienttesting.Action) bool {
 		((a.Verb == "*" || a.Verb == action.GetVerb()) &&
 			(a.Resource == "*" || a.Resource == action.GetResource().Resource))) &&
 		(a.Subresource == "*" || action.GetSubresource() == a.Subresource) &&
-		(a.Namespace == "*" || a.Namespace == action.GetNamespace()) {
+		(a.Namespace == "*" || a.Namespace == action.GetNamespace()) &&
+		(a.ResourceVersion == "*" || a.ResourceVersion == "" || action.GetResource().Version == a.ResourceVersion) {
 		switch typedAction := action.(type) {
 		case clienttesting.CreateAction:
 			accessor, err := meta.Accessor(typedAction.GetObject())
@@ -148,26 +150,33 @@ func (a *AbstractActionFilter) Handles(action clienttesting.Action) bool {
 // between resource an subresource, e.g. deployments/status.  Use "*" to match
 // all resources.
 func (a *AbstractActionFilter) On(resource string) *AbstractActionFilter {
-    resourceAndSub := strings.SplitN(resource, "/", 2)
-    a.Resource = resourceAndSub[0]
-    if len(resourceAndSub) > 1 {
-        a.Subresource = resourceAndSub[1]
-    }
-    return a
+	resourceAndSub := strings.SplitN(resource, "/", 2)
+	a.Resource = resourceAndSub[0]
+	if len(resourceAndSub) > 1 {
+		a.Subresource = resourceAndSub[1]
+	}
+	return a
+}
+
+// Version initializes the version whithin which the filter should apply.  Use "*"
+// to match all versions.
+func (a *AbstractActionFilter) Version(version string) *AbstractActionFilter {
+	a.ResourceVersion = version
+	return a
 }
 
 // In initializes the namespace whithin which the filter should apply.  Use "*"
 // to match all namespaces.
 func (a *AbstractActionFilter) In(namespace string) *AbstractActionFilter {
-    a.Namespace = namespace
-    return a
+	a.Namespace = namespace
+	return a
 }
 
 // Named initializes the name of the resource to which the filter should apply.
 // Use "*" to match all names.
 func (a *AbstractActionFilter) Named(name string) *AbstractActionFilter {
-    a.Name = name
-    return a
+	a.Name = name
+	return a
 }
 
 // FilterString returns a sensible string for the filter, e.g. create deployments named namespace-a/some-name
