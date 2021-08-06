@@ -456,4 +456,3 @@ func (v *versionStrategyV2_0) GetTelemetryType(in *v1.HelmValues, mixerTelemetry
 func (v *versionStrategyV2_0) GetPolicyType(in *v1.HelmValues, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled bool) v2.PolicyType {
 	return v.conversionImpl.GetPolicyType(in, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled)
 }
-
