@@ -41,12 +41,12 @@ func TestDefaultInstall(t *testing.T) {
 			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{Version: versions.V2_0.String()}),
 			create: IntegrationTestValidation{
 				Assertions: ActionAssertions{
-					Assert("create").On("deployments").Named("wasm-cacher-test").In(controlPlaneNamespace).IsNotSeen(),
+					Assert("create").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsNotSeen(),
 				},
 			},
 			delete: IntegrationTestValidation{
 				Assertions: ActionAssertions{
-					Assert("delete").On("deployments").Named("wasm-cacher-test").In(controlPlaneNamespace).IsNotSeen(),
+					Assert("delete").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsNotSeen(),
 				},
 			},
 		},
@@ -56,12 +56,12 @@ func TestDefaultInstall(t *testing.T) {
 			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{Version: versions.V2_1.String()}),
 			create: IntegrationTestValidation{
 				Assertions: ActionAssertions{
-					Assert("create").On("deployments").Named("wasm-cacher-test").In(controlPlaneNamespace).IsNotSeen(),
+					Assert("create").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsSeen(),
 				},
 			},
 			delete: IntegrationTestValidation{
 				Assertions: ActionAssertions{
-					Assert("delete").On("deployments").Named("wasm-cacher-test").In(controlPlaneNamespace).IsNotSeen(),
+					Assert("delete").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsSeen(),
 				},
 			},
 		},
