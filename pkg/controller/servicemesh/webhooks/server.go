@@ -34,7 +34,7 @@ func Add(mgr manager.Manager) error {
 	ctx := common.NewContextWithLog(common.NewContext(), log)
 	log.Info("Configuring Maistra webhooks")
 
-	if common.Config.OLM.WebhookManagementDisabled {
+	if common.Config.Controller.WebhookManagementEnabled {
 		log.Info("Webhook Config Management is disabled via olm configuration")
 	} else {
 		operatorNamespace := common.GetOperatorNamespace()
