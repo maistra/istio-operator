@@ -340,10 +340,8 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 		return nil, err
 	}
 
-	err = configureRLS(spec.Istio)
-	if err != nil {
-		// not fatal
-		log.Error(err, "Error configuring rate limiting server")
+	if err := validateAndConfigureRLS(spec.Istio); err != nil {
+		return nil, err
 	}
 
 	//Render the charts
@@ -470,7 +468,11 @@ func (v *versionStrategyV2_1) GetPolicyType(in *v1.HelmValues, mixerPolicyEnable
 	return v.conversionImpl.GetPolicyType(in, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled)
 }
 
-func configureRLS(spec *v1.HelmValues) error {
+func validateAndConfigureRLS(spec *v1.HelmValues) error {
+	if enabled, found, _ := spec.GetBool(string(v2.ControlPlaneComponentNameRateLimiting) + ".enabled"); !found || !enabled {
+		return nil
+	}
+
 	if storageBackend, found, _ := spec.GetString(string(v2.ControlPlaneComponentNameRateLimiting) + ".storageBackend"); found {
 		if storageAddress, found, _ := spec.GetString(string(v2.ControlPlaneComponentNameRateLimiting) + ".storageAddress"); found {
 			variables := make(map[string]string)
@@ -483,7 +485,7 @@ func configureRLS(spec *v1.HelmValues) error {
 				variables["BACKEND_TYPE"] = "memcache"
 				variables["MEMCACHE_HOST_PORT"] = storageAddress
 			default:
-				return fmt.Errorf("invalid value %q for %s.storageBackend. It must be one of: {redis, memcache}", storageBackend, v2.ControlPlaneComponentNameRateLimiting)
+				return NewValidationError(fmt.Errorf("invalid value %q for %s.storageBackend. It must be one of: {redis, memcache}", storageBackend, v2.ControlPlaneComponentNameRateLimiting))
 			}
 
 			for k, v := range variables {

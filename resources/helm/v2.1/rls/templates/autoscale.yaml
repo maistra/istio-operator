@@ -6,7 +6,6 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: "2.1.0"
-    maistra-version: "2.1.0"
     app: rls
     release: {{ .Release.Name }}
     istio.io/rev: {{ .Values.revision | default "default" }}
