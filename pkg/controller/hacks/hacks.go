@@ -102,14 +102,40 @@ func ensureSchemaExists(crd *apiextensionsv1beta1.CustomResourceDefinition) {
 func FixPreserveUnknownFields(crd *apiextensionsv1.CustomResourceDefinition) {
 	if crd.Spec.PreserveUnknownFields {
 		for index, version := range crd.Spec.Versions {
-			if version.Schema == nil || version.Schema.OpenAPIV3Schema == nil ||
-				version.Schema.OpenAPIV3Schema.XPreserveUnknownFields != nil {
+			if version.Schema == nil || version.Schema.OpenAPIV3Schema == nil {
 				continue
 			}
-			val := true
-			crd.Spec.Versions[index].Schema.OpenAPIV3Schema.XPreserveUnknownFields = &val
+			preserveUnknownFields(crd.Spec.Versions[index].Schema.OpenAPIV3Schema)
 		}
 		crd.Spec.PreserveUnknownFields = false
+	}
+}
+
+func preserveUnknownFields(schema *apiextensionsv1.JSONSchemaProps) {
+	preserveFields := true
+	for key, val := range schema.Properties {
+		switch val.Type {
+		case "object":
+			if len(val.Properties) == 0 {
+				if val.AdditionalProperties == nil || val.AdditionalProperties.Schema == nil {
+					val.XPreserveUnknownFields = &preserveFields
+				}
+			} else {
+				preserveUnknownFields(&val)
+			}
+		case "array":
+			if val.Items == nil || val.Items.Schema == nil {
+				val.Items = &apiextensionsv1.JSONSchemaPropsOrArray{
+					Schema: &apiextensionsv1.JSONSchemaProps{
+						Type:                   "object",
+						XPreserveUnknownFields: &preserveFields,
+					},
+				}
+			} else {
+				preserveUnknownFields(val.Items.Schema)
+			}
+		}
+		schema.Properties[key] = val
 	}
 }
 
