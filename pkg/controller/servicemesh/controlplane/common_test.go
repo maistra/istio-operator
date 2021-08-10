@@ -175,6 +175,7 @@ func InitializeGlobals(operatorNamespace string) func() {
 		common.Config.OLM.Images.V1_1.IOR = "injected-ior-v1.1"
 		common.Config.OLM.Images.V2_0.WASMCacher = "injected-wasm-cacher-v2.0"
 		common.Config.OLM.Images.V2_1.WASMCacher = "injected-wasm-cacher-v2.1"
+		common.Config.OLM.Images.V2_1.RLS = "injected-rls-v2.1"
 		os.Setenv("POD_NAMESPACE", operatorNamespace)
 		common.GetOperatorNamespace()
 		if _, filename, _, ok := goruntime.Caller(0); ok {
