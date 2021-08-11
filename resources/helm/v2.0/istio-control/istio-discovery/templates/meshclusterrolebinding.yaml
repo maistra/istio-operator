@@ -4,7 +4,7 @@ metadata:
   name: istiod-internal-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.6.2"
+    maistra-version: "2.0.7"
     app: istiod
     release: {{ .Release.Name }}
 roleRef:
