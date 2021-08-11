@@ -7007,6 +7007,8 @@ spec:
         - istio-operator
         - --config
         - /etc/operator/olm/config.properties
+        - --zap-devel
+        - --zap-level=2
         imagePullPolicy: Always
         env:
         - name: WATCH_NAMESPACE
