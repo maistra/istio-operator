@@ -130,6 +130,9 @@ spec:
           - mountPath: /etc/istio-certs
             name: istio-certs
           {{- end }}
+          {{- if .Values.prometheus.volumeMounts }}
+{{ toYaml .Values.prometheus.volumeMounts | indent 10 }}
+          {{- end }}
 
 {{- if and .Values.prometheus.provisionPrometheusCert (not .Values.meshConfig.enablePrometheusMerge) }}
         - name: istio-proxy
@@ -270,6 +273,9 @@ spec:
       - name: config-volume
         configMap:
           name: prometheus
+      {{- if .Values.prometheus.volumes }}
+{{ toYaml .Values.prometheus.volumes | indent 6 }}
+      {{- end }}
 
 {{- if and .Values.prometheus.provisionPrometheusCert (not .Values.meshConfig.enablePrometheusMerge) }}
       - name: istio-certs
