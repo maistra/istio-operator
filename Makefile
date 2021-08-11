@@ -70,9 +70,12 @@ compile:
 ################################################################################
 # runs all the tests
 ################################################################################
-.PHONY: test
+.PHONY: test e2e
 test:
 	go test -timeout ${TEST_TIMEOUT} -mod=vendor ${TEST_FLAGS} ./...
+
+e2e:
+	${SOURCE_DIR}/tests/aws.sh
 
 ################################################################################
 # maistra v1.0
@@ -278,9 +281,12 @@ build: update-generated-code update-charts update-templates compile
 ################################################################################
 # create image
 ################################################################################
-.PHONY: image
+.PHONY: image image.push
 image: build collect-resources
 	@if [ -z "${IMAGE}" ]; then echo "Please set the IMAGE variable" && exit 1; fi
 	${CONTAINER_CLI} build --no-cache -t "${IMAGE}" -f ${SOURCE_DIR}/build/Dockerfile --build-arg build_type=${BUILD_TYPE} .
+
+image.push: image
+	${CONTAINER_CLI} push "${IMAGE}"
 
 .DEFAULT_GOAL := build
