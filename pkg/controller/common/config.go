@@ -11,6 +11,10 @@ import (
 // Config is the config used to drive the operator
 var Config = &config{}
 
+func init() {
+	Config.Controller.WebhookManagementEnabled = true
+}
+
 // config for the operator
 type config struct {
 	OLM        olm              `json:"olm,omitempty"`

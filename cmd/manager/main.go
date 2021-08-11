@@ -264,9 +264,6 @@ func initializeConfiguration(configFile string) error {
 	v.RegisterAlias("rendering.defaultTemplatesDir", "defaultTemplatesDir")
 	v.RegisterAlias("rendering.userTemplatesDir", "userTemplatesDir")
 
-	// Set defaults
-	v.SetDefault("webhookManagementEnabled", true)
-
 	v.BindPFlags(pflag.CommandLine)
 	v.AutomaticEnv()
 	props, err := patchProperties(configFile)

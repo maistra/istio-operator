@@ -18,7 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
-	"github.com/maistra/istio-operator/pkg/controller/common"
 	. "github.com/maistra/istio-operator/pkg/controller/common/test"
 )
 
@@ -423,7 +422,6 @@ func TestMAISTRA_2040(t *testing.T) {
 	if testing.Verbose() {
 		logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(os.Stderr), zap.Level(zapcore.Level(-5))))
 	}
-	common.Config.Controller.WebhookManagementEnabled = true
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Log(tc.description)
