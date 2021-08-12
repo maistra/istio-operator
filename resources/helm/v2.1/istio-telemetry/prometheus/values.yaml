@@ -55,19 +55,18 @@ prometheus:
 
   # Enable persistent volume for prometheus by making volumes and volumeMounts configurable.
   # spec:
-  #   containers:
-  #     - name: prometheus-container
-  #       image: prometheus
-  #       ports:
-  #         - containerPort: 3001
-  #           name: https
-  #       volumeMounts:
-  #         - mountPath: /prometheus
-  #           name: prometheus-k8s-db
-  #   volumes:
-  #     - name: prometheus-k8s-db
-  #       persistentVolumeClaim:
-  #         claimName: prometheus-db-pv-claim
+  #   runtime:
+  #     components:
+  #       prometheus:
+  #         container:
+  #         - name: prometheus
+  #           volumeMounts:
+  #           - mountPath: /prometheus
+  #             name: prometheus-k8s-db
+  #         volumes:
+  #         - name: prometheus-k8s-db
+  #           persistentVolumeClaim:
+  #             claimName: prometheus-db-pv-claim
   volumes: []
   volumeMounts: []
 
