@@ -59,14 +59,14 @@ prometheus:
   #     components:
   #       prometheus:
   #         container:
-  #         - name: prometheus
   #           volumeMounts:
   #           - mountPath: /prometheus
   #             name: prometheus-k8s-db
-  #         volumes:
-  #         - name: prometheus-k8s-db
-  #           persistentVolumeClaim:
-  #             claimName: prometheus-db-pv-claim
+  #         pod:
+  #           volumes:
+  #           - name: prometheus-k8s-db
+  #             persistentVolumeClaim:
+  #               claimName: prometheus-db-pv-claim
   volumes: []
   volumeMounts: []
 

@@ -193,6 +193,19 @@ type CommonPodRuntimeConfig struct {
 	// XXX: currently, this is only a global setting.  maybe only allow setting in global runtime defaults?
 	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+
+	// +optional
+	Volumes []Volumes `json:"volumes,omitempty"`
+}
+
+// Restrict Volumes to only support PVC 
+type Volumes struct {
+	// Volume's name. Must be a DNS_LABEL and unique within the pod
+	Name string `json:"name,omitempty"`
+
+	// PersistentVolumeClaim references the user's PVC in the same namespace.
+	// This volume finds the bound PV and mounts that volume for the pod
+	PersistentVolumeClaim corev1.PersistentVolumeClaimVolumeSource `json:"persistentVolumeClaim,omitempty"`
 }
 
 // Affinity is the structure used by Istio for specifying Pod affinity
@@ -246,6 +259,8 @@ type CommonContainerConfig struct {
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+	// +optional
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 }
 
 // PodDisruptionBudget details
