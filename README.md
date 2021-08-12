@@ -8,7 +8,7 @@ This project is an operator that can be used to manage the installation of an [I
 
 ## Installation
 
-To install Red Hat OpenShift Service Mesh, first install the required Operators on OpenShift Container Platform and then create a `ServiceMeshControlPlane` resource to deploy the control plane. If you are an user, refer [documentation](https://docs.openshift.com/container-platform/4.8/service_mesh/v2x/installing-ossm.html) for how to install and configure Istio Operator on Red Hat OpenShift Service Mesh. If you are a developer, refer [DEVEL.md](DEVEL.md) for more advance configurations.
+To install Red Hat OpenShift Service Mesh, first install the required Operators on OpenShift Container Platform and then create a `ServiceMeshControlPlane` resource to deploy the control plane. If you are a user, refer to the [documentation](https://docs.openshift.com/container-platform/4.8/service_mesh/v2x/installing-ossm.html) for how to install and configure Istio Operator on Red Hat OpenShift Service Mesh. If you are a developer, refer [DEVEL.md](DEVEL.md) for more advance configurations.
 
 ## API documentation
 
