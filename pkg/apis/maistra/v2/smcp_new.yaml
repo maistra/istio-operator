@@ -349,7 +349,6 @@ spec:
       tracing.jaeger.allInOne: {} # similar to pilot above
       tracing.jaeger.collector: {} # similar to pilot above
       tracing.jaeger.query: {} # similar to pilot above
-      prometheus: {} # similar to pilot above
       kiali: {} # similar to pilot above
       grafana: {} # similar to pilot above
       prometheus: {} # similar to pilot above
