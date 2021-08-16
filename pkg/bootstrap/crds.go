@@ -223,7 +223,7 @@ func decodeCRD(ctx context.Context, raw string) (*apiextensionsv1.CustomResource
 	if err != nil {
 		return nil, err
 	}
-	hacks.FixPreserveUnknownFields(v1obj)
+	hacks.PreserveUnknownFields(v1obj)
 	return v1obj, nil
 }
 
