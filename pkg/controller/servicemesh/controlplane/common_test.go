@@ -114,6 +114,12 @@ func RunSimpleInstallTest(t *testing.T, testCases []IntegrationTestCase) {
 	}
 }
 
+func New21SMCPResource(name, namespace string, spec *v2.ControlPlaneSpec) *v2.ServiceMeshControlPlane {
+	smcp := NewV2SMCPResource(name, namespace, spec)
+	smcp.Spec.Version = versions.V2_1.String()
+	return smcp
+}
+
 func New20SMCPResource(name, namespace string, spec *v2.ControlPlaneSpec) *v2.ServiceMeshControlPlane {
 	smcp := NewV2SMCPResource(name, namespace, spec)
 	smcp.Spec.Version = versions.V2_0.String()

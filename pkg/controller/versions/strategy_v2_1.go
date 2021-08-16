@@ -439,6 +439,10 @@ func (v *versionStrategyV2_1) renderEgressGateway(name string, namespace string,
 
 func (v *versionStrategyV2_1) renderGateway(name string, namespace string, chartPath string, typeName string, gateways map[string]interface{}, values *v1.HelmValues) (map[string][]manifest.Manifest, map[string]interface{}, error) {
 	gateway, ok, _ := unstructured.NestedMap(gateways, name)
+	// if 'app' label is not provided, set it to gateway name
+	if _, found, _ := unstructured.NestedString(gateway, "labels", "app"); !found {
+		unstructured.SetNestedField(gateway, name, "labels", "app")
+	}
 	if !ok {
 		// XXX: return an error?
 		return map[string][]manifest.Manifest{}, nil, nil
