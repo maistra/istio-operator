@@ -86,6 +86,7 @@ type v2_1ImageNames struct {
 	ProxyInit  string `json:"proxy-init,omitempty"`
 	ProxyV2    string `json:"proxyv2,omitempty"`
 	WASMCacher string `json:"wasm-cacher,omitempty"`
+	RLS        string `json:"rls,omitempty"`
 }
 
 type oauthProxy struct {

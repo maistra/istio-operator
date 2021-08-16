@@ -519,9 +519,26 @@ func TestValidation(t *testing.T) {
 			spec: maistrav2.ControlPlaneSpec{
 				Version:  versions.V1_1.String(),
 				Profiles: []string{"maistra"},
-				TechPreview:maistrav1.NewHelmValues(map[string]interface{}{
+				TechPreview: maistrav1.NewHelmValues(map[string]interface{}{
 					"errored": map[string]interface{}{
 						"message": "spec in v1 SMCP was bad",
+					},
+				}),
+			},
+			expectValid: false,
+		},
+		{
+			name: "invalid rls storage backend",
+			spec: maistrav2.ControlPlaneSpec{
+				Version:  versions.V2_1.String(),
+				Profiles: []string{"maistra"},
+				TechPreview: maistrav1.NewHelmValues(map[string]interface{}{
+					"rateLimiting": map[string]interface{}{
+						"rls": map[string]interface{}{
+							"enabled":        true,
+							"storageBackend": "xyz",
+							"storageAddress": "1.2.3.4:1234",
+						},
 					},
 				}),
 			},
@@ -566,24 +583,23 @@ func TestNamespaceLabels(t *testing.T) {
 	cl, _, r := newReconcilerTestFixture(smcp)
 
 	// 1. run Reconcile() to add labels
-	assertInstanceReconcilerSucceeds(r, t)  // this only initializes the SMCP status
-	assertInstanceReconcilerSucceeds(r, t)  // this does the actual work
+	assertInstanceReconcilerSucceeds(r, t) // this only initializes the SMCP status
+	assertInstanceReconcilerSucceeds(r, t) // this does the actual work
 
 	ns := &corev1.Namespace{}
 	test.GetObject(ctx, cl, types.NamespacedName{"", controlPlaneNamespace}, ns)
 	assert.DeepEquals(ns.Labels, map[string]string{
 		common.IgnoreNamespaceKey: "ignore",
-		common.MemberOfKey: controlPlaneNamespace,
+		common.MemberOfKey:        controlPlaneNamespace,
 	}, "Expected reconciler to add namespace labels", t)
-
 
 	test.PanicOnError(cl.Get(ctx, types.NamespacedName{Namespace: controlPlaneNamespace, Name: controlPlaneName}, smcp))
 	smcp.DeletionTimestamp = &oneMinuteAgo
 	test.PanicOnError(cl.Update(ctx, smcp))
 
 	// 2. run Delete() to remove labels
-	assertDeleteSucceeds(r, t)	// this only initializes the SMCP status
-	assertDeleteSucceeds(r, t)	// this does the actual work
+	assertDeleteSucceeds(r, t) // this only initializes the SMCP status
+	assertDeleteSucceeds(r, t) // this does the actual work
 
 	ns = &corev1.Namespace{}
 	test.GetObject(ctx, cl, types.NamespacedName{"", controlPlaneNamespace}, ns)

@@ -80,6 +80,10 @@ var (
 			path:         "wasm-extensions",
 			enabledField: "wasmExtensions",
 		},
+		RLSChart: {
+			path:         "rls",
+			enabledField: "rateLimiting.rls",
+		},
 	}
 )
 
@@ -89,7 +93,7 @@ var v2_1ChartOrder = [][]string{
 	{TelemetryCommonChart, PrometheusChart},
 	{MixerPolicyChart, MixerTelemetryChart, TracingChart, GatewayIngressChart, GatewayEgressChart, GrafanaChart},
 	{KialiChart},
-	{ThreeScaleChart, WASMExtensionsChart},
+	{ThreeScaleChart, WASMExtensionsChart, RLSChart},
 }
 
 type versionStrategyV2_1 struct {
@@ -106,6 +110,7 @@ func (v *versionStrategyV2_1) SetImageValues(ctx context.Context, cr *common.Con
 	common.UpdateField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V2_1.ProxyInit)
 	common.UpdateField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V2_1.ProxyV2)
 	common.UpdateField(smcpSpec.Istio, "wasmExtensions.cacher.image", common.Config.OLM.Images.V2_1.WASMCacher)
+	common.UpdateField(smcpSpec.Istio, "rateLimiting.rls.image", common.Config.OLM.Images.V2_1.RLS)
 	common.UpdateField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V2_1.ThreeScale)
 	return nil
 }
@@ -335,6 +340,10 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 		return nil, err
 	}
 
+	if err := validateAndConfigureRLS(spec.Istio); err != nil {
+		return nil, err
+	}
+
 	//Render the charts
 	allErrors := []error{}
 	renderings := make(map[string][]manifest.Manifest)
@@ -457,4 +466,34 @@ func (v *versionStrategyV2_1) GetTelemetryType(in *v1.HelmValues, mixerTelemetry
 
 func (v *versionStrategyV2_1) GetPolicyType(in *v1.HelmValues, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled bool) v2.PolicyType {
 	return v.conversionImpl.GetPolicyType(in, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled)
+}
+
+func validateAndConfigureRLS(spec *v1.HelmValues) error {
+	if enabled, found, _ := spec.GetBool(string(v2.ControlPlaneComponentNameRateLimiting) + ".enabled"); !found || !enabled {
+		return nil
+	}
+
+	if storageBackend, found, _ := spec.GetString(string(v2.ControlPlaneComponentNameRateLimiting) + ".storageBackend"); found {
+		if storageAddress, found, _ := spec.GetString(string(v2.ControlPlaneComponentNameRateLimiting) + ".storageAddress"); found {
+			variables := make(map[string]string)
+
+			switch storageBackend {
+			case "redis":
+				variables["REDIS_SOCKET_TYPE"] = "tcp"
+				variables["REDIS_URL"] = storageAddress
+			case "memcache":
+				variables["BACKEND_TYPE"] = "memcache"
+				variables["MEMCACHE_HOST_PORT"] = storageAddress
+			default:
+				return NewValidationError(fmt.Errorf("invalid value %q for %s.storageBackend. It must be one of: {redis, memcache}", storageBackend, v2.ControlPlaneComponentNameRateLimiting))
+			}
+
+			for k, v := range variables {
+				field := fmt.Sprintf("%s.env.%s", v2.ControlPlaneComponentNameRateLimiting, k)
+				spec.SetField(field, v)
+			}
+		}
+	}
+
+	return nil
 }

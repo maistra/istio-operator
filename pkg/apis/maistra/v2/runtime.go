@@ -66,6 +66,8 @@ const (
 	ControlPlaneComponentNameThreeScale ControlPlaneComponentName = "3scale"
 	// ControlPlaneComponentNameWASMCacher - wasm-extensions cacher
 	ControlPlaneComponentNameWASMCacher ControlPlaneComponentName = "wasmExtensions.cacher"
+	// ControlPlaneComponentNameRateLimiting - rateLimiting
+	ControlPlaneComponentNameRateLimiting ControlPlaneComponentName = "rateLimiting.rls"
 )
 
 // ControlPlaneComponentNames - supported runtime components
@@ -90,6 +92,7 @@ var ControlPlaneComponentNames = []ControlPlaneComponentName{
 	ControlPlaneComponentNameGrafana,
 	ControlPlaneComponentNameThreeScale,
 	ControlPlaneComponentNameWASMCacher,
+	ControlPlaneComponentNameRateLimiting,
 }
 
 // ComponentRuntimeConfig allows for partial customization of a component's

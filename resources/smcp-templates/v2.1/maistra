@@ -34,6 +34,9 @@ spec:
       wasmExtensions.cacher:
         container:
           imageName: pilot-ubi8
+      rateLimiting.rls:
+        container:
+          imageName: ratelimit-ubi8
 
   proxy:
     runtime:

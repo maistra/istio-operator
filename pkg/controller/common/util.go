@@ -1,6 +1,8 @@
 package common
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"sync"
 
@@ -12,7 +14,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
 
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -182,3 +186,50 @@ func NameSet(list runtime.Object) sets.String {
 	return set
 }
 
+// ConvertObjectToDeployment tries to convert an runtime.Object into a Deployment
+func ConvertObjectToDeployment(obj runtime.Object) (*appsv1.Deployment, error) {
+	var deployment *appsv1.Deployment
+
+	switch typedObj := obj.(type) {
+	case *appsv1.Deployment:
+		deployment = typedObj
+	case *unstructured.Unstructured:
+		var j []byte
+		var err error
+		if j, err = json.Marshal(typedObj); err != nil {
+			return nil, err
+		}
+		deployment = &appsv1.Deployment{}
+		if err := json.Unmarshal(j, deployment); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("object is not an appsv1.Deployment: %T", obj)
+	}
+
+	return deployment, nil
+}
+
+// ConvertObjectToConfigMap tries to convert an runtime.Object into a ConfigMap
+func ConvertObjectToConfigMap(obj runtime.Object) (*core.ConfigMap, error) {
+	var cm *core.ConfigMap
+
+	switch typedObj := obj.(type) {
+	case *core.ConfigMap:
+		cm = typedObj
+	case *unstructured.Unstructured:
+		var j []byte
+		var err error
+		if j, err = json.Marshal(typedObj); err != nil {
+			return nil, err
+		}
+		cm = &core.ConfigMap{}
+		if err := json.Unmarshal(j, cm); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("object is not a core.ConfigMap: %T", obj)
+	}
+
+	return cm, nil
+}

@@ -118,6 +118,7 @@ func TestProfiles(t *testing.T) {
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNamePilot].Container.Image = "injected-pilot-v2.1"
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNamePrometheus].Container.Image = "injected-prometheus-v2.1"
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameWASMCacher].Container.Image = "injected-wasm-cacher-v2.1"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameRateLimiting] = &v2.ComponentRuntimeConfig{Container: &v2.ContainerConfig{Image: "injected-rls-v2.1"}}
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixer)
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerPolicy)
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerTelemetry)
@@ -151,6 +152,7 @@ func TestProfiles(t *testing.T) {
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNamePilot].Container.Image = "injected-pilot-v2.1"
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNamePrometheus].Container.Image = "injected-prometheus-v2.1"
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameWASMCacher].Container.Image = "injected-wasm-cacher-v2.1"
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameRateLimiting] = &v2.ComponentRuntimeConfig{Container: &v2.ContainerConfig{Image: "injected-rls-v2.1"}}
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixer)
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerPolicy)
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerTelemetry)

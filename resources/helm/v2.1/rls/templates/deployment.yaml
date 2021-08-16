@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    maistra-version: "2.1.0"
+    app: rls
+    istio.io/rev: {{ .Values.revision | default "default" }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: rls-{{ .Values.revision | default "default" }}
+  namespace: {{ .Release.Namespace }}
+spec:
+{{- if not .Values.rateLimiting.rls.autoscaleEnabled }}
+{{- if .Values.rateLimiting.rls.replicaCount }}
+  replicas: {{ .Values.rateLimiting.rls.replicaCount }}
+{{- end }}
+{{- end }}
+  selector:
+    matchLabels:
+      app: rls
+      istio.io/rev: {{ .Values.revision | default "default" }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.rateLimiting.rls.rollingMaxSurge }}
+      maxUnavailable: {{ .Values.rateLimiting.rls.rollingMaxUnavailable }}
+  template:
+    metadata:
+      labels:
+        maistra-control-plane: {{ .Release.Namespace }}
+        maistra-control-plane: {{ .Release.Namespace }}
+        app: rls
+        istio.io/rev: {{ .Values.revision | default "default" }}
+        heritage: {{ .Release.Service }}
+        release: {{ .Release.Name }}
+    spec:
+      serviceAccountName: rls-{{ .Values.revision | default "default" }}
+      containers:
+      - name: rls
+        workingDir: "/"
+{{- if contains "/" .Values.rateLimiting.rls.image }}
+        image: "{{ .Values.rateLimiting.rls.image }}"
+{{- else }}
+        image: "{{ .Values.global.hub }}/{{ .Values.rateLimiting.rls.image }}:{{ .Values.global.tag }}"
+{{- end }}
+{{- if .Values.global.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+{{- end }}
+        command:
+        - ratelimit
+        resources:
+{{- if .Values.rateLimiting.rls.resources }}
+{{ toYaml .Values.rateLimiting.rls.resources | trim | indent 10 }}
+{{- else }}
+{{ toYaml .Values.global.defaultResources | trim | indent 10 }}
+{{- end }}
+        env:
+        - name: USE_STATSD
+          value: "false"
+        - name: RUNTIME_ROOT
+          value: /data
+        - name: RUNTIME_SUBDIRECTORY
+          value: ratelimit
+        - name: RUNTIME_WATCH_ROOT
+          value: "false"
+        - name: RUNTIME_IGNOREDOTFILES
+          value: "true"
+        {{- if .Values.rateLimiting.rls.env }}
+        {{- range $key, $val := .Values.rateLimiting.rls.env }}
+        - name: {{ $key }}
+          value: "{{ $val }}"
+        {{- end }}
+        {{- end }}
+        ports:
+        - containerPort: 8080
+        - containerPort: 8081
+        - containerPort: 6070
+        volumeMounts:
+        - name: config-volume
+          mountPath: /data/ratelimit/config
+      volumes:
+      - name: config-volume
+        configMap:
+          name: rls-{{ .Values.revision | default "default" }}
+          items:
+          - key: config.yaml
+            path: config.yaml
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      securityContext: {}
+      terminationGracePeriodSeconds: 30

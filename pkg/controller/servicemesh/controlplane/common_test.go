@@ -175,6 +175,7 @@ func InitializeGlobals(operatorNamespace string) func() {
 		common.Config.OLM.Images.V1_1.IOR = "injected-ior-v1.1"
 		common.Config.OLM.Images.V2_0.WASMCacher = "injected-wasm-cacher-v2.0"
 		common.Config.OLM.Images.V2_1.WASMCacher = "injected-wasm-cacher-v2.1"
+		common.Config.OLM.Images.V2_1.RLS = "injected-rls-v2.1"
 		os.Setenv("POD_NAMESPACE", operatorNamespace)
 		common.GetOperatorNamespace()
 		if _, filename, _, ok := goruntime.Caller(0); ok {
@@ -283,22 +284,10 @@ func SetDeploymentReady(action clienttesting.Action, tracker clienttesting.Objec
 	createAction := action.(clienttesting.CreateAction)
 	applied = false
 	handled = true
-	obj = createAction.GetObject()
 	var deployment *appsv1.Deployment
-	switch typedObj := obj.(type) {
-	case *appsv1.Deployment:
-		deployment = typedObj
-	case *unstructured.Unstructured:
-		var j []byte
-		if j, err = json.Marshal(typedObj); err != nil {
-			return
-		}
-		deployment = &appsv1.Deployment{}
-		if err = json.Unmarshal(j, deployment); err != nil {
-			return
-		}
-	default:
-		err = fmt.Errorf("object is not an appsv1.Deployment: %T", obj)
+
+	deployment, err = common.ConvertObjectToDeployment(createAction.GetObject())
+	if err != nil {
 		return
 	}
 
