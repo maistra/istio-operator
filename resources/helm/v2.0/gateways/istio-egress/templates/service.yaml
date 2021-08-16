@@ -9,7 +9,7 @@ metadata:
     {{ $key }}: {{ $val | quote }}
     {{- end }}
   labels:
-    maistra-version: "2.0.6.2"
+    maistra-version: "2.0.7"
 {{ $gateway.labels | toYaml | indent 4 }}
     release: {{ .Release.Name }}
 spec:
