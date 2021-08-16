@@ -84,23 +84,28 @@ func ensureSchemaExists(crd *apiextensionsv1beta1.CustomResourceDefinition) {
 	}
 }
 
-// FixPreserveUnknownFields changes to false and adds x-kubernetes-preserve-unknown-fields
-// to the schema
-func FixPreserveUnknownFields(crd *apiextensionsv1.CustomResourceDefinition) {
-	if crd.Spec.PreserveUnknownFields {
-		for index, version := range crd.Spec.Versions {
-			if version.Schema == nil || version.Schema.OpenAPIV3Schema == nil {
-				continue
-			}
-			preserveUnknownFields(crd.Spec.Versions[index].Schema.OpenAPIV3Schema)
+// PreserveUnknownFields sets PreserveUnknownFields to false and adds
+// x-kubernetes-preserve-unknown-fields to any object type definitions that have
+// no properties or additionalProperties.  We do not check PreserveUnknownFields
+// as older CRDs may not have it set.  We need to make sure all fields without
+// a schema are marked with x-kubernetes-preserve-unknown-fields.
+func PreserveUnknownFields(crd *apiextensionsv1.CustomResourceDefinition) {
+	for index, version := range crd.Spec.Versions {
+		if version.Schema == nil || version.Schema.OpenAPIV3Schema == nil {
+			continue
 		}
-		crd.Spec.PreserveUnknownFields = false
+		preserveUnknownFields(crd.Spec.Versions[index].Schema.OpenAPIV3Schema, true)
 	}
+	crd.Spec.PreserveUnknownFields = false
 }
 
-func preserveUnknownFields(schema *apiextensionsv1.JSONSchemaProps) {
+func preserveUnknownFields(schema *apiextensionsv1.JSONSchemaProps, root bool) {
 	preserveFields := true
 	for key, val := range schema.Properties {
+		if root && key == "metadata" {
+			// do not set XPreserveUnknownFields for root metadata field
+			continue
+		}
 		switch val.Type {
 		case "object":
 			if len(val.Properties) == 0 {
@@ -108,7 +113,7 @@ func preserveUnknownFields(schema *apiextensionsv1.JSONSchemaProps) {
 					val.XPreserveUnknownFields = &preserveFields
 				}
 			} else {
-				preserveUnknownFields(&val)
+				preserveUnknownFields(&val, false)
 			}
 		case "array":
 			if val.Items == nil || val.Items.Schema == nil {
@@ -119,7 +124,7 @@ func preserveUnknownFields(schema *apiextensionsv1.JSONSchemaProps) {
 					},
 				}
 			} else {
-				preserveUnknownFields(val.Items.Schema)
+				preserveUnknownFields(val.Items.Schema, false)
 			}
 		}
 		schema.Properties[key] = val
