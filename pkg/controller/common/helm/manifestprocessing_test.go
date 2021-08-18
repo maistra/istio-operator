@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/helm/pkg/manifest"
 	"k8s.io/helm/pkg/releaseutil"
 )
@@ -24,7 +25,7 @@ func TestEmptyYAMLBlocks(t *testing.T) {
 		Head: &releaseutil.SimpleHead{},
 	}
 
-	processor := NewManifestProcessor(common.ControllerResources{}, &PatchFactory{}, "app", "version", "owner", nil, nil, nil)
+	processor := NewManifestProcessor(common.ControllerResources{}, &PatchFactory{}, "app", "version", types.NamespacedName{}, nil, nil, nil)
 
 	_, err := processor.ProcessManifest(context.TODO(), manifest, "bad")
 

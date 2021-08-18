@@ -10,6 +10,9 @@ const (
 	// OwnerKey represents the mesh (namespace) to which the resource relates
 	OwnerKey = MetadataNamespace + "/owner"
 
+	// OwnerNameKey represents the name of the SMCP to which the resource relates
+	OwnerNameKey = MetadataNamespace + "/owner-name"
+
 	// MemberOfKey represents the mesh (namespace) to which the resource relates
 	MemberOfKey = MetadataNamespace + "/member-of"
 
@@ -36,6 +39,12 @@ const (
 	KubernetesAppComponentKey = KubernetesAppNamespace + "/component"
 	KubernetesAppPartOfKey    = KubernetesAppNamespace + "/part-of"
 	KubernetesAppManagedByKey = KubernetesAppNamespace + "/managed-by"
+
+	// KubernetesAppPartOfValue is the KubernetesAppPartOfKey label value the operator sets on all objects it creates
+	KubernetesAppPartOfValue = "istio"
+
+	// KubernetesAppManagedByValue is the KubernetesAppManagedByKey label value the operator sets on all objects it creates
+	KubernetesAppManagedByValue = "maistra-istio-operator"
 
 	// MemberRollName is the only name we allow for ServiceMeshMemberRoll objects
 	MemberRollName = "default"
