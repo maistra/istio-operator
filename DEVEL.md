@@ -1,3 +1,139 @@
+## Installation
+
+The **Istio Operator** has a dependency on the **Jaeger Operator**, **Elasticsearch Operator**  and **Kiali Operator**.  Before installing the Istio Operator, please make sure the
+Jaeger Operator, Elasticsearch Operator and Kiali Operator have been installed.
+
+### Installing the Elasticsearch Operator
+
+If available, the Elasticsearch operator (version 4.1) should be installed from the OperatorHub.
+
+Alternatively, to install the Elasticsearch operator manually, execute the following commands:
+
+```
+# See note below for explanation of why kubectl is used instead of oc
+kubectl create ns openshift-logging # create the project for the elasticsearch operator
+oc create -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/01-service-account.yaml -n openshift-logging
+oc create -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/02-role.yaml
+oc create -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/03-role-bindings.yaml
+oc create -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/04-crd.yaml -n openshift-logging
+curl https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/05-deployment.yaml | sed 's/latest/4.1/g' | oc create -n openshift-logging -f -
+```
+
+NOTE: It is necessary to use `kubectl` for the creation of the openshift-logging namespace, as the `oc` command will return the following error:
+```
+Error from server (Forbidden): project.project.openshift.io "openshift-logging" is forbidden: cannot request a project starting with "openshift-"
+```
+
+
+### Installing the Jaeger Operator
+
+To install the Jaeger operator, execute the following commands:
+
+```
+oc new-project observability # create the project for the jaeger operator
+oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/crds/jaegertracing_v1_jaeger_crd.yaml
+oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/service_account.yaml
+oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/role.yaml
+oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/role_binding.yaml
+oc create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/operator.yaml
+```
+
+### Installing the Kiali Operator
+
+To install the Kiali operator, execute the following command:
+
+```
+bash <(curl -L https://kiali.io/getLatestKialiOperator) --operator-image-version v1.0 --operator-watch-namespace '**' --accessible-namespaces '**' --operator-install-kiali false
+```
+
+For more details on installing the Kiali operator, see the [Kiali documentaton](https://www.kiali.io/documentation/getting-started).
+
+### Installing the Istio Operator
+
+If `istio-operator` and `istio-system` projects/namespaces have not been created, create these projects first. For example:
+
+```
+$ oc new-project istio-operator
+$ oc new-project istio-system
+```
+
+All resource definitions required to install the operator can be found in the [deploy](./deploy) directory, and can be
+installed easily using your favorite Kubernetes command-line client.  You must have `cluster-admin` privileges to install
+the operator.
+
+```
+$ oc apply -n istio-operator -f ./deploy/maistra-operator.yaml
+```
+
+or
+
+```
+$ kubectl apply -n istio-operator -f ./deploy/maistra-operator.yaml
+```
+
+By default, the operator watches for ServiceMeshControlPlane in all namespaces.  Typically, a cluster-wide control plane
+is installed in `istio-system`.  For example:
+
+```
+$ oc apply -n istio-system -f ./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_full.yaml
+```
+
+Example resources can be found in [./deploy/examples](./deploy/examples).
+
+## Uninstall
+
+If an existing ServiceMeshControlPlane cr has not been deleted, you need to delete the ServiceMeshControlPlane cr before deleting the istio operator. For example:
+
+```
+$ oc delete -n istio-system -f ./deploy/examples/maistra_v1_servicemeshcontrolplane_cr_full.yaml
+```
+
+### Uninstalling the Istio Operator
+
+If you followed the instructions above for installation, the operator can be uninstalled by issuing the following delete
+commands:
+
+```
+$ oc delete -n istio-operator -f ./deploy/maistra-operator.yaml
+$ oc delete validatingwebhookconfiguration/istio-operator.servicemesh-resources.maistra.io
+```
+
+Once the Istio Operator has been uninstalled, the Jaeger Operator and the Kiali Operator should be uninstalled.
+
+### Uninstalling the Jaeger Operator
+
+To uninstall the Jaeger operator, execute the following commands:
+
+```
+oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/operator.yaml
+oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/role_binding.yaml
+oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/role.yaml
+oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/service_account.yaml
+oc delete -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/v1.13.1/deploy/crds/jaegertracing_v1_jaeger_crd.yaml
+```
+
+### Uninstalling the Elasticsearch Operator
+
+To uninstall the Elasticsearch operator, execute the following commands:
+
+```
+oc delete -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/05-deployment.yaml -n openshift-logging
+oc delete -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/04-crd.yaml -n openshift-logging
+oc delete -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/03-role-bindings.yaml
+oc delete -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/02-role.yaml
+oc delete -f https://raw.githubusercontent.com/openshift/elasticsearch-operator/release-4.1/manifests/01-service-account.yaml -n openshift-logging
+```
+
+### Uninstalling the Kiali Operator
+
+To uninstall the Kiali operator, execute the following command:
+
+```
+bash <(curl -L https://kiali.io/getLatestKialiOperator) --uninstall-mode true --operator-watch-namespace '**'
+```
+
+For more details on uninstalling the Kiali operator, see the [Kiali documentaton](https://www.kiali.io/documentation/getting-started/#_uninstall_kiali_operator_and_kiali).
+
 # Developing the Maistra Istio Operator
 
 ## Resources
