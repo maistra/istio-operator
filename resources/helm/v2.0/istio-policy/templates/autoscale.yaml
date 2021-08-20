@@ -5,7 +5,7 @@ metadata:
   name: istio-policy
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.7"
+    maistra-version: "2.0.7.1"
     app: mixer
     release: {{ .Release.Name }}
 spec:
