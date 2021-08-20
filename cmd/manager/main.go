@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 
@@ -68,6 +69,9 @@ func main() {
 	pflag.String("defaultTemplatesDir", "", "The root location of the default templates.")
 	pflag.String("userTemplatesDir", "", "The root location of the user supplied templates.")
 
+	var logAPIRequests bool
+	pflag.BoolVar(&logAPIRequests, "logAPIRequests", false, "Log API requests performed by the operator.")
+
 	// config file
 	configFile := ""
 	pflag.StringVar(&configFile, "config", "/etc/istio-operator/config.properties", "The root location of the user supplied templates.")
@@ -109,6 +113,14 @@ func main() {
 
 	cfg.Burst = common.Config.Controller.APIBurst
 	cfg.QPS = common.Config.Controller.APIQPS
+
+	if logAPIRequests {
+		cfg.Wrap(func(rt http.RoundTripper) http.RoundTripper {
+			return requestLogger{
+				rt: rt,
+			}
+		})
+	}
 
 	ctx := context.Background()
 	// Become the leader before proceeding
@@ -304,3 +316,15 @@ func patchProperties(file string) (map[string]interface{}, error) {
 	}
 	return retVal, nil
 }
+
+type requestLogger struct {
+	rt http.RoundTripper
+}
+
+func (rl requestLogger) RoundTrip(req *http.Request) (*http.Response, error) {
+	log := common.LogFromContext(req.Context())
+	log.Info("Performing API request", "method", req.Method, "URL", req.URL)
+	return rl.rt.RoundTrip(req)
+}
+
+var _ http.RoundTripper = requestLogger{}

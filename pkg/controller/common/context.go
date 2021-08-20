@@ -12,7 +12,7 @@ type ContextValueKey string
 var (
 	logContextKey ContextValueKey = "github.com/maistra/istio-operator/pkg/controller/common/logr.Logger"
 
-	fallBackLogger = logf.Log.WithName("FALLBACK-LOGGER")
+	fallBackLogger = logf.Log
 )
 
 // NewContext creates a new context without an associated Logger
