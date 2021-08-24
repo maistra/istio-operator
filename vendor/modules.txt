@@ -429,7 +429,7 @@ github.com/operator-framework/operator-registry/pkg/image/execregistry
 github.com/operator-framework/operator-registry/pkg/lib/bundle
 github.com/operator-framework/operator-registry/pkg/lib/validation
 github.com/operator-framework/operator-registry/pkg/registry
-# github.com/operator-framework/operator-sdk v0.18.0
+# github.com/operator-framework/operator-sdk v0.18.0 => github.com/luksa/operator-sdk v0.0.0-20210824135520-3b25565223d4
 ## explicit
 github.com/operator-framework/operator-sdk/cmd/operator-sdk
 github.com/operator-framework/operator-sdk/cmd/operator-sdk/add
@@ -1217,6 +1217,7 @@ k8s.io/kubectl/pkg/util/templates
 k8s.io/kubectl/pkg/util/term
 k8s.io/kubectl/pkg/validation
 # k8s.io/utils v0.0.0-20200603063816-c1c6865ac451
+## explicit
 k8s.io/utils/buffer
 k8s.io/utils/exec
 k8s.io/utils/integer
@@ -1350,3 +1351,4 @@ sigs.k8s.io/yaml
 # github.com/go-logr/zapr => github.com/go-logr/zapr v0.2.0
 # github.com/evanphx/json-patch => github.com/evanphx/json-patch v4.9.0+incompatible
 # bitbucket.org/ww/goautoneg => github.com/munnerz/goautoneg v0.0.0-20120707110453-a547fc61f48d
+# github.com/operator-framework/operator-sdk => github.com/luksa/operator-sdk v0.0.0-20210824135520-3b25565223d4

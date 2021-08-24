@@ -35,6 +35,7 @@ require (
 	k8s.io/code-generator v0.19.3
 	k8s.io/helm v2.16.7+incompatible
 	k8s.io/kubectl v0.18.3
+	k8s.io/utils v0.0.0-20200603063816-c1c6865ac451
 	maistra.io/api v0.0.0-20210601141927-1cbee4cb8ce8
 	sigs.k8s.io/controller-runtime v0.6.3
 	sigs.k8s.io/controller-tools v0.4.1
@@ -71,3 +72,5 @@ replace github.com/evanphx/json-patch => github.com/evanphx/json-patch v4.9.0+in
 
 // pkg disappeard from bitbucket
 replace bitbucket.org/ww/goautoneg => github.com/munnerz/goautoneg v0.0.0-20120707110453-a547fc61f48d
+
+replace github.com/operator-framework/operator-sdk => github.com/luksa/operator-sdk v0.0.0-20210824135520-3b25565223d4
