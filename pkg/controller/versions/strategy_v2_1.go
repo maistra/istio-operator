@@ -145,7 +145,7 @@ func (v *versionStrategyV2_1) validateProtocolDetection(ctx context.Context, met
 
 func (v *versionStrategyV2_1) validateMixerDisabled(spec *v2.ControlPlaneSpec, allErrors []error) []error {
 	if spec.Policy != nil && (spec.Policy.Type == v2.PolicyTypeMixer || spec.Policy.Mixer != nil) {
-		allErrors = append(allErrors, fmt.Errorf("support for policy.type '%s' and policy.Mixer options been removed in v2.1, please use another alternative", v2.PolicyTypeMixer))
+		allErrors = append(allErrors, fmt.Errorf("support for policy.type %q and policy.Mixer options have been removed in v2.1, please use another alternative", v2.PolicyTypeMixer))
 	}
 	if spec.Telemetry != nil && (spec.Telemetry.Type == v2.TelemetryTypeMixer || spec.Telemetry.Mixer != nil) {
 		allErrors = append(allErrors, fmt.Errorf("support for telemetry.type '%s' and telemetry.Mixer options have been removed in v2.1, please use another alternative", v2.TelemetryTypeMixer))
