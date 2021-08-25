@@ -73,4 +73,4 @@ replace github.com/evanphx/json-patch => github.com/evanphx/json-patch v4.9.0+in
 // pkg disappeard from bitbucket
 replace bitbucket.org/ww/goautoneg => github.com/munnerz/goautoneg v0.0.0-20120707110453-a547fc61f48d
 
-replace github.com/operator-framework/operator-sdk => github.com/luksa/operator-sdk v0.0.0-20210824135520-3b25565223d4
+replace github.com/operator-framework/operator-sdk => github.com/Maistra/operator-sdk v0.0.0-20210824135520-3b25565223d4
