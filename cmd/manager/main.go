@@ -11,6 +11,7 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	"github.com/magiconair/properties"
+	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/mitchellh/mapstructure"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
@@ -236,7 +237,7 @@ func serveCRMetrics(cfg *rest.Config, operatorNs string) error {
 	if err != nil {
 		return err
 	}
-	filteredV2GVK, err := k8sutil.GetGVKsFromAddToScheme(maistrav1.SchemeBuilder.AddToScheme)
+	filteredV2GVK, err := k8sutil.GetGVKsFromAddToScheme(maistrav2.SchemeBuilder.AddToScheme)
 	if err != nil {
 		return err
 	}
