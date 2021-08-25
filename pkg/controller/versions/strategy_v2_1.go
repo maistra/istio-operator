@@ -125,6 +125,7 @@ func (v *versionStrategyV2_1) ValidateV2(ctx context.Context, cl client.Client, 
 	allErrors = validatePolicyType(ctx, meta, spec, v.version, allErrors)
 	allErrors = validateTelemetryType(ctx, meta, spec, v.version, allErrors)
 	allErrors = v.validateProtocolDetection(ctx, meta, spec, allErrors)
+	allErrors = v.validateMixerDisabled(spec, allErrors)
 	return NewValidationError(allErrors...)
 }
 
@@ -138,6 +139,16 @@ func (v *versionStrategyV2_1) validateProtocolDetection(ctx context.Context, met
 	}
 	if autoDetect.Outbound != nil && *autoDetect.Outbound {
 		allErrors = append(allErrors, fmt.Errorf("automatic protocol detection is not supported in %s; if specified, spec.proxy.networking.protocol.autoDetect.outbound must be set to false", v.String()))
+	}
+	return allErrors
+}
+
+func (v *versionStrategyV2_1) validateMixerDisabled(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.Policy != nil && (spec.Policy.Type == v2.PolicyTypeMixer || spec.Policy.Mixer != nil) {
+		allErrors = append(allErrors, fmt.Errorf("support for policy.type '%s' and policy.Mixer options been removed in v2.1, please use another alternative", v2.PolicyTypeMixer))
+	}
+	if spec.Telemetry != nil && (spec.Telemetry.Type == v2.TelemetryTypeMixer || spec.Telemetry.Mixer != nil) {
+		allErrors = append(allErrors, fmt.Errorf("support for telemetry.type '%s' and telemetry.Mixer options have been removed in v2.1, please use another alternative", v2.TelemetryTypeMixer))
 	}
 	return allErrors
 }

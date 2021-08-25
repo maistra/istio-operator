@@ -23,6 +23,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -541,6 +542,17 @@ func TestValidation(t *testing.T) {
 						},
 					},
 				}),
+			},
+			expectValid: false,
+		},
+		{
+			name: "v2.1 control plane with mixer",
+			spec: maistrav2.ControlPlaneSpec{
+				Version:  versions.V2_1.String(),
+				Profiles: []string{"maistra"},
+				Policy: &maistrav2.PolicyConfig{
+					Type: v2.PolicyTypeMixer,
+				},
 			},
 			expectValid: false,
 		},
