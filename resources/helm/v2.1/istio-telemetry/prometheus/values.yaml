@@ -53,4 +53,21 @@ prometheus:
   # When this option is set as false, this certificate provisioning mechanism is disabled.
   provisionPrometheusCert: true
 
+  # Enable persistent volume for prometheus by making volumes and volumeMounts configurable.
+  # spec:
+  #   runtime:
+  #     components:
+  #       prometheus:
+  #         container:
+  #           volumeMounts:
+  #           - mountPath: /prometheus
+  #             name: prometheus-k8s-db
+  #         pod:
+  #           volumes:
+  #           - name: prometheus-k8s-db
+  #             persistentVolumeClaim:
+  #               claimName: prometheus-db-pv-claim
+  volumes: []
+  volumeMounts: []
+
 revision: ""
