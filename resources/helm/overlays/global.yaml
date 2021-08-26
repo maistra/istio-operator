@@ -180,7 +180,7 @@ global:
 
   # Whether to restrict the applications namespace the controller manages;
   # If not set, controller watches all namespaces
-  oneNamespace: false
+  oneNamespace: true
 
   # Default node selector to be applied to all deployments so that all pods can be
   # constrained to run a particular nodes. Each component can overwrite these default
