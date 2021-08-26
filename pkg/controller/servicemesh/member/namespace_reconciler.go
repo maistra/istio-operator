@@ -123,7 +123,6 @@ func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) 
 
 func (r *namespaceReconciler) removeNamespaceFromMesh(ctx context.Context, namespace string) error {
 	logger := common.LogFromContext(ctx).WithValues("namespace", namespace)
-	logger.Info("cleaning up resources in namespace removed from mesh")
 	ctx = common.NewContextWithLog(ctx, logger)
 
 	// get namespace
@@ -137,6 +136,13 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(ctx context.Context, names
 		logger.Error(err, "error retrieving namespace to remove from mesh")
 		return err
 	}
+
+	if namespaceResource.DeletionTimestamp != nil {
+		logger.Info("not removing mesh resources from namespace because it is being deleted")
+		return &NamespaceTerminatingError{}
+	}
+
+	logger.Info("cleaning up resources in namespace removed from mesh")
 
 	allErrors := []error{}
 
@@ -198,6 +204,11 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(ctx context.Context, name
 	err := r.Client.Get(ctx, client.ObjectKey{Name: namespace}, namespaceResource)
 	if err != nil {
 		return err
+	}
+
+	if namespaceResource.DeletionTimestamp != nil {
+		logger.Info("not reconciling member namespace, because it is being deleted")
+		return &NamespaceTerminatingError{}
 	}
 
 	memberOf := ""
@@ -363,4 +374,16 @@ func (r *namespaceReconciler) removeNetworkAttachmentDefinition(ctx context.Cont
 
 func (r *namespaceReconciler) getLogger(ctx context.Context) logr.Logger {
 	return common.LogFromContext(ctx).WithValues("MeshNamespace", r.meshNamespace)
+}
+
+type NamespaceTerminatingError struct {
+}
+
+func (e *NamespaceTerminatingError) Error() string {
+	return "namespace is terminating"
+}
+
+func IsTerminating(err error) bool {
+	_, ok := err.(*NamespaceTerminatingError)
+	return ok
 }

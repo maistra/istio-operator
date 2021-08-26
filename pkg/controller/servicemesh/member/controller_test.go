@@ -431,6 +431,53 @@ func TestReconcileAfterOperatorUpgrade(t *testing.T) {
 	}
 }
 
+func TestReconciliationOfTerminatingNamespace(t *testing.T) {
+	cases := []struct {
+		name                string
+		configureMember func(member *maistrav1.ServiceMeshMember)
+		configureNamespace func(ns *corev1.Namespace)
+	}{
+		{
+			name: "creation",
+		},
+		{
+			name: "deletion",
+			configureMember: func(member *maistrav1.ServiceMeshMember) {
+				member.DeletionTimestamp = &oneMinuteAgo
+			},
+			configureNamespace: func(ns *corev1.Namespace) {
+				common.SetLabel(ns, common.MemberOfKey, controlPlaneNamespace)
+			},
+		},
+
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			member := newMember()
+			if tc.configureMember != nil {
+				tc.configureMember(member)
+			}
+
+			controlPlane := markControlPlaneReconciled(newControlPlane(""), operatorVersionDefault)
+
+			namespace := newNamespace(appNamespace)
+			namespace.DeletionTimestamp = &oneMinuteAgo
+			if tc.configureNamespace != nil {
+				tc.configureNamespace(namespace)
+			}
+
+			cl, _, r := createClientAndReconciler(t, member, controlPlane, namespace)
+			assertReconcileSucceeds(r, t)
+
+			updatedMember := test.GetUpdatedObject(ctx, cl, member.ObjectMeta, &maistrav1.ServiceMeshMember{}).(*maistrav1.ServiceMeshMember)
+			assert.Equals(updatedMember.Status.GetCondition(maistrav1.ConditionTypeMemberReady).Status, corev1.ConditionFalse, "Unexpected Ready condition status", t)
+			assert.Equals(updatedMember.Status.GetCondition(maistrav1.ConditionTypeMemberReconciled).Status, corev1.ConditionFalse, "Unexpected Reconciled condition status", t)
+		})
+	}
+}
+
 func assertRBNotCreated(t *testing.T) clienttesting.ReactionFunc {
 	return func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 		t.Errorf("Unexpected creation of RoleBinding")
