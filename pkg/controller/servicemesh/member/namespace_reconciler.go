@@ -312,6 +312,7 @@ func (r *namespaceReconciler) reconcileRoleBindings(ctx context.Context, namespa
 }
 
 func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context, namespace string, netAttachDefName string) error {
+	log := common.LogFromContext(ctx)
 	nadList := &multusv1.NetworkAttachmentDefinitionList{}
 	if err := r.Client.List(ctx, nadList, client.InNamespace(namespace), client.MatchingLabels{common.MemberOfKey: r.meshNamespace}); err != nil {
 		return fmt.Errorf("Could not list NetworkAttachmentDefinition resources in member namespace %s: %v", namespace, err)
@@ -331,6 +332,7 @@ func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context
 		return utilerrors.NewAggregate(allErrors)
 	}
 
+	log.Info("creating NetworkAttachmentDefinition", "NetworkAttachmentDefinition", netAttachDefName)
 	netAttachDef := &multusv1.NetworkAttachmentDefinition{}
 	netAttachDef.SetNamespace(namespace)
 	netAttachDef.SetName(netAttachDefName)
@@ -342,6 +344,7 @@ func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context
 }
 
 func (r *namespaceReconciler) removeNetworkAttachmentDefinition(ctx context.Context, namespace string) error {
+	log := common.LogFromContext(ctx)
 	nadList := &multusv1.NetworkAttachmentDefinitionList{}
 	if err := r.Client.List(ctx, nadList, client.InNamespace(namespace), client.MatchingLabels{common.MemberOfKey: r.meshNamespace}); err != nil {
 		return fmt.Errorf("Could not list NetworkAttachmentDefinition resources in member namespace %s: %v", namespace, err)
@@ -349,6 +352,7 @@ func (r *namespaceReconciler) removeNetworkAttachmentDefinition(ctx context.Cont
 
 	var allErrors []error
 	for _, nad := range nadList.Items {
+		log.Info("deleting NetworkAttachmentDefinition", "NetworkAttachmentDefinition", nad.GetName())
 		if err := r.Client.Delete(ctx, &nad, client.PropagationPolicy(metav1.DeletePropagationOrphan)); err != nil {
 			allErrors = append(allErrors, err)
 		}

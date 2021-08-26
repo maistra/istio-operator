@@ -113,6 +113,7 @@ func main() {
 
 	cfg.Burst = common.Config.Controller.APIBurst
 	cfg.QPS = common.Config.Controller.APIQPS
+	log.Info("Client-side rate limiting configured", "cfg.Burst", cfg.Burst, "cfg.QPS", cfg.QPS)
 
 	if logAPIRequests {
 		cfg.Wrap(func(rt http.RoundTripper) http.RoundTripper {
