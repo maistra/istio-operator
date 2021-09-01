@@ -227,6 +227,9 @@ spec:
                 configMapKeyRef:
                   name: istio-cni-config
                   key: cni_network_config_v2_1
+            # Enable interception of DNS so Federation works
+            - name: ISTIO_META_DNS_CAPTURE
+              value: "true"
           volumeMounts:
             - mountPath: /host/opt/cni/bin
               name: cni-bin-dir
