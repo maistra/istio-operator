@@ -319,7 +319,14 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	roll.Status.ServiceMeshReconciledVersion = mesh.Status.GetReconciledVersion()
 	roll.Status.MemberStatuses = []maistrav1.ServiceMeshMemberStatusSummary{}
 	for _, ns := range allKnownMembers.List() {
-		roll.Status.MemberStatuses = append(roll.Status.MemberStatuses, memberStatusMap[ns])
+		memberStatus, exists := memberStatusMap[ns]
+		if !exists {
+			memberStatus = maistrav1.ServiceMeshMemberStatusSummary{
+				Namespace: ns,
+				Conditions: []maistrav1.ServiceMeshMemberCondition{},
+			}
+		}
+		roll.Status.MemberStatuses = append(roll.Status.MemberStatuses, memberStatus)
 	}
 
 	if len(roll.Status.PendingMembers) > 0 {

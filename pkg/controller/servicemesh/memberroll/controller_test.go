@@ -822,6 +822,18 @@ func assertStatusMembers(roll *maistrav1.ServiceMeshMemberRoll, members, pending
 	assert.DeepEquals(roll.Status.PendingMembers, pending, "Unexpected Status.PendingMembers in SMMR", t)
 	assert.DeepEquals(roll.Status.ConfiguredMembers, configured, "Unexpected Status.ConfiguredMembers in SMMR", t)
 	assert.DeepEquals(roll.Status.TerminatingMembers, terminating, "Unexpected Status.TerminatingMembers in SMMR", t)
+	for _, member := range members {
+		found := false
+		for _, memberStatus := range roll.Status.MemberStatuses {
+			if memberStatus.Namespace == member {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("No entry for namespace %s found in ServiceMeshMemberRoll.Status.MemberStatuses: %v", member, roll.Status.MemberStatuses)
+		}
+	}
 }
 
 func assertMemberCreated(cl client.Client, t *testing.T, namespace string, controlPlaneName string, controlPlaneNamespace string) {
