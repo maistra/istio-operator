@@ -233,6 +233,32 @@ func TestProfiles(t *testing.T) {
 	}
 }
 
+func TestMissingProfile(t *testing.T) {
+	smcp := &v2.ServiceMeshControlPlane{
+		Spec: v2.ControlPlaneSpec{
+			Profiles: []string{"missing-profile"},
+		},
+	}
+
+	testCR := &common.ControllerResources{
+		Scheme: test.GetScheme(),
+	}
+
+	v1smcp := &v1.ServiceMeshControlPlane{}
+	if err := v1smcp.ConvertFrom(smcp); err != nil {
+		t.Fatalf("unexpected error converting input: %v", err)
+	}
+	for _, version := range versions.GetSupportedVersions() {
+		t.Run(version.String(), func(t *testing.T) {
+			var err error
+			appliedV1SMCP := &v1.ServiceMeshControlPlane{}
+			if appliedV1SMCP.Spec, err = version.Strategy().ApplyProfiles(context.TODO(), testCR, &v1smcp.Spec, controlPlaneNamespace); err == nil {
+				t.Error("expected ApplyProfiles to return error, but none was returned")
+			}
+		})
+	}
+}
+
 var (
 	v1_1_ExpectedSpec = v2.ControlPlaneSpec{
 		Proxy: &v2.ProxyConfig{
