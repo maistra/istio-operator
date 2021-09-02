@@ -12,7 +12,7 @@ source $(dirname ${BASH_SOURCE})/sed-wrapper.sh
 : ${SOURCE_DIR:=$(pwd)}
 : ${OUT_DIR:=${SOURCE_DIR}/tmp/_output}
 
-: ${ISTIO_VERSION:=1.9.5}
+: ${ISTIO_VERSION:=1.9.8}
 
 RELEASES_DIR=${OUT_DIR}/helm/istio-releases
 
