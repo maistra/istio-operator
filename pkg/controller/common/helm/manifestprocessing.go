@@ -98,6 +98,12 @@ func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Ma
 func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured.Unstructured, component string) error {
 	log := common.LogFromContext(ctx)
 
+	var err error
+	obj, err = p.convertToSupportedApiVersion(ctx, obj)
+	if err != nil {
+		return err
+	}
+
 	if obj.GetKind() == "List" {
 		allErrors := []error{}
 		list, err := obj.ToList()
@@ -119,7 +125,7 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 
 	log.V(2).Info("beginning reconciliation of resource")
 
-	err := p.preprocessObject(ctx, obj)
+	err = p.preprocessObject(ctx, obj)
 	if err != nil {
 		log.Error(err, "error preprocessing object")
 		return err
@@ -197,4 +203,45 @@ func (p *ManifestProcessor) addMetadata(obj *unstructured.Unstructured, componen
 		common.OwnerKey: p.owner,
 	}
 	common.SetLabels(obj, labels)
+}
+
+// if the given object's apiVersion is not supported by the cluster, the object is converted to one that is
+// (e.g. admissionregistration.k8s.io/v1beta1 -> admissionregistration.k8s.io/v1)
+func (p *ManifestProcessor) convertToSupportedApiVersion(ctx context.Context, obj *unstructured.Unstructured) (*unstructured.Unstructured, error) {
+	if (obj.GetKind() == "MutatingWebhookConfiguration" || obj.GetKind() == "ValidatingWebhookConfiguration") &&
+		obj.GetAPIVersion() == "admissionregistration.k8s.io/v1beta1" {
+		return convertWebhookConfigurationFromV1beta1ToV1(obj)
+	}
+	return obj, nil
+}
+
+// converts MutatingWebhookConfiguration or ValidationWebhookConfiguration from apiVersion admissionregistration.k8s.io/v1beta1
+// to admissionregistration.k8s.io/v1 by doing the following:
+// - changes the apiVersion to v1
+// - sets field webhooks[*].admissionReviewVersions to ["v1beta1"]
+func convertWebhookConfigurationFromV1beta1ToV1(obj *unstructured.Unstructured) (*unstructured.Unstructured, error) {
+	obj = obj.DeepCopy()
+	err := unstructured.SetNestedField(obj.UnstructuredContent(), "admissionregistration.k8s.io/v1", "apiVersion")
+	if err != nil {
+		return nil, err
+	}
+	webhooks, found, err := unstructured.NestedSlice(obj.UnstructuredContent(), "webhooks")
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		for i, webhook := range webhooks {
+			typedWebhook, _ := webhook.(map[string]interface{})
+			err = unstructured.SetNestedStringSlice(typedWebhook, []string{"v1beta1"}, "admissionReviewVersions")
+			if err != nil {
+				return nil, err
+			}
+			webhooks[i] = webhook
+		}
+		err = unstructured.SetNestedField(obj.UnstructuredContent(), webhooks, "webhooks")
+		if err != nil {
+			return nil, err
+		}
+	}
+	return obj, nil
 }
