@@ -34,7 +34,6 @@ var (
 		gvk("apps", "v1", "Deployment"):                              {supportsDeleteCollection: true},
 		gvk("apps", "v1", "DaemonSet"):                               {supportsDeleteCollection: true},
 		gvk("apps", "v1", "StatefulSet"):                             {supportsDeleteCollection: true},
-		gvk("extensions", "v1beta1", "Ingress"):                      {supportsDeleteCollection: true},
 		gvk("", "v1", "Service"):                                     {supportsDeleteCollection: false},
 		gvk("", "v1", "Endpoints"):                                   {supportsDeleteCollection: true},
 		gvk("", "v1", "ConfigMap"):                                   {supportsDeleteCollection: true},
@@ -43,6 +42,7 @@ var (
 		gvk("", "v1", "Secret"):                                      {supportsDeleteCollection: true},
 		gvk("", "v1", "ServiceAccount"):                              {supportsDeleteCollection: true},
 		gvk("networking.k8s.io", "v1", "NetworkPolicy"):              {supportsDeleteCollection: true},
+		gvk("networking.k8s.io", "v1", "Ingress"):                    {supportsDeleteCollection: true},
 		gvk("rbac.authorization.k8s.io", "v1beta1", "RoleBinding"):   {supportsDeleteCollection: true},
 		gvk("rbac.authorization.k8s.io", "v1", "RoleBinding"):        {supportsDeleteCollection: true},
 		gvk("rbac.authorization.k8s.io", "v1beta1", "Role"):          {supportsDeleteCollection: true},
@@ -78,11 +78,11 @@ var (
 
 	// ordered by which types should be deleted, first to last
 	nonNamespacedResources = map[schema.GroupVersionKind]pruneConfig{
-		gvk("admissionregistration.k8s.io", "v1beta1", "MutatingWebhookConfiguration"):   {supportsDeleteCollection: true},
-		gvk("admissionregistration.k8s.io", "v1beta1", "ValidatingWebhookConfiguration"): {supportsDeleteCollection: true},
-		gvk("certmanager.k8s.io", "v1alpha1", "ClusterIssuer"):                           {supportsDeleteCollection: true},
-		gvk("rbac.authorization.k8s.io", "v1", "ClusterRole"):                            {supportsDeleteCollection: true},
-		gvk("rbac.authorization.k8s.io", "v1", "ClusterRoleBinding"):                     {supportsDeleteCollection: true},
+		gvk("admissionregistration.k8s.io", "v1", "MutatingWebhookConfiguration"):   {supportsDeleteCollection: true},
+		gvk("admissionregistration.k8s.io", "v1", "ValidatingWebhookConfiguration"): {supportsDeleteCollection: true},
+		gvk("certmanager.k8s.io", "v1alpha1", "ClusterIssuer"):                      {supportsDeleteCollection: true},
+		gvk("rbac.authorization.k8s.io", "v1", "ClusterRole"):                       {supportsDeleteCollection: true},
+		gvk("rbac.authorization.k8s.io", "v1", "ClusterRoleBinding"):                {supportsDeleteCollection: true},
 	}
 )
 

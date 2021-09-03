@@ -7293,6 +7293,7 @@ rules:
   - networking.k8s.io
   resources:
   - networkpolicies
+  - ingresses
   verbs:
   - '*'
 - apiGroups:
