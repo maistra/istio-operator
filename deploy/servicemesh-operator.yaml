@@ -7640,6 +7640,9 @@ spec:
         - name: webhook-tls-volume
           readOnly: true
           mountPath: /tmp/k8s-webhook-server/serving-certs
+        - name: smcp-templates
+          readOnly: true
+          mountPath: /usr/local/share/istio-operator/templates/
       volumes:
       - name: operator-olm-config
         downwardAPI:
@@ -7652,3 +7655,7 @@ spec:
         secret:
           secretName: maistra-operator-serving-cert
           optional: true # this won't be available until service-ca creates the secret
+      - name: smcp-templates
+        configMap:
+          name: smcp-templates
+          optional: true
