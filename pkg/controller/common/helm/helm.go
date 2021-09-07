@@ -29,6 +29,9 @@ func init() {
 // The root chart would be simply, istio.
 func RenderChart(chartPath string, namespace string, values interface{}) (map[string][]manifest.Manifest, map[string]interface{}, error) {
 	rawVals, err := yaml.Marshal(values)
+	if err != nil {
+		return map[string][]manifest.Manifest{}, nil, err
+	}
 	config := &chart.Config{Raw: string(rawVals), Values: map[string]*chart.Value{}}
 
 	c, err := chartutil.Load(chartPath)
