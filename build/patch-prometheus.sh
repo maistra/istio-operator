@@ -100,6 +100,14 @@ function prometheus_patch_deployment() {
     rollingUpdate:\
       maxSurge: 25%\
       maxUnavailable: 25%' $file
+  
+  sed_wrap -i -e '/        - name: istio-proxy/ a\
+          resources:\
+{{- if .Values.global.proxy.resources }}\
+{{ toYaml .Values.global.proxy.resources | indent 12 }}\
+{{- else }}\
+{{ toYaml .Values.global.defaultResources | indent 12 }}\
+{{- end }}' ${HELM_DIR}/istio-telemetry/prometheus/templates/deployment.yaml
 }
 
 function prometheus_patch_service() {
