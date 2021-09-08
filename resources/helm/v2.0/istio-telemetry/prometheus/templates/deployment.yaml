@@ -132,6 +132,12 @@ spec:
 
 {{- if and .Values.prometheus.provisionPrometheusCert (not .Values.meshConfig.enablePrometheusMerge) }}
         - name: istio-proxy
+          resources:
+{{- if .Values.global.proxy.resources }}
+{{ toYaml .Values.global.proxy.resources | indent 12 }}
+{{- else }}
+{{ toYaml .Values.global.defaultResources | indent 12 }}
+{{- end }}
 {{- if contains "/" .Values.global.proxy.image }}
           image: "{{ .Values.global.proxy.image }}"
 {{- else }}
