@@ -1,0 +1,9 @@
+                  template:
+                    description: Template selects the template to use for default
+                      values. Defaults to "default" when not set.
+                    type: string
+                  threeScale:
+                    $ref: '#/definitions/k8s.io~1apimachinery~1pkg~1runtime~0RawExtension'
+                    description: HelmValuesType is typedef for Helm .Values
+                    type: object
+
