@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 metadata:
   name: adapters.config.istio.io
   labels:
-    maistra-version: "2.0.7.1"
+    maistra-version: "2.0.8"
     app: mixer
     package: adapter
     istio: mixer-adapter
