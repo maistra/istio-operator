@@ -80,6 +80,7 @@ test:
 .PHONY: update-remote-maistra-1.0
 update-remote-maistra-1.0:
 ifeq "${OFFLINE_BUILD}" "false"
+	git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-1.0
 	git fetch ${GIT_UPSTREAM_REMOTE} maistra-1.0:maistra-1.0
 endif
 
@@ -122,6 +123,7 @@ collect-1.0-templates:
 .PHONY: update-remote-maistra-1.1
 update-remote-maistra-1.1:
 ifeq "${OFFLINE_BUILD}" "false"
+	git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-1.1
 	git fetch ${GIT_UPSTREAM_REMOTE} maistra-1.1:maistra-1.1
 endif
 
@@ -156,6 +158,7 @@ collect-1.1-templates:
 .PHONY: update-remote-maistra-2.0
 update-remote-maistra-2.0:
 ifeq "${OFFLINE_BUILD}" "false"
+	git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-2.0
 	git fetch ${GIT_UPSTREAM_REMOTE} maistra-2.0:maistra-2.0
 endif
 
