@@ -391,6 +391,8 @@ meshConfig:
     proxyMetadata:
       # required so proxy handles dns requests, which are delegated to istiod
       ISTIO_META_DNS_CAPTURE: "true"
+      # required so that DNS resolves hosts defined as serviceentries
+      ISTIO_META_DNS_AUTO_ALLOCATE: "true"
       # required to enable dns capture
       PROXY_XDS_VIA_AGENT: "true"
     tracing:
