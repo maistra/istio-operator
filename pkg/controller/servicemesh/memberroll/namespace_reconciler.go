@@ -102,7 +102,8 @@ func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) 
 					}
 					return err
 				}
-				networkPlugin, ok, err := unstructured.NestedString(clusterNetwork.UnstructuredContent(), "pluginName")
+				var networkPlugin string
+				networkPlugin, ok, err = unstructured.NestedString(clusterNetwork.UnstructuredContent(), "pluginName")
 				if err != nil {
 					return pkgerrors.Wrap(err, "cluster network plugin not defined")
 				}
@@ -121,7 +122,8 @@ func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) 
 						return fmt.Errorf("unsupported cluster network plugin: %s", networkPlugin)
 					}
 				} else {
-					log.Info("cluster network plugin not defined, skipping network configuration")
+					log.Info(fmt.Sprintf("cluster network plugin not defined, defaulting to NetworkPolicy for Network Type: %v", networkType))
+					r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
 				}
 			case strings.ToLower(networkTypeCalico):
 				log.Info("Network Strategy Calico:NetworkPolicy")
@@ -130,13 +132,16 @@ func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) 
 				log.Info("Network Strategy OVNKubernetes:NetworkPolicy")
 				r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
 			default:
-				return fmt.Errorf("unsupported network type: %s", networkType)
+				log.Info(fmt.Sprintf("Unknown Network Type %v, defaulting to NetworkPolicy", networkType))
+				r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
 			}
 		} else {
-			log.Info("networkType not defined, skipping network configuration")
+			log.Info("Network Type not defined, defaulting to NetworkPolicy")
+			r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
 		}
 	} else {
-		log.Info("network spec not defined, skipping network configuration")
+		log.Info("Network Spec not defined, defaulting to NetworkPolicy")
+		r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
 	}
 	return err
 }
