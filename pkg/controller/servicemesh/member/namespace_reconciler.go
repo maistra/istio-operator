@@ -91,7 +91,7 @@ func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) 
 				log.Info("default cluster network not defined, skipping network configuration")
 				return nil
 			}
-			return err
+			return pkgerrors.Wrap(err, "error retrieving ClusterNetwork resource")
 		}
 		switch clusterNetwork.PluginName {
 		case "redhat/openshift-ovs-subnet":
@@ -103,11 +103,11 @@ func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) 
 		case "redhat/openshift-ovs-multitenant":
 			log.Info("Network Strategy OpenShiftSDN:MultiTenant")
 			r.networkingStrategy, err = newMultitenantStrategy(r.Client, r.meshNamespace)
+		case "":
+			log.Info(fmt.Sprintf("cluster network plugin not defined, defaulting to NetworkPolicy for Network Type: %s", network.Spec.NetworkType))
+			r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
 		default:
 			return fmt.Errorf("unsupported cluster network plugin: %s", clusterNetwork.PluginName)
-		}
-		if err != nil {
-			return pkgerrors.Wrap(err, "failed to instantiate network policy strategy")
 		}
 	case strings.ToLower(networkTypeCalico):
 		log.Info("Network Strategy Calico:NetworkPolicy")
@@ -116,9 +116,10 @@ func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) 
 		log.Info("Network Strategy OVNKubernetes:NetworkPolicy")
 		r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
 	default:
-		return fmt.Errorf("unsupported network type: %s", network.Spec.NetworkType)
+		log.Info(fmt.Sprintf("Unknown Network Type %s, defaulting to NetworkPolicy", network.Spec.NetworkType))
+		r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
 	}
-	return err
+	return pkgerrors.Wrap(err, "error initializing network strategy")
 }
 
 func (r *namespaceReconciler) removeNamespaceFromMesh(ctx context.Context, namespace string) error {
