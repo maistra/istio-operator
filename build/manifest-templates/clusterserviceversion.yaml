@@ -28,7 +28,7 @@ metadata:
             "namespace": "control-plane-namespace"
           },
           "spec": {
-            "version": "v2.0",
+            "version": "v2.1",
             "tracing": {
               "type": "Jaeger",
               "sampling": 10000
