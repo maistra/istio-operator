@@ -232,10 +232,28 @@ func convertWebhookConfigurationFromV1beta1ToV1(obj *unstructured.Unstructured) 
 	if found {
 		for i, webhook := range webhooks {
 			typedWebhook, _ := webhook.(map[string]interface{})
-			err = unstructured.SetNestedStringSlice(typedWebhook, []string{"v1beta1"}, "admissionReviewVersions")
+			admissionReviewVersions, exists, err := unstructured.NestedSlice(typedWebhook, "admissionReviewVersions")
 			if err != nil {
 				return nil, err
 			}
+			if !exists || len(admissionReviewVersions) == 0 {
+				err = unstructured.SetNestedStringSlice(typedWebhook, []string{"v1beta1"}, "admissionReviewVersions")
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			sideEffects, exists, err := unstructured.NestedString(typedWebhook, "sideEffects")
+			if err != nil {
+				return nil, err
+			}
+			if !exists || sideEffects == "" {
+				err = unstructured.SetNestedField(typedWebhook, "None", "sideEffects")
+				if err != nil {
+					return nil, err
+				}
+			}
+
 			webhooks[i] = webhook
 		}
 		err = unstructured.SetNestedField(obj.UnstructuredContent(), webhooks, "webhooks")
