@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	PRODUCT_IMAGE_2_0   = "2.0.7"
-	COMMUNITY_IMAGE_2_0 = "2.0.7"
+	PRODUCT_IMAGE_2_0   = "2.0.8"
+	COMMUNITY_IMAGE_2_0 = "2.0.8"
 	PRODUCT_IMAGE_1_1   = "1.1.17"
 )
 
