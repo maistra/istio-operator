@@ -145,10 +145,10 @@ func sourceWatchPredicates(r *reconciler) predicate.Funcs {
 		UpdateFunc: func(event event.UpdateEvent) bool {
 			return r.isWatchingSourceObject(event.MetaNew, event.ObjectNew)
 		},
-		// deletion and generic events don't interest us
 		DeleteFunc: func(event event.DeleteEvent) bool {
-			return false
+			return r.isWatchingSourceObject(event.Meta, event.Object)
 		},
+		// generic events don't interest us
 		GenericFunc: func(event event.GenericEvent) bool {
 			return false
 		},
