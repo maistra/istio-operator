@@ -147,6 +147,7 @@ function patchGalley() {
 \2- istio-galley-\{\{ .Release.Namespace \}\}\
 \2- --memberRollName=default\
 \2- --useOldProcessor=true\
+\2- --excludedResourceKinds=Ingress,Service,Endpoints,Pod,Node,Namespace\
 \1/
   }' ${HELM_DIR}/istio/charts/galley/templates/deployment.yaml
   sed_wrap -i -e '/operatorManageWebhooks/,/{{- end }}/ {

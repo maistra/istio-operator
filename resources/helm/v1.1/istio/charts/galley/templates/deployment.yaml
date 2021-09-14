@@ -81,6 +81,7 @@ spec:
           - istio-galley-{{ .Release.Namespace }}
           - --memberRollName=default
           - --useOldProcessor=true
+          - --excludedResourceKinds=Ingress,Service,Endpoints,Pod,Node,Namespace
           - --validation-webhook-config-file
           - /etc/config/validatingwebhookconfiguration.yaml
           - --monitoringPort={{ .Values.global.monitoringPort }}
