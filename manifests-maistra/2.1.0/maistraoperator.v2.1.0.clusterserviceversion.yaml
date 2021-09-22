@@ -613,6 +613,11 @@ spec:
                       value: istio-operator
                       #        - name: ISTIO_CNI_IMAGE_PULL_SECRET
                       #          value: name-of-secret
+                  readinessProbe:
+                    httpGet:
+                      scheme: HTTPS
+                      path: /healthz/ready
+                      port: 11999
                   volumeMounts:
                     - name: operator-olm-config
                       mountPath: /etc/operator/olm

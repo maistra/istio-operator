@@ -1,6 +1,9 @@
 package webhooks
 
 import (
+	"fmt"
+	"net/http"
+
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -20,13 +23,14 @@ const componentName = "servicemesh-webhook-server"
 var log = logf.Log.WithName(componentName)
 
 var (
-	smcpValidatorServicePath = "/validate-smcp"
-	smcpMutatorServicePath   = "/mutate-smcp"
-	smcpConverterServicePath = "/convert-smcp"
-	SmeConverterServicePath  = "/convert-sme"
-	smmrValidatorServicePath = "/validate-smmr"
-	smmrMutatorServicePath   = "/mutate-smmr"
-	smmValidatorServicePath  = "/validate-smm"
+	smcpValidatorServicePath  = "/validate-smcp"
+	smcpMutatorServicePath    = "/mutate-smcp"
+	smcpConverterServicePath  = "/convert-smcp"
+	SmeConverterServicePath   = "/convert-sme"
+	smmrValidatorServicePath  = "/validate-smmr"
+	smmrMutatorServicePath    = "/mutate-smmr"
+	smmValidatorServicePath   = "/validate-smm"
+	readinessProbeServicePath = "/healthz/ready"
 )
 
 // Add webhook handlers
@@ -82,5 +86,13 @@ func Add(mgr manager.Manager) error {
 		Handler: validation.NewMemberValidator(),
 	})
 
+	log.Info("Adding readiness probe handler")
+	readinessProbeHandler := func(response http.ResponseWriter, request *http.Request) {
+		_, err := fmt.Fprintln(response, "ok")
+		if err != nil {
+			log.Error(err, "Could not write readiness probe response")
+		}
+	}
+	hookServer.Register(readinessProbeServicePath, http.HandlerFunc(readinessProbeHandler))
 	return nil
 }
