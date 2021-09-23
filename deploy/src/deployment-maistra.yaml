@@ -5,6 +5,8 @@ metadata:
   namespace: istio-operator
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       name: istio-operator
