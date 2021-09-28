@@ -459,6 +459,40 @@ func TestReconcileUpdatesMembersInStatusWhenMemberIsDeleted(t *testing.T) {
 	kialiReconciler.assertInvokedWith(t, appNamespace)
 }
 
+func TestReconcileClearsConfigureMembersWhenSMCPDeleted(t *testing.T) {
+	roll := newMemberRoll(1, 1, 1, operatorVersionDefault)
+	roll.Spec.Members = []string{appNamespace}
+	roll.Status.Members = []string{appNamespace}
+	roll.Status.PendingMembers = []string{}
+	roll.Status.ConfiguredMembers = []string{appNamespace}
+	roll.Status.TerminatingMembers = []string{}
+	roll.Status.MemberStatuses = []maistrav1.ServiceMeshMemberStatusSummary{
+		{
+			Namespace: appNamespace,
+			Conditions: []maistrav1.ServiceMeshMemberCondition{
+				{
+					Type:   maistrav1.ConditionTypeMemberReconciled,
+					Status: core.ConditionTrue,
+				},
+			},
+		},
+	}
+
+	namespace := newNamespace(appNamespace)
+
+	cl, _, r, _ := createClientAndReconciler(t, roll, namespace)
+
+	assertReconcileSucceeds(r, t)
+
+	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
+	assertStatusMembers(updatedRoll,
+		[]string{appNamespace}, // members
+		[]string{appNamespace}, // pending
+		[]string{}, // configured
+		[]string{}, // terminating
+		t)
+}
+
 func TestReconcileRemovesFinalizerFromMemberRoll(t *testing.T) {
 	roll := newDefaultMemberRoll()
 	roll.DeletionTimestamp = &oneMinuteAgo

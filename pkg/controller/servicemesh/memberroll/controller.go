@@ -242,6 +242,10 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		return reconcile.Result{}, err
 	} else if mesh == nil {
 		log.Info("Skipping reconciliation of SMMR", "project", meshNamespace, "reason", reason, "message", message)
+		if reason == maistrav1.ConditionReasonSMCPMissing {
+			roll.Status.PendingMembers = sets.NewString(roll.Status.Members...).Difference(sets.NewString(roll.Status.TerminatingMembers...)).List()
+			roll.Status.ConfiguredMembers = []string{}
+		}
 		setReadyCondition(roll, false, reason, message)
 		// when a control plane is created/updated/deleted our watch will pick it up and issue a new reconcile event
 		return reconcile.Result{}, r.updateStatus(ctx, roll)
