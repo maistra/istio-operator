@@ -50,7 +50,14 @@ func TestReconcileNamespaceInMesh(t *testing.T) {
 	for _, meshRB := range meshRoleBindings {
 		expectedRB := meshRB.DeepCopy()
 		expectedRB.Namespace = appNamespace
-		expectedRB.Labels[common.MemberOfKey] = controlPlaneNamespace
+		// the RoleBinding must not contain the maistra.io/owner label or any
+		// other labels of the RoleBinding in the control plane namespace so
+		// that it won't be deleted by the pruner, but it must contain the
+		// maistra.io/member-of label, so that it can be later deleted by the
+		// SMM controller
+		expectedRB.Labels = map[string]string{
+			common.MemberOfKey: controlPlaneNamespace,
+		}
 		expectedRoleBindings = append(expectedRoleBindings, *expectedRB)
 	}
 

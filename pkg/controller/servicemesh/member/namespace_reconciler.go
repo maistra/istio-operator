@@ -149,7 +149,7 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(ctx context.Context, names
 
 	// delete role bindings
 	rbList := &rbac.RoleBindingList{}
-	labelSelector := map[string]string{common.OwnerKey: r.meshNamespace}
+	labelSelector := map[string]string{common.MemberOfKey: r.meshNamespace}
 	err = r.Client.List(ctx, rbList, client.InNamespace(namespace), client.MatchingLabels(labelSelector))
 	if err == nil {
 		for _, rb := range rbList.Items {
@@ -293,6 +293,12 @@ func (r *namespaceReconciler) reconcileRoleBindings(ctx context.Context, namespa
 				Annotations: roleBinding.Annotations,
 			}
 			common.SetLabel(roleBinding, common.MemberOfKey, r.meshNamespace)
+
+			// ensure the RoleBinding isn't deleted by the pruner
+			common.DeleteLabel(roleBinding, common.OwnerKey)
+			common.DeleteLabel(roleBinding, common.OwnerNameKey)
+			common.DeleteLabel(roleBinding, common.KubernetesAppVersionKey)
+
 			err = r.Client.Create(ctx, roleBinding)
 			if err == nil {
 				addedRoleBindings.Insert(roleBindingName)
