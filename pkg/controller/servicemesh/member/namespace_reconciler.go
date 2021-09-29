@@ -293,11 +293,7 @@ func (r *namespaceReconciler) reconcileRoleBindings(ctx context.Context, namespa
 				Annotations: roleBinding.Annotations,
 			}
 			common.SetLabel(roleBinding, common.MemberOfKey, r.meshNamespace)
-
-			// ensure the RoleBinding isn't deleted by the pruner
-			common.DeleteLabel(roleBinding, common.OwnerKey)
-			common.DeleteLabel(roleBinding, common.OwnerNameKey)
-			common.DeleteLabel(roleBinding, common.KubernetesAppVersionKey)
+			removeLabelsUsedByPruner(roleBinding)
 
 			err = r.Client.Create(ctx, roleBinding)
 			if err == nil {
@@ -328,6 +324,16 @@ func (r *namespaceReconciler) reconcileRoleBindings(ctx context.Context, namespa
 	// maybe a following reconcile will add the required role binding that failed.  if it was a delete that failed, we're
 	// just leaving behind some cruft.
 	return utilerrors.NewAggregate(allErrors)
+}
+
+// Removes the labels that the pruner uses to determine which objects to prune.
+// These labels need to be removed when copying objects from the mesh namespace
+// to the member namespace if those objects are managed by the member controller
+// and should thus never be deleted by the pruner.
+func removeLabelsUsedByPruner(obj metav1.Object) {
+	common.DeleteLabel(obj, common.OwnerKey)
+	common.DeleteLabel(obj, common.OwnerNameKey)
+	common.DeleteLabel(obj, common.KubernetesAppVersionKey)
 }
 
 func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context, namespace string, netAttachDefName string) error {

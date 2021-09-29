@@ -24,7 +24,15 @@ func TestMeshNetworkPolicyIsCopiedIntoAppNamespace(t *testing.T) {
 	nsNetworkPolicy := getNamespaceNetworkPolicy(cl, t)
 
 	expectedNsNetworkPolicy := newMeshNetworkPolicy()
-	expectedNsNetworkPolicy.Labels[common.MemberOfKey] = controlPlaneNamespace
+	// the NetworkPolicy must not contain the maistra.io/owner label or any
+	// other labels of the NetworkPolicy in the control plane namespace so
+	// that it won't be deleted by the pruner, but it must contain the
+	// maistra.io/member-of label, so that it can be later deleted by the
+	// SMM controller
+	expectedNsNetworkPolicy.Labels = map[string]string{
+		"my-label":         "foo",
+		common.MemberOfKey: controlPlaneNamespace,
+	}
 	expectedNsNetworkPolicy.Namespace = appNamespace
 
 	assert.DeepEquals(nsNetworkPolicy, expectedNsNetworkPolicy, "Unexpected state of app namespace NetworkPolicy", t)
