@@ -89,6 +89,7 @@ func (s *networkPolicyStrategy) reconcileNamespaceInMesh(ctx context.Context, na
 				Annotations: copyMap(meshNetworkPolicy.Annotations),
 			}
 			common.SetLabel(networkPolicy, common.MemberOfKey, s.meshNamespace)
+			removeLabelsUsedByPruner(networkPolicy)
 			err = s.Client.Create(ctx, networkPolicy)
 			if err == nil {
 				addedNetworkPolicies.Insert(networkPolicyName)

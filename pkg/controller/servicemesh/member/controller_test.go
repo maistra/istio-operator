@@ -611,6 +611,8 @@ func newMeshRoleBinding() *rbac.RoleBinding {
 	roleBinding := newRoleBinding(controlPlaneNamespace, "role-binding")
 	roleBinding.Labels = map[string]string{}
 	roleBinding.Labels[common.OwnerKey] = controlPlaneNamespace
+	roleBinding.Labels[common.OwnerNameKey] = controlPlaneName
+	roleBinding.Labels[common.KubernetesAppVersionKey] = "0"
 	return roleBinding
 }
 
