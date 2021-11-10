@@ -14,8 +14,8 @@ metadata:
     description: |-
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
-    containerImage: maistra/istio-ubi8-operator:2.1.0
-    createdAt: 2021-10-05T13:11:35EDT
+    containerImage: quay.io/maistra/istio-ubi8-operator:2.1.0
+    createdAt: 2021-11-09T14:40:20EST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.1.0-0"
     operators.openshift.io/infrastructure-features: '[]'
@@ -277,23 +277,19 @@ spec:
   - name: v2_1.3scale-istio-adapter
     image: quay.io/3scale/3scale-istio-adapter:v2.0.0
   - name: v2_1.cni
-    image: docker.io/maistra/istio-cni-ubi8:2.1.0
+    image: quay.io/maistra/istio-cni-ubi8:2.1.0
   - name: v2_1.grafana
-    image: docker.io/maistra/grafana-ubi8:2.1.0
-  - name: v2_1.mixer
-    image: docker.io/maistra/mixer-ubi8:2.1.0
+    image: quay.io/maistra/grafana-ubi8:2.1.0
   - name: v2_1.pilot
-    image: docker.io/maistra/pilot-ubi8:2.1.0
+    image: quay.io/maistra/pilot-ubi8:2.1.0
   - name: v2_1.prometheus
-    image: docker.io/maistra/prometheus-ubi8:2.1.0
-  - name: v2_1.proxy-init
-    image: docker.io/maistra/proxy-init-centos7:2.1.0
+    image: quay.io/maistra/prometheus-ubi8:2.1.0
   - name: v2_1.proxyv2
-    image: docker.io/maistra/proxyv2-ubi8:2.1.0
+    image: quay.io/maistra/proxyv2-ubi8:2.1.0
   - name: v2_1.wasm-cacher
-    image: docker.io/maistra/pilot-ubi8:2.1.0
+    image: quay.io/maistra/pilot-ubi8:2.1.0
   - name: v2_1.rls
-    image: docker.io/maistra/ratelimit-ubi8:2.1.0
+    image: quay.io/maistra/ratelimit-ubi8:2.1.0
   install:
     strategy: deployment
     spec:
@@ -584,20 +580,18 @@ spec:
                 olm.relatedImage.v2_0.proxyv2: docker.io/maistra/proxyv2-ubi8:2.0.2
                 olm.relatedImage.v2_0.wasm-cacher: docker.io/maistra/pilot-ubi8:2.0.2
                 olm.relatedImage.v2_1.3scale-istio-adapter: quay.io/3scale/3scale-istio-adapter:v2.0.0
-                olm.relatedImage.v2_1.cni: docker.io/maistra/istio-cni-ubi8:2.1.0
-                olm.relatedImage.v2_1.grafana: docker.io/maistra/grafana-ubi8:2.1.0
-                olm.relatedImage.v2_1.mixer: docker.io/maistra/mixer-ubi8:2.1.0
-                olm.relatedImage.v2_1.pilot: docker.io/maistra/pilot-ubi8:2.1.0
-                olm.relatedImage.v2_1.prometheus: docker.io/maistra/prometheus-ubi8:2.1.0
-                olm.relatedImage.v2_1.proxy-init: docker.io/maistra/proxy-init-centos7:2.1.0
-                olm.relatedImage.v2_1.proxyv2: docker.io/maistra/proxyv2-ubi8:2.1.0
-                olm.relatedImage.v2_1.wasm-cacher: docker.io/maistra/pilot-ubi8:2.1.0
-                olm.relatedImage.v2_1.rls: docker.io/maistra/ratelimit-ubi8:2.1.0
+                olm.relatedImage.v2_1.cni: quay.io/maistra/istio-cni-ubi8:2.1.0
+                olm.relatedImage.v2_1.grafana: quay.io/maistra/grafana-ubi8:2.1.0
+                olm.relatedImage.v2_1.pilot: quay.io/maistra/pilot-ubi8:2.1.0
+                olm.relatedImage.v2_1.prometheus: quay.io/maistra/prometheus-ubi8:2.1.0
+                olm.relatedImage.v2_1.proxyv2: quay.io/maistra/proxyv2-ubi8:2.1.0
+                olm.relatedImage.v2_1.wasm-cacher: quay.io/maistra/pilot-ubi8:2.1.0
+                olm.relatedImage.v2_1.rls: quay.io/maistra/ratelimit-ubi8:2.1.0
             spec:
               serviceAccountName: istio-operator
               containers:
                 - name: istio-operator
-                  image: maistra/istio-ubi8-operator:2.1.0
+                  image: quay.io/maistra/istio-ubi8-operator:2.1.0
                   ports:
                     - containerPort: 11999
                       name: validation
