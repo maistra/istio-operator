@@ -127,6 +127,7 @@ func (v *versionStrategyV2_1) ValidateV2(ctx context.Context, cl client.Client, 
 	allErrors = v.validateProtocolDetection(ctx, meta, spec, allErrors)
 	allErrors = v.validateRuntime(ctx, meta, spec, allErrors)
 	allErrors = v.validateMixerDisabled(spec, allErrors)
+	allErrors = v.validateAddons(spec, allErrors)
 	return NewValidationError(allErrors...)
 }
 
@@ -177,6 +178,17 @@ func (v *versionStrategyV2_1) validateMixerDisabled(spec *v2.ControlPlaneSpec, a
 	}
 	if spec.Telemetry != nil && (spec.Telemetry.Type == v2.TelemetryTypeMixer || spec.Telemetry.Mixer != nil) {
 		allErrors = append(allErrors, fmt.Errorf("support for telemetry.type %q and telemetry.Mixer options have been removed in v2.1, please use another alternative", v2.TelemetryTypeMixer))
+	}
+	return allErrors
+}
+
+func (v *versionStrategyV2_1) validateAddons(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.Addons == nil {
+		return allErrors
+	}
+
+	if spec.Addons.ThreeScale != nil {
+		allErrors = append(allErrors, fmt.Errorf("support for 3scale has been removed in v2.1; please remove the spec.addons.3scale section from the SMCP and configure the 3scale WebAssembly adapter using a ServiceMeshExtension resource"))
 	}
 	return allErrors
 }
