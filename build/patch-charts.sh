@@ -428,7 +428,7 @@ function patchSidecarInjector() {
       ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
 
   # never apply init container, even for validation
-  sed_wrap -i -e 's${{ if ne (annotation .ObjectMeta `sidecar.istio.io/interceptionMode` .ProxyConfig.InterceptionMode) `NONE` }}${{ if not .Values.istio_cni.enabled -}}$' \
+  sed_wrap -i -e '/^  initContainers:/,/^  containers:/ {/^  containers:/!d}' \
       ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
   # use the correct cni network defintion
   sed_wrap -i -e '/annotations:/,$s/`istio-cni`/.Values.istio_cni.istio_cni_network/' \
