@@ -60,6 +60,11 @@ var autoRegistrationMap = map[string]CABundleSource{
 // Add creates a new Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
+	if !common.Config.Controller.WebhookManagementEnabled {
+		createLogger().Info("Not adding webhookca controller to Manager")
+		return nil
+	}
+
 	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme(), WebhookCABundleManagerInstance))
 }
 

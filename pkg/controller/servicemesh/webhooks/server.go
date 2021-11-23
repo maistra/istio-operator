@@ -34,8 +34,13 @@ func Add(mgr manager.Manager) error {
 	ctx := common.NewContextWithLog(common.NewContext(), log)
 	log.Info("Configuring Maistra webhooks")
 
-	if err := createWebhookResources(ctx, mgr, log, common.GetOperatorNamespace()); err != nil {
-		return err
+	if !common.Config.Controller.WebhookManagementEnabled {
+		log.Info("Webhook Config Management is disabled via olm configuration")
+	} else {
+		operatorNamespace := common.GetOperatorNamespace()
+		if err := createWebhookResources(ctx, mgr, log, operatorNamespace); err != nil {
+			return err
+		}
 	}
 
 	watchNamespaceStr, err := k8sutil.GetWatchNamespace()

@@ -141,7 +141,7 @@ func main() {
 	}
 
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
-	// Note that this is not intended to be used for excluding namespaces, this is better done via a Predicate 
+	// Note that this is not intended to be used for excluding namespaces, this is better done via a Predicate
 	// Also note that you may face performance issues when using this with a high number of namespaces.
 	// More Info: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/cache#MultiNamespacedCacheBuilder
 	if strings.Contains(namespace, ",") {
@@ -181,7 +181,6 @@ func main() {
 		os.Exit(1)
 	}
 }
-
 
 // addMetrics will create the Services and Service Monitors to allow the operator export the metrics by using
 // the Prometheus operator
@@ -271,6 +270,7 @@ func initializeConfiguration(configFile string) error {
 	v.RegisterAlias("controller.memberReconcilers", "memberReconcilers")
 	v.RegisterAlias("controller.apiBurst", "apiBurst")
 	v.RegisterAlias("controller.apiQPS", "apiQPS")
+	v.RegisterAlias("controller.webhookManagementEnabled", "webhookManagementEnabled")
 
 	// rendering settings
 	v.RegisterAlias("rendering.resourceDir", "resourceDir")
@@ -312,7 +312,7 @@ func patchProperties(file string) (map[string]interface{}, error) {
 		if strings.HasPrefix(v, "\"") && strings.HasSuffix(v, "\"") {
 			// the properties reader will have already processed most special
 			// characters, so all we need to do is remove the leading and trailing quotes
-			v = v[1:len(v)-1]
+			v = v[1 : len(v)-1]
 		}
 		retVal[k] = v
 	}
