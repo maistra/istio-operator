@@ -24,6 +24,10 @@ type Config struct {
 func InitConfig(m manager.Manager) (Config, error) {
 	config := Config{}
 
+	if common.Config.OLM.CNIDisabled {
+		config.Enabled = false
+		return config, nil
+	}
 	_, err := m.GetRESTMapper().ResourcesFor(schema.GroupVersionResource{
 		Group:    "k8s.cni.cncf.io",
 		Version:  "v1",
