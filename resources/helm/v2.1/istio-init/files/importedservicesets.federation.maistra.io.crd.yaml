@@ -19,7 +19,7 @@ spec:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: ImportedServiceSet is the Schema for configuring imported services.  The name of the ImportedServiceSet resource must match the name of a ServiceMeshPeer resource defining the remote mesh from which the services will be imported.
+        description: ImportedServiceSet is the Schema for configuring imported services. It must be created in the same namespace as the control plane. The name of the ImportedServiceSet resource must match the name of a ServiceMeshPeer resource defining the remote mesh from which the services will be imported. This implies there will be at most one ImportedServiceSet resource per peer and control plane.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
@@ -61,7 +61,7 @@ spec:
                           type: string
                       type: object
                     type:
-                      description: Type of rule.  Only Name type is supported.
+                      description: Type of rule.  Only NameSelector type is supported.
                       type: string
                   required:
                   - type
