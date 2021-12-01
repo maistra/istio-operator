@@ -38,7 +38,7 @@ spec:
                 description: Gateways configures the gateways used to facilitate ingress and egress with the other mesh.
                 properties:
                   egress:
-                    description: Gateway through which outbound federated service traffic will travel. This is not required if AllowDirectOutbound is set to true.
+                    description: Gateway through which outbound federated service traffic will travel.
                     properties:
                       name:
                         description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
