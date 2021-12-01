@@ -21,6 +21,6 @@ func TestInitConfig_disablingCNI(t *testing.T) {
 func InitializeGlobals(operatorNamespace string) func() {
 	return func() {
 		// make sure globals are initialized for testing
-		common.Config.OLM.CNIDisabled = true
+		common.Config.OLM.CNIEnabled = false
 	}
 }

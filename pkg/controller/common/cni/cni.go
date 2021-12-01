@@ -24,7 +24,7 @@ type Config struct {
 func InitConfig(m manager.Manager) (Config, error) {
 	config := Config{}
 
-	if common.Config.OLM.CNIDisabled {
+	if !common.Config.OLM.CNIEnabled {
 		config.Enabled = false
 		return config, nil
 	}
