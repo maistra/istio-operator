@@ -10673,7 +10673,7 @@ spec:
         olm.relatedImage.v2_1.wasm-cacher: quay.io/maistra/pilot-ubi8:2.1.0
         olm.relatedImage.v2_1.rls: quay.io/maistra/ratelimit-ubi8:2.1.0
 
-        olm.cniDisabled: "true"
+        olm.cniEnabled: "true"
 
     spec:
       serviceAccountName: istio-operator
