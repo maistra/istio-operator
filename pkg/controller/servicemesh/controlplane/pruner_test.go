@@ -111,8 +111,9 @@ func TestPrune(t *testing.T) {
 					o.SetNamespace(ns)
 					if sc.owner != "" {
 						o.SetLabels(map[string]string{
-							common.OwnerKey:                sc.owner,
-							common.KubernetesAppVersionKey: sc.version,
+							common.OwnerKey:                  sc.owner,
+							common.KubernetesAppManagedByKey: common.KubernetesAppManagedByValue,
+							common.KubernetesAppVersionKey:   sc.version,
 						})
 						o.SetAnnotations(map[string]string{
 							common.MeshGenerationKey: sc.version,

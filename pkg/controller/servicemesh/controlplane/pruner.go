@@ -205,6 +205,10 @@ func gk(group, kind string) schema.GroupKind {
 }
 
 func createLabelSelector(meshNamespace, meshGeneration string) (labels.Selector, error) {
+	managedByRequirement, err := labels.NewRequirement(common.KubernetesAppManagedByKey, selection.Equals, []string{common.KubernetesAppManagedByValue})
+	if err != nil {
+		return nil, err
+	}
 	ownerRequirement, err := labels.NewRequirement(common.OwnerKey, selection.Equals, []string{meshNamespace})
 	if err != nil {
 		return nil, err
@@ -213,6 +217,6 @@ func createLabelSelector(meshNamespace, meshGeneration string) (labels.Selector,
 	if err != nil {
 		return nil, err
 	}
-	labelsSelector := labels.NewSelector().Add(*ownerRequirement, *generationRequirement)
+	labelsSelector := labels.NewSelector().Add(*managedByRequirement, *ownerRequirement, *generationRequirement)
 	return labelsSelector, nil
 }
