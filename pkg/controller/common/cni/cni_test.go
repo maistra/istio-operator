@@ -16,6 +16,8 @@ func TestInitConfig_disablingCNI(t *testing.T) {
 	assert.Equals(err, nil, "", t)
 	assert.Equals(config.Enabled, false, "", t)
 
+	// Quick test cleanup
+	common.Config.OLM.CNIEnabled = true
 }
 
 func InitializeGlobals(operatorNamespace string) func() {
