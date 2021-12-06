@@ -13,6 +13,7 @@ var Config = &config{}
 
 func init() {
 	Config.Controller.WebhookManagementEnabled = true
+	Config.OLM.CNIEnabled = true
 }
 
 // config for the operator

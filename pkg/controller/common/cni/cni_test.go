@@ -24,3 +24,7 @@ func InitializeGlobals(operatorNamespace string) func() {
 		common.Config.OLM.CNIEnabled = false
 	}
 }
+
+func TestIsCNIConfigEnabledByDefault(t *testing.T) {
+	assert.Equals(common.Config.OLM.CNIEnabled, true, "", t)
+}
