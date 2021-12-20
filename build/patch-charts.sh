@@ -2,6 +2,9 @@
 
 set -e
 
+# include sed_wrap
+source $(dirname ${BASH_SOURCE})/sed-wrapper.sh
+
 : ${HELM_DIR:?"Need to set HELM_DIR to output location for charts, e.g. tmp/_output/istio-releases/istio-1.1.0"}
 : ${SOURCE_DIR:?"Need to set SOURCE_DIR to location of the istio-operator source directory"}
 
@@ -210,6 +213,7 @@ function patchGalley() {
             value: ""' "${deployment}"
   ##############################################################################
 
+  ### move upstream: we should add an option to not configure securityContext
   # remove privileged security settings
   sed_wrap -i -r -e '/template:/,/containers:/ { /securityContext:/,/containers:/ { /containers:/! d }}' \
       -e '/containers:/,$ { /securityContext:/,/capabilities:/ { /capabilities:|securityContext:/! d }}' \
@@ -218,6 +222,7 @@ function patchGalley() {
   sed_wrap -i -e '/base:/ a\
   validationURL: ""' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
 
+  ### not required: we always set revision so this change is not required
   # always istiod
   sed_wrap -i -e '/{{- if ne .Values.revision ""}}/,/{{- end }}/d' \
       -e '/matchLabels:/a\
@@ -225,6 +230,7 @@ function patchGalley() {
 \      istio.io/rev: {{ .Values.revision | default "default" }}' \
     $deployment
 
+  ### feature-related: move to maistra/istio
   # IOR
   sed_wrap -i -e '/env:/ a\
 {{- $iorEnabled := "true" }}\
@@ -235,11 +241,13 @@ function patchGalley() {
           - name: ENABLE_IOR\
             value: "{{ $iorEnabled }}"' "${deployment}"
 
+  ### feature-related: move to maistra/istio
   # Extensions
   sed_wrap -i -e '/env:/ a\
           - name: ENABLE_MAISTRA_EXTENSIONS\
             value: "{{ .Values.wasmExtensions.enabled }}"' "${deployment}"
 
+  ### defaults: move to profiles
   # analysis
   sed_wrap -i -e '/PILOT_ENABLE_ANALYSIS/ i\
           - name: PILOT_ENABLE_STATUS\
@@ -249,11 +257,17 @@ function patchGalley() {
 
 function patchGateways() {
   echo "patching Gateways specific Helm charts"
+  ### defaults: move to profiles
+  ### TODO: check why we need this
   sed_wrap -i -r -e 's/type: LoadBalancer *(#.*)?$/type: ClusterIP/' ${HELM_DIR}/gateways/istio-ingress/values.yaml
 
+  ### defaults: move to profiles
+  ### TODO: check why we need this - it might break AWS ELB health checking
   # do not expose port 15012, support for mesh expansion will automatically add this port
   sed_wrap -i -e '/port: 15012/,+3d' ${HELM_DIR}/gateways/istio-ingress/values.yaml
 
+  ### defaults: move to profiles
+  ### TODO: check why we need this
   # add tracer config
   tracerConfig='\
   # Configuration for each of the supported tracers\
@@ -302,12 +316,14 @@ function patchGateways() {
   sed_wrap -i -e 's/^\(.*\)labels:/\1labels:\
 \1  maistra.io\/gateway: {{ $gateway.name | default "istio-egressgateway" }}.{{ $gateway.namespace | default .Release.Namespace }}/' ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
+  ### not required: this is already the default now
   # MAISTRA-1963 Mark gateways as non-privileged
   sed_wrap -i -e '/env:/ a\
           - name: ISTIO_META_UNPRIVILEGED_POD\
             value: "true"
 ' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
+  ### defaults: move to profiles
   # MAISTRA-2528 Enable DNS Capture for proxies by default
   # MAISTRA-2656 Fix missing DNS registry entries in istio-agent
   sed_wrap -i -e '/env:/ a\
@@ -324,6 +340,7 @@ function patchGateways() {
       PROXY_XDS_VIA_AGENT: "true"/
 ' ${HELM_DIR}/gateways/istio-ingress/values.yaml ${HELM_DIR}/gateways/istio-egress/values.yaml
 
+  ### unknown: check if still required in 1.12
   # gateways in other namespaces need proxy config
   echo "$(sed_nowrap -ne '1,/\$mesh :=/p' ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml; cat ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml)" > ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
   echo "$(sed_nowrap -ne '1,/\$mesh :=/p' ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml; cat ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml)" > ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml
@@ -337,9 +354,11 @@ function patchGateways() {
 {{- end }}
 ' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
+  ### move upstream: we should add an option to not configure securityContext
   # remove special users/groups
   sed_wrap -i -e '/: *1337 *$/d' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/injected-deployment.yaml ${HELM_DIR}/gateways/istio-ingress/templates/injected-deployment.yaml
 
+  ### unknown: can we possibly change the .Release.Namespace when applying the chart so we don't have to patch this explicitly?
   # install in specified namespace
   for file in $(find ${HELM_DIR}/gateways/istio-ingress/templates -type f -name "*.yaml"); do
     sed_wrap -i -e 's/^\( *\)namespace:.*/\1namespace: {{ $gateway.namespace | default .Release.Namespace }}/' $file
@@ -351,6 +370,7 @@ function patchGateways() {
 
 function patchSidecarInjector() {
   echo "patching Sidecar Injector specific Helm charts"
+  ### overlay: this should become a separate file with our own webhooks so we don't need to patch
   # Webhooks are not namespaced!  we do this to ensure we're not setting owner references on them
   webhookconfig=${HELM_DIR}/istio-control/istio-discovery/templates/mutatingwebhook.yaml
   sed_wrap -i -e '/^{{- if eq .Release.Namespace "istio-system"}}/,/^{{- end }}/d' \
@@ -396,6 +416,7 @@ function patchSidecarInjector() {
   # remove {{- if not .Values.global.operatorManageWebhooks }} ... {{- end }}
   sed_wrap -i -e '/operatorManageWebhooks/ d' $webhookconfig
 
+  ### defaults: move to profiles. it should be configurable through settings
   # - change privileged value on istio-proxy injection configmap to false
   # setting the proper values will fix this:
   # global.proxy.privileged=false
@@ -539,9 +560,6 @@ patchTemplates
 patchGalley
 patchGateways
 patchSidecarInjector
-#patchMixer # no longer present in 2.1
-#patchKialiTemplate # no longer present upstream
-#patchKialiOpenShift
 moveEnvoyFiltersToMeshConfigChart
 copyGlobalValues
 # TODO: remove this hack once the image is updated to include workingDir

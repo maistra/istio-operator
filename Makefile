@@ -242,7 +242,7 @@ ifneq "${OSSM_MANIFEST_DATE}" ""
 endif
 
 .PHONY: update-charts
-update-charts: update-1.0-charts update-1.1-charts update-2.0-charts update-2.1-charts
+update-charts: clean update-1.0-charts update-1.1-charts update-2.0-charts update-2.1-charts
 
 .PHONY: update-templates
 update-templates: update-1.0-templates update-1.1-templates update-2.0-templates
