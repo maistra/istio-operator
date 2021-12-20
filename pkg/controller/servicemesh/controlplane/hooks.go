@@ -23,7 +23,7 @@ func (r *controlPlaneInstanceReconciler) processDeletedComponent(name string, st
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) preprocessObject(ctx context.Context, object *unstructured.Unstructured) error {
+func (r *controlPlaneInstanceReconciler) preprocessObject(ctx context.Context, object *unstructured.Unstructured) (bool, error) {
 	// Add owner ref
 	if object.GetNamespace() == r.Instance.GetNamespace() {
 		object.SetOwnerReferences(r.ownerRefs)
@@ -41,20 +41,27 @@ func (r *controlPlaneInstanceReconciler) preprocessObject(ctx context.Context, o
 
 	switch object.GetKind() {
 	case "Kiali":
-		return r.patchKialiConfig(ctx, object)
+		return true, r.patchKialiConfig(ctx, object)
 	case "ConfigMap":
 		if object.GetName() == "istio-grafana" {
-			return r.patchGrafanaConfig(ctx, object)
+			return true, r.patchGrafanaConfig(ctx, object)
 		}
 	case "Secret":
 		switch object.GetName() {
 		case "htpasswd":
-			return r.patchHtpasswdSecret(ctx, object)
+			return true, r.patchHtpasswdSecret(ctx, object)
 		case "prometheus-proxy", "grafana-proxy":
-			return r.patchProxySecret(ctx, object)
+			return true, r.patchProxySecret(ctx, object)
 		}
+	case "NetworkPolicy":
+		mustContinue := true
+		if r.Instance.Spec.Security != nil && r.Instance.Spec.Security.ManageNetworkPolicy != nil {
+			mustContinue = *r.Instance.Spec.Security.ManageNetworkPolicy
+		}
+		return mustContinue, nil
 	}
-	return nil
+
+	return true, nil
 }
 
 func (r *controlPlaneInstanceReconciler) preprocessObjectForPatch(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error) {

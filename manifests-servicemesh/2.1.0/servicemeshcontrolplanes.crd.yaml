@@ -4984,6 +4984,8 @@ spec:
                       type:
                         type: string
                     type: object
+                  manageNetworkPolicy:
+                    type: boolean
                   trust:
                     properties:
                       additionalDomains:
@@ -9844,6 +9846,8 @@ spec:
                           type:
                             type: string
                         type: object
+                      manageNetworkPolicy:
+                        type: boolean
                       trust:
                         properties:
                           additionalDomains:

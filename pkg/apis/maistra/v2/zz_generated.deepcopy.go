@@ -2629,6 +2629,11 @@ func (in *SecurityConfig) DeepCopyInto(out *SecurityConfig) {
 		*out = new(DataPlaneSecurityConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ManageNetworkPolicy != nil {
+		in, out := &in.ManageNetworkPolicy, &out.ManageNetworkPolicy
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 

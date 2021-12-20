@@ -75,8 +75,8 @@ func internalProcessManifests(ctx context.Context, cl client.Client, rendering [
 	return nil
 }
 
-func preProcessObject(ctx context.Context, obj *unstructured.Unstructured) error {
-	return nil
+func preProcessObject(ctx context.Context, obj *unstructured.Unstructured) (bool, error) {
+	return true, nil
 }
 
 func postProcessObject(ctx context.Context, obj *unstructured.Unstructured) error {
