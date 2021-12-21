@@ -23,15 +23,15 @@ import (
 type ManifestProcessor struct {
 	common.ControllerResources
 	PatchFactory             *PatchFactory
-	preprocessObject         func(ctx context.Context, obj *unstructured.Unstructured) error
+	preprocessObject         func(ctx context.Context, obj *unstructured.Unstructured) (bool, error)
 	processNewObject         func(ctx context.Context, obj *unstructured.Unstructured) error
 	preprocessObjectForPatch func(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error)
 
 	appInstance, appVersion string
-	owner types.NamespacedName
+	owner                   types.NamespacedName
 }
 
-func NewManifestProcessor(controllerResources common.ControllerResources, patchFactory *PatchFactory, appInstance, appVersion string, owner types.NamespacedName, preprocessObjectFunc, postProcessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) error, preprocessObjectForPatchFunc func(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error)) *ManifestProcessor {
+func NewManifestProcessor(controllerResources common.ControllerResources, patchFactory *PatchFactory, appInstance, appVersion string, owner types.NamespacedName, preprocessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) (bool, error), postProcessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) error, preprocessObjectForPatchFunc func(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error)) *ManifestProcessor {
 	return &ManifestProcessor{
 		ControllerResources:      controllerResources,
 		PatchFactory:             patchFactory,
@@ -130,10 +130,14 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 
 	log.V(2).Info("beginning reconciliation of resource")
 
-	err = p.preprocessObject(ctx, obj)
+	mustContinue, err := p.preprocessObject(ctx, obj)
 	if err != nil {
 		log.Error(err, "error preprocessing object")
 		return false, err
+	}
+	if !mustContinue {
+		log.Info(fmt.Sprintf("skipping processing of resource due to spec.security.manageNetworkPolicy = false"))
+		return false, nil
 	}
 
 	err = kubectl.CreateApplyAnnotation(obj, unstructured.UnstructuredJSONScheme)
@@ -215,7 +219,7 @@ func (p *ManifestProcessor) addMetadata(obj *unstructured.Unstructured, componen
 		common.KubernetesAppManagedByKey: common.KubernetesAppManagedByValue,
 		// legacy
 		// add owner label
-		common.OwnerKey: p.owner.Namespace,
+		common.OwnerKey:     p.owner.Namespace,
 		common.OwnerNameKey: p.owner.Name,
 	}
 	common.SetLabels(obj, labels)

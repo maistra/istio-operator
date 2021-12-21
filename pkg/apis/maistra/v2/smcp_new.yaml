@@ -1,6 +1,6 @@
 spec:
   template: default
-  version: v2.0
+  version: v2.1
   cluster:
     name: Kubernetes
     network: main
@@ -286,6 +286,7 @@ spec:
     dataPlane:
       mlts: true # enable mtls for data plane
       automtls: true
+    manageNetworkPolicy: true # manages network policies that allows communication between namespace members and control plane
   gateways:
     ingress: # _the_ istio-ingressgateway
       # same settings as ilb gateway above

@@ -226,6 +226,12 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 		}
 	}
 
+	if security.ManageNetworkPolicy != nil {
+		if err := setHelmBoolValue(values, "global.manageNetworkPolicy", *security.ManageNetworkPolicy); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -523,6 +529,13 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	if setControlPlane {
 		security.ControlPlane = controlPlane
 		setSecurity = true
+	}
+
+	if manageNetworkPolicy, ok, err := in.GetAndRemoveBool("global.manageNetworkPolicy"); ok {
+		security.ManageNetworkPolicy = &manageNetworkPolicy
+		setSecurity = true
+	} else if err != nil {
+		return err
 	}
 
 	if setSecurity {

@@ -18,6 +18,11 @@ type SecurityConfig struct {
 	// DataPlane configures mutual TLS for data plane communication.
 	// +optional
 	DataPlane *DataPlaneSecurityConfig `json:"dataPlane,omitempty"`
+	// Manages network policies that allows communication between namespace members and control plane, defaults to `true`
+	// If false, operator does not create any NetworkPolicy resource, and users are responsible for managing them
+	// .Values.global.manageNetworkPolicy
+	// +optional
+	ManageNetworkPolicy *bool `json:"manageNetworkPolicy,omitempty"`
 }
 
 // TrustConfig configures trust aspects associated with mutual TLS clients

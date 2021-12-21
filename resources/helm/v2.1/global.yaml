@@ -42,6 +42,10 @@ global:
   # external istiod controls all remote clusters: disabled by default
   externalIstiod: false
 
+  # Manage network policies that allows communication between namespace members and control plane
+  # If false, operator does not create any NetworkPolicy resource, and users are responsible for managing them
+  manageNetworkPolicy: true
+
   proxy:
     image: proxyv2
 

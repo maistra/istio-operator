@@ -651,7 +651,7 @@ var securityTestCasesV1 = []conversionTestCase{
 	},
 }
 
-func securityTestCasesV2(version versions.Version) []conversionTestCase{
+func securityTestCasesV2(version versions.Version) []conversionTestCase {
 	ver := version.String()
 	return []conversionTestCase{
 		{
@@ -707,6 +707,48 @@ func securityTestCasesV2(version versions.Version) []conversionTestCase{
 				"global": map[string]interface{}{
 					"multiCluster":  globalMultiClusterDefaults,
 					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "networkpolicy.enabled." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Security: &v2.SecurityConfig{
+					ManageNetworkPolicy: &featureEnabled,
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"manageNetworkPolicy": true,
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"manageNetworkPolicy": true,
+					"multiCluster":        globalMultiClusterDefaults,
+					"meshExpansion":       globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "networkpolicy.disabled." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Security: &v2.SecurityConfig{
+					ManageNetworkPolicy: &featureDisabled,
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"manageNetworkPolicy": false,
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"manageNetworkPolicy": false,
+					"multiCluster":        globalMultiClusterDefaults,
+					"meshExpansion":       globalMeshExpansionDefaults,
 				},
 			}),
 		},
