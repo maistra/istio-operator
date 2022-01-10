@@ -172,17 +172,6 @@ function patchGalley() {
   sed_wrap -i -e '/{{- if eq .Values.revision ""}}/,/{{- end }}/ { /istiod/! d }' $deployment
 
   # multitenant
-  echo '
-  # Maistra specific
-  - apiGroups: ["maistra.io"]
-    resources: ["servicemeshmemberrolls"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["route.openshift.io"]
-    resources: ["routes", "routes/custom-host"]
-    verbs: ["get", "list", "watch", "create", "delete", "update"]
-  - apiGroups: ["maistra.io"]
-    resources: ["servicemeshextensions"]
-    verbs: ["get", "list", "watch"]' >> ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e 's/, *"nodes"//' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e '/- apiGroups:.*admissionregistration\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e '/- apiGroups:.*certificates\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
