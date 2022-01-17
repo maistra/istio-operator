@@ -17,7 +17,7 @@ import (
 
 var gatewaysTestCases []conversionTestCase
 
-func gatewaysTestCasesV2(version versions.Version) []conversionTestCase{
+func gatewaysTestCasesV2(version versions.Version) []conversionTestCase {
 	ver := version.String()
 	return []conversionTestCase{
 		{
@@ -1440,6 +1440,53 @@ func gatewaysTestCasesV2(version versions.Version) []conversionTestCase{
 				"global": map[string]interface{}{
 					"multiCluster":  globalMultiClusterDefaults,
 					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "ingress.additionalContainers." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Gateways: &v2.GatewaysConfig{
+					ClusterIngress: &v2.ClusterIngressGatewayConfig{},
+				},
+				TechPreview: v1.NewHelmValues(map[string]interface{}{
+					"gateways": map[string]interface{}{
+						"istio-ingressgateway": map[string]interface{}{
+							"additionalContainers": []interface{}{
+								map[string]interface{}{
+									"name":            "custom-container",
+									"image":           "custom-image",
+									"imagePullPolicy": "Always",
+								},
+							},
+						},
+					},
+				}),
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"gateways": map[string]interface{}{
+					"istio-ingressgateway": map[string]interface{}{
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+				"gateways": map[string]interface{}{
+					"istio-ingressgateway": map[string]interface{}{
+						"additionalContainers": []interface{}{
+							map[string]interface{}{
+								"name":            "custom-container",
+								"image":           "custom-image",
+								"imagePullPolicy": "Always",
+							},
+						},
+					},
 				},
 			}),
 		},
