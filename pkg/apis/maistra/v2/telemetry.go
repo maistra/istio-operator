@@ -2,6 +2,8 @@ package v2
 
 // TelemetryConfig for the mesh
 type TelemetryConfig struct {
+	Enablement `json:",inline"`
+
 	// Type of telemetry implementation to use.
 	Type TelemetryType `json:"type,omitempty"`
 	// Mixer represents legacy, v1 telemetry.
@@ -102,7 +104,6 @@ type MixerTelemetryStdioConfig struct {
 	// +optional
 	OutputAsJSON *bool `json:"outputAsJSON,omitempty"`
 }
-
 
 // RemoteTelemetryConfig configures a remote, legacy, v1 mixer telemetry.
 // .Values.telemetry.v1.enabled true

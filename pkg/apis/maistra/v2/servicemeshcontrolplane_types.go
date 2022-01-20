@@ -152,6 +152,13 @@ type ControlPlaneSpec struct {
 	// Runtime configuration for pilot (and galley, etc., pre 2.0)
 	// +optional
 	Runtime *ControlPlaneRuntimeConfig `json:"runtime,omitempty"`
+
+	ControlPlaneMode *ControlPlaneModeConfig `json:"controlPlaneMode,omitempty""`
+
+	RemoteMode *RemoteModeConfig `json:"remoteMode,omitempty"`
+
+	CNI *CNIConfig `json:"cni,omitempty"`
+
 	// Addons is used to configure additional features beyond core control plane
 	// components, e.g. visualization, metric storage, etc.
 	// +optional
