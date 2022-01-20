@@ -261,13 +261,46 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 		return nil, err
 	}
 
-	err = spec.Istio.SetField("istio_cni.enabled", cniConfig.Enabled)
+	// In case of split control and data plane, the CNI installation is disabled for the control plane side.
+	// However, this field controls the injector for the data plane, which uses CNI (and so not using real init container, only validator)
+	var isCNIEnabledInSMCP bool
+	if smcp.Spec.CNI != nil {
+		isCNIEnabledInSMCP = *smcp.Spec.CNI.Enabled
+	} else {
+		isCNIEnabledInSMCP = false
+	}
+
+	err = spec.Istio.SetField("istio_cni.enabled", cniConfig.Enabled || isCNIEnabledInSMCP)
 	if err != nil {
 		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.enabled: %v", err)
 	}
 	err = spec.Istio.SetField("istio_cni.istio_cni_network", v.GetCNINetworkName())
 	if err != nil {
 		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.istio_cni_network: %v", err)
+	}
+
+	if smcp.Spec.ControlPlaneMode != nil {
+		err = spec.Istio.SetField("istioDiscovery.enabled", *smcp.Spec.ControlPlaneMode.Enabled)
+	} else {
+		err = spec.Istio.SetField("istioDiscovery.enabled", true)
+	}
+
+	if smcp.Spec.Telemetry != nil {
+		err = spec.Istio.SetField("telemetry.common.enabled", *smcp.Spec.Telemetry.Enabled)
+	} else {
+		err = spec.Istio.SetField("telemetry.common.enabled", true)
+	}
+
+	if smcp.Spec.RemoteMode != nil {
+		err = spec.Istio.SetField("remote.enabled", *smcp.Spec.RemoteMode.Enabled)
+	} else {
+		err = spec.Istio.SetField("remote.enabled", false)
+	}
+
+	if smcp.Spec.Gateways != nil {
+		err = spec.Istio.SetField("gateways.enabled", *smcp.Spec.Gateways.Enabled)
+	} else {
+		err = spec.Istio.SetField("gateways.enabled", true)
 	}
 
 	// Override these globals to match the install namespace
@@ -370,19 +403,6 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 		} else if err := spec.Istio.SetField("kiali.install", true); err != nil {
 			return nil, pkgerrors.Wrapf(err, "error enabling kiali install")
 		}
-	}
-
-	if isComponentEnabled(spec.Istio, v2_1ChartMapping[RemoteChart].enabledField) {
-		log.Info("Remote chart used. Disabling everything else.")
-		discoveryChartDetails := v2_1ChartMapping[DiscoveryChart]
-		discoveryChartDetails.enabledField = "noway"
-		v2_1ChartMapping[DiscoveryChart] = discoveryChartDetails
-		meshConfigChartDetails := v2_1ChartMapping[MeshConfigChart]
-		meshConfigChartDetails.enabledField = "noway"
-		v2_1ChartMapping[MeshConfigChart] = meshConfigChartDetails
-		telemetryCommonChartDetails := v2_1ChartMapping[TelemetryCommonChart]
-		telemetryCommonChartDetails.enabledField = "noway"
-		v2_1ChartMapping[TelemetryCommonChart] = telemetryCommonChartDetails
 	}
 
 	// convert back to the v2 type
