@@ -1538,6 +1538,16 @@ spec:
                   network:
                     type: string
                 type: object
+              cni:
+                properties:
+                  enabled:
+                    type: boolean
+                type: object
+              controlPlaneMode:
+                properties:
+                  enabled:
+                    type: boolean
+                type: object
               gateways:
                 properties:
                   additionalEgress:
@@ -4409,6 +4419,11 @@ spec:
                         type: object
                     type: object
                 type: object
+              remoteMode:
+                properties:
+                  enabled:
+                    type: boolean
+                type: object
               runtime:
                 properties:
                   components:
@@ -5006,6 +5021,8 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               telemetry:
                 properties:
+                  enabled:
+                    type: boolean
                   mixer:
                     properties:
                       adapters:
@@ -6404,6 +6421,16 @@ spec:
                         type: string
                       network:
                         type: string
+                    type: object
+                  cni:
+                    properties:
+                      enabled:
+                        type: boolean
+                    type: object
+                  controlPlaneMode:
+                    properties:
+                      enabled:
+                        type: boolean
                     type: object
                   gateways:
                     properties:
@@ -9276,6 +9303,11 @@ spec:
                             type: object
                         type: object
                     type: object
+                  remoteMode:
+                    properties:
+                      enabled:
+                        type: boolean
+                    type: object
                   runtime:
                     properties:
                       components:
@@ -9873,6 +9905,8 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   telemetry:
                     properties:
+                      enabled:
+                        type: boolean
                       mixer:
                         properties:
                           adapters:

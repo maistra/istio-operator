@@ -1538,6 +1538,16 @@ spec:
                   network:
                     type: string
                 type: object
+              cni:
+                properties:
+                  enabled:
+                    type: boolean
+                type: object
+              controlPlaneMode:
+                properties:
+                  enabled:
+                    type: boolean
+                type: object
               gateways:
                 properties:
                   additionalEgress:
@@ -6399,6 +6409,16 @@ spec:
                         type: string
                       network:
                         type: string
+                    type: object
+                  cni:
+                    properties:
+                      enabled:
+                        type: boolean
+                    type: object
+                  controlPlaneMode:
+                    properties:
+                      enabled:
+                        type: boolean
                     type: object
                   gateways:
                     properties:
