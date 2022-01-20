@@ -39,15 +39,6 @@ spec:
   telemetry:
     type: Istiod
 
-  controlPlaneMode:
-    enabled: true
-
-  remoteMode:
-    enabled: false
-
-  cni:
-    enabled: false
-
   policy:
     type: None
 
