@@ -1538,11 +1538,6 @@ spec:
                   network:
                     type: string
                 type: object
-              cni:
-                properties:
-                  enabled:
-                    type: boolean
-                type: object
               controlPlaneMode:
                 properties:
                   enabled:
@@ -6416,11 +6411,6 @@ spec:
                         type: string
                       network:
                         type: string
-                    type: object
-                  cni:
-                    properties:
-                      enabled:
-                        type: boolean
                     type: object
                   controlPlaneMode:
                     properties:

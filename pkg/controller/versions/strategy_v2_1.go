@@ -261,16 +261,7 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 		return nil, err
 	}
 
-	// In case of split control and data plane, the CNI installation is disabled for the control plane side.
-	// However, this field controls the injector for the data plane, which uses CNI (and so not using real init container, only validator)
-	var isCNIEnabledInSMCP bool
-	if smcp.Spec.CNI != nil {
-		isCNIEnabledInSMCP = *smcp.Spec.CNI.Enabled
-	} else {
-		isCNIEnabledInSMCP = false
-	}
-
-	err = spec.Istio.SetField("istio_cni.enabled", cniConfig.Enabled || isCNIEnabledInSMCP)
+	err = spec.Istio.SetField("istio_cni.enabled", cniConfig.Enabled)
 	if err != nil {
 		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.enabled: %v", err)
 	}
