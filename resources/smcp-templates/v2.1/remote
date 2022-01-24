@@ -1,0 +1,95 @@
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+metadata:
+  name: remote
+spec:
+  version: v2.1
+  general:
+    logging:
+      componentLevels:
+        default: warn
+
+  proxy:
+    injection:
+      autoInject: false
+    networking:
+      protocol:
+        autoDetect:
+          inbound: false
+          outbound: false
+      dns:
+        refreshRate: 300s
+
+  security:
+    enabled: false
+    identity:
+      type: Kubernetes
+
+  telemetry:
+    enabled: false
+    type: Istiod
+
+  remoteMode:
+    enabled: true
+
+  controlPlaneMode:
+    enabled: false
+  
+  cni:
+    enabled: true
+
+  policy:
+    enabled: false
+    type: None
+
+  pilot:
+    enabled: false
+
+  tracing:
+    type: None
+
+  addons:
+    prometheus:
+      enabled: false
+      install:
+        service:
+          metadata:
+            annotations:
+              service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls
+          ingress:
+            enabled: false
+
+    jaeger:
+      name: jaeger
+      install:
+        storage:
+          type: Memory
+        ingress:
+          enabled: false
+
+    grafana:
+      enabled: false
+      install:
+        service:
+          metadata:
+            annotations:
+              service.alpha.openshift.io/serving-cert-secret-name: grafana-tls
+          ingress:
+            enabled: false
+    kiali:
+      enabled: false
+      name: kiali
+      install:
+        dashboard:
+          viewOnly: false
+        service:
+          ingress:
+            enabled: false
+  techPreview:
+    remote:
+      enabled: true
+    wasmExtensions:
+      enabled: false
+    sidecarInjectorWebhook:
+      objectSelector:
+        enabled: false

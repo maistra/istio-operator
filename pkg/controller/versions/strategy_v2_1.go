@@ -30,7 +30,7 @@ var (
 	v2_1ChartMapping = map[string]chartRenderingDetails{
 		DiscoveryChart: {
 			path:         "istio-control/istio-discovery",
-			enabledField: "",
+			enabledField: "istioDiscovery",
 		},
 		GatewayIngressChart: {
 			path:         "gateways/istio-ingress",
@@ -42,7 +42,7 @@ var (
 		},
 		TelemetryCommonChart: {
 			path:         "istio-telemetry/telemetry-common",
-			enabledField: "",
+			enabledField: "telemetry.common",
 		},
 		MixerTelemetryChart: {
 			path:         "istio-telemetry/mixer-telemetry",
@@ -74,7 +74,7 @@ var (
 		},
 		MeshConfigChart: {
 			path:         "mesh-config",
-			enabledField: "",
+			enabledField: "meshConfig",
 		},
 		WASMExtensionsChart: {
 			path:         "wasm-extensions",
@@ -95,6 +95,7 @@ var v2_1ChartOrder = [][]string{
 	{DiscoveryChart},
 	{MeshConfigChart},
 	{TelemetryCommonChart, PrometheusChart},
+	{RemoteChart},
 	{MixerPolicyChart, MixerTelemetryChart, TracingChart, GatewayIngressChart, GatewayEgressChart, GrafanaChart},
 	{KialiChart},
 	{ThreeScaleChart, WASMExtensionsChart, RLSChart},
@@ -435,7 +436,7 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 		if specialCharts.Has(name) {
 			continue
 		}
-		if chartDetails.enabledField == "" || isComponentEnabled(spec.Istio, chartDetails.enabledField) {
+		if isComponentEnabled(spec.Istio, chartDetails.enabledField) {
 			log.V(2).Info(fmt.Sprintf("rendering %s chart", name))
 			if chartRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), v2_1ChartMapping[name].path), smcp.GetNamespace(), values); err == nil {
 				renderings[name] = chartRenderings[name]

@@ -402,7 +402,6 @@ function removeUnsupportedCharts() {
   echo "removing unsupported Helm charts"
   rm -rf ${HELM_DIR}/istio-cni
   rm -rf ${HELM_DIR}/istiocoredns
-  rm -rf ${HELM_DIR}/istiod-remote
   rm -rf ${HELM_DIR}/istio-operator
 }
 
