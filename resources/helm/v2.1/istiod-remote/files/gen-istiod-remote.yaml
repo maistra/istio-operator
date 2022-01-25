@@ -6,7 +6,7 @@ metadata:
   name: istio
   namespace: istio-system
   labels:
-    maistra-version: "2.1.0"
+    maistra-version: "2.1.1"
     istio.io/rev: default
     release: istiod-remote
 data:
@@ -32,7 +32,7 @@ metadata:
   name: istio-sidecar-injector
   namespace: istio-system
   labels:
-    maistra-version: "2.1.0"
+    maistra-version: "2.1.1"
     istio.io/rev: default
     release: istiod-remote
 data:
@@ -933,7 +933,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: istio-sidecar-injector
   labels:
-    maistra-version: "2.1.0"
+    maistra-version: "2.1.1"
     istio.io/rev: default
     app: sidecar-injector
     release: istiod-remote
