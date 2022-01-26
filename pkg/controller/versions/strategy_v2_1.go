@@ -303,6 +303,14 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 		}
 	}
 
+	if smcp.Spec.MeshConfig != nil {
+		if smcp.Spec.MeshConfig.Enabled != nil {
+			err = spec.Istio.SetField("meshConfig.enabled", *smcp.Spec.MeshConfig.Enabled)
+		} else {
+			err = spec.Istio.SetField("meshConfig.enabled", true)
+		}
+	}
+
 	// Override these globals to match the install namespace
 	err = spec.Istio.SetField("global.istioNamespace", smcp.GetNamespace())
 	if err != nil {
