@@ -272,27 +272,35 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 	}
 
 	if smcp.Spec.ControlPlaneMode != nil {
-		err = spec.Istio.SetField("istioDiscovery.enabled", *smcp.Spec.ControlPlaneMode.Enabled)
-	} else {
-		err = spec.Istio.SetField("istioDiscovery.enabled", true)
+		if smcp.Spec.ControlPlaneMode.Enabled != nil {
+			err = spec.Istio.SetField("istioDiscovery.enabled", *smcp.Spec.ControlPlaneMode.Enabled)
+		} else {
+			err = spec.Istio.SetField("istioDiscovery.enabled", true)
+		}
 	}
 
 	if smcp.Spec.Telemetry != nil {
-		err = spec.Istio.SetField("telemetry.common.enabled", *smcp.Spec.Telemetry.Enabled)
-	} else {
-		err = spec.Istio.SetField("telemetry.common.enabled", true)
+		if smcp.Spec.Telemetry.Enabled != nil {
+			err = spec.Istio.SetField("telemetry.common.enabled", *smcp.Spec.Telemetry.Enabled)
+		} else {
+			err = spec.Istio.SetField("telemetry.common.enabled", true)
+		}
 	}
 
 	if smcp.Spec.RemoteMode != nil {
-		err = spec.Istio.SetField("remote.enabled", *smcp.Spec.RemoteMode.Enabled)
-	} else {
-		err = spec.Istio.SetField("remote.enabled", false)
+		if smcp.Spec.RemoteMode.Enabled != nil {
+			err = spec.Istio.SetField("remote.enabled", *smcp.Spec.RemoteMode.Enabled)
+		} else {
+			err = spec.Istio.SetField("remote.enabled", false)
+		}
 	}
 
 	if smcp.Spec.Gateways != nil {
-		err = spec.Istio.SetField("gateways.enabled", *smcp.Spec.Gateways.Enabled)
-	} else {
-		err = spec.Istio.SetField("gateways.enabled", true)
+		if smcp.Spec.Gateways.Enabled != nil {
+			err = spec.Istio.SetField("gateways.enabled", *smcp.Spec.Gateways.Enabled)
+		} else {
+			err = spec.Istio.SetField("gateways.enabled", true)
+		}
 	}
 
 	// Override these globals to match the install namespace
