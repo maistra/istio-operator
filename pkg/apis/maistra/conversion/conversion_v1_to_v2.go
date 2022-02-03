@@ -162,7 +162,7 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 	}
 
 	// Security
-	if err := populateSecurityConfig(values, out); err != nil {
+	if err := populateSecurityConfig(values, out, version); err != nil {
 		return err
 	}
 

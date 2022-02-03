@@ -1,0 +1,66 @@
+{{- /* Core defines the common configuration used by all webhook segments */}}
+{{- define "core" }}
+{{- /* Kubernetes unfortunately requires a unique name for the webhook in some newer versions, so we assign
+a unique prefix to each. */}}
+- name: {{.Prefix}}sidecar-injector.istio.io
+  clientConfig:
+    {{- if .Values.istiodRemote.injectionURL }}
+    url: "{{ .Values.istiodRemote.injectionURL }}"
+    {{- else }}
+    service:
+      name: istiod-{{ .Values.revision | default "default" }}
+      namespace: {{ .Release.Namespace }}
+      path: "{{ .Values.istiodRemote.injectionPath }}"
+      port: 443
+    {{- end }}
+    caBundle: ""
+  sideEffects: None
+  rules:
+  - operations: [ "CREATE" ]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  failurePolicy: Fail
+  admissionReviewVersions: ["v1beta1", "v1"]
+{{- end }}
+{{- /* Installed for each revision - not installed for cluster resources ( cluster roles, bindings, crds) */}}
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
+  labels:
+    maistra-version: "2.2.0"
+    istio.io/rev: {{ .Values.revision | default "default" }}
+    app: sidecar-injector
+    release: {{ .Release.Name }}
+webhooks:
+  {{- include "core" (mergeOverwrite (deepCopy .) (dict "Prefix" "") ) }}
+  namespaceSelector:
+    matchExpressions:
+      - key: maistra.io/member-of
+        operator: In
+        values:
+        - {{ .Release.Namespace }}
+      - key: maistra.io/ignore-namespace
+        operator: DoesNotExist
+      - key: istio-injection
+        operator: NotIn
+        values:
+        - disabled
+      - key: istio-env
+        operator: DoesNotExist
+{{- if .Values.sidecarInjectorWebhook.objectSelector.enabled }}
+  objectSelector:
+    matchExpressions:
+{{- if eq .Values.global.proxy.autoInject "enabled" }}
+    - key: "sidecar.istio.io/inject"
+      operator: NotIn
+      values:
+      - "false"
+{{- else }}
+    - key: "sidecar.istio.io/inject"
+      operator: In
+      values:
+      - "true"
+{{- end }}
+{{- end }}

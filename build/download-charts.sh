@@ -5,14 +5,14 @@ set -e
 # include sed_wrap
 source $(dirname ${BASH_SOURCE})/sed-wrapper.sh
 
-: ${MAISTRA_VERSION:=2.1.1}
+: ${MAISTRA_VERSION:=2.2.0}
 : ${MAISTRA_REPO:=https://github.com/maistra/istio}
-: ${MAISTRA_BRANCH:=maistra-2.1}
+: ${MAISTRA_BRANCH:=maistra-2.2}
 
 : ${SOURCE_DIR:=$(pwd)}
 : ${OUT_DIR:=${SOURCE_DIR}/tmp/_output}
 
-: ${ISTIO_VERSION:=1.9.9}
+: ${ISTIO_VERSION:=1.12.2}
 
 RELEASES_DIR=${OUT_DIR}/helm/istio-releases
 
@@ -74,4 +74,6 @@ source $(dirname ${BASH_SOURCE})/patch-charts.sh
   cd "${RELEASES_DIR}"
   echo "producing diff file for charts: $(pwd)/chart-diffs.diff"
   diff -uNr ${EXTRACT_DIR}/manifests/charts/ ${HELM_DIR}/ > chart-diffs.diff || [ $? -eq 1 ]
+#  cp -r ${EXTRACT_DIR}/manifests/charts/ ${HELM_DIR}-original/
+  echo "Location of patched charts: ${HELM_DIR}/"
 )

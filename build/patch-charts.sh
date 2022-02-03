@@ -13,20 +13,6 @@ function copyOverlay() {
   find "${OVERLAYS_DIR}/" -maxdepth 1 -mindepth 1 -type d | xargs -I '{}' -n 1 -rt cp -rv '{}' ${HELM_DIR}
 }
 
-# The following modifications are made to the generated helm template for the Istio yaml files
-# - remove the create customer resources job, we handle this in the installer to deal with potential races
-# - remove the cleanup secrets job, we handle this in the installer
-# - remove the kubernetes gateways
-# - change privileged value on istio-proxy injection configmap to false
-# - update the namespaceSelector to ignore namespaces with the label maistra.io/ignore-namespace
-# - add a maistra-version label to all objects which have a release label
-# - remove GODEBUG from the pilot environment
-# - remove istio-multi service account
-# - remove istio-multi cluster role binding
-# - remove istio-reader cluster role
-# - switch prometheus init container image from busybox to prometheus
-# - switch webhook ports to 8443
-# - switch health check files into /tmp
 function patchTemplates() {
   echo "patching Istio Helm charts"
 
@@ -36,44 +22,16 @@ function patchTemplates() {
 \1  maistra-control-plane: {{ .Release.Namespace }}/ } } }' $file
   done
 
-  # - remove istio-multi service account
-  # - for 1.6, this contains the sa for istiod, so need to do some munging
-  sed_wrap -i -e 's/\(: istiod-service-account\)/\1-{{ .Values.revision | default "default" }}/' \
-      ${HELM_DIR}/base/templates/serviceaccount.yaml \
-      ${HELM_DIR}/base/templates/rolebinding.yaml \
-      ${HELM_DIR}/base/templates/clusterrolebinding.yaml \
-      ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
-
-  sed_wrap -i -e '1,/^---/ d' \
-    ${HELM_DIR}/base/templates/serviceaccount.yaml \
-    ${HELM_DIR}/base/templates/clusterrolebinding.yaml
-
   # role and role binding are for istiod only
   sed_wrap -i -e '/labels:/ i\
   annotations:\
     "maistra.io/internal": "true"' \
-    -e 's/name: istiod-{{.*/name: istiod-internal-{{ .Values.revision | default "default" }}/' \
-      ${HELM_DIR}/base/templates/role.yaml \
-      ${HELM_DIR}/base/templates/rolebinding.yaml
-  mv ${HELM_DIR}/base/templates/role.yaml ${HELM_DIR}/istio-control/istio-discovery/templates/role.yaml
-  mv ${HELM_DIR}/base/templates/rolebinding.yaml ${HELM_DIR}/istio-control/istio-discovery/templates/rolebinding.yaml
+    -e 's/^  name: istiod{{/  name: istiod-internal{{/' \
+      ${HELM_DIR}/istio-control/istio-discovery/templates/role.yaml \
+      ${HELM_DIR}/istio-control/istio-discovery/templates/rolebinding.yaml
 
-  # update role reference too
-  sed_wrap -i -e 's/istiod-{{.*/istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}/' \
-      ${HELM_DIR}/base/templates/clusterrolebinding.yaml
-
-  mv ${HELM_DIR}/base/templates/serviceaccount.yaml ${HELM_DIR}/istio-control/istio-discovery/templates/serviceaccount.yaml
-  mv ${HELM_DIR}/base/templates/clusterrolebinding.yaml ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrolebinding.yaml
-
-  # - remove istio-reader cluster role
-  # - and again....
-  sed_wrap -i -e '/^---/,$ d' \
-      -e 's/name: istiod-{{.*$/name: istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}/' \
-      ${HELM_DIR}/base/templates/clusterrole.yaml
-  mv ${HELM_DIR}/base/templates/clusterrole.yaml ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
-
-  # - move istiod specific templates to istio-discovery
-  mv ${HELM_DIR}/base/templates/endpoints.yaml ${HELM_DIR}/base/templates/services.yaml ${HELM_DIR}/base/templates/validatingwebhookconfiguration.yaml ${HELM_DIR}/istio-control/istio-discovery/templates/
+  # read trustDomain from meshConfig instead of hardcoding
+  sed_wrap -i -e 's/"cluster.local"/{{ .Values.meshConfig.trustDomain | default .Values.global.trustDomain }}/g' ${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml
 
   # - nuke unnecessary files from base
   rm -rf ${HELM_DIR}/base/templates ${HELM_DIR}/base/files ${HELM_DIR}/base/crds/crd-operator.yaml
@@ -104,8 +62,8 @@ function patchTemplates() {
     if grep -l '\.Values\.global\.istioNamespace' $file; then
       sed_wrap -i -e 's/\.Values\.global\.istioNamespace/.Release.Namespace/' $file
     fi
-    if grep -l '{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}' $file; then
-      sed_wrap -i -e 's/{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}/-{{ .Values.revision | default "default" }}/' $file
+    if grep -l -e '{{- if not (eq .Values.revision "") *}}-{{ .Values.revision }}{{- end }}' $file; then
+      sed_wrap -i -e 's/{{- if not (eq .Values.revision "") *}}-{{ .Values.revision }}{{- end }}/-{{ .Values.revision | default "default" }}/' $file
     fi
     if grep -l 'operator\.istio\.io' $file; then
       sed_wrap -i -e '/operator\.istio\.io/d' $file
@@ -120,13 +78,6 @@ function patchGalley() {
   # add namespace selectors
   # remove define block
   webhookconfig=${HELM_DIR}/istio-control/istio-discovery/templates/validatingwebhookconfiguration.yaml
-  sed_wrap -i -e '/metadata:/,/webhooks:/ {
-                /namespace:/d
-                /name:/s/istiod-{{ .Release.Namespace }}/istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}/
-                /labels:/a\
-\    istio.io/rev: \{\{ .Values.revision | default "default" \}\}
-              }' $webhookconfig
-  sed_wrap -i -e 's/name: istiod$/name: istiod-{{ .Values.revision | default "default" }}/' $webhookconfig
   sed_wrap -i -e 's|\(\(^ *\)rules:\)|\2namespaceSelector:\
 \2  matchExpressions:\
 \2  - key: maistra.io/member-of\
@@ -168,21 +119,18 @@ function patchGalley() {
   sed_wrap -i -e 's/^\(.*\)\- containerPort: 15017.*$/\1- name: webhook\
 \1  containerPort: 15017/' $deployment
 
-  # always istiod
-  sed_wrap -i -e '/{{- if eq .Values.revision ""}}/,/{{- end }}/ { /istiod/! d }' $deployment
-
   # multitenant
-  echo '
-  # Maistra specific
-  - apiGroups: ["maistra.io"]
-    resources: ["servicemeshmemberrolls"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["route.openshift.io"]
-    resources: ["routes", "routes/custom-host"]
-    verbs: ["get", "list", "watch", "create", "delete", "update"]
-  - apiGroups: ["maistra.io"]
-    resources: ["servicemeshextensions"]
-    verbs: ["get", "list", "watch"]' >> ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
+  sed_wrap -i -e '/^---/i \
+  # Maistra specific \
+  - apiGroups: ["maistra.io"] \
+    resources: ["servicemeshmemberrolls"] \
+    verbs: ["get", "list", "watch"] \
+  - apiGroups: ["route.openshift.io"] \
+    resources: ["routes", "routes/custom-host"] \
+    verbs: ["get", "list", "watch", "create", "delete", "update"] \
+  - apiGroups: ["maistra.io"] \
+    resources: ["servicemeshextensions"] \
+    verbs: ["get", "list", "watch"]' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e 's/, *"nodes"//' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e '/- apiGroups:.*admissionregistration\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e '/- apiGroups:.*certificates\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
@@ -218,6 +166,12 @@ function patchGalley() {
   sed_wrap -i -e '/base:/ a\
   validationURL: ""' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
 
+  # Disable Gateway API support
+  sed_wrap -i -e 's/env: {}/env: \
+    PILOT_ENABLE_GATEWAY_API: "false" \
+    PILOT_ENABLE_GATEWAY_API_STATUS: "false" \
+    PILOT_ENABLE_GATEWAY_API_DEPLOYMENT_CONTROLLER: "false"/g' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
+
   # always istiod
   sed_wrap -i -e '/{{- if ne .Values.revision ""}}/,/{{- end }}/d' \
       -e '/matchLabels:/a\
@@ -251,9 +205,6 @@ function patchGateways() {
   echo "patching Gateways specific Helm charts"
   sed_wrap -i -r -e 's/type: LoadBalancer *(#.*)?$/type: ClusterIP/' ${HELM_DIR}/gateways/istio-ingress/values.yaml
 
-  # do not expose port 15012, support for mesh expansion will automatically add this port
-  sed_wrap -i -e '/port: 15012/,+3d' ${HELM_DIR}/gateways/istio-ingress/values.yaml
-
   # add tracer config
   tracerConfig='\
   # Configuration for each of the supported tracers\
@@ -283,8 +234,8 @@ function patchGateways() {
       # zipkin service (port 9411) in the same namespace as the other istio components.\
       address: ""\
 '
-  sed_wrap -i -e "/# Deprecated, use meshConfig.trustDomain/ i$tracerConfig" ${HELM_DIR}/gateways/istio-ingress/values.yaml
-  sed_wrap -i -e "/# Deprecated, use meshConfig.trustDomain/ i$tracerConfig" ${HELM_DIR}/gateways/istio-egress/values.yaml
+  sed_wrap -i -e "/meshConfig:/ i$tracerConfig" ${HELM_DIR}/gateways/istio-ingress/values.yaml
+  sed_wrap -i -e "/meshConfig:/ i$tracerConfig" ${HELM_DIR}/gateways/istio-egress/values.yaml
 
   # Disable defaultTemplates to avoid injection of arbitrary things
   sed_wrap -i -e 's/defaultTemplates: \[\]/\# defaultTemplates: \[\]/' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
@@ -351,50 +302,7 @@ function patchGateways() {
 
 function patchSidecarInjector() {
   echo "patching Sidecar Injector specific Helm charts"
-  # Webhooks are not namespaced!  we do this to ensure we're not setting owner references on them
-  webhookconfig=${HELM_DIR}/istio-control/istio-discovery/templates/mutatingwebhook.yaml
-  sed_wrap -i -e '/^{{- if eq .Release.Namespace "istio-system"}}/,/^{{- end }}/d' \
-      -e '/metadata:/a\
-\  name: istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}' \
-    $webhookconfig
-
-  matchExpr='\
-    matchExpressions:\
-      - key: maistra.io\/member-of\
-        operator: In\
-        values:\
-        - \{\{ .Release.Namespace \}\}\
-      - key: maistra.io/ignore-namespace\
-        operator: DoesNotExist\
-      - key: istio-injection\
-        operator: NotIn\
-        values:\
-        - disabled\
-      - key: istio-env\
-        operator: DoesNotExist\
-\{\{- if .Values.sidecarInjectorWebhook.objectSelector.enabled \}\}\
-  objectSelector:\
-    matchExpressions:\
-\{\{- if eq .Values.global.proxy.autoInject "enabled" \}\}\
-    - key: "sidecar.istio.io/inject"\
-      operator: NotIn\
-      values:\
-      - "false"\
-\{\{- else \}\}\
-    - key: "sidecar.istio.io/inject"\
-      operator: In\
-      values:\
-      - "true"\
-\{\{- end \}\}\
-\{\{- end \}\}
-'
-  sed_wrap -i -e "/if .Values.sidecarInjectorWebhook.enableNamespacesByDefault/ i$matchExpr" $webhookconfig
-  # Delete everything after the match
-  sed_wrap -i -e '/if .Values.sidecarInjectorWebhook.enableNamespacesByDefault/,$d' $webhookconfig
-
-  echo "{{- end }}" >> $webhookconfig
-  # remove {{- if not .Values.global.operatorManageWebhooks }} ... {{- end }}
-  sed_wrap -i -e '/operatorManageWebhooks/ d' $webhookconfig
+  # Instead of patching mutatingwebhook.yaml, we now overlay it.
 
   # - change privileged value on istio-proxy injection configmap to false
   # setting the proper values will fix this:
@@ -521,7 +429,7 @@ global:\
 
 function copyGlobalValues() {
   echo "copying global.yaml file from overlay charts as global.yaml file is removed in upstream but it's still needed."
-  cp ${SOURCE_DIR}/resources/helm/overlays/global.yaml ${SOURCE_DIR}/resources/helm/v2.1/
+  cp ${SOURCE_DIR}/resources/helm/overlays/global.yaml ${SOURCE_DIR}/resources/helm/v2.2/
 }
 
 function hacks() {
@@ -539,9 +447,6 @@ patchTemplates
 patchGalley
 patchGateways
 patchSidecarInjector
-#patchMixer # no longer present in 2.1
-#patchKialiTemplate # no longer present upstream
-#patchKialiOpenShift
 moveEnvoyFiltersToMeshConfigChart
 copyGlobalValues
 # TODO: remove this hack once the image is updated to include workingDir

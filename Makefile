@@ -14,10 +14,10 @@
 
 -include Makefile.overrides
 
-MAISTRA_VERSION        ?= 2.1.1
-MAISTRA_BRANCH         ?= maistra-2.1
-REPLACES_PRODUCT_CSV   ?= 2.1.0
-REPLACES_COMMUNITY_CSV ?= 2.1.0
+MAISTRA_VERSION        ?= 2.2.0
+MAISTRA_BRANCH         ?= maistra-2.2
+REPLACES_PRODUCT_CSV   ?= 2.1.1
+REPLACES_COMMUNITY_CSV ?= 2.1.1
 VERSION                ?= development
 CONTAINER_CLI          ?= docker
 COMMUNITY              ?= true
@@ -186,9 +186,22 @@ collect-2.0-templates:
 ################################################################################
 # maistra v2.1
 ################################################################################
+.PHONY: update-remote-maistra-2.1
+update-remote-maistra-2.1:
+ifeq "${OFFLINE_BUILD}" "false"
+	git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-2.1
+	git fetch ${GIT_UPSTREAM_REMOTE} maistra-2.1:maistra-2.1
+endif
+
 .PHONY: update-2.1-charts
-update-2.1-charts:
-	HELM_DIR=${RESOURCES_DIR}/helm/v2.1 ISTIO_VERSION=1.9.8 ${SOURCE_DIR}/build/download-charts.sh
+update-2.1-charts: update-remote-maistra-2.1
+	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-2.1 -- ${SOURCE_DIR}/resources/helm/v2.1
+	git reset HEAD ${SOURCE_DIR}/resources/helm/v2.1
+
+.PHONY: update-2.1-templates
+update-2.1-templates: update-remote-maistra-2.1
+	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-2.1 -- ${SOURCE_DIR}/resources/smcp-templates/v2.1
+	git reset HEAD ${SOURCE_DIR}/resources/smcp-templates/v2.1
 
 .PHONY: collect-2.1-charts
 collect-2.1-charts:
@@ -200,6 +213,24 @@ collect-2.1-templates:
 	mkdir -p ${TEMPLATES_OUT_DIR}/v2.1
 	cp ${RESOURCES_DIR}/smcp-templates/v2.1/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v2.1/default
 	find ${RESOURCES_DIR}/smcp-templates/v2.1/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" |xargs cp -t ${TEMPLATES_OUT_DIR}/v2.1
+
+################################################################################
+# maistra v2.2
+################################################################################
+.PHONY: update-2.2-charts
+update-2.2-charts:
+	HELM_DIR=${RESOURCES_DIR}/helm/v2.2 ISTIO_VERSION=1.12.2 ${SOURCE_DIR}/build/download-charts.sh
+
+.PHONY: collect-2.2-charts
+collect-2.2-charts:
+	mkdir -p ${HELM_OUT_DIR}
+	cp -rf ${RESOURCES_DIR}/helm/v2.2 ${HELM_OUT_DIR}
+
+.PHONY: collect-2.2-templates
+collect-2.2-templates:
+	mkdir -p ${TEMPLATES_OUT_DIR}/v2.2
+	cp ${RESOURCES_DIR}/smcp-templates/v2.2/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v2.2/default
+	find ${RESOURCES_DIR}/smcp-templates/v2.2/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" |xargs cp -t ${TEMPLATES_OUT_DIR}/v2.2
 
 ################################################################################
 # OLM manifest generation
@@ -242,19 +273,19 @@ ifneq "${OSSM_MANIFEST_DATE}" ""
 endif
 
 .PHONY: update-charts
-update-charts: update-1.0-charts update-1.1-charts update-2.0-charts update-2.1-charts
+update-charts: update-1.0-charts update-1.1-charts update-2.0-charts update-2.1-charts update-2.2-charts
 
 .PHONY: update-templates
-update-templates: update-1.0-templates update-1.1-templates update-2.0-templates
+update-templates: update-1.0-templates update-1.1-templates update-2.0-templates update-2.1-templates
 
 ################################################################################
 # resource collection
 ################################################################################
 .PHONY: collect-charts
-collect-charts: collect-1.0-charts collect-1.1-charts collect-2.0-charts collect-2.1-charts
+collect-charts: collect-1.0-charts collect-1.1-charts collect-2.0-charts collect-2.1-charts collect-2.2-charts
 
 .PHONY: collect-templates
-collect-templates: collect-1.0-templates collect-1.1-templates collect-2.0-templates collect-2.1-templates
+collect-templates: collect-1.0-templates collect-1.1-templates collect-2.0-templates collect-2.1-templates collect-2.2-templates
 
 .PHONY: collect-olm-manifests
 collect-olm-manifests:

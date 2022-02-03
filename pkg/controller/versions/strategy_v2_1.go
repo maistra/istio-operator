@@ -225,7 +225,7 @@ func (v *versionStrategyV2_1) GetChartInstallOrder() [][]string {
 // TODO: consider consolidating this with 2.0 rendering logic
 func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
 	log := common.LogFromContext(ctx)
-	//Generate the spec
+	// Generate the spec
 	// XXX: we should apply v2 templates first, then convert to values.yaml (v1)
 	v1smcp := &v1.ServiceMeshControlPlane{}
 	if err := v1smcp.ConvertFrom(smcp); err != nil {
@@ -399,7 +399,7 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 		return nil, err
 	}
 
-	//Render the charts
+	// Render the charts
 	allErrors := []error{}
 	renderings := make(map[string][]manifest.Manifest)
 	log.Info("rendering helm charts")
@@ -525,6 +525,10 @@ func (v *versionStrategyV2_1) GetTelemetryType(in *v1.HelmValues, mixerTelemetry
 
 func (v *versionStrategyV2_1) GetPolicyType(in *v1.HelmValues, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled bool) v2.PolicyType {
 	return v.conversionImpl.GetPolicyType(in, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled)
+}
+
+func (v *versionStrategyV2_1) GetTrustDomainFieldPath() string {
+	return v.conversionImpl.GetTrustDomainFieldPath()
 }
 
 func validateAndConfigureRLS(spec *v1.HelmValues) error {

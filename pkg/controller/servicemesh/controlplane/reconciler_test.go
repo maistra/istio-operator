@@ -196,6 +196,7 @@ func TestManifestValidation(t *testing.T) {
 				versions.V1_1: "namespace of manifest b/another-ingress not in mesh",
 				versions.V2_0: "Spec is invalid: error: [namespace \"b\" for gateway \"another-ingress\" is not configured as a mesh member, namespace \"d\" for gateway \"another-egress\" is not configured as a mesh member]",
 				versions.V2_1: "Spec is invalid: error: [namespace \"b\" for gateway \"another-ingress\" is not configured as a mesh member, namespace \"d\" for gateway \"another-egress\" is not configured as a mesh member]",
+				versions.V2_2: "Spec is invalid: error: [namespace \"b\" for gateway \"another-ingress\" is not configured as a mesh member, namespace \"d\" for gateway \"another-egress\" is not configured as a mesh member]",
 			},
 		},
 		{

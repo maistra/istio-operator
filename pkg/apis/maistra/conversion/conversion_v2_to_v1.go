@@ -108,6 +108,11 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 		return err
 	}
 
+	version, versionErr := versions.ParseVersion(in.Version)
+	if versionErr != nil {
+		return versionErr
+	}
+
 	if len(in.Profiles) == 1 {
 		out.Template = in.Profiles[0]
 	}
@@ -165,7 +170,7 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 	}
 
 	// Security
-	if err := populateSecurityValues(in, values); err != nil {
+	if err := populateSecurityValues(in, values, version); err != nil {
 		return err
 	}
 

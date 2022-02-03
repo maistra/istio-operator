@@ -27,11 +27,13 @@ const (
 	V2_0
 	// V2_1 -> v2.1
 	V2_1
+	// V2_2 -> v2.2
+	V2_2
 	// Add new versions here, above lastKnownVersion. Remember to add a string mapping in init() below
 	lastKnownVersion version = iota - 1
 )
 
-var AllV2Versions = []Version{V2_0, V2_1}
+var AllV2Versions = []Version{V2_0, V2_1, V2_2}
 
 func init() {
 	versionToString = map[version]string{
@@ -40,6 +42,7 @@ func init() {
 		V1_1:           "v1.1",
 		V2_0:           "v2.0",
 		V2_1:           "v2.1",
+		V2_2:           "v2.2",
 	}
 
 	versionToStrategy = map[version]VersionStrategy{
@@ -48,6 +51,7 @@ func init() {
 		V1_1:           &versionStrategyV1_1{version: V1_1},
 		V2_0:           &versionStrategyV2_0{version: V2_0},
 		V2_1:           &versionStrategyV2_1{version: V2_1},
+		V2_2:           &versionStrategyV2_2{version: V2_2},
 	}
 
 	versionToCNINetwork = map[version]string{
@@ -56,6 +60,7 @@ func init() {
 		V1_1:           "v1-1-istio-cni",
 		V2_0:           "v2-0-istio-cni",
 		V2_1:           "v2-1-istio-cni",
+		V2_2:           "v2-2-istio-cni",
 	}
 
 	for v, str := range versionToString {
@@ -131,6 +136,7 @@ type ConversionStrategy interface {
 	GetExpansionPorts() []corev1.ServicePort
 	GetTelemetryType(in *v1.HelmValues, mixerTelemetryEnabled, mixerTelemetryEnabledSet, remoteEnabled bool) v2.TelemetryType
 	GetPolicyType(in *v1.HelmValues, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled bool) v2.PolicyType
+	GetTrustDomainFieldPath() string
 }
 
 // VersionStrategy provides encapsulates customization required for a particular
@@ -242,6 +248,9 @@ func (v *nilVersionStrategy) GetPolicyType(in *v1.HelmValues, mixerPolicyEnabled
 	return ""
 }
 
+func (v *nilVersionStrategy) GetTrustDomainFieldPath() string {
+	return ""
+}
 
 type invalidVersionStrategy struct {
 	version
@@ -281,6 +290,10 @@ func (v *invalidVersionStrategy) GetTelemetryType(in *v1.HelmValues, mixerTeleme
 }
 
 func (v *invalidVersionStrategy) GetPolicyType(in *v1.HelmValues, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled bool) v2.PolicyType {
+	return ""
+}
+
+func (v *invalidVersionStrategy) GetTrustDomainFieldPath() string {
 	return ""
 }
 

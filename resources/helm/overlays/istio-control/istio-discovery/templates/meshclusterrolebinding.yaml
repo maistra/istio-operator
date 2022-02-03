@@ -11,6 +11,6 @@ roleRef:
   name: istiod-internal-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
 subjects:
   - kind: ServiceAccount
-    name: istiod-service-account-{{ .Values.revision | default "default" }}
+    name: istiod-{{ .Values.revision | default "default" }}
     namespace: {{ .Release.Namespace }}
 ---

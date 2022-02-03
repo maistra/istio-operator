@@ -41,7 +41,7 @@ var v1_1ChartOrder = [][]string{
 
 type versionStrategyV1_1 struct {
 	version
-	renderImpl v1xRenderingStrategy
+	renderImpl     v1xRenderingStrategy
 	conversionImpl v1xConversionStrategy
 }
 
@@ -348,3 +348,6 @@ func (v *versionStrategyV1_1) GetPolicyType(in *v1.HelmValues, mixerPolicyEnable
 	return v.conversionImpl.GetPolicyType(in, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled)
 }
 
+func (v *versionStrategyV1_1) GetTrustDomainFieldPath() string {
+	return v.conversionImpl.GetTrustDomainFieldPath()
+}
