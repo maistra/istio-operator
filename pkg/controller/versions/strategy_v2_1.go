@@ -74,7 +74,7 @@ var (
 		},
 		MeshConfigChart: {
 			path:         "mesh-config",
-			enabledField: "meshConfig",
+			enabledField: "",
 		},
 		WASMExtensionsChart: {
 			path:         "wasm-extensions",
@@ -300,14 +300,6 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 			err = spec.Istio.SetField("gateways.enabled", *smcp.Spec.Gateways.Enabled)
 		} else {
 			err = spec.Istio.SetField("gateways.enabled", true)
-		}
-	}
-
-	if smcp.Spec.MeshConfig != nil {
-		if smcp.Spec.MeshConfig.Enabled != nil {
-			err = spec.Istio.SetField("meshConfig.enabled", *smcp.Spec.MeshConfig.Enabled)
-		} else {
-			err = spec.Istio.SetField("meshConfig.enabled", true)
 		}
 	}
 
