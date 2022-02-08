@@ -274,32 +274,56 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 	if smcp.Spec.ControlPlaneMode != nil {
 		if smcp.Spec.ControlPlaneMode.Enabled != nil {
 			err = spec.Istio.SetField("istioDiscovery.enabled", *smcp.Spec.ControlPlaneMode.Enabled)
+			if err != nil {
+				return nil, err
+			}
 		} else {
 			err = spec.Istio.SetField("istioDiscovery.enabled", true)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	if smcp.Spec.Telemetry != nil {
 		if smcp.Spec.Telemetry.Enabled != nil {
 			err = spec.Istio.SetField("telemetry.common.enabled", *smcp.Spec.Telemetry.Enabled)
+			if err != nil {
+				return nil, err
+			}
 		} else {
 			err = spec.Istio.SetField("telemetry.common.enabled", true)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	if smcp.Spec.RemoteMode != nil {
 		if smcp.Spec.RemoteMode.Enabled != nil {
 			err = spec.Istio.SetField("remote.enabled", *smcp.Spec.RemoteMode.Enabled)
+			if err != nil {
+				return nil, err
+			}
 		} else {
 			err = spec.Istio.SetField("remote.enabled", false)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	if smcp.Spec.Gateways != nil {
 		if smcp.Spec.Gateways.Enabled != nil {
 			err = spec.Istio.SetField("gateways.enabled", *smcp.Spec.Gateways.Enabled)
+			if err != nil {
+				return nil, err
+			}
 		} else {
 			err = spec.Istio.SetField("gateways.enabled", true)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
