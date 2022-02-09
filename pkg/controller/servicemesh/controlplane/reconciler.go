@@ -258,7 +258,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 			madeChanges = madeChanges || changes
 			if err != nil {
 				reconciliationReason = status.ConditionReasonReconcileError
-				reconciliationMessage = fmt.Sprintf("Error processing component %s: %v", component, err)
+				reconciliationMessage = fmt.Sprintf("Error processing component %s", component)
 				return
 			}
 
