@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	errors2 "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -74,7 +75,7 @@ func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Ma
 		rawJSON, err := yaml.YAMLToJSON([]byte(raw))
 		if err != nil {
 			log.Error(err, fmt.Sprintf("unable to convert raw data to JSON: %s", raw))
-			allErrors = append(allErrors, err)
+			allErrors = append(allErrors, errors2.Wrap(err, man.Name))
 			continue
 		}
 		if len(rawJSON) == 0 || string(rawJSON) == "{}" || string(rawJSON) == "null" {
@@ -86,7 +87,7 @@ func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Ma
 		if err != nil {
 			log.Error(err, "unable to decode object into Unstructured")
 			log.V(2).Info(fmt.Sprintf("raw bytes:\n%s\n", raw))
-			allErrors = append(allErrors, err)
+			allErrors = append(allErrors, errors2.Wrap(err, man.Name))
 			continue
 		}
 
@@ -94,7 +95,7 @@ func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Ma
 		changes, err := p.processObject(childCtx, obj, component)
 		madeChanges = madeChanges || changes
 		if err != nil {
-			allErrors = append(allErrors, err)
+			allErrors = append(allErrors, errors2.Wrap(err, man.Name))
 		}
 	}
 	return madeChanges, allErrors
