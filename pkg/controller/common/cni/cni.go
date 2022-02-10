@@ -24,6 +24,15 @@ type Config struct {
 func InitConfig(m manager.Manager) (Config, error) {
 	config := Config{}
 
+	log := logf.Log.WithName("controller_init")
+
+	if !common.Config.OLM.CNIEnabled {
+		config.Enabled = false
+		log.Info(fmt.Sprintf("CNI is disabled for this installation: %v", config.Enabled))
+		return config, nil
+	} else {
+		log.Info(fmt.Sprintf("CNI is enabled for this installation: %v", config.Enabled))
+	}
 	_, err := m.GetRESTMapper().ResourcesFor(schema.GroupVersionResource{
 		Group:    "k8s.cni.cncf.io",
 		Version:  "v1",
@@ -54,9 +63,6 @@ func InitConfig(m manager.Manager) (Config, error) {
 	} else if !meta.IsNoMatchError(err) {
 		return config, err
 	}
-
-	log := logf.Log.WithName("controller_init")
-	log.Info(fmt.Sprintf("CNI is enabled for this installation: %v", config.Enabled))
 
 	return config, nil
 }

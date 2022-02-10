@@ -90,4 +90,3 @@ rules:
   - apiGroups: ["maistra.io"]
     resources: ["servicemeshextensions"]
     verbs: ["get", "list", "watch"]
-
