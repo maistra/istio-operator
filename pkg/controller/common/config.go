@@ -13,6 +13,7 @@ var Config = &config{}
 
 func init() {
 	Config.Controller.WebhookManagementEnabled = true
+	Config.OLM.CNIEnabled = true
 }
 
 // config for the operator
@@ -25,7 +26,8 @@ type config struct {
 
 // OLM is intermediate struct for serialization
 type olm struct {
-	Images images `json:"relatedImage,omitempty"`
+	Images     images `json:"relatedImage,omitempty"`
+	CNIEnabled bool   `json:"cniEnabled,omitempty"`
 }
 
 // Images for various versions
