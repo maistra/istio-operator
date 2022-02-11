@@ -4046,11 +4046,6 @@ spec:
                   validationMessages:
                     type: boolean
                 type: object
-              meshConfig:
-                properties:
-                  enabled:
-                    type: boolean
-                type: object
               policy:
                 properties:
                   mixer:
@@ -8928,11 +8923,6 @@ spec:
                             type: boolean
                         type: object
                       validationMessages:
-                        type: boolean
-                    type: object
-                  meshConfig:
-                    properties:
-                      enabled:
                         type: boolean
                     type: object
                   policy:
