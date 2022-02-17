@@ -108,6 +108,11 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 					return err
 				}
 			}
+			if gateways.ClusterIngress.RouteEnabled != nil {
+				if err := setHelmBoolValue(values, "gateways.istio-ingressgateway.route", *gateways.ClusterIngress.RouteEnabled); err != nil {
+					return err
+				}
+			}
 			if err := setHelmValue(gatewayValues, "name", "istio-ingressgateway"); err != nil {
 				return err
 			}
