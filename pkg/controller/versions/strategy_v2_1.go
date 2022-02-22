@@ -277,11 +277,11 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 			if err != nil {
 				return nil, err
 			}
-		} else {
-			err = spec.Istio.SetField("istioDiscovery.enabled", true)
-			if err != nil {
-				return nil, err
-			}
+		}
+	} else {
+		err = spec.Istio.SetField("istioDiscovery.enabled", true)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -291,11 +291,11 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 			if err != nil {
 				return nil, err
 			}
-		} else {
-			err = spec.Istio.SetField("telemetry.common.enabled", true)
-			if err != nil {
-				return nil, err
-			}
+		}
+	} else {
+		err = spec.Istio.SetField("telemetry.common.enabled", true)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -305,11 +305,11 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 			if err != nil {
 				return nil, err
 			}
-		} else {
-			err = spec.Istio.SetField("remote.enabled", false)
-			if err != nil {
-				return nil, err
-			}
+		}
+	} else {
+		err = spec.Istio.SetField("remote.enabled", false)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -319,11 +319,11 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 			if err != nil {
 				return nil, err
 			}
-		} else {
-			err = spec.Istio.SetField("gateways.enabled", true)
-			if err != nil {
-				return nil, err
-			}
+		}
+	} else {
+		err = spec.Istio.SetField("gateways.enabled", true)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -468,7 +468,7 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 		if specialCharts.Has(name) {
 			continue
 		}
-		if isComponentEnabled(spec.Istio, chartDetails.enabledField) {
+		if chartDetails.enabledField == "" || isComponentEnabled(spec.Istio, chartDetails.enabledField) {
 			log.V(2).Info(fmt.Sprintf("rendering %s chart", name))
 			if chartRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), v2_1ChartMapping[name].path), smcp.GetNamespace(), values); err == nil {
 				renderings[name] = chartRenderings[name]
