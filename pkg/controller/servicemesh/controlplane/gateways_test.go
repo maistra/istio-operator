@@ -17,6 +17,7 @@ import (
 
 func TestAdditionalIngressGatewayInstall(t *testing.T) {
 	enabled := true
+	disabled := false
 	additionalGatewayName := "additional-gateway"
 	appNamespace := "app-namespace"
 	testCases := []IntegrationTestCase{
@@ -210,6 +211,83 @@ func TestAdditionalIngressGatewayInstall(t *testing.T) {
 			delete: IntegrationTestValidation{
 				Assertions: ActionAssertions{
 					Assert("delete").On("deployments").Named(additionalGatewayName).In(controlPlaneNamespace).IsSeen(),
+				},
+			},
+		},
+		{
+			name: "cluster-ingress-route-enabled",
+			smcp: New21SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
+				Gateways: &v2.GatewaysConfig{
+					ClusterIngress: &v2.ClusterIngressGatewayConfig{
+						RouteEnabled: &enabled,
+					},
+				},
+			}),
+			create: IntegrationTestValidation{
+				Verifier: VerifyActions(
+					Verify("create").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(
+						ExpectedLabelGatewayCreate("maistra.io/gateway", "istio-ingressgateway."+controlPlaneNamespace),
+					),
+				),
+				Assertions: ActionAssertions{
+					Assert("create").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
+				},
+			},
+			delete: IntegrationTestValidation{
+				Assertions: ActionAssertions{
+					Assert("delete").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
+					Assert("delete").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
+				},
+			},
+		},
+		{
+			name: "cluster-ingress-route-disabled",
+			smcp: New21SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
+				Gateways: &v2.GatewaysConfig{
+					ClusterIngress: &v2.ClusterIngressGatewayConfig{
+						RouteEnabled: &disabled,
+					},
+				},
+			}),
+			create: IntegrationTestValidation{
+				Verifier: VerifyActions(
+					Verify("create").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(
+						ExpectedLabelGatewayCreate("maistra.io/gateway", "istio-ingressgateway."+controlPlaneNamespace),
+					),
+				),
+				Assertions: ActionAssertions{
+					Assert("create").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+			delete: IntegrationTestValidation{
+				Assertions: ActionAssertions{
+					Assert("delete").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
+					Assert("delete").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+		},
+		{
+			// creating a route should be enabled by default
+			name: "cluster-ingress-route-undefined",
+			smcp: New21SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
+				Gateways: &v2.GatewaysConfig{
+					ClusterIngress: &v2.ClusterIngressGatewayConfig{},
+				},
+			}),
+			create: IntegrationTestValidation{
+				Verifier: VerifyActions(
+					Verify("create").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(
+						ExpectedLabelGatewayCreate("maistra.io/gateway", "istio-ingressgateway."+controlPlaneNamespace),
+					),
+				),
+				Assertions: ActionAssertions{
+					Assert("create").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
+				},
+			},
+			delete: IntegrationTestValidation{
+				Assertions: ActionAssertions{
+					Assert("delete").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
+					Assert("delete").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
 				},
 			},
 		},

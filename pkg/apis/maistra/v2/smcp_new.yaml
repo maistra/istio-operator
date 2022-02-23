@@ -302,6 +302,7 @@ spec:
           port: 443
           targetPort: 8443
       meshExpansionPorts: [] # additional expansion ports. default expansion ports will be added automatically if multiCluster is configured
+      route: true
     egress: # _the_ istio-egressgateway
       service:
         type: ClusterIP

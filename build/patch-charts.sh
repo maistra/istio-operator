@@ -254,6 +254,13 @@ function patchGateways() {
   # do not expose port 15012, support for mesh expansion will automatically add this port
   sed_wrap -i -e '/port: 15012/,+3d' ${HELM_DIR}/gateways/istio-ingress/values.yaml
 
+  # add route config
+  routeConfig='\
+\
+    # specifies whether to create a Route resource (route.openshift.io/v1) for the istio-ingressgateway deployment\
+    route: true'
+  sed_wrap -i -e "/runAsRoot: false/a $routeConfig" ${HELM_DIR}/gateways/istio-ingress/values.yaml
+
   # add tracer config
   tracerConfig='\
   # Configuration for each of the supported tracers\

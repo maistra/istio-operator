@@ -116,6 +116,9 @@ gateways:
     # whether to run the gateway in a privileged container
     runAsRoot: false
 
+    # specifies whether to create a Route resource (route.openshift.io/v1) for the istio-ingressgateway deployment
+    route: true
+
     # The injection template to use for the gateway. If not set, no injection will be performed.
     injectionTemplate: ""
 
