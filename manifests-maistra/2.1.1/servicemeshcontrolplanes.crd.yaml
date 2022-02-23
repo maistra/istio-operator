@@ -3390,6 +3390,8 @@ spec:
                         type: array
                       namespace:
                         type: string
+                      route:
+                        type: boolean
                       routerMode:
                         type: string
                       runtime:
@@ -8252,6 +8254,8 @@ spec:
                             type: array
                           namespace:
                             type: string
+                          route:
+                            type: boolean
                           routerMode:
                             type: string
                           runtime:
