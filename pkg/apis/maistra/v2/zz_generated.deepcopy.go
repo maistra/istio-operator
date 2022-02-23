@@ -159,10 +159,10 @@ func (in *ClusterIngressGatewayConfig) DeepCopyInto(out *ClusterIngressGatewayCo
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.RouteEnabled != nil {
-		in, out := &in.RouteEnabled, &out.RouteEnabled
-		*out = new(bool)
-		**out = **in
+	if in.RouteConfig != nil {
+		in, out := &in.RouteConfig, &out.RouteConfig
+		*out = new(ComponentIngressConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }

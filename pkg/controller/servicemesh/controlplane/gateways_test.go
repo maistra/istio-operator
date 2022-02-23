@@ -219,7 +219,11 @@ func TestAdditionalIngressGatewayInstall(t *testing.T) {
 			smcp: New21SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
 				Gateways: &v2.GatewaysConfig{
 					ClusterIngress: &v2.ClusterIngressGatewayConfig{
-						RouteEnabled: &enabled,
+						RouteConfig: &v2.ComponentIngressConfig{
+							Enablement: v2.Enablement{
+								Enabled: &enabled,
+							},
+						},
 					},
 				},
 			}),
@@ -245,7 +249,11 @@ func TestAdditionalIngressGatewayInstall(t *testing.T) {
 			smcp: New21SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
 				Gateways: &v2.GatewaysConfig{
 					ClusterIngress: &v2.ClusterIngressGatewayConfig{
-						RouteEnabled: &disabled,
+						RouteConfig: &v2.ComponentIngressConfig{
+							Enablement: v2.Enablement{
+								Enabled: &disabled,
+							},
+						},
 					},
 				},
 			}),

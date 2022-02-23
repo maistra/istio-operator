@@ -1,5 +1,5 @@
 {{ $gateway := index .Values "gateways" "istio-ingressgateway" }}
-{{- if and $gateway.enabled $gateway.route }}
+{{- if and $gateway.enabled $gateway.routeConfig.enabled }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
