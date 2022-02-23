@@ -258,7 +258,8 @@ function patchGateways() {
   routeConfig='\
 \
     # specifies whether to create a Route resource (route.openshift.io/v1) for the istio-ingressgateway deployment\
-    route: true'
+    routeConfig:\
+      enabled: true'
   sed_wrap -i -e "/runAsRoot: false/a $routeConfig" ${HELM_DIR}/gateways/istio-ingress/values.yaml
 
   # add tracer config

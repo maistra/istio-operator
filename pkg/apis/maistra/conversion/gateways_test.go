@@ -1496,7 +1496,11 @@ func gatewaysTestCasesV2(version versions.Version) []conversionTestCase {
 				Version: ver,
 				Gateways: &v2.GatewaysConfig{
 					ClusterIngress: &v2.ClusterIngressGatewayConfig{
-						RouteEnabled: &featureEnabled,
+						RouteConfig: &v2.ComponentIngressConfig{
+							Enablement: v2.Enablement{
+								Enabled: &featureEnabled,
+							},
+						},
 					},
 				},
 			},
@@ -1505,7 +1509,9 @@ func gatewaysTestCasesV2(version versions.Version) []conversionTestCase {
 					"istio-ingressgateway": map[string]interface{}{
 						"name":        "istio-ingressgateway",
 						"gatewayType": "ingress",
-						"route":       true,
+						"routeConfig": map[string]interface{}{
+							"enabled": true,
+						},
 					},
 				},
 			}),
@@ -1522,7 +1528,11 @@ func gatewaysTestCasesV2(version versions.Version) []conversionTestCase {
 				Version: ver,
 				Gateways: &v2.GatewaysConfig{
 					ClusterIngress: &v2.ClusterIngressGatewayConfig{
-						RouteEnabled: &featureDisabled,
+						RouteConfig: &v2.ComponentIngressConfig{
+							Enablement: v2.Enablement{
+								Enabled: &featureDisabled,
+							},
+						},
 					},
 				},
 			},
@@ -1531,7 +1541,9 @@ func gatewaysTestCasesV2(version versions.Version) []conversionTestCase {
 					"istio-ingressgateway": map[string]interface{}{
 						"name":        "istio-ingressgateway",
 						"gatewayType": "ingress",
-						"route":       false,
+						"routeConfig": map[string]interface{}{
+							"enabled": false,
+						},
 					},
 				},
 			}),
@@ -1548,7 +1560,7 @@ func gatewaysTestCasesV2(version versions.Version) []conversionTestCase {
 				Version: ver,
 				Gateways: &v2.GatewaysConfig{
 					ClusterIngress: &v2.ClusterIngressGatewayConfig{
-						RouteEnabled: nil,
+						RouteConfig: nil,
 					},
 				},
 			},

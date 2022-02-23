@@ -108,8 +108,8 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 					return err
 				}
 			}
-			if gateways.ClusterIngress.RouteEnabled != nil {
-				if err := setHelmBoolValue(values, "gateways.istio-ingressgateway.route", *gateways.ClusterIngress.RouteEnabled); err != nil {
+			if gateways.ClusterIngress.RouteConfig != nil && gateways.ClusterIngress.RouteConfig.Enabled != nil {
+				if err := setHelmBoolValue(values, "gateways.istio-ingressgateway.routeConfig.enabled", *gateways.ClusterIngress.RouteConfig.Enabled); err != nil {
 					return err
 				}
 			}
@@ -431,8 +431,12 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 					} else if err != nil {
 						return err
 					}
-					if routeEnabled, ok, err := gatewayValues.GetAndRemoveBool("route"); ok {
-						clusterIngress.RouteEnabled = &routeEnabled
+					if routeEnabled, ok, err := gatewayValues.GetAndRemoveBool("routeConfig.enabled"); ok {
+						clusterIngress.RouteConfig = &v2.ComponentIngressConfig{
+							Enablement: v2.Enablement{
+								Enabled: &routeEnabled,
+							},
+						}
 					} else if err != nil {
 						return err
 					}

@@ -112,9 +112,9 @@ type ClusterIngressGatewayConfig struct {
 	// MeshExpansionPorts define the port set used with multi-cluster/mesh expansion
 	// +optional
 	MeshExpansionPorts []corev1.ServicePort `json:"meshExpansionPorts,omitempty"`
-	// RouteEnabled specifies whether to create a Route (route.openshift.io/v1) for the istio-ingressgateway component
+	// RouteConfig is used to customize an OpenShift Route associated with istio-ingressgateway deployment
 	// +optional
-	RouteEnabled *bool `json:"route,omitempty"`
+	RouteConfig *ComponentIngressConfig `json:"routeConfig,omitempty"`
 }
 
 // RouterModeType represents the router modes available.
