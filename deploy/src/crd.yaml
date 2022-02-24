@@ -3392,28 +3392,8 @@ spec:
                         type: string
                       routeConfig:
                         properties:
-                          contextPath:
-                            type: string
                           enabled:
                             type: boolean
-                          hosts:
-                            items:
-                              type: string
-                            type: array
-                          metadata:
-                            properties:
-                              annotations:
-                                additionalProperties:
-                                  type: string
-                                type: object
-                              labels:
-                                additionalProperties:
-                                  type: string
-                                type: object
-                            type: object
-                          tls:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
                         type: object
                       routerMode:
                         type: string
@@ -8279,28 +8259,8 @@ spec:
                             type: string
                           routeConfig:
                             properties:
-                              contextPath:
-                                type: string
                               enabled:
                                 type: boolean
-                              hosts:
-                                items:
-                                  type: string
-                                type: array
-                              metadata:
-                                properties:
-                                  annotations:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
-                                  labels:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
-                                type: object
-                              tls:
-                                type: object
-                                x-kubernetes-preserve-unknown-fields: true
                             type: object
                           routerMode:
                             type: string

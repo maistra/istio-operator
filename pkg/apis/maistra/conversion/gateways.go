@@ -432,10 +432,8 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 						return err
 					}
 					if routeEnabled, ok, err := gatewayValues.GetAndRemoveBool("routeConfig.enabled"); ok {
-						clusterIngress.RouteConfig = &v2.ComponentIngressConfig{
-							Enablement: v2.Enablement{
-								Enabled: &routeEnabled,
-							},
+						clusterIngress.RouteConfig = &v2.Enablement{
+							Enabled: &routeEnabled,
 						}
 					} else if err != nil {
 						return err

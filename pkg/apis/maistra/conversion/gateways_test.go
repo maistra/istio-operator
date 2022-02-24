@@ -1496,10 +1496,8 @@ func gatewaysTestCasesV2(version versions.Version) []conversionTestCase {
 				Version: ver,
 				Gateways: &v2.GatewaysConfig{
 					ClusterIngress: &v2.ClusterIngressGatewayConfig{
-						RouteConfig: &v2.ComponentIngressConfig{
-							Enablement: v2.Enablement{
-								Enabled: &featureEnabled,
-							},
+						RouteConfig: &v2.Enablement{
+							Enabled: &featureEnabled,
 						},
 					},
 				},
@@ -1528,10 +1526,8 @@ func gatewaysTestCasesV2(version versions.Version) []conversionTestCase {
 				Version: ver,
 				Gateways: &v2.GatewaysConfig{
 					ClusterIngress: &v2.ClusterIngressGatewayConfig{
-						RouteConfig: &v2.ComponentIngressConfig{
-							Enablement: v2.Enablement{
-								Enabled: &featureDisabled,
-							},
+						RouteConfig: &v2.Enablement{
+							Enabled: &featureDisabled,
 						},
 					},
 				},
