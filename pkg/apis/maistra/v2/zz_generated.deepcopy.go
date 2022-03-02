@@ -159,6 +159,11 @@ func (in *ClusterIngressGatewayConfig) DeepCopyInto(out *ClusterIngressGatewayCo
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.RouteConfig != nil {
+		in, out := &in.RouteConfig, &out.RouteConfig
+		*out = new(Enablement)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

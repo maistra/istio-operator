@@ -1490,6 +1490,91 @@ func gatewaysTestCasesV2(version versions.Version) []conversionTestCase {
 				},
 			}),
 		},
+		{
+			name: "ingress.route.enabled" + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Gateways: &v2.GatewaysConfig{
+					ClusterIngress: &v2.ClusterIngressGatewayConfig{
+						RouteConfig: &v2.Enablement{
+							Enabled: &featureEnabled,
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"gateways": map[string]interface{}{
+					"istio-ingressgateway": map[string]interface{}{
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+						"routeConfig": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "ingress.route.disabled" + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Gateways: &v2.GatewaysConfig{
+					ClusterIngress: &v2.ClusterIngressGatewayConfig{
+						RouteConfig: &v2.Enablement{
+							Enabled: &featureDisabled,
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"gateways": map[string]interface{}{
+					"istio-ingressgateway": map[string]interface{}{
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+						"routeConfig": map[string]interface{}{
+							"enabled": false,
+						},
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
+		{
+			name: "ingress.route.undefined" + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Gateways: &v2.GatewaysConfig{
+					ClusterIngress: &v2.ClusterIngressGatewayConfig{
+						RouteConfig: nil,
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"gateways": map[string]interface{}{
+					"istio-ingressgateway": map[string]interface{}{
+						"name":        "istio-ingressgateway",
+						"gatewayType": "ingress",
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		},
 	}
 }
 
