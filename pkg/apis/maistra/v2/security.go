@@ -52,7 +52,8 @@ type CertificateAuthorityConfig struct {
 	Istiod *IstiodCertificateAuthorityConfig `json:"istiod,omitempty"`
 	// Custom is the configuration for a custom certificate authority.
 	// +optional
-	Custom *CustomCertificateAuthorityConfig `json:"custom,omitempty"`
+	Custom      *CustomCertificateAuthorityConfig      `json:"custom,omitempty"`
+	CertManager *CertManagerCertificateAuthorityConfig `json:"cert-manager,omitempty"`
 }
 
 // CertificateAuthorityType represents the type of CertificateAuthority implementation.
@@ -63,6 +64,8 @@ const (
 	CertificateAuthorityTypeIstiod CertificateAuthorityType = "Istiod"
 	// CertificateAuthorityTypeCustom represents a custom certificate authority implementation
 	CertificateAuthorityTypeCustom CertificateAuthorityType = "Custom"
+	// CertificateAuthorityTypeCertManager represents a cert-manager istio-csr certificate authority implementation
+	CertificateAuthorityTypeCertManager CertificateAuthorityType = "cert-manager"
 )
 
 // IstiodCertificateAuthorityConfig is the configuration for Istio's internal
@@ -163,6 +166,13 @@ type CustomCertificateAuthorityConfig struct {
 	// .Values.global.caAddress
 	// XXX: assumption is this is a grpc endpoint that provides methods like istio.v1.auth.IstioCertificateService/CreateCertificate
 	Address string `json:"address,omitempty"`
+}
+
+type CertManagerCertificateAuthorityConfig struct {
+	// Address is the grpc address for an Istio compatible certificate authority endpoint.
+	// .Values.global.caAddress
+	Address             string `json:"address,omitempty"`
+	PilotCertSecretName string `json:"pilotSecretName,omitempty"`
 }
 
 // IdentityConfig configures the types of user tokens used by clients

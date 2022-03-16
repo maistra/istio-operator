@@ -187,6 +187,15 @@ func setHelmStringSliceValue(obj map[string]interface{}, path string, value []st
 	return setHelmValue(obj, path, rawval)
 }
 
+func setHelmMapSliceValue(obj map[string]interface{}, path string, value []map[string]interface{}) error {
+	vallen := len(value)
+	rawval := make([]interface{}, vallen)
+	for index, val := range value {
+		rawval[index] = val
+	}
+	return setHelmValue(obj, path, rawval)
+}
+
 func setHelmStringMapValue(obj map[string]interface{}, path string, value map[string]string) error {
 	rawValue, err := toValues(value)
 	if err != nil {

@@ -68,7 +68,8 @@ spec:
       serviceAccountName: istio-operator
       containers:
       - name: istio-operator
-        image: quay.io/maistra/istio-ubi8-operator:2.2.0
+        #image: quay.io/maistra/istio-ubi8-operator:2.2.0
+        image: maistradev.azurecr.io/istio-operator:latest
         ports:
         - containerPort: 11999
           name: validation

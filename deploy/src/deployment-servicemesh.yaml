@@ -72,7 +72,8 @@ spec:
       serviceAccountName: istio-operator
       containers:
       - name: istio-operator
-        image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.2.0
+        #image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.2.0
+        image: maistradev.azurecr.io/istio-operator:latest
         ports:
         - containerPort: 11999
           name: validation

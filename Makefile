@@ -100,7 +100,7 @@ update-1.0-charts: update-remote-maistra-1.0
 
 .PHONY: update-1.0-templates
 update-1.0-templates:
-	curl -L https://github.com/maistra/istio-operator/archive/maistra-1.0.tar.gz | tar -xzvC ${SOURCE_DIR}/resources/smcp-templates/v1.0 --strip-components 3 */deploy/smcp-templates
+	curl -L https://github.com/maistra/istio-operator/archive/maistra-1.0.tar.gz | tar --no-wildcards -xzvC ${SOURCE_DIR}/resources/smcp-templates/v1.0 --strip-components 3 */deploy/smcp-templates
 # XXX: for now, the templates for maistra-1.0 are stored in ./deploy/smcp-templates, so the following won't work
 #update-1.0-templates: update-remote-maistra-1.0
 #	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.0 -- ${SOURCE_DIR}/resources/smcp-templates/v1.0
@@ -277,6 +277,7 @@ update-charts: update-1.0-charts update-1.1-charts update-2.0-charts update-2.1-
 
 .PHONY: update-templates
 update-templates: update-1.0-templates update-1.1-templates update-2.0-templates update-2.1-templates
+
 
 ################################################################################
 # resource collection

@@ -1,0 +1,35 @@
+replicaCount: 3
+
+image:
+  repository: quay.io/jetstack/cert-manager-istio-csr
+  tag: v0.3.0
+
+app:
+
+  certmanager:
+    namespace: istio-system
+    preserveCertificateRequests: true
+    issuer:
+      group: cert-manager.io
+      kind: Issuer
+      name: istio-ca
+
+  tls:
+    trustDomain: cluster.local
+    certificateDuration: 3600s
+    certificateDNSNames:
+      # Name used by the e2e client
+      - istio-csr.cert-manager.svc
+      # Name used within the demo cluster
+      - cert-manager-istio-csr.cert-manager.svc
+
+  server:
+    maxCertificateDuration: 5m
+    serving:
+      address: 0.0.0.0
+      port: 6443
+
+  controller:
+    rootCAConfigMapName: istio-ca-root-cert
+
+

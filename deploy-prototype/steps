@@ -1,0 +1,15 @@
+
+
+kubectl create ns istio-system
+kubectl apply -f ca.yaml -n istio-system
+helm install -n cert-manager cert-manager-istio-csr jetstack/cert-manager-istio-csr -f "${RES_D}/istio-csr-self-signed-values.yaml"
+
+helm install \                                                                                                   
+  cert-manager jetstack/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --version v1.6.1 \
+   --set installCRDs=true
+
+
+

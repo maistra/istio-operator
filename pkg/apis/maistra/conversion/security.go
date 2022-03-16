@@ -148,6 +148,56 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			if err := setHelmStringValue(values, "global.caAddress", custom.Address); err != nil {
 				return err
 			}
+		case v2.CertificateAuthorityTypeCertManager:
+			CertManagerConf := security.CertificateAuthority.CertManager
+			if CertManagerConf == nil {
+				break
+			}
+
+			if err := setHelmStringValue(values, "global.caAddress", CertManagerConf.Address); err != nil {
+				return err
+			}
+			fmt.Printf("setting CA ADDRESS to %s", CertManagerConf.Address)
+
+			addEnvToComponent(in, "pilot", "ENABLE_CA_SERVER", "false")
+			fmt.Printf("setting CA ENABLED to false")
+
+			if err := setHelmStringSliceValue(values, "pilot.extraArgs", []string{
+				"--tlsCertFile=/etc/cert-manager/tls/tls.crt",
+				"--tlsKeyFile=/etc/cert-manager/tls/tls.key",
+				"--caCertFile=/etc/cert-manager/tls/ca.crt",
+			}); err != nil {
+				return err
+			}
+			fmt.Printf("set extraArgs")
+
+			extraVolumeMounts := []map[string]interface{}{
+				{
+					"name":      "cert-manager",
+					"mountPath": "/etc/cert-manager/tls",
+					"readyOnly": "true",
+				},
+			}
+
+			extraVolumes := []map[string]interface{}{
+				{
+					"name": "cert-manager",
+					"secret": map[string]interface{}{
+						"secretName": CertManagerConf.PilotCertSecretName,
+					},
+				},
+			}
+
+			if err := setHelmMapSliceValue(values, "pilot.extraVolumeMounts", extraVolumeMounts); err != nil {
+				return err
+			}
+			fmt.Printf("set volumeMounts")
+
+			if err := setHelmMapSliceValue(values, "pilot.extraVolumes", extraVolumes); err != nil {
+				return err
+			}
+			fmt.Printf("set volumes")
+
 		case "":
 			// don't configure any ca settings
 		default:
