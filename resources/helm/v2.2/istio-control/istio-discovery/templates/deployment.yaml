@@ -81,6 +81,11 @@ spec:
 {{- end }}
           args:
           - "discovery"
+{{- if .Values.pilot.extraArgs }}
+  {{-  range .Values.pilot.extraArgs }}
+          - {{ . | quote }}
+  {{- end }}
+{{- end }}
           - --memberRollName=default
           - --cacheCluster=outbound|80||wasm-cacher-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.cluster.local
           - --enableCRDScan=false
@@ -213,6 +218,9 @@ spec:
               drop:
               - ALL
           volumeMounts:
+{{- if .Values.pilot.extraVolumeMounts }}
+{{ toYaml .Values.pilot.extraVolumeMounts | indent 10 }}
+{{- end }}
           {{- if eq .Values.global.jwtPolicy "third-party-jwt" }}
           - name: istio-token
             mountPath: /var/run/secrets/tokens
@@ -269,4 +277,7 @@ spec:
         configMap:
           name: pilot-jwks-extra-cacerts-{{ .Values.revision | default "default" }}
   {{- end }}
+{{- if .Values.pilot.extraVolumes }}
+{{ toYaml .Values.pilot.extraVolumes | indent 6 }}
+{{- end }}
 ---

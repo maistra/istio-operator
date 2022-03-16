@@ -467,6 +467,39 @@ function copyGlobalValues() {
   cp "${SOURCE_DIR}/resources/helm/overlays/global.yaml" "${SOURCE_DIR}/resources/helm/v2.3/"
 }
 
+# This hack is hopefully only needed for a few versions until this PR is merged: https://github.com/istio/istio/pull/37264
+# It essentially modifies the chart to have the exact same changes
+function patchPilotServingCert() {
+  # add extra values
+  sed_wrap -i -e '/traceSampling:/ a\
+  extraArgs: []\
+  extraVolumeMounts: []\
+  extraVolumes: []' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
+
+  # add extra volume in deployments (prepend before end of file)
+  sed_wrap -i -e '/^---$/ i\
+{{- if .Values.pilot.extraVolumes }}\
+{{ toYaml .Values.pilot.extraVolumes | indent 6 }}\
+{{- end }}' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
+
+
+
+  # add extra volume mounts (by prepending to volumesMounts: block)
+  sed_wrap -i -e '/volumeMounts:/ a\
+{{- if .Values.pilot.extraVolumeMounts }}\
+{{ toYaml .Values.pilot.extraVolumeMounts | indent 10 }}\
+{{- end }}' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
+
+  # Add extraArgs (by appending after discovery argument)
+  sed_wrap -i -e '/- "discovery"/ a\
+{{- if .Values.pilot.extraArgs }}\
+  {{-  range .Values.pilot.extraArgs }}\
+          - {{ . | quote }}\
+  {{- end }}\
+{{- end }}'  ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
+
+}
+
 function hacks() {
   sed_wrap -i -e '/containers:/,/name: discovery/ {
       /name: discovery/a\
@@ -484,5 +517,6 @@ patchGateways
 patchSidecarInjector
 moveEnvoyFiltersToMeshConfigChart
 copyGlobalValues
+patchPilotServingCert
 # TODO: remove this hack once the image is updated to include workingDir
 hacks
