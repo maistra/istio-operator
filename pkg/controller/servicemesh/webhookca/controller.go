@@ -33,6 +33,7 @@ const (
 	istiodSecretName                 = "istio-ca-secret"
 	istiodCustomCertSecretName       = "cacerts"
 	istiodWebhookNamePrefix          = "istiod-"
+	istioValidatorWebhookNamePrefix  = "istio-validator-"
 	sidecarInjectorSecretName        = "istio.istio-sidecar-injector-service-account"
 	sidecarInjectorWebhookNamePrefix = "istio-sidecar-injector-"
 	ServiceMeshControlPlaneCRDName   = "servicemeshcontrolplanes.maistra.io"
@@ -52,6 +53,10 @@ var autoRegistrationMap = map[string]CABundleSource{
 		Key:         common.IstioRootCertKey,
 	},
 	istiodWebhookNamePrefix: &SecretCABundleSource{
+		SecretNames: []string{istiodCustomCertSecretName, istiodSecretName},
+		Key:         common.IstiodCertKey,
+	},
+	istioValidatorWebhookNamePrefix: &SecretCABundleSource{
 		SecretNames: []string{istiodCustomCertSecretName, istiodSecretName},
 		Key:         common.IstiodCertKey,
 	},

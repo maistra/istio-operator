@@ -116,7 +116,7 @@ func RunSimpleInstallTest(t *testing.T, testCases []IntegrationTestCase) {
 			},
 			GroupResources: []*restmapper.APIGroupResources{
 				CNIGroupResources,
-				//MaistraGroupResources,
+				// MaistraGroupResources,
 			},
 			StorageVersions: []schema.GroupVersion{maistrav2.SchemeGroupVersion},
 			Events: []test.ControllerTestEvent{
@@ -155,6 +155,12 @@ func RunSimpleInstallTest(t *testing.T, testCases []IntegrationTestCase) {
 			test.RunControllerTestCase(t, ctc)
 		})
 	}
+}
+
+func New22SMCPResource(name, namespace string, spec *v2.ControlPlaneSpec) *v2.ServiceMeshControlPlane {
+	smcp := NewV2SMCPResource(name, namespace, spec)
+	smcp.Spec.Version = versions.V2_2.String()
+	return smcp
 }
 
 func New21SMCPResource(name, namespace string, spec *v2.ControlPlaneSpec) *v2.ServiceMeshControlPlane {

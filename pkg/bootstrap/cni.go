@@ -45,6 +45,7 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 	values["image_v1_1"] = common.Config.OLM.Images.V1_1.CNI
 	values["image_v2_0"] = common.Config.OLM.Images.V2_0.CNI
 	values["image_v2_1"] = common.Config.OLM.Images.V2_1.CNI
+	values["image_v2_2"] = common.Config.OLM.Images.V2_2.CNI
 	values["imagePullSecrets"] = config.ImagePullSecrets
 	// TODO: imagePullPolicy, resources
 

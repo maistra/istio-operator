@@ -49,3 +49,7 @@ func (v *v2xConversionStrategy) GetPolicyType(in *v1.HelmValues, mixerPolicyEnab
 		return ""
 	}
 }
+
+func (v *v2xConversionStrategy) GetTrustDomainFieldPath() string {
+	return "global.trustDomain"
+}

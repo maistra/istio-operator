@@ -10,7 +10,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
-func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
+func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface{}, version versions.Version) error {
 	security := in.Security
 	if security == nil {
 		return nil
@@ -36,7 +36,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 	// SPIFFE trust domain
 	if security.Trust != nil {
 		if security.Trust.Domain != "" {
-			if err := setHelmStringValue(values, "global.trustDomain", security.Trust.Domain); err != nil {
+			if err := setHelmStringValue(values, version.Strategy().GetTrustDomainFieldPath(), security.Trust.Domain); err != nil {
 				return err
 			}
 		}
@@ -235,7 +235,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 	return nil
 }
 
-func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
+func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version versions.Version) error {
 	security := &v2.SecurityConfig{}
 	setSecurity := false
 
@@ -269,7 +269,7 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	// SPIFFE trust domain
 	trust := &v2.TrustConfig{}
 	setTrust := false
-	if trustDomain, ok, err := in.GetAndRemoveString("global.trustDomain"); ok {
+	if trustDomain, ok, err := in.GetAndRemoveString(version.Strategy().GetTrustDomainFieldPath()); ok {
 		trust.Domain = trustDomain
 		setTrust = true
 	} else if err != nil {

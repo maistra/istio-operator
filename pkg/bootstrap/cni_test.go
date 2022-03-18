@@ -2,15 +2,16 @@ package bootstrap
 
 import (
 	"context"
+	"os"
+	"path"
+	goruntime "runtime"
+	"testing"
+
 	"github.com/ghodss/yaml"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"os"
-	"path"
-	goruntime "runtime"
-	"testing"
 
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
@@ -30,7 +31,7 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 		{
 			name:              "Default Supported Versions",
 			supportedVersions: versions.GetSupportedVersions(),
-			containerNames:    []string{"install-cni-v1-0", "install-cni-v1-1", "install-cni-v2-0", "install-cni-v2-1"},
+			containerNames:    []string{"install-cni-v1-0", "install-cni-v1-1", "install-cni-v2-0", "install-cni-v2-1", "install-cni-v2-2"},
 		},
 		{
 			name:              "v1.0 only",
@@ -51,6 +52,11 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 			name:              "v2.1 only",
 			supportedVersions: []versions.Version{versions.V2_1},
 			containerNames:    []string{"install-cni-v2-1"},
+		},
+		{
+			name:              "v2.2 only",
+			supportedVersions: []versions.Version{versions.V2_2},
+			containerNames:    []string{"install-cni-v2-2"},
 		},
 	}
 

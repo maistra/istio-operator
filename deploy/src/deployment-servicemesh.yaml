@@ -56,6 +56,14 @@ spec:
         olm.relatedImage.v2_1.wasm-cacher: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.1.1
         olm.relatedImage.v2_1.rls: registry.redhat.io/openshift-service-mesh/ratelimit-rhel8:2.1.1
 
+        olm.relatedImage.v2_2.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:2.2.0
+        olm.relatedImage.v2_2.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:2.2.0
+        olm.relatedImage.v2_2.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.2.0
+        olm.relatedImage.v2_2.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:2.2.0
+        olm.relatedImage.v2_2.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:2.2.0
+        olm.relatedImage.v2_2.wasm-cacher: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.2.0
+        olm.relatedImage.v2_2.rls: registry.redhat.io/openshift-service-mesh/ratelimit-rhel8:2.2.0
+
         oauth-proxy.query: "true"
         oauth-proxy.namespace: openshift
         oauth-proxy.name: oauth-proxy
@@ -64,7 +72,7 @@ spec:
       serviceAccountName: istio-operator
       containers:
       - name: istio-operator
-        image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.1.1
+        image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.2.0
         ports:
         - containerPort: 11999
           name: validation

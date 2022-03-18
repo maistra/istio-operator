@@ -653,6 +653,55 @@ var securityTestCasesV1 = []conversionTestCase{
 
 func securityTestCasesV2(version versions.Version) []conversionTestCase {
 	ver := version.String()
+	var trustDomainTestCase conversionTestCase
+	if version.Version() < versions.V2_2 {
+		trustDomainTestCase = conversionTestCase{
+			name: "trust.domain." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Security: &v2.SecurityConfig{
+					Trust: &v2.TrustConfig{
+						Domain: "example.com",
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"trustDomain": "example.com",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		}
+	} else {
+		trustDomainTestCase = conversionTestCase{
+			name: "trust.domain." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Security: &v2.SecurityConfig{
+					Trust: &v2.TrustConfig{
+						Domain: "example.com",
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"meshConfig": map[string]interface{}{
+					"trustDomain": "example.com",
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+			}),
+		}
+	}
+
 	return []conversionTestCase{
 		{
 			name: "nil." + ver,
@@ -1224,28 +1273,7 @@ func securityTestCasesV2(version versions.Version) []conversionTestCase {
 				},
 			}),
 		},
-		{
-			name: "trust.domain." + ver,
-			spec: &v2.ControlPlaneSpec{
-				Version: ver,
-				Security: &v2.SecurityConfig{
-					Trust: &v2.TrustConfig{
-						Domain: "example.com",
-					},
-				},
-			},
-			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-				"global": map[string]interface{}{
-					"trustDomain": "example.com",
-				},
-			}),
-			completeIstio: v1.NewHelmValues(map[string]interface{}{
-				"global": map[string]interface{}{
-					"multiCluster":  globalMultiClusterDefaults,
-					"meshExpansion": globalMeshExpansionDefaults,
-				},
-			}),
-		},
+		trustDomainTestCase,
 		{
 			name: "trust.additionaldomains.empty." + ver,
 			spec: &v2.ControlPlaneSpec{
@@ -1446,7 +1474,12 @@ func TestSecurityConversionFromV2(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			specCopy := tc.spec.DeepCopy()
 			helmValues := v1.NewHelmValues(make(map[string]interface{}))
-			if err := populateSecurityValues(specCopy, helmValues.GetContent()); err != nil {
+			version, err := versions.ParseVersion(tc.spec.Version)
+			if err != nil {
+				t.Fatalf("error parsing version: %s", err)
+			}
+
+			if err := populateSecurityValues(specCopy, helmValues.GetContent(), version); err != nil {
 				t.Fatalf("error converting to values: %s", err)
 			}
 			if !reflect.DeepEqual(tc.isolatedIstio.DeepCopy(), helmValues.DeepCopy()) {
@@ -1456,7 +1489,7 @@ func TestSecurityConversionFromV2(t *testing.T) {
 			// use expected values
 			helmValues = tc.isolatedIstio.DeepCopy()
 			mergeMaps(tc.completeIstio.DeepCopy().GetContent(), helmValues.GetContent())
-			if err := populateSecurityConfig(helmValues.DeepCopy(), specv2); err != nil {
+			if err := populateSecurityConfig(helmValues.DeepCopy(), specv2, version); err != nil {
 				t.Fatalf("error converting from values: %s", err)
 			}
 			assertEquals(t, tc.spec.Security, specv2.Security)
