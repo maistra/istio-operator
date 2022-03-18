@@ -16,6 +16,9 @@ type Config struct {
 	// Enabled tells whether this cluster supports CNI or not
 	Enabled bool
 
+	// UseMultus specifies whether the Istio CNI plugin should be called via Multus CNI
+	UseMultus bool
+
 	// ImagePullSecrets is the list of image pull secret names for the Istio CNI DaemonSet
 	ImagePullSecrets []string
 }
@@ -33,6 +36,9 @@ func InitConfig(m manager.Manager) (Config, error) {
 	} else {
 		log.Info(fmt.Sprintf("CNI is enabled for this installation: %v", config.Enabled))
 	}
+
+	config.Enabled = true
+
 	_, err := m.GetRESTMapper().ResourcesFor(schema.GroupVersionResource{
 		Group:    "k8s.cni.cncf.io",
 		Version:  "v1",
@@ -40,8 +46,7 @@ func InitConfig(m manager.Manager) (Config, error) {
 	})
 
 	if err == nil {
-		config.Enabled = true
-
+		config.UseMultus = true
 		if len(common.Config.OLM.Images.V1_1.CNI) == 0 {
 			return config, fmt.Errorf("configuration olm.relatedImage.v1_1.cni must be set")
 		}
@@ -58,7 +63,7 @@ func InitConfig(m manager.Manager) (Config, error) {
 		}
 
 	} else if !meta.IsNoMatchError(err) {
-		return config, err
+		config.UseMultus = false
 	}
 
 	return config, nil

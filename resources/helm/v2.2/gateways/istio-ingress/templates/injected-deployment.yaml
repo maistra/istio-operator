@@ -55,7 +55,10 @@ spec:
     spec:
 {{- if not $gateway.runAsRoot }}
       securityContext:
+        runAsUser: {{ $gateway.runAsUser }}
+        runAsGroup: {{ $gateway.runAsGroup }}
         runAsNonRoot: true
+        fsGroup: {{ $gateway.fsGroup }}
 {{- end }}
       serviceAccountName: {{ $gateway.name | default "istio-ingressgateway" }}-service-account
 {{- if .Values.global.priorityClassName }}

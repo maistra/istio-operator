@@ -63,10 +63,10 @@ spec:
           env:
             # Directory where the CNI config file should be created in
             - name: CNI_NET_DIR
-              value: "/etc/cni/multus/net.d"
+              value: {{ default "/etc/cni/net.d" .Values.cniConfDir }}
             # Directory where the CNI config file should be created in (host path mounted in the container)
             - name: MOUNTED_CNI_NET_DIR
-              value: "/host/etc/cni/multus/net.d"
+              value: {{ default "/host/etc/cni/net.d" .Values.mountedCniConfDir }}
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
               value: "v1-1-istio-cni.conf"
@@ -106,29 +106,31 @@ spec:
           securityContext:
             privileged: true
           env:
-            # Directory where the CNI config file should be created in
-            - name: CNI_NET_DIR
-              value: "/etc/cni/multus/net.d"
-            # Directory where the CNI config file should be created in (host path mounted in the container)
-            - name: MOUNTED_CNI_NET_DIR
-              value: "/host/etc/cni/multus/net.d"
+{{- if .Values.cniConfFileName_v2_0 }}
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
-              value: "v2-0-istio-cni.conf"
-            # Name of the kubeconfig file used by CNI agent
-            - name: KUBECFG_FILE_NAME
-              value: "v2-0-istio-cni.kubeconfig"
-            - name: CNI_BINARIES_PREFIX
-              value: "v2-0-"
-            # Deploy as a standalone CNI plugin instead of as chained
-            - name: CHAINED_CNI_PLUGIN
-              value: "false"
+              value: "{{ .Values.cniConfFileName_v2_0 }}"
+{{- end }}
             # The CNI network config to install on each node.
             - name: CNI_NETWORK_CONFIG
               valueFrom:
                 configMapKeyRef:
                   name: istio-cni-config
-                  key: cni_network_config_v2_0
+                  key: "{{ default "cni_network_config" .Values.configMap_v2_0 }}"
+            - name: CNI_NET_DIR
+              value: {{ default "/etc/cni/net.d" .Values.cniConfDir }}
+            # Deploy as a standalone CNI plugin or as chained?
+            - name: CHAINED_CNI_PLUGIN
+              value: "{{ .Values.chained }}"
+            # Directory in which the CNI config file should be created (host path mounted in the container)
+            - name: MOUNTED_CNI_NET_DIR
+              value: {{ default "/host/etc/cni/net.d" .Values.mountedCniConfDir }}
+            # Name of the kubeconfig file used by CNI agent
+            - name: KUBECFG_FILE_NAME
+              value: "v2-0-istio-cni.kubeconfig"
+            # The prefix to add when installing the CNI binaries to the node
+            - name: CNI_BINARIES_PREFIX
+              value: "v2-0-"
           volumeMounts:
             - mountPath: /host/opt/cni/bin
               name: cni-bin-dir
@@ -151,30 +153,31 @@ spec:
           securityContext:
             privileged: true
           env:
-            # Directory in which the CNI config file should be created
-            - name: CNI_NET_DIR
-              value: "/etc/cni/multus/net.d"
-            # Directory in which the CNI config file should be created (host path mounted in the container)
-            - name: MOUNTED_CNI_NET_DIR
-              value: "/host/etc/cni/multus/net.d"
+{{- if .Values.cniConfFileName_v2_1 }}
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
-              value: "v2-1-istio-cni.conf"
+              value: "{{ .Values.cniConfFileName_v2_1 }}"
+{{- end }}
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: istio-cni-config
+                  key: "{{ default "cni_network_config" .Values.configMap_v2_1 }}"
+            - name: CNI_NET_DIR
+              value: {{ default "/etc/cni/net.d" .Values.cniConfDir }}
+            # Deploy as a standalone CNI plugin or as chained?
+            - name: CHAINED_CNI_PLUGIN
+              value: "{{ .Values.chained }}"
+            # Directory in which the CNI config file should be created (host path mounted in the container)
+            - name: MOUNTED_CNI_NET_DIR
+              value: {{ default "/host/etc/cni/net.d" .Values.mountedCniConfDir }}
             # Name of the kubeconfig file used by CNI agent
             - name: KUBECFG_FILE_NAME
               value: "v2-1-istio-cni.kubeconfig"
             # The prefix to add when installing the CNI binaries to the node
             - name: CNI_BINARIES_PREFIX
               value: "v2-1-"
-            # Deploy as a standalone CNI plugin instead of as chained
-            - name: CHAINED_CNI_PLUGIN
-              value: "false"
-            # The CNI network config to install on each node.
-            - name: CNI_NETWORK_CONFIG
-              valueFrom:
-                configMapKeyRef:
-                  name: istio-cni-config
-                  key: cni_network_config_v2_1
           volumeMounts:
             - mountPath: /host/opt/cni/bin
               name: cni-bin-dir
@@ -197,30 +200,31 @@ spec:
           securityContext:
             privileged: true
           env:
-            # Directory in which the CNI config file should be created
-            - name: CNI_NET_DIR
-              value: "/etc/cni/multus/net.d"
-            # Directory in which the CNI config file should be created (host path mounted in the container)
-            - name: MOUNTED_CNI_NET_DIR
-              value: "/host/etc/cni/multus/net.d"
+{{- if .Values.cniConfFileName_v2_2 }}
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
-              value: "v2-2-istio-cni.conf"
+              value: "{{ .Values.cniConfFileName_v2_2 }}"
+{{- end }}
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: istio-cni-config
+                  key: "{{ default "cni_network_config" .Values.configMap_v2_2 }}"
+            - name: CNI_NET_DIR
+              value: {{ default "/etc/cni/net.d" .Values.cniConfDir }}
+            # Deploy as a standalone CNI plugin or as chained?
+            - name: CHAINED_CNI_PLUGIN
+              value: "{{ .Values.chained }}"
+            # Directory in which the CNI config file should be created (host path mounted in the container)
+            - name: MOUNTED_CNI_NET_DIR
+              value: {{ default "/host/etc/cni/net.d" .Values.mountedCniConfDir }}
             # Name of the kubeconfig file used by CNI agent
             - name: KUBECFG_FILE_NAME
               value: "v2-2-istio-cni.kubeconfig"
             # The prefix to add when installing the CNI binaries to the node
             - name: CNI_BINARIES_PREFIX
               value: "v2-2-"
-            # Deploy as a standalone CNI plugin instead of as chained
-            - name: CHAINED_CNI_PLUGIN
-              value: "false"
-            # The CNI network config to install on each node.
-            - name: CNI_NETWORK_CONFIG
-              valueFrom:
-                configMapKeyRef:
-                  name: istio-cni-config
-                  key: cni_network_config_v2_2
           volumeMounts:
             - mountPath: /host/opt/cni/bin
               name: cni-bin-dir
@@ -239,7 +243,7 @@ spec:
         # Used to install CNI.
         - name: cni-bin-dir
           hostPath:
-            path: /opt/multus/bin
+            path: {{ default "/opt/cni/bin" .Values.cniBinDir }}
         - name: etc-cni-dir
           hostPath:
             path: /etc/cni

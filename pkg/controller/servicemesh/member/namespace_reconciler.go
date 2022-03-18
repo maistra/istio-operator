@@ -9,6 +9,7 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	networkv1 "github.com/openshift/api/network/v1"
 	pkgerrors "github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -78,6 +79,9 @@ func (r *namespaceReconciler) initializeNetworkingStrategy(ctx context.Context) 
 		if apierrors.IsNotFound(err) {
 			log.Info("network configuration not defined, skipping")
 			return nil
+		} else if meta.IsNoMatchError(err) {
+			log.Info("kind Network in config.openshift.io/v1 doesn't exist; operator seems to be running in Kubernetes, not OpenShift; defaulting to NetworkPolicy")
+			r.networkingStrategy, err = newNetworkPolicyStrategy(ctx, r.Client, r.meshNamespace)
 		}
 		return err
 	}
@@ -340,6 +344,10 @@ func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context
 	log := common.LogFromContext(ctx)
 	nadList := &multusv1.NetworkAttachmentDefinitionList{}
 	if err := r.Client.List(ctx, nadList, client.InNamespace(namespace), client.MatchingLabels{common.MemberOfKey: r.meshNamespace}); err != nil {
+		if meta.IsNoMatchError(err) {
+			log.Info("skipping creation of NetworkAttachmentDefinition, because this cluster doesn't support them")
+			return nil
+		}
 		return fmt.Errorf("Could not list NetworkAttachmentDefinition resources in member namespace %s: %v", namespace, err)
 	}
 
@@ -372,6 +380,10 @@ func (r *namespaceReconciler) removeNetworkAttachmentDefinition(ctx context.Cont
 	log := common.LogFromContext(ctx)
 	nadList := &multusv1.NetworkAttachmentDefinitionList{}
 	if err := r.Client.List(ctx, nadList, client.InNamespace(namespace), client.MatchingLabels{common.MemberOfKey: r.meshNamespace}); err != nil {
+		if meta.IsNoMatchError(err) {
+			// if the NetworkAttachmentDefinition kind doesn't exist in this cluster, we don't need to remove it
+			return nil
+		}
 		return fmt.Errorf("Could not list NetworkAttachmentDefinition resources in member namespace %s: %v", namespace, err)
 	}
 

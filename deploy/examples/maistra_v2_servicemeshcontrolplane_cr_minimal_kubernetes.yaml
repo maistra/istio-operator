@@ -1,0 +1,44 @@
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+metadata:
+  name: minimal
+spec:
+  techPreview:
+    gateways:
+      # To allow gateways to run in Kubernetes, we must set the UID/GUID
+      # instead of leaving it blank (in OpenShift, these values are initialized
+      # automatically; in Kubernetes, leaving them blank results in runAsUer
+      # being 0, which causes Pod creation to fail because the containers are
+      # configured with runAsNonRoot: true).
+      istio-ingressgateway:
+        runAsUser: 1337
+        runAsGroup: 1337
+      istio-egressgateway:
+        runAsUser: 1337
+        runAsGroup: 1337
+  tracing:
+    # change to Jaeger to enable tracing
+    type: None
+  addons:
+    jaeger:
+      name: jaeger
+      install: {}
+    grafana:
+      enabled: false
+      install: {}
+    kiali:
+      name: kiali
+      enabled: false
+      install: {}
+
+---
+
+apiVersion: maistra.io/v1
+kind: ServiceMeshMemberRoll
+metadata:
+  name: default
+spec:
+  members:
+  # a list of namespaces that should be joined into the service mesh
+  # for example, to add the bookinfo namespace
+  #- bookinfo
