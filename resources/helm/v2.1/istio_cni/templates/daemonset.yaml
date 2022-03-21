@@ -28,11 +28,6 @@ spec:
         istio: cni
       annotations:
         sidecar.istio.io/inject: "false"
-        # This, along with the CriticalAddonsOnly toleration below,
-        # marks the pod as a critical add-on, ensuring it gets
-        # priority scheduling and that its resources are reserved
-        # if it ever gets evicted.
-        scheduler.alpha.kubernetes.io/critical-pod: ''
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -49,9 +44,7 @@ spec:
       # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
       # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
       terminationGracePeriodSeconds: 0
-{{- if .Values.priorityClassName }}
-      priorityClassName: "{{ .Values.priorityClassName }}"
-{{- end }}
+      priorityClassName: system-cluster-critical
 {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
 {{- range .Values.imagePullSecrets }}
