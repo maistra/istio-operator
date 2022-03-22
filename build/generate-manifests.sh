@@ -23,6 +23,7 @@ if [[ ${COMMUNITY} == "true" ]]; then
   DOCUMENTATION_URL="https://maistra.io/"
   BUG_URL="https://issues.redhat.com/projects/MAISTRA"
   OLM_FEATURES="[]"
+  OLM_SUBSCRIPTION_ANNOTATION=""
 else
   BUILD_TYPE="servicemesh"
   JAEGER_TEMPLATE="all-in-one"
@@ -32,6 +33,7 @@ else
   DOCUMENTATION_URL="https://docs.openshift.com/container-platform/latest/service_mesh/servicemesh-release-notes.html"
   BUG_URL="https://issues.redhat.com/projects/OSSM"
   OLM_FEATURES="[\"Disconnected\"]"
+  OLM_SUBSCRIPTION_ANNOTATION="operators.openshift.io/valid-subscription: '[\"OpenShift Container Platform\", \"OpenShift Platform Plus\"]'"
 fi
 : ${DEPLOYMENT_FILE:=deploy/${BUILD_TYPE}-operator.yaml}
 : ${MANIFESTS_DIR:=manifests-${BUILD_TYPE}}
@@ -111,6 +113,7 @@ function generateCSV() {
   sed -i -e 's+__DOCUMENTATION_URL__+'"$DOCUMENTATION_URL"'+' ${csv_path}
   sed -i -e 's+__BUG_URL__+'"$BUG_URL"'+' ${csv_path}
   sed -i -e 's+__OLM_FEATURES__+'"$OLM_FEATURES"'+' ${csv_path}
+  sed -i -e 's+__OLM_SUBSCRIPTION_ANNOTATION__+'"$OLM_SUBSCRIPTION_ANNOTATION"'+' ${csv_path}
   sed -i -e 's/__JAEGER_TEMPLATE__/'${JAEGER_TEMPLATE}'/' ${csv_path}
   sed -i -e 's/__DATE__/'$(date +%Y-%m-%dT%H:%M:%S%Z)'/g' ${csv_path}
   sed -i -e 's+__IMAGE_SRC__+'${IMAGE_SRC}'+g' ${csv_path}
