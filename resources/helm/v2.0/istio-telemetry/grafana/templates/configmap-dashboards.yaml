@@ -7,7 +7,7 @@ metadata:
   name: istio-grafana-configuration-dashboards-{{ $filename }}
   namespace: {{ $.Release.Namespace }}
   labels:
-    maistra-version: "2.0.8"
+    maistra-version: "2.0.9"
     app: grafana
     release: {{ $.Release.Name }}
     istio: grafana

@@ -16,8 +16,8 @@
 
 MAISTRA_VERSION        ?= 2.2.0
 MAISTRA_BRANCH         ?= maistra-2.2
-REPLACES_PRODUCT_CSV   ?= 2.1.1
-REPLACES_COMMUNITY_CSV ?= 2.1.1
+REPLACES_PRODUCT_CSV   ?= 2.1.2
+REPLACES_COMMUNITY_CSV ?= 2.1.2
 VERSION                ?= development
 CONTAINER_CLI          ?= docker
 COMMUNITY              ?= true
