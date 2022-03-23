@@ -4,6 +4,9 @@ import (
 	"context"
 	"path"
 
+	v1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/helm/pkg/manifest"
 
@@ -39,30 +42,31 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 
 	log.Info("rendering Istio CNI chart")
 
-	values := make(map[string]interface{})
-	values["enabled"] = config.Enabled
-	values["image_v1_1"] = common.Config.OLM.Images.V1_1.CNI
-	values["image_v2_0"] = common.Config.OLM.Images.V2_0.CNI
-	values["image_v2_1"] = common.Config.OLM.Images.V2_1.CNI
-	values["image_v2_2"] = common.Config.OLM.Images.V2_2.CNI
-	values["imagePullSecrets"] = config.ImagePullSecrets
+	cni := make(map[string]interface{})
+	cni["enabled"] = config.Enabled
+	cni["image_v1_1"] = common.Config.OLM.Images.V1_1.CNI
+	cni["image_v2_0"] = common.Config.OLM.Images.V2_0.CNI
+	cni["image_v2_1"] = common.Config.OLM.Images.V2_1.CNI
+	cni["image_v2_2"] = common.Config.OLM.Images.V2_2.CNI
+	cni["imagePullSecrets"] = config.ImagePullSecrets
 	// TODO: imagePullPolicy, resources
 
-	values["configMap_v1_0"] = "cni_network_config_v1_0"
-	values["configMap_v1_1"] = "cni_network_config_v1_1"
-	values["configMap_v2_0"] = "cni_network_config_v2_0"
-	values["configMap_v2_1"] = "cni_network_config_v2_1"
-	values["configMap_v2_2"] = "cni_network_config_v2_2"
+	cni["logLevel"] = common.Config.OLM.CNILogLevel
 
-	values["chained"] = !config.UseMultus
+	cni["configMap_v1_1"] = "cni_network_config_v1_1"
+	cni["configMap_v2_0"] = "cni_network_config_v2_0"
+	cni["configMap_v2_1"] = "cni_network_config_v2_1"
+	cni["configMap_v2_2"] = "cni_network_config_v2_2"
+
+	cni["chained"] = !config.UseMultus
 	if config.UseMultus {
-		values["cniBinDir"] = "/opt/multus/bin"
-		values["cniConfDir"] = "/etc/cni/multus/net.d"
-		values["mountedCniConfDir"] = "/host/etc/cni/multus/net.d"
+		cni["cniBinDir"] = "/opt/multus/bin"
+		cni["cniConfDir"] = "/etc/cni/multus/net.d"
+		cni["mountedCniConfDir"] = "/host/etc/cni/multus/net.d"
 
-		values["cniConfFileName_v2_0"] = "v2-0-istio-cni.conf"
-		values["cniConfFileName_v2_1"] = "v2-1-istio-cni.conf"
-		values["cniConfFileName_v2_2"] = "v2-2-istio-cni.conf"
+		cni["cniConfFileName_v2_0"] = "v2-0-istio-cni.conf"
+		cni["cniConfFileName_v2_1"] = "v2-1-istio-cni.conf"
+		cni["cniConfFileName_v2_2"] = "v2-2-istio-cni.conf"
 	}
 
 	var releases []string
@@ -73,7 +77,22 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 	} else {
 		releases = append(releases, versions.DefaultVersion.String())
 	}
-	values["supportedReleases"] = releases
+	cni["supportedReleases"] = releases
+
+	values := make(map[string]interface{})
+	values["cni"] = cni
+
+	// the "istio-node" DaemonSet is now called "istio-cni-node", so we must delete the old one
+	ds := v1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "istio-node",
+			Namespace: operatorNamespace,
+		},
+	}
+	err = cl.Delete(ctx, &ds)
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, err
+	}
 
 	// always install the latest version of the CNI image
 	renderings, _, err = helm.RenderChart(path.Join(versions.DefaultVersion.GetChartsDir(), "istio_cni"), operatorNamespace, values)
