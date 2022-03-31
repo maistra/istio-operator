@@ -53,9 +53,6 @@ type CertificateAuthorityConfig struct {
 	// Custom is the configuration for a custom certificate authority.
 	// +optional
 	Custom *CustomCertificateAuthorityConfig `json:"custom,omitempty"`
-	// JwksResolverExtraRootCA is the configuration for injecting a trusted CA into the JWKSResolver.
-	// +optional
-	JwksResolverExtraRootCA string `json:"jwksResolverExtraRootCA,omitempty"`
 }
 
 // CertificateAuthorityType represents the type of CertificateAuthority implementation.
