@@ -1,6 +1,6 @@
 spec:
   template: default
-  version: v2.2
+  version: v2.1
   cluster:
     name: Kubernetes
     network: main
@@ -266,9 +266,6 @@ spec:
       # or
       custom: # i have no idea about this
         address: some.location.domain
-      # JWKSResolver extra CA
-      jwksResolverExtraRootCA: "" # PEM-encoded certificate content to trust an additional CA
-
     identity: # specifies how service tokens are verified
       type: Kubernetes # or ThirdParty
       # one of

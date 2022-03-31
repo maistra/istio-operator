@@ -153,13 +153,6 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 		default:
 			return fmt.Errorf("unknown CertificateAuthority type: %s", security.CertificateAuthority.Type)
 		}
-
-		// JWKS Resolver Extra CA
-		if security.CertificateAuthority.JwksResolverExtraRootCA != "" {
-			if err := setHelmStringValue(values, "pilot.jwksResolverExtraRootCA", string(security.CertificateAuthority.JwksResolverExtraRootCA)); err != nil {
-				return err
-			}
-		}
 	}
 
 	// Identity
@@ -434,15 +427,6 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version
 	case "":
 		// don't configure CA
 	}
-
-	// jwksResolverExtraRootCA
-	if jwksExtraCA, ok, err := in.GetAndRemoveString("pilot.jwksResolverExtraRootCA"); ok {
-		ca.JwksResolverExtraRootCA = jwksExtraCA
-		setCA = true
-	} else if err != nil {
-		return err
-	}
-
 	if setCA {
 		security.CertificateAuthority = ca
 		setSecurity = true
