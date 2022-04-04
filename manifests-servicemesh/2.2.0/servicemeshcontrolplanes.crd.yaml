@@ -4945,8 +4945,6 @@ spec:
                           workloadCertTTLMax:
                             type: string
                         type: object
-                      jwksResolverExtraRootCA:
-                        type: string
                       type:
                         type: string
                     type: object
@@ -9814,8 +9812,6 @@ spec:
                               workloadCertTTLMax:
                                 type: string
                             type: object
-                          jwksResolverExtraRootCA:
-                            type: string
                           type:
                             type: string
                         type: object
