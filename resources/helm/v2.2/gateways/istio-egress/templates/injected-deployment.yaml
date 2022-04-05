@@ -94,7 +94,7 @@ spec:
           {{- end }}
           {{- range $key, $val := $gateway.env }}
           - name: {{ $key }}
-            value: {{ $val | quote }}
+            value: {{ $val }}
           {{- end }}
           volumeMounts:
           {{- range $gateway.secretVolumes }}

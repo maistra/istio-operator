@@ -23,6 +23,8 @@ app:
       # Name used within the demo cluster
       - cert-manager-istio-csr.cert-manager.svc
 
+  istio:
+    revisions: ["test-prototype"]
   server:
     maxCertificateDuration: 5m
     serving:

@@ -149,18 +149,29 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				return err
 			}
 		case v2.CertificateAuthorityTypeCertManager:
+			if err := setHelmStringValue(values, "pilot.ca.implementation", string(security.CertificateAuthority.Type)); err != nil {
+				return err
+			}
+
 			CertManagerConf := security.CertificateAuthority.CertManager
 			if CertManagerConf == nil {
 				break
 			}
 
 			if err := setHelmStringValue(values, "global.caAddress", CertManagerConf.Address); err != nil {
-				return err
+				return fmt.Errorf("failed converting cert-manager CA address to helm: %s" ,err.Error())
 			}
-			fmt.Printf("setting CA ADDRESS to %s", CertManagerConf.Address)
 
 			addEnvToComponent(in, "pilot", "ENABLE_CA_SERVER", "false")
-			fmt.Printf("setting CA ENABLED to false")
+			// if err := setHelmMapSliceValue(values, "pilot.env", 
+			// 	[]map[string]string{}{
+			// 		map[string]string{
+			// 			name:  "ENABLE_CA_SERVER",
+			// 			value: "false",
+			// 		}
+			// 	}) ; err != nil {
+			// 	return fmt.Errorf("failed setting env var to disable citadel!: %s" ,err.Error())
+			// }
 
 			if err := setHelmStringSliceValue(values, "pilot.extraArgs", []string{
 				"--tlsCertFile=/etc/cert-manager/tls/tls.crt",
@@ -474,6 +485,50 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version
 		} else if err != nil {
 			return err
 		}
+	case v2.CertificateAuthorityTypeCertManager:
+		setCA = true
+		ca.Type = v2.CertificateAuthorityTypeCertManager
+		if caAddress, ok, err := in.GetAndRemoveString("global.caAddress"); ok {
+			ca.CertManager = &v2.CertManagerCertificateAuthorityConfig{
+				Address: caAddress,
+			}
+		} else if err != nil {
+			return err
+		}
+		// We rely on convention on volume names to do the reverse mapping properly
+		if extraVolumes, ok, err := in.GetAndRemoveSlice("pilot.extraVolumes"); ok {
+			for _, volumeRaw := range(extraVolumes) {
+				if volume, ok := volumeRaw.(map[string]interface{}); ok {
+					volumeName := volume["name"]
+					if volumeName == "cert-manager" {
+						if volumeSecret , ok := volume["secret"].(map[string]interface{}) ; ok {
+							ca.CertManager.PilotCertSecretName = volumeSecret["secretName"].(string)
+						}
+					}
+				}
+			}
+		} else if err != nil {
+			return err
+		}
+
+		if _, ok, err := in.GetAndRemoveSlice("pilot.extraArgs"); !ok {
+			if err != nil {
+				return err
+			}
+		}
+
+		if _, ok, err := in.GetAndRemoveSlice("pilot.extraVolumeMounts"); !ok {
+			if err != nil {
+				return err
+			}
+		}
+
+		if _, ok, err := getAndClearComponentEnv(in, "pilot" , "ENABLE_CA_SERVER"); !ok {
+			if err != nil {
+				return err
+			}
+		}
+
 	case "":
 		// don't configure CA
 	}
