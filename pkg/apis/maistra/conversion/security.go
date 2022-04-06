@@ -173,6 +173,17 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			// 	return fmt.Errorf("failed setting env var to disable citadel!: %s" ,err.Error())
 			// }
 
+			// env := []map[string]interface{}{
+			// 	{
+			// 		"name": "ENABLE_CA_SERVER",
+			// 		"value": "false",
+			// 	},
+			// }
+
+			// if err := setHelmMapSliceValue(values, "pilot.env", env); err != nil {
+			// 	return err
+			// }
+
 			if err := setHelmStringSliceValue(values, "pilot.extraArgs", []string{
 				"--tlsCertFile=/etc/cert-manager/tls/tls.crt",
 				"--tlsKeyFile=/etc/cert-manager/tls/tls.key",
@@ -523,7 +534,7 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version
 			}
 		}
 
-		if _, ok, err := getAndClearComponentEnv(in, "pilot" , "ENABLE_CA_SERVER"); !ok {
+		if _, ok, err := getAndClearComponentEnv(in, "pilot" ,"ENABLE_CA_SERVER"); !ok {
 			if err != nil {
 				return err
 			}

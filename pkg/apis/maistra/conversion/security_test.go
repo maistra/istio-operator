@@ -1195,30 +1195,28 @@ func securityTestCasesV2(version versions.Version) []conversionTestCase {
 						"--tlsKeyFile=/etc/cert-manager/tls/tls.key",
 						"--caCertFile=/etc/cert-manager/tls/ca.crt",
 					},
-					"extraVolumeMounts": []map[string]interface{}{
-						{
+					"extraVolumeMounts": []interface{}{map[string]interface{}{
 							"name":      "cert-manager",
 							"mountPath": "/etc/cert-manager/tls",
 							"readyOnly": "true",
-						},
-					},
-					"extraVolumes":[]map[string]interface{}{
-						{
+					}},
+					"extraVolumes":[]interface{}{map[string]interface{}{
 							"name": "cert-manager",
 							"secret": map[string]interface{}{
 								"secretName": "istiod-tls",
 							},
-						},
-					},
-					"env": map[string]interface{}{
-						"ENABLE_CA_SERVER": "false",
-					},
+					}},
 				},
 			}),
 			completeIstio: v1.NewHelmValues(map[string]interface{}{
 				"global": map[string]interface{}{
 					"multiCluster":  globalMultiClusterDefaults,
 					"meshExpansion": globalMeshExpansionDefaults,
+				},
+				"pilot": map[string]interface{}{
+					"env": map[string]interface{}{
+							"ENABLE_CA_SERVER": string("false"),
+						},
 				},
 			}),
 		},
