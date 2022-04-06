@@ -150,7 +150,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			}
 		case v2.CertificateAuthorityTypeCertManager:
 			if err := setHelmStringValue(values, "pilot.ca.implementation", string(security.CertificateAuthority.Type)); err != nil {
-				return err
+				return fmt.Errorf("cert-manager ca config: failed converting CA implementation to helm: %s" ,err.Error())
 			}
 
 			CertManagerConf := security.CertificateAuthority.CertManager
@@ -159,39 +159,18 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			}
 
 			if err := setHelmStringValue(values, "global.caAddress", CertManagerConf.Address); err != nil {
-				return fmt.Errorf("failed converting cert-manager CA address to helm: %s" ,err.Error())
+				return fmt.Errorf("cert-manager ca config: failed converting CA address to helm: %s" ,err.Error())
 			}
 
 			addEnvToComponent(in, "pilot", "ENABLE_CA_SERVER", "false")
-			// if err := setHelmMapSliceValue(values, "pilot.env", 
-			// 	[]map[string]string{}{
-			// 		map[string]string{
-			// 			name:  "ENABLE_CA_SERVER",
-			// 			value: "false",
-			// 		}
-			// 	}) ; err != nil {
-			// 	return fmt.Errorf("failed setting env var to disable citadel!: %s" ,err.Error())
-			// }
-
-			// env := []map[string]interface{}{
-			// 	{
-			// 		"name": "ENABLE_CA_SERVER",
-			// 		"value": "false",
-			// 	},
-			// }
-
-			// if err := setHelmMapSliceValue(values, "pilot.env", env); err != nil {
-			// 	return err
-			// }
 
 			if err := setHelmStringSliceValue(values, "pilot.extraArgs", []string{
 				"--tlsCertFile=/etc/cert-manager/tls/tls.crt",
 				"--tlsKeyFile=/etc/cert-manager/tls/tls.key",
 				"--caCertFile=/etc/cert-manager/tls/ca.crt",
 			}); err != nil {
-				return err
+				return fmt.Errorf("cert-manager ca config: failed setting extra args in helm chart : %s" ,err.Error())
 			}
-			fmt.Printf("set extraArgs")
 
 			extraVolumeMounts := []map[string]interface{}{
 				{
@@ -211,14 +190,13 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			}
 
 			if err := setHelmMapSliceValue(values, "pilot.extraVolumeMounts", extraVolumeMounts); err != nil {
-				return err
+				return fmt.Errorf("cert-manager ca config: failed setting extra volumeMount in helm chart: %s" ,err)
 			}
-			fmt.Printf("set volumeMounts")
 
 			if err := setHelmMapSliceValue(values, "pilot.extraVolumes", extraVolumes); err != nil {
-				return err
+				return fmt.Errorf("cert-manager ca config: failed setting extraVolumes in helm chart: %s" ,err.Error())
 			}
-			fmt.Printf("set volumes")
+			
 
 		case "":
 			// don't configure any ca settings
