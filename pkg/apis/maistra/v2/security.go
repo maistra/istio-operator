@@ -173,6 +173,7 @@ type CertManagerCertificateAuthorityConfig struct {
 	// .Values.global.caAddress
 	Address             string `json:"address,omitempty"`
 	PilotCertSecretName string `json:"pilotSecretName,omitempty"`
+	RootCAConfigMapName string `json:"rootCAConfigMapName,omitempty"`
 }
 
 // IdentityConfig configures the types of user tokens used by clients

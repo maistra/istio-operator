@@ -164,11 +164,22 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 
 			addEnvToComponent(in, "pilot", "ENABLE_CA_SERVER", "false")
 
-			if err := setHelmStringSliceValue(values, "pilot.extraArgs", []string{
+			extraArgs := []string{
 				"--tlsCertFile=/etc/cert-manager/tls/tls.crt",
 				"--tlsKeyFile=/etc/cert-manager/tls/tls.key",
 				"--caCertFile=/etc/cert-manager/tls/ca.crt",
-			}); err != nil {
+			}
+
+			suppliedRootConfigMap:= (CertManagerConf.RootCAConfigMapName != "")
+
+			if suppliedRootConfigMap {
+				extraArgs[2] = "--caCertFile=/etc/cert-manager/ca/root-cert.pem"
+			} else {
+				fmt.Printf(`Warning! using istiod-tls ca.crt key as root of trust for mesh,\
+				 this will likely work but is not a recomended Trust On First Use pattern. Set rootCAConfigMapName to 'istio-ca-root-cert' instead`)
+			}
+
+			if err := setHelmStringSliceValue(values, "pilot.extraArgs", extraArgs); err != nil {
 				return fmt.Errorf("cert-manager ca config: failed setting extra args in helm chart : %s" ,err.Error())
 			}
 
@@ -180,6 +191,15 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				},
 			}
 
+			if suppliedRootConfigMap {
+				extraVolumeMounts = append(extraVolumeMounts, map[string]interface{}{
+					"name":      "ca-root-cert",
+					"mountPath": "/etc/cert-manager/ca",
+					"readyOnly": "true",
+				})
+			}
+
+
 			extraVolumes := []map[string]interface{}{
 				{
 					"name": "cert-manager",
@@ -188,6 +208,16 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 					},
 				},
 			}
+
+			if suppliedRootConfigMap {
+				extraVolumes = append(extraVolumes, map[string]interface{}{
+					"name": "ca-root-cert",
+					"configMap": map[string]interface{}{
+						"name": "istio-ca-root-cert",
+					},
+				})
+			}
+
 
 			if err := setHelmMapSliceValue(values, "pilot.extraVolumeMounts", extraVolumeMounts); err != nil {
 				return fmt.Errorf("cert-manager ca config: failed setting extra volumeMount in helm chart: %s" ,err)
@@ -492,6 +522,12 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version
 					if volumeName == "cert-manager" {
 						if volumeSecret , ok := volume["secret"].(map[string]interface{}) ; ok {
 							ca.CertManager.PilotCertSecretName = volumeSecret["secretName"].(string)
+						}
+					}
+
+					if volumeName == "ca-root-cert" {
+						if volumeConfigMap , ok := volume["configMap"].(map[string]interface{}) ; ok {
+							ca.CertManager.RootCAConfigMapName = volumeConfigMap["name"].(string)
 						}
 					}
 				}
