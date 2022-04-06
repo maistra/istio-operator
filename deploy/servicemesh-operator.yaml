@@ -4922,6 +4922,8 @@ spec:
                             type: string
                           pilotSecretName:
                             type: string
+                          rootCAConfigMapName:
+                            type: string
                         type: object
                       custom:
                         properties:
@@ -9796,6 +9798,8 @@ spec:
                                 type: string
                               pilotSecretName:
                                 type: string
+                              rootCAConfigMapName:
+                                type: string
                             type: object
                           custom:
                             properties:
@@ -10699,7 +10703,7 @@ spec:
         olm.relatedImage.v2_1.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:2.1.2
         olm.relatedImage.v2_1.wasm-cacher: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.1.2
         olm.relatedImage.v2_1.rls: registry.redhat.io/openshift-service-mesh/ratelimit-rhel8:2.1.2
-
+        
         olm.relatedImage.v2_2.cni: maistradev.azurecr.io/istio/install-cni:611dad93ddeae2e20b423e35fc2dedad1e4adc03
         olm.relatedImage.v2_2.pilot: maistradev.azurecr.io/istio/pilot:611dad93ddeae2e20b423e35fc2dedad1e4adc03
         olm.relatedImage.v2_2.proxyv2: maistradev.azurecr.io/istio/proxyv2:611dad93ddeae2e20b423e35fc2dedad1e4adc03
