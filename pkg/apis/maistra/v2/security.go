@@ -23,6 +23,9 @@ type SecurityConfig struct {
 	// .Values.global.manageNetworkPolicy
 	// +optional
 	ManageNetworkPolicy *bool `json:"manageNetworkPolicy,omitempty"`
+	// JwksResolverCA is the configuration for injecting a trusted CA into the JWKSResolver.
+	// +optional
+	JwksResolverCA string `json:"jwksResolverCA,omitempty"`
 }
 
 // TrustConfig configures trust aspects associated with mutual TLS clients

@@ -287,6 +287,8 @@ spec:
       mlts: true # enable mtls for data plane
       automtls: true
     manageNetworkPolicy: true # manages network policies that allows communication between namespace members and control plane
+    # JWKSResolver extra CA
+    jwksResolverCA: "" # PEM-encoded certificate content to trust an additional CA
   gateways:
     ingress: # _the_ istio-ingressgateway
       # same settings as ilb gateway above
