@@ -232,6 +232,13 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 		}
 	}
 
+	// JWKS Resolver CA
+	if security.JwksResolverCA != "" {
+		if err := setHelmStringValue(values, "pilot.jwksResolverExtraRootCA", string(security.JwksResolverCA)); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -533,6 +540,14 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 
 	if manageNetworkPolicy, ok, err := in.GetAndRemoveBool("global.manageNetworkPolicy"); ok {
 		security.ManageNetworkPolicy = &manageNetworkPolicy
+		setSecurity = true
+	} else if err != nil {
+		return err
+	}
+
+	// jwksResolverCA
+	if jwksResolverCA, ok, err := in.GetAndRemoveString("pilot.jwksResolverExtraRootCA"); ok {
+		security.JwksResolverCA = jwksResolverCA
 		setSecurity = true
 	} else if err != nil {
 		return err
