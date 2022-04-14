@@ -176,7 +176,7 @@ func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.
 	}
 
 	if topologyLabelsMatch(node.Labels, map[string]string{}) {
-		reqLogger.Info("The node the pod is scheduled on neither has the region, zone nor subzone labels. Nothing to do.")
+		reqLogger.V(5).Info("The node the pod is scheduled on neither has the region, zone nor subzone labels. Nothing to do.")
 		return reconcile.Result{}, nil
 	}
 
