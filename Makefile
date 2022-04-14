@@ -312,9 +312,11 @@ build: update-generated-code update-charts update-templates compile
 ################################################################################
 # create image
 ################################################################################
-.PHONY: image
-image: build collect-resources
+.PHONY: check-image-var image
+check-image-var:
 	@if [ -z "${IMAGE}" ]; then echo "Please set the IMAGE variable" && exit 1; fi
+
+image: check-image-var build collect-resources
 	${CONTAINER_CLI} build --no-cache -t "${IMAGE}" -f ${SOURCE_DIR}/build/Dockerfile --build-arg build_type=${BUILD_TYPE} .
 
 .DEFAULT_GOAL := build
