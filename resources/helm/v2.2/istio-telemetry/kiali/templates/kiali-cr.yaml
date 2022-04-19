@@ -130,6 +130,7 @@ spec:
       url: "{{ .Values.kiali.dashboard.jaegerURL }}"
 {{- end }}
 {{- end }}
+      use_grpc: false
 
 {{- if .Values.kiali.contextPath }}
   server:
