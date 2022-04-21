@@ -60,7 +60,7 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 		}
 	}
 	if prometheus.Install.UseTLS != nil {
-		if in.Version == "" || in.Version == versions.V1_0.String() || in.Version == versions.V1_1.String() {
+		if in.Version == versions.V1_1.String() {
 			if err := setHelmBoolValue(prometheusValues, "security.enabled", *prometheus.Install.UseTLS); err != nil {
 				return err
 			}
@@ -163,7 +163,7 @@ func populatePrometheusAddonConfig(in *v1.HelmValues, out *v2.PrometheusAddonCon
 	}
 
 	if securityEnabled, ok, err := prometheusValues.GetAndRemoveBool("security.enabled"); ok {
-		// v1_0 and v1_0
+		// v1_1
 		install.UseTLS = &securityEnabled
 		setInstall = true
 	} else if err != nil {

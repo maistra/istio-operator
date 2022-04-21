@@ -19,8 +19,6 @@ import (
 const (
 	// InvalidVersion is not a valid version
 	InvalidVersion version = iota
-	// V1_0 -> v1.0
-	V1_0
 	// V1_1 -> v1.1
 	V1_1
 	// V2_0 -> v2.0
@@ -33,12 +31,16 @@ const (
 	lastKnownVersion version = iota - 1
 )
 
-var AllV2Versions = []Version{V2_0, V2_1, V2_2}
+var (
+	AllV2Versions  = []Version{V2_0, V2_1, V2_2}
+	legacyVersions = map[string]bool{
+		"v1.0": true,
+	}
+)
 
 func init() {
 	versionToString = map[version]string{
 		InvalidVersion: "InvalidVersion",
-		V1_0:           "v1.0",
 		V1_1:           "v1.1",
 		V2_0:           "v2.0",
 		V2_1:           "v2.1",
@@ -47,7 +49,6 @@ func init() {
 
 	versionToStrategy = map[version]VersionStrategy{
 		InvalidVersion: &invalidVersionStrategy{InvalidVersion},
-		V1_0:           &versionStrategyV1_0{version: V1_0},
 		V1_1:           &versionStrategyV1_1{version: V1_1},
 		V2_0:           &versionStrategyV2_0{version: V2_0},
 		V2_1:           &versionStrategyV2_1{version: V2_1},
@@ -56,7 +57,6 @@ func init() {
 
 	versionToCNINetwork = map[version]string{
 		InvalidVersion: "",
-		V1_0:           "istio-cni",
 		V1_1:           "v1-1-istio-cni",
 		V2_0:           "v2-0-istio-cni",
 		V2_1:           "v2-1-istio-cni",
@@ -66,10 +66,6 @@ func init() {
 	for v, str := range versionToString {
 		if v != InvalidVersion {
 			stringToVersion[str] = v
-			if v == V1_0 {
-				// special handling for legacy case
-				stringToVersion[""] = v
-			}
 		}
 	}
 	minimumSupportedVersion := ver.Info.MinimumSupportedVersion
@@ -89,12 +85,10 @@ func init() {
 const (
 	// DefaultVersion to use for new resources which have no version specified.
 	DefaultVersion = lastKnownVersion
-	// LegacyVersion to use with existing resources which have no version specified.
-	LegacyVersion = V1_0
 )
 
 // Version represents a version of a control plane, major.minor, usually
-// identified as something like v1.0.  Version objects are guaranteed to be
+// identified as something like v1.1.  Version objects are guaranteed to be
 // sequentually ordered from oldest to newest.
 type Version interface {
 	fmt.Stringer
@@ -204,6 +198,9 @@ func (v version) IsSupported() (supported bool) {
 func ParseVersion(str string) (version, error) {
 	if v, ok := stringToVersion[str]; ok {
 		return v, nil
+	}
+	if legacyVersions[str] {
+		return InvalidVersion, fmt.Errorf("support for %s has been dropped", str)
 	}
 	return InvalidVersion, fmt.Errorf("invalid version: %s", str)
 }

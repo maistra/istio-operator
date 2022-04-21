@@ -32,7 +32,7 @@ type ServiceMeshControlPlane struct {
 	// This includes the configuration options for all components that comprise
 	// the control plane.
 	// +kubebuilder:validation:Required
-	Spec   ControlPlaneSpec   `json:"spec"`
+	Spec ControlPlaneSpec `json:"spec"`
 
 	// The current status of this ServiceMeshControlPlane and the components
 	// that comprise the control plane. This data may be out of date by some
@@ -103,7 +103,6 @@ func (s *ControlPlaneStatus) GetReconciledVersion() string {
 	return status.ComposeReconciledVersion(s.OperatorVersion, s.ObservedGeneration)
 }
 
-
 // ControlPlaneSpec represents the configuration for installing a control plane
 type ControlPlaneSpec struct {
 	// XXX: the resource name is intended to be used as the revision name, which
@@ -118,8 +117,6 @@ type ControlPlaneSpec struct {
 	// Version specifies what Maistra version of the control plane to install.
 	// When creating a new ServiceMeshControlPlane with an empty version, the
 	// admission webhook sets the version to the current version.
-	// Existing ServiceMeshControlPlanes with an empty version are treated as
-	// having the version set to "v1.0"
 	// +optional
 	Version string `json:"version,omitempty"`
 	// Cluster is the general configuration of the cluster (cluster name,

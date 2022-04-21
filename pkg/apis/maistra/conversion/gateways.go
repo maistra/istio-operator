@@ -624,10 +624,6 @@ func addEnvToGateway(in *v2.GatewayConfig, name, value string) {
 
 func expansionPortsForVersion(version string) ([]corev1.ServicePort, error) {
 	switch version {
-	case "":
-		fallthrough
-	case versions.V1_0.String():
-		fallthrough
 	case versions.V1_1.String():
 		return meshExpansionPortsV11, nil
 	case versions.V2_0.String():

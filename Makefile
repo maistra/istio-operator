@@ -75,49 +75,6 @@ test:
 	go test -timeout ${TEST_TIMEOUT} -mod=vendor ${TEST_FLAGS} ./...
 
 ################################################################################
-# maistra v1.0
-################################################################################
-.PHONY: update-remote-maistra-1.0
-update-remote-maistra-1.0:
-ifeq "${OFFLINE_BUILD}" "false"
-	git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-1.0
-	git fetch ${GIT_UPSTREAM_REMOTE} maistra-1.0:maistra-1.0
-endif
-
-.PHONY: update-1.0-charts
-update-1.0-charts: update-remote-maistra-1.0
-	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.0 -- ${SOURCE_DIR}/resources/helm/v1.0
-	git reset HEAD ${SOURCE_DIR}/resources/helm/v1.0
-	HELM_DIR=${RESOURCES_DIR}/helm/v1.0 ${SOURCE_DIR}/build/patch-container-image.sh
-	find ${RESOURCES_DIR}/helm/v1.0/istio-init/files/ -maxdepth 1 -name "*.crd.yaml" -delete
-	# MAISTRA-1776
-	sed -i -e '/kind: handler/,/kind:/ { /name: kubernetesenv/,/kind:/ s/params:/params: \{\}/ }' ${RESOURCES_DIR}/helm/v1.0/istio/charts/mixer/templates/config.yaml
-	sed -i -e '/if (\$$spec.sds) and (eq \$$spec.sds.enabled true)/ a\{\{- if $$spec.sds \}\}\n\{\{- if eq $$spec.sds.enabled true \}\}' ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/role.yaml ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/rolebindings.yaml
-	sed -i -e '/if (\$$spec.sds) and (eq \$$spec.sds.enabled true)/ d' ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/role.yaml ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/rolebindings.yaml
-	echo "{{- end }}" >> ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/role.yaml
-	echo "{{- end }}" >> ${RESOURCES_DIR}/helm/v1.0/istio/charts/gateways/templates/rolebindings.yaml
-	CRD_DIR=${RESOURCES_DIR}/helm/v1.0/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
-
-.PHONY: update-1.0-templates
-update-1.0-templates:
-	curl -L https://github.com/maistra/istio-operator/archive/maistra-1.0.tar.gz | tar -xzvC ${SOURCE_DIR}/resources/smcp-templates/v1.0 --strip-components 3 */deploy/smcp-templates
-# XXX: for now, the templates for maistra-1.0 are stored in ./deploy/smcp-templates, so the following won't work
-#update-1.0-templates: update-remote-maistra-1.0
-#	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.0 -- ${SOURCE_DIR}/resources/smcp-templates/v1.0
-
-.PHONY: collect-1.0-charts
-collect-1.0-charts:
-	mkdir -p ${HELM_OUT_DIR}
-	cp -rf ${RESOURCES_DIR}/helm/v1.0 ${HELM_OUT_DIR}
-
-.PHONY: collect-1.0-templates
-collect-1.0-templates:
-	mkdir -p ${TEMPLATES_OUT_DIR}/v1.0
-	cp ${RESOURCES_DIR}/smcp-templates/v1.0/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v1.0/default
-	cp ${RESOURCES_DIR}/smcp-templates/v1.0/base ${TEMPLATES_OUT_DIR}/v1.0
-
-
-################################################################################
 # maistra v1.1
 ################################################################################
 .PHONY: update-remote-maistra-1.1
@@ -273,19 +230,19 @@ ifneq "${OSSM_MANIFEST_DATE}" ""
 endif
 
 .PHONY: update-charts
-update-charts: update-1.0-charts update-1.1-charts update-2.0-charts update-2.1-charts update-2.2-charts
+update-charts: update-1.1-charts update-2.0-charts update-2.1-charts update-2.2-charts
 
 .PHONY: update-templates
-update-templates: update-1.0-templates update-1.1-templates update-2.0-templates update-2.1-templates
+update-templates: update-1.1-templates update-2.0-templates update-2.1-templates
 
 ################################################################################
 # resource collection
 ################################################################################
 .PHONY: collect-charts
-collect-charts: collect-1.0-charts collect-1.1-charts collect-2.0-charts collect-2.1-charts collect-2.2-charts
+collect-charts: collect-1.1-charts collect-2.0-charts collect-2.1-charts collect-2.2-charts
 
 .PHONY: collect-templates
-collect-templates: collect-1.0-templates collect-1.1-templates collect-2.0-templates collect-2.1-templates collect-2.2-templates
+collect-templates: collect-1.1-templates collect-2.0-templates collect-2.1-templates collect-2.2-templates
 
 .PHONY: collect-olm-manifests
 collect-olm-manifests:

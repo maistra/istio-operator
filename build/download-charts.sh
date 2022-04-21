@@ -29,10 +29,6 @@ ISTIO_NAME=${ISTIO_NAME//./-}
 
 : ${HELM_DIR:=${RELEASE_DIR}}
 
-if [[ "${ISTIO_VERSION}" =~ ^1\.0\..* ]]; then
-  PATCH_1_0="true"
-fi
-
 function retrieveIstioRelease() {
   if [ -d "${HELM_DIR}" ] ; then
     rm -rf "${HELM_DIR}"

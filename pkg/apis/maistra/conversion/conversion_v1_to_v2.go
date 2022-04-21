@@ -115,7 +115,15 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 		return err
 	}
 
-	version, versionErr := versions.ParseVersion(in.Version)
+	// we need to parse the version for some version-specific logic below
+	// if it is not set (during an empty AppliedSpec conversion), we treat like DefaultVersion
+	// this spares us headaches in a lot of our unit tests. Previously this wasn't an issue,
+	// as we defaulted to v1.0 when no version was set.
+	effectiveVersion := in.Version
+	if effectiveVersion == "" {
+		effectiveVersion = versions.DefaultVersion.String()
+	}
+	version, versionErr := versions.ParseVersion(effectiveVersion)
 	if versionErr != nil {
 		return versionErr
 	}

@@ -56,8 +56,7 @@ func (v *ControlPlaneMutator) Handle(ctx context.Context, req admission.Request)
 	}
 
 	// on create we set the version to the current default version
-	// on update we leave the version intact to preserve the v1.0 version
-	// implied by the missing version field, which we added in version v1.1
+	// on update, if the version is removed we reset it to what was previously set
 	currentVersion := mutator.NewVersion()
 	if currentVersion == "" {
 		switch req.AdmissionRequest.Operation {

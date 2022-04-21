@@ -14,7 +14,7 @@ func populateTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interfac
 		return nil
 	}
 
-	istiod := !(in.Version == "" || in.Version == versions.V1_0.String() || in.Version == versions.V1_1.String())
+	istiod := in.Version != versions.V1_1.String()
 
 	if in.Telemetry.Type != "" {
 		if err := setHelmStringValue(values, "telemetry.implementation", string(in.Telemetry.Type)); err != nil {

@@ -237,6 +237,7 @@ func TestMissingProfile(t *testing.T) {
 	smcp := &v2.ServiceMeshControlPlane{
 		Spec: v2.ControlPlaneSpec{
 			Profiles: []string{"missing-profile"},
+			Version:  versions.DefaultVersion.String(),
 		},
 	}
 

@@ -33,23 +33,21 @@ import (
 var ctx = common.NewContextWithLog(context.Background(), logf.Log)
 
 const (
-	memberName            = "default"
-	memberUID         = types.UID("3333")
+	memberName = "default"
+	memberUID  = types.UID("3333")
 
-	memberRollName        = "default"
-	memberRollUID         = types.UID("1111")
+	memberRollName = "default"
+	memberRollUID  = types.UID("1111")
 
 	appNamespace          = "app-namespace"
 	controlPlaneName      = "my-mesh"
 	controlPlaneNamespace = "cp-namespace"
 	controlPlaneUID       = types.UID("2222")
 
-	operatorVersion1_0     = "1.0.0"
 	operatorVersion1_1     = "1.1.0"
 	operatorVersion2_0     = "2.0.0"
 	operatorVersionDefault = operatorVersion2_0
 
-	cniNetwork1_0     = "istio-cni"
 	cniNetwork1_1     = "v1-1-istio-cni"
 	cniNetwork2_0     = "v2-0-istio-cni"
 	cniNetworkDefault = cniNetwork2_0
@@ -332,34 +330,6 @@ func TestReconcileReturnsErrorIfClientOperationFails(t *testing.T) {
 	}
 }
 
-func TestReconcileReconcilesAfterOperatorUpgradeFromV1_0(t *testing.T) {
-	member := newMember()
-	markMemberReconciled(member, 1, 1, 1, operatorVersion1_0)
-	controlPlane := markControlPlaneReconciled(newControlPlane(versions.V1_0.String()), operatorVersionDefault)
-	namespace := newNamespace(appNamespace)
-	common.SetLabel(namespace, common.MemberOfKey, controlPlaneNamespace)
-	meshRoleBinding := newMeshRoleBinding()
-	appRoleBinding := newMeshRoleBinding()
-	appRoleBinding.SetNamespace(appNamespace)
-	common.SetLabel(appRoleBinding, common.MemberOfKey, controlPlaneNamespace)
-	nad := createNAD(cniNetwork1_0, appNamespace, controlPlaneNamespace)
-
-	cl, tracker, r := createClientAndReconciler(t, member, controlPlane, namespace, meshRoleBinding, appRoleBinding, nad)
-	tracker.AddReactor("delete", multusv1.SchemeGroupVersion.WithResource("networkattachmentdefinitions").String(), assertNADNotDeleted(t))
-	tracker.AddReactor("create", rbac.SchemeGroupVersion.WithResource("rolebindings").String(), assertRBNotCreated(t))
-
-	assert.Equals(member.Status.ServiceMeshReconciledVersion != controlPlane.Status.GetReconciledVersion(), true, "Unexpected Status.ServiceMeshReconciledVersion in SMMR already matches SMCP reconciled version", t)
-
-	assertReconcileSucceeds(r, t)
-
-	updatedMember := test.GetUpdatedObject(ctx, cl, member.ObjectMeta, &maistrav1.ServiceMeshMember{}).(*maistrav1.ServiceMeshMember)
-	assert.Equals(updatedMember.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
-	assert.Equals(updatedMember.Status.ServiceMeshReconciledVersion, controlPlane.Status.GetReconciledVersion(), "Unexpected Status.ServiceMeshReconciledVersion in SMMR", t)
-
-	meshNetAttachDefName := cniNetwork1_0
-	assertNamespaceReconciled(t, cl, appNamespace, controlPlaneNamespace, meshNetAttachDefName, []rbac.RoleBinding{*meshRoleBinding})
-}
-
 func TestReconcileAfterOperatorUpgrade(t *testing.T) {
 	cases := []struct {
 		name                string
@@ -370,26 +340,26 @@ func TestReconcileAfterOperatorUpgrade(t *testing.T) {
 	}{
 		{
 			// tests a namespace add being processed before the mesh is upgraded
-			name:                "v1.0-before-mesh-upgrade",
-			operatorVersion:     operatorVersion1_0,
-			meshVersion:         "",
-			expectedNetworkName: cniNetwork1_0,
+			name:                "v1.1-before-mesh-upgrade",
+			operatorVersion:     operatorVersion1_1,
+			meshVersion:         "v1.1",
+			expectedNetworkName: cniNetwork1_1,
 		},
 		{
 			// tests a namespace add being processed after the mesh is upgraded,
 			// but before roll has been synced, i.e. simulates a mesh upgrade
 			// _and_ a roll update hitting at the same time
-			name:                "v1.0-after-mesh-upgrade",
-			operatorVersion:     operatorVersion1_1,
-			meshVersion:         "",
-			expectedNetworkName: cniNetwork1_0,
+			name:                "v1.1-after-mesh-upgrade",
+			operatorVersion:     operatorVersion2_0,
+			meshVersion:         "v1.1",
+			expectedNetworkName: cniNetwork1_1,
 			upgradedOperator:    true,
 		},
 		{
-			name:                "v1.0-installed-with-v1.1",
-			operatorVersion:     operatorVersion1_1,
-			meshVersion:         versions.V1_0.String(),
-			expectedNetworkName: cniNetwork1_0,
+			name:                "v1.1-installed-with-v2.0",
+			operatorVersion:     operatorVersion2_0,
+			meshVersion:         versions.V1_1.String(),
+			expectedNetworkName: cniNetwork1_1,
 		},
 		{
 			name:                "v1.1",
@@ -400,8 +370,8 @@ func TestReconcileAfterOperatorUpgrade(t *testing.T) {
 		{
 			name:                "default",
 			operatorVersion:     operatorVersionDefault,
-			meshVersion:         "",
-			expectedNetworkName: cniNetwork1_0,
+			meshVersion:         "v1.1",
+			expectedNetworkName: cniNetwork1_1,
 		},
 	}
 
@@ -413,7 +383,7 @@ func TestReconcileAfterOperatorUpgrade(t *testing.T) {
 			controlPlane := markControlPlaneReconciled(newControlPlane(tc.meshVersion), tc.operatorVersion)
 			if tc.upgradedOperator {
 				// need to reset the ServiceMeshReconciledVersion
-				member.Status.ServiceMeshReconciledVersion = status.ComposeReconciledVersion(operatorVersion1_0, controlPlane.GetGeneration())
+				member.Status.ServiceMeshReconciledVersion = status.ComposeReconciledVersion(operatorVersion1_1, controlPlane.GetGeneration())
 			}
 			member.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
 			namespace := newNamespace(appNamespace)
@@ -433,8 +403,8 @@ func TestReconcileAfterOperatorUpgrade(t *testing.T) {
 
 func TestReconciliationOfTerminatingNamespace(t *testing.T) {
 	cases := []struct {
-		name                string
-		configureMember func(member *maistrav1.ServiceMeshMember)
+		name               string
+		configureMember    func(member *maistrav1.ServiceMeshMember)
 		configureNamespace func(ns *corev1.Namespace)
 	}{
 		{
@@ -449,7 +419,6 @@ func TestReconciliationOfTerminatingNamespace(t *testing.T) {
 				common.SetLabel(ns, common.MemberOfKey, controlPlaneNamespace)
 			},
 		},
-
 	}
 
 	for _, tc := range cases {
@@ -460,7 +429,7 @@ func TestReconciliationOfTerminatingNamespace(t *testing.T) {
 				tc.configureMember(member)
 			}
 
-			controlPlane := markControlPlaneReconciled(newControlPlane(""), operatorVersionDefault)
+			controlPlane := markControlPlaneReconciled(newControlPlane(versions.DefaultVersion.String()), operatorVersionDefault)
 
 			namespace := newNamespace(appNamespace)
 			namespace.DeletionTimestamp = &oneMinuteAgo
@@ -499,8 +468,6 @@ func createNAD(name, appNamespace, cpNamespace string) runtime.Object {
 	common.SetLabel(netAttachDef, common.MemberOfKey, cpNamespace)
 	return netAttachDef
 }
-
-
 
 func newMember() *maistrav1.ServiceMeshMember {
 	return &maistrav1.ServiceMeshMember{
