@@ -199,8 +199,8 @@ func (r *MemberReconciler) reconcileObject(ctx context.Context, member *maistrav
 	member.Status.SetAnnotation(statusAnnotationControlPlaneRef, member.Spec.ControlPlaneRef.String())
 
 	// 1. Fetch the referenced SMCP
-	controlPlane := &maistrav2.ServiceMeshControlPlane{}
-	err := r.Client.Get(ctx, toObjectKey(member.Spec.ControlPlaneRef), controlPlane)
+	smcp := &maistrav2.ServiceMeshControlPlane{}
+	err := r.Client.Get(ctx, toObjectKey(member.Spec.ControlPlaneRef), smcp)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			err2 := r.reportError(ctx, member, false, eventReasonControlPlaneMissing, fmt.Errorf("The referenced ServiceMeshControlPlane object does not exist."))
@@ -212,23 +212,17 @@ func (r *MemberReconciler) reconcileObject(ctx context.Context, member *maistrav
 	// 2. Create the SMMR if it doesn't exist
 	err = r.createMemberRollIfNeeded(ctx, member)
 	if err != nil {
-		if errors.IsNotFound(err) {	// true when mesh namespace doesn't exist
+		if errors.IsNotFound(err) { // true when mesh namespace doesn't exist
 			err2 := r.reportError(ctx, member, false, maistrav1.ConditionReasonMemberCannotCreateMemberRoll, err)
 			return reconcile.Result{}, err2
 		}
 		return reconcile.Result{}, err
 	}
 
-	// 3. Check if the SMCP is fully reconciled
-	if !isReconciled(controlPlane) {
-		err = r.reportError(ctx, member, false, eventReasonControlPlaneNotReconciled, fmt.Errorf("The referenced ServiceMeshControlPlane object is being reconciled."))
-		return reconcile.Result{}, err
-	}
-
-	// 4. Configure the namespace
-	meshVersion, err := versions.ParseVersion(controlPlane.Spec.Version)
+	// 3. Configure the namespace
+	meshVersion, err := versions.ParseVersion(smcp.Spec.Version)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("unsupported mesh version: %s", controlPlane.Spec.Version))
+		log.Error(err, fmt.Sprintf("unsupported mesh version: %s", smcp.Spec.Version))
 		return reconcile.Result{}, err
 	}
 
@@ -242,10 +236,16 @@ func (r *MemberReconciler) reconcileObject(ctx context.Context, member *maistrav
 		return reconcile.Result{}, r.reportError(ctx, member, false, eventReasonErrorConfiguringNamespace, err)
 	}
 
+	// 4. Check if the SMCP is fully reconciled
+	if !isReconciled(smcp) {
+		err = r.reportError(ctx, member, false, eventReasonControlPlaneNotReconciled, fmt.Errorf("The referenced ServiceMeshControlPlane object is being reconciled."))
+		return reconcile.Result{}, err
+	}
+
 	// 5. Update the status
 	// TODO: should the following two fields be updated every time we update the status?
-	member.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
-	member.Status.ServiceMeshReconciledVersion = controlPlane.Status.GetReconciledVersion()
+	member.Status.ServiceMeshGeneration = smcp.Status.ObservedGeneration
+	member.Status.ServiceMeshReconciledVersion = smcp.Status.GetReconciledVersion()
 	err = r.updateStatus(ctx, member, true, true, "", "")
 	return reconcile.Result{}, err
 }
