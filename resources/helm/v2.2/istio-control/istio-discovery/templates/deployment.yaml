@@ -131,6 +131,8 @@ spec:
 {{- end }}
           - name: ENABLE_IOR
             value: "{{ $iorEnabled }}"
+          - name: PRIORITIZED_LEADER_ELECTION
+            value: "false"
           - name: VALIDATION_WEBHOOK_CONFIG_NAME
             value: ""
           - name: INJECTION_WEBHOOK_CONFIG_NAME
