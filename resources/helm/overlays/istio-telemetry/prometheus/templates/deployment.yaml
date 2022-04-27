@@ -99,7 +99,7 @@ spec:
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
 {{- end }}
           args:
-            - '--storage.tsdb.retention={{ .Values.prometheus.retention }}'
+            - '--storage.tsdb.retention.time={{ .Values.prometheus.retention }}'
             - '--storage.tsdb.path=/prometheus'
             - '--config.file=/etc/prometheus/prometheus.yml'
             - --discovery.member-roll-name=default
