@@ -110,7 +110,7 @@ func (r *controlPlaneInstanceReconciler) findResourcesToPrune(ctx context.Contex
 					Version: version,
 					Kind:    crd.Spec.Names.Kind,
 				},
-				supportsDeleteCollection: true,
+				supportsDeleteCollection: false,
 			})
 		}
 	}
@@ -132,7 +132,7 @@ func (r *controlPlaneInstanceReconciler) pruneResources(ctx context.Context, pru
 	allErrors := []error{}
 	for _, pruneConfig := range pruneConfigs {
 		gvk := pruneConfig.gvk
-		log.Info("pruning resources", "type", gvk.String())
+		log.Info("pruning resources", "type", gvk.String(), "instanceGeneration", instanceGeneration, "deleteCollection", pruneConfig.supportsDeleteCollection)
 		var err error
 		if pruneConfig.supportsDeleteCollection {
 			err = r.pruneAll(ctx, gvk, instanceGeneration)
@@ -171,6 +171,8 @@ func (r *controlPlaneInstanceReconciler) pruneIndividually(ctx context.Context, 
 }
 
 func (r *controlPlaneInstanceReconciler) pruneAll(ctx context.Context, gvk schema.GroupVersionKind, instanceGeneration string) error {
+	log := common.LogFromContext(ctx)
+
 	labelSelector, err := createLabelSelector(r.Instance.Namespace, instanceGeneration)
 	if err != nil {
 		return err
@@ -182,9 +184,11 @@ func (r *controlPlaneInstanceReconciler) pruneAll(ctx context.Context, gvk schem
 		object,
 		client.MatchingLabelsSelector{Selector: labelSelector},
 		client.PropagationPolicy(metav1.DeletePropagationBackground))
-
-	if meta.IsNoMatchError(err) || errors.IsNotFound(err) {
-		return nil
+	if err != nil {
+		log.Info("deleteAllOf unsuccessful", "type", gvk.String(), "error", err)
+		if meta.IsNoMatchError(err) || errors.IsNotFound(err) {
+			return nil
+		}
 	}
 	return err
 }
