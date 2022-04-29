@@ -109,8 +109,6 @@ type ControlPlaneSpec struct {
 	// When creating a new ServiceMeshControlPlane with an empty version, the
 	// admission webhook sets the version to the latest version supported by
 	// the operator.
-	// Existing ServiceMeshControlPlanes with an empty version are treated as
-	// having the version set to "v1.0"
 	// +optional
 	Version string `json:"version,omitempty"`
 

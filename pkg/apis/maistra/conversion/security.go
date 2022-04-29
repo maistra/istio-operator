@@ -61,7 +61,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			if istiod == nil {
 				break
 			}
-			hasIstiod := !(in.Version == versions.V1_0.String() || in.Version == versions.V1_1.String())
+			hasIstiod := in.Version != versions.V1_1.String()
 			if hasIstiod {
 				// configure pilot (istiod) settings
 				if istiod.WorkloadCertTTLDefault != "" {
@@ -115,7 +115,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 					break
 				}
 				componentRoot := "pilot"
-				if in.Version == "" || in.Version == versions.V1_0.String() || in.Version == versions.V1_1.String() {
+				if in.Version == versions.V1_1.String() {
 					// configure security (citadel) settings
 					componentRoot = "security"
 				}

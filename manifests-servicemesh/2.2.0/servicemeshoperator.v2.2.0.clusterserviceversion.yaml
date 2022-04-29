@@ -17,7 +17,7 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
 
     containerImage: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.2.0
-    createdAt: 2022-03-22T15:07:38MDT
+    createdAt: 2022-04-29T17:47:42CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.2.0-0"
     operators.openshift.io/infrastructure-features: '["Disconnected"]'
@@ -726,7 +726,6 @@ spec:
           - 'urn:alm:descriptor:com.tectonic.ui:select:v2.1'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v2.0'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v1.1'
-          - 'urn:alm:descriptor:com.tectonic.ui:select:v1.0'
       - displayName: Control Plane Security
         description: Enable mTLS for communication between control plane components
         path: security.controlPlane.mtls

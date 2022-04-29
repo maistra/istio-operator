@@ -13,8 +13,8 @@ var (
 	buildStatus      = "unknown"
 	buildTag         = "unknown"
 
-	// Minimum supported mesh version (nil (all), "v1_0", "v1_1", "v2_0", "v2_1" etc)
-	minimumSupportedVersion = ""
+	// Minimum supported mesh version (nil (all), "v1_1", "v2_0", "v2_1" etc)
+	minimumSupportedVersion = "v1.1"
 
 	// Info exports the build version information.
 	Info BuildInfo

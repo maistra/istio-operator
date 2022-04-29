@@ -42,9 +42,6 @@ func InitConfig(m manager.Manager) (Config, error) {
 	if err == nil {
 		config.Enabled = true
 
-		if len(common.Config.OLM.Images.V1_0.CNI) == 0 {
-			return config, fmt.Errorf("configuration olm.relatedImage.v1_0.cni must be set")
-		}
 		if len(common.Config.OLM.Images.V1_1.CNI) == 0 {
 			return config, fmt.Errorf("configuration olm.relatedImage.v1_1.cni must be set")
 		}

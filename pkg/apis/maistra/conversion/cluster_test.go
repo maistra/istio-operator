@@ -18,29 +18,6 @@ var clusterTestCases []conversionTestCase
 
 var clusterTestCasesV1 = []conversionTestCase{
 	{
-		name:      "nil." + versions.V1_0.String(),
-		namespace: clusterTestNamespace,
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V1_0.String(),
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster": map[string]interface{}{
-					"enabled": false,
-					"multiClusterOverrides": map[string]interface{}{
-						"expansionEnabled":    nil,
-						"multiClusterEnabled": nil,
-					},
-				},
-				"meshExpansion": map[string]interface{}{
-					"enabled": false,
-					"useILB":  false,
-				},
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{}),
-	},
-	{
 		name:      "nil." + versions.V1_1.String(),
 		namespace: clusterTestNamespace,
 		spec: &v2.ControlPlaneSpec{

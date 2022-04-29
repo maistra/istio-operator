@@ -91,8 +91,12 @@ func (v version) getSMCPProfile(name string, targetNamespace string) (*v1.Contro
 	if err != nil || gvk == nil {
 		return nil, nil, fmt.Errorf("failed to parse profile %s contents: %s", name, err)
 	}
+
 	switch smcp := obj.(type) {
 	case *v1.ServiceMeshControlPlane:
+		// ensure version is set so conversion works correctly
+		smcp.Spec.Version = v.String()
+
 		if len(smcp.Spec.Profiles) == 0 {
 			if smcp.Spec.Template == "" {
 				return &smcp.Spec, nil, nil
@@ -101,6 +105,9 @@ func (v version) getSMCPProfile(name string, targetNamespace string) (*v1.Contro
 		}
 		return &smcp.Spec, smcp.Spec.Profiles, nil
 	case *v2.ServiceMeshControlPlane:
+		// ensure version is set so conversion works correctly
+		smcp.Spec.Version = v.String()
+
 		smcpv1 := &v1.ServiceMeshControlPlane{}
 		smcp.SetNamespace(targetNamespace)
 		if err := smcpv1.ConvertFrom(smcp); err != nil {
@@ -128,9 +135,6 @@ func (v version) recursivelyApplyProfiles(ctx context.Context, smcp *v1.ControlP
 		if err != nil {
 			return *smcp, err
 		}
-
-		// ensure version is set so conversion works correctly
-		profile.Version = v.String()
 
 		if log.V(5).Enabled() {
 			rawValues, _ := yaml.Marshal(profile)

@@ -39,11 +39,9 @@ const (
 
 	memberUID = types.UID("3333")
 
-	operatorVersion1_0     = "1.0.0"
 	operatorVersion1_1     = "1.1.0"
 	operatorVersionDefault = operatorVersion1_1
 
-	cniNetwork1_0     = "istio-cni"
 	cniNetwork1_1     = "v1-1-istio-cni"
 	cniNetwork2_0     = "v2-0-istio-cni"
 	cniNetwork2_1     = "v2-1-istio-cni"
@@ -488,8 +486,8 @@ func TestReconcileClearsConfigureMembersWhenSMCPDeleted(t *testing.T) {
 	assertStatusMembers(updatedRoll,
 		[]string{appNamespace}, // members
 		[]string{appNamespace}, // pending
-		[]string{}, // configured
-		[]string{}, // terminating
+		[]string{},             // configured
+		[]string{},             // terminating
 		t)
 }
 

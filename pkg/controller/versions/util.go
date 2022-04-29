@@ -31,7 +31,7 @@ var decoder runtime.Decoder
 
 const (
 	clusterIngressName = "istio-ingressgateway"
-	clusterEgressName = "istio-egressgateway"
+	clusterEgressName  = "istio-egressgateway"
 )
 
 var reservedGatewayNames = sets.NewString(clusterIngressName, clusterEgressName)
@@ -49,7 +49,7 @@ func validatePolicyType(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.C
 	if policy == nil {
 		return allErrors
 	}
-	if v == V1_0 || v == V1_1 {
+	if v == V1_1 {
 		if policy.Type == v2.PolicyTypeIstiod {
 			allErrors = append(allErrors, fmt.Errorf("policy type %s is not supported in version %s", policy.Type, v.String()))
 		} else if policy.Type == v2.PolicyTypeRemote {
@@ -95,7 +95,7 @@ func validateTelemetryType(ctx context.Context, meta *metav1.ObjectMeta, spec *v
 	if telemetry == nil {
 		return allErrors
 	}
-	if v == V1_0 || v == V1_1 {
+	if v == V1_1 {
 		if telemetry.Type == v2.TelemetryTypeIstiod {
 			allErrors = append(allErrors, fmt.Errorf("telemetry type %s is not supported in version %s", spec.Telemetry.Type, v.String()))
 		} else if telemetry.Type == v2.TelemetryTypeRemote {

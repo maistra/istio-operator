@@ -65,7 +65,7 @@ func TestDefaultInstall(t *testing.T) {
 				},
 			},
 		},
-		// TODO: add test cases for v1.0 and v1.1
+		// TODO: add test cases for v1.1
 	}
 	RunSimpleInstallTest(t, testCases)
 }
@@ -132,6 +132,17 @@ func TestBootstrapping(t *testing.T) {
 				},
 			},
 			crdCount: 17,
+		},
+		{
+			name: "v2.2",
+			smcp: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version:  versions.V2_2.String(),
+					Profiles: []string{"maistra"},
+				},
+			},
+			crdCount: 19,
 		},
 	}
 

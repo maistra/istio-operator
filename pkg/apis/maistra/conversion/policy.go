@@ -9,7 +9,7 @@ import (
 )
 
 // XXX: Not all of the settings are mapped correctly, as there are differences
-// between v1.0/v1.1 and v2.0
+// between v1.1 and v2.0
 
 func populatePolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
 	// Cluster settings
@@ -17,7 +17,7 @@ func populatePolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 		return nil
 	}
 
-	istiod := !(in.Version == "" || in.Version == versions.V1_0.String() || in.Version == versions.V1_1.String())
+	istiod := in.Version != versions.V1_1.String()
 
 	if in.Policy.Type != "" {
 		if err := setHelmStringValue(values, "policy.implementation", string(in.Policy.Type)); err != nil {
@@ -203,7 +203,7 @@ func populatePolicyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version v
 		policyType = version.Strategy().GetPolicyType(in, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled)
 	}
 
-	istiod := !(version == versions.V1_0 || version == versions.V1_1)
+	istiod := version != versions.V1_1
 
 	policy := &v2.PolicyConfig{}
 	setPolicy := false

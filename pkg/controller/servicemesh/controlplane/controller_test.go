@@ -19,6 +19,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 	"github.com/maistra/istio-operator/pkg/version"
 )
 
@@ -202,7 +203,9 @@ func newControlPlane() *maistrav2.ServiceMeshControlPlane {
 			Generation: 1,
 			UID:        controlPlaneUID,
 		},
-		Spec:   maistrav2.ControlPlaneSpec{},
+		Spec: maistrav2.ControlPlaneSpec{
+			Version: versions.DefaultVersion.String(),
+		},
 		Status: maistrav2.ControlPlaneStatus{},
 	}
 }
