@@ -288,8 +288,12 @@ function patchGateways() {
 {{- end }}
 ' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
-  # remove special users/groups
-  sed_wrap -i -e '/: *1337 *$/d' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/injected-deployment.yaml ${HELM_DIR}/gateways/istio-ingress/templates/injected-deployment.yaml
+  # parameterize runAsUser, runAsGroup, ans fsGroup
+  sed_wrap -i -E -e 's/(runAsUser|runAsGroup|fsGroup): 1337/\1: {{ $gateway.\1 }}/' \
+    ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml \
+    ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml \
+    ${HELM_DIR}/gateways/istio-egress/templates/injected-deployment.yaml \
+    ${HELM_DIR}/gateways/istio-ingress/templates/injected-deployment.yaml
 
   # install in specified namespace
   for file in $(find ${HELM_DIR}/gateways/istio-ingress/templates -type f -name "*.yaml"); do

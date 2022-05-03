@@ -48,9 +48,30 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 	values["imagePullSecrets"] = config.ImagePullSecrets
 	// TODO: imagePullPolicy, resources
 
+	values["configMap_v1_0"] = "cni_network_config_v1_0"
+	values["configMap_v1_1"] = "cni_network_config_v1_1"
+	values["configMap_v2_0"] = "cni_network_config_v2_0"
+	values["configMap_v2_1"] = "cni_network_config_v2_1"
+	values["configMap_v2_2"] = "cni_network_config_v2_2"
+
+	values["chained"] = !config.UseMultus
+	if config.UseMultus {
+		values["cniBinDir"] = "/opt/multus/bin"
+		values["cniConfDir"] = "/etc/cni/multus/net.d"
+		values["mountedCniConfDir"] = "/host/etc/cni/multus/net.d"
+
+		values["cniConfFileName_v2_0"] = "v2-0-istio-cni.conf"
+		values["cniConfFileName_v2_1"] = "v2-1-istio-cni.conf"
+		values["cniConfFileName_v2_2"] = "v2-2-istio-cni.conf"
+	}
+
 	var releases []string
-	for _, version := range supportedVersions {
-		releases = append(releases, version.String())
+	if config.UseMultus {
+		for _, version := range supportedVersions {
+			releases = append(releases, version.String())
+		}
+	} else {
+		releases = append(releases, versions.DefaultVersion.String())
 	}
 	values["supportedReleases"] = releases
 

@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
@@ -427,41 +428,48 @@ func (v *versionStrategyV2_2) Render(ctx context.Context, cr *common.ControllerR
 		log.V(2).Info("rendering gateways charts")
 		if origGateways, ok := values.AsMap()["gateways"]; ok {
 			if origGatewaysMap, ok := origGateways.(map[string]interface{}); ok {
-				log.V(2).Info("rendering ingress gateway chart for istio-ingressgateway")
-				if ingressRenderings, _, err := v.renderIngressGateway("istio-ingressgateway", smcp.GetNamespace(), origGatewaysMap, spec.Istio); err == nil {
-					renderings[GatewayIngressChart] = ingressRenderings[GatewayIngressChart]
-				} else {
-					allErrors = append(allErrors, err)
-				}
-				log.V(2).Info("rendering egress gateway chart for istio-egressgateway")
-				if egressRenderings, _, err := v.renderEgressGateway("istio-egressgateway", smcp.GetNamespace(), origGatewaysMap, spec.Istio); err == nil {
-					renderings[GatewayEgressChart] = egressRenderings[GatewayEgressChart]
-				} else {
-					allErrors = append(allErrors, err)
-				}
-				if smcp.Spec.Gateways != nil {
-					for name, gateway := range smcp.Spec.Gateways.IngressGateways {
-						if gateway.Enabled == nil || !*gateway.Enabled {
-							continue
+				ns := &corev1.Namespace{}
+				if err := cr.Client.Get(ctx, types.NamespacedName{Name: smcp.GetNamespace()}, ns); err == nil {
+					userIDAutoassigned := ns.Annotations["openshift.io/sa.scc.uid-range"] != ""
+
+					log.V(2).Info("rendering ingress gateway chart for istio-ingressgateway")
+					if ingressRenderings, _, err := v.renderIngressGateway("istio-ingressgateway", smcp.GetNamespace(), origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
+						renderings[GatewayIngressChart] = ingressRenderings[GatewayIngressChart]
+					} else {
+						allErrors = append(allErrors, err)
+					}
+					log.V(2).Info("rendering egress gateway chart for istio-egressgateway")
+					if egressRenderings, _, err := v.renderEgressGateway("istio-egressgateway", smcp.GetNamespace(), origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
+						renderings[GatewayEgressChart] = egressRenderings[GatewayEgressChart]
+					} else {
+						allErrors = append(allErrors, err)
+					}
+					if smcp.Spec.Gateways != nil {
+						for name, gateway := range smcp.Spec.Gateways.IngressGateways {
+							if gateway.Enabled == nil || !*gateway.Enabled {
+								continue
+							}
+							log.V(2).Info(fmt.Sprintf("rendering ingress gateway chart for %s", name))
+							if ingressRenderings, _, err := v.renderIngressGateway(name, smcp.GetNamespace(), origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
+								renderings[GatewayIngressChart] = append(renderings[GatewayIngressChart], ingressRenderings[GatewayIngressChart]...)
+							} else {
+								allErrors = append(allErrors, err)
+							}
 						}
-						log.V(2).Info(fmt.Sprintf("rendering ingress gateway chart for %s", name))
-						if ingressRenderings, _, err := v.renderIngressGateway(name, smcp.GetNamespace(), origGatewaysMap, spec.Istio); err == nil {
-							renderings[GatewayIngressChart] = append(renderings[GatewayIngressChart], ingressRenderings[GatewayIngressChart]...)
-						} else {
-							allErrors = append(allErrors, err)
+						for name, gateway := range smcp.Spec.Gateways.EgressGateways {
+							if gateway.Enabled == nil || !*gateway.Enabled {
+								continue
+							}
+							log.V(2).Info(fmt.Sprintf("rendering egress gateway chart for %s", name))
+							if egressRenderings, _, err := v.renderEgressGateway(name, smcp.GetNamespace(), origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
+								renderings[GatewayEgressChart] = append(renderings[GatewayEgressChart], egressRenderings[GatewayEgressChart]...)
+							} else {
+								allErrors = append(allErrors, err)
+							}
 						}
 					}
-					for name, gateway := range smcp.Spec.Gateways.EgressGateways {
-						if gateway.Enabled == nil || !*gateway.Enabled {
-							continue
-						}
-						log.V(2).Info(fmt.Sprintf("rendering egress gateway chart for %s", name))
-						if egressRenderings, _, err := v.renderEgressGateway(name, smcp.GetNamespace(), origGatewaysMap, spec.Istio); err == nil {
-							renderings[GatewayEgressChart] = append(renderings[GatewayEgressChart], egressRenderings[GatewayEgressChart]...)
-						} else {
-							allErrors = append(allErrors, err)
-						}
-					}
+				} else {
+					allErrors = append(allErrors, err)
 				}
 				spec.Istio.SetField("gateways", origGateways)
 			}
@@ -488,15 +496,15 @@ func (v *versionStrategyV2_2) Render(ctx context.Context, cr *common.ControllerR
 	return renderings, nil
 }
 
-func (v *versionStrategyV2_2) renderIngressGateway(name string, namespace string, gateways map[string]interface{}, values *v1.HelmValues) (map[string][]manifest.Manifest, map[string]interface{}, error) {
-	return v.renderGateway(name, namespace, v2_2ChartMapping[GatewayIngressChart].path, "istio-ingressgateway", gateways, values)
+func (v *versionStrategyV2_2) renderIngressGateway(name string, namespace string, gateways map[string]interface{}, values *v1.HelmValues, userIDAutoassigned bool) (map[string][]manifest.Manifest, map[string]interface{}, error) {
+	return v.renderGateway(name, namespace, v2_2ChartMapping[GatewayIngressChart].path, "istio-ingressgateway", gateways, values, userIDAutoassigned)
 }
 
-func (v *versionStrategyV2_2) renderEgressGateway(name string, namespace string, gateways map[string]interface{}, values *v1.HelmValues) (map[string][]manifest.Manifest, map[string]interface{}, error) {
-	return v.renderGateway(name, namespace, v2_2ChartMapping[GatewayEgressChart].path, "istio-egressgateway", gateways, values)
+func (v *versionStrategyV2_2) renderEgressGateway(name string, namespace string, gateways map[string]interface{}, values *v1.HelmValues, userIDAutoassigned bool) (map[string][]manifest.Manifest, map[string]interface{}, error) {
+	return v.renderGateway(name, namespace, v2_2ChartMapping[GatewayEgressChart].path, "istio-egressgateway", gateways, values, userIDAutoassigned)
 }
 
-func (v *versionStrategyV2_2) renderGateway(name string, namespace string, chartPath string, typeName string, gateways map[string]interface{}, values *v1.HelmValues) (map[string][]manifest.Manifest, map[string]interface{}, error) {
+func (v *versionStrategyV2_2) renderGateway(name string, namespace string, chartPath string, typeName string, gateways map[string]interface{}, values *v1.HelmValues, userIDAutoassigned bool) (map[string][]manifest.Manifest, map[string]interface{}, error) {
 	gateway, ok, _ := unstructured.NestedMap(gateways, name)
 	// if 'app' label is not provided, set it to gateway name
 	if _, found, _ := unstructured.NestedString(gateway, "labels", "app"); !found {
@@ -510,6 +518,19 @@ func (v *versionStrategyV2_2) renderGateway(name string, namespace string, chart
 		// XXX: return an error?
 		return map[string][]manifest.Manifest{}, nil, nil
 	}
+
+	if !userIDAutoassigned {
+		if gateway["runAsUser"] == nil {
+			gateway["runAsUser"] = "1337"
+		}
+		if gateway["runAsGroup"] == nil {
+			gateway["runAsGroup"] = "1337"
+		}
+		if gateway["fsGroup"] == nil {
+			gateway["fsGroup"] = "1337"
+		}
+	}
+
 	newGateways := make(map[string]interface{})
 	newGateways["revision"] = gateways["revision"]
 	newGateways[typeName] = gateway

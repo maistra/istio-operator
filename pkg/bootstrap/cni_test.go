@@ -56,7 +56,8 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 	}
 
 	config := cni.Config{
-		Enabled: true,
+		Enabled:   true,
+		UseMultus: true,
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
