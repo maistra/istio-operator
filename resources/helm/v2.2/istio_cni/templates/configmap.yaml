@@ -1,4 +1,4 @@
-{{ if .Values.enabled }}
+{{ if .Values.cni.enabled }}
 # This ConfigMap is used to configure a self-hosted Istio CNI installation.
 kind: ConfigMap
 apiVersion: v1
@@ -18,7 +18,7 @@ data:
       "log_level": "info",
       "kubernetes": {
           "kubeconfig": "__KUBECONFIG_FILEPATH__",
-          "cni_bin_dir": "{{ default "/opt/cni/bin" .Values.cniBinDir }}",
+          "cni_bin_dir": "{{ default "/opt/cni/bin" .Values.cni.cniBinDir }}",
           "iptables_script": "v1-1-istio-iptables.sh",
           "exclude_namespaces": [ "{{ .Release.Namespace }}" ]
       }
@@ -31,7 +31,7 @@ data:
       "log_level": "info",
       "kubernetes": {
           "kubeconfig": "__KUBECONFIG_FILEPATH__",
-          "cni_bin_dir": "{{ default "/opt/cni/bin" .Values.cniBinDir }}",
+          "cni_bin_dir": "{{ default "/opt/cni/bin" .Values.cni.cniBinDir }}",
           "iptables_script": "v2-0-istio-iptables.sh",
           "exclude_namespaces": [ "{{ .Release.Namespace }}" ]
       }
@@ -44,7 +44,7 @@ data:
       "log_level": "info",
       "kubernetes": {
           "kubeconfig": "__KUBECONFIG_FILEPATH__",
-          "cni_bin_dir": "{{ default "/opt/cni/bin" .Values.cniBinDir }}",
+          "cni_bin_dir": "{{ default "/opt/cni/bin" .Values.cni.cniBinDir }}",
           "netns_setup_executable": "v2-1-istio-iptables",
           "exclude_namespaces": [ "{{ .Release.Namespace }}" ]
       }
@@ -54,10 +54,11 @@ data:
       "cniVersion": "0.3.0",
       "name": "v2-2-istio-cni",
       "type": "v2-2-istio-cni",
-      "log_level": "info",
+      "log_level": {{ quote .Values.cni.logLevel }},
+      "log_uds_address": "__LOG_UDS_ADDRESS__", 
       "kubernetes": {
           "kubeconfig": "__KUBECONFIG_FILEPATH__",
-          "cni_bin_dir": "{{ default "/opt/cni/bin" .Values.cniBinDir }}",
+          "cni_bin_dir": "{{ default "/opt/cni/bin" .Values.cni.cniBinDir }}",
           "exclude_namespaces": [ "{{ .Release.Namespace }}" ]
       }
     }

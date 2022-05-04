@@ -1,20 +1,19 @@
-{{ if .Values.enabled }}
+{{ if .Values.cni.enabled }}
 # This manifest installs the Istio install-cni container, as well
 # as the Istio CNI plugin and config on
 # each master and worker node in a Kubernetes cluster.
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
-  name: istio-node
+  name: istio-cni-node
   namespace: {{ .Release.Namespace }}
   labels:
-    heritage: {{ .Release.Service }}
+    k8s-app: istio-cni-node
     release: {{ .Release.Name }}
-    istio: cni
 spec:
   selector:
     matchLabels:
-      istio: cni
+      k8s-app: istio-cni-node
   updateStrategy:
     type: RollingUpdate
     rollingUpdate:
@@ -22,16 +21,19 @@ spec:
   template:
     metadata:
       labels:
-        heritage: {{ .Release.Service }}
+        k8s-app: istio-cni-node
         release: {{ .Release.Name }}
-        istio: cni
       annotations:
         sidecar.istio.io/inject: "false"
+        # Custom annotations
+        {{- if .Values.cni.podAnnotations }}
+{{ toYaml .Values.cni.podAnnotations | indent 8 }}
+        {{- end }}
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       tolerations:
-        # Make sure istio-node gets scheduled on all nodes.
+        # Make sure istio-cni-node gets scheduled on all nodes.
         - effect: NoSchedule
           operator: Exists
         # Mark the pod as a critical add-on for rescheduling.
@@ -39,34 +41,34 @@ spec:
           operator: Exists
         - effect: NoExecute
           operator: Exists
+      priorityClassName: system-node-critical
       serviceAccountName: istio-cni
       # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
       # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
-      terminationGracePeriodSeconds: 0
-      priorityClassName: system-node-critical
-{{- if .Values.imagePullSecrets }}
+      terminationGracePeriodSeconds: 5
+{{- if .Values.cni.imagePullSecrets }}
       imagePullSecrets:
-{{- range .Values.imagePullSecrets }}
+{{- range .Values.cni.imagePullSecrets }}
       - name: {{ . }}
 {{- end }}
 {{- end }}
       containers:
         # This container installs the Istio CNI binaries
         # and CNI network config file on each node.
-{{- if and (.Values.supportedReleases) (has "v1.1" .Values.supportedReleases) }}
+{{- if and (.Values.cni.supportedReleases) (has "v1.1" .Values.cni.supportedReleases) }}
         - name: install-cni-v1-1
-          image: "{{ .Values.image_v1_1 }}"
-          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          image: "{{ .Values.cni.image_v1_1 }}"
+          imagePullPolicy: {{ .Values.cni.imagePullPolicy }}
           command: ["/install-cni.sh"]
           securityContext:
             privileged: true
           env:
             # Directory where the CNI config file should be created in
             - name: CNI_NET_DIR
-              value: {{ default "/etc/cni/net.d" .Values.cniConfDir }}
+              value: {{ default "/etc/cni/net.d" .Values.cni.cniConfDir }}
             # Directory where the CNI config file should be created in (host path mounted in the container)
             - name: MOUNTED_CNI_NET_DIR
-              value: {{ default "/host/etc/cni/net.d" .Values.mountedCniConfDir }}
+              value: {{ default "/host/etc/cni/net.d" .Values.cni.mountedCniConfDir }}
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
               value: "v1-1-istio-cni.conf"
@@ -90,41 +92,41 @@ spec:
             - mountPath: /host/etc/cni/
               name: etc-cni-dir
           resources:
-{{- if .Values.resources }}
-{{ toYaml .Values.resources | indent 12 }}
+{{- if .Values.cni.resources }}
+{{ toYaml .Values.cni.resources | indent 12 }}
 {{- else }}
             requests:
               cpu: 10m
               memory: 100Mi
 {{- end }}
 {{- end }}
-{{- if and (.Values.supportedReleases) (has "v2.0" .Values.supportedReleases) }}
+{{- if and (.Values.cni.supportedReleases) (has "v2.0" .Values.cni.supportedReleases) }}
         - name: install-cni-v2-0
-          image: "{{ .Values.image_v2_0 }}"
-          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          image: "{{ .Values.cni.image_v2_0 }}"
+          imagePullPolicy: {{ .Values.cni.imagePullPolicy }}
           command: ["/install-cni.sh"]
           securityContext:
             privileged: true
           env:
-{{- if .Values.cniConfFileName_v2_0 }}
+{{- if .Values.cni.cniConfFileName_v2_0 }}
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
-              value: "{{ .Values.cniConfFileName_v2_0 }}"
+              value: "{{ .Values.cni.cniConfFileName_v2_0 }}"
 {{- end }}
             # The CNI network config to install on each node.
             - name: CNI_NETWORK_CONFIG
               valueFrom:
                 configMapKeyRef:
                   name: istio-cni-config
-                  key: "{{ default "cni_network_config" .Values.configMap_v2_0 }}"
+                  key: "{{ default "cni_network_config" .Values.cni.configMap_v2_0 }}"
             - name: CNI_NET_DIR
-              value: {{ default "/etc/cni/net.d" .Values.cniConfDir }}
+              value: {{ default "/etc/cni/net.d" .Values.cni.cniConfDir }}
             # Deploy as a standalone CNI plugin or as chained?
             - name: CHAINED_CNI_PLUGIN
-              value: "{{ .Values.chained }}"
+              value: "{{ .Values.cni.chained }}"
             # Directory in which the CNI config file should be created (host path mounted in the container)
             - name: MOUNTED_CNI_NET_DIR
-              value: {{ default "/host/etc/cni/net.d" .Values.mountedCniConfDir }}
+              value: {{ default "/host/etc/cni/net.d" .Values.cni.mountedCniConfDir }}
             # Name of the kubeconfig file used by CNI agent
             - name: KUBECFG_FILE_NAME
               value: "v2-0-istio-cni.kubeconfig"
@@ -137,41 +139,41 @@ spec:
             - mountPath: /host/etc/cni/
               name: etc-cni-dir
           resources:
-{{- if .Values.resources }}
-{{ toYaml .Values.resources | indent 12 }}
+{{- if .Values.cni.resources }}
+{{ toYaml .Values.cni.resources | indent 12 }}
 {{- else }}
             requests:
               cpu: 10m
               memory: 100Mi
 {{- end }}
 {{- end }}
-{{- if and (.Values.supportedReleases) (has "v2.1" .Values.supportedReleases) }}
+{{- if and (.Values.cni.supportedReleases) (has "v2.1" .Values.cni.supportedReleases) }}
         - name: install-cni-v2-1
-          image: "{{ .Values.image_v2_1 }}"
-          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          image: "{{ .Values.cni.image_v2_1 }}"
+          imagePullPolicy: {{ .Values.cni.imagePullPolicy }}
           command: ["install-cni"]
           securityContext:
             privileged: true
           env:
-{{- if .Values.cniConfFileName_v2_1 }}
+{{- if .Values.cni.cniConfFileName_v2_1 }}
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
-              value: "{{ .Values.cniConfFileName_v2_1 }}"
+              value: "{{ .Values.cni.cniConfFileName_v2_1 }}"
 {{- end }}
             # The CNI network config to install on each node.
             - name: CNI_NETWORK_CONFIG
               valueFrom:
                 configMapKeyRef:
                   name: istio-cni-config
-                  key: "{{ default "cni_network_config" .Values.configMap_v2_1 }}"
+                  key: "{{ default "cni_network_config" .Values.cni.configMap_v2_1 }}"
             - name: CNI_NET_DIR
-              value: {{ default "/etc/cni/net.d" .Values.cniConfDir }}
+              value: {{ default "/etc/cni/net.d" .Values.cni.cniConfDir }}
             # Deploy as a standalone CNI plugin or as chained?
             - name: CHAINED_CNI_PLUGIN
-              value: "{{ .Values.chained }}"
+              value: "{{ .Values.cni.chained }}"
             # Directory in which the CNI config file should be created (host path mounted in the container)
             - name: MOUNTED_CNI_NET_DIR
-              value: {{ default "/host/etc/cni/net.d" .Values.mountedCniConfDir }}
+              value: {{ default "/host/etc/cni/net.d" .Values.cni.mountedCniConfDir }}
             # Name of the kubeconfig file used by CNI agent
             - name: KUBECFG_FILE_NAME
               value: "v2-1-istio-cni.kubeconfig"
@@ -184,41 +186,50 @@ spec:
             - mountPath: /host/etc/cni/
               name: etc-cni-dir
           resources:
-{{- if .Values.resources }}
-{{ toYaml .Values.resources | indent 12 }}
+{{- if .Values.cni.resources }}
+{{ toYaml .Values.cni.resources | indent 12 }}
 {{- else }}
             requests:
               cpu: 10m
               memory: 100Mi
 {{- end }}
 {{- end }}
-{{- if and (.Values.supportedReleases) (has "v2.2" .Values.supportedReleases) }}
+{{- if and (.Values.cni.supportedReleases) (has "v2.2" .Values.cni.supportedReleases) }}
         - name: install-cni-v2-2
-          image: "{{ .Values.image_v2_2 }}"
-          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          image: "{{ .Values.cni.image_v2_2 }}"
+          imagePullPolicy: {{ .Values.cni.imagePullPolicy }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8000
           command: ["install-cni"]
           securityContext:
             privileged: true
           env:
-{{- if .Values.cniConfFileName_v2_2 }}
+{{- if .Values.cni.cniConfFileName_v2_2 }}
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
-              value: "{{ .Values.cniConfFileName_v2_2 }}"
+              value: "{{ .Values.cni.cniConfFileName_v2_2 }}"
 {{- end }}
             # The CNI network config to install on each node.
             - name: CNI_NETWORK_CONFIG
               valueFrom:
                 configMapKeyRef:
                   name: istio-cni-config
-                  key: "{{ default "cni_network_config" .Values.configMap_v2_2 }}"
+                  key: "{{ default "cni_network_config" .Values.cni.configMap_v2_2 }}"
             - name: CNI_NET_DIR
-              value: {{ default "/etc/cni/net.d" .Values.cniConfDir }}
+              value: {{ default "/etc/cni/net.d" .Values.cni.cniConfDir }}
             # Deploy as a standalone CNI plugin or as chained?
             - name: CHAINED_CNI_PLUGIN
-              value: "{{ .Values.chained }}"
+              value: "{{ .Values.cni.chained }}"
             # Directory in which the CNI config file should be created (host path mounted in the container)
             - name: MOUNTED_CNI_NET_DIR
-              value: {{ default "/host/etc/cni/net.d" .Values.mountedCniConfDir }}
+              value: {{ default "/host/etc/cni/net.d" .Values.cni.mountedCniConfDir }}
             # Name of the kubeconfig file used by CNI agent
             - name: KUBECFG_FILE_NAME
               value: "v2-2-istio-cni.kubeconfig"
@@ -230,9 +241,11 @@ spec:
               name: cni-bin-dir
             - mountPath: /host/etc/cni/
               name: etc-cni-dir
+            - mountPath: /var/run/istio-cni
+              name: cni-log-dir
           resources:
-{{- if .Values.resources }}
-{{ toYaml .Values.resources | indent 12 }}
+{{- if .Values.cni.resources }}
+{{ toYaml .Values.cni.resources | indent 12 }}
 {{- else }}
             requests:
               cpu: 10m
@@ -243,8 +256,12 @@ spec:
         # Used to install CNI.
         - name: cni-bin-dir
           hostPath:
-            path: {{ default "/opt/cni/bin" .Values.cniBinDir }}
+            path: {{ default "/opt/cni/bin" .Values.cni.cniBinDir }}
         - name: etc-cni-dir
           hostPath:
             path: /etc/cni
+        # Used for UDS log
+        - name: cni-log-dir
+          hostPath:
+            path: /var/run/istio-cni
 {{ end }}

@@ -75,7 +75,7 @@ func TestBootstrapping(t *testing.T) {
 		operatorNamespace     = "istio-operator"
 		controlPlaneNamespace = "test"
 		smcpName              = "test"
-		cniDaemonSetName      = "istio-node"
+		cniDaemonSetName      = "istio-cni-node"
 	)
 
 	var testCases = []struct {
