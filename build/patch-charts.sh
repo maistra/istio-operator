@@ -137,6 +137,10 @@ function patchGalley() {
   sed_wrap -i -e '/- apiGroups:.*apiextensions\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e '/- apiGroups:.*authentication\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
 
+  # remove istiod-reader ClusterRole and ClusterRoleBindings
+  rm ${HELM_DIR}/istio-control/istio-discovery/templates/reader-clusterrole.yaml
+  rm ${HELM_DIR}/istio-control/istio-discovery/templates/reader-clusterrolebinding.yaml
+
   convertClusterRoleBinding ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrolebinding.yaml
   sed_wrap -i -e '/- "discovery"/ a\
           - --memberRollName=default\
