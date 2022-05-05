@@ -143,7 +143,7 @@ function patchGalley() {
           - --cacheCluster=outbound|80||wasm-cacher-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.cluster.local\
           - --enableCRDScan=false\
           - --enableIngressClassName=false\
-          - --disableNodeAccess=true' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
+          - --disableNodeAccess=true' "${deployment}"
 
   ############## disable webhook config updates ############################
   # Name of the mutatingwebhookconfiguration to patch, if istioctl is not used.
@@ -156,6 +156,11 @@ function patchGalley() {
   sed_wrap -i -e '/env:/ a\
           - name: VALIDATION_WEBHOOK_CONFIG_NAME\
             value: ""' "${deployment}"
+
+  # Disable PRIORITIZED_LEADER_ELECTION so that MutatingWebhookConfigurations aren't watched
+  sed_wrap -i -e '/env:/ a\
+          - name: PRIORITIZED_LEADER_ELECTION\
+            value: "false"' "${deployment}"
   ##############################################################################
 
   # remove privileged security settings
