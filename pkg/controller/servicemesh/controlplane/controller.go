@@ -23,6 +23,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	jaegerv1 "github.com/maistra/istio-operator/pkg/apis/external/jaeger/v1"
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -90,6 +91,10 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 		return err
 	}
 	if err = c.Watch(&source.Kind{Type: &appsv1.DaemonSet{}}, enqueueRequestForSMCP, ownedResourcePredicates); err != nil {
+		return err
+	}
+	// Jaeger must be watched to patch Kiali on Jaeger route creation
+	if err = c.Watch(&source.Kind{Type: &jaegerv1.Jaeger{}}, enqueueRequestForSMCP, ownedResourcePredicates); err != nil {
 		return err
 	}
 
