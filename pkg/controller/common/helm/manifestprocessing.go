@@ -174,7 +174,8 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 			}
 		}
 	} else {
-		preprocessedObj, err := p.preprocessObjectForPatch(ctx, receiver, obj)
+		var preprocessedObj *unstructured.Unstructured
+		preprocessedObj, err = p.preprocessObjectForPatch(ctx, receiver, obj)
 		if err != nil {
 			return madeChanges, err
 		}
@@ -202,8 +203,9 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 			}
 		}
 	}
-	log.V(2).Info("resource reconciliation complete")
-	if err != nil {
+	if err == nil {
+		log.V(2).Info("resource reconciliation complete")
+	} else {
 		log.Error(err, "error occurred reconciling resource")
 	}
 	return madeChanges, err

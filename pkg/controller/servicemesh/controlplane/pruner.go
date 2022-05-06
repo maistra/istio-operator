@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -137,7 +138,7 @@ func (r *controlPlaneInstanceReconciler) pruneResources(ctx context.Context, pru
 		if pruneConfig.supportsDeleteCollection {
 			err = r.pruneAll(ctx, gvk, instanceGeneration)
 		} else {
-			err = r.pruneIndividually(ctx, gvk, instanceGeneration)
+			err = r.pruneIndividually(common.NewContextWithLog(ctx, log.WithValues("type", gvk.String())), gvk, instanceGeneration)
 		}
 		if err != nil {
 			log.Error(err, "Error pruning resources", "type", gvk.String())
@@ -148,6 +149,7 @@ func (r *controlPlaneInstanceReconciler) pruneResources(ctx context.Context, pru
 }
 
 func (r *controlPlaneInstanceReconciler) pruneIndividually(ctx context.Context, gvk schema.GroupVersionKind, instanceGeneration string) error {
+	log := common.LogFromContext(ctx)
 	labelSelector, err := createLabelSelector(r.Instance.Namespace, instanceGeneration)
 	if err != nil {
 		return err
@@ -162,6 +164,7 @@ func (r *controlPlaneInstanceReconciler) pruneIndividually(ctx context.Context, 
 		return fmt.Errorf("error retrieving resources to prune: %v", err)
 	}
 	for _, object := range objects.Items {
+		log.Info("deleting resource", "resource", types.NamespacedName{Namespace: object.GetNamespace(), Name: object.GetName()})
 		err = r.Client.Delete(ctx, &object, client.PropagationPolicy(metav1.DeletePropagationBackground))
 		if err != nil && !errors.IsNotFound(err) {
 			return fmt.Errorf("error deleting resource: %v", err)
