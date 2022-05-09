@@ -37,7 +37,10 @@ func GetScheme() *runtime.Scheme {
 }
 
 func CreateClient(clientObjects ...runtime.Object) (client.Client, *EnhancedTracker) {
-	s := GetScheme()
+	return CreateClientWithScheme(GetScheme(), clientObjects...)
+}
+
+func CreateClientWithScheme(s *runtime.Scheme, clientObjects ...runtime.Object) (client.Client, *EnhancedTracker) {
 	codecs := serializer.NewCodecFactory(s)
 	tracker := clienttesting.NewObjectTracker(s, codecs.UniversalDecoder())
 	enhancedTracker := NewEnhancedTracker(tracker, s, v2.SchemeGroupVersion)

@@ -1,19 +1,25 @@
 package controlplane
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
 
 	"go.uber.org/zap/zapcore"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/client-go/kubernetes/scheme"
 	clienttesting "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	"github.com/maistra/istio-operator/pkg/apis/external"
@@ -21,10 +27,16 @@ import (
 	kialiv1alpha1 "github.com/maistra/istio-operator/pkg/apis/external/kiali/v1alpha1"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	. "github.com/maistra/istio-operator/pkg/controller/common/test"
+	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 	routev1 "github.com/openshift/api/route/v1"
 )
+
+var featureEnabled = maistrav2.Enablement{
+	Enabled: ptrTrue,
+}
 
 func TestAddonsInstall(t *testing.T) {
 	const (
@@ -358,4 +370,219 @@ func VerifyKialiUpdate(jaegerName, domain string, values *maistrav1.HelmValues) 
 		return errors.NewAggregate(allErrors)
 	}
 	return nil
+}
+
+func TestPatchAddonsResult(t *testing.T) {
+	requeueWithTimeout := reconcile.Result{RequeueAfter: patchKialiRequeueInterval}
+	kiali := newKiali()
+	htpasswd := newHtpasswd()
+	grafanaRoute := newGrafanaRoute("grafana.istio-system.svc.cluster.local")
+	jaegerRoute := newJaegerRoute("jaeger-query.istio-system.svc.cluster.local")
+
+	testCases := []struct {
+		name                         string
+		kialiEnabled                 bool
+		grafanaEnabled               bool
+		jaegerEnabled                bool
+		objects                      []runtime.Object
+		expectedReconciliationResult reconcile.Result
+	}{
+		{
+			name:                         "reconciliation should succeed when Kiali is disabled",
+			kialiEnabled:                 false,
+			grafanaEnabled:               true,
+			jaegerEnabled:                true,
+			objects:                      []runtime.Object{},
+			expectedReconciliationResult: reconcile.Result{},
+		},
+		{
+			name:           "reconciliation should succeed when jaeger and grafana are enabled and their routes exist",
+			kialiEnabled:   true,
+			grafanaEnabled: true,
+			jaegerEnabled:  true,
+			objects: []runtime.Object{
+				kiali,
+				htpasswd,
+				grafanaRoute,
+				jaegerRoute,
+			},
+			expectedReconciliationResult: reconcile.Result{},
+		},
+		{
+			name:           "reconciliation should succeed when jaeger is disabled and its route does not exist",
+			kialiEnabled:   true,
+			grafanaEnabled: true,
+			jaegerEnabled:  false,
+			objects: []runtime.Object{
+				kiali,
+				htpasswd,
+				grafanaRoute,
+			},
+			expectedReconciliationResult: reconcile.Result{},
+		},
+		{
+			name:           "reconciliation should succeed when grafana is disabled and its route does not exist",
+			kialiEnabled:   true,
+			grafanaEnabled: false,
+			jaegerEnabled:  true,
+			objects: []runtime.Object{
+				kiali,
+				htpasswd,
+				jaegerRoute,
+			},
+			expectedReconciliationResult: reconcile.Result{},
+		},
+		{
+			name:           "should requeue reconciliation with timeout when jaeger and grafana are enabled, but their routes do not exist",
+			kialiEnabled:   true,
+			grafanaEnabled: true,
+			jaegerEnabled:  true,
+			objects: []runtime.Object{
+				kiali,
+				htpasswd,
+			},
+			expectedReconciliationResult: requeueWithTimeout,
+		},
+		{
+			name:           "should requeue reconciliation with timeout when jaeger and grafana are enabled, but jaeger route does not exist",
+			kialiEnabled:   true,
+			grafanaEnabled: true,
+			jaegerEnabled:  true,
+			objects: []runtime.Object{
+				kiali,
+				htpasswd,
+				grafanaRoute,
+			},
+			expectedReconciliationResult: requeueWithTimeout,
+		},
+		{
+			name:           "should requeue reconciliation with timeout when jaeger and grafana are enabled, but grafana route does not exist",
+			kialiEnabled:   true,
+			grafanaEnabled: true,
+			jaegerEnabled:  true,
+			objects: []runtime.Object{
+				kiali,
+				htpasswd,
+				jaegerRoute,
+			},
+			expectedReconciliationResult: requeueWithTimeout,
+		},
+	}
+
+	for _, tc := range testCases {
+		smcpSpec := newSmcpSpec(tc.kialiEnabled, tc.grafanaEnabled, tc.jaegerEnabled)
+		smcp := New21SMCPResource("basic", "istio-system", smcpSpec)
+		smcp.Status = maistrav2.ControlPlaneStatus{AppliedSpec: *smcpSpec}
+
+		s := scheme.Scheme
+		configureKialiAPI(s)
+		configureRouteAPI(s)
+
+		c, _ := CreateClientWithScheme(s, tc.objects...)
+		r := newReconciler(c, s, &record.FakeRecorder{}, "istio-operator", cni.Config{Enabled: true})
+		r.instanceReconcilerFactory = NewControlPlaneInstanceReconciler
+
+		_, smcpReconciler := r.getOrCreateReconciler(smcp)
+		res, err := smcpReconciler.PatchAddons(context.TODO(), &smcp.Spec)
+
+		assert.Nil(err, "unexpected error occurred", t)
+		assert.Equals(res, tc.expectedReconciliationResult, "unexpected reconciliation result", t)
+	}
+}
+
+func newSmcpSpec(kialiEnabled, grafanaEnabled, jaegerEnabled bool) *maistrav2.ControlPlaneSpec {
+	spec := &maistrav2.ControlPlaneSpec{
+		Addons: &maistrav2.AddonsConfig{},
+	}
+
+	if kialiEnabled {
+		spec.Addons.Kiali = &maistrav2.KialiAddonConfig{
+			Enablement: featureEnabled,
+		}
+	}
+	if grafanaEnabled {
+		spec.Addons.Grafana = &maistrav2.GrafanaAddonConfig{
+			Enablement: featureEnabled,
+		}
+	}
+	if jaegerEnabled {
+		spec.Tracing = &maistrav2.TracingConfig{
+			Type: maistrav2.TracerTypeJaeger,
+		}
+	}
+
+	return spec
+}
+
+func newHtpasswd() *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "htpasswd",
+			Namespace: "istio-system",
+		},
+		Data: map[string][]byte{
+			"rawPasswd": []byte("123"),
+		},
+	}
+}
+
+func newKiali() *kialiv1alpha1.Kiali {
+	return &kialiv1alpha1.Kiali{
+		Base: external.Base{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "kiali",
+				Namespace: "istio-system",
+			},
+		},
+	}
+}
+
+func newGrafanaRoute(hostname string) *routev1.Route {
+	return &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "grafana",
+			Namespace: "istio-system",
+		},
+		Spec: routev1.RouteSpec{
+			Host: hostname,
+		},
+	}
+}
+
+func newJaegerRoute(hostname string) *routev1.Route {
+	return &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "jaeger",
+			Namespace: "istio-system",
+			Labels: map[string]string{
+				"app.kubernetes.io/instance":  "jaeger",
+				"app.kubernetes.io/component": "query-route",
+			},
+		},
+		Spec: routev1.RouteSpec{
+			Host: hostname,
+		},
+	}
+}
+
+func configureKialiAPI(s *runtime.Scheme) {
+	kialiGroupVersion := schema.GroupVersion{
+		Group:   "kiali.io",
+		Version: "v1alpha1",
+	}
+	s.AddKnownTypes(kialiGroupVersion, &kialiv1alpha1.Kiali{})
+}
+
+func configureRouteAPI(s *runtime.Scheme) {
+	routeGroupVersion := schema.GroupVersion{
+		Group:   "route.openshift.io",
+		Version: "v1",
+	}
+	s.AddKnownTypes(routeGroupVersion, &routev1.Route{}, &routev1.RouteList{})
+}
+
+var routeGVR = schema.GroupVersionResource{
+	Group:    "route.openshift.io",
+	Version:  "v1",
+	Resource: "routes",
 }

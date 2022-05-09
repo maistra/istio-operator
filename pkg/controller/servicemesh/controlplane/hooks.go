@@ -102,10 +102,8 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, o
 	// if the user has not yet configured this, let's try to auto-detect it now.
 	if len(jaegerURL) == 0 && jaegerEnabled {
 		log.Info("attempting to auto-detect jaeger for kiali")
-		jaegerURL, err = r.jaegerURL(ctx, log)
-		if err != nil {
-			jaegerEnabled = false
-		} else if jaegerURL == "" {
+		jaegerURL = r.jaegerURL(ctx, log)
+		if jaegerURL == "" {
 			jaegerEnabled = false // there is no host on this route - disable it in kiali
 		}
 	}
