@@ -467,6 +467,14 @@ func TestPatchAddonsResult(t *testing.T) {
 			},
 			expectedReconciliationResult: requeueWithTimeout,
 		},
+		{
+			name:                         "should requeue reconciliation with timeout when Kiali is enabled, but does not exist",
+			kialiEnabled:                 true,
+			grafanaEnabled:               false,
+			jaegerEnabled:                false,
+			objects:                      []runtime.Object{},
+			expectedReconciliationResult: requeueWithTimeout,
+		},
 	}
 
 	for _, tc := range testCases {
