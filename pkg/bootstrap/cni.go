@@ -7,7 +7,6 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/helm/pkg/manifest"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -107,7 +106,7 @@ func internalProcessManifests(ctx context.Context, cl client.Client, rendering [
 		OperatorNamespace: operatorNamespace,
 	}
 
-	mp := helm.NewManifestProcessor(controllerResources, helm.NewPatchFactory(cl), "istio_cni", "TODO", types.NamespacedName{}, preProcessObject, postProcessObject, preProcessObjectForPatch)
+	mp := helm.NewManifestProcessor(controllerResources, helm.NewPatchFactory(cl), "istio_cni", "TODO", nil, preProcessObject, postProcessObject, preProcessObjectForPatch)
 	if _, err := mp.ProcessManifests(ctx, rendering, "istio_cni"); err != nil {
 		return err
 	}

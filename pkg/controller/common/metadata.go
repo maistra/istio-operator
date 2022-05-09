@@ -46,6 +46,10 @@ const (
 	// KubernetesAppManagedByValue is the KubernetesAppManagedByKey label value the operator sets on all objects it creates
 	KubernetesAppManagedByValue = "maistra-istio-operator"
 
+	// KubernetesAppManagedByExternal is the KubernetesAppManagedByKey label value that tells the operator not
+	// to manage the object
+	KubernetesAppManagedByExternal = "external"
+
 	// MemberRollName is the only name we allow for ServiceMeshMemberRoll objects
 	MemberRollName = "default"
 

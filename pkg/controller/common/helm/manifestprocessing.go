@@ -6,13 +6,14 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	errors2 "github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/helm/pkg/manifest"
 	"k8s.io/helm/pkg/releaseutil"
@@ -42,10 +43,10 @@ type ManifestProcessor struct {
 	preprocessObjectForPatch func(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error)
 
 	appInstance, appVersion string
-	owner                   types.NamespacedName
+	smcp                    *v2.ServiceMeshControlPlane
 }
 
-func NewManifestProcessor(controllerResources common.ControllerResources, patchFactory *PatchFactory, appInstance, appVersion string, owner types.NamespacedName, preprocessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) (bool, error), postProcessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) error, preprocessObjectForPatchFunc func(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error)) *ManifestProcessor {
+func NewManifestProcessor(controllerResources common.ControllerResources, patchFactory *PatchFactory, appInstance, appVersion string, smcp *v2.ServiceMeshControlPlane, preprocessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) (bool, error), postProcessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) error, preprocessObjectForPatchFunc func(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error)) *ManifestProcessor {
 	return &ManifestProcessor{
 		ControllerResources:      controllerResources,
 		PatchFactory:             patchFactory,
@@ -54,7 +55,7 @@ func NewManifestProcessor(controllerResources common.ControllerResources, patchF
 		preprocessObjectForPatch: preprocessObjectForPatchFunc,
 		appInstance:              appInstance,
 		appVersion:               appVersion,
-		owner:                    owner,
+		smcp:                     smcp,
 	}
 }
 
@@ -185,32 +186,42 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 			}
 		}
 	} else {
-		var preprocessedObj *unstructured.Unstructured
-		preprocessedObj, err = p.preprocessObjectForPatch(ctx, receiver, obj)
-		if err != nil {
-			return madeChanges, err
+		var allowExternallyManagedResources bool
+		if p.smcp != nil && p.smcp.Spec.TechPreview != nil {
+			allowExternallyManagedResources, _, _ = p.smcp.Spec.TechPreview.GetBool("externallyManagedResources")
 		}
-		if patch, err = p.PatchFactory.CreatePatch(receiver, preprocessedObj); err == nil && patch != nil {
-			log.Info("updating existing resource")
-			_, err = patch.Apply(ctx)
-			if errors.IsInvalid(err) {
-				// patch was invalid, try delete/create
-				log.Info(fmt.Sprintf("patch failed: %v.  attempting to delete and recreate the resource", err))
-				if deleteErr := p.Client.Delete(ctx, obj, client.PropagationPolicy(metav1.DeletePropagationBackground)); deleteErr == nil {
-					madeChanges = true
-					// we need to remove the resource version, which was updated by the patching process
-					obj.SetResourceVersion("")
-					if createErr := p.Client.Create(ctx, obj); createErr == nil {
-						log.Info("successfully recreated resource after patch failure")
-						err = nil
+		if allowExternallyManagedResources && receiver.GetLabels()[common.KubernetesAppManagedByKey] == common.KubernetesAppManagedByExternal {
+			log.Info("not updating resource because it's managed externally")
+			p.EventRecorder.Event(p.smcp, corev1.EventTypeNormal, "ResourceUpdateSkipped",
+				fmt.Sprintf("Update of %s %q skipped because it's managed externally", obj.GetKind(), objectKey))
+		} else {
+			var preprocessedObj *unstructured.Unstructured
+			preprocessedObj, err = p.preprocessObjectForPatch(ctx, receiver, obj)
+			if err != nil {
+				return madeChanges, err
+			}
+			if patch, err = p.PatchFactory.CreatePatch(receiver, preprocessedObj); err == nil && patch != nil {
+				log.Info("updating existing resource")
+				_, err = patch.Apply(ctx)
+				if errors.IsInvalid(err) {
+					// patch was invalid, try delete/create
+					log.Info(fmt.Sprintf("patch failed: %v.  attempting to delete and recreate the resource", err))
+					if deleteErr := p.Client.Delete(ctx, obj, client.PropagationPolicy(metav1.DeletePropagationBackground)); deleteErr == nil {
+						madeChanges = true
+						// we need to remove the resource version, which was updated by the patching process
+						obj.SetResourceVersion("")
+						if createErr := p.Client.Create(ctx, obj); createErr == nil {
+							log.Info("successfully recreated resource after patch failure")
+							err = nil
+						} else {
+							log.Error(createErr, "error trying to recreate resource after patch failure")
+						}
 					} else {
-						log.Error(createErr, "error trying to recreate resource after patch failure")
+						log.Error(deleteErr, "error deleting resource for recreation")
 					}
 				} else {
-					log.Error(deleteErr, "error deleting resource for recreation")
+					madeChanges = true
 				}
-			} else {
-				madeChanges = true
 			}
 		}
 	}
@@ -245,10 +256,15 @@ func (p *ManifestProcessor) addMetadata(obj *unstructured.Unstructured, componen
 		common.KubernetesAppComponentKey: component,
 		common.KubernetesAppPartOfKey:    common.KubernetesAppPartOfValue,
 		common.KubernetesAppManagedByKey: common.KubernetesAppManagedByValue,
-		// legacy
-		// add owner label
-		common.OwnerKey:     p.owner.Namespace,
-		common.OwnerNameKey: p.owner.Name,
+	}
+	// legacy
+	// add owner label
+	if p.smcp == nil {
+		labels[common.OwnerKey] = ""
+		labels[common.OwnerNameKey] = ""
+	} else {
+		labels[common.OwnerKey] = p.smcp.Namespace
+		labels[common.OwnerNameKey] = p.smcp.Name
 	}
 	common.SetLabels(obj, labels)
 }
