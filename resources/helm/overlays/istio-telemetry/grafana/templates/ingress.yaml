@@ -1,4 +1,4 @@
-{{- if and (.Capabilities.APIVersions.Has "route.openshift.io/v1/Route") .Values.grafana.ingress.enabled -}}
+{{- if .Values.grafana.ingress.enabled -}}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:

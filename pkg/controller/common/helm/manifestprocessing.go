@@ -8,8 +8,10 @@ import (
 	"github.com/ghodss/yaml"
 	errors2 "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/helm/pkg/manifest"
@@ -20,6 +22,17 @@ import (
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
+
+// List of resource kinds found only in OpenShift, not bare Kubernetes.
+// When creation of these kinds of resources fails, the failure is logged,
+// but the reconciliation of the SMCP continues.
+var openshiftSpecificResourceKinds = []schema.GroupVersionKind{
+	{
+		Group:   "route.openshift.io",
+		Version: "v1",
+		Kind:    "Route",
+	},
+}
 
 type ManifestProcessor struct {
 	common.ControllerResources
@@ -169,8 +182,6 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 					// just log for now
 					log.Error(err, "error during postprocessing of new resource")
 				}
-			} else {
-				log.Error(err, "error during creation of new resource")
 			}
 		}
 	} else {
@@ -206,9 +217,23 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 	if err == nil {
 		log.V(2).Info("resource reconciliation complete")
 	} else {
-		log.Error(err, "error occurred reconciling resource")
+		if meta.IsNoMatchError(err) && isOpenShiftSpecificResource(obj) {
+			log.Info("resource kind not supported by cluster; operator likely not running in OpenShift, but in vanilla Kubernetes")
+			err = nil
+		} else {
+			log.Error(err, "error occurred reconciling resource")
+		}
 	}
 	return madeChanges, err
+}
+
+func isOpenShiftSpecificResource(obj *unstructured.Unstructured) bool {
+	for _, gvk := range openshiftSpecificResourceKinds {
+		if gvk == obj.GetObjectKind().GroupVersionKind() {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *ManifestProcessor) addMetadata(obj *unstructured.Unstructured, component string) {

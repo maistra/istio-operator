@@ -1,4 +1,4 @@
-{{- if and (.Capabilities.APIVersions.Has "route.openshift.io/v1/Route") .Values.prometheus.ingress.enabled -}}
+{{- if .Values.prometheus.ingress.enabled -}}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
