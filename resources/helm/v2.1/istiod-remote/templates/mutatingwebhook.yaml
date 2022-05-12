@@ -5,12 +5,12 @@ a unique prefix to each. */}}
 - name: {{.Prefix}}sidecar-injector.istio.io
   clientConfig:
     {{- if .Values.istiodRemote.injectionURL }}
-    url: {{ .Values.istiodRemote.injectionURL }}
+    url: "{{ .Values.istiodRemote.injectionURL }}"
     {{- else }}
     service:
       name: istiod-{{ .Values.revision | default "default" }}
       namespace: {{ .Release.Namespace }}
-      path: "/inject"
+      path: "{{ .Values.istiodRemote.injectionPath }}"
       port: 443
     {{- end }}
     caBundle: ""
@@ -24,19 +24,17 @@ a unique prefix to each. */}}
   admissionReviewVersions: ["v1beta1", "v1"]
 {{- end }}
 {{- /* Installed for each revision - not installed for cluster resources ( cluster roles, bindings, crds) */}}
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
   labels:
-    maistra-version: "2.1.1"
+    maistra-version: "2.2.0"
     istio.io/rev: {{ .Values.revision | default "default" }}
     app: sidecar-injector
     release: {{ .Release.Name }}
 webhooks:
-{{- if .Values.sidecarInjectorWebhook.useLegacySelectors}}
-{{- /* Setup the "legacy" selectors. These are for backwards compatibility, will be removed in the future. */}}
-{{- include "core" (mergeOverwrite (deepCopy .) (dict "Prefix" "")) }}
+  {{- include "core" (mergeOverwrite (deepCopy .) (dict "Prefix" "") ) }}
   namespaceSelector:
     matchExpressions:
       - key: maistra.io/member-of
@@ -64,6 +62,5 @@ webhooks:
       operator: In
       values:
       - "true"
-{{- end }}
 {{- end }}
 {{- end }}
