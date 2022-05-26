@@ -99,15 +99,6 @@ function patchGalley() {
         - CREATE\
         - UPDATE\
         apiGroups:\
-        - maistra.io\
-        apiVersions:\
-        - "*"\
-        resources:\
-        - "servicemeshextensions"\
-      - operations:\
-        - CREATE\
-        - UPDATE\
-        apiGroups:\
         - rbac.maistra.io\
         apiVersions:\
         - "*"\
