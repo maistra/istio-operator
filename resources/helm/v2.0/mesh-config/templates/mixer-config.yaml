@@ -5,7 +5,7 @@ metadata:
   name: istioproxy
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.9"
+    maistra-version: "2.0.10"
     app: istio-mixer
     release: {{ .Release.Name }}
 spec:
@@ -147,7 +147,7 @@ metadata:
   name: kubernetes
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.9"
+    maistra-version: "2.0.10"
     app: istio-mixer
     release: {{ .Release.Name }}
 spec:
@@ -212,7 +212,7 @@ metadata:
   name: kubernetesenv
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.9"
+    maistra-version: "2.0.10"
     app: istio-mixer
     release: {{ .Release.Name }}
 spec:
@@ -232,7 +232,7 @@ metadata:
   name: kubeattrgenrulerule
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.9"
+    maistra-version: "2.0.10"
     app: istio-mixer
     release: {{ .Release.Name }}
 spec:
@@ -247,7 +247,7 @@ metadata:
   name: tcpkubeattrgenrulerule
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.9"
+    maistra-version: "2.0.10"
     app: istio-mixer
     release: {{ .Release.Name }}
 spec:
@@ -263,7 +263,7 @@ metadata:
   name: attributes
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.9"
+    maistra-version: "2.0.10"
     app: istio-mixer
     release: {{ .Release.Name }}
 spec:
