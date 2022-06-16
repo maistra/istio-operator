@@ -175,7 +175,6 @@ __REPLACES_CSV__
     supported: false
   - type: AllNamespaces
     supported: true
-  relatedImages:
 __RELATED_IMAGES__
   install:
     strategy: deployment
