@@ -236,13 +236,7 @@ func (r *MemberReconciler) reconcileObject(ctx context.Context, member *maistrav
 		return reconcile.Result{}, r.reportError(ctx, member, false, eventReasonErrorConfiguringNamespace, err)
 	}
 
-	// 4. Check if the SMCP is fully reconciled
-	if !isReconciled(smcp) {
-		err = r.reportError(ctx, member, false, eventReasonControlPlaneNotReconciled, fmt.Errorf("The referenced ServiceMeshControlPlane object is being reconciled."))
-		return reconcile.Result{}, err
-	}
-
-	// 5. Update the status
+	// 4. Update the status
 	// TODO: should the following two fields be updated every time we update the status?
 	member.Status.ServiceMeshGeneration = smcp.Status.ObservedGeneration
 	member.Status.ServiceMeshReconciledVersion = smcp.Status.GetReconciledVersion()

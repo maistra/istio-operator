@@ -155,54 +155,6 @@ func TestReconcileDoesNothingIfMultipleControlPlanesFound(t *testing.T) {
 	}, t)
 }
 
-func TestReconcileDoesNothingIfControlPlaneNotReconciledAtLeastOnce(t *testing.T) {
-	roll := newDefaultMemberRoll()
-	controlPlane := newControlPlane("")
-	controlPlane.Status.ObservedGeneration = 0
-
-	cl, tracker, r, _ := createClientAndReconciler(t, roll, controlPlane)
-
-	assertReconcileSucceeds(r, t)
-	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
-
-	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
-	assertConditions(updatedRoll, []maistrav1.ServiceMeshMemberRollCondition{
-		{
-			Type:    maistrav1.ConditionTypeMemberRollReady,
-			Status:  core.ConditionFalse,
-			Reason:  maistrav1.ConditionReasonSMCPNotReconciled,
-			Message: "Initial service mesh installation has not completed",
-		},
-	}, t)
-}
-
-func TestReconcileDoesNothingIfControlPlaneReconciledConditionIsNotTrue(t *testing.T) {
-	roll := newDefaultMemberRoll()
-	controlPlane := newControlPlane("")
-	controlPlane.Status.ObservedGeneration = 1
-	controlPlane.Status.Conditions = []status.Condition{
-		{
-			Type:   status.ConditionTypeReconciled,
-			Status: status.ConditionStatusFalse,
-		},
-	}
-
-	cl, tracker, r, _ := createClientAndReconciler(t, roll, controlPlane)
-
-	assertReconcileSucceeds(r, t)
-	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
-
-	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
-	assertConditions(updatedRoll, []maistrav1.ServiceMeshMemberRollCondition{
-		{
-			Type:    maistrav1.ConditionTypeMemberRollReady,
-			Status:  core.ConditionFalse,
-			Reason:  maistrav1.ConditionReasonSMCPNotReconciled,
-			Message: "Service mesh installation is not in a known good state",
-		},
-	}, t)
-}
-
 func TestReconcileFailsIfListingMembersFails(t *testing.T) {
 	roll := newDefaultMemberRoll()
 	controlPlane := newControlPlane("")
