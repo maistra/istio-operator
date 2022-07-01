@@ -147,28 +147,19 @@ func validateGateways(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.Con
 }
 
 func validateGatewaysInternal(meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, smmr *v1.ServiceMeshMemberRoll, allErrors []error) []error {
-	meshNamespaces := common.GetMeshNamespaces(meta.Namespace, smmr)
 	gatewayNames := sets.NewString()
 	if spec.Gateways != nil {
-		if spec.Gateways.ClusterIngress != nil {
-			validateGatewayNamespace(clusterIngressName, &spec.Gateways.ClusterIngress.GatewayConfig, meshNamespaces, &allErrors)
-		}
-		if spec.Gateways.ClusterEgress != nil {
-			validateGatewayNamespace(clusterEgressName, &spec.Gateways.ClusterEgress.GatewayConfig, meshNamespaces, &allErrors)
-		}
 		for name, gateway := range spec.Gateways.IngressGateways {
-			validateAdditionalGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, meta.Namespace, &allErrors)
+			validateAdditionalGateway(name, &gateway.GatewayConfig, gatewayNames, meta.Namespace, &allErrors)
 		}
 		for name, gateway := range spec.Gateways.EgressGateways {
-			validateAdditionalGateway(name, &gateway.GatewayConfig, gatewayNames, meshNamespaces, meta.Namespace, &allErrors)
+			validateAdditionalGateway(name, &gateway.GatewayConfig, gatewayNames, meta.Namespace, &allErrors)
 		}
 	}
 	return allErrors
 }
 
-func validateAdditionalGateway(name string, gateway *v2.GatewayConfig, gatewayNames sets.String, meshNamespaces sets.String, meshNamespace string, allErrors *[]error) {
-	validateGatewayNamespace(name, gateway, meshNamespaces, allErrors)
-
+func validateAdditionalGateway(name string, gateway *v2.GatewayConfig, gatewayNames sets.String, meshNamespace string, allErrors *[]error) {
 	namespace := gateway.Namespace
 	if namespace == "" {
 		namespace = meshNamespace
@@ -182,12 +173,6 @@ func validateAdditionalGateway(name string, gateway *v2.GatewayConfig, gatewayNa
 
 	if reservedGatewayNames.Has(name) {
 		*allErrors = append(*allErrors, fmt.Errorf("cannot define additional gateway named %q", name))
-	}
-}
-
-func validateGatewayNamespace(name string, gateway *v2.GatewayConfig, meshNamespaces sets.String, allErrors *[]error) {
-	if (gateway.Enabled == nil || *gateway.Enabled) && gateway.Namespace != "" && !meshNamespaces.Has(gateway.Namespace) {
-		*allErrors = append(*allErrors, fmt.Errorf("namespace %q for gateway %q is not configured as a mesh member", gateway.Namespace, name))
 	}
 }
 
