@@ -160,9 +160,9 @@ func (r *fakeInstanceReconciler) UpdateReadiness(ctx context.Context) error {
 	return nil
 }
 
-func (r *fakeInstanceReconciler) PatchAddons(ctx context.Context) error {
+func (r *fakeInstanceReconciler) PatchAddons(ctx context.Context, _ *maistrav2.ControlPlaneSpec) (reconcile.Result, error) {
 	r.updateReadinessInvoked = true
-	return nil
+	return common.Reconciled()
 }
 
 func (r *fakeInstanceReconciler) Delete(ctx context.Context) error {

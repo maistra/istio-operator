@@ -175,7 +175,16 @@ func (s ControlPlaneSpec) IsKialiEnabled() bool {
 }
 
 func (s ControlPlaneSpec) IsPrometheusEnabled() bool {
-	return s.Addons.Prometheus != nil &&
+	return s.Addons != nil &&
+		s.Addons.Prometheus != nil &&
 		s.Addons.Prometheus.Enabled != nil &&
 		*s.Addons.Prometheus.Enabled
+}
+
+func (s ControlPlaneSpec) IsGrafanaEnabled() bool {
+	return s.Addons != nil && s.Addons.Grafana != nil && s.Addons.Grafana.Enabled != nil && *s.Addons.Grafana.Enabled
+}
+
+func (s ControlPlaneSpec) IsJaegerEnabled() bool {
+	return s.Tracing != nil && s.Tracing.Type == TracerTypeJaeger
 }

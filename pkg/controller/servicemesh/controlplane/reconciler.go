@@ -6,6 +6,7 @@ import (
 	"path"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -62,6 +63,8 @@ const (
 	eventReasonFailedDeletingResources = "FailedDeletingResources"
 	eventReasonNotReady                = "NotReady"
 	eventReasonReady                   = "Ready"
+
+	patchKialiRequeueInterval = 1 * time.Minute
 )
 
 func NewControlPlaneInstanceReconciler(controllerResources common.ControllerResources, newInstance *v2.ServiceMeshControlPlane, cniConfig cni.Config) ControlPlaneInstanceReconciler {
