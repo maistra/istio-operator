@@ -38,7 +38,7 @@ LD_EXTRAFLAGS+=" -X ${REPO_PATH}/pkg/version.buildStatus=${GITSTATUS}"
 : ${MINIMUM_SUPPORTED_VERSION:=v1.1}
 LD_EXTRAFLAGS+=" -X ${REPO_PATH}/pkg/version.buildTag=${GITTAG} -X ${REPO_PATH}/pkg/version.minimumSupportedVersion=${MINIMUM_SUPPORTED_VERSION}"
 
-LDFLAGS="-extldflags -static ${LD_EXTRAFLAGS}"
+LDFLAGS="-extldflags -static ${LD_EXTRAFLAGS} -s -w"
 
 echo "building "${PROJECT_NAME}"..."
 GO111MODULE=on GOOS=linux CGO_ENABLED=0 go build -mod=vendor -o "${BIN_DIR}/${PROJECT_NAME}" -ldflags "${LDFLAGS}" "$BUILD_PATH"
