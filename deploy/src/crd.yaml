@@ -4989,6 +4989,8 @@ spec:
                       type:
                         type: string
                     type: object
+                  jwksResolverCA:
+                    type: string
                   manageNetworkPolicy:
                     type: boolean
                   trust:
@@ -9856,6 +9858,8 @@ spec:
                           type:
                             type: string
                         type: object
+                      jwksResolverCA:
+                        type: string
                       manageNetworkPolicy:
                         type: boolean
                       trust:
