@@ -6,7 +6,6 @@ import (
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
 )
 
 const controlPlaneNamespace = "cp-namespace"
@@ -26,101 +25,6 @@ func TestValidateGateways(t *testing.T) {
 			gateways:    nil,
 			expectError: false,
 		},
-
-		{
-			name: "cluster-ingress-in-non-member",
-			gateways: &maistrav2.GatewaysConfig{
-				ClusterIngress: newClusterIngressGatewayConfig("non-member-namespace", nil),
-			},
-			expectError: true,
-		},
-		{
-			name: "cluster-ingress-in-non-member-but-disabled",
-			gateways: &maistrav2.GatewaysConfig{
-				ClusterIngress: newClusterIngressGatewayConfig("non-member-namespace", pointer.BoolPtr(false)),
-			},
-			expectError: false,
-		},
-		{
-			name: "cluster-ingress-in-member",
-			gateways: &maistrav2.GatewaysConfig{
-				ClusterIngress: newClusterIngressGatewayConfig(memberNamespace, nil),
-			},
-			expectError: false,
-		},
-		{
-			name: "cluster-ingress-in-cp-namespace",
-			gateways: &maistrav2.GatewaysConfig{
-				ClusterIngress: newClusterIngressGatewayConfig(controlPlaneNamespace, nil),
-			},
-			expectError: false,
-		},
-
-		{
-			name: "cluster-egress-in-non-member",
-			gateways: &maistrav2.GatewaysConfig{
-				ClusterEgress: newEgressGatewayConfig("non-member-namespace", nil),
-			},
-			expectError: true,
-		},
-		{
-			name: "cluster-egress-in-non-member-but-disabled",
-			gateways: &maistrav2.GatewaysConfig{
-				ClusterEgress: newEgressGatewayConfig("non-member-namespace", pointer.BoolPtr(false)),
-			},
-			expectError: false,
-		},
-		{
-			name: "cluster-egress-in-member",
-			gateways: &maistrav2.GatewaysConfig{
-				ClusterEgress: newEgressGatewayConfig(memberNamespace, nil),
-			},
-			expectError: false,
-		},
-		{
-			name: "cluster-egress-in-cp-namespace",
-			gateways: &maistrav2.GatewaysConfig{
-				ClusterEgress: newEgressGatewayConfig(controlPlaneNamespace, nil),
-			},
-			expectError: false,
-		},
-
-		{
-			name: "additional-ingress-in-non-member",
-			gateways: &maistrav2.GatewaysConfig{
-				IngressGateways: map[string]*maistrav2.IngressGatewayConfig{
-					"additional-ingress": newIngressGatewayConfig("non-member-namespace", nil),
-				},
-			},
-			expectError: true,
-		},
-		{
-			name: "additional-ingress-in-non-member-but-disabled",
-			gateways: &maistrav2.GatewaysConfig{
-				IngressGateways: map[string]*maistrav2.IngressGatewayConfig{
-					"additional-ingress": newIngressGatewayConfig("non-member-namespace", pointer.BoolPtr(false)),
-				},
-			},
-			expectError: false,
-		},
-		{
-			name: "additional-ingress-in-member",
-			gateways: &maistrav2.GatewaysConfig{
-				IngressGateways: map[string]*maistrav2.IngressGatewayConfig{
-					"additional-ingress": newIngressGatewayConfig(memberNamespace, nil),
-				},
-			},
-			expectError: false,
-		},
-		{
-			name: "additional-ingress-in-cp-namespace",
-			gateways: &maistrav2.GatewaysConfig{
-				IngressGateways: map[string]*maistrav2.IngressGatewayConfig{
-					"additional-ingress": newIngressGatewayConfig(controlPlaneNamespace, nil),
-				},
-			},
-			expectError: false,
-		},
 		{
 			name: "additional-ingress-reserved-name",
 			gateways: &maistrav2.GatewaysConfig{
@@ -132,42 +36,6 @@ func TestValidateGateways(t *testing.T) {
 		},
 
 		{
-			name: "additional-egress-in-non-member",
-			gateways: &maistrav2.GatewaysConfig{
-				EgressGateways: map[string]*maistrav2.EgressGatewayConfig{
-					"additional-egress": newEgressGatewayConfig("non-member-namespace", nil),
-				},
-			},
-			expectError: true,
-		},
-		{
-			name: "additional-egress-in-non-member-but-disabled",
-			gateways: &maistrav2.GatewaysConfig{
-				EgressGateways: map[string]*maistrav2.EgressGatewayConfig{
-					"additional-egress": newEgressGatewayConfig("non-member-namespace", pointer.BoolPtr(false)),
-				},
-			},
-			expectError: false,
-		},
-		{
-			name: "additional-egress-in-member",
-			gateways: &maistrav2.GatewaysConfig{
-				EgressGateways: map[string]*maistrav2.EgressGatewayConfig{
-					"additional-egress": newEgressGatewayConfig(memberNamespace, nil),
-				},
-			},
-			expectError: false,
-		},
-		{
-			name: "additional-egress-in-cp-namespace",
-			gateways: &maistrav2.GatewaysConfig{
-				EgressGateways: map[string]*maistrav2.EgressGatewayConfig{
-					"additional-egress": newEgressGatewayConfig(controlPlaneNamespace, nil),
-				},
-			},
-			expectError: false,
-		},
-		{
 			name: "additional-egress-reserved-name",
 			gateways: &maistrav2.GatewaysConfig{
 				EgressGateways: map[string]*maistrav2.EgressGatewayConfig{
@@ -176,7 +44,6 @@ func TestValidateGateways(t *testing.T) {
 			},
 			expectError: true,
 		},
-
 		{
 			name: "duplicate-gateway-name",
 			gateways: &maistrav2.GatewaysConfig{
