@@ -48,13 +48,13 @@ spec:
         olm.relatedImage.v2_0.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:2.0.10
         olm.relatedImage.v2_0.wasm-cacher: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.0.10
 
-        olm.relatedImage.v2_1.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:2.1.3
-        olm.relatedImage.v2_1.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:2.1.3
-        olm.relatedImage.v2_1.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.1.3
-        olm.relatedImage.v2_1.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:2.1.3
-        olm.relatedImage.v2_1.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:2.1.3
-        olm.relatedImage.v2_1.wasm-cacher: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.1.3
-        olm.relatedImage.v2_1.rls: registry.redhat.io/openshift-service-mesh/ratelimit-rhel8:2.1.3
+        olm.relatedImage.v2_1.cni: registry.redhat.io/openshift-service-mesh/istio-cni-rhel8:2.1.4
+        olm.relatedImage.v2_1.grafana: registry.redhat.io/openshift-service-mesh/grafana-rhel8:2.1.4
+        olm.relatedImage.v2_1.pilot: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.1.4
+        olm.relatedImage.v2_1.prometheus: registry.redhat.io/openshift-service-mesh/prometheus-rhel8:2.1.4
+        olm.relatedImage.v2_1.proxyv2: registry.redhat.io/openshift-service-mesh/proxyv2-rhel8:2.1.4
+        olm.relatedImage.v2_1.wasm-cacher: registry.redhat.io/openshift-service-mesh/pilot-rhel8:2.1.4
+        olm.relatedImage.v2_1.rls: registry.redhat.io/openshift-service-mesh/ratelimit-rhel8:2.1.4
 
         oauth-proxy.query: "true"
         oauth-proxy.namespace: openshift
@@ -64,7 +64,7 @@ spec:
       serviceAccountName: istio-operator
       containers:
       - name: istio-operator
-        image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.1.3
+        image: registry.redhat.io/openshift-service-mesh/istio-rhel8-operator:2.1.4
         ports:
         - containerPort: 11999
           name: validation
