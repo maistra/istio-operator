@@ -19,8 +19,8 @@ const (
 	PRODUCT_IMAGE_1_1   = "1.1.18"
 	PRODUCT_IMAGE_2_0   = "2.0.10"
 	COMMUNITY_IMAGE_2_0 = "2.0.10"
-	COMMUNITY_IMAGE_2_1 = "2.1.3"
-	PRODUCT_IMAGE_2_1   = "2.1.3"
+	COMMUNITY_IMAGE_2_1 = "2.1.4"
+	PRODUCT_IMAGE_2_1   = "2.1.4"
 )
 
 func TestProfiles(t *testing.T) {
