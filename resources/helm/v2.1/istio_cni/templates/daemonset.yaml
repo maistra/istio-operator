@@ -8,7 +8,7 @@ metadata:
   name: istio-node
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.1.3"
+    maistra-version: "2.1.4"
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
     istio: cni
