@@ -27,7 +27,6 @@ import (
 
 	"github.com/maistra/istio-operator/pkg/apis/external"
 	kialiv1alpha1 "github.com/maistra/istio-operator/pkg/apis/external/kiali/v1alpha1"
-	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -326,7 +325,7 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		memberStatus, exists := memberStatusMap[ns]
 		if !exists {
 			memberStatus = maistrav1.ServiceMeshMemberStatusSummary{
-				Namespace: ns,
+				Namespace:  ns,
 				Conditions: []maistrav1.ServiceMeshMemberCondition{},
 			}
 		}
@@ -397,13 +396,7 @@ func (r *MemberRollReconciler) getServiceMeshControlPlane(ctx context.Context, n
 		return nil, maistrav1.ConditionReasonMultipleSMCP, "Multiple ServiceMeshControlPlane resources exist in the namespace", nil
 	}
 
-	mesh := &meshList.Items[0]
-	if mesh.Status.ObservedGeneration == 0 {
-		return nil, maistrav1.ConditionReasonSMCPNotReconciled, "Initial service mesh installation has not completed", nil
-	} else if meshReconcileStatus := mesh.Status.GetCondition(status.ConditionTypeReconciled); meshReconcileStatus.Status != status.ConditionStatusTrue {
-		return nil, maistrav1.ConditionReasonSMCPNotReconciled, "Service mesh installation is not in a known good state", nil
-	}
-	return mesh, "", "", nil
+	return &meshList.Items[0], "", "", nil
 }
 
 func setReadyCondition(roll *maistrav1.ServiceMeshMemberRoll, ready bool, reason maistrav1.ServiceMeshMemberRollConditionReason, message string) {
