@@ -77,7 +77,7 @@ func (v *MemberValidator) Handle(ctx context.Context, req admission.Request) adm
 		Spec: authorizationv1.SubjectAccessReviewSpec{
 			User:   req.AdmissionRequest.UserInfo.Username,
 			UID:    req.AdmissionRequest.UserInfo.UID,
-			Extra:  convertUserInfoExtra(req.AdmissionRequest.UserInfo.Extra),
+			Extra:  common.ConvertUserInfoExtra(req.AdmissionRequest.UserInfo.Extra),
 			Groups: req.AdmissionRequest.UserInfo.Groups,
 			ResourceAttributes: &authorizationv1.ResourceAttributes{
 				Verb:      "use",

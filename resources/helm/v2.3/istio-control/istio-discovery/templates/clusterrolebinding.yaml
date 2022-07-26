@@ -1,8 +1,8 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: {{ if .Values.global.clusterScoped }}ClusterRoleBinding{{ else }}RoleBinding{{ end }}
 metadata:
+  {{ if not .Values.global.clusterScoped }}namespace: {{ .Release.Namespace }}{{ end }}
   name: istiod-clusterrole-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
-  namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: "2.3.0"
     app: istiod
@@ -18,8 +18,9 @@ subjects:
 ---
 {{- if not (eq (toString .Values.pilot.env.PILOT_ENABLE_GATEWAY_API_DEPLOYMENT_CONTROLLER) "false") }}
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: {{ if .Values.global.clusterScoped }}ClusterRoleBinding{{ else }}RoleBinding{{ end }}
 metadata:
+  {{ if not .Values.global.clusterScoped }}namespace: {{ .Release.Namespace }}{{ end }}
   name: istiod-gateway-controller-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
   labels:
     maistra-version: "2.3.0"
