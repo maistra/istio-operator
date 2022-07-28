@@ -37,12 +37,13 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 	// get the kiali resource
 	kiali := &kialiv1alpha1.Kiali{}
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: kialiConfig.ResourceName(), Namespace: r.Instance.Namespace}, kiali); err != nil {
-		if errors.IsNotFound(err) || errors.IsGone(err) {
-			log.Error(nil, fmt.Sprintf("could not patch kiali CR, %s/%s does not exist", r.Instance.Namespace, kialiConfig.ResourceName()))
-			return common.Reconciled()
+		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
+			log.Info(fmt.Sprintf("requeue patching Kiali after %s update, because %s/%s is not available",
+				patchKialiRequeueInterval, kiali.GetNamespace(), kiali.GetName()))
 		}
-		return common.RequeueWithError(err)
+		return common.RequeueAfter(patchKialiRequeueInterval)
 	}
+
 	log.Info("patching kiali CR", kiali.Kind, kiali.GetName())
 
 	if kiali.Spec == nil {
@@ -118,8 +119,9 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 
 	if err := r.Client.Patch(ctx, updatedKiali, client.Merge); err != nil {
 		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
-			log.Info(fmt.Sprintf("skipping kiali update, %s/%s is no longer available", kiali.GetNamespace(), kiali.GetName()))
-			return common.Reconciled()
+			log.Info(fmt.Sprintf("requeue patching Kiali after %s update, because %s/%s is no longer available",
+				patchKialiRequeueInterval, kiali.GetNamespace(), kiali.GetName()))
+			return common.RequeueAfter(patchKialiRequeueInterval)
 		}
 		return common.RequeueWithError(err)
 	}
