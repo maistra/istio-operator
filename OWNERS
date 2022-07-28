@@ -1,0 +1,33 @@
+# The OWNERS file is used by prow to automatically merge approved PRs.
+
+approvers:
+- aslakknutsen
+- bartoszmajsak
+- bmangoen 
+- dcillera
+- dgn
+- jewertow
+- jwendell
+- luksa
+- oschaaf
+- rcernich
+- tedjpoole
+- twghu
+- yannuil
+- yxun
+
+reviewers:
+- aslakknutsen
+- bartoszmajsak
+- bmangoen 
+- dcillera
+- dgn
+- jewertow
+- jwendell
+- luksa
+- oschaaf
+- rcernich
+- tedjpoole
+- twghu
+- yannuil
+- yxun
