@@ -17,7 +17,7 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
 
     containerImage: ${OSSM_OPERATOR_IMAGE}
-    createdAt: 2022-07-07T15:06:13CEST
+    createdAt: 2022-07-28T14:45:11CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.2.1-0"
     operators.openshift.io/infrastructure-features: '["Disconnected"]'

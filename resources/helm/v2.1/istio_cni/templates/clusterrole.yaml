@@ -3,7 +3,7 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   labels:
-    maistra-version: "2.1.3"
+    maistra-version: "2.1.4"
   name: istio-cni
 rules:
   - apiGroups: [""]
