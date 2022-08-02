@@ -396,7 +396,7 @@ function convertClusterToNamespaced() {
   # $3 - namespaced kind
   # $4 - dereference
   sed_wrap -i -e 's/^\(\( *\)kind.*'$2'.*$\)/\2kind: '$3'/' "${1}"
-  sed_wrap -i -e '0,/name:/ s/^\(\(.*\)name:.*$\)/\1\
+  sed_wrap -i -e '/metadata:/,/^  name:/ s/^\(\(.*\)name:.*$\)/\1\
 \2namespace: {{ '$4'.Release.Namespace }}/' "${1}"
 }
 
