@@ -341,6 +341,7 @@ function patchSidecarInjector() {
   sed_wrap -i -e 's/runAsUser: 1337/runAsUser: {{ .ProxyUID }}/g' ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
   sed_wrap -i -e 's/runAsGroup: 1337/runAsGroup: {{ .ProxyUID }}/g' ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
   sed_wrap -i -e 's/fsGroup: 1337/fsGroup: {{ .ProxyGID }}/g' ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
+  sed_wrap -i -e 's/fsGroup: 1337/fsGroup: {{ .ProxyGID }}/g' ${HELM_DIR}/istio-control/istio-discovery/files/gateway-injection-template.yaml
 
   sed_wrap -i -e '/- name: istio-proxy/,/resources:/ {
     / *- ALL/a\
@@ -352,6 +353,7 @@ function patchSidecarInjector() {
 
   # replace 'default' in CA_ADDR spec to use valueOrDefault
   sed_wrap -i -e 's/value: istiod-{{ .Values.revision | default "default" }}.*$/value: istiod-{{ valueOrDefault .Values.revision "default" }}.{{ .Values.global.istioNamespace }}.svc:15012/' \
+      ${HELM_DIR}/istio-control/istio-discovery/files/gateway-injection-template.yaml \
       ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
 
   # never apply init container, even for validation
