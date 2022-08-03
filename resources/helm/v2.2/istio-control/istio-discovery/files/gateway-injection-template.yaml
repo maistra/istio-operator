@@ -51,7 +51,7 @@ spec:
     {{- if .Values.global.caAddress }}
       value: {{ .Values.global.caAddress }}
     {{- else }}
-      value: istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc:15012
+      value: istiod-{{ valueOrDefault .Values.revision "default" }}.{{ .Values.global.istioNamespace }}.svc:15012
     {{- end }}
     - name: POD_NAME
       valueFrom:
@@ -212,5 +212,5 @@ spec:
   {{- end }}
   {{- if eq (env "ENABLE_LEGACY_FSGROUP_INJECTION" "true") "true" }}
   securityContext:
-    fsGroup: 1337
+    fsGroup: {{ .ProxyGID }}
   {{- end }}
