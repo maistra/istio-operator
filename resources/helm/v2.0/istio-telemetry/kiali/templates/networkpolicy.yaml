@@ -5,7 +5,7 @@ metadata:
   name: istio-kiali-ingress
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.10"
+    maistra-version: "2.0.11"
     app: kiali
     release: {{ .Release.Name }}
   annotations:

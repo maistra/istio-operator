@@ -3,7 +3,7 @@ kind: ClusterRole
 metadata:
   name: istio-policy-{{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.10"
+    maistra-version: "2.0.11"
     release: {{ .Release.Name }}
     app: istio-policy
 rules:
