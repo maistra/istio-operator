@@ -8,18 +8,18 @@ if ! which go > /dev/null; then
 	exit 1
 fi
 
-: ${SOURCE_DIR:=$(pwd)}
-: ${OUT_DIR:=${SOURCE_DIR}/tmp/_output}
+: "${SOURCE_DIR:=$(pwd)}"
+: "${OUT_DIR:=${SOURCE_DIR}/tmp/_output}"
 BIN_DIR="${OUT_DIR}/bin"
-mkdir -p ${BIN_DIR}
+mkdir -p "${BIN_DIR}"
 PROJECT_NAME="istio-operator"
 REPO_PATH="github.com/maistra/istio-operator"
 BUILD_PATH="${REPO_PATH}/cmd/manager"
 
-: ${VERSION:=development}
+: "${VERSION:=development}"
 LD_EXTRAFLAGS="-X ${REPO_PATH}/pkg/version.buildVersion=${VERSION}"
 
-: ${GITREVISION:=$(git rev-parse --verify HEAD 2> /dev/null || echo "unknown")}
+: "${GITREVISION:=$(git rev-parse --verify HEAD 2> /dev/null || echo "unknown")}"
 LD_EXTRAFLAGS+=" -X ${REPO_PATH}/pkg/version.buildGitRevision=${GITREVISION}"
 
 if [ -z "${GITSTATUS}" ]; then
@@ -34,11 +34,11 @@ if [ -z "${GITSTATUS}" ]; then
 fi
 LD_EXTRAFLAGS+=" -X ${REPO_PATH}/pkg/version.buildStatus=${GITSTATUS}"
 
-: ${GITTAG:=$(git describe 2> /dev/null || echo "unknown")}
-: ${MINIMUM_SUPPORTED_VERSION:=v1.1}
+: "${GITTAG:=$(git describe 2> /dev/null || echo "unknown")}"
+: "${MINIMUM_SUPPORTED_VERSION:=v1.1}"
 LD_EXTRAFLAGS+=" -X ${REPO_PATH}/pkg/version.buildTag=${GITTAG} -X ${REPO_PATH}/pkg/version.minimumSupportedVersion=${MINIMUM_SUPPORTED_VERSION}"
 
 LDFLAGS="-extldflags -static ${LD_EXTRAFLAGS} -s -w"
 
-echo "building "${PROJECT_NAME}"..."
+echo "building ${PROJECT_NAME}..."
 GO111MODULE=on GOOS=linux CGO_ENABLED=0 go build -mod=vendor -o "${BIN_DIR}/${PROJECT_NAME}" -ldflags "${LDFLAGS}" "$BUILD_PATH"

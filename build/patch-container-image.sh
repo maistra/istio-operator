@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1004
 
-set -e
+set -e -u
 
 # include sed_wrap
-source $(dirname ${BASH_SOURCE})/sed-wrapper.sh
+# shellcheck source=build/sed-wrapper.sh
+source "$(dirname "${BASH_SOURCE[0]}")/sed-wrapper.sh"
 
 function patch_container_image() {
     local container=$1

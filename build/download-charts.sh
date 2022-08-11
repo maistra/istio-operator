@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
 
-set -e
+set -e -u
 
 # include sed_wrap
-source $(dirname ${BASH_SOURCE})/sed-wrapper.sh
+# shellcheck source=build/sed-wrapper.sh
+source "$(dirname "${BASH_SOURCE[0]}")/sed-wrapper.sh"
 
-: ${MAISTRA_VERSION:=2.2.1}
-: ${MAISTRA_REPO:=https://github.com/maistra/istio}
-: ${MAISTRA_BRANCH:=maistra-2.2}
+: "${MAISTRA_VERSION:=2.2.1}"
+: "${MAISTRA_REPO:=https://github.com/maistra/istio}"
+: "${MAISTRA_BRANCH:=maistra-2.2}"
 
-: ${SOURCE_DIR:=$(pwd)}
-: ${OUT_DIR:=${SOURCE_DIR}/tmp/_output}
+: "${SOURCE_DIR:=$(pwd)}"
+: "${OUT_DIR:=${SOURCE_DIR}/tmp/_output}"
 
-: ${ISTIO_VERSION:=1.12.2}
+: "${ISTIO_VERSION:=1.12.2}"
 
 RELEASES_DIR=${OUT_DIR}/helm/istio-releases
 
+# shellcheck disable=SC2034
 PLATFORM=linux
 
 ISTIO_NAME=istio-${ISTIO_VERSION}
@@ -27,7 +29,7 @@ RELEASE_DIR="${RELEASES_DIR}/${ISTIO_NAME}"
 
 ISTIO_NAME=${ISTIO_NAME//./-}
 
-: ${HELM_DIR:=${RELEASE_DIR}}
+: "${HELM_DIR:=${RELEASE_DIR}}"
 
 function retrieveIstioRelease() {
   if [ -d "${HELM_DIR}" ] ; then
@@ -51,10 +53,10 @@ function retrieveIstioRelease() {
       cd "${RELEASES_DIR}"
       rm -rf ${EXTRACT_DIR}
       ${EXTRACT_CMD}
-      cp -rf ${EXTRACT_DIR}/manifests/charts/* ${HELM_DIR}/
+      cp -rf ${EXTRACT_DIR}/manifests/charts/* "${HELM_DIR}/"
       # grafana dashboards
-      mkdir -p ${HELM_DIR}/istio-telemetry/grafana/dashboards
-      cp -rf ${EXTRACT_DIR}/manifests/addons/dashboards/* ${HELM_DIR}/istio-telemetry/grafana/dashboards/
+      mkdir -p "${HELM_DIR}/istio-telemetry/grafana/dashboards"
+      cp -rf ${EXTRACT_DIR}/manifests/addons/dashboards/* "${HELM_DIR}/istio-telemetry/grafana/dashboards/"
       #(
       #  cd "${HELM_DIR}/istio"
       #  helm dep update
@@ -64,12 +66,13 @@ function retrieveIstioRelease() {
 
 retrieveIstioRelease
 
-source $(dirname ${BASH_SOURCE})/patch-charts.sh
+# shellcheck source=build/patch-charts.sh
+source "$(dirname "${BASH_SOURCE[0]}")/patch-charts.sh"
 
 (
   cd "${RELEASES_DIR}"
   echo "producing diff file for charts: $(pwd)/chart-diffs.diff"
-  diff -uNr ${EXTRACT_DIR}/manifests/charts/ ${HELM_DIR}/ > chart-diffs.diff || [ $? -eq 1 ]
+  diff -uNr "${EXTRACT_DIR}/manifests/charts/" "${HELM_DIR}/" > chart-diffs.diff || [ $? -eq 1 ]
 #  cp -r ${EXTRACT_DIR}/manifests/charts/ ${HELM_DIR}-original/
   echo "Location of patched charts: ${HELM_DIR}/"
 )

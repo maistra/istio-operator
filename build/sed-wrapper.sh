@@ -10,9 +10,9 @@ function sed() {
 function sed_wrap() {
   for filename; do true; done # this retrieves the last argument
   echo "patching $filename"
-  state=$(cat $filename)
-  command sed "$@"
-  difference=$(diff <(echo "${state}") <(cat ${filename}) || true)
+  state=$(cat "$filename")
+  command sed "$@" || (>&2 echo "Failed call: sed $*" && false)
+  difference=$(diff <(echo "${state}") <(cat "${filename}") || true)
   if [[ -z "${difference}" ]]; then
     >&2 echo "ERROR: nothing changed, sed seems to not have matched. Exiting"
     >&2 echo "Failed call: sed $*"
