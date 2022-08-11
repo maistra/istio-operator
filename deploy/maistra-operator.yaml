@@ -3,6 +3,8 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  labels:
+    maistra-version: 2.2.1
   annotations:
     service.beta.openshift.io/inject-cabundle: "true"
     controller-gen.kubebuilder.io/version: v0.4.1
@@ -10061,6 +10063,8 @@ status:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  labels:
+    maistra-version: 2.2.1
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
@@ -10213,6 +10217,8 @@ status:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  labels:
+    maistra-version: 2.2.1
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
