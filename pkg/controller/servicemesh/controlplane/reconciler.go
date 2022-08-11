@@ -421,7 +421,7 @@ func (r *controlPlaneInstanceReconciler) PostStatus(ctx context.Context) error {
 	log.Info("Posting status update", "conditions", r.Status.Conditions)
 	if err := r.Client.Get(ctx, client.ObjectKey{Name: r.Instance.Name, Namespace: r.Instance.Namespace}, instance); err == nil {
 		instance.Status = *r.Status.DeepCopy()
-		if err = r.Client.Status().Patch(ctx, instance, common.NewStatusPatch(instance.Status)); err != nil && !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
+		if err = r.Client.Status().Patch(ctx, instance, common.NewStatusPatch(instance.Status)); err != nil && !apierrors.IsNotFound(err) {
 			return errors.Wrap(err, "error updating ServiceMeshControlPlane status")
 		}
 		// null values may have been removed during patching, which means the
@@ -429,7 +429,7 @@ func (r *controlPlaneInstanceReconciler) PostStatus(ctx context.Context) error {
 		// on the next reconcile, which will lead to a cycle of status updates
 		// while waiting for components to become available.
 		r.Status = instance.Status.DeepCopy()
-	} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
+	} else if !apierrors.IsNotFound(err) {
 		return errors.Wrap(err, "error getting ServiceMeshControlPlane prior to updating status")
 	}
 

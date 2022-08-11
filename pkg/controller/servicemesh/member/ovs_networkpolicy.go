@@ -112,7 +112,7 @@ func (s *networkPolicyStrategy) reconcileNamespaceInMesh(ctx context.Context, na
 			},
 		}
 		err = s.Client.Delete(ctx, networkPolicy, client.PropagationPolicy(meta.DeletePropagationForeground))
-		if err != nil && !(errors.IsNotFound(err) || errors.IsGone(err)) {
+		if err != nil && !errors.IsNotFound(err) {
 			logger.Error(err, "error deleting NetworkPolicy", "NetworkPolicy", networkPolicyName)
 			allErrors = append(allErrors, err)
 		}
@@ -135,7 +135,7 @@ func (s *networkPolicyStrategy) removeNamespaceFromMesh(ctx context.Context, nam
 		for _, np := range npList.Items {
 			logger.Info("deleting NetworkPolicy for mesh", "NetworkPolicy", np.GetName())
 			err = s.Client.Delete(ctx, &np)
-			if err != nil && !(errors.IsNotFound(err) || errors.IsGone(err)) {
+			if err != nil && !errors.IsNotFound(err) {
 				logger.Error(err, "error removing NetworkPolicy associated with mesh", "NetworkPolicy", np.GetName())
 				allErrors = append(allErrors, err)
 			}

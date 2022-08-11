@@ -77,9 +77,9 @@ func (v version) getSMCPProfile(name string, targetNamespace string) (*v1.Contro
 
 	profileContent, err := ioutil.ReadFile(path.Join(v.GetUserTemplatesDir(), name))
 	if err != nil {
-		//if we can't read from the user profile path, try from the default path
-		//we use two paths because Kubernetes will not auto-update volume mounted
-		//configmaps mounted in directories with pre-existing content
+		// if we can't read from the user profile path, try from the default path
+		// we use two paths because Kubernetes will not auto-update volume mounted
+		// configmaps mounted in directories with pre-existing content
 		defaultProfileContent, defaultErr := ioutil.ReadFile(path.Join(v.GetDefaultTemplatesDir(), name))
 		if defaultErr != nil {
 			return nil, nil, fmt.Errorf("template cannot be loaded from user or default directory. Error from user: %s. Error from default: %s", err, defaultErr)
@@ -119,7 +119,7 @@ func (v version) getSMCPProfile(name string, targetNamespace string) (*v1.Contro
 	}
 }
 
-//renderSMCPTemplates traverses and processes all of the references templates
+// renderSMCPTemplates traverses and processes all of the references templates
 func (v version) recursivelyApplyProfiles(ctx context.Context, smcp *v1.ControlPlaneSpec, targetNamespace string, profiles []string, visited sets.String) (v1.ControlPlaneSpec, error) {
 	log := common.LogFromContext(ctx)
 
@@ -196,7 +196,7 @@ func updateOauthProxyConfig(ctx context.Context, cr *common.ControllerResources,
 		if !foundTag {
 			log.Info(fmt.Sprintf("warning: could not find tag '%s' in ImageStream %s/%s", common.Config.OAuthProxy.Tag, common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
 		}
-	} else if !(apierrors.IsNotFound(err) || apierrors.IsGone(err)) {
+	} else if !apierrors.IsNotFound(err) {
 		log.Error(err, fmt.Sprintf("unexpected error retrieving ImageStream %s/%s", common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
 	}
 	if len(common.Config.OAuthProxy.Image) == 0 {

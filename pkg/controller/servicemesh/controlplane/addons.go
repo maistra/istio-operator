@@ -37,7 +37,7 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 	// get the kiali resource
 	kiali := &kialiv1alpha1.Kiali{}
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: kialiConfig.ResourceName(), Namespace: r.Instance.Namespace}, kiali); err != nil {
-		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
+		if meta.IsNoMatchError(err) || errors.IsNotFound(err) {
 			log.Info(fmt.Sprintf("requeue patching Kiali after %s update, because %s/%s is not available",
 				patchKialiRequeueInterval, kiali.GetNamespace(), kiali.GetName()))
 		}
@@ -118,7 +118,7 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 	// FUTURE: add support for synchronizing kiali version with control plane version
 
 	if err := r.Client.Patch(ctx, updatedKiali, client.Merge); err != nil {
-		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
+		if meta.IsNoMatchError(err) || errors.IsNotFound(err) {
 			log.Info(fmt.Sprintf("requeue patching Kiali after %s update, because %s/%s is no longer available",
 				patchKialiRequeueInterval, kiali.GetNamespace(), kiali.GetName()))
 			return common.RequeueAfter(patchKialiRequeueInterval)
@@ -141,7 +141,7 @@ func (r *controlPlaneInstanceReconciler) grafanaURL(ctx context.Context, log log
 	grafanaRoute := &routev1.Route{}
 	err := r.Client.Get(ctx, client.ObjectKey{Name: "grafana", Namespace: r.Instance.GetNamespace()}, grafanaRoute)
 	if err != nil {
-		if !(errors.IsNotFound(err) || errors.IsGone(err)) {
+		if !errors.IsNotFound(err) {
 			log.Error(err, "error retrieving Grafana route - will disable Grafana in Kiali")
 			// we aren't going to return here - Grafana is optional for Kiali; Kiali can still run without it
 		}
@@ -168,7 +168,7 @@ func (r *controlPlaneInstanceReconciler) jaegerURL(ctx context.Context, log logr
 			"app.kubernetes.io/component": "query-route",
 		})
 	if err != nil {
-		if !(errors.IsNotFound(err) || errors.IsGone(err)) {
+		if !errors.IsNotFound(err) {
 			log.Error(err, "error retrieving Jaeger route - will disable it in Kiali")
 			// we aren't going to return here - Grafana is optional for Kiali; Kiali can still run without it
 		}
