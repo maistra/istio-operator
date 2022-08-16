@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-set -e
+set -e -u
 
-: ${MAISTRA_VERSION:?"Need to set maistra version, e.g. 1.0.1"}
+: "${MAISTRA_VERSION:?"Need to set maistra version, e.g. 1.0.1"}"
 BUNDLE_DIRS="manifests-maistra/${MAISTRA_VERSION} manifests-servicemesh/${MAISTRA_VERSION}"
 
 for bundle_dir in ${BUNDLE_DIRS}; do
@@ -40,17 +40,15 @@ function generateCRDs() {
 
   for bundle_dir in ${BUNDLE_DIRS}; do
     echo "Writing CRDs to directory ${bundle_dir}"
-    cp deploy/crds/maistra.io_servicemeshcontrolplanes.yaml ${bundle_dir}/servicemeshcontrolplanes.crd.yaml
-    cp deploy/crds/maistra.io_servicemeshmemberrolls.yaml ${bundle_dir}/servicemeshmemberrolls.crd.yaml
-    cp deploy/crds/maistra.io_servicemeshmembers.yaml ${bundle_dir}/servicemeshmembers.crd.yaml
+    cp deploy/crds/maistra.io_servicemeshcontrolplanes.yaml "${bundle_dir}/servicemeshcontrolplanes.crd.yaml"
+    cp deploy/crds/maistra.io_servicemeshmemberrolls.yaml "${bundle_dir}/servicemeshmemberrolls.crd.yaml"
+    cp deploy/crds/maistra.io_servicemeshmembers.yaml "${bundle_dir}/servicemeshmembers.crd.yaml"
   done
 
   echo "Writing CRDs to file deploy/src/crd.yaml"
-  cat deploy/crds/maistra.io_servicemeshcontrolplanes.yaml >deploy/src/crd.yaml
-  echo -e "\n---\n" >>deploy/src/crd.yaml
-  cat deploy/crds/maistra.io_servicemeshmemberrolls.yaml >>deploy/src/crd.yaml
-  echo -e "\n---\n" >>deploy/src/crd.yaml
-  cat deploy/crds/maistra.io_servicemeshmembers.yaml >>deploy/src/crd.yaml
+  { cat deploy/crds/maistra.io_servicemeshcontrolplanes.yaml; echo -e "\n---\n";
+    cat deploy/crds/maistra.io_servicemeshmemberrolls.yaml;  echo -e "\n---\n";
+    cat deploy/crds/maistra.io_servicemeshmembers.yaml; } >deploy/src/crd.yaml
 
   rm -rf deploy/crds/
 }

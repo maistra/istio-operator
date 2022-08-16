@@ -53,6 +53,10 @@ $(info   Building $(BUILD_TYPE) operator)
 
 export SOURCE_DIR OUT_DIR MAISTRA_BRANCH MAISTRA_VERSION VERSION COMMUNITY BUILD_TYPE
 
+FINDFILES=find . \( -path ./.git -o -path ./.github -o -path ./tmp -o -path ./vendor \) -prune -o -type f
+XARGS = xargs -0 -r
+
+
 ################################################################################
 # clean ./tmp/_output
 ################################################################################
@@ -265,6 +269,16 @@ update-generated-code:
 ################################################################################
 .PHONY: build
 build: update-generated-code update-charts update-templates compile
+
+################################################################################
+# linting
+################################################################################
+.PHONY: lint-scripts
+lint-scripts:
+	@${FINDFILES} -name '*.sh' -print0 | ${XARGS} shellcheck
+
+.PHONY: lint
+lint: lint-scripts
 
 ################################################################################
 # create image
