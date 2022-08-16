@@ -274,7 +274,7 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 						spec.Istio.SetField("tracing.jaeger.template", "production-elasticsearch")
 					}
 				}
-			} else if !(errors.IsNotFound(err) || errors.IsGone(err)) {
+			} else if !errors.IsNotFound(err) {
 				if meta.IsNoMatchError(err) {
 					return nil, NewDependencyMissingError("Jaeger CRD", err)
 				}
@@ -303,7 +303,7 @@ func (v *versionStrategyV2_0) Render(ctx context.Context, cr *common.ControllerR
 					return nil, fmt.Errorf("unexpected error disabling kiali install")
 				}
 			}
-		} else if !(errors.IsNotFound(err) || errors.IsGone(err)) {
+		} else if !errors.IsNotFound(err) {
 			if meta.IsNoMatchError(err) {
 				return nil, NewDependencyMissingError("Kiali CRD", err)
 			}

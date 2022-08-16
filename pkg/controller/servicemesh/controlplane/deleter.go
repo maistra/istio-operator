@@ -88,11 +88,11 @@ func (r *controlPlaneInstanceReconciler) Delete(ctx context.Context) error {
 		if err := r.Client.Update(ctx, instance); err == nil {
 			log.Info("Removed finalizer")
 			hacks.SkipReconciliationUntilCacheSynced(ctx, smcpNamespacedName)
-		} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
+		} else if !apierrors.IsNotFound(err) {
 			r.EventRecorder.Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", err)) // TODO: this event probably isn't needed at all
 			return errors.Wrap(err, "Error removing ServiceMeshControlPlane finalizer")
 		}
-	} else if !(apierrors.IsGone(err) || apierrors.IsNotFound(err)) {
+	} else if !apierrors.IsNotFound(err) {
 		r.EventRecorder.Event(instance, corev1.EventTypeWarning, eventReasonFailedRemovingFinalizer, fmt.Sprintf("Error occurred removing finalizer from service mesh: %s", err))
 		return errors.Wrap(err, "Error getting ServiceMeshControlPlane prior to removing finalizer")
 	}

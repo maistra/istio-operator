@@ -24,7 +24,7 @@ type v1xRenderingStrategy struct{}
 
 func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
 	log := common.LogFromContext(ctx)
-	//Generate the spec
+	// Generate the spec
 	v1spec := &v1.ControlPlaneSpec{}
 	if err := cr.Scheme.Convert(&smcp.Spec, v1spec, nil); err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 						spec.Istio.SetField("tracing.jaeger.template", "production-elasticsearch")
 					}
 				}
-			} else if !(errors.IsNotFound(err) || errors.IsGone(err)) {
+			} else if !errors.IsNotFound(err) {
 				if meta.IsNoMatchError(err) {
 					return nil, NewDependencyMissingError("Jaeger CRD", err)
 				}
@@ -122,7 +122,7 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 		return nil, fmt.Errorf("Unexpected error setting Status.AppliedSpec: %v", err)
 	}
 
-	//Render the charts
+	// Render the charts
 	allErrors := []error{}
 	var threeScaleRenderings map[string][]manifest.Manifest
 	log.Info("rendering helm charts")

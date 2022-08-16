@@ -540,7 +540,7 @@ func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName
 	kialiCR.SetName(kialiCRName)
 	err := r.Client.Get(ctx, client.ObjectKey{Name: kialiCRName, Namespace: kialiCRNamespace}, kialiCR)
 	if err != nil {
-		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
+		if meta.IsNoMatchError(err) || errors.IsNotFound(err) {
 			reqLogger.Info("Kiali CR does not exist, Kiali probably not enabled")
 			return nil
 		}
@@ -573,7 +573,7 @@ func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName
 
 	err = r.Client.Patch(ctx, updatedKiali, client.Merge)
 	if err != nil {
-		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
+		if meta.IsNoMatchError(err) || errors.IsNotFound(err) {
 			reqLogger.Info(fmt.Sprintf("skipping kiali update, %s/%s is no longer available", kialiCRNamespace, kialiCRName))
 			return nil
 		}
