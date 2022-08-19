@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 	v1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/api/admissionregistration/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,6 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/helm/pkg/manifest"
 	"k8s.io/helm/pkg/releaseutil"
+
+	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
 
 func TestEmptyYAMLBlocks(t *testing.T) {
@@ -81,7 +82,6 @@ func TestConvertWebhookConfigurationFromV1beta1ToV1(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			input := v1beta1.MutatingWebhookConfiguration{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "MutatingWebhookConfiguration",

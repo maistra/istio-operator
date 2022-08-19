@@ -6,21 +6,20 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
@@ -48,7 +47,9 @@ func Add(mgr manager.Manager) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, operatorNamespace string, cniConfig cni.Config) *ControlPlaneReconciler {
+func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder,
+	operatorNamespace string, cniConfig cni.Config,
+) *ControlPlaneReconciler {
 	reconciler := &ControlPlaneReconciler{
 		ControllerResources: common.ControllerResources{
 			Client:            cl,
@@ -73,7 +74,11 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 	// Create a new controller
 	var c controller.Controller
 	var err error
-	if c, err = controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.Config.Controller.ControlPlaneReconcilers, Reconciler: wrappedReconciler}); err != nil {
+	if c, err = controller.New(controllerName, mgr,
+		controller.Options{
+			MaxConcurrentReconciles: common.Config.Controller.ControlPlaneReconcilers,
+			Reconciler:              wrappedReconciler,
+		}); err != nil {
 		return err
 	}
 
@@ -188,7 +193,7 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 			log.Info("Skipping reconciliation of ServiceMeshControlPlane because reconciliation is paused")
 			return reconcile.Result{
 				Requeue:      true,
-				RequeueAfter: earliestReconciliationTime.Sub(time.Now()),
+				RequeueAfter: time.Until(earliestReconciliationTime),
 			}, nil
 		}
 		delete(r.earliestReconciliationTimes, request.NamespacedName)

@@ -106,7 +106,9 @@ func RunControllerTestCase(t *testing.T, testCase ControllerTestCase) {
 // NewManagerForControllerTest creates a new FakeManager that can be used for running controller tests.
 // The returned EnhancedTracker is the same tracker used within the FakeManager and can be used for
 // manipulating resources without going through the manager itself.
-func NewManagerForControllerTest(storageVersions []schema.GroupVersion, groupResources ...*restmapper.APIGroupResources) (*FakeManager, *EnhancedTracker, error) {
+func NewManagerForControllerTest(storageVersions []schema.GroupVersion,
+	groupResources ...*restmapper.APIGroupResources,
+) (*FakeManager, *EnhancedTracker, error) {
 	s := GetScheme()
 	codecs := serializer.NewCodecFactory(s)
 	tracker := NewEnhancedTracker(clienttesting.NewObjectTracker(s, codecs.UniversalDecoder()), s, storageVersions...)
@@ -124,7 +126,8 @@ var _ clienttesting.Reactor = (*extraneousActionFailure)(nil)
 func (r *extraneousActionFailure) Handles(action clienttesting.Action) bool {
 	return r.verifier.HasFired()
 }
+
 func (r *extraneousActionFailure) React(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-	r.t.Fatalf("unexpected action ocurred: %#v", action)
+	r.t.Fatalf("unexpected action occurred: %#v", action)
 	return true, nil, errors.NewServiceUnavailable("test processing complete")
 }

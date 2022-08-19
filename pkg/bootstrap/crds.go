@@ -14,28 +14,27 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/helm/pkg/releaseutil"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/hacks"
 	"github.com/maistra/istio-operator/pkg/controller/servicemesh/webhookca"
 	"github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks"
-
-	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-
-	"k8s.io/helm/pkg/releaseutil"
-
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var crdMutex sync.Mutex // ensure two workers don't deploy CRDs at same time
-var badVersionRegex *regexp.Regexp
+var (
+	crdMutex        sync.Mutex // ensure two workers don't deploy CRDs at same time
+	badVersionRegex *regexp.Regexp
+)
 
 func init() {
 	badVersionRegex = regexp.MustCompile(`^(v?)([0-9]+\.[0-9]+\.[0-9]+)(\.([0-9]+))$`)
@@ -67,7 +66,8 @@ func InstallCRDs(ctx context.Context, cl client.Client, chartsDir string) error 
 	}
 
 	// Register conversion webhooks for control plane CRD's - currently only ServiceMeshExtension
-	err = webhooks.RegisterConversionWebhook(ctx, cl, log, common.GetOperatorNamespace(), &webhooks.SmeConverterServicePath, webhookca.ServiceMeshExtensionCRDName, false)
+	err = webhooks.RegisterConversionWebhook(ctx, cl, log, common.GetOperatorNamespace(),
+		&webhooks.SmeConverterServicePath, webhookca.ServiceMeshExtensionCRDName, false)
 	if err != nil {
 		return err
 	}
@@ -277,7 +277,7 @@ func getMaistraVersion(crd *apiextensionsv1.CustomResourceDefinition) (*semver.V
 	versionLabel = badVersionRegex.ReplaceAllString(versionLabel, "$1$2-$4")
 	if !strings.Contains(versionLabel, "-") {
 		// for proper comparisons, all versions must have - suffix
-		versionLabel = versionLabel + "-0"
+		versionLabel += "-0"
 	}
 	return semver.NewVersion(versionLabel)
 }

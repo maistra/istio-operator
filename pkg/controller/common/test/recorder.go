@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -54,32 +53,31 @@ type patchedEventInterface struct {
 }
 
 var eventsResource = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "events"}
-var eventsKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Event"}
 
 // XXX: the generated version of this DOES NOT use the EventNamespace!!!!
-func (c *patchedEventInterface) CreateWithEventNamespace(event *v1.Event) (*v1.Event, error) {
+func (c *patchedEventInterface) CreateWithEventNamespace(event *corev1.Event) (*corev1.Event, error) {
 	action := testing.NewCreateAction(eventsResource, event.GetNamespace(), event)
 	obj, err := c.Invokes(action, event)
 	if obj == nil {
 		return nil, err
 	}
 
-	return obj.(*v1.Event), err
+	return obj.(*corev1.Event), err
 }
 
 // XXX: the generated version of this DOES NOT use the EventNamespace!!!!
-func (c *patchedEventInterface) UpdateWithEventNamespace(event *v1.Event) (*v1.Event, error) {
+func (c *patchedEventInterface) UpdateWithEventNamespace(event *corev1.Event) (*corev1.Event, error) {
 	action := testing.NewUpdateAction(eventsResource, event.GetNamespace(), event)
 	obj, err := c.Invokes(action, event)
 	if obj == nil {
 		return nil, err
 	}
 
-	return obj.(*v1.Event), err
+	return obj.(*corev1.Event), err
 }
 
 // XXX: the generated version of this DOES NOT use the EventNamespace!!!!
-func (c *patchedEventInterface) PatchWithEventNamespace(event *v1.Event, data []byte) (*v1.Event, error) {
+func (c *patchedEventInterface) PatchWithEventNamespace(event *corev1.Event, data []byte) (*corev1.Event, error) {
 	pt := types.StrategicMergePatchType
 	action := testing.NewPatchAction(eventsResource, event.GetNamespace(), event.Name, pt, data)
 	obj, err := c.Invokes(action, event)
@@ -87,11 +85,11 @@ func (c *patchedEventInterface) PatchWithEventNamespace(event *v1.Event, data []
 		return nil, err
 	}
 
-	return obj.(*v1.Event), err
+	return obj.(*corev1.Event), err
 }
 
 // XXX: the generated version of this DOES NOT use the objOrRef namespace!!!!
-func (c *patchedEventInterface) Search(scheme *runtime.Scheme, objOrRef runtime.Object) (*v1.EventList, error) {
+func (c *patchedEventInterface) Search(scheme *runtime.Scheme, objOrRef runtime.Object) (*corev1.EventList, error) {
 	ref, err := reference.GetReference(scheme, objOrRef)
 	if err != nil {
 		return nil, err
@@ -99,7 +97,7 @@ func (c *patchedEventInterface) Search(scheme *runtime.Scheme, objOrRef runtime.
 	if c.namespace != "" && ref.Namespace != c.namespace {
 		return nil, fmt.Errorf("won't be able to find any events of namespace '%v' in namespace '%v'", ref.Namespace, c.namespace)
 	}
-	stringRefKind := string(ref.Kind)
+	stringRefKind := ref.Kind
 	var refKind *string
 	if stringRefKind != "" {
 		refKind = &stringRefKind

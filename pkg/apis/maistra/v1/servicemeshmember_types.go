@@ -62,14 +62,12 @@ type ServiceMeshMemberList struct {
 
 // ServiceMeshMemberSpec defines the member of the mesh
 type ServiceMeshMemberSpec struct {
-
 	// A reference to the ServiceMeshControlPlane object.
 	ControlPlaneRef ServiceMeshControlPlaneRef `json:"controlPlaneRef"`
 }
 
 // ServiceMeshControlPlaneRef is a reference to a ServiceMeshControlPlane object
 type ServiceMeshControlPlaneRef struct {
-
 	// The name of the referenced ServiceMeshControlPlane object.
 	Name string `json:"name"`
 
@@ -93,12 +91,12 @@ type ServiceMeshMemberStatus struct {
 	// The generation of the ServiceMeshControlPlane object observed by the
 	// controller during the most recent reconciliation of this
 	// ServiceMeshMember.
-	ServiceMeshGeneration int64 `json:"meshGeneration,omitempty"`    // TODO: do we need this field at all?
+	ServiceMeshGeneration int64 `json:"meshGeneration,omitempty"` // TODO: do we need this field at all?
 
 	// The reconciled version of the ServiceMeshControlPlane object observed by
 	// the controller during the most recent reconciliation of this
 	// ServiceMeshMember.
-	ServiceMeshReconciledVersion string `json:"meshReconciledVersion,omitempty"`	// TODO: do we need this field at all?
+	ServiceMeshReconciledVersion string `json:"meshReconciledVersion,omitempty"` // TODO: do we need this field at all?
 
 	// Represents the latest available observations of a ServiceMeshMember's
 	// current state.
@@ -115,19 +113,19 @@ const (
 	ConditionTypeMemberReconciled ServiceMeshMemberConditionType = "Reconciled"
 	// ConditionTypeReady signifies whether the namespace has been configured
 	// to use the mesh
-	ConditionTypeMemberReady ServiceMeshMemberConditionType = "Ready"	// TODO: remove the Ready condition in v2
+	ConditionTypeMemberReady ServiceMeshMemberConditionType = "Ready" // TODO: remove the Ready condition in v2
 )
 
 type ServiceMeshMemberConditionReason string
 
 const (
 	// ConditionReasonDeletionError ...
-	ConditionReasonMemberCannotCreateMemberRoll ServiceMeshMemberConditionReason = "CreateMemberRollFailed"
-	ConditionReasonMemberCannotUpdateMemberRoll ServiceMeshMemberConditionReason = "UpdateMemberRollFailed"
-	ConditionReasonMemberCannotDeleteMemberRoll ServiceMeshMemberConditionReason = "DeleteMemberRollFailed"
-	ConditionReasonMemberNamespaceNotExists ServiceMeshMemberConditionReason = "NamespaceNotExists"
+	ConditionReasonMemberCannotCreateMemberRoll          ServiceMeshMemberConditionReason = "CreateMemberRollFailed"
+	ConditionReasonMemberCannotUpdateMemberRoll          ServiceMeshMemberConditionReason = "UpdateMemberRollFailed"
+	ConditionReasonMemberCannotDeleteMemberRoll          ServiceMeshMemberConditionReason = "DeleteMemberRollFailed"
+	ConditionReasonMemberNamespaceNotExists              ServiceMeshMemberConditionReason = "NamespaceNotExists"
 	ConditionReasonMemberReferencesDifferentControlPlane ServiceMeshMemberConditionReason = "ReferencesDifferentControlPlane"
-	ConditionReasonMemberTerminating ServiceMeshMemberConditionReason = "Terminating"
+	ConditionReasonMemberTerminating                     ServiceMeshMemberConditionReason = "Terminating"
 )
 
 // Condition represents a specific condition on a resource

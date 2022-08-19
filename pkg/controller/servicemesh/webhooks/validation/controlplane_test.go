@@ -6,10 +6,8 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -27,14 +25,14 @@ func TestDeletedControlPlaneIsAlwaysAllowed(t *testing.T) {
 	controlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", versions.V2_2.String())
 	controlPlane.DeletionTimestamp = now()
 
-	validator, _, _ := createControlPlaneValidatorTestFixture()
+	validator := createControlPlaneValidatorTestFixture()
 	response := validator.Handle(ctx, createCreateRequest(controlPlane))
 	assert.True(response.Allowed, "Expected validator to allow deleted ServiceMeshControlPlane", t)
 }
 
 func TestControlPlaneOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
 	controlPlane := newControlPlaneWithVersion("my-smcp", "not-watched", versions.V2_2.String())
-	validator, _, _ := createControlPlaneValidatorTestFixture()
+	validator := createControlPlaneValidatorTestFixture()
 	validator.namespaceFilter = "watched-namespace"
 	response := validator.Handle(ctx, createCreateRequest(controlPlane))
 	assert.True(response.Allowed, "Expected validator to allow ServiceMeshControlPlane whose namespace isn't watched", t)
@@ -43,7 +41,7 @@ func TestControlPlaneOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
 func TestControlPlaneWithIncorrectVersionIsRejected(t *testing.T) {
 	controlPlane := newControlPlaneWithVersion("my-smcp", "not-watched", versions.V2_2.String())
 	controlPlane.Spec.Version = "0.0"
-	validator, _, _ := createControlPlaneValidatorTestFixture()
+	validator := createControlPlaneValidatorTestFixture()
 	response := validator.Handle(ctx, createCreateRequest(controlPlane))
 	assert.False(response.Allowed, "Expected validator to reject ServiceMeshControlPlane with bad version", t)
 }
@@ -51,14 +49,14 @@ func TestControlPlaneWithIncorrectVersionIsRejected(t *testing.T) {
 func TestControlPlaneNotAllowedInOperatorNamespace(t *testing.T) {
 	test.PanicOnError(os.Setenv("POD_NAMESPACE", "openshift-operators")) // TODO: make it easier to set the namespace in tests
 	controlPlane := newControlPlaneWithVersion("my-smcp", "openshift-operators", versions.V2_2.String())
-	validator, _, _ := createControlPlaneValidatorTestFixture()
+	validator := createControlPlaneValidatorTestFixture()
 	response := validator.Handle(ctx, createCreateRequest(controlPlane))
 	assert.False(response.Allowed, "Expected validator to reject ServiceMeshControlPlane in operator's namespace", t)
 }
 
 func TestOnlyOneControlPlaneIsAllowedPerNamespace(t *testing.T) {
 	controlPlane1 := newControlPlaneWithVersion("my-smcp", "istio-system", versions.V2_2.String())
-	validator, _, _ := createControlPlaneValidatorTestFixture(controlPlane1)
+	validator := createControlPlaneValidatorTestFixture(controlPlane1)
 	controlPlane2 := newControlPlaneWithVersion("my-smcp2", "istio-system", versions.V2_2.String())
 	response := validator.Handle(ctx, createCreateRequest(controlPlane2))
 	assert.False(response.Allowed, "Expected validator to reject ServiceMeshControlPlane with bad version", t)
@@ -91,7 +89,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "jaeger-enabled-despite-external-uri",
 			controlPlane: &maistrav1.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -116,7 +114,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "jaeger-external-uri-wrong-namespace",
 			controlPlane: &maistrav1.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -138,7 +136,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "jaeger-external-uri-correct-namespace",
 			controlPlane: &maistrav1.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -160,7 +158,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "jaeger-external-uri-no-namespace",
 			controlPlane: &maistrav1.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -182,7 +180,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "zipkin-address-wrong-tracer",
 			controlPlane: &maistrav1.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -207,7 +205,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "zipkin-address-but-tracing-enabled",
 			controlPlane: &maistrav1.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -232,7 +230,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "zipkin-address-but-no-jaegerInClusterURL-v1.1",
 			controlPlane: &maistrav1.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -257,7 +255,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "zipkin-address-with-jaegerInClusterURL-v1.1",
 			controlPlane: &maistrav1.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -283,7 +281,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-default-v1.1",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -296,7 +294,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-default-v2.0",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -309,7 +307,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-istiod-policy-v1.1",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -325,7 +323,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-istiod-policy-v2.0",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -341,7 +339,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-remote-policy-v1.1-fail",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -357,7 +355,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-remote-policy-v2.0-fail",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -375,7 +373,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-remote-policy-v1.1-pass",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -400,7 +398,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-remote-policy-v2.0-pass",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -419,7 +417,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-istiod-telemetry-v1.1",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -435,7 +433,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-istiod-telemetry-v2.0",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -451,7 +449,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-remote-telemetry-v1.1-fail",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -467,7 +465,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-remote-telemetry-v2.0-fail",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -485,7 +483,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-telemetry-mixer-adapters-v1.1-fail",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -506,7 +504,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-telemetry-mixer-adapters-v2.0-fail",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -527,7 +525,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-telemetry-mixer-adapters-diff-v1.1-fail",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -554,7 +552,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-telemetry-mixer-adapters-v1.1-pass",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -581,7 +579,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v2-telemetry-mixer-adapters-v2.0-pass",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -601,7 +599,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "v1-v2.0",
 			controlPlane: &maistrav1.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -614,7 +612,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "gateway-outside-mesh",
 			controlPlane: &maistrav1.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -634,7 +632,7 @@ func TestControlPlaneValidation(t *testing.T) {
 			},
 			resources: []runtime.Object{
 				&maistrav1.ServiceMeshMemberRoll{
-					ObjectMeta: meta.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "default",
 						Namespace: "istio-system",
 					},
@@ -655,7 +653,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "gateway-inside-mesh",
 			controlPlane: &maistrav1.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -675,7 +673,7 @@ func TestControlPlaneValidation(t *testing.T) {
 			},
 			resources: []runtime.Object{
 				&maistrav1.ServiceMeshMemberRoll{
-					ObjectMeta: meta.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "default",
 						Namespace: "istio-system",
 					},
@@ -696,7 +694,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "protocolSniffing.inbound.v1.1",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -718,7 +716,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "protocolSniffing.outbound.v1.1",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -740,7 +738,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "protocolSniffing.inbound.v2.0.enabled",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -762,7 +760,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "protocolSniffing.outbound.v2.0.enabled",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -784,7 +782,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "protocolSniffing.inbound.v2.0.disabled",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -806,7 +804,7 @@ func TestControlPlaneValidation(t *testing.T) {
 		{
 			name: "protocolSniffing.outbound.v2.0.disabled",
 			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-smcp",
 					Namespace: "istio-system",
 				},
@@ -829,7 +827,7 @@ func TestControlPlaneValidation(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			validator, _, _ := createControlPlaneValidatorTestFixture(tc.resources...)
+			validator := createControlPlaneValidatorTestFixture(tc.resources...)
 			response := validator.Handle(ctx, createCreateRequest(tc.controlPlane))
 			if tc.valid {
 				var reason string
@@ -951,23 +949,22 @@ func TestFullAffinityOnlySupportedForKiali(t *testing.T) {
 	for _, component := range maistrav2.ControlPlaneComponentNames {
 		for _, tc := range cases {
 			t.Run(string(component)+"."+tc.name, func(t *testing.T) {
-				validator, _, _ := createControlPlaneValidatorTestFixture()
+				validator := createControlPlaneValidatorTestFixture()
 
-				controlPlane :=
-					&maistrav2.ServiceMeshControlPlane{
-						ObjectMeta: meta.ObjectMeta{
-							Name:      "some-smcp",
-							Namespace: "istio-system",
-						},
-						Spec: maistrav2.ControlPlaneSpec{
-							Version: versions.V2_1.String(),
-							Runtime: &maistrav2.ControlPlaneRuntimeConfig{
-								Components: map[maistrav2.ControlPlaneComponentName]*maistrav2.ComponentRuntimeConfig{
-									component: &tc.componentRuntimeConfig,
-								},
+				controlPlane := &maistrav2.ServiceMeshControlPlane{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-smcp",
+						Namespace: "istio-system",
+					},
+					Spec: maistrav2.ControlPlaneSpec{
+						Version: versions.V2_1.String(),
+						Runtime: &maistrav2.ControlPlaneRuntimeConfig{
+							Components: map[maistrav2.ControlPlaneComponentName]*maistrav2.ComponentRuntimeConfig{
+								component: &tc.componentRuntimeConfig,
 							},
 						},
-					}
+					},
+				}
 
 				response := validator.Handle(ctx, createCreateRequest(controlPlane))
 				if (tc.allowedForKiali && component == maistrav2.ControlPlaneComponentNameKiali) ||
@@ -987,7 +984,7 @@ func TestFullAffinityOnlySupportedForKiali(t *testing.T) {
 
 func TestUpdateOfValidControlPlane(t *testing.T) {
 	oldControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v2.0")
-	validator, _, _ := createControlPlaneValidatorTestFixture(oldControlPlane)
+	validator := createControlPlaneValidatorTestFixture(oldControlPlane)
 
 	controlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v2.1")
 	response := validator.Handle(ctx, createUpdateRequest(oldControlPlane, controlPlane))
@@ -997,8 +994,8 @@ func TestUpdateOfValidControlPlane(t *testing.T) {
 func TestInvalidVersion(t *testing.T) {
 	validControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0")
 	invalidControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "InvalidVersion")
-	createValidator, _, _ := createControlPlaneValidatorTestFixture()
-	updateValidator, _, _ := createControlPlaneValidatorTestFixture(validControlPlane)
+	createValidator := createControlPlaneValidatorTestFixture()
+	updateValidator := createControlPlaneValidatorTestFixture(validControlPlane)
 	cases := []struct {
 		name      string
 		request   webhookadmission.Request
@@ -1051,7 +1048,7 @@ func TestVersionValidation(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, tc := range tc.cases {
 				t.Run(tc.name, func(t *testing.T) {
-					validator, _, _ := createControlPlaneValidatorTestFixture()
+					validator := createControlPlaneValidatorTestFixture()
 					tc.configure(tc.smcp)
 					response := validator.Handle(ctx, createCreateRequest(tc.smcp))
 					if tc.allowed {
@@ -1071,7 +1068,7 @@ func TestVersionValidation(t *testing.T) {
 	}
 }
 
-func createControlPlaneValidatorTestFixture(clientObjects ...runtime.Object) (*ControlPlaneValidator, client.Client, *test.EnhancedTracker) {
+func createControlPlaneValidatorTestFixture(clientObjects ...runtime.Object) *ControlPlaneValidator {
 	cl, tracker := test.CreateClient(clientObjects...)
 	s := tracker.Scheme
 
@@ -1091,12 +1088,12 @@ func createControlPlaneValidatorTestFixture(clientObjects ...runtime.Object) (*C
 		panic(fmt.Sprintf("Could not inject decoder: %s", err))
 	}
 
-	return validator, cl, tracker
+	return validator
 }
 
 func newControlPlaneWithVersion(name, namespace, version string) *maistrav2.ServiceMeshControlPlane {
 	controlPlane := &maistrav2.ServiceMeshControlPlane{
-		ObjectMeta: meta.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
@@ -1104,11 +1101,4 @@ func newControlPlaneWithVersion(name, namespace, version string) *maistrav2.Serv
 	}
 	controlPlane.Spec.Version = version
 	return controlPlane
-}
-
-func setNestedField(helmValues *maistrav1.HelmValues, path string, value interface{}) {
-	err := helmValues.SetField(path, value)
-	if err != nil {
-		panic(err)
-	}
 }

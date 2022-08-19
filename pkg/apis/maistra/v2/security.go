@@ -31,7 +31,7 @@ type SecurityConfig struct {
 // TrustConfig configures trust aspects associated with mutual TLS clients
 type TrustConfig struct {
 	// Domain specifies the trust domain to be used by the mesh.
-	//.Values.global.trustDomain, maps to trustDomain
+	// .Values.global.trustDomain, maps to trustDomain
 	// The trust domain corresponds to the trust root of a system.
 	// Refer to https://github.com/spiffe/spiffe/blob/master/standards/SPIFFE-ID.md#21-trust-domain
 	// +optional
@@ -130,7 +130,7 @@ type IstioSelfSignedCertificateSignerConfig struct {
 	// Org is the Org value in the certificate.
 	// XXX: currently uses TrustDomain.  I don't think this is configurable.
 	// +optional
-	//Org string `json:"org,omitempty"`
+	// Org string `json:"org,omitempty"`
 }
 
 // IstioPrivateKeyCertificateSignerConfig is the configuration when using a user
@@ -139,7 +139,7 @@ type IstioSelfSignedCertificateSignerConfig struct {
 type IstioPrivateKeyCertificateSignerConfig struct {
 	// hard coded to use a secret named cacerts
 	// +optional
-	//EncryptionSecret string `json:"encryptionSecret,omitempty"`
+	// EncryptionSecret string `json:"encryptionSecret,omitempty"`
 	// ROOT_CA_DIR, defaults to /etc/cacerts
 	// Mount directory for encryption secret
 	// XXX: currently, not configurable in the charts
@@ -147,16 +147,16 @@ type IstioPrivateKeyCertificateSignerConfig struct {
 	RootCADir string `json:"rootCADir,omitempty"`
 	// hard coded to ca-key.pem
 	// +optional
-	//SigningKeyFile string `json:"signingKeyFile,omitempty"`
+	// SigningKeyFile string `json:"signingKeyFile,omitempty"`
 	// hard coded to ca-cert.pem
 	// +optional
-	//SigningCertFile string `json:"signingCertFile,omitempty"`
+	// SigningCertFile string `json:"signingCertFile,omitempty"`
 	// hard coded to root-cert.pem
 	// +optional
-	//RootCertFile string `json:"rootCertFile,omitempty"`
+	// RootCertFile string `json:"rootCertFile,omitempty"`
 	// hard coded to cert-chain.pem
 	// +optional
-	//CertChainFile string `json:"certChainFile,omitempty"`
+	// CertChainFile string `json:"certChainFile,omitempty"`
 }
 
 // CustomCertificateAuthorityConfig is the configuration for a custom
@@ -198,7 +198,7 @@ type ThirdPartyIdentityConfig struct {
 	// XXX: projects service account token with specified audience (istio-ca)
 	// XXX: not configurable
 	// +optional
-	//TokenPath string `json:"tokenPath,omitempty"`
+	// TokenPath string `json:"tokenPath,omitempty"`
 
 	// Issuer is the URL of the issuer.
 	// env TOKEN_ISSUER, defaults to iss in specified token

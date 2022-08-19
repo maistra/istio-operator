@@ -103,10 +103,10 @@ func populateTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interfac
 		// don't configure anything, let defaults take over
 	}
 
-	if err := populateMixerTelemetryValues(in, istiod, values); err != nil {
+	if err := populateMixerTelemetryValues(in, values); err != nil {
 		return err
 	}
-	if err := populateRemoteTelemetryValues(in, istiod, values); err != nil {
+	if err := populateRemoteTelemetryValues(in, values); err != nil {
 		return err
 	}
 	if err := populateIstiodTelemetryValues(in, values); err != nil {
@@ -116,7 +116,7 @@ func populateTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interfac
 	return nil
 }
 
-func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values map[string]interface{}) error {
+func populateMixerTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
 	mixer := in.Telemetry.Mixer
 	if mixer == nil {
 		mixer = &v2.MixerTelemetryConfig{}
@@ -202,7 +202,7 @@ func populateTelemetryBatchingValues(in *v2.TelemetryBatchingConfig, telemetryBa
 	return nil
 }
 
-func populateRemoteTelemetryValues(in *v2.ControlPlaneSpec, istiod bool, values map[string]interface{}) error {
+func populateRemoteTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
 	remote := in.Telemetry.Remote
 	if remote == nil {
 		remote = &v2.RemoteTelemetryConfig{}
@@ -252,7 +252,7 @@ func populateTelemetryConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, versio
 		case v2.TelemetryTypeNone:
 			telemetryType = v2.TelemetryTypeNone
 		default:
-			return fmt.Errorf("unkown telemetry.implementation specified: %s", telemetryTypeStr)
+			return fmt.Errorf("unknown telemetry.implementation specified: %s", telemetryTypeStr)
 		}
 	} else if err != nil {
 		return err

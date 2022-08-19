@@ -27,7 +27,7 @@ func (r *controlPlaneInstanceReconciler) preprocessObject(ctx context.Context, o
 	// Add owner ref
 	if object.GetNamespace() == r.Instance.GetNamespace() {
 		object.SetOwnerReferences(r.ownerRefs)
-	} else {
+	} else { // nolint:staticcheck
 		// XXX: can't set owner reference on cross-namespace or cluster resources
 	}
 
@@ -64,14 +64,18 @@ func (r *controlPlaneInstanceReconciler) preprocessObject(ctx context.Context, o
 	return true, nil
 }
 
-func (r *controlPlaneInstanceReconciler) preprocessObjectForPatch(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error) {
+func (r *controlPlaneInstanceReconciler) preprocessObjectForPatch(ctx context.Context,
+	oldObj, newObj *unstructured.Unstructured,
+) (*unstructured.Unstructured, error) {
 	if newObj.GetKind() == "Kiali" {
 		accessibleNamespaces, found, err := unstructured.NestedStringSlice(oldObj.UnstructuredContent(), "spec", "deployment", "accessible_namespaces")
 		if err != nil {
 			return nil, err
 		}
 		if found {
-			newObj = newObj.DeepCopy() // we make a copy in case the patch fails and a full CREATE is then performed; the accessible_namespaces field must be present when creating the object
+			// we make a copy in case the patch fails and a full CREATE is then performed;
+			// the accessible_namespaces field must be present when creating the object
+			newObj = newObj.DeepCopy()
 			err = unstructured.SetNestedStringSlice(newObj.UnstructuredContent(), accessibleNamespaces, "spec", "deployment", "accessible_namespaces")
 			if err != nil {
 				return nil, err
@@ -121,10 +125,8 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, o
 	// if the user has not yet configured this, let's try to auto-detect it now.
 	if len(grafanaURL) == 0 && grafanaEnabled {
 		log.Info("attempting to auto-detect grafana for kiali")
-		grafanaURL, err = r.grafanaURL(ctx, log)
-		if err != nil {
-			grafanaEnabled = false
-		} else if grafanaURL == "" {
+		grafanaURL = r.grafanaURL(ctx, log)
+		if grafanaURL == "" {
 			grafanaEnabled = false // there is no host on this route - disable it in kiali
 		}
 	}
@@ -172,7 +174,7 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, o
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) waitForWebhookCABundleInitialization(ctx context.Context, object *unstructured.Unstructured) error {
+func (r *controlPlaneInstanceReconciler) waitForWebhookCABundleInitialization(ctx context.Context, object *unstructured.Unstructured) {
 	log := common.LogFromContext(ctx)
 	name := object.GetName()
 	kind := object.GetKind()
@@ -201,5 +203,4 @@ func (r *controlPlaneInstanceReconciler) waitForWebhookCABundleInitialization(ct
 	if err != nil {
 		log.Error(nil, "webhook CABundle failed to become initialized in a timely manner", kind, name)
 	}
-	return nil
 }

@@ -5,10 +5,8 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-
 	network "github.com/openshift/api/network/v1"
 	"github.com/openshift/library-go/pkg/network/networkapihelpers"
-
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -28,13 +26,13 @@ var netNamespaceCheckBackOff = wait.Backoff{
 	Factor:   1.1,
 }
 
-func newMultitenantStrategy(cl client.Client, meshNamespace string) (*multitenantStrategy, error) {
+func newMultitenantStrategy(cl client.Client, meshNamespace string) *multitenantStrategy {
 	return &multitenantStrategy{
 		ControllerResources: common.ControllerResources{
 			Client: cl,
 		},
 		meshNamespace: meshNamespace,
-	}, nil
+	}
 }
 
 func (s *multitenantStrategy) reconcileNamespaceInMesh(ctx context.Context, namespace string) error {

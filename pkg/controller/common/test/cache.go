@@ -147,8 +147,12 @@ func (c *FakeCache) createListWatcher(gvk schema.GroupVersionKind) (*toolscache.
 	return &toolscache.ListWatch{
 		ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
 			res := listObj.DeepCopyObject()
-			c.client.List(context.TODO(), res, &client.ListOptions{Namespace: c.namespace, Raw: &opts})
-			return res, err
+			// TODO: OSSM-1925
+			err := c.client.List(context.TODO(), res, &client.ListOptions{Namespace: c.namespace, Raw: &opts})
+			if err != nil {
+				log.Error(err, "OSSM-1925 Error listing resources", "listGVK", listGVK)
+			}
+			return res, nil
 		},
 		// Setup the watch function
 		WatchFunc: func(_ metav1.ListOptions) (watch.Interface, error) {

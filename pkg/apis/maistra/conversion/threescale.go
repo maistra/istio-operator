@@ -61,7 +61,7 @@ func populateThreeScaleAddonValues(threeScale *v2.ThreeScaleAddonConfig, values 
 	if threeScale.System != nil {
 		system := threeScale.System
 		if system.CacheMaxSize != nil {
-			if err := setHelmIntValue(threeScaleValues, "PARAM_THREESCALE_CACHE_ENTRIES_MAX", int64(*system.CacheMaxSize)); err != nil {
+			if err := setHelmIntValue(threeScaleValues, "PARAM_THREESCALE_CACHE_ENTRIES_MAX", *system.CacheMaxSize); err != nil {
 				return err
 			}
 		}

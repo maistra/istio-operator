@@ -16,10 +16,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -74,9 +74,11 @@ func Add(mgr manager.Manager) error {
 }
 
 func newReconciler(cl client.Client, scheme *runtime.Scheme, webhookCABundleManager WebhookCABundleManager) *reconciler {
-	return &reconciler{ControllerResources: common.ControllerResources{
-		Client: cl,
-		Scheme: scheme},
+	return &reconciler{
+		ControllerResources: common.ControllerResources{
+			Client: cl,
+			Scheme: scheme,
+		},
 		webhookCABundleManager: webhookCABundleManager,
 	}
 }
@@ -98,7 +100,8 @@ func add(mgr manager.Manager, r *reconciler) error {
 					Namespace: obj.Meta.GetNamespace(),
 					Name:      obj.Meta.GetName(),
 				})
-		})}, sourceWatchPredicates(r))
+		}),
+	}, sourceWatchPredicates(r))
 	if err != nil {
 		return err
 	}
@@ -112,7 +115,8 @@ func add(mgr manager.Manager, r *reconciler) error {
 					Namespace: obj.Meta.GetNamespace(),
 					Name:      obj.Meta.GetName(),
 				})
-		})}, sourceWatchPredicates(r))
+		}),
+	}, sourceWatchPredicates(r))
 	if err != nil {
 		return err
 	}
@@ -187,7 +191,8 @@ func enqueueWebhookRequests(webhookCABundleManager WebhookCABundleManager) handl
 	return &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
 			return webhookCABundleManager.ReconcileRequestsFromWebhook(obj.Object)
-		})}
+		}),
+	}
 }
 
 func webhookWatchPredicates(webhookCABundleManager WebhookCABundleManager) predicate.Predicate {
@@ -217,7 +222,7 @@ func webhookWatchPredicates(webhookCABundleManager WebhookCABundleManager) predi
 				for prefix := range autoRegistrationMap {
 					if strings.HasPrefix(objName, prefix) {
 						// remove sidecar injector webhook
-						if err := webhookCABundleManager.UnmanageWebhookCABundle(event.Object); err != nil {
+						if err := webhookCABundleManager.UnmanageWebhookCABundle(event.Object); err != nil { // nolint:staticcheck
 							// XXX: should we log an error here?
 						}
 						return false

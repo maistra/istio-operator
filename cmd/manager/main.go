@@ -11,7 +11,6 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	"github.com/magiconair/properties"
-	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/mitchellh/mapstructure"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
@@ -26,12 +25,13 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	"github.com/maistra/istio-operator/pkg/apis"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/version"
@@ -200,8 +200,8 @@ func addMetrics(ctx context.Context, cfg *rest.Config) {
 
 	// Add to the below struct any other metrics ports you want to expose.
 	servicePorts := []v1.ServicePort{
-		{Port: metricsPort, Name: metrics.OperatorPortName, Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: metricsPort}},
-		{Port: operatorMetricsPort, Name: metrics.CRPortName, Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: operatorMetricsPort}},
+		{Port: metricsPort, Name: metrics.OperatorPortName, Protocol: v1.ProtocolTCP, TargetPort: intOrStringFromInt32(metricsPort)},
+		{Port: operatorMetricsPort, Name: metrics.CRPortName, Protocol: v1.ProtocolTCP, TargetPort: intOrStringFromInt32(operatorMetricsPort)},
 	}
 
 	// Create Service object to expose the metrics port(s).
@@ -223,6 +223,13 @@ func addMetrics(ctx context.Context, cfg *rest.Config) {
 		if err == metrics.ErrServiceMonitorNotPresent {
 			log.Info("Install prometheus-operator in your cluster to create ServiceMonitor objects", "error", err.Error())
 		}
+	}
+}
+
+func intOrStringFromInt32(val int32) intstr.IntOrString {
+	return intstr.IntOrString{
+		Type:   intstr.Int,
+		IntVal: val,
 	}
 }
 
@@ -278,7 +285,9 @@ func initializeConfiguration(configFile string) error {
 	v.RegisterAlias("rendering.defaultTemplatesDir", "defaultTemplatesDir")
 	v.RegisterAlias("rendering.userTemplatesDir", "userTemplatesDir")
 
-	v.BindPFlags(pflag.CommandLine)
+	if err := v.BindPFlags(pflag.CommandLine); err != nil {
+		return err
+	}
 	v.AutomaticEnv()
 	props, err := patchProperties(configFile)
 	if err != nil {

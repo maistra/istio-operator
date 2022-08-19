@@ -8,7 +8,7 @@ import (
 
 var techPreviewTestCases []conversionTestCase
 
-func techPreviewTestCasesV2(version versions.Version) []conversionTestCase{
+func techPreviewTestCasesV2(version versions.Version) []conversionTestCase {
 	ver := version.String()
 	return []conversionTestCase{
 		{

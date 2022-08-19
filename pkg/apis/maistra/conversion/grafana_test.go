@@ -19,7 +19,7 @@ var (
 
 var grafanaTestCases []conversionTestCase
 
-func grafanaTestCasesV2(version versions.Version) []conversionTestCase{
+func grafanaTestCasesV2(version versions.Version) []conversionTestCase {
 	ver := version.String()
 	return []conversionTestCase{
 		{

@@ -63,7 +63,7 @@ func componentLogLevelsFromString(levels string) (v2.ComponentLogLevels, error) 
 	for _, componentLevel := range componentLevels {
 		pair := strings.SplitN(componentLevel, ":", 2)
 		if len(pair) < 2 || pair[0] == "" || pair[1] == "" {
-			return nil, fmt.Errorf("Invalid entry %q in spec.istio.globals.logging.level. The correct format is 'component:level[,component:level]'.", componentLevel)
+			return nil, fmt.Errorf("invalid entry %q in spec.istio.globals.logging.level. The correct format is 'component:level[,component:level]'", componentLevel)
 		}
 		logLevels[v2.EnvoyComponent(pair[0])] = v2.LogLevel(pair[1])
 	}

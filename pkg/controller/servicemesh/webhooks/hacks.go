@@ -132,12 +132,12 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 	// is that the operator might restart.
 	coreclient, err := clientcorev1.NewForConfig(mgr.GetConfig())
 	if err != nil {
-		log.Info("error occured creating client for watching Maistra webhook Secret")
+		log.Info("error occurred creating client for watching Maistra webhook Secret")
 		return nil
 	}
 	secretwatch, err := coreclient.Secrets(operatorNamespace).Watch(ctx, metav1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", webhookSecretName)})
 	if err != nil {
-		log.Info("error occured creating watch for Maistra webhook Secret")
+		log.Info("error occurred creating watch for Maistra webhook Secret")
 		return nil
 	}
 	func() {
@@ -151,9 +151,10 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 		}
 	}()
 
-	configMapWatch, err := coreclient.ConfigMaps(operatorNamespace).Watch(ctx, metav1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", webhookConfigMapName)})
+	configMapWatch, err := coreclient.ConfigMaps(operatorNamespace).Watch(ctx,
+		metav1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", webhookConfigMapName)})
 	if err != nil {
-		log.Info("error occured creating watch for Maistra webhook CA bundle ConfigMap")
+		log.Info("error occurred creating watch for Maistra webhook CA bundle ConfigMap")
 		return nil
 	}
 	func() {
@@ -177,8 +178,8 @@ func RegisterConversionWebhook(
 	operatorNamespace string,
 	path *string,
 	crdName string,
-	crdMustExist bool) error {
-
+	crdMustExist bool,
+) error {
 	log.Info(fmt.Sprintf("Adding conversion webhook to %s CRD", crdName))
 
 	crd := &apixv1.CustomResourceDefinition{}

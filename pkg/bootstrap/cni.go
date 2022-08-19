@@ -7,10 +7,9 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/helm/pkg/manifest"
-
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -34,7 +33,9 @@ func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config
 	return internalProcessManifests(ctx, cl, renderings["istio_cni"])
 }
 
-func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config, supportedVersions []versions.Version) (renderings map[string][]manifest.Manifest, err error) {
+func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
+	supportedVersions []versions.Version,
+) (renderings map[string][]manifest.Manifest, err error) {
 	log := common.LogFromContext(ctx)
 	log.Info("ensuring Istio CNI has been installed")
 
@@ -107,7 +108,8 @@ func internalProcessManifests(ctx context.Context, cl client.Client, rendering [
 		OperatorNamespace: operatorNamespace,
 	}
 
-	mp := helm.NewManifestProcessor(controllerResources, helm.NewPatchFactory(cl), "istio_cni", "TODO", types.NamespacedName{}, preProcessObject, postProcessObject, preProcessObjectForPatch)
+	mp := helm.NewManifestProcessor(controllerResources, helm.NewPatchFactory(cl), "istio_cni", "TODO",
+		types.NamespacedName{}, preProcessObject, postProcessObject, preProcessObjectForPatch)
 	if _, err := mp.ProcessManifests(ctx, rendering, "istio_cni"); err != nil {
 		return err
 	}

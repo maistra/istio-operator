@@ -8,20 +8,20 @@ import (
 	"testing"
 
 	"github.com/ghodss/yaml"
-	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/controller/common/cni"
-	"github.com/maistra/istio-operator/pkg/controller/versions"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
+	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 func TestCNISupportedVersionRendering(t *testing.T) {
 	operatorNamespace := "istio-operator"
 	InitializeGlobals(operatorNamespace)()
 
-	var ctx = context.Background()
+	ctx := context.Background()
 
 	testCases := []struct {
 		name              string
@@ -80,6 +80,7 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 					assert.Success(err, "resource decoding", t)
 
 					containers, found, err := unstructured.NestedSlice(resource.UnstructuredContent(), "spec", "template", "spec", "containers")
+					assert.Success(err, "unstructured.NestedSlice", t)
 					assert.True(found, "Could not find containers", t)
 					assert.True(len(containers) > 0, "No containers in resource", t)
 					names := []string{}

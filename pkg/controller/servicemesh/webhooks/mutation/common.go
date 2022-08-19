@@ -11,8 +11,8 @@ import (
 
 // PatchResponse is a bridge for the webhooks using the old controller-runtime
 // v0.1.x admission.PatchResponse() function.
-func PatchResponse(original runtime.RawExtension, new runtime.Object) admission.Response {
-	marshaledObject, err := json.Marshal(new)
+func PatchResponse(original runtime.RawExtension, newObj runtime.Object) admission.Response {
+	marshaledObject, err := json.Marshal(newObj)
 	if err != nil {
 		return admission.Errored(http.StatusInternalServerError, err)
 	}

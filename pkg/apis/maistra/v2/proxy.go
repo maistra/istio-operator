@@ -63,7 +63,7 @@ type ProxyNetworkingConfig struct {
 	// TrafficControl configures what network traffic is routed through the proxy.
 	// +optional
 	TrafficControl *ProxyTrafficControlConfig `json:"trafficControl,omitempty"`
-	// Protocol configures how the sidecar works with applicaiton protocols.
+	// Protocol configures how the sidecar works with application protocols.
 	// +optional
 	Protocol *ProxyNetworkProtocolConfig `json:"protocol,omitempty"`
 	// DNS configures aspects of the sidecar's usage of DNS
@@ -278,7 +278,7 @@ type ProxyInjectionConfig struct {
 	// +optional
 	AlwaysInjectSelector []metav1.LabelSelector `json:"alwaysInjectSelector,omitempty"`
 	// NeverInjectSelector allows specification of a label selector that when
-	// matched will never inject a sidecar into the pod.  This takes precendence
+	// matched will never inject a sidecar into the pod.  This takes precedence
 	// over AlwaysInjectSelector.
 	// .Values.sidecarInjectorWebhook.neverInjectSelector
 	// +optional

@@ -58,9 +58,9 @@ func TestMarshall(t *testing.T) {
 			if !reflect.DeepEqual(deserialized, tc.value) {
 				t.Fatalf("Unexpected deserialized value;\nexpected:\n%v\n\nactual:\n%v", tc.value, deserialized)
 			}
-			copy := tc.value.DeepCopy()
-			if !reflect.DeepEqual(copy, tc.value) {
-				t.Fatalf("Unexpected copy value;\nexpected:\n%v\n\nactual:\n%v", tc.value, copy)
+			valueCopy := tc.value.DeepCopy()
+			if !reflect.DeepEqual(valueCopy, tc.value) {
+				t.Fatalf("Unexpected valueCopy value;\nexpected:\n%v\n\nactual:\n%v", tc.value, valueCopy)
 			}
 		})
 	}
@@ -141,7 +141,6 @@ func TestSetField(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			actual := tc.initial
 			err := actual.SetField(tc.path, tc.value)
 			if tc.errorExpected {
@@ -149,10 +148,8 @@ func TestSetField(t *testing.T) {
 					t.Fatalf("Expected error to be returned, but it wasn't")
 				}
 				return
-			} else {
-				if err != nil {
-					t.Fatalf("Unexpected error: %v", err)
-				}
+			} else if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
 			}
 
 			if !reflect.DeepEqual(tc.expected, actual) {

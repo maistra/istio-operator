@@ -11,7 +11,7 @@ import (
 
 var loggingTestCases []conversionTestCase
 
-func loggingTestCasesV2(version versions.Version) []conversionTestCase{
+func loggingTestCasesV2(version versions.Version) []conversionTestCase {
 	ver := version.String()
 	return []conversionTestCase{
 		{
@@ -59,7 +59,6 @@ func loggingTestCasesV2(version versions.Version) []conversionTestCase{
 			},
 			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 				"global": map[string]interface{}{
-
 					"logAsJson": true,
 					"logging": map[string]interface{}{
 						"level": "admin:debug,client:trace",
@@ -81,7 +80,6 @@ func init() {
 		loggingTestCases = append(loggingTestCases, loggingTestCasesV2(v)...)
 	}
 }
-
 
 func TestLoggingConversionFromV2(t *testing.T) {
 	for _, tc := range loggingTestCases {
@@ -111,13 +109,13 @@ func TestLoggingConversionFromV2(t *testing.T) {
 }
 
 func TestComponentLogLevelsFromString(t *testing.T) {
-	testCases := []struct{
-		logLevelsString string
-		expectError bool
+	testCases := []struct {
+		logLevelsString   string
+		expectError       bool
 		expectedLogLevels v2.ComponentLogLevels
-	} {
+	}{
 		{
-			logLevelsString: "",
+			logLevelsString:   "",
 			expectedLogLevels: nil,
 		},
 		{
@@ -129,7 +127,7 @@ func TestComponentLogLevelsFromString(t *testing.T) {
 		{
 			logLevelsString: "admin:info,client:debug",
 			expectedLogLevels: v2.ComponentLogLevels{
-				v2.EnvoyComponentAdmin: v2.LogLevelInfo,
+				v2.EnvoyComponentAdmin:  v2.LogLevelInfo,
 				v2.EnvoyComponentClient: v2.LogLevelDebug,
 			},
 		},
@@ -147,39 +145,39 @@ func TestComponentLogLevelsFromString(t *testing.T) {
 		},
 		{
 			logLevelsString: "bad_format",
-			expectError: true,
+			expectError:     true,
 		},
 		{
 			logLevelsString: "no_level:",
-			expectError: true,
+			expectError:     true,
 		},
 		{
 			logLevelsString: ":no_component",
-			expectError: true,
+			expectError:     true,
 		},
 		{
 			logLevelsString: ":",
-			expectError: true,
+			expectError:     true,
 		},
 		{
 			logLevelsString: "consecutive_commas:info,,",
-			expectError: true,
+			expectError:     true,
 		},
 		{
 			logLevelsString: ",,,",
-			expectError: true,
+			expectError:     true,
 		},
 		{
 			logLevelsString: ":,:,:",
-			expectError: true,
+			expectError:     true,
 		},
 		{
 			logLevelsString: "bad_format,bad_format",
-			expectError: true,
+			expectError:     true,
 		},
 	}
 	for _, tc := range testCases {
-		t.Run("string=" + tc.logLevelsString, func(t *testing.T) {
+		t.Run("string="+tc.logLevelsString, func(t *testing.T) {
 			logLevels, err := componentLogLevelsFromString(tc.logLevelsString)
 			if tc.expectError {
 				if err == nil {

@@ -7,10 +7,9 @@ import (
 
 	admissionv1 "k8s.io/api/admission/v1beta1"
 	authorizationv1 "k8s.io/api/authorization/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -27,9 +26,11 @@ func NewMemberValidator() *MemberValidator {
 	return &MemberValidator{}
 }
 
-var _ admission.Handler = (*MemberValidator)(nil)
-var _ inject.Client = (*MemberValidator)(nil)
-var _ admission.DecoderInjector = (*MemberValidator)(nil)
+var (
+	_ admission.Handler         = (*MemberValidator)(nil)
+	_ inject.Client             = (*MemberValidator)(nil)
+	_ admission.DecoderInjector = (*MemberValidator)(nil)
+)
 
 func (v *MemberValidator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	logger := logf.Log.WithName("smm-validator").
@@ -50,11 +51,11 @@ func (v *MemberValidator) Handle(ctx context.Context, req admission.Request) adm
 
 	// verify name == default
 	if common.MemberName != smm.Name {
-		return admission.Errored(http.StatusBadRequest, fmt.Errorf("ServiceMeshMember must be named %q", common.MemberName))
+		return admission.Errored(http.StatusBadRequest, fmt.Errorf("the ServiceMeshMember resource must be named %q", common.MemberName))
 	}
 
 	if smm.Namespace == common.GetOperatorNamespace() {
-		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("namespace where operator is installed cannot be added to any mesh"))
+		return badRequest("namespace where operator is installed cannot be added to any mesh")
 	}
 
 	if req.AdmissionRequest.Operation == admissionv1.Update {
@@ -68,7 +69,7 @@ func (v *MemberValidator) Handle(ctx context.Context, req admission.Request) adm
 		if smm.Spec.ControlPlaneRef.Name != oldSmm.Spec.ControlPlaneRef.Name ||
 			smm.Spec.ControlPlaneRef.Namespace != oldSmm.Spec.ControlPlaneRef.Namespace {
 			logger.Info("Client tried to mutate ServiceMeshMember.spec.controlPlaneRef")
-			return admission.Errored(http.StatusBadRequest, fmt.Errorf("Mutation of .spec.controlPlaneRef isn't allowed"))
+			return admission.Errored(http.StatusBadRequest, fmt.Errorf("mutation of .spec.controlPlaneRef isn't allowed"))
 		}
 	}
 
@@ -94,7 +95,9 @@ func (v *MemberValidator) Handle(ctx context.Context, req admission.Request) adm
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 	if !sar.Status.Allowed || sar.Status.Denied {
-		return admission.Errored(http.StatusForbidden, fmt.Errorf("user '%s' does not have permission to use ServiceMeshControlPlane %s/%s", req.AdmissionRequest.UserInfo.Username, smm.Spec.ControlPlaneRef.Namespace, smm.Spec.ControlPlaneRef.Name))
+		return admission.Errored(http.StatusForbidden,
+			fmt.Errorf("user '%s' does not have permission to use ServiceMeshControlPlane %s/%s",
+				req.AdmissionRequest.UserInfo.Username, smm.Spec.ControlPlaneRef.Namespace, smm.Spec.ControlPlaneRef.Name))
 	}
 
 	return admission.Allowed("")

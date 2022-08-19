@@ -34,10 +34,8 @@ func TestUnmarshallHelmValuesInSMCP(t *testing.T) {
 
 	if foo, ok, _ := smcp.Spec.Istio.GetMap("foo"); !ok {
 		t.Fatalf("SMCP.spec.istio.foo is not a map[string]interface{}")
-	} else {
-		if foo["bar"] != "baz" {
-			t.Fatalf("Unexpected value of SMCP.spec.istio.foo.bar; expected: baz, actual: %v", foo["bar"])
-		}
+	} else if foo["bar"] != "baz" {
+		t.Fatalf("Unexpected value of SMCP.spec.istio.foo.bar; expected: baz, actual: %v", foo["bar"])
 	}
 }
 

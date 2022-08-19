@@ -7,10 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maistra/istio-operator/pkg/controller/hacks"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -23,11 +21,11 @@ import (
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
+	"github.com/maistra/istio-operator/pkg/controller/hacks"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
@@ -281,7 +279,7 @@ func TestManifestValidation(t *testing.T) {
 					LastTransitionTime: oneMinuteAgo,
 				})
 
-				namespace := &v1.Namespace{
+				namespace := &corev1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{Name: tc.controlPlane.Namespace},
 				}
 
@@ -317,15 +315,15 @@ func TestManifestValidation(t *testing.T) {
 					test.PanicOnError(cl.Get(ctx, common.ToNamespacedName(&tc.controlPlane.ObjectMeta), updatedControlPlane))
 					newStatus := &updatedControlPlane.Status
 
-					assert.True(strings.Contains(newStatus.GetCondition(status.ConditionTypeReconciled).Message, expectedErrorMessage), "Expected reconciliation error:\n    "+expectedErrorMessage+"\nbut got:\n    "+newStatus.GetCondition(status.ConditionTypeReconciled).Message, t)
-				} else {
-					if err != nil {
-						t.Fatal(tc.name, "-", "Expected no errors, but got error: ", err)
-					}
+					reconciledMessage := newStatus.GetCondition(status.ConditionTypeReconciled).Message
+					assert.True(strings.Contains(reconciledMessage, expectedErrorMessage),
+						"Expected reconciliation error:\n    "+expectedErrorMessage+
+							"\nbut got:\n    "+newStatus.GetCondition(status.ConditionTypeReconciled).Message, t)
+				} else if err != nil {
+					t.Fatal(tc.name, "-", "Expected no errors, but got error: ", err)
 				}
 			})
 		}
-
 	}
 }
 
@@ -337,7 +335,7 @@ func assertInstanceReconcilerFails(r ControlPlaneInstanceReconciler, t *testing.
 }
 
 func TestParallelInstallationOfCharts(t *testing.T) {
-	var testCases = []struct {
+	testCases := []struct {
 		name                       string
 		reactorsForFirstReconcile  []clienttesting.Reactor
 		expectFirstReconcileToFail bool
@@ -351,14 +349,18 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 		{
 			name: "process-component-manifests-fails",
 			reactorsForFirstReconcile: []clienttesting.Reactor{
-				&clienttesting.SimpleReactor{Verb: "create", Resource: "deployments", Reaction: func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-					create := action.(clienttesting.CreateAction)
-					deploy := create.GetObject().(*unstructured.Unstructured)
-					if deploy.GetName() == "istio-pilot" {
-						return test.ClientFails()(action)
-					}
-					return false, nil, nil
-				}},
+				&clienttesting.SimpleReactor{
+					Verb:     "create",
+					Resource: "deployments",
+					Reaction: func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+						create := action.(clienttesting.CreateAction)
+						deploy := create.GetObject().(*unstructured.Unstructured)
+						if deploy.GetName() == "istio-pilot" {
+							return test.ClientFails()(action)
+						}
+						return false, nil, nil
+					},
+				},
 			},
 			expectFirstReconcileToFail: true,
 		},
@@ -373,7 +375,6 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			falseVal := false
 			trueVal := true
 			disabled := maistrav2.Enablement{Enabled: &falseVal}
@@ -478,7 +479,7 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 }
 
 func TestValidation(t *testing.T) {
-	var testCases = []struct {
+	testCases := []struct {
 		name        string
 		spec        maistrav2.ControlPlaneSpec
 		expectValid bool
@@ -551,7 +552,7 @@ func TestValidation(t *testing.T) {
 				Version:  versions.V2_1.String(),
 				Profiles: []string{"maistra"},
 				Policy: &maistrav2.PolicyConfig{
-					Type: v2.PolicyTypeMixer,
+					Type: maistrav2.PolicyTypeMixer,
 				},
 			},
 			expectValid: false,
@@ -599,7 +600,7 @@ func TestNamespaceLabels(t *testing.T) {
 	assertInstanceReconcilerSucceeds(r, t) // this does the actual work
 
 	ns := &corev1.Namespace{}
-	test.GetObject(ctx, cl, types.NamespacedName{"", controlPlaneNamespace}, ns)
+	test.GetObject(ctx, cl, types.NamespacedName{Namespace: "", Name: controlPlaneNamespace}, ns)
 	assert.DeepEquals(ns.Labels, map[string]string{
 		common.IgnoreNamespaceKey: "ignore",
 		common.MemberOfKey:        controlPlaneNamespace,
@@ -614,8 +615,8 @@ func TestNamespaceLabels(t *testing.T) {
 	assertDeleteSucceeds(r, t) // this does the actual work
 
 	ns = &corev1.Namespace{}
-	test.GetObject(ctx, cl, types.NamespacedName{"", controlPlaneNamespace}, ns)
-	assert.DeepEquals(ns.Labels, (map[string]string)(nil), "Namespace labels weren't removed", t)
+	test.GetObject(ctx, cl, types.NamespacedName{Namespace: "", Name: controlPlaneNamespace}, ns)
+	assert.DeepEquals(ns.Labels, map[string]string(nil), "Namespace labels weren't removed", t)
 }
 
 func assertDeleteSucceeds(r ControlPlaneInstanceReconciler, t *testing.T) {
@@ -665,7 +666,9 @@ func assertInstanceReconcilerSucceeds(r ControlPlaneInstanceReconciler, t *testi
 	assert.Success(err, "Reconcile", t)
 }
 
-func assertReconciledConditionMatches(cl client.Client, smcp *maistrav2.ServiceMeshControlPlane, reason status.ConditionReason, messageSubstring string, t *testing.T) {
+func assertReconciledConditionMatches(cl client.Client, smcp *maistrav2.ServiceMeshControlPlane,
+	reason status.ConditionReason, messageSubstring string, t *testing.T,
+) {
 	t.Helper()
 	test.PanicOnError(cl.Get(ctx, common.ToNamespacedName(smcp), smcp))
 	reconciledCondition := smcp.Status.GetCondition(status.ConditionTypeReconciled)
@@ -683,12 +686,4 @@ func markDeploymentAvailable(cl client.Client, deployment *appsv1.Deployment) {
 		},
 	}
 	test.PanicOnError(cl.Update(ctx, deployment))
-}
-
-func newTestReconciler() *controlPlaneInstanceReconciler {
-	reconciler := NewControlPlaneInstanceReconciler(
-		common.ControllerResources{},
-		&maistrav2.ServiceMeshControlPlane{},
-		cni.Config{Enabled: true})
-	return reconciler.(*controlPlaneInstanceReconciler)
 }

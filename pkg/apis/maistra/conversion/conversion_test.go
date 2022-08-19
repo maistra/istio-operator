@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"github.com/google/go-cmp/cmp"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
@@ -1301,8 +1301,8 @@ func assertEquals(t *testing.T, expected, actual interface{}) {
 			t.Errorf("unexpected output converting values back to v2:\n%s", diff)
 		}
 	}
-
 }
+
 func pruneEmptyObjects(in interface{}) *v1.HelmValues {
 	values, err := toValues(in)
 	if err != nil {
@@ -1407,6 +1407,7 @@ func TestRoundTripConversion(t *testing.T) {
 			if err != nil {
 				t.Fatalf("error converting smcpv2 to smcpv1: %v", err)
 			}
+			//nolint:revive
 			expected := &tc.smcpv1
 			if tc.roundTripped != nil {
 				expected = tc.roundTripped
@@ -1459,7 +1460,8 @@ func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 				t.Fatalf("error converting from values: %s", err)
 			}
 			if tc.roundTripSpec != nil {
-				t.Logf("Substituting roundTripSpec for actual result, differences between expected and substituted are:\n%s", cmp.Diff(smcpv2.Spec, *tc.roundTripSpec, cmp.AllowUnexported(v1.HelmValues{})))
+				t.Logf("Substituting roundTripSpec for actual result, differences between expected and substituted are:\n%s",
+					cmp.Diff(smcpv2.Spec, *tc.roundTripSpec, cmp.AllowUnexported(v1.HelmValues{})))
 				smcpv2.Spec = v2.ControlPlaneSpec{}
 				tc.roundTripSpec.DeepCopyInto(&smcpv2.Spec)
 			}

@@ -20,7 +20,7 @@ var (
 
 var jaegerTestCases []conversionTestCase
 
-func jaegerTestCasesV2(version versions.Version) []conversionTestCase{
+func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 	ver := version.String()
 	return []conversionTestCase{
 		{
@@ -508,7 +508,8 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase{
 						"esIndexCleaner": map[string]interface{}{
 							"enabled":      true,
 							"numberOfDays": 7,
-							"schedule":     "55 23 * * *"},
+							"schedule":     "55 23 * * *",
+						},
 					},
 				},
 			}),

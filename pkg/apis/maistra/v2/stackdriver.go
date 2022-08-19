@@ -56,10 +56,10 @@ type StackdriverTelemetryConfig struct {
 	// DisableOutbound disables intallation of sidecar outbound filter
 	// .Values.telemetry.v2.stackdriver.disableOutbound, defaults to false
 	// +optional
-	//DisableOutbound bool `json:"disableOutbound,omitempty"`
+	// DisableOutbound bool `json:"disableOutbound,omitempty"`
 	// AccessLogging configures access logging for stackdriver
 	AccessLogging *StackdriverAccessLogTelemetryConfig `json:"accessLogging,omitempty"`
-	//ConfigOverride apply custom configuration to Stackdriver filters (v2
+	// ConfigOverride apply custom configuration to Stackdriver filters (v2
 	// telemetry only)
 	// .Values.telemetry.v2.stackdriver.configOverride
 	// +optional

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -78,11 +78,9 @@ func decodeAndRemoveFromValues(in map[string]interface{}, out interface{}) error
 		return err
 	}
 	if newValues, err := toValues(out); err == nil {
-		removeHelmValues(in, newValues)
-	} else {
-		return err
+		return removeHelmValues(in, newValues)
 	}
-	return nil
+	return err
 }
 
 func sliceToValues(in []interface{}) ([]interface{}, error) {

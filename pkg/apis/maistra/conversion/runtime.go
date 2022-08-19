@@ -115,16 +115,6 @@ func populateControlPlaneRuntimeValues(runtime *v2.ControlPlaneRuntimeConfig, va
 	return nil
 }
 
-func populateDefaultContainerValues(containers map[string]v2.ContainerConfig, values map[string]interface{}) error {
-	if containers == nil {
-		return nil
-	}
-	if defaultContainer, ok := containers["default"]; ok {
-		return populateContainerConfigValues(&defaultContainer, values)
-	}
-	return nil
-}
-
 func populateRuntimeValues(runtime *v2.ComponentRuntimeConfig, componentValues map[string]interface{}) error {
 	if runtime == nil {
 		return nil
@@ -539,8 +529,6 @@ func runtimeValuesToPodRuntimeConfig(in *v1.HelmValues, out *v2.PodRuntimeConfig
 		return false, err
 	}
 
-
-
 	if nodeAffinity, ok, err := in.GetAndRemoveMap("affinity.nodeAffinity"); ok {
 		if out.Affinity == nil {
 			out.Affinity = &v2.Affinity{}
@@ -715,13 +703,13 @@ func runtimeValuesToAutoscalingConfig(in *v1.HelmValues, out *v2.DeploymentRunti
 	return setValues, nil
 }
 
-func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) (bool, error) {
+func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	runtime := &v2.ControlPlaneRuntimeConfig{}
 	setRuntime := false
 
 	rawGlobalValues, ok, err := in.GetMap("global")
 	if err != nil {
-		return false, err
+		return err
 	} else if ok && len(rawGlobalValues) > 0 {
 		globalValues := v1.NewHelmValues(rawGlobalValues)
 
@@ -734,10 +722,10 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 			if pdbEnabled, ok, err := pdbValues.GetAndRemoveBool("enabled"); ok {
 				podDisruption.Enabled = &pdbEnabled
 			} else if err != nil {
-				return false, err
+				return err
 			}
 			if err := decodeAndRemoveFromValues(pdbValues.GetContent(), podDisruption); err != nil {
-				return false, err
+				return err
 			}
 			if podDisruption.Enabled != nil || podDisruption.MinAvailable != nil || podDisruption.MaxUnavailable != nil {
 				setDefaults = true
@@ -748,10 +736,10 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 			if len(pdbValues.GetContent()) == 0 {
 				globalValues.RemoveField("defaultPodDisruptionBudget")
 			} else if err := globalValues.SetField("defaultPodDisruptionBudget", pdbValues.GetContent()); err != nil {
-				return false, err
+				return err
 			}
 		} else if err != nil {
-			return false, err
+			return err
 		}
 
 		pod := &v2.CommonPodRuntimeConfig{}
@@ -760,32 +748,32 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 			pod.NodeSelector = make(map[string]string)
 			setPod = true
 			if err := decodeAndRemoveFromValues(nodeSelector, &pod.NodeSelector); err != nil {
-				return false, err
+				return err
 			}
 			if len(nodeSelector) == 0 {
 				globalValues.RemoveField("defaultNodeSelector")
 			} else if err := globalValues.SetField("defaultNodeSelector", nodeSelector); err != nil {
-				return false, err
+				return err
 			}
 		} else if err != nil {
-			return false, err
+			return err
 		}
 		if tolerations, ok, err := globalValues.GetAndRemoveSlice("defaultTolerations"); ok && len(tolerations) > 0 {
 			pod.Tolerations = make([]corev1.Toleration, len(tolerations))
 			setPod = true
 			for index, tolerationValues := range tolerations {
 				if err := fromValues(tolerationValues, &pod.Tolerations[index]); err != nil {
-					return false, err
+					return err
 				}
 			}
 		} else if err != nil {
-			return false, err
+			return err
 		}
 		if priorityClassName, ok, err := globalValues.GetAndRemoveString("priorityClassName"); ok {
 			pod.PriorityClassName = priorityClassName
 			setPod = true
 		} else if err != nil {
-			return false, err
+			return err
 		}
 
 		if setPod {
@@ -795,7 +783,7 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 
 		container := &v2.CommonContainerConfig{}
 		if applied, err := populateCommonContainerConfig(globalValues, container); err != nil {
-			return false, err
+			return err
 		} else if applied {
 			defaults.Container = container
 			setDefaults = true
@@ -805,7 +793,7 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 			if len(resourcesValues) > 0 {
 				container.Resources = &corev1.ResourceRequirements{}
 				if err := decodeAndRemoveFromValues(resourcesValues, container.Resources); err != nil {
-					return false, err
+					return err
 				}
 				if defaults.Container == nil {
 					defaults.Container = container
@@ -814,7 +802,7 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 			}
 			globalValues.RemoveField("defaultResources")
 		} else if err != nil {
-			return false, err
+			return err
 		}
 		if setDefaults {
 			runtime.Defaults = defaults
@@ -823,7 +811,7 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 		if len(globalValues.GetContent()) == 0 {
 			in.RemoveField("global")
 		} else if err := in.SetField("global", globalValues.GetContent()); err != nil {
-			return false, err
+			return err
 		}
 	}
 
@@ -832,7 +820,7 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 		if componentValues, ok, err := in.GetMap(string(component)); ok {
 			componentConfig := &v2.ComponentRuntimeConfig{}
 			if applied, err := runtimeValuesToComponentRuntimeConfig(v1.NewHelmValues(componentValues), componentConfig); err != nil {
-				return false, err
+				return err
 			} else if applied {
 				runtime.Components[component] = componentConfig
 				setRuntime = true
@@ -840,10 +828,10 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 			if len(componentValues) == 0 {
 				in.RemoveField(string(component))
 			} else if err := in.SetField(string(component), componentValues); err != nil {
-				return false, err
+				return err
 			}
 		} else if err != nil {
-			return false, err
+			return err
 		}
 	}
 	if len(runtime.Components) == 0 {
@@ -854,7 +842,7 @@ func populateControlPlaneRuntimeConfig(in *v1.HelmValues, out *v2.ControlPlaneSp
 		out.Runtime = runtime
 	}
 
-	return setRuntime, nil
+	return nil
 }
 
 func populateContainerConfig(in *v1.HelmValues, out *v2.ContainerConfig) (bool, error) {

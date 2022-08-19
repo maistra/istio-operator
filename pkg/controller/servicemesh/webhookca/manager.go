@@ -82,7 +82,6 @@ func (wm *webhookCABundleManager) ManageWebhookCABundle(obj runtime.Object, sour
 			wm.objectRefsToWebhooks[objRef] = webhooks
 		}
 		webhooks[webhookName] = struct{}{}
-
 	}
 	return nil
 }
@@ -106,7 +105,7 @@ func (wm *webhookCABundleManager) UnmanageWebhookCABundle(obj runtime.Object) er
 			}
 		}
 	} else {
-		return fmt.Errorf("Not managing webhook %s", key)
+		return fmt.Errorf("not managing webhook %s", key)
 	}
 	return nil
 }

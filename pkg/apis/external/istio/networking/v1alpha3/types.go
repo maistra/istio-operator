@@ -7,7 +7,10 @@ import (
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type VirtualService struct{ external.Base `json:",inline"`}
+type VirtualService struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type VirtualServiceList struct {
 	metav1.TypeMeta `json:",inline"`

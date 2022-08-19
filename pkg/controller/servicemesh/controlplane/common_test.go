@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maistra/istio-operator/pkg/controller/hacks"
+	routev1 "github.com/openshift/api/route/v1"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -22,15 +22,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
+	"github.com/maistra/istio-operator/pkg/controller/hacks"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
-	routev1 "github.com/openshift/api/route/v1"
 )
 
 var ctx = common.NewContextWithLog(context.Background(), logf.Log)
@@ -157,25 +156,25 @@ func RunSimpleInstallTest(t *testing.T, testCases []IntegrationTestCase) {
 	}
 }
 
-func New22SMCPResource(name, namespace string, spec *v2.ControlPlaneSpec) *v2.ServiceMeshControlPlane {
+func New22SMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec) *maistrav2.ServiceMeshControlPlane {
 	smcp := NewV2SMCPResource(name, namespace, spec)
 	smcp.Spec.Version = versions.V2_2.String()
 	return smcp
 }
 
-func New21SMCPResource(name, namespace string, spec *v2.ControlPlaneSpec) *v2.ServiceMeshControlPlane {
+func New21SMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec) *maistrav2.ServiceMeshControlPlane {
 	smcp := NewV2SMCPResource(name, namespace, spec)
 	smcp.Spec.Version = versions.V2_1.String()
 	return smcp
 }
 
-func New20SMCPResource(name, namespace string, spec *v2.ControlPlaneSpec) *v2.ServiceMeshControlPlane {
+func New20SMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec) *maistrav2.ServiceMeshControlPlane {
 	smcp := NewV2SMCPResource(name, namespace, spec)
 	smcp.Spec.Version = versions.V2_0.String()
 	return smcp
 }
 
-func NewV2SMCPResource(name, namespace string, spec *v2.ControlPlaneSpec) *v2.ServiceMeshControlPlane {
+func NewV2SMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec) *maistrav2.ServiceMeshControlPlane {
 	smcp := &maistrav2.ServiceMeshControlPlane{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
 	}
@@ -266,7 +265,8 @@ func VerifyReadinessCheckOccurs(controlPlaneNamespace string) test.ActionVerifie
 	)
 }
 
-func SetRouteHostName(domain string) func(action clienttesting.Action, tracker clienttesting.ObjectTracker) (applied bool, handled bool, obj runtime.Object, err error) {
+func SetRouteHostName(domain string) func(action clienttesting.Action, tracker clienttesting.ObjectTracker) (
+	applied bool, handled bool, obj runtime.Object, err error) {
 	return func(action clienttesting.Action, tracker clienttesting.ObjectTracker) (applied bool, handled bool, obj runtime.Object, err error) {
 		createAction := action.(clienttesting.CreateAction)
 		applied = false
@@ -295,7 +295,8 @@ func SetRouteHostName(domain string) func(action clienttesting.Action, tracker c
 	}
 }
 
-func SimulateJaegerInstall(domain string, tls *routev1.TLSConfig) func(action clienttesting.Action, tracker clienttesting.ObjectTracker) (applied bool, handled bool, obj runtime.Object, err error) {
+func SimulateJaegerInstall(domain string, tls *routev1.TLSConfig) func(action clienttesting.Action,
+	tracker clienttesting.ObjectTracker) (applied bool, handled bool, obj runtime.Object, err error) {
 	return func(action clienttesting.Action, tracker clienttesting.ObjectTracker) (applied bool, handled bool, obj runtime.Object, err error) {
 		createAction := action.(clienttesting.CreateAction)
 		applied = false

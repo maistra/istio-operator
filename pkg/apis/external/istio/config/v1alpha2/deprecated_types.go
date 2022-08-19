@@ -9,7 +9,10 @@ import (
 // the following types are not available in istio/client-go
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type HTTPAPISpecBinding struct{ external.Base `json:",inline"`}
+type HTTPAPISpecBinding struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type HTTPAPISpecBindingList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -18,7 +21,10 @@ type HTTPAPISpecBindingList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type HTTPAPISpec struct{ external.Base `json:",inline"`}
+type HTTPAPISpec struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type HTTPAPISpecList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -27,7 +33,10 @@ type HTTPAPISpecList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type QuotaSpecBinding struct{ external.Base `json:",inline"`}
+type QuotaSpecBinding struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type QuotaSpecBindingList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -36,7 +45,10 @@ type QuotaSpecBindingList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type QuotaSpec struct{ external.Base `json:",inline"`}
+type QuotaSpec struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type QuotaSpecList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -45,7 +57,10 @@ type QuotaSpecList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Bypass struct{ external.Base `json:",inline"`}
+type Bypass struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type BypassList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -54,7 +69,10 @@ type BypassList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Circonus struct{ external.Base `json:",inline"`}
+type Circonus struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type CirconusList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -63,7 +81,10 @@ type CirconusList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Denier struct{ external.Base `json:",inline"`}
+type Denier struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type DenierList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -72,7 +93,10 @@ type DenierList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Fluentd struct{ external.Base `json:",inline"`}
+type Fluentd struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type FluentdList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -81,7 +105,10 @@ type FluentdList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Kubernetesenv struct{ external.Base `json:",inline"`}
+type Kubernetesenv struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type KubernetesenvList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -90,7 +117,10 @@ type KubernetesenvList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Listchecker struct{ external.Base `json:",inline"`}
+type Listchecker struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ListcheckerList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -99,7 +129,10 @@ type ListcheckerList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Memquota struct{ external.Base `json:",inline"`}
+type Memquota struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type MemquotaList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -108,7 +141,10 @@ type MemquotaList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Noop struct{ external.Base `json:",inline"`}
+type Noop struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type NoopList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -117,7 +153,10 @@ type NoopList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Opa struct{ external.Base `json:",inline"`}
+type Opa struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type OpaList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -126,7 +165,10 @@ type OpaList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Prometheus struct{ external.Base `json:",inline"`}
+type Prometheus struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type PrometheusList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -135,7 +177,10 @@ type PrometheusList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Rbac struct{ external.Base `json:",inline"`}
+type Rbac struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type RbacList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -144,7 +189,10 @@ type RbacList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Redisquota struct{ external.Base `json:",inline"`}
+type Redisquota struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type RedisquotaList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -153,7 +201,10 @@ type RedisquotaList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Signalfx struct{ external.Base `json:",inline"`}
+type Signalfx struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type SignalfxList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -162,7 +213,10 @@ type SignalfxList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Solarwinds struct{ external.Base `json:",inline"`}
+type Solarwinds struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type SolarwindsList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -171,7 +225,10 @@ type SolarwindsList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Stackdriver struct{ external.Base `json:",inline"`}
+type Stackdriver struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type StackdriverList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -180,7 +237,10 @@ type StackdriverList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Statsd struct{ external.Base `json:",inline"`}
+type Statsd struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type StatsdList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -189,7 +249,10 @@ type StatsdList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Stdio struct{ external.Base `json:",inline"`}
+type Stdio struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type StdioList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -198,7 +261,10 @@ type StdioList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Apikey struct{ external.Base `json:",inline"`}
+type Apikey struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ApikeyList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -207,7 +273,10 @@ type ApikeyList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Authorization struct{ external.Base `json:",inline"`}
+type Authorization struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type AuthorizationList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -216,7 +285,10 @@ type AuthorizationList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Checknothing struct{ external.Base `json:",inline"`}
+type Checknothing struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ChecknothingList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -225,7 +297,10 @@ type ChecknothingList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Kubernetes struct{ external.Base `json:",inline"`}
+type Kubernetes struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type KubernetesList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -234,7 +309,10 @@ type KubernetesList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Listentry struct{ external.Base `json:",inline"`}
+type Listentry struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ListentryList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -243,7 +321,10 @@ type ListentryList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Logentry struct{ external.Base `json:",inline"`}
+type Logentry struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type LogentryList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -252,7 +333,10 @@ type LogentryList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Edge struct{ external.Base `json:",inline"`}
+type Edge struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type EdgeList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -261,7 +345,10 @@ type EdgeList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Metric struct{ external.Base `json:",inline"`}
+type Metric struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type MetricList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -270,7 +357,10 @@ type MetricList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Quota struct{ external.Base `json:",inline"`}
+type Quota struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type QuotaList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -279,7 +369,10 @@ type QuotaList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Reportnothing struct{ external.Base `json:",inline"`}
+type Reportnothing struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ReportnothingList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -288,7 +381,10 @@ type ReportnothingList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Tracespan struct{ external.Base `json:",inline"`}
+type Tracespan struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TracespanList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -297,7 +393,10 @@ type TracespanList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Cloudwatch struct{ external.Base `json:",inline"`}
+type Cloudwatch struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type CloudwatchList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -306,7 +405,10 @@ type CloudwatchList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Dogstatsd struct{ external.Base `json:",inline"`}
+type Dogstatsd struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type DogstatsdList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -315,7 +417,10 @@ type DogstatsdList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Zipkin struct{ external.Base `json:",inline"`}
+type Zipkin struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ZipkinList struct {
 	metav1.TypeMeta `json:",inline"`

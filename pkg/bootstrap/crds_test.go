@@ -235,10 +235,9 @@ func TestRemoveTypeObjectFromOpenAPISchema(t *testing.T) {
 			crdRejected := false
 			rejectTypeObject := func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 				var obj runtime.Object
-				if createAction, ok := action.(clienttesting.CreateAction); ok {
-					obj = createAction.GetObject()
-				} else if updateAction, ok := action.(clienttesting.UpdateAction); ok {
-					obj = updateAction.GetObject()
+				switch a := action.(type) {
+				case clienttesting.CreateAction: // clienttesting.UpdateAction also matches this case due to having the same signature
+					obj = a.GetObject()
 				}
 
 				yml, err := yaml.Marshal(obj)
@@ -246,7 +245,8 @@ func TestRemoveTypeObjectFromOpenAPISchema(t *testing.T) {
 
 				if strings.Contains(string(yml), "type: object") {
 					crdRejected = true
-					return true, nil, fmt.Errorf("invalid CRD schema: must only have \"properties\", \"required\" or \"description\" at the root if the status subresource is enabled\n%s", yml)
+					return true, nil, fmt.Errorf("invalid CRD schema: must only have \"properties\", "+
+						"\"required\" or \"description\" at the root if the status subresource is enabled\n%s", yml)
 				}
 				return false, nil, nil
 			}

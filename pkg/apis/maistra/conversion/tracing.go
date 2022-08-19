@@ -66,7 +66,7 @@ func populateTracingValues(in *v2.ControlPlaneSpec, values map[string]interface{
 		case "":
 			// nothing to do
 		default:
-			return fmt.Errorf("Unknown tracer type: %s", in.Tracing.Type)
+			return fmt.Errorf("unknown tracer type: %s", in.Tracing.Type)
 		}
 	}
 	return nil

@@ -5,7 +5,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/kubectl/pkg/util"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -25,8 +24,8 @@ func NewPatchFactory(k8sClient client.Client) *PatchFactory {
 }
 
 // CreatePatch creates a patch based on the current and new versions of an object
-func (p *PatchFactory) CreatePatch(current, new *unstructured.Unstructured) (Patch, error) {
-	return &basicPatch{client: p.client, oldObj: current, newObj: new}, nil
+func (p *PatchFactory) CreatePatch(oldObj, newObj *unstructured.Unstructured) (Patch, error) {
+	return &basicPatch{client: p.client, oldObj: oldObj, newObj: newObj}, nil
 }
 
 type basicPatch struct {

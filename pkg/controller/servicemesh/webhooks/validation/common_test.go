@@ -12,15 +12,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clienttesting "k8s.io/client-go/testing"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 )
 
-var ctx = common.NewContextWithLog(context.Background(), logf.Log)
-var test_scheme = test.GetScheme()
+var (
+	ctx        = common.NewContextWithLog(context.Background(), logf.Log)
+	testScheme = test.GetScheme()
+)
 
 var userInfo = authentication.UserInfo{
 	Username: "joe-user",
@@ -31,7 +33,9 @@ var userInfo = authentication.UserInfo{
 	},
 }
 
-func createSubjectAccessReviewReactor(allowClusterScope, allowNamespaceScope bool, errorToReturn error) func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+func createSubjectAccessReviewReactor(allowClusterScope, allowNamespaceScope bool,
+	errorToReturn error,
+) func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 	return func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 		createAction := action.(clienttesting.CreateAction)
 		sar := createAction.GetObject().(*authorization.SubjectAccessReview)
@@ -59,13 +63,6 @@ func createUpdateRequest(oldObj, newObj runtime.Object) admission.Request {
 	return request
 }
 
-func createDeleteRequest(obj runtime.Object) admission.Request {
-	request := createRequest(obj)
-	request.Operation = admissionv1beta1.Delete
-	request.UserInfo = userInfo
-	return request
-}
-
 func createRequest(obj runtime.Object) admission.Request {
 	metaObj, err := meta.Accessor(obj)
 	if err != nil {
@@ -83,7 +80,7 @@ func createRequest(obj runtime.Object) admission.Request {
 }
 
 func metaGVKForObject(obj runtime.Object) metav1.GroupVersionKind {
-	gvks, _, err := test_scheme.ObjectKinds(obj)
+	gvks, _, err := testScheme.ObjectKinds(obj)
 	if err != nil {
 		panic(err)
 	} else if len(gvks) == 0 {

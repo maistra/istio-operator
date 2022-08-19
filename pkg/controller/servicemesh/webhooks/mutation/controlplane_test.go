@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -25,7 +23,7 @@ func TestNoMutation(t *testing.T) {
 		{
 			name: "deleted-allowed.v1",
 			controlPlane: func() runtime.Object {
-				controlPlane := newControlPlaneV1("my-smcp", "istio-system")
+				controlPlane := newControlPlaneV1("istio-system")
 				controlPlane.Spec.Version = ""
 				controlPlane.Spec.Template = ""
 				controlPlane.DeletionTimestamp = now()
@@ -35,7 +33,7 @@ func TestNoMutation(t *testing.T) {
 		{
 			name: "deleted-allowed.v2",
 			controlPlane: func() runtime.Object {
-				controlPlane := newControlPlaneV2("my-smcp", "istio-system")
+				controlPlane := newControlPlaneV2("istio-system")
 				controlPlane.Spec.Version = ""
 				controlPlane.Spec.Profiles = nil
 				controlPlane.DeletionTimestamp = now()
@@ -45,7 +43,7 @@ func TestNoMutation(t *testing.T) {
 		{
 			name: "unwatched-namespace.v1",
 			controlPlane: func() runtime.Object {
-				controlPlane := newControlPlaneV1("my-smcp", "not-watched")
+				controlPlane := newControlPlaneV1("not-watched")
 				controlPlane.Spec.Version = ""
 				controlPlane.Spec.Template = ""
 				return controlPlane
@@ -54,7 +52,7 @@ func TestNoMutation(t *testing.T) {
 		{
 			name: "unwatched-namespace.v2",
 			controlPlane: func() runtime.Object {
-				controlPlane := newControlPlaneV2("my-smcp", "not-watched")
+				controlPlane := newControlPlaneV2("not-watched")
 				controlPlane.Spec.Version = ""
 				controlPlane.Spec.Profiles = nil
 				return controlPlane
@@ -63,7 +61,7 @@ func TestNoMutation(t *testing.T) {
 		{
 			name: "no-mutation.v1",
 			controlPlane: func() runtime.Object {
-				controlPlane := newControlPlaneV1("my-smcp", "istio-system")
+				controlPlane := newControlPlaneV1("istio-system")
 				controlPlane.Spec.Version = versions.DefaultVersion.String()
 				controlPlane.Spec.Template = maistrav1.DefaultTemplate
 				return controlPlane
@@ -72,7 +70,7 @@ func TestNoMutation(t *testing.T) {
 		{
 			name: "no-mutation.v2",
 			controlPlane: func() runtime.Object {
-				controlPlane := newControlPlaneV2("my-smcp", "istio-system")
+				controlPlane := newControlPlaneV2("istio-system")
 				controlPlane.Spec.Version = versions.DefaultVersion.String()
 				return controlPlane
 			},
@@ -80,7 +78,7 @@ func TestNoMutation(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mutator, _, _ := createControlPlaneMutatorTestFixture()
+			mutator := createControlPlaneMutatorTestFixture()
 			mutator.namespaceFilter = "istio-system"
 			response := mutator.Handle(ctx, newCreateRequest(tc.controlPlane()))
 			assert.DeepEquals(response, acceptWithNoMutation, "Expected mutator to accept ServiceMeshControlPlane with no mutation", t)
@@ -97,7 +95,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "default-version.v1",
 			controlPlanes: func() (runtime.Object, runtime.Object) {
-				controlPlane := newControlPlaneV1("my-smcp", "istio-system")
+				controlPlane := newControlPlaneV1("istio-system")
 				controlPlane.Spec.Version = ""
 
 				mutatedControlPlane := controlPlane.DeepCopy()
@@ -108,7 +106,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "default-version.v2",
 			controlPlanes: func() (runtime.Object, runtime.Object) {
-				controlPlane := newControlPlaneV2("my-smcp", "istio-system")
+				controlPlane := newControlPlaneV2("istio-system")
 				controlPlane.Spec.Version = ""
 
 				mutatedControlPlane := controlPlane.DeepCopy()
@@ -119,7 +117,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "default-profile.v1",
 			controlPlanes: func() (runtime.Object, runtime.Object) {
-				controlPlane := newControlPlaneV1("my-smcp", "istio-system")
+				controlPlane := newControlPlaneV1("istio-system")
 				controlPlane.Spec.Template = ""
 
 				mutatedControlPlane := controlPlane.DeepCopy()
@@ -130,7 +128,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "default-profile.v2",
 			controlPlanes: func() (runtime.Object, runtime.Object) {
-				controlPlane := newControlPlaneV2("my-smcp", "istio-system")
+				controlPlane := newControlPlaneV2("istio-system")
 				controlPlane.Spec.Profiles = nil
 
 				mutatedControlPlane := controlPlane.DeepCopy()
@@ -142,7 +140,7 @@ func TestCreate(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			controlPlane, mutatedControlPlane := tc.controlPlanes()
-			mutator, _, _ := createControlPlaneMutatorTestFixture()
+			mutator := createControlPlaneMutatorTestFixture()
 			response := mutator.Handle(ctx, newCreateRequest(controlPlane))
 			expectedResponse := PatchResponse(toRawExtension(controlPlane), mutatedControlPlane)
 			assert.DeepEquals(response, expectedResponse, "Expected the response to set the version on create", t)
@@ -159,54 +157,54 @@ func TestVersionIsDefaultedToOldSMCPVersionOnUpdate(t *testing.T) {
 		{
 			name: "version.legacy.v1",
 			controlPlane: func() cpadapter {
-				return &cpv1adapter{ServiceMeshControlPlane: newControlPlaneV1("my-smcp", "istio-system")}
+				return &cpv1adapter{ServiceMeshControlPlane: newControlPlaneV1("istio-system")}
 			},
 		},
 		{
 			name: "version.legacy.v2",
 			controlPlane: func() cpadapter {
-				return &cpv2adapter{ServiceMeshControlPlane: newControlPlaneV2("my-smcp", "istio-system")}
+				return &cpv2adapter{ServiceMeshControlPlane: newControlPlaneV2("istio-system")}
 			},
 		},
 		{
 			name: "version.v1.0.v1",
 			controlPlane: func() cpadapter {
-				return &cpv1adapter{ServiceMeshControlPlane: newControlPlaneV1("my-smcp", "istio-system")}
+				return &cpv1adapter{ServiceMeshControlPlane: newControlPlaneV1("istio-system")}
 			},
 			version: "v1.0",
 		},
 		{
 			name: "version.v1.0.v2",
 			controlPlane: func() cpadapter {
-				return &cpv2adapter{ServiceMeshControlPlane: newControlPlaneV2("my-smcp", "istio-system")}
+				return &cpv2adapter{ServiceMeshControlPlane: newControlPlaneV2("istio-system")}
 			},
 			version: "v1.0",
 		},
 		{
 			name: "version.v1.1.v1",
 			controlPlane: func() cpadapter {
-				return &cpv1adapter{ServiceMeshControlPlane: newControlPlaneV1("my-smcp", "istio-system")}
+				return &cpv1adapter{ServiceMeshControlPlane: newControlPlaneV1("istio-system")}
 			},
 			version: "v1.1",
 		},
 		{
 			name: "version.v1.1.v2",
 			controlPlane: func() cpadapter {
-				return &cpv2adapter{ServiceMeshControlPlane: newControlPlaneV2("my-smcp", "istio-system")}
+				return &cpv2adapter{ServiceMeshControlPlane: newControlPlaneV2("istio-system")}
 			},
 			version: "v1.1",
 		},
 		{
 			name: "version.v2.0.v1",
 			controlPlane: func() cpadapter {
-				return &cpv1adapter{ServiceMeshControlPlane: newControlPlaneV1("my-smcp", "istio-system")}
+				return &cpv1adapter{ServiceMeshControlPlane: newControlPlaneV1("istio-system")}
 			},
 			version: "v2.0",
 		},
 		{
 			name: "version.v2.0.v2",
 			controlPlane: func() cpadapter {
-				return &cpv2adapter{ServiceMeshControlPlane: newControlPlaneV2("my-smcp", "istio-system")}
+				return &cpv2adapter{ServiceMeshControlPlane: newControlPlaneV2("istio-system")}
 			},
 			version: "v2.0",
 		},
@@ -224,7 +222,7 @@ func TestVersionIsDefaultedToOldSMCPVersionOnUpdate(t *testing.T) {
 			mutatedControlPlane := updatedControlPlane.DeepCopy()
 			mutatedControlPlane.setVersion(tc.version)
 
-			mutator, _, _ := createControlPlaneMutatorTestFixture(controlPlane.Object())
+			mutator := createControlPlaneMutatorTestFixture(controlPlane.Object())
 			response := mutator.Handle(ctx, newUpdateRequest(controlPlane.Object(), updatedControlPlane.Object()))
 			expectedResponse := PatchResponse(toRawExtension(updatedControlPlane.Object()), mutatedControlPlane.Object())
 			if len(expectedResponse.Patches) == 0 {
@@ -244,13 +242,13 @@ func TestTemplateIsDefaultedOnUpdate(t *testing.T) {
 		{
 			name: "v1",
 			controlPlane: func() cpadapter {
-				return &cpv1adapter{ServiceMeshControlPlane: newControlPlaneV1("my-smcp", "istio-system")}
+				return &cpv1adapter{ServiceMeshControlPlane: newControlPlaneV1("istio-system")}
 			},
 		},
 		{
 			name: "v2",
 			controlPlane: func() cpadapter {
-				return &cpv2adapter{ServiceMeshControlPlane: newControlPlaneV2("my-smcp", "istio-system")}
+				return &cpv2adapter{ServiceMeshControlPlane: newControlPlaneV2("istio-system")}
 			},
 		},
 	}
@@ -265,7 +263,7 @@ func TestTemplateIsDefaultedOnUpdate(t *testing.T) {
 			mutatedControlPlane := updatedControlPlane.DeepCopy()
 			mutatedControlPlane.setProfiles([]string{maistrav1.DefaultTemplate})
 
-			mutator, _, _ := createControlPlaneMutatorTestFixture()
+			mutator := createControlPlaneMutatorTestFixture()
 			response := mutator.Handle(ctx, newUpdateRequest(origControlPlane.Object(), updatedControlPlane.Object()))
 			expectedResponse := PatchResponse(toRawExtension(updatedControlPlane.Object()), mutatedControlPlane.Object())
 			assert.DeepEquals(response, expectedResponse, "Expected the response to set the template on update", t)
@@ -273,8 +271,8 @@ func TestTemplateIsDefaultedOnUpdate(t *testing.T) {
 	}
 }
 
-func createControlPlaneMutatorTestFixture(clientObjects ...runtime.Object) (*ControlPlaneMutator, client.Client, *test.EnhancedTracker) {
-	cl, tracker := test.CreateClient(clientObjects...)
+func createControlPlaneMutatorTestFixture(clientObjects ...runtime.Object) *ControlPlaneMutator {
+	cl, _ := test.CreateClient(clientObjects...)
 	decoder, err := admission.NewDecoder(test.GetScheme())
 	if err != nil {
 		panic(fmt.Sprintf("Could not create decoder: %s", err))
@@ -291,7 +289,7 @@ func createControlPlaneMutatorTestFixture(clientObjects ...runtime.Object) (*Con
 		panic(fmt.Sprintf("Could not inject decoder: %s", err))
 	}
 
-	return validator, cl, tracker
+	return validator
 }
 
 type cpadapter interface {
@@ -318,7 +316,7 @@ func (a *cpv1adapter) setVersion(version string) {
 }
 
 func (a *cpv1adapter) setProfiles(profiles []string) {
-	a.Spec.Profiles = profiles[:]
+	a.Spec.Profiles = profiles
 }
 
 func (a *cpv1adapter) setTemplate(template string) {
@@ -345,7 +343,7 @@ func (a *cpv2adapter) setVersion(version string) {
 }
 
 func (a *cpv2adapter) setProfiles(profiles []string) {
-	a.Spec.Profiles = profiles[:]
+	a.Spec.Profiles = profiles
 }
 
 func (a *cpv2adapter) setTemplate(template string) {
@@ -360,10 +358,10 @@ func (a *cpv2adapter) DeepCopy() cpadapter {
 	return &cpv2adapter{ServiceMeshControlPlane: a.ServiceMeshControlPlane.DeepCopy()}
 }
 
-func newControlPlaneV1(name, namespace string) *maistrav1.ServiceMeshControlPlane {
+func newControlPlaneV1(namespace string) *maistrav1.ServiceMeshControlPlane {
 	return &maistrav1.ServiceMeshControlPlane{
-		ObjectMeta: meta.ObjectMeta{
-			Name:      name,
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-smcp",
 			Namespace: namespace,
 		},
 		Spec: maistrav1.ControlPlaneSpec{
@@ -373,10 +371,10 @@ func newControlPlaneV1(name, namespace string) *maistrav1.ServiceMeshControlPlan
 	}
 }
 
-func newControlPlaneV2(name, namespace string) *maistrav2.ServiceMeshControlPlane {
+func newControlPlaneV2(namespace string) *maistrav2.ServiceMeshControlPlane {
 	return &maistrav2.ServiceMeshControlPlane{
-		ObjectMeta: meta.ObjectMeta{
-			Name:      name,
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-smcp",
 			Namespace: namespace,
 		},
 		Spec: maistrav2.ControlPlaneSpec{

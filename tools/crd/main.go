@@ -8,22 +8,19 @@ import (
 	"os"
 	"path"
 
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/sets"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/helm/pkg/releaseutil"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 )
 
 var log = logf.Log.WithName("cmd")
 
 func main() {
-
 	// Add the zap logger flag set to the CLI. The flag set must
 	// be added before calling pflag.Parse().
 	pflag.CommandLine.AddFlagSet(zap.FlagSet())
@@ -80,7 +77,7 @@ func processFile(fileName string, written sets.String) {
 								panic(fmt.Errorf("output file exists: %s", outFileName))
 							} else if os.IsNotExist(err) {
 								log.Info(fmt.Sprintf("writing CRD %s to %s", name, outFileName))
-								if err := ioutil.WriteFile(outFileName, []byte(object), 0664); err != nil {
+								if err := ioutil.WriteFile(outFileName, []byte(object), 0o664); err != nil {
 									log.Error(err, fmt.Sprintf("error writing CRD to %s", outFileName))
 									panic(err)
 								}

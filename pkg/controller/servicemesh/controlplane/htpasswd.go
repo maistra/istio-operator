@@ -9,9 +9,8 @@ import (
 	"regexp"
 
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
@@ -84,7 +83,7 @@ func (r *controlPlaneInstanceReconciler) patchGrafanaConfig(ctx context.Context,
 		return err
 	}
 
-	var re = regexp.MustCompile("(?s)(basicAuthPassword:).*?\n")
+	re := regexp.MustCompile("(?s)(basicAuthPassword:).*?\n")
 	dsYaml = re.ReplaceAllString(dsYaml, fmt.Sprintf("${1} %s\n", rawPassword))
 	err = unstructured.SetNestedField(object.UnstructuredContent(), dsYaml, "data", "datasources.yaml")
 	if err != nil {

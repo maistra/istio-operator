@@ -8,26 +8,26 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-type statusPatch struct {
+type StatusPatch struct {
 	status interface{}
 }
 
-func NewStatusPatch(status interface{}) *statusPatch {
-	return &statusPatch{
+func NewStatusPatch(status interface{}) *StatusPatch {
+	return &StatusPatch{
 		status: status,
 	}
 }
 
-func (p *statusPatch) Type() types.PatchType {
+func (p *StatusPatch) Type() types.PatchType {
 	return types.JSONPatchType
 }
 
-func (p *statusPatch) Data(obj runtime.Object) ([]byte, error) {
+func (p *StatusPatch) Data(obj runtime.Object) ([]byte, error) {
 	data := []jsonpatch.Operation{
 		{
 			Operation: "replace",
-			Path: "/status",
-			Value: p.status,
+			Path:      "/status",
+			Value:     p.status,
 		},
 	}
 	statusJSON, err := json.Marshal(data)

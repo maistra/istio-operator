@@ -54,7 +54,6 @@ type ServiceMeshMemberRollList struct {
 // ServiceMeshMemberRollSpec is the specification of the desired list of
 // members of the service mesh.
 type ServiceMeshMemberRollSpec struct {
-
 	//  List of namespaces that should be members of the service mesh.
 	// +optional
 	// +nullable

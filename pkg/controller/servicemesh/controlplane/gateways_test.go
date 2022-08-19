@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"testing"
 
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	"github.com/maistra/istio-operator/pkg/controller/common"
-	. "github.com/maistra/istio-operator/pkg/controller/common/test"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	clienttesting "k8s.io/client-go/testing"
+
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	"github.com/maistra/istio-operator/pkg/controller/common"
+	. "github.com/maistra/istio-operator/pkg/controller/common/test"
 )
 
 func TestAdditionalIngressGatewayInstall(t *testing.T) {
@@ -20,6 +21,7 @@ func TestAdditionalIngressGatewayInstall(t *testing.T) {
 	disabled := false
 	additionalGatewayName := "additional-gateway"
 	appNamespace := "app-namespace"
+	const gatewayLabel = "maistra.io/gateway"
 	testCases := []IntegrationTestCase{
 		{
 			name: "no-namespace",
@@ -47,8 +49,12 @@ func TestAdditionalIngressGatewayInstall(t *testing.T) {
 			}),
 			create: IntegrationTestValidation{
 				Verifier: VerifyActions(
-					Verify("create").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(ExpectedLabelGatewayCreate("maistra.io/gateway", "istio-ingressgateway."+controlPlaneNamespace)),
-					Verify("create").On("deployments").Named(additionalGatewayName).In(controlPlaneNamespace).Passes(ExpectedLabelGatewayCreate("maistra.io/gateway", additionalGatewayName+"."+controlPlaneNamespace)),
+					Verify("create").On("deployments").
+						Named("istio-ingressgateway").In(controlPlaneNamespace).
+						Passes(ExpectedLabelGatewayCreate(gatewayLabel, "istio-ingressgateway."+controlPlaneNamespace)),
+					Verify("create").On("deployments").
+						Named(additionalGatewayName).In(controlPlaneNamespace).
+						Passes(ExpectedLabelGatewayCreate(gatewayLabel, additionalGatewayName+"."+controlPlaneNamespace)),
 				),
 				Assertions: ActionAssertions{},
 			},
@@ -75,9 +81,9 @@ func TestAdditionalIngressGatewayInstall(t *testing.T) {
 				},
 			}),
 			create: IntegrationTestValidation{
-				Verifier: ActionVerifier(
-					Verify("create").On("deployments").Named(additionalGatewayName).In(controlPlaneNamespace).Passes(ExpectedLabelGatewayCreate("maistra.io/gateway", additionalGatewayName+"."+controlPlaneNamespace)),
-				),
+				Verifier: Verify("create").On("deployments").
+					Named(additionalGatewayName).In(controlPlaneNamespace).
+					Passes(ExpectedLabelGatewayCreate(gatewayLabel, additionalGatewayName+"."+controlPlaneNamespace)),
 				Assertions: ActionAssertions{},
 			},
 			delete: IntegrationTestValidation{
@@ -114,15 +120,15 @@ func TestAdditionalIngressGatewayInstall(t *testing.T) {
 				},
 			}),
 			create: IntegrationTestValidation{
-				Verifier: ActionVerifier(
-					Verify("create").On("deployments").Named(additionalGatewayName).In(appNamespace).Passes(ExpectedExternalGatewayCreate),
-				),
+				Verifier: Verify("create").On("deployments").
+					Named(additionalGatewayName).In(appNamespace).
+					Passes(ExpectedExternalGatewayCreate),
 				Assertions: ActionAssertions{},
 			},
 			delete: IntegrationTestValidation{
 				Assertions: ActionAssertions{
 					// TODO: MAISTRA-1333 gateways in other namepsaces do not get deleted properly
-					//Assert("delete").On("deployments").Named(additionalGatewayName).In(appNamespace).IsSeen(),
+					// Assert("delete").On("deployments").Named(additionalGatewayName).In(appNamespace).IsSeen(),
 				},
 			},
 		},
@@ -202,7 +208,7 @@ func TestAdditionalIngressGatewayInstall(t *testing.T) {
 					),
 					Verify("create").On("deployments").Named(additionalGatewayName).In(controlPlaneNamespace).Passes(
 						ExpectedLabelGatewayCreate("test", "test"),
-						ExpectedLabelGatewayCreate("maistra.io/gateway", additionalGatewayName+"."+controlPlaneNamespace),
+						ExpectedLabelGatewayCreate(gatewayLabel, additionalGatewayName+"."+controlPlaneNamespace),
 						ExpectedLabelGatewayCreate("app", additionalGatewayName),
 					),
 				),
@@ -228,7 +234,7 @@ func TestAdditionalIngressGatewayInstall(t *testing.T) {
 			create: IntegrationTestValidation{
 				Verifier: VerifyActions(
 					Verify("create").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(
-						ExpectedLabelGatewayCreate("maistra.io/gateway", "istio-ingressgateway."+controlPlaneNamespace),
+						ExpectedLabelGatewayCreate(gatewayLabel, "istio-ingressgateway."+controlPlaneNamespace),
 					),
 				),
 				Assertions: ActionAssertions{
@@ -256,7 +262,7 @@ func TestAdditionalIngressGatewayInstall(t *testing.T) {
 			create: IntegrationTestValidation{
 				Verifier: VerifyActions(
 					Verify("create").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(
-						ExpectedLabelGatewayCreate("maistra.io/gateway", "istio-ingressgateway."+controlPlaneNamespace),
+						ExpectedLabelGatewayCreate(gatewayLabel, "istio-ingressgateway."+controlPlaneNamespace),
 					),
 				),
 				Assertions: ActionAssertions{
@@ -281,7 +287,7 @@ func TestAdditionalIngressGatewayInstall(t *testing.T) {
 			create: IntegrationTestValidation{
 				Verifier: VerifyActions(
 					Verify("create").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(
-						ExpectedLabelGatewayCreate("maistra.io/gateway", "istio-ingressgateway."+controlPlaneNamespace),
+						ExpectedLabelGatewayCreate(gatewayLabel, "istio-ingressgateway."+controlPlaneNamespace),
 					),
 				),
 				Assertions: ActionAssertions{

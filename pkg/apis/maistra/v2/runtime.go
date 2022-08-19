@@ -1,11 +1,12 @@
 package v2
 
 import (
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 )
 
 // ControlPlaneRuntimeConfig configures execution parameters for control plane
@@ -292,7 +293,7 @@ type MetadataConfig struct {
 
 // ComponentServiceConfig is used to customize the service associated with a component.
 type ComponentServiceConfig struct {
-	// Metadata represents addtional annotations/labels to be applied to the
+	// Metadata represents additional annotations/labels to be applied to the
 	// component's service.
 	// +optional
 	Metadata *MetadataConfig `json:"metadata,omitempty"`
@@ -328,7 +329,7 @@ type ComponentIngressConfig struct {
 	TLS *v1.HelmValues `json:"tls,omitempty"`
 }
 
-// ComponentPersistenceConfig is used to configure persistance for a component.
+// ComponentPersistenceConfig is used to configure persistence for a component.
 type ComponentPersistenceConfig struct {
 	Enablement `json:",inline"`
 	// StorageClassName for the PersistentVolumeClaim

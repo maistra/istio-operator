@@ -328,10 +328,10 @@ func (h *HelmValues) MarshalJSON() ([]byte, error) {
 	return json.Marshal(h.data)
 }
 
-func (in *HelmValues) DeepCopyInto(out *HelmValues) {
+func (h *HelmValues) DeepCopyInto(out *HelmValues) {
 	*out = HelmValues{}
 
-	data, err := json.Marshal(in)
+	data, err := json.Marshal(h)
 	if err != nil {
 		// panic ???
 		return
@@ -341,6 +341,4 @@ func (in *HelmValues) DeepCopyInto(out *HelmValues) {
 		// panic ???
 		return
 	}
-	return
 }
-

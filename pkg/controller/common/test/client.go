@@ -34,17 +34,14 @@ import (
 	serializerjson "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/testing"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // XXX: look for the XXX comments to see how this has changed from sigs.k8s.io/controller-runtime/pkg/client/fake/client.go
 
-var (
-	log = logf.KBLog.WithName("fake-client")
-)
+var log = logf.Log.WithName("fake-client")
 
 type fakeClient struct {
 	*testing.Fake
@@ -205,17 +202,17 @@ func (c *fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...cli
 	if err != nil {
 		return err
 	}
-	//TODO: implement propagation
+	// TODO: implement propagation
 	_, err = c.Invokes(testing.NewDeleteAction(gvr, accessor.GetNamespace(), accessor.GetName()), nil)
 	return err
 }
 
 func (c *fakeClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
-	return c.internalUpdate("", obj, opts...)
+	return c.internalUpdate("", obj)
 }
 
-func (c *fakeClient) internalUpdate(subresource string, obj runtime.Object, opts ...client.UpdateOption) error {
-		gvr, err := getGVRFromObject(obj, c.scheme)
+func (c *fakeClient) internalUpdate(subresource string, obj runtime.Object) error {
+	gvr, err := getGVRFromObject(obj, c.scheme)
 	if err != nil {
 		return err
 	}
@@ -237,7 +234,7 @@ func (c *fakeClient) Patch(ctx context.Context, obj runtime.Object, patch client
 }
 
 func (c *fakeClient) internalPatch(subresource string, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
-		patchOptions := &client.PatchOptions{}
+	patchOptions := &client.PatchOptions{}
 	patchOptions.ApplyOptions(opts)
 
 	for _, dryRunOpt := range patchOptions.DryRun {
@@ -296,7 +293,7 @@ func (c *fakeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts .
 
 	listOptions := client.ListOptions{
 		LabelSelector: dcOptions.LabelSelector,
-		Namespace: dcOptions.Namespace,
+		Namespace:     dcOptions.Namespace,
 		FieldSelector: dcOptions.FieldSelector,
 	}
 	gvr, _ := meta.UnsafeGuessKindToResource(gvk)
@@ -323,7 +320,8 @@ func (c *fakeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts .
 			return err
 		}
 	}
-	return nil}
+	return nil
+}
 
 func (c *fakeClient) Status() client.StatusWriter {
 	return &fakeStatusWriter{client: c}
@@ -361,7 +359,7 @@ func getGVKFromList(list runtime.Object, scheme *runtime.Scheme) (schema.GroupVe
 
 	if !strings.HasSuffix(gvk.Kind, "List") {
 		// XXX: the real client does not produce this error. Revert if we should update our usage for listing.
-		//return schema.GroupVersionKind{}, fmt.Errorf("non-list type %T (kind %q) passed as output", list, gvk)
+		// return schema.GroupVersionKind{}, fmt.Errorf("non-list type %T (kind %q) passed as output", list, gvk)
 		return gvk, nil
 	}
 	// we need the non-list GVK, so chop off the "List" from the end of the kind
@@ -376,7 +374,7 @@ type fakeStatusWriter struct {
 func (sw *fakeStatusWriter) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
 	// TODO(droot): This results in full update of the obj (spec + status). Need
 	// a way to update status field only.
-	return sw.client.internalUpdate("status", obj, opts...)
+	return sw.client.internalUpdate("status", obj)
 }
 
 // Patch patches the given object's subresource. obj must be a struct
@@ -385,7 +383,6 @@ func (sw *fakeStatusWriter) Update(ctx context.Context, obj runtime.Object, opts
 func (sw *fakeStatusWriter) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
 	return sw.client.internalPatch("status", obj, patch, opts...)
 }
-
 
 // from sigs.k8s.io/controller-runtime/pkg/internal/objectutil
 

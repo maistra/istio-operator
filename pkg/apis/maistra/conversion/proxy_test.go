@@ -12,9 +12,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
-var (
-	proxyConcurrency4 = int32(4)
-)
+var proxyConcurrency4 = int32(4)
 
 var proxyTestCases []conversionTestCase
 
@@ -1109,7 +1107,6 @@ func init() {
 		proxyTestCases = append(proxyTestCases, proxyTestCasesV2(v)...)
 	}
 }
-
 
 func TestProxyConversionFromV2(t *testing.T) {
 	for _, tc := range proxyTestCases {

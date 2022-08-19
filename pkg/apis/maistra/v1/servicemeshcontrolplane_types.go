@@ -112,7 +112,7 @@ type ControlPlaneSpec struct {
 	// +optional
 	Version string `json:"version,omitempty"`
 
-	// DEPRECATED: No longer used anywhere.
+	// Deprecated: No longer used anywhere.
 	// Previously used to specify the NetworkType of the cluster. Defaults to "subnet".
 	// +optional
 	NetworkType NetworkType `json:"networkType,omitempty"`

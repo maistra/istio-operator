@@ -5,13 +5,14 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+	clienttesting "k8s.io/client-go/testing"
+
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	. "github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
-	"k8s.io/apimachinery/pkg/util/sets"
-	clienttesting "k8s.io/client-go/testing"
 )
 
 func TestRLS(t *testing.T) {
@@ -100,15 +101,13 @@ func TestRLS(t *testing.T) {
 				}),
 			}),
 			create: IntegrationTestValidation{
-				Verifier: ActionVerifier(
-					Verify("create").On("deployments").Named("rls-" + controlPlaneName).In(controlPlaneNamespace).Passes(
-						checkEnvVariables(
-							map[string]string{
-								"BACKEND_TYPE":       "memcache",
-								"MEMCACHE_HOST_PORT": "1.2.3.4:1234",
-							}, []string{"REDIS_URL", "REDIS_SOCKET_TYPE"},
-						)),
-				),
+				Verifier: Verify("create").On("deployments").Named("rls-" + controlPlaneName).In(controlPlaneNamespace).Passes(
+					checkEnvVariables(
+						map[string]string{
+							"BACKEND_TYPE":       "memcache",
+							"MEMCACHE_HOST_PORT": "1.2.3.4:1234",
+						}, []string{"REDIS_URL", "REDIS_SOCKET_TYPE"},
+					)),
 			},
 		},
 		{
@@ -126,16 +125,14 @@ func TestRLS(t *testing.T) {
 				}),
 			}),
 			create: IntegrationTestValidation{
-				Verifier: ActionVerifier(
-					Verify("create").On("deployments").Named("rls-" + controlPlaneName).In(controlPlaneNamespace).Passes(
-						checkEnvVariables(
-							map[string]string{
-								"REDIS_SOCKET_TYPE": "tcp",
-								"REDIS_URL":         "1.2.3.4:1234",
-							},
-							[]string{"BACKEND_TYPE", "MEMCACHE_HOST_PORT"},
-						)),
-				),
+				Verifier: Verify("create").On("deployments").Named("rls-" + controlPlaneName).In(controlPlaneNamespace).Passes(
+					checkEnvVariables(
+						map[string]string{
+							"REDIS_SOCKET_TYPE": "tcp",
+							"REDIS_URL":         "1.2.3.4:1234",
+						},
+						[]string{"BACKEND_TYPE", "MEMCACHE_HOST_PORT"},
+					)),
 			},
 		},
 		{
@@ -155,21 +152,20 @@ func TestRLS(t *testing.T) {
 							Container: &v2.ContainerConfig{
 								Env: map[string]string{
 									"FOO": "BAR",
-								}},
+								},
+							},
 						},
 					},
 				},
 			}),
 			create: IntegrationTestValidation{
-				Verifier: ActionVerifier(
-					Verify("create").On("deployments").Named("rls-" + controlPlaneName).In(controlPlaneNamespace).Passes(
-						checkEnvVariables(
-							map[string]string{
-								"FOO": "BAR",
-							},
-							[]string{"BACKEND_TYPE", "MEMCACHE_HOST_PORT", "REDIS_URL", "REDIS_SOCKET_TYPE"},
-						)),
-				),
+				Verifier: Verify("create").On("deployments").Named("rls-" + controlPlaneName).In(controlPlaneNamespace).Passes(
+					checkEnvVariables(
+						map[string]string{
+							"FOO": "BAR",
+						},
+						[]string{"BACKEND_TYPE", "MEMCACHE_HOST_PORT", "REDIS_URL", "REDIS_SOCKET_TYPE"},
+					)),
 			},
 		},
 		{
@@ -189,25 +185,23 @@ func TestRLS(t *testing.T) {
 				}),
 			}),
 			create: IntegrationTestValidation{
-				Verifier: ActionVerifier(
-					Verify("create").On("configmaps").Named("rls-" + controlPlaneName).In(controlPlaneNamespace).Passes(func(action clienttesting.Action) error {
-						createAction := action.(clienttesting.CreateAction)
-						cm, err := common.ConvertObjectToConfigMap(createAction.GetObject())
-						if err != nil {
-							return err
-						}
+				Verifier: Verify("create").On("configmaps").Named("rls-" + controlPlaneName).In(controlPlaneNamespace).Passes(func(action clienttesting.Action) error {
+					createAction := action.(clienttesting.CreateAction)
+					cm, err := common.ConvertObjectToConfigMap(createAction.GetObject())
+					if err != nil {
+						return err
+					}
 
-						content, ok := cm.Data["config.yaml"]
-						if !ok {
-							return fmt.Errorf("config.yaml entry not found in rls ConfigMap")
-						}
-						if !strings.Contains(content, "key1: value1") || !strings.Contains(content, "key2: value2") {
-							return fmt.Errorf("invalid content in rls ConfigMap")
-						}
+					content, ok := cm.Data["config.yaml"]
+					if !ok {
+						return fmt.Errorf("config.yaml entry not found in rls ConfigMap")
+					}
+					if !strings.Contains(content, "key1: value1") || !strings.Contains(content, "key2: value2") {
+						return fmt.Errorf("invalid content in rls ConfigMap")
+					}
 
-						return nil
-					}),
-				),
+					return nil
+				}),
 			},
 		},
 	}

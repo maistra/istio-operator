@@ -7,16 +7,15 @@ import (
 	"sync"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
+	appsv1 "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
-
-	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -122,8 +121,10 @@ func SetAnnotation(resource metav1.Object, annotation, value string) {
 	resource.SetAnnotations(annotations)
 }
 
-var initOperatorNamespace sync.Once
-var operatorNamespace string
+var (
+	initOperatorNamespace sync.Once
+	operatorNamespace     string
+)
 
 // GetOperatorNamespace initializes and caches this operator's namespace; panics on error
 func GetOperatorNamespace() string {
@@ -145,15 +146,15 @@ func GetOperatorNamespace() string {
 func ToNamespacedName(obj metav1.Object) types.NamespacedName {
 	return types.NamespacedName{
 		Namespace: obj.GetNamespace(),
-		Name:      obj.GetName()}
+		Name:      obj.GetName(),
+	}
 }
 
 func BoolToConditionStatus(b bool) core.ConditionStatus {
 	if b {
 		return core.ConditionTrue
-	} else {
-		return core.ConditionFalse
 	}
+	return core.ConditionFalse
 }
 
 // GetMeshNamespaces returns all namespaces that are part of a mesh.

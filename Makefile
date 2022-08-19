@@ -277,8 +277,12 @@ build: update-generated-code update-charts update-templates compile
 lint-scripts:
 	@${FINDFILES} -name '*.sh' -print0 | ${XARGS} shellcheck
 
+lint-go:
+	@${FINDFILES} -name '*.go' \( ! \( -name '*.gen.go' -o -name '*.pb.go' -o -name 'zz_generated.*.go' \) \) -print0 | ${XARGS} build/lint_go.sh
+
+
 .PHONY: lint
-lint: lint-scripts
+lint: lint-scripts lint-go
 
 ################################################################################
 # create image

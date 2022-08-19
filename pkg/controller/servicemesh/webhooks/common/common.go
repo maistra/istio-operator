@@ -12,5 +12,5 @@ func (f NamespaceFilter) Watching(namespace string) bool {
 }
 
 func ToNamespacedName(req *admissionv1beta1.AdmissionRequest) pkgtypes.NamespacedName {
-	return pkgtypes.NamespacedName{req.Namespace, req.Name}
+	return pkgtypes.NamespacedName{Namespace: req.Namespace, Name: req.Name}
 }

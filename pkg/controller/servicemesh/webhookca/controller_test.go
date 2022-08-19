@@ -14,8 +14,9 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -74,12 +75,6 @@ var (
 		NamespacedName: types.NamespacedName{
 			Namespace: conversionNamespaceValue,
 			Name:      ServiceMeshControlPlaneCRDName,
-		},
-	}
-
-	invalidRequest = reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Name: sidecarInjectorWebhookNamePrefix + appNamespace,
 		},
 	}
 )
@@ -175,23 +170,25 @@ func cases() []testCase {
 }
 
 func init() {
-	logf.SetLogger(logf.ZapLogger(true))
+	logf.SetLogger(zap.New(zap.UseDevMode(true)))
 }
 
 func getKey(t *testing.T, src CABundleSource) string {
-	if secretSource, ok := src.(*SecretCABundleSource); ok {
-		return secretSource.Key
-	} else if cmSource, ok := src.(*ConfigMapCABundleSource); ok {
-		return cmSource.Key
+	switch source := src.(type) {
+	case *SecretCABundleSource:
+		return source.Key
+	case *ConfigMapCABundleSource:
+		return source.Key
+	default:
+		t.Fatal("unknown CABundleConfig type")
+		return ""
 	}
-	t.Fatal("unknown CABundleConfig type")
-	return ""
 }
 
 func TestReconcileDoesNothingWhenWebhookConfigMissing(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			_, tracker, r := createClientAndReconciler(t, tc.object)
+			_, tracker, r := createClientAndReconciler(tc.object)
 			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
@@ -202,7 +199,7 @@ func TestReconcileDoesNothingWhenWebhookConfigMissing(t *testing.T) {
 func TestReconcileDoesNothingWhenSecretMissing(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			_, tracker, r := createClientAndReconciler(t, tc.webhook)
+			_, tracker, r := createClientAndReconciler(tc.webhook)
 			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
@@ -213,12 +210,15 @@ func TestReconcileDoesNothingWhenSecretMissing(t *testing.T) {
 func TestReconcileDoesNothingWhenSecretContainsNoCertificate(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			if secret, ok := tc.object.(*corev1.Secret); ok {
-				delete(secret.Data, getKey(t, tc.source))
-			} else if configMap, ok := tc.object.(*corev1.ConfigMap); ok {
-				delete(configMap.Data, getKey(t, tc.source))
+			switch object := tc.object.(type) {
+			case *corev1.Secret:
+				delete(object.Data, getKey(t, tc.source))
+			case *corev1.ConfigMap:
+				delete(object.Data, getKey(t, tc.source))
+			default:
+				t.Errorf("Unknown object type: %t", tc.object)
 			}
-			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.object)
+			_, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
 			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
@@ -229,20 +229,19 @@ func TestReconcileDoesNothingWhenSecretContainsNoCertificate(t *testing.T) {
 func TestReconcileDoesNothingWhenCABundleMatches(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.object)
+			_, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
 			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 		})
 	}
-
 }
 
 func TestReconcileUpdatesCABundle(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			setMapValue(tc.object, getKey(t, tc.source), "new-value")
-			cl, tracker, r := createClientAndReconciler(t, tc.webhook, tc.object)
+			mutateMapValue(tc.object, getKey(t, tc.source))
+			cl, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
 			if err := r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source); err != nil {
 				t.Fatal(err)
 			}
@@ -250,7 +249,7 @@ func TestReconcileUpdatesCABundle(t *testing.T) {
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
 
 			wrapper, _ := tc.getter.Get(context.TODO(), cl, types.NamespacedName{Name: tc.webhookName})
-			assert.DeepEquals(wrapper.ClientConfigs()[0].CABundle, []byte("new-value"), "Expected Reconcile() to update the CABundle in the webhook configuration", t)
+			assert.DeepEquals(string(wrapper.ClientConfigs()[0].CABundle), "new-value", "Expected Reconcile() to update the CABundle in the webhook configuration", t)
 		})
 	}
 }
@@ -258,8 +257,8 @@ func TestReconcileUpdatesCABundle(t *testing.T) {
 func TestReconcileUnmanagedWebhookNotUpdated(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			setMapValue(tc.object, getKey(t, tc.source), "new-value")
-			cl, tracker, r := createClientAndReconciler(t, tc.webhook, tc.object)
+			mutateMapValue(tc.object, getKey(t, tc.source))
+			cl, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
 
 			assertReconcileSucceeds(r, tc.request, t)
 
@@ -276,8 +275,8 @@ func TestReconcileAutomaticRegistration(t *testing.T) {
 			if tc.skipAutoRegistration {
 				t.SkipNow()
 			}
-			setMapValue(tc.object, getKey(t, tc.source), "new-value")
-			cl, tracker, r := createClientAndReconciler(t, tc.webhook, tc.object)
+			mutateMapValue(tc.object, getKey(t, tc.source))
+			cl, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
 
 			accessor, _ := meta.Accessor(tc.webhook)
 			watchPredicates := webhookWatchPredicates(r.webhookCABundleManager)
@@ -290,12 +289,15 @@ func TestReconcileAutomaticRegistration(t *testing.T) {
 			assert.DeepEquals(wrapper.ClientConfigs()[0].CABundle, []byte("new-value"), "Expected Reconcile() to update the CABundle in the webhook configuration", t)
 
 			var name, kind string
-			if secretSource, ok := tc.source.(*SecretCABundleSource); ok {
-				name = secretSource.SecretNames[0]
+			switch source := tc.source.(type) {
+			case *SecretCABundleSource:
+				name = source.SecretNames[0]
 				kind = "Secret"
-			} else if cmSource, ok := tc.source.(*ConfigMapCABundleSource); ok {
-				name = cmSource.ConfigMapName
+			case *ConfigMapCABundleSource:
+				name = source.ConfigMapName
 				kind = "ConfigMap"
+			default:
+				t.Errorf("Unknown type: %t", tc.source)
 			}
 			assert.True(r.webhookCABundleManager.IsManagingWebhooksForSource(ObjectRef{
 				Kind:      kind,
@@ -311,13 +313,15 @@ func TestReconcileAutomaticRegistration(t *testing.T) {
 	}
 }
 
-func setMapValue(source runtime.Object, key, value string) {
-	if secret, ok := source.(*corev1.Secret); ok {
-		secret.Data = map[string][]byte{
+func mutateMapValue(source runtime.Object, key string) {
+	value := "new-value"
+	switch obj := source.(type) {
+	case *corev1.Secret:
+		obj.Data = map[string][]byte{
 			key: []byte(value),
 		}
-	} else if configMap, ok := source.(*corev1.ConfigMap); ok {
-		configMap.Data = map[string]string{
+	case *corev1.ConfigMap:
+		obj.Data = map[string]string{
 			key: value,
 		}
 	}
@@ -332,7 +336,7 @@ func TestReconcileHandlesWebhookConfigsWithoutWebhooks(t *testing.T) {
 			case *v1.ValidatingWebhookConfiguration:
 				wh.Webhooks = nil
 			}
-			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.object)
+			_, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
 			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
@@ -365,7 +369,7 @@ func TestReconcileDoesNothingWithMultipleNamespacedServices(t *testing.T) {
 					},
 				})
 			}
-			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.object)
+			_, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
 			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
@@ -376,8 +380,8 @@ func TestReconcileDoesNothingWithMultipleNamespacedServices(t *testing.T) {
 func TestReconcileReturnsErrorWhenUpdateFails(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			setMapValue(tc.object, getKey(t, tc.source), "new-value")
-			_, tracker, r := createClientAndReconciler(t, tc.webhook, tc.object)
+			mutateMapValue(tc.object, getKey(t, tc.source))
+			_, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
 			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
 			tracker.AddReactor("update", "mutatingwebhookconfigurations", test.ClientFails())
 			tracker.AddReactor("update", "validatingwebhookconfigurations", test.ClientFails())
@@ -480,7 +484,7 @@ func newConfigMap(name string, key string, caBundleValue string) *corev1.ConfigM
 	}
 }
 
-func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker, *reconciler) {
+func createClientAndReconciler(clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker, *reconciler) {
 	cl, enhancedTracker := test.CreateClient(clientObjects...)
 	r := newReconciler(cl, scheme.Scheme, newWebhookCABundleManager())
 	return cl, enhancedTracker, r

@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	clienttesting "k8s.io/client-go/testing"
+	"maistra.io/api/core/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/apis"
@@ -20,8 +21,6 @@ import (
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
-
-	"maistra.io/api/core/v1alpha1"
 )
 
 func GetScheme() *runtime.Scheme {
@@ -32,7 +31,9 @@ func GetScheme() *runtime.Scheme {
 	if err := arv1beta1.AddToScheme(s); err != nil {
 		panic(fmt.Sprintf("Could not add to scheme: %v", err))
 	}
-	s.SetVersionPriority(v2.SchemeGroupVersion, v1.SchemeGroupVersion, v1alpha1.SchemeGroupVersion)
+	if err := s.SetVersionPriority(v2.SchemeGroupVersion, v1.SchemeGroupVersion, v1alpha1.SchemeGroupVersion); err != nil {
+		panic(err)
+	}
 	return s
 }
 

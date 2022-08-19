@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/admissionregistration/v1"
 	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -12,6 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
 type webhookGetter interface {
@@ -36,13 +37,13 @@ func toWebhookWrapper(obj runtime.Object) (webhookWrapper, error) {
 	case *apixv1.CustomResourceDefinition:
 		return &conversionWebhookWrapper{CustomResourceDefinition: wh}, nil
 	}
-	return nil, fmt.Errorf("Object is not a [MutatingWebhookConfiguration, ValidatingWebhookConfiguration, CustomResourceDefinition]: %T", obj)
+	return nil, fmt.Errorf("object is not a [MutatingWebhookConfiguration, ValidatingWebhookConfiguration, CustomResourceDefinition]: %T", obj)
 }
 
 func updateAdmissionWebHookCABundles(ctx context.Context, cl client.Client, currentConfig webhookWrapper, caBundle []byte) error {
 	logger := common.LogFromContext(ctx)
 	updated := false
-	newConfig := currentConfig.Copy().(webhookWrapper)
+	newConfig := currentConfig.Copy()
 	for _, clientConfig := range newConfig.ClientConfigs() {
 		updated = common.InjectCABundle(clientConfig, caBundle) || updated
 	}

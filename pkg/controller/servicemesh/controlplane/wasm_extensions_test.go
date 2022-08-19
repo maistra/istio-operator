@@ -20,9 +20,7 @@ func TestWASMExtensionInstall(t *testing.T) {
 				}),
 			}),
 			create: IntegrationTestValidation{
-				Verifier: ActionVerifier(
-					Verify("create").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsSeen(),
-				),
+				Verifier:   Verify("create").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsSeen(),
 				Assertions: ActionAssertions{},
 			},
 			delete: IntegrationTestValidation{

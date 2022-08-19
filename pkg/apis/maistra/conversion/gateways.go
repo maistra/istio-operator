@@ -5,66 +5,9 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	"github.com/maistra/istio-operator/pkg/controller/versions"
-)
-
-const (
-	imageNameSDS = "node-agent-k8s"
-)
-
-var (
-	meshExpansionPortsV11 = []corev1.ServicePort{
-		{
-			Name:       "tcp-pilot-grpc-tls",
-			Port:       15011,
-			TargetPort: intstr.FromInt(15011),
-		},
-		{
-			Name:       "tcp-mixer-grpc-tls",
-			Port:       15004,
-			TargetPort: intstr.FromInt(15004),
-		},
-		{
-			Name:       "tcp-citadel-grpc-tls",
-			Port:       8060,
-			TargetPort: intstr.FromInt(8060),
-		},
-		{
-			Name:       "tcp-dns-tls",
-			Port:       853,
-			TargetPort: intstr.FromInt(8853),
-		},
-	}
-	meshExpansionPortsV20 = []corev1.ServicePort{
-		{
-			Name:       "tcp-istiod",
-			Port:       15012,
-			TargetPort: intstr.FromInt(15012),
-		},
-		{
-			Name:       "tcp-dns-tls",
-			Port:       853,
-			TargetPort: intstr.FromInt(8853),
-		},
-	}
-	meshExpansionPortsV21 = []corev1.ServicePort{
-		{
-			Name:       "tcp-istiod",
-			Port:       15012,
-			TargetPort: intstr.FromInt(15012),
-		},
-	}
-	meshExpansionPortsV22 = []corev1.ServicePort{
-		{
-			Name:       "tcp-istiod",
-			Port:       15012,
-			TargetPort: intstr.FromInt(15012),
-		},
-	}
 )
 
 func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
@@ -255,7 +198,7 @@ func gatewayConfigToValues(in *v2.GatewayConfig) (map[string]interface{}, error)
 					"configMapName": volume.Volume.ConfigMap.Name,
 					"mountPath":     volume.Mount.MountPath,
 				})
-			} else {
+			} else { // nolint:staticcheck
 				// XXX: ignore misconfigured volumes?
 			}
 		}
@@ -318,7 +261,9 @@ func gatewayIngressConfigToValues(in *v2.IngressGatewayConfig) (map[string]inter
 			}
 		}
 		if len(sdsValues) > 0 {
-			setHelmValue(gatewayValues, "sds", sdsValues)
+			if err := setHelmValue(gatewayValues, "sds", sdsValues); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -351,7 +296,7 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 			gc := v2.GatewayConfig{}
 			gatewayMap, ok := gateway.(map[string]interface{})
 			if !ok {
-				return fmt.Errorf("Failed to parse gateway.%s: cannot cast to map[string]interface{}", name)
+				return fmt.Errorf("failed to parse gateway.%s: cannot cast to map[string]interface{}", name)
 			} else if len(gatewayMap) == 0 {
 				continue
 			}
@@ -620,19 +565,4 @@ func addEnvToGateway(in *v2.GatewayConfig, name, value string) {
 		in.Runtime.Container.Env = make(map[string]string)
 	}
 	in.Runtime.Container.Env[name] = value
-}
-
-func expansionPortsForVersion(version string) ([]corev1.ServicePort, error) {
-	switch version {
-	case versions.V1_1.String():
-		return meshExpansionPortsV11, nil
-	case versions.V2_0.String():
-		return meshExpansionPortsV20, nil
-	case versions.V2_1.String():
-		return meshExpansionPortsV21, nil
-	case versions.V2_2.String():
-		return meshExpansionPortsV22, nil
-	default:
-		return nil, fmt.Errorf("cannot convert for unknown version: %s", version)
-	}
 }

@@ -5,6 +5,6 @@ import (
 )
 
 var (
-    SchemeBuilder = runtime.NewSchemeBuilder()
+	SchemeBuilder      = runtime.NewSchemeBuilder()
 	localSchemeBuilder = &SchemeBuilder
 )

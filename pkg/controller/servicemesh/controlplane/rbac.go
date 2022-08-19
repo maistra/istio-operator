@@ -55,9 +55,8 @@ func (r *controlPlaneInstanceReconciler) reconcileMeshUserRole(ctx context.Conte
 			}
 			r.setOwnerReferenceOn(&role)
 			return r.Client.Create(ctx, &role)
-		} else {
-			return err
 		}
+		return err
 	}
 
 	if !metav1.IsControlledBy(&role, r.Instance) {
@@ -108,9 +107,8 @@ func (r *controlPlaneInstanceReconciler) reconcileMeshUsersRoleBinding(ctx conte
 		if apierrors.IsNotFound(err) {
 			log.Info("Creating RoleBinding")
 			return r.Client.Create(ctx, &expectedBinding)
-		} else {
-			return err
 		}
+		return err
 	}
 
 	if !metav1.IsControlledBy(&binding, r.Instance) {

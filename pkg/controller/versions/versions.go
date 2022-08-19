@@ -18,7 +18,7 @@ import (
 
 const (
 	// InvalidVersion is not a valid version
-	InvalidVersion version = iota
+	InvalidVersion Ver = iota
 	// V1_1 -> v1.1
 	V1_1
 	// V2_0 -> v2.0
@@ -28,7 +28,7 @@ const (
 	// V2_2 -> v2.2
 	V2_2
 	// Add new versions here, above lastKnownVersion. Remember to add a string mapping in init() below
-	lastKnownVersion version = iota - 1
+	lastKnownVersion Ver = iota - 1
 )
 
 var (
@@ -39,7 +39,7 @@ var (
 )
 
 func init() {
-	versionToString = map[version]string{
+	versionToString = map[Ver]string{
 		InvalidVersion: "InvalidVersion",
 		V1_1:           "v1.1",
 		V2_0:           "v2.0",
@@ -47,15 +47,15 @@ func init() {
 		V2_2:           "v2.2",
 	}
 
-	versionToStrategy = map[version]VersionStrategy{
+	versionToStrategy = map[Ver]VersionStrategy{
 		InvalidVersion: &invalidVersionStrategy{InvalidVersion},
-		V1_1:           &versionStrategyV1_1{version: V1_1},
-		V2_0:           &versionStrategyV2_0{version: V2_0},
-		V2_1:           &versionStrategyV2_1{version: V2_1},
-		V2_2:           &versionStrategyV2_2{version: V2_2},
+		V1_1:           &versionStrategyV1_1{Ver: V1_1},
+		V2_0:           &versionStrategyV2_0{Ver: V2_0},
+		V2_1:           &versionStrategyV2_1{Ver: V2_1},
+		V2_2:           &versionStrategyV2_2{Ver: V2_2},
 	}
 
-	versionToCNINetwork = map[version]string{
+	versionToCNINetwork = map[Ver]string{
 		InvalidVersion: "",
 		V1_1:           "v1-1-istio-cni",
 		V2_0:           "v2-0-istio-cni",
@@ -93,7 +93,7 @@ const (
 type Version interface {
 	fmt.Stringer
 	// Version returns the internal version representation
-	Version() version
+	Version() Ver
 	// Compare compares this version with another version.  If other is an older
 	// version, a positive value will be returned.  If other is a newer version,
 	// a negative value is returned.  If other is the same version, zero is
@@ -151,40 +151,40 @@ func GetSupportedVersionNames() []string {
 	return supportedVersionNames
 }
 
-type version int
+type Ver int
 
-var _ Version = version(0)
+var _ Version = Ver(0)
 
-func (v version) String() string {
+func (v Ver) String() string {
 	if str, ok := versionToString[v]; ok {
 		return str
 	}
 	panic(fmt.Sprintf("invalid version: %d", v))
 }
 
-func (v version) Compare(other Version) int {
+func (v Ver) Compare(other Version) int {
 	return int(v.Version() - other.Version())
 }
 
-func (v version) Version() version {
+func (v Ver) Version() Ver {
 	return v
 }
 
-func (v version) Strategy() VersionStrategy {
+func (v Ver) Strategy() VersionStrategy {
 	if strategy, ok := versionToStrategy[v]; ok {
 		return strategy
 	}
 	panic(fmt.Sprintf("invalid version: %d", v))
 }
 
-func (v version) GetCNINetworkName() string {
+func (v Ver) GetCNINetworkName() string {
 	if network, ok := versionToCNINetwork[v]; ok {
 		return network
 	}
 	panic(fmt.Sprintf("invalid version: %d", v))
 }
 
-func (v version) IsSupported() (supported bool) {
+func (v Ver) IsSupported() (supported bool) {
 	for _, version := range supportedVersions {
 		if version == v {
 			supported = true
@@ -195,7 +195,7 @@ func (v version) IsSupported() (supported bool) {
 }
 
 // ParseVersion returns a version for the specified string
-func ParseVersion(str string) (version, error) {
+func ParseVersion(str string) (Ver, error) {
 	if v, ok := stringToVersion[str]; ok {
 		return v, nil
 	}
@@ -206,7 +206,7 @@ func ParseVersion(str string) (version, error) {
 }
 
 type nilVersionStrategy struct {
-	version
+	Ver
 }
 
 var _ VersionStrategy = (*nilVersionStrategy)(nil)
@@ -214,22 +214,30 @@ var _ VersionStrategy = (*nilVersionStrategy)(nil)
 func (v *nilVersionStrategy) SetImageValues(ctx context.Context, cr *common.ControllerResources, smcp *v1.ControlPlaneSpec) error {
 	return nil
 }
+
 func (v *nilVersionStrategy) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	return nil
 }
+
 func (v *nilVersionStrategy) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	return nil
 }
+
 func (v *nilVersionStrategy) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
 	return nil
 }
+
 func (v *nilVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
 	return nil
 }
+
 func (v *nilVersionStrategy) GetChartInstallOrder() [][]string {
 	return nil
 }
-func (v *nilVersionStrategy) Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
+
+func (v *nilVersionStrategy) Render(
+	ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane,
+) (map[string][]manifest.Manifest, error) {
 	return nil, fmt.Errorf("nil version does not support rendering")
 }
 
@@ -250,32 +258,39 @@ func (v *nilVersionStrategy) GetTrustDomainFieldPath() string {
 }
 
 type invalidVersionStrategy struct {
-	version
+	Ver
 }
 
 var _ VersionStrategy = (*invalidVersionStrategy)(nil)
 
 func (v *invalidVersionStrategy) SetImageValues(ctx context.Context, cr *common.ControllerResources, smcp *v1.ControlPlaneSpec) error {
-	return fmt.Errorf("invalid version: %s", v.version)
+	return fmt.Errorf("invalid version: %s", v.Ver)
 }
+
 func (v *invalidVersionStrategy) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
-	return fmt.Errorf("invalid version: %s", v.version)
+	return fmt.Errorf("invalid version: %s", v.Ver)
 }
+
 func (v *invalidVersionStrategy) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
-	return fmt.Errorf("invalid version: %s", v.version)
+	return fmt.Errorf("invalid version: %s", v.Ver)
 }
+
 func (v *invalidVersionStrategy) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
-	return fmt.Errorf("invalid version: %s", v.version)
+	return fmt.Errorf("invalid version: %s", v.Ver)
 }
+
 func (v *invalidVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
-	return fmt.Errorf("invalid version: %s", v.version)
+	return fmt.Errorf("invalid version: %s", v.Ver)
 }
+
 func (v *invalidVersionStrategy) GetChartInstallOrder() [][]string {
 	return nil
 }
 
-func (v *invalidVersionStrategy) Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
-	return nil, fmt.Errorf("invalid version: %s", v.version)
+func (v *invalidVersionStrategy) Render(ctx context.Context, cr *common.ControllerResources,
+	cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane,
+) (map[string][]manifest.Manifest, error) {
+	return nil, fmt.Errorf("invalid version: %s", v.Ver)
 }
 
 func (v *invalidVersionStrategy) GetExpansionPorts() []corev1.ServicePort {
@@ -294,9 +309,11 @@ func (v *invalidVersionStrategy) GetTrustDomainFieldPath() string {
 	return ""
 }
 
-var versionToString = make(map[version]string)
-var versionToCNINetwork = make(map[version]string)
-var versionToStrategy = make(map[version]VersionStrategy)
-var stringToVersion = make(map[string]version)
-var supportedVersions []Version
-var supportedVersionNames []string
+var (
+	versionToString       = make(map[Ver]string)
+	versionToCNINetwork   = make(map[Ver]string)
+	versionToStrategy     = make(map[Ver]VersionStrategy)
+	stringToVersion       = make(map[string]Ver)
+	supportedVersions     []Version
+	supportedVersionNames []string
+)
