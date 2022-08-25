@@ -57,9 +57,7 @@ func StartManager(mgr manager.Manager, t *testing.T) func() {
 	t.Logf("manager Cache synchronized")
 	return func() {
 		close(stopChannel)
-		select {
-		case <-startChannel:
-		}
+		<-startChannel
 	}
 }
 
@@ -177,10 +175,10 @@ func (m *FakeManager) WaitForFirstEvent() {
 }
 
 // WaitForReconcileCompletion waits for all active reconciliations to complete.
-// This includes reconcilations that may have started after this function was
-// called, but prior to other active reconcilations completing. For example,
+// This includes reconciliations that may have started after this function was
+// called, but prior to other active reconciliations completing. For example,
 // when testing multiple controllers, the actions of one controller may trigger
-// a reconcilation by another.  This function will wait until the controllers
+// a reconciliation by another.  This function will wait until the controllers
 // have settled to an idle state.  There is a danger that controllers could
 // bounce events back and forth, causing this call to effectively hang.
 func (m *FakeManager) WaitForReconcileCompletion() {
@@ -376,10 +374,10 @@ func WrapReconciler(reconciler reconcile.Reconciler, resultChannel chan Reconcil
 // server to initialize a newly created object.
 // TODO: see if there is some defaulting mechanism that we can use instead of this custom code.
 func NewCreateSimulator(tracker clienttesting.ObjectTracker) clienttesting.ReactionFunc {
-	return clienttesting.ReactionFunc(func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+	return func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 		createAction, ok := action.(clienttesting.CreateAction)
 		if !ok {
-			return true, nil, fmt.Errorf("CreateSimulator can only be used with 'create' actions")
+			return true, nil, fmt.Errorf("createSimulator can only be used with 'create' actions")
 		}
 		obj := createAction.GetObject()
 		accessor, err := meta.Accessor(obj)
@@ -394,12 +392,13 @@ func NewCreateSimulator(tracker clienttesting.ObjectTracker) clienttesting.React
 			if err != nil {
 				return true, nil, err
 			}
-			accessor.SetSelfLink(fmt.Sprintf("dummy/%s/%s/%s/%s", createAction.GetResource().GroupResource(), typeObj.GetKind(), accessor.GetNamespace(), accessor.GetName()))
+			accessor.SetSelfLink(fmt.Sprintf("dummy/%s/%s/%s/%s",
+				createAction.GetResource().GroupResource(), typeObj.GetKind(), accessor.GetNamespace(), accessor.GetName()))
 			accessor.SetCreationTimestamp(metav1.Now())
 		}
 		err = tracker.Create(createAction.GetResource(), obj, accessor.GetNamespace())
 		return true, obj, err
-	})
+	}
 }
 
 // NewDeleteSimulator returns a ReactionFunc that simulates delete processing in the api server.
@@ -409,7 +408,7 @@ func NewDeleteSimulator(tracker clienttesting.ObjectTracker) clienttesting.React
 	return clienttesting.ReactionFunc(func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 		deleteAction, ok := action.(clienttesting.DeleteAction)
 		if !ok {
-			return true, nil, fmt.Errorf("DeleteSimulator can only be used with 'delete' actions")
+			return true, nil, fmt.Errorf("deleteSimulator can only be used with 'delete' actions")
 		}
 		obj, err := tracker.Get(deleteAction.GetResource(), deleteAction.GetNamespace(), deleteAction.GetName())
 		if err != nil {
@@ -440,7 +439,7 @@ func NewUpdateSimulator(tracker clienttesting.ObjectTracker) clienttesting.React
 	return clienttesting.ReactionFunc(func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 		updateAction, ok := action.(clienttesting.UpdateAction)
 		if !ok {
-			return true, nil, fmt.Errorf("UpdateSimulator can only be used with 'update' actions")
+			return true, nil, fmt.Errorf("updateSimulator can only be used with 'update' actions")
 		}
 		obj := updateAction.GetObject()
 		accessor, err := meta.Accessor(obj)
@@ -461,7 +460,7 @@ func NewUpdateSimulator(tracker clienttesting.ObjectTracker) clienttesting.React
 	})
 }
 
-func specChanged(new, old runtime.Object) (changed bool) {
+func specChanged(newObj, oldObj runtime.Object) (changed bool) {
 	func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -469,8 +468,8 @@ func specChanged(new, old runtime.Object) (changed bool) {
 				changed = true
 			}
 		}()
-		newSpec := reflect.ValueOf(new).Elem().FieldByName("Spec")
-		oldSpec := reflect.ValueOf(old).Elem().FieldByName("Spec")
+		newSpec := reflect.ValueOf(newObj).Elem().FieldByName("Spec")
+		oldSpec := reflect.ValueOf(oldObj).Elem().FieldByName("Spec")
 		if newSpec.IsValid() {
 			if newSpec.CanInterface() {
 				changed = !reflect.DeepEqual(newSpec.Interface(), oldSpec.Interface())

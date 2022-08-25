@@ -96,7 +96,9 @@ func TestRemoveNamespaceInMeshRemovesTheCorrectNetworkPolicies(t *testing.T) {
 
 	nonMeshNamespacedName := types.NamespacedName{Namespace: appNamespace, Name: "policy-not-related-to-service-mesh"}
 	err = cl.Get(ctx, nonMeshNamespacedName, nsNetworkPolicy)
-	test.AssertObjectExists(ctx, cl, nonMeshNamespacedName, nsNetworkPolicy, "Expected policy not related to service mesh to still be present, but it was removed", t)
+	assert.Success(err, "cl.Get", t)
+	test.AssertObjectExists(ctx, cl, nonMeshNamespacedName, nsNetworkPolicy,
+		"Expected policy not related to service mesh to still be present, but it was removed", t)
 }
 
 func getNamespaceNetworkPolicy(cl client.Client, t *testing.T) *networking.NetworkPolicy {
@@ -165,6 +167,6 @@ func newMeshNetworkPolicy() *networking.NetworkPolicy {
 }
 
 func intOrStringFromInt(num int) *intstr.IntOrString {
-	v := intstr.FromInt(8080)
+	v := intstr.FromInt(num)
 	return &v
 }

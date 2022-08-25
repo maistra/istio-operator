@@ -15,12 +15,12 @@ import (
 
 	"github.com/maistra/istio-operator/pkg/apis/external"
 	kialiv1alpha1 "github.com/maistra/istio-operator/pkg/apis/external/kiali/v1alpha1"
-	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	"github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
-func (r *controlPlaneInstanceReconciler) PatchAddons(ctx context.Context, spec *v2.ControlPlaneSpec) (reconcile.Result, error) {
+func (r *controlPlaneInstanceReconciler) PatchAddons(ctx context.Context, spec *maistrav2.ControlPlaneSpec) (reconcile.Result, error) {
 	// so far, only need to patch kiali
 	return r.patchKiali(ctx, spec.IsGrafanaEnabled(), spec.IsJaegerEnabled())
 }
@@ -47,7 +47,7 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 	log.Info("patching kiali CR", kiali.Kind, kiali.GetName())
 
 	if kiali.Spec == nil {
-		kiali.Spec = v1.NewHelmValues(make(map[string]interface{}))
+		kiali.Spec = maistrav1.NewHelmValues(make(map[string]interface{}))
 	}
 
 	updatedKiali := &kialiv1alpha1.Kiali{
@@ -56,15 +56,13 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 				Name:      kiali.Name,
 				Namespace: kiali.Namespace,
 			},
-			Spec: v1.NewHelmValues(make(map[string]interface{})),
+			Spec: maistrav1.NewHelmValues(make(map[string]interface{})),
 		},
 	}
 
 	// grafana
-	grafanaURL, err := r.grafanaURL(ctx, log)
-	if err != nil {
-		return common.RequeueWithError(err)
-	} else if grafanaURL == "" {
+	grafanaURL := r.grafanaURL(ctx, log)
+	if grafanaURL == "" {
 		// disable grafana
 		if err := updatedKiali.Spec.SetField("external_services.grafana.enabled", false); err != nil {
 			return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.grafana.enabled", err))
@@ -136,7 +134,7 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 	return common.Reconciled()
 }
 
-func (r *controlPlaneInstanceReconciler) grafanaURL(ctx context.Context, log logr.Logger) (string, error) {
+func (r *controlPlaneInstanceReconciler) grafanaURL(ctx context.Context, log logr.Logger) string {
 	log.Info("attempting to auto-detect Grafana for Kiali")
 	grafanaRoute := &routev1.Route{}
 	err := r.Client.Get(ctx, client.ObjectKey{Name: "grafana", Namespace: r.Instance.GetNamespace()}, grafanaRoute)
@@ -145,9 +143,9 @@ func (r *controlPlaneInstanceReconciler) grafanaURL(ctx context.Context, log log
 			log.Error(err, "error retrieving Grafana route - will disable Grafana in Kiali")
 			// we aren't going to return here - Grafana is optional for Kiali; Kiali can still run without it
 		}
-		return "", nil
+		return ""
 	}
-	return getURLForRoute(grafanaRoute), nil
+	return getURLForRoute(grafanaRoute)
 }
 
 func (r *controlPlaneInstanceReconciler) jaegerURL(ctx context.Context, log logr.Logger) string {

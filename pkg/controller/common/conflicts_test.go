@@ -60,7 +60,7 @@ func TestReconcile(t *testing.T) {
 			}
 			r := NewConflictHandlingReconciler(reconciler)
 
-			result, err := r.Reconcile(reconcile.Request{types.NamespacedName{Namespace: "foo", Name: "bar"}})
+			result, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: "foo", Name: "bar"}})
 
 			assert.Equals(result, tc.expectedResult, "Unexpected result returned by Reconcile()", t)
 			assert.Equals(err, tc.expectedError, "Unexpected error returned by Reconcile()", t)

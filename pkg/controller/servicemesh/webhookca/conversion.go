@@ -55,7 +55,10 @@ func (mw *conversionWebhookWrapper) NamespacedName() types.NamespacedName {
 
 func (mw *conversionWebhookWrapper) ClientConfigs() []*v1.WebhookClientConfig {
 	// This helps with testing
-	if mw.Spec.Conversion == nil || mw.Spec.Conversion.Strategy != apixv1.WebhookConverter || mw.Spec.Conversion.Webhook == nil || mw.Spec.Conversion.Webhook.ClientConfig == nil {
+	if mw.Spec.Conversion == nil ||
+		mw.Spec.Conversion.Strategy != apixv1.WebhookConverter ||
+		mw.Spec.Conversion.Webhook == nil ||
+		mw.Spec.Conversion.Webhook.ClientConfig == nil {
 		return nil
 	}
 	return []*v1.WebhookClientConfig{
@@ -72,7 +75,10 @@ func (mw *conversionWebhookWrapper) ClientConfigs() []*v1.WebhookClientConfig {
 
 func (mw *conversionWebhookWrapper) UpdateCABundle(ctx context.Context, cl client.Client, caBundle []byte) error {
 	logger := common.LogFromContext(ctx)
-	if mw.Spec.Conversion == nil || mw.Spec.Conversion.Strategy != apixv1.WebhookConverter || mw.Spec.Conversion.Webhook == nil || mw.Spec.Conversion.Webhook.ClientConfig == nil {
+	if mw.Spec.Conversion == nil ||
+		mw.Spec.Conversion.Strategy != apixv1.WebhookConverter ||
+		mw.Spec.Conversion.Webhook == nil ||
+		mw.Spec.Conversion.Webhook.ClientConfig == nil {
 		logger.Info("Skipping CABundle update, no webhook client.")
 		return nil
 	}

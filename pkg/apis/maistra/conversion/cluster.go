@@ -5,10 +5,11 @@ import (
 	"regexp"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
+
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
-	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -60,7 +61,9 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 			}
 		} else {
 			// default to false
-			multiClusterOverrides.SetField("multiClusterEnabled", nil)
+			if err := multiClusterOverrides.SetField("multiClusterEnabled", nil); err != nil {
+				return err
+			}
 			if err := setHelmBoolValue(values, "global.multiCluster.enabled", false); err != nil {
 				return err
 			}
@@ -111,20 +114,28 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 						Enabled: &multiClusterEnabled,
 					},
 				}
-				multiClusterOverrides.SetField("expansionEnabled", nil)
+				if err := multiClusterOverrides.SetField("expansionEnabled", nil); err != nil {
+					return err
+				}
 			} else if in.Cluster.MeshExpansion.Enabled == nil {
 				in.Cluster.MeshExpansion.Enabled = &multiClusterEnabled
-				multiClusterOverrides.SetField("expansionEnabled", nil)
+				if err := multiClusterOverrides.SetField("expansionEnabled", nil); err != nil {
+					return err
+				}
 			} else if !*in.Cluster.MeshExpansion.Enabled {
 				in.Cluster.MeshExpansion.Enabled = &multiClusterEnabled
-				multiClusterOverrides.SetField("expansionEnabled", false)
+				if err := multiClusterOverrides.SetField("expansionEnabled", false); err != nil {
+					return err
+				}
 			}
 			// XXX: ingress and egress gateways must be configured if multicluster is enabled
 			if in.Gateways == nil {
 				in.Gateways = &v2.GatewaysConfig{}
 			}
 			if in.Gateways.ClusterEgress == nil {
-				multiClusterOverrides.SetField("egressEnabled", nil)
+				if err := multiClusterOverrides.SetField("egressEnabled", nil); err != nil {
+					return err
+				}
 				enabled := true
 				in.Gateways.ClusterEgress = &v2.EgressGatewayConfig{
 					GatewayConfig: v2.GatewayConfig{
@@ -134,19 +145,27 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 					},
 				}
 			} else if in.Gateways.ClusterEgress.Enabled == nil {
-				multiClusterOverrides.SetField("egressEnabled", nil)
+				if err := multiClusterOverrides.SetField("egressEnabled", nil); err != nil {
+					return err
+				}
 				enabled := true
 				in.Gateways.ClusterEgress.Enabled = &enabled
 			} else if !*in.Gateways.ClusterEgress.Enabled {
-				multiClusterOverrides.SetField("egressEnabled", *in.Gateways.ClusterEgress.Enabled)
+				if err := multiClusterOverrides.SetField("egressEnabled", *in.Gateways.ClusterEgress.Enabled); err != nil {
+					return err
+				}
 				*in.Gateways.ClusterEgress.Enabled = true
 			}
 			if in.Gateways.Enabled == nil {
-				multiClusterOverrides.SetField("gatewaysEnabled", nil)
+				if err := multiClusterOverrides.SetField("gatewaysEnabled", nil); err != nil {
+					return err
+				}
 				enabled := true
 				in.Gateways.Enabled = &enabled
 			} else if !*in.Gateways.Enabled {
-				multiClusterOverrides.SetField("gatewaysEnabled", *in.Gateways.Enabled)
+				if err := multiClusterOverrides.SetField("gatewaysEnabled", *in.Gateways.Enabled); err != nil {
+					return err
+				}
 				*in.Gateways.Enabled = true
 			}
 
@@ -158,13 +177,17 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 				}
 			}
 			if !foundExternal {
-				multiClusterOverrides.SetField("addedExternal", true)
+				if err := multiClusterOverrides.SetField("addedExternal", true); err != nil {
+					return err
+				}
 				in.Gateways.ClusterEgress.RequestedNetworkView = append(in.Gateways.ClusterEgress.RequestedNetworkView, "external")
 			}
 		}
 	} else {
 		// multi cluster disabled by default
-		multiClusterOverrides.SetField("multiClusterEnabled", nil)
+		if err := multiClusterOverrides.SetField("multiClusterEnabled", nil); err != nil {
+			return err
+		}
 		if err := setHelmBoolValue(values, "global.multiCluster.enabled", false); err != nil {
 			return err
 		}
@@ -177,7 +200,9 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 			}
 		} else {
 			// mesh expansion disabled by default
-			multiClusterOverrides.SetField("expansionEnabled", nil)
+			if err := multiClusterOverrides.SetField("expansionEnabled", nil); err != nil {
+				return err
+			}
 			if err := setHelmBoolValue(values, "global.meshExpansion.enabled", false); err != nil {
 				return err
 			}
@@ -192,8 +217,12 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 		if cluster.MeshExpansion.ILBGateway == nil ||
 			cluster.MeshExpansion.ILBGateway.Enabled == nil || !*cluster.MeshExpansion.ILBGateway.Enabled {
 			if in.Gateways.ClusterIngress == nil {
-				multiClusterOverrides.SetField("ingressEnabled", nil)
-				multiClusterOverrides.SetField("k8sIngressEnabled", nil)
+				if err := multiClusterOverrides.SetField("ingressEnabled", nil); err != nil {
+					return err
+				}
+				if err := multiClusterOverrides.SetField("k8sIngressEnabled", nil); err != nil {
+					return err
+				}
 				enabled := true
 				in.Gateways.ClusterIngress = &v2.ClusterIngressGatewayConfig{
 					IngressGatewayConfig: v2.IngressGatewayConfig{
@@ -209,17 +238,23 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 				if in.Gateways.ClusterIngress.Enabled == nil || !*in.Gateways.ClusterIngress.Enabled {
 					enabled := true
 					in.Gateways.ClusterIngress.Enabled = &enabled
-					multiClusterOverrides.SetField("ingressEnabled", *in.Gateways.ClusterIngress.Enabled)
+					if err := multiClusterOverrides.SetField("ingressEnabled", *in.Gateways.ClusterIngress.Enabled); err != nil {
+						return err
+					}
 				}
 				if in.Gateways.ClusterIngress.IngressEnabled == nil || !*in.Gateways.ClusterIngress.IngressEnabled {
 					k8sIngressEnabled := true
 					in.Gateways.ClusterIngress.IngressEnabled = &k8sIngressEnabled
-					multiClusterOverrides.SetField("k8sIngressEnabled", *in.Gateways.ClusterIngress.Enabled)
+					if err := multiClusterOverrides.SetField("k8sIngressEnabled", *in.Gateways.ClusterIngress.Enabled); err != nil {
+						return err
+					}
 				}
 			}
 			addExpansionPorts(&in.Gateways.ClusterIngress.MeshExpansionPorts, expansionPorts)
 			if cluster.MeshExpansion.ILBGateway == nil {
-				multiClusterOverrides.SetField("ilbEnabled", nil)
+				if err := multiClusterOverrides.SetField("ilbEnabled", nil); err != nil {
+					return err
+				}
 				disabled := false
 				cluster.MeshExpansion.ILBGateway = &v2.GatewayConfig{
 					Enablement: v2.Enablement{
@@ -228,9 +263,13 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 				}
 			} else {
 				if cluster.MeshExpansion.ILBGateway.Enabled == nil {
-					multiClusterOverrides.SetField("ilbEnabled", nil)
+					if err := multiClusterOverrides.SetField("ilbEnabled", nil); err != nil {
+						return err
+					}
 				} else if *cluster.MeshExpansion.ILBGateway.Enabled {
-					multiClusterOverrides.SetField("ilbEnabled", *cluster.MeshExpansion.ILBGateway.Enabled)
+					if err := multiClusterOverrides.SetField("ilbEnabled", *cluster.MeshExpansion.ILBGateway.Enabled); err != nil {
+						return err
+					}
 				}
 			}
 			if err := setHelmBoolValue(values, "global.meshExpansion.useILB", false); err != nil {
@@ -254,7 +293,9 @@ func populateClusterValues(in *v2.ControlPlaneSpec, namespace string, values map
 		}
 	} else {
 		// mesh expansion disabled by default
-		multiClusterOverrides.SetField("expansionEnabled", nil)
+		if err := multiClusterOverrides.SetField("expansionEnabled", nil); err != nil {
+			return err
+		}
 		if err := setHelmBoolValue(values, "global.meshExpansion.enabled", false); err != nil {
 			return err
 		}
@@ -455,7 +496,9 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 				if len(gateways) == 0 {
 					delete(in.GetContent(), "gateways")
 				} else {
-					in.SetField("gateways", gateways)
+					if err := in.SetField("gateways", gateways); err != nil {
+						return err
+					}
 				}
 			}
 		} else if err != nil {
@@ -468,7 +511,9 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 				} else {
 					k8sIngressValues["enabled"] = k8sIngressEnabled
 				}
-				in.SetField("global.k8sIngress", k8sIngressValues)
+				if err := in.SetField("global.k8sIngress", k8sIngressValues); err != nil {
+					return err
+				}
 			} else if err != nil {
 				return nil
 			}

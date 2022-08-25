@@ -5,22 +5,19 @@ import (
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
-
-	"github.com/maistra/istio-operator/pkg/controller/common"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-
-	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
 const (
@@ -82,7 +79,7 @@ func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 		return err
 	}
 
-	err = mgr.GetFieldIndexer().IndexField(ctx, &v1.Pod{}, "spec.nodeName", func(obj apimachineryruntime.Object) []string {
+	err = mgr.GetFieldIndexer().IndexField(ctx, &v1.Pod{}, "spec.nodeName", func(obj runtime.Object) []string {
 		pod := obj.(*v1.Pod)
 		return []string{pod.Spec.NodeName}
 	})
@@ -93,7 +90,7 @@ func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 	err = c.Watch(&source.Kind{Type: &v1.Node{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			list := &v1.PodList{}
-			err := mgr.GetClient().List(ctx, list, client.MatchingField("spec.nodeName", a.Meta.GetName()))
+			err := mgr.GetClient().List(ctx, list, client.MatchingFields{"spec.nodeName": a.Meta.GetName()})
 			if err != nil {
 				log.Error(err, "Could not list pods")
 			}

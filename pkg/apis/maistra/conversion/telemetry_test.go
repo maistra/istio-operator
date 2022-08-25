@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
@@ -928,7 +929,7 @@ var telemetryTestCasesV1 = []conversionTestCase{
 	},
 }
 
-func telemetryTestCasesV2(version versions.Version) []conversionTestCase{
+func telemetryTestCasesV2(version versions.Version) []conversionTestCase {
 	ver := version.String()
 	return []conversionTestCase{
 		{
@@ -2351,7 +2352,6 @@ func init() {
 		telemetryTestCases = append(telemetryTestCases, telemetryTestCasesV2(v)...)
 	}
 }
-
 
 func TestTelemetryConversionFromV2(t *testing.T) {
 	for _, tc := range telemetryTestCases {

@@ -19,7 +19,7 @@ import (
 )
 
 // GetChartsDir returns the location of the Helm charts. Similar layout to istio.io/istio/install/kubernetes/helm.
-func (v version) GetChartsDir() string {
+func (v Ver) GetChartsDir() string {
 	if len(common.Config.Rendering.ChartsDir) == 0 {
 		return path.Join(common.Config.Rendering.ResourceDir, "helm", v.String())
 	}
@@ -27,7 +27,7 @@ func (v version) GetChartsDir() string {
 }
 
 // GetTemplatesDir returns the location of the Operator templates files
-func (v version) GetUserTemplatesDir() string {
+func (v Ver) GetUserTemplatesDir() string {
 	if len(common.Config.Rendering.UserTemplatesDir) == 0 {
 		return path.Join(common.Config.Rendering.ResourceDir, "templates")
 	}
@@ -35,7 +35,7 @@ func (v version) GetUserTemplatesDir() string {
 }
 
 // GetDefaultTemplatesDir returns the location of the Default Operator templates files
-func (v version) GetDefaultTemplatesDir() string {
+func (v Ver) GetDefaultTemplatesDir() string {
 	if len(common.Config.Rendering.DefaultTemplatesDir) == 0 {
 		return path.Join(common.Config.Rendering.ResourceDir, "default-templates", v.String())
 	}
@@ -70,7 +70,7 @@ func mergeValues(base map[string]interface{}, input map[string]interface{}) map[
 	return base
 }
 
-func (v version) getSMCPProfile(name string, targetNamespace string) (*v1.ControlPlaneSpec, []string, error) {
+func (v Ver) getSMCPProfile(name string, targetNamespace string) (*v1.ControlPlaneSpec, []string, error) {
 	if strings.Contains(name, "/") {
 		return nil, nil, fmt.Errorf("profile name contains invalid character '/'")
 	}
@@ -120,7 +120,9 @@ func (v version) getSMCPProfile(name string, targetNamespace string) (*v1.Contro
 }
 
 // renderSMCPTemplates traverses and processes all of the references templates
-func (v version) recursivelyApplyProfiles(ctx context.Context, smcp *v1.ControlPlaneSpec, targetNamespace string, profiles []string, visited sets.String) (v1.ControlPlaneSpec, error) {
+func (v Ver) recursivelyApplyProfiles(
+	ctx context.Context, smcp *v1.ControlPlaneSpec, targetNamespace string, profiles []string, visited sets.String,
+) (v1.ControlPlaneSpec, error) {
 	log := common.LogFromContext(ctx)
 
 	for index := len(profiles) - 1; index >= 0; index-- {
@@ -162,7 +164,7 @@ func (v version) recursivelyApplyProfiles(ctx context.Context, smcp *v1.ControlP
 	return *smcp, nil
 }
 
-func (v version) updateImagesWithSHAs(ctx context.Context, cr *common.ControllerResources, smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
+func (v Ver) updateImagesWithSHAs(ctx context.Context, cr *common.ControllerResources, smcpSpec v1.ControlPlaneSpec) (v1.ControlPlaneSpec, error) {
 	log := common.LogFromContext(ctx)
 	log.Info("updating image names for disconnected install")
 
@@ -188,13 +190,15 @@ func updateOauthProxyConfig(ctx context.Context, cr *common.ControllerResources,
 				if len(tag.Items) > 0 && len(tag.Items[0].DockerImageReference) > 0 {
 					common.Config.OAuthProxy.Image = tag.Items[0].DockerImageReference
 				} else {
-					log.Info(fmt.Sprintf("warning: dockerImageReference not set for tag '%s' in ImageStream %s/%s", common.Config.OAuthProxy.Tag, common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
+					log.Info(fmt.Sprintf("warning: dockerImageReference not set for tag '%s' in ImageStream %s/%s",
+						common.Config.OAuthProxy.Tag, common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
 				}
 				break
 			}
 		}
 		if !foundTag {
-			log.Info(fmt.Sprintf("warning: could not find tag '%s' in ImageStream %s/%s", common.Config.OAuthProxy.Tag, common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
+			log.Info(fmt.Sprintf("warning: could not find tag '%s' in ImageStream %s/%s",
+				common.Config.OAuthProxy.Tag, common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
 		}
 	} else if !apierrors.IsNotFound(err) {
 		log.Error(err, fmt.Sprintf("unexpected error retrieving ImageStream %s/%s", common.Config.OAuthProxy.Namespace, common.Config.OAuthProxy.Name))
@@ -204,8 +208,7 @@ func updateOauthProxyConfig(ctx context.Context, cr *common.ControllerResources,
 		return nil
 	}
 	log.Info(fmt.Sprintf("using '%s' for global.oauthproxy.image", common.Config.OAuthProxy.Image))
-	updateImageField(smcpSpec.Istio, "global.oauthproxy.image", common.Config.OAuthProxy.Image)
-	return nil
+	return updateImageField(smcpSpec.Istio, "global.oauthproxy.image", common.Config.OAuthProxy.Image)
 }
 
 func updateImageField(helmValues *v1.HelmValues, path, value string) error {
@@ -215,7 +218,9 @@ func updateImageField(helmValues *v1.HelmValues, path, value string) error {
 	return helmValues.SetField(path, value)
 }
 
-func (v version) ApplyProfiles(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec, targetNamespace string) (v1.ControlPlaneSpec, error) {
+func (v Ver) ApplyProfiles(ctx context.Context, cr *common.ControllerResources,
+	smcpSpec *v1.ControlPlaneSpec, targetNamespace string,
+) (v1.ControlPlaneSpec, error) {
 	log := common.LogFromContext(ctx)
 	log.Info("applying profiles to ServiceMeshControlPlane")
 	profiles := smcpSpec.Profiles

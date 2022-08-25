@@ -85,7 +85,7 @@ func TestOVSMultitenantReconcileNamespaceInMesh(t *testing.T) {
 				go fakeNetNamespaceController.run(cl, t)
 			}
 
-			strategy := createAndConfigureMultitenantStrategy(cl, t)
+			strategy := createAndConfigureMultitenantStrategy(cl)
 			if tc.expectSuccess {
 				assert.Success(strategy.reconcileNamespaceInMesh(ctx, appNamespace), "reconcileNamespaceInMesh", t)
 			} else {
@@ -162,7 +162,7 @@ func TestOVSMultitenantRemoveNamespaceFromMesh(t *testing.T) {
 				go fakeNetNamespaceController.run(cl, t)
 			}
 
-			strategy := createAndConfigureMultitenantStrategy(cl, t)
+			strategy := createAndConfigureMultitenantStrategy(cl)
 			if tc.expectSuccess {
 				assert.Success(strategy.removeNamespaceFromMesh(ctx, appNamespace), "removeNamespaceFromMesh", t)
 			} else {
@@ -183,14 +183,10 @@ func TestOVSMultitenantRemoveNamespaceFromMesh(t *testing.T) {
 	}
 }
 
-func createAndConfigureMultitenantStrategy(cl client.Client, t *testing.T) *multitenantStrategy {
+func createAndConfigureMultitenantStrategy(cl client.Client) *multitenantStrategy {
 	// override the backoff in ovs_multitenant.go to speed up tests
 	netNamespaceCheckBackOff = fastBackoff
-	strategy, err := newMultitenantStrategy(cl, controlPlaneNamespace)
-	if err != nil {
-		t.Fatalf("Error creating network strategy: %v", err)
-	}
-	return strategy
+	return newMultitenantStrategy(cl, controlPlaneNamespace)
 }
 
 func newNetNamespace(name string, netID uint32) *network.NetNamespace {
@@ -233,6 +229,6 @@ func (c *fakeNetNamespaceController) run(cl client.Client, t *testing.T) {
 		return true, nil
 	})
 	if err != nil {
-		t.Fatalf("fakeNetNamespaceController never found valid annotation in NetNamespace")
+		t.Errorf("fakeNetNamespaceController never found valid annotation in NetNamespace")
 	}
 }

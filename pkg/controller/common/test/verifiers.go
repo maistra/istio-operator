@@ -169,9 +169,7 @@ func (v *SimpleActionVerifier) Wait(timeout time.Duration) (timedout bool) {
 			return true
 		}
 	} else {
-		select {
-		case <-v.Notify:
-		}
+		<-v.Notify
 	}
 	return false
 }
@@ -209,7 +207,9 @@ func (v *verifyActions) Handles(action clienttesting.Action) bool {
 func (v *verifyActions) React(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	v.verifiers[0].React(action)
+	if handled, ret, err := v.verifiers[0].React(action); err != nil {
+		return handled, ret, err
+	}
 	if v.verifiers[0].HasFired() {
 		v.verifiers = v.verifiers[1:]
 	}
@@ -220,10 +220,10 @@ func (v *verifyActions) React(action clienttesting.Action) (handled bool, ret ru
 func (v *verifyActions) Wait(timeout time.Duration) (timedout bool) {
 	start := time.Now()
 	v.mu.RLock()
-	verifiers := v.verifiers[:]
+	verifiers := v.verifiers
 	v.mu.RUnlock()
 	for _, verifier := range verifiers {
-		if timedout := verifier.Wait(timeout - time.Now().Sub(start)); timedout {
+		if timedout := verifier.Wait(timeout - time.Since(start)); timedout {
 			return true
 		}
 	}

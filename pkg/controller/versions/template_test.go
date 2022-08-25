@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/util/sets"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -18,8 +18,9 @@ func TestGetSMCPTemplateWithSlashReturnsError(t *testing.T) {
 		t.Fatalf("Allowed to access path outside of deployment directory")
 	}
 }
+
 func TestMerge(t *testing.T) {
-	var testCases = []struct {
+	testCases := []struct {
 		name           string
 		base           map[string]interface{}
 		input          map[string]interface{}
@@ -86,8 +87,9 @@ func TestMerge(t *testing.T) {
 
 func TestCyclicTemplate(t *testing.T) {
 	t.SkipNow()
-	var ctx = common.NewContextWithLog(context.Background(), logf.Log)
-	_, err := DefaultVersion.recursivelyApplyProfiles(ctx, &v1.ControlPlaneSpec{Template: "visited"}, "dummy-namespace", []string{"visited"}, sets.NewString("visited"))
+	ctx := common.NewContextWithLog(context.Background(), logf.Log)
+	_, err := DefaultVersion.recursivelyApplyProfiles(ctx, &v1.ControlPlaneSpec{Template: "visited"},
+		"dummy-namespace", []string{"visited"}, sets.NewString("visited"))
 	if err == nil {
 		t.Fatalf("Expected error to not be nil. Cyclic dependencies should not be allowed.")
 	}

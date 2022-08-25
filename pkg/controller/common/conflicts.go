@@ -7,8 +7,8 @@ import (
 	errors2 "github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	errors3 "k8s.io/apimachinery/pkg/util/errors"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 type conflictHandlingReconciler struct {

@@ -3,7 +3,6 @@ package versions
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,8 +25,10 @@ func init() {
 	decoder = json.NewYAMLSerializer(json.DefaultMetaFactory, scheme, scheme)
 }
 
-var scheme *runtime.Scheme
-var decoder runtime.Decoder
+var (
+	scheme  *runtime.Scheme
+	decoder runtime.Decoder
+)
 
 const (
 	clusterIngressName = "istio-ingressgateway"
@@ -43,7 +44,7 @@ func validatePrometheusEnabledWhenKialiEnabled(spec *v2.ControlPlaneSpec, allErr
 	return allErrors
 }
 
-func validatePolicyType(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, v version, allErrors []error) []error {
+func validatePolicyType(spec *v2.ControlPlaneSpec, v Ver, allErrors []error) []error {
 	// I believe the only settings that aren't supported are Istiod policy and telemetry
 	policy := spec.Policy
 	if policy == nil {
@@ -90,7 +91,7 @@ func validatePolicyType(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.C
 	return allErrors
 }
 
-func validateTelemetryType(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, v version, allErrors []error) []error {
+func validateTelemetryType(spec *v2.ControlPlaneSpec, v Ver, allErrors []error) []error {
 	telemetry := spec.Telemetry
 	if telemetry == nil {
 		return allErrors
@@ -135,7 +136,7 @@ func validateTelemetryType(ctx context.Context, meta *metav1.ObjectMeta, spec *v
 	return allErrors
 }
 
-func validateGateways(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, v version, cl client.Client, allErrors []error) []error {
+func validateGateways(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, cl client.Client, allErrors []error) []error {
 	smmr := &v1.ServiceMeshMemberRoll{}
 	err := cl.Get(ctx, client.ObjectKey{Name: common.MemberRollName, Namespace: meta.Namespace}, smmr)
 	if err != nil {
@@ -143,10 +144,10 @@ func validateGateways(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.Con
 			return []error{err}
 		}
 	}
-	return validateGatewaysInternal(meta, spec, smmr, allErrors)
+	return validateGatewaysInternal(meta, spec, allErrors)
 }
 
-func validateGatewaysInternal(meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, smmr *v1.ServiceMeshMemberRoll, allErrors []error) []error {
+func validateGatewaysInternal(meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, allErrors []error) []error {
 	gatewayNames := sets.NewString()
 	if spec.Gateways != nil {
 		for name, gateway := range spec.Gateways.IngressGateways {
@@ -176,17 +177,17 @@ func validateAdditionalGateway(name string, gateway *v2.GatewayConfig, gatewayNa
 	}
 }
 
-func errForEnabledValue(obj *v1.HelmValues, path string, disallowed bool) error {
+func errForEnabledValue(obj *v1.HelmValues, path string) error {
 	val, ok, _ := obj.GetFieldNoCopy(path)
 	if ok {
 		switch typedVal := val.(type) {
 		case string:
-			if strconv.FormatBool(disallowed) == strings.ToLower(typedVal) {
-				return fmt.Errorf("%s=%t is not supported", path, disallowed)
+			if strings.EqualFold(typedVal, "true") {
+				return fmt.Errorf("%s=%t is not supported", path, true)
 			}
 		case bool:
-			if disallowed == typedVal {
-				return fmt.Errorf("%s=%t is not supported", path, disallowed)
+			if typedVal {
+				return fmt.Errorf("%s=%t is not supported", path, true)
 			}
 		}
 	}

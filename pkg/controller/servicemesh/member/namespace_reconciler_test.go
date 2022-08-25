@@ -18,7 +18,7 @@ import (
 )
 
 func TestReconcileNamespaceInMesh(t *testing.T) {
-	namespace := newNamespace(appNamespace)
+	namespace := newAppNamespace()
 	meshRoleBinding := newMeshRoleBinding()
 	meshRoleBindings := []*rbac.RoleBinding{meshRoleBinding}
 	cl, _ := test.CreateClient(namespace, meshRoleBinding)
@@ -62,11 +62,12 @@ func TestReconcileNamespaceInMesh(t *testing.T) {
 	}
 
 	assert.DeepEquals(roleBindings.Items, expectedRoleBindings, "Unexpected RoleBindings found in namespace", t)
-	assert.DeepEquals(fakeNetworkStrategy.reconciledNamespaces, []string{appNamespace}, "Expected reconcileNamespaceInMesh to invoke the networkStrategy with only the appNamespace, but it didn't", t)
+	assert.DeepEquals(fakeNetworkStrategy.reconciledNamespaces, []string{appNamespace},
+		"Expected reconcileNamespaceInMesh to invoke the networkStrategy with only the appNamespace, but it didn't", t)
 }
 
 func TestReconcileTerminatingNamespace(t *testing.T) {
-	namespace := newNamespace(appNamespace)
+	namespace := newAppNamespace()
 	namespace.DeletionTimestamp = &oneMinuteAgo
 	cl, tracker := test.CreateClient(namespace)
 
@@ -76,7 +77,7 @@ func TestReconcileTerminatingNamespace(t *testing.T) {
 }
 
 func TestReconcileFailsIfNamespaceIsPartOfAnotherMesh(t *testing.T) {
-	namespace := newNamespace(appNamespace)
+	namespace := newAppNamespace()
 	namespace.Labels = map[string]string{
 		common.MemberOfKey: "other-control-plane",
 	}
@@ -86,7 +87,7 @@ func TestReconcileFailsIfNamespaceIsPartOfAnotherMesh(t *testing.T) {
 }
 
 func TestRemoveNamespaceFromMesh(t *testing.T) {
-	namespace := newNamespace(appNamespace)
+	namespace := newAppNamespace()
 	meshRoleBinding := newMeshRoleBinding()
 	cl, _ := test.CreateClient(namespace, meshRoleBinding)
 	setupReconciledNamespace(t, cl, appNamespace)
@@ -111,11 +112,12 @@ func TestRemoveNamespaceFromMesh(t *testing.T) {
 	err = cl.Get(ctx, types.NamespacedName{Namespace: appNamespace, Name: meshRoleBinding.Name}, roleBinding)
 	assertNotFound(err, "Expected RoleBinding to be deleted, but it is still present", t)
 
-	assert.DeepEquals(fakeNetworkStrategy.removedNamespaces, []string{appNamespace}, "Expected removeNamespaceFromMesh to invoke the networkStrategy with only the appNamespace, but it didn't", t)
+	assert.DeepEquals(fakeNetworkStrategy.removedNamespaces, []string{appNamespace},
+		"Expected removeNamespaceFromMesh to invoke the networkStrategy with only the appNamespace, but it didn't", t)
 }
 
 func TestRemoveTerminatingNamespace(t *testing.T) {
-	namespace := newNamespace(appNamespace)
+	namespace := newAppNamespace()
 	namespace.DeletionTimestamp = &oneMinuteAgo
 	cl, tracker := test.CreateClient(namespace)
 
@@ -126,7 +128,7 @@ func TestRemoveTerminatingNamespace(t *testing.T) {
 
 func TestReconcileUpdatesModifiedRoleBindings(t *testing.T) {
 	t.Skip("Not implemented yet")
-	namespace := newNamespace(appNamespace)
+	namespace := newAppNamespace()
 	meshRoleBinding := newMeshRoleBinding()
 	cl, _ := test.CreateClient(namespace, meshRoleBinding)
 	setupReconciledNamespace(t, cl, appNamespace)
@@ -161,11 +163,12 @@ func TestReconcileUpdatesModifiedRoleBindings(t *testing.T) {
 	expectedRoleBindings = append(expectedRoleBindings, *expectedRB)
 
 	assert.DeepEquals(roleBindings.Items, expectedRoleBindings, "Unexpected RoleBindings found in namespace", t)
-	assert.DeepEquals(fakeNetworkStrategy.reconciledNamespaces, []string{appNamespace}, "Expected reconcileNamespace to invoke the networkStrategy with only the appNamespace, but it didn't", t)
+	assert.DeepEquals(fakeNetworkStrategy.reconciledNamespaces, []string{appNamespace},
+		"Expected reconcileNamespace to invoke the networkStrategy with only the appNamespace, but it didn't", t)
 }
 
 func TestReconcileDeletesObsoleteRoleBindings(t *testing.T) {
-	namespace := newNamespace(appNamespace)
+	namespace := newAppNamespace()
 	meshRoleBinding := newMeshRoleBinding()
 
 	cl, _ := test.CreateClient(namespace, meshRoleBinding)
@@ -192,7 +195,7 @@ func TestReconcileDeletesObsoleteRoleBindings(t *testing.T) {
 func TestOtherResourcesArePreserved(t *testing.T) {
 	otherLabelName := "other-label"
 	otherLabelValue := "other-label-value"
-	namespace := newNamespace(appNamespace)
+	namespace := newAppNamespace()
 	namespace.Labels[otherLabelName] = otherLabelValue
 	meshRoleBinding := newMeshRoleBinding()
 

@@ -25,7 +25,8 @@ func (r *controlPlaneInstanceReconciler) processComponentManifests(ctx context.C
 		log.Info("component reconciliation complete")
 	}()
 
-	mp := helm.NewManifestProcessor(r.ControllerResources, helm.NewPatchFactory(r.Client), r.Instance.GetNamespace(), r.meshGeneration, common.ToNamespacedName(r.Instance), r.preprocessObject, r.processNewObject, r.preprocessObjectForPatch)
+	mp := helm.NewManifestProcessor(r.ControllerResources, helm.NewPatchFactory(r.Client), r.Instance.GetNamespace(),
+		r.meshGeneration, common.ToNamespacedName(r.Instance), r.preprocessObject, r.processNewObject, r.preprocessObjectForPatch)
 	if madeChanges, err = mp.ProcessManifests(ctx, renderings, status.Resource); err != nil {
 		return madeChanges, err
 	}

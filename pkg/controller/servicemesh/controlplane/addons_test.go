@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	routev1 "github.com/openshift/api/route/v1"
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,9 +19,9 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	"github.com/maistra/istio-operator/pkg/apis/external"
 	jaegerv1 "github.com/maistra/istio-operator/pkg/apis/external/jaeger/v1"
@@ -31,7 +32,6 @@ import (
 	. "github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
-	routev1 "github.com/openshift/api/route/v1"
 )
 
 var featureEnabled = maistrav2.Enablement{
@@ -98,9 +98,7 @@ func TestAddonsInstall(t *testing.T) {
 				jaegerRoute,
 			},
 			create: IntegrationTestValidation{
-				Verifier: ActionVerifier(
-					Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).Passes(ExpectedKialiCreate(jaegerExistingName, domain)),
-				),
+				Verifier: Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).Passes(ExpectedKialiCreate(jaegerExistingName, domain)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
 					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
@@ -124,9 +122,7 @@ func TestAddonsInstall(t *testing.T) {
 				}},
 			},
 			create: IntegrationTestValidation{
-				Verifier: ActionVerifier(
-					Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).Passes(ExpectedKialiPatch(jaegerName, domain)),
-				),
+				Verifier: Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).Passes(ExpectedKialiPatch(jaegerName, domain)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
 					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsSeen(),
@@ -150,9 +146,7 @@ func TestAddonsInstall(t *testing.T) {
 				jaegerRoute,
 			},
 			create: IntegrationTestValidation{
-				Verifier: ActionVerifier(
-					Verify("patch").On("kialis").Named(kialiExistingName).In(controlPlaneNamespace).Passes(ExpectedKialiPatch(jaegerExistingName, domain)),
-				),
+				Verifier: Verify("patch").On("kialis").Named(kialiExistingName).In(controlPlaneNamespace).Passes(ExpectedKialiPatch(jaegerExistingName, domain)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
 					Assert("create").On("kialis").Named(kialiExistingName).In(controlPlaneNamespace).IsNotSeen(),
@@ -218,9 +212,7 @@ func TestExternalJaegerV1_1(t *testing.T) {
 				jaegerRoute,
 			},
 			create: IntegrationTestValidation{
-				Verifier: ActionVerifier(
-					Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).Passes(ExpectedKialiCreate(jaegerExistingName, domain)),
-				),
+				Verifier: Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).Passes(ExpectedKialiCreate(jaegerExistingName, domain)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
 					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
@@ -267,9 +259,7 @@ func TestExternalJaegerV1_1(t *testing.T) {
 				jaegerRoute,
 			},
 			create: IntegrationTestValidation{
-				Verifier: ActionVerifier(
-					Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).Passes(ExpectedKialiCreate(jaegerExistingName, domain)),
-				),
+				Verifier: Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).Passes(ExpectedKialiCreate(jaegerExistingName, domain)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
 					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
@@ -315,7 +305,7 @@ func ExpectedKialiCreate(jaegerName, domain string) VerifierTestFunc {
 		obj := createAction.GetObject()
 		kiali := obj.(*unstructured.Unstructured)
 		if err := VerifyKialiUpdate(jaegerName, domain, maistrav1.NewHelmValues(kiali.Object)); err != nil {
-			fmt.Println(fmt.Sprintf("kiali:\n%v", kiali))
+			fmt.Printf("kiali:\n%v\n", kiali)
 			return err
 		}
 		return nil
@@ -334,7 +324,7 @@ func ExpectedKialiPatch(jaegerName, domain string) VerifierTestFunc {
 		}
 		patchValues := maistrav1.NewHelmValues(patch)
 		if err := VerifyKialiUpdate(jaegerName, domain, patchValues); err != nil {
-			fmt.Println(fmt.Sprintf("patch:\n%s", string(patchAction.GetPatch())))
+			fmt.Printf("patch:\n%s\n", string(patchAction.GetPatch()))
 			return err
 		}
 		return nil
@@ -587,10 +577,4 @@ func configureRouteAPI(s *runtime.Scheme) {
 		Version: "v1",
 	}
 	s.AddKnownTypes(routeGroupVersion, &routev1.Route{}, &routev1.RouteList{})
-}
-
-var routeGVR = schema.GroupVersionResource{
-	Group:    "route.openshift.io",
-	Version:  "v1",
-	Resource: "routes",
 }

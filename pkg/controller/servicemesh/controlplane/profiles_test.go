@@ -16,15 +16,14 @@ import (
 )
 
 const (
-	PRODUCT_IMAGE_1_1   = "1.1.18"
-	PRODUCT_IMAGE_2_0   = "2.0.11"
-	COMMUNITY_IMAGE_2_0 = "2.0.11"
-	COMMUNITY_IMAGE_2_1 = "2.1.5"
-	PRODUCT_IMAGE_2_1   = "2.1.5"
+	ProductImage11   = "1.1.18"
+	ProductImage20   = "2.0.11"
+	CommunityImage20 = "2.0.11"
+	CommunityImage21 = "2.1.5"
+	ProductImage21   = "2.1.5"
 )
 
 func TestProfiles(t *testing.T) {
-
 	profileTestCases := []struct {
 		name            string
 		v               versions.Version
@@ -42,7 +41,7 @@ func TestProfiles(t *testing.T) {
 				},
 			},
 			expected: &v2.ServiceMeshControlPlane{
-				Spec: v1_1_ExpectedSpec,
+				Spec: v11ExpectedSpec,
 			},
 		},
 		{
@@ -54,7 +53,7 @@ func TestProfiles(t *testing.T) {
 				},
 			},
 			expected: &v2.ServiceMeshControlPlane{
-				Spec: v1_1_ExpectedSpec,
+				Spec: v11ExpectedSpec,
 			},
 			patchupExpected: func(smcp *v2.ServiceMeshControlPlane) {
 				// the only thing changing here should be image names/tags/registries
@@ -74,7 +73,7 @@ func TestProfiles(t *testing.T) {
 				},
 			},
 			expected: &v2.ServiceMeshControlPlane{
-				Spec: v2_0_ExpectedSpec,
+				Spec: v20ExpectedSpec,
 			},
 		},
 		{
@@ -86,7 +85,7 @@ func TestProfiles(t *testing.T) {
 				},
 			},
 			expected: &v2.ServiceMeshControlPlane{
-				Spec: v2_0_ExpectedSpec,
+				Spec: v20ExpectedSpec,
 			},
 			patchupExpected: func(smcp *v2.ServiceMeshControlPlane) {
 				// the only thing changing here should be image names/tags/registries
@@ -96,7 +95,7 @@ func TestProfiles(t *testing.T) {
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.ImageRegistry = "registry.redhat.io/openshift4"
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.Image = "ose-oauth-proxy"
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.ImageTag = "v4.4"
-				smcp.Spec.Runtime.Defaults.Container.ImageTag = PRODUCT_IMAGE_2_0
+				smcp.Spec.Runtime.Defaults.Container.ImageTag = ProductImage20
 			},
 		},
 		{
@@ -108,7 +107,7 @@ func TestProfiles(t *testing.T) {
 				},
 			},
 			expected: &v2.ServiceMeshControlPlane{
-				Spec: v2_0_ExpectedSpec,
+				Spec: v20ExpectedSpec,
 			},
 			patchupExpected: func(smcp *v2.ServiceMeshControlPlane) {
 				smcp.Spec.Proxy.Networking.Initialization.InitContainer.Runtime.Image = "injected-proxy-init-v2.1"
@@ -118,11 +117,13 @@ func TestProfiles(t *testing.T) {
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNamePilot].Container.Image = "injected-pilot-v2.1"
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNamePrometheus].Container.Image = "injected-prometheus-v2.1"
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameWASMCacher].Container.Image = "injected-wasm-cacher-v2.1"
-				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameRateLimiting] = &v2.ComponentRuntimeConfig{Container: &v2.ContainerConfig{Image: "injected-rls-v2.1"}}
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameRateLimiting] = &v2.ComponentRuntimeConfig{
+					Container: &v2.ContainerConfig{Image: "injected-rls-v2.1"},
+				}
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixer)
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerPolicy)
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerTelemetry)
-				smcp.Spec.Runtime.Defaults.Container.ImageTag = COMMUNITY_IMAGE_2_1
+				smcp.Spec.Runtime.Defaults.Container.ImageTag = CommunityImage21
 				smcp.Spec.TechPreview.RemoveField("wasmExtensions")
 			},
 		},
@@ -135,7 +136,7 @@ func TestProfiles(t *testing.T) {
 				},
 			},
 			expected: &v2.ServiceMeshControlPlane{
-				Spec: v2_0_ExpectedSpec,
+				Spec: v20ExpectedSpec,
 			},
 			patchupExpected: func(smcp *v2.ServiceMeshControlPlane) {
 				// the only thing changing here should be image names/tags/registries
@@ -152,11 +153,13 @@ func TestProfiles(t *testing.T) {
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNamePilot].Container.Image = "injected-pilot-v2.1"
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNamePrometheus].Container.Image = "injected-prometheus-v2.1"
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameWASMCacher].Container.Image = "injected-wasm-cacher-v2.1"
-				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameRateLimiting] = &v2.ComponentRuntimeConfig{Container: &v2.ContainerConfig{Image: "injected-rls-v2.1"}}
+				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameRateLimiting] = &v2.ComponentRuntimeConfig{
+					Container: &v2.ContainerConfig{Image: "injected-rls-v2.1"},
+				}
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixer)
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerPolicy)
 				delete(smcp.Spec.Runtime.Components, v2.ControlPlaneComponentNameMixerTelemetry)
-				smcp.Spec.Runtime.Defaults.Container.ImageTag = PRODUCT_IMAGE_2_1
+				smcp.Spec.Runtime.Defaults.Container.ImageTag = ProductImage21
 				smcp.Spec.TechPreview.RemoveField("wasmExtensions")
 			},
 		},
@@ -176,7 +179,7 @@ func TestProfiles(t *testing.T) {
 				},
 			},
 			expected: &v2.ServiceMeshControlPlane{
-				Spec: v2_0_ExpectedSpec,
+				Spec: v20ExpectedSpec,
 			},
 			patchupExpected: func(smcp *v2.ServiceMeshControlPlane) {
 				// the only thing changing here should be image names/tags/registries
@@ -188,7 +191,7 @@ func TestProfiles(t *testing.T) {
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.ImageRegistry = "registry.redhat.io/openshift4"
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.Image = "ose-oauth-proxy"
 				smcp.Spec.Runtime.Components[v2.ControlPlaneComponentNameGlobalOauthProxy].Container.ImageTag = "v4.4"
-				smcp.Spec.Runtime.Defaults.Container.ImageTag = PRODUCT_IMAGE_2_0
+				smcp.Spec.Runtime.Defaults.Container.ImageTag = ProductImage20
 			},
 		},
 	}
@@ -261,7 +264,7 @@ func TestMissingProfile(t *testing.T) {
 }
 
 var (
-	v1_1_ExpectedSpec = v2.ControlPlaneSpec{
+	v11ExpectedSpec = v2.ControlPlaneSpec{
 		Proxy: &v2.ProxyConfig{
 			Networking: &v2.ProxyNetworkingConfig{
 				Initialization: &v2.ProxyNetworkInitConfig{
@@ -404,7 +407,7 @@ var (
 				},
 				Container: &v2.CommonContainerConfig{
 					ImageRegistry: "docker.io/maistra",
-					ImageTag:      PRODUCT_IMAGE_1_1,
+					ImageTag:      ProductImage11,
 					Resources: &corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("10m"),
@@ -531,7 +534,7 @@ var (
 		}),
 	}
 
-	v2_0_ExpectedSpec = v2.ControlPlaneSpec{
+	v20ExpectedSpec = v2.ControlPlaneSpec{
 		Proxy: &v2.ProxyConfig{
 			Networking: &v2.ProxyNetworkingConfig{
 				Initialization: &v2.ProxyNetworkInitConfig{
@@ -711,7 +714,7 @@ var (
 				},
 				Container: &v2.CommonContainerConfig{
 					ImageRegistry: "docker.io/maistra",
-					ImageTag:      COMMUNITY_IMAGE_2_0,
+					ImageTag:      CommunityImage20,
 					Resources: &corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("10m"),

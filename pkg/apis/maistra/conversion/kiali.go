@@ -1,9 +1,10 @@
 package conversion
 
 import (
+	corev1 "k8s.io/api/core/v1"
+
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	corev1 "k8s.io/api/core/v1"
 )
 
 func populateKialiAddonValues(kiali *v2.KialiAddonConfig, values map[string]interface{}) (reterr error) {
@@ -222,7 +223,7 @@ func populateKialiAddonConfig(in *v1.HelmValues, out *v2.KialiAddonConfig) (bool
 	} else if err != nil {
 		return false, err
 	}
-	if setDashboard == true {
+	if setDashboard {
 		setInstall = true
 		install.Dashboard = dashboardConfig
 	}

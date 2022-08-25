@@ -196,8 +196,7 @@ func bindType(v *viper.Viper, val reflect.Value, path string, delimiter string, 
 		}
 	default:
 		// simply alias the field to itself
-		v.BindEnv(path, strings.ToUpper(replacer.Replace(path)))
-		return nil
+		return v.BindEnv(path, strings.ToUpper(replacer.Replace(path)))
 	}
 	return nil
 }

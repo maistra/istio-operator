@@ -49,9 +49,9 @@ type KialiDashboardConfig struct {
 	EnableTracing *bool `json:"enableTracing,omitempty"`
 }
 
-// DEPRECATED: Use runtime.components.kiali instead.
 // KialiDeploymentConfig configures the kiali deployment
 // +deprecated
+// Deprecated: Use runtime.components.kiali instead.
 type KialiDeploymentConfig struct {
 	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`

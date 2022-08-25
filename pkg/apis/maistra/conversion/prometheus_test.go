@@ -49,7 +49,7 @@ var prometheusTestCasesV1 = []conversionTestCase{
 	},
 }
 
-func prometheusTestCasesV2(version versions.Version) []conversionTestCase{
+func prometheusTestCasesV2(version versions.Version) []conversionTestCase {
 	ver := version.String()
 	return []conversionTestCase{
 		{

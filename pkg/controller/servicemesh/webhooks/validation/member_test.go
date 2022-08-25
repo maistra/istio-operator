@@ -10,9 +10,7 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clienttesting "k8s.io/client-go/testing"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
@@ -20,14 +18,14 @@ import (
 )
 
 func TestDeletedMemberIsAlwaysAllowed(t *testing.T) {
-	member := newMember("not-default", "app-namespace", "my-smcp", "istio-system")
+	member := newMember("not-default", "app-namespace")
 	member.DeletionTimestamp = now()
 
 	response := invokeMemberValidator(createCreateRequest(member))
 	assert.True(response.Allowed, "Expected validator to allow deleted ServiceMeshMember", t)
 }
 
-func newMember(name, namespace, smcpName, smcpNamespace string) *maistra.ServiceMeshMember {
+func newMember(name, namespace string) *maistra.ServiceMeshMember {
 	return &maistra.ServiceMeshMember{
 		ObjectMeta: meta.ObjectMeta{
 			Name:      name,
@@ -35,15 +33,15 @@ func newMember(name, namespace, smcpName, smcpNamespace string) *maistra.Service
 		},
 		Spec: maistra.ServiceMeshMemberSpec{
 			ControlPlaneRef: maistra.ServiceMeshControlPlaneRef{
-				Name:      smcpName,
-				Namespace: smcpNamespace,
+				Name:      "my-smcp",
+				Namespace: "istio-system",
 			},
 		},
 	}
 }
 
 func TestMemberWithWrongNameIsRejected(t *testing.T) {
-	member := newMember("not-default", "app-namespace", "my-smcp", "istio-system")
+	member := newMember("not-default", "app-namespace")
 
 	response := invokeMemberValidator(createCreateRequest(member))
 	assert.False(response.Allowed, "Expected validator to reject ServiceMeshMember with wrong name", t)
@@ -51,7 +49,7 @@ func TestMemberWithWrongNameIsRejected(t *testing.T) {
 
 func TestMemberInOperatorNamespaceIsRejected(t *testing.T) {
 	test.PanicOnError(os.Setenv("POD_NAMESPACE", "openshift-operators")) // TODO: make it easier to set the namespace in tests
-	member := newMember("default", "openshift-operators", "my-smcp", "istio-system")
+	member := newMember("default", "openshift-operators")
 
 	response := invokeMemberValidator(createCreateRequest(member))
 	assert.False(response.Allowed, "Expected validator to reject creation of ServiceMeshMember in operator namespace", t)
@@ -78,7 +76,7 @@ func TestMutationOfSpecControlPlaneRefIsRejected(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			oldMember := newMember("default", "app-namespace", "my-smcp", "istio-system")
+			oldMember := newMember("default", "app-namespace")
 			newMember := oldMember.DeepCopy()
 			tc.mutateMember(newMember)
 
@@ -89,26 +87,26 @@ func TestMutationOfSpecControlPlaneRefIsRejected(t *testing.T) {
 }
 
 func TestMemberWithFailedSubjectAccessReview(t *testing.T) {
-	validator, _, tracker := createMemberValidatorTestFixture()
+	validator, tracker := createMemberValidatorTestFixture()
 	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(false, false, nil))
 
-	member := newMember("default", "app-namespace", "my-smcp", "istio-system")
+	member := newMember("default", "app-namespace")
 	response := validator.Handle(ctx, createCreateRequest(member))
 	assert.False(response.Allowed, "Expected validator to reject ServiceMeshMember due to failed SubjectAccessReview check", t)
 }
 
 func TestValidMemberCreation(t *testing.T) {
-	validator, _, tracker := createMemberValidatorTestFixture()
+	validator, tracker := createMemberValidatorTestFixture()
 	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, true, nil))
 
-	member := newMember("default", "app-namespace", "my-smcp", "istio-system")
+	member := newMember("default", "app-namespace")
 	response := validator.Handle(ctx, createCreateRequest(member))
 	assert.True(response.Allowed, "Expected validator to allow ServiceMeshMember", t)
 }
 
 func TestValidMemberUpdate(t *testing.T) {
-	oldMember := newMember("default", "app-namespace", "my-smcp", "istio-system")
-	validator, _, tracker := createMemberValidatorTestFixture()
+	oldMember := newMember("default", "app-namespace")
+	validator, tracker := createMemberValidatorTestFixture()
 	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, true, nil))
 
 	newMember := oldMember.DeepCopy()
@@ -121,17 +119,17 @@ func TestValidMemberUpdate(t *testing.T) {
 }
 
 func TestMemberValidatorRejectsRequestWhenSARCheckErrors(t *testing.T) {
-	validator, _, tracker := createMemberValidatorTestFixture()
+	validator, tracker := createMemberValidatorTestFixture()
 	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, true, fmt.Errorf("SAR check error")))
 
-	roll := newMember("default", "app-namespace", "my-smcp", "istio-system")
+	roll := newMember("default", "app-namespace")
 	response := validator.Handle(ctx, createCreateRequest(roll))
 	assert.False(response.Allowed, "Expected validator to reject ServiceMeshMember due to SAR check error", t)
 	assert.Equals(response.Result.Code, int32(http.StatusInternalServerError), "Unexpected result code", t)
 }
 
 func TestMemberValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
-	validator, _, tracker := createMemberValidatorTestFixture()
+	validator, tracker := createMemberValidatorTestFixture()
 	tracker.AddReactor("create", "subjectaccessreviews", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 		createAction := action.(clienttesting.CreateAction)
 		sar := createAction.GetObject().(*authorizationv1.SubjectAccessReview)
@@ -148,20 +146,20 @@ func TestMemberValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 		return true, sar.DeepCopy(), nil
 	})
 
-	roll := newMember("default", "app-namespace", "my-smcp", "istio-system")
+	roll := newMember("default", "app-namespace")
 	_ = validator.Handle(ctx, createCreateRequest(roll))
 }
 
 func invokeMemberValidator(request admission.Request) admission.Response {
-	validator, _, tracker := createMemberValidatorTestFixture()
+	validator, tracker := createMemberValidatorTestFixture()
 	tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, true, nil))
 	response := validator.Handle(ctx, request)
 	return response
 }
 
-func createMemberValidatorTestFixture(clientObjects ...runtime.Object) (*MemberValidator, client.Client, *test.EnhancedTracker) {
-	cl, tracker := test.CreateClient(clientObjects...)
-	decoder, err := webhookadmission.NewDecoder(test.GetScheme())
+func createMemberValidatorTestFixture() (*MemberValidator, *test.EnhancedTracker) {
+	cl, tracker := test.CreateClient()
+	decoder, err := admission.NewDecoder(test.GetScheme())
 	if err != nil {
 		panic(fmt.Sprintf("Could not create decoder: %s", err))
 	}
@@ -177,5 +175,5 @@ func createMemberValidatorTestFixture(clientObjects ...runtime.Object) (*MemberV
 		panic(fmt.Sprintf("Could not inject decoder: %s", err))
 	}
 
-	return validator, cl, tracker
+	return validator, tracker
 }

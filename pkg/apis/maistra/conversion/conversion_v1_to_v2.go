@@ -20,7 +20,9 @@ const (
 func v1ToV2Hacks(in *v1.ControlPlaneSpec, values *v1.HelmValues) error {
 	// adjustments for 3scale
 	if in.ThreeScale != nil {
-		values.SetField("3scale", in.ThreeScale.DeepCopy().GetContent())
+		if err := values.SetField("3scale", in.ThreeScale.DeepCopy().GetContent()); err != nil {
+			return err
+		}
 	}
 
 	// move tracing.jaeger.annotations to tracing.jaeger.podAnnotations
@@ -82,19 +84,27 @@ func v1ToV2Hacks(in *v1.ControlPlaneSpec, values *v1.HelmValues) error {
 
 // Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec converts a v1 ControlPlaneSpec to its v2 equivalent.
 func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec, out *v2.ControlPlaneSpec, s conversion.Scope) (err error) {
-
 	defer func() {
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("unexpected error occurred during ServiceMeshControlPlane v1 to v2 conversion: %v", err))
 			if out.TechPreview == nil {
 				out.TechPreview = v1.NewHelmValues(make(map[string]interface{}))
 			}
-			out.TechPreview.SetField(TechPreviewErroredMessage, err.Error())
+			if err2 := out.TechPreview.SetField(TechPreviewErroredMessage, err.Error()); err2 != nil {
+				err = err2
+				return
+			}
 			if len(in.Istio.GetContent()) > 0 {
-				out.TechPreview.SetField(TechPreviewErroredIstio, in.Istio.DeepCopy().GetContent())
+				if err2 := out.TechPreview.SetField(TechPreviewErroredIstio, in.Istio.DeepCopy().GetContent()); err2 != nil {
+					err = err2
+					return
+				}
 			}
 			if len(in.ThreeScale.GetContent()) > 0 {
-				out.TechPreview.SetField(TechPreviewErrored3scale, in.ThreeScale.DeepCopy().GetContent())
+				if err2 := out.TechPreview.SetField(TechPreviewErrored3scale, in.ThreeScale.DeepCopy().GetContent()); err2 != nil {
+					err = err2
+					return
+				}
 			}
 			// erase anything that converted successfully
 			out.Addons = nil
@@ -195,7 +205,7 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 	}
 
 	// Runtime
-	if _, err := populateControlPlaneRuntimeConfig(values, out); err != nil {
+	if err := populateControlPlaneRuntimeConfig(values, out); err != nil {
 		return err
 	}
 

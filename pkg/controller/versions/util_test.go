@@ -3,18 +3,14 @@ package versions
 import (
 	"testing"
 
-	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
 const controlPlaneNamespace = "cp-namespace"
 
 func TestValidateGateways(t *testing.T) {
-
-	memberNamespace := "member-namespace"
-	memberNamespaces := []string{memberNamespace}
-
 	testCases := []struct {
 		name        string
 		gateways    *maistrav2.GatewaysConfig
@@ -60,7 +56,6 @@ func TestValidateGateways(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			smcp := &maistrav2.ServiceMeshControlPlane{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "minimal",
@@ -71,21 +66,7 @@ func TestValidateGateways(t *testing.T) {
 				},
 			}
 
-			smmr := &maistrav1.ServiceMeshMemberRoll{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "default",
-					Namespace: controlPlaneNamespace,
-				},
-				Spec: maistrav1.ServiceMeshMemberRollSpec{
-					Members: memberNamespaces,
-				},
-				Status: maistrav1.ServiceMeshMemberRollStatus{
-					Members:           memberNamespaces,
-					ConfiguredMembers: memberNamespaces,
-				},
-			}
-
-			allErrors := validateGatewaysInternal(&smcp.ObjectMeta, &smcp.Spec, smmr, []error{})
+			allErrors := validateGatewaysInternal(&smcp.ObjectMeta, &smcp.Spec, []error{})
 			if tc.expectError {
 				if len(allErrors) == 0 {
 					t.Fatal("Expected errors, but none were returned")
@@ -102,12 +83,6 @@ func TestValidateGateways(t *testing.T) {
 func newEgressGatewayConfig(namespace string, enabled *bool) *maistrav2.EgressGatewayConfig {
 	return &maistrav2.EgressGatewayConfig{
 		GatewayConfig: *newGatewayConfig(namespace, enabled),
-	}
-}
-
-func newClusterIngressGatewayConfig(namespace string, enabled *bool) *maistrav2.ClusterIngressGatewayConfig {
-	return &maistrav2.ClusterIngressGatewayConfig{
-		IngressGatewayConfig: *newIngressGatewayConfig(namespace, enabled),
 	}
 }
 

@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -18,14 +16,14 @@ func TestDeletedMemberRollIsAlwaysAllowed(t *testing.T) {
 	roll := newMemberRoll("not-default", "istio-system")
 	roll.DeletionTimestamp = now()
 
-	mutator, _, _ := createMemberRollMutatorFixture()
+	mutator := createMemberRollMutatorFixture()
 	response := mutator.Handle(ctx, newCreateRequest(roll))
 	assert.DeepEquals(response, acceptWithNoMutation, "Expected mutator to accept deleted ServiceMeshMemberRoll", t)
 }
 
 func TestMemberRollOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
 	roll := newMemberRoll("not-default", "not-watched")
-	mutator, _, _ := createMemberRollMutatorFixture()
+	mutator := createMemberRollMutatorFixture()
 	mutator.namespaceFilter = "watched-namespace"
 	response := mutator.Handle(ctx, newCreateRequest(roll))
 	assert.DeepEquals(response, acceptWithNoMutation, "Expected mutator to accept ServiceMeshMemberRoll whose namespace isn't watched", t)
@@ -33,7 +31,7 @@ func TestMemberRollOutsideWatchedNamespaceIsAlwaysAllowed(t *testing.T) {
 
 func TestMemberRollNoMutation(t *testing.T) {
 	roll := newMemberRoll("default", "istio-system", "bookinfo", "hipster-shop")
-	mutator, _, _ := createMemberRollMutatorFixture()
+	mutator := createMemberRollMutatorFixture()
 	response := mutator.Handle(ctx, newCreateRequest(roll))
 	assert.DeepEquals(response, acceptWithNoMutation, "Expected mutator to accept ServiceMeshMemberRoll with no changes", t)
 }
@@ -45,7 +43,7 @@ func TestControlPlaneNamespaceIsRemovedFromMembersList(t *testing.T) {
 	mutatedRoll := roll.DeepCopy()
 	mutatedRoll.Spec.Members = []string{"bookinfo", "hipster-shop"}
 
-	mutator, _, _ := createMemberRollMutatorFixture()
+	mutator := createMemberRollMutatorFixture()
 
 	// check create
 	response := mutator.Handle(ctx, newCreateRequest(roll))
@@ -61,8 +59,8 @@ func TestControlPlaneNamespaceIsRemovedFromMembersList(t *testing.T) {
 	assert.DeepEquals(response, expectedResponse, "Unexpected response on update", t)
 }
 
-func createMemberRollMutatorFixture(clientObjects ...runtime.Object) (*MemberRollMutator, client.Client, *test.EnhancedTracker) {
-	cl, tracker := test.CreateClient(clientObjects...)
+func createMemberRollMutatorFixture() *MemberRollMutator {
+	cl, _ := test.CreateClient()
 	decoder, err := admission.NewDecoder(test.GetScheme())
 	if err != nil {
 		panic(fmt.Sprintf("Could not create decoder: %s", err))
@@ -79,7 +77,7 @@ func createMemberRollMutatorFixture(clientObjects ...runtime.Object) (*MemberRol
 		panic(fmt.Sprintf("Could not inject decoder: %s", err))
 	}
 
-	return validator, cl, tracker
+	return validator
 }
 
 func newMemberRoll(name, namespace string, members ...string) *maistra.ServiceMeshMemberRoll {

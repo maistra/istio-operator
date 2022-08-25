@@ -3,26 +3,25 @@ package controlplane
 import (
 	"testing"
 
-	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/controller/common/cni"
-	"github.com/maistra/istio-operator/pkg/controller/common/test"
-	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
+
+	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
+	"github.com/maistra/istio-operator/pkg/controller/common/test"
+	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
 
 func TestCalculateComponentReadinessMap(t *testing.T) {
-
 	memberNamespace := "member-namespace"
 	nonMemberNamespace := "non-member-namespace"
 	memberNamespaces := []string{memberNamespace}
-
 
 	testCases := []struct {
 		name                  string
@@ -35,7 +34,7 @@ func TestCalculateComponentReadinessMap(t *testing.T) {
 			// deployment is ready and should appear in the readiness map with readiness set to true
 			name: "deployment-in-cp-namespace-ready",
 			objects: []runtime.Object{
-				newDeployment("foo", controlPlaneNamespace, controlPlaneNamespace, "component1", true),
+				newDeployment("foo", controlPlaneNamespace, "component1", true),
 			},
 			expectedMap: map[string]bool{
 				"component1": true,
@@ -45,7 +44,7 @@ func TestCalculateComponentReadinessMap(t *testing.T) {
 			// deployment is not ready and should appear in the readiness map with readiness set to false
 			name: "deployment-in-cp-namespace-unready",
 			objects: []runtime.Object{
-				newDeployment("foo", controlPlaneNamespace, controlPlaneNamespace, "component1", false),
+				newDeployment("foo", controlPlaneNamespace, "component1", false),
 			},
 			expectedMap: map[string]bool{
 				"component1": false,
@@ -130,12 +129,12 @@ func TestCalculateComponentReadinessMap(t *testing.T) {
 			// when multiple objects belong to the same component, the component is ready only when all objects are ready
 			name: "multiple-objects-same-component",
 			objects: []runtime.Object{
-				newDeployment("component1-foo-is-ready", controlPlaneNamespace, controlPlaneNamespace, "component1", true),
-				newDeployment("component1-bar-is-not-ready", controlPlaneNamespace, controlPlaneNamespace, "component1", false),
-				newDeployment("component2-foo-is-ready", controlPlaneNamespace, controlPlaneNamespace, "component2", true),
-				newDeployment("component2-bar-is-ready", controlPlaneNamespace, controlPlaneNamespace, "component2", true),
-				newDeployment("component3-foo-is-not-ready", controlPlaneNamespace, controlPlaneNamespace, "component3", false),
-				newDeployment("component3-bar-is-not-ready", controlPlaneNamespace, controlPlaneNamespace, "component3", false),
+				newDeployment("component1-foo-is-ready", controlPlaneNamespace, "component1", true),
+				newDeployment("component1-bar-is-not-ready", controlPlaneNamespace, "component1", false),
+				newDeployment("component2-foo-is-ready", controlPlaneNamespace, "component2", true),
+				newDeployment("component2-bar-is-ready", controlPlaneNamespace, "component2", true),
+				newDeployment("component3-foo-is-not-ready", controlPlaneNamespace, "component3", false),
+				newDeployment("component3-bar-is-not-ready", controlPlaneNamespace, "component3", false),
 			},
 			expectedMap: map[string]bool{
 				"component1": false,
@@ -175,10 +174,10 @@ func TestCalculateComponentReadinessMap(t *testing.T) {
 				},
 			},
 			objects: []runtime.Object{
-				newDeployment("deploy1", memberNamespace, controlPlaneNamespace, "component1", true),
-				newDeployment("deploy2", memberNamespace, controlPlaneNamespace, "component2", true),
-				newDeployment("deploy3", memberNamespace, controlPlaneNamespace, "component3", true),
-				newDeployment("deploy4", memberNamespace, controlPlaneNamespace, "component4", true),
+				newDeployment("deploy1", memberNamespace, "component1", true),
+				newDeployment("deploy2", memberNamespace, "component2", true),
+				newDeployment("deploy3", memberNamespace, "component3", true),
+				newDeployment("deploy4", memberNamespace, "component4", true),
 			},
 			expectedMap: map[string]bool{
 				"component1": true,
@@ -220,10 +219,10 @@ func TestCalculateComponentReadinessMap(t *testing.T) {
 				},
 			},
 			objects: []runtime.Object{
-				newDeployment("deploy1", nonMemberNamespace, controlPlaneNamespace, "component1", true),
-				newDeployment("deploy2", nonMemberNamespace, controlPlaneNamespace, "component2", true),
-				newDeployment("deploy3", nonMemberNamespace, controlPlaneNamespace, "component3", true),
-				newDeployment("deploy4", nonMemberNamespace, controlPlaneNamespace, "component4", true),
+				newDeployment("deploy1", nonMemberNamespace, "component1", true),
+				newDeployment("deploy2", nonMemberNamespace, "component2", true),
+				newDeployment("deploy3", nonMemberNamespace, "component3", true),
+				newDeployment("deploy4", nonMemberNamespace, "component4", true),
 			},
 			expectedMap: map[string]bool{},
 		},
@@ -241,7 +240,6 @@ func TestCalculateComponentReadinessMap(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			smcp := newControlPlane()
 			smcp.Spec.Gateways = tc.gateways
 			if tc.alwaysReadyComponents != "" {
@@ -286,10 +284,9 @@ func TestCalculateComponentReadinessMap(t *testing.T) {
 			assert.DeepEquals(readinessMap, tc.expectedMap, "Unexpected readiness map", t)
 		})
 	}
-
 }
 
-func newDeployment(name, namespace, owner, component string, ready bool) *appsv1.Deployment {
+func newDeployment(name, namespace, component string, ready bool) *appsv1.Deployment {
 	var readyReplicas int32
 	if ready {
 		readyReplicas = 1
@@ -300,7 +297,7 @@ func newDeployment(name, namespace, owner, component string, ready bool) *appsv1
 			Name:      name,
 			Namespace: namespace,
 			Labels: map[string]string{
-				common.OwnerKey:                  owner,
+				common.OwnerKey:                  controlPlaneNamespace,
 				common.KubernetesAppComponentKey: component,
 			},
 			Generation: 1,

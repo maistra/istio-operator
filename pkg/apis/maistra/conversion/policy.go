@@ -185,7 +185,7 @@ func populatePolicyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version v
 		case v2.PolicyTypeNone:
 			policyType = v2.PolicyTypeNone
 		default:
-			return fmt.Errorf("unkown policy.implementation specified: %s", policyTypeStr)
+			return fmt.Errorf("unknown policy.implementation specified: %s", policyTypeStr)
 		}
 	} else if err != nil {
 		return err

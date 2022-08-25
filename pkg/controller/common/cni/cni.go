@@ -6,8 +6,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
@@ -33,9 +33,8 @@ func InitConfig(m manager.Manager) (Config, error) {
 		config.Enabled = false
 		log.Info(fmt.Sprintf("CNI is disabled for this installation: %v", config.Enabled))
 		return config, nil
-	} else {
-		log.Info(fmt.Sprintf("CNI is enabled for this installation: %v", config.Enabled))
 	}
+	log.Info(fmt.Sprintf("CNI is enabled for this installation: %v", config.Enabled))
 
 	config.Enabled = true
 

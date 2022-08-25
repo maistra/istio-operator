@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	configv1alpha2 "github.com/maistra/istio-operator/pkg/apis/external/istio/config/v1alpha2"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -37,7 +37,7 @@ var v1_1ChartOrder = [][]string{
 }
 
 type versionStrategyV1_1 struct {
-	version
+	Ver
 	renderImpl     v1xRenderingStrategy
 	conversionImpl v1xConversionStrategy
 }
@@ -45,20 +45,42 @@ type versionStrategyV1_1 struct {
 var _ VersionStrategy = (*versionStrategyV1_1)(nil)
 
 func (v *versionStrategyV1_1) SetImageValues(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec) error {
-	common.UpdateField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_1.Citadel)
-	common.UpdateField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_1.Galley)
-	common.UpdateField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_1.Grafana)
-	common.UpdateField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_1.Mixer)
-	common.UpdateField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_1.Pilot)
-	common.UpdateField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_1.Prometheus)
-	common.UpdateField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_1.ProxyInit)
-	common.UpdateField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_1.ProxyV2)
-	common.UpdateField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_1.SidecarInjector)
-	common.UpdateField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_1.ThreeScale)
-
-	common.UpdateField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V1_1.IOR)
+	if err := common.UpdateField(smcpSpec.Istio, "security.image", common.Config.OLM.Images.V1_1.Citadel); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.Istio, "galley.image", common.Config.OLM.Images.V1_1.Galley); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V1_1.Grafana); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.Istio, "mixer.image", common.Config.OLM.Images.V1_1.Mixer); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V1_1.Pilot); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V1_1.Prometheus); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V1_1.ProxyInit); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V1_1.ProxyV2); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.Istio, "sidecarInjectorWebhook.image", common.Config.OLM.Images.V1_1.SidecarInjector); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V1_1.ThreeScale); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.Istio, "gateways.istio-ingressgateway.ior_image", common.Config.OLM.Images.V1_1.IOR); err != nil {
+		return err
+	}
 	return nil
 }
+
 func (v *versionStrategyV1_1) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	logger := logf.Log.WithName("smcp-validator-1.1")
 	var allErrors []error
@@ -68,7 +90,6 @@ func (v *versionStrategyV1_1) ValidateV1(ctx context.Context, cl client.Client, 
 		if ok && tracer != "zipkin" {
 			// tracer must be "zipkin"
 			allErrors = append(allErrors, fmt.Errorf("global.proxy.tracer must equal 'zipkin' if global.tracer.zipkin.address is set"))
-
 		}
 		// if an address is set, it must point to the same namespace the SMCP resides in
 		addressParts := strings.Split(zipkinAddress, ".")
@@ -85,12 +106,12 @@ func (v *versionStrategyV1_1) ValidateV1(ctx context.Context, cl client.Client, 
 				allErrors = append(allErrors, fmt.Errorf("global.tracer.zipkin.address must point to a service in same namespace as SMCP"))
 			}
 		}
-		if err := errForEnabledValue(smcp.Spec.Istio, "tracing.enabled", true); err != nil {
+		if err := errForEnabledValue(smcp.Spec.Istio, "tracing.enabled"); err != nil {
 			// tracing.enabled must be false
 			allErrors = append(allErrors, fmt.Errorf("tracing.enabled must be false if global.tracer.zipkin.address is set"))
 		}
 
-		if err := errForEnabledValue(smcp.Spec.Istio, "kiali.enabled", true); err != nil {
+		if err := errForEnabledValue(smcp.Spec.Istio, "kiali.enabled"); err != nil {
 			if jaegerInClusterURL, ok, _ := smcp.Spec.Istio.GetString("kiali.jaegerInClusterURL"); !ok || len(jaegerInClusterURL) == 0 {
 				allErrors = append(allErrors, fmt.Errorf("kiali.jaegerInClusterURL must be defined if global.tracer.zipkin.address is set"))
 			}
@@ -105,8 +126,8 @@ func (v *versionStrategyV1_1) ValidateV1(ctx context.Context, cl client.Client, 
 	}
 	// XXX: i don't think this is supported in the helm charts
 	// telemetry.v2.enabled=true (values.yaml, in-proxy metrics)
-	if err := errForEnabledValue(smcp.Spec.Istio, "telemetry.enabled", true); err != nil {
-		if err := errForEnabledValue(smcp.Spec.Istio, "telemetry.v2.enabled", true); err != nil {
+	if err := errForEnabledValue(smcp.Spec.Istio, "telemetry.enabled"); err != nil {
+		if err := errForEnabledValue(smcp.Spec.Istio, "telemetry.v2.enabled"); err != nil {
 			allErrors = append(allErrors, err)
 		}
 	}
@@ -133,9 +154,9 @@ func (v *versionStrategyV1_1) ValidateV1(ctx context.Context, cl client.Client, 
 
 func (v *versionStrategyV1_1) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
-	allErrors = validatePolicyType(ctx, meta, spec, v.version, allErrors)
-	allErrors = validateTelemetryType(ctx, meta, spec, v.version, allErrors)
-	allErrors = validateGateways(ctx, meta, spec, v.version, cl, allErrors)
+	allErrors = validatePolicyType(spec, v.Ver, allErrors)
+	allErrors = validateTelemetryType(spec, v.Ver, allErrors)
+	allErrors = validateGateways(ctx, meta, spec, cl, allErrors)
 	return NewValidationError(allErrors...)
 }
 
@@ -144,46 +165,44 @@ func (v *versionStrategyV1_1) ValidateDowngrade(ctx context.Context, cl client.C
 	return fmt.Errorf("downgrading to a version below v1.1 is not supported")
 }
 
-var (
-	// These are unsupported in v1.1
-	unsupportedOldResourcesV1_1 = []runtime.Object{
-		&configv1alpha2.HTTPAPISpecBindingList{},
-		&configv1alpha2.HTTPAPISpecList{},
-		&configv1alpha2.QuotaSpecBindingList{},
-		&configv1alpha2.QuotaSpecList{},
-		&configv1alpha2.BypassList{},
-		&configv1alpha2.CirconusList{},
-		&configv1alpha2.DenierList{},
-		&configv1alpha2.FluentdList{},
-		&configv1alpha2.KubernetesenvList{},
-		&configv1alpha2.ListcheckerList{},
-		&configv1alpha2.MemquotaList{},
-		&configv1alpha2.NoopList{},
-		&configv1alpha2.OpaList{},
-		&configv1alpha2.PrometheusList{},
-		&configv1alpha2.RbacList{},
-		&configv1alpha2.RedisquotaList{},
-		&configv1alpha2.SignalfxList{},
-		&configv1alpha2.SolarwindsList{},
-		&configv1alpha2.StackdriverList{},
-		&configv1alpha2.StatsdList{},
-		&configv1alpha2.StdioList{},
-		&configv1alpha2.ApikeyList{},
-		&configv1alpha2.AuthorizationList{},
-		&configv1alpha2.ChecknothingList{},
-		&configv1alpha2.KubernetesList{},
-		&configv1alpha2.ListentryList{},
-		&configv1alpha2.LogentryList{},
-		&configv1alpha2.EdgeList{},
-		&configv1alpha2.MetricList{},
-		&configv1alpha2.QuotaList{},
-		&configv1alpha2.ReportnothingList{},
-		&configv1alpha2.TracespanList{},
-		&configv1alpha2.CloudwatchList{},
-		&configv1alpha2.DogstatsdList{},
-		&configv1alpha2.ZipkinList{},
-	}
-)
+// These are unsupported in v1.1
+var unsupportedOldResourcesV1_1 = []runtime.Object{
+	&configv1alpha2.HTTPAPISpecBindingList{},
+	&configv1alpha2.HTTPAPISpecList{},
+	&configv1alpha2.QuotaSpecBindingList{},
+	&configv1alpha2.QuotaSpecList{},
+	&configv1alpha2.BypassList{},
+	&configv1alpha2.CirconusList{},
+	&configv1alpha2.DenierList{},
+	&configv1alpha2.FluentdList{},
+	&configv1alpha2.KubernetesenvList{},
+	&configv1alpha2.ListcheckerList{},
+	&configv1alpha2.MemquotaList{},
+	&configv1alpha2.NoopList{},
+	&configv1alpha2.OpaList{},
+	&configv1alpha2.PrometheusList{},
+	&configv1alpha2.RbacList{},
+	&configv1alpha2.RedisquotaList{},
+	&configv1alpha2.SignalfxList{},
+	&configv1alpha2.SolarwindsList{},
+	&configv1alpha2.StackdriverList{},
+	&configv1alpha2.StatsdList{},
+	&configv1alpha2.StdioList{},
+	&configv1alpha2.ApikeyList{},
+	&configv1alpha2.AuthorizationList{},
+	&configv1alpha2.ChecknothingList{},
+	&configv1alpha2.KubernetesList{},
+	&configv1alpha2.ListentryList{},
+	&configv1alpha2.LogentryList{},
+	&configv1alpha2.EdgeList{},
+	&configv1alpha2.MetricList{},
+	&configv1alpha2.QuotaList{},
+	&configv1alpha2.ReportnothingList{},
+	&configv1alpha2.TracespanList{},
+	&configv1alpha2.CloudwatchList{},
+	&configv1alpha2.DogstatsdList{},
+	&configv1alpha2.ZipkinList{},
+}
 
 func (v *versionStrategyV1_1) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
 	var allErrors []error
@@ -207,17 +226,21 @@ func (v *versionStrategyV1_1) ValidateUpgrade(ctx context.Context, cl client.Cli
 				return pkgerrors.Wrapf(err, "error listing %T resources", list)
 			}
 		}
-		meta.EachListItem(list, func(obj runtime.Object) error {
+		if err := meta.EachListItem(list, func(obj runtime.Object) error {
 			metaObj, err := meta.Accessor(obj)
 			if err != nil {
-				allErrors = append(allErrors, pkgerrors.Wrapf(err, "error accessing object metadata for %s resource", list.GetObjectKind().GroupVersionKind().String()))
+				allErrors = append(allErrors, pkgerrors.Wrapf(err, "error accessing object metadata for %s resource",
+					list.GetObjectKind().GroupVersionKind().String()))
 			}
 			// we only care about resources in this mesh, which aren't being managed by the operator directly
 			if meshNamespaces.Has(metaObj.GetNamespace()) && !metav1.IsControlledBy(metaObj, smcp) {
-				allErrors = append(allErrors, fmt.Errorf("%s/%s of type %s is not supported in newer version", metaObj.GetNamespace(), metaObj.GetName(), list.GetObjectKind().GroupVersionKind().String()))
+				allErrors = append(allErrors, fmt.Errorf("%s/%s of type %s is not supported in newer version",
+					metaObj.GetNamespace(), metaObj.GetName(), list.GetObjectKind().GroupVersionKind().String()))
 			}
 			return nil
-		})
+		}); err != nil {
+			return err
+		}
 	}
 
 	// Any service ports using 443 are using http/http2 in their name (http not allowed on port 443)
@@ -230,7 +253,7 @@ func (v *versionStrategyV1_1) ValidateUpgrade(ctx context.Context, cl client.Cli
 		for _, service := range memberServices.Items {
 			for _, port := range service.Spec.Ports {
 				if port.Port == 443 && (port.Name == "http" || port.Name == "http2" || strings.HasPrefix(port.Name, "http-") || strings.HasPrefix(port.Name, "http2-")) {
-					allErrors = append(allErrors, fmt.Errorf("Port 443 is not allowed for http/http2 protocols on Service %s/%s", service.Namespace, service.Name))
+					allErrors = append(allErrors, fmt.Errorf("port 443 is not allowed for http/http2 protocols on Service %s/%s", service.Namespace, service.Name))
 				}
 			}
 		}
@@ -243,8 +266,10 @@ func (v *versionStrategyV1_1) GetChartInstallOrder() [][]string {
 	return v1_1ChartOrder
 }
 
-func (v *versionStrategyV1_1) Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
-	return v.renderImpl.render(ctx, v.version, cr, cniConfig, smcp)
+func (v *versionStrategyV1_1) Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config,
+	smcp *v2.ServiceMeshControlPlane,
+) (map[string][]manifest.Manifest, error) {
+	return v.renderImpl.render(ctx, v.Ver, cr, cniConfig, smcp)
 }
 
 func (v *versionStrategyV1_1) GetExpansionPorts() []corev1.ServicePort {

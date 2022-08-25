@@ -49,10 +49,10 @@ type PrometheusInstallConfig struct {
 	// UseTLS for the prometheus server
 	// .Values.prometheus.provisionPrometheusCert
 	// 1.6+
-	//ProvisionCert bool
+	// ProvisionCert bool
 	// this seems to overlap with provision cert, as this manifests something similar to the above
 	// .Values.prometheus.security.enabled, version < 1.6
-	//EnableSecurity bool
+	// EnableSecurity bool
 	// +optional
 	UseTLS *bool `json:"useTLS,omitempty"`
 }

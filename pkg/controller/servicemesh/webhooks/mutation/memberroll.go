@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -26,9 +26,11 @@ func NewMemberRollMutator(namespaceFilter webhookcommon.NamespaceFilter) *Member
 	}
 }
 
-var _ admission.Handler = (*MemberRollMutator)(nil)
-var _ inject.Client = (*MemberRollMutator)(nil)
-var _ admission.DecoderInjector = (*MemberRollMutator)(nil)
+var (
+	_ admission.Handler         = (*MemberRollMutator)(nil)
+	_ inject.Client             = (*MemberRollMutator)(nil)
+	_ admission.DecoderInjector = (*MemberRollMutator)(nil)
+)
 
 func (v *MemberRollMutator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	log := logf.Log.WithName("smmr-mutator").

@@ -4,9 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maistra/istio-operator/pkg/apis"
-	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,6 +14,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/maistra/istio-operator/pkg/apis"
+	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 )
 
 var voidReconciler = reconcile.Func(func(request reconcile.Request) (reconcile.Result, error) {

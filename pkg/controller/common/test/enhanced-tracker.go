@@ -14,8 +14,6 @@ import (
 	"k8s.io/client-go/testing"
 )
 
-var dummyDefaultObject = &struct{ runtime.Object }{}
-
 // EnhancedTracker is a testing.ObjectTracker that is implemented by a
 // testing.Fake, which delegates to an embedded testing.ObjectTracker for
 // unhandled actions (i.e. testing.ObjectReaction is always the last
@@ -143,8 +141,8 @@ func (t *EnhancedTracker) PrependProxyReaction(reactors ...testing.ProxyReactor)
 	t.ProxyReactionChain = append(reactors, t.ProxyReactionChain...)
 }
 
-func (t *EnhancedTracker) yeild() {
-	// yeild to allow watches to process the change before returning
+func (t *EnhancedTracker) yield() {
+	// yield to allow watches to process the change before returning
 	time.Sleep(5 * time.Millisecond)
 }
 
@@ -184,8 +182,8 @@ func (t *EnhancedTracker) Create(gvr schema.GroupVersionResource, obj runtime.Ob
 		return err
 	}
 	err = t.ObjectTracker.Create(preferredGVR, preferred, ns)
-	// yeild to allow watches to process the change before returning
-	t.yeild()
+	// yield to allow watches to process the change before returning
+	t.yield()
 	return err
 }
 
@@ -205,18 +203,17 @@ func (t *EnhancedTracker) Update(gvr schema.GroupVersionResource, obj runtime.Ob
 		return err
 	}
 	err = t.ObjectTracker.Update(preferredGVR, preferred, ns)
-	// yeild to allow watches to process the change before returning
-	t.yeild()
+	// yield to allow watches to process the change before returning
+	t.yield()
 	return err
-
 }
 
 // Delete deltes the obj in the embedded ObjectTracker.  Before returning, we
 // yield the processor to ensure watches have a chance to run before.
 func (t *EnhancedTracker) Delete(gvr schema.GroupVersionResource, ns, name string) (err error) {
 	defer func() {
-		// yeild to allow watches to process the change before returning
-		t.yeild()
+		// yield to allow watches to process the change before returning
+		t.yield()
 	}()
 	err = t.ObjectTracker.Delete(gvr, ns, name)
 	if !errors.IsNotFound(err) {
@@ -283,7 +280,7 @@ func (t *EnhancedTracker) List(gvr schema.GroupVersionResource, gvk schema.Group
 	if !t.Scheme.Recognizes(storageKind) {
 		// register the type
 		listGVK := storageKind
-		listGVK.Kind = listGVK.Kind + "List"
+		listGVK.Kind += "List"
 		t.Scheme.AddKnownTypeWithName(storageKind, &unstructured.Unstructured{})
 		t.Scheme.AddKnownTypeWithName(listGVK, &unstructured.UnstructuredList{})
 	}
@@ -294,7 +291,7 @@ func (t *EnhancedTracker) List(gvr schema.GroupVersionResource, gvk schema.Group
 	}
 	// convert to desired version
 	listGVK := gvk
-	listGVK.Kind = listGVK.Kind + "List"
+	listGVK.Kind += "List"
 	desired, err := t.Scheme.New(listGVK)
 	if err != nil {
 		return obj, err

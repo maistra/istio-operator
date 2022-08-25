@@ -17,8 +17,9 @@ import (
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -37,7 +38,6 @@ const (
 	memberUID  = types.UID("3333")
 
 	memberRollName = "default"
-	memberRollUID  = types.UID("1111")
 
 	appNamespace          = "app-namespace"
 	controlPlaneName      = "my-mesh"
@@ -48,9 +48,7 @@ const (
 	operatorVersion2_0     = "2.0.0"
 	operatorVersionDefault = operatorVersion2_0
 
-	cniNetwork1_1     = "v1-1-istio-cni"
-	cniNetwork2_0     = "v2-0-istio-cni"
-	cniNetworkDefault = cniNetwork2_0
+	cniNetwork1_1 = "v1-1-istio-cni"
 )
 
 var (
@@ -65,14 +63,14 @@ var (
 )
 
 func init() {
-	logf.SetLogger(logf.ZapLogger(true))
+	logf.SetLogger(zap.New(zap.UseDevMode(true)))
 }
 
 func TestReconcileAddsFinalizer(t *testing.T) {
 	member := newMember()
 	member.Finalizers = []string{}
 
-	cl, tracker, r := createClientAndReconciler(t, member)
+	cl, tracker, r := createClientAndReconciler(member)
 
 	assertReconcileSucceeds(r, t)
 
@@ -86,7 +84,7 @@ func TestReconcileCreatesMemberRollIfNeeded(t *testing.T) {
 	member := newMember()
 	controlPlane := newControlPlane(versions.DefaultVersion.String())
 	markControlPlaneReconciled(controlPlane, operatorVersionDefault)
-	cl, _, r := createClientAndReconciler(t, member, controlPlane)
+	cl, _, r := createClientAndReconciler(member, controlPlane)
 
 	assertReconcileSucceeds(r, t)
 
@@ -106,7 +104,7 @@ func TestReconcileDoesNothingIfReferencedControlPlaneNamespaceDoesNotExist(t *te
 	member := newMember()
 	member.Spec.ControlPlaneRef.Namespace = "nonexistent-ns"
 
-	_, tracker, r := createClientAndReconciler(t, member)
+	_, tracker, r := createClientAndReconciler(member)
 
 	tracker.AddReactor("get", "namespace", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 		if action.GetNamespace() == "nonexistent-ns" {
@@ -124,7 +122,7 @@ func TestReconcileDoesNothingIfReferencedControlPlaneNamespaceDoesNotExist(t *te
 func TestReconcileCreatesMemberRollWhenReferencedControlPlaneIsCreated(t *testing.T) {
 	member := newMember()
 
-	cl, _, r := createClientAndReconciler(t, member)
+	cl, _, r := createClientAndReconciler(member)
 
 	// reconcile while SMCP does not exist
 	assertReconcileSucceeds(r, t)
@@ -145,7 +143,7 @@ func TestReconcileRemovesFinalizerFromMemberWhenMemberDeleted(t *testing.T) {
 	member := newMember()
 	member.DeletionTimestamp = &oneMinuteAgo
 
-	cl, _, r := createClientAndReconciler(t, member)
+	cl, _, r := createClientAndReconciler(member)
 
 	assertReconcileSucceeds(r, t)
 
@@ -161,10 +159,11 @@ func TestReconcileDeletesMemberRollCreatedByItWhenMemberDeleted(t *testing.T) {
 		common.CreatedByKey: controllerName,
 	}
 
-	cl, _, r := createClientAndReconciler(t, member, memberRoll)
+	cl, _, r := createClientAndReconciler(member, memberRoll)
 
 	assertReconcileSucceeds(r, t)
-	test.AssertNotFound(ctx, cl, types.NamespacedName{controlPlaneNamespace, common.MemberRollName}, &maistrav1.ServiceMeshMemberRoll{}, "Expected reconcile to delete the SMMR, but it didn't", t)
+	test.AssertNotFound(ctx, cl, types.NamespacedName{controlPlaneNamespace, common.MemberRollName}, &maistrav1.ServiceMeshMemberRoll{},
+		"Expected reconcile to delete the SMMR, but it didn't", t)
 }
 
 func TestReconcilePreservesMemberRollCreatedByItButModifiedByUser(t *testing.T) {
@@ -176,7 +175,7 @@ func TestReconcilePreservesMemberRollCreatedByItButModifiedByUser(t *testing.T) 
 	}
 	memberRoll.Spec.Members = []string{"other-ns-1"}
 
-	cl, _, r := createClientAndReconciler(t, member, memberRoll)
+	cl, _, r := createClientAndReconciler(member, memberRoll)
 
 	assertReconcileSucceeds(r, t)
 
@@ -188,7 +187,7 @@ func TestReconcileSucceedsIfControlPlaneAndMembersRollDoNotExistWhenDeletingMemb
 	member := newMember()
 	member.DeletionTimestamp = &oneMinuteAgo
 
-	cl, _, r := createClientAndReconciler(t, member)
+	cl, _, r := createClientAndReconciler(member)
 
 	assertReconcileSucceeds(r, t)
 
@@ -205,7 +204,7 @@ func TestReconcileSucceedsIfMembersRollIsDeletedExternallyWhenRemovingMember(t *
 	}
 	memberRoll.Spec.Members = []string{appNamespace}
 
-	_, tracker, r := createClientAndReconciler(t, member, memberRoll)
+	_, tracker, r := createClientAndReconciler(member, memberRoll)
 	tracker.AddReactor("delete", "servicemeshmemberrolls", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 		return true, nil, apierrors.NewNotFound(schema.GroupResource{
 			Group:    maistrav1.APIGroup,
@@ -221,20 +220,20 @@ func TestReconcileDoesNothingIfMemberIsDeletedAndHasNoFinalizers(t *testing.T) {
 	member.DeletionTimestamp = &oneMinuteAgo
 	member.Finalizers = nil
 
-	_, tracker, r := createClientAndReconciler(t, member)
+	_, tracker, r := createClientAndReconciler(member)
 
 	assertReconcileSucceeds(r, t)
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 }
 
 func TestReconcileDoesNothingWhenMemberIsNotFound(t *testing.T) {
-	_, tracker, r := createClientAndReconciler(t)
+	_, tracker, r := createClientAndReconciler()
 	assertReconcileSucceeds(r, t)
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 }
 
 func TestReconcileReturnsErrorIfItCanNotReadMember(t *testing.T) {
-	_, tracker, r := createClientAndReconciler(t)
+	_, tracker, r := createClientAndReconciler()
 	tracker.AddReactor("get", "servicemeshmembers", test.ClientFails())
 	assertReconcileFails(r, t)
 }
@@ -322,7 +321,7 @@ func TestReconcileReturnsErrorIfClientOperationFails(t *testing.T) {
 				objects = append(objects, memberRoll)
 			}
 
-			_, tracker, r := createClientAndReconciler(t, objects...)
+			_, tracker, r := createClientAndReconciler(objects...)
 			tracker.AddReaction(tc.reactor)
 
 			assertReconcileFails(r, t)
@@ -386,17 +385,16 @@ func TestReconcileAfterOperatorUpgrade(t *testing.T) {
 				member.Status.ServiceMeshReconciledVersion = status.ComposeReconciledVersion(operatorVersion1_1, controlPlane.GetGeneration())
 			}
 			member.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
-			namespace := newNamespace(appNamespace)
-			meshRoleBinding := newMeshRoleBinding()
+			namespace := newAppNamespace()
 
-			cl, _, r := createClientAndReconciler(t, member, controlPlane, namespace)
+			cl, _, r := createClientAndReconciler(member, controlPlane, namespace)
 
 			assertReconcileSucceeds(r, t)
 
 			updatedMember := test.GetUpdatedObject(ctx, cl, member.ObjectMeta, &maistrav1.ServiceMeshMember{}).(*maistrav1.ServiceMeshMember)
 			assert.Equals(updatedMember.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 
-			assertNamespaceReconciled(t, cl, appNamespace, controlPlaneNamespace, tc.expectedNetworkName, []rbac.RoleBinding{*meshRoleBinding})
+			assertNamespaceReconciled(t, cl, appNamespace, controlPlaneNamespace, tc.expectedNetworkName)
 		})
 	}
 }
@@ -423,7 +421,6 @@ func TestReconciliationOfTerminatingNamespace(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			member := newMember()
 			if tc.configureMember != nil {
 				tc.configureMember(member)
@@ -431,42 +428,22 @@ func TestReconciliationOfTerminatingNamespace(t *testing.T) {
 
 			controlPlane := markControlPlaneReconciled(newControlPlane(versions.DefaultVersion.String()), operatorVersionDefault)
 
-			namespace := newNamespace(appNamespace)
+			namespace := newAppNamespace()
 			namespace.DeletionTimestamp = &oneMinuteAgo
 			if tc.configureNamespace != nil {
 				tc.configureNamespace(namespace)
 			}
 
-			cl, _, r := createClientAndReconciler(t, member, controlPlane, namespace)
+			cl, _, r := createClientAndReconciler(member, controlPlane, namespace)
 			assertReconcileSucceeds(r, t)
 
 			updatedMember := test.GetUpdatedObject(ctx, cl, member.ObjectMeta, &maistrav1.ServiceMeshMember{}).(*maistrav1.ServiceMeshMember)
-			assert.Equals(updatedMember.Status.GetCondition(maistrav1.ConditionTypeMemberReady).Status, corev1.ConditionFalse, "Unexpected Ready condition status", t)
-			assert.Equals(updatedMember.Status.GetCondition(maistrav1.ConditionTypeMemberReconciled).Status, corev1.ConditionFalse, "Unexpected Reconciled condition status", t)
+			readyStatus := updatedMember.Status.GetCondition(maistrav1.ConditionTypeMemberReady).Status
+			assert.Equals(readyStatus, corev1.ConditionFalse, "Unexpected Ready condition status", t)
+			reconciledStatus := updatedMember.Status.GetCondition(maistrav1.ConditionTypeMemberReconciled).Status
+			assert.Equals(reconciledStatus, corev1.ConditionFalse, "Unexpected Reconciled condition status", t)
 		})
 	}
-}
-
-func assertRBNotCreated(t *testing.T) clienttesting.ReactionFunc {
-	return func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-		t.Errorf("Unexpected creation of RoleBinding")
-		return false, nil, nil
-	}
-}
-
-func assertNADNotDeleted(t *testing.T) clienttesting.ReactionFunc {
-	return func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-		t.Errorf("Unexpected deletion of CNI NetworkAttachmentDefinition")
-		return false, nil, nil
-	}
-}
-
-func createNAD(name, appNamespace, cpNamespace string) runtime.Object {
-	netAttachDef := &multusv1.NetworkAttachmentDefinition{}
-	netAttachDef.SetNamespace(appNamespace)
-	netAttachDef.SetName(name)
-	common.SetLabel(netAttachDef, common.MemberOfKey, cpNamespace)
-	return netAttachDef
 }
 
 func newMember() *maistrav1.ServiceMeshMember {
@@ -497,7 +474,9 @@ func newMemberRoll() *maistrav1.ServiceMeshMemberRoll {
 	}
 }
 
-func markMemberReconciled(member *maistrav1.ServiceMeshMember, generation int64, observedGeneration int64, observedMeshGeneration int64, operatorVersion string) *maistrav1.ServiceMeshMember {
+func markMemberReconciled(member *maistrav1.ServiceMeshMember, generation, observedGeneration, observedMeshGeneration int64,
+	operatorVersion string,
+) *maistrav1.ServiceMeshMember {
 	member.Finalizers = []string{common.FinalizerName}
 	member.Generation = generation
 	member.UID = memberUID
@@ -507,7 +486,7 @@ func markMemberReconciled(member *maistrav1.ServiceMeshMember, generation int64,
 	return member
 }
 
-func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker, *MemberReconciler) {
+func createClientAndReconciler(clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker, *MemberReconciler) {
 	cl, enhancedTracker := test.CreateClient(clientObjects...)
 	fakeEventRecorder := &record.FakeRecorder{}
 
@@ -542,7 +521,9 @@ type fakeNamespaceReconcilerFactory struct {
 	reconciler *fakeNamespaceReconciler
 }
 
-func (rf *fakeNamespaceReconcilerFactory) newReconciler(ctx context.Context, cl client.Client, meshNamespace string, meshVersion versions.Version, isCNIEnabled bool) (NamespaceReconciler, error) {
+func (rf *fakeNamespaceReconcilerFactory) newReconciler(ctx context.Context, cl client.Client,
+	meshNamespace string, meshVersion versions.Version, isCNIEnabled bool,
+) (NamespaceReconciler, error) {
 	delegate, err := newNamespaceReconciler(ctx, cl, meshNamespace, meshVersion, isCNIEnabled)
 	rf.reconciler.delegate = delegate
 	return rf.reconciler, err
@@ -564,10 +545,10 @@ func (r *fakeNamespaceReconciler) removeNamespaceFromMesh(ctx context.Context, n
 	return r.delegate.removeNamespaceFromMesh(ctx, namespace)
 }
 
-func newNamespace(name string) *corev1.Namespace {
+func newAppNamespace() *corev1.Namespace {
 	namespace := &corev1.Namespace{
 		ObjectMeta: meta.ObjectMeta{
-			Name:   name,
+			Name:   appNamespace,
 			Labels: map[string]string{},
 		},
 	}
@@ -580,14 +561,6 @@ func newMeshRoleBinding() *rbac.RoleBinding {
 	roleBinding.Labels[common.OwnerKey] = controlPlaneNamespace
 	roleBinding.Labels[common.OwnerNameKey] = controlPlaneName
 	roleBinding.Labels[common.KubernetesAppVersionKey] = "0"
-	return roleBinding
-}
-
-func newAppNamespaceRoleBinding() *rbac.RoleBinding {
-	roleBinding := newRoleBinding(appNamespace, "role-binding")
-	roleBinding.Labels = map[string]string{}
-	roleBinding.Labels[common.OwnerKey] = controlPlaneNamespace
-	roleBinding.Labels[common.MemberOfKey] = controlPlaneNamespace
 	return roleBinding
 }
 
@@ -638,15 +611,7 @@ func markControlPlaneReconciled(controlPlane *maistrav2.ServiceMeshControlPlane,
 	return controlPlane
 }
 
-func assertNamespaceReconcilerInvoked(t *testing.T, nsReconciler *fakeNamespaceReconciler, namespaces ...string) {
-	assert.DeepEquals(nsReconciler.reconciledNamespaces, namespaces, "Expected namespace reconciler to be invoked, but it wasn't or it wasn't invoked properly", t)
-}
-
-func assertNamespaceRemoveInvoked(t *testing.T, nsReconciler *fakeNamespaceReconciler, namespaces ...string) {
-	assert.DeepEquals(nsReconciler.removedNamespaces, namespaces, "Expected removal to be invoked for namespace, but it wasn't or it wasn't invoked properly", t)
-}
-
-func assertNamespaceReconciled(t *testing.T, cl client.Client, namespace, meshNamespace string, meshNetAttachDefName string, meshRoleBindings []rbac.RoleBinding) {
+func assertNamespaceReconciled(t *testing.T, cl client.Client, namespace, meshNamespace, meshNetAttachDefName string) {
 	// check if namespace has member-of label
 	ns := &corev1.Namespace{}
 	test.GetObject(ctx, cl, types.NamespacedName{Name: namespace}, ns)

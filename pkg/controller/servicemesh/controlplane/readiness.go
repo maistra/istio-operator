@@ -6,7 +6,9 @@ import (
 	"reflect"
 	"strings"
 
-	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -14,34 +16,27 @@ import (
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-const statusAnnotationReadyComponentCount = "readyComponentCount"
-const statusAnnotationAlwaysReadyComponents = "alwaysReadyComponents"
+const (
+	statusAnnotationReadyComponentCount   = "readyComponentCount"
+	statusAnnotationAlwaysReadyComponents = "alwaysReadyComponents"
+)
 
 func (r *controlPlaneInstanceReconciler) UpdateReadiness(ctx context.Context) error {
-	log := common.LogFromContext(ctx)
-	update, err := r.updateReadinessStatus(ctx)
+	update := r.updateReadinessStatus(ctx)
 	if update {
-		statusErr := r.PostStatus(ctx)
-		if statusErr != nil {
-			// original error is more important than the status update error
-			if err == nil {
-				// if there's no original error, we can return the status update error
-				return statusErr
-			}
-			// otherwise, we must log the status update error and return the original error
-			log.Error(statusErr, "Error updating status")
+		err := r.PostStatus(ctx)
+		if err != nil {
+			return err
 		}
 	}
-	return err
+	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Context) (bool, error) {
+func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Context) bool {
 	log := common.LogFromContext(ctx)
 	log.Info("Updating ServiceMeshControlPlane readiness state")
 	readyComponents, unreadyComponents, err := r.calculateComponentReadiness(ctx)
@@ -54,7 +49,7 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 		}
 		r.Status.SetCondition(condition)
 		r.EventRecorder.Event(r.Instance, corev1.EventTypeWarning, eventReasonNotReady, condition.Message)
-		return true, nil
+		return true
 	}
 
 	readyCondition := r.Status.GetCondition(status.ConditionTypeReady)
@@ -118,7 +113,7 @@ func (r *controlPlaneInstanceReconciler) updateReadinessStatus(ctx context.Conte
 		r.Status.Readiness.Components = readinessMap
 		updateStatus = true
 	}
-	return updateStatus, nil
+	return updateStatus
 }
 
 type isReadyFunc func(runtime.Object) bool
@@ -232,7 +227,9 @@ func (r *controlPlaneInstanceReconciler) isCNIReady(ctx context.Context) (bool, 
 	return true, nil
 }
 
-func (r *controlPlaneInstanceReconciler) calculateReadinessForType(ctx context.Context, namespaces []string, list runtime.Object, isReady isReadyFunc, readinessMap map[string]bool) error {
+func (r *controlPlaneInstanceReconciler) calculateReadinessForType(ctx context.Context, namespaces []string,
+	list runtime.Object, isReady isReadyFunc, readinessMap map[string]bool,
+) error {
 	log := common.LogFromContext(ctx)
 
 	selector := map[string]string{common.OwnerKey: r.Instance.GetNamespace()}

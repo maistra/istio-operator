@@ -105,15 +105,6 @@ var UninstallOrder SortOrder = []string{
 	"Namespace",
 }
 
-// sortByKind does an in-place sort of manifests by Kind.
-//
-// Results are sorted by 'ordering'
-func sortByKind(manifests []manifest.Manifest, ordering SortOrder) []manifest.Manifest {
-	ks := newKindSorter(manifests, ordering)
-	sort.Sort(ks)
-	return ks.manifests
-}
-
 type kindSorter struct {
 	ordering  map[string]int
 	manifests []manifest.Manifest

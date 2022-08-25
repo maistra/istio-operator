@@ -67,7 +67,9 @@ const (
 	patchKialiRequeueInterval = 1 * time.Minute
 )
 
-func NewControlPlaneInstanceReconciler(controllerResources common.ControllerResources, newInstance *v2.ServiceMeshControlPlane, cniConfig cni.Config) ControlPlaneInstanceReconciler {
+func NewControlPlaneInstanceReconciler(controllerResources common.ControllerResources,
+	newInstance *v2.ServiceMeshControlPlane, cniConfig cni.Config,
+) ControlPlaneInstanceReconciler {
 	return &controlPlaneInstanceReconciler{
 		ControllerResources: controllerResources,
 		Instance:            newInstance,
@@ -82,7 +84,9 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 	if r.Status.GetCondition(status.ConditionTypeReconciled).Status != status.ConditionStatusFalse {
 		r.initializeReconcileStatus()
 		err := r.PostStatus(ctx)
-		return reconcile.Result{}, err // ensure that the new reconcile status is posted immediately. Reconciliation will resume when the status update comes back into the operator
+		// ensure that the new reconcile status is posted immediately.
+		// Reconciliation will resume when the status update comes back into the operator
+		return reconcile.Result{}, err
 	}
 
 	// make sure status gets updated on exit
@@ -235,7 +239,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 
 		r.waitForComponents.Delete(readyComponents.List()...)
 		if r.waitForComponents.Len() > 0 {
-			reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx)
+			reconciliationReason, reconciliationMessage = r.pauseReconciliation(ctx)
 			return
 		}
 	}
@@ -292,13 +296,13 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 
 			readyComponents, _, readyErr := r.calculateComponentReadiness(ctx)
 			if readyErr != nil {
-				reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx)
+				reconciliationReason, reconciliationMessage = r.pauseReconciliation(ctx)
 				return
 			}
 
 			r.waitForComponents.Delete(readyComponents.List()...)
 			if r.waitForComponents.Len() > 0 {
-				reconciliationReason, reconciliationMessage, err = r.pauseReconciliation(ctx)
+				reconciliationReason, reconciliationMessage = r.pauseReconciliation(ctx)
 				return
 			}
 		}
@@ -333,11 +337,11 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 	updateControlPlaneConditions(r.Status, nil)
 
 	hacks.SkipReconciliationUntilCacheSynced(ctx, common.ToNamespacedName(r.Instance))
-	log.Info("Completed ServiceMeshControlPlane reconcilation")
+	log.Info("Completed ServiceMeshControlPlane reconciliation")
 	return
 }
 
-func (r *controlPlaneInstanceReconciler) pauseReconciliation(ctx context.Context) (status.ConditionReason, string, error) {
+func (r *controlPlaneInstanceReconciler) pauseReconciliation(ctx context.Context) (status.ConditionReason, string) {
 	log := common.LogFromContext(ctx)
 	var eventReason string
 	var conditionReason status.ConditionReason
@@ -351,7 +355,7 @@ func (r *controlPlaneInstanceReconciler) pauseReconciliation(ctx context.Context
 	reconciliationMessage := fmt.Sprintf("Paused until the following components become ready: %v", r.waitForComponents.List())
 	r.EventRecorder.Event(r.Instance, corev1.EventTypeNormal, eventReason, reconciliationMessage)
 	log.Info(reconciliationMessage)
-	return conditionReason, reconciliationMessage, nil
+	return conditionReason, reconciliationMessage
 }
 
 func (r *controlPlaneInstanceReconciler) isUpdating() bool {
@@ -360,11 +364,11 @@ func (r *controlPlaneInstanceReconciler) isUpdating() bool {
 
 func (r *controlPlaneInstanceReconciler) validateSMCPSpec(spec v1.ControlPlaneSpec, basePath string) error {
 	if spec.Istio == nil {
-		return fmt.Errorf("ServiceMeshControlPlane missing %s.istio section", basePath)
+		return fmt.Errorf("serviceMeshControlPlane missing %s.istio section", basePath)
 	}
 
 	if _, ok, _ := spec.Istio.GetMap("global"); !ok {
-		return fmt.Errorf("ServiceMeshControlPlane missing %s.istio.global section", basePath)
+		return fmt.Errorf("serviceMeshControlPlane missing %s.istio.global section", basePath)
 	}
 	return nil
 }
@@ -374,8 +378,8 @@ func (r *controlPlaneInstanceReconciler) validateManifests(ctx context.Context) 
 	allErrors := []error{}
 	// validate resource namespaces
 	smmr := &v1.ServiceMeshMemberRoll{}
-	var smmrRetrievalError error
-	if smmrRetrievalError = r.Client.Get(context.TODO(), client.ObjectKey{Namespace: r.Instance.GetNamespace(), Name: common.MemberRollName}, smmr); smmrRetrievalError != nil {
+	smmrRetrievalError := r.Client.Get(context.TODO(), client.ObjectKey{Namespace: r.Instance.GetNamespace(), Name: common.MemberRollName}, smmr)
+	if smmrRetrievalError != nil {
 		if !apierrors.IsNotFound(smmrRetrievalError) {
 			// log error, but don't fail validation just yet: we'll just assume that the control plane namespace is the only namespace for now
 			// if we end up failing validation because of this assumption, we'll return this error
@@ -436,7 +440,9 @@ func (r *controlPlaneInstanceReconciler) PostStatus(ctx context.Context) error {
 	return nil
 }
 
-func (r *controlPlaneInstanceReconciler) postReconciliationStatus(ctx context.Context, reconciliationReason status.ConditionReason, reconciliationMessage string, processingErr error) error {
+func (r *controlPlaneInstanceReconciler) postReconciliationStatus(ctx context.Context,
+	reconciliationReason status.ConditionReason, reconciliationMessage string, processingErr error,
+) error {
 	var reason string
 	if r.isUpdating() {
 		reason = eventReasonUpdating
@@ -455,11 +461,7 @@ func (r *controlPlaneInstanceReconciler) postReconciliationStatus(ctx context.Co
 	r.Status.SetCondition(reconciledCondition)
 
 	// calculate readiness after updating reconciliation status, so we don't mark failed reconcilations as "ready"
-	_, err := r.updateReadinessStatus(ctx)
-	if err != nil {
-		return err
-	}
-
+	_ = r.updateReadinessStatus(ctx)
 	return r.PostStatus(ctx)
 }
 

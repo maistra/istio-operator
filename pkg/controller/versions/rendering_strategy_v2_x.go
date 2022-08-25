@@ -17,9 +17,6 @@ const (
 	TracingChart         = "tracing"
 	WASMExtensionsChart  = "wasm-extensions"
 	RLSChart             = "rls"
-
-	// Event reasons
-	eventReasonRendering = "Rendering"
 )
 
 type chartRenderingDetails struct {

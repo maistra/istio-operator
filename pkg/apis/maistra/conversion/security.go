@@ -90,20 +90,11 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 					// let it use its defaults
 					break
 				}
-				if hasIstiod {
-					// configure pilot (istiod) settings
-					if pksigner.RootCADir != "" {
-						addEnvToComponent(in, "pilot", "ROOT_CA_DIR", pksigner.RootCADir)
-					}
-					// XXX: nothing else is currently configurable
-				} else {
-					// configure security (citadel) settings
-					// XXX: nothing here is currently configurable for pre-1.6
-					if pksigner.RootCADir != "" {
-						// to support roundtripping
-						addEnvToComponent(in, "pilot", "ROOT_CA_DIR", pksigner.RootCADir)
-					}
+				// configure pilot (istiod) settings
+				if pksigner.RootCADir != "" {
+					addEnvToComponent(in, "pilot", "ROOT_CA_DIR", pksigner.RootCADir)
 				}
+				// XXX: nothing else is currently configurable
 			case v2.IstioCertificateSignerTypeSelfSigned:
 				if err := setHelmBoolValue(values, "security.selfSigned", true); err != nil {
 					return err
@@ -234,7 +225,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 
 	// JWKS Resolver CA
 	if security.JwksResolverCA != "" {
-		if err := setHelmStringValue(values, "pilot.jwksResolverExtraRootCA", string(security.JwksResolverCA)); err != nil {
+		if err := setHelmStringValue(values, "pilot.jwksResolverExtraRootCA", security.JwksResolverCA); err != nil {
 			return err
 		}
 	}

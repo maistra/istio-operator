@@ -103,7 +103,6 @@ type MixerTelemetryStdioConfig struct {
 	OutputAsJSON *bool `json:"outputAsJSON,omitempty"`
 }
 
-
 // RemoteTelemetryConfig configures a remote, legacy, v1 mixer telemetry.
 // .Values.telemetry.v1.enabled true
 type RemoteTelemetryConfig struct {

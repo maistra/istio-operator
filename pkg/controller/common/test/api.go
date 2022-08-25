@@ -124,15 +124,10 @@ func (a *AbstractActionFilter) Handles(action clienttesting.Action) bool {
 		(a.Namespace == "*" || a.Namespace == action.GetNamespace()) &&
 		(a.ResourceVersion == "*" || a.ResourceVersion == "" || action.GetResource().Version == a.ResourceVersion) {
 		switch typedAction := action.(type) {
-		case clienttesting.CreateAction:
+		case clienttesting.CreateAction: // clienttesting.UpdateAction also matches this case due to having the same signature)
 			accessor, err := meta.Accessor(typedAction.GetObject())
 			return a.Name == "*" || (err == nil && a.Name == accessor.GetName())
-		case clienttesting.UpdateAction:
-			accessor, err := meta.Accessor(typedAction.GetObject())
-			return a.Name == "*" || (err == nil && a.Name == accessor.GetName())
-		case clienttesting.DeleteAction:
-			return a.Name == "*" || a.Name == typedAction.GetName()
-		case clienttesting.GetAction:
+		case clienttesting.GetAction: // clienttesting.DeleteAction also matches this case due to having the same signature
 			return a.Name == "*" || a.Name == typedAction.GetName()
 		case clienttesting.ListAction:
 			return true

@@ -54,7 +54,7 @@ func populateJaegerAddonValues(jaeger *v2.JaegerAddonConfig, values map[string]i
 		// Memory settings - for round tripping
 		if jaeger.Install.Storage.Memory != nil {
 			if jaeger.Install.Storage.Memory.MaxTraces != nil {
-				if err := setHelmIntValue(jaegerValues, "memory.max_traces", int64(*jaeger.Install.Storage.Memory.MaxTraces)); err != nil {
+				if err := setHelmIntValue(jaegerValues, "memory.max_traces", *jaeger.Install.Storage.Memory.MaxTraces); err != nil {
 					return err
 				}
 			}

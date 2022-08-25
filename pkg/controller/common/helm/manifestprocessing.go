@@ -45,7 +45,12 @@ type ManifestProcessor struct {
 	owner                   types.NamespacedName
 }
 
-func NewManifestProcessor(controllerResources common.ControllerResources, patchFactory *PatchFactory, appInstance, appVersion string, owner types.NamespacedName, preprocessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) (bool, error), postProcessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) error, preprocessObjectForPatchFunc func(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error)) *ManifestProcessor {
+func NewManifestProcessor(controllerResources common.ControllerResources, patchFactory *PatchFactory,
+	appInstance, appVersion string, owner types.NamespacedName,
+	preprocessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) (bool, error),
+	postProcessObjectFunc func(ctx context.Context, obj *unstructured.Unstructured) error,
+	preprocessObjectForPatchFunc func(ctx context.Context, oldObj, newObj *unstructured.Unstructured) (*unstructured.Unstructured, error),
+) *ManifestProcessor {
 	return &ManifestProcessor{
 		ControllerResources:      controllerResources,
 		PatchFactory:             patchFactory,
@@ -117,7 +122,7 @@ func (p *ManifestProcessor) ProcessManifest(ctx context.Context, man manifest.Ma
 func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured.Unstructured, component string) (madeChanges bool, err error) {
 	log := common.LogFromContext(ctx)
 
-	obj, err = p.convertToSupportedApiVersion(ctx, obj)
+	obj, err = p.convertToSupportedAPIVersion(obj)
 	if err != nil {
 		return false, err
 	}
@@ -150,7 +155,7 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 		return false, err
 	}
 	if !mustContinue {
-		log.Info(fmt.Sprintf("skipping processing of resource due to spec.security.manageNetworkPolicy = false"))
+		log.Info("skipping processing of resource due to spec.security.manageNetworkPolicy = false")
 		return false, nil
 	}
 
@@ -163,7 +168,7 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 	objectKey, err := client.ObjectKeyFromObject(receiver)
 	if err != nil {
 		log.Error(err, "client.ObjectKeyFromObject() failed for resource")
-		// This can only happen if reciever isn't an unstructured.Unstructured
+		// This can only happen if receiver isn't an unstructured.Unstructured
 		// i.e. this should never happen
 		return madeChanges, err
 	}
@@ -255,7 +260,7 @@ func (p *ManifestProcessor) addMetadata(obj *unstructured.Unstructured, componen
 
 // if the given object's apiVersion is not supported by the cluster, the object is converted to one that is
 // (e.g. admissionregistration.k8s.io/v1beta1 -> admissionregistration.k8s.io/v1)
-func (p *ManifestProcessor) convertToSupportedApiVersion(ctx context.Context, obj *unstructured.Unstructured) (*unstructured.Unstructured, error) {
+func (p *ManifestProcessor) convertToSupportedAPIVersion(obj *unstructured.Unstructured) (*unstructured.Unstructured, error) {
 	if (obj.GetKind() == "MutatingWebhookConfiguration" || obj.GetKind() == "ValidatingWebhookConfiguration") &&
 		obj.GetAPIVersion() == "admissionregistration.k8s.io/v1beta1" {
 		return convertWebhookConfigurationFromV1beta1ToV1(obj)

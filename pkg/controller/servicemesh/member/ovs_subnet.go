@@ -2,8 +2,7 @@ package member
 
 import "context"
 
-type subnetStrategy struct {
-}
+type subnetStrategy struct{}
 
 var _ NamespaceReconciler = (*subnetStrategy)(nil)
 

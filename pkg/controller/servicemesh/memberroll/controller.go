@@ -19,10 +19,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/maistra/istio-operator/pkg/apis/external"
@@ -65,7 +65,10 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 
 	// Create a new controller
 	wrappedReconciler := common.NewConflictHandlingReconciler(r)
-	c, err := controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.Config.Controller.MemberRollReconcilers, Reconciler: wrappedReconciler})
+	c, err := controller.New(controllerName, mgr, controller.Options{
+		MaxConcurrentReconciles: common.Config.Controller.MemberRollReconcilers,
+		Reconciler:              wrappedReconciler,
+	})
 	if err != nil {
 		return err
 	}
@@ -294,8 +297,8 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 
 	// 5. check each ServiceMeshMember object to see if it's configured or terminating
 	allKnownMembers := sets.NewString(roll.Spec.Members...).Insert(getNamespaces(members)...).Delete(meshNamespace)
-	var configuredMembers = sets.NewString()
-	var terminatingMembers = sets.NewString()
+	configuredMembers := sets.NewString()
+	terminatingMembers := sets.NewString()
 	for _, member := range members.Items {
 		if member.DeletionTimestamp != nil {
 			terminatingMembers.Insert(member.Namespace)
@@ -384,7 +387,9 @@ func setMemberCondition(memberStatusMap map[string]maistrav1.ServiceMeshMemberSt
 	memberStatusMap[ns] = memberStatus
 }
 
-func (r *MemberRollReconciler) getServiceMeshControlPlane(ctx context.Context, namespace string) (*maistrav2.ServiceMeshControlPlane, maistrav1.ServiceMeshMemberRollConditionReason, string, error) {
+func (r *MemberRollReconciler) getServiceMeshControlPlane(ctx context.Context, namespace string) (*maistrav2.ServiceMeshControlPlane,
+	maistrav1.ServiceMeshMemberRollConditionReason, string, error,
+) {
 	meshList := &maistrav2.ServiceMeshControlPlaneList{}
 	if err := r.Client.List(ctx, meshList, client.InNamespace(namespace)); err != nil {
 		return nil, "", "", pkgerrors.Wrap(err, "Error retrieving ServiceMeshControlPlane resources")
@@ -411,9 +416,8 @@ func setReadyCondition(roll *maistrav1.ServiceMeshMemberRoll, ready bool, reason
 func toConditionStatus(ready bool) corev1.ConditionStatus {
 	if ready {
 		return corev1.ConditionTrue
-	} else {
-		return corev1.ConditionFalse
 	}
+	return corev1.ConditionFalse
 }
 
 func isCreatedByThisController(member *maistrav1.ServiceMeshMember) bool {
@@ -506,7 +510,9 @@ func (r *MemberRollReconciler) finalizeObject(ctx context.Context, roll *maistra
 func (r *MemberRollReconciler) updateStatus(ctx context.Context, instance *maistrav1.ServiceMeshMemberRoll) error {
 	log := common.LogFromContext(ctx)
 
-	instance.Status.SetAnnotation(statusAnnotationConfiguredMemberCount, fmt.Sprintf("%d/%d", len(instance.Status.ConfiguredMembers), len(instance.Status.Members)))
+	instance.Status.SetAnnotation(
+		statusAnnotationConfiguredMemberCount,
+		fmt.Sprintf("%d/%d", len(instance.Status.ConfiguredMembers), len(instance.Status.Members)))
 	instance.Status.ObservedGeneration = instance.GetGeneration()
 
 	err := r.Client.Status().Patch(ctx, instance, common.NewStatusPatch(instance.Status))

@@ -10,8 +10,8 @@ import (
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -32,9 +32,11 @@ func NewControlPlaneMutator(namespaceFilter webhookcommon.NamespaceFilter) *Cont
 	}
 }
 
-var _ admission.Handler = (*ControlPlaneMutator)(nil)
-var _ inject.Client = (*ControlPlaneMutator)(nil)
-var _ admission.DecoderInjector = (*ControlPlaneMutator)(nil)
+var (
+	_ admission.Handler         = (*ControlPlaneMutator)(nil)
+	_ inject.Client             = (*ControlPlaneMutator)(nil)
+	_ admission.DecoderInjector = (*ControlPlaneMutator)(nil)
+)
 
 func (v *ControlPlaneMutator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	log := logf.Log.WithName("smcp-mutator").
@@ -133,7 +135,7 @@ func (v *ControlPlaneMutator) decodeRequest(req admission.Request, logger logr.L
 		}
 		return &smcpv2mutator{smcppatch: &smcppatch{}, smcp: smcp, oldsmcp: oldsmcp}, nil
 	default:
-		return nil, fmt.Errorf("unkown resource type: %s", req.Kind.String())
+		return nil, fmt.Errorf("unknown resource type: %s", req.Kind.String())
 	}
 }
 

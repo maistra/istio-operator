@@ -21,13 +21,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	. "github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
@@ -38,7 +37,7 @@ func TestDefaultInstall(t *testing.T) {
 		{
 			// TODO: add more assertions to verify default component installation
 			name: "default." + versions.V2_0.String(),
-			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{Version: versions.V2_0.String()}),
+			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: versions.V2_0.String()}),
 			create: IntegrationTestValidation{
 				Assertions: ActionAssertions{
 					Assert("create").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsNotSeen(),
@@ -53,7 +52,7 @@ func TestDefaultInstall(t *testing.T) {
 		{
 			// TODO: add more assertions to verify default component installation
 			name: "default." + versions.V2_1.String(),
-			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{Version: versions.V2_1.String()}),
+			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: versions.V2_1.String()}),
 			create: IntegrationTestValidation{
 				Assertions: ActionAssertions{
 					Assert("create").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsSeen(),
@@ -78,7 +77,7 @@ func TestBootstrapping(t *testing.T) {
 		cniDaemonSetName      = "istio-cni-node"
 	)
 
-	var testCases = []struct {
+	testCases := []struct {
 		name     string
 		smcp     *maistrav2.ServiceMeshControlPlane
 		crdCount int
@@ -228,14 +227,14 @@ func FinalizerAddedTest(finalizer string) VerifierTestFunc {
 			obj := realAction.GetObject()
 			metaObj, err := meta.Accessor(obj)
 			if err != nil {
-				return errors.Wrapf(err, "FinalizerAddedTest for %s failed: could not convert resource to metav1.Object", finalizer)
+				return errors.Wrapf(err, "finalizerAddedTest for %s failed: could not convert resource to metav1.Object", finalizer)
 			}
 			if sets.NewString(metaObj.GetFinalizers()...).Has(finalizer) {
 				return nil
 			}
-			return fmt.Errorf("FinalizerAddedTest failed: object %s/%s is missing finalizer %s", metaObj.GetNamespace(), metaObj.GetName(), finalizer)
+			return fmt.Errorf("finalizerAddedTest failed: object %s/%s is missing finalizer %s", metaObj.GetNamespace(), metaObj.GetName(), finalizer)
 		}
-		return fmt.Errorf("FinalizerAddedTest for %s failed: action is not an UpdateAction", finalizer)
+		return fmt.Errorf("finalizerAddedTest for %s failed: action is not an UpdateAction", finalizer)
 	}
 }
 
@@ -254,19 +253,19 @@ func initalStatusTest(action clienttesting.Action) error {
 			jsonPatch := []jsonPatchOperation{}
 			err := json.Unmarshal(realAction.GetPatch(), &jsonPatch)
 			if err != nil {
-				return fmt.Errorf("InitialStatusTest failed: could not unmarshal patch data: %v", string(realAction.GetPatch()))
+				return fmt.Errorf("initialStatusTest failed: could not unmarshal patch data: %v", string(realAction.GetPatch()))
 			}
 			return validateNewStatus(&jsonPatch[0].Value)
 		default:
 			cp := &maistrav1.ServiceMeshControlPlane{}
 			err := json.Unmarshal(realAction.GetPatch(), cp)
 			if err != nil {
-				return fmt.Errorf("InitialStatusTest failed: could not unmarshal patch data: %v", string(realAction.GetPatch()))
+				return fmt.Errorf("initialStatusTest failed: could not unmarshal patch data: %v", string(realAction.GetPatch()))
 			}
 			return validateNewStatus(cp.Status.DeepCopy())
 		}
 	}
-	return fmt.Errorf("InitialStatusTest for failed: action is not a PatchAction")
+	return fmt.Errorf("initialStatusTest for failed: action is not a PatchAction")
 }
 
 func validateNewStatus(actual *maistrav1.ControlPlaneStatus) error {
@@ -306,7 +305,7 @@ func validateNewStatus(actual *maistrav1.ControlPlaneStatus) error {
 		ObservedGeneration: 0,
 	}
 	if !reflect.DeepEqual(actual, expected) {
-		return fmt.Errorf("InitialStatusTest failed: updated status does not match expected status:\n\texpected: %#v\n\tactual: %#v", actual, expected)
+		return fmt.Errorf("initialStatusTest failed: updated status does not match expected status:\n\texpected: %#v\n\tactual: %#v", actual, expected)
 	}
 	return nil
 }

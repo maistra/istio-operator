@@ -3,11 +3,12 @@ package controlplane
 import (
 	"testing"
 
-	"github.com/maistra/istio-operator/pkg/controller/common/test"
-	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/maistra/istio-operator/pkg/controller/common/test"
+	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
 
 func TestSetNamespaceLabels(t *testing.T) {
@@ -64,7 +65,6 @@ func TestSetNamespaceLabels(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			ns := &corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   "my-namespace",
@@ -85,10 +85,9 @@ func TestSetNamespaceLabels(t *testing.T) {
 				test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
 
 				ns = &corev1.Namespace{}
-				test.GetObject(ctx, cl, types.NamespacedName{"", "my-namespace"}, ns)
+				test.GetObject(ctx, cl, types.NamespacedName{Namespace: "", Name: "my-namespace"}, ns)
 				assert.DeepEquals(ns.Labels, tc.expectedLabels, "Unexpected namespace labels", t)
 			}
 		})
 	}
-
 }

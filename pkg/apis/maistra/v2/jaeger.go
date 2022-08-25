@@ -83,7 +83,7 @@ type JaegerElasticsearchStorageConfig struct {
 // Jaeger services.
 type JaegerIngressConfig struct {
 	Enablement `json:",inline"`
-	// Metadata represents addtional annotations/labels to be applied to the ingress/route.
+	// Metadata represents additional annotations/labels to be applied to the ingress/route.
 	// +optional
 	Metadata *MetadataConfig `json:"metadata,omitempty"`
 }

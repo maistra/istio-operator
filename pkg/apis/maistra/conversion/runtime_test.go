@@ -8,11 +8,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
-	"k8s.io/utils/pointer"
 )
 
 var runtimeTestCases []conversionTestCase
@@ -2351,7 +2351,7 @@ func TestRuntimeConversionFromV2(t *testing.T) {
 			specv2 := &v2.ControlPlaneSpec{}
 			// use expected values
 			helmValues = tc.isolatedIstio.DeepCopy()
-			if _, err := populateControlPlaneRuntimeConfig(helmValues.DeepCopy(), specv2); err != nil {
+			if err := populateControlPlaneRuntimeConfig(helmValues.DeepCopy(), specv2); err != nil {
 				t.Fatalf("error converting from values: %s", err)
 			}
 			assertEquals(t, tc.spec.Runtime, specv2.Runtime)

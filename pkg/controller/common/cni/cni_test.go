@@ -3,9 +3,10 @@ package cni
 import (
 	"testing"
 
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 func TestInitConfig_disablingCNI(t *testing.T) {

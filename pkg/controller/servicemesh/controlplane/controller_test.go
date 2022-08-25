@@ -46,7 +46,7 @@ func TestReconcileAddsFinalizer(t *testing.T) {
 	controlPlane := newControlPlane()
 	controlPlane.Finalizers = []string{}
 
-	cl, _, _, r := createClientAndReconciler(t, controlPlane)
+	cl, _, r := createClientAndReconciler(controlPlane)
 
 	assertReconcileSucceeds(r, t)
 
@@ -58,7 +58,7 @@ func TestReconcileFailsIfItCannotAddFinalizer(t *testing.T) {
 	controlPlane := newControlPlane()
 	controlPlane.Finalizers = []string{}
 
-	_, tracker, _, r := createClientAndReconciler(t, controlPlane)
+	_, tracker, r := createClientAndReconciler(controlPlane)
 	tracker.AddReactor("update", "servicemeshcontrolplanes", test.ClientFails())
 
 	assertReconcileFails(r, t)
@@ -69,7 +69,7 @@ func TestReconcileDoesNothingIfResourceIsDeletedAndHasNoFinalizers(t *testing.T)
 	controlPlane.DeletionTimestamp = &oneMinuteAgo
 	controlPlane.Finalizers = nil
 
-	_, tracker, _, r := createClientAndReconciler(t, controlPlane)
+	_, tracker, r := createClientAndReconciler(controlPlane)
 	assertReconcileSucceeds(r, t)
 
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
@@ -79,7 +79,7 @@ func TestDeleteInvokedWhenFinalizerPresentOnDeletedObject(t *testing.T) {
 	controlPlane := newControlPlane()
 	controlPlane.DeletionTimestamp = &oneMinuteAgo
 
-	_, _, _, r := createClientAndReconciler(t, controlPlane)
+	_, _, r := createClientAndReconciler(controlPlane)
 	assertReconcileSucceeds(r, t)
 
 	assert.True(instanceReconciler.deleteInvoked, "Expected Delete() to be invoked on instance reconciler", t)
@@ -88,7 +88,7 @@ func TestDeleteInvokedWhenFinalizerPresentOnDeletedObject(t *testing.T) {
 func TestReconcileInvokedWhenInstanceNotFullyReconciled(t *testing.T) {
 	controlPlane := newControlPlane()
 
-	_, _, _, r := createClientAndReconciler(t, controlPlane)
+	_, _, r := createClientAndReconciler(controlPlane)
 	assertReconcileSucceeds(r, t)
 
 	assert.True(instanceReconciler.reconcileInvoked, "Expected Reconcile() to be invoked on instance reconciler", t)
@@ -107,7 +107,7 @@ func TestUpdateReadinessInvokedWhenInstanceFullyReconciled(t *testing.T) {
 		LastTransitionTime: oneMinuteAgo,
 	})
 
-	_, _, _, r := createClientAndReconciler(t, controlPlane)
+	_, _, r := createClientAndReconciler(controlPlane)
 	assertReconcileSucceeds(r, t)
 
 	assert.True(instanceReconciler.updateReadinessInvoked, "Expected UpdateReadiness() to be invoked on instance reconciler", t)
@@ -115,13 +115,13 @@ func TestUpdateReadinessInvokedWhenInstanceFullyReconciled(t *testing.T) {
 }
 
 func TestReconcileDoesNothingWhenResourceIsNotFound(t *testing.T) {
-	_, tracker, _, r := createClientAndReconciler(t)
+	_, tracker, r := createClientAndReconciler()
 	assertReconcileSucceeds(r, t)
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 }
 
 func TestReconcileFailsWhenGetResourceFails(t *testing.T) {
-	_, tracker, _, r := createClientAndReconciler(t)
+	_, tracker, r := createClientAndReconciler()
 	tracker.AddReactor("get", "servicemeshcontrolplanes", test.ClientFails())
 
 	assertReconcileFails(r, t)
@@ -129,14 +129,14 @@ func TestReconcileFailsWhenGetResourceFails(t *testing.T) {
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 }
 
-func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker, record.EventRecorder, *ControlPlaneReconciler) {
+func createClientAndReconciler(clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker, *ControlPlaneReconciler) {
 	cl, enhancedTracker := test.CreateClient(clientObjects...)
 	fakeEventRecorder := &record.FakeRecorder{}
 
 	r := newReconciler(cl, scheme.Scheme, fakeEventRecorder, "istio-operator", cni.Config{Enabled: true})
 	r.instanceReconcilerFactory = NewFakeInstanceReconciler
 	instanceReconciler = &fakeInstanceReconciler{}
-	return cl, enhancedTracker, fakeEventRecorder, r
+	return cl, enhancedTracker, r
 }
 
 type fakeInstanceReconciler struct {
@@ -146,7 +146,7 @@ type fakeInstanceReconciler struct {
 	finished               bool
 }
 
-func NewFakeInstanceReconciler(controllerResources common.ControllerResources, instance *maistrav2.ServiceMeshControlPlane, cniConfig cni.Config) ControlPlaneInstanceReconciler {
+func NewFakeInstanceReconciler(_ common.ControllerResources, _ *maistrav2.ServiceMeshControlPlane, _ cni.Config) ControlPlaneInstanceReconciler {
 	return instanceReconciler
 }
 

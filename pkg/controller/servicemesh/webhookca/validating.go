@@ -32,30 +32,30 @@ type validatingWebhookWrapper struct {
 
 var _ webhookWrapper = (*validatingWebhookWrapper)(nil)
 
-func (vw *validatingWebhookWrapper) Object() runtime.Object {
-	return vw.ValidatingWebhookConfiguration
+func (w *validatingWebhookWrapper) Object() runtime.Object {
+	return w.ValidatingWebhookConfiguration
 }
 
-func (vw *validatingWebhookWrapper) MetaObject() metav1.Object {
-	return vw.ValidatingWebhookConfiguration
+func (w *validatingWebhookWrapper) MetaObject() metav1.Object {
+	return w.ValidatingWebhookConfiguration
 }
 
-func (vw *validatingWebhookWrapper) Copy() webhookWrapper {
-	return &validatingWebhookWrapper{ValidatingWebhookConfiguration: vw.ValidatingWebhookConfiguration.DeepCopy()}
+func (w *validatingWebhookWrapper) Copy() webhookWrapper {
+	return &validatingWebhookWrapper{ValidatingWebhookConfiguration: w.ValidatingWebhookConfiguration.DeepCopy()}
 }
 
-func (vw *validatingWebhookWrapper) NamespacedName() types.NamespacedName {
-	return types.NamespacedName{Namespace: validatingNamespaceValue, Name: vw.GetName()}
+func (w *validatingWebhookWrapper) NamespacedName() types.NamespacedName {
+	return types.NamespacedName{Namespace: validatingNamespaceValue, Name: w.GetName()}
 }
 
-func (vw *validatingWebhookWrapper) ClientConfigs() []*v1.WebhookClientConfig {
-	clientConfigs := make([]*v1.WebhookClientConfig, len(vw.Webhooks))
-	for index := range vw.Webhooks {
-		clientConfigs[index] = &vw.Webhooks[index].ClientConfig
+func (w *validatingWebhookWrapper) ClientConfigs() []*v1.WebhookClientConfig {
+	clientConfigs := make([]*v1.WebhookClientConfig, len(w.Webhooks))
+	for index := range w.Webhooks {
+		clientConfigs[index] = &w.Webhooks[index].ClientConfig
 	}
 	return clientConfigs
 }
 
-func (mw *validatingWebhookWrapper) UpdateCABundle(ctx context.Context, cl client.Client, caBundle []byte) error {
-	return updateAdmissionWebHookCABundles(ctx, cl, mw, caBundle)
+func (w *validatingWebhookWrapper) UpdateCABundle(ctx context.Context, cl client.Client, caBundle []byte) error {
+	return updateAdmissionWebHookCABundles(ctx, cl, w, caBundle)
 }

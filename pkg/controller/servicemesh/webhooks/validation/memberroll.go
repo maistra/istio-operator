@@ -12,11 +12,10 @@ import (
 	admissionv1 "k8s.io/api/admission/v1beta1"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	authorizationv1 "k8s.io/api/authorization/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -44,9 +43,11 @@ func NewMemberRollValidator(namespaceFilter webhookcommon.NamespaceFilter) *Memb
 	}
 }
 
-var _ admission.Handler = (*MemberRollValidator)(nil)
-var _ inject.Client = (*MemberRollValidator)(nil)
-var _ admission.DecoderInjector = (*MemberRollValidator)(nil)
+var (
+	_ admission.Handler         = (*MemberRollValidator)(nil)
+	_ inject.Client             = (*MemberRollValidator)(nil)
+	_ admission.DecoderInjector = (*MemberRollValidator)(nil)
+)
 
 func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	logger := logf.Log.WithName("smmr-validator").
@@ -75,22 +76,22 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request)
 
 	// verify name == default
 	if common.MemberRollName != smmr.Name {
-		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("ServiceMeshMemberRoll must be named '%s'", common.MemberRollName))
+		return badRequest(fmt.Sprintf("ServiceMeshMemberRoll must be named '%s'", common.MemberRollName))
 	}
 
 	if smmr.Namespace == common.GetOperatorNamespace() {
-		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("ServiceMeshMemberRoll may not be created in the same project/namespace as the operator"))
+		return badRequest("ServiceMeshMemberRoll may not be created in the same project/namespace as the operator")
 	}
 
 	// check for duplicate namespaces (we must check this in code, because +kubebuilder:validation:UniqueItem doesn't work)
 	if len(sets.NewString(smmr.Spec.Members...)) != len(smmr.Spec.Members) {
-		return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf("ServiceMeshMemberRoll may not contain duplicate namespaces in .spec.members"))
+		return badRequest("ServiceMeshMemberRoll may not contain duplicate namespaces in .spec.members")
 	}
 
 	// check if namespace names conform to DNS-1123 (we must check this in code, because +kubebuilder:validation:Pattern can't be applied to array elements yet)
 	for _, member := range smmr.Spec.Members {
 		if !memberRegex.MatchString(member) {
-			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, fmt.Sprintf(".spec.members contains invalid value '%s'. Must be a valid namespace name.", member))
+			return badRequest(fmt.Sprintf(".spec.members contains invalid value '%s'. Must be a valid namespace name.", member))
 		}
 	}
 
@@ -114,15 +115,15 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request)
 
 	for _, member := range smmr.Spec.Members {
 		if namespacesAlreadyConfigured.Has(member) {
-			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "one or more members are already defined in another ServiceMeshMemberRoll")
+			return badRequest("one or more members are already defined in another ServiceMeshMemberRoll")
 		} else if smmr.Namespace == member {
-			return validationFailedResponse(http.StatusBadRequest, metav1.StatusReasonBadRequest, "mesh project/namespace cannot be listed as a member")
+			return badRequest("mesh project/namespace cannot be listed as a member")
 		}
 	}
 
 	allowed, err := v.isUserAllowedToUpdatePods(common.NewContextWithLog(ctx, logger.WithValues("namespace", "<all>")), req, "")
 	if err != nil {
-		logger.Error(err, fmt.Sprintf("error performing cluster-scoped SAR check"))
+		logger.Error(err, "error performing cluster-scoped SAR check")
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 	if !allowed {
@@ -135,13 +136,15 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request)
 		allowed, rejectedNamespaces, err := v.isUserAllowedToUpdatePodsInAllNamespaces(ctx, req, namespacesToCheck)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				return admission.Errored(http.StatusBadRequest, fmt.Errorf("too many namespaces in ServiceMeshMemberRoll; validating webhook couldn't perform the authorization checks for all namespaces; either try the operation again as a cluster admin, or add fewer namespaces in a single operation"))
+				return admission.Errored(http.StatusBadRequest, fmt.Errorf("too many namespaces in ServiceMeshMemberRoll; "+
+					"validating webhook couldn't perform the authorization checks for all namespaces; "+
+					"either try the operation again as a cluster admin, or add fewer namespaces in a single operation"))
 			}
-			logger.Error(err, fmt.Sprintf("error performing SAR check each namespace"))
+			logger.Error(err, "error performing SAR check each namespace")
 			return admission.Errored(http.StatusInternalServerError, err)
 		}
 		if !allowed {
-			return validationFailedResponse(http.StatusForbidden, metav1.StatusReasonBadRequest, fmt.Sprintf("user '%s' does not have permission to access namespace(s): %s", req.AdmissionRequest.UserInfo.Username, rejectedNamespaces))
+			return forbidden(fmt.Sprintf("user '%s' does not have permission to access namespace(s): %s", req.AdmissionRequest.UserInfo.Username, rejectedNamespaces))
 		}
 	}
 
@@ -162,7 +165,9 @@ func (v *MemberRollValidator) findNewlyAddedNamespaces(smmr *maistrav1.ServiceMe
 	return namespacesToCheck, nil
 }
 
-func (v *MemberRollValidator) isUserAllowedToUpdatePodsInAllNamespaces(ctx context.Context, req admission.Request, namespacesToCheck sets.String) (bool, []string, error) {
+func (v *MemberRollValidator) isUserAllowedToUpdatePodsInAllNamespaces(ctx context.Context, req admission.Request,
+	namespacesToCheck sets.String,
+) (bool, []string, error) {
 	numConcurrentSARChecks := min(len(namespacesToCheck), maxConcurrentSARChecks)
 
 	log := common.LogFromContext(ctx)
@@ -170,7 +175,7 @@ func (v *MemberRollValidator) isUserAllowedToUpdatePodsInAllNamespaces(ctx conte
 
 	t := time.Now()
 	defer func() {
-		log.Info("SAR check completed", "duration", time.Now().Sub(t))
+		log.Info("SAR check completed", "duration", time.Since(t))
 	}()
 
 	in := make(chan string)
@@ -185,14 +190,14 @@ func (v *MemberRollValidator) isUserAllowedToUpdatePodsInAllNamespaces(ctx conte
 	var wg sync.WaitGroup
 	wg.Add(numConcurrentSARChecks)
 	for i := 0; i < numConcurrentSARChecks; i++ {
-		go func() {
-			workerCtx := common.NewContextWithLogValues(ctx, "worker", i)
+		go func(workerNumber int) {
+			workerCtx := common.NewContextWithLogValues(ctx, "worker", workerNumber)
 			for ns := range in {
 				allowed, err := v.isUserAllowedToUpdatePods(common.NewContextWithLogValues(workerCtx, "namespace", ns), req, ns)
 				out <- result{namespace: ns, allowed: allowed, err: err}
 			}
 			wg.Done()
-		}()
+		}(i)
 	}
 	go func() {
 		wg.Wait()

@@ -4,22 +4,21 @@ import (
 	"reflect"
 	"testing"
 
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	"github.com/maistra/istio-operator/pkg/controller/versions"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
+
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
-var (
-	kialiTestNodePort = int32(12345)
-)
+var kialiTestNodePort = int32(12345)
 
 var kialiTestCases []conversionTestCase
 
-func kialiTestCasesV2(version versions.Version) []conversionTestCase{
+func kialiTestCasesV2(version versions.Version) []conversionTestCase {
 	ver := version.String()
 	return []conversionTestCase{
 		{
@@ -646,7 +645,6 @@ func init() {
 		kialiTestCases = append(kialiTestCases, kialiTestCasesV2(v)...)
 	}
 }
-
 
 func TestKialiConversionFromV2(t *testing.T) {
 	for _, tc := range kialiTestCases {

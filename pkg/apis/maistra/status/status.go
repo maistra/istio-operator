@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/maistra/istio-operator/pkg/version"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
+	"github.com/maistra/istio-operator/pkg/version"
 )
 
 type StatusBase struct {
@@ -43,10 +43,8 @@ func (s *StatusBase) RemoveAnnotation(name string) {
 	}
 }
 
-
 // StatusType represents the status for a control plane, component, or resource
 type StatusType struct {
-
 	// Represents the latest available observations of the object's current state.
 	Conditions []Condition `json:"conditions,omitempty"`
 }
@@ -167,7 +165,6 @@ const (
 
 // A Condition represents a specific observation of the object's state.
 type Condition struct {
-
 	// The type of this condition.
 	Type ConditionType `json:"type,omitempty"`
 

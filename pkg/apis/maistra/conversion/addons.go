@@ -11,7 +11,7 @@ func populateAddonsValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 	}
 
 	// do kiali first, so it doesn't override any kiali.* settings added by other addons (e.g. prometheus, grafana, jaeger)
-	// XXX: not sure how important this is, as these settings should be updated as part of reconcilation
+	// XXX: not sure how important this is, as these settings should be updated as part of reconciliation
 	if in.Addons.Kiali != nil {
 		if err := populateKialiAddonValues(in.Addons.Kiali, values); err != nil {
 			return err

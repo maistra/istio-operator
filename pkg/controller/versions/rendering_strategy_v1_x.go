@@ -5,12 +5,6 @@ import (
 	"fmt"
 	"path"
 
-	jaegerv1 "github.com/maistra/istio-operator/pkg/apis/external/jaeger/v1"
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/controller/common/cni"
-	"github.com/maistra/istio-operator/pkg/controller/common/helm"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -18,11 +12,20 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	jaegerv1 "github.com/maistra/istio-operator/pkg/apis/external/jaeger/v1"
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
+	"github.com/maistra/istio-operator/pkg/controller/common/helm"
 )
 
 type v1xRenderingStrategy struct{}
 
-func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
+func (rs *v1xRenderingStrategy) render(ctx context.Context, v Ver, cr *common.ControllerResources, cniConfig cni.Config,
+	smcp *v2.ServiceMeshControlPlane,
+) (map[string][]manifest.Manifest, error) {
 	log := common.LogFromContext(ctx)
 	// Generate the spec
 	v1spec := &v1.ControlPlaneSpec{}
@@ -56,17 +59,17 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 
 	err = spec.Istio.SetField("istio_cni.enabled", cniConfig.Enabled)
 	if err != nil {
-		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.enabled: %v", err)
+		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.istio_cni.enabled: %v", err)
 	}
 	err = spec.Istio.SetField("istio_cni.istio_cni_network", v.GetCNINetworkName())
 	if err != nil {
-		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.istio_cni_network: %v", err)
+		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.istio_cni.istio_cni_network: %v", err)
 	}
 
 	// MAISTRA-1330
 	err = spec.Istio.SetField("global.istioNamespace", smcp.GetNamespace())
 	if err != nil {
-		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.istioNamespace: %v", err)
+		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.global.istioNamespace: %v", err)
 	}
 
 	// MAISTRA-2014 - external jaeger with v2 resource
@@ -82,7 +85,9 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 			}
 
 			// set the correct zipkin address
-			spec.Istio.SetField("global.tracer.zipkin.address", fmt.Sprintf("%s-collector.%s.svc:9411", jaegerResource, smcp.GetNamespace()))
+			if err := spec.Istio.SetField("global.tracer.zipkin.address", fmt.Sprintf("%s-collector.%s.svc:9411", jaegerResource, smcp.GetNamespace())); err != nil {
+				return nil, err
+			}
 
 			jaeger := &jaegerv1.Jaeger{}
 			jaeger.SetName(jaegerResource)
@@ -95,13 +100,19 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 					}
 					if jaegerInClusterURL, _, _ := spec.Istio.GetString("kiali.jaegerInClusterURL"); jaegerInClusterURL == "" {
 						// we won't override any user value
-						spec.Istio.SetField("kiali.jaegerInClusterURL", fmt.Sprintf("https://%s-query.%s.svc", jaegerResource, smcp.GetNamespace()))
+						if err := spec.Istio.SetField("kiali.jaegerInClusterURL", fmt.Sprintf("https://%s-query.%s.svc", jaegerResource, smcp.GetNamespace())); err != nil {
+							return nil, err
+						}
 					}
 					if strategy, _, _ := jaeger.Spec.GetString("strategy"); strategy == "" || strategy == "allInOne" {
-						spec.Istio.SetField("tracing.jaeger.template", "all-in-one")
+						if err := spec.Istio.SetField("tracing.jaeger.template", "all-in-one"); err != nil {
+							return nil, err
+						}
 					} else {
 						// we just want it to not be all-in-one.  see the charts
-						spec.Istio.SetField("tracing.jaeger.template", "production-elasticsearch")
+						if err := spec.Istio.SetField("tracing.jaeger.template", "production-elasticsearch"); err != nil {
+							return nil, err
+						}
 					}
 				}
 			} else if !errors.IsNotFound(err) {
@@ -119,7 +130,7 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 	smcp.Status.AppliedSpec = v2.ControlPlaneSpec{}
 	err = cr.Scheme.Convert(&smcp.Status.AppliedValues, &smcp.Status.AppliedSpec, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Unexpected error setting Status.AppliedSpec: %v", err)
+		return nil, fmt.Errorf("unexpected error setting Status.AppliedSpec: %v", err)
 	}
 
 	// Render the charts

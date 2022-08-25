@@ -26,66 +26,64 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common/helm"
 )
 
-var (
-	v2_1ChartMapping = map[string]chartRenderingDetails{
-		DiscoveryChart: {
-			path:         "istio-control/istio-discovery",
-			enabledField: "",
-		},
-		GatewayIngressChart: {
-			path:         "gateways/istio-ingress",
-			enabledField: "",
-		},
-		GatewayEgressChart: {
-			path:         "gateways/istio-egress",
-			enabledField: "",
-		},
-		TelemetryCommonChart: {
-			path:         "istio-telemetry/telemetry-common",
-			enabledField: "",
-		},
-		MixerTelemetryChart: {
-			path:         "istio-telemetry/mixer-telemetry",
-			enabledField: "mixer.telemetry",
-		},
-		PrometheusChart: {
-			path:         "istio-telemetry/prometheus",
-			enabledField: "prometheus",
-		},
-		TracingChart: {
-			path:         "istio-telemetry/tracing",
-			enabledField: "tracing",
-		},
-		MixerPolicyChart: {
-			path:         "istio-policy",
-			enabledField: "mixer.policy",
-		},
-		GrafanaChart: {
-			path:         "istio-telemetry/grafana",
-			enabledField: "grafana",
-		},
-		KialiChart: {
-			path:         "istio-telemetry/kiali",
-			enabledField: "kiali",
-		},
-		ThreeScaleChart: {
-			path:         "maistra-threescale",
-			enabledField: "",
-		},
-		MeshConfigChart: {
-			path:         "mesh-config",
-			enabledField: "",
-		},
-		WASMExtensionsChart: {
-			path:         "wasm-extensions",
-			enabledField: "wasmExtensions",
-		},
-		RLSChart: {
-			path:         "rls",
-			enabledField: "rateLimiting.rls",
-		},
-	}
-)
+var v2_1ChartMapping = map[string]chartRenderingDetails{
+	DiscoveryChart: {
+		path:         "istio-control/istio-discovery",
+		enabledField: "",
+	},
+	GatewayIngressChart: {
+		path:         "gateways/istio-ingress",
+		enabledField: "",
+	},
+	GatewayEgressChart: {
+		path:         "gateways/istio-egress",
+		enabledField: "",
+	},
+	TelemetryCommonChart: {
+		path:         "istio-telemetry/telemetry-common",
+		enabledField: "",
+	},
+	MixerTelemetryChart: {
+		path:         "istio-telemetry/mixer-telemetry",
+		enabledField: "mixer.telemetry",
+	},
+	PrometheusChart: {
+		path:         "istio-telemetry/prometheus",
+		enabledField: "prometheus",
+	},
+	TracingChart: {
+		path:         "istio-telemetry/tracing",
+		enabledField: "tracing",
+	},
+	MixerPolicyChart: {
+		path:         "istio-policy",
+		enabledField: "mixer.policy",
+	},
+	GrafanaChart: {
+		path:         "istio-telemetry/grafana",
+		enabledField: "grafana",
+	},
+	KialiChart: {
+		path:         "istio-telemetry/kiali",
+		enabledField: "kiali",
+	},
+	ThreeScaleChart: {
+		path:         "maistra-threescale",
+		enabledField: "",
+	},
+	MeshConfigChart: {
+		path:         "mesh-config",
+		enabledField: "",
+	},
+	WASMExtensionsChart: {
+		path:         "wasm-extensions",
+		enabledField: "wasmExtensions",
+	},
+	RLSChart: {
+		path:         "rls",
+		enabledField: "rateLimiting.rls",
+	},
+}
 
 var v2_1ChartOrder = [][]string{
 	{DiscoveryChart},
@@ -97,21 +95,37 @@ var v2_1ChartOrder = [][]string{
 }
 
 type versionStrategyV2_1 struct {
-	version
+	Ver
 	conversionImpl v2xConversionStrategy
 }
 
 var _ VersionStrategy = (*versionStrategyV2_1)(nil)
 
 func (v *versionStrategyV2_1) SetImageValues(ctx context.Context, cr *common.ControllerResources, smcpSpec *v1.ControlPlaneSpec) error {
-	common.UpdateField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V2_1.Grafana)
-	common.UpdateField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V2_1.Pilot)
-	common.UpdateField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V2_1.Prometheus)
-	common.UpdateField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V2_1.ProxyInit)
-	common.UpdateField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V2_1.ProxyV2)
-	common.UpdateField(smcpSpec.Istio, "wasmExtensions.cacher.image", common.Config.OLM.Images.V2_1.WASMCacher)
-	common.UpdateField(smcpSpec.Istio, "rateLimiting.rls.image", common.Config.OLM.Images.V2_1.RLS)
-	common.UpdateField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V2_1.ThreeScale)
+	if err := common.UpdateField(smcpSpec.Istio, "grafana.image", common.Config.OLM.Images.V2_1.Grafana); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.Istio, "pilot.image", common.Config.OLM.Images.V2_1.Pilot); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V2_1.Prometheus); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.Istio, "global.proxy_init.image", common.Config.OLM.Images.V2_1.ProxyInit); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V2_1.ProxyV2); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.Istio, "wasmExtensions.cacher.image", common.Config.OLM.Images.V2_1.WASMCacher); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.Istio, "rateLimiting.rls.image", common.Config.OLM.Images.V2_1.RLS); err != nil {
+		return err
+	}
+	if err := common.UpdateField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V2_1.ThreeScale); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -121,31 +135,33 @@ func (v *versionStrategyV2_1) ValidateV1(ctx context.Context, cl client.Client, 
 
 func (v *versionStrategyV2_1) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
-	allErrors = validateGateways(ctx, meta, spec, v.version, cl, allErrors)
-	allErrors = validatePolicyType(ctx, meta, spec, v.version, allErrors)
-	allErrors = validateTelemetryType(ctx, meta, spec, v.version, allErrors)
-	allErrors = v.validateProtocolDetection(ctx, meta, spec, allErrors)
-	allErrors = v.validateRuntime(ctx, meta, spec, allErrors)
+	allErrors = validateGateways(ctx, meta, spec, cl, allErrors)
+	allErrors = validatePolicyType(spec, v.Ver, allErrors)
+	allErrors = validateTelemetryType(spec, v.Ver, allErrors)
+	allErrors = v.validateProtocolDetection(spec, allErrors)
+	allErrors = v.validateRuntime(spec, allErrors)
 	allErrors = v.validateMixerDisabled(spec, allErrors)
 	allErrors = v.validateAddons(spec, allErrors)
 	return NewValidationError(allErrors...)
 }
 
-func (v *versionStrategyV2_1) validateProtocolDetection(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, allErrors []error) []error {
+func (v *versionStrategyV2_1) validateProtocolDetection(spec *v2.ControlPlaneSpec, allErrors []error) []error {
 	if spec.Proxy == nil || spec.Proxy.Networking == nil || spec.Proxy.Networking.Protocol == nil || spec.Proxy.Networking.Protocol.AutoDetect == nil {
 		return allErrors
 	}
 	autoDetect := spec.Proxy.Networking.Protocol.AutoDetect
 	if autoDetect.Inbound != nil && *autoDetect.Inbound {
-		allErrors = append(allErrors, fmt.Errorf("automatic protocol detection is not supported in %s; if specified, spec.proxy.networking.protocol.autoDetect.inbound must be set to false", v.String()))
+		allErrors = append(allErrors, fmt.Errorf("automatic protocol detection is not supported in %s; "+
+			"if specified, spec.proxy.networking.protocol.autoDetect.inbound must be set to false", v.String()))
 	}
 	if autoDetect.Outbound != nil && *autoDetect.Outbound {
-		allErrors = append(allErrors, fmt.Errorf("automatic protocol detection is not supported in %s; if specified, spec.proxy.networking.protocol.autoDetect.outbound must be set to false", v.String()))
+		allErrors = append(allErrors, fmt.Errorf("automatic protocol detection is not supported in %s; "+
+			"if specified, spec.proxy.networking.protocol.autoDetect.outbound must be set to false", v.String()))
 	}
 	return allErrors
 }
 
-func (v *versionStrategyV2_1) validateRuntime(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, allErrors []error) []error {
+func (v *versionStrategyV2_1) validateRuntime(spec *v2.ControlPlaneSpec, allErrors []error) []error {
 	if spec.Runtime == nil || spec.Runtime.Components == nil {
 		return allErrors
 	}
@@ -155,17 +171,21 @@ func (v *versionStrategyV2_1) validateRuntime(ctx context.Context, meta *metav1.
 		}
 		if component == v2.ControlPlaneComponentNameKiali {
 			if config.Pod.Affinity.PodAntiAffinity.RequiredDuringScheduling != nil || config.Pod.Affinity.PodAntiAffinity.PreferredDuringScheduling != nil {
-				allErrors = append(allErrors, fmt.Errorf("PodAntiAffinity configured via .spec.runtime.components.pod.affinity.podAntiAffinity.requiredDuringScheduling and preferredDuringScheduling is not supported for the %q component", v2.ControlPlaneComponentNameKiali))
+				allErrors = append(allErrors, fmt.Errorf("PodAntiAffinity configured via "+
+					".spec.runtime.components.pod.affinity.podAntiAffinity.requiredDuringScheduling "+
+					"and preferredDuringScheduling is not supported for the %q component", v2.ControlPlaneComponentNameKiali))
 			}
 		} else {
 			if config.Pod.Affinity.NodeAffinity != nil {
-				allErrors = append(allErrors, fmt.Errorf("NodeAffinity is only supported for the %q component", v2.ControlPlaneComponentNameKiali))
+				allErrors = append(allErrors, fmt.Errorf("nodeAffinity is only supported for the %q component", v2.ControlPlaneComponentNameKiali))
 			}
 			if config.Pod.Affinity.PodAffinity != nil {
-				allErrors = append(allErrors, fmt.Errorf("PodAffinity is only supported for the %q component", v2.ControlPlaneComponentNameKiali))
+				allErrors = append(allErrors, fmt.Errorf("podAffinity is only supported for the %q component", v2.ControlPlaneComponentNameKiali))
 			}
 			if config.Pod.Affinity.PodAntiAffinity.PodAntiAffinity != nil {
-				allErrors = append(allErrors, fmt.Errorf("PodAntiAffinity configured via .spec.runtime.components.pod.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution and preferredDuringSchedulingIgnoredDuringExecution is only supported for the %q component", v2.ControlPlaneComponentNameKiali))
+				allErrors = append(allErrors, fmt.Errorf("podAntiAffinity configured via "+
+					".spec.runtime.components.pod.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution "+
+					"and preferredDuringSchedulingIgnoredDuringExecution is only supported for the %q component", v2.ControlPlaneComponentNameKiali))
 			}
 		}
 	}
@@ -174,10 +194,12 @@ func (v *versionStrategyV2_1) validateRuntime(ctx context.Context, meta *metav1.
 
 func (v *versionStrategyV2_1) validateMixerDisabled(spec *v2.ControlPlaneSpec, allErrors []error) []error {
 	if spec.Policy != nil && (spec.Policy.Type == v2.PolicyTypeMixer || spec.Policy.Mixer != nil) {
-		allErrors = append(allErrors, fmt.Errorf("support for policy.type %q and policy.Mixer options have been removed in v2.1, please use another alternative", v2.PolicyTypeMixer))
+		allErrors = append(allErrors, fmt.Errorf("support for policy.type %q and policy.Mixer options have been removed in v2.1, "+
+			"please use another alternative", v2.PolicyTypeMixer))
 	}
 	if spec.Telemetry != nil && (spec.Telemetry.Type == v2.TelemetryTypeMixer || spec.Telemetry.Mixer != nil) {
-		allErrors = append(allErrors, fmt.Errorf("support for telemetry.type %q and telemetry.Mixer options have been removed in v2.1, please use another alternative", v2.TelemetryTypeMixer))
+		allErrors = append(allErrors, fmt.Errorf("support for telemetry.type %q and telemetry.Mixer options have been removed in v2.1, "+
+			"please use another alternative", v2.TelemetryTypeMixer))
 	}
 	return allErrors
 }
@@ -188,7 +210,8 @@ func (v *versionStrategyV2_1) validateAddons(spec *v2.ControlPlaneSpec, allError
 	}
 
 	if spec.Addons.ThreeScale != nil {
-		allErrors = append(allErrors, fmt.Errorf("support for 3scale has been removed in v2.1; please remove the spec.addons.3scale section from the SMCP and configure the 3scale WebAssembly adapter using a ServiceMeshExtension resource"))
+		allErrors = append(allErrors, fmt.Errorf("support for 3scale has been removed in v2.1; "+
+			"please remove the spec.addons.3scale section from the SMCP and configure the 3scale WebAssembly adapter using a ServiceMeshExtension resource"))
 	}
 	return allErrors
 }
@@ -223,7 +246,9 @@ func (v *versionStrategyV2_1) GetChartInstallOrder() [][]string {
 }
 
 // TODO: consider consolidating this with 2.0 rendering logic
-func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
+func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config,
+	smcp *v2.ServiceMeshControlPlane,
+) (map[string][]manifest.Manifest, error) {
 	log := common.LogFromContext(ctx)
 	// Generate the spec
 	// XXX: we should apply v2 templates first, then convert to values.yaml (v1)
@@ -259,37 +284,37 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 
 	err = spec.Istio.SetField("istio_cni.enabled", cniConfig.Enabled)
 	if err != nil {
-		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.enabled: %v", err)
+		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.istio_cni.enabled: %v", err)
 	}
 	err = spec.Istio.SetField("istio_cni.istio_cni_network", v.GetCNINetworkName())
 	if err != nil {
-		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.istio_cni.istio_cni_network: %v", err)
+		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.istio_cni.istio_cni_network: %v", err)
 	}
 
 	// Override these globals to match the install namespace
 	err = spec.Istio.SetField("global.istioNamespace", smcp.GetNamespace())
 	if err != nil {
-		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.istioNamespace: %v", err)
+		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.global.istioNamespace: %v", err)
 	}
 	err = spec.Istio.SetField("meshConfig.rootNamespace", smcp.GetNamespace())
 	if err != nil {
-		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.meshConfig.rootNamespace: %v", err)
+		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.meshConfig.rootNamespace: %v", err)
 	}
 	err = spec.Istio.SetField("global.prometheusNamespace", smcp.GetNamespace())
 	if err != nil {
-		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.prometheusNamespace: %v", err)
+		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.global.prometheusNamespace: %v", err)
 	}
 	err = spec.Istio.SetField("global.configRootNamespace", smcp.GetNamespace())
 	if err != nil {
-		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.configRootNamespace: %v", err)
+		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.global.configRootNamespace: %v", err)
 	}
 	err = spec.Istio.SetField("global.configNamespace", smcp.GetNamespace())
 	if err != nil {
-		return nil, fmt.Errorf("Could not set field status.lastAppliedConfiguration.istio.global.configNamespace: %v", err)
+		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.global.configNamespace: %v", err)
 	}
 	err = spec.Istio.SetField("meshConfig.ingressControllerMode", "OFF")
 	if err != nil {
-		return nil, fmt.Errorf("Could not set field meshConfig.ingressControllerMode: %v", err)
+		return nil, fmt.Errorf("could not set field meshConfig.ingressControllerMode: %v", err)
 	}
 
 	// XXX: using values.yaml settings, as things may have been overridden in profiles/templates
@@ -305,7 +330,7 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 			// set the correct zipkin address
 			err = spec.Istio.SetField("meshConfig.defaultConfig.tracing.zipkin.address", fmt.Sprintf("%s-collector.%s.svc:9411", jaegerResource, smcp.GetNamespace()))
 			if err != nil {
-				return nil, fmt.Errorf("Could not set field istio.meshConfig.defaultConfig.tracing.zipkin.address: %v", err)
+				return nil, fmt.Errorf("could not set field istio.meshConfig.defaultConfig.tracing.zipkin.address: %v", err)
 			}
 
 			jaeger := &jaegerv1.Jaeger{}
@@ -323,10 +348,14 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 						return nil, fmt.Errorf("error disabling jaeger install")
 					}
 					if strategy, _, _ := jaeger.Spec.GetString("strategy"); strategy == "" || strategy == "allInOne" {
-						spec.Istio.SetField("tracing.jaeger.template", "all-in-one")
+						if err := spec.Istio.SetField("tracing.jaeger.template", "all-in-one"); err != nil {
+							return nil, err
+						}
 					} else {
 						// we just want it to not be all-in-one.  see the charts
-						spec.Istio.SetField("tracing.jaeger.template", "production-elasticsearch")
+						if err := spec.Istio.SetField("tracing.jaeger.template", "production-elasticsearch"); err != nil {
+							return nil, err
+						}
 					}
 				}
 			} else if !errors.IsNotFound(err) {
@@ -372,7 +401,7 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 	smcp.Status.AppliedSpec = v2.ControlPlaneSpec{}
 	err = cr.Scheme.Convert(&smcp.Status.AppliedValues, &smcp.Status.AppliedSpec, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Unexpected error setting Status.AppliedSpec: %v", err)
+		return nil, fmt.Errorf("unexpected error setting Status.AppliedSpec: %v", err)
 	}
 
 	// Read in global.yaml
@@ -459,7 +488,9 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 						}
 					}
 				}
-				spec.Istio.SetField("gateways", origGateways)
+				if err := spec.Istio.SetField("gateways", origGateways); err != nil {
+					allErrors = append(allErrors, err)
+				}
 			}
 		} else {
 			allErrors = append(allErrors, fmt.Errorf("error retrieving values for gateways charts"))
@@ -470,7 +501,8 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 
 	if isEnabled(spec.ThreeScale) {
 		log.V(2).Info("rendering 3scale charts")
-		if chartRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), v2_1ChartMapping[ThreeScaleChart].path), smcp.GetNamespace(), spec.ThreeScale.GetContent()); err == nil {
+		if chartRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), v2_1ChartMapping[ThreeScaleChart].path),
+			smcp.GetNamespace(), spec.ThreeScale.GetContent()); err == nil {
 			renderings[ThreeScaleChart] = chartRenderings[ThreeScaleChart]
 		} else {
 			allErrors = append(allErrors, err)
@@ -484,19 +516,27 @@ func (v *versionStrategyV2_1) Render(ctx context.Context, cr *common.ControllerR
 	return renderings, nil
 }
 
-func (v *versionStrategyV2_1) renderIngressGateway(name string, namespace string, gateways map[string]interface{}, values *v1.HelmValues) (map[string][]manifest.Manifest, map[string]interface{}, error) {
+func (v *versionStrategyV2_1) renderIngressGateway(name string, namespace string, gateways map[string]interface{},
+	values *v1.HelmValues,
+) (map[string][]manifest.Manifest, map[string]interface{}, error) {
 	return v.renderGateway(name, namespace, v2_1ChartMapping[GatewayIngressChart].path, "istio-ingressgateway", gateways, values)
 }
 
-func (v *versionStrategyV2_1) renderEgressGateway(name string, namespace string, gateways map[string]interface{}, values *v1.HelmValues) (map[string][]manifest.Manifest, map[string]interface{}, error) {
+func (v *versionStrategyV2_1) renderEgressGateway(name string, namespace string, gateways map[string]interface{},
+	values *v1.HelmValues,
+) (map[string][]manifest.Manifest, map[string]interface{}, error) {
 	return v.renderGateway(name, namespace, v2_1ChartMapping[GatewayEgressChart].path, "istio-egressgateway", gateways, values)
 }
 
-func (v *versionStrategyV2_1) renderGateway(name string, namespace string, chartPath string, typeName string, gateways map[string]interface{}, values *v1.HelmValues) (map[string][]manifest.Manifest, map[string]interface{}, error) {
+func (v *versionStrategyV2_1) renderGateway(name string, namespace string, chartPath string, typeName string,
+	gateways map[string]interface{}, values *v1.HelmValues,
+) (map[string][]manifest.Manifest, map[string]interface{}, error) {
 	gateway, ok, _ := unstructured.NestedMap(gateways, name)
 	// if 'app' label is not provided, set it to gateway name
 	if _, found, _ := unstructured.NestedString(gateway, "labels", "app"); !found {
-		unstructured.SetNestedField(gateway, name, "labels", "app")
+		if err := unstructured.SetNestedField(gateway, name, "labels", "app"); err != nil {
+			return nil, nil, err
+		}
 	}
 	if !ok {
 		// XXX: return an error?
@@ -548,12 +588,15 @@ func validateAndConfigureRLS(spec *v1.HelmValues) error {
 				variables["BACKEND_TYPE"] = "memcache"
 				variables["MEMCACHE_HOST_PORT"] = storageAddress
 			default:
-				return NewValidationError(fmt.Errorf("invalid value %q for %s.storageBackend. It must be one of: {redis, memcache}", storageBackend, v2.ControlPlaneComponentNameRateLimiting))
+				return NewValidationError(fmt.Errorf("invalid value %q for %s.storageBackend. It must be one of: {redis, memcache}",
+					storageBackend, v2.ControlPlaneComponentNameRateLimiting))
 			}
 
 			for k, v := range variables {
 				field := fmt.Sprintf("%s.env.%s", v2.ControlPlaneComponentNameRateLimiting, k)
-				spec.SetField(field, v)
+				if err := spec.SetField(field, v); err != nil {
+					return err
+				}
 			}
 		}
 	}

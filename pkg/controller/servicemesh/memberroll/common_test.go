@@ -3,7 +3,7 @@ package memberroll
 import (
 	"context"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )

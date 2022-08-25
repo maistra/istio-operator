@@ -8,14 +8,19 @@ import (
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -23,13 +28,6 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
-
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -39,7 +37,6 @@ const (
 	eventReasonFailedReconcile           status.ConditionReason = "FailedReconcile"
 	eventReasonSuccessfulReconcile       status.ConditionReason = "Reconciled"
 	eventReasonControlPlaneMissing                              = "ErrorControlPlaneMissing"
-	eventReasonControlPlaneNotReconciled                        = "ErrorControlPlaneNotReconciled"
 	eventReasonErrorConfiguringNamespace                        = "ErrorConfiguringNamespace"
 	eventReasonErrorRemovingNamespace                           = "ErrorRemovingNamespace"
 
@@ -57,7 +54,9 @@ func Add(mgr manager.Manager) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, newNamespaceReconfilerFunc NewNamespaceReconcilerFunc, cniConfig cni.Config) *MemberReconciler {
+func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder,
+	newNamespaceReconfilerFunc NewNamespaceReconcilerFunc, cniConfig cni.Config,
+) *MemberReconciler {
 	return &MemberReconciler{
 		ControllerResources: common.ControllerResources{
 			Client:        cl,
@@ -74,7 +73,11 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 	ctx := common.NewContextWithLog(common.NewContext(), createLogger())
 	// Create a new controller
 	wrappedReconciler := common.NewConflictHandlingReconciler(r)
-	c, err := controller.New(controllerName, mgr, controller.Options{MaxConcurrentReconciles: common.Config.Controller.MemberReconcilers, Reconciler: wrappedReconciler})
+	c, err := controller.New(controllerName, mgr,
+		controller.Options{
+			MaxConcurrentReconciles: common.Config.Controller.MemberReconcilers,
+			Reconciler:              wrappedReconciler,
+		})
 	if err != nil {
 		return err
 	}
@@ -146,7 +149,8 @@ type MemberReconciler struct {
 	newNamespaceReconciler NewNamespaceReconcilerFunc
 }
 
-type NewNamespaceReconcilerFunc func(ctx context.Context, cl client.Client, meshNamespace string, meshVersion versions.Version, isCNIEnabled bool) (NamespaceReconciler, error)
+type NewNamespaceReconcilerFunc func(ctx context.Context, cl client.Client,
+	meshNamespace string, meshVersion versions.Version, isCNIEnabled bool) (NamespaceReconciler, error)
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
@@ -203,7 +207,7 @@ func (r *MemberReconciler) reconcileObject(ctx context.Context, member *maistrav
 	err := r.Client.Get(ctx, toObjectKey(member.Spec.ControlPlaneRef), smcp)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			err2 := r.reportError(ctx, member, false, eventReasonControlPlaneMissing, fmt.Errorf("The referenced ServiceMeshControlPlane object does not exist."))
+			err2 := r.reportError(ctx, member, eventReasonControlPlaneMissing, fmt.Errorf("the referenced ServiceMeshControlPlane object does not exist"))
 			return reconcile.Result{}, err2
 		}
 		return reconcile.Result{}, err
@@ -213,7 +217,7 @@ func (r *MemberReconciler) reconcileObject(ctx context.Context, member *maistrav
 	err = r.createMemberRollIfNeeded(ctx, member)
 	if err != nil {
 		if errors.IsNotFound(err) { // true when mesh namespace doesn't exist
-			err2 := r.reportError(ctx, member, false, maistrav1.ConditionReasonMemberCannotCreateMemberRoll, err)
+			err2 := r.reportError(ctx, member, maistrav1.ConditionReasonMemberCannotCreateMemberRoll, err)
 			return reconcile.Result{}, err2
 		}
 		return reconcile.Result{}, err
@@ -233,7 +237,7 @@ func (r *MemberReconciler) reconcileObject(ctx context.Context, member *maistrav
 
 	err = reconciler.reconcileNamespaceInMesh(ctx, member.Namespace)
 	if err != nil {
-		return reconcile.Result{}, r.reportError(ctx, member, false, eventReasonErrorConfiguringNamespace, err)
+		return reconcile.Result{}, r.reportError(ctx, member, eventReasonErrorConfiguringNamespace, err)
 	}
 
 	// 4. Update the status
@@ -242,17 +246,6 @@ func (r *MemberReconciler) reconcileObject(ctx context.Context, member *maistrav
 	member.Status.ServiceMeshReconciledVersion = smcp.Status.GetReconciledVersion()
 	err = r.updateStatus(ctx, member, true, true, "", "")
 	return reconcile.Result{}, err
-}
-
-func isReconciled(controlPlane *maistrav2.ServiceMeshControlPlane) bool {
-	if controlPlane.Status.ObservedGeneration == 0 {
-		return false
-	}
-	condition := controlPlane.Status.GetCondition(status.ConditionTypeReconciled)
-	if condition.Status != status.ConditionStatusTrue {
-		return false
-	}
-	return true
 }
 
 func (r *MemberReconciler) createMemberRollIfNeeded(ctx context.Context, member *maistrav1.ServiceMeshMember) error {
@@ -302,12 +295,12 @@ func (r *MemberReconciler) finalizeObject(ctx context.Context, obj runtime.Objec
 	}
 	err = reconciler.removeNamespaceFromMesh(ctx, member.Namespace)
 	if err != nil {
-		return r.reportError(ctx, member, false, eventReasonErrorRemovingNamespace, err)
+		return r.reportError(ctx, member, eventReasonErrorRemovingNamespace, err)
 	}
 
 	err = r.removeMemberRollIfNeeded(ctx, member)
 	if err != nil {
-		err2 := r.reportError(ctx, member, false, maistrav1.ConditionReasonMemberCannotDeleteMemberRoll, err)
+		err2 := r.reportError(ctx, member, maistrav1.ConditionReasonMemberCannotDeleteMemberRoll, err)
 		if err2 != nil {
 			return err2
 		}
@@ -332,26 +325,30 @@ func (r *MemberReconciler) removeMemberRollIfNeeded(ctx context.Context, member 
 		memberRollCreatedByThisController := memberRoll.Annotations[common.CreatedByKey] == controllerName
 		if len(memberRoll.Spec.Members) == 0 && memberRollCreatedByThisController {
 			log.Info("Deleting ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll).String())
-			err = r.Client.Delete(ctx, memberRoll)     // TODO: need to add resourceVersion precondition to delete request (need newer apimachinery to do that)
-			if err != nil && !errors.IsNotFound(err) { // if NotFound, MemberRoll has been deleted, which is what we wanted. This means this is not an error, but a success.
+			err = r.Client.Delete(ctx, memberRoll) // TODO: need to add resourceVersion precondition to delete request (need newer apimachinery to do that)
+			if err != nil && !errors.IsNotFound(err) {
+				// if NotFound, MemberRoll has been deleted, which is what we wanted. This means this is not an error, but a success.
 				return pkgerrors.Wrapf(err, "Could not delete ServiceMeshMemberRoll %s/%s", memberRoll.Namespace, memberRoll.Name)
 			}
 		}
 	}
 	return nil
-
 }
 
-func (r *MemberReconciler) reportError(ctx context.Context, member *maistrav1.ServiceMeshMember, ready bool, reason maistrav1.ServiceMeshMemberConditionReason, err error) error {
+func (r *MemberReconciler) reportError(ctx context.Context, member *maistrav1.ServiceMeshMember,
+	reason maistrav1.ServiceMeshMemberConditionReason, err error,
+) error {
 	if common.IsConflict(err) {
 		// we never record conflicts, because they aren't true errors
 		return nil
 	}
 	r.recordEvent(member, corev1.EventTypeWarning, eventReasonFailedReconcile, err.Error())
-	return r.updateStatus(ctx, member, false, ready, reason, err.Error())
+	return r.updateStatus(ctx, member, false, false, reason, err.Error())
 }
 
-func (r *MemberReconciler) updateStatus(ctx context.Context, member *maistrav1.ServiceMeshMember, reconciled, ready bool, reason maistrav1.ServiceMeshMemberConditionReason, message string) error {
+func (r *MemberReconciler) updateStatus(ctx context.Context, member *maistrav1.ServiceMeshMember, reconciled, ready bool,
+	reason maistrav1.ServiceMeshMemberConditionReason, message string,
+) error {
 	member.Status.ObservedGeneration = member.Generation
 	member.Status.SetCondition(maistrav1.ServiceMeshMemberCondition{
 		Type:    maistrav1.ConditionTypeMemberReconciled,

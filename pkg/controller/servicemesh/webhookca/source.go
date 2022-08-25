@@ -85,8 +85,8 @@ func (s *SecretCABundleSource) MatchedObjects() []ObjectRef {
 }
 
 func (s *SecretCABundleSource) Copy() CABundleSource {
-	new := *s
-	return &new
+	s2 := *s
+	return &s2
 }
 
 type ConfigMapCABundleSource struct {
@@ -98,7 +98,7 @@ type ConfigMapCABundleSource struct {
 var _ CABundleSource = (*ConfigMapCABundleSource)(nil)
 
 func (s *ConfigMapCABundleSource) GetCABundle(ctx context.Context, client client.Client) ([]byte, error) {
-	namespacedName := types.NamespacedName{s.Namespace, s.ConfigMapName}
+	namespacedName := types.NamespacedName{Namespace: s.Namespace, Name: s.ConfigMapName}
 	cm := &corev1.ConfigMap{}
 	err := client.Get(ctx, namespacedName, cm)
 	if err != nil {
@@ -134,6 +134,6 @@ func (s *ConfigMapCABundleSource) MatchedObjects() []ObjectRef {
 }
 
 func (s *ConfigMapCABundleSource) Copy() CABundleSource {
-	new := *s
-	return &new
+	s2 := *s
+	return &s2
 }

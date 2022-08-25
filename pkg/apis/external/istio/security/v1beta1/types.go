@@ -7,7 +7,10 @@ import (
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type AuthorizationPolicy struct{ external.Base `json:",inline"`}
+type AuthorizationPolicy struct {
+	external.Base `json:",inline"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type AuthorizationPolicyList struct {
 	metav1.TypeMeta `json:",inline"`

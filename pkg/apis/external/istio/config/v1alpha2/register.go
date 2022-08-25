@@ -3,7 +3,7 @@ package v1alpha2
 import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
 var (
@@ -57,7 +57,7 @@ func init() {
 }
 
 func registerTypeForKind(kind string, single, list runtime.Object) func(*runtime.Scheme) error {
-	return func (s *runtime.Scheme) error {
+	return func(s *runtime.Scheme) error {
 		s.AddKnownTypeWithName(SchemeGroupVersion.WithKind(kind), single)
 		s.AddKnownTypeWithName(SchemeGroupVersion.WithKind(kind+"List"), list)
 		return nil
