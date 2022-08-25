@@ -33,6 +33,7 @@ tracing:
 
 
   jaeger:
+    template: ""
     # include elasticsearch to support default configurations
     elasticsearch: {}
     install: true

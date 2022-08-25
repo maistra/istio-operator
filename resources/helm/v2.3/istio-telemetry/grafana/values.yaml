@@ -1,9 +1,23 @@
+global:
+  # ImagePullSecrets for control plane ServiceAccount, list of secrets in the same namespace
+  # to use for pulling any images in pods that reference this ServiceAccount.
+  # Must be set for any cluster configured with private docker registry.
+  imagePullSecrets: []
+
+  # Kubernetes >=v1.11.0 will create two PriorityClass, including system-cluster-critical and
+  # system-node-critical, it is better to configure this in order to make sure your Istio pods
+  # will not be killed because of low priority class.
+  # Refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#priorityclass
+  # for more detail.
+  priorityClassName: ""
+
+  oauthproxy:
+    image: registry.redhat.io/openshift4/ose-oauth-proxy:latest
+
 grafana:
   enabled: true
   replicaCount: 1
-  image:
-    repository: grafana/grafana
-    tag: 7.2.1
+  image: grafana
   persist: false
   storageClassName: ""
   accessMode: ReadWriteMany

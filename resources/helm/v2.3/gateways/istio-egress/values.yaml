@@ -204,6 +204,8 @@ global:
     # Expected values are: trace|debug|info|warning|error|critical|off
     logLevel: warning
 
+    tracer: zipkin
+
   ##############################################################################################
   # The following values are found in other charts. To effectively modify these values, make   #
   # make sure they are consistent across your Istio helm charts                                #

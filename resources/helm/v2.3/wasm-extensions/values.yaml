@@ -1,3 +1,14 @@
+global:
+  proxy:
+    # CAUTION: It is important to ensure that all Istio helm charts specify the same clusterDomain value
+    # cluster domain. Default value is "cluster.local".
+    clusterDomain: "cluster.local"
+
+  # ImagePullSecrets for control plane ServiceAccount, list of secrets in the same namespace
+  # to use for pulling any images in pods that reference this ServiceAccount.
+  # Must be set for any cluster configured with private docker registry.
+  imagePullSecrets: []
+
 wasmExtensions:
   enabled: true
 

@@ -317,8 +317,14 @@ lint-go:
 lint-yaml:
 	@${FINDFILES} \( -name '*.yml' -o -name '*.yaml' \) -not \( -wholename './build/manifest-templates/clusterserviceversion.yaml' \) -not -exec grep -q -e "{{" {} \; -print0 | ${XARGS} yamllint -c build/.yamllint.yml -f parsable
 
+.PHONY: lint-helm
+lint-helm:
+	@${FINDFILES} -name 'Chart.yaml' -path './resources/helm/v2.?/*' \
+	-not \(	-path './resources/helm/v2.0/*' -o -path './resources/helm/v2.1/*' -o -path './resources/helm/v2.2/*' \) \
+	-print0 | ${XARGS} -L 1 dirname | xargs -r helm lint --strict
+
 .PHONY: lint
-lint: lint-scripts lint-go lint-yaml
+lint: lint-scripts lint-go lint-yaml lint-helm
 
 ################################################################################
 # create image

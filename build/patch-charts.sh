@@ -208,10 +208,17 @@ function patchGalley() {
           - name: ENABLE_IOR\
             value: "{{ $iorEnabled }}"' "${deployment}"
 
+  sed_wrap -i -e '/base:/ i\
+gateways: {}\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
+
   # Extensions
   sed_wrap -i -e '/env:/ a\
           - name: ENABLE_MAISTRA_EXTENSIONS\
             value: "{{ .Values.wasmExtensions.enabled }}"' "${deployment}"
+
+  sed_wrap -i -e '/base:/ i\
+wasmExtensions:\
+  enabled: false\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
 
   # analysis
   sed_wrap -i -e '/PILOT_ENABLE_ANALYSIS/ i\
@@ -256,6 +263,15 @@ function patchGateways() {
 '
   sed_wrap -i -e "/meshConfig:/ i$tracerConfig" "${HELM_DIR}/gateways/istio-ingress/values.yaml"
   sed_wrap -i -e "/meshConfig:/ i$tracerConfig" "${HELM_DIR}/gateways/istio-egress/values.yaml"
+
+  sed_wrap -i -e '/  logLevel:/ a\\n    tracer: zipkin' "${HELM_DIR}/gateways/istio-ingress/values.yaml"
+  sed_wrap -i -e '/  logLevel:/ a\\n    tracer: zipkin' "${HELM_DIR}/gateways/istio-egress/values.yaml"
+
+  sed_wrap -i -e '/  priorityClassName:/ a\
+\
+  # Whether to enable the Kubernetes Ingress feature.\
+  k8sIngress:\
+    enabled: false' "${HELM_DIR}/gateways/istio-ingress/values.yaml"
 
   # Disable defaultTemplates to avoid injection of arbitrary things
   sed_wrap -i -e 's/defaultTemplates: \[\]/\# defaultTemplates: \[\]/' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
@@ -375,8 +391,6 @@ function patchSidecarInjector() {
   # shellcheck disable=SC2016
   sed_wrap -i -e '/annotations:/,$s/`istio-cni`/.Values.istio_cni.istio_cni_network/' \
       "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
-  sed_wrap -i -e '/excludeInboundPorts/a\
-    includeInboundPorts: "*"' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
   # status port is incorrect
   sed_wrap -i -e 's/statusPort: 15020$/statusPort: 15021/' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
   # exclude 15090 from inbound ports
@@ -448,7 +462,21 @@ function moveEnvoyFiltersToMeshConfigChart() {
 ' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
 
   sed_wrap -i -e '/telemetry:/ i\
+# meshConfig defines runtime configuration of components, including Istiod and istio-agent behavior\
+# See https://istio.io/docs/reference/config/istio.mesh.v1alpha1/ for all available options\
+meshConfig:\
+  # The namespace to treat as the administrative root namespace for Istio configuration.\
+  # When processing a leaf namespace Istio will search for declarations in that namespace first\
+  # and if none are found it will search in the root namespace. Any matching declaration found in the root namespace\
+  # is processed as if it were declared in the leaf namespace.\
+  rootNamespace:\
+\
 global:\
+  multiCluster:\
+    # Should be set to the name of the cluster this installation will run in. This is required for sidecar injection\
+    # to properly label proxies\
+    clusterName: ""\
+\
   # Default mtls policy. If true, mtls between services will be enabled by default.\
   mtls:\
     # Default setting for service-to-service mtls. Can be set explicitly using\
@@ -458,7 +486,7 @@ global:\
     # or its DestinationRule does not have TLSSettings specified, Istio configures client side\
     # TLS configuration automatically, based on the server side mTLS authentication policy and the\
     # availibity of sidecars.\
-    auto: true' "${HELM_DIR}/mesh-config/values.yaml"
+    auto: true\n' "${HELM_DIR}/mesh-config/values.yaml"
 
 }
 
