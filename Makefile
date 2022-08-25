@@ -277,12 +277,16 @@ build: update-generated-code update-charts update-templates compile
 lint-scripts:
 	@${FINDFILES} -name '*.sh' -print0 | ${XARGS} shellcheck
 
+.PHONY: lint-go
 lint-go:
 	@${FINDFILES} -name '*.go' \( ! \( -name '*.gen.go' -o -name '*.pb.go' -o -name 'zz_generated.*.go' \) \) -print0 | ${XARGS} build/lint_go.sh
 
+.PHONY: lint-yaml
+lint-yaml:
+	@${FINDFILES} \( -name '*.yml' -o -name '*.yaml' \) -not \( -wholename './build/manifest-templates/clusterserviceversion.yaml' \) -not -exec grep -q -e "{{" {} \; -print0 | ${XARGS} yamllint -c build/.yamllint.yml -f parsable
 
 .PHONY: lint
-lint: lint-scripts lint-go
+lint: lint-scripts lint-go lint-yaml
 
 ################################################################################
 # create image
