@@ -111,6 +111,15 @@ function patchTemplates() {
       sed_wrap -i -e '/operator\.istio\.io/d' $file
     fi
   done
+
+  sed_wrap -i -e 's/^apiVersion: policy\/v1beta1/{{- if (semverCompare ">=1.21-0" .Capabilities.KubeVersion.GitVersion) }}\
+apiVersion: policy\/v1\
+{{- else }}\
+apiVersion: policy\/v1beta1\
+{{- end }}/g'\
+    ${HELM_DIR}/gateways/istio-egress/templates/poddisruptionbudget.yaml\
+    ${HELM_DIR}/gateways/istio-ingress/templates/poddisruptionbudget.yaml\
+    ${HELM_DIR}/istio-control/istio-discovery/templates/poddisruptionbudget.yaml
 }
 
 function patchGalley() {
