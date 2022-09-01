@@ -65,9 +65,12 @@ function checkDependencies() {
     echo "Please install the python yq package, e.g. 'pip install --user yq'"
     exit 1
   else
-    s="yq 2.*"
-    if ! [[ $(${YQ} --version) =~ $s ]]; then
-      echo "Install the correct (python) yq package, e.g. 'pip install --user yq'"
+    # check if yq is go or python-based (note: the go version of yq prints
+    # "yq version x.y.z", whereas the python version prints "yq x.y.z")
+    goPythonRegex="yq version .*"
+    ver=$(${YQ} --version)
+    if [[ $ver =~ $goPythonRegex ]]; then
+      echo "Install the correct (python) yq package, e.g. 'pip install --user yq'; current version: $ver"
       exit 1
     fi
   fi
