@@ -1,13 +1,12 @@
-{{ $gateway := index .Values "gateways" "istio-egressgateway" }}
+{{ $gateway := index .Values "gateways" "istio-ingressgateway" }}
 {{- if and $gateway.autoscaleEnabled $gateway.autoscaleMin $gateway.autoscaleMax }}
 {{- if (semverCompare ">=1.25-0" .Capabilities.KubeVersion.GitVersion) }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ $gateway.name | default "istio-egressgateway" }}
-  namespace: {{ $gateway.namespace | default .Release.Namespace }}
+  name: {{ $gateway.name | default "istio-ingressgateway" }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.11"
 {{ $gateway.labels | toYaml | indent 4 }}
     release: {{ .Release.Name }}
 spec:
@@ -16,7 +15,7 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ $gateway.name | default "istio-egressgateway" }}
+    name: {{ $gateway.name | default "istio-ingressgateway" }}
   metrics:
     - type: Resource
       resource:
@@ -28,10 +27,9 @@ spec:
 apiVersion: autoscaling/v2beta1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ $gateway.name | default "istio-egressgateway" }}
-  namespace: {{ $gateway.namespace | default .Release.Namespace }}
+  name: {{ $gateway.name | default "istio-ingressgateway" }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.11"
 {{ $gateway.labels | toYaml | indent 4 }}
     release: {{ .Release.Name }}
 spec:
@@ -40,7 +38,7 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ $gateway.name | default "istio-egressgateway" }}
+    name: {{ $gateway.name | default "istio-ingressgateway" }}
   metrics:
     - type: Resource
       resource:

@@ -5,9 +5,8 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: {{ $gateway.name | default "istio-egressgateway" }}
-  namespace: {{ $gateway.namespace | default .Release.Namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.11"
 {{ $gateway.labels | toYaml | indent 4 }}
     release: {{ .Release.Name }}
 spec:
@@ -29,9 +28,8 @@ apiVersion: autoscaling/v2beta1
 kind: HorizontalPodAutoscaler
 metadata:
   name: {{ $gateway.name | default "istio-egressgateway" }}
-  namespace: {{ $gateway.namespace | default .Release.Namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.0.11"
 {{ $gateway.labels | toYaml | indent 4 }}
     release: {{ .Release.Name }}
 spec:
