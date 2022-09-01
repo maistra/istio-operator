@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: istiod-internal-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
+  labels:
+    maistra-version: "2.3.0"
+    app: istiod
+    release: {{ .Release.Name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: istiod-internal-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: istiod-{{ .Values.revision | default "default" }}
+    namespace: {{ .Release.Namespace }}
+---

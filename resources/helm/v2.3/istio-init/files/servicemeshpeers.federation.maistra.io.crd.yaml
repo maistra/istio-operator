@@ -1,0 +1,354 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  labels:
+    maistra-version: "2.3.0"
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.6.2
+  creationTimestamp: null
+  name: servicemeshpeers.federation.maistra.io
+spec:
+  group: federation.maistra.io
+  names:
+    categories:
+    - maistra-io
+    kind: ServiceMeshPeer
+    listKind: ServiceMeshPeerList
+    plural: servicemeshpeers
+    singular: servicemeshpeer
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: ServiceMeshPeer is the Schema for joining two meshes together.  The
+          resource name will be used to identify the 'cluster' to which imported services
+          belong.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ServiceMeshPeerSpec configures details required to support
+              federation with another service mesh.
+            properties:
+              gateways:
+                description: Gateways configures the gateways used to facilitate ingress
+                  and egress with the other mesh.
+                properties:
+                  egress:
+                    description: Gateway through which outbound federated service
+                      traffic will travel.
+                    properties:
+                      name:
+                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        type: string
+                    type: object
+                  ingress:
+                    description: Gateway through which inbound federated service traffic
+                      will travel.
+                    properties:
+                      name:
+                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        type: string
+                    type: object
+                type: object
+              remote:
+                description: Remote configures details related to the remote mesh
+                  with which this mesh is federating.
+                properties:
+                  addresses:
+                    description: Addresses are the addresses to which discovery and
+                      service requests should be sent (i.e. the addresses of ingress
+                      gateways on the remote mesh).  These may be specified as resolveable
+                      DNS names or IP addresses.
+                    items:
+                      type: string
+                    type: array
+                  discoveryPort:
+                    description: DiscoveryPort is the port on which the addresses
+                      are handling discovery requests.  Defaults to 8188, if unspecified.
+                    format: int32
+                    type: integer
+                  servicePort:
+                    description: ServicePort is the port on which the addresses are
+                      handling service requests.  Defaults to 15443, if unspecified.
+                    format: int32
+                    type: integer
+                type: object
+              security:
+                description: Security configures details for securing communication
+                  with the other mesh.
+                properties:
+                  certificateChain:
+                    description: Name of ConfigMap containing certificate chain to
+                      be used to validate the remote.  This is also used to validate
+                      certificates used by the remote services (both client and server
+                      certificates).  The name of the entry should be root-cert.pem.  If
+                      unspecified, it will look for a ConfigMap named <meshfederation-name>-ca-root-cert,
+                      e.g. if this resource is named mesh1, it will look for a ConfigMap
+                      named mesh1-ca-root-cert.
+                    properties:
+                      apiGroup:
+                        description: APIGroup is the group for the resource being
+                          referenced. If APIGroup is not specified, the specified
+                          Kind must be in the core API group. For any other third-party
+                          types, APIGroup is required.
+                        type: string
+                      kind:
+                        description: Kind is the type of resource being referenced
+                        type: string
+                      name:
+                        description: Name is the name of resource being referenced
+                        type: string
+                    required:
+                    - kind
+                    - name
+                    type: object
+                  clientID:
+                    description: ClientID of the remote mesh.  This is used to authenticate
+                      incoming requrests from the remote mesh's discovery client.
+                    type: string
+                  trustDomain:
+                    description: TrustDomain of remote mesh.
+                    type: string
+                type: object
+            type: object
+          status:
+            description: ServiceMeshPeerStatus provides information related to the
+              other mesh.
+            properties:
+              discoveryStatus:
+                description: DiscoveryStatus represents the discovery status of each
+                  pilot/istiod pod in the mesh.
+                properties:
+                  active:
+                    description: Active represents the pilot/istiod pods actively
+                      watching the other mesh for discovery.
+                    items:
+                      description: PodPeerDiscoveryStatus provides discovery details
+                        related to a specific pilot/istiod pod.
+                      properties:
+                        pod:
+                          description: Pod is the pod name to which these details
+                            apply.  This maps to a a pilot/istiod pod.
+                          type: string
+                        remotes:
+                          description: Remotes represents details related to the inbound
+                            connections from remote meshes.
+                          items:
+                            description: DiscoveryRemoteStatus represents details
+                              related to an inbound connection from a remote mesh.
+                            properties:
+                              connected:
+                                description: Connected identfies an active connection
+                                  with the remote mesh.
+                                type: boolean
+                              lastConnected:
+                                description: LastConnected represents the last time
+                                  a connection with the remote mesh was successful.
+                                format: date-time
+                                type: string
+                              lastDisconnect:
+                                description: LastDisconnect represents the last time
+                                  the connection with the remote mesh was disconnected.
+                                format: date-time
+                                type: string
+                              lastDisconnectStatus:
+                                description: LastDisconnectStatus is the status returned
+                                  the last time the connection with the remote mesh
+                                  was terminated.
+                                type: string
+                              lastEvent:
+                                description: LastEvent represents the last time an
+                                  event was received from the remote mesh.
+                                format: date-time
+                                type: string
+                              lastFullSync:
+                                description: LastFullSync represents the last time
+                                  a full sync was performed with the remote mesh.
+                                format: date-time
+                                type: string
+                              source:
+                                description: Source represents the source of the remote
+                                  watch.
+                                type: string
+                            required:
+                            - connected
+                            - source
+                            type: object
+                          type: array
+                          x-kubernetes-list-map-keys:
+                          - source
+                          x-kubernetes-list-type: map
+                        watch:
+                          description: Watch represents details related to the outbound
+                            connection to the remote mesh.
+                          properties:
+                            connected:
+                              description: Connected identfies an active connection
+                                with the remote mesh.
+                              type: boolean
+                            lastConnected:
+                              description: LastConnected represents the last time
+                                a connection with the remote mesh was successful.
+                              format: date-time
+                              type: string
+                            lastDisconnect:
+                              description: LastDisconnect represents the last time
+                                the connection with the remote mesh was disconnected.
+                              format: date-time
+                              type: string
+                            lastDisconnectStatus:
+                              description: LastDisconnectStatus is the status returned
+                                the last time the connection with the remote mesh
+                                was terminated.
+                              type: string
+                            lastEvent:
+                              description: LastEvent represents the last time an event
+                                was received from the remote mesh.
+                              format: date-time
+                              type: string
+                            lastFullSync:
+                              description: LastFullSync represents the last time a
+                                full sync was performed with the remote mesh.
+                              format: date-time
+                              type: string
+                          required:
+                          - connected
+                          type: object
+                      required:
+                      - pod
+                      type: object
+                    nullable: true
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - pod
+                    x-kubernetes-list-type: map
+                  inactive:
+                    description: Inactive represents the pilot/istiod pods not actively
+                      watching the other mesh for discovery.
+                    items:
+                      description: PodPeerDiscoveryStatus provides discovery details
+                        related to a specific pilot/istiod pod.
+                      properties:
+                        pod:
+                          description: Pod is the pod name to which these details
+                            apply.  This maps to a a pilot/istiod pod.
+                          type: string
+                        remotes:
+                          description: Remotes represents details related to the inbound
+                            connections from remote meshes.
+                          items:
+                            description: DiscoveryRemoteStatus represents details
+                              related to an inbound connection from a remote mesh.
+                            properties:
+                              connected:
+                                description: Connected identfies an active connection
+                                  with the remote mesh.
+                                type: boolean
+                              lastConnected:
+                                description: LastConnected represents the last time
+                                  a connection with the remote mesh was successful.
+                                format: date-time
+                                type: string
+                              lastDisconnect:
+                                description: LastDisconnect represents the last time
+                                  the connection with the remote mesh was disconnected.
+                                format: date-time
+                                type: string
+                              lastDisconnectStatus:
+                                description: LastDisconnectStatus is the status returned
+                                  the last time the connection with the remote mesh
+                                  was terminated.
+                                type: string
+                              lastEvent:
+                                description: LastEvent represents the last time an
+                                  event was received from the remote mesh.
+                                format: date-time
+                                type: string
+                              lastFullSync:
+                                description: LastFullSync represents the last time
+                                  a full sync was performed with the remote mesh.
+                                format: date-time
+                                type: string
+                              source:
+                                description: Source represents the source of the remote
+                                  watch.
+                                type: string
+                            required:
+                            - connected
+                            - source
+                            type: object
+                          type: array
+                          x-kubernetes-list-map-keys:
+                          - source
+                          x-kubernetes-list-type: map
+                        watch:
+                          description: Watch represents details related to the outbound
+                            connection to the remote mesh.
+                          properties:
+                            connected:
+                              description: Connected identfies an active connection
+                                with the remote mesh.
+                              type: boolean
+                            lastConnected:
+                              description: LastConnected represents the last time
+                                a connection with the remote mesh was successful.
+                              format: date-time
+                              type: string
+                            lastDisconnect:
+                              description: LastDisconnect represents the last time
+                                the connection with the remote mesh was disconnected.
+                              format: date-time
+                              type: string
+                            lastDisconnectStatus:
+                              description: LastDisconnectStatus is the status returned
+                                the last time the connection with the remote mesh
+                                was terminated.
+                              type: string
+                            lastEvent:
+                              description: LastEvent represents the last time an event
+                                was received from the remote mesh.
+                              format: date-time
+                              type: string
+                            lastFullSync:
+                              description: LastFullSync represents the last time a
+                                full sync was performed with the remote mesh.
+                              format: date-time
+                              type: string
+                          required:
+                          - connected
+                          type: object
+                      required:
+                      - pod
+                      type: object
+                    nullable: true
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - pod
+                    x-kubernetes-list-type: map
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

@@ -49,6 +49,7 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 	cni["image_v2_0"] = common.Config.OLM.Images.V2_0.CNI
 	cni["image_v2_1"] = common.Config.OLM.Images.V2_1.CNI
 	cni["image_v2_2"] = common.Config.OLM.Images.V2_2.CNI
+	cni["image_v2_3"] = common.Config.OLM.Images.V2_3.CNI
 	cni["imagePullSecrets"] = config.ImagePullSecrets
 	// TODO: imagePullPolicy, resources
 
@@ -58,6 +59,7 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 	cni["configMap_v2_0"] = "cni_network_config_v2_0"
 	cni["configMap_v2_1"] = "cni_network_config_v2_1"
 	cni["configMap_v2_2"] = "cni_network_config_v2_2"
+	cni["configMap_v2_3"] = "cni_network_config_v2_3"
 
 	cni["chained"] = !config.UseMultus
 	if config.UseMultus {
@@ -68,6 +70,7 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 		cni["cniConfFileName_v2_0"] = "v2-0-istio-cni.conf"
 		cni["cniConfFileName_v2_1"] = "v2-1-istio-cni.conf"
 		cni["cniConfFileName_v2_2"] = "v2-2-istio-cni.conf"
+		cni["cniConfFileName_v2_3"] = "v2-3-istio-cni.conf"
 	}
 
 	var releases []string

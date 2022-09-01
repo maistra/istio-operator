@@ -1,0 +1,228 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: "2.3.0"
+    app: grafana
+    release: {{ .Release.Name }}
+spec:
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  replicas: {{ .Values.grafana.replicaCount }}
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        maistra-control-plane: {{ .Release.Namespace }}
+        maistra-control-plane: {{ .Release.Namespace }}
+        app: grafana
+      annotations:
+        checksum/config: d2485b1ee9f9be63381c231826a43742bb10ebac2964bdc3f22a100eab9d032c
+        checksum/dashboards-json-config: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/sc-dashboard-provider-config: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        sidecar.istio.io/inject: "false"
+        {{- if .Values.grafana.podAnnotations }}
+{{ toYaml .Values.grafana.podAnnotations | indent 8 }}
+        {{- end }}
+    spec:
+{{- if .Values.global.priorityClassName }}
+      priorityClassName: "{{ .Values.global.priorityClassName }}"
+{{- end }}
+{{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.global.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      serviceAccountName: grafana
+      containers:
+          # OAuth proxy
+        - name: grafana-proxy
+{{- if contains "/" .Values.global.oauthproxy.image }}
+          image: {{ .Values.global.oauthproxy.image }}
+{{- else }}
+          image: {{ .Values.global.oauthproxy.hub }}/{{ .Values.global.oauthproxy.image }}:{{ .Values.global.oauthproxy.tag }}
+{{- end }}
+          imagePullPolicy: {{ .Values.global.oauthproxy.imagePullPolicy }}
+          ports:
+          - containerPort: 3001
+            name: https
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            httpGet:
+              path: /oauth/healthz
+              port: https
+              scheme: HTTPS
+            timeoutSeconds: 1
+          resources:
+{{- if .Values.global.oauthproxy.resources }}
+{{ toYaml .Values.global.oauthproxy.resources | indent 12 }}
+{{- else }}
+{{ toYaml .Values.global.defaultResources | indent 12 }}
+{{- end }}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/tls/private
+            name: secret-grafana-tls
+          - mountPath: /etc/proxy/htpasswd
+            name: secret-htpasswd
+          - mountPath: /etc/proxy/secrets
+            name: secret-grafana-proxy
+          - mountPath: /etc/pki/ca-trust/extracted/pem/
+            name: trusted-ca-bundle
+            readOnly: true
+          args:
+          - -provider=openshift
+          - -https-address=:3001
+          - -http-address=
+          - -email-domain=*
+          - -upstream=http://localhost:3000
+          - -htpasswd-file=/etc/proxy/htpasswd/auth
+          - -display-htpasswd-form=false
+          - '-openshift-sar={"namespace": "{{ .Release.Namespace }}", "resource": "pods", "verb": "get"}'
+          - -client-secret-file=/var/run/secrets/kubernetes.io/serviceaccount/token
+          - -openshift-service-account=grafana
+          - -cookie-secret-file=/etc/proxy/secrets/session_secret
+          - -tls-cert=/etc/tls/private/tls.crt
+          - -tls-key=/etc/tls/private/tls.key
+          - -openshift-ca=/etc/pki/tls/cert.pem
+          - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        - name: {{ .Chart.Name }}
+{{- if contains "/" .Values.grafana.image }}
+          image: "{{ .Values.grafana.image }}"
+{{- else }}
+          image: "{{ .Values.global.hub }}/{{ .Values.grafana.image }}:{{ .Values.global.tag }}"
+{{- end }}
+{{- if .Values.global.imagePullPolicy }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+{{- end }}
+          ports:
+          - name: service
+            containerPort: 3000
+            protocol: TCP
+          - name: grafana
+            containerPort: 3000
+            protocol: TCP
+          livenessProbe:
+            failureThreshold: 10
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 60
+            timeoutSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+          env:
+          - name: GRAFANA_PORT
+            value: "3000"
+          - name: GF_AUTH_BASIC_ENABLED
+            value: "false"
+          - name: GF_AUTH_PROXY_ENABLED
+            value: "true"
+          - name: GF_AUTH_PROXY_AUTO_SIGN_UP
+            value: "true"
+          - name: GF_AUTH_PROXY_WHITELIST
+            value: 127.0.0.0/24,::1
+          - name: GF_AUTH_PROXY_HEADERS
+            value: Email:X-Forwarded-Email
+          - name: GF_AUTH_PROXY_HEADER_NAME
+            value: X-Forwarded-User
+          - name: GF_USERS_AUTO_ASSIGN_ORG_ROLE
+            value: Admin
+          {{- range $key, $value := $.Values.grafana.env }}
+          - name: {{ $key }}
+            value: {{ $value | quote }}
+          {{- end }}
+          {{- range $key, $secret := $.Values.grafana.envSecrets }}
+          - name: {{ $key }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $secret }}
+                key: {{ $key | quote }}
+          {{- end }}
+          resources:
+{{- if .Values.grafana.resources }}
+{{ toYaml .Values.grafana.resources | indent 12 }}
+{{- else }}
+{{ toYaml .Values.global.defaultResources | indent 12 }}
+{{- end }}
+          volumeMounts:
+          - name: config
+            mountPath: "/etc/grafana/grafana.ini"
+            subPath: grafana.ini
+          - name: data
+            mountPath: /data/grafana
+          {{- range $path, $bytes := .Files.Glob "dashboards/*.json" }}
+          {{- $filename := trimSuffix (ext $path) (base $path) }}
+          - name: dashboards-istio-{{ $filename }}
+            mountPath: "/var/lib/grafana/dashboards/istio/{{ base $path }}"
+            subPath: {{ base $path }}
+            readOnly: true
+          {{- end }}
+          - name: config
+            mountPath: "/etc/grafana/provisioning/datasources/datasources.yaml"
+            subPath: datasources.yaml
+          - name: config
+            mountPath: "/etc/grafana/provisioning/dashboards/dashboardproviders.yaml"
+            subPath: dashboardproviders.yaml
+      affinity:
+      {{- include "nodeaffinity" . | indent 6 }}
+      {{- include "podAntiAffinity" . | indent 6 }}
+{{- if .Values.grafana.tolerations }}
+      tolerations:
+{{ toYaml .Values.grafana.tolerations | indent 6 }}
+{{- else if .Values.global.defaultTolerations }}
+      tolerations:
+{{ toYaml .Values.global.defaultTolerations | indent 6 }}
+{{- end }}
+      volumes:
+      # OAuth proxy
+      - name: secret-grafana-tls
+        secret:
+          defaultMode: 420
+          secretName: grafana-tls
+      - name: secret-htpasswd
+        secret:
+          defaultMode: 420
+          secretName: htpasswd
+      - name: secret-grafana-proxy
+        secret:
+          defaultMode: 420
+          secretName: grafana-proxy
+      - name: trusted-ca-bundle
+        configMap:
+          defaultMode: 420
+          items:
+            - key: ca-bundle.crt
+              path: tls-ca-bundle.pem
+          name: trusted-ca-bundle
+          optional: true
+      - name: config
+        configMap:
+          name: istio-grafana
+      - name: data
+{{- if .Values.grafana.persist }}
+        persistentVolumeClaim:
+          claimName: istio-grafana-pvc
+{{- else }}
+        emptyDir: {}
+{{- end }}
+{{- range $path, $bytes := .Files.Glob "dashboards/*.json" }}
+{{- $filename := trimSuffix (ext $path) (base $path) }}
+      - name: dashboards-istio-{{ $filename }}
+        configMap:
+          name: istio-grafana-configuration-dashboards-{{ $filename }}
+{{- end }}

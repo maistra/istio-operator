@@ -37,6 +37,7 @@ type images struct {
 	V2_0 v2_0ImageNames `json:"v2_0,omitempty"`
 	V2_1 v2_1ImageNames `json:"v2_1,omitempty"`
 	V2_2 v2_2ImageNames `json:"v2_2,omitempty"`
+	V2_3 v2_3ImageNames `json:"v2_3,omitempty"`
 }
 
 // V1_1ImageNames used by deployments
@@ -91,6 +92,17 @@ type v2_2ImageNames struct {
 	ProxyInit  string `json:"proxy-init,omitempty"`
 	ProxyV2    string `json:"proxyv2,omitempty"`
 	WASMCacher string `json:"wasm-cacher,omitempty"`
+	RLS        string `json:"rls,omitempty"`
+}
+
+// v2_3ImageNames used by deployments
+type v2_3ImageNames struct {
+	ThreeScale string `json:"3scale-istio-adapter,omitempty"`
+	CNI        string `json:"cni,omitempty"`
+	Grafana    string `json:"grafana,omitempty"`
+	Pilot      string `json:"pilot,omitempty"`
+	Prometheus string `json:"prometheus,omitempty"`
+	ProxyV2    string `json:"proxyv2,omitempty"`
 	RLS        string `json:"rls,omitempty"`
 }
 

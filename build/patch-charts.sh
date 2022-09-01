@@ -152,7 +152,6 @@ function patchGalley() {
   convertClusterRoleBinding "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrolebinding.yaml" ""
   sed_wrap -i -e '/- "discovery"/ a\
           - --memberRollName=default\
-          - --cacheCluster=outbound|80||wasm-cacher-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.cluster.local\
           - --enableCRDScan=false\
           - --enableIngressClassName=false\
           - --disableNodeAccess=true' "${deployment}"
@@ -461,7 +460,7 @@ global:\
 
 function copyGlobalValues() {
   echo "copying global.yaml file from overlay charts as global.yaml file is removed in upstream but it's still needed."
-  cp "${SOURCE_DIR}/resources/helm/overlays/global.yaml" "${SOURCE_DIR}/resources/helm/v2.2/"
+  cp "${SOURCE_DIR}/resources/helm/overlays/global.yaml" "${SOURCE_DIR}/resources/helm/v2.3/"
 }
 
 function hacks() {

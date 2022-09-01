@@ -4,7 +4,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   labels:
-    maistra-version: 2.2.2
+    maistra-version: 2.3.0
   annotations:
     service.beta.openshift.io/inject-cabundle: "true"
     controller-gen.kubebuilder.io/version: v0.4.1
@@ -10064,7 +10064,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   labels:
-    maistra-version: 2.2.2
+    maistra-version: 2.3.0
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
@@ -10218,7 +10218,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   labels:
-    maistra-version: 2.2.2
+    maistra-version: 2.3.0
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
@@ -10697,13 +10697,20 @@ spec:
         olm.relatedImage.v2_1.wasm-cacher: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-pilot-rhel8:${OSSM_21}
         olm.relatedImage.v2_1.rls: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-ratelimit-rhel8:${OSSM_21}
         # 2.2 images
-        olm.relatedImage.v2_2.cni: ${OSSM_CNI_IMAGE}
-        olm.relatedImage.v2_2.grafana: ${OSSM_GRAFANA_IMAGE}
-        olm.relatedImage.v2_2.pilot: ${OSSM_PILOT_IMAGE}
-        olm.relatedImage.v2_2.prometheus: ${OSSM_PROMETHEUS_IMAGE}
-        olm.relatedImage.v2_2.proxyv2: ${OSSM_PROXY_IMAGE}
-        olm.relatedImage.v2_2.wasm-cacher: ${OSSM_PILOT_IMAGE}
-        olm.relatedImage.v2_2.rls: ${OSSM_RATELIMIT_IMAGE}
+        olm.relatedImage.v2_2.cni: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-istio-cni-rhel8:${OSSM_22}
+        olm.relatedImage.v2_2.grafana: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-grafana-rhel8:${OSSM_22}
+        olm.relatedImage.v2_2.pilot: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-pilot-rhel8:${OSSM_22}
+        olm.relatedImage.v2_2.prometheus: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-prometheus-rhel8:${OSSM_22}
+        olm.relatedImage.v2_2.proxyv2: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-proxyv2-rhel8:${OSSM_22}
+        olm.relatedImage.v2_2.wasm-cacher: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-pilot-rhel8:${OSSM_22}
+        olm.relatedImage.v2_2.rls: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-ratelimit-rhel8:${OSSM_22}
+        # 2.3 images
+        olm.relatedImage.v2_3.cni: ${OSSM_CNI_IMAGE}
+        olm.relatedImage.v2_3.grafana: ${OSSM_GRAFANA_IMAGE}
+        olm.relatedImage.v2_3.pilot: ${OSSM_PILOT_IMAGE}
+        olm.relatedImage.v2_3.prometheus: ${OSSM_PROMETHEUS_IMAGE}
+        olm.relatedImage.v2_3.proxyv2: ${OSSM_PROXY_IMAGE}
+        olm.relatedImage.v2_3.rls: ${OSSM_RATELIMIT_IMAGE}
 
         oauth-proxy.query: "true"
         oauth-proxy.namespace: openshift
