@@ -1,0 +1,172 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  labels:
+    maistra-version: "2.3.0"
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.6.2
+  creationTimestamp: null
+  name: importedservicesets.federation.maistra.io
+spec:
+  group: federation.maistra.io
+  names:
+    kind: ImportedServiceSet
+    listKind: ImportedServiceSetList
+    plural: importedservicesets
+    singular: importedserviceset
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: ImportedServiceSet is the Schema for configuring imported services.
+          It must be created in the same namespace as the control plane. The name
+          of the ImportedServiceSet resource must match the name of a ServiceMeshPeer
+          resource defining the remote mesh from which the services will be imported.
+          This implies there will be at most one ImportedServiceSet resource per peer
+          and control plane.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: Spec defines rules for matching services to be imported.
+            properties:
+              domainSuffix:
+                description: 'DomainSuffix specifies the domain suffix to be applies
+                  to imported services.  If no domain suffix is specified, imported
+                  services will be named as follows:    <imported-name>.<imported-namespace>.svc.<mesh-name>-imports.local
+                  If a domain suffix is specified, imported services will be named
+                  as follows:    <imported-name>.<imported-namespace>.<domain-suffix>'
+                type: string
+              importRules:
+                description: ImportRules are the rules that determine which services
+                  are imported to the mesh.  The list is processed in order and the
+                  first spec in the list that applies to a service is the one that
+                  will be applied.  This allows more specific selectors to be placed
+                  before more general selectors.
+                items:
+                  properties:
+                    domainSuffix:
+                      description: DomainSuffix applies the specified suffix to services
+                        imported by this rule.  The behavior is identical to that
+                        of ImportedServiceSetSpec.DomainSuffix.
+                      type: string
+                    importAsLocal:
+                      description: ImportAsLocal imports the service as a local service
+                        in the mesh.  For example, if an exported service, foo/bar
+                        is imported as some-ns/service, the service will be imported
+                        as service.some-ns.svc.cluster.local in the some-ns namespace.  If
+                        a service of this name already exists in the mesh, the imported
+                        service's endpoints will be aggregated with any other workloads
+                        associated with the service.  This setting overrides DomainSuffix.
+                      type: boolean
+                    nameSelector:
+                      description: NameSelector provides a simple name matcher for
+                        importing services in the mesh.
+                      properties:
+                        alias:
+                          properties:
+                            name:
+                              type: string
+                            namespace:
+                              type: string
+                          type: object
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      type: object
+                    type:
+                      description: Type of rule.  Only NameSelector type is supported.
+                      type: string
+                  required:
+                  - type
+                  type: object
+                type: array
+              locality:
+                description: Locality within which imported services should be associated.
+                properties:
+                  region:
+                    description: Region within which imported services are located.
+                    type: string
+                  subzone:
+                    description: Subzone within which imported services are located.  If
+                      Subzone is specified, Zone must also be specified.
+                    type: string
+                  zone:
+                    description: Zone within which imported services are located.  If
+                      Zone is specified, Region must also be specified.
+                    type: string
+                type: object
+            type: object
+          status:
+            properties:
+              importedServices:
+                description: Imports provides details about the services imported
+                  by this mesh.
+                items:
+                  description: PeerServiceMapping represents the name mapping between
+                    an exported service and its local counterpart.
+                  properties:
+                    exportedName:
+                      description: ExportedName represents the fully qualified domain
+                        name (FQDN) of an exported service.  For an exporting mesh,
+                        this is the name that is exported to the remote mesh. For
+                        an importing mesh, this would be the name of the service exported
+                        by the remote mesh.
+                      type: string
+                    localService:
+                      description: LocalService represents the service in the local
+                        (i.e. this) mesh. For an exporting mesh, this would be the
+                        service being exported. For an importing mesh, this would
+                        be the imported service.
+                      properties:
+                        hostname:
+                          description: Hostname represents fully qualified domain
+                            name (FQDN) used to access the service.
+                          type: string
+                        name:
+                          description: Name represents the simple name of the service,
+                            e.g. the metadata.name field of a kubernetes Service.
+                          type: string
+                        namespace:
+                          description: Namespace represents the namespace within which
+                            the service resides.
+                          type: string
+                      required:
+                      - hostname
+                      - name
+                      - namespace
+                      type: object
+                  required:
+                  - exportedName
+                  - localService
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - exportedName
+                x-kubernetes-list-type: map
+            required:
+            - importedServices
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

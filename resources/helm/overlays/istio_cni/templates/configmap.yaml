@@ -60,4 +60,17 @@ data:
           "exclude_namespaces": [ "{{ .Release.Namespace }}" ]
       }
     }
+  cni_network_config_v2_3: |-
+    {
+      "cniVersion": "0.3.1",
+      "name": "v2-3-istio-cni",
+      "type": "v2-3-istio-cni",
+      "log_level": {{ quote .Values.cni.logLevel }},
+      "log_uds_address": "__LOG_UDS_ADDRESS__",
+      "kubernetes": {
+          "kubeconfig": "__KUBECONFIG_FILEPATH__",
+          "cni_bin_dir": "{{ default "/opt/cni/bin" .Values.cni.cniBinDir }}",
+          "exclude_namespaces": [ "{{ .Release.Namespace }}" ]
+      }
+    }
 {{ end }}
