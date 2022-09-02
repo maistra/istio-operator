@@ -200,7 +200,7 @@ spec:
     url: https://github.com/Maistra/istio-operator
   - name: Bugs
     url: https://issues.redhat.com/projects/MAISTRA
-  replaces: maistraoperator.v2.2.1
+  replaces: maistraoperator.v2.2.2
   installModes:
   - type: OwnNamespace
     supported: false
