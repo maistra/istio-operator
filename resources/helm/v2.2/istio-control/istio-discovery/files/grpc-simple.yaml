@@ -1,6 +1,6 @@
 metadata:
   labels:
-    maistra-version: "2.2.1"
+    maistra-version: "2.2.2"
   sidecar.istio.io/rewriteAppHTTPProbers: "false"
 spec:
   initContainers:
