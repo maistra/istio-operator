@@ -257,9 +257,9 @@ spec:
           image: "{{ .Values.cni.image_v2_3 }}"
           imagePullPolicy: {{ .Values.cni.imagePullPolicy }}
           livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8000
+            httpGet:
+              path: /healthz
+              port: 8000
           initialDelaySeconds: 5
           readinessProbe:
             httpGet:
