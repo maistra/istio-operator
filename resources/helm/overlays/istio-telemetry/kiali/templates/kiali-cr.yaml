@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.kiali.resourceName | default "kiali" }}
   namespace: {{ .Release.Namespace }}
 spec:
-  version: "v1.48"
+  version: "default"
   installation_tag: "Kiali [{{ .Release.Namespace }}]"
   istio_namespace: "{{ .Release.Namespace }}"
 
@@ -26,7 +26,8 @@ spec:
 {{- end }}
 {{- if .Values.kiali.ingress }}
 {{- if .Values.kiali.ingress.enabled }}
-    ingress_enabled: {{ .Values.kiali.ingress.enabled }}
+    ingress:
+      enabled: {{ .Values.kiali.ingress.enabled }}
 {{- end }}
 {{- end }}
     namespace: "{{ .Release.Namespace }}"
