@@ -65,10 +65,10 @@ function patchTemplates() {
   sed_wrap -i -e 's/\(: istiod-pilot\).*$/\1-{{ .Values.revision | default "default" }}/' \
       -e 's/istiod-{{ .Release.Namespace }}/istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}/' \
       ${HELM_DIR}/base/templates/clusterrolebinding.yaml \
-  
+
   mv ${HELM_DIR}/base/templates/serviceaccount.yaml ${HELM_DIR}/istio-control/istio-discovery/templates/serviceaccount.yaml
   mv ${HELM_DIR}/base/templates/clusterrolebinding.yaml ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrolebinding.yaml
-  
+
   # - remove istio-reader cluster role
   # - and again....
   sed_wrap -i -e '/^---/,$ d' \
@@ -88,6 +88,15 @@ function patchTemplates() {
 
   # MAISTRA-1972 - disable protocol sniffing
   sed_wrap -i -e 's/\(enableProtocolSniffing.*:\).*$/\1 false/' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
+
+  sed_wrap -i -e 's/^apiVersion: policy\/v1beta1/{{- if (semverCompare ">=1.21-0" .Capabilities.KubeVersion.GitVersion) }}\
+apiVersion: policy\/v1\
+{{- else }}\
+apiVersion: policy\/v1beta1\
+{{- end }}/g'\
+    ${HELM_DIR}/gateways/istio-egress/templates/poddisruptionbudget.yaml\
+    ${HELM_DIR}/gateways/istio-ingress/templates/poddisruptionbudget.yaml\
+    ${HELM_DIR}/istio-control/istio-discovery/templates/poddisruptionbudget.yaml
 }
 
 function patchGalley() {
