@@ -14,10 +14,10 @@
 
 -include Makefile.overrides
 
-MAISTRA_VERSION        ?= 2.2.2
+MAISTRA_VERSION        ?= 2.2.3
 MAISTRA_BRANCH         ?= maistra-2.2
-REPLACES_PRODUCT_CSV   ?= 2.2.1
-REPLACES_COMMUNITY_CSV ?= 2.2.1
+REPLACES_PRODUCT_CSV   ?= 2.2.2
+REPLACES_COMMUNITY_CSV ?= 2.2.2
 VERSION                ?= development
 CONTAINER_CLI          ?= docker
 COMMUNITY              ?= true
