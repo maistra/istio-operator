@@ -21,7 +21,6 @@ spec:
     metadata:
       labels:
         maistra-control-plane: {{ .Release.Namespace }}
-        maistra-control-plane: {{ .Release.Namespace }}
         app: grafana
       annotations:
         checksum/config: d2485b1ee9f9be63381c231826a43742bb10ebac2964bdc3f22a100eab9d032c
