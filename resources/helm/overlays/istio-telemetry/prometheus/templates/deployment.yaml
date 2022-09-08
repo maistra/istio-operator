@@ -19,7 +19,6 @@ spec:
   template:
     metadata:
       labels:
-        maistra-control-plane: {{ .Release.Namespace }}
         app: prometheus
         release: {{ .Release.Name }}
       annotations:
