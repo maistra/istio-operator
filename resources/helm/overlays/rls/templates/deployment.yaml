@@ -26,7 +26,6 @@ spec:
   template:
     metadata:
       labels:
-        maistra-control-plane: {{ .Release.Namespace }}
         app: rls
         istio.io/rev: {{ .Values.revision | default "default" }}
         heritage: {{ .Release.Service }}
