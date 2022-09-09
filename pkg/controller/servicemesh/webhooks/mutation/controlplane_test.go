@@ -93,17 +93,6 @@ func TestCreate(t *testing.T) {
 		controlPlanes func() (runtime.Object, runtime.Object)
 	}{
 		{
-			name: "default-version.v1",
-			controlPlanes: func() (runtime.Object, runtime.Object) {
-				controlPlane := newControlPlaneV1("istio-system")
-				controlPlane.Spec.Version = ""
-
-				mutatedControlPlane := controlPlane.DeepCopy()
-				mutatedControlPlane.Spec.Version = versions.V1_1.String()
-				return controlPlane, mutatedControlPlane
-			},
-		},
-		{
 			name: "default-version.v2",
 			controlPlanes: func() (runtime.Object, runtime.Object) {
 				controlPlane := newControlPlaneV2("istio-system")
@@ -165,34 +154,6 @@ func TestVersionIsDefaultedToOldSMCPVersionOnUpdate(t *testing.T) {
 			controlPlane: func() cpadapter {
 				return &cpv2adapter{ServiceMeshControlPlane: newControlPlaneV2("istio-system")}
 			},
-		},
-		{
-			name: "version.v1.0.v1",
-			controlPlane: func() cpadapter {
-				return &cpv1adapter{ServiceMeshControlPlane: newControlPlaneV1("istio-system")}
-			},
-			version: "v1.0",
-		},
-		{
-			name: "version.v1.0.v2",
-			controlPlane: func() cpadapter {
-				return &cpv2adapter{ServiceMeshControlPlane: newControlPlaneV2("istio-system")}
-			},
-			version: "v1.0",
-		},
-		{
-			name: "version.v1.1.v1",
-			controlPlane: func() cpadapter {
-				return &cpv1adapter{ServiceMeshControlPlane: newControlPlaneV1("istio-system")}
-			},
-			version: "v1.1",
-		},
-		{
-			name: "version.v1.1.v2",
-			controlPlane: func() cpadapter {
-				return &cpv2adapter{ServiceMeshControlPlane: newControlPlaneV2("istio-system")}
-			},
-			version: "v1.1",
 		},
 		{
 			name: "version.v2.0.v1",

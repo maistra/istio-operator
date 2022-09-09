@@ -83,17 +83,6 @@ func TestBootstrapping(t *testing.T) {
 		crdCount int
 	}{
 		{
-			name: "v1.1",
-			smcp: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version:  versions.V1_1.String(),
-					Profiles: []string{"maistra"},
-				},
-			},
-			crdCount: 23,
-		},
-		{
 			name: "v2.0",
 			smcp: &maistrav2.ServiceMeshControlPlane{
 				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},

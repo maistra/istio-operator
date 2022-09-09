@@ -2,7 +2,7 @@
 
 set -e -u
 
-: "${MAISTRA_VERSION:?"Need to set maistra version, e.g. 1.0.1"}"
+: "${MAISTRA_VERSION:?"Need to set maistra version, e.g. 2.0.1"}"
 BUNDLE_DIRS="manifests-maistra/${MAISTRA_VERSION} manifests-servicemesh/${MAISTRA_VERSION}"
 
 for bundle_dir in ${BUNDLE_DIRS}; do

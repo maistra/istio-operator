@@ -32,12 +32,7 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 		{
 			name:              "Default Supported Versions",
 			supportedVersions: versions.GetSupportedVersions(),
-			containerNames:    []string{"install-cni-v1-1", "install-cni-v2-0", "install-cni-v2-1", "install-cni-v2-2", "install-cni-v2-3"},
-		},
-		{
-			name:              "v1.1 only",
-			supportedVersions: []versions.Version{versions.V1_1},
-			containerNames:    []string{"install-cni-v1-1"},
+			containerNames:    []string{"install-cni-v2-0", "install-cni-v2-1", "install-cni-v2-2", "install-cni-v2-3"},
 		},
 		{
 			name:              "v2.0 only",

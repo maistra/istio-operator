@@ -2,7 +2,7 @@
 
 set -e -u
 
-: "${CRD_DIR:?"Need to set CRD_DIR to location of CRD yaml files, e.g. resources/helm/v1.0/istio-init/files"}"
+: "${CRD_DIR:?"Need to set CRD_DIR to location of CRD yaml files, e.g. resources/helm/v2.0/istio-init/files"}"
 : "${SOURCE_DIR:=$(pwd)}"
 
 CRD_DIR=$(realpath --relative-to "${SOURCE_DIR}" "${CRD_DIR}")

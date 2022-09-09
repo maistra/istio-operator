@@ -46,9 +46,6 @@ func InitConfig(m manager.Manager) (Config, error) {
 
 	if err == nil {
 		config.UseMultus = true
-		if len(common.Config.OLM.Images.V1_1.CNI) == 0 {
-			return config, fmt.Errorf("configuration olm.relatedImage.v1_1.cni must be set")
-		}
 		if len(common.Config.OLM.Images.V2_0.CNI) == 0 {
 			return config, fmt.Errorf("configuration olm.relatedImage.v2_0.cni must be set")
 		}

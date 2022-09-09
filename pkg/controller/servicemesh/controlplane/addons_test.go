@@ -169,7 +169,9 @@ func TestAddonsInstall(t *testing.T) {
 	RunSimpleInstallTest(t, testCases)
 }
 
+// v1.1 is deprecated and skip TestExternalJaegerV1_1
 func TestExternalJaegerV1_1(t *testing.T) {
+	t.Skip("v1.1 is deprecated and skip TestExternalJaegerV1_1")
 	const (
 		operatorNamespace  = "istio-operator"
 		smcpName           = "test"
