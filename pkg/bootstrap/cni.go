@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -20,22 +21,21 @@ import (
 
 // InstallCNI makes sure all Istio CNI resources have been created.  CRDs are located from
 // files in controller.HelmDir/istio-init/files
-func InstallCNI(ctx context.Context, cl client.Client, config cni.Config) error {
+func InstallCNI(ctx context.Context, cl client.Client, config cni.Config, dc discovery.DiscoveryInterface) error {
 	// we should run through this each reconcile to make sure it's there
-	return internalInstallCNI(ctx, cl, config)
+	return internalInstallCNI(ctx, cl, config, dc)
 }
 
-func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config) error {
-	renderings, err := internalRenderCNI(ctx, cl, config, versions.GetSupportedVersions())
+func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config, dc discovery.DiscoveryInterface) error {
+	renderings, err := internalRenderCNI(ctx, cl, config, dc, versions.GetSupportedVersions())
 	if err != nil {
 		return err
 	}
 	return internalProcessManifests(ctx, cl, renderings["istio_cni"])
 }
 
-func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
-	supportedVersions []versions.Version,
-) (renderings map[string][]manifest.Manifest, err error) {
+func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config, dc discovery.DiscoveryInterface,
+	supportedVersions []versions.Version) (renderings map[string][]manifest.Manifest, err error) {
 	log := common.LogFromContext(ctx)
 	log.Info("ensuring Istio CNI has been installed")
 
@@ -86,6 +86,11 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 	values := make(map[string]interface{})
 	values["cni"] = cni
 
+	serverVersion, err := dc.ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+
 	// the "istio-node" DaemonSet is now called "istio-cni-node", so we must delete the old one
 	ds := v1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -99,7 +104,7 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 	}
 
 	// always install the latest version of the CNI image
-	renderings, _, err = helm.RenderChart(path.Join(versions.DefaultVersion.GetChartsDir(), "istio_cni"), operatorNamespace, values)
+	renderings, _, err = helm.RenderChart(path.Join(versions.DefaultVersion.GetChartsDir(), "istio_cni"), operatorNamespace, serverVersion.String(), values)
 	return
 }
 

@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
@@ -476,8 +477,9 @@ func TestPatchAddonsResult(t *testing.T) {
 		configureKialiAPI(s)
 		configureRouteAPI(s)
 
-		c, _ := CreateClientWithScheme(s, tc.objects...)
-		r := newReconciler(c, s, &record.FakeRecorder{}, "istio-operator", cni.Config{Enabled: true})
+		c, tracker := CreateClientWithScheme(s, tc.objects...)
+		dc := fake.FakeDiscovery{&tracker.Fake, DefaultKubeVersion}
+		r := newReconciler(c, s, &record.FakeRecorder{}, "istio-operator", cni.Config{Enabled: true}, &dc)
 		r.instanceReconcilerFactory = NewControlPlaneInstanceReconciler
 
 		_, smcpReconciler := r.getOrCreateReconciler(smcp)

@@ -133,18 +133,25 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v Ver, cr *common.Co
 		return nil, fmt.Errorf("unexpected error setting Status.AppliedSpec: %v", err)
 	}
 
+	serverVersion, err := cr.DiscoveryClient.ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	kubeVersion := serverVersion.String()
+
 	// Render the charts
 	allErrors := []error{}
 	var threeScaleRenderings map[string][]manifest.Manifest
 	log.Info("rendering helm charts")
 	log.V(2).Info("rendering Istio charts")
-	istioRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), "istio"), smcp.GetNamespace(), spec.Istio.GetContent())
+	istioRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), "istio"), smcp.GetNamespace(), kubeVersion, spec.Istio.GetContent())
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
 	if isEnabled(spec.ThreeScale) {
 		log.V(2).Info("rendering 3scale charts")
-		threeScaleRenderings, _, err = helm.RenderChart(path.Join(v.GetChartsDir(), "maistra-threescale"), smcp.GetNamespace(), spec.ThreeScale.GetContent())
+		chart := path.Join(v.GetChartsDir(), "maistra-threescale")
+		threeScaleRenderings, _, err = helm.RenderChart(chart, smcp.GetNamespace(), kubeVersion, spec.ThreeScale.GetContent())
 		if err != nil {
 			allErrors = append(allErrors, err)
 		}

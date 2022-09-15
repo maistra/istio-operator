@@ -411,6 +411,12 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 		return nil, err
 	}
 
+	serverVersion, err := cr.DiscoveryClient.ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	kubeVersion := serverVersion.String()
+
 	// Render the charts
 	allErrors := []error{}
 	renderings := make(map[string][]manifest.Manifest)
@@ -421,7 +427,8 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 		}
 		if chartDetails.enabledField == "" || isComponentEnabled(spec.Istio, chartDetails.enabledField) {
 			log.V(2).Info(fmt.Sprintf("rendering %s chart", name))
-			if chartRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), v2_3ChartMapping[name].path), smcp.GetNamespace(), values); err == nil {
+			chart := path.Join(v.GetChartsDir(), v2_3ChartMapping[name].path)
+			if chartRenderings, _, err := helm.RenderChart(chart, smcp.GetNamespace(), kubeVersion, values); err == nil {
 				if name == "istio-discovery" {
 					renderings[name] = chartRenderings["istiod"] // quick dirty workaround (istio-discovery chart now has the name "istiod" in Chart.yaml)
 				} else {
@@ -445,14 +452,14 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 
 					log.V(2).Info("rendering ingress gateway chart for istio-ingressgateway")
 					if ingressRenderings, _, err := v.renderIngressGateway("istio-ingressgateway",
-						smcp.GetNamespace(), origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
+						smcp.GetNamespace(), kubeVersion, origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
 						renderings[GatewayIngressChart] = ingressRenderings[GatewayIngressChart]
 					} else {
 						allErrors = append(allErrors, err)
 					}
 					log.V(2).Info("rendering egress gateway chart for istio-egressgateway")
 					if egressRenderings, _, err := v.renderEgressGateway("istio-egressgateway",
-						smcp.GetNamespace(), origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
+						smcp.GetNamespace(), kubeVersion, origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
 						renderings[GatewayEgressChart] = egressRenderings[GatewayEgressChart]
 					} else {
 						allErrors = append(allErrors, err)
@@ -463,7 +470,7 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 								continue
 							}
 							log.V(2).Info(fmt.Sprintf("rendering ingress gateway chart for %s", name))
-							if ingressRenderings, _, err := v.renderIngressGateway(name, smcp.GetNamespace(),
+							if ingressRenderings, _, err := v.renderIngressGateway(name, smcp.GetNamespace(), kubeVersion,
 								origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
 								renderings[GatewayIngressChart] = append(renderings[GatewayIngressChart], ingressRenderings[GatewayIngressChart]...)
 							} else {
@@ -475,7 +482,7 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 								continue
 							}
 							log.V(2).Info(fmt.Sprintf("rendering egress gateway chart for %s", name))
-							if egressRenderings, _, err := v.renderEgressGateway(name, smcp.GetNamespace(),
+							if egressRenderings, _, err := v.renderEgressGateway(name, smcp.GetNamespace(), kubeVersion,
 								origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
 								renderings[GatewayEgressChart] = append(renderings[GatewayEgressChart], egressRenderings[GatewayEgressChart]...)
 							} else {
@@ -501,7 +508,7 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 		log.V(2).Info("rendering 3scale charts")
 		if chartRenderings, _, err := helm.RenderChart(
 			path.Join(v.GetChartsDir(), v2_3ChartMapping[ThreeScaleChart].path),
-			smcp.GetNamespace(),
+			smcp.GetNamespace(), kubeVersion,
 			spec.ThreeScale.GetContent()); err == nil {
 			renderings[ThreeScaleChart] = chartRenderings[ThreeScaleChart]
 		} else {
@@ -516,19 +523,19 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 	return renderings, nil
 }
 
-func (v *versionStrategyV2_3) renderIngressGateway(name string, namespace string, gateways map[string]interface{},
+func (v *versionStrategyV2_3) renderIngressGateway(name, namespace, kubeVersion string, gateways map[string]interface{},
 	values *v1.HelmValues, userIDAutoassigned bool,
 ) (map[string][]manifest.Manifest, map[string]interface{}, error) {
-	return v.renderGateway(name, namespace, v2_3ChartMapping[GatewayIngressChart].path, "istio-ingressgateway", gateways, values, userIDAutoassigned)
+	return v.renderGateway(name, namespace, kubeVersion, v2_3ChartMapping[GatewayIngressChart].path, "istio-ingressgateway", gateways, values, userIDAutoassigned)
 }
 
-func (v *versionStrategyV2_3) renderEgressGateway(name string, namespace string, gateways map[string]interface{},
+func (v *versionStrategyV2_3) renderEgressGateway(name, namespace, kubeVersion string, gateways map[string]interface{},
 	values *v1.HelmValues, userIDAutoassigned bool,
 ) (map[string][]manifest.Manifest, map[string]interface{}, error) {
-	return v.renderGateway(name, namespace, v2_3ChartMapping[GatewayEgressChart].path, "istio-egressgateway", gateways, values, userIDAutoassigned)
+	return v.renderGateway(name, namespace, kubeVersion, v2_3ChartMapping[GatewayEgressChart].path, "istio-egressgateway", gateways, values, userIDAutoassigned)
 }
 
-func (v *versionStrategyV2_3) renderGateway(name string, namespace string, chartPath string, typeName string,
+func (v *versionStrategyV2_3) renderGateway(name, namespace, kubeVersion string, chartPath string, typeName string,
 	gateways map[string]interface{}, values *v1.HelmValues, userIDAutoassigned bool,
 ) (map[string][]manifest.Manifest, map[string]interface{}, error) {
 	gateway, ok, _ := unstructured.NestedMap(gateways, name)
@@ -563,7 +570,7 @@ func (v *versionStrategyV2_3) renderGateway(name string, namespace string, chart
 	if err := values.SetField("gateways", newGateways); err != nil {
 		return nil, nil, err
 	}
-	return helm.RenderChart(path.Join(v.GetChartsDir(), chartPath), namespace, values)
+	return helm.RenderChart(path.Join(v.GetChartsDir(), chartPath), namespace, kubeVersion, values)
 }
 
 func (v *versionStrategyV2_3) GetExpansionPorts() []corev1.ServicePort {
