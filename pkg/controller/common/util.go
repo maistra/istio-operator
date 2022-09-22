@@ -129,13 +129,14 @@ var operatorNamespace string
 func GetOperatorNamespace() string {
 	initOperatorNamespace.Do(func() {
 		var err error
+
+		// Check for this variable before calling k8sutil.GetOperatorNamespace()
+		// This variable is set in unit tests - and potentially in dev debugging sessions
+		if operatorNamespace = os.Getenv("POD_NAMESPACE"); operatorNamespace != "" {
+			return
+		}
+
 		if operatorNamespace, err = k8sutil.GetOperatorNamespace(); err != nil {
-			if err == k8sutil.ErrNoNamespace || err == k8sutil.ErrRunLocal {
-				// see if dev is manually specifying this during debugging
-				if operatorNamespace = os.Getenv("POD_NAMESPACE"); operatorNamespace != "" {
-					return
-				}
-			}
 			panic(err)
 		}
 	})
