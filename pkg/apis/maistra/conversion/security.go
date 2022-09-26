@@ -141,7 +141,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			}
 		case v2.CertificateAuthorityTypeCertManager:
 			if err := setHelmStringValue(values, "pilot.ca.implementation", string(security.CertificateAuthority.Type)); err != nil {
-				return fmt.Errorf("cert-manager ca config: failed converting CA implementation to helm: %s" ,err.Error())
+				return fmt.Errorf("cert-manager ca config: failed converting CA implementation to helm: %s", err.Error())
 			}
 
 			CertManagerConf := security.CertificateAuthority.CertManager
@@ -150,7 +150,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			}
 
 			if err := setHelmStringValue(values, "global.caAddress", CertManagerConf.Address); err != nil {
-				return fmt.Errorf("cert-manager ca config: failed converting CA address to helm: %s" ,err.Error())
+				return fmt.Errorf("cert-manager ca config: failed converting CA address to helm: %s", err.Error())
 			}
 
 			addEnvToComponent(in, "pilot", "ENABLE_CA_SERVER", "false")
@@ -161,7 +161,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				"--caCertFile=/etc/cert-manager/tls/ca.crt",
 			}
 
-			suppliedRootConfigMap:= (CertManagerConf.RootCAConfigMapName != "")
+			suppliedRootConfigMap := (CertManagerConf.RootCAConfigMapName != "")
 
 			if suppliedRootConfigMap {
 				extraArgs[2] = "--caCertFile=/etc/cert-manager/ca/root-cert.pem"
@@ -171,7 +171,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			}
 
 			if err := setHelmStringSliceValue(values, "pilot.extraArgs", extraArgs); err != nil {
-				return fmt.Errorf("cert-manager ca config: failed setting extra args in helm chart : %s" ,err.Error())
+				return fmt.Errorf("cert-manager ca config: failed setting extra args in helm chart : %s", err.Error())
 			}
 
 			extraVolumeMounts := []map[string]interface{}{
@@ -189,7 +189,6 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 					"readyOnly": "true",
 				})
 			}
-
 
 			extraVolumes := []map[string]interface{}{
 				{
@@ -209,15 +208,13 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				})
 			}
 
-
 			if err := setHelmMapSliceValue(values, "pilot.extraVolumeMounts", extraVolumeMounts); err != nil {
-				return fmt.Errorf("cert-manager ca config: failed setting extra volumeMount in helm chart: %s" ,err)
+				return fmt.Errorf("cert-manager ca config: failed setting extra volumeMount in helm chart: %s", err)
 			}
 
 			if err := setHelmMapSliceValue(values, "pilot.extraVolumes", extraVolumes); err != nil {
-				return fmt.Errorf("cert-manager ca config: failed setting extraVolumes in helm chart: %s" ,err.Error())
+				return fmt.Errorf("cert-manager ca config: failed setting extraVolumes in helm chart: %s", err.Error())
 			}
-			
 
 		case "":
 			// don't configure any ca settings
@@ -514,17 +511,17 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version
 		}
 		// We rely on convention on volume names to do the reverse mapping properly
 		if extraVolumes, ok, err := in.GetAndRemoveSlice("pilot.extraVolumes"); ok {
-			for _, volumeRaw := range(extraVolumes) {
+			for _, volumeRaw := range extraVolumes {
 				if volume, ok := volumeRaw.(map[string]interface{}); ok {
 					volumeName := volume["name"]
 					if volumeName == "cert-manager" {
-						if volumeSecret , ok := volume["secret"].(map[string]interface{}) ; ok {
+						if volumeSecret, ok := volume["secret"].(map[string]interface{}); ok {
 							ca.CertManager.PilotCertSecretName = volumeSecret["secretName"].(string)
 						}
 					}
 
 					if volumeName == "ca-root-cert" {
-						if volumeConfigMap , ok := volume["configMap"].(map[string]interface{}) ; ok {
+						if volumeConfigMap, ok := volume["configMap"].(map[string]interface{}); ok {
 							ca.CertManager.RootCAConfigMapName = volumeConfigMap["name"].(string)
 						}
 					}
@@ -546,7 +543,7 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version
 			}
 		}
 
-		if _, ok, err := getAndClearComponentEnv(in, "pilot" ,"ENABLE_CA_SERVER"); !ok {
+		if _, ok, err := getAndClearComponentEnv(in, "pilot", "ENABLE_CA_SERVER"); !ok {
 			if err != nil {
 				return err
 			}

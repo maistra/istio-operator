@@ -4915,15 +4915,6 @@ spec:
                 properties:
                   certificateAuthority:
                     properties:
-                      cert-manager:
-                        properties:
-                          address:
-                            type: string
-                          pilotSecretName:
-                            type: string
-                          rootCAConfigMapName:
-                            type: string
-                        type: object
                       custom:
                         properties:
                           address:
@@ -9793,15 +9784,6 @@ spec:
                     properties:
                       certificateAuthority:
                         properties:
-                          cert-manager:
-                            properties:
-                              address:
-                                type: string
-                              pilotSecretName:
-                                type: string
-                              rootCAConfigMapName:
-                                type: string
-                            type: object
                           custom:
                             properties:
                               address:

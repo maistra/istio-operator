@@ -15,7 +15,7 @@ rm -rf "${RESOURCES_DIR}" && mkdir -p "${RESOURCES_DIR}"
 
 # Allow the developer to use other tool, e.g. podman
 CONTAINER_CLI=${CONTAINER_CLI:-docker}
-if ! which "${CONTAINER_CLI}" > /dev/null; then
+if ! command -v "${CONTAINER_CLI}" > /dev/null; then
 	echo "${CONTAINER_CLI} needs to be installed"
 	exit 1
 fi

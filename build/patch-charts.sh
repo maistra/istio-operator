@@ -474,13 +474,13 @@ function patchPilotServingCert() {
   sed_wrap -i -e '/traceSampling:/ a\
   extraArgs: []\
   extraVolumeMounts: []\
-  extraVolumes: []' ${HELM_DIR}/istio-control/istio-discovery/values.yaml
+  extraVolumes: []' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
 
   # add extra volume in deployments (prepend before end of file)
   sed_wrap -i -e '/^---$/ i\
 {{- if .Values.pilot.extraVolumes }}\
 {{ toYaml .Values.pilot.extraVolumes | indent 6 }}\
-{{- end }}' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
+{{- end }}' "${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml"
 
 
 
@@ -488,7 +488,7 @@ function patchPilotServingCert() {
   sed_wrap -i -e '/volumeMounts:/ a\
 {{- if .Values.pilot.extraVolumeMounts }}\
 {{ toYaml .Values.pilot.extraVolumeMounts | indent 10 }}\
-{{- end }}' ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
+{{- end }}' "${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml"
 
   # Add extraArgs (by appending after discovery argument)
   sed_wrap -i -e '/- "discovery"/ a\
@@ -496,7 +496,7 @@ function patchPilotServingCert() {
   {{-  range .Values.pilot.extraArgs }}\
           - {{ . | quote }}\
   {{- end }}\
-{{- end }}'  ${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml
+{{- end }}'  "${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml"
 
 }
 
