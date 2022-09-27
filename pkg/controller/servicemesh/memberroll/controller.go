@@ -294,13 +294,20 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 
 	// 5. check each ServiceMeshMember object to see if it's configured or terminating
 	allKnownMembers := sets.NewString(roll.Spec.Members...).Insert(getNamespaces(members)...).Delete(meshNamespace)
-	var configuredMembers = sets.NewString()
-	var terminatingMembers = sets.NewString()
+	configuredMembers := sets.NewString() // reconciled, but not necessarily up-to-date with the smcp
+	upToDateMembers := sets.NewString()   // reconciled AND up-to-date with the smcp
+	terminatingMembers := sets.NewString()
 	for _, member := range members.Items {
 		if member.DeletionTimestamp != nil {
 			terminatingMembers.Insert(member.Namespace)
-		} else if isConfigured(&member, mesh) {
-			configuredMembers.Insert(member.Namespace)
+		} else {
+			configured, upToDate := getMemberReconciliationStatus(&member, mesh)
+			if configured {
+				configuredMembers.Insert(member.Namespace)
+				if upToDate {
+					upToDateMembers.Insert(member.Namespace)
+				}
+			}
 		}
 		setMemberCondition(memberStatusMap, member.Namespace, member.Status.GetCondition(maistrav1.ConditionTypeMemberReconciled))
 	}
@@ -315,7 +322,7 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 
 	// 7. update the status
 	roll.Status.Members = allKnownMembers.List()
-	roll.Status.PendingMembers = allKnownMembers.Difference(configuredMembers).Difference(terminatingMembers).List()
+	roll.Status.PendingMembers = allKnownMembers.Difference(upToDateMembers).Difference(terminatingMembers).List()
 	roll.Status.ConfiguredMembers = configuredMembers.List()
 	roll.Status.TerminatingMembers = terminatingMembers.List()
 	roll.Status.ServiceMeshGeneration = mesh.Status.ObservedGeneration
@@ -420,12 +427,13 @@ func isCreatedByThisController(member *maistrav1.ServiceMeshMember) bool {
 	return member.Annotations != nil && member.Annotations[common.CreatedByKey] == controllerName
 }
 
-func isConfigured(member *maistrav1.ServiceMeshMember, mesh *maistrav2.ServiceMeshControlPlane) bool {
+func getMemberReconciliationStatus(member *maistrav1.ServiceMeshMember, mesh *maistrav2.ServiceMeshControlPlane) (configured, upToDate bool) {
 	ref := member.Spec.ControlPlaneRef
 	condition := member.Status.GetCondition(maistrav1.ConditionTypeMemberReconciled)
-	return ref.Name == mesh.Name && ref.Namespace == mesh.Namespace &&
-		condition.Status == corev1.ConditionTrue &&
-		member.Status.ServiceMeshReconciledVersion == mesh.Status.GetReconciledVersion()
+
+	configured = ref.Name == mesh.Name && ref.Namespace == mesh.Namespace && condition.Status == corev1.ConditionTrue
+	upToDate = member.Status.ServiceMeshReconciledVersion == mesh.Status.GetReconciledVersion()
+	return configured, upToDate
 }
 
 // Returns nil ServiceMeshMember if namespace doesn't exist
