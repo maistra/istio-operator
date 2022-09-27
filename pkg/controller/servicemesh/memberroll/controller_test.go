@@ -409,7 +409,7 @@ func TestReconcileUpdatesMembersInStatusWhenMemberIsDeleted(t *testing.T) {
 	kialiReconciler.assertInvokedWith(t, appNamespace)
 }
 
-func TestReconcileClearsConfigureMembersWhenSMCPDeleted(t *testing.T) {
+func TestReconcileClearsConfiguredMembersWhenSMCPDeleted(t *testing.T) {
 	roll := newMemberRoll(1, 1, 1, operatorVersionDefault)
 	roll.Spec.Members = []string{appNamespace}
 	roll.Status.Members = []string{appNamespace}
@@ -440,6 +440,39 @@ func TestReconcileClearsConfigureMembersWhenSMCPDeleted(t *testing.T) {
 		[]string{appNamespace}, // pending
 		[]string{},             // configured
 		[]string{},             // terminating
+		t)
+}
+
+func TestReconcileAddsMembersToCorrectStatusField(t *testing.T) {
+	smcp := newControlPlane()
+	markControlPlaneReconciled(smcp)
+
+	smmr := newMemberRoll(1)
+	smmr.Spec.Members = []string{"unconfigured", "out-of-date", "up-to-date", "terminating"}
+
+	unconfigured := newMemberWithNamespace("unconfigured")
+
+	configuredButOutOfDate := newMemberWithNamespace("out-of-date")
+	markMemberReconciled(configuredButOutOfDate, 1, 1, smcp.ObjectMeta.Generation-1, smcp.Status.OperatorVersion)
+
+	configuredAndUpToDate := newMemberWithNamespace("up-to-date")
+	markMemberReconciled(configuredAndUpToDate, 1, 1, smcp.ObjectMeta.Generation, smcp.Status.OperatorVersion)
+
+	terminating := newMemberWithNamespace("terminating")
+	markMemberReconciled(configuredAndUpToDate, 1, 1, smcp.ObjectMeta.Generation, smcp.Status.OperatorVersion)
+	terminating.ObjectMeta.DeletionTimestamp = &oneMinuteAgo
+
+	cl, _, r, _ := createClientAndReconciler(smcp, smmr, unconfigured, configuredButOutOfDate, configuredAndUpToDate, terminating,
+		newNamespace("unconfigured"), newNamespace("out-of-date"), newNamespace("up-to-date"), newNamespace("terminating"))
+
+	assertReconcileSucceeds(r, t)
+
+	updatedRoll := test.GetUpdatedObject(ctx, cl, smmr.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
+	assertStatusMembers(updatedRoll,
+		[]string{"out-of-date", "terminating", "unconfigured", "up-to-date"}, // members
+		[]string{"out-of-date", "unconfigured"},                              // pending
+		[]string{"out-of-date", "up-to-date"},                                // configured
+		[]string{"terminating"},                                              // terminating
 		t)
 }
 
@@ -583,6 +616,12 @@ func TestClientReturnsErrorWhenRemovingFinalizer(t *testing.T) {
 	}
 }
 
+func newMemberWithNamespace(ns string) *maistrav1.ServiceMeshMember {
+	member := newMemberWithRef(controlPlaneName, controlPlaneNamespace)
+	member.Namespace = ns
+	return member
+}
+
 func newMember() *maistrav1.ServiceMeshMember {
 	return newMemberWithRef(controlPlaneName, controlPlaneNamespace)
 }
@@ -711,7 +750,6 @@ func newControlPlane(version string) *maistrav2.ServiceMeshControlPlane {
 }
 
 func markControlPlaneReconciled(controlPlane *maistrav2.ServiceMeshControlPlane, operatorVersion string) *maistrav2.ServiceMeshControlPlane {
-	controlPlane.Status.ObservedGeneration = controlPlane.GetGeneration()
 	controlPlane.Status.Conditions = []status.Condition{
 		{
 			Type:   status.ConditionTypeReconciled,
