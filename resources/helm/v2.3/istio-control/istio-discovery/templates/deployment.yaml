@@ -97,9 +97,9 @@ spec:
 {{- if not .Values.global.clusterScoped }}
           - --memberRollName=default
           - --disableNodeAccess=true
-{{- end}}
           - --enableCRDScan=false
           - --enableIngressClassName=false
+{{- end}}
           - --monitoringAddr=:15014
 {{- if .Values.global.logging.level }}
           - --log_output_level={{ .Values.global.logging.level }}

@@ -145,7 +145,6 @@ function patchGalley() {
     verbs: ["update"]' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
   sed_wrap -i -e '/- apiGroups:.*admissionregistration\.k8s\.io/,/verbs:/ d' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
   sed_wrap -i -e '/- apiGroups:.*certificates\.k8s\.io/,/verbs:/ d' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
-  sed_wrap -i -e '/- apiGroups:.*apiextensions\.k8s\.io/,/verbs:/ d' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
   sed_wrap -i -e '/- apiGroups:.*authentication\.k8s\.io/,/verbs:/ d' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
 
   # remove istiod-reader ClusterRole and ClusterRoleBindings
@@ -157,9 +156,9 @@ function patchGalley() {
 {{- if not .Values.global.clusterScoped }}\
           - --memberRollName=default\
           - --disableNodeAccess=true\
-{{- end}}\
           - --enableCRDScan=false\
-          - --enableIngressClassName=false' "${deployment}"
+          - --enableIngressClassName=false\
+{{- end}}' "${deployment}"
 
   ############## disable webhook config updates ############################
   # Name of the mutatingwebhookconfiguration to patch, if istioctl is not used.
