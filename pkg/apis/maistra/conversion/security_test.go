@@ -1247,6 +1247,122 @@ func securityTestCasesV2(version versions.Version) []conversionTestCase {
 			}),
 		},
 		{
+			name: "ca.cert-manager.basic" + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Security: &v2.SecurityConfig{
+					CertificateAuthority: &v2.CertificateAuthorityConfig{
+						Type: v2.CertificateAuthorityTypeCertManager,
+						CertManager: &v2.CertManagerCertificateAuthorityConfig{
+							Address:             "my-istio-csr.namespace.svc.cluster.local",
+							PilotCertSecretName: "istiod-tls",
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"caAddress": "my-istio-csr.namespace.svc.cluster.local",
+				},
+				"pilot": map[string]interface{}{
+					"ca": map[string]interface{}{"implementation": "cert-manager"},
+					"extraArgs": []string{
+						"--tlsCertFile=/etc/cert-manager/tls/tls.crt",
+						"--tlsKeyFile=/etc/cert-manager/tls/tls.key",
+						"--caCertFile=/etc/cert-manager/tls/ca.crt",
+					},
+					"extraVolumeMounts": []interface{}{map[string]interface{}{
+						"name":      "cert-manager",
+						"mountPath": "/etc/cert-manager/tls",
+						"readyOnly": "true",
+					}},
+					"extraVolumes": []interface{}{map[string]interface{}{
+						"name": "cert-manager",
+						"secret": map[string]interface{}{
+							"secretName": "istiod-tls",
+						},
+					}},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+				"pilot": map[string]interface{}{
+					"env": map[string]interface{}{
+						"ENABLE_CA_SERVER": string("false"),
+					},
+				},
+			}),
+		},
+		{
+			name: "ca.cert-manager.casuppiled" + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				Security: &v2.SecurityConfig{
+					CertificateAuthority: &v2.CertificateAuthorityConfig{
+						Type: v2.CertificateAuthorityTypeCertManager,
+						CertManager: &v2.CertManagerCertificateAuthorityConfig{
+							Address:             "my-istio-csr.namespace.svc.cluster.local",
+							PilotCertSecretName: "istiod-tls",
+							RootCAConfigMapName: "istio-ca-root-cert",
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"caAddress": "my-istio-csr.namespace.svc.cluster.local",
+				},
+				"pilot": map[string]interface{}{
+					"ca": map[string]interface{}{"implementation": "cert-manager"},
+					"extraArgs": []string{
+						"--tlsCertFile=/etc/cert-manager/tls/tls.crt",
+						"--tlsKeyFile=/etc/cert-manager/tls/tls.key",
+						"--caCertFile=/etc/cert-manager/ca/root-cert.pem",
+					},
+					"extraVolumeMounts": []interface{}{
+						map[string]interface{}{
+							"name":      "cert-manager",
+							"mountPath": "/etc/cert-manager/tls",
+							"readyOnly": "true",
+						},
+						map[string]interface{}{
+							"name":      "ca-root-cert",
+							"mountPath": "/etc/cert-manager/ca",
+							"readyOnly": "true",
+						},
+					},
+					"extraVolumes": []interface{}{
+						map[string]interface{}{
+							"name": "cert-manager",
+							"secret": map[string]interface{}{
+								"secretName": "istiod-tls",
+							},
+						},
+						map[string]interface{}{
+							"name": "ca-root-cert",
+							"configMap": map[string]interface{}{
+								"name": "istio-ca-root-cert",
+							},
+						},
+					},
+				},
+			}),
+			completeIstio: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					"multiCluster":  globalMultiClusterDefaults,
+					"meshExpansion": globalMeshExpansionDefaults,
+				},
+				"pilot": map[string]interface{}{
+					"env": map[string]interface{}{
+						"ENABLE_CA_SERVER": string("false"),
+					},
+				},
+			}),
+		},
+		{
 			name: "identity.kubernetes." + ver,
 			spec: &v2.ControlPlaneSpec{
 				Version: ver,

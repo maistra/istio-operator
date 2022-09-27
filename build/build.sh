@@ -3,7 +3,7 @@
 set -o errexit
 set -o pipefail
 
-if ! which go > /dev/null; then
+if ! command -v go > /dev/null; then
 	echo "golang needs to be installed"
 	exit 1
 fi

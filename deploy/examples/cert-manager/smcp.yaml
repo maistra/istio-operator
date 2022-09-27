@@ -1,0 +1,21 @@
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+metadata:
+  name: test-prototype
+  namespace: istio-system
+spec:
+  addons:
+    kiali:
+      enabled: false
+  profiles:
+    - small
+  security:
+    certificateAuthority:
+      cert-manager:
+        address: cert-manager-istio-csr.cert-manager.svc:443
+        pilotSecretName: istiod-tls
+        rootCAConfigMapName: "istio-ca-root-cert"
+      type: cert-manager
+  tracing:
+    type: None
+  version: v2.2
