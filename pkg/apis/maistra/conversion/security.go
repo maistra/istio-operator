@@ -167,7 +167,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				extraArgs[2] = "--caCertFile=/etc/cert-manager/ca/root-cert.pem"
 			} else {
 				fmt.Printf(`Warning! using istiod-tls ca.crt key as root of trust for mesh,\
-				 this will likely work but is not a recomended Trust On First Use pattern. Set rootCAConfigMapName to 'istio-ca-root-cert' instead`)
+				 this will likely work but is not a recommended Trust On First Use pattern. Set rootCAConfigMapName to 'istio-ca-root-cert' instead`)
 			}
 
 			if err := setHelmStringSliceValue(values, "pilot.extraArgs", extraArgs); err != nil {

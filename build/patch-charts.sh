@@ -467,7 +467,7 @@ function copyGlobalValues() {
   cp "${SOURCE_DIR}/resources/helm/overlays/global.yaml" "${SOURCE_DIR}/resources/helm/v2.3/"
 }
 
-# This hack is hopefully only needed for a few versions until this PR is merged: https://github.com/istio/istio/pull/37264
+# This hack is hopefully only needed for a few versions until this PR is merged: https://github.com/istio/istio/pull/39375
 # It essentially modifies the chart to have the exact same changes
 function patchPilotServingCert() {
   # add extra values
