@@ -444,10 +444,10 @@ func TestReconcileClearsConfiguredMembersWhenSMCPDeleted(t *testing.T) {
 }
 
 func TestReconcileAddsMembersToCorrectStatusField(t *testing.T) {
-	smcp := newControlPlane()
-	markControlPlaneReconciled(smcp)
+	smcp := newControlPlane("")
+	markControlPlaneReconciled(smcp, operatorVersionDefault)
 
-	smmr := newMemberRoll(1)
+	smmr := newMemberRoll(2, 1, 1, operatorVersionDefault)
 	smmr.Spec.Members = []string{"unconfigured", "out-of-date", "up-to-date", "terminating"}
 
 	unconfigured := newMemberWithNamespace("unconfigured")
@@ -462,7 +462,7 @@ func TestReconcileAddsMembersToCorrectStatusField(t *testing.T) {
 	markMemberReconciled(configuredAndUpToDate, 1, 1, smcp.ObjectMeta.Generation, smcp.Status.OperatorVersion)
 	terminating.ObjectMeta.DeletionTimestamp = &oneMinuteAgo
 
-	cl, _, r, _ := createClientAndReconciler(smcp, smmr, unconfigured, configuredButOutOfDate, configuredAndUpToDate, terminating,
+	cl, _, r, _ := createClientAndReconciler(t, smcp, smmr, unconfigured, configuredButOutOfDate, configuredAndUpToDate, terminating,
 		newNamespace("unconfigured"), newNamespace("out-of-date"), newNamespace("up-to-date"), newNamespace("terminating"))
 
 	assertReconcileSucceeds(r, t)
