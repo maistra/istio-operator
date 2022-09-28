@@ -319,6 +319,7 @@ lint-yaml:
 
 .PHONY: lint-helm
 lint-helm:
+	@echo "Helm version: `helm version`"
 	@${FINDFILES} -name 'Chart.yaml' -path './resources/helm/v2.?/*' \
 	-not \(	-path './resources/helm/v2.0/*' -o -path './resources/helm/v2.1/*' -o -path './resources/helm/v2.2/*' \) \
 	-print0 | ${XARGS} -L 1 dirname | xargs -r helm lint --strict
