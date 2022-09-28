@@ -17,6 +17,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
+	apiv1 "maistra.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"sigs.k8s.io/yaml"
@@ -248,6 +249,39 @@ func (v *versionStrategyV2_3) validateAddons(spec *v2.ControlPlaneSpec, allError
 	return allErrors
 }
 
+func (v *versionStrategyV2_3) validateServiceMeshExtensionsRemoved(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+	serviceMeshExtensions := &apiv1.ServiceMeshExtensionList{}
+	if err := cl.List(ctx, serviceMeshExtensions); err != nil {
+		if !errors.IsNotFound(err) && !meta.IsNoMatchError(err) {
+			return NewValidationError(fmt.Errorf("upgrade validation failed: failed to list ServiceMeshExtensions in cluster (error: %s)",
+				err,
+			))
+		}
+	}
+	if len(serviceMeshExtensions.Items) > 0 {
+		smmr := &v1.ServiceMeshMemberRoll{}
+		err := cl.Get(ctx, client.ObjectKey{Name: common.MemberRollName, Namespace: smcp.GetNamespace()}, smmr)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return NewValidationError(fmt.Errorf("upgrade validation failed: failed to retrieve SMMR for SMCP (error: %s)",
+					err,
+				))
+			}
+		}
+		meshNamespaces := common.GetMeshNamespaces(smcp.GetNamespace(), smmr)
+		for _, sme := range serviceMeshExtensions.Items {
+			if meshNamespaces.Has(sme.Namespace) {
+				return NewValidationError(fmt.Errorf("found a ServiceMeshExtension '%s' in namespace '%s'. "+
+					"ServiceMeshExtension support has been removed; please migrate existing ServiceMeshExtensions to WasmPlugin",
+					sme.Name,
+					sme.Namespace,
+				))
+			}
+		}
+	}
+	return nil
+}
+
 func (v *versionStrategyV2_3) ValidateV2Full(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
 	err := v.ValidateV2(ctx, cl, meta, spec)
@@ -269,8 +303,7 @@ func (v *versionStrategyV2_3) ValidateDowngrade(ctx context.Context, cl client.C
 }
 
 func (v *versionStrategyV2_3) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
-	// TODO: what might prevent us from upgrading?
-	return nil
+	return v.validateServiceMeshExtensionsRemoved(ctx, cl, smcp)
 }
 
 func (v *versionStrategyV2_3) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP metav1.Object) error {
