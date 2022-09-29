@@ -9,8 +9,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
+
+	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
 // RunControllerTestCase executes each test case using a new manager.Manager
@@ -35,8 +38,11 @@ func RunControllerTestCase(t *testing.T, testCase ControllerTestCase) {
 			t.Fatal(err)
 		}
 	}
+
+	dc := fake.FakeDiscovery{&tracker.Fake, DefaultKubeVersion}
+	enhancedMgr := common.NewEnhancedManager(mgr, &dc)
 	for _, addController := range testCase.AddControllers {
-		if err := addController(mgr); err != nil {
+		if err := addController(enhancedMgr); err != nil {
 			t.Fatal(err)
 		}
 	}
