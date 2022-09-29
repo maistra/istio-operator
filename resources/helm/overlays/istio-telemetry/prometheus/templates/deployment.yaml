@@ -100,6 +100,7 @@ spec:
             - '--storage.tsdb.retention.time={{ .Values.prometheus.retention }}'
             - '--storage.tsdb.path=/prometheus'
             - '--config.file=/etc/prometheus/prometheus.yml'
+            - --web.enable-lifecycle
           ports:
             - containerPort: 9090
               name: http
@@ -124,7 +125,42 @@ spec:
           - mountPath: /etc/istio-certs
             name: istio-certs
           {{- end }}
-
+        - name: config-reloader
+{{- if contains "/" .Values.prometheusConfigReloader.image }}
+          image: "{{ .Values.prometheusConfigReloader.image }}"
+{{- else }}
+          image: "{{ .Values.global.hub }}/{{ .Values.prometheusConfigReloader.image }}:{{ .Values.global.tag }}"
+{{- end }}
+{{- if .Values.global.imagePullPolicy }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+{{- end }}
+          args:
+          - --reload-url=http://localhost:9090/-/reload
+          - --config-file=/etc/prometheus/prometheus.yml
+          command:
+          - /usr/bin/prometheus-config-reloader
+          resources:
+{{- if .Values.prometheusConfigReloader.resources }}
+{{ toYaml .Values.prometheusConfigReloader.resources | indent 12 }}
+{{- else }}
+            limits:
+              cpu: 100m
+              memory: 50Mi
+            requests:
+              cpu: 100m
+              memory: 50Mi
+{{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - name: config-volume
+            mountPath: /etc/prometheus
 {{- if and .Values.prometheus.provisionPrometheusCert (not .Values.meshConfig.enablePrometheusMerge) }}
         - name: istio-proxy
 {{- if contains "/" .Values.global.proxy.image }}

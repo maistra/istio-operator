@@ -104,6 +104,9 @@ func (v *versionStrategyV2_3) SetImageValues(_ context.Context, _ *common.Contro
 	if err := common.UpdateField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V2_3.Prometheus); err != nil {
 		return err
 	}
+	if err := common.UpdateField(smcpSpec.Istio, "prometheusConfigReloader.image", common.Config.OLM.Images.V2_2.PrometheusConfigReloader); err != nil {
+		return err
+	}
 	if err := common.UpdateField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V2_3.ProxyV2); err != nil {
 		return err
 	}
