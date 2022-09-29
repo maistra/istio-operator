@@ -2,10 +2,11 @@ package bootstrap
 
 import (
 	"context"
-	"k8s.io/helm/pkg/manifest"
 	"path"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/discovery"
+	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -16,20 +17,20 @@ import (
 
 // InstallCNI makes sure all Istio CNI resources have been created.  CRDs are located from
 // files in controller.HelmDir/istio-init/files
-func InstallCNI(ctx context.Context, cl client.Client, config cni.Config) error {
+func InstallCNI(ctx context.Context, cl client.Client, config cni.Config, dc discovery.DiscoveryInterface) error {
 	// we should run through this each reconcile to make sure it's there
-	return internalInstallCNI(ctx, cl, config)
+	return internalInstallCNI(ctx, cl, config, dc)
 }
 
-func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config) error {
-	renderings, err := internalRenderCNI(ctx, cl, config, versions.GetSupportedVersions())
+func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config, dc discovery.DiscoveryInterface) error {
+	renderings, err := internalRenderCNI(ctx, cl, config, dc, versions.GetSupportedVersions())
 	if err != nil {
 		return err
 	}
 	return internalProcessManifests(ctx, cl, renderings["istio_cni"])
 }
 
-func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config, supportedVersions []versions.Version) (renderings map[string][]manifest.Manifest, err error) {
+func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config, dc discovery.DiscoveryInterface, supportedVersions []versions.Version) (renderings map[string][]manifest.Manifest, err error) {
 	log := common.LogFromContext(ctx)
 	log.Info("ensuring Istio CNI has been installed")
 
@@ -51,8 +52,13 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 	}
 	values["supportedReleases"] = releases
 
+	serverVersion, err := dc.ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+
 	// always install the latest version of the CNI image
-	renderings, _, err = helm.RenderChart(path.Join(versions.DefaultVersion.GetChartsDir(), "istio_cni"), operatorNamespace, values)
+	renderings, _, err = helm.RenderChart(path.Join(versions.DefaultVersion.GetChartsDir(), "istio_cni"), operatorNamespace, serverVersion.String(), values)
 	return
 }
 

@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/viper"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/discovery"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -144,6 +145,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
+	if err != nil {
+		log.Error(err, "")
+		os.Exit(1)
+	}
+
+	enhancedMgr := common.NewEnhancedManager(mgr, dc)
+
 	log.Info("Registering Components.")
 
 	// Setup Scheme for all resources
@@ -153,7 +162,7 @@ func main() {
 	}
 
 	// Setup all Controllers
-	if err := controller.AddToManager(mgr); err != nil {
+	if err := controller.AddToManager(enhancedMgr); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}

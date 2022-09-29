@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
+	goruntime "runtime"
 	"testing"
 
 	arv1beta1 "k8s.io/api/admissionregistration/v1beta1"
@@ -14,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/version"
 	clienttesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -24,6 +26,15 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
+
+var DefaultKubeVersion = &version.Info{
+	Major:      "1",
+	Minor:      "25",
+	GitVersion: "v1.25.0",
+	GoVersion:  goruntime.Version(),
+	Compiler:   goruntime.Compiler,
+	Platform:   fmt.Sprintf("%s/%s", goruntime.GOOS, goruntime.GOARCH),
+}
 
 func GetScheme() *runtime.Scheme {
 	s := runtime.NewScheme()

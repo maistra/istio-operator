@@ -2,7 +2,6 @@ package helm
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -27,7 +26,7 @@ func init() {
 // key names represent the chart from which the template was processed.  Subcharts
 // will be keyed as <root-name>/charts/<subchart-name>, e.g. istio/charts/galley.
 // The root chart would be simply, istio.
-func RenderChart(chartPath string, namespace string, values interface{}) (map[string][]manifest.Manifest, map[string]interface{}, error) {
+func RenderChart(chartPath, namespace, kubeVersion string, values interface{}) (map[string][]manifest.Manifest, map[string]interface{}, error) {
 	rawVals, err := yaml.Marshal(values)
 	config := &chart.Config{Raw: string(rawVals), Values: map[string]*chart.Value{}}
 
@@ -45,8 +44,7 @@ func RenderChart(chartPath string, namespace string, values interface{}) (map[st
 			Time:      timeconv.Now(),
 			Namespace: namespace,
 		},
-		// XXX: hard-code or look this up somehow?
-		KubeVersion: fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor),
+		KubeVersion: kubeVersion,
 	}
 	renderedTemplates, err := renderutil.Render(c, config, renderOpts)
 	if err != nil {

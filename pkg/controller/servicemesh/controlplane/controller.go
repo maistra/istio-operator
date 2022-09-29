@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -14,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -42,18 +44,29 @@ func Add(mgr manager.Manager) error {
 		return err
 	}
 
-	reconciler := newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetEventRecorderFor(controllerName), operatorNamespace, cniConfig)
+	dcProvider, ok := mgr.(common.DiscoveryClientProvider)
+	if !ok {
+		return fmt.Errorf("expected mgr to be a DiscoveryClientProvider")
+	}
+	dc, err := dcProvider.GetDiscoveryClient()
+	if err != nil {
+		return err
+	}
+
+	reconciler := newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetEventRecorderFor(controllerName), operatorNamespace, cniConfig, dc)
 	return add(mgr, reconciler)
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, operatorNamespace string, cniConfig cni.Config) *ControlPlaneReconciler {
+func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, operatorNamespace string,
+	cniConfig cni.Config, dc discovery.DiscoveryInterface) *ControlPlaneReconciler {
 	reconciler := &ControlPlaneReconciler{
 		ControllerResources: common.ControllerResources{
 			Client:            cl,
 			Scheme:            scheme,
 			EventRecorder:     eventRecorder,
 			OperatorNamespace: operatorNamespace,
+			DiscoveryClient:   dc,
 		},
 		cniConfig:   cniConfig,
 		reconcilers: map[types.NamespacedName]ControlPlaneInstanceReconciler{},

@@ -1,18 +1,26 @@
 package common
 
 import (
+	"net/http"
 	"os"
 	"sync"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 )
@@ -22,6 +30,7 @@ type ControllerResources struct {
 	Scheme            *runtime.Scheme
 	EventRecorder     record.EventRecorder
 	OperatorNamespace string
+	DiscoveryClient   discovery.DiscoveryInterface
 }
 
 // UpdateField updates a nested field at the specified path, e.g.
@@ -161,4 +170,84 @@ func GetMeshNamespaces(controlPlaneNamespace string, smmr *v1.ServiceMeshMemberR
 		meshNamespaces.Insert(smmr.Status.ConfiguredMembers...)
 	}
 	return meshNamespaces
+}
+
+func NewEnhancedManager(mgr manager.Manager, dc discovery.DiscoveryInterface) EnhancedManager {
+	return EnhancedManager{
+		delegate: mgr,
+		dc:       dc,
+	}
+}
+
+type EnhancedManager struct {
+	delegate manager.Manager
+	dc       discovery.DiscoveryInterface
+}
+
+func (m EnhancedManager) Add(runnable manager.Runnable) error {
+	return m.delegate.Add(runnable)
+}
+
+func (m EnhancedManager) Elected() <-chan struct{} {
+	return m.delegate.Elected()
+}
+
+func (m EnhancedManager) SetFields(fields interface{}) error {
+	return m.delegate.SetFields(fields)
+}
+
+func (m EnhancedManager) AddMetricsExtraHandler(path string, handler http.Handler) error {
+	return m.delegate.AddMetricsExtraHandler(path, handler)
+}
+
+func (m EnhancedManager) AddHealthzCheck(name string, check healthz.Checker) error {
+	return m.delegate.AddHealthzCheck(name, check)
+}
+
+func (m EnhancedManager) AddReadyzCheck(name string, check healthz.Checker) error {
+	return m.delegate.AddReadyzCheck(name, check)
+}
+
+func (m EnhancedManager) Start(ch <-chan struct{}) error {
+	return m.delegate.Start(ch)
+}
+
+func (m EnhancedManager) GetConfig() *rest.Config {
+	return m.delegate.GetConfig()
+}
+
+func (m EnhancedManager) GetScheme() *runtime.Scheme {
+	return m.delegate.GetScheme()
+}
+
+func (m EnhancedManager) GetClient() client.Client {
+	return m.delegate.GetClient()
+}
+
+func (m EnhancedManager) GetFieldIndexer() client.FieldIndexer {
+	return m.delegate.GetFieldIndexer()
+}
+
+func (m EnhancedManager) GetCache() cache.Cache {
+	return m.delegate.GetCache()
+}
+
+func (m EnhancedManager) GetEventRecorderFor(name string) record.EventRecorder {
+	return m.delegate.GetEventRecorderFor(name)
+}
+
+func (m EnhancedManager) GetRESTMapper() meta.RESTMapper {
+	return m.delegate.GetRESTMapper()
+}
+
+func (m EnhancedManager) GetAPIReader() client.Reader {
+	return m.delegate.GetAPIReader()
+}
+
+func (m EnhancedManager) GetWebhookServer() *webhook.Server {
+	return m.delegate.GetWebhookServer()
+}
+
+func (m EnhancedManager) GetDiscoveryClient() (discovery.DiscoveryInterface, error) {
+	return m.dc, nil
 }
