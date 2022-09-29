@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -24,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"sigs.k8s.io/yaml"
 
 	"github.com/maistra/istio-operator/pkg/apis/external"
 	kialiv1alpha1 "github.com/maistra/istio-operator/pkg/apis/external/kiali/v1alpha1"
@@ -38,24 +40,33 @@ const (
 
 	statusAnnotationConfiguredMemberCount = "configuredMemberCount"
 	statusAnnotationKialiName             = "kialiName"
+
+	prometheusConfigMapName         = "prometheus"
+	prometheusConfigurationFilename = "prometheus.yml"
+
+	prometheusScrapeConfigKeyName   = "scrape_configs"
+	prometheusScrapeSDConfigKeyName = "kubernetes_sd_configs"
 )
 
 // Add creates a new ServiceMeshMemberRoll Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	kialiReconciler := defaultKialiReconciler{Client: mgr.GetClient()}
-	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetEventRecorderFor(controllerName), &kialiReconciler))
+	prometheusReconciler := defaultPrometheusReconciler{Client: mgr.GetClient()}
+
+	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetEventRecorderFor(controllerName), &kialiReconciler, &prometheusReconciler))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, kialiReconciler KialiReconciler) *MemberRollReconciler {
+func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, kialiReconciler KialiReconciler, prometheusReconciler PrometheusReconciler) *MemberRollReconciler {
 	return &MemberRollReconciler{
 		ControllerResources: common.ControllerResources{
 			Client:        cl,
 			Scheme:        scheme,
 			EventRecorder: eventRecorder,
 		},
-		kialiReconciler: kialiReconciler,
+		kialiReconciler:      kialiReconciler,
+		prometheusReconciler: prometheusReconciler,
 	}
 }
 
@@ -184,7 +195,8 @@ var _ reconcile.Reconciler = &MemberRollReconciler{}
 type MemberRollReconciler struct {
 	common.ControllerResources
 
-	kialiReconciler KialiReconciler
+	kialiReconciler      KialiReconciler
+	prometheusReconciler PrometheusReconciler
 }
 
 // Reconcile reads that state of the cluster for a ServiceMeshMemberRoll object and makes changes based on the state read
@@ -369,6 +381,12 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		}
 	}
 
+	// 7. tell Prometheus about all the namespaces in the mesh
+	var prometheusErr error
+	if mesh.Status.AppliedSpec.IsPrometheusEnabled() {
+		prometheusErr = r.prometheusReconciler.reconcilePrometheus(ctx, prometheusConfigMapName, meshNamespace, allKnownMembers.List())
+	}
+
 	// 7. update the status
 	roll.Status.Members = allKnownMembers.List()
 	roll.Status.PendingMembers = allKnownMembers.Difference(upToDateMembers).Difference(terminatingMembers).List()
@@ -405,6 +423,10 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		setReadyCondition(roll, false,
 			maistrav1.ConditionReasonReconcileError,
 			fmt.Sprintf("Kiali could not be configured: %v", kialiErr))
+	} else if prometheusErr != nil {
+		setReadyCondition(roll, false,
+			maistrav1.ConditionReasonReconcileError,
+			fmt.Sprintf("Prometheus could not be configured: %v", prometheusErr))
 	} else {
 		setReadyCondition(roll, true,
 			maistrav1.ConditionReasonConfigured,
@@ -416,6 +438,8 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		return reconcile.Result{}, err
 	} else if kialiErr != nil {
 		return reconcile.Result{}, kialiErr
+	} else if prometheusErr != nil {
+		return reconcile.Result{}, prometheusErr
 	}
 	return reconcile.Result{}, nil
 }
@@ -681,6 +705,128 @@ func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName
 	}
 
 	reqLogger.Info("Kiali CR deployment.accessible_namespaces updated", "accessibleNamespaces", accessibleNamespacesSet)
+	return nil
+}
+
+type PrometheusReconciler interface {
+	reconcilePrometheus(ctx context.Context, prometheusCMName, prometheusNamespace string, configuredMembers []string) error
+}
+
+type defaultPrometheusReconciler struct {
+	Client client.Client
+}
+
+func (r *defaultPrometheusReconciler) reconcilePrometheus(ctx context.Context, prometheusCMName, prometheusNamespace string, members []string) error {
+	reqLogger := common.LogFromContext(ctx)
+	reqLogger.Info("Attempting to get Prometheus ConfigMap", "prometheusNamespace", prometheusNamespace, "prometheusCMName", prometheusCMName)
+
+	cm := &corev1.ConfigMap{}
+
+	err := r.Client.Get(ctx, client.ObjectKey{Name: prometheusCMName, Namespace: prometheusNamespace}, cm)
+
+	if err != nil {
+		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
+			reqLogger.Info("Prometheus Config Map does not exist.")
+			return nil
+		}
+		return pkgerrors.Wrap(err, "error retrieving Prometheus ConfigMap from mesh")
+	}
+
+	data := make(map[string]interface{})
+
+	err = yaml.Unmarshal([]byte(cm.Data[prometheusConfigurationFilename]), &data)
+
+	if err != nil {
+		return pkgerrors.Wrap(err, "error unmarshaling prometheus.yml")
+	}
+
+	f, ok, err := unstructured.NestedFieldNoCopy(data, prometheusScrapeConfigKeyName)
+
+	var scrapes []interface{}
+
+	if err == nil && ok {
+		scrapes, ok = f.([]interface{})
+
+		if !ok {
+			return fmt.Errorf("error no scrape_configs found from %v", f)
+		}
+	} else {
+		return pkgerrors.Wrap(err, "error getting scrape_configs from ConfigMap")
+	}
+
+	for _, s := range scrapes {
+		scrape, ok := s.(map[string]interface{})
+
+		if !ok {
+			return fmt.Errorf("error converting scrape_config from %v", s)
+		}
+
+		if scrape["job_name"] == "pilot" {
+			continue
+		}
+
+		f, ok, err := unstructured.NestedFieldNoCopy(scrape, prometheusScrapeSDConfigKeyName)
+
+		if err == nil {
+			if ok {
+				sds, ok := f.([]interface{})
+
+				if ok {
+					for _, v := range sds {
+						sd, ok := v.(map[string]interface{})
+
+						if ok {
+							reqLogger.Info(fmt.Sprintf("Updating sd %v", v))
+
+							err = unstructured.SetNestedStringSlice(sd, members, "namespaces", "names")
+
+							if err != nil {
+								return pkgerrors.Wrap(err, fmt.Sprintf("error setting sd %v", v))
+							}
+						}
+					}
+				} else {
+					return fmt.Errorf("error can not process sd %v", f)
+				}
+			} else {
+				reqLogger.Info(fmt.Sprintf("Ignoring scrape %v", s))
+			}
+		} else {
+			return pkgerrors.Wrap(err, fmt.Sprintf("error getting sd from %v", s))
+		}
+	}
+
+	updatedPrometheus := &corev1.ConfigMap{}
+
+	updatedPrometheus.SetName(prometheusCMName)
+	updatedPrometheus.SetNamespace(prometheusNamespace)
+
+	updatedConfigurationFileData, err := yaml.Marshal(data)
+
+	if err != nil {
+		return pkgerrors.Wrap(err, "error marshalling updated prometheus configuration")
+	}
+
+	updatedConfigurationFile := string(updatedConfigurationFileData)
+
+	reqLogger.Info(fmt.Sprintf("Prometheus updated configuration file %v", updatedConfigurationFile))
+
+	updatedPrometheus.Data = map[string]string{
+		prometheusConfigurationFilename: updatedConfigurationFile,
+	}
+
+	err = r.Client.Patch(ctx, updatedPrometheus, client.Merge)
+
+	if err != nil {
+		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
+			reqLogger.Info(fmt.Sprintf("skipping Prometheus update, %s/%s is no longer available", prometheusNamespace, prometheusCMName))
+			return nil
+		}
+		return pkgerrors.Wrapf(err, "cannot update Prometheus ConfigMap %s/%s with namespaces %v", prometheusNamespace, prometheusCMName, members)
+	}
+
+	reqLogger.Info("Prometheus ConfigMap scraping namespaces updated", "namespaces", members)
+
 	return nil
 }
 
