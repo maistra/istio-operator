@@ -3,7 +3,7 @@ package memberroll
 import (
 	"context"
 	"fmt"
-	"strings"
+	"regexp"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -350,7 +350,11 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	if mesh.Status.AppliedSpec.IsKialiEnabled() {
 		kialiName := mesh.Status.AppliedSpec.Addons.Kiali.ResourceName()
 		roll.Status.SetAnnotation(statusAnnotationKialiName, kialiName)
-		kialiErr = r.kialiReconciler.reconcileKiali(ctx, kialiName, meshNamespace, allKnownMembers.List())
+		if roll.Spec.IsClusterScoped() {
+			kialiErr = r.kialiReconciler.reconcileKiali(ctx, kialiName, meshNamespace, []string{"**"}, getExcludedNamespaces())
+		} else {
+			kialiErr = r.kialiReconciler.reconcileKiali(ctx, kialiName, meshNamespace, allKnownMembers.List(), []string{})
+		}
 	}
 
 	// 7. update the status
@@ -396,11 +400,27 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 }
 
 func isExcludedNamespace(ns string) bool {
-	return ns == common.GetOperatorNamespace() ||
-		ns == "kube" ||
-		ns == "openshift" ||
-		strings.HasPrefix(ns, "kube-") ||
-		strings.HasPrefix(ns, "openshift-")
+	for _, regex := range getExcludedNamespaces() {
+		// ideally we'd compile the patterns on init, but common.GetOperatorNamespace() isn't available at that time yet
+		match, err := regexp.Match(regex, []byte(ns))
+		if err != nil {
+			panic(err)
+		}
+		if match {
+			return true
+		}
+	}
+	return false
+}
+
+func getExcludedNamespaces() []string {
+	return []string{
+		"^" + common.GetOperatorNamespace() + "$",
+		"^kube$",
+		"^openshift$",
+		"^kube-.*",
+		"^openshift-.*",
+	}
 }
 
 func setMemberCondition(memberStatusMap map[string]maistrav1.ServiceMeshMemberStatusSummary, ns string, condition maistrav1.ServiceMeshMemberCondition) {
@@ -545,7 +565,7 @@ func (r *MemberRollReconciler) finalizeObject(ctx context.Context, roll *maistra
 
 	kialiName := roll.Status.GetAnnotation(statusAnnotationKialiName)
 	if kialiName != "" {
-		err = r.kialiReconciler.reconcileKiali(ctx, kialiName, roll.Namespace, []string{})
+		err = r.kialiReconciler.reconcileKiali(ctx, kialiName, roll.Namespace, []string{}, []string{})
 		if err != nil {
 			return false, err
 		}
@@ -576,14 +596,15 @@ func (r *MemberRollReconciler) findConfiguredNamespaces(ctx context.Context, mes
 }
 
 type KialiReconciler interface {
-	reconcileKiali(ctx context.Context, kialiCRName, kialiCRNamespace string, configuredMembers []string) error
+	reconcileKiali(ctx context.Context, kialiCRName, kialiCRNamespace string, accessibleNamespaces, excludedNamespaces []string) error
 }
 
 type defaultKialiReconciler struct {
 	Client client.Client
 }
 
-func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName, kialiCRNamespace string, members []string) error {
+func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName, kialiCRNamespace string,
+	accessibleNamespaces, excludedNamespaces []string) error {
 	reqLogger := common.LogFromContext(ctx)
 	reqLogger.Info("Attempting to get Kiali CR", "kialiCRNamespace", kialiCRNamespace, "kialiCRName", kialiCRName)
 
@@ -600,14 +621,18 @@ func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName
 	}
 
 	// just get an array of strings consisting of the list of namespaces to be accessible to Kiali
-	accessibleNamespaces := sets.NewString(members...)
-	if existingNamespaces, found, _ := kialiCR.Spec.GetStringSlice("deployment.accessible_namespaces"); found &&
-		accessibleNamespaces.Equal(sets.NewString(existingNamespaces...)) {
-		reqLogger.Info("Kiali CR deployment.accessible_namespaces already up to date")
+	accessibleNamespacesSet := sets.NewString(accessibleNamespaces...)
+	excludedNamespacesSet := sets.NewString(excludedNamespaces...)
+	existingAccessible, accessibleFound, _ := kialiCR.Spec.GetStringSlice("deployment.accessible_namespaces")
+	existingExcluded, excludedFound, _ := kialiCR.Spec.GetStringSlice("api.namespaces.exclude")
+	if accessibleFound && accessibleNamespacesSet.Equal(sets.NewString(existingAccessible...)) &&
+		excludedFound && excludedNamespacesSet.Equal(sets.NewString(existingExcluded...)) {
+		reqLogger.Info("Kiali CR deployment.accessible_namespaces and api.namespaces.exclude already up to date")
 		return nil
 	}
 
-	reqLogger.Info("Updating Kiali CR deployment.accessible_namespaces", "accessibleNamespaces", accessibleNamespaces)
+	reqLogger.Info("Updating Kiali CR deployment.accessible_namespaces and api.namespaces.exclude",
+		"deployment.accessibleNamespaces", accessibleNamespacesSet, "api.namespaces.exclude", excludedNamespaces)
 
 	updatedKiali := &kialiv1alpha1.Kiali{
 		Base: external.Base{
@@ -618,9 +643,14 @@ func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName
 			Spec: maistrav1.NewHelmValues(make(map[string]interface{})),
 		},
 	}
-	err = updatedKiali.Spec.SetStringSlice("deployment.accessible_namespaces", accessibleNamespaces.List())
+	err = updatedKiali.Spec.SetStringSlice("deployment.accessible_namespaces", accessibleNamespacesSet.List())
 	if err != nil {
 		return pkgerrors.Wrapf(err, "cannot set deployment.accessible_namespaces in Kiali CR %s/%s", kialiCRNamespace, kialiCRName)
+	}
+
+	err = updatedKiali.Spec.SetStringSlice("api.namespaces.exclude", excludedNamespacesSet.List())
+	if err != nil {
+		return pkgerrors.Wrapf(err, "cannot set api.namespaces.exclude in Kiali CR %s/%s", kialiCRNamespace, kialiCRName)
 	}
 
 	err = r.Client.Patch(ctx, updatedKiali, client.Merge)
@@ -632,7 +662,7 @@ func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName
 		return pkgerrors.Wrapf(err, "cannot update Kiali CR %s/%s with new accessible namespaces", kialiCRNamespace, kialiCRName)
 	}
 
-	reqLogger.Info("Kiali CR deployment.accessible_namespaces updated", "accessibleNamespaces", accessibleNamespaces)
+	reqLogger.Info("Kiali CR deployment.accessible_namespaces updated", "accessibleNamespaces", accessibleNamespacesSet)
 	return nil
 }
 
