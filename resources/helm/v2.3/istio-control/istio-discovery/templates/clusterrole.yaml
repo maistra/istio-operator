@@ -94,9 +94,6 @@ rules:
   - apiGroups: ["route.openshift.io"]
     resources: ["routes", "routes/custom-host"]
     verbs: ["get", "list", "watch", "create", "delete", "update"]
-  - apiGroups: ["maistra.io"]
-    resources: ["servicemeshextensions"]
-    verbs: ["get", "list", "watch"]
 
   # Used for MCS serviceexport management
   - apiGroups: ["{{ $mcsAPIGroup }}"]
