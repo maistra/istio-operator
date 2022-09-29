@@ -33,6 +33,7 @@ import (
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 const (
@@ -385,8 +386,15 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 
 	// 7. tell Prometheus about all the namespaces in the mesh
 	var prometheusErr error
+
 	if mesh.Status.AppliedSpec.IsPrometheusEnabled() {
-		prometheusErr = r.prometheusReconciler.reconcilePrometheus(ctx, prometheusConfigMapName, meshNamespace, allKnownMembers.List())
+		cv, err := versions.ParseVersion(mesh.Status.AppliedSpec.Version)
+
+		if err != nil {
+			prometheusErr = err
+		} else if cv.Compare(versions.V2_3) >= 0 {
+			prometheusErr = r.prometheusReconciler.reconcilePrometheus(ctx, prometheusConfigMapName, meshNamespace, allKnownMembers.List())
+		}
 	}
 
 	// 7. update the status
