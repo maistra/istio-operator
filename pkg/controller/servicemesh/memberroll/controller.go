@@ -159,13 +159,17 @@ func toRequests(ctx context.Context, cl client.Client, namespace string) []recon
 
 	var requests []reconcile.Request
 	for _, smmr := range list.Items {
-		if smmr.Spec.IsClusterScoped() || contains(smmr.Spec.Members, namespace) {
+		if isMember(namespace, smmr) {
 			requests = append(requests, reconcile.Request{
 				NamespacedName: common.ToNamespacedName(&smmr),
 			})
 		}
 	}
 	return requests
+}
+
+func isMember(namespace string, smmr maistrav1.ServiceMeshMemberRoll) bool {
+	return (smmr.Spec.IsClusterScoped() && !isExcludedNamespace(namespace)) || contains(smmr.Spec.Members, namespace)
 }
 
 func contains(members []string, ns string) bool {
