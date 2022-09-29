@@ -20,13 +20,20 @@ import (
 
 // InstallCNI makes sure all Istio CNI resources have been created.  CRDs are located from
 // files in controller.HelmDir/istio-init/files
-func InstallCNI(ctx context.Context, cl client.Client, config cni.Config) error {
+func InstallCNI(ctx context.Context, cl client.Client, config cni.Config, instanceVersion versions.Version) error {
+	// instanceVersion is from a SMCP spec version
+	if instanceVersion == nil {
+		instanceVersion = versions.DefaultVersion.Version()
+	}
 	// we should run through this each reconcile to make sure it's there
-	return internalInstallCNI(ctx, cl, config)
+	return internalInstallCNI(ctx, cl, config, instanceVersion)
 }
 
-func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config) error {
-	renderings, err := internalRenderCNI(ctx, cl, config, versions.GetSupportedVersions())
+func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config, instanceVersion versions.Version) error {
+	if instanceVersion == nil {
+		instanceVersion = versions.DefaultVersion.Version()
+	}
+	renderings, err := internalRenderCNI(ctx, cl, config, versions.GetSupportedVersions(), instanceVersion)
 	if err != nil {
 		return err
 	}
@@ -34,7 +41,7 @@ func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config
 }
 
 func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
-	supportedVersions []versions.Version,
+	supportedVersions []versions.Version, instanceVersion versions.Version,
 ) (renderings map[string][]manifest.Manifest, err error) {
 	log := common.LogFromContext(ctx)
 	log.Info("ensuring Istio CNI has been installed")
@@ -82,6 +89,12 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 		releases = append(releases, versions.DefaultVersion.String())
 	}
 	cni["supportedReleases"] = releases
+	// v2.3 render the required cni daemonset,
+	// instanceVersion is from a SMCP spec version
+	if instanceVersion == nil {
+		instanceVersion = versions.DefaultVersion.Version()
+	}
+	cni["instanceVersion"] = instanceVersion.String()
 
 	values := make(map[string]interface{})
 	values["cni"] = cni

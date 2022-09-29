@@ -26,36 +26,49 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 	testCases := []struct {
 		name              string
 		supportedVersions []versions.Version
+		instanceVersion   versions.Version
 		containerNames    []string
 	}{
 		{
-			name:              "Default Supported Versions",
+			name:              "Default Supported Versions v2.2",
 			supportedVersions: versions.GetSupportedVersions(),
-			containerNames:    []string{"install-cni-v1-1", "install-cni-v2-0", "install-cni-v2-1", "install-cni-v2-2", "install-cni-v2-3"},
+			instanceVersion:   versions.V2_2.Version(),
+			containerNames:    []string{"install-cni-v1-1", "install-cni-v2-0", "install-cni-v2-1", "install-cni-v2-2"},
+		},
+		{
+			name:              "Default Supported Versions v2.3",
+			supportedVersions: versions.GetSupportedVersions(),
+			instanceVersion:   versions.V2_3.Version(),
+			containerNames:    []string{"install-cni-v2-3"},
 		},
 		{
 			name:              "v1.1 only",
 			supportedVersions: []versions.Version{versions.V1_1},
+			instanceVersion:   versions.V1_1.Version(),
 			containerNames:    []string{"install-cni-v1-1"},
 		},
 		{
 			name:              "v2.0 only",
 			supportedVersions: []versions.Version{versions.V2_0},
+			instanceVersion:   versions.V2_0.Version(),
 			containerNames:    []string{"install-cni-v2-0"},
 		},
 		{
 			name:              "v2.1 only",
 			supportedVersions: []versions.Version{versions.V2_1},
+			instanceVersion:   versions.V2_1.Version(),
 			containerNames:    []string{"install-cni-v2-1"},
 		},
 		{
 			name:              "v2.2 only",
 			supportedVersions: []versions.Version{versions.V2_2},
+			instanceVersion:   versions.V2_2.Version(),
 			containerNames:    []string{"install-cni-v2-2"},
 		},
 		{
 			name:              "v2.3 only",
 			supportedVersions: []versions.Version{versions.V2_3},
+			instanceVersion:   versions.V2_3.Version(),
 			containerNames:    []string{"install-cni-v2-3"},
 		},
 	}
@@ -67,7 +80,7 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			cl, _ := test.CreateClient()
-			renderings, err := internalRenderCNI(ctx, cl, config, tc.supportedVersions)
+			renderings, err := internalRenderCNI(ctx, cl, config, tc.supportedVersions, tc.instanceVersion)
 			assert.Success(err, "internalRenderCNI", t)
 			assert.True(renderings != nil, "renderings should not be nil", t)
 			cniManifests := renderings["istio_cni"]

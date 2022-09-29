@@ -74,7 +74,13 @@ func TestBootstrapping(t *testing.T) {
 		operatorNamespace     = "istio-operator"
 		controlPlaneNamespace = "test"
 		smcpName              = "test"
-		cniDaemonSetName      = "istio-cni-node"
+		cniDaemonSetNamev2    = "istio-cni-node"
+		cniDaemonSetNamev2_3  = "istio-cni-node-v2.3" // introduced a new cniDaemonSet in v2.3
+	)
+
+	var (
+		cniDaemonSetName        string
+		cniDaemonSetNameInvalid string
 	)
 
 	testCases := []struct {
@@ -143,6 +149,17 @@ func TestBootstrapping(t *testing.T) {
 			},
 			crdCount: 19,
 		},
+		{
+			name: "v2.3",
+			smcp: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version:  versions.V2_3.String(),
+					Profiles: []string{"maistra"},
+				},
+			},
+			crdCount: 19,
+		},
 	}
 
 	if testing.Verbose() {
@@ -150,6 +167,14 @@ func TestBootstrapping(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		if tc.name == "v2.3" {
+			cniDaemonSetName = cniDaemonSetNamev2_3
+			cniDaemonSetNameInvalid = cniDaemonSetNamev2
+		} else {
+			cniDaemonSetName = cniDaemonSetNamev2
+			cniDaemonSetNameInvalid = cniDaemonSetNamev2_3
+		}
+
 		t.Run(tc.name, func(t *testing.T) {
 			RunControllerTestCase(t, ControllerTestCase{
 				Name:             "clean-install-cni-no-errors",
@@ -176,7 +201,7 @@ func TestBootstrapping(t *testing.T) {
 							Verify("patch").On("servicemeshcontrolplanes/status").Named(smcpName).In(controlPlaneNamespace).Passes(initalStatusTest),
 							// verify that a CRD is installed
 							Verify("create").On("customresourcedefinitions").Version("v1").IsSeen(),
-							// verify that CNI is installed
+							// verify that the correct CNI daemonset is installed
 							Verify("create").On("daemonsets").Named(cniDaemonSetName).In(operatorNamespace).IsSeen(),
 							// verify readiness check triggered daemon set creation
 							VerifyReadinessCheckOccurs(controlPlaneNamespace),
@@ -184,6 +209,8 @@ func TestBootstrapping(t *testing.T) {
 						Assertions: ActionAssertions{
 							// verify proper number of CRDs is created
 							Assert("create").On("customresourcedefinitions").Version("v1").SeenCountIs(tc.crdCount),
+							// verify that the other CNI daemonset is not installed
+							Assert("update").On("daemonsets").Named(cniDaemonSetNameInvalid).In(operatorNamespace).IsNotSeen(),
 						},
 						Reactors: []clienttesting.Reactor{
 							ReactTo("list").On("daemonsets").In(operatorNamespace).With(
