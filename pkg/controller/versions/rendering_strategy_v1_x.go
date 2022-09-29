@@ -5,12 +5,6 @@ import (
 	"fmt"
 	"path"
 
-	jaegerv1 "github.com/maistra/istio-operator/pkg/apis/external/jaeger/v1"
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/controller/common/cni"
-	"github.com/maistra/istio-operator/pkg/controller/common/helm"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -18,13 +12,20 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	jaegerv1 "github.com/maistra/istio-operator/pkg/apis/external/jaeger/v1"
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/common/cni"
+	"github.com/maistra/istio-operator/pkg/controller/common/helm"
 )
 
 type v1xRenderingStrategy struct{}
 
 func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error) {
 	log := common.LogFromContext(ctx)
-	//Generate the spec
+	// Generate the spec
 	v1spec := &v1.ControlPlaneSpec{}
 	if err := cr.Scheme.Convert(&smcp.Spec, v1spec, nil); err != nil {
 		return nil, err
@@ -122,18 +123,24 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v version, cr *commo
 		return nil, fmt.Errorf("Unexpected error setting Status.AppliedSpec: %v", err)
 	}
 
-	//Render the charts
+	serverVersion, err := cr.DiscoveryClient.ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	kubeVersion := serverVersion.String()
+
+	// Render the charts
 	allErrors := []error{}
 	var threeScaleRenderings map[string][]manifest.Manifest
 	log.Info("rendering helm charts")
 	log.V(2).Info("rendering Istio charts")
-	istioRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), "istio"), smcp.GetNamespace(), spec.Istio.GetContent())
+	istioRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), "istio"), smcp.GetNamespace(), kubeVersion, spec.Istio.GetContent())
 	if err != nil {
 		allErrors = append(allErrors, err)
 	}
 	if isEnabled(spec.ThreeScale) {
 		log.V(2).Info("rendering 3scale charts")
-		threeScaleRenderings, _, err = helm.RenderChart(path.Join(v.GetChartsDir(), "maistra-threescale"), smcp.GetNamespace(), spec.ThreeScale.GetContent())
+		threeScaleRenderings, _, err = helm.RenderChart(path.Join(v.GetChartsDir(), "maistra-threescale"), smcp.GetNamespace(), kubeVersion, spec.ThreeScale.GetContent())
 		if err != nil {
 			allErrors = append(allErrors, err)
 		}

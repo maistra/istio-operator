@@ -7,6 +7,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/discovery/fake"
 	"os"
 	"path"
 	goruntime "runtime"
@@ -59,8 +60,9 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cl, _ := test.CreateClient()
-			renderings, err := internalRenderCNI(ctx, cl, config, tc.supportedVersions)
+			cl, tracker := test.CreateClient()
+			dc := fake.FakeDiscovery{&tracker.Fake, test.DefaultKubeVersion}
+			renderings, err := internalRenderCNI(ctx, cl, config, &dc, tc.supportedVersions)
 			assert.Success(err, "internalRenderCNI", t)
 			assert.True(renderings != nil, "renderings should not be nil", t)
 			cniManifests := renderings["istio_cni"]
