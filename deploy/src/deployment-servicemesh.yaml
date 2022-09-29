@@ -54,6 +54,7 @@ spec:
         olm.relatedImage.v2_4.grafana: ${OSSM_GRAFANA_IMAGE}
         olm.relatedImage.v2_4.pilot: ${OSSM_PILOT_IMAGE}
         olm.relatedImage.v2_4.prometheus: ${OSSM_PROMETHEUS_IMAGE}
+        olm.relatedImage.v2_4.prometheus-config-reloader: ${OSSM_PROMETHEUS_CONFIG_RELOADER_IMAGE} 
         olm.relatedImage.v2_4.proxyv2: ${OSSM_PROXY_IMAGE}
         olm.relatedImage.v2_4.rls: ${OSSM_RATELIMIT_IMAGE}
 

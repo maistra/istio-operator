@@ -108,4 +108,6 @@ prometheus:
   # When this option is set as false, this certificate provisioning mechanism is disabled.
   provisionPrometheusCert: true
 
+  scrapingNamespaces: []
+
 revision: ""

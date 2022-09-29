@@ -30,7 +30,7 @@ data:
       metrics_path: /stats/prometheus
       kubernetes_sd_configs:
       - role: pod
-
+        {{- include "sdNamespaces" . | indent 8 }}
       relabel_configs:
       - source_labels: [__meta_kubernetes_pod_container_port_name]
         action: keep
@@ -91,6 +91,7 @@ data:
     - job_name: kubernetes-service-endpoints
       kubernetes_sd_configs:
       - role: endpoints
+        {{- include "sdNamespaces" . | indent 8 }}
       relabel_configs:
       - action: keep
         regex: true
@@ -135,6 +136,7 @@ data:
     - job_name: kubernetes-service-endpoints-slow
       kubernetes_sd_configs:
       - role: endpoints
+        {{- include "sdNamespaces" . | indent 8 }}
       relabel_configs:
       - action: keep
         regex: true
@@ -182,6 +184,7 @@ data:
       job_name: prometheus-pushgateway
       kubernetes_sd_configs:
       - role: service
+        {{- include "sdNamespaces" . | indent 8 }}
       relabel_configs:
       - action: keep
         regex: pushgateway
@@ -191,6 +194,7 @@ data:
     - job_name: kubernetes-services
       kubernetes_sd_configs:
       - role: service
+        {{- include "sdNamespaces" . | indent 8 }}
       metrics_path: /probe
       params:
         module:
@@ -220,6 +224,7 @@ data:
     - job_name: 'kubernetes-pods'
       kubernetes_sd_configs:
       - role: pod
+        {{- include "sdNamespaces" . | indent 8 }}
       relabel_configs:  # If first two labels are present, pod should be scraped  by the istio-secure job.
       - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
         action: keep
@@ -262,6 +267,7 @@ data:
     - job_name: kubernetes-pods-slow
       kubernetes_sd_configs:
       - role: pod
+        {{- include "sdNamespaces" . | indent 8 }}
       relabel_configs:
       - action: keep
         regex: true
@@ -309,6 +315,7 @@ data:
         insecure_skip_verify: true  # prometheus does not support secure naming.
       kubernetes_sd_configs:
       - role: pod
+        {{- include "sdNamespaces" . | indent 8 }}
       relabel_configs:
       - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
         action: keep
