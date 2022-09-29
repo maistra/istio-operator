@@ -203,6 +203,10 @@ global:
   # for more detail.
   priorityClassName: ""
 
+  # Whether to enable the Kubernetes Ingress feature.
+  k8sIngress:
+    enabled: false
+
   proxy:
     image: proxyv2
 
@@ -220,6 +224,8 @@ global:
     # Log level for proxy, applies to gateways and sidecars.
     # Expected values are: trace|debug|info|warning|error|critical|off
     logLevel: warning
+
+    tracer: zipkin
 
   ##############################################################################################
   # The following values are found in other charts. To effectively modify these values, make   #

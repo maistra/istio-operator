@@ -27,7 +27,6 @@ spec:
 {{ toYaml .Values.prometheus.podAnnotations | indent 8 }}
         {{- end }}
     spec:
-      serviceAccountName: prometheus
 {{- if .Values.global.priorityClassName }}
       priorityClassName: "{{ .Values.global.priorityClassName }}"
 {{- end }}

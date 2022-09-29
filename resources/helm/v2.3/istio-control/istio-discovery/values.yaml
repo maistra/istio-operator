@@ -332,7 +332,6 @@ global:
     #     Redirect only selected ports:            --includeInboundPorts="80,8080"
     excludeInboundPorts: ""
     includeInboundPorts: "*"
-    includeInboundPorts: "*"
 
 
     # istio egress capture allowlist
@@ -565,6 +564,11 @@ global:
   # whether to use autoscaling/v2 template for HPA settings
   # for internal usage only, not to be configured by users.
   autoscalingv2API: true
+
+gateways: {}
+
+wasmExtensions:
+  enabled: false
 
 base:
   validationURL: ""
