@@ -102,8 +102,6 @@ spec:
             - '--storage.tsdb.retention.time={{ .Values.prometheus.retention }}'
             - '--storage.tsdb.path=/prometheus'
             - '--config.file=/etc/prometheus/prometheus.yml'
-            - --discovery.member-roll-name=default
-            - --discovery.member-roll-namespace={{ .Release.Namespace }}
           ports:
             - containerPort: 9090
               name: http
