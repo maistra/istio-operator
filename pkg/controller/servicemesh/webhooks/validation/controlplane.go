@@ -79,10 +79,10 @@ func (v *ControlPlaneValidator) Handle(ctx context.Context, req admission.Reques
 
 	if req.AdmissionRequest.Operation == admissionv1beta1.Update {
 		// verify update
-		return v.validateUpdate(ctx, smcprequest.OldVersion(), smcprequest.NewVersion(), smcprequest.New())
+		return v.validateUpdate(ctx, smcprequest.OldVersion(), smcprequest.NewVersion(), smcprequest.Old(), smcprequest.New())
 	}
 
-	return admission.ValidationResponse(true, "")
+	return v.validateRequest(ctx, req, smcprequest.NewVersion(), smcprequest.New())
 }
 
 func (v *ControlPlaneValidator) decodeRequest(req admission.Request, logger logr.Logger) (smcprequest, error) {
@@ -155,7 +155,11 @@ func (v *ControlPlaneValidator) validateVersion(ctx context.Context, obj metav1.
 	}
 }
 
-func (v *ControlPlaneValidator) validateUpdate(ctx context.Context, oldVersion, newVersion versions.Version, newObj metav1.Object) admission.Response {
+func (v *ControlPlaneValidator) validateRequest(ctx context.Context, req admission.Request, version versions.Version, smcp metav1.Object) admission.Response {
+	return version.Strategy().ValidateRequest(ctx, v.client, req, smcp)
+}
+
+func (v *ControlPlaneValidator) validateUpdate(ctx context.Context, oldVersion, newVersion versions.Version, oldObj, newObj metav1.Object) admission.Response {
 	// The logic used here is that we only verify upgrade/downgrade between adjacent versions
 	// If an upgrade/downgrade spans multiple versions, the validation for upgrade/downgrade
 	// between adjacent versions is chained together, e.g. 1.0 -> 1.3, we'd verify
@@ -177,6 +181,9 @@ func (v *ControlPlaneValidator) validateUpdate(ctx context.Context, oldVersion, 
 		}
 	}
 
+	if err := newVersion.Strategy().ValidateUpdate(ctx, v.client, oldObj, newObj); err != nil {
+		return badRequest(err.Error())
+	}
 	return admission.Allowed("")
 }
 

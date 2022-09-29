@@ -10,6 +10,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	appsv1 "k8s.io/api/apps/v1"
+	authenticationv1 "k8s.io/api/authentication/v1"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -243,6 +245,14 @@ func ConvertObjectToConfigMap(obj runtime.Object) (*core.ConfigMap, error) {
 	}
 
 	return cm, nil
+}
+
+func ConvertUserInfoExtra(extra map[string]authenticationv1.ExtraValue) map[string]authorizationv1.ExtraValue {
+	converted := map[string]authorizationv1.ExtraValue{}
+	for key, value := range extra {
+		converted[key] = authorizationv1.ExtraValue(value)
+	}
+	return converted
 }
 
 func NewEnhancedManager(mgr manager.Manager, dc discovery.DiscoveryInterface) EnhancedManager {

@@ -143,10 +143,8 @@ function patchGalley() {
   - apiGroups: [""]\
     resources: ["pods/finalizers"]\
     verbs: ["update"]' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
-  sed_wrap -i -e 's/, *"nodes"//' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
   sed_wrap -i -e '/- apiGroups:.*admissionregistration\.k8s\.io/,/verbs:/ d' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
   sed_wrap -i -e '/- apiGroups:.*certificates\.k8s\.io/,/verbs:/ d' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
-  sed_wrap -i -e '/- apiGroups:.*apiextensions\.k8s\.io/,/verbs:/ d' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
   sed_wrap -i -e '/- apiGroups:.*authentication\.k8s\.io/,/verbs:/ d' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
 
   # remove istiod-reader ClusterRole and ClusterRoleBindings
@@ -155,10 +153,12 @@ function patchGalley() {
 
   convertClusterRoleBinding "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrolebinding.yaml" ""
   sed_wrap -i -e '/- "discovery"/ a\
+{{- if not .Values.global.clusterScoped }}\
           - --memberRollName=default\
+          - --disableNodeAccess=true\
           - --enableCRDScan=false\
           - --enableIngressClassName=false\
-          - --disableNodeAccess=true' "${deployment}"
+{{- end}}' "${deployment}"
 
   ############## disable webhook config updates ############################
   # Name of the mutatingwebhookconfiguration to patch, if istioctl is not used.
@@ -425,9 +425,9 @@ function convertClusterToNamespaced() {
   # $2 - cluster kind
   # $3 - namespaced kind
   # $4 - dereference
-  sed_wrap -i -e 's/^\(\( *\)kind.*'"$2"'.*$\)/\2kind: '"$3"'/' "${1}"
-  sed_wrap -i -e '0,/name:/ s/^\(\(.*\)name:.*$\)/\1\
-\2namespace: {{ '"$4"'.Release.Namespace }}/' "${1}"
+  sed_wrap -i -e 's/^\(\( *\)kind.*'"$2"'.*$\)/\2kind: {{ if .Values.global.clusterScoped }}'"$2"'{{ else }}'"$3"'{{ end }}/' "${1}"
+  sed_wrap -i -e '/metadata:/ a\
+  {{ if not .Values.global.clusterScoped }}namespace: {{ '"$4"'.Release.Namespace }}{{ end }}' "${1}"
 }
 
 function convertClusterRoleBinding() {

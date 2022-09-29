@@ -3,6 +3,7 @@ package memberroll
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -223,6 +224,21 @@ func TestReconcileCreatesMember(t *testing.T) {
 			expectMembersCreated:   []string{},
 		},
 		// TODO: add namespace that contains a different control plane as a member
+		{
+			name: "all-namespaces",
+			existingObjects: []runtime.Object{
+				newNamespace(appNamespace),
+				newNamespace(appNamespace2),
+				newNamespace("operator-namespace"), // operator namespace is ignored
+				newNamespace("kube-xyz"),           // kube-* namespaces are ignored
+				newNamespace("openshift-xyz"),      // also ignored
+				newNamespace(controlPlaneNamespace),
+			},
+			specMembers:            []string{"*"},
+			expectedStatusMembers:  []string{appNamespace, appNamespace2},
+			expectedPendingMembers: []string{appNamespace, appNamespace2},
+			expectMembersCreated:   []string{appNamespace, appNamespace2},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -233,6 +249,9 @@ func TestReconcileCreatesMember(t *testing.T) {
 
 			objects := []runtime.Object{roll, controlPlane}
 			objects = append(objects, tc.existingObjects...)
+			oldPodNamespace := os.Getenv("POD_NAMESPACE")
+			os.Setenv("POD_NAMESPACE", "operator-namespace")
+			defer os.Setenv("POD_NAMESPACE", oldPodNamespace)
 			cl, _, r, _ := createClientAndReconciler(objects...)
 
 			assertReconcileSucceeds(r, t)

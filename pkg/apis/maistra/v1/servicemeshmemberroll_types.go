@@ -60,6 +60,10 @@ type ServiceMeshMemberRollSpec struct {
 	Members []string `json:"members,omitempty"`
 }
 
+func (s *ServiceMeshMemberRollSpec) IsClusterScoped() bool {
+	return len(s.Members) == 1 && s.Members[0] == "*"
+}
+
 // ServiceMeshMemberRollStatus represents the current state of a ServiceMeshMemberRoll.
 type ServiceMeshMemberRollStatus struct {
 	status.StatusBase `json:",inline"`

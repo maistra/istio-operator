@@ -16,6 +16,7 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"sigs.k8s.io/yaml"
 
 	jaegerv1 "github.com/maistra/istio-operator/pkg/apis/external/jaeger/v1"
@@ -240,6 +241,14 @@ func (v *versionStrategyV2_2) ValidateDowngrade(ctx context.Context, cl client.C
 func (v *versionStrategyV2_2) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
 	// TODO: what might prevent us from upgrading?
 	return nil
+}
+
+func (v *versionStrategyV2_2) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP metav1.Object) error {
+	return nil
+}
+
+func (v *versionStrategyV2_2) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp metav1.Object) admission.Response {
+	return admission.ValidationResponse(true, "")
 }
 
 func (v *versionStrategyV2_2) GetChartInstallOrder() [][]string {

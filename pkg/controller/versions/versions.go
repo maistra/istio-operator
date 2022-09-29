@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -119,6 +120,8 @@ type ValidationStrategy interface {
 	ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error
 	ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error
 	ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error
+	ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP metav1.Object, newSMCP metav1.Object) error
+	ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp metav1.Object) admission.Response
 }
 
 // RenderingStrategy is an interface used by the reconciler to manage rendering of charts.
@@ -236,6 +239,14 @@ func (v *nilVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Clie
 	return nil
 }
 
+func (v *nilVersionStrategy) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP metav1.Object) error {
+	return nil
+}
+
+func (v *nilVersionStrategy) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp metav1.Object) admission.Response {
+	return admission.ValidationResponse(true, "")
+}
+
 func (v *nilVersionStrategy) GetChartInstallOrder() [][]string {
 	return nil
 }
@@ -286,6 +297,14 @@ func (v *invalidVersionStrategy) ValidateDowngrade(ctx context.Context, cl clien
 
 func (v *invalidVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
 	return fmt.Errorf("invalid version: %s", v.Ver)
+}
+
+func (v *invalidVersionStrategy) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP metav1.Object) error {
+	return fmt.Errorf("invalid version: %s", v.Ver)
+}
+
+func (v *invalidVersionStrategy) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp metav1.Object) admission.Response {
+	return admission.ValidationResponse(false, fmt.Sprintf("invalid version: %s", v.Ver))
 }
 
 func (v *invalidVersionStrategy) GetChartInstallOrder() [][]string {
