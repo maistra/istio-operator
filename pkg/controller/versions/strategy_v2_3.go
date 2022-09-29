@@ -490,7 +490,6 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 		members := &v1.ServiceMeshMemberList{}
 
 		err := cr.Client.List(ctx, members, client.MatchingFields{"spec.controlPlaneRef.namespace": smcp.GetNamespace()})
-
 		if err != nil {
 			if errors.IsNotFound(err) {
 				log.V(2).Info(fmt.Sprintf("members not found in namespace %s", smcp.GetNamespace()))

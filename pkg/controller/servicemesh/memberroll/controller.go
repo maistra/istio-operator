@@ -58,7 +58,13 @@ func Add(mgr manager.Manager) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, kialiReconciler KialiReconciler, prometheusReconciler PrometheusReconciler) *MemberRollReconciler {
+func newReconciler(
+	cl client.Client,
+	scheme *runtime.Scheme,
+	eventRecorder record.EventRecorder,
+	kialiReconciler KialiReconciler,
+	prometheusReconciler PrometheusReconciler,
+) *MemberRollReconciler {
 	return &MemberRollReconciler{
 		ControllerResources: common.ControllerResources{
 			Client:        cl,
@@ -728,7 +734,6 @@ func (r *defaultPrometheusReconciler) reconcilePrometheus(ctx context.Context, p
 	cm := &corev1.ConfigMap{}
 
 	err := r.Client.Get(ctx, client.ObjectKey{Name: prometheusCMName, Namespace: prometheusNamespace}, cm)
-
 	if err != nil {
 		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
 			reqLogger.Info("Prometheus Config Map does not exist.")
@@ -807,9 +812,8 @@ func (r *defaultPrometheusReconciler) reconcilePrometheus(ctx context.Context, p
 	updatedPrometheus.SetNamespace(prometheusNamespace)
 
 	updatedConfigurationFileData, err := yaml.Marshal(data)
-
 	if err != nil {
-		return pkgerrors.Wrap(err, "error marshalling updated prometheus configuration")
+		return pkgerrors.Wrap(err, "error marshaling updated prometheus configuration")
 	}
 
 	updatedConfigurationFile := string(updatedConfigurationFileData)
