@@ -12,6 +12,7 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes/scheme"
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
@@ -289,7 +290,7 @@ func TestReconcileCreatesMemberWhenAppNamespaceIsCreated(t *testing.T) {
 	assertStatusMembers(updatedRoll, []string{appNamespace}, []string{appNamespace}, []string{}, []string{}, t)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
 
-	kialiReconciler.assertInvokedWith(t, appNamespace)
+	kialiReconciler.assertInvokedWith(t, []string{appNamespace}, []string{})
 }
 
 func TestReconcileDeletesMemberWhenRemovedFromSpecMembers(t *testing.T) {
@@ -386,7 +387,7 @@ func TestReconcileFailsIfMemberRollUpdateFails(t *testing.T) {
 
 	assertReconcileFails(r, t)
 
-	kialiReconciler.assertInvokedWith(t, appNamespace)
+	kialiReconciler.assertInvokedWith(t, []string{appNamespace}, []string{})
 }
 
 func TestReconcileFailsIfKialiReconcileFails(t *testing.T) {
@@ -400,7 +401,7 @@ func TestReconcileFailsIfKialiReconcileFails(t *testing.T) {
 
 	assertReconcileFails(r, t)
 
-	kialiReconciler.assertInvokedWith(t, appNamespace)
+	kialiReconciler.assertInvokedWith(t, []string{appNamespace}, []string{})
 }
 
 func TestReconcileUpdatesMembersInStatusWhenMemberIsDeleted(t *testing.T) {
@@ -420,7 +421,7 @@ func TestReconcileUpdatesMembersInStatusWhenMemberIsDeleted(t *testing.T) {
 	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
 	assertStatusMembers(updatedRoll, []string{appNamespace}, []string{appNamespace}, []string{}, []string{}, t)
 	assert.Equals(updatedRoll.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
-	kialiReconciler.assertInvokedWith(t, appNamespace)
+	kialiReconciler.assertInvokedWith(t, []string{appNamespace}, []string{})
 }
 
 func TestReconcileClearsConfiguredMembersWhenSMCPDeleted(t *testing.T) {
@@ -573,7 +574,7 @@ func TestReconcileHandlesDeletionProperly(t *testing.T) {
 			assert.StringArrayEmpty(updatedRoll.Finalizers, "Expected finalizers list in SMMR to be empty, but it wasn't", t)
 
 			if !tc.noKiali {
-				kialiReconciler.assertInvokedWith(t /* no namespaces */)
+				kialiReconciler.assertInvokedWith(t, []string{}, []string{})
 			}
 		})
 	}
@@ -635,6 +636,65 @@ func newMemberWithNamespace(ns string) *maistrav1.ServiceMeshMember {
 	member := newMemberWithRef(controlPlaneName, controlPlaneNamespace)
 	member.Namespace = ns
 	return member
+}
+
+func TestIsExcludedNamespace(t *testing.T) {
+	assert.True(isExcludedNamespace("kube"), "expected namespace to be excluded", t)
+	assert.True(isExcludedNamespace("kube-system"), "expected namespace to be excluded", t)
+	assert.True(isExcludedNamespace("openshift"), "expected namespace to be excluded", t)
+	assert.True(isExcludedNamespace("openshift-system"), "expected namespace to be excluded", t)
+	assert.True(isExcludedNamespace("openshift-operators"), "expected namespace to be excluded", t)
+	assert.True(isExcludedNamespace(common.GetOperatorNamespace()), "expected namespace to be excluded", t)
+
+	assert.False(isExcludedNamespace("kubernaut"), "didn't expect namespace to be excluded", t)
+	assert.False(isExcludedNamespace("openshiftiscool"), "didn't expect namespace to be excluded", t)
+}
+
+func TestKialiResource(t *testing.T) {
+	cases := []struct {
+		name                         string
+		members                      []string
+		expectedAccessibleNamespaces []string
+		expectedExcludedNamespaces   []string
+	}{
+		{
+			name:                         "empty",
+			members:                      []string{},
+			expectedAccessibleNamespaces: []string{},
+			expectedExcludedNamespaces:   []string{},
+		},
+		{
+			name:                         "single",
+			members:                      []string{"foo"},
+			expectedAccessibleNamespaces: []string{"foo"},
+			expectedExcludedNamespaces:   []string{},
+		},
+		{
+			name:                         "multiple",
+			members:                      []string{"foo", "bar", "baz"},
+			expectedAccessibleNamespaces: []string{"foo", "bar", "baz"},
+			expectedExcludedNamespaces:   []string{},
+		},
+		{
+			name:                         "all",
+			members:                      []string{"*"},
+			expectedAccessibleNamespaces: []string{"**"},
+			expectedExcludedNamespaces:   []string{"^kube$", "^kube-.*", "^openshift$", "^openshift-.*", "^operator-namespace$"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			roll := newMemberRoll(1)
+			roll.Spec.Members = tc.members
+
+			controlPlane := markControlPlaneReconciled(newControlPlane())
+
+			_, _, r, kialiReconciler := createClientAndReconciler(roll, controlPlane)
+			assertReconcileSucceeds(r, t)
+			kialiReconciler.assertInvokedWith(t, tc.expectedAccessibleNamespaces, tc.expectedExcludedNamespaces)
+		})
+	}
 }
 
 func newMember() *maistrav1.ServiceMeshMember {
@@ -781,30 +841,34 @@ func newNamespace(name string) *core.Namespace {
 }
 
 type fakeKialiReconciler struct {
-	reconcileKialiInvoked  bool
-	kialiConfiguredMembers []string
-	errorToReturn          error
-	delegate               func(ctx context.Context, kialiCRName, kialiCRNamespace string, configuredMembers []string) error
+	reconcileKialiInvoked     bool
+	kialiAccessibleNamespaces []string
+	kialiExcludedNamespaces   []string
+	errorToReturn             error
+	delegate                  func(ctx context.Context, kialiCRName, kialiCRNamespace string, accessibleNamespaces, excludedNamespaces []string) error
 }
 
-func (f *fakeKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName, kialiCRNamespace string, configuredMembers []string) error {
+func (f *fakeKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName, kialiCRNamespace string,
+	accessibleNamespaces, excludedNamespaces []string) error {
 	f.reconcileKialiInvoked = true
-	f.kialiConfiguredMembers = append([]string{}, configuredMembers...)
+	f.kialiAccessibleNamespaces = append([]string{}, accessibleNamespaces...)
+	f.kialiExcludedNamespaces = append([]string{}, excludedNamespaces...)
 	if f.errorToReturn != nil {
 		return f.errorToReturn
 	}
 	if f.delegate != nil {
-		return f.delegate(ctx, kialiCRName, kialiCRNamespace, configuredMembers)
+		return f.delegate(ctx, kialiCRName, kialiCRNamespace, accessibleNamespaces, excludedNamespaces)
 	}
 	return nil
 }
 
-func (f *fakeKialiReconciler) assertInvokedWith(t *testing.T, namespaces ...string) {
+func (f *fakeKialiReconciler) assertInvokedWith(t *testing.T, accessibleNamespaces, excludedNamespaces []string) {
 	t.Helper()
 	assert.True(f.reconcileKialiInvoked, "Expected reconcileKiali to be invoked, but it wasn't", t)
-	if len(namespaces) != 0 || len(f.kialiConfiguredMembers) != 0 {
-		assert.DeepEquals(f.kialiConfiguredMembers, namespaces, "reconcileKiali called with unexpected member list", t)
-	}
+	assert.DeepEquals(sets.NewString(f.kialiAccessibleNamespaces...), sets.NewString(accessibleNamespaces...),
+		"reconcileKiali called with unexpected accessibleNamespaces", t)
+	assert.DeepEquals(sets.NewString(f.kialiExcludedNamespaces...), sets.NewString(excludedNamespaces...),
+		"reconcileKiali called with unexpected excludedNamespaces", t)
 }
 
 func (f *fakeKialiReconciler) assertNotInvoked(t *testing.T) {
