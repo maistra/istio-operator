@@ -3,6 +3,7 @@ package memberroll
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -151,18 +152,33 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 func toRequests(ctx context.Context, cl client.Client, namespace string) []reconcile.Request {
 	log := common.LogFromContext(ctx)
 	list := &maistrav1.ServiceMeshMemberRollList{}
-	err := cl.List(ctx, list, client.MatchingFields{"spec.members": namespace})
+	err := cl.List(ctx, list)
 	if err != nil {
 		log.Error(err, "Could not list ServiceMeshMemberRolls")
 	}
 
 	var requests []reconcile.Request
 	for _, smmr := range list.Items {
-		requests = append(requests, reconcile.Request{
-			NamespacedName: common.ToNamespacedName(&smmr),
-		})
+		if isMember(namespace, smmr) {
+			requests = append(requests, reconcile.Request{
+				NamespacedName: common.ToNamespacedName(&smmr),
+			})
+		}
 	}
 	return requests
+}
+
+func isMember(namespace string, smmr maistrav1.ServiceMeshMemberRoll) bool {
+	return (smmr.Spec.IsClusterScoped() && !isExcludedNamespace(namespace)) || contains(smmr.Spec.Members, namespace)
+}
+
+func contains(members []string, ns string) bool {
+	for _, member := range members {
+		if member == ns {
+			return true
+		}
+	}
+	return false
 }
 
 var _ reconcile.Reconciler = &MemberRollReconciler{}
@@ -258,8 +274,22 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		memberStatusMap[c.Namespace] = c
 	}
 
-	// 3. create ServiceMeshMember object for each ns in spec.members that exists
-	for _, ns := range roll.Spec.Members {
+	// 3. create ServiceMeshMember object for each ns in spec.members
+	memberNamespaces := roll.Spec.Members
+	if roll.Spec.IsClusterScoped() {
+		nsList := &corev1.NamespaceList{}
+		err = r.Client.List(ctx, nsList)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		memberNamespaces = []string{}
+		for _, ns := range nsList.Items {
+			if ns.Name != meshNamespace && !isExcludedNamespace(ns.Name) {
+				memberNamespaces = append(memberNamespaces, ns.Name)
+			}
+		}
+	}
+	for _, ns := range memberNamespaces {
 		member, err := r.ensureMemberExists(ctx, ns, mesh.Name, meshNamespace)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -285,9 +315,9 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	}
 
 	// 4. delete ServiceMeshMembers that were created by this controller, but are no longer in spec.members
-	specMembers := sets.NewString(roll.Spec.Members...).Delete(meshNamespace)
+	memberSet := sets.NewString(memberNamespaces...).Delete(meshNamespace)
 	for _, member := range members.Items {
-		if member.DeletionTimestamp == nil && isCreatedByThisController(&member) && !specMembers.Has(member.Namespace) {
+		if member.DeletionTimestamp == nil && isCreatedByThisController(&member) && !memberSet.Has(member.Namespace) {
 			err := r.Client.Delete(ctx, &member)
 			if err != nil && !errors.IsNotFound(err) {
 				return reconcile.Result{}, err
@@ -296,7 +326,7 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	}
 
 	// 5. check each ServiceMeshMember object to see if it's configured or terminating
-	allKnownMembers := sets.NewString(roll.Spec.Members...).Insert(getNamespaces(members)...).Delete(meshNamespace)
+	allKnownMembers := sets.NewString(memberNamespaces...).Insert(getNamespaces(members)...).Delete(meshNamespace)
 	configuredMembers := sets.NewString() // reconciled, but not necessarily up-to-date with the smcp
 	upToDateMembers := sets.NewString()   // reconciled AND up-to-date with the smcp
 	terminatingMembers := sets.NewString()
@@ -363,6 +393,14 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		return reconcile.Result{}, kialiErr
 	}
 	return reconcile.Result{}, nil
+}
+
+func isExcludedNamespace(ns string) bool {
+	return ns == common.GetOperatorNamespace() ||
+		ns == "kube" ||
+		ns == "openshift" ||
+		strings.HasPrefix(ns, "kube-") ||
+		strings.HasPrefix(ns, "openshift-")
 }
 
 func setMemberCondition(memberStatusMap map[string]maistrav1.ServiceMeshMemberStatusSummary, ns string, condition maistrav1.ServiceMeshMemberCondition) {

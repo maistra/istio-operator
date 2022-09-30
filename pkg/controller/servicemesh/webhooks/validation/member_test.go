@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
@@ -136,7 +137,7 @@ func TestMemberValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 		assert.Equals(sar.Spec.User, userInfo.Username, "Unexpected User in SAR check", t)
 		assert.Equals(sar.Spec.UID, userInfo.UID, "Unexpected UID in SAR check", t)
 		assert.DeepEquals(sar.Spec.Groups, userInfo.Groups, "Unexpected Groups in SAR check", t)
-		assert.DeepEquals(sar.Spec.Extra, convertUserInfoExtra(userInfo.Extra), "Unexpected Extra in SAR check", t)
+		assert.DeepEquals(sar.Spec.Extra, common.ConvertUserInfoExtra(userInfo.Extra), "Unexpected Extra in SAR check", t)
 		assert.Equals(sar.Spec.ResourceAttributes.Verb, "use", "Unexpected Verb in SAR check", t)
 		assert.Equals(sar.Spec.ResourceAttributes.Group, "maistra.io", "Unexpected resource Group in SAR check", t)
 		assert.Equals(sar.Spec.ResourceAttributes.Resource, "servicemeshcontrolplanes", "Unexpected Resource in SAR check", t)

@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -20,28 +21,28 @@ import (
 
 // InstallCNI makes sure all Istio CNI resources have been created.  CRDs are located from
 // files in controller.HelmDir/istio-init/files
-func InstallCNI(ctx context.Context, cl client.Client, config cni.Config, instanceVersion versions.Version) error {
-	// instanceVersion is from a SMCP spec version
-	if instanceVersion == nil {
-		instanceVersion = versions.DefaultVersion.Version()
+func InstallCNI(ctx context.Context, cl client.Client, config cni.Config, dc discovery.DiscoveryInterface, ver versions.Version) error {
+	// ver is from a SMCP spec version
+	if ver == nil {
+		ver = versions.DefaultVersion.Version()
 	}
 	// we should run through this each reconcile to make sure it's there
-	return internalInstallCNI(ctx, cl, config, instanceVersion)
+	return internalInstallCNI(ctx, cl, config, dc, ver)
 }
 
-func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config, instanceVersion versions.Version) error {
-	if instanceVersion == nil {
-		instanceVersion = versions.DefaultVersion.Version()
+func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config, dc discovery.DiscoveryInterface, ver versions.Version) error {
+	if ver == nil {
+		ver = versions.DefaultVersion.Version()
 	}
-	renderings, err := internalRenderCNI(ctx, cl, config, versions.GetSupportedVersions(), instanceVersion)
+	renderings, err := internalRenderCNI(ctx, cl, config, dc, versions.GetSupportedVersions(), ver)
 	if err != nil {
 		return err
 	}
 	return internalProcessManifests(ctx, cl, renderings["istio_cni"])
 }
 
-func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
-	supportedVersions []versions.Version, instanceVersion versions.Version,
+func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config, dc discovery.DiscoveryInterface,
+	supportedVersions []versions.Version, ver versions.Version,
 ) (renderings map[string][]manifest.Manifest, err error) {
 	log := common.LogFromContext(ctx)
 	log.Info("ensuring Istio CNI has been installed")
@@ -91,13 +92,18 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 	cni["supportedReleases"] = releases
 	// v2.3 render the required cni daemonset,
 	// instanceVersion is from a SMCP spec version
-	if instanceVersion == nil {
-		instanceVersion = versions.DefaultVersion.Version()
+	if ver == nil {
+		ver = versions.DefaultVersion.Version()
 	}
-	cni["instanceVersion"] = instanceVersion.String()
+	cni["instanceVersion"] = ver.String()
 
 	values := make(map[string]interface{})
 	values["cni"] = cni
+
+	serverVersion, err := dc.ServerVersion()
+	if err != nil {
+		return nil, err
+	}
 
 	// the "istio-node" DaemonSet is now called "istio-cni-node", so we must delete the old one
 	ds := v1.DaemonSet{
@@ -112,7 +118,7 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 	}
 
 	// always install the latest version of the CNI image
-	renderings, _, err = helm.RenderChart(path.Join(versions.DefaultVersion.GetChartsDir(), "istio_cni"), operatorNamespace, values)
+	renderings, _, err = helm.RenderChart(path.Join(versions.DefaultVersion.GetChartsDir(), "istio_cni"), operatorNamespace, serverVersion.String(), values)
 	return
 }
 

@@ -16,6 +16,7 @@ import (
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	configv1alpha2 "github.com/maistra/istio-operator/pkg/apis/external/istio/config/v1alpha2"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -260,6 +261,14 @@ func (v *versionStrategyV1_1) ValidateUpgrade(ctx context.Context, cl client.Cli
 	}
 
 	return utilerrors.NewAggregate(allErrors)
+}
+
+func (v *versionStrategyV1_1) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP metav1.Object) error {
+	return nil
+}
+
+func (v *versionStrategyV1_1) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp metav1.Object) admission.Response {
+	return admission.ValidationResponse(true, "")
 }
 
 func (v *versionStrategyV1_1) GetChartInstallOrder() [][]string {

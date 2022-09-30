@@ -7,6 +7,12 @@ import (
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 )
 
+const (
+	ControlPlaneModeKey                = "controlPlaneMode"
+	ControlPlaneModeValueClusterScoped = "ClusterScoped"
+	ControlPlaneModeValueMultiTenant   = "MultiTenant"
+)
+
 func init() {
 	SchemeBuilder.Register(&ServiceMeshControlPlane{}, &ServiceMeshControlPlaneList{})
 }
@@ -187,4 +193,12 @@ func (s ControlPlaneSpec) IsGrafanaEnabled() bool {
 
 func (s ControlPlaneSpec) IsJaegerEnabled() bool {
 	return s.Tracing != nil && s.Tracing.Type == TracerTypeJaeger
+}
+
+func (s ControlPlaneSpec) IsClusterScoped() (bool, error) {
+	controlPlaneMode, _, err := s.TechPreview.GetString(ControlPlaneModeKey)
+	if err != nil {
+		return false, err
+	}
+	return controlPlaneMode == ControlPlaneModeValueClusterScoped, nil
 }

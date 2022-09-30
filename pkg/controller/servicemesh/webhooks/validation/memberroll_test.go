@@ -13,6 +13,7 @@ import (
 	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	maistra "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 )
@@ -87,6 +88,9 @@ func TestMemberValidation(t *testing.T) {
 		{valid: true, members: "ns1"},
 		{valid: true, members: "ns-1"},
 		{valid: true, members: "ns1,ns2"},
+		{valid: true, members: "*"},
+		{valid: false, members: "*,ns1"},
+		{valid: false, members: "ns1,*"},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.members, func(t *testing.T) {
@@ -200,7 +204,7 @@ func TestMemberRollValidatorSubmitsCorrectSubjectAccessReview(t *testing.T) {
 		assert.Equals(sar.Spec.User, userInfo.Username, "Unexpected User in SAR check", t)
 		assert.Equals(sar.Spec.UID, userInfo.UID, "Unexpected UID in SAR check", t)
 		assert.DeepEquals(sar.Spec.Groups, userInfo.Groups, "Unexpected Groups in SAR check", t)
-		assert.DeepEquals(sar.Spec.Extra, convertUserInfoExtra(userInfo.Extra), "Unexpected Extra in SAR check", t)
+		assert.DeepEquals(sar.Spec.Extra, common.ConvertUserInfoExtra(userInfo.Extra), "Unexpected Extra in SAR check", t)
 		assert.Equals(sar.Spec.ResourceAttributes.Verb, "update", "Unexpected Verb in SAR check", t)
 		assert.Equals(sar.Spec.ResourceAttributes.Group, "", "Unexpected resource Group in SAR check", t)
 		assert.Equals(sar.Spec.ResourceAttributes.Resource, "pods", "Unexpected Resource in SAR check", t)

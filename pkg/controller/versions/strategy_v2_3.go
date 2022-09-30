@@ -3,9 +3,11 @@ package versions
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"path"
 
 	pkgerrors "github.com/pkg/errors"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -16,6 +18,7 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"sigs.k8s.io/yaml"
 
 	jaegerv1 "github.com/maistra/istio-operator/pkg/apis/external/jaeger/v1"
@@ -25,6 +28,11 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/common/helm"
+)
+
+const (
+	clusterScopedSMCPNamespace = "istio-system"
+	clusterScopedSMCPName      = "clusterscoped"
 )
 
 var v2_3ChartMapping = map[string]chartRenderingDetails{
@@ -118,6 +126,7 @@ func (v *versionStrategyV2_3) ValidateV1(_ context.Context, _ client.Client, _ *
 
 func (v *versionStrategyV2_3) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
+	allErrors = validateGlobal(ctx, meta, spec, cl, allErrors)
 	allErrors = validateGateways(ctx, meta, spec, cl, allErrors)
 	allErrors = validatePolicyType(spec, v.Ver, allErrors)
 	allErrors = validateTelemetryType(spec, v.Ver, allErrors)
@@ -126,6 +135,46 @@ func (v *versionStrategyV2_3) ValidateV2(ctx context.Context, cl client.Client, 
 	allErrors = v.validateMixerDisabled(spec, allErrors)
 	allErrors = v.validateAddons(spec, allErrors)
 	return NewValidationError(allErrors...)
+}
+
+func validateGlobal(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, cl client.Client, allErrors []error) []error {
+	isClusterScoped, err := spec.IsClusterScoped()
+	if err != nil {
+		return append(allErrors, err)
+	}
+	smcps := v2.ServiceMeshControlPlaneList{}
+	err = cl.List(ctx, &smcps)
+	if err != nil {
+		return append(allErrors, err)
+	}
+
+	if isClusterScoped {
+		if meta.Namespace != clusterScopedSMCPNamespace || meta.Name != clusterScopedSMCPName {
+			return append(allErrors,
+				fmt.Errorf("a cluster-scoped SMCP must be named %q and created in namespace %q",
+					clusterScopedSMCPName, clusterScopedSMCPNamespace))
+		}
+
+		if len(smcps.Items) > 1 || len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
+			return append(allErrors,
+				fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
+		}
+	} else {
+		for _, smcp := range smcps.Items {
+			if smcp.UID == meta.GetUID() {
+				continue
+			}
+			clusterScoped, err := smcp.Spec.IsClusterScoped()
+			if err != nil {
+				return append(allErrors, err)
+			}
+			if clusterScoped {
+				return append(allErrors,
+					fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"))
+			}
+		}
+	}
+	return allErrors
 }
 
 func (v *versionStrategyV2_3) validateProtocolDetection(spec *v2.ControlPlaneSpec, allErrors []error) []error {
@@ -224,6 +273,71 @@ func (v *versionStrategyV2_3) ValidateUpgrade(ctx context.Context, cl client.Cli
 	return nil
 }
 
+func (v *versionStrategyV2_3) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP metav1.Object) error {
+	oldClusterScoped, err := isClusterScoped(oldSMCP)
+	if err != nil {
+		return err
+	}
+	newClusterScoped, err := isClusterScoped(newSMCP)
+	if err != nil {
+		return err
+	}
+	if oldClusterScoped != newClusterScoped {
+		return fmt.Errorf("field spec.techPreview.%s is immutable; to change its value, delete the ServiceMeshControlPlane and recreate it", v2.ControlPlaneModeKey)
+	}
+	return nil
+}
+
+func isClusterScoped(smcp metav1.Object) (bool, error) {
+	switch s := smcp.(type) {
+	case *v1.ServiceMeshControlPlane:
+		return false, nil
+	case *v2.ServiceMeshControlPlane:
+		return s.Spec.IsClusterScoped()
+	default:
+		return false, fmt.Errorf("unknown ServiceMeshControlPlane type: %T", smcp)
+	}
+}
+
+func (v *versionStrategyV2_3) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp metav1.Object) admission.Response {
+	clusterScoped, err := isClusterScoped(smcp)
+	if err != nil {
+		return admission.Errored(http.StatusInternalServerError, err)
+	}
+	if clusterScoped {
+		isClusterAdmin, err := v.isRequesterClusterAdmin(ctx, cl, req)
+		if err != nil {
+			return admission.Errored(http.StatusInternalServerError, err)
+		}
+		if !isClusterAdmin {
+			return admission.ValidationResponse(false, "a cluster-scoped SMCP may only be created by users with cluster-admin permissions")
+		}
+	}
+
+	return admission.ValidationResponse(true, "")
+}
+
+func (v *versionStrategyV2_3) isRequesterClusterAdmin(ctx context.Context, cl client.Client, req admission.Request) (bool, error) {
+	sar := &authorizationv1.SubjectAccessReview{
+		Spec: authorizationv1.SubjectAccessReviewSpec{
+			User:   req.AdmissionRequest.UserInfo.Username,
+			UID:    req.AdmissionRequest.UserInfo.UID,
+			Extra:  common.ConvertUserInfoExtra(req.AdmissionRequest.UserInfo.Extra),
+			Groups: req.AdmissionRequest.UserInfo.Groups,
+			ResourceAttributes: &authorizationv1.ResourceAttributes{
+				Verb:     "*",
+				Group:    "*",
+				Resource: "*",
+			},
+		},
+	}
+	err := cl.Create(ctx, sar)
+	if err != nil {
+		return false, err
+	}
+	return sar.Status.Allowed && !sar.Status.Denied, nil
+}
+
 func (v *versionStrategyV2_3) GetChartInstallOrder() [][]string {
 	return v2_3ChartOrder
 }
@@ -263,6 +377,17 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 	err = spec.Istio.SetField("revision", smcp.GetName())
 	if err != nil {
 		return nil, err
+	}
+
+	isClusterScoped, err := smcp.Spec.IsClusterScoped()
+	if err != nil {
+		return nil, err
+	}
+	if isClusterScoped {
+		err = spec.Istio.SetField("global.clusterScoped", isClusterScoped)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = spec.Istio.SetField("istio_cni.enabled", cniConfig.Enabled)
@@ -411,6 +536,12 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 		return nil, err
 	}
 
+	serverVersion, err := cr.DiscoveryClient.ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	kubeVersion := serverVersion.String()
+
 	// Render the charts
 	allErrors := []error{}
 	renderings := make(map[string][]manifest.Manifest)
@@ -421,7 +552,8 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 		}
 		if chartDetails.enabledField == "" || isComponentEnabled(spec.Istio, chartDetails.enabledField) {
 			log.V(2).Info(fmt.Sprintf("rendering %s chart", name))
-			if chartRenderings, _, err := helm.RenderChart(path.Join(v.GetChartsDir(), v2_3ChartMapping[name].path), smcp.GetNamespace(), values); err == nil {
+			chart := path.Join(v.GetChartsDir(), v2_3ChartMapping[name].path)
+			if chartRenderings, _, err := helm.RenderChart(chart, smcp.GetNamespace(), kubeVersion, values); err == nil {
 				if name == "istio-discovery" {
 					renderings[name] = chartRenderings["istiod"] // quick dirty workaround (istio-discovery chart now has the name "istiod" in Chart.yaml)
 				} else {
@@ -445,14 +577,14 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 
 					log.V(2).Info("rendering ingress gateway chart for istio-ingressgateway")
 					if ingressRenderings, _, err := v.renderIngressGateway("istio-ingressgateway",
-						smcp.GetNamespace(), origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
+						smcp.GetNamespace(), kubeVersion, origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
 						renderings[GatewayIngressChart] = ingressRenderings[GatewayIngressChart]
 					} else {
 						allErrors = append(allErrors, err)
 					}
 					log.V(2).Info("rendering egress gateway chart for istio-egressgateway")
 					if egressRenderings, _, err := v.renderEgressGateway("istio-egressgateway",
-						smcp.GetNamespace(), origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
+						smcp.GetNamespace(), kubeVersion, origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
 						renderings[GatewayEgressChart] = egressRenderings[GatewayEgressChart]
 					} else {
 						allErrors = append(allErrors, err)
@@ -463,7 +595,7 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 								continue
 							}
 							log.V(2).Info(fmt.Sprintf("rendering ingress gateway chart for %s", name))
-							if ingressRenderings, _, err := v.renderIngressGateway(name, smcp.GetNamespace(),
+							if ingressRenderings, _, err := v.renderIngressGateway(name, smcp.GetNamespace(), kubeVersion,
 								origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
 								renderings[GatewayIngressChart] = append(renderings[GatewayIngressChart], ingressRenderings[GatewayIngressChart]...)
 							} else {
@@ -475,7 +607,7 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 								continue
 							}
 							log.V(2).Info(fmt.Sprintf("rendering egress gateway chart for %s", name))
-							if egressRenderings, _, err := v.renderEgressGateway(name, smcp.GetNamespace(),
+							if egressRenderings, _, err := v.renderEgressGateway(name, smcp.GetNamespace(), kubeVersion,
 								origGatewaysMap, spec.Istio, userIDAutoassigned); err == nil {
 								renderings[GatewayEgressChart] = append(renderings[GatewayEgressChart], egressRenderings[GatewayEgressChart]...)
 							} else {
@@ -501,7 +633,7 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 		log.V(2).Info("rendering 3scale charts")
 		if chartRenderings, _, err := helm.RenderChart(
 			path.Join(v.GetChartsDir(), v2_3ChartMapping[ThreeScaleChart].path),
-			smcp.GetNamespace(),
+			smcp.GetNamespace(), kubeVersion,
 			spec.ThreeScale.GetContent()); err == nil {
 			renderings[ThreeScaleChart] = chartRenderings[ThreeScaleChart]
 		} else {
@@ -516,19 +648,19 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 	return renderings, nil
 }
 
-func (v *versionStrategyV2_3) renderIngressGateway(name string, namespace string, gateways map[string]interface{},
+func (v *versionStrategyV2_3) renderIngressGateway(name, namespace, kubeVersion string, gateways map[string]interface{},
 	values *v1.HelmValues, userIDAutoassigned bool,
 ) (map[string][]manifest.Manifest, map[string]interface{}, error) {
-	return v.renderGateway(name, namespace, v2_3ChartMapping[GatewayIngressChart].path, "istio-ingressgateway", gateways, values, userIDAutoassigned)
+	return v.renderGateway(name, namespace, kubeVersion, v2_3ChartMapping[GatewayIngressChart].path, "istio-ingressgateway", gateways, values, userIDAutoassigned)
 }
 
-func (v *versionStrategyV2_3) renderEgressGateway(name string, namespace string, gateways map[string]interface{},
+func (v *versionStrategyV2_3) renderEgressGateway(name, namespace, kubeVersion string, gateways map[string]interface{},
 	values *v1.HelmValues, userIDAutoassigned bool,
 ) (map[string][]manifest.Manifest, map[string]interface{}, error) {
-	return v.renderGateway(name, namespace, v2_3ChartMapping[GatewayEgressChart].path, "istio-egressgateway", gateways, values, userIDAutoassigned)
+	return v.renderGateway(name, namespace, kubeVersion, v2_3ChartMapping[GatewayEgressChart].path, "istio-egressgateway", gateways, values, userIDAutoassigned)
 }
 
-func (v *versionStrategyV2_3) renderGateway(name string, namespace string, chartPath string, typeName string,
+func (v *versionStrategyV2_3) renderGateway(name, namespace, kubeVersion string, chartPath string, typeName string,
 	gateways map[string]interface{}, values *v1.HelmValues, userIDAutoassigned bool,
 ) (map[string][]manifest.Manifest, map[string]interface{}, error) {
 	gateway, ok, _ := unstructured.NestedMap(gateways, name)
@@ -563,7 +695,7 @@ func (v *versionStrategyV2_3) renderGateway(name string, namespace string, chart
 	if err := values.SetField("gateways", newGateways); err != nil {
 		return nil, nil, err
 	}
-	return helm.RenderChart(path.Join(v.GetChartsDir(), chartPath), namespace, values)
+	return helm.RenderChart(path.Join(v.GetChartsDir(), chartPath), namespace, kubeVersion, values)
 }
 
 func (v *versionStrategyV2_3) GetExpansionPorts() []corev1.ServicePort {

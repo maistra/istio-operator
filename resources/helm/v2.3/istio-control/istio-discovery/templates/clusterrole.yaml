@@ -32,10 +32,13 @@ rules:
     resources: [ "workloadentries/status" ]
 
   # auto-detect installed CRD definitions
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
 
   # discovery and routing
   - apiGroups: [""]
-    resources: ["pods", "services", "namespaces", "endpoints"]
+    resources: ["pods", "nodes", "services", "namespaces", "endpoints"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["discovery.k8s.io"]
     resources: ["endpointslices"]
@@ -94,9 +97,6 @@ rules:
   - apiGroups: ["route.openshift.io"]
     resources: ["routes", "routes/custom-host"]
     verbs: ["get", "list", "watch", "create", "delete", "update"]
-  - apiGroups: ["maistra.io"]
-    resources: ["servicemeshextensions"]
-    verbs: ["get", "list", "watch"]
 
   # Used for MCS serviceexport management
   - apiGroups: ["{{ $mcsAPIGroup }}"]

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	admissionv1 "k8s.io/api/admission/v1beta1"
-	authenticationv1 "k8s.io/api/authentication/v1"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -89,9 +88,11 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request)
 	}
 
 	// check if namespace names conform to DNS-1123 (we must check this in code, because +kubebuilder:validation:Pattern can't be applied to array elements yet)
-	for _, member := range smmr.Spec.Members {
-		if !memberRegex.MatchString(member) {
-			return badRequest(fmt.Sprintf(".spec.members contains invalid value '%s'. Must be a valid namespace name.", member))
+	if !smmr.Spec.IsClusterScoped() {
+		for _, member := range smmr.Spec.Members {
+			if !memberRegex.MatchString(member) {
+				return badRequest(fmt.Sprintf(".spec.members contains invalid value '%s'. Must be a valid namespace name.", member))
+			}
 		}
 	}
 
@@ -103,37 +104,41 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request)
 	}
 
 	// verify no duplicate members across all smmr resources
-	namespacesAlreadyConfigured := sets.NewString()
+	namespacesInOtherMemberRolls := sets.NewString()
 	for _, othermr := range smmrList.Items {
 		if othermr.Name == smmr.Name && othermr.Namespace == smmr.Namespace {
 			continue
 		}
 		for _, member := range othermr.Spec.Members {
-			namespacesAlreadyConfigured.Insert(member)
+			namespacesInOtherMemberRolls.Insert(member)
 		}
 	}
 
 	for _, member := range smmr.Spec.Members {
-		if namespacesAlreadyConfigured.Has(member) {
+		if (member == "*" && len(namespacesInOtherMemberRolls) > 0) || namespacesInOtherMemberRolls.Has(member) || namespacesInOtherMemberRolls.Has("*") {
 			return badRequest("one or more members are already defined in another ServiceMeshMemberRoll")
 		} else if smmr.Namespace == member {
 			return badRequest("mesh project/namespace cannot be listed as a member")
 		}
 	}
 
-	allowed, err := v.isUserAllowedToUpdatePods(common.NewContextWithLog(ctx, logger.WithValues("namespace", "<all>")), req, "")
+	allowed, err := v.isUserAllowedToUpdatePodsInAllNamespaces(ctx, req)
 	if err != nil {
 		logger.Error(err, "error performing cluster-scoped SAR check")
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 	if !allowed {
+		if smmr.Spec.IsClusterScoped() {
+			return forbidden(fmt.Sprintf("user '%s' does not have permission to access all namespaces", req.AdmissionRequest.UserInfo.Username))
+		}
+
 		// check each namespace separately, but only check newly added namespaces
 		namespacesToCheck, err := v.findNewlyAddedNamespaces(smmr, req)
 		if err != nil {
 			return admission.Errored(http.StatusBadRequest, err)
 		}
 
-		allowed, rejectedNamespaces, err := v.isUserAllowedToUpdatePodsInAllNamespaces(ctx, req, namespacesToCheck)
+		allowed, rejectedNamespaces, err := v.isUserAllowedToUpdatePodsInNamespaces(ctx, req, namespacesToCheck)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
 				return admission.Errored(http.StatusBadRequest, fmt.Errorf("too many namespaces in ServiceMeshMemberRoll; "+
@@ -165,9 +170,14 @@ func (v *MemberRollValidator) findNewlyAddedNamespaces(smmr *maistrav1.ServiceMe
 	return namespacesToCheck, nil
 }
 
-func (v *MemberRollValidator) isUserAllowedToUpdatePodsInAllNamespaces(ctx context.Context, req admission.Request,
-	namespacesToCheck sets.String,
-) (bool, []string, error) {
+func (v *MemberRollValidator) isUserAllowedToUpdatePodsInAllNamespaces(ctx context.Context, req admission.Request) (bool, error) {
+	log := common.LogFromContext(ctx)
+	ctx = common.NewContextWithLog(ctx, log.WithValues("namespace", "<all>"))
+	return v.isUserAllowedToUpdatePodsInNamespace(ctx, req, "")
+}
+
+func (v *MemberRollValidator) isUserAllowedToUpdatePodsInNamespaces(ctx context.Context, req admission.Request,
+	namespacesToCheck sets.String) (bool, []string, error) {
 	numConcurrentSARChecks := min(len(namespacesToCheck), maxConcurrentSARChecks)
 
 	log := common.LogFromContext(ctx)
@@ -193,7 +203,7 @@ func (v *MemberRollValidator) isUserAllowedToUpdatePodsInAllNamespaces(ctx conte
 		go func(workerNumber int) {
 			workerCtx := common.NewContextWithLogValues(ctx, "worker", workerNumber)
 			for ns := range in {
-				allowed, err := v.isUserAllowedToUpdatePods(common.NewContextWithLogValues(workerCtx, "namespace", ns), req, ns)
+				allowed, err := v.isUserAllowedToUpdatePodsInNamespace(common.NewContextWithLogValues(workerCtx, "namespace", ns), req, ns)
 				out <- result{namespace: ns, allowed: allowed, err: err}
 			}
 			wg.Done()
@@ -229,20 +239,20 @@ type result struct {
 	err       error
 }
 
-func (v *MemberRollValidator) isUserAllowedToUpdatePods(ctx context.Context, req admission.Request, member string) (bool, error) {
+func (v *MemberRollValidator) isUserAllowedToUpdatePodsInNamespace(ctx context.Context, req admission.Request, ns string) (bool, error) {
 	log := common.LogFromContext(ctx)
 	log.Info("Performing SAR check")
 	sar := &authorizationv1.SubjectAccessReview{
 		Spec: authorizationv1.SubjectAccessReviewSpec{
 			User:   req.AdmissionRequest.UserInfo.Username,
 			UID:    req.AdmissionRequest.UserInfo.UID,
-			Extra:  convertUserInfoExtra(req.AdmissionRequest.UserInfo.Extra),
+			Extra:  common.ConvertUserInfoExtra(req.AdmissionRequest.UserInfo.Extra),
 			Groups: req.AdmissionRequest.UserInfo.Groups,
 			ResourceAttributes: &authorizationv1.ResourceAttributes{
 				Verb:      "update",
 				Group:     "",
 				Resource:  "pods",
-				Namespace: member,
+				Namespace: ns,
 			},
 		},
 	}
@@ -251,14 +261,6 @@ func (v *MemberRollValidator) isUserAllowedToUpdatePods(ctx context.Context, req
 		return false, err
 	}
 	return sar.Status.Allowed && !sar.Status.Denied, nil
-}
-
-func convertUserInfoExtra(extra map[string]authenticationv1.ExtraValue) map[string]authorizationv1.ExtraValue {
-	converted := map[string]authorizationv1.ExtraValue{}
-	for key, value := range extra {
-		converted[key] = authorizationv1.ExtraValue(value)
-	}
-	return converted
 }
 
 // InjectClient injects the client.
