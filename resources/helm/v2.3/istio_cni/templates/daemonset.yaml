@@ -1,5 +1,4 @@
 {{ if .Values.cni.enabled }}
-{{- if (.Values.cni.supportedReleases) }}
 {{- if or (eq .Values.cni.instanceVersion "v1.1") (eq .Values.cni.instanceVersion "v2.0") (eq .Values.cni.instanceVersion "v2.1") (eq .Values.cni.instanceVersion "v2.2")}}
 # This manifest installs the Istio install-cni container, as well
 # as the Istio CNI plugin and config on
@@ -267,6 +266,5 @@ spec:
         - name: cni-log-dir
           hostPath:
             path: /var/run/istio-cni
-{{- end }}
 {{- end }}
 {{ end }}

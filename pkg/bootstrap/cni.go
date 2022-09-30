@@ -21,19 +21,13 @@ import (
 
 // InstallCNI makes sure all Istio CNI resources have been created.  CRDs are located from
 // files in controller.HelmDir/istio-init/files
+// ver is from a SMCP spec version
 func InstallCNI(ctx context.Context, cl client.Client, config cni.Config, dc discovery.DiscoveryInterface, ver versions.Version) error {
-	// ver is from a SMCP spec version
-	if ver == nil {
-		ver = versions.DefaultVersion.Version()
-	}
 	// we should run through this each reconcile to make sure it's there
 	return internalInstallCNI(ctx, cl, config, dc, ver)
 }
 
 func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config, dc discovery.DiscoveryInterface, ver versions.Version) error {
-	if ver == nil {
-		ver = versions.DefaultVersion.Version()
-	}
 	renderings, err := internalRenderCNI(ctx, cl, config, dc, versions.GetSupportedVersions(), ver)
 	if err != nil {
 		return err
@@ -67,7 +61,7 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 	cni["configMap_v2_0"] = "cni_network_config_v2_0"
 	cni["configMap_v2_1"] = "cni_network_config_v2_1"
 	cni["configMap_v2_2"] = "cni_network_config_v2_2"
-	cni["configMap_v2_3"] = "cni_network_config_v2_3"
+	cni["configMap_v2_3"] = "cni_network_config"
 
 	cni["chained"] = !config.UseMultus
 	if config.UseMultus {
@@ -92,9 +86,6 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 	cni["supportedReleases"] = releases
 	// v2.3 render the required cni daemonset,
 	// instanceVersion is from a SMCP spec version
-	if ver == nil {
-		ver = versions.DefaultVersion.Version()
-	}
 	cni["instanceVersion"] = ver.String()
 
 	values := make(map[string]interface{})

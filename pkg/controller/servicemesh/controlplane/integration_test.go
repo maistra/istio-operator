@@ -75,7 +75,7 @@ func TestBootstrapping(t *testing.T) {
 		controlPlaneNamespace = "test"
 		smcpName              = "test"
 		cniDaemonSetNamev2    = "istio-cni-node"
-		cniDaemonSetNamev2_3  = "istio-cni-node-v2.3" // introduced a new cniDaemonSet in v2.3
+		cniDaemonSetNamev2_3  = "istio-cni-node-v2-3" // introduced a new cniDaemonSet in v2.3
 	)
 
 	var (

@@ -1,12 +1,12 @@
 {{ if .Values.cni.enabled }}
-{{- if and (.Values.cni.supportedReleases) (eq .Values.cni.instanceVersion "v2.3") }}
+{{- if and (has "v2.3" .Values.cni.supportedReleases) (eq .Values.cni.instanceVersion "v2.3") }}
 # This manifest installs the Istio install-cni container, as well
 # as the Istio CNI plugin and config on
 # each master and worker node in a Kubernetes cluster.
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
-  name: istio-cni-node-v2.3
+  name: istio-cni-node-v2-3
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: "2.3.0"
@@ -57,7 +57,7 @@ spec:
       containers:
         # This container installs the Istio CNI binaries
         # and CNI network config file on each node.
-        - name: install-cni-v2-3
+        - name: install-cni
           image: "{{ .Values.cni.image_v2_3 }}"
           imagePullPolicy: {{ .Values.cni.imagePullPolicy }}
           livenessProbe:
@@ -82,7 +82,7 @@ spec:
             - name: CNI_NETWORK_CONFIG
               valueFrom:
                 configMapKeyRef:
-                  name: istio-cni-config
+                  name: istio-cni-config-v2-3
                   key: "{{ default "cni_network_config" .Values.cni.configMap_v2_3 }}"
             - name: CNI_NET_DIR
               value: {{ default "/etc/cni/net.d" .Values.cni.cniConfDir }}
