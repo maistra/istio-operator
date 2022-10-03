@@ -220,6 +220,10 @@ gateways: {}\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
 wasmExtensions:\
   enabled: false\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
 
+  sed_wrap -i -e '/sidecarInjectorWebhook:/ a\
+  objectSelector:\
+    enabled: false\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
+
   # analysis
   sed_wrap -i -e '/PILOT_ENABLE_ANALYSIS/ i\
           - name: PILOT_ENABLE_STATUS\
