@@ -101,15 +101,6 @@ function patchGalley() {
         - CREATE\
         - UPDATE\
         apiGroups:\
-        - maistra.io\
-        apiVersions:\
-        - "*"\
-        resources:\
-        - "servicemeshextensions"\
-      - operations:\
-        - CREATE\
-        - UPDATE\
-        apiGroups:\
         - rbac.maistra.io\
         apiVersions:\
         - "*"\
@@ -136,9 +127,6 @@ function patchGalley() {
   - apiGroups: ["route.openshift.io"]\
     resources: ["routes", "routes/custom-host"]\
     verbs: ["get", "list", "watch", "create", "delete", "update"]\
-  - apiGroups: ["maistra.io"]\
-    resources: ["servicemeshextensions"]\
-    verbs: ["get", "list", "watch"]\
   # Allow use of blockOwnerDeletion in ownerReferences pointing to Pods (see OSSM-1321)\
   - apiGroups: [""]\
     resources: ["pods/finalizers"]\
