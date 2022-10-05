@@ -27,37 +27,58 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 	testCases := []struct {
 		name              string
 		supportedVersions []versions.Version
+		instanceVersion   versions.Version
 		containerNames    []string
+		daemonsetName     string
 	}{
 		{
-			name:              "Default Supported Versions",
+			name:              "Default Supported Versions SMCP v2.2",
 			supportedVersions: versions.GetSupportedVersions(),
-			containerNames:    []string{"install-cni-v1-1", "install-cni-v2-0", "install-cni-v2-1", "install-cni-v2-2", "install-cni-v2-3"},
+			instanceVersion:   versions.V2_2.Version(),
+			containerNames:    []string{"install-cni-v1-1", "install-cni-v2-0", "install-cni-v2-1", "install-cni-v2-2"},
+			daemonsetName:     "istio-cni-node",
+		},
+		{
+			name:              "Default Supported Versions SMCP v2.3",
+			supportedVersions: versions.GetSupportedVersions(),
+			instanceVersion:   versions.V2_3.Version(),
+			containerNames:    []string{"install-cni"},
+			daemonsetName:     "istio-cni-node-v2-3",
 		},
 		{
 			name:              "v1.1 only",
 			supportedVersions: []versions.Version{versions.V1_1},
+			instanceVersion:   versions.V1_1.Version(),
 			containerNames:    []string{"install-cni-v1-1"},
+			daemonsetName:     "istio-cni-node",
 		},
 		{
 			name:              "v2.0 only",
 			supportedVersions: []versions.Version{versions.V2_0},
+			instanceVersion:   versions.V2_0.Version(),
 			containerNames:    []string{"install-cni-v2-0"},
+			daemonsetName:     "istio-cni-node",
 		},
 		{
 			name:              "v2.1 only",
 			supportedVersions: []versions.Version{versions.V2_1},
+			instanceVersion:   versions.V2_1.Version(),
 			containerNames:    []string{"install-cni-v2-1"},
+			daemonsetName:     "istio-cni-node",
 		},
 		{
 			name:              "v2.2 only",
 			supportedVersions: []versions.Version{versions.V2_2},
+			instanceVersion:   versions.V2_2.Version(),
 			containerNames:    []string{"install-cni-v2-2"},
+			daemonsetName:     "istio-cni-node",
 		},
 		{
 			name:              "v2.3 only",
 			supportedVersions: []versions.Version{versions.V2_3},
-			containerNames:    []string{"install-cni-v2-3"},
+			instanceVersion:   versions.V2_3.Version(),
+			containerNames:    []string{"install-cni"},
+			daemonsetName:     "istio-cni-node-v2-3",
 		},
 	}
 
@@ -69,7 +90,7 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cl, tracker := test.CreateClient()
 			dc := fake.FakeDiscovery{&tracker.Fake, test.DefaultKubeVersion}
-			renderings, err := internalRenderCNI(ctx, cl, config, &dc, tc.supportedVersions)
+			renderings, err := internalRenderCNI(ctx, cl, config, &dc, tc.supportedVersions, tc.instanceVersion)
 			assert.Success(err, "internalRenderCNI", t)
 			assert.True(renderings != nil, "renderings should not be nil", t)
 			cniManifests := renderings["istio_cni"]
@@ -85,6 +106,11 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 					resource := &unstructured.Unstructured{}
 					_, _, err = unstructured.UnstructuredJSONScheme.Decode(json, nil, resource)
 					assert.Success(err, "resource decoding", t)
+
+					dsName, found, err := unstructured.NestedString(resource.UnstructuredContent(), "metadata", "name")
+					assert.Success(err, "unstructured.NestedString", t)
+					assert.True(found, "Could not find metadata name", t)
+					assert.DeepEquals(dsName, tc.daemonsetName, "Unexpected daemonset name found", t)
 
 					containers, found, err := unstructured.NestedSlice(resource.UnstructuredContent(), "spec", "template", "spec", "containers")
 					assert.Success(err, "unstructured.NestedSlice", t)
