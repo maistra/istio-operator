@@ -34,7 +34,7 @@ func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context
 		}
 		h := sha256.New()
 		h.Write([]byte(rawPassword))
-		auth = "internal:{SHA}" + base64.StdEncoding.EncodeToString(h.Sum(nil))
+		auth = "internal:{SHA-2}" + base64.StdEncoding.EncodeToString(h.Sum(nil))
 	}
 
 	b64Password := base64.StdEncoding.EncodeToString([]byte(rawPassword))
