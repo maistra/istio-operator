@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	apiv1 "maistra.io/api/core/v1"
 	webhookadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -66,10 +67,11 @@ func TestControlPlaneValidation(t *testing.T) {
 	enabled := true
 	disabled := false
 	cases := []struct {
-		name         string
-		controlPlane runtime.Object
-		valid        bool
-		resources    []runtime.Object
+		name                string
+		controlPlane        runtime.Object
+		updatedControlPlane runtime.Object
+		valid               bool
+		resources           []runtime.Object
 	}{
 		{
 			name:         "blank-version",
@@ -318,12 +320,41 @@ func TestControlPlaneValidation(t *testing.T) {
 			},
 			valid: true,
 		},
+		{
+			name:                "smcp.upgrade.v2.0.to.v2.3",
+			controlPlane:        newControlPlaneWithVersion("basic", "istio-system", versions.V2_0.String()),
+			updatedControlPlane: newControlPlaneWithVersion("basic", "istio-system", versions.V2_3.String()),
+			valid:               true,
+		},
+		{
+			name:                "sme.upgrade.to.v2.3.fail",
+			controlPlane:        newControlPlaneWithVersion("basic", "istio-system", versions.V2_2.String()),
+			updatedControlPlane: newControlPlaneWithVersion("basic", "istio-system", versions.V2_3.String()),
+			valid:               false,
+			resources: []runtime.Object{
+				&apiv1.ServiceMeshExtension{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "istio-system",
+					},
+					Spec: apiv1.ServiceMeshExtensionSpec{
+						Config: apiv1.ServiceMeshExtensionConfig{
+							Data: map[string]interface{}{},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			validator := createControlPlaneValidatorTestFixture(tc.resources...)
 			response := validator.Handle(ctx, createCreateRequest(tc.controlPlane))
+			if tc.updatedControlPlane != nil {
+				response = validator.Handle(ctx, createUpdateRequest(tc.controlPlane, tc.updatedControlPlane))
+			}
+
 			if tc.valid {
 				var reason string
 				if response.Result != nil {
@@ -475,15 +506,6 @@ func TestFullAffinityOnlySupportedForKiali(t *testing.T) {
 			})
 		}
 	}
-}
-
-func TestUpdateOfValidControlPlane(t *testing.T) {
-	oldControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v2.0")
-	validator := createControlPlaneValidatorTestFixture(oldControlPlane)
-
-	controlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v2.1")
-	response := validator.Handle(ctx, createUpdateRequest(oldControlPlane, controlPlane))
-	assert.True(response.Allowed, "Expected validator to accept update of valid ServiceMeshControlPlane", t)
 }
 
 func TestInvalidVersion(t *testing.T) {

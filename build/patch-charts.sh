@@ -101,15 +101,6 @@ function patchGalley() {
         - CREATE\
         - UPDATE\
         apiGroups:\
-        - maistra.io\
-        apiVersions:\
-        - "*"\
-        resources:\
-        - "servicemeshextensions"\
-      - operations:\
-        - CREATE\
-        - UPDATE\
-        apiGroups:\
         - rbac.maistra.io\
         apiVersions:\
         - "*"\
@@ -136,9 +127,6 @@ function patchGalley() {
   - apiGroups: ["route.openshift.io"]\
     resources: ["routes", "routes/custom-host"]\
     verbs: ["get", "list", "watch", "create", "delete", "update"]\
-  - apiGroups: ["maistra.io"]\
-    resources: ["servicemeshextensions"]\
-    verbs: ["get", "list", "watch"]\
   # Allow use of blockOwnerDeletion in ownerReferences pointing to Pods (see OSSM-1321)\
   - apiGroups: [""]\
     resources: ["pods/finalizers"]\
@@ -219,6 +207,10 @@ gateways: {}\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
   sed_wrap -i -e '/base:/ i\
 wasmExtensions:\
   enabled: false\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
+
+  sed_wrap -i -e '/sidecarInjectorWebhook:/ a\
+  objectSelector:\
+    enabled: false\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
 
   # analysis
   sed_wrap -i -e '/PILOT_ENABLE_ANALYSIS/ i\
@@ -371,6 +363,7 @@ function patchSidecarInjector() {
   sed_wrap -i -e 's/runAsUser: 1337/runAsUser: {{ .ProxyUID }}/g' \
     -e 's/runAsGroup: 1337/runAsGroup: {{ .ProxyUID }}/g' \
     -e 's/fsGroup: 1337/fsGroup: {{ .ProxyGID }}/g' "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
+  sed_wrap -i -e 's/fsGroup: 1337/fsGroup: {{ .ProxyGID }}/g' "${HELM_DIR}/istio-control/istio-discovery/files/gateway-injection-template.yaml"
 
   sed_wrap -i -e '/- name: istio-proxy/,/resources:/ {
     / *- ALL/a\
@@ -382,7 +375,8 @@ function patchSidecarInjector() {
 
   # replace 'default' in CA_ADDR spec to use valueOrDefault
   sed_wrap -i -e 's/value: istiod-{{ .Values.revision | default "default" }}.*$/value: istiod-{{ valueOrDefault .Values.revision "default" }}.{{ .Values.global.istioNamespace }}.svc:15012/' \
-      "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
+      "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml" \
+      "${HELM_DIR}/istio-control/istio-discovery/files/gateway-injection-template.yaml"
 
   # never apply init container, even for validation
   sed_wrap -i -e '/^  initContainers:/,/^  containers:/ {/^  containers:/!d}' \

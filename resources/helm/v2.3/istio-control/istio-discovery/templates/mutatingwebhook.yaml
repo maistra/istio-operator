@@ -49,6 +49,7 @@ webhooks:
         - disabled
       - key: istio-env
         operator: DoesNotExist
+{{- if .Values.sidecarInjectorWebhook.objectSelector.enabled }}
   objectSelector:
     matchExpressions:
 {{- if eq .Values.global.proxy.autoInject "enabled" }}
@@ -61,4 +62,5 @@ webhooks:
       operator: In
       values:
       - "true"
+{{- end }}
 {{- end }}
