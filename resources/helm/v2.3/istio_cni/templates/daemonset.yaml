@@ -1,5 +1,5 @@
 {{ if .Values.cni.enabled }}
-{{- if or (eq .Values.cni.instanceVersion "v1.1") (eq .Values.cni.instanceVersion "v2.0") (eq .Values.cni.instanceVersion "v2.1") (eq .Values.cni.instanceVersion "v2.2")}}
+{{- if or (eq .Values.cni.instanceVersion "v2.0") (eq .Values.cni.instanceVersion "v2.1") (eq .Values.cni.instanceVersion "v2.2")}}
 # This manifest installs the Istio install-cni container, as well
 # as the Istio CNI plugin and config on
 # each master and worker node in a Kubernetes cluster.

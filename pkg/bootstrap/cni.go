@@ -57,7 +57,6 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 
 	cni["logLevel"] = common.Config.OLM.CNILogLevel
 
-	cni["configMap_v1_1"] = "cni_network_config_v1_1"
 	cni["configMap_v2_0"] = "cni_network_config_v2_0"
 	cni["configMap_v2_1"] = "cni_network_config_v2_1"
 	cni["configMap_v2_2"] = "cni_network_config_v2_2"

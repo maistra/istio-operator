@@ -35,7 +35,7 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 			name:              "Default Supported Versions SMCP v2.2",
 			supportedVersions: versions.GetSupportedVersions(),
 			instanceVersion:   versions.V2_2.Version(),
-			containerNames:    []string{"install-cni-v1-1", "install-cni-v2-0", "install-cni-v2-1", "install-cni-v2-2"},
+			containerNames:    []string{"install-cni-v2-0", "install-cni-v2-1", "install-cni-v2-2"},
 			daemonsetName:     "istio-cni-node",
 		},
 		{
