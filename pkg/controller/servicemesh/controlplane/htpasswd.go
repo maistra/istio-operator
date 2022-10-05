@@ -3,7 +3,7 @@ package controlplane
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"regexp"
@@ -32,7 +32,7 @@ func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context
 			log.Error(err, "failed to generate the HTPasswd password")
 			return err
 		}
-		h := sha1.New()
+		h := sha256.New()
 		h.Write([]byte(rawPassword))
 		auth = "internal:{SHA}" + base64.StdEncoding.EncodeToString(h.Sum(nil))
 	}
