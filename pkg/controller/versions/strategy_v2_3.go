@@ -31,11 +31,6 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common/helm"
 )
 
-const (
-	clusterScopedSMCPNamespace = "istio-system"
-	clusterScopedSMCPName      = "clusterscoped"
-)
-
 var v2_3ChartMapping = map[string]chartRenderingDetails{
 	DiscoveryChart: {
 		path:         "istio-control/istio-discovery",
@@ -150,12 +145,6 @@ func validateGlobal(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.Contr
 	}
 
 	if isClusterScoped {
-		if meta.Namespace != clusterScopedSMCPNamespace || meta.Name != clusterScopedSMCPName {
-			return append(allErrors,
-				fmt.Errorf("a cluster-scoped SMCP must be named %q and created in namespace %q",
-					clusterScopedSMCPName, clusterScopedSMCPNamespace))
-		}
-
 		if len(smcps.Items) > 1 || len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
 			return append(allErrors,
 				fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
