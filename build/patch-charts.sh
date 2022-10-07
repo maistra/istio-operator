@@ -217,6 +217,13 @@ wasmExtensions:\
           - name: PILOT_ENABLE_STATUS\
             value: "{{ .Values.global.istiod.enableAnalysis }}"
   ' "${deployment}"
+
+  sed_wrap -i -e '/---/ i\
+{{- if .Values.global.istiod.enableAnalysis }}\
+  - apiGroups: ["apps"]\
+    verbs: ["get", "watch", "list"]\
+    resources: [ "deployments" ]\
+{{- end }}' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
 }
 
 function patchGateways() {
