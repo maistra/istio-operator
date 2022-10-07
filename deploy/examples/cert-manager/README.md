@@ -16,11 +16,11 @@
 
 2. Provision certificates:
 
-        kubectl apply -f selfsigned-ca.yaml -n istio-system
+        kubectl apply -f deploy/examples/cert-manager/selfsigned-ca.yaml -n istio-system
 
 3. Install cert-manager istio-csr Service:
 
-        helm install -n cert-manager cert-manager-istio-csr jetstack/cert-manager-istio-csr -f deploy-prototype/istio-csr-helm-values.yaml"
+        helm install -n cert-manager cert-manager-istio-csr jetstack/cert-manager-istio-csr -f deploy-prototype/istio-csr-helm-values.yaml
 
 ## Create Istio Control Plane
 
