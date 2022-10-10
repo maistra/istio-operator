@@ -79,41 +79,6 @@ test:
 	go test -timeout ${TEST_TIMEOUT} -mod=vendor ${TEST_FLAGS} ./...
 
 ################################################################################
-# maistra v1.1
-################################################################################
-.PHONY: update-remote-maistra-1.1
-update-remote-maistra-1.1:
-ifeq "${OFFLINE_BUILD}" "false"
-	git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-1.1
-	git fetch ${GIT_UPSTREAM_REMOTE} maistra-1.1:maistra-1.1
-endif
-
-.PHONY: update-1.1-charts
-update-1.1-charts: update-remote-maistra-1.1
-	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.1 -- ${SOURCE_DIR}/resources/helm/v1.1
-	git reset HEAD ${SOURCE_DIR}/resources/helm/v1.1
-	find ${RESOURCES_DIR}/helm/v1.1/istio-init/files/ -maxdepth 1 -name "*.crd.yaml" -delete
-	# MAISTRA-1776
-	sed -i -e '/kind: handler/,/kind:/ { /name: kubernetesenv/,/kind:/ s/params:/params: \{\}/ }' ${RESOURCES_DIR}/helm/v1.1/istio/charts/mixer/templates/config.yaml
-	CRD_DIR=${RESOURCES_DIR}/helm/v1.1/istio-init/files ${SOURCE_DIR}/build/split-istio-crds.sh
-
-.PHONY: update-1.1-templates
-update-1.1-templates: update-remote-maistra-1.1
-	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-1.1 -- ${SOURCE_DIR}/resources/smcp-templates/v1.1
-	git reset HEAD ${SOURCE_DIR}/resources/smcp-templates/v1.1
-
-.PHONY: collect-1.1-charts
-collect-1.1-charts:
-	mkdir -p ${HELM_OUT_DIR}
-	cp -rf ${RESOURCES_DIR}/helm/v1.1 ${HELM_OUT_DIR}
-
-.PHONY: collect-1.1-templates
-collect-1.1-templates:
-	mkdir -p ${TEMPLATES_OUT_DIR}/v1.1
-	cp ${RESOURCES_DIR}/smcp-templates/v1.1/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v1.1/default
-	cp ${RESOURCES_DIR}/smcp-templates/v1.1/base ${TEMPLATES_OUT_DIR}/v1.1
-
-################################################################################
 # maistra v2.0
 ################################################################################
 .PHONY: update-remote-maistra-2.0
@@ -265,20 +230,20 @@ ifneq "${OSSM_MANIFEST_DATE}" ""
 endif
 
 .PHONY: update-charts
-update-charts: update-1.1-charts update-2.0-charts update-2.1-charts update-2.2-charts update-2.3-charts
+update-charts: update-2.0-charts update-2.1-charts update-2.2-charts update-2.3-charts
 
 .PHONY: update-templates
-update-templates: update-1.1-templates update-2.0-templates update-2.1-templates update-2.2-templates
+update-templates: update-2.0-templates update-2.1-templates update-2.2-templates
 
 
 ################################################################################
 # resource collection
 ################################################################################
 .PHONY: collect-charts
-collect-charts: collect-1.1-charts collect-2.0-charts collect-2.1-charts collect-2.2-charts collect-2.3-charts
+collect-charts: collect-2.0-charts collect-2.1-charts collect-2.2-charts collect-2.3-charts
 
 .PHONY: collect-templates
-collect-templates: collect-1.1-templates collect-2.0-templates collect-2.1-templates collect-2.2-templates collect-2.3-templates
+collect-templates: collect-2.0-templates collect-2.1-templates collect-2.2-templates collect-2.3-templates
 
 .PHONY: collect-olm-manifests
 collect-olm-manifests:

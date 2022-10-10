@@ -13,31 +13,6 @@ spec:
       labels:
         name: istio-operator
       annotations:
-        # 1.0 images
-        olm.relatedImage.v1_0.3scale-istio-adapter: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-3scale-istio-adapter-rhel8:1.0.0
-        olm.relatedImage.v1_0.citadel: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-citadel-rhel8:${OSSM_10}
-        olm.relatedImage.v1_0.cni: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-istio-cni-rhel8:${OSSM_10}
-        olm.relatedImage.v1_0.galley: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-galley-rhel8:${OSSM_10}
-        olm.relatedImage.v1_0.grafana: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-grafana-rhel8:${OSSM_10}
-        olm.relatedImage.v1_0.mixer: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-mixer-rhel8:${OSSM_10}
-        olm.relatedImage.v1_0.pilot: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-pilot-rhel8:${OSSM_10}
-        olm.relatedImage.v1_0.prometheus: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-prometheus-rhel8:${OSSM_10}
-        olm.relatedImage.v1_0.proxy-init: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-proxy-init-rhel7:${OSSM_10}
-        olm.relatedImage.v1_0.proxyv2: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-proxyv2-rhel8:${OSSM_10}
-        olm.relatedImage.v1_0.sidecar-injector: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-sidecar-injector-rhel8:${OSSM_10}
-        # 1.1 images
-        olm.relatedImage.v1_1.3scale-istio-adapter: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-3scale-istio-adapter-rhel8:1.0.0
-        olm.relatedImage.v1_1.citadel: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-citadel-rhel8:${OSSM_11}
-        olm.relatedImage.v1_1.cni: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-istio-cni-rhel8:${OSSM_11}
-        olm.relatedImage.v1_1.galley: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-galley-rhel8:${OSSM_11}
-        olm.relatedImage.v1_1.grafana: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-grafana-rhel8:${OSSM_11}
-        olm.relatedImage.v1_1.ior: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-istio-ior-rhel8:${OSSM_11}
-        olm.relatedImage.v1_1.mixer: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-mixer-rhel8:${OSSM_11}
-        olm.relatedImage.v1_1.pilot: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-pilot-rhel8:${OSSM_11}
-        olm.relatedImage.v1_1.prometheus: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-prometheus-rhel8:${OSSM_11}
-        olm.relatedImage.v1_1.proxy-init: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-proxy-init-rhel7:${OSSM_11}
-        olm.relatedImage.v1_1.proxyv2: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-proxyv2-rhel8:${OSSM_11}
-        olm.relatedImage.v1_1.sidecar-injector: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-sidecar-injector-rhel8:${OSSM_11}
         # 2.0 images
         olm.relatedImage.v2_0.3scale-istio-adapter: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-3scale-istio-adapter-rhel8:1.0.0
         olm.relatedImage.v2_0.cni: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-istio-cni-rhel8:${OSSM_20}

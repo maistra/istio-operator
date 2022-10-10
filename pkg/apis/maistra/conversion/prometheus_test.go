@@ -16,38 +16,7 @@ var (
 
 var prometheusTestCases []conversionTestCase
 
-var prometheusTestCasesV1 = []conversionTestCase{
-	{
-		name: "install.misc." + versions.V1_1.String(),
-		spec: &v2.ControlPlaneSpec{
-			Version: versions.V1_1.String(),
-			Addons: &v2.AddonsConfig{
-				Prometheus: &v2.PrometheusAddonConfig{
-					Install: &v2.PrometheusInstallConfig{
-						UseTLS:         &featureEnabled,
-						Retention:      "6h",
-						ScrapeInterval: "15s",
-					},
-				},
-			},
-		},
-		isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-			"prometheus": map[string]interface{}{
-				"security": map[string]interface{}{
-					"enabled": true,
-				},
-				"retention":      "6h",
-				"scrapeInterval": "15s",
-			},
-		}),
-		completeIstio: v1.NewHelmValues(map[string]interface{}{
-			"global": map[string]interface{}{
-				"multiCluster":  globalMultiClusterDefaults,
-				"meshExpansion": globalMeshExpansionDefaults,
-			},
-		}),
-	},
-}
+// Deprecated v1.1 is deprecated and skip TestCasesV1
 
 func prometheusTestCasesV2(version versions.Version) []conversionTestCase {
 	ver := version.String()
@@ -350,7 +319,7 @@ func prometheusTestCasesV2(version versions.Version) []conversionTestCase {
 }
 
 func init() {
-	prometheusTestCases = append(prometheusTestCases, prometheusTestCasesV1...)
+	// v1.1 is deprecated and skip TestCasesV1
 	for _, v := range versions.AllV2Versions {
 		prometheusTestCases = append(prometheusTestCases, prometheusTestCasesV2(v)...)
 	}

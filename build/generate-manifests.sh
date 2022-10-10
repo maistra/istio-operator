@@ -14,7 +14,7 @@ function generateArchitectureLabels() {
 }
 
 : "${COMMUNITY:-"true"}"
-: "${MAISTRA_VERSION:?"Need to set maistra version, e.g. 1.0.1"}"
+: "${MAISTRA_VERSION:?"Need to set maistra version, e.g. 2.0.1"}"
 if [[ ${COMMUNITY} == "true" ]]; then
   BUILD_TYPE="maistra"
   JAEGER_STORAGE="Memory"

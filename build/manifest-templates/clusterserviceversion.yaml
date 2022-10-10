@@ -204,7 +204,6 @@ __DEPLOYMENT_SPEC__
           - 'urn:alm:descriptor:com.tectonic.ui:select:v2.2'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v2.1'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v2.0'
-          - 'urn:alm:descriptor:com.tectonic.ui:select:v1.1'
       - displayName: Control Plane Security
         description: Enable mTLS for communication between control plane components
         path: security.controlPlane.mtls

@@ -1387,7 +1387,9 @@ func TestTechPreviewConversionFromV2(t *testing.T) {
 	runTestCasesFromV2(techPreviewTestCases, t)
 }
 
+// v1.1 is deprecated and skip TestRoundTripConversion
 func TestRoundTripConversion(t *testing.T) {
+	t.Skip("v1.1 is deprecated and skip TestRoundTripConversion")
 	for _, tc := range roundTripTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.skip {
