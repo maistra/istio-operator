@@ -187,6 +187,12 @@ function patchGalley() {
   sed_wrap -i -e '/- apiGroups:.*apiextensions\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
   sed_wrap -i -e '/- apiGroups:.*authentication\.k8s\.io/,/verbs:/ d' ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml
 
+  sed_wrap -i -e '$a\
+  # Allow use of blockOwnerDeletion in ownerReferences pointing to Pods. This is required for appending validation messages (see OSSM-1321).\
+  - apiGroups: [""]\
+    resources: ["pods/finalizers"]\
+    verbs: ["update"]' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
+
   convertClusterRoleBinding ${HELM_DIR}/istio-control/istio-discovery/templates/clusterrolebinding.yaml
   sed_wrap -i -e '/- "discovery"/ a\
           - --memberRollName=default\
