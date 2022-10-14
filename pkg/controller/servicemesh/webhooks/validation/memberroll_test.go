@@ -79,18 +79,20 @@ func TestMemberValidation(t *testing.T) {
 	testCases := []struct {
 		members string
 		valid   bool
+		message string
 	}{
-		{valid: false, members: ""},
-		{valid: false, members: "-badname"},
-		{valid: false, members: "badname-"},
-		{valid: false, members: "bad%name"},
-		{valid: false, members: "duplicate-ns,foo,duplicate-ns"},
+		{valid: false, members: "", message: "Must be a valid namespace name"},
+		{valid: false, members: "-badname", message: "Must be a valid namespace name"},
+		{valid: false, members: "badname-", message: "Must be a valid namespace name"},
+		{valid: false, members: "bad%name", message: "Must be a valid namespace name"},
+		{valid: false, members: "duplicate-ns,foo,duplicate-ns", message: "ServiceMeshMemberRoll may not contain duplicate namespaces"},
 		{valid: true, members: "ns1"},
 		{valid: true, members: "ns-1"},
 		{valid: true, members: "ns1,ns2"},
 		{valid: true, members: "*"},
-		{valid: false, members: "*,ns1"},
-		{valid: false, members: "ns1,*"},
+		{valid: false, members: "*,ns1", message: "when .spec.members contains an asterisk ('*'), it must contain no other entries"},
+		{valid: false, members: "ns1,*", message: "when .spec.members contains an asterisk ('*'), it must contain no other entries"},
+		{valid: false, members: "*,*", message: "when .spec.members contains an asterisk ('*'), it must contain no other entries"},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.members, func(t *testing.T) {
@@ -102,7 +104,10 @@ func TestMemberValidation(t *testing.T) {
 			if tc.valid {
 				assert.True(response.Allowed, "Expected validator to allow ServiceMeshMemberRoll", t)
 			} else {
-				assert.False(response.Allowed, "Expected validator to reject ServiceMeshMemberRoll because of invalid or duplicated members", t)
+				if !response.Allowed && !strings.Contains(response.Result.Message, tc.message) {
+					t.Errorf("Expected validator to reject ServiceMeshMemberRoll with the message: %q, but the message was %q",
+						tc.message, response.Result.Message)
+				}
 			}
 		})
 	}
