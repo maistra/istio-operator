@@ -61,7 +61,12 @@ type ServiceMeshMemberRollSpec struct {
 }
 
 func (s *ServiceMeshMemberRollSpec) IsClusterScoped() bool {
-	return len(s.Members) == 1 && s.Members[0] == "*"
+	for _, ns := range s.Members {
+		if ns == "*" {
+			return true
+		}
+	}
+	return false
 }
 
 // ServiceMeshMemberRollStatus represents the current state of a ServiceMeshMemberRoll.

@@ -82,18 +82,22 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request)
 		return badRequest("ServiceMeshMemberRoll may not be created in the same project/namespace as the operator")
 	}
 
-	// check for duplicate namespaces (we must check this in code, because +kubebuilder:validation:UniqueItem doesn't work)
-	if len(sets.NewString(smmr.Spec.Members...)) != len(smmr.Spec.Members) {
-		return badRequest("ServiceMeshMemberRoll may not contain duplicate namespaces in .spec.members")
-	}
-
 	// check if namespace names conform to DNS-1123 (we must check this in code, because +kubebuilder:validation:Pattern can't be applied to array elements yet)
-	if !smmr.Spec.IsClusterScoped() {
+	if smmr.Spec.IsClusterScoped() {
+		if len(smmr.Spec.Members) > 1 {
+			return badRequest("when .spec.members contains an asterisk ('*'), it must contain no other entries")
+		}
+	} else {
 		for _, member := range smmr.Spec.Members {
 			if !memberRegex.MatchString(member) {
 				return badRequest(fmt.Sprintf(".spec.members contains invalid value '%s'. Must be a valid namespace name.", member))
 			}
 		}
+	}
+
+	// check for duplicate namespaces (we must check this in code, because +kubebuilder:validation:UniqueItem doesn't work)
+	if len(sets.NewString(smmr.Spec.Members...)) != len(smmr.Spec.Members) {
+		return badRequest("ServiceMeshMemberRoll may not contain duplicate namespaces in .spec.members")
 	}
 
 	smmrList := &maistrav1.ServiceMeshMemberRollList{}
