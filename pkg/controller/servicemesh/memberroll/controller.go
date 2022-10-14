@@ -269,6 +269,11 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		return reconcile.Result{}, r.updateStatus(ctx, roll)
 	}
 
+	meshIsClusterScoped, err := mesh.Spec.IsClusterScoped()
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	memberStatusMap := map[string]maistrav1.ServiceMeshMemberStatusSummary{}
 	for _, c := range roll.Status.MemberStatuses {
 		memberStatusMap[c.Namespace] = c
@@ -350,7 +355,7 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	if mesh.Status.AppliedSpec.IsKialiEnabled() {
 		kialiName := mesh.Status.AppliedSpec.Addons.Kiali.ResourceName()
 		roll.Status.SetAnnotation(statusAnnotationKialiName, kialiName)
-		if roll.Spec.IsClusterScoped() {
+		if meshIsClusterScoped && roll.Spec.IsClusterScoped() {
 			kialiErr = r.kialiReconciler.reconcileKiali(ctx, kialiName, meshNamespace, []string{"**"}, getExcludedNamespaces())
 		} else {
 			kialiErr = r.kialiReconciler.reconcileKiali(ctx, kialiName, meshNamespace, allKnownMembers.List(), []string{})

@@ -651,9 +651,13 @@ func TestIsExcludedNamespace(t *testing.T) {
 }
 
 func TestKialiResource(t *testing.T) {
+	test.PanicOnError(os.Setenv("POD_NAMESPACE", "operator-namespace"))
+
 	cases := []struct {
 		name                         string
+		controlPlaneMode             string
 		members                      []string
+		namespaces                   []string
 		expectedAccessibleNamespaces []string
 		expectedExcludedNamespaces   []string
 	}{
@@ -676,8 +680,24 @@ func TestKialiResource(t *testing.T) {
 			expectedExcludedNamespaces:   []string{},
 		},
 		{
-			name:                         "all",
+			name:                         "only-smcp-cluster-scoped",
+			controlPlaneMode:             maistrav2.ControlPlaneModeValueClusterScoped,
+			members:                      []string{"foo", "bar", "baz"},
+			expectedAccessibleNamespaces: []string{"foo", "bar", "baz"},
+			expectedExcludedNamespaces:   []string{},
+		},
+		{
+			name:                         "only-smmr-cluster-scoped",
 			members:                      []string{"*"},
+			namespaces:                   []string{"bookinfo"},
+			expectedAccessibleNamespaces: []string{"bookinfo"},
+			expectedExcludedNamespaces:   []string{},
+		},
+		{
+			name:                         "both-smcp-and-smmr-cluster-scoped",
+			controlPlaneMode:             maistrav2.ControlPlaneModeValueClusterScoped,
+			members:                      []string{"*"},
+			namespaces:                   []string{"bookinfo"},
 			expectedAccessibleNamespaces: []string{"**"},
 			expectedExcludedNamespaces:   []string{"^kube$", "^kube-.*", "^openshift$", "^openshift-.*", "^operator-namespace$"},
 		},
@@ -688,9 +708,21 @@ func TestKialiResource(t *testing.T) {
 			roll := newMemberRoll(1)
 			roll.Spec.Members = tc.members
 
-			controlPlane := markControlPlaneReconciled(newControlPlane())
+			smcp := newControlPlane()
+			if tc.controlPlaneMode != "" {
+				smcp.Spec.TechPreview = maistrav1.NewHelmValues(
+					map[string]interface{}{
+						maistrav2.ControlPlaneModeKey: tc.controlPlaneMode,
+					})
+			}
+			markControlPlaneReconciled(smcp)
 
-			_, _, r, kialiReconciler := createClientAndReconciler(roll, controlPlane)
+			_, tracker, r, kialiReconciler := createClientAndReconciler(roll, smcp)
+
+			for _, ns := range tc.namespaces {
+				test.PanicOnError(tracker.Add(newNamespace(ns)))
+			}
+
 			assertReconcileSucceeds(r, t)
 			kialiReconciler.assertInvokedWith(t, tc.expectedAccessibleNamespaces, tc.expectedExcludedNamespaces)
 		})
