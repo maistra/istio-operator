@@ -91,3 +91,7 @@ rules:
     resources: ["servicemeshextensions"]
     verbs: ["get", "list", "watch"]
 
+  # Allow use of blockOwnerDeletion in ownerReferences pointing to Pods. This is required for appending validation messages (see OSSM-1321).
+  - apiGroups: [""]
+    resources: ["pods/finalizers"]
+    verbs: ["update"]
