@@ -85,6 +85,8 @@ spec:
 {{- end }}
 
   external_services:
+    custom_dashboards:
+      namespace_label: kubernetes_namespace
     istio:
       config_map_name: istio-{{ .Values.revision | default "default" }}
       url_service_version: http://istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}:15014/version
