@@ -19,9 +19,17 @@ import (
 
 func TestReconcileNamespaceInMesh(t *testing.T) {
 	namespace := newAppNamespace()
-	meshRoleBinding := newMeshRoleBinding()
-	meshRoleBindings := []*rbac.RoleBinding{meshRoleBinding}
-	cl, _ := test.CreateClient(namespace, meshRoleBinding)
+
+	meshRoleBindingToRole := newMeshRoleBinding()
+	meshRoleBindingToRole.RoleRef.Kind = "Role"
+	meshRoleBindingToRole.RoleRef.Name = "foo"
+
+	meshRoleBindingToClusterRole := newMeshRoleBinding()
+	meshRoleBindingToClusterRole.ObjectMeta.Name = "role-binding-to-cluster-role"
+	meshRoleBindingToClusterRole.RoleRef.Kind = "ClusterRole"
+	meshRoleBindingToClusterRole.RoleRef.Name = "bar"
+
+	cl, _ := test.CreateClient(namespace, meshRoleBindingToRole, meshRoleBindingToClusterRole)
 
 	fakeNetworkStrategy := &fakeNetworkStrategy{}
 	assertReconcileNamespaceSucceeds(t, cl, fakeNetworkStrategy)
@@ -46,22 +54,17 @@ func TestReconcileNamespaceInMesh(t *testing.T) {
 		t.Fatalf("Couldn't list RoleBindings: %v", err)
 	}
 
-	expectedRoleBindings := []rbac.RoleBinding{}
-	for _, meshRB := range meshRoleBindings {
-		expectedRB := meshRB.DeepCopy()
-		expectedRB.Namespace = appNamespace
-		// the RoleBinding must not contain the maistra.io/owner label or any
-		// other labels of the RoleBinding in the control plane namespace so
-		// that it won't be deleted by the pruner, but it must contain the
-		// maistra.io/member-of label, so that it can be later deleted by the
-		// SMM controller
-		expectedRB.Labels = map[string]string{
-			common.MemberOfKey: controlPlaneNamespace,
-		}
-		expectedRoleBindings = append(expectedRoleBindings, *expectedRB)
+	expectedRB := meshRoleBindingToClusterRole.DeepCopy()
+	expectedRB.Namespace = appNamespace
+	// the RoleBinding must not contain the maistra.io/owner label or any
+	// other labels of the RoleBinding in the control plane namespace so
+	// that it won't be deleted by the pruner, but it must contain the
+	// maistra.io/member-of label, so that it can be later deleted by the
+	// SMM controller
+	expectedRB.Labels = map[string]string{
+		common.MemberOfKey: controlPlaneNamespace,
 	}
-
-	assert.DeepEquals(roleBindings.Items, expectedRoleBindings, "Unexpected RoleBindings found in namespace", t)
+	assert.DeepEquals(roleBindings.Items, []rbac.RoleBinding{*expectedRB}, "Unexpected RoleBindings found in namespace", t)
 	assert.DeepEquals(fakeNetworkStrategy.reconciledNamespaces, []string{appNamespace},
 		"Expected reconcileNamespaceInMesh to invoke the networkStrategy with only the appNamespace, but it didn't", t)
 }
