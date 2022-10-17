@@ -291,6 +291,11 @@ func (r *namespaceReconciler) reconcileRoleBindings(ctx context.Context, namespa
 	existingRoleBindings := common.NameSet(&namespaceRoleBindings)
 	addedRoleBindings := sets.NewString()
 	for _, meshRoleBinding := range r.roleBindingsList.Items {
+		// since we don't copy Roles from istio-system to member namespace, there's no sense in copying RoleBindings
+		// that reference them; instead, we only need to copy RoleBindings that reference ClusterRoles
+		if meshRoleBinding.RoleRef.Kind == "Role" {
+			continue
+		}
 		roleBindingName := meshRoleBinding.GetName()
 		if !existingRoleBindings.Has(roleBindingName) {
 			reqLogger.Info("creating RoleBinding for mesh ServiceAccount", "RoleBinding", roleBindingName)
