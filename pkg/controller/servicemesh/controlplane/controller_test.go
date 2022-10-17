@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -133,7 +134,8 @@ func createClientAndReconciler(t *testing.T, clientObjects ...runtime.Object) (c
 	cl, enhancedTracker := test.CreateClient(clientObjects...)
 	fakeEventRecorder := &record.FakeRecorder{}
 
-	r := newReconciler(cl, scheme.Scheme, fakeEventRecorder, "istio-operator", cni.Config{Enabled: true})
+	dc := fake.FakeDiscovery{&enhancedTracker.Fake, test.DefaultKubeVersion}
+	r := newReconciler(cl, scheme.Scheme, fakeEventRecorder, "istio-operator", cni.Config{Enabled: true}, &dc)
 	r.instanceReconcilerFactory = NewFakeInstanceReconciler
 	instanceReconciler = &fakeInstanceReconciler{}
 	return cl, enhancedTracker, fakeEventRecorder, r

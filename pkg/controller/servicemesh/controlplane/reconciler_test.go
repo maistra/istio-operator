@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery/fake"
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -288,12 +289,15 @@ func TestManifestValidation(t *testing.T) {
 				cl, tracker := test.CreateClient(tc.controlPlane, tc.memberRoll, namespace)
 				fakeEventRecorder := &record.FakeRecorder{}
 
+				fakeDiscovery := fake.FakeDiscovery{&tracker.Fake, test.DefaultKubeVersion}
+
 				r := NewControlPlaneInstanceReconciler(
 					common.ControllerResources{
 						Client:            cl,
 						Scheme:            tracker.Scheme,
 						EventRecorder:     fakeEventRecorder,
 						OperatorNamespace: operatorNamespace,
+						DiscoveryClient:   &fakeDiscovery,
 					},
 					tc.controlPlane,
 					cni.Config{Enabled: true})
@@ -646,12 +650,15 @@ func newReconcilerTestFixture(smcp *maistrav2.ServiceMeshControlPlane) (client.C
 	cl, tracker := test.CreateClient(smcp, namespace)
 	fakeEventRecorder := &record.FakeRecorder{}
 
+	fakeDiscovery := fake.FakeDiscovery{&tracker.Fake, test.DefaultKubeVersion}
+
 	r := NewControlPlaneInstanceReconciler(
 		common.ControllerResources{
 			Client:            cl,
 			Scheme:            tracker.Scheme,
 			EventRecorder:     fakeEventRecorder,
 			OperatorNamespace: operatorNamespace,
+			DiscoveryClient:   &fakeDiscovery,
 		},
 		smcp,
 		cni.Config{Enabled: true})
