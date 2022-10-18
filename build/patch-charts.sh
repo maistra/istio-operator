@@ -136,16 +136,6 @@ function patchGalley() {
 
   # multitenant
   sed_wrap -i -e '/^---/i \
-  # Maistra specific\
-  - apiGroups: ["maistra.io"]\
-    resources: ["servicemeshmemberrolls"]\
-    verbs: ["get", "list", "watch"]\
-  - apiGroups: ["route.openshift.io"]\
-    resources: ["routes", "routes/custom-host"]\
-    verbs: ["get", "list", "watch", "create", "delete", "update"]\
-  - apiGroups: ["maistra.io"]\
-    resources: ["servicemeshextensions"]\
-    verbs: ["get", "list", "watch"]\
   # Allow use of blockOwnerDeletion in ownerReferences pointing to Pods (see OSSM-1321)\
   - apiGroups: [""]\
     resources: ["pods/finalizers"]\
