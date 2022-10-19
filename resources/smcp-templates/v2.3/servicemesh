@@ -31,9 +31,6 @@ spec:
           imageName: ose-oauth-proxy
           imageTag: v4.4
           imagePullPolicy: IfNotPresent
-      wasmExtensions.cacher:
-        container:
-          imageName: pilot-rhel8
       rateLimiting.rls:
         container:
           imageName: ratelimit-rhel8

@@ -452,8 +452,3 @@ telemetry:
       # To reduce the number of successful logs, default log window duration is
       # set to 12 hours.
       logWindowDuration: "43200s"
-
-wasmExtensions:
-  enabled: true
-  cacher:
-    image: pilot
