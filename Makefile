@@ -88,7 +88,7 @@ test:
 ################################################################################
 .PHONY: update-remote-maistra-%
 update-remote-maistra-%:
-	$(eval version:=$(subst update-remote-maistra-,,$@))
+	$(eval version:=$*)
 ifeq "${OFFLINE_BUILD}" "false"
 	git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-${version}
 	git fetch ${GIT_UPSTREAM_REMOTE} maistra-${version}:maistra-${version}
@@ -96,7 +96,7 @@ endif
 
 .PHONY: update-charts-%
 update-charts-%:
-	$(eval version:=$(subst update-charts-,,$@))
+	$(eval version:=$*)
 	# If we are calling make against current version - download charts.
 	# Otherwise sync from previous branches and explicitly call dependent target with extracted version
 	@ if [[ ${MAISTRA_VERSION} == ${version}* ]]; \
@@ -110,7 +110,7 @@ update-charts-%:
 
 .PHONY: update-templates-%
 update-templates-%:
-	$(eval version:=$(subst update-templates-,,$@))
+	$(eval version:=$*)
 	# Has to explicitly call dependent target with extracted version
 	@$(MAKE) -f $(THIS_FILE) update-remote-maistra-${version}
 	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-${version} -- ${SOURCE_DIR}/resources/smcp-templates/v${version}
@@ -118,13 +118,13 @@ update-templates-%:
 
 .PHONY: collect-charts-%
 collect-charts-%:
-	$(eval version:=$(subst collect-charts-,,$@))
+	$(eval version:=$*)
 	mkdir -p ${HELM_OUT_DIR}
 	cp -rf ${RESOURCES_DIR}/helm/v${version} ${HELM_OUT_DIR}
 
 .PHONY: collect-templates-%
 collect-templates-%:
-	$(eval version:=$(subst collect-templates-,,$@))
+	$(eval version:=$*)
 	mkdir -p ${TEMPLATES_OUT_DIR}/v${version}
 	cp ${RESOURCES_DIR}/smcp-templates/v${version}/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v${version}/default
 	find ${RESOURCES_DIR}/smcp-templates/v${version}/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" | xargs cp -t ${TEMPLATES_OUT_DIR}/v${version}
