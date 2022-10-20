@@ -339,8 +339,12 @@ func (r *MemberReconciler) reportError(ctx context.Context, member *maistrav1.Se
 	reason maistrav1.ServiceMeshMemberConditionReason, err error,
 ) error {
 	if common.IsConflict(err) {
-		// we never record conflicts, because they aren't true errors
-		return nil
+		// Conflicts aren't recorded in the SMM status or Events, because
+		// we expect them to happen occasionally. A conflict is not an error,
+		// but we must return it so that the SMM object is requeued by the
+		// conflictHandlingReconciler wrapper. The wrapper also ensures that
+		// the conflict is logged at INFO level, not as an error.
+		return err
 	}
 	r.recordEvent(member, corev1.EventTypeWarning, eventReasonFailedReconcile, err.Error())
 	return r.updateStatus(ctx, member, false, false, reason, err.Error())

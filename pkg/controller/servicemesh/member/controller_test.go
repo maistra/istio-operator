@@ -2,6 +2,7 @@ package member
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -442,6 +443,38 @@ func TestReconciliationOfTerminatingNamespace(t *testing.T) {
 			assert.Equals(readyStatus, corev1.ConditionFalse, "Unexpected Ready condition status", t)
 			reconciledStatus := updatedMember.Status.GetCondition(maistrav1.ConditionTypeMemberReconciled).Status
 			assert.Equals(reconciledStatus, corev1.ConditionFalse, "Unexpected Reconciled condition status", t)
+		})
+	}
+}
+
+func TestReconcileReturnsConflictError(t *testing.T) {
+	cases := []struct{ verb, resource string }{
+		{"patch", "servicemeshmembers"},
+		{"create", "servicemeshmemberrolls"},
+		{"create", "rolebindings"},
+		{"create", "networkattachmentdefinitions"},
+		{"update", "namespaces"},
+	}
+
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("%s %s", tc.verb, tc.resource), func(t *testing.T) {
+			member := newMember()
+			appNs := newAppNamespace()
+			roleBinding := newMeshRoleBinding()
+			smcp := newControlPlane(versions.DefaultVersion.String())
+
+			_, tracker, r := createClientAndReconciler(smcp, member, appNs, roleBinding)
+			tracker.AddReactor(tc.verb, tc.resource, func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+				return true, nil, apierrors.NewConflict(schema.GroupResource{
+					Group:    "v1",
+					Resource: "DoesntMatter",
+				}, "doesnt-matter", fmt.Errorf("simulated conflict"))
+			})
+
+			_, err := r.Reconcile(request)
+			if !common.IsConflict(err) {
+				t.Fatalf("Expected Conflict error, but got: %v", err)
+			}
 		})
 	}
 }

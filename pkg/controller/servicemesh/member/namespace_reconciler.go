@@ -192,11 +192,11 @@ func (r *namespaceReconciler) removeNamespaceFromMesh(ctx context.Context, names
 		if err := r.Client.Update(ctx, namespaceResource); err == nil {
 			logger.Info("Removed member-of label from namespace")
 		} else if !apierrors.IsNotFound(err) {
-			allErrors = append(allErrors, fmt.Errorf("error removing member-of label from namespace %s: %v", namespace, err))
+			allErrors = append(allErrors, pkgerrors.Wrapf(err, "error removing member-of label from namespace %s", namespace))
 			return utilerrors.NewAggregate(allErrors)
 		}
 	} else if !apierrors.IsNotFound(err) {
-		allErrors = append(allErrors, fmt.Errorf("error getting namespace %s prior to removing member-of label: %v", namespace, err))
+		allErrors = append(allErrors, err)
 	}
 
 	return utilerrors.NewAggregate(allErrors)
@@ -264,10 +264,10 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(ctx context.Context, name
 			if err := r.Client.Update(ctx, namespaceResource); err == nil {
 				logger.Info("Added member-of label to namespace")
 			} else {
-				allErrors = append(allErrors, fmt.Errorf("error adding member-of label to namespace %s: %v", namespace, err))
+				allErrors = append(allErrors, pkgerrors.Wrapf(err, "error adding member-of label to namespace %s", namespace))
 			}
 		} else {
-			allErrors = append(allErrors, fmt.Errorf("error getting namespace %s prior to adding member-of label: %v", namespace, err))
+			allErrors = append(allErrors, err)
 		}
 	}
 
@@ -358,7 +358,7 @@ func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context
 			log.Info("skipping creation of NetworkAttachmentDefinition, because this cluster doesn't support them")
 			return nil
 		}
-		return fmt.Errorf("could not list NetworkAttachmentDefinition resources in member namespace %s: %v", namespace, err)
+		return pkgerrors.Wrapf(err, "could not list NetworkAttachmentDefinition resources in member namespace %s", namespace)
 	}
 
 	found := false
@@ -381,7 +381,7 @@ func (r *namespaceReconciler) addNetworkAttachmentDefinition(ctx context.Context
 	netAttachDef.SetName(netAttachDefName)
 	common.SetLabel(netAttachDef, common.MemberOfKey, r.meshNamespace)
 	if err := r.Client.Create(ctx, netAttachDef); err != nil {
-		allErrors = append(allErrors, fmt.Errorf("could not create NetworkAttachmentDefinition %s/%s: %v", namespace, netAttachDefName, err))
+		allErrors = append(allErrors, pkgerrors.Wrapf(err, "could not create NetworkAttachmentDefinition %s/%s", namespace, netAttachDefName))
 	}
 	return utilerrors.NewAggregate(allErrors)
 }
@@ -394,7 +394,7 @@ func (r *namespaceReconciler) removeNetworkAttachmentDefinition(ctx context.Cont
 			// if the NetworkAttachmentDefinition kind doesn't exist in this cluster, we don't need to remove it
 			return nil
 		}
-		return fmt.Errorf("could not list NetworkAttachmentDefinition resources in member namespace %s: %v", namespace, err)
+		return pkgerrors.Wrapf(err, "could not list NetworkAttachmentDefinition resources in member namespace %s", namespace)
 	}
 
 	var allErrors []error
