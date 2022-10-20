@@ -101,7 +101,6 @@ update-charts-%:
 	# Otherwise sync from previous branches and explicitly call dependent target with extracted version
 	@ if [[ ${MAISTRA_VERSION} == ${version}* ]]; \
 	then \
-		echo "test"; \
 		HELM_DIR=${RESOURCES_DIR}/helm/v${version} ISTIO_VERSION=${ISTIO_VERSION} ${SOURCE_DIR}/build/download-charts.sh; \
 	else \
 		$(MAKE) -f $(THIS_FILE) update-remote-maistra-${version}; \
