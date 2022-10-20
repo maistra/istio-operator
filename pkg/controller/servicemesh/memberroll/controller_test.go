@@ -503,7 +503,7 @@ func TestReconcileRemovesFinalizerFromMemberRoll(t *testing.T) {
 	assert.StringArrayEmpty(updatedRoll.Finalizers, "Expected finalizers list in SMMR to be empty, but it wasn't", t)
 }
 
-func TestReconcileHandlesDeletionProperly(t *testing.T) {
+func TestReconcileDeletedMemberRoll(t *testing.T) {
 	cases := []struct {
 		name                      string
 		specMembers               []string
@@ -525,9 +525,17 @@ func TestReconcileHandlesDeletionProperly(t *testing.T) {
 			noKiali:                   true,
 		},
 		{
-			name:        "ns-removed-from-members-list-and-smmr-deleted-immediately",
-			specMembers: []string{}, // appNamespace was removed, but then the SMMR was deleted immediately.
+			name:                      "cluster-scoped-smmr",
+			specMembers:               []string{"*"},
+			configuredMembers:         []string{appNamespace},
+			expectedRemovedNamespaces: []string{appNamespace},
+			noKiali:                   true,
+		},
+		{
+			// appNamespace was removed, but then the SMMR was deleted immediately.
 			// The controller is reconciling both actions at once.
+			name:                      "ns-removed-from-members-list-and-smmr-deleted-immediately",
+			specMembers:               []string{},
 			configuredMembers:         []string{appNamespace},
 			expectedRemovedNamespaces: []string{appNamespace},
 		},
@@ -554,7 +562,12 @@ func TestReconcileHandlesDeletionProperly(t *testing.T) {
 			}
 			roll.DeletionTimestamp = &oneMinuteAgo
 
-			initObjects := []runtime.Object{roll, controlPlane}
+			smm := newMemberWithNamespace(appNamespace)
+			smm.Annotations = map[string]string{
+				common.CreatedByKey: controllerName,
+			}
+
+			initObjects := []runtime.Object{roll, controlPlane, smm}
 			for _, ns := range tc.configuredMembers {
 				initObjects = append(initObjects, &core.Namespace{
 					ObjectMeta: meta.ObjectMeta{
@@ -572,6 +585,8 @@ func TestReconcileHandlesDeletionProperly(t *testing.T) {
 
 			updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
 			assert.StringArrayEmpty(updatedRoll.Finalizers, "Expected finalizers list in SMMR to be empty, but it wasn't", t)
+
+			test.AssertNotFound(ctx, cl, common.ToNamespacedName(smm), &maistrav1.ServiceMeshMember{}, "Expected ServiceMeshMember to be deleted", t)
 
 			if !tc.noKiali {
 				kialiReconciler.assertInvokedWith(t, []string{}, []string{})
