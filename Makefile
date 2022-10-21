@@ -97,8 +97,8 @@ endif
 .PHONY: update-charts-%
 update-charts-%:
 	$(eval version:=$*)
-	# If we are calling make against current version - download charts.
-	# Otherwise sync from previous branches and explicitly call dependent target with extracted version
+	@# If we are calling make against current version - download charts.
+	@# Otherwise sync from previous branches and explicitly call dependent target with extracted version
 	@ if [[ ${MAISTRA_VERSION} == ${version}* ]]; \
 	then \
 		HELM_DIR=${RESOURCES_DIR}/helm/v${version} ISTIO_VERSION=${ISTIO_VERSION} ${SOURCE_DIR}/build/download-charts.sh; \
@@ -109,10 +109,8 @@ update-charts-%:
 	fi
 
 .PHONY: update-templates-%
-update-templates-%:
+update-templates-%: update-remote-maistra-%
 	$(eval version:=$*)
-	# Has to explicitly call dependent target with extracted version
-	@$(MAKE) -f $(THIS_FILE) update-remote-maistra-${version}
 	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-${version} -- ${SOURCE_DIR}/resources/smcp-templates/v${version}
 	git reset HEAD ${SOURCE_DIR}/resources/smcp-templates/v${version}
 
