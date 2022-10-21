@@ -91,7 +91,7 @@ SUPPORTED_VERSIONS := 2.0 2.1 2.2 2.3
 
 $(addprefix update-remote-maistra-,$(SUPPORTED_VERSIONS)): update-remote-maistra-%:
 	$(eval version:=$*)
-	@ if [[ ${OFFLINE_BUILD} == "false" || ${MAISTRA_VERSION} != ${version}.* ]]; \
+	@ if [[ ${OFFLINE_BUILD} == "false" && ${MAISTRA_VERSION} != ${version}.* ]]; \
 	then \
 		git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-${version}; \
 		git fetch ${GIT_UPSTREAM_REMOTE} maistra-${version}:maistra-${version}; \
