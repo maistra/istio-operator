@@ -91,7 +91,7 @@ SUPPORTED_VERSIONS := 2.0 2.1 2.2 2.3
 
 $(addprefix update-remote-maistra-,$(SUPPORTED_VERSIONS)): update-remote-maistra-%:
 	$(eval version:=$*)
-	@ if [[ ${OFFLINE_BUILD} == "false" || ${MAISTRA_VERSION} == ${version}* ]]; \
+	@ if [[ ${OFFLINE_BUILD} == "false" || ${MAISTRA_VERSION} == ${version}.* ]]; \
 	then \
 		git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-${version}; \
 		git fetch ${GIT_UPSTREAM_REMOTE} maistra-${version}:maistra-${version}; \
@@ -101,7 +101,7 @@ $(addprefix update-charts-,$(SUPPORTED_VERSIONS)): update-charts-%:
 	$(eval version:=$*)
 	@# If we are calling make against current version - download charts.
 	@# Otherwise sync from previous branches and explicitly call dependent target with extracted version
-	@ if [[ ${MAISTRA_VERSION} == ${version}* ]]; \
+	@ if [[ ${MAISTRA_VERSION} == ${version}.* ]]; \
 	then \
 		HELM_DIR=${RESOURCES_DIR}/helm/v${version} ISTIO_VERSION=${ISTIO_VERSION} ${SOURCE_DIR}/build/download-charts.sh; \
 	else \
