@@ -84,18 +84,19 @@ test:
 	go test -timeout ${TEST_TIMEOUT} -mod=vendor ${TEST_FLAGS} ./...
 
 ################################################################################
-# Helm charts generation
+# Helm charts generation and templates processing
 ################################################################################
-.PHONY: update-remote-maistra-%
-update-remote-maistra-%:
+
+SUPPORTED_VERSIONS := 2.0 2.1 2.2 2.3
+
+$(addprefix update-remote-maistra-,$(SUPPORTED_VERSIONS)): update-remote-maistra-%:
 	$(eval version:=$*)
 ifeq "${OFFLINE_BUILD}" "false"
 	git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-${version}
 	git fetch ${GIT_UPSTREAM_REMOTE} maistra-${version}:maistra-${version}
 endif
 
-.PHONY: update-charts-%
-update-charts-%:
+$(addprefix update-charts-,$(SUPPORTED_VERSIONS)): update-charts-%:
 	$(eval version:=$*)
 	@# If we are calling make against current version - download charts.
 	@# Otherwise sync from previous branches and explicitly call dependent target with extracted version
@@ -108,24 +109,27 @@ update-charts-%:
 		git reset HEAD ${SOURCE_DIR}/resources/helm/v${version}; \
 	fi
 
-.PHONY: update-templates-%
-update-templates-%: update-remote-maistra-%
+$(addprefix update-templates-,$(SUPPORTED_VERSIONS)): update-templates-%: update-remote-maistra-%
 	$(eval version:=$*)
 	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-${version} -- ${SOURCE_DIR}/resources/smcp-templates/v${version}
 	git reset HEAD ${SOURCE_DIR}/resources/smcp-templates/v${version}
 
-.PHONY: collect-charts-%
-collect-charts-%:
+$(addprefix collect-charts-,$(SUPPORTED_VERSIONS)): collect-charts-%:
 	$(eval version:=$*)
 	mkdir -p ${HELM_OUT_DIR}
 	cp -rf ${RESOURCES_DIR}/helm/v${version} ${HELM_OUT_DIR}
 
-.PHONY: collect-templates-%
-collect-templates-%:
+$(addprefix collect-templates-,$(SUPPORTED_VERSIONS)): collect-templates-%:
 	$(eval version:=$*)
 	mkdir -p ${TEMPLATES_OUT_DIR}/v${version}
 	cp ${RESOURCES_DIR}/smcp-templates/v${version}/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v${version}/default
 	find ${RESOURCES_DIR}/smcp-templates/v${version}/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" | xargs cp -t ${TEMPLATES_OUT_DIR}/v${version}
+
+.PHONY: update-charts
+update-charts: $(addprefix update-charts-,$(SUPPORTED_VERSIONS))
+
+.PHONY: update-templates
+update-templates: $(addprefix update-templates-,$(SUPPORTED_VERSIONS))
 
 ################################################################################
 # OLM manifest generation
@@ -166,12 +170,6 @@ endif
 ifneq "${OSSM_MANIFEST_DATE}" ""
 	sed -i -e "s/\(createdAt:\).*/\1 ${OSSM_MANIFEST_DATE}/" manifests-servicemesh/${MAISTRA_VERSION}/servicemeshoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml
 endif
-
-.PHONY: update-charts
-update-charts: update-charts-2.0 update-charts-2.1 update-charts-2.2 update-charts-2.3
-
-.PHONY: update-templates
-update-templates: update-templates-2.0 update-templates-2.1 update-templates-2.2
 
 
 ################################################################################
