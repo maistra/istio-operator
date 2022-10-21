@@ -91,7 +91,7 @@ SUPPORTED_VERSIONS := 2.0 2.1 2.2 2.3
 
 $(addprefix update-remote-maistra-,$(SUPPORTED_VERSIONS)): update-remote-maistra-%:
 	$(eval version:=$*)
-	@ if [[ ${OFFLINE_BUILD} == "false" || ${MAISTRA_VERSION} == ${version}.* ]]; \
+	@ if [[ ${OFFLINE_BUILD} == "false" || ${MAISTRA_VERSION} != ${version}.* ]]; \
 	then \
 		git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-${version}; \
 		git fetch ${GIT_UPSTREAM_REMOTE} maistra-${version}:maistra-${version}; \
@@ -99,21 +99,25 @@ $(addprefix update-remote-maistra-,$(SUPPORTED_VERSIONS)): update-remote-maistra
 
 $(addprefix update-charts-,$(SUPPORTED_VERSIONS)): update-charts-%:
 	$(eval version:=$*)
-	@# If we are calling make against current version - download charts.
-	@# Otherwise sync from previous branches and explicitly call dependent target with extracted version
-	@ if [[ ${MAISTRA_VERSION} == ${version}.* ]]; \
+	@# If we are calling make against previous version,
+	@# sync from previous branches and explicitly call dependent target with extracted version.
+	@# Otherwise only download charts.
+	@ if [[ ${MAISTRA_VERSION} != ${version}.* ]]; \
 	then \
-		HELM_DIR=${RESOURCES_DIR}/helm/v${version} ISTIO_VERSION=${ISTIO_VERSION} ${SOURCE_DIR}/build/download-charts.sh; \
-	else \
 		$(MAKE) -f $(THIS_FILE) update-remote-maistra-${version}; \
 		git checkout ${GIT_UPSTREAM_REMOTE}/maistra-${version} -- ${SOURCE_DIR}/resources/helm/v${version}; \
 		git reset HEAD ${SOURCE_DIR}/resources/helm/v${version}; \
+	else \
+		HELM_DIR=${RESOURCES_DIR}/helm/v${version} ISTIO_VERSION=${ISTIO_VERSION} ${SOURCE_DIR}/build/download-charts.sh; \
 	fi
 
 $(addprefix update-templates-,$(SUPPORTED_VERSIONS)): update-templates-%: update-remote-maistra-%
 	$(eval version:=$*)
-	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-${version} -- ${SOURCE_DIR}/resources/smcp-templates/v${version}
-	git reset HEAD ${SOURCE_DIR}/resources/smcp-templates/v${version}
+	@ if [[ ${MAISTRA_VERSION} != ${version}.* ]]; \
+	then \
+		git checkout ${GIT_UPSTREAM_REMOTE}/maistra-${version} -- ${SOURCE_DIR}/resources/smcp-templates/v${version}; \
+		git reset HEAD ${SOURCE_DIR}/resources/smcp-templates/v${version}; \
+	fi
 
 $(addprefix collect-charts-,$(SUPPORTED_VERSIONS)): collect-charts-%:
 	$(eval version:=$*)
