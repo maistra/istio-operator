@@ -254,14 +254,7 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		return reconcile.Result{}, r.updateStatus(ctx, roll)
 	}
 
-	// 1. gather status of all members that belong to this roll
-	members := &maistrav1.ServiceMeshMemberList{}
-	err := r.Client.List(ctx, members, client.MatchingFields{"spec.controlPlaneRef.namespace": meshNamespace})
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// 2. fetch the SMCP object(s) and check if exactly one exists
+	// 1. fetch the SMCP object(s) and check if exactly one exists
 	var mesh *maistrav2.ServiceMeshControlPlane
 	meshList := &maistrav2.ServiceMeshControlPlaneList{}
 	if err := r.Client.List(ctx, meshList, client.InNamespace(meshNamespace)); err != nil {
@@ -290,7 +283,7 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		memberStatusMap[c.Namespace] = c
 	}
 
-	// 3. create ServiceMeshMember object for each ns in spec.members
+	// 2. create ServiceMeshMember object for each ns in spec.members
 	if mesh != nil {
 		for _, ns := range requiredNamespaces.List() {
 			member, err := r.ensureMemberExists(ctx, ns, mesh.Name, meshNamespace)
@@ -316,6 +309,12 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 				})
 			}
 		}
+	}
+
+	// 3. gather status of all members that belong to this roll
+	members := &maistrav1.ServiceMeshMemberList{}
+	if err = r.Client.List(ctx, members, client.MatchingFields{"spec.controlPlaneRef.namespace": meshNamespace}); err != nil {
+		return reconcile.Result{}, err
 	}
 
 	// 4. delete ServiceMeshMembers that were created by this controller, but are no longer in spec.members
