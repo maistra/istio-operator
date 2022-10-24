@@ -555,16 +555,19 @@ func (r *MemberRollReconciler) ensureMemberExists(ctx context.Context, ns, meshN
 }
 
 func (r *MemberRollReconciler) finalizeObject(ctx context.Context, roll *maistrav1.ServiceMeshMemberRoll) (ok bool, err error) {
-	for _, ns := range roll.Spec.Members {
-		member := maistrav1.ServiceMeshMember{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      common.MemberName,
-				Namespace: ns,
-			},
+	members := &maistrav1.ServiceMeshMemberList{}
+	err = r.Client.List(ctx, members, client.MatchingFields{"spec.controlPlaneRef.namespace": roll.Namespace})
+	if err != nil {
+		return false, err
+	}
+
+	for _, member := range members.Items {
+		if member.DeletionTimestamp != nil || !isCreatedByThisController(&member) {
+			continue
 		}
 		err := r.Client.Delete(ctx, &member)
 		if err != nil && !errors.IsNotFound(err) {
-			return false, pkgerrors.Wrapf(err, "Could not delete ServiceMeshMember %s/%s", ns, common.MemberName)
+			return false, pkgerrors.Wrapf(err, "Could not delete ServiceMeshMember %s/%s", member.Namespace, member.Name)
 		}
 	}
 
