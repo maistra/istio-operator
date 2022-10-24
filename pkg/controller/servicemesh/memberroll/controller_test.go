@@ -113,22 +113,68 @@ func TestReconcileFailsWhenListControlPlanesFails(t *testing.T) {
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 }
 
-func TestReconcileDoesNothingIfControlPlaneMissing(t *testing.T) {
-	roll := newDefaultMemberRoll()
-	cl, tracker, r, _ := createClientAndReconciler(roll)
-
-	assertReconcileSucceeds(r, t)
-	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
-
-	updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
-	assertConditions(updatedRoll, []maistrav1.ServiceMeshMemberRollCondition{
+func TestReconcileDeletesMembersIfControlPlaneMissing(t *testing.T) {
+	cases := []struct {
+		name                      string
+		memberCreatedByController bool
+		expectMemberDeleted       bool
+	}{
 		{
-			Type:    maistrav1.ConditionTypeMemberRollReady,
-			Status:  core.ConditionFalse,
-			Reason:  maistrav1.ConditionReasonSMCPMissing,
-			Message: "No ServiceMeshControlPlane exists in the namespace",
+			name:                      "member-created-by-controller",
+			memberCreatedByController: true,
+			expectMemberDeleted:       true,
 		},
-	}, t)
+		{
+			name:                      "member-created-manually",
+			memberCreatedByController: false,
+			expectMemberDeleted:       false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			member := newMember()
+			markMemberReconciled(member, 1, "2.0.0")
+			if tc.memberCreatedByController {
+				if member.Annotations == nil {
+					member.Annotations = map[string]string{}
+				}
+				member.Annotations[common.CreatedByKey] = controllerName
+			}
+
+			roll := newDefaultMemberRoll()
+			roll.Spec.Members = []string{appNamespace}
+			cl, tracker, r, _ := createClientAndReconciler(roll, member)
+
+			assertReconcileSucceeds(r, t)
+			if tc.expectMemberDeleted {
+				test.AssertNumberOfWriteActions(t, tracker.Actions(), 2) // SMMR update + SMM deletion
+			} else {
+				test.AssertNumberOfWriteActions(t, tracker.Actions(), 1) // SMMR update
+			}
+
+			err := cl.Get(ctx, common.ToNamespacedName(member), &maistrav1.ServiceMeshMember{})
+			if err != nil && !errors.IsNotFound(err) {
+				t.Fatalf("Unexpected error %v", err)
+			}
+			memberExists := !errors.IsNotFound(err)
+			if tc.expectMemberDeleted && memberExists {
+				t.Fatalf("expected ServiceMeshMember to be deleted")
+			} else if !tc.expectMemberDeleted && !memberExists {
+				t.Fatalf("expected ServiceMeshMember to be preserved, but it was deleted")
+			}
+
+			updatedRoll := test.GetUpdatedObject(ctx, cl, roll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
+			assertConditions(updatedRoll, []maistrav1.ServiceMeshMemberRollCondition{
+				{
+					Type:    maistrav1.ConditionTypeMemberRollReady,
+					Status:  core.ConditionFalse,
+					Reason:  maistrav1.ConditionReasonSMCPMissing,
+					Message: "No ServiceMeshControlPlane exists in the namespace",
+				},
+			}, t)
+		})
+	}
 }
 
 func TestReconcileDoesNothingIfMultipleControlPlanesFound(t *testing.T) {
