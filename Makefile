@@ -12,10 +12,15 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
+# Determine this makefile's path.
+# Be sure to place this BEFORE `include` directives, if any.
+THIS_FILE := $(lastword $(MAKEFILE_LIST))
+
 -include Makefile.overrides
 
 MAISTRA_VERSION        ?= 2.3.0
 MAISTRA_BRANCH         ?= maistra-2.3
+ISTIO_VERSION          ?= 1.14.3
 REPLACES_PRODUCT_CSV   ?= 2.2.3
 REPLACES_COMMUNITY_CSV ?= 2.2.3
 VERSION                ?= development
@@ -79,115 +84,57 @@ test:
 	go test -timeout ${TEST_TIMEOUT} -mod=vendor ${TEST_FLAGS} ./...
 
 ################################################################################
-# maistra v2.0
+# Helm charts generation and templates processing
 ################################################################################
-.PHONY: update-remote-maistra-2.0
-update-remote-maistra-2.0:
-ifeq "${OFFLINE_BUILD}" "false"
-	git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-2.0
-	git fetch ${GIT_UPSTREAM_REMOTE} maistra-2.0:maistra-2.0
-endif
 
-.PHONY: update-2.0-charts
-update-2.0-charts: update-remote-maistra-2.0
-	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-2.0 -- ${SOURCE_DIR}/resources/helm/v2.0
-	git reset HEAD ${SOURCE_DIR}/resources/helm/v2.0
+SUPPORTED_VERSIONS := 2.0 2.1 2.2 2.3
 
-.PHONY: update-2.0-templates
-update-2.0-templates: update-remote-maistra-2.0
-	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-2.0 -- ${SOURCE_DIR}/resources/smcp-templates/v2.0
-	git reset HEAD ${SOURCE_DIR}/resources/smcp-templates/v2.0
+$(addprefix update-remote-maistra-,$(SUPPORTED_VERSIONS)): update-remote-maistra-%:
+	$(eval version:=$*)
+	@ if [[ ${OFFLINE_BUILD} == "false" && ${MAISTRA_VERSION} != ${version}.* ]]; \
+	then \
+		git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-${version}; \
+		git fetch ${GIT_UPSTREAM_REMOTE} maistra-${version}:maistra-${version}; \
+	fi
 
-.PHONY: collect-2.0-charts
-collect-2.0-charts:
+$(addprefix update-charts-,$(SUPPORTED_VERSIONS)): update-charts-%:
+	$(eval version:=$*)
+	@# If we are calling make against previous version,
+	@# sync from previous branches and explicitly call dependent target with extracted version.
+	@# Otherwise only download charts.
+	@ if [[ ${MAISTRA_VERSION} != ${version}.* ]]; \
+	then \
+		$(MAKE) -f $(THIS_FILE) update-remote-maistra-${version}; \
+		git checkout ${GIT_UPSTREAM_REMOTE}/maistra-${version} -- ${SOURCE_DIR}/resources/helm/v${version}; \
+		git reset HEAD ${SOURCE_DIR}/resources/helm/v${version}; \
+	else \
+		HELM_DIR=${RESOURCES_DIR}/helm/v${version} ISTIO_VERSION=${ISTIO_VERSION} ${SOURCE_DIR}/build/download-charts.sh; \
+	fi
+
+$(addprefix update-templates-,$(SUPPORTED_VERSIONS)): update-templates-%: update-remote-maistra-%
+	$(eval version:=$*)
+	@ if [[ ${MAISTRA_VERSION} != ${version}.* ]]; \
+	then \
+		git checkout ${GIT_UPSTREAM_REMOTE}/maistra-${version} -- ${SOURCE_DIR}/resources/smcp-templates/v${version}; \
+		git reset HEAD ${SOURCE_DIR}/resources/smcp-templates/v${version}; \
+	fi
+
+$(addprefix collect-charts-,$(SUPPORTED_VERSIONS)): collect-charts-%:
+	$(eval version:=$*)
 	mkdir -p ${HELM_OUT_DIR}
-	cp -rf ${RESOURCES_DIR}/helm/v2.0 ${HELM_OUT_DIR}
+	cp -rf ${RESOURCES_DIR}/helm/v${version} ${HELM_OUT_DIR}
 
-.PHONY: collect-2.0-templates
-collect-2.0-templates:
-	mkdir -p ${TEMPLATES_OUT_DIR}/v2.0
-	cp ${RESOURCES_DIR}/smcp-templates/v2.0/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v2.0/default
-	find ${RESOURCES_DIR}/smcp-templates/v2.0/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" |xargs cp -t ${TEMPLATES_OUT_DIR}/v2.0
+$(addprefix collect-templates-,$(SUPPORTED_VERSIONS)): collect-templates-%:
+	$(eval version:=$*)
+	mkdir -p ${TEMPLATES_OUT_DIR}/v${version}
+	cp ${RESOURCES_DIR}/smcp-templates/v${version}/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v${version}/default
+	find ${RESOURCES_DIR}/smcp-templates/v${version}/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" | xargs cp -t ${TEMPLATES_OUT_DIR}/v${version}
 
-################################################################################
-# maistra v2.1
-################################################################################
-.PHONY: update-remote-maistra-2.1
-update-remote-maistra-2.1:
-ifeq "${OFFLINE_BUILD}" "false"
-	git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-2.1
-	git fetch ${GIT_UPSTREAM_REMOTE} maistra-2.1:maistra-2.1
-endif
+.PHONY: update-charts
+update-charts: $(addprefix update-charts-,$(SUPPORTED_VERSIONS))
 
-.PHONY: update-2.1-charts
-update-2.1-charts: update-remote-maistra-2.1
-	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-2.1 -- ${SOURCE_DIR}/resources/helm/v2.1
-	git reset HEAD ${SOURCE_DIR}/resources/helm/v2.1
-
-.PHONY: update-2.1-templates
-update-2.1-templates: update-remote-maistra-2.1
-	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-2.1 -- ${SOURCE_DIR}/resources/smcp-templates/v2.1
-	git reset HEAD ${SOURCE_DIR}/resources/smcp-templates/v2.1
-
-.PHONY: collect-2.1-charts
-collect-2.1-charts:
-	mkdir -p ${HELM_OUT_DIR}
-	cp -rf ${RESOURCES_DIR}/helm/v2.1 ${HELM_OUT_DIR}
-
-.PHONY: collect-2.1-templates
-collect-2.1-templates:
-	mkdir -p ${TEMPLATES_OUT_DIR}/v2.1
-	cp ${RESOURCES_DIR}/smcp-templates/v2.1/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v2.1/default
-	find ${RESOURCES_DIR}/smcp-templates/v2.1/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" |xargs cp -t ${TEMPLATES_OUT_DIR}/v2.1
-
-################################################################################
-# maistra v2.2
-################################################################################
-.PHONY: update-remote-maistra-2.2
-update-remote-maistra-2.2:
-ifeq "${OFFLINE_BUILD}" "false"
-	git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-2.2
-	git fetch ${GIT_UPSTREAM_REMOTE} maistra-2.2:maistra-2.2
-endif
-
-.PHONY: update-2.2-charts
-update-2.2-charts: update-remote-maistra-2.2
-	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-2.2 -- ${SOURCE_DIR}/resources/helm/v2.2
-	git reset HEAD ${SOURCE_DIR}/resources/helm/v2.2
-
-.PHONY: update-2.2-templates
-update-2.2-templates: update-remote-maistra-2.2
-	git checkout ${GIT_UPSTREAM_REMOTE}/maistra-2.2 -- ${SOURCE_DIR}/resources/smcp-templates/v2.2
-	git reset HEAD ${SOURCE_DIR}/resources/smcp-templates/v2.2
-
-.PHONY: collect-2.2-charts
-collect-2.2-charts:
-	mkdir -p ${HELM_OUT_DIR}
-	cp -rf ${RESOURCES_DIR}/helm/v2.2 ${HELM_OUT_DIR}
-
-.PHONY: collect-2.2-templates
-collect-2.2-templates:
-	mkdir -p ${TEMPLATES_OUT_DIR}/v2.2
-	cp ${RESOURCES_DIR}/smcp-templates/v2.2/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v2.2/default
-	find ${RESOURCES_DIR}/smcp-templates/v2.2/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" |xargs cp -t ${TEMPLATES_OUT_DIR}/v2.2
-
-################################################################################
-# maistra v2.3
-################################################################################
-.PHONY: update-2.3-charts
-update-2.3-charts:
-	HELM_DIR=${RESOURCES_DIR}/helm/v2.3 ISTIO_VERSION=1.14.3 ${SOURCE_DIR}/build/download-charts.sh
-
-.PHONY: collect-2.3-charts
-collect-2.3-charts:
-	mkdir -p ${HELM_OUT_DIR}
-	cp -rf ${RESOURCES_DIR}/helm/v2.3 ${HELM_OUT_DIR}
-
-.PHONY: collect-2.3-templates
-collect-2.3-templates:
-	mkdir -p ${TEMPLATES_OUT_DIR}/v2.3
-	cp ${RESOURCES_DIR}/smcp-templates/v2.3/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v2.3/default
-	find ${RESOURCES_DIR}/smcp-templates/v2.3/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" |xargs cp -t ${TEMPLATES_OUT_DIR}/v2.3
+.PHONY: update-templates
+update-templates: $(addprefix update-templates-,$(SUPPORTED_VERSIONS))
 
 ################################################################################
 # OLM manifest generation
@@ -229,21 +176,15 @@ ifneq "${OSSM_MANIFEST_DATE}" ""
 	sed -i -e "s/\(createdAt:\).*/\1 ${OSSM_MANIFEST_DATE}/" manifests-servicemesh/${MAISTRA_VERSION}/servicemeshoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml
 endif
 
-.PHONY: update-charts
-update-charts: update-2.0-charts update-2.1-charts update-2.2-charts update-2.3-charts
-
-.PHONY: update-templates
-update-templates: update-2.0-templates update-2.1-templates update-2.2-templates
-
 
 ################################################################################
 # resource collection
 ################################################################################
 .PHONY: collect-charts
-collect-charts: collect-2.0-charts collect-2.1-charts collect-2.2-charts collect-2.3-charts
+collect-charts: collect-charts-2.0 collect-charts-2.1 collect-charts-2.2 collect-charts-2.3
 
 .PHONY: collect-templates
-collect-templates: collect-2.0-templates collect-2.1-templates collect-2.2-templates collect-2.3-templates
+collect-templates: collect-templates-2.0 collect-templates-2.1 collect-templates-2.2 collect-templates-2.3
 
 .PHONY: collect-olm-manifests
 collect-olm-manifests:
