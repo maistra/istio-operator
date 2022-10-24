@@ -570,9 +570,6 @@ global:
 
 gateways: {}
 
-wasmExtensions:
-  enabled: false
-
 base:
   validationURL: ""
   # For istioctl usage to disable istio config crds in base

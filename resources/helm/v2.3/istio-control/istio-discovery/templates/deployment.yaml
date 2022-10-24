@@ -136,8 +136,6 @@ spec:
             periodSeconds: 3
             timeoutSeconds: 5
           env:
-          - name: ENABLE_MAISTRA_EXTENSIONS
-            value: "{{ .Values.wasmExtensions.enabled }}"
 {{- $iorEnabled := "true" }}
 {{- $gateway := index .Values "gateways" "istio-ingressgateway" }}
 {{- if or (not .Values.gateways.enabled) (not $gateway) (not $gateway.ior_enabled) }}

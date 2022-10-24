@@ -192,15 +192,6 @@ function patchGalley() {
   sed_wrap -i -e '/base:/ i\
 gateways: {}\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
 
-  # Extensions
-  sed_wrap -i -e '/env:/ a\
-          - name: ENABLE_MAISTRA_EXTENSIONS\
-            value: "{{ .Values.wasmExtensions.enabled }}"' "${deployment}"
-
-  sed_wrap -i -e '/base:/ i\
-wasmExtensions:\
-  enabled: false\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
-
   sed_wrap -i -e '/sidecarInjectorWebhook:/ a\
   objectSelector:\
     enabled: false\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
