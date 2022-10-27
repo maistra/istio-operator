@@ -398,11 +398,6 @@ func proxyTestCasesV2(version versions.Version) []conversionTestCase {
 				},
 			},
 			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-				"global": map[string]interface{}{
-					"proxy": map[string]interface{}{
-						"protocolDetectionTimeout": "500ms",
-					},
-				},
 				"meshConfig": map[string]interface{}{
 					"protocolDetectionTimeout": "500ms",
 				},

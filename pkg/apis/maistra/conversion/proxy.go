@@ -138,9 +138,6 @@ func populateProxyValues(in *v2.ControlPlaneSpec, values map[string]interface{})
 		if proxy.Networking.Protocol != nil && proxy.Networking.Protocol.AutoDetect != nil {
 			autoDetect := proxy.Networking.Protocol.AutoDetect
 			if autoDetect.Timeout != "" {
-				if err := setHelmStringValue(proxyValues, "protocolDetectionTimeout", autoDetect.Timeout); err != nil {
-					return err
-				}
 				if err := setHelmStringValue(meshConfigValues, "protocolDetectionTimeout", autoDetect.Timeout); err != nil {
 					return err
 				}

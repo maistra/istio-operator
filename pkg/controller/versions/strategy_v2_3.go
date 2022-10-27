@@ -126,7 +126,7 @@ func (v *versionStrategyV2_3) ValidateV2(ctx context.Context, cl client.Client, 
 	allErrors = validateGateways(ctx, meta, spec, cl, allErrors)
 	allErrors = validatePolicyType(spec, v.Ver, allErrors)
 	allErrors = validateTelemetryType(spec, v.Ver, allErrors)
-	allErrors = v.validateProtocolDetection(spec, allErrors)
+	allErrors = validateProtocolDetection(spec, allErrors)
 	allErrors = v.validateRuntime(spec, allErrors)
 	allErrors = v.validateMixerDisabled(spec, allErrors)
 	allErrors = v.validateAddons(spec, allErrors)
@@ -163,22 +163,6 @@ func validateGlobal(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.Contr
 					fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"))
 			}
 		}
-	}
-	return allErrors
-}
-
-func (v *versionStrategyV2_3) validateProtocolDetection(spec *v2.ControlPlaneSpec, allErrors []error) []error {
-	if spec.Proxy == nil || spec.Proxy.Networking == nil || spec.Proxy.Networking.Protocol == nil || spec.Proxy.Networking.Protocol.AutoDetect == nil {
-		return allErrors
-	}
-	autoDetect := spec.Proxy.Networking.Protocol.AutoDetect
-	if autoDetect.Inbound != nil && *autoDetect.Inbound {
-		allErrors = append(allErrors, fmt.Errorf("automatic protocol detection is not supported in %s; "+
-			"if specified, spec.proxy.networking.protocol.autoDetect.inbound must be set to false", v.String()))
-	}
-	if autoDetect.Outbound != nil && *autoDetect.Outbound {
-		allErrors = append(allErrors, fmt.Errorf("automatic protocol detection is not supported in %s; "+
-			"if specified, spec.proxy.networking.protocol.autoDetect.outbound must be set to false", v.String()))
 	}
 	return allErrors
 }
