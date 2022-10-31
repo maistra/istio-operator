@@ -244,3 +244,11 @@ image: check-image-var build collect-resources
 	${CONTAINER_CLI} build --no-cache -t "${IMAGE}" -f ${SOURCE_DIR}/build/Dockerfile --build-arg build_type=${BUILD_TYPE} .
 
 .DEFAULT_GOAL := build
+
+################################################################################
+# run an integration test in KinD
+################################################################################
+.PHONY: test.integration.kind
+test.integration.kind:
+	${SOURCE_DIR}/tests/integration/operator-integ-suite-kind.sh
+

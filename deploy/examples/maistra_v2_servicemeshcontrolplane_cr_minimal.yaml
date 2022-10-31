@@ -17,7 +17,8 @@ spec:
       name: kiali
       enabled: false
       install: {}
-
+    prometheus:
+      enabled: false
 ---
 
 apiVersion: maistra.io/v1
