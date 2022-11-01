@@ -11,6 +11,7 @@ nodeAffinity:
 {{- define "nodeAffinityRequiredDuringScheduling" }}
       nodeSelectorTerms:
       - matchExpressions:
+        {{- if .global.arch }}
         - key: kubernetes.io/arch
           operator: In
           values:
@@ -18,6 +19,7 @@ nodeAffinity:
           {{- if gt ($val | int) 0 }}
           - {{ $key | quote }}
           {{- end }}
+        {{- end }}
         {{- end }}
         {{- $nodeSelector := default .global.defaultNodeSelector .nodeSelector -}}
         {{- range $key, $val := $nodeSelector }}
