@@ -198,7 +198,7 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 		if patch, err = p.PatchFactory.CreatePatch(receiver, preprocessedObj); err == nil && patch != nil {
 			log.Info("updating existing resource")
 			_, err = patch.Apply(ctx)
-			if errors.IsInvalid(err) {
+			if errors.IsInvalid(err) || IsRouteNoHostError(err) {
 				// patch was invalid, try delete/create
 				log.Info(fmt.Sprintf("patch failed: %v.  attempting to delete and recreate the resource", err))
 				if deleteErr := p.Client.Delete(ctx, obj, client.PropagationPolicy(metav1.DeletePropagationBackground)); deleteErr == nil {

@@ -52,6 +52,8 @@ meshConfig:
 prometheus:
   enabled: true
   ingress:
+    hosts: [""]
+    annotations: {}
     enabled: false
   replicaCount: 1
   hub: docker.io/prom
