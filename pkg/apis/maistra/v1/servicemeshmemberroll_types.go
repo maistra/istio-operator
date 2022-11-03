@@ -152,6 +152,8 @@ const (
 	ConditionReasonSMCPMissing ServiceMeshMemberRollConditionReason = "ErrSMCPMissing"
 	// ConditionReasonMultipleSMCP indicates that multiple ServiceMeshControlPlane resources exist in the namespace
 	ConditionReasonMultipleSMCP ServiceMeshMemberRollConditionReason = "ErrMultipleSMCPs"
+	// ConditionReasonInvalidName indicates that the ServiceMeshMemberRoll name is invalid (only "default" is allowed)
+	ConditionReasonInvalidName ServiceMeshMemberRollConditionReason = "ErrInvalidName"
 	// ConditionReasonSMCPNotReconciled indicates that reconciliation of the SMMR was skipped because the SMCP has not been reconciled
 	ConditionReasonSMCPNotReconciled ServiceMeshMemberRollConditionReason = "SMCPReconciling"
 )

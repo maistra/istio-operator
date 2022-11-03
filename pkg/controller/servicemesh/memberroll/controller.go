@@ -247,6 +247,13 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 
 	meshNamespace := roll.Namespace
 
+	if roll.Name != common.MemberRollName {
+		log.Info("Skipping reconciliation of SMMR with invalid name", "project", meshNamespace, "name", roll.Name)
+		setReadyCondition(roll, false, maistrav1.ConditionReasonInvalidName,
+			fmt.Sprintf("the ServiceMeshMemberRoll name is invalid; must be %q", common.MemberRollName))
+		return reconcile.Result{}, r.updateStatus(ctx, roll)
+	}
+
 	// 1. gather status of all members that belong to this roll
 	members := &maistrav1.ServiceMeshMemberList{}
 	err := r.Client.List(ctx, members, client.MatchingFields{"spec.controlPlaneRef.namespace": meshNamespace})

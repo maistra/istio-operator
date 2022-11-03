@@ -151,6 +151,24 @@ func TestReconcileDoesNothingIfMultipleControlPlanesFound(t *testing.T) {
 	}, t)
 }
 
+func TestReconcileMemberRollWithInvalidName(t *testing.T) {
+	smmr := newDefaultMemberRoll()
+	smmr.Name = "not-default"
+	cl, _, r, _ := createClientAndReconciler(smmr)
+
+	assertReconcileWithRequestSucceeds(r, reconcile.Request{common.ToNamespacedName(smmr)}, t)
+
+	updatedRoll := test.GetUpdatedObject(ctx, cl, smmr.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
+	assertConditions(updatedRoll, []maistrav1.ServiceMeshMemberRollCondition{
+		{
+			Type:    maistrav1.ConditionTypeMemberRollReady,
+			Status:  core.ConditionFalse,
+			Reason:  maistrav1.ConditionReasonInvalidName,
+			Message: fmt.Sprintf("the ServiceMeshMemberRoll name is invalid; must be %q", common.MemberRollName),
+		},
+	}, t)
+}
+
 func TestReconcileFailsIfListingMembersFails(t *testing.T) {
 	roll := newDefaultMemberRoll()
 	controlPlane := newControlPlane()
@@ -798,6 +816,10 @@ func createClientAndReconciler(clientObjects ...runtime.Object) (client.Client, 
 }
 
 func assertReconcileSucceeds(r *MemberRollReconciler, t *testing.T) {
+	assertReconcileWithRequestSucceeds(r, request, t)
+}
+
+func assertReconcileWithRequestSucceeds(r *MemberRollReconciler, request reconcile.Request, t *testing.T) {
 	res, err := r.Reconcile(request)
 	if err != nil {
 		t.Fatalf("Reconcile failed: %v", err)
