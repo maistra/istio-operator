@@ -480,7 +480,7 @@ func TestPatchAddonsResult(t *testing.T) {
 		configureRouteAPI(s)
 
 		c, tracker := CreateClientWithScheme(s, tc.objects...)
-		dc := fake.FakeDiscovery{&tracker.Fake, DefaultKubeVersion}
+		dc := fake.FakeDiscovery{Fake: &tracker.Fake, FakedServerVersion: DefaultKubeVersion}
 		r := newReconciler(c, s, &record.FakeRecorder{}, "istio-operator", cni.Config{Enabled: true}, &dc)
 		r.instanceReconcilerFactory = NewControlPlaneInstanceReconciler
 

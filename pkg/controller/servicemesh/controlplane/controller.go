@@ -59,7 +59,8 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, operatorNamespace string,
-	cniConfig cni.Config, dc discovery.DiscoveryInterface) *ControlPlaneReconciler {
+	cniConfig cni.Config, dc discovery.DiscoveryInterface,
+) *ControlPlaneReconciler {
 	reconciler := &ControlPlaneReconciler{
 		ControllerResources: common.ControllerResources{
 			Client:            cl,

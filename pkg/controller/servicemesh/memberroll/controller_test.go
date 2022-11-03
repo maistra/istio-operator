@@ -896,7 +896,8 @@ type fakeKialiReconciler struct {
 }
 
 func (f *fakeKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName, kialiCRNamespace string,
-	accessibleNamespaces, excludedNamespaces []string) error {
+	accessibleNamespaces, excludedNamespaces []string,
+) error {
 	f.reconcileKialiInvoked = true
 	f.kialiAccessibleNamespaces = append([]string{}, accessibleNamespaces...)
 	f.kialiExcludedNamespaces = append([]string{}, excludedNamespaces...)

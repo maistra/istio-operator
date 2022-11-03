@@ -288,7 +288,7 @@ func TestManifestValidation(t *testing.T) {
 				cl, tracker := test.CreateClient(tc.controlPlane, tc.memberRoll, namespace)
 				fakeEventRecorder := &record.FakeRecorder{}
 
-				fakeDiscovery := fake.FakeDiscovery{&tracker.Fake, test.DefaultKubeVersion}
+				fakeDiscovery := fake.FakeDiscovery{Fake: &tracker.Fake, FakedServerVersion: test.DefaultKubeVersion}
 
 				r := NewControlPlaneInstanceReconciler(
 					common.ControllerResources{
@@ -652,7 +652,7 @@ func newReconcilerTestFixture(smcp *maistrav2.ServiceMeshControlPlane) (client.C
 	cl, tracker := test.CreateClient(smcp, namespace)
 	fakeEventRecorder := &record.FakeRecorder{}
 
-	fakeDiscovery := fake.FakeDiscovery{&tracker.Fake, test.DefaultKubeVersion}
+	fakeDiscovery := fake.FakeDiscovery{Fake: &tracker.Fake, FakedServerVersion: test.DefaultKubeVersion}
 
 	r := NewControlPlaneInstanceReconciler(
 		common.ControllerResources{
