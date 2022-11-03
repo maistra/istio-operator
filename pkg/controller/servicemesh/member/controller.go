@@ -196,6 +196,12 @@ func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 
 func (r *MemberReconciler) reconcileObject(ctx context.Context, member *maistrav1.ServiceMeshMember) (reconcile.Result, error) {
 	log := common.LogFromContext(ctx)
+
+	if member.Name != common.MemberName {
+		return reconcile.Result{}, r.reportError(ctx, member, maistrav1.ConditionReasonMemberNameInvalid,
+			fmt.Errorf("the ServiceMeshMember name is invalid; must be %q", common.MemberName))
+	}
+
 	if member.Namespace == member.Spec.ControlPlaneRef.Namespace {
 		return reconcile.Result{}, nil
 	}

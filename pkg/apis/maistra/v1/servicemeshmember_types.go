@@ -126,6 +126,7 @@ const (
 	ConditionReasonMemberNamespaceNotExists              ServiceMeshMemberConditionReason = "NamespaceNotExists"
 	ConditionReasonMemberReferencesDifferentControlPlane ServiceMeshMemberConditionReason = "ReferencesDifferentControlPlane"
 	ConditionReasonMemberTerminating                     ServiceMeshMemberConditionReason = "Terminating"
+	ConditionReasonMemberNameInvalid                     ServiceMeshMemberConditionReason = "InvalidName"
 )
 
 // Condition represents a specific condition on a resource

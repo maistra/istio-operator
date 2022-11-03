@@ -81,6 +81,27 @@ func TestReconcileAddsFinalizer(t *testing.T) {
 	test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
 }
 
+func TestReconcileMemberWithInvalidName(t *testing.T) {
+	member := newMember()
+	member.Name = "not-default"
+	cl, _, r := createClientAndReconciler(member)
+
+	assertReconcileWithRequestSucceeds(r, reconcile.Request{common.ToNamespacedName(member)}, t)
+
+	updatedMember := test.GetUpdatedObject(ctx, cl, member.ObjectMeta, &maistrav1.ServiceMeshMember{}).(*maistrav1.ServiceMeshMember)
+	expectedMessage := fmt.Sprintf("the ServiceMeshMember name is invalid; must be %q", common.MemberName)
+
+	readyCondition := updatedMember.Status.GetCondition(maistrav1.ConditionTypeMemberReady)
+	assert.Equals(readyCondition.Status, corev1.ConditionFalse, "unexpected condition status", t)
+	assert.Equals(readyCondition.Reason, maistrav1.ConditionReasonMemberNameInvalid, "unexpected condition reason", t)
+	assert.Equals(readyCondition.Message, expectedMessage, "unexpected condition message", t)
+
+	reconciledCondition := updatedMember.Status.GetCondition(maistrav1.ConditionTypeMemberReconciled)
+	assert.Equals(reconciledCondition.Status, corev1.ConditionFalse, "unexpected condition status", t)
+	assert.Equals(reconciledCondition.Reason, maistrav1.ConditionReasonMemberNameInvalid, "unexpected condition reason", t)
+	assert.Equals(reconciledCondition.Message, expectedMessage, "unexpected condition message", t)
+}
+
 func TestReconcileCreatesMemberRollIfNeeded(t *testing.T) {
 	member := newMember()
 	controlPlane := newControlPlane(versions.DefaultVersion.String())
@@ -533,6 +554,10 @@ func createClientAndReconciler(clientObjects ...runtime.Object) (client.Client, 
 }
 
 func assertReconcileSucceeds(r *MemberReconciler, t *testing.T) {
+	assertReconcileWithRequestSucceeds(r, request, t)
+}
+
+func assertReconcileWithRequestSucceeds(r *MemberReconciler, request reconcile.Request, t *testing.T) {
 	res, err := r.Reconcile(request)
 	if err != nil {
 		t.Fatalf("Reconcile failed: %v", err)
