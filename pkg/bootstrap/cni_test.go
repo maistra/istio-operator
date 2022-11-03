@@ -82,7 +82,7 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			cl, tracker := test.CreateClient()
-			dc := fake.FakeDiscovery{&tracker.Fake, test.DefaultKubeVersion}
+			dc := fake.FakeDiscovery{Fake: &tracker.Fake, FakedServerVersion: test.DefaultKubeVersion}
 			renderings, err := internalRenderCNI(ctx, cl, config, &dc, tc.supportedVersions, tc.instanceVersion)
 			assert.Success(err, "internalRenderCNI", t)
 			assert.True(renderings != nil, "renderings should not be nil", t)

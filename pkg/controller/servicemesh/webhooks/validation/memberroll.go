@@ -181,7 +181,8 @@ func (v *MemberRollValidator) isUserAllowedToUpdatePodsInAllNamespaces(ctx conte
 }
 
 func (v *MemberRollValidator) isUserAllowedToUpdatePodsInNamespaces(ctx context.Context, req admission.Request,
-	namespacesToCheck sets.String) (bool, []string, error) {
+	namespacesToCheck sets.String,
+) (bool, []string, error) {
 	numConcurrentSARChecks := min(len(namespacesToCheck), maxConcurrentSARChecks)
 
 	log := common.LogFromContext(ctx)

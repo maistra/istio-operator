@@ -39,7 +39,7 @@ func RunControllerTestCase(t *testing.T, testCase ControllerTestCase) {
 		}
 	}
 
-	dc := fake.FakeDiscovery{&tracker.Fake, DefaultKubeVersion}
+	dc := fake.FakeDiscovery{Fake: &tracker.Fake, FakedServerVersion: DefaultKubeVersion}
 	enhancedMgr := common.NewEnhancedManager(mgr, &dc)
 	for _, addController := range testCase.AddControllers {
 		if err := addController(enhancedMgr); err != nil {

@@ -134,7 +134,7 @@ func createClientAndReconciler(clientObjects ...runtime.Object) (client.Client, 
 	cl, enhancedTracker := test.CreateClient(clientObjects...)
 	fakeEventRecorder := &record.FakeRecorder{}
 
-	dc := fake.FakeDiscovery{&enhancedTracker.Fake, test.DefaultKubeVersion}
+	dc := fake.FakeDiscovery{Fake: &enhancedTracker.Fake, FakedServerVersion: test.DefaultKubeVersion}
 	r := newReconciler(cl, scheme.Scheme, fakeEventRecorder, "istio-operator", cni.Config{Enabled: true}, &dc)
 	r.instanceReconcilerFactory = NewFakeInstanceReconciler
 	instanceReconciler = &fakeInstanceReconciler{}

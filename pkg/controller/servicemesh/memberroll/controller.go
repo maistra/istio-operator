@@ -612,7 +612,8 @@ type defaultKialiReconciler struct {
 }
 
 func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName, kialiCRNamespace string,
-	accessibleNamespaces, excludedNamespaces []string) error {
+	accessibleNamespaces, excludedNamespaces []string,
+) error {
 	reqLogger := common.LogFromContext(ctx)
 	reqLogger.Info("Attempting to get Kiali CR", "kialiCRNamespace", kialiCRNamespace, "kialiCRName", kialiCRName)
 

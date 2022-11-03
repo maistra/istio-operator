@@ -163,7 +163,7 @@ func TestReconcileDeletesMemberRollCreatedByItWhenMemberDeleted(t *testing.T) {
 	cl, _, r := createClientAndReconciler(member, memberRoll)
 
 	assertReconcileSucceeds(r, t)
-	test.AssertNotFound(ctx, cl, types.NamespacedName{controlPlaneNamespace, common.MemberRollName}, &maistrav1.ServiceMeshMemberRoll{},
+	test.AssertNotFound(ctx, cl, types.NamespacedName{Namespace: controlPlaneNamespace, Name: common.MemberRollName}, &maistrav1.ServiceMeshMemberRoll{},
 		"Expected reconcile to delete the SMMR, but it didn't", t)
 }
 
