@@ -589,6 +589,64 @@ func TestValidation(t *testing.T) {
 	}
 }
 
+func TestMultipleSMCP(t *testing.T) {
+	earlierSmcp := newControlPlane()
+	earlierSmcp.Name = "first"
+	earlierSmcp.UID = "1111"
+	earlierSmcp.CreationTimestamp = oneMinuteAgo
+
+	laterSmcp := newControlPlane()
+	laterSmcp.Name = "second"
+	laterSmcp.UID = "2222"
+	laterSmcp.CreationTimestamp = now
+
+	cases := []struct {
+		name              string
+		smcpToReconcile   *maistrav2.ServiceMeshControlPlane
+		otherSmcp         *maistrav2.ServiceMeshControlPlane
+		expectedCondition status.Condition
+	}{
+		{
+			name:            "reconcile first SMCP",
+			smcpToReconcile: earlierSmcp,
+			otherSmcp:       laterSmcp,
+			expectedCondition: status.Condition{
+				Type:    status.ConditionTypeReconciled,
+				Status:  status.ConditionStatusFalse,
+				Reason:  status.ConditionReasonResourceCreated,
+				Message: "Installing mesh generation 1",
+			},
+		},
+		{
+			name:            "fail reconcile of second SMCP",
+			smcpToReconcile: laterSmcp,
+			otherSmcp:       earlierSmcp,
+			expectedCondition: status.Condition{
+				Type:    status.ConditionTypeReconciled,
+				Status:  status.ConditionStatusUnknown,
+				Reason:  status.ConditionReasonMultipleSMCPs,
+				Message: "reconciliation skipped: error: multiple ServiceMeshControlPlane resources exist in the namespace",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cl, tracker, r := newReconcilerTestFixture(tc.smcpToReconcile)
+			test.PanicOnError(tracker.Add(tc.otherSmcp))
+
+			assertInstanceReconcilerSucceeds(r, t)
+
+			// check Reconciled condition status
+			var updatedSmcp maistrav2.ServiceMeshControlPlane
+			test.PanicOnError(cl.Get(ctx, common.ToNamespacedName(tc.smcpToReconcile), &updatedSmcp))
+			condition := updatedSmcp.Status.GetCondition(status.ConditionTypeReconciled)
+			condition.LastTransitionTime = metav1.Time{} // ensure DeepEquals matches regardless of time
+			assert.DeepEquals(condition, tc.expectedCondition, "unexpected condition", t)
+		})
+	}
+}
+
 // tests if the reconciler adds the necessary labels to the SMCP namespace when
 // it first reconciles the SMCP and also removes them when the SMCP is deleted
 func TestNamespaceLabels(t *testing.T) {
@@ -622,6 +680,70 @@ func TestNamespaceLabels(t *testing.T) {
 	ns = &corev1.Namespace{}
 	test.GetObject(ctx, cl, types.NamespacedName{Namespace: "", Name: controlPlaneNamespace}, ns)
 	assert.DeepEquals(ns.Labels, map[string]string(nil), "Namespace labels weren't removed", t)
+}
+
+func TestGetEarliestSMCP(t *testing.T) {
+	// smcp1 is earliest by creationTimestamp, but last by name
+	smcp1 := newControlPlane()
+	smcp1.Name = "z"
+	smcp1.CreationTimestamp = oneMinuteAgo
+
+	// smcp2a comes after smcp1 by creationTimestamp
+	smcp2a := newControlPlane()
+	smcp2a.Name = "a"
+	smcp2a.CreationTimestamp = now
+
+	// smcp2b has same creationTimestamp as smcp2a, but comes after it by name
+	smcp2b := newControlPlane()
+	smcp2b.Name = "b"
+	smcp2b.CreationTimestamp = now
+
+	cases := []struct {
+		name           string
+		smcps          []*maistrav2.ServiceMeshControlPlane
+		expectedResult *maistrav2.ServiceMeshControlPlane
+	}{
+		{
+			name:           "no smcp",
+			smcps:          []*maistrav2.ServiceMeshControlPlane{},
+			expectedResult: nil,
+		},
+		{
+			name:           "single smcp",
+			smcps:          []*maistrav2.ServiceMeshControlPlane{smcp1},
+			expectedResult: smcp1,
+		},
+		{
+			name:           "different creationTimestamp",
+			smcps:          []*maistrav2.ServiceMeshControlPlane{smcp1, smcp2a},
+			expectedResult: smcp1, // smcp1 comes before smcp2a due to its creationTimestamp
+		},
+		{
+			name:           "same creationTimestamp",
+			smcps:          []*maistrav2.ServiceMeshControlPlane{smcp2a, smcp2b},
+			expectedResult: smcp2a, // smcp2a comes before smcp2b due to its name
+		},
+		{
+			name:           "multiple",
+			smcps:          []*maistrav2.ServiceMeshControlPlane{smcp1, smcp2a, smcp2b},
+			expectedResult: smcp1, // smcp1 has earliest creationTimestamp
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cl, tracker := test.CreateClient()
+			for _, smcp := range tc.smcps {
+				test.PanicOnError(tracker.Add(smcp))
+			}
+
+			actual, err := getEarliestSMCPInNamespace(ctx, cl, controlPlaneNamespace)
+			if err != nil {
+				t.Fatal("got unexpected error")
+			}
+			assert.DeepEquals(actual, tc.expectedResult, "got unexpected SMCP", t)
+		})
+	}
 }
 
 func assertDeleteSucceeds(r ControlPlaneInstanceReconciler, t *testing.T) {

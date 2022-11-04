@@ -38,7 +38,8 @@ var (
 		},
 	}
 
-	oneMinuteAgo = metav1.NewTime(time.Now().Add(-time.Minute))
+	now          = metav1.NewTime(time.Now().Truncate(time.Second))
+	oneMinuteAgo = metav1.NewTime(time.Now().Truncate(time.Second).Add(-time.Minute))
 
 	instanceReconciler *fakeInstanceReconciler
 )
