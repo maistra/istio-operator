@@ -81,6 +81,17 @@ func NewControlPlaneInstanceReconciler(controllerResources common.ControllerReso
 func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result reconcile.Result, err error) {
 	log := common.LogFromContext(ctx)
 	log.Info("Reconciling ServiceMeshControlPlane", "Status", r.Instance.Status.StatusType)
+
+	earliestSmcp, err := getEarliestSMCPInNamespace(ctx, r.Client, r.Instance.Namespace)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if earliestSmcp != nil && r.Instance.UID != earliestSmcp.UID {
+		return reconcile.Result{}, r.postReconciliationStatus(ctx, status.ConditionReasonMultipleSMCPs,
+			"reconciliation skipped",
+			fmt.Errorf("multiple ServiceMeshControlPlane resources exist in the namespace"))
+	}
+
 	if r.Status.GetCondition(status.ConditionTypeReconciled).Status != status.ConditionStatusFalse {
 		r.initializeReconcileStatus()
 		err := r.PostStatus(ctx)
@@ -339,6 +350,29 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 	hacks.SkipReconciliationUntilCacheSynced(ctx, common.ToNamespacedName(r.Instance))
 	log.Info("Completed ServiceMeshControlPlane reconciliation")
 	return
+}
+
+// finds the first SMCP in the given namespace by creationTimestamp
+func getEarliestSMCPInNamespace(ctx context.Context, cl client.Client, ns string) (*v2.ServiceMeshControlPlane, error) {
+	smcpList := &v2.ServiceMeshControlPlaneList{}
+	if err := cl.List(ctx, smcpList, client.InNamespace(ns)); err != nil {
+		return nil, err
+	}
+
+	var earliest *v2.ServiceMeshControlPlane
+	for _, smcp := range smcpList.Items {
+		if earliest == nil ||
+			smcp.CreationTimestamp.Before(&earliest.CreationTimestamp) ||
+			(smcp.CreationTimestamp == earliest.CreationTimestamp && smcp.Name < earliest.Name) {
+
+			// We can't just do `earliest = &smcp`, because of how for loops are implemented in Go.
+			// Instead, we must create a new variable and store its address in `earliest`.
+			// See discussion at https://github.com/golang/go/discussions/56010
+			goPitfallWorkaround := smcp
+			earliest = &goPitfallWorkaround
+		}
+	}
+	return earliest, nil
 }
 
 func (r *controlPlaneInstanceReconciler) pauseReconciliation(ctx context.Context) (status.ConditionReason, string) {

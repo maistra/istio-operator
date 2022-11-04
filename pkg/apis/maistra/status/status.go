@@ -55,7 +55,7 @@ func NewStatus() StatusType {
 }
 
 type ComponentStatusList struct {
-	//+optional
+	// +optional
 	ComponentStatus []ComponentStatus `json:"components,omitempty"`
 }
 
@@ -134,6 +134,8 @@ const (
 	ConditionReasonReconcileSuccessful ConditionReason = "ReconcileSuccessful"
 	// ConditionReasonValidationError ...
 	ConditionReasonValidationError ConditionReason = "ValidationError"
+	// ConditionReasonValidationError ...
+	ConditionReasonMultipleSMCPs ConditionReason = "ErrMultipleSMCPs"
 	// ConditionReasonDependencyMissingError ...
 	ConditionReasonDependencyMissingError ConditionReason = "DependencyMissingError"
 	// ConditionReasonReconcileError ...
