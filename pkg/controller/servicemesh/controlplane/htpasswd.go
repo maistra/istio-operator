@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/maistra/istio-operator/pkg/controller/common"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
 func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context, object *unstructured.Unstructured) error {
