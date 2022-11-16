@@ -4,13 +4,13 @@ kind: ClusterRoleBinding
 metadata:
   labels:
     maistra-version: "2.4.0"
-  name: istio-cni
+  name: {{ .Values.cni.defaultResourceName }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: istio-cni
+  name: {{ .Values.cni.defaultResourceName }}
 subjects:
   - kind: ServiceAccount
-    name: istio-cni
+    name: {{ .Values.cni.defaultResourceName }}
     namespace: {{ .Release.Namespace }}
 {{ end }}
