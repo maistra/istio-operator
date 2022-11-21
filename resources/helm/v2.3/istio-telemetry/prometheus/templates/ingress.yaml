@@ -1,22 +1,28 @@
 {{- if .Values.prometheus.ingress.enabled -}}
+{{- range $index, $host := .Values.prometheus.ingress.hosts }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: prometheus
-  namespace: {{ .Release.Namespace }}
+  name: prometheus{{ if gt $index 0 }}-{{ $index }}{{ end }}
+  namespace: {{ $.Release.Namespace }}
   labels:
     maistra-version: "2.3.0"
     app: prometheus
-    release: {{ .Release.Name }}
+    release: {{ $.Release.Name }}
+{{- if gt (len $.Values.prometheus.ingress.annotations) 0 }}
   annotations:
-    {{- range $key, $value := .Values.prometheus.ingress.annotations }}
-      {{ $key }}: {{ $value | quote }}
-    {{- end }}
+{{- range $key, $value := $.Values.prometheus.ingress.annotations }}
+    {{ $key }}: {{ $value | quote }}
+{{- end }}
+{{- end }}
 spec:
+  host: {{ $host }}
   to:
     kind: Service
     name: prometheus
   tls:
     termination: reencrypt
     insecureEdgeTerminationPolicy: Redirect
+---
+{{- end }}
 {{- end -}}
