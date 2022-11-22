@@ -405,6 +405,17 @@ function patchKialiOpenShift() {
   echo "Nothing to do - using kiali operator and the kiali-cr.yaml"
 }
 
+function patchGrafanaTemplate() {
+  # add extra values
+  sed_wrap -i -e '/passphraseKey:/ a\
+  persistenceResources:\
+    requests:\
+      storage: "5Gi" # PVC spec.resources.requests.storage default value' "${HELM_DIR}/istio-telemetry/grafana/values.yaml"
+
+  # add configurable capacity
+  sed_wrap -i -e 's/5Gi/{{\ .Values.grafana.persistenceResources.requests.storage\ \|\ quote\ }}/' "${HELM_DIR}/istio-telemetry/grafana/templates/pvc.yaml"
+}
+
 function convertClusterToNamespaced() {
   # $1 - file to convert
   # $2 - cluster kind
@@ -531,5 +542,6 @@ patchSidecarInjector
 moveEnvoyFiltersToMeshConfigChart
 copyGlobalValues
 patchPilotServingCert
+patchGrafanaTemplate
 # TODO: remove this hack once the image is updated to include workingDir
 hacks
