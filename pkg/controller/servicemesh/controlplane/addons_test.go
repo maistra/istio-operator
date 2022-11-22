@@ -39,6 +39,10 @@ var featureEnabled = maistrav2.Enablement{
 	Enabled: ptrTrue,
 }
 
+var featureDisabled = maistrav2.Enablement{
+	Enabled: ptrFalse,
+}
+
 func TestAddonsInstall(t *testing.T) {
 	const (
 		operatorNamespace  = "istio-operator"
@@ -161,6 +165,37 @@ func TestAddonsInstall(t *testing.T) {
 					Assert("delete").On("kialis").Named(kialiExistingName).In(controlPlaneNamespace).IsNotSeen(),
 					Assert("delete").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
 					Assert("delete").On("jaegers").Named(jaegerExistingName).In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+		},
+		{
+			name: "addons.ingress.hosts." + versions.V2_3.String(),
+			smcp: NewSMCPForPrometheusGrafanaTests(
+				controlPlaneName,
+				versions.V2_3.String(),
+				[]string{
+					"example1.com",
+					"example2.com",
+				},
+				[]string{
+					"example3.com",
+					"example4.com",
+				},
+			),
+			create: IntegrationTestValidation{
+				Assertions: ActionAssertions{
+					Assert("create").On("routes").Named("prometheus").In(controlPlaneNamespace).IsSeen(),
+					Assert("create").On("routes").Named("prometheus-1").In(controlPlaneNamespace).IsSeen(),
+					Assert("create").On("routes").Named("grafana").In(controlPlaneNamespace).IsSeen(),
+					Assert("create").On("routes").Named("grafana-1").In(controlPlaneNamespace).IsSeen(),
+				},
+			},
+			delete: IntegrationTestValidation{
+				Assertions: ActionAssertions{
+					Assert("delete").On("routes").Named("prometheus").In(controlPlaneNamespace).IsSeen(),
+					Assert("delete").On("routes").Named("prometheus-1").In(controlPlaneNamespace).IsSeen(),
+					Assert("delete").On("routes").Named("grafana").In(controlPlaneNamespace).IsSeen(),
+					Assert("delete").On("routes").Named("grafana-1").In(controlPlaneNamespace).IsSeen(),
 				},
 			},
 		},
@@ -297,6 +332,39 @@ func NewSMCPForKialiJaegerTests(smcpName, kialiName, jaegerName, version string)
 			},
 			Jaeger: &maistrav2.JaegerAddonConfig{
 				Name: jaegerName,
+			},
+		},
+	})
+}
+
+func NewSMCPForPrometheusGrafanaTests(smcpName, version string, grafanaHosts, prometheusHosts []string) *maistrav2.ServiceMeshControlPlane {
+	return NewV2SMCPResource(smcpName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{
+		Version: version,
+		Addons: &maistrav2.AddonsConfig{
+			Kiali: &maistrav2.KialiAddonConfig{
+				Enablement: featureDisabled,
+			},
+			Grafana: &maistrav2.GrafanaAddonConfig{
+				Enablement: featureEnabled,
+				Install: &maistrav2.GrafanaInstallConfig{
+					Service: &maistrav2.ComponentServiceConfig{
+						Ingress: &maistrav2.ComponentIngressConfig{
+							Enablement: featureEnabled,
+							Hosts:      grafanaHosts,
+						},
+					},
+				},
+			},
+			Prometheus: &maistrav2.PrometheusAddonConfig{
+				Enablement: featureEnabled,
+				Install: &maistrav2.PrometheusInstallConfig{
+					Service: &maistrav2.ComponentServiceConfig{
+						Ingress: &maistrav2.ComponentIngressConfig{
+							Enablement: featureEnabled,
+							Hosts:      prometheusHosts,
+						},
+					},
+				},
 			},
 		},
 	})

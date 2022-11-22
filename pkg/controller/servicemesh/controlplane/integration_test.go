@@ -64,7 +64,6 @@ func TestDefaultInstall(t *testing.T) {
 				},
 			},
 		},
-		// TODO: add test cases for v1.1
 	}
 	RunSimpleInstallTest(t, testCases)
 }
