@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -175,6 +176,19 @@ func validateAdditionalGateway(name string, gateway *v2.GatewayConfig, gatewayNa
 	if reservedGatewayNames.Has(name) {
 		*allErrors = append(*allErrors, fmt.Errorf("cannot define additional gateway named %q", name))
 	}
+}
+
+func validateProtocolDetection(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.Proxy == nil || spec.Proxy.Networking == nil || spec.Proxy.Networking.Protocol == nil || spec.Proxy.Networking.Protocol.AutoDetect == nil {
+		return allErrors
+	}
+	autoDetect := spec.Proxy.Networking.Protocol.AutoDetect
+	if autoDetect.Timeout != "" {
+		if _, err := time.ParseDuration(autoDetect.Timeout); err != nil {
+			allErrors = append(allErrors, fmt.Errorf("failed parsing spec.proxy.networking.protocol.autoDetect.timeout, not a valid duration: %s", err.Error()))
+		}
+	}
+	return allErrors
 }
 
 func errForEnabledValue(obj *v1.HelmValues, path string) error {
