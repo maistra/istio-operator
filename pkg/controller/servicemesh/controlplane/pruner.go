@@ -150,7 +150,7 @@ func (r *controlPlaneInstanceReconciler) pruneResources(ctx context.Context, pru
 
 func (r *controlPlaneInstanceReconciler) pruneIndividually(ctx context.Context, gvk schema.GroupVersionKind, instanceGeneration string) error {
 	log := common.LogFromContext(ctx)
-	labelSelector, err := createLabelSelector(r.Instance.Namespace, instanceGeneration)
+	labelSelector, err := createLabelSelector(r.Instance.Name, r.Instance.Namespace, instanceGeneration)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func (r *controlPlaneInstanceReconciler) pruneIndividually(ctx context.Context, 
 func (r *controlPlaneInstanceReconciler) pruneAll(ctx context.Context, gvk schema.GroupVersionKind, instanceGeneration string) error {
 	log := common.LogFromContext(ctx)
 
-	labelSelector, err := createLabelSelector(r.Instance.Namespace, instanceGeneration)
+	labelSelector, err := createLabelSelector(r.Instance.Name, r.Instance.Namespace, instanceGeneration)
 	if err != nil {
 		return err
 	}
@@ -211,12 +211,16 @@ func gk(group, kind string) schema.GroupKind {
 	}
 }
 
-func createLabelSelector(meshNamespace, meshGeneration string) (labels.Selector, error) {
+func createLabelSelector(smcpName, smcpNamespace, meshGeneration string) (labels.Selector, error) {
 	managedByRequirement, err := labels.NewRequirement(common.KubernetesAppManagedByKey, selection.Equals, []string{common.KubernetesAppManagedByValue})
 	if err != nil {
 		return nil, err
 	}
-	ownerRequirement, err := labels.NewRequirement(common.OwnerKey, selection.Equals, []string{meshNamespace})
+	ownerRequirement, err := labels.NewRequirement(common.OwnerKey, selection.Equals, []string{smcpNamespace})
+	if err != nil {
+		return nil, err
+	}
+	ownerNameRequirement, err := labels.NewRequirement(common.OwnerNameKey, selection.Equals, []string{smcpName})
 	if err != nil {
 		return nil, err
 	}
@@ -224,6 +228,6 @@ func createLabelSelector(meshNamespace, meshGeneration string) (labels.Selector,
 	if err != nil {
 		return nil, err
 	}
-	labelsSelector := labels.NewSelector().Add(*managedByRequirement, *ownerRequirement, *generationRequirement)
+	labelsSelector := labels.NewSelector().Add(*managedByRequirement, *ownerRequirement, *ownerNameRequirement, *generationRequirement)
 	return labelsSelector, nil
 }

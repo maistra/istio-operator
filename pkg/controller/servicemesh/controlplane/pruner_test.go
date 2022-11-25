@@ -17,7 +17,6 @@ import (
 
 func TestPrune(t *testing.T) {
 	operatorNamespace := "operator-namespace"
-	controlPlaneNamespace := "control-plane-namespace"
 	unrelatedNamespace := "unrelated-namespace"
 
 	previousMeshGeneration := "test-1"
@@ -64,12 +63,14 @@ func TestPrune(t *testing.T) {
 		name           string
 		ns             string
 		owner          string
+		ownerName      string
 		version        string
 		expectDeletion bool
 	}{
 		{
 			name:           "delete-object-with-previous-version",
 			owner:          controlPlaneNamespace,
+			ownerName:      controlPlaneName,
 			version:        previousMeshGeneration,
 			expectDeletion: true,
 		},
@@ -77,13 +78,22 @@ func TestPrune(t *testing.T) {
 			name:           "preserve-object-with-current-version",
 			ns:             controlPlaneNamespace,
 			owner:          controlPlaneNamespace,
+			ownerName:      controlPlaneName,
 			version:        currentMeshGeneration,
 			expectDeletion: false,
 		},
 		{
-			name:           "preserve-object-with-different-owner",
+			name:           "preserve-object-with-different-owner-namespace",
 			owner:          "other-control-plane-namespace",
-			version:        currentMeshGeneration,
+			ownerName:      controlPlaneName,
+			version:        previousMeshGeneration,
+			expectDeletion: false,
+		},
+		{
+			name:           "preserve-object-with-different-owner-name",
+			owner:          controlPlaneNamespace,
+			ownerName:      "other-smcp",
+			version:        previousMeshGeneration,
 			expectDeletion: false,
 		},
 		{
@@ -113,6 +123,7 @@ func TestPrune(t *testing.T) {
 					if sc.owner != "" {
 						o.SetLabels(map[string]string{
 							common.OwnerKey:                  sc.owner,
+							common.OwnerNameKey:              sc.ownerName,
 							common.KubernetesAppManagedByKey: common.KubernetesAppManagedByValue,
 							common.KubernetesAppVersionKey:   sc.version,
 						})
@@ -122,7 +133,6 @@ func TestPrune(t *testing.T) {
 					}
 
 					smcp := newControlPlane()
-					smcp.Namespace = controlPlaneNamespace
 
 					cl, tracker := test.CreateClient(smcp, obj)
 					fakeEventRecorder := &record.FakeRecorder{}
