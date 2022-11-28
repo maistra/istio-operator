@@ -27,7 +27,6 @@ type GrafanaInstallConfig struct {
 	Service *ComponentServiceConfig `json:"service,omitempty"`
 	// Persistence configures a PersistentVolume associated with the grafana installation
 	// .Values.grafana.persist, true if not null
-	// XXX: capacity is not supported in the charts, hard coded to 5Gi
 	// +optional
 	Persistence *ComponentPersistenceConfig `json:"persistence,omitempty"`
 	// Security is used to secure the grafana service.
