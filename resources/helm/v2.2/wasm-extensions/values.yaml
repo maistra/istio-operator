@@ -1,5 +1,0 @@
-wasmExtensions:
-  enabled: true
-
-  cacher:
-    image: pilot

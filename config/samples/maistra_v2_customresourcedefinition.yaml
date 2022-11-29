@@ -1,0 +1,12 @@
+apiVersion: maistra.maistra.io/v2
+kind: CustomResourceDefinition
+metadata:
+  labels:
+    app.kubernetes.io/name: customresourcedefinition
+    app.kubernetes.io/instance: customresourcedefinition-sample
+    app.kubernetes.io/part-of: operator-new
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: operator-new
+  name: customresourcedefinition-sample
+spec:
+  # TODO(user): Add fields here

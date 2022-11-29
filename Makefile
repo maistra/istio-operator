@@ -1,246 +1,255 @@
-## Copyright 2019 Red Hat, Inc.
-##
-## Licensed under the Apache License, Version 2.0 (the "License");
-## you may not use this file except in compliance with the License.
-## You may obtain a copy of the License at
-##
-##     http://www.apache.org/licenses/LICENSE-2.0
-##
-## Unless required by applicable law or agreed to in writing, software
-## distributed under the License is distributed on an "AS IS" BASIS,
-## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-## See the License for the specific language governing permissions and
-## limitations under the License.
+# VERSION defines the project version for the bundle.
+# Update this value when you upgrade the version of your project.
+# To re-generate a bundle for another specific version without changing the standard setup, you can:
+# - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
+# - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
+VERSION ?= 0.0.1
 
-# Determine this makefile's path.
-# Be sure to place this BEFORE `include` directives, if any.
-THIS_FILE := $(lastword $(MAKEFILE_LIST))
-
--include Makefile.overrides
-
-MAISTRA_VERSION        ?= 2.3.1
-MAISTRA_BRANCH         ?= maistra-2.3
-ISTIO_VERSION          ?= 1.14.5
-REPLACES_PRODUCT_CSV   ?= 2.3.0
-REPLACES_COMMUNITY_CSV ?= 2.3.0
-VERSION                ?= development
-CONTAINER_CLI          ?= docker
-COMMUNITY              ?= true
-TEST_TIMEOUT           ?= 5m
-TEST_FLAGS             ?=
-
-SOURCE_DIR          := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-RESOURCES_DIR        = ${SOURCE_DIR}/resources
-OUT_DIR              = ${SOURCE_DIR}/tmp/_output
-TEMPLATES_OUT_DIR    = ${OUT_DIR}/resources/default-templates
-HELM_OUT_DIR         = ${OUT_DIR}/resources/helm
-OLM_MANIFEST_OUT_DIR = ${OUT_DIR}/resources/manifests
-
-OFFLINE_BUILD       ?= false
-GIT_UPSTREAM_REMOTE ?= $(shell git remote -v |grep --color=never '[/:][Mm]aistra/istio-operator\.git.*(fetch)' |grep --color=never -o '^[^[:space:]]*')
-
-MAISTRA_MANIFEST_DATE := $(shell cat manifests-maistra/${MAISTRA_VERSION}/maistraoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml 2>/dev/null | grep createdAt | awk '{print $$2}')
-OSSM_MANIFEST_DATE := $(shell cat manifests-servicemesh/${MAISTRA_VERSION}/servicemeshoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml 2>/dev/null | grep createdAt | awk '{print $$2}')
-
-ifeq "${GIT_UPSTREAM_REMOTE}" ""
-GIT_UPSTREAM_REMOTE = "ci-upstream"
-$(warning Could not find git remote for maistra/istio-operator, adding as '${GIT_UPSTREAM_REMOTE}')
-$(shell git remote add ${GIT_UPSTREAM_REMOTE} https://github.com/maistra/istio-operator.git)
+# CHANNELS define the bundle channels used in the bundle.
+# Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
+# To re-generate a bundle for other specific channels without changing the standard setup, you can:
+# - use the CHANNELS as arg of the bundle target (e.g make bundle CHANNELS=candidate,fast,stable)
+# - use environment variables to overwrite this value (e.g export CHANNELS="candidate,fast,stable")
+ifneq ($(origin CHANNELS), undefined)
+BUNDLE_CHANNELS := --channels=$(CHANNELS)
 endif
 
-ifeq "${COMMUNITY}" "true"
-BUILD_TYPE = maistra
+# DEFAULT_CHANNEL defines the default channel used in the bundle.
+# Add a new line here if you would like to change its default config. (E.g DEFAULT_CHANNEL = "stable")
+# To re-generate a bundle for any other default channel without changing the default setup, you can:
+# - use the DEFAULT_CHANNEL as arg of the bundle target (e.g make bundle DEFAULT_CHANNEL=stable)
+# - use environment variables to overwrite this value (e.g export DEFAULT_CHANNEL="stable")
+ifneq ($(origin DEFAULT_CHANNEL), undefined)
+BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
+endif
+BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
+
+# IMAGE_TAG_BASE defines the docker.io namespace and part of the image name for remote images.
+# This variable is used to construct full image tags for bundle and catalog images.
+#
+# For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
+# maistra.io/operator-new-bundle:$VERSION and maistra.io/operator-new-catalog:$VERSION.
+IMAGE_TAG_BASE ?= maistra.io/operator-new
+
+# BUNDLE_IMG defines the image:tag used for the bundle.
+# You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
+BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(VERSION)
+
+# BUNDLE_GEN_FLAGS are the flags passed to the operator-sdk generate bundle command
+BUNDLE_GEN_FLAGS ?= -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+
+# USE_IMAGE_DIGESTS defines if images are resolved via tags or digests
+# You can enable this value if you would like to use SHA Based Digests
+# To enable set flag to true
+USE_IMAGE_DIGESTS ?= false
+ifeq ($(USE_IMAGE_DIGESTS), true)
+	BUNDLE_GEN_FLAGS += --use-image-digests
+endif
+
+# Image URL to use all building/pushing image targets
+IMG ?= controller:latest
+# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.25.0
+
+# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
+ifeq (,$(shell go env GOBIN))
+GOBIN=$(shell go env GOPATH)/bin
 else
-BUILD_TYPE = servicemesh
+GOBIN=$(shell go env GOBIN)
 endif
 
-$(info   Building $(BUILD_TYPE) operator)
+# Setting SHELL to bash allows bash commands to be executed by recipes.
+# Options are set to exit when a recipe line exits non-zero or a piped command fails.
+SHELL = /usr/bin/env bash -o pipefail
+.SHELLFLAGS = -ec
 
-export SOURCE_DIR OUT_DIR MAISTRA_BRANCH MAISTRA_VERSION VERSION COMMUNITY BUILD_TYPE
+.PHONY: all
+all: build
 
-FINDFILES=find . \( -path ./.git -o -path ./.github -o -path ./tmp -o -path ./vendor \) -prune -o -type f
-XARGS = xargs -0 -r
+##@ General
 
+# The help target prints out all targets with their descriptions organized
+# beneath their categories. The categories are represented by '##@' and the
+# target descriptions by '##'. The awk commands is responsible for reading the
+# entire set of makefiles included in this invocation, looking for lines of the
+# file as xyz: ## something, and then pretty-format the target and help. Then,
+# if there's a line with ##@ something, that gets pretty-printed as a category.
+# More info on the usage of ANSI control characters for terminal formatting:
+# https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters
+# More info on the awk command:
+# http://linuxcommand.org/lc3_adv_awk.php
 
-################################################################################
-# clean ./tmp/_output
-################################################################################
-.PHONY: clean
-clean:
-	rm -rf "${OUT_DIR}"
+.PHONY: help
+help: ## Display this help.
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-################################################################################
-# compile go binary
-################################################################################
-.PHONY: compile
-compile:
-	${SOURCE_DIR}/build/build.sh
+##@ Development
 
-################################################################################
-# runs all the tests
-################################################################################
+.PHONY: manifests
+manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+
+.PHONY: generate
+generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+.PHONY: fmt
+fmt: ## Run go fmt against code.
+	go fmt ./...
+
+.PHONY: vet
+vet: ## Run go vet against code.
+	go vet ./...
+
 .PHONY: test
-test:
-	go test -timeout ${TEST_TIMEOUT} -mod=vendor ${TEST_FLAGS} ./...
+test: manifests generate fmt vet envtest ## Run tests.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -coverprofile cover.out
 
-################################################################################
-# Helm charts generation and templates processing
-################################################################################
+##@ Build
 
-SUPPORTED_VERSIONS := 2.0 2.1 2.2 2.3
-
-$(addprefix update-remote-maistra-,$(SUPPORTED_VERSIONS)): update-remote-maistra-%:
-	$(eval version:=$*)
-	@ if [[ ${OFFLINE_BUILD} == "false" && ${MAISTRA_VERSION} != ${version}.* ]]; \
-	then \
-		git remote set-branches --add ${GIT_UPSTREAM_REMOTE} maistra-${version}; \
-		git fetch ${GIT_UPSTREAM_REMOTE} maistra-${version}:maistra-${version}; \
-	fi
-
-$(addprefix update-charts-,$(SUPPORTED_VERSIONS)): update-charts-%:
-	$(eval version:=$*)
-	@# If we are calling make against previous version,
-	@# sync from previous branches and explicitly call dependent target with extracted version.
-	@# Otherwise only download charts.
-	@ if [[ ${MAISTRA_VERSION} != ${version}.* ]]; \
-	then \
-		$(MAKE) -f $(THIS_FILE) update-remote-maistra-${version}; \
-		git checkout ${GIT_UPSTREAM_REMOTE}/maistra-${version} -- ${SOURCE_DIR}/resources/helm/v${version}; \
-		git reset HEAD ${SOURCE_DIR}/resources/helm/v${version}; \
-	else \
-		HELM_DIR=${RESOURCES_DIR}/helm/v${version} ISTIO_VERSION=${ISTIO_VERSION} ${SOURCE_DIR}/build/download-charts.sh; \
-	fi
-
-$(addprefix update-templates-,$(SUPPORTED_VERSIONS)): update-templates-%: update-remote-maistra-%
-	$(eval version:=$*)
-	@ if [[ ${MAISTRA_VERSION} != ${version}.* ]]; \
-	then \
-		git checkout ${GIT_UPSTREAM_REMOTE}/maistra-${version} -- ${SOURCE_DIR}/resources/smcp-templates/v${version}; \
-		git reset HEAD ${SOURCE_DIR}/resources/smcp-templates/v${version}; \
-	fi
-
-$(addprefix collect-charts-,$(SUPPORTED_VERSIONS)): collect-charts-%:
-	$(eval version:=$*)
-	mkdir -p ${HELM_OUT_DIR}
-	cp -rf ${RESOURCES_DIR}/helm/v${version} ${HELM_OUT_DIR}
-
-$(addprefix collect-templates-,$(SUPPORTED_VERSIONS)): collect-templates-%:
-	$(eval version:=$*)
-	mkdir -p ${TEMPLATES_OUT_DIR}/v${version}
-	cp ${RESOURCES_DIR}/smcp-templates/v${version}/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v${version}/default
-	find ${RESOURCES_DIR}/smcp-templates/v${version}/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" | xargs cp -t ${TEMPLATES_OUT_DIR}/v${version}
-
-.PHONY: update-charts
-update-charts: $(addprefix update-charts-,$(SUPPORTED_VERSIONS))
-
-.PHONY: update-templates
-update-templates: $(addprefix update-templates-,$(SUPPORTED_VERSIONS))
-
-################################################################################
-# OLM manifest generation
-################################################################################
-.PHONY: generate-community-manifests
-generate-community-manifests:
-	COMMUNITY=true REPLACES_CSV=${REPLACES_COMMUNITY_CSV} ${SOURCE_DIR}/build/generate-manifests.sh
-
-.PHONY: generate-product-manifests
-generate-product-manifests:
-	COMMUNITY=false REPLACES_CSV=${REPLACES_PRODUCT_CSV} ${SOURCE_DIR}/build/generate-manifests.sh
-
-################################################################################
-# resource generation
-################################################################################
-.PHONY: gen
-gen:  generate-crds update-charts update-templates update-generated-code generate-manifests
-
-.PHONY: gen-check
-gen-check: gen restore-manifest-dates check-clean-repo
-
-.PHONY: check-clean-repo
-check-clean-repo:
-	@if [[ -n $$(git status --porcelain) ]]; then git status; git diff; echo "ERROR: Some files need to be updated, please run 'make gen' and include any changed files in your PR"; exit 1;	fi
-
-.PHONY: generate-manifests
-generate-manifests: generate-community-manifests generate-product-manifests
-
-.PHONY: generate-crds
-generate-crds:
-	${SOURCE_DIR}/build/generate-crds.sh
-
-.PHONY: restore-manifest-dates
-restore-manifest-dates:
-ifneq "${MAISTRA_MANIFEST_DATE}" ""
-	sed -i -e "s/\(createdAt:\).*/\1 ${MAISTRA_MANIFEST_DATE}/" manifests-maistra/${MAISTRA_VERSION}/maistraoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml
-endif
-ifneq "${OSSM_MANIFEST_DATE}" ""
-	sed -i -e "s/\(createdAt:\).*/\1 ${OSSM_MANIFEST_DATE}/" manifests-servicemesh/${MAISTRA_VERSION}/servicemeshoperator.v${MAISTRA_VERSION}.clusterserviceversion.yaml
-endif
-
-
-################################################################################
-# resource collection
-################################################################################
-.PHONY: collect-charts
-collect-charts: collect-charts-2.0 collect-charts-2.1 collect-charts-2.2 collect-charts-2.3
-
-.PHONY: collect-templates
-collect-templates: collect-templates-2.0 collect-templates-2.1 collect-templates-2.2 collect-templates-2.3
-
-.PHONY: collect-olm-manifests
-collect-olm-manifests:
-	rm -rf  ${OLM_MANIFEST_OUT_DIR}
-	mkdir -p ${OLM_MANIFEST_OUT_DIR}
-	cp -ra ${SOURCE_DIR}/manifests-${BUILD_TYPE}/* ${OLM_MANIFEST_OUT_DIR}
-
-.PHONY: collect-resources
-collect-resources: collect-templates collect-charts collect-olm-manifests
-
-################################################################################
-# update-generated-code target regenerates k8s api related code
-################################################################################
-.PHONY: update-generated-code
-update-generated-code:
-	${SOURCE_DIR}/build/codegen/update-generated.sh
-
-################################################################################
-# build target compiles and updates resources
-################################################################################
 .PHONY: build
-build: update-generated-code update-charts update-templates compile
+build: generate fmt vet ## Build manager binary.
+	go build -o bin/manager main.go
 
-################################################################################
-# linting
-################################################################################
-.PHONY: lint-scripts
-lint-scripts:
-	@${FINDFILES} -name '*.sh' -print0 | ${XARGS} shellcheck
+.PHONY: run
+run: manifests generate fmt vet ## Run a controller from your host.
+	go run ./main.go
 
-.PHONY: lint-go
-lint-go:
-	@${FINDFILES} -name '*.go' \( ! \( -name '*.gen.go' -o -name '*.pb.go' -o -name 'zz_generated.*.go' \) \) -print0 | ${XARGS} build/lint_go.sh
+# If you wish built the manager image targeting other platforms you can use the --platform flag.
+# (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
+# More info: https://docs.docker.com/develop/develop-images/build_enhancements/
+.PHONY: docker-build
+docker-build: test ## Build docker image with the manager.
+	docker build -t ${IMG} .
 
-.PHONY: lint-yaml
-lint-yaml:
-	@${FINDFILES} \( -name '*.yml' -o -name '*.yaml' \) -not \( -wholename './build/manifest-templates/clusterserviceversion.yaml' \) -not -exec grep -q -e "{{" {} \; -print0 | ${XARGS} yamllint -c build/.yamllint.yml -f parsable
+.PHONY: docker-push
+docker-push: ## Push docker image with the manager.
+	docker push ${IMG}
 
-.PHONY: lint-helm
-lint-helm:
-	@echo "Helm version: `helm version`"
-	@${FINDFILES} -name 'Chart.yaml' -path './resources/helm/v2.?/*' \
-	-not \(	-path './resources/helm/v2.0/*' -o -path './resources/helm/v2.1/*' -o -path './resources/helm/v2.2/*' \) \
-	-print0 | ${XARGS} -L 1 dirname | xargs -r helm lint --strict
+# PLATFORMS defines the target platforms for  the manager image be build to provide support to multiple
+# architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
+# - able to use docker buildx . More info: https://docs.docker.com/build/buildx/
+# - have enable BuildKit, More info: https://docs.docker.com/develop/develop-images/build_enhancements/
+# - be able to push the image for your registry (i.e. if you do not inform a valid value via IMG=<myregistry/image:<tag>> than the export will fail)
+# To properly provided solutions that supports more than one platform you should use this option.
+PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
+.PHONY: docker-buildx
+docker-buildx: test ## Build and push docker image for the manager for cross-platform support
+	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
+	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
+	- docker buildx create --name project-v3-builder
+	docker buildx use project-v3-builder
+	- docker buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross
+	- docker buildx rm project-v3-builder
+	rm Dockerfile.cross
 
-.PHONY: lint
-lint: lint-scripts lint-go lint-yaml lint-helm
+##@ Deployment
 
-################################################################################
-# create image
-################################################################################
-.PHONY: check-image-var image
-check-image-var:
-	@if [ -z "${IMAGE}" ]; then echo "Please set the IMAGE variable" && exit 1; fi
+ifndef ignore-not-found
+  ignore-not-found = false
+endif
 
-image: check-image-var build collect-resources
-	${CONTAINER_CLI} build --no-cache -t "${IMAGE}" -f ${SOURCE_DIR}/build/Dockerfile --build-arg build_type=${BUILD_TYPE} .
+.PHONY: install
+install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
-.DEFAULT_GOAL := build
+.PHONY: uninstall
+uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+
+.PHONY: deploy
+deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUSTOMIZE) build config/default | kubectl apply -f -
+
+.PHONY: undeploy
+undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+
+##@ Build Dependencies
+
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
+## Tool Binaries
+KUSTOMIZE ?= $(LOCALBIN)/kustomize
+CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+ENVTEST ?= $(LOCALBIN)/setup-envtest
+
+## Tool Versions
+KUSTOMIZE_VERSION ?= v3.8.7
+CONTROLLER_TOOLS_VERSION ?= v0.10.0
+
+KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
+.PHONY: kustomize
+kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
+$(KUSTOMIZE): $(LOCALBIN)
+	test -s $(LOCALBIN)/kustomize || { curl -Ss $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN); }
+
+.PHONY: controller-gen
+controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
+$(CONTROLLER_GEN): $(LOCALBIN)
+	test -s $(LOCALBIN)/controller-gen || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+
+.PHONY: envtest
+envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
+$(ENVTEST): $(LOCALBIN)
+	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+.PHONY: bundle
+bundle: manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
+	operator-sdk generate kustomize manifests -q
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
+	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle $(BUNDLE_GEN_FLAGS)
+	operator-sdk bundle validate ./bundle
+
+.PHONY: bundle-build
+bundle-build: ## Build the bundle image.
+	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+
+.PHONY: bundle-push
+bundle-push: ## Push the bundle image.
+	$(MAKE) docker-push IMG=$(BUNDLE_IMG)
+
+.PHONY: opm
+OPM = ./bin/opm
+opm: ## Download opm locally if necessary.
+ifeq (,$(wildcard $(OPM)))
+ifeq (,$(shell which opm 2>/dev/null))
+	@{ \
+	set -e ;\
+	mkdir -p $(dir $(OPM)) ;\
+	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
+	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.23.0/$${OS}-$${ARCH}-opm ;\
+	chmod +x $(OPM) ;\
+	}
+else
+OPM = $(shell which opm)
+endif
+endif
+
+# A comma-separated list of bundle images (e.g. make catalog-build BUNDLE_IMGS=example.com/operator-bundle:v0.1.0,example.com/operator-bundle:v0.2.0).
+# These images MUST exist in a registry and be pull-able.
+BUNDLE_IMGS ?= $(BUNDLE_IMG)
+
+# The image tag given to the resulting catalog image (e.g. make catalog-build CATALOG_IMG=example.com/operator-catalog:v0.2.0).
+CATALOG_IMG ?= $(IMAGE_TAG_BASE)-catalog:v$(VERSION)
+
+# Set CATALOG_BASE_IMG to an existing catalog image tag to add $BUNDLE_IMGS to that image.
+ifneq ($(origin CATALOG_BASE_IMG), undefined)
+FROM_INDEX_OPT := --from-index $(CATALOG_BASE_IMG)
+endif
+
+# Build a catalog image by adding bundle images to an empty catalog using the operator package manager tool, 'opm'.
+# This recipe invokes 'opm' in 'semver' bundle add mode. For more information on add modes, see:
+# https://github.com/operator-framework/community-operators/blob/7f1438c/docs/packaging-operator.md#updating-your-existing-operator
+.PHONY: catalog-build
+catalog-build: opm ## Build a catalog image.
+	$(OPM) index add --container-tool docker --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) $(FROM_INDEX_OPT)
+
+# Push the catalog image.
+.PHONY: catalog-push
+catalog-push: ## Push a catalog image.
+	$(MAKE) docker-push IMG=$(CATALOG_IMG)

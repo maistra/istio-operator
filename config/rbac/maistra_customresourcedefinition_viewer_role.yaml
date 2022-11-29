@@ -1,0 +1,27 @@
+# permissions for end users to view customresourcedefinitions.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: customresourcedefinition-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: operator-new
+    app.kubernetes.io/part-of: operator-new
+    app.kubernetes.io/managed-by: kustomize
+  name: customresourcedefinition-viewer-role
+rules:
+- apiGroups:
+  - maistra.maistra.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - maistra.maistra.io
+  resources:
+  - customresourcedefinitions/status
+  verbs:
+  - get

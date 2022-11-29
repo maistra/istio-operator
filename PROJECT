@@ -1,0 +1,20 @@
+domain: maistra.io
+layout:
+- go.kubebuilder.io/v3
+multigroup: true
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
+projectName: operator-new
+repo: github.com/maistra/istio-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: maistra.io
+  group: maistra
+  kind: CustomResourceDefinition
+  path: github.com/maistra/istio-operator/apis/maistra/v2
+  version: v2
+version: "3"

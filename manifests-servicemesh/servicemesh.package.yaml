@@ -1,5 +1,0 @@
-packageName: servicemeshoperator
-channels:
-- name: "2.0"
-  currentCSV: servicemeshoperator.v2.3.1
-defaultChannel: "2.0"
