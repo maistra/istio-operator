@@ -5,10 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/maistra/istio-operator/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-
-	"github.com/maistra/istio-operator/apis/version"
 )
 
 type StatusBase struct {
