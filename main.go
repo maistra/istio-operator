@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -11,19 +10,12 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	"github.com/magiconair/properties"
-	"github.com/maistra/istio-operator/internal/k8sutil"
 	"github.com/mitchellh/mapstructure"
 	"github.com/operator-framework/operator-lib/leader"
-
-	//kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
-	//"github.com/operator-framework/operator-sdk/pkg/metrics"
-
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/discovery"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -32,11 +24,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	"github.com/maistra/istio-operator/apis"
-	maistrav1 "github.com/maistra/istio-operator/apis/maistra/v1"
-	maistrav2 "github.com/maistra/istio-operator/apis/maistra/v2"
 	controller "github.com/maistra/istio-operator/controllers"
 	"github.com/maistra/istio-operator/controllers/common"
 	"github.com/maistra/istio-operator/version"
+)
+
+const (
+	watchNamespaceEnvVar = "WATCH_NAMESPACE"
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -51,38 +45,35 @@ var log = logf.Log.WithName("cmd")
 func main() {
 	// Add the zap logger flag set to the CLI. The flag set must
 	// be added before calling pflag.Parse().
-	pflag.CommandLine.AddFlagSet(zap.FlagSet())
-
-	// Add flags registered by imported packages (e.g. glog and
-	// controller-runtime)
-	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+	opts := zap.Options{}
+	opts.BindFlags(flag.CommandLine)
 
 	// number of concurrent reconciler for each controller
-	pflag.Int("controlPlaneReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshControlPlane resources")
-	pflag.Int("memberRollReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMemberRoll resources")
-	pflag.Int("memberReconcilers", 10, "The number of concurrent reconcilers for ServiceMeshMember resources")
+	flag.Int("controlPlaneReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshControlPlane resources")
+	flag.Int("memberRollReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMemberRoll resources")
+	flag.Int("memberReconcilers", 10, "The number of concurrent reconcilers for ServiceMeshMember resources")
 
 	// flags to configure API request throttling
-	pflag.Int("apiBurst", 50, "The number of API requests the operator can make before throttling is activated")
-	pflag.Float32("apiQPS", 25, "The max rate of API requests when throttling is active")
+	flag.Int("apiBurst", 50, "The number of API requests the operator can make before throttling is activated")
+	flag.Float64("apiQPS", 25, "The max rate of API requests when throttling is active")
 
 	// custom flags for istio operator
-	pflag.String("resourceDir", "/usr/local/share/istio-operator", "The location of the resources - helm charts, templates, etc.")
-	pflag.String("chartsDir", "", "The root location of the helm charts.")
-	pflag.String("defaultTemplatesDir", "", "The root location of the default templates.")
-	pflag.String("userTemplatesDir", "", "The root location of the user supplied templates.")
+	flag.String("resourceDir", "/usr/local/share/istio-operator", "The location of the resources - helm charts, templates, etc.")
+	flag.String("chartsDir", "", "The root location of the helm charts.")
+	flag.String("defaultTemplatesDir", "", "The root location of the default templates.")
+	flag.String("userTemplatesDir", "", "The root location of the user supplied templates.")
 
 	var logAPIRequests bool
-	pflag.BoolVar(&logAPIRequests, "logAPIRequests", false, "Log API requests performed by the operator.")
+	flag.BoolVar(&logAPIRequests, "logAPIRequests", false, "Log API requests performed by the operator.")
 
 	// config file
 	configFile := ""
-	pflag.StringVar(&configFile, "config", "/etc/istio-operator/config.properties", "The root location of the user supplied templates.")
+	flag.StringVar(&configFile, "config", "/etc/istio-operator/config.properties", "The root location of the user supplied templates.")
 
 	printVersion := false
-	pflag.BoolVar(&printVersion, "version", printVersion, "Prints version information and exits")
+	flag.BoolVar(&printVersion, "version", printVersion, "Prints version information and exits")
 
-	pflag.Parse()
+	flag.Parse()
 	if printVersion {
 		fmt.Printf("%s\n", version.Info)
 		os.Exit(0)
@@ -92,7 +83,7 @@ func main() {
 	// implementing the logr.Logger interface. This logger will
 	// be propagated through the whole operator, generating
 	// uniform and structured logs.
-	logf.SetLogger(zap.Logger())
+	logf.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	log.Info(fmt.Sprintf("Starting Istio Operator %s", version.Info))
 
@@ -101,7 +92,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	namespace, err := k8sutil.GetWatchNamespace()
+	namespace, err := getWatchNamespace()
 	if err != nil {
 		log.Error(err, "Failed to get watch namespace")
 		os.Exit(1)
@@ -158,13 +149,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
+	// Create a new Cmd to provide shared dependencies and Start components
+	enhancedMgr, err := manager.New(cfg, manager.Options{
+		Namespace:              namespace,
+		MetricsBindAddress:     fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		HealthProbeBindAddress: "0.0.0.0:8282",
+	})
 	if err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}
-
-	enhancedMgr := common.NewEnhancedManager(mgr, dc)
 
 	log.Info("Registering Components.")
 
@@ -180,9 +174,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Add the Metrics Service
-	addMetrics(ctx, cfg)
-
 	log.Info("Starting the Cmd.")
 
 	// Start the Cmd
@@ -192,91 +183,22 @@ func main() {
 	}
 }
 
-// addMetrics will create the Services and Service Monitors to allow the operator export the metrics by using
-// the Prometheus operator
-func addMetrics(ctx context.Context, cfg *rest.Config) {
-	// Get the namespace the operator is currently deployed in.
-	operatorNs, err := k8sutil.GetOperatorNamespace()
-	if err != nil {
-		if errors.Is(err, k8sutil.ErrRunLocal) {
-			log.Info("Skipping CR metrics server creation; not running in a cluster.")
-			return
-		}
+// getWatchNamespace returns the namespace the operator should be watching for changes.
+func getWatchNamespace() (string, error) {
+	ns, found := os.LookupEnv(watchNamespaceEnvVar)
+	if !found {
+		return "", fmt.Errorf("%s must be set", watchNamespaceEnvVar)
 	}
-
-	if err := serveCRMetrics(cfg, operatorNs); err != nil {
-		log.Info("Could not generate and serve custom resource metrics", "error", err.Error())
-	}
-
-	// Add to the below struct any other metrics ports you want to expose.
-	/*
-	servicePorts := []v1.ServicePort{
-		{Port: metricsPort, Name: metrics.OperatorPortName, Protocol: v1.ProtocolTCP, TargetPort: intOrStringFromInt32(metricsPort)},
-		{Port: operatorMetricsPort, Name: metrics.CRPortName, Protocol: v1.ProtocolTCP, TargetPort: intOrStringFromInt32(operatorMetricsPort)},
-	}
-
-	// Create Service object to expose the metrics port(s).
-	service, err := metrics.CreateMetricsService(ctx, cfg, servicePorts)
-	if err != nil {
-		log.Info("Could not create metrics Service", "error", err.Error())
-	}
-
-	// CreateServiceMonitors will automatically create the prometheus-operator ServiceMonitor resources
-	// necessary to configure Prometheus to scrape metrics from this operator.
-	services := []*v1.Service{service}
-
-	// The ServiceMonitor is created in the same namespace where the operator is deployed
-	_, err = metrics.CreateServiceMonitors(cfg, operatorNs, services)
-	if err != nil {
-		log.Info("Could not create ServiceMonitor object", "error", err.Error())
-		// If this operator is deployed to a cluster without the prometheus-operator running, it will return
-		// ErrServiceMonitorNotPresent, which can be used to safely skip ServiceMonitor creation.
-		if err == metrics.ErrServiceMonitorNotPresent {
-			log.Info("Install prometheus-operator in your cluster to create ServiceMonitor objects", "error", err.Error())
-		}
-	}
-	*/
+	return ns, nil
 }
+
+
 
 func intOrStringFromInt32(val int32) intstr.IntOrString {
 	return intstr.IntOrString{
 		Type:   intstr.Int,
 		IntVal: val,
 	}
-}
-
-// serveCRMetrics gets the Operator/CustomResource GVKs and generates metrics based on those types.
-// It serves those metrics on "http://metricsHost:operatorMetricsPort".
-func serveCRMetrics(cfg *rest.Config, operatorNs string) error {
-	// The function below returns a list of filtered operator/CR specific GVKs. For more control, override the GVK list below
-	// with your own custom logic. Note that if you are adding third party API schemas, probably you will need to
-	// customize this implementation to avoid permissions issues.
-	filteredGVK, err := k8sutil.GetGVKsFromAddToScheme(maistrav1.SchemeBuilder.AddToScheme)
-	if err != nil {
-		return err
-	}
-	filteredV2GVK, err := k8sutil.GetGVKsFromAddToScheme(maistrav2.SchemeBuilder.AddToScheme)
-	if err != nil {
-		return err
-	}
-	filteredGVK = append(filteredGVK, filteredV2GVK...)
-
-	// The metrics will be generated from the namespaces which are returned here.
-	// NOTE that passing nil or an empty list of namespaces in GenerateAndServeCRMetrics will result in an error.
-	/*
-	ns, err := kubemetrics.GetNamespacesForMetrics(operatorNs)
-	if err != nil {
-		return err
-	}
-
-	// Generate and serve custom resource specific metrics.
-	err = kubemetrics.GenerateAndServeCRMetrics(cfg, ns, filteredGVK, metricsHost, operatorMetricsPort)
-	if err != nil {
-		return err
-	}
-	*/
-
-	return nil
 }
 
 func initializeConfiguration(configFile string) error {

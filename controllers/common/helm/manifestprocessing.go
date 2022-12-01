@@ -165,13 +165,7 @@ func (p *ManifestProcessor) processObject(ctx context.Context, obj *unstructured
 	}
 
 	receiver := status.NewResourceKey(obj, obj).ToUnstructured()
-	objectKey, err := client.ObjectKeyFromObject(receiver)
-	if err != nil {
-		log.Error(err, "client.ObjectKeyFromObject() failed for resource")
-		// This can only happen if receiver isn't an unstructured.Unstructured
-		// i.e. this should never happen
-		return madeChanges, err
-	}
+	objectKey := client.ObjectKeyFromObject(receiver)
 
 	var patch Patch
 

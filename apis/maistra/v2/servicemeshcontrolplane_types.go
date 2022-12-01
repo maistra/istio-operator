@@ -17,9 +17,10 @@ func init() {
 	SchemeBuilder.Register(&ServiceMeshControlPlane{}, &ServiceMeshControlPlaneList{})
 }
 
-// +kubebuilder:object:root=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ServiceMeshControlPlane is the Schema for the controlplanes API
+// +k8s:openapi-gen=true
 // +kubebuilder:storageversion
 // +kubebuilder:resource:shortName=smcp,categories=maistra-io
 // +kubebuilder:subresource:status
@@ -46,7 +47,7 @@ type ServiceMeshControlPlane struct {
 	Status ControlPlaneStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ServiceMeshControlPlaneList contains a list of ServiceMeshControlPlane
 type ServiceMeshControlPlaneList struct {
