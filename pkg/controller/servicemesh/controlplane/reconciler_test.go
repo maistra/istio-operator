@@ -607,8 +607,7 @@ func TestNamespaceLabels(t *testing.T) {
 	ns := &corev1.Namespace{}
 	test.GetObject(ctx, cl, types.NamespacedName{Namespace: "", Name: controlPlaneNamespace}, ns)
 	assert.DeepEquals(ns.Labels, map[string]string{
-		common.IgnoreNamespaceKey: "ignore",
-		common.MemberOfKey:        controlPlaneNamespace,
+		common.MemberOfKey: controlPlaneNamespace,
 	}, "Expected reconciler to add namespace labels", t)
 
 	test.PanicOnError(cl.Get(ctx, types.NamespacedName{Namespace: controlPlaneNamespace, Name: controlPlaneName}, smcp))
