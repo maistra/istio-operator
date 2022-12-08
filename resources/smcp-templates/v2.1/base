@@ -1,0 +1,88 @@
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+metadata:
+  name: base
+spec:
+  version: v2.1
+  gateways:
+    enabled: true
+    ingress:
+      enabled: true
+      ingress: false
+      service:
+        type: ClusterIP
+    egress:
+      enabled: true
+    openshiftRoute:
+      enabled: true
+
+  general:
+    logging:
+      componentLevels:
+        default: warn
+
+  proxy:
+    injection:
+      autoInject: false
+    networking:
+      protocol:
+        autoDetect:
+          inbound: false
+          outbound: false
+      dns:
+        refreshRate: 300s
+
+  security:
+    identity:
+      type: Kubernetes
+
+  telemetry:
+    type: Istiod
+
+  policy:
+    type: None
+
+  tracing:
+    type: Jaeger
+
+  addons:
+    prometheus:
+      enabled: true
+      install:
+        service:
+          metadata:
+            annotations:
+              service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls
+          ingress:
+            enabled: true
+
+    jaeger:
+      name: jaeger
+      install:
+        storage:
+          type: Memory
+        ingress:
+          enabled: true
+
+    grafana:
+      enabled: true
+      install:
+        service:
+          metadata:
+            annotations:
+              service.alpha.openshift.io/serving-cert-secret-name: grafana-tls
+          ingress:
+            enabled: true
+    kiali:
+      enabled: true
+      name: kiali
+      install:
+        dashboard:
+          viewOnly: false
+        service:
+          ingress:
+            enabled: true
+  techPreview:
+    sidecarInjectorWebhook:
+      objectSelector:
+        enabled: false

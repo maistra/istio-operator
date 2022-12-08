@@ -1,0 +1,305 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  name: __NAME__.v__VERSION__
+  namespace: placeholder
+  labels:
+    __ARCHITECTURE_LABELS__
+  annotations:
+    categories: "OpenShift Optional, Integration & Delivery"
+    capabilities: "Seamless Upgrades"
+    certified: "false"
+    repository: https://github.com/maistra/istio-operator
+    description: |-
+      __CSV_DESCRIPTION__
+
+    containerImage: __IMAGE_SRC__
+    createdAt: __DATE__
+    support: Red Hat, Inc. 
+    olm.skipRange: ">=1.0.2 <__SEMANTIC_VERSION__"
+    operators.openshift.io/infrastructure-features: '__OLM_FEATURES__'
+    __OLM_SUBSCRIPTION_ANNOTATION__
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "maistra.io/v2",
+          "kind": "ServiceMeshControlPlane",
+          "metadata": {
+            "name": "basic",
+            "namespace": "control-plane-namespace"
+          },
+          "spec": {
+            "version": "v2.3",
+            "tracing": {
+              "type": "Jaeger",
+              "sampling": 10000
+            },
+            "policy": {
+               "type": "Istiod"
+            },
+            "telemetry": {
+               "type": "Istiod"
+            },
+            "addons": {
+              "jaeger": {
+                "install": {
+                  "storage": {
+                    "type": "__JAEGER_STORAGE__"
+                  }
+                }
+              },
+              "prometheus": {
+                "enabled": true
+              },
+              "kiali": {
+                "enabled": true
+              },
+              "grafana": {
+                "enabled": true
+              }
+            }
+          }
+        },
+        {
+          "apiVersion": "maistra.io/v1",
+          "kind": "ServiceMeshMemberRoll",
+          "metadata": {
+            "name": "default",
+            "namespace": "control-plane-namespace"
+          },
+          "spec": {
+            "members": [
+              "your-project",
+              "another-of-your-projects" 
+            ]
+          }
+        },
+        {
+          "apiVersion": "maistra.io/v1",
+          "kind": "ServiceMeshMember",
+          "metadata": {
+            "name": "default",
+            "namespace": "application-namespace"
+          },
+          "spec": {
+            "controlPlaneRef": {
+              "name": "basic",
+              "namespace": "control-plane-namespace"
+            }
+          }
+        }
+      ]
+spec:
+  version: __SEMANTIC_VERSION__
+  maturity: alpha
+  displayName: __DISPLAY_NAME__
+  description: |-
+    __APP_DESCRIPTION__
+
+    ### Overview
+
+    __DISPLAY_NAME__, based on the open source [Istio](https://istio.io/) project, adds a transparent layer on existing
+    distributed applications without requiring any changes to the service code. You add __DISPLAY_NAME__
+    support to services by deploying a special sidecar proxy throughout your environment that intercepts all network
+    communication between microservices. You configure and manage the service mesh using the control plane features.
+
+    __DISPLAY_NAME__ provides an easy way to create a network of deployed services that provides discovery,
+    load balancing, service-to-service authentication, failure recovery, metrics, and monitoring. A service mesh also
+    provides more complex operational functionality, including A/B testing, canary releases, rate limiting, access
+    control, and end-to-end authentication.
+
+    ### Core Capabilities
+
+    __DISPLAY_NAME__ supports uniform application of a number of key capabilities across a network of services:
+
+    + **Traffic Management** - Control the flow of traffic and API calls between services, make calls more reliable,
+      and make the network more robust in the face of adverse conditions.
+
+    + **Service Identity and Security** - Provide services in the mesh with a verifiable identity and provide the
+      ability to protect service traffic as it flows over networks of varying degrees of trustworthiness.
+
+    + **Policy Enforcement** - Apply organizational policy to the interaction between services, ensure access policies
+      are enforced and resources are fairly distributed among consumers. Policy changes are made by configuring the
+      mesh, not by changing application code.
+
+    + **Telemetry** - Gain understanding of the dependencies between services and the nature and flow of traffic between
+      them, providing the ability to quickly identify issues.
+
+    ### Joining Projects Into a Mesh
+
+    Once an instance of __DISPLAY_NAME__ has been installed, it will only exercise control over services within its own
+    project.  Other projects may be added into the mesh using one of two methods:
+
+    1. A **ServiceMeshMember** resource may be created in other projects to add those projects into the mesh.  The
+      **ServiceMeshMember** specifies a reference to the **ServiceMeshControlPlane** object that was used to install
+      the control plane.  The user creating the **ServiceMeshMember** resource must have permission to *use* the
+      **ServiceMeshControlPlane** object.  The adminstrator for the project containing the control plane can grant
+      individual users or groups the *use* permissions.
+    
+    2. A **ServiceMeshMemberRoll** resource may be created in the project containing the control plane.  This resource
+      contains a single *members* list of all the projects that should belong in the mesh.  The resource must be named
+      *default*.  The user creating the resource must have *edit* or *admin* permissions for all projects in the
+      *members* list.
+
+    ### More Information
+
+    * [Documentation](__DOCUMENTATION_URL__)
+    * [Bugs](__BUG_URL__)
+
+  icon:
+  - mediatype: image/png
+    base64data: |-__ICON__
+
+  keywords: [ 'istio', 'maistra', 'servicemesh' ]
+  maintainers:
+  - name: Red Hat, OpenShift Service Mesh
+    email: istio-feedback@redhat.com
+  provider:
+    name: Red Hat, Inc.
+  links:
+  - name: __DISPLAY_NAME__
+    url: __DOCUMENTATION_URL__
+  - name: Istio
+    url: https://istio.io/
+  - name: Operator Source Code
+    url: https://github.com/Maistra/istio-operator
+  - name: Bugs
+    url: __BUG_URL__
+__REPLACES_CSV__
+  installModes:
+  - type: OwnNamespace
+    supported: false
+  - type: SingleNamespace
+    supported: false
+  - type: MultiNamespace
+    supported: false
+  - type: AllNamespaces
+    supported: true
+__RELATED_IMAGES__
+  install:
+    strategy: deployment
+    spec:
+      clusterPermissions:
+      - serviceAccountName: istio-operator
+        rules:
+__CLUSTER_ROLE_RULES__
+      deployments:
+      - name: istio-operator
+        spec:
+__DEPLOYMENT_SPEC__
+  customresourcedefinitions:
+    owned:
+    - name: servicemeshcontrolplanes.maistra.io
+      version: v2
+      kind: ServiceMeshControlPlane
+      displayName: Istio Service Mesh Control Plane
+      description: An Istio control plane installation
+      specDescriptors:
+      - displayName: Control Plane Version
+        description: Specify the version of the control plane you want to install
+        path: version
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:v2.3'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:v2.2'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:v2.1'
+      - displayName: Control Plane Security
+        description: Enable mTLS for communication between control plane components
+        path: security.controlPlane.mtls
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - displayName: Install Prometheus
+        description: Set to true to install Prometheus
+        path: addons.prometheus.enabled
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:metrics'
+        - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - displayName: Data Plane Security
+        description: Enable mTLS for communcation between services in the mesh
+        path: security.dataPlane.mtls
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - displayName: Install Kiali
+        description: Set to true to install Kiali
+        path: addons.kiali.enabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:visualization'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - displayName: Install Grafana
+        description: Set to true to install Grafana
+        path: addons.grafana.enabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:visualization'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - displayName: Tracing provider
+        description: Select the provider to use for tracing
+        path: tracing.type
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:tracing'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:None'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Jaeger'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Stackdriver'
+      - displayName: Jaeger Storage Type
+        description: Set storage type for Jaeger (applies only when Jaeger is selected as the tracing provider)
+        path: addons.jaeger.install.storage.type
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:tracing'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Memory'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Elasticsearch'
+      - displayName: Type of Policy
+        description: Select "Mixer" when deploying a control plane version less than "v2.0" or when planning to install 3scale adapter
+        path: policy.type
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Policy'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Istiod'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Mixer'
+      - displayName: Install 3Scale Adapter
+        description: Set to true to install the Istio 3Scale adapter (applies only when Policy type is set to Mixer)
+        path: addons.3scale.enabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Policy'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - displayName: Type of Telemetry
+        description: Select "Mixer" when deploying a control plane version less than "v2.0"
+        path: telemetry.type
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Telemetry'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Istiod'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:Mixer'
+      - displayName: Default Resource Requirements
+        description: Set the default compute resource requests and limits for control plane components
+        path: runtime.defaults.container.resources
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      statusDescriptors:
+        - displayName: Components
+          description: Status of components deployed by this ServiceMeshControlPlane resource
+          path: readiness.components
+          x-descriptors:
+            - "urn:alm:descriptor:com.tectonic.ui:podStatuses"
+    - name: servicemeshmembers.maistra.io
+      version: v1
+      kind: ServiceMeshMember
+      displayName: Istio Service Mesh Member
+      description: Marks the containing namespace as a member of the referenced Service Mesh
+      specDescriptors:
+      - displayName: Namespace
+        description: The namespace of the ServiceMeshControlPlane to which this namespace belongs
+        path: controlPlaneRef.namespace
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Service_Mesh_Control_Plane'
+          - 'urn:alm:descriptor:io.kubernetes:Project'
+      - displayName: Name
+        description: The name of the ServiceMeshControlPlane to which this namespace belongs
+        path: controlPlaneRef.name
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Service_Mesh_Control_Plane'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+    - name: servicemeshmemberrolls.maistra.io
+      version: v1
+      kind: ServiceMeshMemberRoll
+      displayName: Istio Service Mesh Member Roll
+      description: A list of namespaces in Service Mesh

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -19,17 +18,17 @@ var logger = logf.Log.WithName(managerName)
 // WebhookCABundleManager is the public interface for managing webhook caBundle.
 type WebhookCABundleManager interface {
 	// ManageWebhookCABundle adds a webhook to the manager.
-	ManageWebhookCABundle(obj runtime.Object, source CABundleSource) error
+	ManageWebhookCABundle(obj client.Object, source CABundleSource) error
 	// UnmanageWebhookCABundle removes a webhook from the manager.
-	UnmanageWebhookCABundle(obj runtime.Object) error
+	UnmanageWebhookCABundle(obj client.Object) error
 	// IsManaged returns true if the webhook is being managed.
-	IsManaged(obj runtime.Object) bool
+	IsManaged(obj client.Object) bool
 	// IsManagingWebhooksForSource returns true if any webhooks being managed are using the secret or config map.
 	IsManagingWebhooksForSource(obj ObjectRef) bool
 	// ReconcileRequestsFromSource returns a slice of reconcile.Request objects for the specified secret or config map
 	ReconcileRequestsFromSource(obj ObjectRef) []reconcile.Request
 	// ReconcileRequestsFromWebhook returns a slice of reconcile.Request objects for the specified webhook
-	ReconcileRequestsFromWebhook(webhook runtime.Object) []reconcile.Request
+	ReconcileRequestsFromWebhook(webhook client.Object) []reconcile.Request
 	// UpdateCABundle updates the caBundle for the webhook.  The webhook namespace identifies the type of webhook (validating or mutating).
 	UpdateCABundle(ctx context.Context, cl client.Client, webhook types.NamespacedName) error
 }
@@ -48,7 +47,7 @@ var _ WebhookCABundleManager = (*webhookCABundleManager)(nil)
 
 // ManageWebhookCABundle registers the webhook to be managed with the Secret/ConfigMap that
 // should be used to populate its caBundle field.
-func (wm *webhookCABundleManager) ManageWebhookCABundle(obj runtime.Object, source CABundleSource) error {
+func (wm *webhookCABundleManager) ManageWebhookCABundle(obj client.Object, source CABundleSource) error {
 	webhook, err := toWebhookWrapper(obj)
 	if err != nil {
 		return err
@@ -87,7 +86,7 @@ func (wm *webhookCABundleManager) ManageWebhookCABundle(obj runtime.Object, sour
 }
 
 // UnmanageWebhookCABundle removes the webhook from being managed
-func (wm *webhookCABundleManager) UnmanageWebhookCABundle(obj runtime.Object) error {
+func (wm *webhookCABundleManager) UnmanageWebhookCABundle(obj client.Object) error {
 	key, err := wm.namespacedNameForWebhook(obj)
 	if err != nil {
 		return err
@@ -110,7 +109,7 @@ func (wm *webhookCABundleManager) UnmanageWebhookCABundle(obj runtime.Object) er
 	return nil
 }
 
-func (wm *webhookCABundleManager) IsManaged(obj runtime.Object) bool {
+func (wm *webhookCABundleManager) IsManaged(obj client.Object) bool {
 	if name, err := wm.namespacedNameForWebhook(obj); err == nil {
 		wm.mu.RLock()
 		defer wm.mu.RUnlock()
@@ -126,7 +125,7 @@ func (wm *webhookCABundleManager) IsManagingWebhooksForSource(obj ObjectRef) boo
 	return len(wm.objectRefsToWebhooks[obj]) > 0
 }
 
-func (wm *webhookCABundleManager) ReconcileRequestsFromWebhook(webhook runtime.Object) []reconcile.Request {
+func (wm *webhookCABundleManager) ReconcileRequestsFromWebhook(webhook client.Object) []reconcile.Request {
 	webhookName, err := wm.namespacedNameForWebhook(webhook)
 	if err != nil {
 		return nil
@@ -175,7 +174,7 @@ const (
 // namespacedNameForWebhook returns a types.NamespacedName used to identify the
 // webhook within the manager.  The key is composed of type and name in the
 // form, <type>/<name>
-func (wm *webhookCABundleManager) namespacedNameForWebhook(obj runtime.Object) (types.NamespacedName, error) {
+func (wm *webhookCABundleManager) namespacedNameForWebhook(obj client.Object) (types.NamespacedName, error) {
 	wh, err := toWebhookWrapper(obj)
 	if err == nil {
 		return wh.NamespacedName(), nil

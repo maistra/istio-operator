@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	authentication "k8s.io/api/authentication/v1"
 	authorization "k8s.io/api/authorization/v1"
 	meta "k8s.io/apimachinery/pkg/api/meta"
@@ -50,14 +50,14 @@ func createSubjectAccessReviewReactor(allowClusterScope, allowNamespaceScope boo
 
 func createCreateRequest(obj runtime.Object) admission.Request {
 	request := createRequest(obj)
-	request.Operation = admissionv1beta1.Create
+	request.Operation = admissionv1.Create
 	request.UserInfo = userInfo
 	return request
 }
 
 func createUpdateRequest(oldObj, newObj runtime.Object) admission.Request {
 	request := createRequest(newObj)
-	request.Operation = admissionv1beta1.Update
+	request.Operation = admissionv1.Update
 	request.OldObject = toRawExtension(oldObj)
 	request.UserInfo = userInfo
 	return request
@@ -69,7 +69,7 @@ func createRequest(obj runtime.Object) admission.Request {
 		panic(err)
 	}
 	return admission.Request{
-		AdmissionRequest: admissionv1beta1.AdmissionRequest{
+		AdmissionRequest: admissionv1.AdmissionRequest{
 			Kind:      metaGVKForObject(obj),
 			Name:      metaObj.GetName(),
 			Namespace: metaObj.GetNamespace(),

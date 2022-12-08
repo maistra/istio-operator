@@ -6,9 +6,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/controllers/common"
 	"github.com/maistra/istio-operator/controllers/common/cni"
@@ -26,35 +26,35 @@ func TestPrune(t *testing.T) {
 	cases := []struct {
 		name              string
 		gvk               schema.GroupVersionKind
-		createObject      func() runtime.Object
+		createObject      func() client.Object
 		namespaced        bool
 		pruneIndividually bool
 	}{
 		{
 			name:              "namespaced-pruneAll",
 			gvk:               gvk("apps", "v1", "Deployment"),
-			createObject:      func() runtime.Object { return &appsv1.Deployment{} },
+			createObject:      func() client.Object { return &appsv1.Deployment{} },
 			namespaced:        true,
 			pruneIndividually: false,
 		},
 		{
 			name:              "namespaced-pruneIndividually",
 			gvk:               gvk("apps", "v1", "Deployment"),
-			createObject:      func() runtime.Object { return &appsv1.Deployment{} },
+			createObject:      func() client.Object { return &appsv1.Deployment{} },
 			namespaced:        true,
 			pruneIndividually: true,
 		},
 		{
 			name:              "clusterscoped-pruneAll",
 			gvk:               gvk("rbac.authorization.k8s.io", "v1", "ClusterRole"),
-			createObject:      func() runtime.Object { return &v1.ClusterRole{} },
+			createObject:      func() client.Object { return &v1.ClusterRole{} },
 			namespaced:        false,
 			pruneIndividually: false,
 		},
 		{
 			name:              "clusterscoped-pruneIndividually",
 			gvk:               gvk("rbac.authorization.k8s.io", "v1", "ClusterRole"),
-			createObject:      func() runtime.Object { return &v1.ClusterRole{} },
+			createObject:      func() client.Object { return &v1.ClusterRole{} },
 			namespaced:        false,
 			pruneIndividually: true,
 		},

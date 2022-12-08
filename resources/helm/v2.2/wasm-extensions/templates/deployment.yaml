@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    maistra-version: "2.2.4"
+    app: wasm-cacher
+    istio.io/rev: {{ .Values.revision | default "default" }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: wasm-cacher-{{ .Values.revision | default "default" }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wasm-cacher
+      istio.io/rev: {{ .Values.revision | default "default" }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        maistra-control-plane: {{ .Release.Namespace }}
+        app: wasm-cacher
+        istio.io/rev: {{ .Values.revision | default "default" }}
+        heritage: {{ .Release.Service }}
+        release: {{ .Release.Name }}
+    spec:
+      serviceAccountName: wasm-cacher-{{ .Values.revision | default "default" }}
+      containers:
+      - name: wasm-cacher
+        workingDir: "/"
+{{- if contains "/" .Values.wasmExtensions.cacher.image }}
+        image: "{{ .Values.wasmExtensions.cacher.image }}"
+{{- else }}
+        image: "{{ .Values.global.hub }}/{{ .Values.wasmExtensions.cacher.image }}:{{ .Values.global.tag }}"
+{{- end }}
+        imagePullPolicy: Always
+        command:
+        - mec
+        - --namespace
+        - {{ .Release.Namespace }}
+        - --baseURL
+        - http://wasm-cacher-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.cluster.local
+        resources:
+{{- if .Values.wasmExtensions.cacher.resources }}
+{{ toYaml .Values.wasmExtensions.cacher.resources | trim | indent 10 }}
+{{- else }}
+{{ toYaml .Values.global.defaultResources | trim | indent 10 }}
+{{- end }}
+        env:
+        - name: HOME
+          value: /podman
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: home
+          mountPath: /podman
+        - name: servedir
+          mountPath: /srv
+        - name: graph
+          mountPath: /var/lib/containers
+      volumes:
+      - name: home
+        emptyDir: {}
+      - name: servedir
+        emptyDir: {}
+      - name: graph
+        emptyDir: {}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      securityContext: {}
+      terminationGracePeriodSeconds: 30

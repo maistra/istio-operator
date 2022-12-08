@@ -191,7 +191,6 @@ func TestManifestValidation(t *testing.T) {
 				},
 			},
 			errorMessages: map[versions.Version]string{
-				versions.V1_1: "namespace of manifest b/another-ingress not in mesh",
 				versions.V2_0: "namespace of manifest b/another-ingress not in mesh",
 				versions.V2_1: "namespace of manifest b/another-ingress not in mesh",
 				versions.V2_2: "namespace of manifest b/another-ingress not in mesh",
@@ -387,7 +386,7 @@ func TestParallelInstallationOfCharts(t *testing.T) {
 			smcp := newControlPlane()
 			smcp.Spec = maistrav2.ControlPlaneSpec{
 				Profiles: []string{"maistra"},
-				Version:  versions.V1_1.String(),
+				Version:  versions.V2_1.String(),
 				Policy: &maistrav2.PolicyConfig{
 					Type: maistrav2.PolicyTypeNone,
 				},
@@ -524,7 +523,7 @@ func TestValidation(t *testing.T) {
 		{
 			name: "conversion-error-present",
 			spec: maistrav2.ControlPlaneSpec{
-				Version:  versions.V1_1.String(),
+				Version:  versions.V2_1.String(),
 				Profiles: []string{"maistra"},
 				TechPreview: maistrav1.NewHelmValues(map[string]interface{}{
 					"errored": map[string]interface{}{

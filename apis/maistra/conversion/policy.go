@@ -17,8 +17,6 @@ func populatePolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 		return nil
 	}
 
-	istiod := in.Version != versions.V1_1.String()
-
 	if in.Policy.Type != "" {
 		if err := setHelmStringValue(values, "policy.implementation", string(in.Policy.Type)); err != nil {
 			return err
@@ -30,43 +28,23 @@ func populatePolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 		if err := setHelmBoolValue(values, "mixer.policy.enabled", false); err != nil {
 			return err
 		}
-		if !istiod {
-			if err := setHelmBoolValue(values, "global.istioRemote", false); err != nil {
-				return err
-			}
-		}
 	case v2.PolicyTypeMixer:
 		if err := setHelmBoolValue(values, "mixer.policy.enabled", true); err != nil {
 			return err
-		}
-		if !istiod {
-			if err := setHelmBoolValue(values, "global.istioRemote", false); err != nil {
-				return err
-			}
 		}
 	case v2.PolicyTypeRemote:
 		if err := setHelmBoolValue(values, "mixer.policy.enabled", false); err != nil {
 			return err
 		}
-		if !istiod {
-			if err := setHelmBoolValue(values, "global.istioRemote", true); err != nil {
-				return err
-			}
-		}
 	case v2.PolicyTypeIstiod:
 		if err := setHelmBoolValue(values, "mixer.policy.enabled", false); err != nil {
 			return err
-		}
-		if !istiod {
-			if err := setHelmBoolValue(values, "global.istioRemote", false); err != nil {
-				return err
-			}
 		}
 	case "":
 		// don't configure anything, let defaults take over
 	}
 
-	if err := populateMixerPolicyValues(in, istiod, values); err != nil {
+	if err := populateMixerPolicyValues(in, true, values); err != nil {
 		return err
 	}
 	if err := populateRemotePolicyValues(in, values); err != nil {
@@ -203,8 +181,6 @@ func populatePolicyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version v
 		policyType = version.Strategy().GetPolicyType(in, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled)
 	}
 
-	istiod := version != versions.V1_1
-
 	policy := &v2.PolicyConfig{}
 	setPolicy := false
 	if policyType != "" {
@@ -223,14 +199,14 @@ func populatePolicyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version v
 			setPolicy = true
 			policy.Remote = remote
 		}
-		if applied, err := populateMixerPolicyConfig(in, istiod, mixer); err != nil {
+		if applied, err := populateMixerPolicyConfig(in, true, mixer); err != nil {
 			return err
 		} else if applied {
 			setPolicy = true
 			policy.Mixer = mixer
 		}
 	} else {
-		if applied, err := populateMixerPolicyConfig(in, istiod, mixer); err != nil {
+		if applied, err := populateMixerPolicyConfig(in, true, mixer); err != nil {
 			return err
 		} else if applied {
 			setPolicy = true

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -24,8 +25,10 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	v1 "github.com/maistra/istio-operator/apis/maistra/v1"
@@ -265,6 +268,8 @@ func NewEnhancedManager(mgr manager.Manager, dc discovery.DiscoveryInterface) En
 type EnhancedManager struct {
 	delegate manager.Manager
 	dc       discovery.DiscoveryInterface
+	// controllerOptions are the global controller options.
+	controllerOptions v1alpha1.ControllerConfigurationSpec
 }
 
 func (m EnhancedManager) Add(runnable manager.Runnable) error {
@@ -291,8 +296,8 @@ func (m EnhancedManager) AddReadyzCheck(name string, check healthz.Checker) erro
 	return m.delegate.AddReadyzCheck(name, check)
 }
 
-func (m EnhancedManager) Start(ch <-chan struct{}) error {
-	return m.delegate.Start(ch)
+func (m EnhancedManager) Start(ctx context.Context) error {
+	return m.delegate.Start(signals.SetupSignalHandler())
 }
 
 func (m EnhancedManager) GetConfig() *rest.Config {
@@ -337,4 +342,8 @@ func (m EnhancedManager) GetLogger() logr.Logger {
 
 func (m EnhancedManager) GetDiscoveryClient() (discovery.DiscoveryInterface, error) {
 	return m.dc, nil
+}
+
+func (m EnhancedManager) GetControllerOptions() v1alpha1.ControllerConfigurationSpec {
+	return m.controllerOptions
 }

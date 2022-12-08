@@ -1,0 +1,20 @@
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: istiod-{{ .Values.revision | default "default" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: "2.3.1"
+    istio.io/rev: {{ .Values.revision | default "default" }}
+    app: istiod
+    istio: pilot
+    release: {{ .Release.Name }}
+spec:
+  host: istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.cluster.local
+  trafficPolicy:
+    portLevelSettings:
+    - port:
+        number: 8188
+      tls:
+        mode: SIMPLE
+---

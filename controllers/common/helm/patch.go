@@ -53,8 +53,10 @@ func (p *basicPatch) Apply(ctx context.Context) (*unstructured.Unstructured, err
 
 	var patch client.Patch
 	if originalBytes, err := util.GetOriginalConfiguration(p.oldObj); err == nil && len(originalBytes) > 0 {
-		if originalObj, _, err := unstructured.UnstructuredJSONScheme.Decode(originalBytes, nil, nil); err == nil {
-			patch = client.MergeFrom(originalObj)
+		if _, objGVK, err := unstructured.UnstructuredJSONScheme.Decode(originalBytes, nil, nil); err == nil {
+			newObj := &unstructured.Unstructured{}
+			newObj.SetGroupVersionKind(*objGVK)
+			patch = client.MergeFrom(newObj)
 		}
 	}
 	if patch == nil {

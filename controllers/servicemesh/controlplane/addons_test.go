@@ -20,6 +20,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -98,7 +99,7 @@ func TestAddonsInstall(t *testing.T) {
 		{
 			name: "kiali.install.jaeger.existing",
 			smcp: NewSMCPForKialiJaegerTests(smcpName, "", jaegerExistingName, versions.V2_0.String()),
-			resources: []runtime.Object{
+			resources: []client.Object{
 				jaegerExisting,
 				jaegerRoute,
 			},
@@ -121,7 +122,7 @@ func TestAddonsInstall(t *testing.T) {
 		{
 			name: "kiali.existing.jaeger.install",
 			smcp: NewSMCPForKialiJaegerTests(smcpName, kialiName, "", versions.V2_0.String()),
-			resources: []runtime.Object{
+			resources: []client.Object{
 				&kialiv1alpha1.Kiali{Base: external.Base{
 					ObjectMeta: metav1.ObjectMeta{Name: kialiName, Namespace: controlPlaneNamespace},
 				}},
@@ -143,7 +144,7 @@ func TestAddonsInstall(t *testing.T) {
 		{
 			name: "kiali.existing.jaeger.existing",
 			smcp: NewSMCPForKialiJaegerTests(smcpName, kialiExistingName, jaegerExistingName, versions.V2_0.String()),
-			resources: []runtime.Object{
+			resources: []client.Object{
 				&kialiv1alpha1.Kiali{Base: external.Base{
 					ObjectMeta: metav1.ObjectMeta{Name: kialiExistingName, Namespace: controlPlaneNamespace},
 				}},
@@ -201,118 +202,6 @@ func TestAddonsInstall(t *testing.T) {
 		},
 	}
 
-	RunSimpleInstallTest(t, testCases)
-}
-
-// v1.1 is deprecated and skip TestExternalJaegerV1_1
-func TestExternalJaegerV1_1(t *testing.T) {
-	t.Skip("v1.1 is deprecated and skip TestExternalJaegerV1_1")
-	const (
-		operatorNamespace  = "istio-operator"
-		smcpName           = "test"
-		cniDaemonSetName   = "istio-node"
-		domain             = "test.com"
-		kialiName          = "kiali"
-		kialiExistingName  = "kiali-existing"
-		jaegerName         = "jaeger"
-		jaegerExistingName = "jaeger-existing"
-	)
-
-	if testing.Verbose() {
-		logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(os.Stderr), zap.Level(zapcore.Level(-5))))
-	}
-
-	jaegerRoute := &routev1.Route{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      jaegerExistingName,
-			Namespace: controlPlaneNamespace,
-			Labels: map[string]string{
-				"app.kubernetes.io/instance":  jaegerExistingName,
-				"app.kubernetes.io/component": "query-route",
-			},
-		},
-		Spec: routev1.RouteSpec{
-			Host: fmt.Sprintf("%s.%s", jaegerExistingName, domain),
-		},
-	}
-	jaegerExisting := &jaegerv1.Jaeger{
-		Base: external.Base{
-			ObjectMeta: metav1.ObjectMeta{Name: jaegerExistingName, Namespace: controlPlaneNamespace},
-		},
-	}
-
-	testCases := []IntegrationTestCase{
-		{
-			name: "jaeger.v2",
-			smcp: NewSMCPForKialiJaegerTests(smcpName, "", jaegerExistingName, versions.V1_1.String()),
-			resources: []runtime.Object{
-				jaegerExisting,
-				jaegerRoute,
-			},
-			create: IntegrationTestValidation{
-				Verifier: Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).Passes(ExpectedKialiCreate(jaegerExistingName, domain)),
-				Assertions: ActionAssertions{
-					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
-					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
-					Assert("create").On("jaegers").Named(jaegerExistingName).In(controlPlaneNamespace).IsNotSeen(),
-				},
-			},
-			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
-					Assert("delete").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
-					Assert("delete").On("jaegers").Named(jaegerExistingName).In(controlPlaneNamespace).IsNotSeen(),
-				},
-			},
-		},
-		{
-			name: "jaeger.v1",
-			smcp: &maistrav1.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
-				Spec: maistrav1.ControlPlaneSpec{
-					Version:  versions.V1_1.String(),
-					Template: "maistra",
-					Istio: maistrav1.NewHelmValues(map[string]interface{}{
-						"global": map[string]interface{}{
-							"proxy": map[string]interface{}{
-								"tracer": "zipkin",
-							},
-							"tracer": map[string]interface{}{
-								"zipkin": map[string]interface{}{
-									"address": jaegerExistingName + "-collector.cp-namespace.svc.cluster.local:9411",
-								},
-							},
-						},
-						"tracing": map[string]interface{}{
-							"enabled": false,
-						},
-						"kiali": map[string]interface{}{
-							"jaegerInClusterURL": jaegerExistingName + "-query.cp-namespace.svc.cluster.local",
-						},
-					}),
-				},
-			},
-			resources: []runtime.Object{
-				jaegerExisting,
-				jaegerRoute,
-			},
-			create: IntegrationTestValidation{
-				Verifier: Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).Passes(ExpectedKialiCreate(jaegerExistingName, domain)),
-				Assertions: ActionAssertions{
-					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
-					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
-					Assert("create").On("jaegers").Named(jaegerExistingName).In(controlPlaneNamespace).IsNotSeen(),
-				},
-			},
-			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
-					Assert("delete").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
-					Assert("delete").On("jaegers").Named(jaegerExistingName).In(controlPlaneNamespace).IsNotSeen(),
-				},
-			},
-		},
-	}
 	RunSimpleInstallTest(t, testCases)
 }
 

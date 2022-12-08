@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -20,6 +21,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -46,14 +48,14 @@ func StartManager(mgr manager.Manager, t *testing.T) func() {
 		t.Helper()
 		t.Logf("starting manager.Manager")
 		defer close(startChannel)
-		if err := mgr.Start(stopChannel); err != nil {
+		if err := mgr.Start(context.Background()); err != nil {
 			t.Errorf("Uexpected error returned from manager.Manager: %v", err)
 			return
 		}
 		t.Logf("manager.Manager stopped cleanly")
 	}()
 
-	mgr.GetCache().WaitForCacheSync(stopChannel)
+	mgr.GetCache().WaitForCacheSync(context.Background())
 	t.Logf("manager Cache synchronized")
 	return func() {
 		close(stopChannel)
@@ -338,8 +340,8 @@ func newMapper(groupResources ...*restmapper.APIGroupResources) func(c *rest.Con
 	}
 }
 
-func newClientFunc(clientScheme *runtime.Scheme, tracker clienttesting.ObjectTracker) manager.NewClientFunc {
-	return func(_ cache.Cache, _ *rest.Config, _ client.Options) (client.Client, error) {
+func newClientFunc(clientScheme *runtime.Scheme, tracker clienttesting.ObjectTracker) cluster.NewClientFunc {
+	return func(_ cache.Cache, _ *rest.Config, _ client.Options, uncachedObjects ...client.Object) (client.Client, error) {
 		return NewFakeClientWithSchemeAndTracker(clientScheme, tracker), nil
 	}
 }
@@ -362,9 +364,9 @@ type ReconcilerInvocation struct {
 // the controller manager test utilities (e.g. ActionVerifier) allows for more advanced scripting, e.g. when a single event
 // may cause multiple passes through the reconcile.Reconciler.
 func WrapReconciler(reconciler reconcile.Reconciler, resultChannel chan ReconcilerInvocation) reconcile.Reconciler {
-	return reconcile.Func(func(request reconcile.Request) (reconcile.Result, error) {
+	return reconcile.Func(func(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 		invocation := ReconcilerInvocation{Request: request}
-		invocation.Result, invocation.Error = reconciler.Reconcile(request)
+		invocation.Result, invocation.Error = reconciler.Reconcile(ctx, request)
 		resultChannel <- invocation
 		return invocation.Result, invocation.Error
 	})

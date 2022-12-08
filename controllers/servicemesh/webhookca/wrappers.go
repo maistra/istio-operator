@@ -8,7 +8,6 @@ import (
 	v1 "k8s.io/api/admissionregistration/v1"
 	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -21,14 +20,14 @@ type webhookGetter interface {
 
 type webhookWrapper interface {
 	MetaObject() metav1.Object
-	Object() runtime.Object
+	Object() client.Object
 	ClientConfigs() []*v1.WebhookClientConfig
 	Copy() webhookWrapper
 	NamespacedName() types.NamespacedName
 	UpdateCABundle(ctx context.Context, cl client.Client, caBundle []byte) error
 }
 
-func toWebhookWrapper(obj runtime.Object) (webhookWrapper, error) {
+func toWebhookWrapper(obj client.Object) (webhookWrapper, error) {
 	switch wh := obj.(type) {
 	case *v1.ValidatingWebhookConfiguration:
 		return &validatingWebhookWrapper{ValidatingWebhookConfiguration: wh}, nil

@@ -1,0 +1,33 @@
+# Configuration needed by Mixer.
+# Mixer cluster is delivered via CDS
+# Specify mixer cluster settings
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: istio-policy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: "2.0.11"
+    app: istio-policy
+    release: {{ .Release.Name }}
+spec:
+  host: istio-policy.{{ .Release.Namespace }}.svc.{{ .Values.global.proxy.clusterDomain }}
+  {{- if .Values.global.defaultConfigVisibilitySettings }}
+  exportTo:
+  - '*'
+  {{- end }}
+  trafficPolicy:
+    portLevelSettings:
+    - port:
+        number: 15004 # grpc-mixer-mtls
+      tls:
+        mode: ISTIO_MUTUAL
+    - port:
+        number: 9091 # grpc-mixer
+      tls:
+        mode: DISABLE
+    connectionPool:
+      http:
+        http2MaxRequests: 10000
+        maxRequestsPerConnection: 10000
+---

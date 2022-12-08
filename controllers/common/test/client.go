@@ -47,6 +47,7 @@ type fakeClient struct {
 	*testing.Fake
 	scheme     *runtime.Scheme
 	serializer runtime.Serializer
+	mapper 		meta.RESTMapper
 }
 
 var _ client.Client = &fakeClient{}
@@ -96,7 +97,7 @@ func NewFakeClientWithSchemeAndTracker(clientScheme *runtime.Scheme, tracker tes
 	}
 }
 
-func (c *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+func (c *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object,  opts ...client.GetOption) error {
 	gvr, err := getGVRFromObject(obj, c.scheme)
 	if err != nil {
 		return err
@@ -111,7 +112,7 @@ func (c *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.
 	return c.copyObject(o, obj)
 }
 
-func (c *fakeClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
+func (c *fakeClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
 	gvk, err := getGVKFromList(list, c.scheme)
 	if err != nil {
 		return err
@@ -168,7 +169,7 @@ func filterListItems(list runtime.Object, labSel labels.Selector) error {
 	return nil
 }
 
-func (c *fakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+func (c *fakeClient) Create(ctx context.Context, obj  client.Object, opts ...client.CreateOption) error {
 	createOptions := &client.CreateOptions{}
 	createOptions.ApplyOptions(opts)
 
@@ -193,7 +194,7 @@ func (c *fakeClient) Create(ctx context.Context, obj runtime.Object, opts ...cli
 	return c.copyObject(o, obj)
 }
 
-func (c *fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
+func (c *fakeClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
 	gvr, err := getGVRFromObject(obj, c.scheme)
 	if err != nil {
 		return err
@@ -207,7 +208,7 @@ func (c *fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...cli
 	return err
 }
 
-func (c *fakeClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+func (c *fakeClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	return c.internalUpdate("", obj)
 }
 
@@ -229,11 +230,11 @@ func (c *fakeClient) internalUpdate(subresource string, obj runtime.Object) erro
 
 // Patch patches the given obj in the Kubernetes cluster. obj must be a
 // struct pointer so that obj can be updated with the content returned by the Server.
-func (c *fakeClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (c *fakeClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	return c.internalPatch("", obj, patch, opts...)
 }
 
-func (c *fakeClient) internalPatch(subresource string, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (c *fakeClient) internalPatch(subresource string, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	patchOptions := &client.PatchOptions{}
 	patchOptions.ApplyOptions(opts)
 
@@ -282,7 +283,7 @@ func (c *fakeClient) internalPatch(subresource string, obj runtime.Object, patch
 }
 
 // DeleteAllOf deletes all objects of the given type matching the given options.
-func (c *fakeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
+func (c *fakeClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
 	gvk, err := apiutil.GVKForObject(obj, c.scheme)
 	if err != nil {
 		return err
@@ -338,6 +339,16 @@ func (c *fakeClient) copyObject(source, target runtime.Object) error {
 	return runtime.DecodeInto(c.serializer, j, target)
 }
 
+// RESTMapper returns the scheme this client is using.
+func (c *fakeClient) RESTMapper() meta.RESTMapper {
+	return c.mapper
+}
+
+// Scheme returns the scheme this client is using.
+func (c *fakeClient) Scheme() *runtime.Scheme {
+	return c.scheme
+}
+
 func getGVRFromObject(obj runtime.Object, scheme *runtime.Scheme) (schema.GroupVersionResource, error) {
 	gvk, err := apiutil.GVKForObject(obj, scheme)
 	if err != nil {
@@ -371,7 +382,7 @@ type fakeStatusWriter struct {
 	client *fakeClient
 }
 
-func (sw *fakeStatusWriter) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+func (sw *fakeStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	// TODO(droot): This results in full update of the obj (spec + status). Need
 	// a way to update status field only.
 	return sw.client.internalUpdate("status", obj)
@@ -380,7 +391,7 @@ func (sw *fakeStatusWriter) Update(ctx context.Context, obj runtime.Object, opts
 // Patch patches the given object's subresource. obj must be a struct
 // pointer so that obj can be updated with the content returned by the
 // Server.
-func (sw *fakeStatusWriter) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (sw *fakeStatusWriter) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	return sw.client.internalPatch("status", obj, patch, opts...)
 }
 

@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"github.com/operator-framework/operator-lib/handler"
 	v1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -16,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	runtimeHandler "sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -92,31 +92,31 @@ func add(mgr manager.Manager, r *reconciler) error {
 	}
 
 	// Watch secret
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, runtimeHandler.EnqueueRequestsFromMapFunc(
+		func(obj client.Object) []reconcile.Request {
 			return r.webhookCABundleManager.ReconcileRequestsFromSource(
 				ObjectRef{
 					Kind:      "Secret",
-					Namespace: obj.Meta.GetNamespace(),
-					Name:      obj.Meta.GetName(),
+					Namespace: obj.GetNamespace(),
+					Name:      obj.GetName(),
 				})
-		}),
-	}, sourceWatchPredicates(r))
+		},
+	), sourceWatchPredicates(r))
 	if err != nil {
 		return err
 	}
 
 	// Watch config map
-	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, runtimeHandler.EnqueueRequestsFromMapFunc(
+		func(obj client.Object) []reconcile.Request {
 			return r.webhookCABundleManager.ReconcileRequestsFromSource(
 				ObjectRef{
 					Kind:      "ConfigMap",
-					Namespace: obj.Meta.GetNamespace(),
-					Name:      obj.Meta.GetName(),
+					Namespace: obj.GetNamespace(),
+					Name:      obj.GetName(),
 				})
-		}),
-	}, sourceWatchPredicates(r))
+		},
+	), sourceWatchPredicates(r))
 	if err != nil {
 		return err
 	}
@@ -154,13 +154,13 @@ func add(mgr manager.Manager, r *reconciler) error {
 func sourceWatchPredicates(r *reconciler) predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(event event.CreateEvent) bool {
-			return r.isWatchingSourceObject(event.Meta, event.Object)
+			return r.isWatchingSourceObject(event.Object, event.Object)
 		},
 		UpdateFunc: func(event event.UpdateEvent) bool {
-			return r.isWatchingSourceObject(event.MetaNew, event.ObjectNew)
+			return r.isWatchingSourceObject(event.ObjectNew, event.ObjectNew)
 		},
 		DeleteFunc: func(event event.DeleteEvent) bool {
-			return r.isWatchingSourceObject(event.Meta, event.Object)
+			return r.isWatchingSourceObject(event.Object, event.Object)
 		},
 		// generic events don't interest us
 		GenericFunc: func(event event.GenericEvent) bool {
@@ -187,18 +187,18 @@ func (r *reconciler) isWatchingSourceObject(meta metav1.Object, object runtime.O
 	return false
 }
 
-func enqueueWebhookRequests(webhookCABundleManager WebhookCABundleManager) handler.EventHandler {
-	return &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
-			return webhookCABundleManager.ReconcileRequestsFromWebhook(obj.Object)
-		}),
-	}
+func enqueueWebhookRequests(webhookCABundleManager WebhookCABundleManager) runtimeHandler.EventHandler {
+	return runtimeHandler.EnqueueRequestsFromMapFunc(
+		func(obj client.Object) []reconcile.Request {
+			return webhookCABundleManager.ReconcileRequestsFromWebhook(obj)
+		},
+	)
 }
 
 func webhookWatchPredicates(webhookCABundleManager WebhookCABundleManager) predicate.Predicate {
 	return &predicate.Funcs{
 		CreateFunc: func(event event.CreateEvent) (ok bool) {
-			objName := event.Meta.GetName()
+			objName := event.Object.GetName()
 			if _, isCRD := event.Object.(*apixv1.CustomResourceDefinition); !isCRD {
 				for prefix, source := range autoRegistrationMap {
 					if strings.HasPrefix(objName, prefix) {
@@ -217,7 +217,7 @@ func webhookWatchPredicates(webhookCABundleManager WebhookCABundleManager) predi
 		},
 		// deletion and generic events don't interest us
 		DeleteFunc: func(event event.DeleteEvent) bool {
-			objName := event.Meta.GetName()
+			objName := event.Object.GetName()
 			if webhookCABundleManager.IsManaged(event.Object) {
 				for prefix := range autoRegistrationMap {
 					if strings.HasPrefix(objName, prefix) {
@@ -245,10 +245,10 @@ type reconciler struct {
 
 // Reconcile updates ClientConfigs of MutatingWebhookConfigurations to contain the CABundle
 // from the respective Istio SA secret or CA Bundle config map
-func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	logger := createLogger().WithValues("WebhookConfig", request.NamespacedName.String())
 	logger.Info("reconciling WebhookConfiguration")
-	ctx := common.NewReconcileContext(logger)
+	ctx = common.NewReconcileContext(logger)
 	return reconcile.Result{}, r.webhookCABundleManager.UpdateCABundle(ctx, r.Client, request.NamespacedName)
 }
 

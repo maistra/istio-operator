@@ -1,0 +1,96 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    "helm.sh/resource-policy": keep
+  labels:
+    maistra-version: "2.0.11"
+    app: istio-mixer
+    chart: istio
+    heritage: Tiller
+    release: istio
+  name: httpapispecbindings.config.istio.io
+spec:
+  group: config.istio.io
+  names:
+    categories:
+    - istio-io
+    - apim-istio-io
+    kind: HTTPAPISpecBinding
+    listKind: HTTPAPISpecBindingList
+    plural: httpapispecbindings
+    singular: httpapispecbinding
+  preserveUnknownFields: false
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          properties:
+            api_specs:
+              items:
+                properties:
+                  name:
+                    description: The short name of the HTTPAPISpec.
+                    format: string
+                    type: string
+                  namespace:
+                    description: Optional namespace of the HTTPAPISpec.
+                    format: string
+                    type: string
+                type: object
+              type: array
+            apiSpecs:
+              items:
+                properties:
+                  name:
+                    description: The short name of the HTTPAPISpec.
+                    format: string
+                    type: string
+                  namespace:
+                    description: Optional namespace of the HTTPAPISpec.
+                    format: string
+                    type: string
+                type: object
+              type: array
+            services:
+              description: One or more services to map the listed HTTPAPISpec onto.
+              items:
+                properties:
+                  domain:
+                    description: Domain suffix used to construct the service FQDN
+                      in implementations that support such specification.
+                    format: string
+                    type: string
+                  labels:
+                    additionalProperties:
+                      format: string
+                      type: string
+                    description: Optional one or more labels that uniquely identify
+                      the service version.
+                    type: object
+                  name:
+                    description: The short name of the service such as "foo".
+                    format: string
+                    type: string
+                  namespace:
+                    description: Optional namespace of the service.
+                    format: string
+                    type: string
+                  service:
+                    description: The service FQDN.
+                    format: string
+                    type: string
+                type: object
+              type: array
+          type: object
+        status:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+      type: object
+  versions:
+  - name: v1alpha2
+    served: true
+    storage: true

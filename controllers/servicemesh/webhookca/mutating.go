@@ -5,7 +5,6 @@ import (
 
 	v1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -32,7 +31,7 @@ type mutatingWebhookWrapper struct {
 
 var _ webhookWrapper = (*mutatingWebhookWrapper)(nil)
 
-func (mw *mutatingWebhookWrapper) Object() runtime.Object {
+func (mw *mutatingWebhookWrapper) Object() client.Object {
 	return mw.MutatingWebhookConfiguration
 }
 

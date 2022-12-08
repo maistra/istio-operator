@@ -1,0 +1,54 @@
+# Installed for each revision - not installed for cluster resources ( cluster roles, bindings, crds)
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: istiod-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
+  labels:
+    maistra-version: "2.0.11"
+    istio.io/rev: {{ .Values.revision | default "default" }}
+    app: sidecar-injector
+    release: {{ .Release.Name }}
+webhooks:
+  - name: sidecar-injector.istio.io
+    clientConfig:
+      service:
+        name: istiod-{{ .Values.revision | default "default" }}
+        namespace: {{ .Release.Namespace }}
+        path: "/inject"
+      caBundle: ""
+    sideEffects: None
+    rules:
+      - operations: [ "CREATE" ]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+    failurePolicy: Fail
+    namespaceSelector:
+      matchExpressions:
+      - key: maistra.io/member-of
+        operator: In
+        values:
+        - {{ .Release.Namespace }}
+      - key: maistra.io/ignore-namespace
+        operator: DoesNotExist
+      - key: istio-injection
+        operator: NotIn
+        values:
+        - disabled
+      - key: istio-env
+        operator: DoesNotExist
+{{- if .Values.sidecarInjectorWebhook.objectSelector.enabled }}
+    objectSelector:
+      matchExpressions:
+{{- if eq .Values.global.proxy.autoInject "enabled" }}
+      - key: "sidecar.istio.io/inject"
+        operator: NotIn
+        values:
+        - "false"
+{{- else }}
+      - key: "sidecar.istio.io/inject"
+        operator: In
+        values:
+        - "true"
+{{- end }}
+{{- end }}

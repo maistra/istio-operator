@@ -1,0 +1,24 @@
+{{- if and .Values.rateLimiting.rls.autoscaleEnabled .Values.rateLimiting.rls.autoscaleMin .Values.rateLimiting.rls.autoscaleMax }}
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rls-{{ .Values.revision | default "default" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: rls
+    release: {{ .Release.Name }}
+    istio.io/rev: {{ .Values.revision | default "default" }}
+spec:
+  maxReplicas: {{ .Values.rateLimiting.rls.autoscaleMax }}
+  minReplicas: {{ .Values.rateLimiting.rls.autoscaleMin }}
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rls-{{ .Values.revision | default "default" }}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: {{ .Values.rateLimiting.rls.cpu.targetAverageUtilization }}
+---
+{{- end }}

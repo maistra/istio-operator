@@ -1,0 +1,20 @@
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: wasm-cacher-{{ .Values.revision | default "default" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: "2.0.11"
+    app: wasm-cacher
+    istio.io/rev: {{ .Values.revision | default "default" }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+spec:
+  host: wasm-cacher-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}.svc.{{ .Values.global.proxy.clusterDomain }}
+  {{- if .Values.global.defaultConfigVisibilitySettings }}
+  exportTo:
+  - '*'
+  {{- end }}
+  trafficPolicy:
+    tls:
+      mode: DISABLE

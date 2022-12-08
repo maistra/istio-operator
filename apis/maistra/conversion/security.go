@@ -61,24 +61,14 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			if istiod == nil {
 				break
 			}
-			hasIstiod := in.Version != versions.V1_1.String()
-			if hasIstiod {
-				// configure pilot (istiod) settings
-				if istiod.WorkloadCertTTLDefault != "" {
-					addEnvToComponent(in, "pilot", "DEFAULT_WORKLOAD_CERT_TTL", istiod.WorkloadCertTTLDefault)
-				}
-				if istiod.WorkloadCertTTLMax != "" {
-					addEnvToComponent(in, "pilot", "MAX_WORKLOAD_CERT_TTL", istiod.WorkloadCertTTLMax)
-				}
-			} else {
-				// configure security (citadel) settings
-				if istiod.WorkloadCertTTLDefault != "" {
-					if err := setHelmStringValue(values, "security.workloadCertTtl", istiod.WorkloadCertTTLDefault); err != nil {
-						return err
-					}
-				}
-				// can't configure WorkloadCertTTLMax on pre 1.6
+			// configure pilot (istiod) settings
+			if istiod.WorkloadCertTTLDefault != "" {
+				addEnvToComponent(in, "pilot", "DEFAULT_WORKLOAD_CERT_TTL", istiod.WorkloadCertTTLDefault)
 			}
+			if istiod.WorkloadCertTTLMax != "" {
+				addEnvToComponent(in, "pilot", "MAX_WORKLOAD_CERT_TTL", istiod.WorkloadCertTTLMax)
+			}
+
 			switch istiod.Type {
 			case v2.IstioCertificateSignerTypePrivateKey:
 				if err := setHelmBoolValue(values, "security.selfSigned", false); err != nil {
@@ -106,10 +96,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 					break
 				}
 				componentRoot := "pilot"
-				if in.Version == versions.V1_1.String() {
-					// configure security (citadel) settings
-					componentRoot = "security"
-				}
+
 				if selfSigned.TTL != "" {
 					addEnvToComponent(in, componentRoot, "CITADEL_SELF_SIGNED_CA_CERT_TTL", selfSigned.TTL)
 				}

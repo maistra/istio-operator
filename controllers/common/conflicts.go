@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -21,8 +22,8 @@ func NewConflictHandlingReconciler(reconciler reconcile.Reconciler) reconcile.Re
 	}
 }
 
-func (r *conflictHandlingReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	result, err := r.reconciler.Reconcile(request)
+func (r *conflictHandlingReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	result, err := r.reconciler.Reconcile(ctx, request)
 	if IsConflict(err) {
 		log := logf.Log.WithName("conflict-handler")
 		log.Info("Update conflict detected. Retrying...", "error", err)

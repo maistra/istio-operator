@@ -1,0 +1,22 @@
+{{- if .Values.global.defaultPodDisruptionBudget.enabled }}
+{{ $gateway := index .Values "gateways" "istio-egressgateway" }}
+{{- if (semverCompare ">=1.21-0" .Capabilities.KubeVersion.GitVersion) }}
+apiVersion: policy/v1
+{{- else }}
+apiVersion: policy/v1beta1
+{{- end }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $gateway.name | default "istio-egressgateway" }}
+  namespace: {{ $gateway.namespace | default .Release.Namespace }}
+  labels:
+    maistra-version: "2.0.11"
+{{ $gateway.labels | toYaml | indent 4 }}
+    release: {{ .Release.Name }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+{{ $gateway.labels | toYaml | indent 6 }}
+      release: {{ .Release.Name }}
+{{- end }}

@@ -1,9 +1,11 @@
 package test
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/operator-framework/operator-lib/handler"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -11,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	clienttesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"github.com/operator-framework/operator-lib/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -19,7 +20,7 @@ import (
 	maistrav1 "github.com/maistra/istio-operator/apis/maistra/v1"
 )
 
-var voidReconciler = reconcile.Func(func(request reconcile.Request) (reconcile.Result, error) {
+var voidReconciler = reconcile.Func(func(context.Context, reconcile.Request) (reconcile.Result, error) {
 	return reconcile.Result{}, nil
 })
 

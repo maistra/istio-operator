@@ -1,0 +1,82 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    "helm.sh/resource-policy": keep
+  labels:
+    app: istio-mixer
+    chart: istio
+    heritage: Tiller
+    maistra-version: 1.1.18
+    release: istio
+  name: quotaspecs.config.istio.io
+spec:
+  group: config.istio.io
+  names:
+    categories:
+    - istio-io
+    - apim-istio-io
+    kind: QuotaSpec
+    plural: quotaspecs
+    singular: quotaspec
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          description: Determines the quotas used for individual requests.
+          properties:
+            rules:
+              description: A list of Quota rules.
+              items:
+                properties:
+                  match:
+                    description: If empty, match all request.
+                    items:
+                      properties:
+                        clause:
+                          additionalProperties:
+                            oneOf:
+                            - required:
+                              - exact
+                            - required:
+                              - prefix
+                            - required:
+                              - regex
+                            properties:
+                              exact:
+                                format: string
+                                type: string
+                              prefix:
+                                format: string
+                                type: string
+                              regex:
+                                format: string
+                                type: string
+                            type: object
+                          description: Map of attribute names to StringMatch type.
+                          type: object
+                      type: object
+                    type: array
+                  quotas:
+                    description: The list of quotas to charge.
+                    items:
+                      properties:
+                        charge:
+                          format: int32
+                          type: integer
+                        quota:
+                          format: string
+                          type: string
+                      type: object
+                    type: array
+                type: object
+              type: array
+          type: object
+      type: object
+  versions:
+  - name: v1alpha2
+    served: true
+    storage: true

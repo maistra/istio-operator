@@ -1,0 +1,37 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: istio-mesh-{{ .Values.revision | default "default" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: "2.1.5"
+    app: istio
+    release: {{ .Release.Name }}
+spec:
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          "maistra.io/member-of": "{{ .Release.Namespace }}"
+
+---
+
+# this will work for all routes into the mesh namespace referencing a labelled pod, but not on ocp 3.11
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: istio-expose-route-{{ .Values.revision | default "default" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: "2.1.5"
+    app: istio
+    release: {{ .Release.Name }}
+spec:
+  podSelector:
+    matchLabels:
+      maistra.io/expose-route: "true"
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          network.openshift.io/policy-group: ingress

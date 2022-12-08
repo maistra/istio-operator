@@ -8,7 +8,6 @@ import (
 	v1 "k8s.io/api/admissionregistration/v1"
 	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -37,7 +36,7 @@ type conversionWebhookWrapper struct {
 
 var _ webhookWrapper = (*conversionWebhookWrapper)(nil)
 
-func (mw *conversionWebhookWrapper) Object() runtime.Object {
+func (mw *conversionWebhookWrapper) Object() client.Object {
 	return mw.CustomResourceDefinition
 }
 

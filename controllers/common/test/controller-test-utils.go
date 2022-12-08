@@ -60,7 +60,7 @@ func CreateClientWithScheme(s *runtime.Scheme, clientObjects ...runtime.Object) 
 	return cl, enhancedTracker
 }
 
-func GetObject(ctx context.Context, cl client.Client, objectKey client.ObjectKey, into runtime.Object) runtime.Object {
+func GetObject(ctx context.Context, cl client.Client, objectKey client.ObjectKey, into client.Object) runtime.Object {
 	err := cl.Get(ctx, objectKey, into)
 	if err != nil {
 		// we don't expect any errors, since we're calling Get on a fake client, but let's panic if one does occur
@@ -69,7 +69,7 @@ func GetObject(ctx context.Context, cl client.Client, objectKey client.ObjectKey
 	return into
 }
 
-func GetUpdatedObject(ctx context.Context, cl client.Client, objectMeta meta.ObjectMeta, into runtime.Object) runtime.Object {
+func GetUpdatedObject(ctx context.Context, cl client.Client, objectMeta meta.ObjectMeta, into client.Object) runtime.Object {
 	err := cl.Get(ctx, common.ToNamespacedName(&objectMeta), into)
 	if err != nil {
 		// we don't expect any errors, since we're calling Get on a fake client, but let's panic if one does occur
@@ -78,7 +78,7 @@ func GetUpdatedObject(ctx context.Context, cl client.Client, objectMeta meta.Obj
 	return into
 }
 
-func AssertObjectExists(ctx context.Context, cl client.Client, namespacedName types.NamespacedName, into runtime.Object, message string, t *testing.T) {
+func AssertObjectExists(ctx context.Context, cl client.Client, namespacedName types.NamespacedName, into client.Object, message string, t *testing.T) {
 	t.Helper()
 	err := cl.Get(ctx, namespacedName, into)
 	if err != nil {
@@ -91,7 +91,7 @@ func AssertObjectExists(ctx context.Context, cl client.Client, namespacedName ty
 	}
 }
 
-func AssertNotFound(ctx context.Context, cl client.Client, namespacedName types.NamespacedName, into runtime.Object, message string, t *testing.T) {
+func AssertNotFound(ctx context.Context, cl client.Client, namespacedName types.NamespacedName, into client.Object, message string, t *testing.T) {
 	t.Helper()
 	err := cl.Get(ctx, namespacedName, into)
 	if err == nil {

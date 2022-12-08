@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -30,7 +30,7 @@ type ControllerTestCase struct {
 	StorageVersions []schema.GroupVersion
 	// Resources are existing resources that should be seeded into the ObjectTracker
 	// used by the simulator.
-	Resources []runtime.Object
+	Resources []client.Object
 	// Events are events that should be fed through the controller manager.
 	Events []ControllerTestEvent
 }

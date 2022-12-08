@@ -8,6 +8,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
@@ -54,20 +55,20 @@ func NewCache(opts cache.Options, tracker testing.ObjectTracker) (cache.Cache, e
 // Get retrieves an obj for the given object key from the Kubernetes Cluster.
 // obj must be a struct pointer so that obj can be updated with the response
 // returned by the Server.
-func (c *FakeCache) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+func (c *FakeCache) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 	return c.client.Get(ctx, key, obj)
 }
 
 // List retrieves list of objects for a given namespace and list options. On a
 // successful call, Items field in the list will be populated with the
 // result returned from the server.
-func (c *FakeCache) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
+func (c *FakeCache) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
 	return c.client.List(ctx, list, opts...)
 }
 
 // GetInformer fetches or constructs an informer for the given object that corresponds to a single
 // API kind and resource.
-func (c *FakeCache) GetInformer(ctx context.Context, obj runtime.Object) (cache.Informer, error) {
+func (c *FakeCache) GetInformer(ctx context.Context, obj client.Object) (cache.Informer, error) {
 	gvk, err := apiutil.GVKForObject(obj, c.scheme)
 	if err != nil {
 		return nil, err
@@ -139,14 +140,13 @@ func (c *FakeCache) internalGetInformer(gvk schema.GroupVersionKind, obj runtime
 
 func (c *FakeCache) createListWatcher(gvk schema.GroupVersionKind) (*toolscache.ListWatch, error) {
 	listGVK := gvk.GroupVersion().WithKind(gvk.Kind + "List")
-	listObj, err := c.scheme.New(listGVK)
-	if err != nil {
-		return nil, err
-	}
+	listObj := &unstructured.UnstructuredList{}
+	listObj.SetGroupVersionKind(listGVK)
+
 	gvr, _ := meta.UnsafeGuessKindToResource(gvk)
 	return &toolscache.ListWatch{
 		ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
-			res := listObj.DeepCopyObject()
+			res := listObj.DeepCopy()
 			// TODO: OSSM-1925
 			err := c.client.List(context.TODO(), res, &client.ListOptions{Namespace: c.namespace, Raw: &opts})
 			if err != nil {
@@ -163,28 +163,25 @@ func (c *FakeCache) createListWatcher(gvk schema.GroupVersionKind) (*toolscache.
 
 // Start runs all the informers known to this cache until the given channel is closed.
 // It blocks.
-func (c *FakeCache) Start(stop <-chan struct{}) error {
+func (c *FakeCache) Start(ctx context.Context) error {
 	func() {
 		c.mu.Lock()
 		defer c.mu.Unlock()
 
-		// Set the stop channel so it can be passed to informers that are added later
-		c.stop = stop
-
 		// Start each informer
 		for _, informer := range c.informers {
-			go informer.Run(stop)
+			go informer.Run(c.stop)
 		}
 
 		// Set started to true so we immediately start any informers added later.
 		c.started = true
 	}()
-	<-stop
+	<-c.stop
 	return nil
 }
 
 // WaitForCacheSync waits for all the caches to sync.  Returns false if it could not sync a cache.
-func (c *FakeCache) WaitForCacheSync(stop <-chan struct{}) bool {
+func (c *FakeCache) WaitForCacheSync(ctx context.Context) bool {
 	syncedFuncs := func() []toolscache.InformerSynced {
 		c.mu.RLock()
 		defer c.mu.RUnlock()
@@ -194,7 +191,7 @@ func (c *FakeCache) WaitForCacheSync(stop <-chan struct{}) bool {
 		}
 		return syncedFuncs
 	}()
-	return toolscache.WaitForCacheSync(stop, syncedFuncs...)
+	return toolscache.WaitForCacheSync(c.stop, syncedFuncs...)
 }
 
 // IndexField adds an index with the given field name on the given object type
@@ -202,7 +199,7 @@ func (c *FakeCache) WaitForCacheSync(stop <-chan struct{}) bool {
 // compatibility with the Kubernetes API server, only return one key, and only use
 // fields that the API server supports.  Otherwise, you can return multiple keys,
 // and "equality" in the field selector means that at least one key matches the value.
-func (c *FakeCache) IndexField(ctx context.Context, obj runtime.Object, field string, extractValue client.IndexerFunc) error {
+func (c *FakeCache) IndexField(ctx context.Context, obj client.Object, field string, extractValue client.IndexerFunc) error {
 	informer, err := c.GetInformer(ctx, obj)
 	if err != nil {
 		return err
@@ -214,7 +211,7 @@ func (c *FakeCache) IndexField(ctx context.Context, obj runtime.Object, field st
 func indexByField(indexer cache.Informer, field string, extractor client.IndexerFunc) error {
 	indexFunc := func(objRaw interface{}) ([]string, error) {
 		// TODO(directxman12): check if this is the correct type?
-		obj, isObj := objRaw.(runtime.Object)
+		obj, isObj := objRaw.(client.Object)
 		if !isObj {
 			return nil, fmt.Errorf("object of type %T is not an Object", objRaw)
 		}

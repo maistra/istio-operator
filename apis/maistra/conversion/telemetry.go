@@ -14,8 +14,6 @@ func populateTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interfac
 		return nil
 	}
 
-	istiod := in.Version != versions.V1_1.String()
-
 	if in.Telemetry.Type != "" {
 		if err := setHelmStringValue(values, "telemetry.implementation", string(in.Telemetry.Type)); err != nil {
 			return nil
@@ -24,7 +22,6 @@ func populateTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interfac
 
 	switch in.Telemetry.Type {
 	case v2.TelemetryTypeNone:
-		if istiod {
 			if err := setHelmBoolValue(values, "telemetry.enabled", false); err != nil {
 				return err
 			}
@@ -34,67 +31,45 @@ func populateTelemetryValues(in *v2.ControlPlaneSpec, values map[string]interfac
 			if err := setHelmBoolValue(values, "telemetry.v2.enabled", false); err != nil {
 				return err
 			}
-		} else {
-			if err := setHelmBoolValue(values, "global.istioRemote", false); err != nil {
-				return err
-			}
-		}
+
 		if err := setHelmBoolValue(values, "mixer.telemetry.enabled", false); err != nil {
 			return err
 		}
 	case v2.TelemetryTypeMixer:
-		if istiod {
-			if err := setHelmBoolValue(values, "telemetry.enabled", true); err != nil {
-				return err
-			}
-			if err := setHelmBoolValue(values, "telemetry.v1.enabled", true); err != nil {
-				return err
-			}
-			if err := setHelmBoolValue(values, "telemetry.v2.enabled", false); err != nil {
-				return err
-			}
-		} else {
-			if err := setHelmBoolValue(values, "global.istioRemote", false); err != nil {
-				return err
-			}
+		if err := setHelmBoolValue(values, "telemetry.enabled", true); err != nil {
+			return err
 		}
+		if err := setHelmBoolValue(values, "telemetry.v1.enabled", true); err != nil {
+			return err
+		}
+		if err := setHelmBoolValue(values, "telemetry.v2.enabled", false); err != nil {
+			return err
+			}
 		if err := setHelmBoolValue(values, "mixer.telemetry.enabled", true); err != nil {
 			return err
 		}
 	case v2.TelemetryTypeRemote:
-		if istiod {
-			if err := setHelmBoolValue(values, "telemetry.enabled", true); err != nil {
-				return err
-			}
-			if err := setHelmBoolValue(values, "telemetry.v1.enabled", true); err != nil {
-				return err
-			}
-			if err := setHelmBoolValue(values, "telemetry.v2.enabled", false); err != nil {
-				return err
-			}
-		} else {
-			if err := setHelmBoolValue(values, "global.istioRemote", true); err != nil {
-				return err
-			}
+		if err := setHelmBoolValue(values, "telemetry.enabled", true); err != nil {
+			return err
+		}
+		if err := setHelmBoolValue(values, "telemetry.v1.enabled", true); err != nil {
+			return err
+		}
+		if err := setHelmBoolValue(values, "telemetry.v2.enabled", false); err != nil {
+			return err
 		}
 		if err := setHelmBoolValue(values, "mixer.telemetry.enabled", false); err != nil {
 			return err
 		}
 	case v2.TelemetryTypeIstiod:
-		if istiod {
-			if err := setHelmBoolValue(values, "telemetry.enabled", true); err != nil {
-				return err
-			}
-			if err := setHelmBoolValue(values, "telemetry.v1.enabled", false); err != nil {
-				return err
-			}
-			if err := setHelmBoolValue(values, "telemetry.v2.enabled", true); err != nil {
-				return err
-			}
-		} else {
-			if err := setHelmBoolValue(values, "global.istioRemote", false); err != nil {
-				return err
-			}
+		if err := setHelmBoolValue(values, "telemetry.enabled", true); err != nil {
+			return err
+		}
+		if err := setHelmBoolValue(values, "telemetry.v1.enabled", false); err != nil {
+			return err
+		}
+		if err := setHelmBoolValue(values, "telemetry.v2.enabled", true); err != nil {
+			return err
 		}
 		if err := setHelmBoolValue(values, "mixer.telemetry.enabled", false); err != nil {
 			return err

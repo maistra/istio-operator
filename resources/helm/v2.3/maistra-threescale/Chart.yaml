@@ -1,0 +1,13 @@
+apiVersion: v1
+name: maistra-threescale
+version: 1.1.0
+appVersion: 1.1.0
+tillerVersion: ">=2.7.2-0"
+description: Helm chart for Maistra 3scale
+keywords:
+  - maistra
+  - threescale
+sources:
+  - http://github.com/Maistra/istio-operator
+engine: gotpl
+icon: https://istio.io/favicons/android-192x192.png

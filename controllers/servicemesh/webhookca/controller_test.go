@@ -7,7 +7,6 @@ import (
 	v1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -81,7 +80,7 @@ var (
 
 type testCase struct {
 	name                 string
-	webhook              runtime.Object
+	webhook              client.Object
 	webhookName          string
 	source               CABundleSource
 	object               runtime.Object // Secret or ConfigMap
@@ -278,9 +277,8 @@ func TestReconcileAutomaticRegistration(t *testing.T) {
 			mutateMapValue(tc.object, getKey(t, tc.source))
 			cl, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
 
-			accessor, _ := meta.Accessor(tc.webhook)
 			watchPredicates := webhookWatchPredicates(r.webhookCABundleManager)
-			watchPredicates.Create(event.CreateEvent{Meta: accessor, Object: tc.webhook})
+			watchPredicates.Create(event.CreateEvent{Object: tc.webhook})
 
 			assertReconcileSucceeds(r, tc.request, t)
 
@@ -305,7 +303,7 @@ func TestReconcileAutomaticRegistration(t *testing.T) {
 				Name:      name,
 			}), "Expected source to trigger a webhook reconcile", t)
 
-			watchPredicates.Delete(event.DeleteEvent{Meta: accessor, Object: tc.webhook})
+			watchPredicates.Delete(event.DeleteEvent{Object: tc.webhook})
 			if r.webhookCABundleManager.IsManaged(tc.webhook) {
 				t.Errorf("webhook should no longer be watched after deletion.")
 			}
@@ -492,7 +490,7 @@ func createClientAndReconciler(clientObjects ...runtime.Object) (client.Client, 
 
 func assertReconcileSucceeds(r *reconciler, request reconcile.Request, t *testing.T) {
 	t.Helper()
-	res, err := r.Reconcile(request)
+	res, err := r.Reconcile(context.Background(), request)
 	if err != nil {
 		t.Fatalf("Reconcile failed: %v", err)
 	}
@@ -503,7 +501,7 @@ func assertReconcileSucceeds(r *reconciler, request reconcile.Request, t *testin
 
 func assertReconcileFails(r *reconciler, request reconcile.Request, t *testing.T) {
 	t.Helper()
-	_, err := r.Reconcile(request)
+	_, err := r.Reconcile(context.Background(), request)
 	if err == nil {
 		t.Fatal("Expected reconcile to fail, but it didn't")
 	}

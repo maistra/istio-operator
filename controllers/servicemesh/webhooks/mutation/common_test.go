@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -25,13 +25,13 @@ var acceptWithNoMutation = admission.Allowed("")
 
 func newCreateRequest(obj runtime.Object) admission.Request {
 	request := createRequest(obj)
-	request.Operation = admissionv1beta1.Create
+	request.Operation = admissionv1.Create
 	return request
 }
 
 func newUpdateRequest(oldObj, newObj runtime.Object) admission.Request {
 	request := createRequest(newObj)
-	request.Operation = admissionv1beta1.Update
+	request.Operation = admissionv1.Update
 	request.OldObject = toRawExtension(oldObj)
 	return request
 }
@@ -42,7 +42,7 @@ func createRequest(obj runtime.Object) admission.Request {
 		panic(err)
 	}
 	return admission.Request{
-		AdmissionRequest: admissionv1beta1.AdmissionRequest{
+		AdmissionRequest: admissionv1.AdmissionRequest{
 			Kind:      metaGVKForObject(obj),
 			Name:      metaObj.GetName(),
 			Namespace: metaObj.GetNamespace(),

@@ -20,8 +20,6 @@ import (
 const (
 	// InvalidVersion is not a valid version
 	InvalidVersion Ver = iota
-	// V1_1 -> v1.1
-	V1_1
 	// V2_0 -> v2.0
 	V2_0
 	// V2_1 -> v2.1
@@ -44,7 +42,6 @@ var (
 func init() {
 	versionToString = map[Ver]string{
 		InvalidVersion: "InvalidVersion",
-		V1_1:           "v1.1",
 		V2_0:           "v2.0",
 		V2_1:           "v2.1",
 		V2_2:           "v2.2",
@@ -53,7 +50,6 @@ func init() {
 
 	versionToStrategy = map[Ver]VersionStrategy{
 		InvalidVersion: &invalidVersionStrategy{InvalidVersion},
-		V1_1:           &versionStrategyV1_1{Ver: V1_1},
 		V2_0:           &versionStrategyV2_0{Ver: V2_0},
 		V2_1:           &versionStrategyV2_1{Ver: V2_1},
 		V2_2:           &versionStrategyV2_2{Ver: V2_2},
@@ -62,7 +58,6 @@ func init() {
 
 	versionToCNINetwork = map[Ver]string{
 		InvalidVersion: "",
-		V1_1:           "v1-1-istio-cni",
 		V2_0:           "v2-0-istio-cni",
 		V2_1:           "v2-1-istio-cni",
 		V2_2:           "v2-2-istio-cni",

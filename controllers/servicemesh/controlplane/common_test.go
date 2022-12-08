@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -85,8 +86,8 @@ type IntegrationTestValidation struct {
 
 type IntegrationTestCase struct {
 	name      string
-	smcp      runtime.Object
-	resources []runtime.Object
+	smcp      client.Object
+	resources []client.Object
 	create    IntegrationTestValidation
 	delete    IntegrationTestValidation
 }
@@ -107,7 +108,7 @@ func RunSimpleInstallTest(t *testing.T, testCases []IntegrationTestCase) {
 			Name:             tc.name,
 			ConfigureGlobals: InitializeGlobals(operatorNamespace),
 			AddControllers:   []test.AddControllerFunc{Add},
-			Resources: []runtime.Object{
+			Resources: []client.Object{
 				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: controlPlaneNamespace}},
 				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorNamespace}},
 				&kialiCRD,

@@ -50,28 +50,8 @@ func validatePolicyType(spec *v2.ControlPlaneSpec, v Ver, allErrors []error) []e
 	if policy == nil {
 		return allErrors
 	}
-	if v == V1_1 {
-		if policy.Type == v2.PolicyTypeIstiod {
-			allErrors = append(allErrors, fmt.Errorf("policy type %s is not supported in version %s", policy.Type, v.String()))
-		} else if policy.Type == v2.PolicyTypeRemote {
-			if spec.Telemetry == nil || spec.Telemetry.Type != v2.TelemetryTypeRemote {
-				allErrors = append(allErrors, fmt.Errorf("if policy type is Remote, telemetry type must also be Remote for v1.x versions"))
-			}
-		}
-		if policy.Mixer != nil {
-			if policy.Mixer.Adapters != nil {
-				if policy.Mixer.Adapters.KubernetesEnv != nil &&
-					(spec.Telemetry == nil || spec.Telemetry.Mixer == nil || spec.Telemetry.Mixer.Adapters == nil ||
-						spec.Telemetry.Mixer.Adapters.KubernetesEnv == nil ||
-						*spec.Telemetry.Mixer.Adapters.KubernetesEnv != *policy.Mixer.Adapters.KubernetesEnv) {
-					allErrors = append(allErrors, fmt.Errorf("if policy.mixer.adapters.kubernetesenv is specified, it must match telemetry.mixer.adapters.kubernetesenv"))
-				}
-			}
-		}
-	} else {
-		if policy.Remote != nil && policy.Remote.Address != "" && policy.Type != v2.PolicyTypeRemote {
+	if policy.Remote != nil && policy.Remote.Address != "" && policy.Type != v2.PolicyTypeRemote {
 			allErrors = append(allErrors, fmt.Errorf("if policy.remote.address is specified, policy.type must be Remote for v2.x versions"))
-		}
 	}
 
 	// all versions
@@ -96,28 +76,8 @@ func validateTelemetryType(spec *v2.ControlPlaneSpec, v Ver, allErrors []error) 
 	if telemetry == nil {
 		return allErrors
 	}
-	if v == V1_1 {
-		if telemetry.Type == v2.TelemetryTypeIstiod {
-			allErrors = append(allErrors, fmt.Errorf("telemetry type %s is not supported in version %s", spec.Telemetry.Type, v.String()))
-		} else if telemetry.Type == v2.TelemetryTypeRemote {
-			if spec.Policy == nil || spec.Policy.Type != v2.PolicyTypeRemote {
-				allErrors = append(allErrors, fmt.Errorf("if telemetry type is Remote, policy type must also be Remote for v1.x versions"))
-			}
-		}
-		if telemetry.Mixer != nil {
-			if telemetry.Mixer.Adapters != nil {
-				if telemetry.Mixer.Adapters.KubernetesEnv != nil &&
-					(spec.Policy == nil || spec.Policy.Mixer == nil || spec.Policy.Mixer.Adapters == nil ||
-						spec.Policy.Mixer.Adapters.KubernetesEnv == nil ||
-						*spec.Policy.Mixer.Adapters.KubernetesEnv != *telemetry.Mixer.Adapters.KubernetesEnv) {
-					allErrors = append(allErrors, fmt.Errorf("if telemetry.mixer.adapters.kubernetesenv is specified, it must match policy.mixer.adapters.kubernetesenv"))
-				}
-			}
-		}
-	} else {
-		if telemetry.Remote != nil && telemetry.Remote.Address != "" && telemetry.Type != v2.TelemetryTypeRemote {
-			allErrors = append(allErrors, fmt.Errorf("if telemetry.remote.address is specified, telemetry.type must be Remote for v2.x versions"))
-		}
+	if telemetry.Remote != nil && telemetry.Remote.Address != "" && telemetry.Type != v2.TelemetryTypeRemote {
+		allErrors = append(allErrors, fmt.Errorf("if telemetry.remote.address is specified, telemetry.type must be Remote for v2.x versions"))
 	}
 	// all versions
 	if telemetry.Type == v2.TelemetryTypeRemote {

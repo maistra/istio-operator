@@ -18,7 +18,7 @@ func HasFinalizer(obj runtime.Object) bool {
 	return finalizers.Has(FinalizerName)
 }
 
-func RemoveFinalizer(ctx context.Context, obj runtime.Object, cl client.Client) error {
+func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) error {
 	reqLogger := LogFromContext(ctx)
 	reqLogger.Info(fmt.Sprintf("Removing finalizer from %s", obj.GetObjectKind().GroupVersionKind().Kind))
 
@@ -37,7 +37,7 @@ func RemoveFinalizer(ctx context.Context, obj runtime.Object, cl client.Client) 
 	return nil
 }
 
-func AddFinalizer(ctx context.Context, obj runtime.Object, cl client.Client) error {
+func AddFinalizer(ctx context.Context, obj client.Object, cl client.Client) error {
 	reqLogger := LogFromContext(ctx)
 	reqLogger.Info(fmt.Sprintf("Adding finalizer to %s", obj.GetObjectKind().GroupVersionKind().Kind))
 

@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-logr/logr"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -77,7 +77,7 @@ func (v *ControlPlaneValidator) Handle(ctx context.Context, req admission.Reques
 		return badRequest(err.Error())
 	}
 
-	if req.AdmissionRequest.Operation == admissionv1beta1.Update {
+	if req.AdmissionRequest.Operation == admissionv1.Update {
 		// verify update
 		return v.validateUpdate(ctx, smcprequest.OldVersion(), smcprequest.NewVersion(), smcprequest.Old(), smcprequest.New())
 	}
@@ -100,7 +100,7 @@ func (v *ControlPlaneValidator) decodeRequest(req admission.Request, logger logr
 		}
 		var oldsmcp *maistrav1.ServiceMeshControlPlane
 		oldVersion := versions.InvalidVersion
-		if req.Operation == admissionv1beta1.Update {
+		if req.Operation == admissionv1.Update {
 			oldsmcp = &maistrav1.ServiceMeshControlPlane{}
 			err = v.decoder.DecodeRaw(req.AdmissionRequest.OldObject, oldsmcp)
 			if err != nil {
@@ -126,7 +126,7 @@ func (v *ControlPlaneValidator) decodeRequest(req admission.Request, logger logr
 		}
 		var oldsmcp *maistrav2.ServiceMeshControlPlane
 		oldVersion := versions.InvalidVersion
-		if req.Operation == admissionv1beta1.Update {
+		if req.Operation == admissionv1.Update {
 			oldsmcp = &maistrav2.ServiceMeshControlPlane{}
 			err = v.decoder.DecodeRaw(req.AdmissionRequest.OldObject, oldsmcp)
 			if err != nil {

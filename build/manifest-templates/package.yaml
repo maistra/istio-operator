@@ -1,0 +1,5 @@
+packageName: __NAME__
+channels:
+- name: "2.0"
+  currentCSV: __NAME__.v__VERSION__
+defaultChannel: "2.0"
