@@ -66,7 +66,10 @@ spec:
     {{- end }}
 {{- end }}
 
-{{- if or .Values.kiali.affinity .Values.kiali.deployment_affinity }}
+    pod_labels:
+      sidecar.istio.io/inject: "false"
+
+  {{- if or .Values.kiali.affinity .Values.kiali.deployment_affinity }}
     affinity:
     {{- if .Values.kiali.affinity }}
         {{- if .Values.kiali.affinity.nodeAffinity }}
