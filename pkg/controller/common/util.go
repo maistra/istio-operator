@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -24,6 +25,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -291,8 +293,8 @@ func (m EnhancedManager) AddReadyzCheck(name string, check healthz.Checker) erro
 	return m.delegate.AddReadyzCheck(name, check)
 }
 
-func (m EnhancedManager) Start(ch <-chan struct{}) error {
-	return m.delegate.Start(ch)
+func (m EnhancedManager) Start(ctx context.Context) error {
+	return m.delegate.Start(ctx)
 }
 
 func (m EnhancedManager) GetConfig() *rest.Config {
@@ -337,4 +339,8 @@ func (m EnhancedManager) GetLogger() logr.Logger {
 
 func (m EnhancedManager) GetDiscoveryClient() (discovery.DiscoveryInterface, error) {
 	return m.dc, nil
+}
+
+func (m EnhancedManager) GetControllerOptions() v1alpha1.ControllerConfigurationSpec {
+	return m.delegate.GetControllerOptions()
 }

@@ -11,12 +11,11 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	"github.com/magiconair/properties"
-	"github.com/mitchellh/mapstructure"
 	"github.com/maistra/istio-operator/internal/k8sutil"
 	kubemetrics "github.com/maistra/istio-operator/internal/kube-metrics"
-	"github.com/operator-framework/operator-lib/leader"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"github.com/maistra/istio-operator/internal/metrics"
+	"github.com/mitchellh/mapstructure"
+	"github.com/operator-framework/operator-lib/leader"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	v1 "k8s.io/api/core/v1"
@@ -27,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
@@ -49,39 +49,36 @@ var log = logf.Log.WithName("cmd")
 
 func main() {
 	// Add the zap logger flag set to the CLI. The flag set must
-	// be added before calling pflag.Parse().
-	pflag.CommandLine.AddFlagSet(zap.FlagSet())
-
-	// Add flags registered by imported packages (e.g. glog and
-	// controller-runtime)
-	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+	// be added before calling flag.Parse().
+	opts := zap.Options{}
+	opts.BindFlags(flag.CommandLine)
 
 	// number of concurrent reconciler for each controller
-	pflag.Int("controlPlaneReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshControlPlane resources")
-	pflag.Int("memberRollReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMemberRoll resources")
-	pflag.Int("memberReconcilers", 10, "The number of concurrent reconcilers for ServiceMeshMember resources")
+	flag.Int("controlPlaneReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshControlPlane resources")
+	flag.Int("memberRollReconcilers", 1, "The number of concurrent reconcilers for ServiceMeshMemberRoll resources")
+	flag.Int("memberReconcilers", 10, "The number of concurrent reconcilers for ServiceMeshMember resources")
 
 	// flags to configure API request throttling
-	pflag.Int("apiBurst", 50, "The number of API requests the operator can make before throttling is activated")
-	pflag.Float32("apiQPS", 25, "The max rate of API requests when throttling is active")
+	flag.Int("apiBurst", 50, "The number of API requests the operator can make before throttling is activated")
+	flag.Float64("apiQPS", 25, "The max rate of API requests when throttling is active")
 
 	// custom flags for istio operator
-	pflag.String("resourceDir", "/usr/local/share/istio-operator", "The location of the resources - helm charts, templates, etc.")
-	pflag.String("chartsDir", "", "The root location of the helm charts.")
-	pflag.String("defaultTemplatesDir", "", "The root location of the default templates.")
-	pflag.String("userTemplatesDir", "", "The root location of the user supplied templates.")
+	flag.String("resourceDir", "/usr/local/share/istio-operator", "The location of the resources - helm charts, templates, etc.")
+	flag.String("chartsDir", "", "The root location of the helm charts.")
+	flag.String("defaultTemplatesDir", "", "The root location of the default templates.")
+	flag.String("userTemplatesDir", "", "The root location of the user supplied templates.")
 
 	var logAPIRequests bool
-	pflag.BoolVar(&logAPIRequests, "logAPIRequests", false, "Log API requests performed by the operator.")
+	flag.BoolVar(&logAPIRequests, "logAPIRequests", false, "Log API requests performed by the operator.")
 
 	// config file
 	configFile := ""
-	pflag.StringVar(&configFile, "config", "/etc/istio-operator/config.properties", "The root location of the user supplied templates.")
+	flag.StringVar(&configFile, "config", "/etc/istio-operator/config.properties", "The root location of the user supplied templates.")
 
 	printVersion := false
-	pflag.BoolVar(&printVersion, "version", printVersion, "Prints version information and exits")
+	flag.BoolVar(&printVersion, "version", printVersion, "Prints version information and exits")
 
-	pflag.Parse()
+	flag.Parse()
 	if printVersion {
 		fmt.Printf("%s\n", version.Info)
 		os.Exit(0)
@@ -91,7 +88,7 @@ func main() {
 	// implementing the logr.Logger interface. This logger will
 	// be propagated through the whole operator, generating
 	// uniform and structured logs.
-	logf.SetLogger(zap.Logger())
+	logf.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	log.Info(fmt.Sprintf("Starting Istio Operator %s", version.Info))
 
