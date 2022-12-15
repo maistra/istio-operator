@@ -12,12 +12,17 @@ func hasOperator(d *dataTreeNavigator, context Context, expressionNode *Expressi
 	log.Debugf("-- hasOperation")
 	var results = list.New()
 
-	rhs, err := d.GetMatchingNodes(context, expressionNode.Rhs)
-	wanted := rhs.MatchingNodes.Front().Value.(*CandidateNode).Node
-	wantedKey := wanted.Value
+	rhs, err := d.GetMatchingNodes(context.ReadOnlyClone(), expressionNode.RHS)
 
 	if err != nil {
 		return Context{}, err
+	}
+
+	wantedKey := "null"
+	wanted := &yaml.Node{Tag: "!!null"}
+	if rhs.MatchingNodes.Len() != 0 {
+		wanted = rhs.MatchingNodes.Front().Value.(*CandidateNode).Node
+		wantedKey = wanted.Value
 	}
 
 	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
@@ -39,7 +44,7 @@ func hasOperator(d *dataTreeNavigator, context Context, expressionNode *Expressi
 		case yaml.SequenceNode:
 			candidateHasKey := false
 			if wanted.Tag == "!!int" {
-				var number, errParsingInt = strconv.ParseInt(wantedKey, 10, 64) // nolint
+				var number, errParsingInt = strconv.ParseInt(wantedKey, 10, 64)
 				if errParsingInt != nil {
 					return Context{}, errParsingInt
 				}

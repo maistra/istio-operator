@@ -2,6 +2,8 @@ package yqlib
 
 import (
 	"container/list"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 
@@ -12,30 +14,29 @@ import (
 // Uses less memory than loading all documents and running the expression once, but this cannot process
 // cross document expressions.
 type StreamEvaluator interface {
-	Evaluate(filename string, reader io.Reader, node *ExpressionNode, printer Printer) error
-	EvaluateFiles(expression string, filenames []string, printer Printer) error
+	Evaluate(filename string, reader io.Reader, node *ExpressionNode, printer Printer, decoder Decoder) (uint, error)
+	EvaluateFiles(expression string, filenames []string, printer Printer, decoder Decoder) error
 	EvaluateNew(expression string, printer Printer) error
 }
 
 type streamEvaluator struct {
 	treeNavigator DataTreeNavigator
-	treeCreator   ExpressionParser
 	fileIndex     int
 }
 
 func NewStreamEvaluator() StreamEvaluator {
-	return &streamEvaluator{treeNavigator: NewDataTreeNavigator(), treeCreator: NewExpressionParser()}
+	return &streamEvaluator{treeNavigator: NewDataTreeNavigator()}
 }
 
 func (s *streamEvaluator) EvaluateNew(expression string, printer Printer) error {
-	node, err := s.treeCreator.ParseExpression(expression)
+	node, err := ExpressionParser.ParseExpression(expression)
 	if err != nil {
 		return err
 	}
 	candidateNode := &CandidateNode{
 		Document:  0,
 		Filename:  "",
-		Node:      &yaml.Node{Tag: "!!null", Kind: yaml.ScalarNode},
+		Node:      &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{Tag: "!!null", Kind: yaml.ScalarNode}}},
 		FileIndex: 0,
 	}
 	inputList := list.New()
@@ -48,62 +49,70 @@ func (s *streamEvaluator) EvaluateNew(expression string, printer Printer) error 
 	return printer.PrintResults(result.MatchingNodes)
 }
 
-func (s *streamEvaluator) EvaluateFiles(expression string, filenames []string, printer Printer) error {
-
-	node, err := s.treeCreator.ParseExpression(expression)
+func (s *streamEvaluator) EvaluateFiles(expression string, filenames []string, printer Printer, decoder Decoder) error {
+	var totalProcessDocs uint
+	node, err := ExpressionParser.ParseExpression(expression)
 	if err != nil {
 		return err
 	}
 
 	for _, filename := range filenames {
 		reader, err := readStream(filename)
+
 		if err != nil {
 			return err
 		}
-		err = s.Evaluate(filename, reader, node, printer)
+		processedDocs, err := s.Evaluate(filename, reader, node, printer, decoder)
 		if err != nil {
 			return err
 		}
+		totalProcessDocs = totalProcessDocs + processedDocs
 
 		switch reader := reader.(type) {
 		case *os.File:
 			safelyCloseFile(reader)
 		}
 	}
+
+	if totalProcessDocs == 0 {
+		// problem is I've already slurped the leading content sadface
+		return s.EvaluateNew(expression, printer)
+	}
+
 	return nil
 }
 
-func (s *streamEvaluator) Evaluate(filename string, reader io.Reader, node *ExpressionNode, printer Printer) error {
+func (s *streamEvaluator) Evaluate(filename string, reader io.Reader, node *ExpressionNode, printer Printer, decoder Decoder) (uint, error) {
 
 	var currentIndex uint
-
-	decoder := yaml.NewDecoder(reader)
+	err := decoder.Init(reader)
+	if err != nil {
+		return 0, err
+	}
 	for {
-		var dataBucket yaml.Node
-		errorReading := decoder.Decode(&dataBucket)
+		candidateNode, errorReading := decoder.Decode()
 
-		if errorReading == io.EOF {
+		if errors.Is(errorReading, io.EOF) {
 			s.fileIndex = s.fileIndex + 1
-			return nil
+			return currentIndex, nil
 		} else if errorReading != nil {
-			return errorReading
+			return currentIndex, fmt.Errorf("bad file '%v': %w", filename, errorReading)
 		}
-		candidateNode := &CandidateNode{
-			Document:  currentIndex,
-			Filename:  filename,
-			Node:      &dataBucket,
-			FileIndex: s.fileIndex,
-		}
+		candidateNode.Document = currentIndex
+		candidateNode.Filename = filename
+		candidateNode.FileIndex = s.fileIndex
+
 		inputList := list.New()
 		inputList.PushBack(candidateNode)
 
 		result, errorParsing := s.treeNavigator.GetMatchingNodes(Context{MatchingNodes: inputList}, node)
 		if errorParsing != nil {
-			return errorParsing
+			return currentIndex, errorParsing
 		}
 		err := printer.PrintResults(result.MatchingNodes)
+
 		if err != nil {
-			return err
+			return currentIndex, err
 		}
 		currentIndex = currentIndex + 1
 	}

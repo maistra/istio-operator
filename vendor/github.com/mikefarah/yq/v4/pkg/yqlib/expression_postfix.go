@@ -2,6 +2,7 @@ package yqlib
 
 import (
 	"errors"
+	"fmt"
 
 	logging "gopkg.in/op/go-logging.v1"
 )
@@ -24,6 +25,17 @@ func popOpToResult(opStack []*token, result []*Operation) ([]*token, []*Operatio
 	return opStack, append(result, newOp.Operation)
 }
 
+func validateNoOpenTokens(token *token) error {
+	if token.TokenType == openCollect {
+		return fmt.Errorf(("bad expression, could not find matching `]`"))
+	} else if token.TokenType == openCollectObject {
+		return fmt.Errorf(("bad expression, could not find matching `}`"))
+	} else if token.TokenType == openBracket {
+		return fmt.Errorf(("bad expression, could not find matching `)`"))
+	}
+	return nil
+}
+
 func (p *expressionPostFixerImpl) ConvertToPostfix(infixTokens []*token) ([]*Operation, error) {
 	var result []*Operation
 	// surround the whole thing with brackets
@@ -38,13 +50,17 @@ func (p *expressionPostFixerImpl) ConvertToPostfix(infixTokens []*token) ([]*Ope
 			log.Debugf("put %v onto the opstack", currentToken.toString(true))
 		case closeCollect, closeCollectObject:
 			var opener tokenType = openCollect
-			var collectOperator *operationType = collectOpType
+			var collectOperator = collectOpType
 			if currentToken.TokenType == closeCollectObject {
 				opener = openCollectObject
 				collectOperator = collectObjectOpType
 			}
 
 			for len(opStack) > 0 && opStack[len(opStack)-1].TokenType != opener {
+				missingClosingTokenErr := validateNoOpenTokens(opStack[len(opStack)-1])
+				if missingClosingTokenErr != nil {
+					return nil, missingClosingTokenErr
+				}
 				opStack, result = popOpToResult(opStack, result)
 			}
 			if len(opStack) == 0 {
@@ -52,20 +68,43 @@ func (p *expressionPostFixerImpl) ConvertToPostfix(infixTokens []*token) ([]*Ope
 			}
 			// now we should have [ as the last element on the opStack, get rid of it
 			opStack = opStack[0 : len(opStack)-1]
-			log.Debugf("deleteing open bracket from opstack")
+			log.Debugf("deleting open bracket from opstack")
 
-			//and append a collect to the opStack
+			//and append a collect to the result
+
+			// hack - see if there's the optional traverse flag
+			// on the close op - move it to the traverse array op
+			// allows for .["cat"]?
+			prefs := traversePreferences{}
+			closeTokenMatch := currentToken.Match
+			if closeTokenMatch[len(closeTokenMatch)-1:] == "?" {
+				prefs.OptionalTraverse = true
+			}
 			result = append(result, &Operation{OperationType: collectOperator})
 			log.Debugf("put collect onto the result")
-			result = append(result, &Operation{OperationType: shortPipeOpType})
-			log.Debugf("put shortpipe onto the result")
+			if opener != openCollect {
+				result = append(result, &Operation{OperationType: shortPipeOpType})
+				log.Debugf("put shortpipe onto the result")
+			}
+
+			//traverseArrayCollect is a sneaky op that needs to be included too
+			//when closing a ]
+			if len(opStack) > 0 && opStack[len(opStack)-1].Operation != nil && opStack[len(opStack)-1].Operation.OperationType == traverseArrayOpType {
+				opStack[len(opStack)-1].Operation.Preferences = prefs
+				opStack, result = popOpToResult(opStack, result)
+			}
 
 		case closeBracket:
 			for len(opStack) > 0 && opStack[len(opStack)-1].TokenType != openBracket {
+				missingClosingTokenErr := validateNoOpenTokens(opStack[len(opStack)-1])
+				if missingClosingTokenErr != nil {
+					return nil, missingClosingTokenErr
+				}
+
 				opStack, result = popOpToResult(opStack, result)
 			}
 			if len(opStack) == 0 {
-				return nil, errors.New("Bad path expression, got close brackets without matching opening bracket")
+				return nil, errors.New("bad expression, got close brackets without matching opening bracket")
 			}
 			// now we should have ( as the last element on the opStack, get rid of it
 			opStack = opStack[0 : len(opStack)-1]
@@ -82,6 +121,16 @@ func (p *expressionPostFixerImpl) ConvertToPostfix(infixTokens []*token) ([]*Ope
 			opStack = append(opStack, currentToken)
 			log.Debugf("put %v onto the opstack", currentToken.toString(true))
 		}
+	}
+
+	log.Debugf("opstackLen: %v", len(opStack))
+	if len(opStack) > 0 {
+		log.Debugf("opstack:")
+		for _, token := range opStack {
+			log.Debugf("- %v", token.toString(true))
+		}
+
+		return nil, fmt.Errorf("bad expression - probably missing close bracket on %v", opStack[len(opStack)-1].toString(false))
 	}
 
 	if log.IsEnabledFor(logging.DEBUG) {

@@ -43,6 +43,7 @@ type DeploymentStatus struct {
 	ContainerSHA256 string `json:"containerSha256,omitempty"`
 	SHA256          string `json:"sha256,omitempty"`
 	URL             string `json:"url,omitempty"`
+	Message         string `json:"message,omitempty"`
 }
 
 // WorkloadSelector is used to match workloads based on pod labels

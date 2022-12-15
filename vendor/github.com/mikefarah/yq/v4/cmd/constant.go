@@ -1,9 +1,13 @@
 package cmd
 
-var unwrapScalar = true
+var unwrapScalarFlag = newUnwrapFlag()
+
+var unwrapScalar = false
 
 var writeInplace = false
 var outputToJSON = false
+var outputFormat = "yaml"
+var inputFormat = "yaml"
 
 var exitStatus = false
 var forceColor = false
@@ -16,4 +20,14 @@ var verbose = false
 var version = false
 var prettyPrint = false
 
+// can be either "" (off), "extract" or "process"
+var frontMatter = ""
+
+var splitFileExp = ""
+var splitFileExpFile = ""
+
 var completedSuccessfully = false
+
+var forceExpression = ""
+
+var expressionFile = ""

@@ -1,7 +1,7 @@
 package webhooks
 
 import (
-	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
+	"github.com/maistra/istio-operator/internal/k8sutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"

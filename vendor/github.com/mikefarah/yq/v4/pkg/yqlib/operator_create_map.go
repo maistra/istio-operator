@@ -14,7 +14,7 @@ func createMapOperator(d *dataTreeNavigator, context Context, expressionNode *Ex
 
 	var path []interface{}
 
-	var document uint = 0
+	var document uint
 
 	sequences := list.New()
 
@@ -42,7 +42,7 @@ func createMapOperator(d *dataTreeNavigator, context Context, expressionNode *Ex
 
 func sequenceFor(d *dataTreeNavigator, context Context, matchingNode *CandidateNode, expressionNode *ExpressionNode) (*CandidateNode, error) {
 	var path []interface{}
-	var document uint = 0
+	var document uint
 	var matches = list.New()
 
 	if matchingNode != nil {
@@ -62,7 +62,7 @@ func sequenceFor(d *dataTreeNavigator, context Context, matchingNode *CandidateN
 			}
 
 			return &CandidateNode{Node: &node, Document: document, Path: path}, nil
-		})
+		}, false)
 
 	if err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func sequenceFor(d *dataTreeNavigator, context Context, matchingNode *CandidateN
 	return &CandidateNode{Node: innerList, Document: document, Path: path}, nil
 }
 
-//NOTE: here the document index gets dropped so we
+// NOTE: here the document index gets dropped so we
 // no longer know where the node originates from.
 func listToNodeSeq(list *list.List) *yaml.Node {
 	node := yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}

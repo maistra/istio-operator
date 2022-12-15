@@ -3,45 +3,58 @@ package yqlib
 import (
 	"bufio"
 	"container/list"
+	"errors"
+	"fmt"
 	"io"
 	"os"
-
-	yaml "gopkg.in/yaml.v3"
 )
 
 func readStream(filename string) (io.Reader, error) {
+	var reader *bufio.Reader
 	if filename == "-" {
-		return bufio.NewReader(os.Stdin), nil
+		reader = bufio.NewReader(os.Stdin)
 	} else {
-		return os.Open(filename) // nolint gosec
+		// ignore CWE-22 gosec issue - that's more targeted for http based apps that run in a public directory,
+		// and ensuring that it's not possible to give a path to a file outside thar directory.
+		file, err := os.Open(filename) // #nosec
+		if err != nil {
+			return nil, err
+		}
+		reader = bufio.NewReader(file)
 	}
+	return reader, nil
+
 }
 
-func readDocuments(reader io.Reader, filename string, fileIndex int) (*list.List, error) {
-	decoder := yaml.NewDecoder(reader)
+func writeString(writer io.Writer, txt string) error {
+	_, errorWriting := writer.Write([]byte(txt))
+	return errorWriting
+}
+
+func readDocuments(reader io.Reader, filename string, fileIndex int, decoder Decoder) (*list.List, error) {
+	err := decoder.Init(reader)
+	if err != nil {
+		return nil, err
+	}
 	inputList := list.New()
-	var currentIndex uint = 0
+	var currentIndex uint
 
 	for {
-		var dataBucket yaml.Node
-		errorReading := decoder.Decode(&dataBucket)
+		candidateNode, errorReading := decoder.Decode()
 
-		if errorReading == io.EOF {
+		if errors.Is(errorReading, io.EOF) {
 			switch reader := reader.(type) {
 			case *os.File:
 				safelyCloseFile(reader)
 			}
 			return inputList, nil
 		} else if errorReading != nil {
-			return nil, errorReading
+			return nil, fmt.Errorf("bad file '%v': %w", filename, errorReading)
 		}
-		candidateNode := &CandidateNode{
-			Document:         currentIndex,
-			Filename:         filename,
-			Node:             &dataBucket,
-			FileIndex:        fileIndex,
-			EvaluateTogether: true,
-		}
+		candidateNode.Document = currentIndex
+		candidateNode.Filename = filename
+		candidateNode.FileIndex = fileIndex
+		candidateNode.EvaluateTogether = true
 
 		inputList.PushBack(candidateNode)
 

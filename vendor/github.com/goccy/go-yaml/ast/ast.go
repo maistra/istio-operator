@@ -61,6 +61,8 @@ const (
 	TagType
 	// CommentType type identifier for comment node
 	CommentType
+	// CommentGroupType type identifier for comment group node
+	CommentGroupType
 )
 
 // String node type identifier to text
@@ -106,6 +108,58 @@ func (t NodeType) String() string {
 		return "Tag"
 	case CommentType:
 		return "Comment"
+	case CommentGroupType:
+		return "CommentGroup"
+	}
+	return ""
+}
+
+// String node type identifier to YAML Structure name
+// based on https://yaml.org/spec/1.2/spec.html
+func (t NodeType) YAMLName() string {
+	switch t {
+	case UnknownNodeType:
+		return "unknown"
+	case DocumentType:
+		return "document"
+	case NullType:
+		return "null"
+	case BoolType:
+		return "boolean"
+	case IntegerType:
+		return "int"
+	case FloatType:
+		return "float"
+	case InfinityType:
+		return "inf"
+	case NanType:
+		return "nan"
+	case StringType:
+		return "string"
+	case MergeKeyType:
+		return "merge key"
+	case LiteralType:
+		return "scalar"
+	case MappingType:
+		return "mapping"
+	case MappingKeyType:
+		return "key"
+	case MappingValueType:
+		return "value"
+	case SequenceType:
+		return "sequence"
+	case AnchorType:
+		return "anchor"
+	case AliasType:
+		return "alias"
+	case DirectiveType:
+		return "directive"
+	case TagType:
+		return "tag"
+	case CommentType:
+		return "comment"
+	case CommentGroupType:
+		return "comment"
 	}
 	return ""
 }
@@ -122,9 +176,15 @@ type Node interface {
 	// AddColumn add column number to child nodes recursively
 	AddColumn(int)
 	// SetComment set comment token to node
-	SetComment(*token.Token) error
+	SetComment(*CommentGroupNode) error
 	// Comment returns comment token instance
-	GetComment() *token.Token
+	GetComment() *CommentGroupNode
+	// GetPath returns YAMLPath for the current node
+	GetPath() string
+	// SetPath set YAMLPath for the current node
+	SetPath(string)
+	// MarshalYAML
+	MarshalYAML() ([]byte, error)
 	// already read length
 	readLen() int
 	// append read length
@@ -133,15 +193,27 @@ type Node interface {
 	clearLen()
 }
 
+// MapKeyNode type for map key node
+type MapKeyNode interface {
+	Node
+	// String node to text without comment
+	stringWithoutComment() string
+}
+
 // ScalarNode type for scalar node
 type ScalarNode interface {
-	Node
+	MapKeyNode
 	GetValue() interface{}
 }
 
 type BaseNode struct {
-	Comment *token.Token
+	Path    string
+	Comment *CommentGroupNode
 	read    int
+}
+
+func addCommentString(base string, node *CommentGroupNode) string {
+	return fmt.Sprintf("%s %s", base, node.String())
 }
 
 func (n *BaseNode) readLen() int {
@@ -156,17 +228,30 @@ func (n *BaseNode) addReadLen(len int) {
 	n.read += len
 }
 
+// GetPath returns YAMLPath for the current node.
+func (n *BaseNode) GetPath() string {
+	if n == nil {
+		return ""
+	}
+	return n.Path
+}
+
+// SetPath set YAMLPath for the current node.
+func (n *BaseNode) SetPath(path string) {
+	if n == nil {
+		return
+	}
+	n.Path = path
+}
+
 // GetComment returns comment token instance
-func (n *BaseNode) GetComment() *token.Token {
+func (n *BaseNode) GetComment() *CommentGroupNode {
 	return n.Comment
 }
 
 // SetComment set comment token
-func (n *BaseNode) SetComment(tk *token.Token) error {
-	if tk.Type != token.CommentType {
-		return ErrInvalidTokenType
-	}
-	n.Comment = tk
+func (n *BaseNode) SetComment(node *CommentGroupNode) error {
+	n.Comment = node
 	return nil
 }
 
@@ -186,7 +271,7 @@ func readNode(p []byte, node Node) (int, error) {
 		return 0, io.EOF
 	}
 	size := min(remain, len(p))
-	for idx, b := range s[readLen : readLen+size] {
+	for idx, b := range []byte(s[readLen : readLen+size]) {
 		p[idx] = byte(b)
 	}
 	node.addReadLen(size)
@@ -194,7 +279,7 @@ func readNode(p []byte, node Node) (int, error) {
 }
 
 // Null create node for null value
-func Null(tk *token.Token) Node {
+func Null(tk *token.Token) *NullNode {
 	return &NullNode{
 		BaseNode: &BaseNode{},
 		Token:    tk,
@@ -202,7 +287,7 @@ func Null(tk *token.Token) Node {
 }
 
 // Bool create node for boolean value
-func Bool(tk *token.Token) Node {
+func Bool(tk *token.Token) *BoolNode {
 	b, _ := strconv.ParseBool(tk.Value)
 	return &BoolNode{
 		BaseNode: &BaseNode{},
@@ -212,7 +297,7 @@ func Bool(tk *token.Token) Node {
 }
 
 // Integer create node for integer value
-func Integer(tk *token.Token) Node {
+func Integer(tk *token.Token) *IntegerNode {
 	value := removeUnderScoreFromNumber(tk.Value)
 	switch tk.Type {
 	case token.BinaryIntegerType:
@@ -306,7 +391,7 @@ func Integer(tk *token.Token) Node {
 }
 
 // Float create node for float value
-func Float(tk *token.Token) Node {
+func Float(tk *token.Token) *FloatNode {
 	f, _ := strconv.ParseFloat(removeUnderScoreFromNumber(tk.Value), 64)
 	return &FloatNode{
 		BaseNode: &BaseNode{},
@@ -350,7 +435,19 @@ func String(tk *token.Token) *StringNode {
 // Comment create node for comment
 func Comment(tk *token.Token) *CommentNode {
 	return &CommentNode{
-		BaseNode: &BaseNode{Comment: tk},
+		BaseNode: &BaseNode{},
+		Token:    tk,
+	}
+}
+
+func CommentGroup(comments []*token.Token) *CommentGroupNode {
+	nodes := []*CommentNode{}
+	for _, comment := range comments {
+		nodes = append(nodes, Comment(comment))
+	}
+	return &CommentGroupNode{
+		BaseNode: &BaseNode{},
+		Comments: nodes,
 	}
 }
 
@@ -375,7 +472,7 @@ func Mapping(tk *token.Token, isFlowStyle bool, values ...*MappingValueNode) *Ma
 }
 
 // MappingValue create node for mapping value
-func MappingValue(tk *token.Token, key Node, value Node) *MappingValueNode {
+func MappingValue(tk *token.Token, key MapKeyNode, value Node) *MappingValueNode {
 	return &MappingValueNode{
 		BaseNode: &BaseNode{},
 		Start:    tk,
@@ -513,6 +610,11 @@ func (d *DocumentNode) String() string {
 	return strings.Join(doc, "\n")
 }
 
+// MarshalYAML encodes to a YAML text
+func (d *DocumentNode) MarshalYAML() ([]byte, error) {
+	return []byte(d.String()), nil
+}
+
 func removeUnderScoreFromNumber(num string) string {
 	return strings.ReplaceAll(num, "_", "")
 }
@@ -520,8 +622,7 @@ func removeUnderScoreFromNumber(num string) string {
 // NullNode type of null node
 type NullNode struct {
 	*BaseNode
-	Comment *token.Token // position of Comment ( `#comment` )
-	Token   *token.Token
+	Token *token.Token
 }
 
 // Read implements (io.Reader).Read
@@ -542,15 +643,6 @@ func (n *NullNode) AddColumn(col int) {
 	n.Token.AddColumn(col)
 }
 
-// SetComment set comment token
-func (n *NullNode) SetComment(tk *token.Token) error {
-	if tk.Type != token.CommentType {
-		return ErrInvalidTokenType
-	}
-	n.Comment = tk
-	return nil
-}
-
 // GetValue returns nil value
 func (n *NullNode) GetValue() interface{} {
 	return nil
@@ -558,7 +650,19 @@ func (n *NullNode) GetValue() interface{} {
 
 // String returns `null` text
 func (n *NullNode) String() string {
+	if n.Comment != nil {
+		return fmt.Sprintf("null %s", n.Comment.String())
+	}
+	return n.stringWithoutComment()
+}
+
+func (n *NullNode) stringWithoutComment() string {
 	return "null"
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *NullNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // IntegerNode type of integer node
@@ -593,7 +697,19 @@ func (n *IntegerNode) GetValue() interface{} {
 
 // String int64 to text
 func (n *IntegerNode) String() string {
+	if n.Comment != nil {
+		return addCommentString(n.Token.Value, n.Comment)
+	}
+	return n.stringWithoutComment()
+}
+
+func (n *IntegerNode) stringWithoutComment() string {
 	return n.Token.Value
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *IntegerNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // FloatNode type of float node
@@ -629,7 +745,19 @@ func (n *FloatNode) GetValue() interface{} {
 
 // String float64 to text
 func (n *FloatNode) String() string {
+	if n.Comment != nil {
+		return addCommentString(n.Token.Value, n.Comment)
+	}
+	return n.stringWithoutComment()
+}
+
+func (n *FloatNode) stringWithoutComment() string {
 	return n.Token.Value
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *FloatNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // StringNode type of string node
@@ -662,13 +790,66 @@ func (n *StringNode) GetValue() interface{} {
 	return n.Value
 }
 
+// escapeSingleQuote escapes s to a single quoted scalar.
+// https://yaml.org/spec/1.2.2/#732-single-quoted-style
+func escapeSingleQuote(s string) string {
+	var sb strings.Builder
+	growLen := len(s) + // s includes also one ' from the doubled pair
+		2 + // opening and closing '
+		strings.Count(s, "'") // ' added by ReplaceAll
+	sb.Grow(growLen)
+	sb.WriteString("'")
+	sb.WriteString(strings.ReplaceAll(s, "'", "''"))
+	sb.WriteString("'")
+	return sb.String()
+}
+
 // String string value to text with quote or literal header if required
 func (n *StringNode) String() string {
 	switch n.Token.Type {
 	case token.SingleQuoteType:
-		return fmt.Sprintf(`'%s'`, n.Value)
+		quoted := escapeSingleQuote(n.Value)
+		if n.Comment != nil {
+			return addCommentString(quoted, n.Comment)
+		}
+		return quoted
 	case token.DoubleQuoteType:
-		return strconv.Quote(n.Value)
+		quoted := strconv.Quote(n.Value)
+		if n.Comment != nil {
+			return addCommentString(quoted, n.Comment)
+		}
+		return quoted
+	}
+
+	lbc := token.DetectLineBreakCharacter(n.Value)
+	if strings.Contains(n.Value, lbc) {
+		// This block assumes that the line breaks in this inside scalar content and the Outside scalar content are the same.
+		// It works mostly, but inconsistencies occur if line break characters are mixed.
+		header := token.LiteralBlockHeader(n.Value)
+		space := strings.Repeat(" ", n.Token.Position.Column-1)
+		values := []string{}
+		for _, v := range strings.Split(n.Value, lbc) {
+			values = append(values, fmt.Sprintf("%s  %s", space, v))
+		}
+		block := strings.TrimSuffix(strings.TrimSuffix(strings.Join(values, lbc), fmt.Sprintf("%s  %s", lbc, space)), fmt.Sprintf("  %s", space))
+		return fmt.Sprintf("%s%s%s", header, lbc, block)
+	} else if len(n.Value) > 0 && (n.Value[0] == '{' || n.Value[0] == '[') {
+		return fmt.Sprintf(`'%s'`, n.Value)
+	}
+	if n.Comment != nil {
+		return addCommentString(n.Value, n.Comment)
+	}
+	return n.Value
+}
+
+func (n *StringNode) stringWithoutComment() string {
+	switch n.Token.Type {
+	case token.SingleQuoteType:
+		quoted := fmt.Sprintf(`'%s'`, n.Value)
+		return quoted
+	case token.DoubleQuoteType:
+		quoted := strconv.Quote(n.Value)
+		return quoted
 	}
 
 	lbc := token.DetectLineBreakCharacter(n.Value)
@@ -687,6 +868,11 @@ func (n *StringNode) String() string {
 		return fmt.Sprintf(`'%s'`, n.Value)
 	}
 	return n.Value
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *StringNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // LiteralNode type of literal node
@@ -725,7 +911,20 @@ func (n *LiteralNode) GetValue() interface{} {
 // String literal to text
 func (n *LiteralNode) String() string {
 	origin := n.Value.GetToken().Origin
-	return fmt.Sprintf("%s\n%s", n.Start.Value, strings.TrimRight(strings.TrimRight(origin, " "), "\n"))
+	lit := strings.TrimRight(strings.TrimRight(origin, " "), "\n")
+	if n.Comment != nil {
+		return fmt.Sprintf("%s %s\n%s", n.Start.Value, n.Comment.String(), lit)
+	}
+	return fmt.Sprintf("%s\n%s", n.Start.Value, lit)
+}
+
+func (n *LiteralNode) stringWithoutComment() string {
+	return n.String()
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *LiteralNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // MergeKeyNode type of merge key node
@@ -754,12 +953,21 @@ func (n *MergeKeyNode) GetValue() interface{} {
 
 // String returns '<<' value
 func (n *MergeKeyNode) String() string {
+	return n.stringWithoutComment()
+}
+
+func (n *MergeKeyNode) stringWithoutComment() string {
 	return n.Token.Value
 }
 
 // AddColumn add column number to child nodes recursively
 func (n *MergeKeyNode) AddColumn(col int) {
 	n.Token.AddColumn(col)
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *MergeKeyNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // BoolNode type of boolean node
@@ -794,7 +1002,19 @@ func (n *BoolNode) GetValue() interface{} {
 
 // String boolean to text
 func (n *BoolNode) String() string {
+	if n.Comment != nil {
+		return addCommentString(n.Token.Value, n.Comment)
+	}
+	return n.stringWithoutComment()
+}
+
+func (n *BoolNode) stringWithoutComment() string {
 	return n.Token.Value
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *BoolNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // InfinityNode type of infinity node
@@ -829,7 +1049,19 @@ func (n *InfinityNode) GetValue() interface{} {
 
 // String infinity to text
 func (n *InfinityNode) String() string {
+	if n.Comment != nil {
+		return addCommentString(n.Token.Value, n.Comment)
+	}
+	return n.stringWithoutComment()
+}
+
+func (n *InfinityNode) stringWithoutComment() string {
 	return n.Token.Value
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *InfinityNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // NanNode type of nan node
@@ -863,7 +1095,19 @@ func (n *NanNode) GetValue() interface{} {
 
 // String returns .nan
 func (n *NanNode) String() string {
+	if n.Comment != nil {
+		return addCommentString(n.Token.Value, n.Comment)
+	}
+	return n.stringWithoutComment()
+}
+
+func (n *NanNode) stringWithoutComment() string {
 	return n.Token.Value
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *NanNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // MapNode interface of MappingValueNode / MappingNode
@@ -890,7 +1134,7 @@ func (m *MapNodeIter) Next() bool {
 }
 
 // Key returns the key of the iterator's current map node entry.
-func (m *MapNodeIter) Key() Node {
+func (m *MapNodeIter) Key() MapKeyNode {
 	return m.values[m.idx].Key
 }
 
@@ -964,34 +1208,53 @@ func (n *MappingNode) AddColumn(col int) {
 	}
 }
 
-func (n *MappingNode) flowStyleString() string {
-	if len(n.Values) == 0 {
-		return "{}"
-	}
+func (n *MappingNode) flowStyleString(commentMode bool) string {
 	values := []string{}
 	for _, value := range n.Values {
 		values = append(values, strings.TrimLeft(value.String(), " "))
 	}
-	return fmt.Sprintf("{%s}", strings.Join(values, ", "))
+	mapText := fmt.Sprintf("{%s}", strings.Join(values, ", "))
+	if commentMode && n.Comment != nil {
+		return addCommentString(mapText, n.Comment)
+	}
+	return mapText
 }
 
-func (n *MappingNode) blockStyleString() string {
-	if len(n.Values) == 0 {
-		return "{}"
-	}
+func (n *MappingNode) blockStyleString(commentMode bool) string {
 	values := []string{}
 	for _, value := range n.Values {
 		values = append(values, value.String())
 	}
-	return strings.Join(values, "\n")
+	mapText := strings.Join(values, "\n")
+	if commentMode && n.Comment != nil {
+		value := values[0]
+		var spaceNum int
+		for i := 0; i < len(value); i++ {
+			if value[i] != ' ' {
+				break
+			}
+			spaceNum++
+		}
+		comment := n.Comment.StringWithSpace(spaceNum)
+		return fmt.Sprintf("%s\n%s", comment, mapText)
+	}
+	return mapText
 }
 
 // String mapping values to text
 func (n *MappingNode) String() string {
-	if n.IsFlowStyle || len(n.Values) == 0 {
-		return n.flowStyleString()
+	if len(n.Values) == 0 {
+		if n.Comment != nil {
+			return addCommentString("{}", n.Comment)
+		}
+		return "{}"
 	}
-	return n.blockStyleString()
+
+	commentMode := true
+	if n.IsFlowStyle || len(n.Values) == 0 {
+		return n.flowStyleString(commentMode)
+	}
+	return n.blockStyleString(commentMode)
 }
 
 // MapRange implements MapNode protocol
@@ -1000,6 +1263,11 @@ func (n *MappingNode) MapRange() *MapNodeIter {
 		idx:    startRangeIndex,
 		values: n.Values,
 	}
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *MappingNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // MappingKeyNode type of tag node
@@ -1032,14 +1300,23 @@ func (n *MappingKeyNode) AddColumn(col int) {
 
 // String tag to text
 func (n *MappingKeyNode) String() string {
+	return n.stringWithoutComment()
+}
+
+func (n *MappingKeyNode) stringWithoutComment() string {
 	return fmt.Sprintf("%s %s", n.Start.Value, n.Value.String())
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *MappingKeyNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // MappingValueNode type of mapping value
 type MappingValueNode struct {
 	*BaseNode
 	Start *token.Token
-	Key   Node
+	Key   MapKeyNode
 	Value Node
 }
 
@@ -1089,12 +1366,33 @@ func (n *MappingValueNode) SetIsFlowStyle(isFlow bool) {
 
 // String mapping value to text
 func (n *MappingValueNode) String() string {
+	if n.Comment != nil {
+		return fmt.Sprintf(
+			"%s\n%s",
+			n.Comment.StringWithSpace(n.Key.GetToken().Position.Column-1),
+			n.toString(),
+		)
+	}
+	return n.toString()
+}
+
+func (n *MappingValueNode) toString() string {
 	space := strings.Repeat(" ", n.Key.GetToken().Position.Column-1)
 	keyIndentLevel := n.Key.GetToken().Position.IndentLevel
 	valueIndentLevel := n.Value.GetToken().Position.IndentLevel
+	keyComment := n.Key.GetComment()
 	if _, ok := n.Value.(ScalarNode); ok {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	} else if keyIndentLevel < valueIndentLevel {
+		if keyComment != nil {
+			return fmt.Sprintf(
+				"%s%s: %s\n%s",
+				space,
+				n.Key.stringWithoutComment(),
+				keyComment.String(),
+				n.Value.String(),
+			)
+		}
 		return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), n.Value.String())
 	} else if m, ok := n.Value.(*MappingNode); ok && (m.IsFlowStyle || len(m.Values) == 0) {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
@@ -1105,6 +1403,23 @@ func (n *MappingValueNode) String() string {
 	} else if _, ok := n.Value.(*AliasNode); ok {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	}
+	if keyComment != nil {
+		return fmt.Sprintf(
+			"%s%s: %s\n%s",
+			space,
+			n.Key.stringWithoutComment(),
+			keyComment.String(),
+			n.Value.String(),
+		)
+	}
+	if m, ok := n.Value.(*MappingNode); ok && m.Comment != nil {
+		return fmt.Sprintf(
+			"%s%s: %s",
+			space,
+			n.Key.String(),
+			strings.TrimLeft(n.Value.String(), " "),
+		)
+	}
 	return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), n.Value.String())
 }
 
@@ -1114,6 +1429,11 @@ func (n *MappingValueNode) MapRange() *MapNodeIter {
 		idx:    startRangeIndex,
 		values: []*MappingValueNode{n},
 	}
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *MappingValueNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // ArrayNode interface of SequenceNode
@@ -1148,10 +1468,11 @@ func (m *ArrayNodeIter) Len() int {
 // SequenceNode type of sequence node
 type SequenceNode struct {
 	*BaseNode
-	Start       *token.Token
-	End         *token.Token
-	IsFlowStyle bool
-	Values      []Node
+	Start         *token.Token
+	End           *token.Token
+	IsFlowStyle   bool
+	Values        []Node
+	ValueComments []*CommentGroupNode
 }
 
 // Replace replace value node.
@@ -1225,11 +1546,21 @@ func (n *SequenceNode) flowStyleString() string {
 func (n *SequenceNode) blockStyleString() string {
 	space := strings.Repeat(" ", n.Start.Position.Column-1)
 	values := []string{}
-	for _, value := range n.Values {
+	if n.Comment != nil {
+		values = append(values, n.Comment.StringWithSpace(n.Start.Position.Column-1))
+	}
+
+	for idx, value := range n.Values {
 		valueStr := value.String()
 		splittedValues := strings.Split(valueStr, "\n")
 		trimmedFirstValue := strings.TrimLeft(splittedValues[0], " ")
 		diffLength := len(splittedValues[0]) - len(trimmedFirstValue)
+		if len(splittedValues) > 1 && value.Type() == StringType || value.Type() == LiteralType {
+			// If multi-line string, the space characters for indent have already been added, so delete them.
+			for i := 1; i < len(splittedValues); i++ {
+				splittedValues[i] = strings.TrimLeft(splittedValues[i], " ")
+			}
+		}
 		newValues := []string{trimmedFirstValue}
 		for i := 1; i < len(splittedValues); i++ {
 			if len(splittedValues[i]) <= diffLength {
@@ -1241,6 +1572,9 @@ func (n *SequenceNode) blockStyleString() string {
 			newValues = append(newValues, fmt.Sprintf("%s  %s", space, trimmed))
 		}
 		newValue := strings.Join(newValues, "\n")
+		if len(n.ValueComments) == len(n.Values) && n.ValueComments[idx] != nil {
+			values = append(values, n.ValueComments[idx].StringWithSpace(n.Start.Position.Column-1))
+		}
 		values = append(values, fmt.Sprintf("%s- %s", space, newValue))
 	}
 	return strings.Join(values, "\n")
@@ -1260,6 +1594,11 @@ func (n *SequenceNode) ArrayRange() *ArrayNodeIter {
 		idx:    startRangeIndex,
 		values: n.Values,
 	}
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *SequenceNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // AnchorNode type of anchor node
@@ -1319,6 +1658,11 @@ func (n *AnchorNode) String() string {
 	return fmt.Sprintf("&%s %s", n.Name.String(), value)
 }
 
+// MarshalYAML encodes to a YAML text
+func (n *AnchorNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+
 // AliasNode type of alias node
 type AliasNode struct {
 	*BaseNode
@@ -1364,6 +1708,11 @@ func (n *AliasNode) String() string {
 	return fmt.Sprintf("*%s", n.Value.String())
 }
 
+// MarshalYAML encodes to a YAML text
+func (n *AliasNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+
 // DirectiveNode type of directive node
 type DirectiveNode struct {
 	*BaseNode
@@ -1394,6 +1743,11 @@ func (n *DirectiveNode) AddColumn(col int) {
 // String directive to text
 func (n *DirectiveNode) String() string {
 	return fmt.Sprintf("%s%s", n.Start.Value, n.Value.String())
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *DirectiveNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // TagNode type of tag node
@@ -1429,9 +1783,15 @@ func (n *TagNode) String() string {
 	return fmt.Sprintf("%s %s", n.Start.Value, n.Value.String())
 }
 
+// MarshalYAML encodes to a YAML text
+func (n *TagNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+
 // CommentNode type of comment node
 type CommentNode struct {
 	*BaseNode
+	Token *token.Token
 }
 
 // Read implements (io.Reader).Read
@@ -1443,16 +1803,77 @@ func (n *CommentNode) Read(p []byte) (int, error) {
 func (n *CommentNode) Type() NodeType { return CommentType }
 
 // GetToken returns token instance
-func (n *CommentNode) GetToken() *token.Token { return n.Comment }
+func (n *CommentNode) GetToken() *token.Token { return n.Token }
 
 // AddColumn add column number to child nodes recursively
 func (n *CommentNode) AddColumn(col int) {
-	n.Comment.AddColumn(col)
+	if n.Token == nil {
+		return
+	}
+	n.Token.AddColumn(col)
 }
 
 // String comment to text
 func (n *CommentNode) String() string {
-	return n.Comment.Value
+	return fmt.Sprintf("#%s", n.Token.Value)
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *CommentNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+
+// CommentGroupNode type of comment node
+type CommentGroupNode struct {
+	*BaseNode
+	Comments []*CommentNode
+}
+
+// Read implements (io.Reader).Read
+func (n *CommentGroupNode) Read(p []byte) (int, error) {
+	return readNode(p, n)
+}
+
+// Type returns TagType
+func (n *CommentGroupNode) Type() NodeType { return CommentType }
+
+// GetToken returns token instance
+func (n *CommentGroupNode) GetToken() *token.Token {
+	if len(n.Comments) > 0 {
+		return n.Comments[0].Token
+	}
+	return nil
+}
+
+// AddColumn add column number to child nodes recursively
+func (n *CommentGroupNode) AddColumn(col int) {
+	for _, comment := range n.Comments {
+		comment.AddColumn(col)
+	}
+}
+
+// String comment to text
+func (n *CommentGroupNode) String() string {
+	values := []string{}
+	for _, comment := range n.Comments {
+		values = append(values, comment.String())
+	}
+	return strings.Join(values, "\n")
+}
+
+func (n *CommentGroupNode) StringWithSpace(col int) string {
+	space := strings.Repeat(" ", col)
+	values := []string{}
+	for _, comment := range n.Comments {
+		values = append(values, space+comment.String())
+	}
+	return strings.Join(values, "\n")
+
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *CommentGroupNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // Visitor has Visit method that is invokded for each node encountered by Walk.
@@ -1474,40 +1895,68 @@ func Walk(v Visitor, node Node) {
 	switch n := node.(type) {
 	case *CommentNode:
 	case *NullNode:
+		walkComment(v, n.BaseNode)
 	case *IntegerNode:
+		walkComment(v, n.BaseNode)
 	case *FloatNode:
+		walkComment(v, n.BaseNode)
 	case *StringNode:
+		walkComment(v, n.BaseNode)
 	case *MergeKeyNode:
+		walkComment(v, n.BaseNode)
 	case *BoolNode:
+		walkComment(v, n.BaseNode)
 	case *InfinityNode:
+		walkComment(v, n.BaseNode)
 	case *NanNode:
+		walkComment(v, n.BaseNode)
 	case *LiteralNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Value)
 	case *DirectiveNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Value)
 	case *TagNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Value)
 	case *DocumentNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Body)
 	case *MappingNode:
+		walkComment(v, n.BaseNode)
 		for _, value := range n.Values {
 			Walk(v, value)
 		}
 	case *MappingKeyNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Value)
 	case *MappingValueNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Key)
 		Walk(v, n.Value)
 	case *SequenceNode:
+		walkComment(v, n.BaseNode)
 		for _, value := range n.Values {
 			Walk(v, value)
 		}
 	case *AnchorNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Name)
 		Walk(v, n.Value)
 	case *AliasNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Value)
 	}
+}
+
+func walkComment(v Visitor, base *BaseNode) {
+	if base == nil {
+		return
+	}
+	if base.Comment == nil {
+		return
+	}
+	Walk(v, base.Comment)
 }
 
 type filterWalker struct {
@@ -1520,6 +1969,77 @@ func (v *filterWalker) Visit(n Node) Visitor {
 		v.results = append(v.results, n)
 	}
 	return v
+}
+
+type parentFinder struct {
+	target Node
+}
+
+func (f *parentFinder) walk(parent, node Node) Node {
+	if f.target == node {
+		return parent
+	}
+	switch n := node.(type) {
+	case *CommentNode:
+		return nil
+	case *NullNode:
+		return nil
+	case *IntegerNode:
+		return nil
+	case *FloatNode:
+		return nil
+	case *StringNode:
+		return nil
+	case *MergeKeyNode:
+		return nil
+	case *BoolNode:
+		return nil
+	case *InfinityNode:
+		return nil
+	case *NanNode:
+		return nil
+	case *LiteralNode:
+		return f.walk(node, n.Value)
+	case *DirectiveNode:
+		return f.walk(node, n.Value)
+	case *TagNode:
+		return f.walk(node, n.Value)
+	case *DocumentNode:
+		return f.walk(node, n.Body)
+	case *MappingNode:
+		for _, value := range n.Values {
+			if found := f.walk(node, value); found != nil {
+				return found
+			}
+		}
+	case *MappingKeyNode:
+		return f.walk(node, n.Value)
+	case *MappingValueNode:
+		if found := f.walk(node, n.Key); found != nil {
+			return found
+		}
+		return f.walk(node, n.Value)
+	case *SequenceNode:
+		for _, value := range n.Values {
+			if found := f.walk(node, value); found != nil {
+				return found
+			}
+		}
+	case *AnchorNode:
+		if found := f.walk(node, n.Name); found != nil {
+			return found
+		}
+		return f.walk(node, n.Value)
+	case *AliasNode:
+		return f.walk(node, n.Value)
+	}
+	return nil
+}
+
+// Parent get parent node from child node.
+func Parent(root, child Node) Node {
+	finder := &parentFinder{target: child}
+	return finder.walk(root, root)
 }
 
 // Filter returns a list of nodes that match the given type.

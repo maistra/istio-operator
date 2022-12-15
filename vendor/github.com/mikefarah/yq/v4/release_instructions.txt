@@ -1,7 +1,6 @@
-- increment version in version.go
-- increment version in snapcraft.yaml
-- increment version in github-action/Dockerfile
+- update release notes
 - make sure local build passes
+- run ./scripts/copy-docs.sh (and commit the changed in the yq-book branch)
 - commit version update changes
 - tag git with same version number
 - commit vX tag - this will trigger github actions
@@ -10,15 +9,15 @@
 
 
 - snapcraft
+  - update snapcraft version
+  - https://snapcraft.io/yq/builds
   - will auto create a candidate, test it works then promote
+  - !! need to update v4/stable as well as latest
   
   sudo snap remove yq
   sudo snap install --edge yq
   
   then use the UI (https://snapcraft.io/yq/release)
-
-- go get
-  - update the readme instructions
 
 - brew
   - brew bump-formula-pr --url=https://github.com/mikefarah/yq/archive/2.2.0.tar.gz yq
@@ -30,7 +29,15 @@
   - build and push latest and new version tag
   - docker build .  -t mikefarah/yq:latest -t mikefarah/yq:3 -t mikefarah/yq:3.X
 
-- debian package
+- debian package (with release script)
+  - execute the script `./scripts/release-deb.sh` *on the machine having the private
+      gpg key to sign the generated sources* providing the version to release, the
+      ppa where deploying the files and the passphrase of the private key if needed:
+      ```
+      ./scripts/release-deb.sh -o output -p -s --passphrase PASSPHRASE VERSION
+      ```
+
+- debian package (manually)
   - ensure you get all vendor dependencies before packaging
 	```go mod vendor```
   - execute 

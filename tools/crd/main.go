@@ -8,7 +8,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/operator-framework/operator-sdk/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/sets"

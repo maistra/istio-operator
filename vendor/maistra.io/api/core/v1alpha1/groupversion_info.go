@@ -40,10 +40,6 @@ var (
 func init() {
 	SchemeBuilder.Register(
 		&ServiceMeshExtension{}, &ServiceMeshExtensionList{},
-		&MeshFederation{}, &MeshFederationList{},
-		&ServiceExports{}, &ServiceExportsList{},
-		&ServiceImports{}, &ServiceImportsList{},
-		&FederationStatus{}, &FederationStatusList{},
 	)
 }
 

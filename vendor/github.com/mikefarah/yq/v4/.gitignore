@@ -38,3 +38,27 @@ parts/
 prime/
 .snapcraft/
 yq*.snap
+
+test.yml
+test*.yml
+test*.yaml
+0.yml
+1.yml
+2.yml
+
+
+# man page
+man.md
+yq.1
+
+# debian pkg
+_build
+debian/files
+
+# intellij
+/.idea
+
+# vscode
+.vscode
+
+yq3

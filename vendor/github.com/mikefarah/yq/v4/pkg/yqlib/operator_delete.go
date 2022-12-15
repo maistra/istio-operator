@@ -1,15 +1,14 @@
 package yqlib
 
 import (
+	"container/list"
 	"fmt"
 
 	yaml "gopkg.in/yaml.v3"
 )
 
 func deleteChildOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
-	contextToUse := context.Clone()
-	contextToUse.DontAutoCreate = true
-	nodesToDelete, err := d.GetMatchingNodes(contextToUse, expressionNode.Rhs)
+	nodesToDelete, err := d.GetMatchingNodes(context.ReadOnlyClone(), expressionNode.RHS)
 
 	if err != nil {
 		return Context{}, err
@@ -18,48 +17,35 @@ func deleteChildOperator(d *dataTreeNavigator, context Context, expressionNode *
 	for el := nodesToDelete.MatchingNodes.Back(); el != nil; el = el.Prev() {
 		candidate := el.Value.(*CandidateNode)
 
-		if len(candidate.Path) > 0 {
-			deleteImmediateChildOp := &Operation{
-				OperationType: deleteImmediateChildOpType,
-				Value:         candidate.Path[len(candidate.Path)-1],
+		if candidate.Node.Kind == yaml.DocumentNode {
+			//need to delete this node from context.
+			newResults := list.New()
+			for item := context.MatchingNodes.Front(); item != nil; item = item.Next() {
+				nodeInContext := item.Value.(*CandidateNode)
+				if nodeInContext.Node != candidate.Node {
+					newResults.PushBack(nodeInContext)
+				} else {
+					log.Info("Need to delete this %v", NodeToString(nodeInContext))
+				}
 			}
-
-			deleteImmediateChildOpNode := &ExpressionNode{
-				Operation: deleteImmediateChildOp,
-				Rhs:       createTraversalTree(candidate.Path[0:len(candidate.Path)-1], traversePreferences{}, false),
-			}
-
-			_, err := d.GetMatchingNodes(contextToUse, deleteImmediateChildOpNode)
-			if err != nil {
-				return Context{}, err
-			}
+			return context.ChildContext(newResults), nil
+		} else if candidate.Parent == nil {
+			//problem: context may already be '.a' and then I pass in '.a.a2'.
+			// should pass in .a2.
+			log.Info("Could not find parent of %v", NodeToString(candidate))
+			return context, nil
 		}
-	}
-	return context, nil
-}
 
-func deleteImmediateChildOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
-	parents, err := d.GetMatchingNodes(context, expressionNode.Rhs)
+		parentNode := candidate.Parent.Node
+		childPath := candidate.Path[len(candidate.Path)-1]
 
-	if err != nil {
-		return Context{}, err
-	}
-
-	childPath := expressionNode.Operation.Value
-
-	log.Debug("childPath to remove %v", childPath)
-
-	for el := parents.MatchingNodes.Front(); el != nil; el = el.Next() {
-		parent := el.Value.(*CandidateNode)
-		parentNode := unwrapDoc(parent.Node)
 		if parentNode.Kind == yaml.MappingNode {
-			deleteFromMap(parent, childPath)
+			deleteFromMap(candidate.Parent, childPath)
 		} else if parentNode.Kind == yaml.SequenceNode {
-			deleteFromArray(parent, childPath)
+			deleteFromArray(candidate.Parent, childPath)
 		} else {
 			return Context{}, fmt.Errorf("Cannot delete nodes from parent of tag %v", parentNode.Tag)
 		}
-
 	}
 	return context, nil
 }
@@ -74,7 +60,7 @@ func deleteFromMap(candidate *CandidateNode, childPath interface{}) {
 		key := contents[index]
 		value := contents[index+1]
 
-		childCandidate := candidate.CreateChild(key.Value, value)
+		childCandidate := candidate.CreateChildInMap(key, value)
 
 		shouldDelete := key.Value == childPath
 

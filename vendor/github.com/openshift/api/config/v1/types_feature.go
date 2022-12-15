@@ -7,9 +7,11 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Feature holds cluster-wide information about feature gates.  The canonical name is `cluster`
+//
+// Compatibility level 1: Stable within a major release for a minimum of 12 months or 3 minor releases (whichever is longer).
+// +openshift:compatibility-gen:level=1
 type FeatureGate struct {
-	metav1.TypeMeta `json:",inline"`
-	// Standard object's metadata.
+	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// spec holds user settable values for configuration
@@ -35,6 +37,9 @@ var (
 	// Because of its nature, this setting cannot be validated.  If you have any typos or accidentally apply invalid combinations
 	// your cluster may fail in an unrecoverable way.
 	CustomNoUpgrade FeatureSet = "CustomNoUpgrade"
+
+	// TopologyManager enables ToplogyManager support. Upgrades are enabled with this feature.
+	LatencySensitive FeatureSet = "LatencySensitive"
 )
 
 type FeatureGateSpec struct {
@@ -71,11 +76,13 @@ type FeatureGateStatus struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Compatibility level 1: Stable within a major release for a minimum of 12 months or 3 minor releases (whichever is longer).
+// +openshift:compatibility-gen:level=1
 type FeatureGateList struct {
 	metav1.TypeMeta `json:",inline"`
-	// Standard object's metadata.
 	metav1.ListMeta `json:"metadata"`
-	Items           []FeatureGate `json:"items"`
+
+	Items []FeatureGate `json:"items"`
 }
 
 type FeatureGateEnabledDisabled struct {
@@ -91,28 +98,115 @@ type FeatureGateEnabledDisabled struct {
 // version of this file. In this upgrade scenario the map could return nil.
 //
 // example:
-//   if featureSet, ok := FeatureSets["SomeNewFeature"]; ok { }
+//
+//	if featureSet, ok := FeatureSets["SomeNewFeature"]; ok { }
 //
 // If you put an item in either of these lists, put your area and name on it so we can find owners.
 var FeatureSets = map[FeatureSet]*FeatureGateEnabledDisabled{
-	Default: {
-		Enabled: []string{
-			"ExperimentalCriticalPodAnnotation", // sig-pod, sjenning
-			"RotateKubeletServerCertificate",    // sig-pod, sjenning
-			"SupportPodPidsLimit",               // sig-pod, sjenning
-		},
-		Disabled: []string{
-			"LocalStorageCapacityIsolation", // sig-pod, sjenning
-		},
+	Default: defaultFeatures,
+	CustomNoUpgrade: {
+		Enabled:  []string{},
+		Disabled: []string{},
 	},
-	TechPreviewNoUpgrade: {
-		Enabled: []string{
-			"ExperimentalCriticalPodAnnotation", // sig-pod, sjenning
-			"RotateKubeletServerCertificate",    // sig-pod, sjenning
-			"SupportPodPidsLimit",               // sig-pod, sjenning
-		},
-		Disabled: []string{
-			"LocalStorageCapacityIsolation", // sig-pod, sjenning
-		},
+	TechPreviewNoUpgrade: newDefaultFeatures().
+		with("CSIMigrationAzureFile").             // sig-storage, fbertina, Kubernetes feature gate
+		with("CSIMigrationvSphere").               // sig-storage, fbertina, Kubernetes feature gate
+		with("ExternalCloudProvider").             // sig-cloud-provider, jspeed, OCP specific
+		with("CSIDriverSharedResource").           // sig-build, adkaplan, OCP specific
+		with("BuildCSIVolumes").                   // sig-build, adkaplan, OCP specific
+		with("NodeSwap").                          // sig-node, ehashman, Kubernetes feature gate
+		with("MachineAPIProviderOpenStack").       // openstack, egarcia (#forum-openstack), OCP specific
+		with("CGroupsV2").                         // sig-node, harche, OCP specific
+		with("Crun").                              // sig-node, haircommander, OCP specific
+		with("InsightsConfigAPI").                 // insights, tremes (#ccx), OCP specific
+		with("CSIInlineVolumeAdmission").          // sig-storage, jdobson, OCP specific
+		with("MatchLabelKeysInPodTopologySpread"). // sig-scheduling, ingvagabund (#forum-workloads), Kubernetes feature gate
+		toFeatures(),
+	LatencySensitive: newDefaultFeatures().
+		with(
+			"TopologyManager", // sig-pod, sjenning
+		).
+		toFeatures(),
+}
+
+var defaultFeatures = &FeatureGateEnabledDisabled{
+	Enabled: []string{
+		"APIPriorityAndFairness",         // sig-apimachinery, deads2k
+		"RotateKubeletServerCertificate", // sig-pod, sjenning
+		"DownwardAPIHugePages",           // sig-node, rphillips
 	},
+	Disabled: []string{
+		"CSIMigrationAzureFile", // sig-storage, jsafrane
+		"CSIMigrationvSphere",   // sig-storage, jsafrane
+	},
+}
+
+type featureSetBuilder struct {
+	forceOn  []string
+	forceOff []string
+}
+
+func newDefaultFeatures() *featureSetBuilder {
+	return &featureSetBuilder{}
+}
+
+func (f *featureSetBuilder) with(forceOn ...string) *featureSetBuilder {
+	f.forceOn = append(f.forceOn, forceOn...)
+	return f
+}
+
+func (f *featureSetBuilder) without(forceOff ...string) *featureSetBuilder {
+	f.forceOff = append(f.forceOff, forceOff...)
+	return f
+}
+
+func (f *featureSetBuilder) isForcedOff(needle string) bool {
+	for _, forcedOff := range f.forceOff {
+		if needle == forcedOff {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *featureSetBuilder) isForcedOn(needle string) bool {
+	for _, forceOn := range f.forceOn {
+		if needle == forceOn {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *featureSetBuilder) toFeatures() *FeatureGateEnabledDisabled {
+	finalOn := []string{}
+	finalOff := []string{}
+
+	// only add the default enabled features if they haven't been explicitly set off
+	for _, defaultOn := range defaultFeatures.Enabled {
+		if !f.isForcedOff(defaultOn) {
+			finalOn = append(finalOn, defaultOn)
+		}
+	}
+	for _, currOn := range f.forceOn {
+		if f.isForcedOff(currOn) {
+			panic("coding error, you can't have features both on and off")
+		}
+		finalOn = append(finalOn, currOn)
+	}
+
+	// only add the default disabled features if they haven't been explicitly set on
+	for _, defaultOff := range defaultFeatures.Disabled {
+		if !f.isForcedOn(defaultOff) {
+			finalOff = append(finalOff, defaultOff)
+		}
+	}
+	for _, currOff := range f.forceOff {
+		finalOff = append(finalOff, currOff)
+	}
+
+	return &FeatureGateEnabledDisabled{
+		Enabled:  finalOn,
+		Disabled: finalOff,
+	}
 }
