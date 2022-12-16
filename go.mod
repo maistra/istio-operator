@@ -62,6 +62,7 @@ replace k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.18.3
 
 replace k8s.io/apimachinery => k8s.io/apimachinery v0.18.3
 
+// FIXME: https://issues.redhat.com/browse/OSSM-2367
 replace k8s.io/code-generator => k8s.io/code-generator v0.18.3
 
 replace github.com/go-logr/zapr => github.com/go-logr/zapr v0.2.0
