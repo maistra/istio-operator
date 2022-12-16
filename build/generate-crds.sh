@@ -11,7 +11,7 @@ done
 
 function generateCRDs() {
   echo "Generating CRDs"
-  go run -mod=vendor sigs.k8s.io/controller-tools/cmd/controller-gen crd \
+  go run sigs.k8s.io/controller-tools/cmd/controller-gen crd \
       paths=./pkg/apis/maistra/... \
       crd:maxDescLen=0,preserveUnknownFields=false,crdVersions=v1 \
       output:dir=./deploy/crds

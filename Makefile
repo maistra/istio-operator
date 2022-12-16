@@ -58,7 +58,7 @@ $(info   Building $(BUILD_TYPE) operator)
 
 export SOURCE_DIR OUT_DIR MAISTRA_BRANCH MAISTRA_VERSION VERSION COMMUNITY BUILD_TYPE
 
-FINDFILES=find . \( -path ./.git -o -path ./.github -o -path ./tmp -o -path ./vendor \) -prune -o -type f
+FINDFILES=find . \( -path ./.git -o -path ./.github -o -path ./tmp \) -prune -o -type f
 XARGS = xargs -0 -r
 
 
@@ -81,7 +81,7 @@ compile:
 ################################################################################
 .PHONY: test
 test:
-	go test -timeout ${TEST_TIMEOUT} -mod=vendor ${TEST_FLAGS} ./...
+	go test -timeout ${TEST_TIMEOUT} ${TEST_FLAGS} ./...
 
 ################################################################################
 # Helm charts generation and templates processing
