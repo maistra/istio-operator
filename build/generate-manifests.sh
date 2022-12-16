@@ -66,7 +66,7 @@ function generateDeploymentFile() {
 }
 
 function generateCSV() {
-  YQ="go run -mod=vendor github.com/mikefarah/yq/v4"
+  YQ="go run github.com/mikefarah/yq/v4"
 
   IMAGE_SRC=$(${YQ} eval 'select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.spec.containers[0].image' ${DEPLOYMENT_FILE})
   if [ "$IMAGE_SRC" == "" ]; then
