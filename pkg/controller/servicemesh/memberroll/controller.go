@@ -254,29 +254,26 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		return reconcile.Result{}, r.updateStatus(ctx, roll)
 	}
 
-	// 1. gather status of all members that belong to this roll
-	members := &maistrav1.ServiceMeshMemberList{}
-	err := r.Client.List(ctx, members, client.MatchingFields{"spec.controlPlaneRef.namespace": meshNamespace})
-	if err != nil {
-		return reconcile.Result{}, err
+	// 1. fetch the SMCP object(s) and check if exactly one exists
+	var mesh *maistrav2.ServiceMeshControlPlane
+	meshList := &maistrav2.ServiceMeshControlPlaneList{}
+	if err := r.Client.List(ctx, meshList, client.InNamespace(meshNamespace)); err != nil {
+		return reconcile.Result{}, pkgerrors.Wrap(err, "Error retrieving ServiceMeshControlPlane resources")
 	}
-
-	// 2. fetch the SMCP object and check that it's fully reconciled
-	mesh, reason, message, err := r.getServiceMeshControlPlane(ctx, meshNamespace)
-	if err != nil {
-		return reconcile.Result{}, err
-	} else if mesh == nil {
+	switch len(meshList.Items) {
+	case 0:
+		mesh = nil
+	case 1:
+		mesh = &meshList.Items[0]
+	default: // more than 1 SMCP found
+		reason := maistrav1.ConditionReasonMultipleSMCP
+		message := "Multiple ServiceMeshControlPlane resources exist in the namespace"
 		log.Info("Skipping reconciliation of SMMR", "project", meshNamespace, "reason", reason, "message", message)
-		if reason == maistrav1.ConditionReasonSMCPMissing {
-			roll.Status.PendingMembers = sets.NewString(roll.Status.Members...).Difference(sets.NewString(roll.Status.TerminatingMembers...)).List()
-			roll.Status.ConfiguredMembers = []string{}
-		}
 		setReadyCondition(roll, false, reason, message)
-		// when a control plane is created/updated/deleted our watch will pick it up and issue a new reconcile event
 		return reconcile.Result{}, r.updateStatus(ctx, roll)
 	}
 
-	meshIsClusterScoped, err := mesh.Spec.IsClusterScoped()
+	requiredNamespaces, err := r.getRequiredNamespaces(ctx, roll, meshNamespace)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -286,34 +283,22 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		memberStatusMap[c.Namespace] = c
 	}
 
-	// 3. create ServiceMeshMember object for each ns in spec.members
-	memberNamespaces := roll.Spec.Members
-	if roll.Spec.IsClusterScoped() {
-		nsList := &corev1.NamespaceList{}
-		err = r.Client.List(ctx, nsList)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		memberNamespaces = []string{}
-		for _, ns := range nsList.Items {
-			if ns.Name != meshNamespace && !isExcludedNamespace(ns.Name) {
-				memberNamespaces = append(memberNamespaces, ns.Name)
+	// 2. create ServiceMeshMember object for each ns in spec.members
+	if mesh != nil {
+		for _, ns := range requiredNamespaces.List() {
+			member, err := r.ensureMemberExists(ctx, ns, mesh.Name, meshNamespace)
+			if err != nil {
+				return reconcile.Result{}, err
+			} else if member == nil {
+				setMemberCondition(memberStatusMap, ns, maistrav1.ServiceMeshMemberCondition{
+					Type:    maistrav1.ConditionTypeMemberReconciled,
+					Status:  corev1.ConditionFalse,
+					Reason:  maistrav1.ConditionReasonMemberNamespaceNotExists,
+					Message: fmt.Sprintf("Namespace %s does not exist", ns),
+				})
+				continue
 			}
-		}
-	}
-	for _, ns := range memberNamespaces {
-		member, err := r.ensureMemberExists(ctx, ns, mesh.Name, meshNamespace)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		if member == nil {
-			setMemberCondition(memberStatusMap, ns, maistrav1.ServiceMeshMemberCondition{
-				Type:    maistrav1.ConditionTypeMemberReconciled,
-				Status:  corev1.ConditionFalse,
-				Reason:  maistrav1.ConditionReasonMemberNamespaceNotExists,
-				Message: fmt.Sprintf("Namespace %s does not exist", ns),
-			})
-		} else {
+
 			ref := member.Spec.ControlPlaneRef
 			if ref.Name != mesh.Name || ref.Namespace != meshNamespace {
 				setMemberCondition(memberStatusMap, ns, maistrav1.ServiceMeshMemberCondition{
@@ -326,10 +311,15 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		}
 	}
 
+	// 3. gather status of all members that belong to this roll
+	members := &maistrav1.ServiceMeshMemberList{}
+	if err = r.Client.List(ctx, members, client.MatchingFields{"spec.controlPlaneRef.namespace": meshNamespace}); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// 4. delete ServiceMeshMembers that were created by this controller, but are no longer in spec.members
-	memberSet := sets.NewString(memberNamespaces...).Delete(meshNamespace)
 	for _, member := range members.Items {
-		if member.DeletionTimestamp == nil && isCreatedByThisController(&member) && !memberSet.Has(member.Namespace) {
+		if member.DeletionTimestamp == nil && isCreatedByThisController(&member) && (mesh == nil || !requiredNamespaces.Has(member.Namespace)) {
 			err := r.Client.Delete(ctx, &member)
 			if err != nil && !errors.IsNotFound(err) {
 				return reconcile.Result{}, err
@@ -338,7 +328,7 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	}
 
 	// 5. check each ServiceMeshMember object to see if it's configured or terminating
-	allKnownMembers := sets.NewString(memberNamespaces...).Insert(getNamespaces(members)...).Delete(meshNamespace)
+	allKnownMembers := requiredNamespaces.Insert(getNamespaces(members)...).Delete(meshNamespace)
 	configuredMembers := sets.NewString() // reconciled, but not necessarily up-to-date with the smcp
 	upToDateMembers := sets.NewString()   // reconciled AND up-to-date with the smcp
 	terminatingMembers := sets.NewString()
@@ -359,9 +349,15 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 
 	// 6. tell Kiali about all the namespaces in the mesh
 	var kialiErr error
-	if mesh.Status.AppliedSpec.IsKialiEnabled() {
+	if mesh != nil && mesh.Status.AppliedSpec.IsKialiEnabled() {
 		kialiName := mesh.Status.AppliedSpec.Addons.Kiali.ResourceName()
 		roll.Status.SetAnnotation(statusAnnotationKialiName, kialiName)
+
+		meshIsClusterScoped, err := mesh.Spec.IsClusterScoped()
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
 		if meshIsClusterScoped && roll.Spec.IsClusterScoped() {
 			kialiErr = r.kialiReconciler.reconcileKiali(ctx, kialiName, meshNamespace, []string{"**"}, getExcludedNamespaces())
 		} else {
@@ -374,8 +370,13 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	roll.Status.PendingMembers = allKnownMembers.Difference(upToDateMembers).Difference(terminatingMembers).List()
 	roll.Status.ConfiguredMembers = configuredMembers.List()
 	roll.Status.TerminatingMembers = terminatingMembers.List()
-	roll.Status.ServiceMeshGeneration = mesh.Status.ObservedGeneration
-	roll.Status.ServiceMeshReconciledVersion = mesh.Status.GetReconciledVersion()
+	if mesh == nil {
+		roll.Status.ServiceMeshGeneration = 0
+		roll.Status.ServiceMeshReconciledVersion = ""
+	} else {
+		roll.Status.ServiceMeshGeneration = mesh.Status.ObservedGeneration
+		roll.Status.ServiceMeshReconciledVersion = mesh.Status.GetReconciledVersion()
+	}
 	roll.Status.MemberStatuses = []maistrav1.ServiceMeshMemberStatusSummary{}
 	for _, ns := range allKnownMembers.List() {
 		memberStatus, exists := memberStatusMap[ns]
@@ -388,7 +389,11 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		roll.Status.MemberStatuses = append(roll.Status.MemberStatuses, memberStatus)
 	}
 
-	if len(roll.Status.PendingMembers) > 0 {
+	if mesh == nil {
+		setReadyCondition(roll, false,
+			maistrav1.ConditionReasonSMCPMissing,
+			"No ServiceMeshControlPlane exists in the namespace")
+	} else if len(roll.Status.PendingMembers) > 0 {
 		setReadyCondition(roll, false,
 			maistrav1.ConditionReasonReconcileError,
 			fmt.Sprintf("The following namespaces are not yet configured: %v", roll.Status.PendingMembers))
@@ -409,6 +414,25 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		return reconcile.Result{}, kialiErr
 	}
 	return reconcile.Result{}, nil
+}
+
+func (r *MemberRollReconciler) getRequiredNamespaces(ctx context.Context, roll *maistrav1.ServiceMeshMemberRoll, meshNamespace string) (sets.String, error) {
+	if !roll.Spec.IsClusterScoped() {
+		return sets.NewString(roll.Spec.Members...).Delete(meshNamespace), nil
+	}
+
+	nsList := &corev1.NamespaceList{}
+	err := r.Client.List(ctx, nsList)
+	if err != nil {
+		return nil, err
+	}
+	requiredNamespaces := sets.NewString()
+	for _, ns := range nsList.Items {
+		if ns.Name != meshNamespace && !isExcludedNamespace(ns.Name) {
+			requiredNamespaces.Insert(ns.Name)
+		}
+	}
+	return requiredNamespaces, nil
 }
 
 func isExcludedNamespace(ns string) bool {
@@ -464,23 +488,6 @@ func setMemberCondition(memberStatusMap map[string]maistrav1.ServiceMeshMemberSt
 	memberStatusMap[ns] = memberStatus
 }
 
-func (r *MemberRollReconciler) getServiceMeshControlPlane(ctx context.Context, namespace string) (*maistrav2.ServiceMeshControlPlane,
-	maistrav1.ServiceMeshMemberRollConditionReason, string, error,
-) {
-	meshList := &maistrav2.ServiceMeshControlPlaneList{}
-	if err := r.Client.List(ctx, meshList, client.InNamespace(namespace)); err != nil {
-		return nil, "", "", pkgerrors.Wrap(err, "Error retrieving ServiceMeshControlPlane resources")
-	}
-	meshCount := len(meshList.Items)
-	if meshCount == 0 {
-		return nil, maistrav1.ConditionReasonSMCPMissing, "No ServiceMeshControlPlane exists in the namespace", nil
-	} else if meshCount > 1 {
-		return nil, maistrav1.ConditionReasonMultipleSMCP, "Multiple ServiceMeshControlPlane resources exist in the namespace", nil
-	}
-
-	return &meshList.Items[0], "", "", nil
-}
-
 func setReadyCondition(roll *maistrav1.ServiceMeshMemberRoll, ready bool, reason maistrav1.ServiceMeshMemberRollConditionReason, message string) {
 	roll.Status.SetCondition(maistrav1.ServiceMeshMemberRollCondition{
 		Type:    maistrav1.ConditionTypeMemberRollReady,
@@ -505,8 +512,8 @@ func getMemberReconciliationStatus(member *maistrav1.ServiceMeshMember, mesh *ma
 	ref := member.Spec.ControlPlaneRef
 	condition := member.Status.GetCondition(maistrav1.ConditionTypeMemberReconciled)
 
-	configured = ref.Name == mesh.Name && ref.Namespace == mesh.Namespace && condition.Status == corev1.ConditionTrue
-	upToDate = member.Status.ServiceMeshReconciledVersion == mesh.Status.GetReconciledVersion()
+	configured = mesh != nil && ref.Name == mesh.Name && ref.Namespace == mesh.Namespace && condition.Status == corev1.ConditionTrue
+	upToDate = mesh != nil && member.Status.ServiceMeshReconciledVersion == mesh.Status.GetReconciledVersion()
 	return configured, upToDate
 }
 
