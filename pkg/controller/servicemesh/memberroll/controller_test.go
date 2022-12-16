@@ -156,7 +156,7 @@ func TestReconcileMemberRollWithInvalidName(t *testing.T) {
 	smmr.Name = "not-default"
 	cl, _, r, _ := createClientAndReconciler(smmr)
 
-	assertReconcileWithRequestSucceeds(r, reconcile.Request{common.ToNamespacedName(smmr)}, t)
+	assertReconcileWithRequestSucceeds(r, reconcile.Request{NamespacedName: common.ToNamespacedName(smmr)}, t)
 
 	updatedRoll := test.GetUpdatedObject(ctx, cl, smmr.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
 	assertConditions(updatedRoll, []maistrav1.ServiceMeshMemberRollCondition{
