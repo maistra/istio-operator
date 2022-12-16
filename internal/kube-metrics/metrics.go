@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/maistra/istio-operator/internal/k8sutil"
-
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
@@ -28,6 +26,8 @@ import (
 	ksmetric "k8s.io/kube-state-metrics/pkg/metric"
 	metricsstore "k8s.io/kube-state-metrics/pkg/metrics_store"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/maistra/istio-operator/internal/k8sutil"
 )
 
 var log = logf.Log.WithName("kubemetrics")
@@ -39,7 +39,8 @@ var log = logf.Log.WithName("kubemetrics")
 func GenerateAndServeCRMetrics(cfg *rest.Config,
 	ns []string,
 	operatorGVKs []schema.GroupVersionKind,
-	host string, port int32) error {
+	host string, port int32,
+) error {
 	// We have to have at least one namespace.
 	if len(ns) < 1 {
 		return errors.New(
@@ -86,7 +87,7 @@ func generateMetricFamilies(kind string) []ksmetric.FamilyGenerator {
 	metricName := fmt.Sprintf("%s_info", kindName)
 
 	return []ksmetric.FamilyGenerator{
-		ksmetric.FamilyGenerator{
+		{
 			Name: metricName,
 			Type: ksmetric.Gauge,
 			Help: helpText,

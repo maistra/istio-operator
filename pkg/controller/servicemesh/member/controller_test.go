@@ -86,7 +86,7 @@ func TestReconcileMemberWithInvalidName(t *testing.T) {
 	member.Name = "not-default"
 	cl, _, r := createClientAndReconciler(member)
 
-	assertReconcileWithRequestSucceeds(r, reconcile.Request{common.ToNamespacedName(member)}, t)
+	assertReconcileWithRequestSucceeds(r, reconcile.Request{NamespacedName: common.ToNamespacedName(member)}, t)
 
 	updatedMember := test.GetUpdatedObject(ctx, cl, member.ObjectMeta, &maistrav1.ServiceMeshMember{}).(*maistrav1.ServiceMeshMember)
 	expectedMessage := fmt.Sprintf("the ServiceMeshMember name is invalid; must be %q", common.MemberName)

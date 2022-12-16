@@ -18,8 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/maistra/istio-operator/internal/k8sutil"
-
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,6 +26,8 @@ import (
 	"k8s.io/client-go/rest"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/maistra/istio-operator/internal/k8sutil"
 )
 
 var log = logf.Log.WithName("metrics")
@@ -155,7 +155,8 @@ func getPodOwnerRef(ctx context.Context, client crclient.Client, ns string) (*me
 
 // findFinalOwnerRef tries to locate the final controller/owner based on the owner reference provided.
 func findFinalOwnerRef(ctx context.Context, client crclient.Client, ns string,
-	ownerRef *metav1.OwnerReference) (*metav1.OwnerReference, error) {
+	ownerRef *metav1.OwnerReference,
+) (*metav1.OwnerReference, error) {
 	if ownerRef == nil {
 		return nil, nil
 	}

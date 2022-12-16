@@ -11,9 +11,6 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	"github.com/magiconair/properties"
-	"github.com/maistra/istio-operator/internal/k8sutil"
-	kubemetrics "github.com/maistra/istio-operator/internal/kube-metrics"
-	"github.com/maistra/istio-operator/internal/metrics"
 	"github.com/mitchellh/mapstructure"
 	"github.com/operator-framework/operator-lib/leader"
 	"github.com/spf13/pflag"
@@ -30,6 +27,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
+	"github.com/maistra/istio-operator/internal/k8sutil"
+	kubemetrics "github.com/maistra/istio-operator/internal/kube-metrics"
+	"github.com/maistra/istio-operator/internal/metrics"
 	"github.com/maistra/istio-operator/pkg/apis"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"

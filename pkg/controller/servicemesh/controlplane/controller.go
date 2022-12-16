@@ -114,22 +114,22 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 	operatorNamespace := common.GetOperatorNamespace()
 	if err = c.Watch(&source.Kind{Type: &appsv1.DaemonSet{}},
 		handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
-				if obj.GetNamespace() != operatorNamespace {
-					return nil
-				}
-				smcpList := &v2.ServiceMeshControlPlaneList{}
-				if err := mgr.GetClient().List(ctx, smcpList); err != nil {
-					log.Error(err, "error listing ServiceMeshControlPlane objects in CNI DaemonSet watcher")
-					return nil
-				}
-				requests := make([]reconcile.Request, 0, len(smcpList.Items))
-				for _, smcp := range smcpList.Items {
-					requests = append(requests, reconcile.Request{
-						NamespacedName: common.ToNamespacedName(&smcp),
-					})
-				}
-				return requests
-			}),
+			if obj.GetNamespace() != operatorNamespace {
+				return nil
+			}
+			smcpList := &v2.ServiceMeshControlPlaneList{}
+			if err := mgr.GetClient().List(ctx, smcpList); err != nil {
+				log.Error(err, "error listing ServiceMeshControlPlane objects in CNI DaemonSet watcher")
+				return nil
+			}
+			requests := make([]reconcile.Request, 0, len(smcpList.Items))
+			for _, smcp := range smcpList.Items {
+				requests = append(requests, reconcile.Request{
+					NamespacedName: common.ToNamespacedName(&smcp),
+				})
+			}
+			return requests
+		}),
 		ownedResourcePredicates); err != nil {
 		return err
 	}
@@ -195,7 +195,6 @@ type ControlPlaneInstanceReconciler interface {
 // and what is in the ServiceMeshControlPlane.Spec
 func (r *ControlPlaneReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	log := createLogger().WithValues("ServiceMeshControlPlane", request)
-	ctx = common.NewReconcileContext(log)
 
 	if earliestReconciliationTime, ok := r.earliestReconciliationTimes[request.NamespacedName]; ok {
 		if earliestReconciliationTime.After(time.Now()) {

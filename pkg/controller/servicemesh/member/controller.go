@@ -112,9 +112,9 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 		func(ns client.Object) []reconcile.Request {
 			return r.getRequestsForMembersWithReferenceToNamespace(ctx, ns.GetNamespace(), mgr.GetClient())
 		}),
-	predicate.Funcs{
-		GenericFunc: func(_ event.GenericEvent) bool { return false }, // no need to process member on generic SMCP events
-	})
+		predicate.Funcs{
+			GenericFunc: func(_ event.GenericEvent) bool { return false }, // no need to process member on generic SMCP events
+		})
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,6 @@ type NewNamespaceReconcilerFunc func(ctx context.Context, cl client.Client,
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *MemberReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := createLogger().WithValues("ServiceMeshMember", request)
-	ctx = common.NewReconcileContext(reqLogger)
 
 	reqLogger.Info("Processing ServiceMeshMember")
 	defer func() {

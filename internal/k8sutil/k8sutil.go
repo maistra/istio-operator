@@ -17,7 +17,6 @@ package k8sutil
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -65,7 +64,7 @@ func GetOperatorNamespace() (string, error) {
 	if isRunModeLocal() {
 		return "", ErrRunLocal
 	}
-	nsBytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	nsBytes, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", ErrNoNamespace
@@ -184,10 +183,6 @@ func isRunModeLocal() bool {
 
 // SupportsOwnerReference checks whether a given dependent supports owner references, based on the owner.
 // This function performs following checks:
-//  -- True: Owner is cluster-scoped.
-//  -- True: Both Owner and dependent are Namespaced with in same namespace.
-//  -- False: Owner is Namespaced and dependent is Cluster-scoped.
-//  -- False: Both Owner and dependent are Namespaced with different namespaces.
 func SupportsOwnerReference(restMapper meta.RESTMapper, owner, dependent runtime.Object) (bool, error) {
 	ownerGVK := owner.GetObjectKind().GroupVersionKind()
 	ownerMapping, err := restMapper.RESTMapping(ownerGVK.GroupKind(), ownerGVK.Version)

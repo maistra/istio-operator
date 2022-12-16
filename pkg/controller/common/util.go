@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/go-logr/logr"
-	"github.com/maistra/istio-operator/internal/k8sutil"
 	appsv1 "k8s.io/api/apps/v1"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	authorizationv1 "k8s.io/api/authorization/v1"
@@ -30,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	"github.com/maistra/istio-operator/internal/k8sutil"
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 )
 

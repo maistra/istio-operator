@@ -101,7 +101,7 @@ func add(mgr manager.Manager, r *reconciler) error {
 					Name:      obj.GetName(),
 				})
 		}),
-	sourceWatchPredicates(r))
+		sourceWatchPredicates(r))
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func add(mgr manager.Manager, r *reconciler) error {
 					Name:      obj.GetName(),
 				})
 		}),
-	sourceWatchPredicates(r))
+		sourceWatchPredicates(r))
 	if err != nil {
 		return err
 	}
@@ -247,7 +247,6 @@ type reconciler struct {
 func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	logger := createLogger().WithValues("WebhookConfig", request.NamespacedName.String())
 	logger.Info("reconciling WebhookConfiguration")
-	ctx = common.NewReconcileContext(logger)
 	return reconcile.Result{}, r.webhookCABundleManager.UpdateCABundle(ctx, r.Client, request.NamespacedName)
 }
 

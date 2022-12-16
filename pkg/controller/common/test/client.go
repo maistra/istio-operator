@@ -47,7 +47,7 @@ type fakeClient struct {
 	*testing.Fake
 	scheme     *runtime.Scheme
 	serializer runtime.Serializer
-	mapper 		meta.RESTMapper
+	mapper     meta.RESTMapper
 }
 
 var _ client.Client = &fakeClient{}

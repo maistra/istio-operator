@@ -20,11 +20,12 @@ import (
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	monclientv1 "github.com/coreos/prometheus-operator/pkg/client/versioned/typed/monitoring/v1"
-	"github.com/maistra/istio-operator/internal/k8sutil"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
+
+	"github.com/maistra/istio-operator/internal/k8sutil"
 )
 
 var ErrServiceMonitorNotPresent = fmt.Errorf("no ServiceMonitor registered with the API")
@@ -34,7 +35,8 @@ type ServiceMonitorUpdater func(*monitoringv1.ServiceMonitor) error
 // CreateServiceMonitors creates ServiceMonitors objects based on an array of Service objects.
 // If CR ServiceMonitor is not registered in the Cluster it will not attempt at creating resources.
 func CreateServiceMonitors(config *rest.Config, ns string, services []*v1.Service,
-	updaters ...ServiceMonitorUpdater) ([]*monitoringv1.ServiceMonitor, error) {
+	updaters ...ServiceMonitorUpdater,
+) ([]*monitoringv1.ServiceMonitor, error) {
 	// check if we can even create ServiceMonitors
 	exists, err := hasServiceMonitor(config)
 	if err != nil {

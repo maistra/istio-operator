@@ -88,7 +88,7 @@ func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 		return err
 	}
 
-	err = c.Watch(&source.Kind{Type: &v1.Node{}}, 
+	err = c.Watch(&source.Kind{Type: &v1.Node{}},
 		handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
 			list := &v1.PodList{}
 			err := mgr.GetClient().List(ctx, list, client.MatchingFields{"spec.nodeName": a.GetName()})
@@ -106,15 +106,15 @@ func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 			}
 			return requests
 		}),
-	    predicate.Funcs{
-		CreateFunc: func(evt event.CreateEvent) bool { return evt.Object != nil },
-		DeleteFunc: func(evt event.DeleteEvent) bool { return false },
-		UpdateFunc: func(evt event.UpdateEvent) bool {
-			return evt.ObjectOld != nil && evt.ObjectNew != nil &&
-				!topologyLabelsMatch(evt.ObjectOld.GetLabels(), evt.ObjectNew.GetLabels())
-		},
-		GenericFunc: func(evt event.GenericEvent) bool { return false },
-	})
+		predicate.Funcs{
+			CreateFunc: func(evt event.CreateEvent) bool { return evt.Object != nil },
+			DeleteFunc: func(evt event.DeleteEvent) bool { return false },
+			UpdateFunc: func(evt event.UpdateEvent) bool {
+				return evt.ObjectOld != nil && evt.ObjectNew != nil &&
+					!topologyLabelsMatch(evt.ObjectOld.GetLabels(), evt.ObjectNew.GetLabels())
+			},
+			GenericFunc: func(evt event.GenericEvent) bool { return false },
+		})
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,6 @@ type PodLocalityReconciler struct {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *PodLocalityReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := createLogger().WithValues("Pod", request)
-	ctx = common.NewReconcileContext(reqLogger)
 	reqLogger.Info("Processing Pod")
 
 	// Fetch the Pod

@@ -209,6 +209,7 @@ func (r *controlPlaneInstanceReconciler) calculateComponentReadinessMap(ctx cont
 	return readinessMap, nil
 }
 
+//lint:ignore U1000 Ignore unused function temporarily for debugging
 func (r *controlPlaneInstanceReconciler) isCNIReady(ctx context.Context) (bool, error) {
 	if !r.cniConfig.Enabled {
 		return true, nil

@@ -94,12 +94,12 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 		func(ns client.Object) []reconcile.Request {
 			return toRequests(ctx, mgr.GetClient(), ns.GetName())
 		}),
-	predicate.Funcs{
-		GenericFunc: func(_ event.GenericEvent) bool {
-			// we don't need to process the member roll on generic events
-			return false
-		},
-	})
+		predicate.Funcs{
+			GenericFunc: func(_ event.GenericEvent) bool {
+				// we don't need to process the member roll on generic events
+				return false
+			},
+		})
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 
 			return []reconcile.Request{{NamespacedName: namespacedName}}
 		}),
-	predicate.Funcs{})
+		predicate.Funcs{})
 	if err != nil {
 		return err
 	}
@@ -193,7 +193,6 @@ type MemberRollReconciler struct {
 // and what is in the ServiceMeshMemberRoll.Spec
 func (r *MemberRollReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := createLogger().WithValues("ServiceMeshMemberRoll", request)
-	ctx = common.NewReconcileContext(reqLogger)
 
 	reqLogger.Info("Processing ServiceMeshMemberRoll")
 	defer func() {

@@ -138,6 +138,7 @@ func (c *FakeCache) internalGetInformer(gvk schema.GroupVersionKind, obj runtime
 	return i, err
 }
 
+//nolint:unparam
 func (c *FakeCache) createListWatcher(gvk schema.GroupVersionKind) (*toolscache.ListWatch, error) {
 	listGVK := gvk.GroupVersion().WithKind(gvk.Kind + "List")
 	listObj := &unstructured.UnstructuredList{}
