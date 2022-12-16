@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -60,7 +61,7 @@ func TestReconcile(t *testing.T) {
 			}
 			r := NewConflictHandlingReconciler(reconciler)
 
-			result, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: "foo", Name: "bar"}})
+			result, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: "foo", Name: "bar"}})
 
 			assert.Equals(result, tc.expectedResult, "Unexpected result returned by Reconcile()", t)
 			assert.Equals(err, tc.expectedError, "Unexpected error returned by Reconcile()", t)
@@ -123,6 +124,6 @@ type fakeReconciler struct {
 	errorToReturn  error
 }
 
-func (r *fakeReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *fakeReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	return r.resultToReturn, r.errorToReturn
 }

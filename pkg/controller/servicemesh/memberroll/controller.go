@@ -81,7 +81,7 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 	}
 
 	// TODO: should this be moved somewhere else?
-	err = mgr.GetFieldIndexer().IndexField(ctx, &maistrav1.ServiceMeshMemberRoll{}, "spec.members", func(obj runtime.Object) []string {
+	err = mgr.GetFieldIndexer().IndexField(ctx, &maistrav1.ServiceMeshMemberRoll{}, "spec.members", func(obj client.Object) []string {
 		roll := obj.(*maistrav1.ServiceMeshMemberRoll)
 		return roll.Spec.Members
 	})
@@ -90,11 +90,11 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 	}
 
 	// watch namespaces and trigger reconcile requests as those that match a member roll come and go
-	err = c.Watch(&source.Kind{Type: &corev1.Namespace{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(ns handler.MapObject) []reconcile.Request {
-			return toRequests(ctx, mgr.GetClient(), ns.Meta.GetName())
+	err = c.Watch(&source.Kind{Type: &corev1.Namespace{}}, handler.EnqueueRequestsFromMapFunc(
+		func(ns client.Object) []reconcile.Request {
+			return toRequests(ctx, mgr.GetClient(), ns.GetName())
 		}),
-	}, predicate.Funcs{
+	predicate.Funcs{
 		GenericFunc: func(_ event.GenericEvent) bool {
 			// we don't need to process the member roll on generic events
 			return false
@@ -105,9 +105,9 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 	}
 
 	// watch control planes and trigger reconcile requests as they come and go
-	err = c.Watch(&source.Kind{Type: &maistrav2.ServiceMeshControlPlane{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(smcpMap handler.MapObject) []reconcile.Request {
-			namespacedName := types.NamespacedName{Name: common.MemberRollName, Namespace: smcpMap.Meta.GetNamespace()}
+	err = c.Watch(&source.Kind{Type: &maistrav2.ServiceMeshControlPlane{}}, handler.EnqueueRequestsFromMapFunc(
+		func(smcpMap client.Object) []reconcile.Request {
+			namespacedName := types.NamespacedName{Name: common.MemberRollName, Namespace: smcpMap.GetNamespace()}
 			err := mgr.GetClient().Get(ctx, namespacedName, &maistrav1.ServiceMeshMemberRoll{})
 			if err != nil {
 				if !errors.IsNotFound(err) {
@@ -118,15 +118,15 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 
 			return []reconcile.Request{{NamespacedName: namespacedName}}
 		}),
-	}, predicate.Funcs{})
+	predicate.Funcs{})
 	if err != nil {
 		return err
 	}
 
 	// Watch ServiceMeshMembers
-	err = c.Watch(&source.Kind{Type: &maistrav1.ServiceMeshMember{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(mapObject handler.MapObject) []reconcile.Request {
-			member := mapObject.Object.(*maistrav1.ServiceMeshMember)
+	err = c.Watch(&source.Kind{Type: &maistrav1.ServiceMeshMember{}}, handler.EnqueueRequestsFromMapFunc(
+		func(mapObject client.Object) []reconcile.Request {
+			member := mapObject.(*maistrav1.ServiceMeshMember)
 			var requests []reconcile.Request
 
 			// reconcile ServiceMeshMemberRoll referenced in the ServiceMeshMember
@@ -140,8 +140,7 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 			// reconcile ServiceMeshMemberRolls that have the ServiceMeshMember's namespace in spec.members
 			requests = append(requests, toRequests(ctx, mgr.GetClient(), member.Namespace)...)
 			return requests
-		}),
-	})
+		}))
 	if err != nil {
 		return err
 	}
@@ -192,9 +191,9 @@ type MemberRollReconciler struct {
 
 // Reconcile reads that state of the cluster for a ServiceMeshMemberRoll object and makes changes based on the state read
 // and what is in the ServiceMeshMemberRoll.Spec
-func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *MemberRollReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := createLogger().WithValues("ServiceMeshMemberRoll", request)
-	ctx := common.NewReconcileContext(reqLogger)
+	ctx = common.NewReconcileContext(reqLogger)
 
 	reqLogger.Info("Processing ServiceMeshMemberRoll")
 	defer func() {

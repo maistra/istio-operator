@@ -113,9 +113,8 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 	// add watch for cni daemon set
 	operatorNamespace := common.GetOperatorNamespace()
 	if err = c.Watch(&source.Kind{Type: &appsv1.DaemonSet{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
-				if obj.Meta.GetNamespace() != operatorNamespace {
+		handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+				if obj.GetNamespace() != operatorNamespace {
 					return nil
 				}
 				smcpList := &v2.ServiceMeshControlPlaneList{}
@@ -131,7 +130,6 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 				}
 				return requests
 			}),
-		},
 		ownedResourcePredicates); err != nil {
 		return err
 	}
@@ -139,9 +137,9 @@ func add(mgr manager.Manager, r *ControlPlaneReconciler) error {
 	return nil
 }
 
-var enqueueRequestForSMCP = &handler.EnqueueRequestsFromMapFunc{
-	ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
-		labels := obj.Meta.GetLabels()
+var enqueueRequestForSMCP = handler.EnqueueRequestsFromMapFunc(
+	func(obj client.Object) []reconcile.Request {
+		labels := obj.GetLabels()
 		if labels[common.KubernetesAppManagedByKey] == common.KubernetesAppManagedByValue {
 			ownerNamespace := labels[common.OwnerKey]
 			ownerName := labels[common.OwnerNameKey]
@@ -153,8 +151,7 @@ var enqueueRequestForSMCP = &handler.EnqueueRequestsFromMapFunc{
 			}
 		}
 		return nil
-	}),
-}
+	})
 
 var ownedResourcePredicates = predicate.Funcs{
 	CreateFunc: func(_ event.CreateEvent) bool {
@@ -196,9 +193,9 @@ type ControlPlaneInstanceReconciler interface {
 
 // Reconcile reads that state of the cluster for a ServiceMeshControlPlane object and makes changes based on the state read
 // and what is in the ServiceMeshControlPlane.Spec
-func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ControlPlaneReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	log := createLogger().WithValues("ServiceMeshControlPlane", request)
-	ctx := common.NewReconcileContext(log)
+	ctx = common.NewReconcileContext(log)
 
 	if earliestReconciliationTime, ok := r.earliestReconciliationTimes[request.NamespacedName]; ok {
 		if earliestReconciliationTime.After(time.Now()) {

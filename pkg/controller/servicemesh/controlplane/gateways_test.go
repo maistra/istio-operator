@@ -7,8 +7,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	clienttesting "k8s.io/client-go/testing"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -94,7 +94,7 @@ func TestAdditionalIngressGatewayInstall(t *testing.T) {
 		},
 		{
 			name: "app-namespace",
-			resources: []runtime.Object{
+			resources: []client.Object{
 				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: appNamespace}},
 				&v1.ServiceMeshMemberRoll{
 					ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: controlPlaneNamespace},

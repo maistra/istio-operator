@@ -21,7 +21,7 @@ type webhookGetter interface {
 
 type webhookWrapper interface {
 	MetaObject() metav1.Object
-	Object() runtime.Object
+	Object() client.Object
 	ClientConfigs() []*v1.WebhookClientConfig
 	Copy() webhookWrapper
 	NamespacedName() types.NamespacedName

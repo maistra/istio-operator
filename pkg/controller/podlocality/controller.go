@@ -1,6 +1,7 @@
 package podlocality
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/go-logr/logr"
@@ -79,7 +80,7 @@ func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 		return err
 	}
 
-	err = mgr.GetFieldIndexer().IndexField(ctx, &v1.Pod{}, "spec.nodeName", func(obj runtime.Object) []string {
+	err = mgr.GetFieldIndexer().IndexField(ctx, &v1.Pod{}, "spec.nodeName", func(obj client.Object) []string {
 		pod := obj.(*v1.Pod)
 		return []string{pod.Spec.NodeName}
 	})
@@ -87,10 +88,10 @@ func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 		return err
 	}
 
-	err = c.Watch(&source.Kind{Type: &v1.Node{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
+	err = c.Watch(&source.Kind{Type: &v1.Node{}}, 
+		handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
 			list := &v1.PodList{}
-			err := mgr.GetClient().List(ctx, list, client.MatchingFields{"spec.nodeName": a.Meta.GetName()})
+			err := mgr.GetClient().List(ctx, list, client.MatchingFields{"spec.nodeName": a.GetName()})
 			if err != nil {
 				log.Error(err, "Could not list pods")
 			}
@@ -105,12 +106,12 @@ func add(mgr manager.Manager, r *PodLocalityReconciler) error {
 			}
 			return requests
 		}),
-	}, predicate.Funcs{
-		CreateFunc: func(evt event.CreateEvent) bool { return evt.Meta != nil },
+	    predicate.Funcs{
+		CreateFunc: func(evt event.CreateEvent) bool { return evt.Object != nil },
 		DeleteFunc: func(evt event.DeleteEvent) bool { return false },
 		UpdateFunc: func(evt event.UpdateEvent) bool {
-			return evt.MetaOld != nil && evt.MetaNew != nil &&
-				!topologyLabelsMatch(evt.MetaOld.GetLabels(), evt.MetaNew.GetLabels())
+			return evt.ObjectOld != nil && evt.ObjectNew != nil &&
+				!topologyLabelsMatch(evt.ObjectOld.GetLabels(), evt.ObjectNew.GetLabels())
 		},
 		GenericFunc: func(evt event.GenericEvent) bool { return false },
 	})
@@ -144,9 +145,9 @@ type PodLocalityReconciler struct {
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *PodLocalityReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := createLogger().WithValues("Pod", request)
-	ctx := common.NewReconcileContext(reqLogger)
+	ctx = common.NewReconcileContext(reqLogger)
 	reqLogger.Info("Processing Pod")
 
 	// Fetch the Pod

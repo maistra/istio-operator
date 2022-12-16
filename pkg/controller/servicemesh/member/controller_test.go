@@ -492,7 +492,7 @@ func TestReconcileReturnsConflictError(t *testing.T) {
 				}, "doesnt-matter", fmt.Errorf("simulated conflict"))
 			})
 
-			_, err := r.Reconcile(request)
+			_, err := r.Reconcile(context.TODO(), request)
 			if !common.IsConflict(err) {
 				t.Fatalf("Expected Conflict error, but got: %v", err)
 			}
@@ -558,7 +558,7 @@ func assertReconcileSucceeds(r *MemberReconciler, t *testing.T) {
 }
 
 func assertReconcileWithRequestSucceeds(r *MemberReconciler, request reconcile.Request, t *testing.T) {
-	res, err := r.Reconcile(request)
+	res, err := r.Reconcile(context.TODO(), request)
 	if err != nil {
 		t.Fatalf("Reconcile failed: %v", err)
 	}
@@ -569,7 +569,7 @@ func assertReconcileWithRequestSucceeds(r *MemberReconciler, request reconcile.R
 
 func assertReconcileFails(r *MemberReconciler, t *testing.T) {
 	t.Helper()
-	_, err := r.Reconcile(request)
+	_, err := r.Reconcile(context.TODO(), request)
 	if err == nil {
 		t.Fatal("Expected reconcile to fail, but it didn't")
 	}
