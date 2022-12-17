@@ -234,13 +234,16 @@ lint-helm:
 lint: lint-scripts lint-go lint-yaml lint-helm
 
 ################################################################################
-# create image
+# create & push image
 ################################################################################
-.PHONY: check-image-var image
+.PHONY: check-image-var image push
 check-image-var:
 	@if [ -z "${IMAGE}" ]; then echo "Please set the IMAGE variable" && exit 1; fi
 
 image: check-image-var build collect-resources
 	${CONTAINER_CLI} build --no-cache -t "${IMAGE}" -f ${SOURCE_DIR}/build/Dockerfile --build-arg build_type=${BUILD_TYPE} .
+
+push: image
+	${CONTAINER_CLI} push "${IMAGE}"
 
 .DEFAULT_GOAL := build
