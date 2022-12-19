@@ -5,9 +5,9 @@ set -o nounset
 set -o pipefail
 set -x
 
-# FIXME: https://issues.redhat.com/browse/OSSM-2367
 CODE_GENERATOR_PACKAGE="k8s.io/code-generator"
-CODE_GENERATOR_VERSION="v0.18.3"
+# This returns the version from go.mod, e.g. "v0.18.3"
+CODE_GENERATOR_VERSION="$(go list -m -f '{{ if .Replace }}{{ .Replace.Version }}{{ else }}{{ .Version }}{{ end }}' ${CODE_GENERATOR_PACKAGE})"
 CODE_GENERATOR_PATH="$(go env GOMODCACHE)/${CODE_GENERATOR_PACKAGE}@${CODE_GENERATOR_VERSION}"
 go mod tidy
 

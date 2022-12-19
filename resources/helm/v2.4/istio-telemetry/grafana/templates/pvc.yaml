@@ -1,0 +1,18 @@
+{{- if .Values.grafana.persist }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: istio-grafana-pvc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: "2.4.0"
+    app: grafana
+    release: {{ .Release.Name }}
+spec:
+  storageClassName: {{ .Values.grafana.storageClassName }}
+  accessModes:
+    - {{ .Values.grafana.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.grafana.persistenceResources.requests.storage | quote }}
+{{- end }}

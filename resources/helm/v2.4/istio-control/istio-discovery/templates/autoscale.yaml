@@ -1,0 +1,57 @@
+{{- if and .Values.pilot.autoscaleEnabled .Values.pilot.autoscaleMin .Values.pilot.autoscaleMax }}
+{{- if not .Values.global.autoscalingv2API }}
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: istiod-{{ .Values.revision | default "default" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: "2.4.0"
+    app: istiod
+    release: {{ .Release.Name }}
+    istio.io/rev: {{ .Values.revision | default "default" }}
+spec:
+  maxReplicas: {{ .Values.pilot.autoscaleMax }}
+  minReplicas: {{ .Values.pilot.autoscaleMin }}
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: istiod-{{ .Values.revision | default "default" }}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: {{ .Values.pilot.cpu.targetAverageUtilization }}
+---
+{{- else }}
+{{- if (semverCompare ">=1.23-0" .Capabilities.KubeVersion.GitVersion)}}
+apiVersion: autoscaling/v2
+{{- else }}
+apiVersion: autoscaling/v2beta2
+{{- end }}
+kind: HorizontalPodAutoscaler
+metadata:
+  name: istiod-{{ .Values.revision | default "default" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: "2.4.0"
+    app: istiod
+    release: {{ .Release.Name }}
+    istio.io/rev: {{ .Values.revision | default "default" }}
+spec:
+  maxReplicas: {{ .Values.pilot.autoscaleMax }}
+  minReplicas: {{ .Values.pilot.autoscaleMin }}
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: istiod-{{ .Values.revision | default "default" }}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.pilot.cpu.targetAverageUtilization }}
+---
+{{- end }}
+{{- end }}

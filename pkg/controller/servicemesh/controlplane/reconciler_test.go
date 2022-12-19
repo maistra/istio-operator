@@ -196,6 +196,7 @@ func TestManifestValidation(t *testing.T) {
 				versions.V2_1: "namespace of manifest b/another-ingress not in mesh",
 				versions.V2_2: "namespace of manifest b/another-ingress not in mesh",
 				versions.V2_3: "namespace of manifest b/another-ingress not in mesh",
+				versions.V2_4: "namespace of manifest b/another-ingress not in mesh",
 			},
 		},
 		{
