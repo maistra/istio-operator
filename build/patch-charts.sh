@@ -489,6 +489,7 @@ global:\
 function copyGlobalValues() {
   echo "copying global.yaml file from overlay charts as global.yaml file is removed in upstream but it's still needed."
   cp "${SOURCE_DIR}/resources/helm/overlays/global.yaml" "${SOURCE_DIR}/resources/helm/v2.3/"
+  cp "${SOURCE_DIR}/resources/helm/overlays/global.yaml" "${SOURCE_DIR}/resources/helm/v2.4/"
 }
 
 # This hack is hopefully only needed for a few versions until this PR is merged: https://github.com/istio/istio/pull/39375

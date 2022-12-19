@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: zipkin
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: "2.4.0"
+    app: {{ .Values.tracing.provider }}
+    release: {{ .Release.Name }}
+spec:
+  ports:
+    - port: {{ .Values.tracing.zipkin.queryPort }}
+      targetPort: {{ .Values.tracing.zipkin.queryPort }}
+      protocol: TCP
+      name: {{ .Values.tracing.service.name }}
+  selector:
+{{- if eq .Values.tracing.provider "jaeger" }}
+  {{- if eq .Values.tracing.jaeger.template "all-in-one"}}
+      app.kubernetes.io/component: all-in-one
+  {{- else }}
+      app.kubernetes.io/component: collector
+  {{- end }}
+      app.kubernetes.io/instance: {{ .Values.tracing.jaeger.resourceName | default "jaeger" }}
+      app.kubernetes.io/part-of: jaeger
+      app.kubernetes.io/managed-by: jaeger-operator
+{{- else }}
+      app: {{ .Values.tracing.provider }}
+{{- end }}
