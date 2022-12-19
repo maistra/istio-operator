@@ -134,7 +134,7 @@ func (c *fakeClient) List(ctx context.Context, list runtime.Object, opts ...clie
 		return err
 	}
 	if o == nil {
-		return errors.NewInternalError(fmt.Errorf("no resource returned by Fake"))
+		return errors.NewInternalError(fmt.Errorf("111 no resource returned by Fake"))
 	}
 	j, err := json.Marshal(o)
 	if err != nil {
@@ -329,7 +329,7 @@ func (c *fakeClient) Status() client.StatusWriter {
 
 func (c *fakeClient) copyObject(source, target runtime.Object) error {
 	if source == nil {
-		return errors.NewInternalError(fmt.Errorf("no resource returned by fake"))
+		return errors.NewInternalError(fmt.Errorf("222 no resource returned by fake"))
 	}
 	j, err := runtime.Encode(c.serializer, source)
 	if err != nil {

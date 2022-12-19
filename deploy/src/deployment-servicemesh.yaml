@@ -46,6 +46,13 @@ spec:
         olm.relatedImage.v2_3.prometheus: ${OSSM_PROMETHEUS_IMAGE}
         olm.relatedImage.v2_3.proxyv2: ${OSSM_PROXY_IMAGE}
         olm.relatedImage.v2_3.rls: ${OSSM_RATELIMIT_IMAGE}
+        # 2.4 images
+        olm.relatedImage.v2_4.cni: ${OSSM_CNI_IMAGE}
+        olm.relatedImage.v2_4.grafana: ${OSSM_GRAFANA_IMAGE}
+        olm.relatedImage.v2_4.pilot: ${OSSM_PILOT_IMAGE}
+        olm.relatedImage.v2_4.prometheus: ${OSSM_PROMETHEUS_IMAGE}
+        olm.relatedImage.v2_4.proxyv2: ${OSSM_PROXY_IMAGE}
+        olm.relatedImage.v2_4.rls: ${OSSM_RATELIMIT_IMAGE}
 
         oauth-proxy.query: "true"
         oauth-proxy.namespace: openshift
