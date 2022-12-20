@@ -3,11 +3,11 @@ package controlplane
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha1"
 	"encoding/base64"
 	"fmt"
 	"regexp"
 
+	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,9 +32,13 @@ func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context
 			log.Error(err, "failed to generate the HTPasswd password")
 			return err
 		}
-		h := sha1.New()
-		h.Write([]byte(rawPassword))
-		auth = "internal:{SHA}" + base64.StdEncoding.EncodeToString(h.Sum(nil))
+		hashedPassword, err1 := bcrypt.GenerateFromPassword([]byte(rawPassword), bcrypt.DefaultCost)
+		if err1 != nil {
+			log.Error(err1, "failed to encrypt the raw password")
+			return err1
+		}
+		username := "internal"
+		auth = fmt.Sprintf("%s:%s", username, string(hashedPassword))
 	}
 
 	b64Password := base64.StdEncoding.EncodeToString([]byte(rawPassword))
