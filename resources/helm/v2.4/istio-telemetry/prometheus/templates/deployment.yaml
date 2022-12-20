@@ -253,6 +253,9 @@ spec:
           secretName: prometheus-tls
       - name: secret-htpasswd
         secret:
+          items:
+            - key: auth
+              path: auth
           defaultMode: 420
           secretName: htpasswd
       - name: secret-prometheus-proxy
