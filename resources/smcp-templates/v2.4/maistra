@@ -29,7 +29,7 @@ spec:
         container:
           imageRegistry: quay.io/openshift
           imageName: origin-oauth-proxy
-          imageTag: "4.4"
+          imageTag: "4.9"
           imagePullPolicy: IfNotPresent
       rateLimiting.rls:
         container:
