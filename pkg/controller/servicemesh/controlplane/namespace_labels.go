@@ -13,13 +13,15 @@ import (
 
 func addNamespaceLabels(ctx context.Context, cl client.Client, namespace string) error {
 	return setNamespaceLabels(ctx, cl, namespace, map[string]string{
-		common.MemberOfKey: namespace, // ensures networking works correctly
+		common.IgnoreNamespaceKey: "ignore",  // ensures injection is disabled for the control plane
+		common.MemberOfKey:        namespace, // ensures networking works correctly
 	})
 }
 
 func removeNamespaceLabels(ctx context.Context, cl client.Client, namespace string) error {
 	return setNamespaceLabels(ctx, cl, namespace, map[string]string{
-		common.MemberOfKey: "",
+		common.IgnoreNamespaceKey: "",
+		common.MemberOfKey:        "",
 	})
 }
 
