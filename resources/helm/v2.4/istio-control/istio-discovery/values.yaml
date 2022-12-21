@@ -2,6 +2,7 @@
 
 ## Discovery Settings
 pilot:
+  enableFederation: true
   autoscaleEnabled: true
   autoscaleMin: 1
   autoscaleMax: 5
