@@ -96,7 +96,7 @@ spec:
 {{- end }}
 {{- if not .Values.global.clusterScoped }}
           - --memberRollName=default
-          - --disableNodeAccess=true
+          - --enableNodeAccess=false
           - --enableCRDScan=false
           - --enableIngressClassName=false
 {{- end}}

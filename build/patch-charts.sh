@@ -136,7 +136,7 @@ function patchGalley() {
   sed_wrap -i -e '/- "discovery"/ a\
 {{- if not .Values.global.clusterScoped }}\
           - --memberRollName=default\
-          - --disableNodeAccess=true\
+          - --enableNodeAccess=false\
           - --enableCRDScan=false\
           - --enableIngressClassName=false\
 {{- end}}' "${deployment}"
