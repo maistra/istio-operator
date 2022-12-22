@@ -648,9 +648,9 @@ func TestMultipleSMCP(t *testing.T) {
 	}
 }
 
-// tests if the reconciler adds the necessary labels to the SMCP namespace when
+// tests if the reconciler adds the necessary labels to the 2.0 SMCP namespace when
 // it first reconciles the SMCP and also removes them when the SMCP is deleted
-func TestNamespaceLabels(t *testing.T) {
+func TestOldNamespaceLabels(t *testing.T) {
 	smcp := newControlPlane()
 	smcp.Spec = maistrav2.ControlPlaneSpec{
 		Version:  versions.V2_0.String(),
@@ -666,8 +666,43 @@ func TestNamespaceLabels(t *testing.T) {
 	ns := &corev1.Namespace{}
 	test.GetObject(ctx, cl, types.NamespacedName{Namespace: "", Name: controlPlaneNamespace}, ns)
 	assert.DeepEquals(ns.Labels, map[string]string{
-		common.MemberOfKey: controlPlaneNamespace,
+		common.IgnoreNamespaceKey: "ignore",
+		common.MemberOfKey:        controlPlaneNamespace,
 	}, "Expected reconciler to add namespace labels", t)
+
+	test.PanicOnError(cl.Get(ctx, types.NamespacedName{Namespace: controlPlaneNamespace, Name: controlPlaneName}, smcp))
+	smcp.DeletionTimestamp = &oneMinuteAgo
+	test.PanicOnError(cl.Update(ctx, smcp))
+
+	// 2. run Delete() to remove labels
+	assertDeleteSucceeds(r, t) // this only initializes the SMCP status
+	assertDeleteSucceeds(r, t) // this does the actual work
+
+	ns = &corev1.Namespace{}
+	test.GetObject(ctx, cl, types.NamespacedName{Namespace: "", Name: controlPlaneNamespace}, ns)
+	assert.DeepEquals(ns.Labels, map[string]string(nil), "Namespace labels weren't removed", t)
+}
+
+// tests if the reconciler adds the necessary label to the 2.4 SMCP namespace when
+// it first reconciles the SMCP and also removes the label when the SMCP is deleted
+func TestNewNamespaceLabels(t *testing.T) {
+	smcp := newControlPlane()
+	smcp.Spec = maistrav2.ControlPlaneSpec{
+		Version:  versions.V2_4.String(),
+		Profiles: []string{"maistra"},
+	}
+
+	cl, _, r := newReconcilerTestFixture(smcp)
+
+	// 1. run Reconcile() to add labels
+	assertInstanceReconcilerSucceeds(r, t) // this only initializes the SMCP status
+	assertInstanceReconcilerSucceeds(r, t) // this does the actual work
+
+	ns := &corev1.Namespace{}
+	test.GetObject(ctx, cl, types.NamespacedName{Namespace: "", Name: controlPlaneNamespace}, ns)
+	assert.DeepEquals(ns.Labels, map[string]string{
+		common.MemberOfKey: controlPlaneNamespace,
+	}, "Expected reconciler to add namespace label", t)
 
 	test.PanicOnError(cl.Get(ctx, types.NamespacedName{Namespace: controlPlaneNamespace, Name: controlPlaneName}, smcp))
 	smcp.DeletionTimestamp = &oneMinuteAgo

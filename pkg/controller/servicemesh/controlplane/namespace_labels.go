@@ -9,18 +9,33 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
-func addNamespaceLabels(ctx context.Context, cl client.Client, namespace string) error {
-	return setNamespaceLabels(ctx, cl, namespace, map[string]string{
-		common.MemberOfKey: namespace, // ensures networking works correctly
-	})
+func addNamespaceLabels(ctx context.Context, cl client.Client, namespace string, version versions.Version) error {
+	if versions.V2_4.Compare(version) > 0 { // if smcp version below v2.4, do not allow injection in smcp ns.
+		return setNamespaceLabels(ctx, cl, namespace, map[string]string{
+			common.IgnoreNamespaceKey: "ignore",  // ensures injection is disabled for the control plane
+			common.MemberOfKey:        namespace, // ensures networking works correctly
+		})
+	} else { // if 2.4 and above, allow for injection in smcp ns.
+		return setNamespaceLabels(ctx, cl, namespace, map[string]string{
+			common.MemberOfKey: namespace, // ensures networking works correctly
+		})
+	}
 }
 
-func removeNamespaceLabels(ctx context.Context, cl client.Client, namespace string) error {
-	return setNamespaceLabels(ctx, cl, namespace, map[string]string{
-		common.MemberOfKey: "",
-	})
+func removeNamespaceLabels(ctx context.Context, cl client.Client, namespace string, version versions.Version) error {
+	if versions.V2_4.Compare(version) > 0 { // if smcp version below v2.4, remove both
+		return setNamespaceLabels(ctx, cl, namespace, map[string]string{
+			common.IgnoreNamespaceKey: "",
+			common.MemberOfKey:        "",
+		})
+	} else { // if 2.4 and above, no need to remove Ignore label.
+		return setNamespaceLabels(ctx, cl, namespace, map[string]string{
+			common.MemberOfKey: "",
+		})
+	}
 }
 
 func setNamespaceLabels(ctx context.Context, cl client.Client, namespace string, labels map[string]string) error {
