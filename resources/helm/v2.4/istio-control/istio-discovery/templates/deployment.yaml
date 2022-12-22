@@ -96,7 +96,7 @@ spec:
 {{- end }}
 {{- if not .Values.global.clusterScoped }}
           - --memberRollName=default
-          - --disableNodeAccess=true
+          - --enableNodeAccess=false
           - --enableCRDScan=false
           - --enableIngressClassName=false
 {{- end}}
@@ -125,6 +125,8 @@ spec:
             protocol: TCP
           - name: webhook
             containerPort: 15017
+            protocol: TCP
+          - containerPort: 8188
             protocol: TCP
           readinessProbe:
             httpGet:
@@ -180,6 +182,8 @@ spec:
           - name: ENABLE_LEGACY_FSGROUP_INJECTION
             value: "true"
 {{- end }}
+          - name: PILOT_ENABLE_FEDERATION
+            value: "{{ .Values.pilot.enableFederation }}"
 {{- if .Values.pilot.traceSampling }}
           - name: PILOT_TRACE_SAMPLING
             value: "{{ .Values.pilot.traceSampling }}"
