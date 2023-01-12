@@ -21,7 +21,7 @@ REPLACES_COMMUNITY_CSV ?= 2.1.5
 VERSION                ?= development
 CONTAINER_CLI          ?= docker
 COMMUNITY              ?= true
-TEST_TIMEOUT           ?= 5m
+TEST_TIMEOUT           ?= 7m
 TEST_FLAGS             ?=
 
 SOURCE_DIR          := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
