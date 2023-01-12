@@ -19,7 +19,7 @@ github.com/BurntSushi/toml
 # github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e
 ## explicit
 github.com/MakeNowJust/heredoc
-# github.com/Masterminds/goutils v1.1.0
+# github.com/Masterminds/goutils v1.1.0 => github.com/Masterminds/goutils v1.1.1
 github.com/Masterminds/goutils
 # github.com/Masterminds/semver v1.5.0
 ## explicit
@@ -1352,3 +1352,4 @@ sigs.k8s.io/yaml
 # github.com/evanphx/json-patch => github.com/evanphx/json-patch v4.9.0+incompatible
 # bitbucket.org/ww/goautoneg => github.com/munnerz/goautoneg v0.0.0-20120707110453-a547fc61f48d
 # github.com/operator-framework/operator-sdk => github.com/maistra/operator-sdk v0.0.0-20210824135520-3b25565223d4
+# github.com/Masterminds/goutils => github.com/Masterminds/goutils v1.1.1
