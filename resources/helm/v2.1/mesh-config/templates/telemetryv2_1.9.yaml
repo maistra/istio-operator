@@ -10,7 +10,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.1.5"
+    maistra-version: "2.1.6"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   configPatches:
@@ -130,7 +130,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.1.5"
+    maistra-version: "2.1.6"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   configPatches:
@@ -194,7 +194,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.1.5"
+    maistra-version: "2.1.6"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   configPatches:
@@ -373,7 +373,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.1.5"
+    maistra-version: "2.1.6"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   configPatches:
@@ -546,7 +546,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.1.5"
+    maistra-version: "2.1.6"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   configPatches:
@@ -665,7 +665,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.1.5"
+    maistra-version: "2.1.6"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   configPatches:
@@ -779,7 +779,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.1.5"
+    maistra-version: "2.1.6"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   configPatches:
