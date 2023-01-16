@@ -56,14 +56,14 @@ webhooks:
           - "istiod"
 {{- if .Values.sidecarInjectorWebhook.objectSelector.enabled }}
 {{- if eq .Values.global.proxy.autoInject "enabled" }}
-- key: "sidecar.istio.io/inject"
-  operator: NotIn
-  values:
-    - "false"
+      - key: "sidecar.istio.io/inject"
+        operator: NotIn
+        values:
+          - "false"
 {{- else }}
-- key: "sidecar.istio.io/inject"
-  operator: In
-  values:
-    - "true"
+      - key: "sidecar.istio.io/inject"
+        operator: In
+        values:
+          - "true"
 {{- end }}
 {{- end }}
