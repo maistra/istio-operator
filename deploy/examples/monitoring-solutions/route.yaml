@@ -1,0 +1,11 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: httpbin-route
+spec:
+  host: {{host}}.apps-crc.testing
+  port:
+    targetPort: 8080
+  to:
+    kind: Service
+    name: istio-ingressgateway
