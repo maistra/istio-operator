@@ -1,0 +1,29 @@
+# TODO: Add permissions for prometheus-k8s to use ServiceMonitors and PodMonitors in istio-system-2 and bookinfo-2
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: custom-prometheus-permissions
+rules:
+- apiGroups: [""]
+  resources:
+  - services
+  - endpoints
+  - pods
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources:
+  - configmaps
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: custom-prometheus-permissions
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: custom-prometheus-permissions
+subjects:
+- kind: ServiceAccount
+  name: prometheus-k8s
+  namespace: custom-prometheus

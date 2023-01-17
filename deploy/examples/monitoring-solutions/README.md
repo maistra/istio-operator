@@ -4,6 +4,7 @@
 
 1. Prepare htpasswd identity provider
 ```shell
+oc login -u kubeadmin https://api.crc.testing:6443
 touch htpasswd
 htpasswd -Bb htpasswd clusteradmin clusteradm
 htpasswd -Bb htpasswd meshadmin-1 adm1
@@ -21,7 +22,7 @@ oc create identity simple-htpasswd:clusteradmin
 oc create useridentitymapping simple-htpasswd:clusteradmin clusteradmin
 oc adm policy add-cluster-role-to-user cluster-admin clusteradmin
 
-for i in 1 2 3
+for i in 1 2
 do
   oc new-project istio-system-$i
   oc new-project bookinfo-$i
@@ -30,10 +31,12 @@ do
   oc create useridentitymapping simple-htpasswd:meshadmin-$i meshadmin-$i
   oc adm policy add-role-to-user admin meshadmin-$i -n istio-system-$i
   oc adm policy add-role-to-user admin meshadmin-$i -n bookinfo-$i
+  sed "s/{{username}}/meshadmin-$i/g" allow-admin-to-manage-telemetry-and-monitors.yaml | oc apply -n istio-system-$i -f -
+  sed "s/{{username}}/meshadmin-$i/g" allow-admin-to-manage-telemetry-and-monitors.yaml | oc apply -n bookinfo-$i -f -
 done
 ```
 
-3. Try to login as `clusteradmin`:
+3. Wait until you can log in as `clusteradmin` (it may take a few minutes):
 ```shell
 oc login -u clusteradmin https://api.crc.testing:6443
 ```
@@ -54,25 +57,20 @@ oc login -u clusteradmin https://api.crc.testing:6443
 oc apply -f openshift-monitoring/enable-monitoring-in-user-workloads.yaml
 ```
 
-2. Grant users permission to use Prometheus monitors:
-```shell
-oc apply -n istio-system-1 -f openshift-monitoring/role.yaml
-oc apply -n bookinfo-1 -f openshift-monitoring/role.yaml
-sed 's/{{targetUser}}/meshadmin-1/g' openshift-monitoring/role-binding.yaml | oc apply -n istio-system-1 -f -
-sed 's/{{targetUser}}/meshadmin-1/g' openshift-monitoring/role-binding.yaml | oc apply -n bookinfo-1 -f -
-```
-
 3. Install OpenShift Service Mesh operator.
 
 4. Deploy control plane and an app for the first tenant:
 ```shell
 oc login -u meshadmin-1 https://api.crc.testing:6443
 sed 's/{{memberNamespace}}/bookinfo-1/' openshift-monitoring/mesh.yaml | oc apply -n istio-system-1 -f -
+sed 's/{{host}}/bookinfo-1/g' route.yaml | oc apply -n istio-system-1 -f -
+```
+Wait until istiod is ready and then apply:
+```shell
 oc apply -n bookinfo-1 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/platform/kube/bookinfo.yaml
 oc apply -n bookinfo-1 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/networking/bookinfo-gateway.yaml
-sed 's/{{host}}/bookinfo-1/g' route.yaml | oc apply -n istio-system-1 -f -
 # Telemetry API created in the control plane namespace is applied to all namespaces
-oc apply -n istio-system-1 -f openshift-monitoring/telemetry.yaml
+oc apply -n istio-system-1 -f telemetry.yaml
 ```
 
 TODO: Gateway injection does not work in this setup. Try with 2.3.1:
@@ -92,22 +90,59 @@ oc apply -n istio-system-1 -f openshift-monitoring/istio-proxies-monitor.yaml
 oc apply -n bookinfo-1 -f openshift-monitoring/istio-proxies-monitor.yaml
 ```
 
-## SMCP addons
-
-```shell
-oc login -u meshadmin-2 https://api.crc.testing:6443
-sed 's/{{memberNamespace}}/bookinfo-2/' addons/mesh.yaml | oc apply -n istio-system-2 -f -
-oc apply -n bookinfo-2 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/platform/kube/bookinfo.yaml
-oc apply -n bookinfo-2 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/networking/bookinfo-gateway.yaml
-sed 's/{{host}}/bookinfo-2/g' route.yaml | oc apply -n istio-system-2 -f -
-```
-
 ## Custom Prometheus Operator
 
+1. Login as `clusteradmin` and install Prometheus Operator in the OCP console:
 ```shell
+oc login -u clusteradmin https://api.crc.testing:6443
+oc new-project custom-prometheus
+```
 
+2. Exclude second mesh from OpenShift Monitoring:
+```shell
+oc label namespace custom-prometheus 'openshift.io/user-monitoring=false'
+oc label namespace istio-system-2 'openshift.io/user-monitoring=false'
+oc label namespace bookinfo-2 'openshift.io/user-monitoring=false'
+```
+
+3. Grant `meshadmin-2` permissions to create and configure Prometheus:
+```shell
+oc adm policy add-role-to-user admin meshadmin-2 -n custom-prometheus
+oc apply -f custom-prometheus/allow-to-manage-prometheus.yaml
+oc apply -n custom-prometheus -f custom-prometheus/custom-prometheus-permissions.yaml
+oc apply -n istio-system-2 -f custom-prometheus/custom-prometheus-permissions.yaml
+oc apply -n bookinfo-2 -f custom-prometheus/custom-prometheus-permissions.yaml
+```
+
+3. Login as `meshadmin-2` and deploy `Prometheus`:
+```shell
+oc login -u meshadmin-2 https://api.crc.testing:6443
+oc apply -f custom-prometheus/prometheus.yaml
+```
+
+4. Deploy SMCP:
+```shell
+sed 's/{{memberNamespace}}/bookinfo-2/' custom-prometheus/mesh.yaml | oc apply -n istio-system-2 -f -
+sed 's/{{host}}/bookinfo-2/g' route.yaml | oc apply -n istio-system-2 -f -
+```
+Wait until istiod is ready and then apply:
+```shell
+oc apply -n bookinfo-2 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/platform/kube/bookinfo.yaml
+oc apply -n bookinfo-2 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/networking/bookinfo-gateway.yaml
+# Telemetry API created in the control plane namespace is applied to all namespaces
+oc apply -n istio-system-2 -f telemetry.yaml
+```
+
+5. Enable monitoring:
+```shell
+sed "s/{{username}}/meshadmin-2/g" rbac/allow-admin-to-manage-telemetry-and-monitors.yaml | oc apply -n custom-prometheus -f -
+oc apply -f custom-prometheus/istiod-monitor.yaml
+oc apply -f custom-prometheus/istio-proxies-monitor.yaml
 ```
 
 ### Issues
 
 1. SMCP must provide a way to enable telemetry.v2.prometheus.enabled without deploying Prometheus.
+2. When mTLS is enabled, prometheus cannot scrape metrics from 15090, because of HTTP response to HTTPS request.
+This is probably, because of excluding 15090 from inbound ports. However, it also does not work with OpenShift Monitoring
+when mTLS is enabled and PodMonitor does not use TLS.

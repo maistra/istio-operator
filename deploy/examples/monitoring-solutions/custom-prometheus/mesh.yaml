@@ -11,9 +11,6 @@ spec:
     prometheus:
       enabled: false
   gateways:
-    ingress:
-      routeConfig:
-        enabled: false
     egress:
       enabled: false
     openshiftRoute:
@@ -51,3 +48,4 @@ metadata:
 spec:
   members:
   - {{memberNamespace}}
+  - custom-prometheus

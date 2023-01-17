@@ -1,0 +1,38 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: istio-proxies-monitor
+  namespace: custom-prometheus
+spec:
+  targetLabels:
+    - app
+  selector:
+    matchExpressions:
+    - key: istio-prometheus-ignore
+      operator: DoesNotExist
+  namespaceSelector:
+    matchNames:
+      - istio-system-2
+      - bookinfo-2
+  podMetricsEndpoints:
+  - port: http-envoy-prom
+    path: /stats/prometheus
+    interval: 15s
+#    scheme: https
+#    tlsConfig:
+#      caFile: /etc/prom-certs/root-cert.pem
+#      certFile: /etc/prom-certs/cert-chain.pem
+#      keyFile: /etc/prom-certs/key.pem
+#      insecureSkipVerify: true
+    relabelings:
+      - action: keep
+        sourceLabels: [__meta_kubernetes_pod_container_name]
+        regex: "istio-proxy"
+      - action: labeldrop
+        regex: "__meta_kubernetes_pod_label_(.+)"
+      - sourceLabels: [__meta_kubernetes_namespace]
+        action: replace
+        targetLabel: namespace
+      - sourceLabels: [__meta_kubernetes_pod_name]
+        action: replace
+        targetLabel: pod_name

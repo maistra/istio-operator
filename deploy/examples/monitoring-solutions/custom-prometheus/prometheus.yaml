@@ -1,0 +1,40 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: prometheus
+  namespace: custom-prometheus
+spec:
+  securityContext: {}
+  serviceAccountName: prometheus-k8s
+  podMonitorSelector: {}
+  podMonitorNamespaceSelector:
+    matchNames:
+    - custom-prometheus
+    - istio-system-2
+    - bookinfo-2
+  serviceMonitorSelector: {}
+  serviceMonitorNamespaceSelector:
+    matchNames:
+    - custom-prometheus
+    - istio-system-2
+    - bookinfo-2
+  podMetadata:
+    annotations:
+      sidecar.istio.io/inject: "true"
+      # do not intercept any inbound ports
+      traffic.sidecar.istio.io/includeInboundPorts: ""
+      # do not intercept any outbound traffic
+      traffic.sidecar.istio.io/includeOutboundIPRanges: ""
+      # configure an env variable `OUTPUT_CERTS` to write certificates to the given folder
+      proxy.istio.io/config: |
+        proxyMetadata:
+          OUTPUT_CERTS: /etc/istio-output-certs
+      # mount the shared volume at sidecar proxy
+      sidecar.istio.io/userVolumeMount: '[{"name": "istio-certs", "mountPath": "/etc/istio-output-certs"}]'
+  volumes:
+  - name: istio-certs
+    emptyDir:
+      medium: Memory
+  volumeMounts:
+  - mountPath: /etc/prom-certs/
+    name: istio-certs
