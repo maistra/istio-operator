@@ -82,4 +82,12 @@ spec:
   affinity:
   {{- include "nodeaffinity" . | indent 2 }}
 
+{{- if .Values.tracing.tolerations }}
+  tolerations:
+{{ toYaml .Values.tracing.tolerations | indent 4 }}
+{{- else if .Values.global.defaultTolerations }}
+  tolerations:
+{{ toYaml .Values.global.defaultTolerations | indent 4 }}
+{{- end }}
+
 {{ end }}
