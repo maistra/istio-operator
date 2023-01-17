@@ -85,16 +85,15 @@ type v2_1ImageNames struct {
 
 // V2_2ImageNames used by deployments
 type v2_2ImageNames struct {
-	ThreeScale               string `json:"3scale-istio-adapter,omitempty"`
-	CNI                      string `json:"cni,omitempty"`
-	Grafana                  string `json:"grafana,omitempty"`
-	Pilot                    string `json:"pilot,omitempty"`
-	Prometheus               string `json:"prometheus,omitempty"`
-	PrometheusConfigReloader string `json:"prometheus-config-reloader,omitempty"`
-	ProxyInit                string `json:"proxy-init,omitempty"`
-	ProxyV2                  string `json:"proxyv2,omitempty"`
-	WASMCacher               string `json:"wasm-cacher,omitempty"`
-	RLS                      string `json:"rls,omitempty"`
+	ThreeScale string `json:"3scale-istio-adapter,omitempty"`
+	CNI        string `json:"cni,omitempty"`
+	Grafana    string `json:"grafana,omitempty"`
+	Pilot      string `json:"pilot,omitempty"`
+	Prometheus string `json:"prometheus,omitempty"`
+	ProxyInit  string `json:"proxy-init,omitempty"`
+	ProxyV2    string `json:"proxyv2,omitempty"`
+	WASMCacher string `json:"wasm-cacher,omitempty"`
+	RLS        string `json:"rls,omitempty"`
 }
 
 // v2_3ImageNames used by deployments
@@ -110,13 +109,14 @@ type v2_3ImageNames struct {
 
 // v2_4ImageNames used by deployments
 type v2_4ImageNames struct {
-	ThreeScale string `json:"3scale-istio-adapter,omitempty"`
-	CNI        string `json:"cni,omitempty"`
-	Grafana    string `json:"grafana,omitempty"`
-	Pilot      string `json:"pilot,omitempty"`
-	Prometheus string `json:"prometheus,omitempty"`
-	ProxyV2    string `json:"proxyv2,omitempty"`
-	RLS        string `json:"rls,omitempty"`
+	ThreeScale               string `json:"3scale-istio-adapter,omitempty"`
+	CNI                      string `json:"cni,omitempty"`
+	Grafana                  string `json:"grafana,omitempty"`
+	Pilot                    string `json:"pilot,omitempty"`
+	Prometheus               string `json:"prometheus,omitempty"`
+	PrometheusConfigReloader string `json:"prometheus-config-reloader,omitempty"`
+	ProxyV2                  string `json:"proxyv2,omitempty"`
+	RLS                      string `json:"rls,omitempty"`
 }
 
 type oauthProxy struct {
