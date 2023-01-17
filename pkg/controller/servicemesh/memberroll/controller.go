@@ -394,8 +394,8 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		cv, err := versions.ParseVersion(mesh.Status.AppliedSpec.Version)
 
 		if err != nil {
-			prometheusErr = err
-		} else if cv.Compare(versions.V2_3) >= 0 {
+			prometheusErr = pkgerrors.Wrapf(err, "could not reconcile Prometheus, because of unknown SMCP version")
+		} else if cv.Compare(versions.V2_4) >= 0 {
 			prometheusErr = r.prometheusReconciler.reconcilePrometheus(ctx, prometheusConfigMapName, meshNamespace, allKnownMembers.List())
 		}
 	}
@@ -446,15 +446,14 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 			"All namespaces have been configured successfully")
 	}
 
-	err = r.updateStatus(ctx, roll)
-	if err != nil {
-		return reconcile.Result{}, err
+	if err = r.updateStatus(ctx, roll); err != nil {
+		return common.RequeueWithError(err)
 	} else if kialiErr != nil {
-		return reconcile.Result{}, kialiErr
+		return common.RequeueWithError(kialiErr)
 	} else if prometheusErr != nil {
-		return reconcile.Result{}, prometheusErr
+		return common.RequeueWithError(prometheusErr)
 	}
-	return reconcile.Result{}, nil
+	return common.Reconciled()
 }
 
 func getExcludedNamespaces() []string {
@@ -738,7 +737,7 @@ func (r *defaultPrometheusReconciler) reconcilePrometheus(ctx context.Context, p
 	err := r.Client.Get(ctx, client.ObjectKey{Name: prometheusCMName, Namespace: prometheusNamespace}, cm)
 	if err != nil {
 		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
-			reqLogger.Info("Prometheus Config Map does not exist.")
+			reqLogger.Info("Prometheus ConfigMap '%s/%s' does not exist", prometheusNamespace, prometheusCMName)
 			return nil
 		}
 		return pkgerrors.Wrap(err, "error retrieving Prometheus ConfigMap from mesh")
