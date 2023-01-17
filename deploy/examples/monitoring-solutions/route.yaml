@@ -1,7 +1,7 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: httpbin-route
+  name: bookinfo-route
 spec:
   host: {{host}}.apps-crc.testing
   port:

@@ -6,3 +6,12 @@ rules:
 - apiGroups: ["monitoring.coreos.com"]
   resources: ["servicemonitors", "podmonitors"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: allow-to-use-telemetry-api
+rules:
+- apiGroups: ["telemetry.istio.io"]
+  resources: ["telemetries"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]

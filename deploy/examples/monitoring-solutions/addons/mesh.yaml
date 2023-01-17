@@ -3,8 +3,20 @@ kind: ServiceMeshControlPlane
 metadata:
   name: basic
 spec:
+  addons:
+    kiali:
+      enabled: false
   gateways:
-    enabled: false
+    egress:
+      enabled: false
+    openshiftRoute:
+      enabled: false
+  proxy:
+    accessLogging:
+      file:
+        name: /dev/stdout
+  security:
+    manageNetworkPolicy: false
   tracing:
     type: None
 ---
@@ -14,4 +26,4 @@ metadata:
   name: default
 spec:
   members:
-  - bookinfo-1
+    - {{memberNamespace}}
