@@ -247,3 +247,11 @@ push: image
 	${CONTAINER_CLI} push "${IMAGE}"
 
 .DEFAULT_GOAL := build
+
+################################################################################
+# run an integration test in KinD
+################################################################################
+.PHONY: test.integration.kind
+test.integration.kind:
+	${SOURCE_DIR}/tests/integration/operator-integ-suite-kind.sh
+
