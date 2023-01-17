@@ -480,22 +480,18 @@ func (v *versionStrategyV2_4) Render(ctx context.Context, cr *common.ControllerR
 	}
 
 	if isComponentEnabled(spec.Istio, v2_4ChartMapping[PrometheusChart].enabledField) {
-		rolls := &v1.ServiceMeshMemberRollList{}
+		roll := &v1.ServiceMeshMemberRoll{}
 
-		err := cr.Client.List(ctx, rolls, client.MatchingFields{"spec.controlPlaneRef.namespace": smcp.GetNamespace()})
+		err := cr.Client.Get(ctx, types.NamespacedName{Namespace: smcp.GetNamespace(), Name: common.MemberRollName}, roll)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				log.V(2).Info(fmt.Sprintf("members not found in namespace %s", smcp.GetNamespace()))
+				log.V(2).Info(fmt.Sprintf("memberroll not found in namespace %s", smcp.GetNamespace()))
 			} else {
 				return nil, fmt.Errorf("error setting prometheus namespaces")
 			}
 		}
 
-		namespaces := []string{}
-
-		for _, m := range rolls.Items {
-			namespaces = append(namespaces, m.Status.ConfiguredMembers...)
-		}
+		namespaces := roll.Status.ConfiguredMembers
 
 		log.Info(fmt.Sprintf("prometheus setting namespaces %v", namespaces))
 
