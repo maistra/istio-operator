@@ -13,6 +13,7 @@ import (
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/hacks"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 func (r *controlPlaneInstanceReconciler) Delete(ctx context.Context) error {
@@ -50,9 +51,17 @@ func (r *controlPlaneInstanceReconciler) Delete(ctx context.Context) error {
 			fmt.Sprintf("Error deleting service mesh resources: %s", err))
 	}
 
+	// get smcp version for ns label deletion.
+	var version versions.Version
+	version, err = versions.ParseVersion(r.Instance.Spec.Version)
+	if err != nil {
+		log.Error(err, "invalid version specified")
+		return nil
+	}
+
 	// remove namespace labels
 	if err == nil {
-		err = removeNamespaceLabels(ctx, r.Client, r.Instance.Namespace)
+		err = removeNamespaceLabels(ctx, r.Client, r.Instance.Namespace, version)
 	}
 
 	// update SMCP status and stop reconciling if there was an error

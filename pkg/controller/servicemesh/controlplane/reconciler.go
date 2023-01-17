@@ -175,7 +175,7 @@ func (r *controlPlaneInstanceReconciler) Reconcile(ctx context.Context) (result 
 		// e.g. spec.pilot.enabled || spec.mixer.enabled || spec.galley.enabled || spec.sidecarInjectorWebhook.enabled || ....
 		// which is all we're supporting atm.  if the scope expands to allow
 		// installing custom gateways, etc., we should revisit this.
-		err = addNamespaceLabels(ctx, r.Client, r.Instance.Namespace)
+		err = addNamespaceLabels(ctx, r.Client, r.Instance.Namespace, version)
 		if err != nil {
 			// bail if there was an error updating the namespace
 			r.renderings = nil
