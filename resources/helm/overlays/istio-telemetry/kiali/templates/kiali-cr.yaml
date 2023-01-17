@@ -46,21 +46,25 @@ spec:
     {{- end }}
 {{- end }}
 
-{{- if or .Values.kiali.tolerations .Values.kiali.deployment_tolerations }}
+{{- if or .Values.kiali.tolerations .Values.kiali.deployment_tolerations .Values.global.defaultTolerations }}
     tolerations:
     {{- if .Values.kiali.tolerations }}
 {{ toYaml .Values.kiali.tolerations | indent 6 }}
-    {{- else }}
+    {{- else if .Values.kiali.deployment_tolerations }}
 {{ toYaml .Values.kiali.deployment_tolerations | indent 6 }}
+    {{- else }}
+{{ toYaml .Values.global.defaultTolerations | indent 6 }}
     {{- end }}
 {{- end }}
 
-{{- if or .Values.kiali.nodeSelector .Values.kiali.deployment_nodeSelector }}
+{{- if or .Values.kiali.nodeSelector .Values.kiali.deployment_nodeSelector .Values.global.defaultNodeSelector }}
     node_selector:
     {{- if .Values.kiali.nodeSelector }}
 {{ toYaml .Values.kiali.nodeSelector | indent 6 }}
-    {{- else }}
+    {{- else if .Values.kiali.deployment_nodeSelector }}
 {{ toYaml .Values.kiali.deployment_nodeSelector | indent 6 }}
+    {{- else }}
+{{ toYaml .Values.global.defaultNodeSelector | indent 6 }}
     {{- end }}
 {{- end }}
 
