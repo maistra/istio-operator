@@ -144,6 +144,8 @@ oc apply -f custom-prometheus/istio-proxies-monitor.yaml
 ### Issues
 
 1. SMCP must provide a way to enable telemetry.v2.prometheus.enabled without deploying Prometheus.
-2. When mTLS is enabled, prometheus cannot scrape metrics from 15090, because of HTTP response to HTTPS request.
-This is probably, because of excluding 15090 from inbound ports. However, it also does not work with OpenShift Monitoring
-when mTLS is enabled and PodMonitor does not use TLS.
+2. When mTLS is enabled in the mesh, Prometheus cannot scrape metrics from port 15090 with enabled TLS,
+  because "server gave HTTP response to HTTPS client", as you can see in this [image](img/http-envoy-prom-tls.png).
+  This is probably, because of excluding 15090 from inbound ports, because when TLS is not enabled in the PodMonitor,
+  everything works fine, as you can see [here](img/http-envoy-prom.png). On the other hand, it does not work
+  with OpenShift Monitoring when mTLS is enabled in the mesh and the PodMonitor does not use TLS.
