@@ -47,5 +47,5 @@ metadata:
   name: default
 spec:
   members:
-  - {{memberNamespace}}
+  - bookinfo-2
   - custom-prometheus

@@ -62,7 +62,7 @@ oc apply -f openshift-monitoring/enable-monitoring-in-user-workloads.yaml
 4. Deploy control plane and an app for the first tenant:
 ```shell
 oc login -u meshadmin-1 https://api.crc.testing:6443
-sed 's/{{memberNamespace}}/bookinfo-1/' openshift-monitoring/mesh.yaml | oc apply -n istio-system-1 -f -
+oc apply -n istio-system-1 -f openshift-monitoring/mesh.yaml
 sed 's/{{host}}/bookinfo-1/g' route.yaml | oc apply -n istio-system-1 -f -
 ```
 Wait until istiod is ready and then apply:
@@ -122,9 +122,10 @@ oc apply -f custom-prometheus/prometheus.yaml
 
 4. Deploy SMCP:
 ```shell
-sed 's/{{memberNamespace}}/bookinfo-2/' custom-prometheus/mesh.yaml | oc apply -n istio-system-2 -f -
+oc apply -n istio-system-2 -f custom-prometheus/mesh.yaml
 sed 's/{{host}}/bookinfo-2/g' route.yaml | oc apply -n istio-system-2 -f -
 ```
+
 Wait until istiod is ready and then apply:
 ```shell
 oc apply -n bookinfo-2 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/platform/kube/bookinfo.yaml
@@ -135,7 +136,7 @@ oc apply -n istio-system-2 -f telemetry.yaml
 
 5. Enable monitoring:
 ```shell
-sed "s/{{username}}/meshadmin-2/g" rbac/allow-admin-to-manage-telemetry-and-monitors.yaml | oc apply -n custom-prometheus -f -
+sed "s/{{username}}/meshadmin-2/g" allow-admin-to-manage-telemetry-and-monitors.yaml | oc apply -n custom-prometheus -f -
 oc apply -f custom-prometheus/istiod-monitor.yaml
 oc apply -f custom-prometheus/istio-proxies-monitor.yaml
 ```

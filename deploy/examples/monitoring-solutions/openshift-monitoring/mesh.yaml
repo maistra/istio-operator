@@ -50,4 +50,4 @@ metadata:
   name: default
 spec:
   members:
-  - {{memberNamespace}}
+  - bookinfo-1
