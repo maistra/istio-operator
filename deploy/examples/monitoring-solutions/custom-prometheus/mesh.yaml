@@ -29,15 +29,6 @@ spec:
       extensionProviders:
       - name: prometheus
         prometheus: {}
-# These settings don't work. telemetry.v2.prometheus.enabled is set by spec.addons.prometheus.enabled
-#  techPreview:
-#    meshConfig:
-#      enablePrometheusMerge: true
-#    telemetry:
-#      enabled: true
-#      v2:
-#        prometheus:
-#          enabled: true
   tracing:
     type: None
 ---

@@ -155,16 +155,35 @@ oc apply -f custom-prometheus/app-mtls-monitor.yaml
 
 ### Issues
 
-1. SMCP must provide a way to enable telemetry.v2.prometheus.enabled without deploying Prometheus.
-2. When mTLS is enabled in the mesh, Prometheus cannot scrape metrics from port 15090 with enabled TLS,
-  because "server gave HTTP response to HTTPS client", as you can see in this [image](img/http-envoy-prom-tls.png).
-  This is probably, because of excluding 15090 from inbound ports, because when TLS is not enabled in the PodMonitor,
-  everything works fine, as you can see [here](img/http-envoy-prom.png). On the other hand, it does not work
-  with OpenShift Monitoring when mTLS is enabled in the mesh and the PodMonitor does not use TLS.
-3. Kiali should support using token from oauth proxy, then it wouldn't be necessary to use UWM token.
-   For example, I can successfully query thanos using token of my OpenShift user:
+1. SMCP must provide a way to enable `telemetry.v2.prometheus.enabled` without deploying Prometheus.
+The settings below don't work, because `telemetry.v2.prometheus.enabled` is set to `false` when `spec.addons.prometheus.enabled` is `false`.
+```yaml
+  techPreview:
+    meshConfig:
+      enablePrometheusMerge: true
+    telemetry:
+      enabled: true
+      v2:
+        prometheus:
+          enabled: true
+```
+The workaround for this problem is enabling `extensionProviders`, but this should be GA:
+```yaml
+  techPreview:
+    meshConfig:
+      extensionProviders:
+      - name: prometheus
+        prometheus: {}
+```
+2. In the examples, I configured Kiali to use cluster-wide Thanos token, but it should use a namespace-scoped token.
+   A potential solution could be using user's token from OAuth proxy, but I don't know if this token is available for Kiali after login.  
+   TODO:
+   - verify what happens when a user queries Thanos for multiple namespaces where one of namespaces does not belong to that user;
+   - verify why Kiali restricts access when `developer-1` log in to Kiali, while it uses cluster-wide token;
+   - verify why Thanos returns 403 when a Kiali uses its own token: `spec.external_services.prometheus.auth.use_kiali_token: true`.
+   - how to set proper permissions for kiali-service-account to permit Kiali querying Thanos with its own token.
+
 ```shell
 kubectl port-forward service/thanos-querier -n openshift-monitoring 9091:9091
 curl -X GET -kG "https://localhost:9091/api/v1/query?" --data-urlencode "query=up{namespace='istio-system-1'}" -H "Authorization: Bearer <my-token>"
 ```
-4. Prometheus returns 403 when a Kiali uses it's own token `spec.external_services.prometheus.auth.use_kiali_token: true`.
