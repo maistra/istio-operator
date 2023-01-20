@@ -8,8 +8,8 @@ oc login -u kubeadmin https://api.crc.testing:6443
 touch htpasswd
 htpasswd -Bb htpasswd clusteradmin clusteradm
 htpasswd -Bb htpasswd meshadmin-1 adm1
+htpasswd -Bb htpasswd developer-1 dev1
 htpasswd -Bb htpasswd meshadmin-2 adm2
-htpasswd -Bb htpasswd meshadmin-3 adm3
 oc delete secret htpass-secret -n openshift-config
 oc create secret generic htpass-secret --from-file=htpasswd=htpasswd -n openshift-config
 oc apply -f oauth.yaml
@@ -34,6 +34,11 @@ do
   sed "s/{{username}}/meshadmin-$i/g" allow-admin-to-manage-telemetry-and-monitors.yaml | oc apply -n istio-system-$i -f -
   sed "s/{{username}}/meshadmin-$i/g" allow-admin-to-manage-telemetry-and-monitors.yaml | oc apply -n bookinfo-$i -f -
 done
+
+oc create user developer-1
+oc create identity simple-htpasswd:developer-1
+oc create useridentitymapping simple-htpasswd:developer-1 developer-1
+oc adm policy add-role-to-user edit developer-1 -n bookinfo-1
 ```
 
 3. Wait until you can log in as `clusteradmin` (it may take a few minutes):
@@ -69,7 +74,6 @@ Wait until istiod is ready and then apply:
 ```shell
 oc apply -n bookinfo-1 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/platform/kube/bookinfo.yaml
 oc apply -n bookinfo-1 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/networking/bookinfo-gateway.yaml
-# Telemetry API created in the control plane namespace is applied to all namespaces
 oc apply -n istio-system-1 -f telemetry.yaml
 ```
 
@@ -80,14 +84,29 @@ sed 's/{{host}}/httpbin-1/g' gateway-injection.yaml | oc apply -n httpbin-1 -f -
 
 5. Request service in a loop to collect some metrics:
 ```shell
-while true; do curl -v httpbin-1.apps-crc.testing:80/ > /dev/null; sleep 5; done
+while true; do curl -v bookinfo-1.apps-crc.testing:80/productpage > /dev/null; sleep 1; done
 ```
 
-6. Configure monitoring:
+6. Configure monitoring using merged metrics:
 ```shell
 oc apply -n istio-system-1 -f openshift-monitoring/istiod-monitor.yaml
 oc apply -n istio-system-1 -f openshift-monitoring/istio-proxies-monitor.yaml
 oc apply -n bookinfo-1 -f openshift-monitoring/istio-proxies-monitor.yaml
+```
+
+7. Configure monitoring without Envoy and app metrics:
+```shell
+oc apply -n istio-system-1 -f openshift-monitoring/istiod-monitor.yaml
+oc apply -n istio-system-1 -f openshift-monitoring/istio-proxies-monitor-15090.yaml
+oc apply -n bookinfo-1 -f openshift-monitoring/istio-proxies-monitor-15090.yaml
+```
+
+8. Deploy Kiali by `clusteradmin`:
+```shell
+oc login -u clusteradmin https://api.crc.testing:6443
+SECRET=`oc get secret -n openshift-user-workload-monitoring | grep  prometheus-user-workload-token | head -n 1 | awk '{print $1 }'`
+TOKEN=`echo $(oc get secret $SECRET -n openshift-user-workload-monitoring -o json | jq -r '.data.token') | base64 -d`
+sed "s/{{token}}/$TOKEN/g" openshift-monitoring/kiali.yaml | oc apply -n istio-system-1 -f -
 ```
 
 ## Custom Prometheus Operator
@@ -149,3 +168,10 @@ oc apply -f custom-prometheus/istio-proxies-monitor.yaml
   This is probably, because of excluding 15090 from inbound ports, because when TLS is not enabled in the PodMonitor,
   everything works fine, as you can see [here](img/http-envoy-prom.png). On the other hand, it does not work
   with OpenShift Monitoring when mTLS is enabled in the mesh and the PodMonitor does not use TLS.
+3. Kiali should support using token from oauth proxy, then it wouldn't be necessary to use UWM token.
+   For example, I can successfully query thanos using token of my OpenShift user:
+```shell
+kubectl port-forward service/thanos-querier -n openshift-monitoring 9091:9091
+curl -X GET -kG "https://localhost:9091/api/v1/query?" --data-urlencode "query=up{namespace='istio-system-1'}" -H "Authorization: Bearer <my-token>"
+```
+4. Prometheus returns 403 when a Kiali uses it's own token `spec.external_services.prometheus.auth.use_kiali_token: true`.
