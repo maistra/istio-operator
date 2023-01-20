@@ -72,9 +72,9 @@ sed 's/{{host}}/bookinfo-1/g' route.yaml | oc apply -n istio-system-1 -f -
 ```
 Wait until istiod is ready and then apply:
 ```shell
-oc apply -n bookinfo-1 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/platform/kube/bookinfo.yaml
-oc apply -n bookinfo-1 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/networking/bookinfo-gateway.yaml
 oc apply -n istio-system-1 -f telemetry.yaml
+oc apply -n bookinfo-1 -f openshift-monitoring/bookinfo.yaml
+oc apply -n bookinfo-1 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/networking/bookinfo-gateway.yaml
 ```
 
 TODO: Gateway injection does not work in this setup. Try with 2.3.1:
@@ -87,21 +87,14 @@ sed 's/{{host}}/httpbin-1/g' gateway-injection.yaml | oc apply -n httpbin-1 -f -
 while true; do curl -v bookinfo-1.apps-crc.testing:80/productpage > /dev/null; sleep 1; done
 ```
 
-6. Configure monitoring using merged metrics:
+6. Configure monitoring to scrape merged metrics:
 ```shell
 oc apply -n istio-system-1 -f openshift-monitoring/istiod-monitor.yaml
 oc apply -n istio-system-1 -f openshift-monitoring/istio-proxies-monitor.yaml
 oc apply -n bookinfo-1 -f openshift-monitoring/istio-proxies-monitor.yaml
 ```
 
-7. Configure monitoring without Envoy and app metrics:
-```shell
-oc apply -n istio-system-1 -f openshift-monitoring/istiod-monitor.yaml
-oc apply -n istio-system-1 -f openshift-monitoring/istio-proxies-monitor-15090.yaml
-oc apply -n bookinfo-1 -f openshift-monitoring/istio-proxies-monitor-15090.yaml
-```
-
-8. Deploy Kiali by `clusteradmin`:
+8. Deploy Kiali as `clusteradmin`:
 ```shell
 oc login -u clusteradmin https://api.crc.testing:6443
 SECRET=`oc get secret -n openshift-user-workload-monitoring | grep  prometheus-user-workload-token | head -n 1 | awk '{print $1 }'`
@@ -131,33 +124,33 @@ oc apply -f custom-prometheus/allow-to-manage-prometheus.yaml
 oc apply -n custom-prometheus -f custom-prometheus/custom-prometheus-permissions.yaml
 oc apply -n istio-system-2 -f custom-prometheus/custom-prometheus-permissions.yaml
 oc apply -n bookinfo-2 -f custom-prometheus/custom-prometheus-permissions.yaml
+sed "s/{{username}}/meshadmin-2/g" allow-admin-to-manage-telemetry-and-monitors.yaml | oc apply -n custom-prometheus -f -
 ```
 
 3. Login as `meshadmin-2` and deploy `Prometheus`:
 ```shell
 oc login -u meshadmin-2 https://api.crc.testing:6443
-oc apply -f custom-prometheus/prometheus.yaml
 ```
 
 4. Deploy SMCP:
 ```shell
 oc apply -n istio-system-2 -f custom-prometheus/mesh.yaml
 sed 's/{{host}}/bookinfo-2/g' route.yaml | oc apply -n istio-system-2 -f -
+oc apply -n istio-system-2 -f telemetry.yaml
 ```
 
 Wait until istiod is ready and then apply:
 ```shell
-oc apply -n bookinfo-2 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/platform/kube/bookinfo.yaml
+oc apply -f custom-prometheus/prometheus.yaml
+oc apply -n bookinfo-2 -f custom-prometheus/bookinfo.yaml
 oc apply -n bookinfo-2 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/networking/bookinfo-gateway.yaml
-# Telemetry API created in the control plane namespace is applied to all namespaces
-oc apply -n istio-system-2 -f telemetry.yaml
 ```
 
 5. Enable monitoring:
 ```shell
-sed "s/{{username}}/meshadmin-2/g" allow-admin-to-manage-telemetry-and-monitors.yaml | oc apply -n custom-prometheus -f -
 oc apply -f custom-prometheus/istiod-monitor.yaml
 oc apply -f custom-prometheus/istio-proxies-monitor.yaml
+oc apply -f custom-prometheus/app-mtls-monitor.yaml
 ```
 
 ### Issues
