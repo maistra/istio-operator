@@ -10,14 +10,10 @@ spec:
   podMonitorNamespaceSelector:
     matchNames:
     - custom-prometheus
-    - istio-system-2
-    - bookinfo-2
   serviceMonitorSelector: {}
   serviceMonitorNamespaceSelector:
     matchNames:
     - custom-prometheus
-    - istio-system-2
-    - bookinfo-2
   podMetadata:
     annotations:
       sidecar.istio.io/inject: "true"
