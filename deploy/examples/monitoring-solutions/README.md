@@ -191,5 +191,49 @@ The workaround for this problem is enabling `extensionProviders`, but this shoul
 
 ```shell
 kubectl port-forward service/thanos-querier -n openshift-monitoring 9091:9091
-curl -X GET -kG "https://localhost:9091/api/v1/query?" --data-urlencode "query=up{namespace='istio-system-1'}" -H "Authorization: Bearer <my-token>"
+curl -X GET -vkG "https://localhost:9091/api/v1/query?" --data-urlencode "query=up{namespace='istio-system-1'}" -H "Authorization: Bearer <my-token>"
+```
+
+3. Kiali could work without cluster-wide token and could just use its own token if it supports [prom-label-proxy](https://github.com/prometheus-community/prom-label-proxy) API.
+   This API slightly differs from the current API and only requires adding requested namespace to the URL as below: 
+```shell
+curl -X GET -vkG "https://localhost:9092/api/v1/query?up&namespace=bookinfo-1&" --data-urlencode "query=up" -H "Authorization: Bearer $KIALI_TOKEN"
+```
+
+To permit Kiali to access that API, Kiali Operator would have to add the following role to the kiali-service-account:
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kiali-monitoring-rbac
+rules:
+- apiGroups: ["metrics.k8s.io"]
+ resources:
+ - pods
+ verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kiali-monitoring-rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kiali-monitoring-rbac
+subjects:
+- kind: ServiceAccount
+  name: kiali-service-account
+  namespace: istio-system-1
+```
+This is necessary, because Thanos Querier checks this role on port `tenancy` (9092) -
+this is configured [here](https://github.com/openshift/cluster-monitoring-operator/blob/2b4844db3e64a6764b702171f76ee5eb32145e3f/assets/thanos-querier/kube-rbac-proxy-secret.yaml).
+Then Prometheus could be configured without any additional token.
+```yaml
+    prometheus:
+      auth:
+        type: bearer
+        use_kiali_token: true
+      thanos_proxy:
+        enabled: true
+      url: https://thanos-querier.openshift-monitoring.svc.cluster.local:9092
 ```

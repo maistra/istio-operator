@@ -29,8 +29,9 @@ spec:
         token: {{token}}
         type: bearer
         use_kiali_token: false
-#      thanos_proxy:
-#        enabled: true
+      # This must be enabled. Otherwise, Kiali logs errors about Prometheus client configuration.
+      thanos_proxy:
+        enabled: true
       url: https://thanos-querier.openshift-monitoring.svc.cluster.local:9091
   installation_tag: 'Kiali [istio-system-1]'
   istio_namespace: istio-system-1
