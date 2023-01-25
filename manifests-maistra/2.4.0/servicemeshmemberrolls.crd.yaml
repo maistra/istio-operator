@@ -5,7 +5,7 @@ metadata:
   labels:
     maistra-version: 2.4.0
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.7.0
   creationTimestamp: null
   name: servicemeshmemberrolls.maistra.io
 spec:
@@ -26,7 +26,8 @@ spec:
       jsonPath: .status.annotations.configuredMemberCount
       name: Ready
       type: string
-    - description: Whether all member namespaces have been configured or why that's not the case
+    - description: Whether all member namespaces have been configured or why that's
+        not the case
       jsonPath: .status.conditions[?(@.type=="Ready")].reason
       name: Status
       type: string

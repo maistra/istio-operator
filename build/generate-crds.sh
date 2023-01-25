@@ -13,7 +13,7 @@ function generateCRDs() {
   echo "Generating CRDs"
   go run sigs.k8s.io/controller-tools/cmd/controller-gen crd \
       paths=./pkg/apis/maistra/... \
-      crd:maxDescLen=0,preserveUnknownFields=false,crdVersions=v1 \
+      crd:maxDescLen=0,crdVersions=v1 \
       output:dir=./deploy/crds
 
 # FIXME: Remove when generating v1 above
