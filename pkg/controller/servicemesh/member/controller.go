@@ -85,8 +85,8 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 	// Watch for changes to primary resource ServiceMeshMember
 	err = c.Watch(&source.Kind{Type: &maistrav1.ServiceMeshMember{}}, &handler.EnqueueRequestForObject{}, predicate.Funcs{
 		UpdateFunc: func(event event.UpdateEvent) bool {
-			o := event.MetaOld
-			n := event.MetaNew
+			o := event.ObjectOld
+			n := event.ObjectNew
 			return o.GetResourceVersion() == n.GetResourceVersion() || // ensure reconciliation is triggered by periodic resyncs
 				o.GetGeneration() != n.GetGeneration() ||
 				!reflect.DeepEqual(o.GetAnnotations(), n.GetAnnotations()) ||
@@ -99,7 +99,7 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 	}
 
 	// TODO: this needs to be moved outside the controller, since it configures global stuff (and is required by multiple controllers)
-	err = mgr.GetFieldIndexer().IndexField(ctx, &maistrav1.ServiceMeshMember{}, "spec.controlPlaneRef.namespace", func(obj runtime.Object) []string {
+	err = mgr.GetFieldIndexer().IndexField(ctx, &maistrav1.ServiceMeshMember{}, "spec.controlPlaneRef.namespace", func(obj client.Object) []string {
 		roll := obj.(*maistrav1.ServiceMeshMember)
 		return []string{roll.Spec.ControlPlaneRef.Namespace}
 	})
@@ -108,13 +108,13 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 	}
 
 	// watch SMCPs so we can update the resources in the app namespace when the SMCP is updated
-	err = c.Watch(&source.Kind{Type: &maistrav2.ServiceMeshControlPlane{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(ns handler.MapObject) []reconcile.Request {
-			return r.getRequestsForMembersWithReferenceToNamespace(ctx, ns.Meta.GetNamespace(), mgr.GetClient())
+	err = c.Watch(&source.Kind{Type: &maistrav2.ServiceMeshControlPlane{}}, handler.EnqueueRequestsFromMapFunc(
+		func(ns client.Object) []reconcile.Request {
+			return r.getRequestsForMembersWithReferenceToNamespace(ctx, ns.GetNamespace(), mgr.GetClient())
 		}),
-	}, predicate.Funcs{
-		GenericFunc: func(_ event.GenericEvent) bool { return false }, // no need to process member on generic SMCP events
-	})
+		predicate.Funcs{
+			GenericFunc: func(_ event.GenericEvent) bool { return false }, // no need to process member on generic SMCP events
+		})
 	if err != nil {
 		return err
 	}
@@ -154,9 +154,8 @@ type NewNamespaceReconcilerFunc func(ctx context.Context, cl client.Client,
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *MemberReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := createLogger().WithValues("ServiceMeshMember", request)
-	ctx := common.NewReconcileContext(reqLogger)
 
 	reqLogger.Info("Processing ServiceMeshMember")
 	defer func() {

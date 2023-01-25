@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/restmapper"
 	clienttesting "k8s.io/client-go/testing"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -168,7 +169,7 @@ func TestBootstrapping(t *testing.T) {
 				Name:             "clean-install-cni-no-errors",
 				ConfigureGlobals: InitializeGlobals(operatorNamespace),
 				AddControllers:   []AddControllerFunc{Add},
-				Resources: []runtime.Object{
+				Resources: []client.Object{
 					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: controlPlaneNamespace}},
 					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorNamespace}},
 				},

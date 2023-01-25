@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 
 	"gomodules.xyz/jsonpatch/v2"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type StatusPatch struct {
@@ -22,7 +22,7 @@ func (p *StatusPatch) Type() types.PatchType {
 	return types.JSONPatchType
 }
 
-func (p *StatusPatch) Data(obj runtime.Object) ([]byte, error) {
+func (p *StatusPatch) Data(obj client.Object) ([]byte, error) {
 	data := []jsonpatch.Operation{
 		{
 			Operation: "replace",

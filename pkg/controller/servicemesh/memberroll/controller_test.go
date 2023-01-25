@@ -866,7 +866,7 @@ func assertReconcileSucceeds(r *MemberRollReconciler, t *testing.T) {
 }
 
 func assertReconcileWithRequestSucceeds(r *MemberRollReconciler, request reconcile.Request, t *testing.T) {
-	res, err := r.Reconcile(request)
+	res, err := r.Reconcile(context.TODO(), request)
 	if err != nil {
 		t.Fatalf("Reconcile failed: %v", err)
 	}
@@ -876,7 +876,7 @@ func assertReconcileWithRequestSucceeds(r *MemberRollReconciler, request reconci
 }
 
 func assertReconcileFails(r *MemberRollReconciler, t *testing.T) {
-	_, err := r.Reconcile(request)
+	_, err := r.Reconcile(context.TODO(), request)
 	if err == nil {
 		t.Fatal("Expected reconcile to fail, but it didn't")
 	}

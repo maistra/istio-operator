@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"gomodules.xyz/jsonpatch/v2"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -62,10 +62,10 @@ func (v *ControlPlaneMutator) Handle(ctx context.Context, req admission.Request)
 	currentVersion := mutator.NewVersion()
 	if currentVersion == "" {
 		switch req.AdmissionRequest.Operation {
-		case admissionv1beta1.Create:
+		case admissionv1.Create:
 			log.Info("Setting .spec.version to default value", "version", versions.DefaultVersion.String())
 			mutator.SetVersion(mutator.DefaultVersion())
-		case admissionv1beta1.Update:
+		case admissionv1.Update:
 			oldVersion := mutator.OldVersion()
 			if currentVersion != oldVersion && oldVersion != versions.InvalidVersion.String() {
 				log.Info("Setting .spec.version to existing value", "version", oldVersion)
@@ -108,7 +108,7 @@ func (v *ControlPlaneMutator) decodeRequest(req admission.Request, logger logr.L
 			return nil, err
 		}
 		var oldsmcp *v1.ServiceMeshControlPlane
-		if req.Operation == admissionv1beta1.Update {
+		if req.Operation == admissionv1.Update {
 			oldsmcp = &v1.ServiceMeshControlPlane{}
 			err = v.decoder.DecodeRaw(req.AdmissionRequest.OldObject, oldsmcp)
 			if err != nil {
@@ -125,7 +125,7 @@ func (v *ControlPlaneMutator) decodeRequest(req admission.Request, logger logr.L
 			return nil, err
 		}
 		var oldsmcp *v2.ServiceMeshControlPlane
-		if req.Operation == admissionv1beta1.Update {
+		if req.Operation == admissionv1.Update {
 			oldsmcp = &v2.ServiceMeshControlPlane{}
 			err = v.decoder.DecodeRaw(req.AdmissionRequest.OldObject, oldsmcp)
 			if err != nil {
@@ -159,7 +159,7 @@ func (m *smcppatch) GetPatches() []jsonpatch.JsonPatchOperation {
 }
 
 func (m *smcppatch) SetVersion(version string) {
-	m.patches = append(m.patches, jsonpatch.NewPatch("add", "/spec/version", version))
+	m.patches = append(m.patches, jsonpatch.NewOperation("add", "/spec/version", version))
 }
 
 func (m *smcppatch) SetProfiles(profiles []string) {
@@ -167,7 +167,7 @@ func (m *smcppatch) SetProfiles(profiles []string) {
 	for index, profile := range profiles {
 		value[index] = profile
 	}
-	m.patches = append(m.patches, jsonpatch.NewPatch("add", "/spec/profiles", value))
+	m.patches = append(m.patches, jsonpatch.NewOperation("add", "/spec/profiles", value))
 }
 
 type smcpv1mutator struct {

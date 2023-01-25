@@ -220,9 +220,9 @@ func (v *versionStrategyV1_1) ValidateUpgrade(ctx context.Context, cl client.Cli
 
 	// return error if any deprecated mixer resources are being used
 	for _, list := range unsupportedOldResourcesV1_1 {
-		list = list.DeepCopyObject()
+		listObj := list.DeepCopyObject().(client.ObjectList)
 		// XXX: do we list all in the cluster, or list for each member namespace?
-		if err := cl.List(ctx, list); err != nil {
+		if err := cl.List(ctx, listObj); err != nil {
 			if !meta.IsNoMatchError(err) && !errors.IsNotFound(err) {
 				return pkgerrors.Wrapf(err, "error listing %T resources", list)
 			}

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"runtime"
 
-	sdkVersion "github.com/operator-framework/operator-sdk/version"
+	sdkVersion "github.com/maistra/istio-operator/internal/version"
 )
 
 var (

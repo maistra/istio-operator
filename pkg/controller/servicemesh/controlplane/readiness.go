@@ -149,7 +149,7 @@ func (r *controlPlaneInstanceReconciler) calculateComponentReadinessMap(ctx cont
 
 	readinessMap := map[string]bool{}
 	typesToCheck := []struct {
-		list  runtime.Object
+		list  client.ObjectList
 		ready isReadyFunc
 	}{
 		// keep this in sync with kindsWithReadiness
@@ -209,6 +209,7 @@ func (r *controlPlaneInstanceReconciler) calculateComponentReadinessMap(ctx cont
 	return readinessMap, nil
 }
 
+//lint:ignore U1000 Ignore unused function temporarily for debugging
 func (r *controlPlaneInstanceReconciler) isCNIReady(ctx context.Context) (bool, error) {
 	if !r.cniConfig.Enabled {
 		return true, nil
@@ -228,7 +229,7 @@ func (r *controlPlaneInstanceReconciler) isCNIReady(ctx context.Context) (bool, 
 }
 
 func (r *controlPlaneInstanceReconciler) calculateReadinessForType(ctx context.Context, namespaces []string,
-	list runtime.Object, isReady isReadyFunc, readinessMap map[string]bool,
+	list client.ObjectList, isReady isReadyFunc, readinessMap map[string]bool,
 ) error {
 	log := common.LogFromContext(ctx)
 

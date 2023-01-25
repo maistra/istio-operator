@@ -12,9 +12,9 @@ import (
 	arv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	clienttesting "k8s.io/client-go/testing"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -39,7 +39,7 @@ func TestMAISTRA_2040(t *testing.T) {
 	testCases := []struct {
 		name        string
 		description string
-		resources   []runtime.Object
+		resources   []client.Object
 		events      []ControllerTestEvent
 	}{
 		{
@@ -167,7 +167,7 @@ func TestMAISTRA_2040(t *testing.T) {
 		{
 			name:        "preexisting_secret.v1.1",
 			description: "testing webhook controller with a pre-existing secret",
-			resources: []runtime.Object{
+			resources: []client.Object{
 				createWebhookSecret(galleySecretName, testNamespace, "root-cert.pem"),
 				createWebhookSecret(sidecarInjectorSecretName, testNamespace, "root-cert.pem"),
 			},
@@ -203,7 +203,7 @@ func TestMAISTRA_2040(t *testing.T) {
 		{
 			name:        "preexisting_secret.v2.0.self-signed",
 			description: "testing webhook controller with a pre-existing self-signed secret",
-			resources: []runtime.Object{
+			resources: []client.Object{
 				createWebhookSecret(v20SelfSignedSecretName, testNamespace, "ca-cert.pem"),
 			},
 			events: []ControllerTestEvent{
@@ -240,7 +240,7 @@ func TestMAISTRA_2040(t *testing.T) {
 		{
 			name:        "preexisting_secret.v2.0.private-key",
 			description: "testing webhook controller with a pre-existing private-key secret",
-			resources: []runtime.Object{
+			resources: []client.Object{
 				createWebhookSecret(v20PrivateKeySecretName, testNamespace, "ca-cert.pem"),
 			},
 			events: []ControllerTestEvent{
@@ -275,7 +275,7 @@ func TestMAISTRA_2040(t *testing.T) {
 		{
 			name:        "preexisting_secret.v2.0.both",
 			description: "testing webhook controller with a pre-existing self-signed and private-key secret",
-			resources: []runtime.Object{
+			resources: []client.Object{
 				createWebhookSecret(v20SelfSignedSecretName, testNamespace, "ca-cert.pem"),
 				createWebhookSecret(v20PrivateKeySecretName, testNamespace, "ca-cert.pem"),
 			},
@@ -311,7 +311,7 @@ func TestMAISTRA_2040(t *testing.T) {
 		{
 			name:        "maistra-2053",
 			description: "multiple installs should use the correct secret for their install",
-			resources:   []runtime.Object{&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: test2Namespace}}},
+			resources:   []client.Object{&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: test2Namespace}}},
 			events: []ControllerTestEvent{
 				{
 					Name: "create-galley-webhook",
@@ -478,7 +478,7 @@ func TestMAISTRA_2040(t *testing.T) {
 				Name:            tc.name,
 				AddControllers:  []AddControllerFunc{Add},
 				StorageVersions: []schema.GroupVersion{arv1.SchemeGroupVersion},
-				Resources:       append([]runtime.Object{&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}}}, tc.resources...),
+				Resources:       append([]client.Object{&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}}}, tc.resources...),
 				Events:          tc.events,
 			})
 		})

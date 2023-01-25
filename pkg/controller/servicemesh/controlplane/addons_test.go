@@ -20,6 +20,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -98,7 +99,7 @@ func TestAddonsInstall(t *testing.T) {
 		{
 			name: "kiali.install.jaeger.existing",
 			smcp: NewSMCPForKialiJaegerTests(smcpName, "", jaegerExistingName, versions.V2_0.String()),
-			resources: []runtime.Object{
+			resources: []client.Object{
 				jaegerExisting,
 				jaegerRoute,
 			},
@@ -121,7 +122,7 @@ func TestAddonsInstall(t *testing.T) {
 		{
 			name: "kiali.existing.jaeger.install",
 			smcp: NewSMCPForKialiJaegerTests(smcpName, kialiName, "", versions.V2_0.String()),
-			resources: []runtime.Object{
+			resources: []client.Object{
 				&kialiv1alpha1.Kiali{Base: external.Base{
 					ObjectMeta: metav1.ObjectMeta{Name: kialiName, Namespace: controlPlaneNamespace},
 				}},
@@ -143,7 +144,7 @@ func TestAddonsInstall(t *testing.T) {
 		{
 			name: "kiali.existing.jaeger.existing",
 			smcp: NewSMCPForKialiJaegerTests(smcpName, kialiExistingName, jaegerExistingName, versions.V2_0.String()),
-			resources: []runtime.Object{
+			resources: []client.Object{
 				&kialiv1alpha1.Kiali{Base: external.Base{
 					ObjectMeta: metav1.ObjectMeta{Name: kialiExistingName, Namespace: controlPlaneNamespace},
 				}},
@@ -245,7 +246,7 @@ func TestExternalJaegerV1_1(t *testing.T) {
 		{
 			name: "jaeger.v2",
 			smcp: NewSMCPForKialiJaegerTests(smcpName, "", jaegerExistingName, versions.V1_1.String()),
-			resources: []runtime.Object{
+			resources: []client.Object{
 				jaegerExisting,
 				jaegerRoute,
 			},
@@ -292,7 +293,7 @@ func TestExternalJaegerV1_1(t *testing.T) {
 					}),
 				},
 			},
-			resources: []runtime.Object{
+			resources: []client.Object{
 				jaegerExisting,
 				jaegerRoute,
 			},

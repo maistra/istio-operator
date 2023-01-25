@@ -1,14 +1,13 @@
 package webhooks
 
 import (
-	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/conversion"
 
 	// This is required to ensure v1.ConverterV1V2 and v1.ConverterV2V1 are properly initialized
-	_ "github.com/maistra/istio-operator/pkg/apis/maistra/conversion"
+	"github.com/maistra/istio-operator/internal/k8sutil"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	webhookcommon "github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/common"
 	"github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks/mutation"

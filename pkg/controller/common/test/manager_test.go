@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 )
 
-var voidReconciler = reconcile.Func(func(request reconcile.Request) (reconcile.Result, error) {
+var voidReconciler = reconcile.Func(func(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	return reconcile.Result{}, nil
 })
 
