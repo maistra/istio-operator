@@ -8,9 +8,17 @@ import (
 )
 
 const (
-	ControlPlaneModeKey                = "controlPlaneMode"
-	ControlPlaneModeValueClusterScoped = "ClusterScoped"
-	ControlPlaneModeValueMultiTenant   = "MultiTenant"
+	// controlPlaneMode in v2.3
+	TechPreviewControlPlaneModeKey                = "controlPlaneMode"
+	TechPreviewControlPlaneModeValueClusterScoped = "ClusterScoped"
+	TechPreviewControlPlaneModeValueMultiTenant   = "MultiTenant"
+)
+
+type ControlPlaneMode string
+
+const (
+	ClusterWideMode ControlPlaneMode = "ClusterWide"
+	MultiTenantMode ControlPlaneMode = "MultiTenant"
 )
 
 func init() {
@@ -125,6 +133,18 @@ type ControlPlaneSpec struct {
 	// admission webhook sets the version to the current version.
 	// +optional
 	Version string `json:"version,omitempty"`
+	// Mode specifies whether the control plane operates in
+	// ClusterWide or MultiTenant mode. With ClusterWide mode the control
+	// plane components get cluster-scoped privileges and can watch
+	// OSSM-related API resources across the entire cluster, whereas with
+	// MultiTenant mode, the components only get privileges to watch resources
+	// in the namespaces listed in the ServiceMeshMemberRoll. This mode requires
+	// Istiod to create many more watch connections to the API server, since
+	// it must open a watch for each resource type for each member namespace.
+	// The default Mode is MultiTenant.
+	// +optional
+	// +kubebuilder:validation:Enum=MultiTenant;ClusterWide
+	Mode ControlPlaneMode `json:"mode,omitempty"`
 	// Cluster is the general configuration of the cluster (cluster name,
 	// network name, multi-cluster, mesh expansion, etc.)
 	// +optional
@@ -193,12 +213,4 @@ func (s ControlPlaneSpec) IsGrafanaEnabled() bool {
 
 func (s ControlPlaneSpec) IsJaegerEnabled() bool {
 	return s.Tracing != nil && s.Tracing.Type == TracerTypeJaeger
-}
-
-func (s ControlPlaneSpec) IsClusterScoped() (bool, error) {
-	controlPlaneMode, _, err := s.TechPreview.GetString(ControlPlaneModeKey)
-	if err != nil {
-		return false, err
-	}
-	return controlPlaneMode == ControlPlaneModeValueClusterScoped, nil
 }

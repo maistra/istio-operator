@@ -110,6 +110,11 @@ type Version interface {
 	// a negative value is returned.  If other is the same version, zero is
 	// returned.
 	Compare(other Version) int
+	// AtLeast returns true if this version is greater or equal to the specified
+	// other version.
+	AtLeast(other Version) bool
+	// LessThan returns true if this version is less than the specified version.
+	LessThan(other Version) bool
 	// Strategy provides a customizations specific to this version.
 	Strategy() VersionStrategy
 	GetChartsDir() string
@@ -131,6 +136,7 @@ type ValidationStrategy interface {
 
 // RenderingStrategy is an interface used by the reconciler to manage rendering of charts.
 type RenderingStrategy interface {
+	IsClusterScoped(spec *v2.ControlPlaneSpec) (bool, error)
 	GetChartInstallOrder() [][]string
 	SetImageValues(ctx context.Context, cr *common.ControllerResources, smcp *v1.ControlPlaneSpec) error
 	Render(ctx context.Context, cr *common.ControllerResources, cniConfig cni.Config, smcp *v2.ServiceMeshControlPlane) (map[string][]manifest.Manifest, error)
@@ -177,6 +183,14 @@ func (v Ver) String() string {
 
 func (v Ver) Compare(other Version) int {
 	return int(v.Version() - other.Version())
+}
+
+func (v Ver) AtLeast(other Version) bool {
+	return v.Compare(other) >= 0
+}
+
+func (v Ver) LessThan(other Version) bool {
+	return v.Compare(other) < 0
 }
 
 func (v Ver) Version() Ver {
@@ -230,6 +244,10 @@ func (v *nilVersionStrategy) SetImageValues(ctx context.Context, cr *common.Cont
 
 func (v *nilVersionStrategy) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	return nil
+}
+
+func (v *nilVersionStrategy) IsClusterScoped(spec *v2.ControlPlaneSpec) (bool, error) {
+	return false, nil
 }
 
 func (v *nilVersionStrategy) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
@@ -286,6 +304,10 @@ var _ VersionStrategy = (*invalidVersionStrategy)(nil)
 
 func (v *invalidVersionStrategy) SetImageValues(ctx context.Context, cr *common.ControllerResources, smcp *v1.ControlPlaneSpec) error {
 	return fmt.Errorf("invalid version: %s", v.Ver)
+}
+
+func (v *invalidVersionStrategy) IsClusterScoped(spec *v2.ControlPlaneSpec) (bool, error) {
+	return false, fmt.Errorf("invalid version: %s", v.Ver)
 }
 
 func (v *invalidVersionStrategy) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {

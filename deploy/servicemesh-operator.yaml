@@ -4044,6 +4044,11 @@ spec:
                   validationMessages:
                     type: boolean
                 type: object
+              mode:
+                enum:
+                - MultiTenant
+                - ClusterWide
+                type: string
               policy:
                 properties:
                   mixer:
@@ -8922,6 +8927,11 @@ spec:
                       validationMessages:
                         type: boolean
                     type: object
+                  mode:
+                    enum:
+                    - MultiTenant
+                    - ClusterWide
+                    type: string
                   policy:
                     properties:
                       mixer:

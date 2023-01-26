@@ -132,12 +132,17 @@ func (v *versionStrategyV2_0) SetImageValues(ctx context.Context, cr *common.Con
 	return nil
 }
 
+func (v *versionStrategyV2_0) IsClusterScoped(spec *v2.ControlPlaneSpec) (bool, error) {
+	return false, nil
+}
+
 func (v *versionStrategyV2_0) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	return fmt.Errorf("must use v2 ServiceMeshControlPlane resource for v2.0+ installations")
 }
 
 func (v *versionStrategyV2_0) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
+	allErrors = v.validateGlobal(spec, allErrors)
 	allErrors = validateGateways(ctx, meta, spec, cl, allErrors)
 	allErrors = validatePolicyType(spec, v.Ver, allErrors)
 	allErrors = validateTelemetryType(spec, v.Ver, allErrors)
@@ -519,4 +524,8 @@ func (v *versionStrategyV2_0) GetPolicyType(in *v1.HelmValues, mixerPolicyEnable
 
 func (v *versionStrategyV2_0) GetTrustDomainFieldPath() string {
 	return v.conversionImpl.GetTrustDomainFieldPath()
+}
+
+func (v *versionStrategyV2_0) validateGlobal(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	return checkControlPlaneModeNotSet(spec, allErrors)
 }

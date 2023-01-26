@@ -77,6 +77,7 @@ func autoConvert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneS
 func autoConvert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec, out *v1.ControlPlaneSpec, s conversion.Scope) error {
 	out.Profiles = *(*[]string)(unsafe.Pointer(&in.Profiles))
 	out.Version = in.Version
+	// WARNING: in.Mode requires manual conversion: does not exist in peer-type
 	// WARNING: in.Cluster requires manual conversion: does not exist in peer-type
 	// WARNING: in.General requires manual conversion: does not exist in peer-type
 	// WARNING: in.Policy requires manual conversion: does not exist in peer-type

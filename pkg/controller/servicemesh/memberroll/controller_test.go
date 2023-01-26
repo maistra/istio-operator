@@ -27,6 +27,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 const (
@@ -734,7 +735,7 @@ func TestKialiResource(t *testing.T) {
 
 	cases := []struct {
 		name                         string
-		controlPlaneMode             string
+		smcp                         *maistrav2.ServiceMeshControlPlane
 		members                      []string
 		namespaces                   []string
 		expectedAccessibleNamespaces []string
@@ -759,8 +760,15 @@ func TestKialiResource(t *testing.T) {
 			expectedExcludedNamespaces:   []string{},
 		},
 		{
-			name:                         "only-smcp-cluster-scoped",
-			controlPlaneMode:             maistrav2.ControlPlaneModeValueClusterScoped,
+			name:                         "only-smcp-cluster-scoped-v2.3",
+			smcp:                         newSMCPClusterWide23(),
+			members:                      []string{"foo", "bar", "baz"},
+			expectedAccessibleNamespaces: []string{"foo", "bar", "baz"},
+			expectedExcludedNamespaces:   []string{},
+		},
+		{
+			name:                         "only-smcp-cluster-scoped-v2.4+",
+			smcp:                         newSMCPClusterWide24(),
 			members:                      []string{"foo", "bar", "baz"},
 			expectedAccessibleNamespaces: []string{"foo", "bar", "baz"},
 			expectedExcludedNamespaces:   []string{},
@@ -773,8 +781,16 @@ func TestKialiResource(t *testing.T) {
 			expectedExcludedNamespaces:   []string{},
 		},
 		{
-			name:                         "both-smcp-and-smmr-cluster-scoped",
-			controlPlaneMode:             maistrav2.ControlPlaneModeValueClusterScoped,
+			name:                         "both-smcp-and-smmr-cluster-scoped-v2.3",
+			smcp:                         newSMCPClusterWide23(),
+			members:                      []string{"*"},
+			namespaces:                   []string{"bookinfo"},
+			expectedAccessibleNamespaces: []string{"**"},
+			expectedExcludedNamespaces:   []string{"^kube$", "^kube-.*", "^openshift$", "^openshift-.*", "^operator-namespace$"},
+		},
+		{
+			name:                         "both-smcp-and-smmr-cluster-scoped-v2.4+",
+			smcp:                         newSMCPClusterWide24(),
 			members:                      []string{"*"},
 			namespaces:                   []string{"bookinfo"},
 			expectedAccessibleNamespaces: []string{"**"},
@@ -787,12 +803,9 @@ func TestKialiResource(t *testing.T) {
 			roll := newMemberRoll(1)
 			roll.Spec.Members = tc.members
 
-			smcp := newControlPlane()
-			if tc.controlPlaneMode != "" {
-				smcp.Spec.TechPreview = maistrav1.NewHelmValues(
-					map[string]interface{}{
-						maistrav2.ControlPlaneModeKey: tc.controlPlaneMode,
-					})
+			smcp := tc.smcp
+			if tc.smcp == nil {
+				smcp = newControlPlane()
 			}
 			markControlPlaneReconciled(smcp)
 
@@ -806,6 +819,22 @@ func TestKialiResource(t *testing.T) {
 			kialiReconciler.assertInvokedWith(t, tc.expectedAccessibleNamespaces, tc.expectedExcludedNamespaces)
 		})
 	}
+}
+
+func newSMCPClusterWide23() *maistrav2.ServiceMeshControlPlane {
+	smcp := newControlPlane()
+	smcp.Spec.Version = versions.V2_3.String()
+	smcp.Spec.TechPreview = maistrav1.NewHelmValues(
+		map[string]interface{}{
+			maistrav2.TechPreviewControlPlaneModeKey: maistrav2.TechPreviewControlPlaneModeValueClusterScoped,
+		})
+	return smcp
+}
+
+func newSMCPClusterWide24() *maistrav2.ServiceMeshControlPlane {
+	smcp := newControlPlane()
+	smcp.Spec.Mode = maistrav2.ClusterWideMode
+	return smcp
 }
 
 func newMember() *maistrav1.ServiceMeshMember {
@@ -919,7 +948,7 @@ func newControlPlane() *maistrav2.ServiceMeshControlPlane {
 			Generation: 1,
 		},
 		Spec: maistrav2.ControlPlaneSpec{
-			Version: "",
+			Version: versions.DefaultVersion.String(),
 			Addons: &maistrav2.AddonsConfig{
 				Kiali: &maistrav2.KialiAddonConfig{
 					Enablement: maistrav2.Enablement{

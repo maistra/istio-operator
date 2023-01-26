@@ -150,7 +150,7 @@ function patchGalley() {
 
   convertClusterRoleBinding "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrolebinding.yaml" ""
   sed_wrap -i -e '/- "discovery"/ a\
-{{- if not .Values.global.clusterScoped }}\
+{{- if not .Values.global.clusterWide }}\
           - --memberRollName=default\
           - --enableNodeAccess=false\
           - --enableCRDScan=false\
@@ -468,9 +468,9 @@ function convertClusterToNamespaced() {
   # $2 - cluster kind
   # $3 - namespaced kind
   # $4 - dereference
-  sed_wrap -i -e 's/^\(\( *\)kind.*'"$2"'.*$\)/\2kind: {{ if .Values.global.clusterScoped }}'"$2"'{{ else }}'"$3"'{{ end }}/' "${1}"
+  sed_wrap -i -e 's/^\(\( *\)kind.*'"$2"'.*$\)/\2kind: {{ if .Values.global.clusterWide }}'"$2"'{{ else }}'"$3"'{{ end }}/' "${1}"
   sed_wrap -i -e '/metadata:/ a\
-  {{ if not .Values.global.clusterScoped }}namespace: {{ '"$4"'.Release.Namespace }}{{ end }}' "${1}"
+  {{ if not .Values.global.clusterWide }}namespace: {{ '"$4"'.Release.Namespace }}{{ end }}' "${1}"
 }
 
 function convertClusterRoleBinding() {

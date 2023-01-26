@@ -94,7 +94,7 @@ spec:
           - {{ . | quote }}
   {{- end }}
 {{- end }}
-{{- if not .Values.global.clusterScoped }}
+{{- if not .Values.global.clusterWide }}
           - --memberRollName=default
           - --enableNodeAccess=false
           - --enableCRDScan=false

@@ -82,6 +82,10 @@ func (v *versionStrategyV1_1) SetImageValues(ctx context.Context, cr *common.Con
 	return nil
 }
 
+func (v *versionStrategyV1_1) IsClusterScoped(spec *v2.ControlPlaneSpec) (bool, error) {
+	return false, nil
+}
+
 func (v *versionStrategyV1_1) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
 	logger := logf.Log.WithName("smcp-validator-1.1")
 	var allErrors []error
