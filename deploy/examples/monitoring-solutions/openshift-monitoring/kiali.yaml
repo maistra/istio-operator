@@ -11,7 +11,7 @@ spec:
     strategy: openshift
   deployment:
     accessible_namespaces:
-      - bookinfo-1
+    - bookinfo-1
     image_pull_policy: ''
     ingress:
       enabled: true
@@ -19,6 +19,8 @@ spec:
   external_services:
     custom_dashboards:
       namespace_label: kubernetes_namespace
+    grafana:
+      enabled: false
     istio:
       config_map_name: istio-basic
       istio_sidecar_injector_config_map_name: istio-sidecar-injector-basic
@@ -26,13 +28,15 @@ spec:
       url_service_version: 'http://istiod-basic.istio-system-1:15014/version'
     prometheus:
       auth:
-        token: {{token}}
+        token: secret:thanos-querier-web-token:token
         type: bearer
         use_kiali_token: false
       # This must be enabled. Otherwise, Kiali logs errors about Prometheus client configuration.
       thanos_proxy:
         enabled: true
       url: https://thanos-querier.openshift-monitoring.svc.cluster.local:9091
+    tracing:
+      enabled: false
   installation_tag: 'Kiali [istio-system-1]'
   istio_namespace: istio-system-1
   version: v1.57

@@ -95,12 +95,18 @@ oc apply -n istio-system-1 -f openshift-monitoring/istio-proxies-monitor.yaml
 oc apply -n bookinfo-1 -f openshift-monitoring/istio-proxies-monitor.yaml
 ```
 
-8. Deploy Kiali as `clusteradmin`:
+8. Create secret and RBAC for Kiali as `clusteradmin`:
 ```shell
 oc login -u clusteradmin https://api.crc.testing:6443
 SECRET=`oc get secret -n openshift-user-workload-monitoring | grep  prometheus-user-workload-token | head -n 1 | awk '{print $1 }'`
 TOKEN=`echo $(oc get secret $SECRET -n openshift-user-workload-monitoring -o json | jq -r '.data.token') | base64 -d`
-sed "s/{{token}}/$TOKEN/g" openshift-monitoring/kiali.yaml | oc apply -n istio-system-1 -f -
+oc create secret generic thanos-querier-web-token -n istio-system-1 --from-literal=token=$TOKEN
+```
+
+9. Deploy Kiali as `meshadmin-1`:
+```shell
+oc login -u meshadmin-1 https://api.crc.testing:6443
+oc apply -n istio-system-1 -f openshift-monitoring/kiali.yaml
 ```
 
 ## Custom Prometheus Operator
