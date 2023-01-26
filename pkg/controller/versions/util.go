@@ -38,6 +38,53 @@ const (
 
 var reservedGatewayNames = sets.NewString(clusterIngressName, clusterEgressName)
 
+func checkControlPlaneModeNotSet(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.Mode != "" {
+		return append(allErrors, fmt.Errorf("the spec.mode field is only supported in version 2.4 and above"))
+	} else if spec.TechPreview != nil {
+		if _, found, _ := spec.TechPreview.GetString(v2.TechPreviewControlPlaneModeKey); found {
+			return append(allErrors,
+				fmt.Errorf("the spec.techPreview.%s field is only supported in version 2.3",
+					v2.TechPreviewControlPlaneModeKey))
+		}
+	}
+	return allErrors
+}
+
+func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, cl client.Client, allErrors []error) []error {
+	isClusterScoped, err := version.Strategy().IsClusterScoped(spec)
+	if err != nil {
+		return append(allErrors, err)
+	}
+	smcps := v2.ServiceMeshControlPlaneList{}
+	err = cl.List(ctx, &smcps)
+	if err != nil {
+		return append(allErrors, err)
+	}
+
+	if isClusterScoped {
+		if len(smcps.Items) > 1 || len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
+			return append(allErrors,
+				fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
+		}
+	} else {
+		for _, smcp := range smcps.Items {
+			if smcp.UID == meta.GetUID() {
+				continue
+			}
+			clusterScoped, err := version.Strategy().IsClusterScoped(&smcp.Spec)
+			if err != nil {
+				return append(allErrors, err)
+			}
+			if clusterScoped {
+				return append(allErrors,
+					fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"))
+			}
+		}
+	}
+	return allErrors
+}
+
 func validatePrometheusEnabledWhenKialiEnabled(spec *v2.ControlPlaneSpec, allErrors []error) []error {
 	if spec.IsKialiEnabled() && !spec.IsPrometheusEnabled() {
 		return append(allErrors, fmt.Errorf(".spec.addons.prometheus.enabled must be true when .spec.addons.kiali.enabled is true"))

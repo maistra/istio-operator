@@ -139,16 +139,23 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 		return err
 	}
 
-	if clusterScoped, ok, err := values.GetAndRemoveBool("global.clusterScoped"); ok && clusterScoped {
-		if out.TechPreview == nil {
-			out.TechPreview = v1.NewHelmValues(map[string]interface{}{}).DeepCopy()
-		}
-
-		if err := out.TechPreview.SetField(v2.ControlPlaneModeKey, v2.ControlPlaneModeValueClusterScoped); err != nil {
+	if version == versions.V2_3 {
+		if clusterScoped, ok, err := values.GetAndRemoveBool("global.clusterScoped"); ok && clusterScoped {
+			if out.TechPreview == nil {
+				out.TechPreview = v1.NewHelmValues(map[string]interface{}{}).DeepCopy()
+			}
+			if err := out.TechPreview.SetField(v2.TechPreviewControlPlaneModeKey, v2.TechPreviewControlPlaneModeValueClusterScoped); err != nil {
+				return err
+			}
+		} else if err != nil {
 			return err
 		}
-	} else if err != nil {
-		return err
+	} else if version.AtLeast(versions.V2_4) {
+		if clusterWide, ok, err := values.GetAndRemoveBool("global.clusterWide"); ok && clusterWide {
+			out.Mode = v2.ClusterWideMode
+		} else if err != nil {
+			return err
+		}
 	}
 
 	if err := v1ToV2Hacks(in, values); err != nil {

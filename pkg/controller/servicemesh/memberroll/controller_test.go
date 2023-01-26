@@ -760,7 +760,7 @@ func TestKialiResource(t *testing.T) {
 		},
 		{
 			name:                         "only-smcp-cluster-scoped",
-			controlPlaneMode:             maistrav2.ControlPlaneModeValueClusterScoped,
+			controlPlaneMode:             maistrav2.TechPreviewControlPlaneModeValueClusterScoped,
 			members:                      []string{"foo", "bar", "baz"},
 			expectedAccessibleNamespaces: []string{"foo", "bar", "baz"},
 			expectedExcludedNamespaces:   []string{},
@@ -774,7 +774,7 @@ func TestKialiResource(t *testing.T) {
 		},
 		{
 			name:                         "both-smcp-and-smmr-cluster-scoped",
-			controlPlaneMode:             maistrav2.ControlPlaneModeValueClusterScoped,
+			controlPlaneMode:             maistrav2.TechPreviewControlPlaneModeValueClusterScoped,
 			members:                      []string{"*"},
 			namespaces:                   []string{"bookinfo"},
 			expectedAccessibleNamespaces: []string{"**"},
@@ -791,7 +791,7 @@ func TestKialiResource(t *testing.T) {
 			if tc.controlPlaneMode != "" {
 				smcp.Spec.TechPreview = maistrav1.NewHelmValues(
 					map[string]interface{}{
-						maistrav2.ControlPlaneModeKey: tc.controlPlaneMode,
+						maistrav2.TechPreviewControlPlaneModeKey: tc.controlPlaneMode,
 					})
 			}
 			markControlPlaneReconciled(smcp)

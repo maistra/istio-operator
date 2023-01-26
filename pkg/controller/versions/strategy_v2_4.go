@@ -116,9 +116,13 @@ func (v *versionStrategyV2_4) SetImageValues(_ context.Context, _ *common.Contro
 	return nil
 }
 
+func (v *versionStrategyV2_4) IsClusterScoped(spec *v2.ControlPlaneSpec) (bool, error) {
+	return spec.Mode == v2.ClusterWideMode, nil
+}
+
 func (v *versionStrategyV2_4) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
-	allErrors = validateGlobal(ctx, meta, spec, cl, allErrors)
+	allErrors = v.validateGlobal(ctx, v.Version(), meta, spec, cl, allErrors)
 	allErrors = validateGateways(ctx, meta, spec, cl, allErrors)
 	allErrors = validatePolicyType(spec, v.Ver, allErrors)
 	allErrors = validateTelemetryType(spec, v.Ver, allErrors)
@@ -242,22 +246,22 @@ func (v *versionStrategyV2_4) ValidateUpgrade(ctx context.Context, cl client.Cli
 }
 
 func (v *versionStrategyV2_4) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP *v2.ServiceMeshControlPlane) error {
-	oldClusterScoped, err := oldSMCP.Spec.IsClusterScoped()
+	oldClusterScoped, err := v.IsClusterScoped(&oldSMCP.Spec)
 	if err != nil {
 		return err
 	}
-	newClusterScoped, err := newSMCP.Spec.IsClusterScoped()
+	newClusterScoped, err := v.IsClusterScoped(&newSMCP.Spec)
 	if err != nil {
 		return err
 	}
 	if oldClusterScoped != newClusterScoped {
-		return fmt.Errorf("field spec.techPreview.%s is immutable; to change its value, delete the ServiceMeshControlPlane and recreate it", v2.ControlPlaneModeKey)
+		return fmt.Errorf("field spec.mode is immutable; to change its value, delete the ServiceMeshControlPlane and recreate it")
 	}
 	return nil
 }
 
 func (v *versionStrategyV2_4) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp *v2.ServiceMeshControlPlane) admission.Response {
-	clusterScoped, err := smcp.Spec.IsClusterScoped()
+	clusterScoped, err := v.IsClusterScoped(&smcp.Spec)
 	if err != nil {
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
@@ -658,4 +662,22 @@ func (v *versionStrategyV2_4) GetPolicyType(in *v1.HelmValues, mixerPolicyEnable
 
 func (v *versionStrategyV2_4) GetTrustDomainFieldPath() string {
 	return "meshConfig.trustDomain"
+}
+
+func (v *versionStrategyV2_4) validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, cl client.Client, allErrors []error) []error {
+	if spec.Mode != "" {
+		if spec.Mode != v2.ClusterWideMode && spec.Mode != v2.MultiTenantMode {
+			return append(allErrors,
+				fmt.Errorf("spec.mode must be either %s or %s",
+					v2.MultiTenantMode, v2.ClusterWideMode))
+		}
+	} else if spec.TechPreview != nil {
+		if _, found, _ := spec.TechPreview.GetString(v2.TechPreviewControlPlaneModeKey); found {
+			return append(allErrors,
+				fmt.Errorf("the spec.techPreview.%s field is not supported in version 2.4+; use spec.mode",
+					v2.TechPreviewControlPlaneModeKey))
+		}
+	}
+
+	return validateGlobal(ctx, version, meta, spec, cl, allErrors)
 }

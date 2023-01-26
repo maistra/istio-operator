@@ -131,8 +131,13 @@ func (v *versionStrategyV2_2) SetImageValues(ctx context.Context, cr *common.Con
 	return nil
 }
 
+func (v *versionStrategyV2_2) IsClusterScoped(spec *v2.ControlPlaneSpec) (bool, error) {
+	return false, nil
+}
+
 func (v *versionStrategyV2_2) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
+	allErrors = v.validateGlobal(spec, allErrors)
 	allErrors = validateGateways(ctx, meta, spec, cl, allErrors)
 	allErrors = validatePolicyType(spec, v.Ver, allErrors)
 	allErrors = validateTelemetryType(spec, v.Ver, allErrors)
@@ -596,4 +601,8 @@ func (v *versionStrategyV2_2) GetPolicyType(in *v1.HelmValues, mixerPolicyEnable
 
 func (v *versionStrategyV2_2) GetTrustDomainFieldPath() string {
 	return "meshConfig.trustDomain"
+}
+
+func (v *versionStrategyV2_2) validateGlobal(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	return checkControlPlaneModeNotSet(spec, allErrors)
 }
