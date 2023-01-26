@@ -78,11 +78,6 @@ oc apply -n bookinfo-1 -f openshift-monitoring/bookinfo.yaml
 oc apply -n bookinfo-1 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/networking/bookinfo-gateway.yaml
 ```
 
-TODO: Gateway injection does not work in this setup. Try with 2.3.1:
-```shell
-sed 's/{{host}}/httpbin-1/g' gateway-injection.yaml | oc apply -n httpbin-1 -f -
-```
-
 5. Generate traffic:
 ```shell
 while true; do curl -v bookinfo-1.apps-crc.testing:80/productpage > /dev/null; sleep 1; done
