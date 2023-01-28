@@ -332,3 +332,5 @@ Note: Unnecessary use of -X or --request, GET is already inferred.
 Forbidden (user=system:serviceaccount:istio-system-1:kiali-service-account, verb=get, resource=pods, subresource=)
 * Connection #0 to host localhost left intact
 ```
+
+Configuration of Thanos Querier RBAC proxy can be found [here](https://github.com/openshift/cluster-monitoring-operator/blob/release-4.11/assets/thanos-querier/kube-rbac-proxy-secret.yaml).
