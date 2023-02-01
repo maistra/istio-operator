@@ -385,17 +385,6 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 		return nil, err
 	}
 
-	isClusterScoped, err := smcp.Spec.IsClusterScoped()
-	if err != nil {
-		return nil, err
-	}
-	if isClusterScoped {
-		err = spec.Istio.SetField("global.clusterScoped", isClusterScoped)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	err = spec.Istio.SetField("istio_cni.enabled", cniConfig.Enabled)
 	if err != nil {
 		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.istio_cni.enabled: %v", err)

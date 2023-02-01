@@ -154,6 +154,18 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 		return err
 	}
 
+	if clusterScoped, ok, err := values.GetAndRemoveBool("global.clusterScoped"); ok && clusterScoped {
+		if out.TechPreview == nil {
+			out.TechPreview = v1.NewHelmValues(map[string]interface{}{}).DeepCopy()
+		}
+
+		if err := out.TechPreview.SetField(v2.ControlPlaneModeKey, v2.ControlPlaneModeValueClusterScoped); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
 	if err := v1ToV2Hacks(in, values); err != nil {
 		return err
 	}
