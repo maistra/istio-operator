@@ -1540,6 +1540,15 @@ spec:
                   network:
                     type: string
                 type: object
+              extensionProviders:
+                items:
+                  properties:
+                    name:
+                      type: string
+                    prometheus:
+                      type: object
+                  type: object
+                type: array
               gateways:
                 properties:
                   additionalEgress:
@@ -6418,6 +6427,15 @@ spec:
                       network:
                         type: string
                     type: object
+                  extensionProviders:
+                    items:
+                      properties:
+                        name:
+                          type: string
+                        prometheus:
+                          type: object
+                      type: object
+                    type: array
                   gateways:
                     properties:
                       additionalEgress:
