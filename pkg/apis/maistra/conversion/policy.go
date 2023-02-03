@@ -17,8 +17,6 @@ func populatePolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 		return nil
 	}
 
-	istiod := in.Version != versions.V1_1.String()
-
 	if in.Policy.Type != "" {
 		if err := setHelmStringValue(values, "policy.implementation", string(in.Policy.Type)); err != nil {
 			return err
@@ -30,43 +28,24 @@ func populatePolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 		if err := setHelmBoolValue(values, "mixer.policy.enabled", false); err != nil {
 			return err
 		}
-		if !istiod {
-			if err := setHelmBoolValue(values, "global.istioRemote", false); err != nil {
-				return err
-			}
-		}
+
 	case v2.PolicyTypeMixer:
 		if err := setHelmBoolValue(values, "mixer.policy.enabled", true); err != nil {
 			return err
-		}
-		if !istiod {
-			if err := setHelmBoolValue(values, "global.istioRemote", false); err != nil {
-				return err
-			}
 		}
 	case v2.PolicyTypeRemote:
 		if err := setHelmBoolValue(values, "mixer.policy.enabled", false); err != nil {
 			return err
 		}
-		if !istiod {
-			if err := setHelmBoolValue(values, "global.istioRemote", true); err != nil {
-				return err
-			}
-		}
 	case v2.PolicyTypeIstiod:
 		if err := setHelmBoolValue(values, "mixer.policy.enabled", false); err != nil {
 			return err
-		}
-		if !istiod {
-			if err := setHelmBoolValue(values, "global.istioRemote", false); err != nil {
-				return err
-			}
 		}
 	case "":
 		// don't configure anything, let defaults take over
 	}
 
-	if err := populateMixerPolicyValues(in, istiod, values); err != nil {
+	if err := populateMixerPolicyValues(in, values); err != nil {
 		return err
 	}
 	if err := populateRemotePolicyValues(in, values); err != nil {
@@ -79,7 +58,7 @@ func populatePolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 	return nil
 }
 
-func populateMixerPolicyValues(in *v2.ControlPlaneSpec, istiod bool, values map[string]interface{}) error {
+func populateMixerPolicyValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
 	mixer := in.Policy.Mixer
 	if mixer == nil {
 		mixer = &v2.MixerPolicyConfig{}
@@ -115,14 +94,8 @@ func populateMixerPolicyValues(in *v2.ControlPlaneSpec, istiod bool, values map[
 			}
 		}
 		if len(policyAdaptersValues) > 0 {
-			if istiod {
-				if err := setHelmValue(policyValues, "adapters", policyAdaptersValues); err != nil {
-					return err
-				}
-			} else {
-				if err := overwriteHelmValues(values, policyAdaptersValues, "mixer", "adapters"); err != nil {
-					return err
-				}
+			if err := setHelmValue(policyValues, "adapters", policyAdaptersValues); err != nil {
+				return err
 			}
 		}
 	}
@@ -203,8 +176,6 @@ func populatePolicyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version v
 		policyType = version.Strategy().GetPolicyType(in, mixerPolicyEnabled, mixerPolicyEnabledSet, remoteEnabled)
 	}
 
-	istiod := version != versions.V1_1
-
 	policy := &v2.PolicyConfig{}
 	setPolicy := false
 	if policyType != "" {
@@ -223,14 +194,14 @@ func populatePolicyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version v
 			setPolicy = true
 			policy.Remote = remote
 		}
-		if applied, err := populateMixerPolicyConfig(in, istiod, mixer); err != nil {
+		if applied, err := populateMixerPolicyConfig(in, mixer); err != nil {
 			return err
 		} else if applied {
 			setPolicy = true
 			policy.Mixer = mixer
 		}
 	} else {
-		if applied, err := populateMixerPolicyConfig(in, istiod, mixer); err != nil {
+		if applied, err := populateMixerPolicyConfig(in, mixer); err != nil {
 			return err
 		} else if applied {
 			setPolicy = true
@@ -254,7 +225,7 @@ func populatePolicyConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version v
 	return nil
 }
 
-func populateMixerPolicyConfig(in *v1.HelmValues, istiod bool, out *v2.MixerPolicyConfig) (bool, error) {
+func populateMixerPolicyConfig(in *v1.HelmValues, out *v2.MixerPolicyConfig) (bool, error) {
 	setValues := false
 
 	rawMixerValues, ok, err := in.GetMap("mixer")
@@ -294,13 +265,7 @@ func populateMixerPolicyConfig(in *v1.HelmValues, istiod bool, out *v2.MixerPoli
 	}
 
 	var policyAdaptersValues *v1.HelmValues
-	if istiod {
-		if rawAdaptersValues, ok, err := policyValues.GetMap("adapters"); ok {
-			policyAdaptersValues = v1.NewHelmValues(rawAdaptersValues)
-		} else if err != nil {
-			return false, err
-		}
-	} else if rawAdaptersValues, ok, err := mixerValues.GetMap("adapters"); ok {
+	if rawAdaptersValues, ok, err := policyValues.GetMap("adapters"); ok {
 		policyAdaptersValues = v1.NewHelmValues(rawAdaptersValues)
 	} else if err != nil {
 		return false, err
@@ -328,20 +293,12 @@ func populateMixerPolicyConfig(in *v1.HelmValues, istiod bool, out *v2.MixerPoli
 	}
 
 	// update the mixer settings
-	if istiod {
-		policyAdaptersValues.RemoveField("useAdapterCRDs")
-		policyAdaptersValues.RemoveField("kubernetesenv.enabled")
-		if len(policyAdaptersValues.GetContent()) == 0 {
-			policyValues.RemoveField("adapters")
-		} else if err := policyValues.SetField("adapters", policyAdaptersValues.GetContent()); err != nil {
-			return false, err
-		}
-	} else {
-		if len(policyAdaptersValues.GetContent()) == 0 {
-			mixerValues.RemoveField("adapters")
-		} else if err := mixerValues.SetField("adapters", policyAdaptersValues.GetContent()); err != nil {
-			return false, err
-		}
+	policyAdaptersValues.RemoveField("useAdapterCRDs")
+	policyAdaptersValues.RemoveField("kubernetesenv.enabled")
+	if len(policyAdaptersValues.GetContent()) == 0 {
+		policyValues.RemoveField("adapters")
+	} else if err := policyValues.SetField("adapters", policyAdaptersValues.GetContent()); err != nil {
+		return false, err
 	}
 	if len(policyValues.GetContent()) == 0 {
 		mixerValues.RemoveField("policy")

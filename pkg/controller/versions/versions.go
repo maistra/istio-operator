@@ -20,8 +20,6 @@ import (
 const (
 	// InvalidVersion is not a valid version
 	InvalidVersion Ver = iota
-	// V1_1 -> v1.1
-	V1_1
 	// V2_0 -> v2.0
 	V2_0
 	// V2_1 -> v2.1
@@ -46,7 +44,6 @@ var (
 func init() {
 	versionToString = map[Ver]string{
 		InvalidVersion: "InvalidVersion",
-		V1_1:           "v1.1",
 		V2_0:           "v2.0",
 		V2_1:           "v2.1",
 		V2_2:           "v2.2",
@@ -56,7 +53,6 @@ func init() {
 
 	versionToStrategy = map[Ver]VersionStrategy{
 		InvalidVersion: &invalidVersionStrategy{InvalidVersion},
-		V1_1:           &versionStrategyV1_1{Ver: V1_1},
 		V2_0:           &versionStrategyV2_0{Ver: V2_0},
 		V2_1:           &versionStrategyV2_1{Ver: V2_1},
 		V2_2:           &versionStrategyV2_2{Ver: V2_2},
@@ -66,7 +62,6 @@ func init() {
 
 	versionToCNINetwork = map[Ver]string{
 		InvalidVersion: "",
-		V1_1:           "v1-1-istio-cni",
 		V2_0:           "v2-0-istio-cni",
 		V2_1:           "v2-1-istio-cni",
 		V2_2:           "v2-2-istio-cni",
@@ -121,12 +116,11 @@ type Version interface {
 
 // ValidationStrategy is an interface used by the validating webhook for validating SMCP resources.
 type ValidationStrategy interface {
-	ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error
 	ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error
-	ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error
-	ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error
-	ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP metav1.Object, newSMCP metav1.Object) error
-	ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp metav1.Object) admission.Response
+	ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error
+	ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error
+	ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP *v2.ServiceMeshControlPlane, newSMCP *v2.ServiceMeshControlPlane) error
+	ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp *v2.ServiceMeshControlPlane) admission.Response
 }
 
 // RenderingStrategy is an interface used by the reconciler to manage rendering of charts.
@@ -228,27 +222,23 @@ func (v *nilVersionStrategy) SetImageValues(ctx context.Context, cr *common.Cont
 	return nil
 }
 
-func (v *nilVersionStrategy) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
-	return nil
-}
-
 func (v *nilVersionStrategy) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	return nil
 }
 
-func (v *nilVersionStrategy) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+func (v *nilVersionStrategy) ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
 	return nil
 }
 
-func (v *nilVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+func (v *nilVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
 	return nil
 }
 
-func (v *nilVersionStrategy) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP metav1.Object) error {
+func (v *nilVersionStrategy) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP *v2.ServiceMeshControlPlane) error {
 	return nil
 }
 
-func (v *nilVersionStrategy) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp metav1.Object) admission.Response {
+func (v *nilVersionStrategy) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp *v2.ServiceMeshControlPlane) admission.Response {
 	return admission.ValidationResponse(true, "")
 }
 
@@ -288,27 +278,23 @@ func (v *invalidVersionStrategy) SetImageValues(ctx context.Context, cr *common.
 	return fmt.Errorf("invalid version: %s", v.Ver)
 }
 
-func (v *invalidVersionStrategy) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
-	return fmt.Errorf("invalid version: %s", v.Ver)
-}
-
 func (v *invalidVersionStrategy) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	return fmt.Errorf("invalid version: %s", v.Ver)
 }
 
-func (v *invalidVersionStrategy) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+func (v *invalidVersionStrategy) ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
 	return fmt.Errorf("invalid version: %s", v.Ver)
 }
 
-func (v *invalidVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+func (v *invalidVersionStrategy) ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
 	return fmt.Errorf("invalid version: %s", v.Ver)
 }
 
-func (v *invalidVersionStrategy) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP metav1.Object) error {
+func (v *invalidVersionStrategy) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP *v2.ServiceMeshControlPlane) error {
 	return fmt.Errorf("invalid version: %s", v.Ver)
 }
 
-func (v *invalidVersionStrategy) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp metav1.Object) admission.Response {
+func (v *invalidVersionStrategy) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp *v2.ServiceMeshControlPlane) admission.Response {
 	return admission.ValidationResponse(false, fmt.Sprintf("invalid version: %s", v.Ver))
 }
 

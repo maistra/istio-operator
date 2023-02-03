@@ -11,11 +11,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery/fake"
-	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -191,7 +188,6 @@ func TestManifestValidation(t *testing.T) {
 				},
 			},
 			errorMessages: map[versions.Version]string{
-				versions.V1_1: "namespace of manifest b/another-ingress not in mesh",
 				versions.V2_0: "namespace of manifest b/another-ingress not in mesh",
 				versions.V2_1: "namespace of manifest b/another-ingress not in mesh",
 				versions.V2_2: "namespace of manifest b/another-ingress not in mesh",
@@ -340,150 +336,6 @@ func assertInstanceReconcilerFails(r ControlPlaneInstanceReconciler, t *testing.
 	}
 }
 
-func TestParallelInstallationOfCharts(t *testing.T) {
-	testCases := []struct {
-		name                       string
-		reactorsForFirstReconcile  []clienttesting.Reactor
-		expectFirstReconcileToFail bool
-		base                       map[string]interface{}
-		input                      map[string]interface{}
-		expectedResult             map[string]interface{}
-	}{
-		{
-			name: "normal-case",
-		},
-		{
-			name: "process-component-manifests-fails",
-			reactorsForFirstReconcile: []clienttesting.Reactor{
-				&clienttesting.SimpleReactor{
-					Verb:     "create",
-					Resource: "deployments",
-					Reaction: func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-						create := action.(clienttesting.CreateAction)
-						deploy := create.GetObject().(*unstructured.Unstructured)
-						if deploy.GetName() == "istio-pilot" {
-							return test.ClientFails()(action)
-						}
-						return false, nil, nil
-					},
-				},
-			},
-			expectFirstReconcileToFail: true,
-		},
-		{
-			name: "calculate-readiness-fails",
-			reactorsForFirstReconcile: []clienttesting.Reactor{
-				&clienttesting.SimpleReactor{Verb: "list", Resource: "deployments", Reaction: test.ClientFails()},
-			},
-			expectFirstReconcileToFail: true,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			falseVal := false
-			trueVal := true
-			disabled := maistrav2.Enablement{Enabled: &falseVal}
-			enabled := maistrav2.Enablement{Enabled: &trueVal}
-			smcp := newControlPlane()
-			smcp.Spec = maistrav2.ControlPlaneSpec{
-				Profiles: []string{"maistra"},
-				Version:  versions.V1_1.String(),
-				Policy: &maistrav2.PolicyConfig{
-					Type: maistrav2.PolicyTypeNone,
-				},
-				Telemetry: &maistrav2.TelemetryConfig{
-					Type: maistrav2.TelemetryTypeNone,
-				},
-				Gateways: &maistrav2.GatewaysConfig{
-					ClusterIngress: &maistrav2.ClusterIngressGatewayConfig{
-						IngressGatewayConfig: maistrav2.IngressGatewayConfig{
-							GatewayConfig: maistrav2.GatewayConfig{
-								Enablement: disabled,
-							},
-						},
-					},
-					ClusterEgress: &maistrav2.EgressGatewayConfig{
-						GatewayConfig: maistrav2.GatewayConfig{
-							Enablement: disabled,
-						},
-					},
-				},
-				Tracing: &maistrav2.TracingConfig{Type: maistrav2.TracerTypeNone},
-				Addons: &maistrav2.AddonsConfig{
-					Prometheus: &maistrav2.PrometheusAddonConfig{
-						Enablement: disabled,
-					},
-					Grafana: &maistrav2.GrafanaAddonConfig{
-						Enablement: enabled,
-						Install:    &maistrav2.GrafanaInstallConfig{},
-					},
-					Kiali: &maistrav2.KialiAddonConfig{
-						Enablement: disabled,
-					},
-				},
-			}
-
-			cl, tracker, r := newReconcilerTestFixture(smcp)
-
-			// run initial reconcile to initialize reconcile status
-			assertInstanceReconcilerSucceeds(r, t)
-			assertInstanceReconcilerSucceeds(r, t)
-			securityDeployment := assertDeploymentExists(cl, "istio-citadel", t)
-			markDeploymentAvailable(cl, securityDeployment)
-			assertInstanceReconcilerSucceeds(r, t)
-			galleyDeployment := assertDeploymentExists(cl, "istio-galley", t)
-			markDeploymentAvailable(cl, galleyDeployment)
-
-			if tc.reactorsForFirstReconcile != nil {
-				tracker.AddReaction(tc.reactorsForFirstReconcile...)
-
-				if tc.expectFirstReconcileToFail {
-					// first reconcile should fail
-					assertInstanceReconcilerFails(r, t)
-				} else {
-					assertInstanceReconcilerSucceeds(r, t)
-				}
-
-				// we remove any reactors that cause failure
-				tracker.RemoveReaction(tc.reactorsForFirstReconcile...)
-			}
-
-			// this reconcile must succeed
-			assertInstanceReconcilerSucceeds(r, t)
-
-			// the previous reconcile won't calculate readiness in order to wait for the cache to sync.
-			// readiness is calculated in the next reconcile attempt, so let's invoke it
-			assertInstanceReconcilerSucceeds(r, t)
-
-			// check that both galley and citadel deployments have been created
-			pilotDeployment := assertDeploymentExists(cl, "istio-pilot", t)
-			sidecarInjectorWebhookDeployment := assertDeploymentExists(cl, "istio-sidecar-injector", t)
-
-			// check if reconciledCondition indicates installation is paused and both galley and security are mentioned
-			assertReconciledConditionMatches(cl, smcp, status.ConditionReasonPausingInstall, "[pilot sidecarInjectorWebhook]", t)
-
-			markDeploymentAvailable(cl, pilotDeployment)
-
-			// run reconcile again to see if the Reconciled condition is updated
-			assertInstanceReconcilerSucceeds(r, t)
-			assertReconciledConditionMatches(cl, smcp, status.ConditionReasonPausingInstall, "[sidecarInjectorWebhook]", t)
-
-			markDeploymentAvailable(cl, sidecarInjectorWebhookDeployment)
-
-			// run reconcile again to see if the Reconciled condition is updated
-			assertInstanceReconcilerSucceeds(r, t)
-
-			// the previous reconcile won't calculate readiness in order to wait for the cache to sync.
-			// readiness is calculated in the next reconcile attempt, so let's invoke it
-			assertInstanceReconcilerSucceeds(r, t)
-
-			assertDeploymentExists(cl, "grafana", t)
-			assertReconciledConditionMatches(cl, smcp, status.ConditionReasonPausingInstall, "[grafana]", t)
-		})
-	}
-}
-
 func TestValidation(t *testing.T) {
 	testCases := []struct {
 		name        string
@@ -525,7 +377,7 @@ func TestValidation(t *testing.T) {
 		{
 			name: "conversion-error-present",
 			spec: maistrav2.ControlPlaneSpec{
-				Version:  versions.V1_1.String(),
+				Version:  versions.V2_1.String(),
 				Profiles: []string{"maistra"},
 				TechPreview: maistrav1.NewHelmValues(map[string]interface{}{
 					"errored": map[string]interface{}{
