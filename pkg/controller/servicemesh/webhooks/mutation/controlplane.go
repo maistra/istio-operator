@@ -101,22 +101,7 @@ func (v *ControlPlaneMutator) InjectDecoder(d *admission.Decoder) error {
 func (v *ControlPlaneMutator) decodeRequest(req admission.Request, logger logr.Logger) (smcpmutator, error) {
 	switch req.Kind.Version {
 	case v1.SchemeGroupVersion.Version:
-		smcp := &v1.ServiceMeshControlPlane{}
-		err := v.decoder.Decode(req, smcp)
-		if err != nil {
-			logger.Error(err, "error decoding admission request")
-			return nil, err
-		}
-		var oldsmcp *v1.ServiceMeshControlPlane
-		if req.Operation == admissionv1beta1.Update {
-			oldsmcp = &v1.ServiceMeshControlPlane{}
-			err = v.decoder.DecodeRaw(req.AdmissionRequest.OldObject, oldsmcp)
-			if err != nil {
-				logger.Error(err, "error decoding admission request")
-				return nil, err
-			}
-		}
-		return &smcpv1mutator{smcppatch: &smcppatch{}, smcp: smcp, oldsmcp: oldsmcp}, nil
+		return nil, fmt.Errorf("must use v2 ServiceMeshControlPlane resource")
 	case v2.SchemeGroupVersion.Version:
 		smcp := &v2.ServiceMeshControlPlane{}
 		err := v.decoder.Decode(req, smcp)
@@ -168,43 +153,6 @@ func (m *smcppatch) SetProfiles(profiles []string) {
 		value[index] = profile
 	}
 	m.patches = append(m.patches, jsonpatch.NewPatch("add", "/spec/profiles", value))
-}
-
-type smcpv1mutator struct {
-	*smcppatch
-	smcp    *v1.ServiceMeshControlPlane
-	oldsmcp *v1.ServiceMeshControlPlane
-}
-
-var _ smcpmutator = (*smcpv1mutator)(nil)
-
-func (m *smcpv1mutator) Object() metav1.Object {
-	return m.smcp
-}
-
-func (m *smcpv1mutator) DefaultVersion() string {
-	return versions.V1_1.String()
-}
-
-func (m *smcpv1mutator) NewVersion() string {
-	return m.smcp.Spec.Version
-}
-
-func (m *smcpv1mutator) OldVersion() string {
-	if m.oldsmcp == nil {
-		return versions.InvalidVersion.String()
-	}
-	return m.oldsmcp.Spec.Version
-}
-
-func (m *smcpv1mutator) GetProfiles() []string {
-	if len(m.smcp.Spec.Profiles) == 0 {
-		if m.smcp.Spec.Template == "" {
-			return nil
-		}
-		return []string{m.smcp.Spec.Template}
-	}
-	return m.smcp.Spec.Profiles
 }
 
 type smcpv2mutator struct {

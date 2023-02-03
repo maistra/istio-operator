@@ -3,7 +3,6 @@ package conversion
 import (
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]interface{}) (reterr error) {
@@ -60,14 +59,8 @@ func populatePrometheusAddonValues(in *v2.ControlPlaneSpec, values map[string]in
 		}
 	}
 	if prometheus.Install.UseTLS != nil {
-		if in.Version == versions.V1_1.String() {
-			if err := setHelmBoolValue(prometheusValues, "security.enabled", *prometheus.Install.UseTLS); err != nil {
-				return err
-			}
-		} else {
-			if err := setHelmBoolValue(prometheusValues, "provisionPrometheusCert", *prometheus.Install.UseTLS); err != nil {
-				return err
-			}
+		if err := setHelmBoolValue(prometheusValues, "provisionPrometheusCert", *prometheus.Install.UseTLS); err != nil {
+			return err
 		}
 	}
 

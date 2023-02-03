@@ -130,10 +130,6 @@ func (v *versionStrategyV2_1) SetImageValues(ctx context.Context, cr *common.Con
 	return nil
 }
 
-func (v *versionStrategyV2_1) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
-	return fmt.Errorf("must use v2 ServiceMeshControlPlane resource for v2.0+ installations")
-}
-
 func (v *versionStrategyV2_1) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
 	allErrors = validateGateways(ctx, meta, spec, cl, allErrors)
@@ -232,21 +228,21 @@ func (v *versionStrategyV2_1) ValidateV2Full(ctx context.Context, cl client.Clie
 	return NewValidationError(allErrors...)
 }
 
-func (v *versionStrategyV2_1) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+func (v *versionStrategyV2_1) ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
 	// TODO: what might prevent us from downgrading?
 	return nil
 }
 
-func (v *versionStrategyV2_1) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+func (v *versionStrategyV2_1) ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
 	// TODO: what might prevent us from upgrading?
 	return nil
 }
 
-func (v *versionStrategyV2_1) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP metav1.Object) error {
+func (v *versionStrategyV2_1) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP *v2.ServiceMeshControlPlane) error {
 	return nil
 }
 
-func (v *versionStrategyV2_1) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp metav1.Object) admission.Response {
+func (v *versionStrategyV2_1) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp *v2.ServiceMeshControlPlane) admission.Response {
 	return admission.ValidationResponse(true, "")
 }
 

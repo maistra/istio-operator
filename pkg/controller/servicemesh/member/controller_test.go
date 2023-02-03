@@ -47,11 +47,8 @@ const (
 	controlPlaneNamespace = "cp-namespace"
 	controlPlaneUID       = types.UID("2222")
 
-	operatorVersion1_1     = "1.1.0"
 	operatorVersion2_0     = "2.0.0"
 	operatorVersionDefault = operatorVersion2_0
-
-	cniNetwork1_1 = "v1-1-istio-cni"
 )
 
 var (
@@ -442,76 +439,6 @@ func TestReconcileReturnsErrorIfClientOperationFails(t *testing.T) {
 			tracker.AddReaction(tc.reactor)
 
 			assertReconcileFails(r, t)
-		})
-	}
-}
-
-func TestReconcileAfterOperatorUpgrade(t *testing.T) {
-	cases := []struct {
-		name                string
-		operatorVersion     string
-		meshVersion         string
-		expectedNetworkName string
-		upgradedOperator    bool
-	}{
-		{
-			// tests a namespace add being processed before the mesh is upgraded
-			name:                "v1.1-before-mesh-upgrade",
-			operatorVersion:     operatorVersion1_1,
-			meshVersion:         "v1.1",
-			expectedNetworkName: cniNetwork1_1,
-		},
-		{
-			// tests a namespace add being processed after the mesh is upgraded,
-			// but before roll has been synced, i.e. simulates a mesh upgrade
-			// _and_ a roll update hitting at the same time
-			name:                "v1.1-after-mesh-upgrade",
-			operatorVersion:     operatorVersion2_0,
-			meshVersion:         "v1.1",
-			expectedNetworkName: cniNetwork1_1,
-			upgradedOperator:    true,
-		},
-		{
-			name:                "v1.1-installed-with-v2.0",
-			operatorVersion:     operatorVersion2_0,
-			meshVersion:         versions.V1_1.String(),
-			expectedNetworkName: cniNetwork1_1,
-		},
-		{
-			name:                "v1.1",
-			operatorVersion:     operatorVersion1_1,
-			meshVersion:         versions.V1_1.String(),
-			expectedNetworkName: cniNetwork1_1,
-		},
-		{
-			name:                "default",
-			operatorVersion:     operatorVersionDefault,
-			meshVersion:         "v1.1",
-			expectedNetworkName: cniNetwork1_1,
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			member := newMember()
-			markMemberReconciled(member, 2, 1, 1, tc.operatorVersion)
-
-			controlPlane := markControlPlaneReconciled(newControlPlane(tc.meshVersion), tc.operatorVersion)
-			if tc.upgradedOperator {
-				// need to reset the ServiceMeshReconciledVersion
-				member.Status.ServiceMeshReconciledVersion = status.ComposeReconciledVersion(operatorVersion1_1, controlPlane.GetGeneration())
-			}
-			member.Status.ServiceMeshGeneration = controlPlane.Status.ObservedGeneration
-			namespace := newAppNamespace()
-
-			cl, _, r := createClientAndReconciler(member, controlPlane, namespace)
-
-			assertReconcileSucceeds(r, t)
-
-			updatedMember := test.GetUpdatedObject(ctx, cl, member.ObjectMeta, &maistrav1.ServiceMeshMember{}).(*maistrav1.ServiceMeshMember)
-			assert.Equals(updatedMember.Status.ServiceMeshGeneration, controlPlane.Status.ObservedGeneration, "Unexpected Status.ServiceMeshGeneration in SMMR", t)
-
-			assertNamespaceReconciled(t, cl, appNamespace, controlPlaneNamespace, tc.expectedNetworkName)
 		})
 	}
 }

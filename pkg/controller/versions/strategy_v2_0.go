@@ -132,10 +132,6 @@ func (v *versionStrategyV2_0) SetImageValues(ctx context.Context, cr *common.Con
 	return nil
 }
 
-func (v *versionStrategyV2_0) ValidateV1(ctx context.Context, cl client.Client, smcp *v1.ServiceMeshControlPlane) error {
-	return fmt.Errorf("must use v2 ServiceMeshControlPlane resource for v2.0+ installations")
-}
-
 func (v *versionStrategyV2_0) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
 	allErrors = validateGateways(ctx, meta, spec, cl, allErrors)
@@ -176,19 +172,19 @@ func (v *versionStrategyV2_0) ValidateV2Full(ctx context.Context, cl client.Clie
 	return NewValidationError(allErrors...)
 }
 
-func (v *versionStrategyV2_0) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+func (v *versionStrategyV2_0) ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
 	return fmt.Errorf("inplace downgrade from v2.0 to v1.x is not supported")
 }
 
-func (v *versionStrategyV2_0) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+func (v *versionStrategyV2_0) ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
 	return fmt.Errorf("inplace upgrade from v1.x to v2.0 is not supported")
 }
 
-func (v *versionStrategyV2_0) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP metav1.Object) error {
+func (v *versionStrategyV2_0) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP *v2.ServiceMeshControlPlane) error {
 	return nil
 }
 
-func (v *versionStrategyV2_0) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp metav1.Object) admission.Response {
+func (v *versionStrategyV2_0) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp *v2.ServiceMeshControlPlane) admission.Response {
 	return admission.ValidationResponse(true, "")
 }
 

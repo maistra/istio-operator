@@ -116,10 +116,6 @@ func (v *versionStrategyV2_3) SetImageValues(_ context.Context, _ *common.Contro
 	return nil
 }
 
-func (v *versionStrategyV2_3) ValidateV1(_ context.Context, _ client.Client, _ *v1.ServiceMeshControlPlane) error {
-	return fmt.Errorf("must use v2 ServiceMeshControlPlane resource for v2.0+ installations")
-}
-
 func (v *versionStrategyV2_3) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
 	allErrors = validateGlobal(ctx, meta, spec, cl, allErrors)
@@ -270,21 +266,21 @@ func (v *versionStrategyV2_3) ValidateV2Full(ctx context.Context, cl client.Clie
 	return NewValidationError(allErrors...)
 }
 
-func (v *versionStrategyV2_3) ValidateDowngrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+func (v *versionStrategyV2_3) ValidateDowngrade(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
 	// TODO: what might prevent us from downgrading?
 	return nil
 }
 
-func (v *versionStrategyV2_3) ValidateUpgrade(ctx context.Context, cl client.Client, smcp metav1.Object) error {
+func (v *versionStrategyV2_3) ValidateUpgrade(ctx context.Context, cl client.Client, smcp *v2.ServiceMeshControlPlane) error {
 	return v.validateServiceMeshExtensionsRemoved(ctx, cl, smcp)
 }
 
-func (v *versionStrategyV2_3) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP metav1.Object) error {
-	oldClusterScoped, err := isClusterScoped(oldSMCP)
+func (v *versionStrategyV2_3) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP *v2.ServiceMeshControlPlane) error {
+	oldClusterScoped, err := oldSMCP.Spec.IsClusterScoped()
 	if err != nil {
 		return err
 	}
-	newClusterScoped, err := isClusterScoped(newSMCP)
+	newClusterScoped, err := newSMCP.Spec.IsClusterScoped()
 	if err != nil {
 		return err
 	}
@@ -294,19 +290,8 @@ func (v *versionStrategyV2_3) ValidateUpdate(ctx context.Context, cl client.Clie
 	return nil
 }
 
-func isClusterScoped(smcp metav1.Object) (bool, error) {
-	switch s := smcp.(type) {
-	case *v1.ServiceMeshControlPlane:
-		return false, nil
-	case *v2.ServiceMeshControlPlane:
-		return s.Spec.IsClusterScoped()
-	default:
-		return false, fmt.Errorf("unknown ServiceMeshControlPlane type: %T", smcp)
-	}
-}
-
-func (v *versionStrategyV2_3) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp metav1.Object) admission.Response {
-	clusterScoped, err := isClusterScoped(smcp)
+func (v *versionStrategyV2_3) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp *v2.ServiceMeshControlPlane) admission.Response {
+	clusterScoped, err := smcp.Spec.IsClusterScoped()
 	if err != nil {
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
