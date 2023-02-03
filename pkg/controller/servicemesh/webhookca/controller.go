@@ -53,13 +53,21 @@ var autoRegistrationMap = map[string]CABundleSource{
 		Key:         common.IstioRootCertKey,
 	},
 	istiodWebhookNamePrefix: &SecretCABundleSource{
-		SecretNames: []string{istiodCustomCertSecretName, istiodSecretName},
-		Key:         common.IstiodCertKey,
+		SecretNames: []string{"istiod-tls"},
+		Key:         "ca.crt",
 	},
+	//istiodWebhookNamePrefix: &SecretCABundleSource{
+	//	SecretNames: []string{istiodCustomCertSecretName, istiodSecretName},
+	//	Key:         common.IstiodCertKey,
+	//},
 	istioValidatorWebhookNamePrefix: &SecretCABundleSource{
-		SecretNames: []string{istiodCustomCertSecretName, istiodSecretName},
-		Key:         common.IstiodCertKey,
+		SecretNames: []string{"istiod-tls"},
+		Key:         "ca.crt",
 	},
+	//istioValidatorWebhookNamePrefix: &SecretCABundleSource{
+	//	SecretNames: []string{istiodCustomCertSecretName, istiodSecretName},
+	//	Key:         common.IstiodCertKey,
+	//},
 }
 
 // Add creates a new Controller and adds it to the Manager. The Manager will set fields on the Controller
