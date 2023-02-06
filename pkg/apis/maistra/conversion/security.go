@@ -178,7 +178,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				{
 					"name":      "cert-manager",
 					"mountPath": "/etc/cert-manager/tls",
-					"readyOnly": "true",
+					"readOnly":  true,
 				},
 			}
 
@@ -186,7 +186,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				extraVolumeMounts = append(extraVolumeMounts, map[string]interface{}{
 					"name":      "ca-root-cert",
 					"mountPath": "/etc/cert-manager/ca",
-					"readyOnly": "true",
+					"readOnly":  true,
 				})
 			}
 
