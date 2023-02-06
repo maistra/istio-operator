@@ -14,7 +14,7 @@ spec:
       cert-manager:
         address: cert-manager-istio-csr.cert-manager.svc:443
         pilotSecretName: istiod-tls
-        rootCAConfigMapName: "istio-ca-root-cert"
+        rootCAConfigMapName: "istio-ca-secret"
       type: cert-manager
   tracing:
     type: None

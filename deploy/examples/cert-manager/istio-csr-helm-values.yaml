@@ -32,6 +32,6 @@ app:
       port: 6443
 
   controller:
-    rootCAConfigMapName: istio-ca-root-cert
+    rootCAConfigMapName: istio-ca-secret
 
 
