@@ -84,8 +84,9 @@ type testCase struct {
 	webhook              runtime.Object
 	webhookName          string
 	source               CABundleSource
-	object               runtime.Object // Secret or ConfigMap
+	expectedObjectName   string
 	expectedKey          string
+	kind                 string
 	request              reconcile.Request
 	getter               webhookGetter
 	skipAutoRegistration bool
@@ -94,65 +95,71 @@ type testCase struct {
 func cases() []testCase {
 	return []testCase{
 		{
-			name:        "sidecar-injector-webhook",
-			webhook:     newMutatingWebhookConfig(sidecarInjectorWebhookName, caBundleValue),
-			webhookName: sidecarInjectorWebhookName,
-			object:      newSecret(sidecarInjectorSecretName, common.IstioRootCertKey, caBundleValue),
-			source:      autoRegistrationMap[sidecarInjectorWebhookNamePrefix],
-			expectedKey: common.IstioRootCertKey,
-			request:     sidecarRequest,
-			getter:      mutatingWebhook,
+			name:               "sidecar-injector-webhook",
+			webhook:            newMutatingWebhookConfig(sidecarInjectorWebhookName, caBundleValue),
+			webhookName:        sidecarInjectorWebhookName,
+			source:             autoRegistrationMap[sidecarInjectorWebhookNamePrefix],
+			expectedObjectName: sidecarInjectorSecretName,
+			expectedKey:        common.IstioRootCertKey,
+			kind:               "Secret",
+			request:            sidecarRequest,
+			getter:             mutatingWebhook,
 		},
 		{
-			name:        "galley-webhook",
-			webhook:     newValidatingWebhookConfig(galleyWebhookName, caBundleValue),
-			webhookName: galleyWebhookName,
-			object:      newSecret(galleySecretName, common.IstioRootCertKey, caBundleValue),
-			source:      autoRegistrationMap[galleyWebhookNamePrefix],
-			expectedKey: common.IstioRootCertKey,
-			request:     galleyRequest,
-			getter:      validatingWebhook,
+			name:               "galley-webhook",
+			webhook:            newValidatingWebhookConfig(galleyWebhookName, caBundleValue),
+			webhookName:        galleyWebhookName,
+			source:             autoRegistrationMap[galleyWebhookNamePrefix],
+			expectedObjectName: galleySecretName,
+			expectedKey:        common.IstioRootCertKey,
+			kind:               "Secret",
+			request:            galleyRequest,
+			getter:             validatingWebhook,
 		},
 		{
-			name:        "istiod-injector-webhook",
-			webhook:     newMutatingWebhookConfig(istiodWebhookName, caBundleValue),
-			webhookName: istiodWebhookName,
-			object:      newSecret(istiodSecretName, common.IstiodCertKey, caBundleValue),
-			source:      autoRegistrationMap[istiodWebhookNamePrefix],
-			expectedKey: common.IstiodCertKey,
-			request:     istiodInjectorRequest,
-			getter:      mutatingWebhook,
+			name:               "istiod-injector-webhook",
+			webhook:            newMutatingWebhookConfig(istiodWebhookName, caBundleValue),
+			webhookName:        istiodWebhookName,
+			source:             autoRegistrationMap[istiodWebhookNamePrefix],
+			expectedObjectName: istiodSecretName,
+			expectedKey:        common.IstiodCertKey,
+			kind:               "Secret",
+			request:            istiodInjectorRequest,
+			getter:             mutatingWebhook,
 		},
 		{
-			name:        "istiod-validating-webhook",
-			webhook:     newValidatingWebhookConfig(istiodWebhookName, caBundleValue),
-			webhookName: istiodWebhookName,
-			object:      newSecret(istiodSecretName, common.IstiodCertKey, caBundleValue),
-			source:      autoRegistrationMap[istiodWebhookNamePrefix],
-			expectedKey: common.IstiodCertKey,
-			request:     istiodValidatorRequest,
-			getter:      validatingWebhook,
+			name:               "istiod-validating-webhook",
+			webhook:            newValidatingWebhookConfig(istiodWebhookName, caBundleValue),
+			webhookName:        istiodWebhookName,
+			source:             autoRegistrationMap[istiodWebhookNamePrefix],
+			expectedObjectName: istiodSecretName,
+			expectedKey:        common.IstiodCertKey,
+			kind:               "Secret",
+			request:            istiodValidatorRequest,
+			getter:             validatingWebhook,
 		},
 		{
-			name:        "istiod-validating-webhook-cert-manager",
-			webhook:     newValidatingWebhookConfig(istiodWebhookName, caBundleValue),
-			webhookName: istiodWebhookName,
-			object:      newSecret(istiodCertManagerSecretName, common.IstiodCertManagerCertKey, caBundleValue),
-			source:      autoRegistrationMap[istiodWebhookNamePrefix],
-			expectedKey: common.IstiodCertManagerCertKey,
-			request:     istiodValidatorRequest,
-			getter:      validatingWebhook,
+			name:               "istiod-validating-webhook-cert-manager",
+			webhook:            newValidatingWebhookConfig(istiodWebhookName, caBundleValue),
+			webhookName:        istiodWebhookName,
+			source:             autoRegistrationMap[istiodWebhookNamePrefix],
+			expectedObjectName: istiodCertManagerSecretName,
+			expectedKey:        common.IstiodCertManagerCertKey,
+			kind:               "Secret",
+			request:            istiodValidatorRequest,
+			getter:             validatingWebhook,
 		},
 		{
 			name:        "istio-operator-validating-webhook",
 			webhook:     newValidatingWebhookConfig(istioOperatorWebhookName, caBundleValue),
 			webhookName: istioOperatorWebhookName,
-			object:      newConfigMap(caBundleConfigMapName, common.ServiceCABundleKey, caBundleStringValue),
 			source: &ConfigMapCABundleSource{
 				ConfigMapName: caBundleConfigMapName,
 				Key:           common.ServiceCABundleKey,
 			},
+			expectedObjectName:   caBundleConfigMapName,
 			expectedKey:          common.ServiceCABundleKey,
+			kind:                 "ConfigMap",
 			request:              operatorValidatorRequest,
 			getter:               validatingWebhook,
 			skipAutoRegistration: true,
@@ -161,12 +168,13 @@ func cases() []testCase {
 			name:        "service-mesh-conversion",
 			webhook:     newCustomResourceDefinition(ServiceMeshControlPlaneCRDName, caBundleValue),
 			webhookName: ServiceMeshControlPlaneCRDName,
-			object:      newConfigMap(caBundleConfigMapName, common.ServiceCABundleKey, caBundleStringValue),
 			source: &ConfigMapCABundleSource{
 				ConfigMapName: caBundleConfigMapName,
 				Key:           common.ServiceCABundleKey,
 			},
+			expectedObjectName:   caBundleConfigMapName,
 			expectedKey:          common.ServiceCABundleKey,
+			kind:                 "ConfigMap",
 			request:              conversionRequest,
 			getter:               conversionWebhook,
 			skipAutoRegistration: true,
@@ -181,7 +189,8 @@ func init() {
 func TestReconcileDoesNothingWhenWebhookConfigMissing(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			_, tracker, r := createClientAndReconciler(tc.object)
+			object := newObject(tc.kind, tc.expectedObjectName, tc.expectedKey, caBundleStringValue)
+			_, tracker, r := createClientAndReconciler(object)
 			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
@@ -203,15 +212,8 @@ func TestReconcileDoesNothingWhenSecretMissing(t *testing.T) {
 func TestReconcileDoesNothingWhenSecretContainsNoCertificate(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			switch object := tc.object.(type) {
-			case *corev1.Secret:
-				delete(object.Data, tc.expectedKey)
-			case *corev1.ConfigMap:
-				delete(object.Data, tc.expectedKey)
-			default:
-				t.Errorf("Unknown object type: %t", tc.object)
-			}
-			_, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
+			object := newEmptyObject(tc.kind, tc.expectedObjectName)
+			_, tracker, r := createClientAndReconciler(tc.webhook, object)
 			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
@@ -222,7 +224,8 @@ func TestReconcileDoesNothingWhenSecretContainsNoCertificate(t *testing.T) {
 func TestReconcileDoesNothingWhenCABundleMatches(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			_, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
+			object := newObject(tc.kind, tc.expectedObjectName, tc.expectedKey, caBundleStringValue)
+			_, tracker, r := createClientAndReconciler(tc.webhook, object)
 			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
@@ -233,8 +236,8 @@ func TestReconcileDoesNothingWhenCABundleMatches(t *testing.T) {
 func TestReconcileUpdatesCABundle(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			mutateMapValue(tc.object, tc.expectedKey)
-			cl, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
+			object := newObject(tc.kind, tc.expectedObjectName, tc.expectedKey, "new-value")
+			cl, tracker, r := createClientAndReconciler(tc.webhook, object)
 			if err := r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source); err != nil {
 				t.Fatal(err)
 			}
@@ -250,8 +253,8 @@ func TestReconcileUpdatesCABundle(t *testing.T) {
 func TestReconcileUnmanagedWebhookNotUpdated(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			mutateMapValue(tc.object, tc.expectedKey)
-			cl, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
+			object := newObject(tc.kind, tc.expectedObjectName, tc.expectedKey, "random data")
+			cl, tracker, r := createClientAndReconciler(tc.webhook, object)
 
 			assertReconcileSucceeds(r, tc.request, t)
 
@@ -268,8 +271,8 @@ func TestReconcileAutomaticRegistration(t *testing.T) {
 			if tc.skipAutoRegistration {
 				t.SkipNow()
 			}
-			mutateMapValue(tc.object, tc.expectedKey)
-			cl, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
+			object := newObject(tc.kind, tc.expectedObjectName, tc.expectedKey, "new-value")
+			cl, tracker, r := createClientAndReconciler(tc.webhook, object)
 
 			accessor, _ := meta.Accessor(tc.webhook)
 			watchPredicates := webhookWatchPredicates(r.webhookCABundleManager)
@@ -281,24 +284,10 @@ func TestReconcileAutomaticRegistration(t *testing.T) {
 			wrapper, _ := tc.getter.Get(context.TODO(), cl, types.NamespacedName{Name: tc.webhookName})
 			assert.DeepEquals(wrapper.ClientConfigs()[0].CABundle, []byte("new-value"), "Expected Reconcile() to update the CABundle in the webhook configuration", t)
 
-			var name, kind string
-			switch source := tc.source.(type) {
-			case *SecretCABundleSource:
-				for secretName := range source.SecretNameAndKeyPairs {
-					name = secretName
-					break
-				}
-				kind = "Secret"
-			case *ConfigMapCABundleSource:
-				name = source.ConfigMapName
-				kind = "ConfigMap"
-			default:
-				t.Errorf("Unknown type: %t", tc.source)
-			}
 			assert.True(r.webhookCABundleManager.IsManagingWebhooksForSource(ObjectRef{
-				Kind:      kind,
+				Kind:      tc.kind,
 				Namespace: appNamespace,
-				Name:      name,
+				Name:      tc.expectedObjectName,
 			}), "Expected source to trigger a webhook reconcile", t)
 
 			watchPredicates.Delete(event.DeleteEvent{Meta: accessor, Object: tc.webhook})
@@ -306,20 +295,6 @@ func TestReconcileAutomaticRegistration(t *testing.T) {
 				t.Errorf("webhook should no longer be watched after deletion.")
 			}
 		})
-	}
-}
-
-func mutateMapValue(source runtime.Object, key string) {
-	value := "new-value"
-	switch obj := source.(type) {
-	case *corev1.Secret:
-		obj.Data = map[string][]byte{
-			key: []byte(value),
-		}
-	case *corev1.ConfigMap:
-		obj.Data = map[string]string{
-			key: value,
-		}
 	}
 }
 
@@ -332,7 +307,8 @@ func TestReconcileHandlesWebhookConfigsWithoutWebhooks(t *testing.T) {
 			case *v1.ValidatingWebhookConfiguration:
 				wh.Webhooks = nil
 			}
-			_, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
+			object := newObject(tc.kind, tc.expectedObjectName, tc.expectedKey, caBundleStringValue)
+			_, tracker, r := createClientAndReconciler(tc.webhook, object)
 			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
@@ -365,7 +341,8 @@ func TestReconcileDoesNothingWithMultipleNamespacedServices(t *testing.T) {
 					},
 				})
 			}
-			_, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
+			object := newObject(tc.kind, tc.expectedObjectName, tc.expectedKey, caBundleStringValue)
+			_, tracker, r := createClientAndReconciler(tc.webhook, object)
 			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
@@ -376,8 +353,8 @@ func TestReconcileDoesNothingWithMultipleNamespacedServices(t *testing.T) {
 func TestReconcileReturnsErrorWhenUpdateFails(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			mutateMapValue(tc.object, tc.expectedKey)
-			_, tracker, r := createClientAndReconciler(tc.webhook, tc.object)
+			object := newObject(tc.kind, tc.expectedObjectName, tc.expectedKey, "random data")
+			_, tracker, r := createClientAndReconciler(tc.webhook, object)
 			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
 			tracker.AddReactor("update", "mutatingwebhookconfigurations", test.ClientFails())
 			tracker.AddReactor("update", "validatingwebhookconfigurations", test.ClientFails())
@@ -454,29 +431,32 @@ func newCustomResourceDefinition(name string, caBundleValue []byte) *apixv1.Cust
 	return crd
 }
 
-func newSecret(secretName string, caName string, caBundleValue []byte) *corev1.Secret {
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: appNamespace,
-		},
-		Data: map[string][]byte{
-			caName: caBundleValue,
-		},
-		StringData: nil,
-		Type:       "",
+func newObject(kind, objName, key, data string) runtime.Object {
+	obj := newEmptyObject(kind, objName)
+	if kind == "ConfigMap" {
+		obj.(*corev1.ConfigMap).Data = map[string]string{
+			key: data,
+		}
+	} else {
+		obj.(*corev1.Secret).Data = map[string][]byte{
+			key: []byte(data),
+		}
 	}
+	return obj
 }
 
-func newConfigMap(name string, key string, caBundleValue string) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: appNamespace,
-		},
-		Data: map[string]string{
-			key: caBundleValue,
-		},
+func newEmptyObject(kind, objName string) runtime.Object {
+	objMeta := metav1.ObjectMeta{
+		Name:      objName,
+		Namespace: appNamespace,
+	}
+	if kind == "ConfigMap" {
+		return &corev1.ConfigMap{
+			ObjectMeta: objMeta,
+		}
+	}
+	return &corev1.Secret{
+		ObjectMeta: objMeta,
 	}
 }
 
