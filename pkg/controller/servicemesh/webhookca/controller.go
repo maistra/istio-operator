@@ -32,6 +32,7 @@ const (
 	galleyWebhookNamePrefix          = "istio-galley-"
 	istiodSecretName                 = "istio-ca-secret"
 	istiodCustomCertSecretName       = "cacerts"
+	istiodCertManagerSecretName      = "istiod-tls"
 	istiodWebhookNamePrefix          = "istiod-"
 	istioValidatorWebhookNamePrefix  = "istio-validator-"
 	sidecarInjectorSecretName        = "istio.istio-sidecar-injector-service-account"
@@ -56,16 +57,16 @@ var autoRegistrationMap = map[string]CABundleSource{
 	},
 	istiodWebhookNamePrefix: &SecretCABundleSource{
 		SecretNameAndKeyPairs: map[string]string{
-			istiodCustomCertSecretName: common.IstiodCertKey,
-			istiodSecretName:           common.IstiodCertKey,
-			"istiod-tls":               "ca.crt",
+			istiodCustomCertSecretName:  common.IstiodCertKey,
+			istiodSecretName:            common.IstiodCertKey,
+			istiodCertManagerSecretName: common.IstiodCertManagerCertKey,
 		},
 	},
 	istioValidatorWebhookNamePrefix: &SecretCABundleSource{
 		SecretNameAndKeyPairs: map[string]string{
-			istiodCustomCertSecretName: common.IstiodCertKey,
-			istiodSecretName:           common.IstiodCertKey,
-			"istiod-tls":               "ca.crt",
+			istiodCustomCertSecretName:  common.IstiodCertKey,
+			istiodSecretName:            common.IstiodCertKey,
+			istiodCertManagerSecretName: common.IstiodCertManagerCertKey,
 		},
 	},
 }
