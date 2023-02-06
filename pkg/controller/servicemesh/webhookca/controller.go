@@ -45,29 +45,29 @@ const (
 // secretNames determines priority.
 var autoRegistrationMap = map[string]CABundleSource{
 	galleyWebhookNamePrefix: &SecretCABundleSource{
-		SecretNames: []string{galleySecretName},
-		Key:         common.IstioRootCertKey,
+		SecretNameAndKeyPairs: map[string]string{
+			galleySecretName: common.IstioRootCertKey,
+		},
 	},
 	sidecarInjectorWebhookNamePrefix: &SecretCABundleSource{
-		SecretNames: []string{sidecarInjectorSecretName},
-		Key:         common.IstioRootCertKey,
+		SecretNameAndKeyPairs: map[string]string{
+			sidecarInjectorSecretName: common.IstioRootCertKey,
+		},
 	},
 	istiodWebhookNamePrefix: &SecretCABundleSource{
-		SecretNames: []string{"istiod-tls"},
-		Key:         "ca.crt",
+		SecretNameAndKeyPairs: map[string]string{
+			istiodCustomCertSecretName: common.IstiodCertKey,
+			istiodSecretName:           common.IstiodCertKey,
+			"istiod-tls":               "ca.crt",
+		},
 	},
-	//istiodWebhookNamePrefix: &SecretCABundleSource{
-	//	SecretNames: []string{istiodCustomCertSecretName, istiodSecretName},
-	//	Key:         common.IstiodCertKey,
-	//},
 	istioValidatorWebhookNamePrefix: &SecretCABundleSource{
-		SecretNames: []string{"istiod-tls"},
-		Key:         "ca.crt",
+		SecretNameAndKeyPairs: map[string]string{
+			istiodCustomCertSecretName: common.IstiodCertKey,
+			istiodSecretName:           common.IstiodCertKey,
+			"istiod-tls":               "ca.crt",
+		},
 	},
-	//istioValidatorWebhookNamePrefix: &SecretCABundleSource{
-	//	SecretNames: []string{istiodCustomCertSecretName, istiodSecretName},
-	//	Key:         common.IstiodCertKey,
-	//},
 }
 
 // Add creates a new Controller and adds it to the Manager. The Manager will set fields on the Controller

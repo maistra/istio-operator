@@ -98,8 +98,9 @@ func cases() []testCase {
 			webhookName: sidecarInjectorWebhookName,
 			object:      newSecret(sidecarInjectorSecretName, common.IstioRootCertKey, caBundleValue),
 			source: &SecretCABundleSource{
-				SecretNames: []string{sidecarInjectorSecretName},
-				Key:         common.IstioRootCertKey,
+				SecretNameAndKeyPairs: map[string]string{
+					sidecarInjectorSecretName: common.IstioRootCertKey,
+				},
 			},
 			request: sidecarRequest,
 			getter:  mutatingWebhook,
@@ -110,8 +111,9 @@ func cases() []testCase {
 			webhookName: galleyWebhookName,
 			object:      newSecret(galleySecretName, common.IstioRootCertKey, caBundleValue),
 			source: &SecretCABundleSource{
-				SecretNames: []string{galleySecretName},
-				Key:         common.IstioRootCertKey,
+				SecretNameAndKeyPairs: map[string]string{
+					galleySecretName: common.IstioRootCertKey,
+				},
 			},
 			request: galleyRequest,
 			getter:  validatingWebhook,
@@ -122,8 +124,9 @@ func cases() []testCase {
 			webhookName: istiodWebhookName,
 			object:      newSecret(istiodSecretName, common.IstiodCertKey, caBundleValue),
 			source: &SecretCABundleSource{
-				SecretNames: []string{istiodSecretName},
-				Key:         common.IstiodCertKey,
+				SecretNameAndKeyPairs: map[string]string{
+					istiodSecretName: common.IstiodCertKey,
+				},
 			},
 			request: istiodInjectorRequest,
 			getter:  mutatingWebhook,
@@ -134,8 +137,9 @@ func cases() []testCase {
 			webhookName: istiodWebhookName,
 			object:      newSecret(istiodSecretName, common.IstiodCertKey, caBundleValue),
 			source: &SecretCABundleSource{
-				SecretNames: []string{istiodSecretName},
-				Key:         common.IstiodCertKey,
+				SecretNameAndKeyPairs: map[string]string{
+					istiodSecretName: common.IstiodCertKey,
+				},
 			},
 			request: istiodValidatorRequest,
 			getter:  validatingWebhook,
@@ -176,7 +180,10 @@ func init() {
 func getKey(t *testing.T, src CABundleSource) string {
 	switch source := src.(type) {
 	case *SecretCABundleSource:
-		return source.Key
+		for _, key := range source.SecretNameAndKeyPairs {
+			return key
+		}
+		return ""
 	case *ConfigMapCABundleSource:
 		return source.Key
 	default:
@@ -291,7 +298,10 @@ func TestReconcileAutomaticRegistration(t *testing.T) {
 			var name, kind string
 			switch source := tc.source.(type) {
 			case *SecretCABundleSource:
-				name = source.SecretNames[0]
+				for secretName := range source.SecretNameAndKeyPairs {
+					name = secretName
+					break
+				}
 				kind = "Secret"
 			case *ConfigMapCABundleSource:
 				name = source.ConfigMapName
