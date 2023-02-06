@@ -24,11 +24,12 @@ helm install -n cert-manager cert-manager-istio-csr \
 
 4. Deploy Istio:
 ```shell
-oc apply -f deploy/examples/cert-manager/smcp.yaml
+oc apply -f deploy/examples/cert-manager/smcp.yaml -n istio-system
 ```
 
 5. Deploy bookinfo app:
 ```shell
+oc new-project bookinfo
 oc apply -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/platform/kube/bookinfo.yaml -n bookinfo
 ```
 

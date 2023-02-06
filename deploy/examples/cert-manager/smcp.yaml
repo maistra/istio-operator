@@ -2,7 +2,6 @@ apiVersion: maistra.io/v2
 kind: ServiceMeshControlPlane
 metadata:
   name: basic
-  namespace: istio-system
 spec:
   profiles:
   - small
@@ -21,7 +20,6 @@ apiVersion: maistra.io/v1
 kind: ServiceMeshMemberRoll
 metadata:
   name: default
-  namespace: istio-system
 spec:
   members:
   - bookinfo
