@@ -189,9 +189,11 @@ func init() {
 func TestReconcileDoesNothingWhenWebhookConfigMissing(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			object := newObject(tc.kind, tc.objectName, tc.dataKey, caBundleStringValue)
-			_, tracker, r := createClientAndReconciler(object)
-			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
+			caBundle := newObject(tc.kind, tc.objectName, tc.dataKey, caBundleStringValue)
+			_, tracker, r := createClientAndReconciler(caBundle)
+			if err := r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source); err != nil {
+				t.Fatal(err)
+			}
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 		})
@@ -202,7 +204,9 @@ func TestReconcileDoesNothingWhenSecretMissing(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
 			_, tracker, r := createClientAndReconciler(tc.webhook)
-			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
+			if err := r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source); err != nil {
+				t.Fatal(err)
+			}
 			assertReconcileSucceeds(r, tc.request, t)
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 		})
@@ -212,55 +216,64 @@ func TestReconcileDoesNothingWhenSecretMissing(t *testing.T) {
 func TestReconcileDoesNothingWhenSecretContainsNoCertificate(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			object := newEmptyObject(tc.kind, tc.objectName)
-			_, tracker, r := createClientAndReconciler(tc.webhook, object)
-			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
-			assertReconcileSucceeds(r, tc.request, t)
-			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
-		})
-	}
-}
-
-func TestReconcileDoesNothingWhenCABundleMatches(t *testing.T) {
-	for _, tc := range cases() {
-		t.Run(tc.name, func(t *testing.T) {
-			object := newObject(tc.kind, tc.objectName, tc.dataKey, caBundleStringValue)
-			_, tracker, r := createClientAndReconciler(tc.webhook, object)
-			r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source)
-			assertReconcileSucceeds(r, tc.request, t)
-			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
-		})
-	}
-}
-
-func TestReconcileUpdatesCABundle(t *testing.T) {
-	for _, tc := range cases() {
-		t.Run(tc.name, func(t *testing.T) {
-			object := newObject(tc.kind, tc.objectName, tc.dataKey, "new-value")
-			cl, tracker, r := createClientAndReconciler(tc.webhook, object)
+			caBundle := newEmptyObject(tc.kind, tc.objectName)
+			_, tracker, r := createClientAndReconciler(tc.webhook, caBundle)
 			if err := r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source); err != nil {
 				t.Fatal(err)
 			}
 			assertReconcileSucceeds(r, tc.request, t)
-			test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
+			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
+		})
+	}
+}
 
+func TestReconcileDoesNothingWhenCABundleRemainsUnchanged(t *testing.T) {
+	for _, tc := range cases() {
+		t.Run(tc.name, func(t *testing.T) {
+			caBundle := newObject(tc.kind, tc.objectName, tc.dataKey, caBundleStringValue)
+			_, tracker, r := createClientAndReconciler(tc.webhook, caBundle)
+			if err := r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source); err != nil {
+				t.Fatal(err)
+			}
+			assertReconcileSucceeds(r, tc.request, t)
+			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
+		})
+	}
+}
+
+// TestReconcileUpdatesCABundle verifies that a CA bundle is updated by a mutation webhook
+// when WebhookCABundleManager.ManageWebhookCABundle was invoked
+func TestReconcileUpdatesCABundle(t *testing.T) {
+	for _, tc := range cases() {
+		t.Run(tc.name, func(t *testing.T) {
+			caBundle := newObject(tc.kind, tc.objectName, tc.dataKey, "new-value")
+			cl, tracker, r := createClientAndReconciler(tc.webhook, caBundle)
+			if err := r.webhookCABundleManager.ManageWebhookCABundle(tc.webhook, tc.source); err != nil {
+				t.Fatal(err)
+			}
+
+			assertReconcileSucceeds(r, tc.request, t)
+
+			test.AssertNumberOfWriteActions(t, tracker.Actions(), 1)
 			wrapper, _ := tc.getter.Get(context.TODO(), cl, types.NamespacedName{Name: tc.webhookName})
 			assert.DeepEquals(string(wrapper.ClientConfigs()[0].CABundle), "new-value", "Expected Reconcile() to update the CABundle in the webhook configuration", t)
 		})
 	}
 }
 
+// TestReconcileUpdatesCABundle verifies that a CA bundle is not updated by a mutation webhook
+// when WebhookCABundleManager.ManageWebhookCABundle was not invoked
 func TestReconcileUnmanagedWebhookNotUpdated(t *testing.T) {
 	for _, tc := range cases() {
 		t.Run(tc.name, func(t *testing.T) {
-			object := newObject(tc.kind, tc.objectName, tc.dataKey, "random data")
-			cl, tracker, r := createClientAndReconciler(tc.webhook, object)
+			caBundle := newObject(tc.kind, tc.objectName, tc.dataKey, "new-value")
+			cl, tracker, r := createClientAndReconciler(tc.webhook, caBundle)
 
 			assertReconcileSucceeds(r, tc.request, t)
 
 			test.AssertNumberOfWriteActions(t, tracker.Actions(), 0)
 			wrapper, _ := tc.getter.Get(context.TODO(), cl, types.NamespacedName{Name: tc.webhookName})
-			assert.DeepEquals(wrapper.ClientConfigs()[0].CABundle, caBundleValue, "Expected Reconcile() to update the CABundle in the webhook configuration", t)
+			assert.DeepEquals(wrapper.ClientConfigs()[0].CABundle, caBundleValue, "Expected Reconcile() to not update the CABundle in the webhook configuration", t)
 		})
 	}
 }
@@ -271,8 +284,8 @@ func TestReconcileAutomaticRegistration(t *testing.T) {
 			if tc.skipAutoRegistration {
 				t.SkipNow()
 			}
-			object := newObject(tc.kind, tc.objectName, tc.dataKey, "new-value")
-			cl, tracker, r := createClientAndReconciler(tc.webhook, object)
+			caBundle := newObject(tc.kind, tc.objectName, tc.dataKey, "new-value")
+			cl, tracker, r := createClientAndReconciler(tc.webhook, caBundle)
 
 			accessor, _ := meta.Accessor(tc.webhook)
 			watchPredicates := webhookWatchPredicates(r.webhookCABundleManager)
