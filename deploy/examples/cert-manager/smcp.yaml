@@ -1,7 +1,7 @@
 apiVersion: maistra.io/v2
 kind: ServiceMeshControlPlane
 metadata:
-  name: test-prototype
+  name: basic
   namespace: istio-system
 spec:
   profiles:

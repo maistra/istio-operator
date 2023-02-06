@@ -13,13 +13,13 @@ helm install \
 2. Provision certificates:
 ```shell
 oc new-project istio-system
-oc apply -f selfsigned-ca.yaml -n istio-system
+oc apply -f deploy/examples/cert-manager/selfsigned-ca.yaml -n istio-system
 ```
 
 3. Install cert-manager istio-csr Service:
 ```shell
 helm install -n cert-manager cert-manager-istio-csr \
-    jetstack/cert-manager-istio-csr -f istio-csr-helm-values.yaml
+    jetstack/cert-manager-istio-csr -f deploy/examples/cert-manager/istio-csr-helm-values.yaml
 ```
 
 4. Deploy Istio:
