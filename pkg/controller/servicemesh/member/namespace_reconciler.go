@@ -242,15 +242,18 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(ctx context.Context, name
 		allErrors = append(allErrors, err)
 	}
 
-	if r.isCNIEnabled {
-		// add NetworkAttachmentDefinition to tell Multus to invoke Istio CNI for pods in this namespace
-		netAttachDefName := r.meshVersion.GetCNINetworkName()
-		err = r.addNetworkAttachmentDefinition(ctx, namespace, netAttachDefName)
-	} else {
-		err = r.removeNetworkAttachmentDefinition(ctx, namespace)
-	}
-	if err != nil {
-		allErrors = append(allErrors, err)
+	// from v2.4 the NetworkAttachmentDefinition is in the mesh namespace, so there's no need to create it in the member namespace
+	if r.meshVersion.LessThan(versions.V2_4) {
+		if r.isCNIEnabled {
+			// add NetworkAttachmentDefinition to tell Multus to invoke Istio CNI for pods in this namespace
+			netAttachDefName := r.meshVersion.GetCNINetworkName()
+			err = r.addNetworkAttachmentDefinition(ctx, namespace, netAttachDefName)
+		} else {
+			err = r.removeNetworkAttachmentDefinition(ctx, namespace)
+		}
+		if err != nil {
+			allErrors = append(allErrors, err)
+		}
 	}
 
 	// add mesh labels

@@ -71,7 +71,7 @@ func init() {
 		V2_1:           "v2-1-istio-cni",
 		V2_2:           "v2-2-istio-cni",
 		V2_3:           "v2-3-istio-cni",
-		V2_4:           "v2-4-istio-cni",
+		V2_4:           "default/v2-4-istio-cni",
 	}
 
 	for v, str := range versionToString {

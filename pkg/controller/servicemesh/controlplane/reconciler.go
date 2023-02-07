@@ -433,7 +433,7 @@ func (r *controlPlaneInstanceReconciler) validateManifests(ctx context.Context) 
 				if err != nil || obj.GetNamespace() == "" {
 					continue
 				}
-				if !meshNamespaces.Has(obj.GetNamespace()) {
+				if obj.GetNamespace() != "default" && !meshNamespaces.Has(obj.GetNamespace()) {
 					allErrors = append(allErrors, fmt.Errorf("%s: namespace of manifest %s/%s not in mesh", manifestBundle.Name, obj.GetNamespace(), obj.GetName()))
 				}
 			}
