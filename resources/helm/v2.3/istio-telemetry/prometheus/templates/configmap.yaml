@@ -35,15 +35,11 @@ data:
       - source_labels: [__meta_kubernetes_pod_container_port_name]
         action: keep
         regex: '.*-envoy-prom'
-      - source_labels: [__meta_kubernetes_pod_ip]
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
         action: replace
-        regex: (([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4})
-        replacement: '[$1]:15090'
-        target_label: __address__
-      - source_labels: [__meta_kubernetes_pod_ip]
-        action: replace
-        regex: ((([0-9]+?)(\.|$)){4})
+        regex: ([^:]+)(?::\d+)?;(\d+)
         replacement: $1:15090
+        target_label: __address__
       - action: labeldrop
         regex: __meta_kubernetes_pod_label_(.+)
       - source_labels: [__meta_kubernetes_namespace]
@@ -236,15 +232,10 @@ data:
         action: replace
         target_label: __metrics_path__
         regex: (.+)
-      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port, __meta_kubernetes_pod_ip]
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
         action: replace
-        regex: (\d+);(([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4})
-        replacement: '[$2]:$1'
-        target_label: __address__
-      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port, __meta_kubernetes_pod_ip]
-        action: replace
-        regex: (\d+);((([0-9]+?)(\.|$)){4})
-        replacement: $2:$1
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
         target_label: __address__
       - action: labelmap
         regex: __meta_kubernetes_pod_label_(.+)
@@ -272,15 +263,12 @@ data:
         source_labels:
         - __meta_kubernetes_pod_annotation_prometheus_io_path
         target_label: __metrics_path__
-      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port, __meta_kubernetes_pod_ip]
-        action: replace
-        regex: (\d+);(([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4})
-        replacement: '[$2]:$1'
-        target_label: __address__
-      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port, __meta_kubernetes_pod_ip]
-        action: replace
-        regex: (\d+);((([0-9]+?)(\.|$)){4})
-        replacement: $2:$1
+      - action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        source_labels:
+        - __address__
+        - __meta_kubernetes_pod_annotation_prometheus_io_port
         target_label: __address__
       - action: labelmap
         regex: __meta_kubernetes_pod_label_(.+)
@@ -325,15 +313,10 @@ data:
       - source_labels: [__address__]  # Only keep address that is host:port
         action: keep    # otherwise an extra target with ':443' is added for https scheme
         regex: ([^:]+):(\d+)
-      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port, __meta_kubernetes_pod_ip]
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
         action: replace
-        regex: (\d+);(([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4})
-        replacement: '[$2]:$1'
-        target_label: __address__
-      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port, __meta_kubernetes_pod_ip]
-        action: replace
-        regex: (\d+);((([0-9]+?)(\.|$)){4})
-        replacement: $2:$1
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
         target_label: __address__
       - action: labelmap
         regex: __meta_kubernetes_pod_label_(.+)
