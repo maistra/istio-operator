@@ -2,12 +2,12 @@
 
 1. Install cert-manager
 ```shell
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.8.0/cert-manager.crds.yaml
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.11.0/cert-manager.crds.yaml
 helm install \
     cert-manager jetstack/cert-manager \
     --namespace cert-manager \
     --create-namespace \
-    --version v1.8.0
+    --version v1.11.0
 ```
 
 2. Provision certificates:
@@ -31,6 +31,27 @@ oc apply -f deploy/examples/cert-manager/smcp.yaml -n istio-system
 ```shell
 oc new-project bookinfo
 oc apply -f https://raw.githubusercontent.com/maistra/istio/maistra-2.3/samples/bookinfo/platform/kube/bookinfo.yaml -n bookinfo
+```
+
+### Integration with cert-manager in OSSM 2.3.0 and 2.3.1
+
+To make SMCP 2.3.0 and 2.3.1 work with cert-manager it's required to manually adjust certificate provided by cert-manager.
+
+1. Follow steps 1-3 from the previous section.
+
+2. Get intermediate certificate for Istio provided by cert-manager:
+```shell
+oc get secret istiod-tls -n istio-system -o json | jq -r '.data."tls.crt"' | base64 -d > ca-cert.pem
+```
+
+3. Create secret for Istio Operator from retrieved certificate:
+```shell
+oc create secret generic istio-ca-secret -n istio-system --from-file=ca-cert.pem
+```
+
+4. Deploy Istio:
+```shell
+oc apply -f deploy/examples/cert-manager/smcp-2.3.1.yaml -n istio-system
 ```
 
 ### Verification
