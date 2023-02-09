@@ -604,9 +604,9 @@ type fakeNamespaceReconcilerFactory struct {
 }
 
 func (rf *fakeNamespaceReconcilerFactory) newReconciler(ctx context.Context, cl client.Client,
-	meshNamespace string, meshVersion versions.Version, isCNIEnabled bool,
+	meshNamespace string, meshVersion versions.Version, clusterWideMode, isCNIEnabled bool,
 ) (NamespaceReconciler, error) {
-	delegate, err := newNamespaceReconciler(ctx, cl, meshNamespace, meshVersion, isCNIEnabled)
+	delegate, err := newNamespaceReconciler(ctx, cl, meshNamespace, meshVersion, clusterWideMode, isCNIEnabled)
 	rf.reconciler.delegate = delegate
 	return rf.reconciler, err
 }
