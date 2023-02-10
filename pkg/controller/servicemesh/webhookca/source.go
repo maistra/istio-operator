@@ -25,8 +25,13 @@ type CABundleSource interface {
 }
 
 type SecretCABundleSource struct {
-	Namespace             string
-	SecretNameAndKeyPairs map[string]string
+	Namespace          string
+	SecretNameKeyPairs []SecretNameKeyPair
+}
+
+type SecretNameKeyPair struct {
+	SecretName string
+	Key        string
 }
 
 var _ CABundleSource = (*SecretCABundleSource)(nil)
@@ -34,10 +39,10 @@ var _ CABundleSource = (*SecretCABundleSource)(nil)
 func (s *SecretCABundleSource) GetCABundle(ctx context.Context, client client.Client) ([]byte, error) {
 	var caBundle []byte
 	var errList []error
-	for secretName, key := range s.SecretNameAndKeyPairs {
+	for _, entry := range s.SecretNameKeyPairs {
 		namespacedName := types.NamespacedName{
 			Namespace: s.Namespace,
-			Name:      secretName,
+			Name:      entry.SecretName,
 		}
 		secret := &corev1.Secret{}
 		err := client.Get(ctx, namespacedName, secret)
@@ -46,12 +51,12 @@ func (s *SecretCABundleSource) GetCABundle(ctx context.Context, client client.Cl
 			continue
 		}
 		var ok bool
-		caBundle, ok = secret.Data[key]
+		caBundle, ok = secret.Data[entry.Key]
 		if !ok {
 			errList = append(errList, fmt.Errorf(
 				"secret %s does not contain root certificate under key %s",
 				namespacedName,
-				key,
+				entry.Key,
 			))
 			continue
 		}
@@ -73,11 +78,11 @@ func (s *SecretCABundleSource) SetNamespace(namespace string) {
 
 func (s *SecretCABundleSource) MatchedObjects() []ObjectRef {
 	refs := []ObjectRef{}
-	for secretName := range s.SecretNameAndKeyPairs {
+	for _, entry := range s.SecretNameKeyPairs {
 		refs = append(refs, ObjectRef{
 			Kind:      "Secret",
 			Namespace: s.Namespace,
-			Name:      secretName,
+			Name:      entry.SecretName,
 		})
 	}
 	return refs

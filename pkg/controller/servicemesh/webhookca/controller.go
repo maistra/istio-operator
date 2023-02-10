@@ -46,27 +46,51 @@ const (
 // secretNames determines priority.
 var autoRegistrationMap = map[string]CABundleSource{
 	galleyWebhookNamePrefix: &SecretCABundleSource{
-		SecretNameAndKeyPairs: map[string]string{
-			galleySecretName: common.IstioRootCertKey,
+		SecretNameKeyPairs: []SecretNameKeyPair{
+			{
+				SecretName: galleySecretName,
+				Key:        common.IstioRootCertKey,
+			},
 		},
 	},
 	sidecarInjectorWebhookNamePrefix: &SecretCABundleSource{
-		SecretNameAndKeyPairs: map[string]string{
-			sidecarInjectorSecretName: common.IstioRootCertKey,
+		SecretNameKeyPairs: []SecretNameKeyPair{
+			{
+				SecretName: sidecarInjectorSecretName,
+				Key:        common.IstioRootCertKey,
+			},
 		},
 	},
 	istiodWebhookNamePrefix: &SecretCABundleSource{
-		SecretNameAndKeyPairs: map[string]string{
-			istiodCustomCertSecretName:  common.IstiodCertKey,
-			istiodSecretName:            common.IstiodCertKey,
-			istiodCertManagerSecretName: common.IstiodCertManagerCertKey,
+		SecretNameKeyPairs: []SecretNameKeyPair{
+			{
+				SecretName: istiodCustomCertSecretName,
+				Key:        common.IstiodCertKey,
+			},
+			{
+				SecretName: istiodSecretName,
+				Key:        common.IstiodCertKey,
+			},
+			{
+				SecretName: istiodCertManagerSecretName,
+				Key:        common.IstiodCertManagerCertKey,
+			},
 		},
 	},
 	istioValidatorWebhookNamePrefix: &SecretCABundleSource{
-		SecretNameAndKeyPairs: map[string]string{
-			istiodCustomCertSecretName:  common.IstiodCertKey,
-			istiodSecretName:            common.IstiodCertKey,
-			istiodCertManagerSecretName: common.IstiodCertManagerCertKey,
+		SecretNameKeyPairs: []SecretNameKeyPair{
+			{
+				SecretName: istiodCustomCertSecretName,
+				Key:        common.IstiodCertKey,
+			},
+			{
+				SecretName: istiodSecretName,
+				Key:        common.IstiodCertKey,
+			},
+			{
+				SecretName: istiodCertManagerSecretName,
+				Key:        common.IstiodCertManagerCertKey,
+			},
 		},
 	},
 }
