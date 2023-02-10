@@ -82,22 +82,26 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request)
 		return badRequest("ServiceMeshMemberRoll may not be created in the same project/namespace as the operator")
 	}
 
-	// check if namespace names conform to DNS-1123 (we must check this in code, because +kubebuilder:validation:Pattern can't be applied to array elements yet)
-	if smmr.Spec.IsClusterScoped() {
-		if len(smmr.Spec.Members) > 1 {
-			return badRequest("when .spec.members contains an asterisk ('*'), it must contain no other entries")
-		}
-	} else {
-		for _, member := range smmr.Spec.Members {
-			if !memberRegex.MatchString(member) {
-				return badRequest(fmt.Sprintf(".spec.members contains invalid value '%s'. Must be a valid namespace name.", member))
-			}
-		}
+	if len(smmr.Spec.Members) > 0 && smmr.Spec.MemberSelector != nil {
+		return badRequest("combining .spec.members and .spec.memberSelector is not allowed")
 	}
 
-	// check for duplicate namespaces (we must check this in code, because +kubebuilder:validation:UniqueItem doesn't work)
-	if len(sets.NewString(smmr.Spec.Members...)) != len(smmr.Spec.Members) {
-		return badRequest("ServiceMeshMemberRoll may not contain duplicate namespaces in .spec.members")
+	// check if namespace names conform to DNS-1123 (we must check this in code, because +kubebuilder:validation:Pattern can't be applied to array elements yet)
+	containsAsterisk := false
+	memberSet := sets.NewString()
+	for _, member := range smmr.Spec.Members {
+		if member == "*" {
+			containsAsterisk = true
+		} else if !memberRegex.MatchString(member) {
+			return badRequest(fmt.Sprintf(".spec.members contains invalid value '%s'. Must be a valid namespace name.", member))
+		}
+		if memberSet.Has(member) {
+			return badRequest(fmt.Sprintf("duplicate namespace in .spec.members: %s", member))
+		}
+		memberSet.Insert(member)
+	}
+	if containsAsterisk && len(smmr.Spec.Members) > 1 {
+		return badRequest("when .spec.members contains an asterisk ('*'), it must contain no other entries")
 	}
 
 	smmrList := &maistrav1.ServiceMeshMemberRollList{}
@@ -132,8 +136,9 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request)
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 	if !allowed {
-		if smmr.Spec.IsClusterScoped() {
-			return forbidden(fmt.Sprintf("user '%s' does not have permission to access all namespaces", req.AdmissionRequest.UserInfo.Username))
+		if smmr.MatchesNamespacesDynamically() {
+			return forbidden(fmt.Sprintf("only users that are allowed to update pods at the cluster scope are allowed to use wildcards or member selectors; "+
+				"user %s does not have that permission", req.AdmissionRequest.UserInfo.Username))
 		}
 
 		// check each namespace separately, but only check newly added namespaces

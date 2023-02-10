@@ -115,6 +115,7 @@ func TestReconcileFailsWhenListControlPlanesFails(t *testing.T) {
 }
 
 func TestReconcileDeletesMembersIfControlPlaneMissing(t *testing.T) {
+	os.Setenv("POD_NAMESPACE", "operator-namespace")
 	cases := []struct {
 		name                      string
 		memberCreatedByController bool
@@ -718,18 +719,6 @@ func newMemberWithNamespace(ns string) *maistrav1.ServiceMeshMember {
 	return member
 }
 
-func TestIsExcludedNamespace(t *testing.T) {
-	assert.True(isExcludedNamespace("kube"), "expected namespace to be excluded", t)
-	assert.True(isExcludedNamespace("kube-system"), "expected namespace to be excluded", t)
-	assert.True(isExcludedNamespace("openshift"), "expected namespace to be excluded", t)
-	assert.True(isExcludedNamespace("openshift-system"), "expected namespace to be excluded", t)
-	assert.True(isExcludedNamespace("openshift-operators"), "expected namespace to be excluded", t)
-	assert.True(isExcludedNamespace(common.GetOperatorNamespace()), "expected namespace to be excluded", t)
-
-	assert.False(isExcludedNamespace("kubernaut"), "didn't expect namespace to be excluded", t)
-	assert.False(isExcludedNamespace("openshiftiscool"), "didn't expect namespace to be excluded", t)
-}
-
 func TestKialiResource(t *testing.T) {
 	test.PanicOnError(os.Setenv("POD_NAMESPACE", "operator-namespace"))
 
@@ -763,15 +752,15 @@ func TestKialiResource(t *testing.T) {
 			name:                         "only-smcp-cluster-scoped-v2.3",
 			smcp:                         newSMCPClusterWide23(),
 			members:                      []string{"foo", "bar", "baz"},
-			expectedAccessibleNamespaces: []string{"foo", "bar", "baz"},
-			expectedExcludedNamespaces:   []string{},
+			expectedAccessibleNamespaces: []string{"**"},
+			expectedExcludedNamespaces:   []string{"^ibm-.*", "^kube$", "^kube-.*", "^openshift$", "^openshift-.*", "^operator-namespace$"},
 		},
 		{
 			name:                         "only-smcp-cluster-scoped-v2.4+",
 			smcp:                         newSMCPClusterWide24(),
 			members:                      []string{"foo", "bar", "baz"},
-			expectedAccessibleNamespaces: []string{"foo", "bar", "baz"},
-			expectedExcludedNamespaces:   []string{},
+			expectedAccessibleNamespaces: []string{"**"},
+			expectedExcludedNamespaces:   []string{"^ibm-.*", "^kube$", "^kube-.*", "^openshift$", "^openshift-.*", "^operator-namespace$"},
 		},
 		{
 			name:                         "only-smmr-cluster-scoped",
@@ -786,7 +775,7 @@ func TestKialiResource(t *testing.T) {
 			members:                      []string{"*"},
 			namespaces:                   []string{"bookinfo"},
 			expectedAccessibleNamespaces: []string{"**"},
-			expectedExcludedNamespaces:   []string{"^kube$", "^kube-.*", "^openshift$", "^openshift-.*", "^operator-namespace$"},
+			expectedExcludedNamespaces:   []string{"^ibm-.*", "^kube$", "^kube-.*", "^openshift$", "^openshift-.*", "^operator-namespace$"},
 		},
 		{
 			name:                         "both-smcp-and-smmr-cluster-scoped-v2.4+",
@@ -794,7 +783,7 @@ func TestKialiResource(t *testing.T) {
 			members:                      []string{"*"},
 			namespaces:                   []string{"bookinfo"},
 			expectedAccessibleNamespaces: []string{"**"},
-			expectedExcludedNamespaces:   []string{"^kube$", "^kube-.*", "^openshift$", "^openshift-.*", "^operator-namespace$"},
+			expectedExcludedNamespaces:   []string{"^ibm-.*", "^kube$", "^kube-.*", "^openshift$", "^openshift-.*", "^operator-namespace$"},
 		},
 	}
 

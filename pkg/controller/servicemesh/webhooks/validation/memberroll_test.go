@@ -77,35 +77,57 @@ func TestMemberRollWithControlPlaneNamespaceIsRejected(t *testing.T) {
 
 func TestMemberValidation(t *testing.T) {
 	testCases := []struct {
-		members string
-		valid   bool
-		message string
+		members        []string
+		memberSelector *meta.LabelSelector
+		valid          bool
+		message        string
 	}{
-		{valid: false, members: "", message: "Must be a valid namespace name"},
-		{valid: false, members: "-badname", message: "Must be a valid namespace name"},
-		{valid: false, members: "badname-", message: "Must be a valid namespace name"},
-		{valid: false, members: "bad%name", message: "Must be a valid namespace name"},
-		{valid: false, members: "duplicate-ns,foo,duplicate-ns", message: "ServiceMeshMemberRoll may not contain duplicate namespaces"},
-		{valid: true, members: "ns1"},
-		{valid: true, members: "ns-1"},
-		{valid: true, members: "ns1,ns2"},
-		{valid: true, members: "*"},
-		{valid: false, members: "*,ns1", message: "when .spec.members contains an asterisk ('*'), it must contain no other entries"},
-		{valid: false, members: "ns1,*", message: "when .spec.members contains an asterisk ('*'), it must contain no other entries"},
-		{valid: false, members: "*,*", message: "when .spec.members contains an asterisk ('*'), it must contain no other entries"},
+		{valid: true, members: nil},
+		{valid: true, members: []string{}},
+		{valid: true, members: []string{"ns1"}},
+		{valid: true, members: []string{"ns-1"}},
+		{valid: true, members: []string{"ns1", "ns2"}},
+		{valid: true, members: []string{"*"}},
+		{valid: true, members: []string{}, memberSelector: &meta.LabelSelector{}},
+		{valid: false, members: []string{""}, message: ".spec.members contains invalid value ''. Must be a valid namespace name."},
+		{valid: false, members: []string{"-badname"}, message: ".spec.members contains invalid value '-badname'. Must be a valid namespace name."},
+		{valid: false, members: []string{"badname-"}, message: ".spec.members contains invalid value 'badname-'. Must be a valid namespace name."},
+		{valid: false, members: []string{"bad%name"}, message: ".spec.members contains invalid value 'bad%name'. Must be a valid namespace name."},
+		{valid: false, members: []string{"book*"}, message: ".spec.members contains invalid value 'book*'. Must be a valid namespace name."},
+		{valid: false, members: []string{"*book"}, message: ".spec.members contains invalid value '*book'. Must be a valid namespace name."},
+		{valid: false, members: []string{"*", "ns1"}, message: "when .spec.members contains an asterisk ('*'), it must contain no other entries"},
+		{valid: false, members: []string{"ns1", "*"}, message: "when .spec.members contains an asterisk ('*'), it must contain no other entries"},
+		{valid: false, members: []string{"*", "*"}, message: "duplicate namespace in .spec.members: *"},
+		{valid: false, members: []string{"duplicate-ns", "foo", "duplicate-ns"}, message: "duplicate namespace in .spec.members: duplicate-ns"},
+		{valid: false, members: []string{"ns"}, memberSelector: &meta.LabelSelector{}, message: "combining .spec.members and .spec.memberSelector is not allowed"},
 	}
 	for _, tc := range testCases {
-		t.Run(tc.members, func(t *testing.T) {
+		name := ""
+		if tc.members == nil {
+			name = "<nil>"
+		} else if len(tc.members) == 0 {
+			name = "<empty>"
+		} else {
+			name = "[" + strings.Join(tc.members, ",") + "]"
+		}
+		if tc.memberSelector != nil {
+			name += "+selector"
+		}
+		t.Run(name, func(t *testing.T) {
 			validator, tracker := createMemberRollValidatorTestFixture(smcp)
 			tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, true, nil))
 
-			roll := newMemberRoll("default", "istio-system", strings.Split(tc.members, ",")...)
-			response := validator.Handle(ctx, createCreateRequest(roll))
+			smmr := newMemberRoll("default", "istio-system", tc.members...)
+			smmr.Spec.MemberSelector = tc.memberSelector
+			response := validator.Handle(ctx, createCreateRequest(smmr))
 			if tc.valid {
 				assert.True(response.Allowed, "Expected validator to allow ServiceMeshMemberRoll", t)
 			} else {
-				if !response.Allowed && !strings.Contains(response.Result.Message, tc.message) {
-					t.Errorf("Expected validator to reject ServiceMeshMemberRoll with the message: %q, but the message was %q",
+				if response.Allowed {
+					t.Fatalf("Expected validator to reject ServiceMeshMemberRoll, but it accepts it")
+				}
+				if !strings.Contains(response.Result.Message, tc.message) {
+					t.Fatalf("Expected validator to reject ServiceMeshMemberRoll with the message: %q, but the message was %q",
 						tc.message, response.Result.Message)
 				}
 			}
