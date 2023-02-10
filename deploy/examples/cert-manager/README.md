@@ -75,18 +75,12 @@ oc apply -f deploy/examples/cert-manager/smcp-2.3.1.yaml -n istio-system
 1. Check istiod certificate:
 ```shell
 kubectl exec $(kubectl get pods -l app=productpage -o jsonpath='{.items[0].metadata.name}') -c istio-proxy -- \
-    openssl s_client -showcerts istiod-test-prototype.istio-system:15012 < /dev/null
+    openssl s_client -showcerts istiod-basic.istio-system:15012 < /dev/null
 ```
 2. Check app certificate:
 ```shell
 kubectl exec $(kubectl get pods -l app=productpage -o jsonpath='{.items[0].metadata.name}') -c istio-proxy -- \
     openssl s_client -showcerts details.bookinfo:9080 < /dev/null
 ```
-3. Check certificates with `istioctl`:
-```shell
-istioctl pc s $(kubectl get pods -l app=productpage -o jsonpath='{.items[0].metadata.name}') -o json |\
-    jq -r '.dynamicActiveSecrets[0].secret.tlsCertificate.certificateChain.inlineBytes' |\
-    base64 --decode | openssl x509 -text -noout
-```
-4. Verify by seeing all mounts are correct on pilot, launching bookinfo and checking.
-5. It's also important to verify that the right root configmap is used for the root of trust.
+3. Verify by seeing all mounts are correct on pilot, launching bookinfo and checking.
+4. It's also important to verify that the right root configmap is used for the root of trust.
