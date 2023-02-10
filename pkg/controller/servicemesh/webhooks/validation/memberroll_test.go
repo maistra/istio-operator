@@ -81,18 +81,20 @@ func TestMemberValidation(t *testing.T) {
 		valid   bool
 		message string
 	}{
-		{valid: false, members: "", message: "Must be a valid namespace name"},
-		{valid: false, members: "-badname", message: "Must be a valid namespace name"},
-		{valid: false, members: "badname-", message: "Must be a valid namespace name"},
-		{valid: false, members: "bad%name", message: "Must be a valid namespace name"},
+		{valid: false, members: "", message: ".spec.members contains invalid value ''. Must be either a valid namespace name or a pattern. Valid patterns are: '*', 'my-namespace-123-*', etc."},
+		{valid: false, members: "-badname", message: ".spec.members contains invalid value '-badname'. Must be either a valid namespace name or a pattern. Valid patterns are: '*', 'my-namespace-123-*', etc."},
+		{valid: false, members: "badname-", message: ".spec.members contains invalid value 'badname-'. Must be either a valid namespace name or a pattern. Valid patterns are: '*', 'my-namespace-123-*', etc."},
+		{valid: false, members: "bad%name", message: ".spec.members contains invalid value 'bad%name'. Must be either a valid namespace name or a pattern. Valid patterns are: '*', 'my-namespace-123-*', etc."},
 		{valid: false, members: "duplicate-ns,foo,duplicate-ns", message: "ServiceMeshMemberRoll may not contain duplicate namespaces"},
 		{valid: true, members: "ns1"},
 		{valid: true, members: "ns-1"},
 		{valid: true, members: "ns1,ns2"},
 		{valid: true, members: "*"},
+		{valid: true, members: "book*"},
+		{valid: false, members: "*book", message: ".spec.members contains invalid value '*book'. Must be either a valid namespace name or a pattern. Valid patterns are: '*', 'my-namespace-123-*', etc."},
 		{valid: false, members: "*,ns1", message: "when .spec.members contains an asterisk ('*'), it must contain no other entries"},
 		{valid: false, members: "ns1,*", message: "when .spec.members contains an asterisk ('*'), it must contain no other entries"},
-		{valid: false, members: "*,*", message: "when .spec.members contains an asterisk ('*'), it must contain no other entries"},
+		{valid: false, members: "*,*", message: "ServiceMeshMemberRoll may not contain duplicate namespaces in .spec.members"},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.members, func(t *testing.T) {

@@ -3,7 +3,6 @@ package memberroll
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -31,7 +30,6 @@ import (
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
-	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 const (
@@ -93,7 +91,8 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 	// watch namespaces and trigger reconcile requests as those that match a member roll come and go
 	err = c.Watch(&source.Kind{Type: &corev1.Namespace{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(ns handler.MapObject) []reconcile.Request {
-			return toRequests(ctx, mgr.GetClient(), ns.Meta.GetName())
+			namespace := ns.Object.(*corev1.Namespace)
+			return toRequests(ctx, mgr.GetClient(), namespace)
 		}),
 	}, predicate.Funcs{
 		GenericFunc: func(_ event.GenericEvent) bool {
@@ -124,7 +123,7 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 		return err
 	}
 
-	// Watch ServiceMeshMembers
+	// Watch ServiceMeshMembers and reconcile SMMR
 	err = c.Watch(&source.Kind{Type: &maistrav1.ServiceMeshMember{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(mapObject handler.MapObject) []reconcile.Request {
 			member := mapObject.Object.(*maistrav1.ServiceMeshMember)
@@ -139,7 +138,12 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 			})
 
 			// reconcile ServiceMeshMemberRolls that have the ServiceMeshMember's namespace in spec.members
-			requests = append(requests, toRequests(ctx, mgr.GetClient(), member.Namespace)...)
+			ns := &corev1.Namespace{}
+			err := mgr.GetClient().Get(ctx, types.NamespacedName{Name: member.Namespace}, ns)
+			if err != nil {
+				log.Error(err, "Could not get Namespace")
+			}
+			requests = append(requests, toRequests(ctx, mgr.GetClient(), ns)...)
 			return requests
 		}),
 	})
@@ -150,7 +154,7 @@ func add(mgr manager.Manager, r *MemberRollReconciler) error {
 	return nil
 }
 
-func toRequests(ctx context.Context, cl client.Client, namespace string) []reconcile.Request {
+func toRequests(ctx context.Context, cl client.Client, ns *corev1.Namespace) []reconcile.Request {
 	log := common.LogFromContext(ctx)
 	list := &maistrav1.ServiceMeshMemberRollList{}
 	err := cl.List(ctx, list)
@@ -160,26 +164,13 @@ func toRequests(ctx context.Context, cl client.Client, namespace string) []recon
 
 	var requests []reconcile.Request
 	for _, smmr := range list.Items {
-		if isMember(namespace, smmr) {
+		if smmr.IsMember(ns) {
 			requests = append(requests, reconcile.Request{
 				NamespacedName: common.ToNamespacedName(&smmr),
 			})
 		}
 	}
 	return requests
-}
-
-func isMember(namespace string, smmr maistrav1.ServiceMeshMemberRoll) bool {
-	return (smmr.Spec.IsClusterScoped() && !isExcludedNamespace(namespace)) || contains(smmr.Spec.Members, namespace)
-}
-
-func contains(members []string, ns string) bool {
-	for _, member := range members {
-		if member == ns {
-			return true
-		}
-	}
-	return false
 }
 
 var _ reconcile.Reconciler = &MemberRollReconciler{}
@@ -274,7 +265,7 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		return reconcile.Result{}, r.updateStatus(ctx, roll)
 	}
 
-	requiredNamespaces, err := r.getRequiredNamespaces(ctx, roll, meshNamespace)
+	requiredNamespaces, err := r.getMemberNamespaces(ctx, roll)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -354,21 +345,27 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		kialiName := mesh.Status.AppliedSpec.Addons.Kiali.ResourceName()
 		roll.Status.SetAnnotation(statusAnnotationKialiName, kialiName)
 
-		var version versions.Version
-		version, err = versions.ParseVersion(mesh.Spec.Version)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		meshIsClusterScoped, err := version.Strategy().IsClusterScoped(&mesh.Spec)
-		if err != nil {
-			return reconcile.Result{}, err
+		if roll.MatchesNamespacesDynamically() {
+			panic("namespace wildcards & selectors for Kiali are not yet implemented")
 		}
 
-		if meshIsClusterScoped && roll.Spec.IsClusterScoped() {
-			kialiErr = r.kialiReconciler.reconcileKiali(ctx, kialiName, meshNamespace, []string{"**"}, getExcludedNamespaces())
-		} else {
-			kialiErr = r.kialiReconciler.reconcileKiali(ctx, kialiName, meshNamespace, allKnownMembers.List(), []string{})
-		}
+		// var version versions.Version
+		// version, err = versions.ParseVersion(mesh.Spec.Version)
+		// if err != nil {
+		// 	return reconcile.Result{}, err
+		// }
+		//
+		// meshIsClusterScoped, err := version.Strategy().IsClusterScoped(&mesh.Spec)
+		// if err != nil {
+		// 	return reconcile.Result{}, err
+		// }
+		//
+		// if meshIsClusterScoped && roll.Spec.IsClusterScoped() {
+		// 	kialiErr = r.kialiReconciler.reconcileKiali(ctx, kialiName, meshNamespace, []string{"**"}, getExcludedNamespaces())
+		// } else {
+		// 	kialiErr = r.kialiReconciler.reconcileKiali(ctx, kialiName, meshNamespace, allKnownMembers.List(), []string{})
+		// }
+		kialiErr = r.kialiReconciler.reconcileKiali(ctx, kialiName, meshNamespace, allKnownMembers.List(), []string{})
 	}
 
 	// 7. update the status
@@ -422,47 +419,19 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	return reconcile.Result{}, nil
 }
 
-func (r *MemberRollReconciler) getRequiredNamespaces(ctx context.Context, roll *maistrav1.ServiceMeshMemberRoll, meshNamespace string) (sets.String, error) {
-	if !roll.Spec.IsClusterScoped() {
-		return sets.NewString(roll.Spec.Members...).Delete(meshNamespace), nil
-	}
-
+func (r *MemberRollReconciler) getMemberNamespaces(ctx context.Context, smmr *maistrav1.ServiceMeshMemberRoll) (sets.String, error) {
 	nsList := &corev1.NamespaceList{}
 	err := r.Client.List(ctx, nsList)
 	if err != nil {
 		return nil, err
 	}
-	requiredNamespaces := sets.NewString()
+	members := sets.NewString()
 	for _, ns := range nsList.Items {
-		if ns.Name != meshNamespace && !isExcludedNamespace(ns.Name) {
-			requiredNamespaces.Insert(ns.Name)
+		if smmr.IsMember(&ns) {
+			members.Insert(ns.Name)
 		}
 	}
-	return requiredNamespaces, nil
-}
-
-func isExcludedNamespace(ns string) bool {
-	for _, regex := range getExcludedNamespaces() {
-		// ideally we'd compile the patterns on init, but common.GetOperatorNamespace() isn't available at that time yet
-		match, err := regexp.Match(regex, []byte(ns))
-		if err != nil {
-			panic(err)
-		}
-		if match {
-			return true
-		}
-	}
-	return false
-}
-
-func getExcludedNamespaces() []string {
-	return []string{
-		"^" + common.GetOperatorNamespace() + "$",
-		"^kube$",
-		"^openshift$",
-		"^kube-.*",
-		"^openshift-.*",
-	}
+	return members, nil
 }
 
 func setMemberCondition(memberStatusMap map[string]maistrav1.ServiceMeshMemberStatusSummary, ns string, condition maistrav1.ServiceMeshMemberCondition) {

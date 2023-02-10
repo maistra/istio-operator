@@ -6,6 +6,7 @@
 package v1
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -306,6 +307,16 @@ func (in *ServiceMeshMemberRollSpec) DeepCopyInto(out *ServiceMeshMemberRollSpec
 	*out = *in
 	if in.Members != nil {
 		in, out := &in.Members, &out.Members
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.MemberSelector != nil {
+		in, out := &in.MemberSelector, &out.MemberSelector
+		*out = new(metav1.LabelSelector)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.ExcludeNamespaces != nil {
+		in, out := &in.ExcludeNamespaces, &out.ExcludeNamespaces
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
