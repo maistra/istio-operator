@@ -11,6 +11,8 @@ var (
 	IstioRootCertKey = "root-cert.pem"
 	// IstiodCertKey name of Secret entry Istiod uses for the cert
 	IstiodCertKey = "ca-cert.pem"
+	// IstiodCertManagerCertKey name of Secret entry containing intermediate certificate for Istio provided by cert-manager
+	IstiodCertManagerCertKey = "tls.crt"
 	// ServiceCABundleKey name of config map entry service-ca operator uses for the CA bundle
 	ServiceCABundleKey = "service-ca.crt"
 )

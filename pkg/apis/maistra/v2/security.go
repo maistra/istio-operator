@@ -179,6 +179,13 @@ type CertManagerCertificateAuthorityConfig struct {
 	RootCAConfigMapName string `json:"rootCAConfigMapName,omitempty"`
 }
 
+func (c *CertManagerCertificateAuthorityConfig) GetRootCAConfigMapName() string {
+	if c.RootCAConfigMapName == "" {
+		return "istio-ca-root-cert"
+	}
+	return c.RootCAConfigMapName
+}
+
 // IdentityConfig configures the types of user tokens used by clients
 type IdentityConfig struct {
 	// Type is the type of identity tokens being used.
