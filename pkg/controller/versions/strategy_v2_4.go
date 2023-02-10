@@ -17,6 +17,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
+	"k8s.io/utils/pointer"
 	apiv1 "maistra.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -510,6 +511,13 @@ func (v *versionStrategyV2_4) Render(ctx context.Context, cr *common.ControllerR
 	}
 	kubeVersion := serverVersion.String()
 
+	if smcp.Status.AppliedSpec.Mode == v2.ClusterWideMode {
+		err = v.createMemberRoll(ctx, cr, smcp)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Render the charts
 	allErrors := []error{}
 	renderings := make(map[string][]manifest.Manifest)
@@ -701,4 +709,46 @@ func (v *versionStrategyV2_4) validateGlobal(
 	}
 
 	return validateGlobal(ctx, version, meta, spec, cl, allErrors)
+}
+
+func (v *versionStrategyV2_4) createMemberRoll(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) error {
+	log := common.LogFromContext(ctx)
+
+	memberRoll := &v1.ServiceMeshMemberRoll{}
+	err := cr.Client.Get(ctx, client.ObjectKey{Name: common.MemberRollName, Namespace: smcp.Namespace}, memberRoll)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		// MemberRoll doesn't exist, let's create it
+		memberRoll = &v1.ServiceMeshMemberRoll{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      common.MemberRollName,
+				Namespace: smcp.Namespace,
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: v2.SchemeGroupVersion.String(),
+						Kind:       "ServiceMeshControlPlane",
+						Name:       smcp.Name,
+						UID:        smcp.UID,
+						Controller: pointer.BoolPtr(true),
+					},
+				},
+			},
+			Spec: v1.ServiceMeshMemberRollSpec{
+				MemberSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"istio-injection": "enabled",
+					},
+				},
+			},
+		}
+
+		log.Info("Creating ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll).String())
+		err = cr.Client.Create(ctx, memberRoll)
+		if err != nil && !errors.IsConflict(err) {
+			return pkgerrors.Wrapf(err, "Could not create ServiceMeshMemberRoll %s/%s", smcp.Namespace, memberRoll.Name)
+		}
+	}
+	return nil
 }
