@@ -1,8 +1,11 @@
 package v1
 
 import (
+	"strings"
+
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 )
@@ -58,15 +61,89 @@ type ServiceMeshMemberRollSpec struct {
 	// +optional
 	// +nullable
 	Members []string `json:"members,omitempty"`
+
+	// Include namespaces with label keys and values matching this selector.
+	// +optional
+	MemberSelector *metav1.LabelSelector `json:"memberSelector,omitempty"`
 }
 
-func (s *ServiceMeshMemberRollSpec) IsClusterScoped() bool {
-	for _, ns := range s.Members {
-		if ns == "*" {
+func (smmr *ServiceMeshMemberRoll) IsMember(ns *core.Namespace) bool {
+	return smmr.isIncluded(ns) && !smmr.isExcluded(ns)
+}
+
+func (smmr *ServiceMeshMemberRoll) isIncluded(ns *core.Namespace) bool {
+	// include namespace if spec.members=["*"]
+	if hasAsterisk(smmr.Spec.Members) {
+		return true
+	}
+
+	// check if ns is in spec.members
+	for _, m := range smmr.Spec.Members {
+		if ns.Name == m {
 			return true
 		}
 	}
-	return false
+
+	// check if namespace labels match the label selector
+	return selectorMatches(smmr.Spec.MemberSelector, ns.Labels)
+}
+
+func hasAsterisk(members []string) bool {
+	return len(members) == 1 && members[0] == "*"
+}
+
+func (smmr *ServiceMeshMemberRoll) isExcluded(ns *core.Namespace) bool {
+	return ns.Name == smmr.Namespace ||
+		ns.Name == "kube" ||
+		ns.Name == "openshift" ||
+		strings.HasPrefix(ns.Name, "kube-") ||
+		strings.HasPrefix(ns.Name, "openshift-") ||
+		strings.HasPrefix(ns.Name, "ibm-")
+}
+
+// MatchesNamespacesDynamically returns true if the SMMR contains wildcards in
+// spec.members or defines a member selector. In either case, the list of members
+// is dynamic, as the member namespace list can change with no change to the SMMR.
+func (smmr *ServiceMeshMemberRoll) MatchesNamespacesDynamically() bool {
+	return hasAsterisk(smmr.Spec.Members) || smmr.Spec.MemberSelector != nil
+}
+
+func selectorMatches(selector *metav1.LabelSelector, labels map[string]string) bool {
+	if selector == nil {
+		return false
+	}
+
+	for k, v := range selector.MatchLabels {
+		if labels[k] != v {
+			return false
+		}
+	}
+
+	for _, requirement := range selector.MatchExpressions {
+		value, exists := labels[requirement.Key]
+		switch requirement.Operator {
+		case metav1.LabelSelectorOpIn:
+			values := sets.NewString(requirement.Values...)
+			if !values.Has(value) {
+				return false
+			}
+		case metav1.LabelSelectorOpNotIn:
+			for _, v := range requirement.Values {
+				if value == v {
+					return false
+				}
+			}
+		case metav1.LabelSelectorOpExists:
+			if !exists {
+				return false
+			}
+		case metav1.LabelSelectorOpDoesNotExist:
+			if exists {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // ServiceMeshMemberRollStatus represents the current state of a ServiceMeshMemberRoll.
