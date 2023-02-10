@@ -8,7 +8,7 @@ OpenShift Service Mesh requires cert-manager to provide:
     * namespace: the same one in which SMCP is deployed;
     * data keys: `tls.key` and `tls.crt`.
 * a config map with a root certificate:
-    * name: `istio-ca-root-cert`;
+    * name: `istio-ca-root-cert` or custom specified in `spec.security.certificateAuthority.cert-manager.rootCAConfigMapName`;
     * namespace: the same one in which SMCP is deployed;
     * data key: `root-cert.pem`.
 

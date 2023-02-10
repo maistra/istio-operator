@@ -144,12 +144,12 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				return fmt.Errorf("cert-manager ca config: failed converting CA implementation to helm: %s", err.Error())
 			}
 
-			CertManagerConf := security.CertificateAuthority.CertManager
-			if CertManagerConf == nil {
+			certManagerConf := security.CertificateAuthority.CertManager
+			if certManagerConf == nil {
 				break
 			}
 
-			if err := setHelmStringValue(values, "global.caAddress", CertManagerConf.Address); err != nil {
+			if err := setHelmStringValue(values, "global.caAddress", certManagerConf.Address); err != nil {
 				return fmt.Errorf("cert-manager ca config: failed converting CA address to helm: %s", err.Error())
 			}
 
@@ -188,7 +188,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				{
 					"name": "ca-root-cert",
 					"configMap": map[string]interface{}{
-						"name": "istio-ca-root-cert",
+						"name": certManagerConf.GetRootCAConfigMapName(),
 					},
 				},
 			}
