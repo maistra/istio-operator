@@ -3,7 +3,7 @@
 #### Requirements
 
 OpenShift Service Mesh requires cert-manager to provide:
-* a secret with an intermediate CA key and certificate for istiod:
+* a TLS secret with an intermediate CA key and certificate for istiod:
     * name: `istiod-tls`;
     * namespace: the same one in which SMCP is deployed;
     * data keys: `tls.key` and `tls.crt`.
