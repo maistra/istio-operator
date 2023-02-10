@@ -1,13 +1,29 @@
-# Integration with cert-manager-istio-csr
+## Integration with cert-manager and istio-csr
+
+#### Requirements
+
+OpenShift Service Mesh requires cert-manager to provide:
+* a secret with an intermediate CA key and certificate for istiod:
+    * name: `istiod-tls`;
+    * namespace: the same one in which SMCP is deployed;
+    * data keys: `tls.key` and `tls.crt`.
+* a config map with a root certificate:
+    * name: `istio-ca-root-cert`;
+    * namespace: the same one in which SMCP is deployed;
+    * data key: `root-cert.pem`.
+
+Currently, istio-csr does not allow customizing namespace in which secrets and config maps are created,
+but if it will change in the future, OSSM users will have to configure istio-csr to provide objects named as described above.
+
+#### Steps
 
 1. Install cert-manager
 ```shell
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.11.0/cert-manager.crds.yaml
-helm install \
-    cert-manager jetstack/cert-manager \
+helm install cert-manager jetstack/cert-manager \
     --namespace cert-manager \
     --create-namespace \
-    --version v1.11.0
+    --version v1.11.0 \
+    --set installCRDs=true
 ```
 
 2. Provision certificates:
