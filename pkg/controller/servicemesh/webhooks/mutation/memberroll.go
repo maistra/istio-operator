@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
@@ -65,9 +66,22 @@ func (v *MemberRollMutator) Handle(ctx context.Context, req admission.Request) a
 		}
 	}
 
+	excludeNamespaces := roll.Spec.ExcludeNamespaces
+	if roll.MatchesNamespacesDynamically() {
+		// explicitly add system namespaces to .spec.excludeNamespaces
+		additionalExcludes := sets.NewString(roll.Namespace, "kube", "kube-*", "openshift", "openshift-*", "ibm-*").
+			Difference(sets.NewString(roll.Spec.ExcludeNamespaces...))
+
+		for _, ex := range additionalExcludes.List() {
+			excludeNamespaces = append(excludeNamespaces, ex)
+			rollMutated = true
+		}
+	}
+
 	if rollMutated {
 		newRoll := roll.DeepCopy()
 		newRoll.Spec.Members = filteredMembers
+		newRoll.Spec.ExcludeNamespaces = excludeNamespaces
 		return PatchResponse(req.Object, newRoll)
 	}
 	return admission.Allowed("")

@@ -33,7 +33,9 @@ type MemberRollValidator struct {
 }
 
 func init() {
-	memberRegex = regexp.MustCompile("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
+	validNamespaceName := "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" // matches: foo, foo-bar, foo-123, ...
+	wildcardWithOptionalPrefix := "^[-a-z0-9]*\\*$"         // matches: *, foo*, foo-*, foo-123*, ...
+	memberRegex = regexp.MustCompile(validNamespaceName + "|" + wildcardWithOptionalPrefix)
 }
 
 func NewMemberRollValidator(namespaceFilter webhookcommon.NamespaceFilter) *MemberRollValidator {
@@ -83,15 +85,16 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request)
 	}
 
 	// check if namespace names conform to DNS-1123 (we must check this in code, because +kubebuilder:validation:Pattern can't be applied to array elements yet)
-	if smmr.Spec.IsClusterScoped() {
-		if len(smmr.Spec.Members) > 1 {
-			return badRequest("when .spec.members contains an asterisk ('*'), it must contain no other entries")
+	for _, member := range smmr.Spec.Members {
+		if !memberRegex.MatchString(member) {
+			return badRequest(fmt.Sprintf(".spec.members contains invalid value '%s'. Must be either a valid namespace name or a pattern. "+
+				"Valid patterns are: '*', 'my-namespace-123-*', etc.", member))
 		}
-	} else {
-		for _, member := range smmr.Spec.Members {
-			if !memberRegex.MatchString(member) {
-				return badRequest(fmt.Sprintf(".spec.members contains invalid value '%s'. Must be a valid namespace name.", member))
-			}
+	}
+	for _, member := range smmr.Spec.ExcludeNamespaces {
+		if !memberRegex.MatchString(member) {
+			return badRequest(fmt.Sprintf(".spec.excludeNamespaces contains invalid value '%s'. Must be either a valid namespace name or a pattern. "+
+				"Valid patterns are: '*', 'my-namespace-123-*', etc.", member))
 		}
 	}
 
@@ -132,8 +135,9 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request)
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 	if !allowed {
-		if smmr.Spec.IsClusterScoped() {
-			return forbidden(fmt.Sprintf("user '%s' does not have permission to access all namespaces", req.AdmissionRequest.UserInfo.Username))
+		if smmr.MatchesNamespacesDynamically() {
+			return forbidden(fmt.Sprintf("only users that are allowed to update pods at the cluster scope are allowed to use wildcards or member selectors; "+
+				"user %s does not have that permission", req.AdmissionRequest.UserInfo.Username))
 		}
 
 		// check each namespace separately, but only check newly added namespaces
