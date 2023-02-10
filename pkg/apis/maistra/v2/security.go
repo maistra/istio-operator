@@ -174,7 +174,9 @@ type CustomCertificateAuthorityConfig struct {
 type CertManagerCertificateAuthorityConfig struct {
 	// Address is the grpc address for an Istio compatible certificate authority endpoint.
 	// .Values.global.caAddress
-	Address string `json:"address,omitempty"`
+	Address             string `json:"address,omitempty"`
+	PilotCertSecretName string `json:"pilotSecretName,omitempty"`
+	RootCAConfigMapName string `json:"rootCAConfigMapName,omitempty"`
 }
 
 // IdentityConfig configures the types of user tokens used by clients
