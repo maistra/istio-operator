@@ -1277,6 +1277,31 @@ var (
 				},
 			}),
 		},
+		{
+			name: "cluster-scoped",
+			smcpv1: v1.ControlPlaneSpec{
+				Version: "v2.3",
+				Istio: v1.NewHelmValues(map[string]interface{}{
+					"global": map[string]interface{}{
+						"clusterScoped": true,
+					},
+				}),
+			},
+			smcpv2: v2.ControlPlaneSpec{
+				Version: "v2.3",
+				TechPreview: v1.NewHelmValues(map[string]interface{}{
+					v2.ControlPlaneModeKey: v2.ControlPlaneModeValueClusterScoped,
+				}),
+			},
+			cruft: v1.NewHelmValues(map[string]interface{}{
+				"global": map[string]interface{}{
+					// mesh expansion is disabled by default
+					"meshExpansion": globalMeshExpansionDefaults,
+					// multicluster is disabled by default
+					"multiCluster": globalMultiClusterDefaults,
+				},
+			}),
+		},
 	}
 )
 
@@ -1387,9 +1412,7 @@ func TestTechPreviewConversionFromV2(t *testing.T) {
 	runTestCasesFromV2(techPreviewTestCases, t)
 }
 
-// v1.1 is deprecated and skip TestRoundTripConversion
 func TestRoundTripConversion(t *testing.T) {
-	t.Skip("v1.1 is deprecated and skip TestRoundTripConversion")
 	for _, tc := range roundTripTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.skip {

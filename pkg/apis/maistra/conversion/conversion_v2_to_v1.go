@@ -150,6 +150,17 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 		namespace = "istio-system" // a sensible default
 	}
 
+	isClusterScoped, err := in.IsClusterScoped()
+	if err != nil {
+		return err
+	}
+	delete(values, v2.ControlPlaneModeKey)
+	if isClusterScoped {
+		if err := setHelmBoolValue(values, "global.clusterScoped", isClusterScoped); err != nil {
+			return err
+		}
+	}
+
 	// Cluster settings
 	// cluster must come first as it may modify other settings on the input (e.g. meshExpansionPorts)
 	if err := populateClusterValues(in, namespace, values); err != nil {
