@@ -2,10 +2,10 @@ replicaCount: 3
 
 image:
   repository: quay.io/jetstack/cert-manager-istio-csr
-  tag: v0.3.0
+  tag: v0.5.0
+  pullSecretName: ""
 
 app:
-
   certmanager:
     namespace: istio-system
     preserveCertificateRequests: true
@@ -24,14 +24,9 @@ app:
       - cert-manager-istio-csr.cert-manager.svc
 
   istio:
-    revisions: ["test-prototype"]
+    revisions: ["basic"]
   server:
     maxCertificateDuration: 5m
     serving:
       address: 0.0.0.0
       port: 6443
-
-  controller:
-    rootCAConfigMapName: istio-ca-root-cert
-
-
