@@ -21,7 +21,7 @@ spec:
       type: ThirdParty
   tracing:
     type: None
-  version: v2.3
+  version: v2.4
 ---
 apiVersion: maistra.io/v1
 kind: ServiceMeshMemberRoll
