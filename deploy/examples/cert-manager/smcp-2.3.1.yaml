@@ -14,6 +14,8 @@ spec:
     certificateAuthority:
       cert-manager:
         address: cert-manager-istio-csr.cert-manager.svc:443
+        pilotSecretName: istiod-tls
+        rootCAConfigMapName: istio-ca-root-cert
       type: cert-manager
     dataPlane:
       mtls: true
@@ -21,7 +23,7 @@ spec:
       type: ThirdParty
   tracing:
     type: None
-  version: v2.4
+  version: v2.3
 ---
 apiVersion: maistra.io/v1
 kind: ServiceMeshMemberRoll

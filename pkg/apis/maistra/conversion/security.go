@@ -144,12 +144,12 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				return fmt.Errorf("cert-manager ca config: failed converting CA implementation to helm: %s", err.Error())
 			}
 
-			CertManagerConf := security.CertificateAuthority.CertManager
-			if CertManagerConf == nil {
+			certManagerConf := security.CertificateAuthority.CertManager
+			if certManagerConf == nil {
 				break
 			}
 
-			if err := setHelmStringValue(values, "global.caAddress", CertManagerConf.Address); err != nil {
+			if err := setHelmStringValue(values, "global.caAddress", certManagerConf.Address); err != nil {
 				return fmt.Errorf("cert-manager ca config: failed converting CA address to helm: %s", err.Error())
 			}
 
@@ -158,16 +158,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			extraArgs := []string{
 				"--tlsCertFile=/etc/cert-manager/tls/tls.crt",
 				"--tlsKeyFile=/etc/cert-manager/tls/tls.key",
-				"--caCertFile=/etc/cert-manager/tls/ca.crt",
-			}
-
-			suppliedRootConfigMap := (CertManagerConf.RootCAConfigMapName != "")
-
-			if suppliedRootConfigMap {
-				extraArgs[2] = "--caCertFile=/etc/cert-manager/ca/root-cert.pem"
-			} else {
-				fmt.Printf(`Warning! using istiod-tls ca.crt key as root of trust for mesh,\
-				 this will likely work but is not a recommended Trust On First Use pattern. Set rootCAConfigMapName to 'istio-ca-root-cert' instead`)
+				"--caCertFile=/etc/cert-manager/ca/root-cert.pem",
 			}
 
 			if err := setHelmStringSliceValue(values, "pilot.extraArgs", extraArgs); err != nil {
@@ -180,32 +171,26 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 					"mountPath": "/etc/cert-manager/tls",
 					"readyOnly": "true",
 				},
-			}
-
-			if suppliedRootConfigMap {
-				extraVolumeMounts = append(extraVolumeMounts, map[string]interface{}{
+				{
 					"name":      "ca-root-cert",
 					"mountPath": "/etc/cert-manager/ca",
 					"readyOnly": "true",
-				})
+				},
 			}
 
 			extraVolumes := []map[string]interface{}{
 				{
 					"name": "cert-manager",
 					"secret": map[string]interface{}{
-						"secretName": CertManagerConf.PilotCertSecretName,
+						"secretName": "istiod-tls",
 					},
 				},
-			}
-
-			if suppliedRootConfigMap {
-				extraVolumes = append(extraVolumes, map[string]interface{}{
+				{
 					"name": "ca-root-cert",
 					"configMap": map[string]interface{}{
-						"name": "istio-ca-root-cert",
+						"name": certManagerConf.GetRootCAConfigMapName(),
 					},
-				})
+				},
 			}
 
 			if err := setHelmMapSliceValue(values, "pilot.extraVolumeMounts", extraVolumeMounts); err != nil {
@@ -509,27 +494,6 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version
 		} else if err != nil {
 			return err
 		}
-		// We rely on convention on volume names to do the reverse mapping properly
-		if extraVolumes, ok, err := in.GetAndRemoveSlice("pilot.extraVolumes"); ok {
-			for _, volumeRaw := range extraVolumes {
-				if volume, ok := volumeRaw.(map[string]interface{}); ok {
-					volumeName := volume["name"]
-					if volumeName == "cert-manager" {
-						if volumeSecret, ok := volume["secret"].(map[string]interface{}); ok {
-							ca.CertManager.PilotCertSecretName = volumeSecret["secretName"].(string)
-						}
-					}
-
-					if volumeName == "ca-root-cert" {
-						if volumeConfigMap, ok := volume["configMap"].(map[string]interface{}); ok {
-							ca.CertManager.RootCAConfigMapName = volumeConfigMap["name"].(string)
-						}
-					}
-				}
-			}
-		} else if err != nil {
-			return err
-		}
 
 		if _, ok, err := in.GetAndRemoveSlice("pilot.extraArgs"); !ok {
 			if err != nil {
@@ -538,6 +502,12 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version
 		}
 
 		if _, ok, err := in.GetAndRemoveSlice("pilot.extraVolumeMounts"); !ok {
+			if err != nil {
+				return err
+			}
+		}
+
+		if _, ok, err := in.GetAndRemoveSlice("pilot.extraVolumes"); !ok {
 			if err != nil {
 				return err
 			}

@@ -32,6 +32,7 @@ const (
 	galleyWebhookNamePrefix          = "istio-galley-"
 	istiodSecretName                 = "istio-ca-secret"
 	istiodCustomCertSecretName       = "cacerts"
+	istiodCertManagerSecretName      = "istiod-tls"
 	istiodWebhookNamePrefix          = "istiod-"
 	istioValidatorWebhookNamePrefix  = "istio-validator-"
 	sidecarInjectorSecretName        = "istio.istio-sidecar-injector-service-account"
@@ -45,20 +46,52 @@ const (
 // secretNames determines priority.
 var autoRegistrationMap = map[string]CABundleSource{
 	galleyWebhookNamePrefix: &SecretCABundleSource{
-		SecretNames: []string{galleySecretName},
-		Key:         common.IstioRootCertKey,
+		SecretNameKeyPairs: []SecretNameKeyPair{
+			{
+				SecretName: galleySecretName,
+				Key:        common.IstioRootCertKey,
+			},
+		},
 	},
 	sidecarInjectorWebhookNamePrefix: &SecretCABundleSource{
-		SecretNames: []string{sidecarInjectorSecretName},
-		Key:         common.IstioRootCertKey,
+		SecretNameKeyPairs: []SecretNameKeyPair{
+			{
+				SecretName: sidecarInjectorSecretName,
+				Key:        common.IstioRootCertKey,
+			},
+		},
 	},
 	istiodWebhookNamePrefix: &SecretCABundleSource{
-		SecretNames: []string{istiodCustomCertSecretName, istiodSecretName},
-		Key:         common.IstiodCertKey,
+		SecretNameKeyPairs: []SecretNameKeyPair{
+			{
+				SecretName: istiodCustomCertSecretName,
+				Key:        common.IstiodCertKey,
+			},
+			{
+				SecretName: istiodSecretName,
+				Key:        common.IstiodCertKey,
+			},
+			{
+				SecretName: istiodCertManagerSecretName,
+				Key:        common.IstiodCertManagerCertKey,
+			},
+		},
 	},
 	istioValidatorWebhookNamePrefix: &SecretCABundleSource{
-		SecretNames: []string{istiodCustomCertSecretName, istiodSecretName},
-		Key:         common.IstiodCertKey,
+		SecretNameKeyPairs: []SecretNameKeyPair{
+			{
+				SecretName: istiodCustomCertSecretName,
+				Key:        common.IstiodCertKey,
+			},
+			{
+				SecretName: istiodSecretName,
+				Key:        common.IstiodCertKey,
+			},
+			{
+				SecretName: istiodCertManagerSecretName,
+				Key:        common.IstiodCertManagerCertKey,
+			},
+		},
 	},
 }
 
