@@ -101,6 +101,49 @@ func securityTestCasesV2(version versions.Version) []conversionTestCase {
 		}
 	}
 
+	pilotValuesForCertManager := map[string]interface{}{
+		"ca": map[string]interface{}{"implementation": "cert-manager"},
+	}
+	if version.Version() >= versions.V2_4 {
+		pilotValuesForCertManager["extraArgs"] = []string{
+			"--tlsCertFile=/var/run/secrets/istiod/tls/tls.crt",
+			"--tlsKeyFile=/var/run/secrets/istiod/tls/tls.key",
+			"--caCertFile=/var/run/secrets/istiod/ca/root-cert.pem",
+		}
+	} else {
+		pilotValuesForCertManager["extraArgs"] = []string{
+			"--tlsCertFile=/etc/cert-manager/tls/tls.crt",
+			"--tlsKeyFile=/etc/cert-manager/tls/tls.key",
+			"--caCertFile=/etc/cert-manager/ca/root-cert.pem",
+		}
+		pilotValuesForCertManager["extraVolumeMounts"] = []interface{}{
+			map[string]interface{}{
+				"name":      "cert-manager",
+				"mountPath": "/etc/cert-manager/tls",
+				"readyOnly": "true",
+			},
+			map[string]interface{}{
+				"name":      "ca-root-cert",
+				"mountPath": "/etc/cert-manager/ca",
+				"readyOnly": "true",
+			},
+		}
+		pilotValuesForCertManager["extraVolumes"] = []interface{}{
+			map[string]interface{}{
+				"name": "cert-manager",
+				"secret": map[string]interface{}{
+					"secretName": "istiod-tls",
+				},
+			},
+			map[string]interface{}{
+				"name": "ca-root-cert",
+				"configMap": map[string]interface{}{
+					"name": "istio-ca-root-cert",
+				},
+			},
+		}
+	}
+
 	return []conversionTestCase{
 		{
 			name: "nil." + ver,
@@ -625,40 +668,7 @@ func securityTestCasesV2(version versions.Version) []conversionTestCase {
 				"global": map[string]interface{}{
 					"caAddress": "my-istio-csr.namespace.svc.cluster.local",
 				},
-				"pilot": map[string]interface{}{
-					"ca": map[string]interface{}{"implementation": "cert-manager"},
-					"extraArgs": []string{
-						"--tlsCertFile=/etc/cert-manager/tls/tls.crt",
-						"--tlsKeyFile=/etc/cert-manager/tls/tls.key",
-						"--caCertFile=/etc/cert-manager/ca/root-cert.pem",
-					},
-					"extraVolumeMounts": []interface{}{
-						map[string]interface{}{
-							"name":      "cert-manager",
-							"mountPath": "/etc/cert-manager/tls",
-							"readyOnly": "true",
-						},
-						map[string]interface{}{
-							"name":      "ca-root-cert",
-							"mountPath": "/etc/cert-manager/ca",
-							"readyOnly": "true",
-						},
-					},
-					"extraVolumes": []interface{}{
-						map[string]interface{}{
-							"name": "cert-manager",
-							"secret": map[string]interface{}{
-								"secretName": "istiod-tls",
-							},
-						},
-						map[string]interface{}{
-							"name": "ca-root-cert",
-							"configMap": map[string]interface{}{
-								"name": "istio-ca-root-cert",
-							},
-						},
-					},
-				},
+				"pilot": pilotValuesForCertManager,
 			}),
 			completeIstio: v1.NewHelmValues(map[string]interface{}{
 				"global": map[string]interface{}{
@@ -667,7 +677,7 @@ func securityTestCasesV2(version versions.Version) []conversionTestCase {
 				},
 				"pilot": map[string]interface{}{
 					"env": map[string]interface{}{
-						"ENABLE_CA_SERVER": string("false"),
+						"ENABLE_CA_SERVER": "false",
 					},
 				},
 			}),
@@ -689,40 +699,7 @@ func securityTestCasesV2(version versions.Version) []conversionTestCase {
 				"global": map[string]interface{}{
 					"caAddress": "my-istio-csr.namespace.svc.cluster.local",
 				},
-				"pilot": map[string]interface{}{
-					"ca": map[string]interface{}{"implementation": "cert-manager"},
-					"extraArgs": []string{
-						"--tlsCertFile=/etc/cert-manager/tls/tls.crt",
-						"--tlsKeyFile=/etc/cert-manager/tls/tls.key",
-						"--caCertFile=/etc/cert-manager/ca/root-cert.pem",
-					},
-					"extraVolumeMounts": []interface{}{
-						map[string]interface{}{
-							"name":      "cert-manager",
-							"mountPath": "/etc/cert-manager/tls",
-							"readyOnly": "true",
-						},
-						map[string]interface{}{
-							"name":      "ca-root-cert",
-							"mountPath": "/etc/cert-manager/ca",
-							"readyOnly": "true",
-						},
-					},
-					"extraVolumes": []interface{}{
-						map[string]interface{}{
-							"name": "cert-manager",
-							"secret": map[string]interface{}{
-								"secretName": "istiod-tls",
-							},
-						},
-						map[string]interface{}{
-							"name": "ca-root-cert",
-							"configMap": map[string]interface{}{
-								"name": "istio-ca-root-cert",
-							},
-						},
-					},
-				},
+				"pilot": pilotValuesForCertManager,
 			}),
 			completeIstio: v1.NewHelmValues(map[string]interface{}{
 				"global": map[string]interface{}{
@@ -731,7 +708,7 @@ func securityTestCasesV2(version versions.Version) []conversionTestCase {
 				},
 				"pilot": map[string]interface{}{
 					"env": map[string]interface{}{
-						"ENABLE_CA_SERVER": string("false"),
+						"ENABLE_CA_SERVER": "false",
 					},
 				},
 			}),
