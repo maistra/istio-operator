@@ -3,8 +3,13 @@ kind: ServiceMeshControlPlane
 metadata:
   name: basic
 spec:
-  profiles:
-  - small
+  addons:
+    grafana:
+      enabled: false
+    kiali:
+      enabled: false
+    prometheus:
+      enabled: false
   security:
     certificateAuthority:
       cert-manager:
@@ -14,6 +19,8 @@ spec:
       type: cert-manager
     dataPlane:
       mtls: true
+    identity:
+      type: ThirdParty
   tracing:
     type: None
   version: v2.3
