@@ -199,7 +199,7 @@ function patchGalley() {
           - name: ENABLE_IOR\
             value: "{{ $iorEnabled }}"\
           - name: PILOT_CA_CERT_CONFIG_MAP_NAME\
-            value: "{{ .Values.global.caRootCertConfigMap }}"\
+            value: "{{ .Values.global.caCertConfigMapName }}"\
 {{- if .Values.gatewayAPI.enabled }}\
           - name: PILOT_ENABLE_GATEWAY_API\
             value: "true"\
@@ -226,7 +226,7 @@ function patchGalley() {
             value: "false"\
 {{- end }}' "${deployment}"
 
-  sed_wrap -i -e 's/istio-ca-root-cert/"{{ .Values.global.caRootCertConfigMap }}"/g' \
+  sed_wrap -i -e 's/istio-ca-root-cert/"{{ .Values.global.caCertConfigMapName }}"/g' \
       "${deployment}"
 
   sed_wrap -i -e '/base:/ i\
@@ -377,9 +377,6 @@ gatewayAPI:
     # shellcheck disable=SC2016
     sed_wrap -i -e 's/^\( *\)namespace:.*/\1namespace: {{ $gateway.namespace | default .Release.Namespace }}/' "$file"
   done
-  # shellcheck disable=SC2016
-  sed_wrap -i -e 's$istio-ca-root-cert$"{{ .Values.global.caRootCertConfigMap }}"$g' \
-      "${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml" "${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml"
 }
 
 function patchSidecarInjector() {
@@ -432,9 +429,6 @@ function patchSidecarInjector() {
   # shellcheck disable=SC2016
   sed_wrap -i -e 's$traffic.sidecar.istio.io/excludeInboundPorts: "{{ excludeInboundPort (annotation .ObjectMeta `status.sidecar.istio.io/port` .Values.global.proxy.statusPort) (annotation .ObjectMeta `traffic.sidecar.istio.io/excludeInboundPorts` .Values.global.proxy.excludeInboundPorts) }}"$traffic.sidecar.istio.io/excludeInboundPorts: "15090,{{ excludeInboundPort (annotation .ObjectMeta `status.sidecar.istio.io/port` .Values.global.proxy.statusPort) (annotation .ObjectMeta `traffic.sidecar.istio.io/excludeInboundPorts` .Values.global.proxy.excludeInboundPorts) }}"$' \
       "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
-  # shellcheck disable=SC2016
-  sed_wrap -i -e 's$istio-ca-root-cert$"{{ .Values.global.caRootCertConfigMap }}"$g' \
-      "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml" "${HELM_DIR}/istio-control/istio-discovery/files/gateway-injection-template.yaml"      
 }
 
 # The following modifications are made to the generated helm template for the Kiali yaml file
@@ -541,7 +535,6 @@ global:\
 
 function copyGlobalValues() {
   echo "copying global.yaml file from overlay charts as global.yaml file is removed in upstream but it's still needed."
-  cp "${SOURCE_DIR}/resources/helm/overlays/global.yaml" "${SOURCE_DIR}/resources/helm/v2.3/"
   cp "${SOURCE_DIR}/resources/helm/overlays/global.yaml" "${SOURCE_DIR}/resources/helm/v2.4/"
 }
 
