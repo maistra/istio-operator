@@ -297,7 +297,7 @@ spec:
       - name: istiod-ca-cert
         configMap:
           defaultMode: 420
-          name: istio-ca-root-cert
+          name: {{ .Values.global.caCertConfigMapName }}
         {{- end }}
 {{- end }}
 

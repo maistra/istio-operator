@@ -237,6 +237,9 @@ global:
   # CSR clients such as the Istio Agent and ingress gateways can use this to specify the CA endpoint.
   caAddress: ""
 
+  # The name of the ConfigMap that stores the CA Root Certificate
+  caCertConfigMapName: "istio-ca-root-cert"
+
   # Used to locate istiod.
   istioNamespace: istio-system
 

@@ -374,7 +374,7 @@ spec:
 {{- if eq .Values.global.pilotCertProvider "istiod" }}
       - name: istiod-ca-cert
         configMap:
-          name: "{{ .Values.global.caRootCertConfigMap }}"
+          name: {{ .Values.global.caCertConfigMapName }}
 {{- end }}
       - name: podinfo
         downwardAPI:

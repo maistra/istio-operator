@@ -144,7 +144,7 @@ spec:
           - name: ENABLE_IOR
             value: "{{ $iorEnabled }}"
           - name: PILOT_CA_CERT_CONFIG_MAP_NAME
-            value: "{{ .Values.global.caRootCertConfigMap }}"
+            value: "{{ .Values.global.caCertConfigMapName }}"
 {{- if .Values.gatewayAPI.enabled }}
           - name: PILOT_ENABLE_GATEWAY_API
             value: "true"
@@ -327,7 +327,7 @@ spec:
           optional: true
       - name: istio-csr-ca-configmap
         configMap:
-          name: "{{ .Values.global.caRootCertConfigMap }}"
+          name: "{{ .Values.global.caCertConfigMapName }}"
           defaultMode: 420
           optional: true
   {{- if .Values.pilot.jwksResolverExtraRootCA }}

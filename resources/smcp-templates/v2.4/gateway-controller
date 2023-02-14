@@ -14,7 +14,7 @@ spec:
     type: None
   techPreview:
     global:
-      caRootCertConfigMap: ossm-ca-root-cert
+      caCertConfigMapName: ossm-ca-root-cert
     controlPlaneMode: ClusterScoped
     gatewayAPI:
       enabled: true
