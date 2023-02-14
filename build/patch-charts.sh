@@ -81,6 +81,12 @@ function patchTemplates() {
       sed_wrap -i -e '/operator\.istio\.io/d' "$file"
     fi
   done
+
+    echo "
+gatewayAPI:
+  enabled: false
+  controllerMode: false" | \
+    tee >(cat >> "${HELM_DIR}/istio-control/istio-discovery/values.yaml")
 }
 
 function patchGalley() {
