@@ -143,6 +143,33 @@ spec:
 {{- end }}
           - name: ENABLE_IOR
             value: "{{ $iorEnabled }}"
+          - name: PILOT_CA_CERT_CONFIG_MAP_NAME
+            value: "{{ .Values.global.caRootCertConfigMap }}"
+{{- if .Values.gatewayAPI.enabled }}
+          - name: PILOT_ENABLE_GATEWAY_API
+            value: "true"
+          - name: PILOT_ENABLE_GATEWAY_API_STATUS
+            value: "true"
+          - name: PILOT_ENABLE_GATEWAY_API_DEPLOYMENT_CONTROLLER
+            value: "true"
+{{- if .Values.gatewayAPI.controllerMode }}
+          - name: PILOT_ENABLE_GATEWAY_CONTROLLER_MODE
+            value: "true"
+          - name: PILOT_GATEWAY_API_DEFAULT_GATEWAYCLASS
+            value: "ocp"
+          - name: PILOT_GATEWAY_API_CONTROLLER_NAME
+            value: "openshift.io/gateway-controller"
+          - name: PILOT_GATEWAY_API_DEPLOYMENT_DEFAULT_LABELS
+            value: "{\"gateway.openshift.io/inject\":\"true\"}"
+{{- end }}
+{{- else }}
+          - name: PILOT_ENABLE_GATEWAY_API
+            value: "false"
+          - name: PILOT_ENABLE_GATEWAY_API_STATUS
+            value: "false"
+          - name: PILOT_ENABLE_GATEWAY_API_DEPLOYMENT_CONTROLLER
+            value: "false"
+{{- end }}
           - name: PRIORITIZED_LEADER_ELECTION
             value: "false"
           - name: VALIDATION_WEBHOOK_CONFIG_NAME
@@ -300,7 +327,7 @@ spec:
           optional: true
       - name: istio-csr-ca-configmap
         configMap:
-          name: istio-ca-root-cert
+          name: "{{ .Values.global.caRootCertConfigMap }}"
           defaultMode: 420
           optional: true
   {{- if .Values.pilot.jwksResolverExtraRootCA }}

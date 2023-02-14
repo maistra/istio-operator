@@ -67,3 +67,12 @@ webhooks:
           - "true"
 {{- end }}
 {{- end }}
+{{- if .Values.gatewayAPI.controllerMode }}
+  {{- include "core" (mergeOverwrite (deepCopy .) (dict "Prefix" "gateways.") ) }}
+  objectSelector:
+    matchExpressions:
+    - key: "gateway.openshift.io/inject"
+      operator: In
+      values:
+      - "true"
+{{- end }}

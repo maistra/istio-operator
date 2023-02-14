@@ -34,6 +34,16 @@ function patchTemplates() {
   # read trustDomain from meshConfig instead of hardcoding
   sed_wrap -i -e 's/"cluster.local"/{{ .Values.meshConfig.trustDomain | default .Values.global.trustDomain }}/g' "${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml"
 
+  # OSSM-924 If gatewayAPI.controllerMode is enabled, set discoverySelectors
+  # so that we only watch namespaces that are listed in the MemberRoll
+  sed_wrap -i -e '/define "mesh"/a\
+{{- if .Values.gatewayAPI.controllerMode }}\
+    discoverySelectors:\
+    - matchLabels:\
+        maistra.io/member-of: "{{ .Release.Namespace }}"\
+{{- end }}\
+' "${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml"
+
   # - nuke unnecessary files from base
   rm -rf "${HELM_DIR}/base/templates" "${HELM_DIR}/base/files" "${HELM_DIR}/base/crds/crd-operator.yaml"
 
@@ -71,6 +81,12 @@ function patchTemplates() {
       sed_wrap -i -e '/operator\.istio\.io/d' "$file"
     fi
   done
+
+    echo "
+gatewayAPI:
+  enabled: false
+  controllerMode: false" | \
+    tee >(cat >> "${HELM_DIR}/istio-control/istio-discovery/values.yaml")
 }
 
 function patchGalley() {
@@ -166,12 +182,6 @@ function patchGalley() {
   sed_wrap -i -e '/base:/ a\
   validationURL: ""' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
 
-  # Disable Gateway API support
-  sed_wrap -i -e 's/env: {}/env: \
-    PILOT_ENABLE_GATEWAY_API: "false" \
-    PILOT_ENABLE_GATEWAY_API_STATUS: "false" \
-    PILOT_ENABLE_GATEWAY_API_DEPLOYMENT_CONTROLLER: "false"/g' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
-
   # always istiod
   sed_wrap -i -e '/{{- if ne .Values.revision ""}}/,/{{- end }}/d' \
       -e '/matchLabels:/a\
@@ -187,7 +197,37 @@ function patchGalley() {
 {{- $iorEnabled = "false" }}\
 {{- end }}\
           - name: ENABLE_IOR\
-            value: "{{ $iorEnabled }}"' "${deployment}"
+            value: "{{ $iorEnabled }}"\
+          - name: PILOT_CA_CERT_CONFIG_MAP_NAME\
+            value: "{{ .Values.global.caRootCertConfigMap }}"\
+{{- if .Values.gatewayAPI.enabled }}\
+          - name: PILOT_ENABLE_GATEWAY_API\
+            value: "true"\
+          - name: PILOT_ENABLE_GATEWAY_API_STATUS\
+            value: "true"\
+          - name: PILOT_ENABLE_GATEWAY_API_DEPLOYMENT_CONTROLLER\
+            value: "true"\
+{{- if .Values.gatewayAPI.controllerMode }}\
+          - name: PILOT_ENABLE_GATEWAY_CONTROLLER_MODE\
+            value: "true"\
+          - name: PILOT_GATEWAY_API_DEFAULT_GATEWAYCLASS\
+            value: "ocp"\
+          - name: PILOT_GATEWAY_API_CONTROLLER_NAME\
+            value: "openshift.io/gateway-controller"\
+          - name: PILOT_GATEWAY_API_DEPLOYMENT_DEFAULT_LABELS\
+            value: "{\\"gateway.openshift.io/inject\\":\\"true\\"}"\
+{{- end }}\
+{{- else }}\
+          - name: PILOT_ENABLE_GATEWAY_API\
+            value: "false"\
+          - name: PILOT_ENABLE_GATEWAY_API_STATUS\
+            value: "false"\
+          - name: PILOT_ENABLE_GATEWAY_API_DEPLOYMENT_CONTROLLER\
+            value: "false"\
+{{- end }}' "${deployment}"
+
+  sed_wrap -i -e 's/istio-ca-root-cert/"{{ .Values.global.caRootCertConfigMap }}"/g' \
+      "${deployment}"
 
   sed_wrap -i -e '/base:/ i\
 gateways: {}\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
@@ -246,6 +286,13 @@ function patchGateways() {
 '
   sed_wrap -i -e "/meshConfig:/ i$tracerConfig" "${HELM_DIR}/gateways/istio-ingress/values.yaml"
   sed_wrap -i -e "/meshConfig:/ i$tracerConfig" "${HELM_DIR}/gateways/istio-egress/values.yaml"
+
+  echo "
+gatewayAPI:
+  enabled: false
+  controllerMode: false" | \
+  tee >(cat >> "${HELM_DIR}/gateways/istio-ingress/values.yaml")\
+      >(cat >> "${HELM_DIR}/gateways/istio-egress/values.yaml")
 
   sed_wrap -i -e '/  logLevel:/ a\\n    tracer: zipkin' "${HELM_DIR}/gateways/istio-ingress/values.yaml"
   sed_wrap -i -e '/  logLevel:/ a\\n    tracer: zipkin' "${HELM_DIR}/gateways/istio-egress/values.yaml"
@@ -330,6 +377,9 @@ function patchGateways() {
     # shellcheck disable=SC2016
     sed_wrap -i -e 's/^\( *\)namespace:.*/\1namespace: {{ $gateway.namespace | default .Release.Namespace }}/' "$file"
   done
+  # shellcheck disable=SC2016
+  sed_wrap -i -e 's$istio-ca-root-cert$"{{ .Values.global.caRootCertConfigMap }}"$g' \
+      "${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml" "${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml"
 }
 
 function patchSidecarInjector() {
@@ -382,6 +432,9 @@ function patchSidecarInjector() {
   # shellcheck disable=SC2016
   sed_wrap -i -e 's$traffic.sidecar.istio.io/excludeInboundPorts: "{{ excludeInboundPort (annotation .ObjectMeta `status.sidecar.istio.io/port` .Values.global.proxy.statusPort) (annotation .ObjectMeta `traffic.sidecar.istio.io/excludeInboundPorts` .Values.global.proxy.excludeInboundPorts) }}"$traffic.sidecar.istio.io/excludeInboundPorts: "15090,{{ excludeInboundPort (annotation .ObjectMeta `status.sidecar.istio.io/port` .Values.global.proxy.statusPort) (annotation .ObjectMeta `traffic.sidecar.istio.io/excludeInboundPorts` .Values.global.proxy.excludeInboundPorts) }}"$' \
       "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
+  # shellcheck disable=SC2016
+  sed_wrap -i -e 's$istio-ca-root-cert$"{{ .Values.global.caRootCertConfigMap }}"$g' \
+      "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml" "${HELM_DIR}/istio-control/istio-discovery/files/gateway-injection-template.yaml"      
 }
 
 # The following modifications are made to the generated helm template for the Kiali yaml file

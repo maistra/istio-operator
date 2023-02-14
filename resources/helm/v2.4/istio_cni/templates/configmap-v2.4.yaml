@@ -6,7 +6,7 @@ apiVersion: v1
 metadata:
   labels:
     maistra-version: "2.4.0"
-  name: istio-cni-config-v2-4
+  name: {{ .Values.cni.defaultResourceName }}-config-v2-4
   namespace: {{ .Release.Namespace }}
 data:
   # The CNI network configuration to add to the plugin chain on each node.  The special
