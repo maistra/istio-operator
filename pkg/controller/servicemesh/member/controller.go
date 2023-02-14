@@ -330,7 +330,17 @@ func (r *MemberReconciler) removeMemberRollIfNeeded(ctx context.Context, member 
 	}
 	if memberRoll.DeletionTimestamp == nil {
 		memberRollCreatedByThisController := memberRoll.Annotations[common.CreatedByKey] == controllerName
-		if len(memberRoll.Spec.Members) == 0 && memberRollCreatedByThisController {
+		if !memberRollCreatedByThisController || len(memberRoll.Spec.Members) > 0 {
+			return nil
+		}
+
+		members := &maistrav1.ServiceMeshMemberList{}
+		err = r.Client.List(ctx, members, client.MatchingFields{"spec.controlPlaneRef.namespace": memberRoll.Namespace})
+		if err != nil {
+			return err
+		}
+
+		if len(members.Items) == 0 || (len(members.Items) == 1 && members.Items[0].UID == member.UID) {
 			log.Info("Deleting ServiceMeshMemberRoll", "ServiceMeshMemberRoll", common.ToNamespacedName(memberRoll).String())
 			err = r.Client.Delete(ctx, memberRoll)     // TODO: need to add resourceVersion precondition to delete request (need newer apimachinery to do that)
 			if err != nil && !errors.IsNotFound(err) { // if NotFound, MemberRoll has been deleted, which is what we wanted. This means this is not an error, but a success.
