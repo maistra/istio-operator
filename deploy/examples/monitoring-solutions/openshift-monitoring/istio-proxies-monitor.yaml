@@ -28,6 +28,11 @@ spec:
       regex: (\d+);((([0-9]+?)(\.|$)){4})
       replacement: $2:$1
       targetLabel: __address__
+    - action: replace
+      regex: .*[revision]\":\"([^\"]+).*
+      replacement: $1
+      sourceLabels: [__meta_kubernetes_pod_annotation_sidecar_istio_io_status]
+      targetLabel: revision
     - action: labeldrop
       regex: "__meta_kubernetes_pod_label_(.+)"
     - sourceLabels: [__meta_kubernetes_namespace]
