@@ -18,10 +18,15 @@ spec:
       regex: "istio-proxy"
     - action: keep
       sourceLabels: [__meta_kubernetes_pod_annotationpresent_prometheus_io_scrape]
-    - sourceLabels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port, __meta_kubernetes_pod_ip]
       action: replace
-      regex: ([^:]+)(?::\d+)?;(\d+)
-      replacement: $1:$2
+      regex: (\d+);(([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4})
+      replacement: '[$2]:$1'
+      targetLabel: __address__
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port, __meta_kubernetes_pod_ip]
+      action: replace
+      regex: (\d+);((([0-9]+?)(\.|$)){4})
+      replacement: $2:$1
       targetLabel: __address__
     - action: labeldrop
       regex: "__meta_kubernetes_pod_label_(.+)"
