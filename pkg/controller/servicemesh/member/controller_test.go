@@ -10,7 +10,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -60,7 +62,7 @@ var (
 		},
 	}
 
-	oneMinuteAgo = meta.NewTime(time.Now().Add(-time.Minute))
+	oneMinuteAgo = metav1.NewTime(time.Now().Add(-time.Minute))
 )
 
 func init() {
@@ -173,36 +175,129 @@ func TestReconcileRemovesFinalizerFromMemberWhenMemberDeleted(t *testing.T) {
 	assert.StringArrayEmpty(updatedMember.Finalizers, "Expected finalizers list in SMM to be empty", t)
 }
 
-func TestReconcileDeletesMemberRollCreatedByItWhenMemberDeleted(t *testing.T) {
-	member := newMember()
-	member.DeletionTimestamp = &oneMinuteAgo
-	memberRoll := newMemberRoll()
-	memberRoll.Annotations = map[string]string{
-		common.CreatedByKey: controllerName,
+func TestSMMRDeletion(t *testing.T) {
+	cases := []struct {
+		name           string
+		annotations    map[string]string
+		specMembers    []string
+		otherMembers   []*maistrav1.ServiceMeshMember
+		expectDeletion bool
+	}{
+		{
+			name:           "created by user",
+			annotations:    nil, // no created-by annotation
+			expectDeletion: false,
+		},
+		{
+			name:           "created by controller, no spec.members and no other members",
+			annotations:    map[string]string{common.CreatedByKey: controllerName},
+			expectDeletion: true,
+		},
+		{
+			name:           "created by controller, members in spec.members",
+			annotations:    map[string]string{common.CreatedByKey: controllerName},
+			specMembers:    []string{"other-member"},
+			expectDeletion: false,
+		},
+		{
+			name:        "created by controller, a different ServiceMeshMember references the smmr",
+			annotations: map[string]string{common.CreatedByKey: controllerName},
+			otherMembers: []*maistrav1.ServiceMeshMember{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      memberName,
+						Namespace: "other-ns",
+						UID:       "2000",
+					},
+					Spec: maistrav1.ServiceMeshMemberSpec{
+						ControlPlaneRef: maistrav1.ServiceMeshControlPlaneRef{
+							Name:      controlPlaneName,
+							Namespace: controlPlaneNamespace,
+						},
+					},
+				},
+			},
+			expectDeletion: false,
+		},
+		{
+			name:        "created by controller, multiple ServiceMeshMembers reference the smmr",
+			annotations: map[string]string{common.CreatedByKey: controllerName},
+			otherMembers: []*maistrav1.ServiceMeshMember{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      memberName,
+						Namespace: "other-ns1",
+						UID:       "2000",
+					},
+					Spec: maistrav1.ServiceMeshMemberSpec{
+						ControlPlaneRef: maistrav1.ServiceMeshControlPlaneRef{
+							Name:      controlPlaneName,
+							Namespace: controlPlaneNamespace,
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      memberName,
+						Namespace: "other-ns2",
+						UID:       "2000",
+					},
+					Spec: maistrav1.ServiceMeshMemberSpec{
+						ControlPlaneRef: maistrav1.ServiceMeshControlPlaneRef{
+							Name:      controlPlaneName,
+							Namespace: controlPlaneNamespace,
+						},
+					},
+				},
+			},
+			expectDeletion: false,
+		},
+		{
+			name:        "created by controller, ServiceMeshMember references a different smmr",
+			annotations: map[string]string{common.CreatedByKey: controllerName},
+			otherMembers: []*maistrav1.ServiceMeshMember{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      memberName,
+						Namespace: "other-ns",
+					},
+					Spec: maistrav1.ServiceMeshMemberSpec{
+						ControlPlaneRef: maistrav1.ServiceMeshControlPlaneRef{
+							Name:      "another-smcp",
+							Namespace: "another-namespace",
+						},
+					},
+				},
+			},
+			expectDeletion: true,
+		},
 	}
 
-	cl, _, r := createClientAndReconciler(member, memberRoll)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			member := newMember()
+			member.DeletionTimestamp = &oneMinuteAgo
 
-	assertReconcileSucceeds(r, t)
-	test.AssertNotFound(ctx, cl, types.NamespacedName{Namespace: controlPlaneNamespace, Name: common.MemberRollName}, &maistrav1.ServiceMeshMemberRoll{},
-		"Expected reconcile to delete the SMMR, but it didn't", t)
-}
+			memberRoll := newMemberRoll()
+			memberRoll.Annotations = tc.annotations
+			memberRoll.Spec.Members = tc.specMembers
 
-func TestReconcilePreservesMemberRollCreatedByItButModifiedByUser(t *testing.T) {
-	member := newMember()
-	member.DeletionTimestamp = &oneMinuteAgo
-	memberRoll := newMemberRoll()
-	memberRoll.Annotations = map[string]string{
-		common.CreatedByKey: controllerName,
+			cl, tracker, r := createClientAndReconciler(member, memberRoll)
+			for _, m := range tc.otherMembers {
+				assert.Success(tracker.Add(m), "tracker.Add", t)
+			}
+
+			assertReconcileSucceeds(r, t)
+
+			if tc.expectDeletion {
+				test.AssertNotFound(ctx, cl, common.ToNamespacedName(memberRoll), &maistrav1.ServiceMeshMemberRoll{},
+					"Expected SMMR to be deleted, but it still exists", t)
+			} else {
+				test.AssertObjectExists(ctx, cl, common.ToNamespacedName(memberRoll), &maistrav1.ServiceMeshMemberRoll{},
+					"Expected SMMR to be preserved, but it was deleted", t)
+			}
+		})
 	}
-	memberRoll.Spec.Members = []string{"other-ns-1"}
-
-	cl, _, r := createClientAndReconciler(member, memberRoll)
-
-	assertReconcileSucceeds(r, t)
-
-	updatedMemberRoll := test.GetUpdatedObject(ctx, cl, memberRoll.ObjectMeta, &maistrav1.ServiceMeshMemberRoll{}).(*maistrav1.ServiceMeshMemberRoll)
-	assert.DeepEquals(updatedMemberRoll.Spec.Members, []string{"other-ns-1"}, "Unexpected members in SMMR", t)
 }
 
 func TestReconcileSucceedsIfControlPlaneAndMembersRollDoNotExistWhenDeletingMember(t *testing.T) {
@@ -502,9 +597,10 @@ func TestReconcileReturnsConflictError(t *testing.T) {
 
 func newMember() *maistrav1.ServiceMeshMember {
 	return &maistrav1.ServiceMeshMember{
-		ObjectMeta: meta.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:       memberName,
 			Namespace:  appNamespace,
+			UID:        "1000",
 			Finalizers: []string{common.FinalizerName},
 		},
 		Spec: maistrav1.ServiceMeshMemberSpec{
@@ -518,7 +614,7 @@ func newMember() *maistrav1.ServiceMeshMember {
 
 func newMemberRoll() *maistrav1.ServiceMeshMemberRoll {
 	return &maistrav1.ServiceMeshMemberRoll{
-		ObjectMeta: meta.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      memberRollName,
 			Namespace: controlPlaneNamespace,
 		},
@@ -542,6 +638,7 @@ func markMemberReconciled(member *maistrav1.ServiceMeshMember, generation, obser
 
 func createClientAndReconciler(clientObjects ...runtime.Object) (client.Client, *test.EnhancedTracker, *MemberReconciler) {
 	cl, enhancedTracker := test.CreateClient(clientObjects...)
+	cl = NewEnhancedClient(cl)
 	fakeEventRecorder := &record.FakeRecorder{}
 
 	rf := fakeNamespaceReconcilerFactory{
@@ -605,7 +702,7 @@ func (r *fakeNamespaceReconciler) removeNamespaceFromMesh(ctx context.Context, n
 
 func newAppNamespace() *corev1.Namespace {
 	namespace := &corev1.Namespace{
-		ObjectMeta: meta.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:   appNamespace,
 			Labels: map[string]string{},
 		},
@@ -624,7 +721,7 @@ func newMeshRoleBinding() *rbac.RoleBinding {
 
 func newRoleBinding(namespace, name string) *rbac.RoleBinding {
 	return &rbac.RoleBinding{
-		ObjectMeta: meta.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      name,
 		},
@@ -635,7 +732,7 @@ func newRoleBinding(namespace, name string) *rbac.RoleBinding {
 func newControlPlane(version string) *maistrav2.ServiceMeshControlPlane {
 	enabled := true
 	return &maistrav2.ServiceMeshControlPlane{
-		ObjectMeta: meta.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:       controlPlaneName,
 			Namespace:  controlPlaneNamespace,
 			UID:        controlPlaneUID,
@@ -681,4 +778,93 @@ func assertNamespaceReconciled(t *testing.T, cl client.Client, namespace, meshNa
 	if err != nil {
 		t.Fatalf("Couldn't get NetworkAttachmentDefinition from client: %v", err)
 	}
+}
+
+// enhancedClient is a delegating client that adds support for using a FieldSelector in the List() function
+type enhancedClient struct {
+	delegate client.Client
+}
+
+func (cl enhancedClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+	return cl.delegate.Get(ctx, key, obj)
+}
+
+func (cl enhancedClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
+	err := cl.delegate.List(ctx, list, opts...)
+	if err != nil {
+		return err
+	}
+
+	listOpts := client.ListOptions{}
+	listOpts.ApplyOptions(opts)
+
+	if opts != nil && listOpts.FieldSelector != nil {
+		return filterUsingFieldSelector(list, listOpts.FieldSelector)
+	}
+
+	return nil
+}
+
+func filterUsingFieldSelector(list runtime.Object, selector fields.Selector) error {
+	objs, err := meta.ExtractList(list)
+	if err != nil {
+		return err
+	}
+	filteredObjs := filterWithFields(objs, selector)
+	err = meta.SetList(list, filteredObjs)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func filterWithFields(objs []runtime.Object, selector fields.Selector) []runtime.Object {
+	outItems := make([]runtime.Object, 0, len(objs))
+	for _, obj := range objs {
+		if !selector.Matches(getFields(obj)) {
+			continue
+		}
+		outItems = append(outItems, obj.DeepCopyObject())
+	}
+	return outItems
+}
+
+func getFields(obj runtime.Object) fields.Fields {
+	if smm, ok := obj.(*maistrav1.ServiceMeshMember); ok {
+		fieldsMap := map[string]string{
+			"spec.controlPlaneRef.namespace": smm.Spec.ControlPlaneRef.Namespace,
+		}
+		return fields.Set(fieldsMap)
+	}
+	return fields.Set{}
+}
+
+func (cl enhancedClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+	return cl.delegate.Create(ctx, obj, opts...)
+}
+
+func (cl enhancedClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
+	return cl.delegate.Delete(ctx, obj, opts...)
+}
+
+func (cl enhancedClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+	return cl.delegate.Update(ctx, obj, opts...)
+}
+
+func (cl enhancedClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+	return cl.delegate.Patch(ctx, obj, patch, opts...)
+}
+
+func (cl enhancedClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
+	return cl.delegate.DeleteAllOf(ctx, obj, opts...)
+}
+
+func (cl enhancedClient) Status() client.StatusWriter {
+	return cl.delegate.Status()
+}
+
+var _ client.Client = enhancedClient{}
+
+func NewEnhancedClient(cl client.Client) client.Client {
+	return enhancedClient{delegate: cl}
 }
