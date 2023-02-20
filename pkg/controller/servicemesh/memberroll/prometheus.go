@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/maistra/istio-operator/pkg/controller/common"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -12,6 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
+
+	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
 const (
