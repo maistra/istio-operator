@@ -382,7 +382,7 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	// 7. tell Prometheus about all the namespaces in the mesh
 	var prometheusErr error
 
-	if mesh.Status.AppliedSpec.IsPrometheusEnabled() {
+	if mesh != nil && mesh.Status.AppliedSpec.IsPrometheusEnabled() {
 		cv, err := versions.ParseVersion(mesh.Status.AppliedSpec.Version)
 
 		if err != nil {
