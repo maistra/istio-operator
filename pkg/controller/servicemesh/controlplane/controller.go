@@ -29,6 +29,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/cni"
 	"github.com/maistra/istio-operator/pkg/controller/hacks"
+	"github.com/maistra/istio-operator/pkg/internalmetrics"
 )
 
 const (
@@ -227,6 +228,11 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 			// Return and don't requeue
 			log.Info("ServiceMeshControlPlane deleted")
 			delete(r.earliestReconciliationTimes, request.NamespacedName)
+			meshControlPlaneMode, err := instance.Spec.GetControlPlaneMode()
+			if err != nil {
+				return reconcile.Result{}, nil
+			}
+			internalmetrics.GetSMCPCount(instance.Spec.Version, meshControlPlaneMode).Add(-1)
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object
@@ -258,6 +264,11 @@ func (r *ControlPlaneReconciler) Reconcile(request reconcile.Request) (reconcile
 		if err := reconciler.UpdateReadiness(ctx); err != nil {
 			return common.RequeueWithError(err)
 		}
+		meshControlPlaneMode, err := instance.Spec.GetControlPlaneMode()
+		if err != nil {
+			return reconcile.Result{}, nil
+		}
+		internalmetrics.GetSMCPCount(instance.Spec.Version, meshControlPlaneMode).Inc()
 		return reconciler.PatchAddons(ctx, &instance.Spec)
 	}
 

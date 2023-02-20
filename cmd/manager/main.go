@@ -36,6 +36,7 @@ import (
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/internalmetrics"
 	"github.com/maistra/istio-operator/pkg/version"
 )
 
@@ -246,6 +247,9 @@ func addMetrics(ctx context.Context, cfg *rest.Config) {
 			log.Info("Install prometheus-operator in your cluster to create ServiceMonitor objects", "error", err.Error())
 		}
 	}
+
+	// Prepare our custom metrics so Prometheus can scrape them
+	internalmetrics.RegisterMetrics()
 }
 
 func intOrStringFromInt32(val int32) intstr.IntOrString {
