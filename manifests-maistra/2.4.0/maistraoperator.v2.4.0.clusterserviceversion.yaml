@@ -276,7 +276,9 @@ spec:
   - name: v2_4.pilot
     image: quay.io/maistra/pilot-ubi8:2.4.0
   - name: v2_4.prometheus
-    image: quay.io/maistra/prometheus-ubi8:2.4.0
+    image: quay.io/prometheus/prometheus:v2.42.0
+  - name: v2_4.prometheus-config-reloader
+    image: quay.io/prometheus-operator/prometheus-config-reloader:v0.63.0
   - name: v2_4.proxyv2
     image: quay.io/maistra/proxyv2-ubi8:2.4.0
   - name: v2_4.rls
@@ -572,7 +574,8 @@ spec:
                 olm.relatedImage.v2_4.cni: quay.io/maistra/istio-cni-ubi8:2.4.0
                 olm.relatedImage.v2_4.grafana: quay.io/maistra/grafana-ubi8:2.4.0
                 olm.relatedImage.v2_4.pilot: quay.io/maistra/pilot-ubi8:2.4.0
-                olm.relatedImage.v2_4.prometheus: quay.io/maistra/prometheus-ubi8:2.4.0
+                olm.relatedImage.v2_4.prometheus: quay.io/prometheus/prometheus:v2.42.0
+                olm.relatedImage.v2_4.prometheus-config-reloader: quay.io/prometheus-operator/prometheus-config-reloader:v0.63.0
                 olm.relatedImage.v2_4.proxyv2: quay.io/maistra/proxyv2-ubi8:2.4.0
                 olm.relatedImage.v2_4.rls: quay.io/maistra/ratelimit-ubi8:2.4.0
             spec:
