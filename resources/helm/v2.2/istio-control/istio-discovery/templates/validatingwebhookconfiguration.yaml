@@ -4,7 +4,7 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: istio-validator-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
   labels:
-    maistra-version: "2.2.5"
+    maistra-version: "2.2.6"
     app: istiod
     release: {{ .Release.Name }}
     istio: istiod
