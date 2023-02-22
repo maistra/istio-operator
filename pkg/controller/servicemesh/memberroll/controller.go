@@ -32,6 +32,7 @@ import (
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
+	"github.com/maistra/istio-operator/pkg/internalmetrics"
 )
 
 const (
@@ -449,7 +450,14 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	} else if prometheusErr != nil {
 		return common.RequeueWithError(prometheusErr)
 	}
-	return common.Reconciled()
+	if mesh != nil {
+		meshMode, err := getMeshMode(mesh)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		internalmetrics.GetMemberCounter(mesh.GetNamespace(), mesh.Spec.Version, meshMode).Set(float64(len(roll.Status.Members)))
+	}
+	return reconcile.Result{}, nil
 }
 
 func getExcludedNamespaces() []string {
@@ -751,4 +759,17 @@ func getNamespaces(members *maistrav1.ServiceMeshMemberList) []string {
 		namespaces.Insert(m.GetNamespace())
 	}
 	return namespaces.List()
+}
+
+// Returns the Service Mesh ControlPlane mode
+// Used for the internal custom metrics
+func getMeshMode(mesh *maistrav2.ServiceMeshControlPlane) (string, error) {
+	meshMode, err := mesh.Status.AppliedSpec.IsClusterScoped()
+	if err != nil {
+		return "", err
+	}
+	if meshMode {
+		return internalmetrics.ControlPlaneModeValueClusterScoped, nil
+	}
+	return internalmetrics.ControlPlaneModeValueMultiTenant, nil
 }
