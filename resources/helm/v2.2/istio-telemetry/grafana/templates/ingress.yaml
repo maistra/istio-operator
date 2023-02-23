@@ -5,7 +5,7 @@ metadata:
   name: grafana
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.2.5"
+    maistra-version: "2.2.6"
     app: grafana
     release: {{ .Release.Name }}
   annotations:
