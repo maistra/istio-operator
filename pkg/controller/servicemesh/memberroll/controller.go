@@ -273,8 +273,10 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	switch len(meshList.Items) {
 	case 0:
 		mesh = nil
+		internalmetrics.ResetMemberCounter()
 	case 1:
 		mesh = &meshList.Items[0]
+		internalmetrics.ResetMemberCounter()
 	default: // more than 1 SMCP found
 		reason := maistrav1.ConditionReasonMultipleSMCP
 		message := "Multiple ServiceMeshControlPlane resources exist in the namespace"

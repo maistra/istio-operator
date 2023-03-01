@@ -49,3 +49,7 @@ func GetMemberCounter(smcpNamespace, smcpVersion, smcpMode string) prometheus.Ga
 		labelSMCPMode:      smcpMode,
 	})
 }
+
+func ResetMemberCounter() {
+	Metrics.MemberCounter.Reset()
+}
