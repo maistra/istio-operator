@@ -132,9 +132,9 @@ type ControlPlaneSpec struct {
 	// General represents general control plane configuration that does not
 	// logically fit in another area.
 	// +optional
+	General            *GeneralConfig            `json:"general,omitempty"`
 	// ExtensionProviders represents extension providers
 	ExtensionProviders []*ExtensionProvidersConfig `json:"extensionProviders,omitempty"`
-	General            *GeneralConfig            `json:"general,omitempty"`
 	// Policy configures policy checking for the control plane.
 	// .Values.policy.enabled, true if not null
 	// +optional
