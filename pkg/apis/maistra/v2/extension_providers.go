@@ -2,7 +2,7 @@ package v2
 
 type ExtensionProviderConfig struct {
 	// A unique name identifying the extension provider.
-	Name       string                             `json:"name,omitempty"`
+	Name       string                             `json:"name"`
 	Prometheus *ExtensionProviderPrometheusConfig `json:"prometheus,omitempty"`
 }
 
