@@ -1,10 +1,10 @@
 package v2
 
-type ExtensionProvidersConfig struct {
-	// Name is just a name
-	Name string `json:"name,omitempty"`
-	Prometheus *PrometheusExtensionProviderConfig `json:"prometheus,omitempty"`
+type ExtensionProviderConfig struct {
+	// A unique name identifying the extension provider.
+	Name       string                             `json:"name,omitempty"`
+	Prometheus *ExtensionProviderPrometheusConfig `json:"prometheus,omitempty"`
 }
-type PrometheusExtensionProviderConfig struct {
 
-}
+// ExtensionProviderPrometheusConfig configures a Prometheus metrics provider.
+type ExtensionProviderPrometheusConfig struct{}
