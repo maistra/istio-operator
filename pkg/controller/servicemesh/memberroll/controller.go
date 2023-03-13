@@ -457,7 +457,7 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		internalmetrics.GetMemberCounter(mesh.GetNamespace(), mesh.Spec.Version, meshMode).Set(float64(len(roll.Status.Members)))
+		internalmetrics.GetMemberCounter(mesh.GetNamespace(), mesh.Spec.Version, meshMode).Set(float64(len(roll.Status.ConfiguredMembers)))
 	}
 	return reconcile.Result{}, nil
 }
