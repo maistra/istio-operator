@@ -1547,6 +1547,8 @@ spec:
                       type: string
                     prometheus:
                       type: object
+                  required:
+                  - name
                   type: object
                 type: array
               gateways:
@@ -6434,6 +6436,8 @@ spec:
                           type: string
                         prometheus:
                           type: object
+                      required:
+                      - name
                       type: object
                     type: array
                   gateways:
