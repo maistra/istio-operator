@@ -1,13 +1,12 @@
 package conversion
 
 import (
-	"github.com/maistra/istio-operator/pkg/controller/versions"
 	"reflect"
+	"testing"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-
-	"testing"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 var extensionProvidersTestCases []conversionTestCase
