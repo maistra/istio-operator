@@ -29,14 +29,14 @@ func TestExtensionProvidersConversionFromV2(t *testing.T) {
 			if !reflect.DeepEqual(tc.isolatedIstio.DeepCopy(), helmValues.DeepCopy()) {
 				t.Errorf("unexpected output converting v2 to values:\n\texpected:\n%#v\n\tgot:\n%#v", tc.isolatedIstio.GetContent(), helmValues.GetContent())
 			}
-			//specv2 := &v2.ControlPlaneSpec{}
-			//// use expected values
-			//helmValues = tc.isolatedIstio.DeepCopy()
-			//mergeMaps(tc.completeIstio.DeepCopy().GetContent(), helmValues.GetContent())
-			//if err := populateExtensionProvidersConfig(helmValues.DeepCopy(), specv2); err != nil {
-			//	t.Fatalf("error converting from values: %s", err)
-			//}
-			//assertEquals(t, tc.spec.ExtensionProviders, specv2.ExtensionProviders)
+			specv2 := &v2.ControlPlaneSpec{}
+			// use expected values
+			helmValues = tc.isolatedIstio.DeepCopy()
+			mergeMaps(tc.completeIstio.DeepCopy().GetContent(), helmValues.GetContent())
+			if err := populateExtensionProvidersConfig(helmValues.DeepCopy(), specv2); err != nil {
+				t.Fatalf("error converting from values: %s", err)
+			}
+			assertEquals(t, tc.spec.ExtensionProviders, specv2.ExtensionProviders)
 		})
 	}
 }
@@ -63,7 +63,11 @@ func extensionProvidersTestCasesV2(version versions.Version) []conversionTestCas
 				Version:            ver,
 				ExtensionProviders: []*v2.ExtensionProviderConfig{},
 			},
-			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"meshConfig": map[string]interface{}{
+					"extensionProviders": []interface{}{},
+				},
+			}),
 			completeIstio: v1.NewHelmValues(map[string]interface{}{
 				"global": map[string]interface{}{
 					"multiCluster":  globalMultiClusterDefaults,
