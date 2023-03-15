@@ -194,7 +194,6 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 			"maistra-operator-prometheusrule",
 			"sum without (smcp_namespace) (servicemesh_member_count)",
 			"cluster:servicemesh_member_count:sum"), metav1.CreateOptions{}); err != nil {
-
 		if errors.IsAlreadyExists(err) {
 			log.Info("Maistra Operator webhook PrometheusRule already exists")
 		} else {

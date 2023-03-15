@@ -26,6 +26,7 @@ if [[ ${COMMUNITY} == "true" ]]; then
   OLM_FEATURES="[]"
   ARCHITECTURE_LABELS=$(generateArchitectureLabels amd64)
   OLM_SUBSCRIPTION_ANNOTATION=""
+  OLM_CLUSTER_MONITORING=""
 else
   BUILD_TYPE="servicemesh"
   JAEGER_STORAGE="Memory"
@@ -37,6 +38,7 @@ else
   OLM_FEATURES="[\"Disconnected\",\"fips\"]"
   ARCHITECTURE_LABELS=$(generateArchitectureLabels amd64 s390x ppc64le arm64)
   OLM_SUBSCRIPTION_ANNOTATION="operators.openshift.io/valid-subscription: '[\"OpenShift Container Platform\", \"OpenShift Platform Plus\"]'"
+  OLM_CLUSTER_MONITORING="operatorframework.io/cluster-monitoring: \"true\""
 fi
 : "${DEPLOYMENT_FILE:=deploy/${BUILD_TYPE}-operator.yaml}"
 : "${MANIFESTS_DIR:=manifests-${BUILD_TYPE}}"
@@ -115,6 +117,7 @@ $RELATED_IMAGES"
   sed -i -e 's+__BUG_URL__+'"$BUG_URL"'+' "${csv_path}"
   sed -i -e 's+__OLM_FEATURES__+'"$OLM_FEATURES"'+' "${csv_path}"
   sed -i -e 's+__OLM_SUBSCRIPTION_ANNOTATION__+'"$OLM_SUBSCRIPTION_ANNOTATION"'+' "${csv_path}"
+  sed -i -e 's+__OLM_CLUSTER_MONITORING__+'"$OLM_CLUSTER_MONITORING"'+' "${csv_path}"
   sed -i -e 's/__JAEGER_STORAGE__/'${JAEGER_STORAGE}'/' "${csv_path}"
   sed -i -e 's/__DATE__/'"$(date +%Y-%m-%dT%H:%M:%S%Z)"'/g' "${csv_path}"
   sed -i -e 's+__IMAGE_SRC__+'"${IMAGE_SRC}"'+g' "${csv_path}"
