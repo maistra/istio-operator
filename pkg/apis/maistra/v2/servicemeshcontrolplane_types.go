@@ -129,6 +129,10 @@ type ControlPlaneSpec struct {
 	// network name, multi-cluster, mesh expansion, etc.)
 	// +optional
 	Cluster *ControlPlaneClusterConfig `json:"cluster,omitempty"`
+	// ExtensionProviders defines a list of extension providers that extend Istio's functionality. For example,
+	// the AuthorizationPolicy can be used with an extension provider to delegate the authorization decision
+	// to a custom authorization system.
+	ExtensionProviders []*ExtensionProviderConfig `json:"extensionProviders,omitempty"`
 	// General represents general control plane configuration that does not
 	// logically fit in another area.
 	// +optional
