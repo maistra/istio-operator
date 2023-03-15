@@ -18,6 +18,7 @@ metadata:
     createdAt: 2023-06-15T11:52:41CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.4.0-0"
+    operatorframework.io/cluster-monitoring: "true"
     operators.openshift.io/infrastructure-features: '[]'
     
     alm-examples: |-
@@ -277,6 +278,7 @@ spec:
             - monitoring.coreos.com
           resources:
             - servicemonitors
+            - prometheusrules
           verbs:
             - get
             - create

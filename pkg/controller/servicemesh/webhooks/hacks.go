@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	clientmonitoring "github.com/coreos/prometheus-operator/pkg/client/versioned/typed/monitoring/v1"
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
@@ -183,6 +185,21 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 	if webhookServiceCreated {
 		log.Info("Restarting to obtain the Maistra webhook Secret and CA bundle ConfigMap...")
 		os.Exit(0)
+	}
+
+	log.Info("Creating Maistra Operator webhook PrometheusRule")
+	monclient, _ := clientmonitoring.NewForConfig(mgr.GetConfig())
+	if _, err := monclient.PrometheusRules(operatorNamespace).Create(context.TODO(),
+		newPrometheusRule(operatorNamespace,
+			"maistra-operator-prometheusrule",
+			"sum without (smcp_namespace) (servicemesh_member_count)",
+			"cluster:servicemesh_member_count:sum"), metav1.CreateOptions{}); err != nil {
+
+		if errors.IsAlreadyExists(err) {
+			log.Info("Maistra Operator webhook PrometheusRule already exists")
+		} else {
+			return pkgerrors.Wrap(err, "error creating Maistra Operator webhook PrometheusRule")
+		}
 	}
 
 	return nil
@@ -393,6 +410,28 @@ func rulesFor(resource string, versions []string, operations ...admissionv1.Oper
 				Resources:   []string{resource},
 			},
 			Operations: operations,
+		},
+	}
+}
+
+func newPrometheusRule(namespace, ruleName, ruleExpr, ruleRecord string) *monitoringv1.PrometheusRule {
+	return &monitoringv1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ruleName,
+			Namespace: namespace,
+		},
+		Spec: monitoringv1.PrometheusRuleSpec{
+			Groups: []monitoringv1.RuleGroup{
+				{
+					Name: ruleName + ".rules",
+					Rules: []monitoringv1.Rule{
+						{
+							Expr:   intstr.FromString(ruleExpr),
+							Record: ruleRecord,
+						},
+					},
+				},
+			},
 		},
 	}
 }
