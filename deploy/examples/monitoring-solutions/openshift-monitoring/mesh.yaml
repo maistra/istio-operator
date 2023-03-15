@@ -10,6 +10,9 @@ spec:
       enabled: false
     prometheus:
       enabled: false
+  extensionProviders:
+  - name: prometheus
+    prometheus: {}
   gateways:
     ingress:
       routeConfig:
@@ -26,12 +29,6 @@ spec:
     dataPlane:
       mtls: true
     manageNetworkPolicy: false
-  # This is required to enable Prometheus metrics with Telemetry API
-  techPreview:
-    meshConfig:
-      extensionProviders:
-      - name: prometheus
-        prometheus: {}
   tracing:
     type: None
 ---
