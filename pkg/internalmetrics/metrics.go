@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	ControlPlaneModeValueClusterScoped = "ClusterScoped"
+	ControlPlaneModeValueClusterScoped = "ClusterWide"
 	ControlPlaneModeValueMultiTenant   = "MultiTenant"
 )
 
