@@ -10,6 +10,7 @@ htpasswd -Bb htpasswd clusteradmin clusteradm
 htpasswd -Bb htpasswd meshadmin-1 adm1
 htpasswd -Bb htpasswd developer-1 dev1
 htpasswd -Bb htpasswd meshadmin-2 adm2
+htpasswd -Bb htpasswd meshadmin-3 adm3
 oc delete secret htpass-secret -n openshift-config
 oc create secret generic htpass-secret --from-file=htpasswd=htpasswd -n openshift-config
 oc apply -f oauth.yaml
@@ -22,7 +23,7 @@ oc create identity simple-htpasswd:clusteradmin
 oc create useridentitymapping simple-htpasswd:clusteradmin clusteradmin
 oc adm policy add-cluster-role-to-user cluster-admin clusteradmin
 
-for i in 1 2
+for i in 1 2 3
 do
   oc new-project istio-system-$i
   oc new-project bookinfo-$i
@@ -55,7 +56,7 @@ oc delete identity developer:developer
 oc delete identity developer:kubeadmin
 ```
 
-### Service Mesh and Monitoring integration
+## Service Mesh and Monitoring integration
 
 1. Enable user-workload monitoring:
 ```shell
@@ -158,6 +159,38 @@ oc apply -f custom-prometheus/app-mtls-monitor.yaml
 6. Generate traffic:
 ```shell
 while true; do curl -v bookinfo-2.apps-crc.testing:80/productpage > /dev/null; sleep 1; done
+```
+
+## Federating metrics from OSSM to OpenShift Monitoring
+
+1. Enable user-workload monitoring:
+```shell
+oc login -u clusteradmin https://api.crc.testing:6443
+oc apply -f openshift-monitoring/enable-monitoring-in-user-workloads.yaml
+```
+
+2. Install OpenShift Service Mesh operator.
+
+3. Deploy control plane and an app for the first tenant:
+```shell
+oc login -u meshadmin-3 https://api.crc.testing:6443
+oc apply -n istio-system-3 -f federation/mesh.yaml
+sed 's/{{host}}/bookinfo-3/g' route.yaml | oc apply -n istio-system-3 -f -
+```
+Wait until istiod is ready and then apply:
+```shell
+oc apply -n bookinfo-3 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.4/samples/bookinfo/platform/kube/bookinfo.yaml
+oc apply -n bookinfo-3 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.4/samples/bookinfo/networking/bookinfo-gateway.yaml
+```
+
+4. Generate traffic:
+```shell
+while true; do curl -v bookinfo-3.apps-crc.testing:80/productpage > /dev/null; sleep 1; done
+```
+
+5. Federate metrics from Service Mesh to Monitoring:
+```shell
+oc apply -n istio-system-3 -f federation/federation-service-monitor.yaml
 ```
 
 ### Issues
