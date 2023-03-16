@@ -9799,7 +9799,7 @@ spec:
                                 type: string
                               pilotSecretName: istiod-tls
                                 type: string
-                              rootCAConfigMapName: istio-ca-root-tls
+                              rootCAConfigMapName: istio-ca-root-cert
                                 type: string
                             type: object
                           custom:
