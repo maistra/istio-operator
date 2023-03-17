@@ -33,6 +33,7 @@ type namespaceReconciler struct {
 	common.ControllerResources
 	meshNamespace        string
 	meshVersion          versions.Version
+	clusterWideMode      bool
 	isCNIEnabled         bool
 	networkingStrategy   NamespaceReconciler
 	roleBindingsList     rbac.RoleBindingList
@@ -40,7 +41,7 @@ type namespaceReconciler struct {
 }
 
 func newNamespaceReconciler(ctx context.Context, cl client.Client,
-	meshNamespace string, meshVersion versions.Version, isCNIEnabled bool,
+	meshNamespace string, meshVersion versions.Version, clusterWideMode, isCNIEnabled bool,
 ) (NamespaceReconciler, error) {
 	reconciler := &namespaceReconciler{
 		ControllerResources: common.ControllerResources{
@@ -48,6 +49,7 @@ func newNamespaceReconciler(ctx context.Context, cl client.Client,
 		},
 		meshNamespace:        meshNamespace,
 		meshVersion:          meshVersion,
+		clusterWideMode:      clusterWideMode,
 		isCNIEnabled:         isCNIEnabled,
 		roleBindingsList:     rbac.RoleBindingList{},
 		requiredRoleBindings: sets.NewString(),
@@ -236,10 +238,14 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(ctx context.Context, name
 
 	allErrors := []error{}
 
-	// add role bindings
-	err = r.reconcileRoleBindings(ctx, namespace)
-	if err != nil {
-		allErrors = append(allErrors, err)
+	// if SMCP version is 2.4+ and cluster-wide mode is enabled, istiod is given
+	// cluster-wide permissions via ClusterRoleBindings, so there's no need to
+	// create RoleBindings in member namespaces
+	if !r.clusterWideMode || r.meshVersion.LessThan(versions.V2_4) {
+		err = r.reconcileRoleBindings(ctx, namespace)
+		if err != nil {
+			allErrors = append(allErrors, err)
+		}
 	}
 
 	if r.isCNIEnabled {
