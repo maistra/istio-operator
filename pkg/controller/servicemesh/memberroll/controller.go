@@ -31,6 +31,7 @@ import (
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 const (
@@ -353,7 +354,12 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		kialiName := mesh.Status.AppliedSpec.Addons.Kiali.ResourceName()
 		roll.Status.SetAnnotation(statusAnnotationKialiName, kialiName)
 
-		meshIsClusterScoped, err := mesh.Spec.IsClusterScoped()
+		var version versions.Version
+		version, err = versions.ParseVersion(mesh.Spec.Version)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		meshIsClusterScoped, err := version.Strategy().IsClusterScoped(&mesh.Spec)
 		if err != nil {
 			return reconcile.Result{}, err
 		}

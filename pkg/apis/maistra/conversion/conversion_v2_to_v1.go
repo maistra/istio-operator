@@ -150,14 +150,20 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 		namespace = "istio-system" // a sensible default
 	}
 
-	isClusterScoped, err := in.IsClusterScoped()
+	isClusterScoped, err := version.Strategy().IsClusterScoped(in)
 	if err != nil {
 		return err
 	}
-	delete(values, v2.ControlPlaneModeKey)
+	delete(values, v2.TechPreviewControlPlaneModeKey)
 	if isClusterScoped {
-		if err := setHelmBoolValue(values, "global.clusterScoped", isClusterScoped); err != nil {
-			return err
+		if version == versions.V2_3 {
+			if err := setHelmBoolValue(values, "global.clusterScoped", isClusterScoped); err != nil {
+				return err
+			}
+		} else if version.AtLeast(versions.V2_4) {
+			if err := setHelmBoolValue(values, "global.clusterWide", isClusterScoped); err != nil {
+				return err
+			}
 		}
 	}
 

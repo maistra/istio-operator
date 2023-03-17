@@ -116,13 +116,21 @@ func (v *versionStrategyV2_3) SetImageValues(_ context.Context, _ *common.Contro
 	return nil
 }
 
+func (v *versionStrategyV2_3) IsClusterScoped(spec *v2.ControlPlaneSpec) (bool, error) {
+	controlPlaneMode, _, err := spec.TechPreview.GetString(v2.TechPreviewControlPlaneModeKey)
+	if err != nil {
+		return false, err
+	}
+	return controlPlaneMode == v2.TechPreviewControlPlaneModeValueClusterScoped, nil
+}
+
 func (v *versionStrategyV2_3) ValidateV1(_ context.Context, _ client.Client, _ *v1.ServiceMeshControlPlane) error {
 	return fmt.Errorf("must use v2 ServiceMeshControlPlane resource for v2.0+ installations")
 }
 
 func (v *versionStrategyV2_3) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
-	allErrors = validateGlobal(ctx, meta, spec, cl, allErrors)
+	allErrors = v.validateGlobal(ctx, v.Ver, meta, spec, cl, allErrors)
 	allErrors = validateGateways(ctx, meta, spec, cl, allErrors)
 	allErrors = validatePolicyType(spec, v.Ver, allErrors)
 	allErrors = validateTelemetryType(spec, v.Ver, allErrors)
@@ -131,40 +139,6 @@ func (v *versionStrategyV2_3) ValidateV2(ctx context.Context, cl client.Client, 
 	allErrors = v.validateMixerDisabled(spec, allErrors)
 	allErrors = v.validateAddons(spec, allErrors)
 	return NewValidationError(allErrors...)
-}
-
-func validateGlobal(ctx context.Context, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, cl client.Client, allErrors []error) []error {
-	isClusterScoped, err := spec.IsClusterScoped()
-	if err != nil {
-		return append(allErrors, err)
-	}
-	smcps := v2.ServiceMeshControlPlaneList{}
-	err = cl.List(ctx, &smcps)
-	if err != nil {
-		return append(allErrors, err)
-	}
-
-	if isClusterScoped {
-		if len(smcps.Items) > 1 || len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
-			return append(allErrors,
-				fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
-		}
-	} else {
-		for _, smcp := range smcps.Items {
-			if smcp.UID == meta.GetUID() {
-				continue
-			}
-			clusterScoped, err := smcp.Spec.IsClusterScoped()
-			if err != nil {
-				return append(allErrors, err)
-			}
-			if clusterScoped {
-				return append(allErrors,
-					fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"))
-			}
-		}
-	}
-	return allErrors
 }
 
 func (v *versionStrategyV2_3) validateRuntime(spec *v2.ControlPlaneSpec, allErrors []error) []error {
@@ -279,34 +253,50 @@ func (v *versionStrategyV2_3) ValidateUpgrade(ctx context.Context, cl client.Cli
 	return v.validateServiceMeshExtensionsRemoved(ctx, cl, smcp)
 }
 
-func (v *versionStrategyV2_3) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCP, newSMCP metav1.Object) error {
-	oldClusterScoped, err := isClusterScoped(oldSMCP)
+func (v *versionStrategyV2_3) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCPObject, newSMCPObject metav1.Object) error {
+	oldSMCP, err := toSMCP(oldSMCPObject)
 	if err != nil {
 		return err
 	}
-	newClusterScoped, err := isClusterScoped(newSMCP)
+
+	newSMCP, err := toSMCP(newSMCPObject)
+	if err != nil {
+		return err
+	}
+
+	oldClusterScoped, err := v.IsClusterScoped(&oldSMCP.Spec)
+	if err != nil {
+		return err
+	}
+	newClusterScoped, err := v.IsClusterScoped(&newSMCP.Spec)
 	if err != nil {
 		return err
 	}
 	if oldClusterScoped != newClusterScoped {
-		return fmt.Errorf("field spec.techPreview.%s is immutable; to change its value, delete the ServiceMeshControlPlane and recreate it", v2.ControlPlaneModeKey)
+		return fmt.Errorf("field spec.techPreview.%s is immutable; to change its value, delete the ServiceMeshControlPlane and recreate it",
+			v2.TechPreviewControlPlaneModeKey)
 	}
 	return nil
 }
 
-func isClusterScoped(smcp metav1.Object) (bool, error) {
-	switch s := smcp.(type) {
+func toSMCP(obj metav1.Object) (*v2.ServiceMeshControlPlane, error) {
+	switch s := obj.(type) {
 	case *v1.ServiceMeshControlPlane:
-		return false, nil
+		return nil, fmt.Errorf("must use v2 ServiceMeshControlPlane resource for v2.0+ installations")
 	case *v2.ServiceMeshControlPlane:
-		return s.Spec.IsClusterScoped()
+		return s, nil
 	default:
-		return false, fmt.Errorf("unknown ServiceMeshControlPlane type: %T", smcp)
+		return nil, fmt.Errorf("unknown ServiceMeshControlPlane type: %T", obj)
 	}
 }
 
-func (v *versionStrategyV2_3) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, smcp metav1.Object) admission.Response {
-	clusterScoped, err := isClusterScoped(smcp)
+func (v *versionStrategyV2_3) ValidateRequest(ctx context.Context, cl client.Client, req admission.Request, obj metav1.Object) admission.Response {
+	smcp, err := toSMCP(obj)
+	if err != nil {
+		return admission.Errored(http.StatusInternalServerError, err)
+	}
+
+	clusterScoped, err := v.IsClusterScoped(&smcp.Spec)
 	if err != nil {
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
@@ -707,4 +697,25 @@ func (v *versionStrategyV2_3) GetPolicyType(in *v1.HelmValues, mixerPolicyEnable
 
 func (v *versionStrategyV2_3) GetTrustDomainFieldPath() string {
 	return "meshConfig.trustDomain"
+}
+
+func (v *versionStrategyV2_3) validateGlobal(
+	ctx context.Context, version Ver, meta *metav1.ObjectMeta,
+	spec *v2.ControlPlaneSpec, cl client.Client, allErrors []error,
+) []error {
+	if spec.Mode != "" {
+		return append(allErrors,
+			fmt.Errorf("the spec.mode field is not supported in version 2.3; use spec.techPreview.%s",
+				v2.TechPreviewControlPlaneModeKey))
+	} else if spec.TechPreview != nil {
+		if mode, found, _ := spec.TechPreview.GetString(v2.TechPreviewControlPlaneModeKey); found {
+			if mode != v2.TechPreviewControlPlaneModeValueClusterScoped && mode != v2.TechPreviewControlPlaneModeValueMultiTenant {
+				return append(allErrors,
+					fmt.Errorf("spec.techPreview.%s must be either %s or %s",
+						v2.TechPreviewControlPlaneModeKey, v2.TechPreviewControlPlaneModeValueMultiTenant, v2.TechPreviewControlPlaneModeValueClusterScoped))
+			}
+		}
+	}
+
+	return validateGlobal(ctx, version, meta, spec, cl, allErrors)
 }

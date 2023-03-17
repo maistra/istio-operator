@@ -611,13 +611,13 @@ func createControlPlaneValidatorTestFixture(clientObjects ...runtime.Object) *Co
 }
 
 func newControlPlaneWithVersion(name, namespace, version string) *maistrav2.ServiceMeshControlPlane {
-	controlPlane := &maistrav2.ServiceMeshControlPlane{
+	return &maistrav2.ServiceMeshControlPlane{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: maistrav2.ControlPlaneSpec{},
+		Spec: maistrav2.ControlPlaneSpec{
+			Version: version,
+		},
 	}
-	controlPlane.Spec.Version = version
-	return controlPlane
 }

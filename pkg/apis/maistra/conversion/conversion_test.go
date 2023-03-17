@@ -1290,7 +1290,7 @@ var (
 			smcpv2: v2.ControlPlaneSpec{
 				Version: "v2.3",
 				TechPreview: v1.NewHelmValues(map[string]interface{}{
-					v2.ControlPlaneModeKey: v2.ControlPlaneModeValueClusterScoped,
+					v2.TechPreviewControlPlaneModeKey: v2.TechPreviewControlPlaneModeValueClusterScoped,
 				}),
 			},
 			cruft: v1.NewHelmValues(map[string]interface{}{
