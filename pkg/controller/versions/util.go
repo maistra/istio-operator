@@ -63,6 +63,7 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, s
 	}
 
 	if isClusterScoped {
+		// allow SMCP create/update only when no SMCP exists or when a single SMCP exists and we're updating it
 		if len(smcps.Items) > 1 || len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
 			return append(allErrors,
 				fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
