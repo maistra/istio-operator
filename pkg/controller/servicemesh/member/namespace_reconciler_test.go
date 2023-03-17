@@ -272,7 +272,7 @@ func TestOtherResourcesArePreserved(t *testing.T) {
 }
 
 func setupReconciledNamespace(t *testing.T, cl client.Client, namespace string) {
-	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, versions.DefaultVersion, true)
+	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, versions.DefaultVersion, false, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
@@ -291,7 +291,7 @@ func assertNotFound(err error, message string, t *testing.T) {
 }
 
 func assertReconcileNamespaceSucceeds(t *testing.T, cl client.Client, networkStrategy NamespaceReconciler) {
-	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, versions.DefaultVersion, true)
+	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, versions.DefaultVersion, false, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
@@ -306,7 +306,7 @@ func assertReconcileNamespaceSucceeds(t *testing.T, cl client.Client, networkStr
 }
 
 func assertRemoveNamespaceSucceeds(t *testing.T, cl client.Client, networkStrategy NamespaceReconciler) {
-	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, versions.DefaultVersion, true)
+	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, versions.DefaultVersion, false, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
@@ -321,7 +321,7 @@ func assertRemoveNamespaceSucceeds(t *testing.T, cl client.Client, networkStrate
 }
 
 func assertReconcileNamespaceFails(t *testing.T, cl client.Client) {
-	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, versions.DefaultVersion, true)
+	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, versions.DefaultVersion, false, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
@@ -332,7 +332,7 @@ func assertReconcileNamespaceFails(t *testing.T, cl client.Client) {
 }
 
 func assertRemoveNamespaceFails(t *testing.T, cl client.Client) {
-	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, versions.DefaultVersion, true)
+	reconciler, err := newNamespaceReconciler(ctx, cl, controlPlaneNamespace, versions.DefaultVersion, false, true)
 	if err != nil {
 		t.Fatalf("Error creating namespace reconciler: %v", err)
 	}
