@@ -150,7 +150,7 @@ type MemberReconciler struct {
 }
 
 type NewNamespaceReconcilerFunc func(ctx context.Context, cl client.Client,
-	meshNamespace string, meshVersion versions.Version, isCNIEnabled bool) (NamespaceReconciler, error)
+	meshNamespace string, meshVersion versions.Version, clusterWideMode, isCNIEnabled bool) (NamespaceReconciler, error)
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
@@ -236,7 +236,12 @@ func (r *MemberReconciler) reconcileObject(ctx context.Context, member *maistrav
 		return reconcile.Result{}, err
 	}
 
-	reconciler, err := r.newNamespaceReconciler(ctx, r.Client, member.Spec.ControlPlaneRef.Namespace, meshVersion, r.cniConfig.Enabled)
+	clusterWideMode, err := meshVersion.Strategy().IsClusterScoped(&smcp.Spec)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	reconciler, err := r.newNamespaceReconciler(ctx, r.Client, member.Spec.ControlPlaneRef.Namespace, meshVersion, clusterWideMode, r.cniConfig.Enabled)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -295,7 +300,7 @@ func toObjectKey(controlPlaneRef maistrav1.ServiceMeshControlPlaneRef) client.Ob
 func (r *MemberReconciler) finalizeObject(ctx context.Context, obj runtime.Object) error {
 	member := obj.(*maistrav1.ServiceMeshMember)
 
-	reconciler, err := r.newNamespaceReconciler(ctx, r.Client, member.Spec.ControlPlaneRef.Namespace, nil, r.cniConfig.Enabled)
+	reconciler, err := r.newNamespaceReconciler(ctx, r.Client, member.Spec.ControlPlaneRef.Namespace, nil, false, r.cniConfig.Enabled)
 	if err != nil {
 		return err
 	}
