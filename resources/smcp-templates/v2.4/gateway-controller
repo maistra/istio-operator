@@ -1,6 +1,7 @@
 apiVersion: maistra.io/v2
 kind: ServiceMeshControlPlane
 spec:
+  mode: ClusterWide
   addons:
     grafana:
       enabled: false
@@ -15,7 +16,6 @@ spec:
   techPreview:
     global:
       caCertConfigMapName: ossm-ca-root-cert
-    controlPlaneMode: ClusterScoped
     gatewayAPI:
       enabled: true
       controllerMode: true
