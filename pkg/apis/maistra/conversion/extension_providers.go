@@ -18,6 +18,7 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, values map[string
 		}
 	}
 
+	var extensionProvidersValues []map[string]interface{}
 	for _, ext := range in.ExtensionProviders {
 		if ext.Prometheus == nil && ext.EnvoyExtAuthzHttp == nil {
 			return fmt.Errorf("extension provider %s does not define any provider - it must specify one of: prometheus or envoyExtAuthzHttp", ext.Name)
@@ -26,44 +27,25 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, values map[string
 			return fmt.Errorf("extension provider %s must specify only one type of provider: prometheus or envoyExtAuthzHttp", ext.Name)
 		}
 		if ext.Prometheus != nil {
-			if err := populateExtensionProviderPrometheusValues(ext, values); err != nil {
-				return err
-			}
+			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
+				// TODO: check empty string
+				"name":       ext.Name,
+				"prometheus": map[string]interface{}{},
+			})
 		}
 		if ext.EnvoyExtAuthzHttp != nil {
-			if err := populateExtensionProviderEnvoyExtAuthzHttpValues(ext, values); err != nil {
-				return err
-			}
+			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
+				// TODO: check empty string
+				"name": ext.Name,
+				"envoyExtAuthzHttp": map[string]interface{}{
+					// TODO: Handle empty string and 0
+					"service": ext.EnvoyExtAuthzHttp.Service,
+					"port":    ext.EnvoyExtAuthzHttp.Port,
+				},
+			})
 		}
 	}
-	return nil
-}
-
-func populateExtensionProviderPrometheusValues(ext *v2.ExtensionProviderConfig, values map[string]interface{}) error {
-	prometheus := []map[string]interface{}{
-		{
-			"name":       ext.Name,
-			"prometheus": map[string]interface{}{},
-		},
-	}
-	if err := setHelmMapSliceValue(values, "meshConfig.extensionProviders", prometheus); err != nil {
-		return err
-	}
-	return nil
-}
-
-func populateExtensionProviderEnvoyExtAuthzHttpValues(ext *v2.ExtensionProviderConfig, values map[string]interface{}) error {
-	envoyExtAuthzHttp := []map[string]interface{}{
-		{
-			"name": ext.Name,
-			"envoyExtAuthzHttp": map[string]interface{}{
-				// TODO: Handle empty string and 0
-				"service": ext.EnvoyExtAuthzHttp.Service,
-				"port":    ext.EnvoyExtAuthzHttp.Port,
-			},
-		},
-	}
-	if err := setHelmMapSliceValue(values, "meshConfig.extensionProviders", envoyExtAuthzHttp); err != nil {
+	if err := setHelmMapSliceValue(values, "meshConfig.extensionProviders", extensionProvidersValues); err != nil {
 		return err
 	}
 	return nil

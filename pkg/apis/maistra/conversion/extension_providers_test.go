@@ -21,7 +21,9 @@ var (
 
 func init() {
 	for _, v := range versions.AllV2Versions {
-		extensionProvidersTestCases = append(extensionProvidersTestCases, extensionProvidersTestCasesV2(v)...)
+		if v.AtLeast(versions.V2_4) {
+			extensionProvidersTestCases = append(extensionProvidersTestCases, extensionProvidersTestCasesV2(v)...)
+		}
 	}
 }
 
@@ -112,6 +114,43 @@ func extensionProvidersTestCasesV2(version versions.Version) []conversionTestCas
 			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 				"meshConfig": map[string]interface{}{
 					"extensionProviders": []interface{}{
+						map[string]interface{}{
+							"name": "ext-authz-http",
+							"envoyExtAuthzHttp": map[string]interface{}{
+								"service": "ext-authz.foo.svc.cluster.local",
+								"port":    8000,
+							},
+						},
+					},
+				},
+			}),
+			completeIstio: expectedCompleteIstio,
+		},
+		{
+			name: "prometheus-and-envoyExtAuthzHttp." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				ExtensionProviders: []*v2.ExtensionProviderConfig{
+					{
+						Name:       "prometheus",
+						Prometheus: &v2.ExtensionProviderPrometheusConfig{},
+					},
+					{
+						Name: "ext-authz-http",
+						EnvoyExtAuthzHttp: &v2.ExtensionProviderEnvoyExternalAuthorizationHttpConfig{
+							Service: "ext-authz.foo.svc.cluster.local",
+							Port:    8000,
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"meshConfig": map[string]interface{}{
+					"extensionProviders": []interface{}{
+						map[string]interface{}{
+							"name":       "prometheus",
+							"prometheus": map[string]interface{}{},
+						},
 						map[string]interface{}{
 							"name": "ext-authz-http",
 							"envoyExtAuthzHttp": map[string]interface{}{
