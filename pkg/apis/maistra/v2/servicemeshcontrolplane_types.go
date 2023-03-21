@@ -202,3 +202,19 @@ func (s ControlPlaneSpec) IsClusterScoped() (bool, error) {
 	}
 	return controlPlaneMode == ControlPlaneModeValueClusterScoped, nil
 }
+
+func (s ControlPlaneSpec) IsPilotSecretNameEnabled() bool {
+	return s.Security.CertificateAuthorization.CertManager != nil && s.Security.CertificateAuthorization.CertManager.PilotCertSecretName != ""
+	if s.Security.CertificateAuthorization.CertManager.PilotCertSecretName != nil {
+		return true
+	}
+	return false
+}
+
+func (s ControlPlaneSpec) IsrootCAConfigMapNameEnabled() bool {
+	return s.Security.CertificateAuthorization.CertManager != nil && s.Security.CertificateAuthorization.CertManager.rootCAConfigMapName != ""
+	if s.Security.CertificateAuthorization.CertManager.rootCAConfigMapName != nil {
+		return true
+	}
+	return false
+}

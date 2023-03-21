@@ -274,9 +274,40 @@ func (v *versionStrategyV2_4) ValidateRequest(ctx context.Context, cl client.Cli
 			return admission.ValidationResponse(false, "a cluster-scoped SMCP may only be created by users with cluster-admin permissions")
 		}
 	}
-
+	hasPilotSecretName != ContainsPilotSecretNameField(smcp)
+	if hasPilotSecretName {
+		return admission.ValidationResponse(false, "SMCP does not allow this field")
+}
+	hasRootCAConfigMapName != ContainsRootCAConfigMapNameField(smcp)
+	if hasRootCAConfigMapName {
+	return admission.ValidationResponse(false, "SMCP does not allow this field")
+}
 	return admission.ValidationResponse(true, "")
 }
+
+	func ContainsPilotSecretNameField(smcp metav1.Object) bool {
+		switch s := smcp.(type) {
+	case *v1.ServiceMeshControlPlane:
+		return false
+	case *v2.ServiceMeshControlPlane:
+		return s.Spec.IsPilotSecretNameEnabled()
+	default:
+		return false 
+		}
+}
+	func ContainsRootCAConfigMapNameField(smcp metav1.Object) bool {
+		switch s := smcp.(type) {
+	case *v1.ServiceMeshControlPlane:
+		return false
+	case *v2.ServiceMeshControlPlane:
+		return s.Spec.IsRootCAConfigMapNameEnabled()
+	default:
+		return false 
+	}
+}	
+
+	
+
 
 func (v *versionStrategyV2_4) isRequesterClusterAdmin(ctx context.Context, cl client.Client, req admission.Request) (bool, error) {
 	sar := &authorizationv1.SubjectAccessReview{
