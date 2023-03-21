@@ -1544,6 +1544,43 @@ spec:
               extensionProviders:
                 items:
                   properties:
+                    envoyExtAuthzHttp:
+                      properties:
+                        failOpen:
+                          type: boolean
+                        includeAdditionalHeadersInCheck:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        includeRequestBodyInCheck:
+                          properties:
+                            allowPartialMessage:
+                              type: boolean
+                            maxRequestBytes:
+                              format: int32
+                              type: integer
+                            packAsBytes:
+                              type: boolean
+                          type: object
+                        includeRequestHeadersInCheck:
+                          items:
+                            type: string
+                          type: array
+                        pathPrefix:
+                          type: string
+                        port:
+                          format: int32
+                          type: integer
+                        service:
+                          type: string
+                        statusOnError:
+                          type: string
+                        timeout:
+                          type: string
+                      required:
+                      - port
+                      - service
+                      type: object
                     name:
                       type: string
                     prometheus:
@@ -6438,6 +6475,43 @@ spec:
                   extensionProviders:
                     items:
                       properties:
+                        envoyExtAuthzHttp:
+                          properties:
+                            failOpen:
+                              type: boolean
+                            includeAdditionalHeadersInCheck:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            includeRequestBodyInCheck:
+                              properties:
+                                allowPartialMessage:
+                                  type: boolean
+                                maxRequestBytes:
+                                  format: int32
+                                  type: integer
+                                packAsBytes:
+                                  type: boolean
+                              type: object
+                            includeRequestHeadersInCheck:
+                              items:
+                                type: string
+                              type: array
+                            pathPrefix:
+                              type: string
+                            port:
+                              format: int32
+                              type: integer
+                            service:
+                              type: string
+                            statusOnError:
+                              type: string
+                            timeout:
+                              type: string
+                          required:
+                          - port
+                          - service
+                          type: object
                         name:
                           type: string
                         prometheus:
