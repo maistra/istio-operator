@@ -1557,7 +1557,7 @@ spec:
                             allowPartialMessage:
                               type: boolean
                             maxRequestBytes:
-                              format: int32
+                              format: int64
                               type: integer
                             packAsBytes:
                               type: boolean
@@ -6488,7 +6488,7 @@ spec:
                                 allowPartialMessage:
                                   type: boolean
                                 maxRequestBytes:
-                                  format: int32
+                                  format: int64
                                   type: integer
                                 packAsBytes:
                                   type: boolean

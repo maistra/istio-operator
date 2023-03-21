@@ -105,8 +105,21 @@ func extensionProvidersTestCasesV2(version versions.Version) []conversionTestCas
 					{
 						Name: "ext-authz-http",
 						EnvoyExtAuthzHttp: &v2.ExtensionProviderEnvoyExternalAuthorizationHttpConfig{
-							Service: "ext-authz.foo.svc.cluster.local",
-							Port:    8000,
+							Service:                      "ext-authz.foo.svc.cluster.local",
+							Port:                         8000,
+							Timeout:                      strPtr("1s"),
+							PathPrefix:                   strPtr("/authz"),
+							FailOpen:                     boolPtr(true),
+							StatusOnError:                strPtr("500"),
+							IncludeRequestHeadersInCheck: []string{"x-ext-authz"},
+							IncludeAdditionalHeadersInCheck: map[string]string{
+								"x-ext-authz-additional-header": "value",
+							},
+							IncludeRequestBodyInCheck: &v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig{
+								MaxRequestBytes:     int64Ptr(100),
+								AllowPartialMessage: boolPtr(true),
+								PackAsBytes:         boolPtr(true),
+							},
 						},
 					},
 				},
@@ -117,8 +130,23 @@ func extensionProvidersTestCasesV2(version versions.Version) []conversionTestCas
 						map[string]interface{}{
 							"name": "ext-authz-http",
 							"envoyExtAuthzHttp": map[string]interface{}{
-								"service": "ext-authz.foo.svc.cluster.local",
-								"port":    8000,
+								"service":       "ext-authz.foo.svc.cluster.local",
+								"port":          8000,
+								"timeout":       "1s",
+								"pathPrefix":    "/authz",
+								"failOpen":      true,
+								"statusOnError": "500",
+								"includeRequestHeadersInCheck": []interface{}{
+									"x-ext-authz",
+								},
+								"includeAdditionalHeadersInCheck": map[string]interface{}{
+									"x-ext-authz-additional-header": "value",
+								},
+								"includeRequestBodyInCheck": map[string]interface{}{
+									"maxRequestBytes":     100,
+									"allowPartialMessage": true,
+									"packAsBytes":         true,
+								},
 							},
 						},
 					},

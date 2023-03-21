@@ -25,18 +25,18 @@ type ExtensionProviderEnvoyExternalAuthorizationHttpConfig struct {
 	// The maximum duration that the proxy will wait for a response from the provider (default timeout: 600s).
 	// When this timeout condition is met, the proxy marks the communication to the authorization service as failure.
 	// In this situation, the response sent back to the client will depend on the configured `fail_open` field.
-	Timeout string `json:"timeout,omitempty"`
+	Timeout *string `json:"timeout,omitempty"`
 	// Sets a prefix to the value of authorization request header *Path*.
 	// For example, setting this to "/check" for an original user request at path "/admin" will cause the
 	// authorization check request to be sent to the authorization service at the path "/check/admin" instead of "/admin".
-	PathPrefix string `json:"pathPrefix,omitempty"`
+	PathPrefix *string `json:"pathPrefix,omitempty"`
 	// If true, the user request will be allowed even if the communication with the authorization service has failed,
 	// or if the authorization service has returned a HTTP 5xx error.
 	// Default is false and the request will be rejected with "Forbidden" response.
-	FailOpen bool `json:"failOpen,omitempty"`
+	FailOpen *bool `json:"failOpen,omitempty"`
 	// Sets the HTTP status that is returned to the client when there is a network error to the authorization service.
 	// The default status is "403" (HTTP Forbidden).
-	StatusOnError string `json:"statusOnError,omitempty"`
+	StatusOnError *string `json:"statusOnError,omitempty"`
 	// List of client request headers that should be included in the authorization request sent to the authorization service.
 	// Note that in addition to the headers specified here following headers are included by default:
 	// 1. *Host*, *Method*, *Path* and *Content-Length* are automatically sent.
@@ -64,16 +64,16 @@ type ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig struct {
 	// Otherwise the request will be sent to the provider with a partial message.
 	// Note that this setting will have precedence over the fail_open field, the 413 will be returned even when the
 	// fail_open is set to true.
-	MaxRequestBytes uint32 `json:"maxRequestBytes,omitempty"`
+	MaxRequestBytes *int64 `json:"maxRequestBytes,omitempty"`
 	// When this field is true, ext-authz filter will buffer the message until max_request_bytes is reached.
 	// The authorization request will be dispatched and no 413 HTTP error will be returned by the filter.
 	// A "x-envoy-auth-partial-body: false|true" metadata header will be added to the authorization request message
 	// indicating if the body data is partial.
-	AllowPartialMessage bool `json:"allowPartialMessage,omitempty"`
+	AllowPartialMessage *bool `json:"allowPartialMessage,omitempty"`
 	// nolint:lll
 	// If true, the body sent to the external authorization service in the gRPC authorization request is set with raw bytes
 	// in the raw_body field (https://github.com/envoyproxy/envoy/blame/cffb095d59d7935abda12b9509bcd136808367bb/api/envoy/service/auth/v3/attribute_context.proto#L153).
 	// Otherwise, it will be filled with UTF-8 string in the body field (https://github.com/envoyproxy/envoy/blame/cffb095d59d7935abda12b9509bcd136808367bb/api/envoy/service/auth/v3/attribute_context.proto#L147).
 	// This field only works with the envoy_ext_authz_grpc provider and has no effect for the envoy_ext_authz_http provider.
-	PackAsBytes bool `json:"packAsBytes,omitempty"`
+	PackAsBytes *bool `json:"packAsBytes,omitempty"`
 }
