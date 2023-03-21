@@ -70,6 +70,7 @@ type ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig struct {
 	// A "x-envoy-auth-partial-body: false|true" metadata header will be added to the authorization request message
 	// indicating if the body data is partial.
 	AllowPartialMessage bool `json:"allowPartialMessage,omitempty"`
+	// nolint:lll
 	// If true, the body sent to the external authorization service in the gRPC authorization request is set with raw bytes
 	// in the raw_body field (https://github.com/envoyproxy/envoy/blame/cffb095d59d7935abda12b9509bcd136808367bb/api/envoy/service/auth/v3/attribute_context.proto#L153).
 	// Otherwise, it will be filled with UTF-8 string in the body field (https://github.com/envoyproxy/envoy/blame/cffb095d59d7935abda12b9509bcd136808367bb/api/envoy/service/auth/v3/attribute_context.proto#L147).
