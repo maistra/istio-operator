@@ -4922,9 +4922,9 @@ spec:
                         properties:
                           address:
                             type: string
-                          pilotSecretName: istiod-tls
+                          pilotSecretName:
                             type: string
-                          rootCAConfigMapName: istio-ca-root-cert
+                          rootCAConfigMapName:
                             type: string
                         type: object
                       custom:
@@ -9800,9 +9800,9 @@ spec:
                             properties:
                               address:
                                 type: string
-                              pilotSecretName: istiod-tls
+                              pilotSecretName:
                                 type: string
-                              rootCAConfigMapName: istio-ca-root-cert
+                              rootCAConfigMapName:
                                 type: string
                             type: object
                           custom:
