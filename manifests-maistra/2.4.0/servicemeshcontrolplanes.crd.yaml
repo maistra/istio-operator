@@ -4921,9 +4921,9 @@ spec:
                         properties:
                           address:
                             type: string
-                          pilotSecretName: 
+                          pilotSecretName:
                             type: string
-                          rootCAConfigMapName: 
+                          rootCAConfigMapName:
                             type: string
                         type: object
                       custom:
@@ -9801,7 +9801,7 @@ spec:
                                 type: string
                               pilotSecretName:
                                 type: string
-                              rootCAConfigMapName: 
+                              rootCAConfigMapName:
                                 type: string
                             type: object
                           custom:
