@@ -9,7 +9,15 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
-var extensionProvidersTestCases []conversionTestCase
+var (
+	extensionProvidersTestCases []conversionTestCase
+	expectedCompleteIstio       = v1.NewHelmValues(map[string]interface{}{
+		"global": map[string]interface{}{
+			"multiCluster":  globalMultiClusterDefaults,
+			"meshExpansion": globalMeshExpansionDefaults,
+		},
+	})
+)
 
 func init() {
 	for _, v := range versions.AllV2Versions {
@@ -49,12 +57,7 @@ func extensionProvidersTestCasesV2(version versions.Version) []conversionTestCas
 				Version: ver,
 			},
 			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
-			completeIstio: v1.NewHelmValues(map[string]interface{}{
-				"global": map[string]interface{}{
-					"multiCluster":  globalMultiClusterDefaults,
-					"meshExpansion": globalMeshExpansionDefaults,
-				},
-			}),
+			completeIstio: expectedCompleteIstio,
 		},
 		{
 			name: "empty." + ver,
@@ -67,12 +70,7 @@ func extensionProvidersTestCasesV2(version versions.Version) []conversionTestCas
 					"extensionProviders": []interface{}{},
 				},
 			}),
-			completeIstio: v1.NewHelmValues(map[string]interface{}{
-				"global": map[string]interface{}{
-					"multiCluster":  globalMultiClusterDefaults,
-					"meshExpansion": globalMeshExpansionDefaults,
-				},
-			}),
+			completeIstio: expectedCompleteIstio,
 		},
 		{
 			name: "prometheus." + ver,
@@ -95,12 +93,36 @@ func extensionProvidersTestCasesV2(version versions.Version) []conversionTestCas
 					},
 				},
 			}),
-			completeIstio: v1.NewHelmValues(map[string]interface{}{
-				"global": map[string]interface{}{
-					"multiCluster":  globalMultiClusterDefaults,
-					"meshExpansion": globalMeshExpansionDefaults,
+			completeIstio: expectedCompleteIstio,
+		},
+		{
+			name: "envoyExtAuthzHttp." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				ExtensionProviders: []*v2.ExtensionProviderConfig{
+					{
+						Name: "ext-authz-http",
+						EnvoyExtAuthzHttp: &v2.ExtensionProviderEnvoyExternalAuthorizationHttpConfig{
+							Service: "ext-authz.foo.svc.cluster.local",
+							Port:    8000,
+						},
+					},
+				},
+			},
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
+				"meshConfig": map[string]interface{}{
+					"extensionProviders": []interface{}{
+						map[string]interface{}{
+							"name": "ext-authz-http",
+							"envoyExtAuthzHttp": map[string]interface{}{
+								"service": "ext-authz.foo.svc.cluster.local",
+								"port":    8000,
+							},
+						},
+					},
 				},
 			}),
+			completeIstio: expectedCompleteIstio,
 		},
 	}
 }

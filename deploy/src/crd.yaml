@@ -1568,7 +1568,7 @@ spec:
                         pathPrefix:
                           type: string
                         port:
-                          format: int32
+                          format: int64
                           type: integer
                         service:
                           type: string
@@ -6499,7 +6499,7 @@ spec:
                             pathPrefix:
                               type: string
                             port:
-                              format: int32
+                              format: int64
                               type: integer
                             service:
                               type: string
