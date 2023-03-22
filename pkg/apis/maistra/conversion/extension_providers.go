@@ -35,15 +35,10 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, values map[string
 			})
 		}
 		if ext.EnvoyExtAuthzHTTP != nil {
-			envoyExtAuthzHTTPValues := map[string]interface{}{}
-			if ext.EnvoyExtAuthzHTTP.Service != "" {
-				envoyExtAuthzHTTPValues["service"] = ext.EnvoyExtAuthzHTTP.Service
+			envoyExtAuthzHTTPValues := map[string]interface{}{
+				"service": *ext.EnvoyExtAuthzHTTP.Service,
+				"port":    *ext.EnvoyExtAuthzHTTP.Port,
 			}
-			// TODO: Handle empty service
-			if ext.EnvoyExtAuthzHTTP.Port != 0 {
-				envoyExtAuthzHTTPValues["port"] = ext.EnvoyExtAuthzHTTP.Port
-			}
-			// TODO: Handle port 0
 			if ext.EnvoyExtAuthzHTTP.Timeout != nil {
 				envoyExtAuthzHTTPValues["timeout"] = *ext.EnvoyExtAuthzHTTP.Timeout
 			}
@@ -105,13 +100,13 @@ func populateExtensionProvidersConfig(in *v1.HelmValues, out *v2.ControlPlaneSpe
 						extProviderName := extProvider["name"].(string)
 						envoyExtAuthzHTTPConfig := &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{}
 						if service, ok := envoyExtAuthzHTTP["service"]; ok {
-							envoyExtAuthzHTTPConfig.Service = service.(string)
+							envoyExtAuthzHTTPConfig.Service = strPtr(service.(string))
 						} else {
 							return fmt.Errorf("extension provider envoyExtAuthzHTTP '%s' must specify field 'service'", extProviderName)
 						}
 						if rawPort, ok := envoyExtAuthzHTTP["port"]; ok {
 							if port, ok := rawPort.(int64); ok {
-								envoyExtAuthzHTTPConfig.Port = port
+								envoyExtAuthzHTTPConfig.Port = int64Ptr(port)
 							} else {
 								return fmt.Errorf("extension provider envoyExtAuthzHTTP '%s' must specify field 'port' of type '%T'; got type '%T'",
 									extProviderName, envoyExtAuthzHTTPConfig.Port, port)

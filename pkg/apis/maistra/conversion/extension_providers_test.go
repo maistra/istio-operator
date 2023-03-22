@@ -105,8 +105,8 @@ func extensionProvidersTestCasesV2(version versions.Version) []conversionTestCas
 					{
 						Name: "ext-authz-http",
 						EnvoyExtAuthzHTTP: &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{
-							Service:                      "ext-authz.foo.svc.cluster.local",
-							Port:                         8000,
+							Service:                      strPtr("ext-authz.foo.svc.cluster.local"),
+							Port:                         int64Ptr(8000),
 							Timeout:                      strPtr("1s"),
 							PathPrefix:                   strPtr("/authz"),
 							FailOpen:                     boolPtr(true),
@@ -166,8 +166,8 @@ func extensionProvidersTestCasesV2(version versions.Version) []conversionTestCas
 					{
 						Name: "ext-authz-http",
 						EnvoyExtAuthzHTTP: &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{
-							Service: "ext-authz.foo.svc.cluster.local",
-							Port:    8000,
+							Service: strPtr("ext-authz.foo.svc.cluster.local"),
+							Port:    int64Ptr(8000),
 						},
 					},
 				},

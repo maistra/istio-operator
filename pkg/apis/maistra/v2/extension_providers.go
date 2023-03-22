@@ -19,9 +19,9 @@ type ExtensionProviderEnvoyExternalAuthorizationHTTPConfig struct {
 	// service defined by the Kubernetes service or ServiceEntry.
 	//
 	// Example: "my-ext-authz.foo.svc.cluster.local" or "bar/my-ext-authz.example.com".
-	Service string `json:"service"`
+	Service *string `json:"service"`
 	// REQUIRED. Specifies the port of the service.
-	Port int64 `json:"port"`
+	Port *int64 `json:"port"`
 	// The maximum duration that the proxy will wait for a response from the provider (default timeout: 600s).
 	// When this timeout condition is met, the proxy marks the communication to the authorization service as failure.
 	// In this situation, the response sent back to the client will depend on the configured `fail_open` field.
