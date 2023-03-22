@@ -274,13 +274,13 @@ func (v *versionStrategyV2_4) ValidateRequest(ctx context.Context, cl client.Cli
 			return admission.ValidationResponse(false, "a cluster-scoped SMCP may only be created by users with cluster-admin permissions")
 		}
 	}
-	hasPilotSecretName != ContainsPilotSecretNameField(smcp)
+	hasPilotSecretName := ContainsPilotSecretNameField(smcp)
 	if hasPilotSecretName {
-		return admission.ValidationResponse(false, "SMCP does not allow this field")
+		return admission.ValidationResponse(false, "SMCP does not allow PilotSecretName field")
 }
-	hasRootCAConfigMapName != ContainsRootCAConfigMapNameField(smcp)
+	hasRootCAConfigMapName := ContainsRootCAConfigMapNameField(smcp)
 	if hasRootCAConfigMapName {
-	return admission.ValidationResponse(false, "SMCP does not allow this field")
+	return admission.ValidationResponse(false, "SMCP does not allow this RootCAConfigMapName field")
 }
 	return admission.ValidationResponse(true, "")
 }

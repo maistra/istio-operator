@@ -204,17 +204,10 @@ func (s ControlPlaneSpec) IsClusterScoped() (bool, error) {
 }
 
 func (s ControlPlaneSpec) IsPilotSecretNameEnabled() bool {
-	return s.Security.CertificateAuthorization.CertManager != nil && s.Security.CertificateAuthorization.CertManager.PilotCertSecretName != ""
-	if s.Security.CertificateAuthorization.CertManager.PilotCertSecretName != nil {
-		return true
-	}
-	return false
+	return s.Security.CertificateAuthority.CertManager != nil && s.Security.CertificateAuthority.CertManager.PilotCertSecretName != ""
 }
 
-func (s ControlPlaneSpec) IsrootCAConfigMapNameEnabled() bool {
-	return s.Security.CertificateAuthorization.CertManager != nil && s.Security.CertificateAuthorization.CertManager.rootCAConfigMapName != ""
-	if s.Security.CertificateAuthorization.CertManager.rootCAConfigMapName != nil {
-		return true
-	}
-	return false
+func (s ControlPlaneSpec) IsRootCAConfigMapNameEnabled() bool {
+	return s.Security.CertificateAuthority.CertManager != nil && s.Security.CertificateAuthority.CertManager.RootCAConfigMapName != "" 
+
 }
