@@ -35,15 +35,10 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, values map[string
 			})
 		}
 		if ext.EnvoyExtAuthzHTTP != nil {
-			envoyExtAuthzHTTPValues := map[string]interface{}{}
-			if ext.EnvoyExtAuthzHTTP.Service != "" {
-				envoyExtAuthzHTTPValues["service"] = ext.EnvoyExtAuthzHTTP.Service
+			envoyExtAuthzHTTPValues := map[string]interface{}{
+				"service": ext.EnvoyExtAuthzHTTP.Service,
+				"port":    ext.EnvoyExtAuthzHTTP.Port,
 			}
-			// TODO: Handle empty service
-			if ext.EnvoyExtAuthzHTTP.Port != 0 {
-				envoyExtAuthzHTTPValues["port"] = ext.EnvoyExtAuthzHTTP.Port
-			}
-			// TODO: Handle port 0
 			if ext.EnvoyExtAuthzHTTP.Timeout != nil {
 				envoyExtAuthzHTTPValues["timeout"] = *ext.EnvoyExtAuthzHTTP.Timeout
 			}
