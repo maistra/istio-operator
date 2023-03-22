@@ -867,8 +867,8 @@ func (in *ExtensionProviderConfig) DeepCopyInto(out *ExtensionProviderConfig) {
 		*out = new(ExtensionProviderPrometheusConfig)
 		**out = **in
 	}
-	if in.EnvoyExtAuthzHttp != nil {
-		in, out := &in.EnvoyExtAuthzHttp, &out.EnvoyExtAuthzHttp
+	if in.EnvoyExtAuthzHTTP != nil {
+		in, out := &in.EnvoyExtAuthzHTTP, &out.EnvoyExtAuthzHTTP
 		*out = new(ExtensionProviderEnvoyExternalAuthorizationHttpConfig)
 		(*in).DeepCopyInto(*out)
 	}

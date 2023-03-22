@@ -5,9 +5,9 @@ type ExtensionProviderConfig struct {
 	Name string `json:"name"`
 	// Prometheus configures a Prometheus metrics provider.
 	Prometheus *ExtensionProviderPrometheusConfig `json:"prometheus,omitempty"`
-	// EnvoyExtAuthzHttp configures an external authorizer that implements
+	// EnvoyExtAuthzHTTP configures an external authorizer that implements
 	// the Envoy ext_authz filter authorization check service using the HTTP API.
-	EnvoyExtAuthzHttp *ExtensionProviderEnvoyExternalAuthorizationHttpConfig `json:"envoyExtAuthzHttp,omitempty"`
+	EnvoyExtAuthzHTTP *ExtensionProviderEnvoyExternalAuthorizationHttpConfig `json:"envoyExtAuthzHttp,omitempty"`
 }
 
 type ExtensionProviderPrometheusConfig struct{}

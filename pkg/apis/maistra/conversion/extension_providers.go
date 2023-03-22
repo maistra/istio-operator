@@ -21,10 +21,10 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, values map[string
 
 	var extensionProvidersValues []map[string]interface{}
 	for _, ext := range in.ExtensionProviders {
-		if ext.Prometheus == nil && ext.EnvoyExtAuthzHttp == nil {
+		if ext.Prometheus == nil && ext.EnvoyExtAuthzHTTP == nil {
 			return fmt.Errorf("extension provider %s does not define any provider - it must specify one of: prometheus or envoyExtAuthzHttp", ext.Name)
 		}
-		if ext.Prometheus != nil && ext.EnvoyExtAuthzHttp != nil {
+		if ext.Prometheus != nil && ext.EnvoyExtAuthzHTTP != nil {
 			return fmt.Errorf("extension provider %s must specify only one type of provider: prometheus or envoyExtAuthzHttp", ext.Name)
 		}
 		if ext.Prometheus != nil {
@@ -34,47 +34,47 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, values map[string
 				"prometheus": map[string]interface{}{},
 			})
 		}
-		if ext.EnvoyExtAuthzHttp != nil {
+		if ext.EnvoyExtAuthzHTTP != nil {
 			envoyExtAuthzHttpValues := map[string]interface{}{}
-			if ext.EnvoyExtAuthzHttp.Service != "" {
-				envoyExtAuthzHttpValues["service"] = ext.EnvoyExtAuthzHttp.Service
+			if ext.EnvoyExtAuthzHTTP.Service != "" {
+				envoyExtAuthzHttpValues["service"] = ext.EnvoyExtAuthzHTTP.Service
 			} else {
 				// TODO
 			}
-			if ext.EnvoyExtAuthzHttp.Port != 0 {
-				envoyExtAuthzHttpValues["port"] = ext.EnvoyExtAuthzHttp.Port
+			if ext.EnvoyExtAuthzHTTP.Port != 0 {
+				envoyExtAuthzHttpValues["port"] = ext.EnvoyExtAuthzHTTP.Port
 			} else {
 				// Todo
 			}
 			// TODO: change to pointer
-			if ext.EnvoyExtAuthzHttp.Timeout != nil {
-				envoyExtAuthzHttpValues["timeout"] = *ext.EnvoyExtAuthzHttp.Timeout
+			if ext.EnvoyExtAuthzHTTP.Timeout != nil {
+				envoyExtAuthzHttpValues["timeout"] = *ext.EnvoyExtAuthzHTTP.Timeout
 			}
-			if ext.EnvoyExtAuthzHttp.PathPrefix != nil {
-				envoyExtAuthzHttpValues["pathPrefix"] = *ext.EnvoyExtAuthzHttp.PathPrefix
+			if ext.EnvoyExtAuthzHTTP.PathPrefix != nil {
+				envoyExtAuthzHttpValues["pathPrefix"] = *ext.EnvoyExtAuthzHTTP.PathPrefix
 			}
-			if ext.EnvoyExtAuthzHttp.FailOpen != nil {
-				envoyExtAuthzHttpValues["failOpen"] = *ext.EnvoyExtAuthzHttp.FailOpen
+			if ext.EnvoyExtAuthzHTTP.FailOpen != nil {
+				envoyExtAuthzHttpValues["failOpen"] = *ext.EnvoyExtAuthzHTTP.FailOpen
 			}
-			if ext.EnvoyExtAuthzHttp.StatusOnError != nil {
-				envoyExtAuthzHttpValues["statusOnError"] = *ext.EnvoyExtAuthzHttp.StatusOnError
+			if ext.EnvoyExtAuthzHTTP.StatusOnError != nil {
+				envoyExtAuthzHttpValues["statusOnError"] = *ext.EnvoyExtAuthzHTTP.StatusOnError
 			}
-			if ext.EnvoyExtAuthzHttp.IncludeRequestHeadersInCheck != nil {
-				envoyExtAuthzHttpValues["includeRequestHeadersInCheck"] = stringToInterfaceArray(ext.EnvoyExtAuthzHttp.IncludeRequestHeadersInCheck)
+			if ext.EnvoyExtAuthzHTTP.IncludeRequestHeadersInCheck != nil {
+				envoyExtAuthzHttpValues["includeRequestHeadersInCheck"] = stringToInterfaceArray(ext.EnvoyExtAuthzHTTP.IncludeRequestHeadersInCheck)
 			}
-			if ext.EnvoyExtAuthzHttp.IncludeAdditionalHeadersInCheck != nil {
-				envoyExtAuthzHttpValues["includeAdditionalHeadersInCheck"] = mapOfStringToInterface(ext.EnvoyExtAuthzHttp.IncludeAdditionalHeadersInCheck)
+			if ext.EnvoyExtAuthzHTTP.IncludeAdditionalHeadersInCheck != nil {
+				envoyExtAuthzHttpValues["includeAdditionalHeadersInCheck"] = mapOfStringToInterface(ext.EnvoyExtAuthzHTTP.IncludeAdditionalHeadersInCheck)
 			}
-			if ext.EnvoyExtAuthzHttp.IncludeRequestBodyInCheck != nil {
+			if ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck != nil {
 				includeRequestBodyInCheckValues := map[string]interface{}{}
-				if ext.EnvoyExtAuthzHttp.IncludeRequestBodyInCheck.MaxRequestBytes != nil {
-					includeRequestBodyInCheckValues["maxRequestBytes"] = *ext.EnvoyExtAuthzHttp.IncludeRequestBodyInCheck.MaxRequestBytes
+				if ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck.MaxRequestBytes != nil {
+					includeRequestBodyInCheckValues["maxRequestBytes"] = *ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck.MaxRequestBytes
 				}
-				if ext.EnvoyExtAuthzHttp.IncludeRequestBodyInCheck.AllowPartialMessage != nil {
-					includeRequestBodyInCheckValues["allowPartialMessage"] = *ext.EnvoyExtAuthzHttp.IncludeRequestBodyInCheck.AllowPartialMessage
+				if ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck.AllowPartialMessage != nil {
+					includeRequestBodyInCheckValues["allowPartialMessage"] = *ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck.AllowPartialMessage
 				}
-				if ext.EnvoyExtAuthzHttp.IncludeRequestBodyInCheck.PackAsBytes != nil {
-					includeRequestBodyInCheckValues["packAsBytes"] = *ext.EnvoyExtAuthzHttp.IncludeRequestBodyInCheck.PackAsBytes
+				if ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck.PackAsBytes != nil {
+					includeRequestBodyInCheckValues["packAsBytes"] = *ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck.PackAsBytes
 				}
 				envoyExtAuthzHttpValues["includeRequestBodyInCheck"] = includeRequestBodyInCheckValues
 			}
@@ -165,7 +165,7 @@ func populateExtensionProvidersConfig(in *v1.HelmValues, out *v2.ControlPlaneSpe
 						}
 						out.ExtensionProviders = append(out.ExtensionProviders, &v2.ExtensionProviderConfig{
 							Name:              extProviderName,
-							EnvoyExtAuthzHttp: envoyExtAuthzHttpConfig,
+							EnvoyExtAuthzHTTP: envoyExtAuthzHttpConfig,
 						})
 					}
 				}
