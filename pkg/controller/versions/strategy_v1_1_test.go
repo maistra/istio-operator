@@ -121,4 +121,19 @@ meshConfig:
 			"invalid extension provider 'invalid-timeout': envoyExtAuthzHttp.timeout must be specified in the duration format - got '1sec'",
 		},
 	},
+	{
+		name: "invalid failOpen",
+		values: `
+meshConfig:
+  extensionProviders:
+  - name: invalid-failOpen
+    envoyExtAuthzHttp:
+      service: ext-authz.foo.svc.cluster.local,
+      port: 8000,
+      failOpen: test
+`,
+		expectedErrors: []string{
+			"invalid extension provider 'invalid-failOpen': type of envoyExtAuthzHttp.failOpen must be bool - got string",
+		},
+	},
 }

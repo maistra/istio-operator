@@ -1,9 +1,6 @@
 package conversion
 
 import (
-	"fmt"
-	"time"
-
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
@@ -91,39 +88,18 @@ func populateExtensionProvidersConfig(in *v1.HelmValues, out *v2.ControlPlaneSpe
 				if rawEnvoyExtAuthzHTTP, ok := extProvider["envoyExtAuthzHttp"]; ok {
 					if envoyExtAuthzHTTP, ok := rawEnvoyExtAuthzHTTP.(map[string]interface{}); ok {
 						extProviderName := extProvider["name"].(string)
-						envoyExtAuthzHTTPConfig := &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{}
-						if service, ok := envoyExtAuthzHTTP["service"]; ok {
-							envoyExtAuthzHTTPConfig.Service = service.(string)
-						} else {
-							return fmt.Errorf("extension provider envoyExtAuthzHTTP '%s' must specify field 'service'", extProviderName)
-						}
-						if rawPort, ok := envoyExtAuthzHTTP["port"]; ok {
-							if port, ok := rawPort.(int64); ok {
-								envoyExtAuthzHTTPConfig.Port = port
-							} else {
-								return fmt.Errorf("extension provider envoyExtAuthzHTTP '%s' must specify field 'port' of type '%T'; got type '%T'",
-									extProviderName, envoyExtAuthzHTTPConfig.Port, port)
-							}
+						envoyExtAuthzHTTPConfig := &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{
+							Service: envoyExtAuthzHTTP["service"].(string),
+							Port:    envoyExtAuthzHTTP["port"].(int64),
 						}
 						if rawTimeout, ok := envoyExtAuthzHTTP["timeout"]; ok {
-							timeout := rawTimeout.(string)
-							if _, err := time.ParseDuration(rawTimeout.(string)); err == nil {
-								envoyExtAuthzHTTPConfig.Timeout = &timeout
-							} else {
-								return fmt.Errorf("extension provider envoyExtAuthzHTTP '%s' must specify field 'timeout' of type '%T'; got type '%T'",
-									extProviderName, envoyExtAuthzHTTPConfig.Timeout, timeout)
-							}
+							envoyExtAuthzHTTPConfig.Timeout = strPtr(rawTimeout.(string))
 						}
 						if rawPathPrefix, ok := envoyExtAuthzHTTP["pathPrefix"]; ok {
 							envoyExtAuthzHTTPConfig.PathPrefix = strPtr(rawPathPrefix.(string))
 						}
 						if rawFailOpen, ok := envoyExtAuthzHTTP["failOpen"]; ok {
-							if failOpen, ok := rawFailOpen.(bool); ok {
-								envoyExtAuthzHTTPConfig.FailOpen = &failOpen
-							} else {
-								return fmt.Errorf("extension provider envoyExtAuthzHTTP '%s' must specify field 'failOpen' of type '%T'; got type '%T'",
-									extProviderName, envoyExtAuthzHTTPConfig.FailOpen, failOpen)
-							}
+							envoyExtAuthzHTTPConfig.FailOpen = boolPtr(rawFailOpen.(bool))
 						}
 						if statusOnError, ok := envoyExtAuthzHTTP["statusOnError"]; ok {
 							envoyExtAuthzHTTPConfig.StatusOnError = strPtr(statusOnError.(string))

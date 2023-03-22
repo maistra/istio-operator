@@ -335,10 +335,16 @@ func (v *versionStrategyV1_1) validateExtensionProviders(smcp *v1.ServiceMeshCon
 		}
 		if foundEnvoyExtAuthzHTTP {
 			if envoyExtAuthzHTTP, ok := rawEnvoyExtAuthzHTTP.(map[string]interface{}); ok {
-				if timeout, ok := envoyExtAuthzHTTP["timeout"]; ok {
-					if _, err := time.ParseDuration(timeout.(string)); err != nil {
+				if rawTimeout, ok := envoyExtAuthzHTTP["timeout"]; ok {
+					if _, err := time.ParseDuration(rawTimeout.(string)); err != nil {
 						allErrors = append(allErrors, fmt.Errorf("invalid extension provider 'invalid-timeout': "+
 							"envoyExtAuthzHttp.timeout must be specified in the duration format - got '1sec'"))
+					}
+				}
+				if rawFailOpen, ok := envoyExtAuthzHTTP["failOpen"]; ok {
+					if _, ok := rawFailOpen.(bool); !ok {
+						allErrors = append(allErrors, fmt.Errorf("invalid extension provider 'invalid-failOpen': "+
+							"type of envoyExtAuthzHttp.failOpen must be bool - got %T", rawFailOpen))
 					}
 				}
 			}
