@@ -7,12 +7,12 @@ type ExtensionProviderConfig struct {
 	Prometheus *ExtensionProviderPrometheusConfig `json:"prometheus,omitempty"`
 	// EnvoyExtAuthzHTTP configures an external authorizer that implements
 	// the Envoy ext_authz filter authorization check service using the HTTP API.
-	EnvoyExtAuthzHTTP *ExtensionProviderEnvoyExternalAuthorizationHttpConfig `json:"envoyExtAuthzHttp,omitempty"`
+	EnvoyExtAuthzHTTP *ExtensionProviderEnvoyExternalAuthorizationHTTPConfig `json:"envoyExtAuthzHttp,omitempty"`
 }
 
 type ExtensionProviderPrometheusConfig struct{}
 
-type ExtensionProviderEnvoyExternalAuthorizationHttpConfig struct {
+type ExtensionProviderEnvoyExternalAuthorizationHTTPConfig struct {
 	// REQUIRED. Specifies the service that implements the Envoy ext_authz HTTP authorization service.
 	// The format is `[<Namespace>/]<Hostname>`. The specification of `<Namespace>` is required only when it is insufficient
 	// to unambiguously resolve a service in the service registry. The `<Hostname>` is a fully qualified host name of a

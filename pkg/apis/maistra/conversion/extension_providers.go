@@ -35,35 +35,32 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, values map[string
 			})
 		}
 		if ext.EnvoyExtAuthzHTTP != nil {
-			envoyExtAuthzHttpValues := map[string]interface{}{}
+			envoyExtAuthzHTTPValues := map[string]interface{}{}
 			if ext.EnvoyExtAuthzHTTP.Service != "" {
-				envoyExtAuthzHttpValues["service"] = ext.EnvoyExtAuthzHTTP.Service
-			} else {
-				// TODO
+				envoyExtAuthzHTTPValues["service"] = ext.EnvoyExtAuthzHTTP.Service
 			}
+			// TODO: Handle empty service
 			if ext.EnvoyExtAuthzHTTP.Port != 0 {
-				envoyExtAuthzHttpValues["port"] = ext.EnvoyExtAuthzHTTP.Port
-			} else {
-				// Todo
+				envoyExtAuthzHTTPValues["port"] = ext.EnvoyExtAuthzHTTP.Port
 			}
-			// TODO: change to pointer
+			// TODO: Handle port 0
 			if ext.EnvoyExtAuthzHTTP.Timeout != nil {
-				envoyExtAuthzHttpValues["timeout"] = *ext.EnvoyExtAuthzHTTP.Timeout
+				envoyExtAuthzHTTPValues["timeout"] = *ext.EnvoyExtAuthzHTTP.Timeout
 			}
 			if ext.EnvoyExtAuthzHTTP.PathPrefix != nil {
-				envoyExtAuthzHttpValues["pathPrefix"] = *ext.EnvoyExtAuthzHTTP.PathPrefix
+				envoyExtAuthzHTTPValues["pathPrefix"] = *ext.EnvoyExtAuthzHTTP.PathPrefix
 			}
 			if ext.EnvoyExtAuthzHTTP.FailOpen != nil {
-				envoyExtAuthzHttpValues["failOpen"] = *ext.EnvoyExtAuthzHTTP.FailOpen
+				envoyExtAuthzHTTPValues["failOpen"] = *ext.EnvoyExtAuthzHTTP.FailOpen
 			}
 			if ext.EnvoyExtAuthzHTTP.StatusOnError != nil {
-				envoyExtAuthzHttpValues["statusOnError"] = *ext.EnvoyExtAuthzHTTP.StatusOnError
+				envoyExtAuthzHTTPValues["statusOnError"] = *ext.EnvoyExtAuthzHTTP.StatusOnError
 			}
 			if ext.EnvoyExtAuthzHTTP.IncludeRequestHeadersInCheck != nil {
-				envoyExtAuthzHttpValues["includeRequestHeadersInCheck"] = stringToInterfaceArray(ext.EnvoyExtAuthzHTTP.IncludeRequestHeadersInCheck)
+				envoyExtAuthzHTTPValues["includeRequestHeadersInCheck"] = stringToInterfaceArray(ext.EnvoyExtAuthzHTTP.IncludeRequestHeadersInCheck)
 			}
 			if ext.EnvoyExtAuthzHTTP.IncludeAdditionalHeadersInCheck != nil {
-				envoyExtAuthzHttpValues["includeAdditionalHeadersInCheck"] = mapOfStringToInterface(ext.EnvoyExtAuthzHTTP.IncludeAdditionalHeadersInCheck)
+				envoyExtAuthzHTTPValues["includeAdditionalHeadersInCheck"] = mapOfStringToInterface(ext.EnvoyExtAuthzHTTP.IncludeAdditionalHeadersInCheck)
 			}
 			if ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck != nil {
 				includeRequestBodyInCheckValues := map[string]interface{}{}
@@ -76,11 +73,11 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, values map[string
 				if ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck.PackAsBytes != nil {
 					includeRequestBodyInCheckValues["packAsBytes"] = *ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck.PackAsBytes
 				}
-				envoyExtAuthzHttpValues["includeRequestBodyInCheck"] = includeRequestBodyInCheckValues
+				envoyExtAuthzHTTPValues["includeRequestBodyInCheck"] = includeRequestBodyInCheckValues
 			}
 			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
 				"name":              ext.Name,
-				"envoyExtAuthzHttp": envoyExtAuthzHttpValues,
+				"envoyExtAuthzHttp": envoyExtAuthzHTTPValues,
 			})
 		}
 	}
@@ -103,69 +100,69 @@ func populateExtensionProvidersConfig(in *v1.HelmValues, out *v2.ControlPlaneSpe
 						Prometheus: &v2.ExtensionProviderPrometheusConfig{},
 					})
 				}
-				if rawEnvoyExtAuthzHttp, ok := extProvider["envoyExtAuthzHttp"]; ok {
-					if envoyExtAuthzHttp, ok := rawEnvoyExtAuthzHttp.(map[string]interface{}); ok {
+				if rawEnvoyExtAuthzHTTP, ok := extProvider["envoyExtAuthzHttp"]; ok {
+					if envoyExtAuthzHTTP, ok := rawEnvoyExtAuthzHTTP.(map[string]interface{}); ok {
 						extProviderName := extProvider["name"].(string)
-						envoyExtAuthzHttpConfig := &v2.ExtensionProviderEnvoyExternalAuthorizationHttpConfig{}
-						if service, ok := envoyExtAuthzHttp["service"]; ok {
-							envoyExtAuthzHttpConfig.Service = service.(string)
+						envoyExtAuthzHTTPConfig := &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{}
+						if service, ok := envoyExtAuthzHTTP["service"]; ok {
+							envoyExtAuthzHTTPConfig.Service = service.(string)
 						} else {
-							return fmt.Errorf("extension provider envoyExtAuthzHttp '%s' must specify field 'service'", extProviderName)
+							return fmt.Errorf("extension provider envoyExtAuthzHTTP '%s' must specify field 'service'", extProviderName)
 						}
-						if rawPort, ok := envoyExtAuthzHttp["port"]; ok {
+						if rawPort, ok := envoyExtAuthzHTTP["port"]; ok {
 							if port, ok := rawPort.(int64); ok {
-								envoyExtAuthzHttpConfig.Port = port
+								envoyExtAuthzHTTPConfig.Port = port
 							} else {
-								return fmt.Errorf("extension provider envoyExtAuthzHttp '%s' must specify field 'port' of type '%T'; got type '%T'",
-									extProviderName, envoyExtAuthzHttpConfig.Port, port)
+								return fmt.Errorf("extension provider envoyExtAuthzHTTP '%s' must specify field 'port' of type '%T'; got type '%T'",
+									extProviderName, envoyExtAuthzHTTPConfig.Port, port)
 							}
 						}
-						if rawTimeout, ok := envoyExtAuthzHttp["timeout"]; ok {
+						if rawTimeout, ok := envoyExtAuthzHTTP["timeout"]; ok {
 							timeout := rawTimeout.(string)
 							if _, err := time.ParseDuration(rawTimeout.(string)); err == nil {
-								envoyExtAuthzHttpConfig.Timeout = &timeout
+								envoyExtAuthzHTTPConfig.Timeout = &timeout
 							} else {
-								return fmt.Errorf("extension provider envoyExtAuthzHttp '%s' must specify field 'timeout' of type '%T'; got type '%T'",
-									extProviderName, envoyExtAuthzHttpConfig.Timeout, timeout)
+								return fmt.Errorf("extension provider envoyExtAuthzHTTP '%s' must specify field 'timeout' of type '%T'; got type '%T'",
+									extProviderName, envoyExtAuthzHTTPConfig.Timeout, timeout)
 							}
 						}
-						if rawPathPrefix, ok := envoyExtAuthzHttp["pathPrefix"]; ok {
-							envoyExtAuthzHttpConfig.PathPrefix = strPtr(rawPathPrefix.(string))
+						if rawPathPrefix, ok := envoyExtAuthzHTTP["pathPrefix"]; ok {
+							envoyExtAuthzHTTPConfig.PathPrefix = strPtr(rawPathPrefix.(string))
 						}
-						if rawFailOpen, ok := envoyExtAuthzHttp["failOpen"]; ok {
+						if rawFailOpen, ok := envoyExtAuthzHTTP["failOpen"]; ok {
 							if failOpen, ok := rawFailOpen.(bool); ok {
-								envoyExtAuthzHttpConfig.FailOpen = &failOpen
+								envoyExtAuthzHTTPConfig.FailOpen = &failOpen
 							} else {
-								return fmt.Errorf("extension provider envoyExtAuthzHttp '%s' must specify field 'failOpen' of type '%T'; got type '%T'",
-									extProviderName, envoyExtAuthzHttpConfig.FailOpen, failOpen)
+								return fmt.Errorf("extension provider envoyExtAuthzHTTP '%s' must specify field 'failOpen' of type '%T'; got type '%T'",
+									extProviderName, envoyExtAuthzHTTPConfig.FailOpen, failOpen)
 							}
 						}
-						if statusOnError, ok := envoyExtAuthzHttp["statusOnError"]; ok {
-							envoyExtAuthzHttpConfig.StatusOnError = strPtr(statusOnError.(string))
+						if statusOnError, ok := envoyExtAuthzHTTP["statusOnError"]; ok {
+							envoyExtAuthzHTTPConfig.StatusOnError = strPtr(statusOnError.(string))
 						}
-						if rawIncludeRequestHeadersInCheck, ok := envoyExtAuthzHttp["includeRequestHeadersInCheck"]; ok {
-							envoyExtAuthzHttpConfig.IncludeRequestHeadersInCheck = interfaceToStringArray(rawIncludeRequestHeadersInCheck.([]interface{}))
+						if rawIncludeRequestHeadersInCheck, ok := envoyExtAuthzHTTP["includeRequestHeadersInCheck"]; ok {
+							envoyExtAuthzHTTPConfig.IncludeRequestHeadersInCheck = interfaceToStringArray(rawIncludeRequestHeadersInCheck.([]interface{}))
 						}
-						if rawIncludeAdditionalHeadersInCheck, ok := envoyExtAuthzHttp["includeAdditionalHeadersInCheck"]; ok {
-							envoyExtAuthzHttpConfig.IncludeAdditionalHeadersInCheck = mapOfInterfaceToString(rawIncludeAdditionalHeadersInCheck.(map[string]interface{}))
+						if rawIncludeAdditionalHeadersInCheck, ok := envoyExtAuthzHTTP["includeAdditionalHeadersInCheck"]; ok {
+							envoyExtAuthzHTTPConfig.IncludeAdditionalHeadersInCheck = mapOfInterfaceToString(rawIncludeAdditionalHeadersInCheck.(map[string]interface{}))
 						}
-						if rawIncludeRequestBodyInCheck, ok := envoyExtAuthzHttp["includeRequestBodyInCheck"]; ok {
+						if rawIncludeRequestBodyInCheck, ok := envoyExtAuthzHTTP["includeRequestBodyInCheck"]; ok {
 							if includeRequestBodyInCheck, ok := rawIncludeRequestBodyInCheck.(map[string]interface{}); ok {
-								envoyExtAuthzHttpConfig.IncludeRequestBodyInCheck = &v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig{}
+								envoyExtAuthzHTTPConfig.IncludeRequestBodyInCheck = &v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig{}
 								if maxRequestBytes, ok := includeRequestBodyInCheck["maxRequestBytes"]; ok {
-									envoyExtAuthzHttpConfig.IncludeRequestBodyInCheck.MaxRequestBytes = int64Ptr(maxRequestBytes.(int64))
+									envoyExtAuthzHTTPConfig.IncludeRequestBodyInCheck.MaxRequestBytes = int64Ptr(maxRequestBytes.(int64))
 								}
 								if allowPartialMessage, ok := includeRequestBodyInCheck["allowPartialMessage"]; ok {
-									envoyExtAuthzHttpConfig.IncludeRequestBodyInCheck.AllowPartialMessage = boolPtr(allowPartialMessage.(bool))
+									envoyExtAuthzHTTPConfig.IncludeRequestBodyInCheck.AllowPartialMessage = boolPtr(allowPartialMessage.(bool))
 								}
 								if packAsBytes, ok := includeRequestBodyInCheck["packAsBytes"]; ok {
-									envoyExtAuthzHttpConfig.IncludeRequestBodyInCheck.PackAsBytes = boolPtr(packAsBytes.(bool))
+									envoyExtAuthzHTTPConfig.IncludeRequestBodyInCheck.PackAsBytes = boolPtr(packAsBytes.(bool))
 								}
 							}
 						}
 						out.ExtensionProviders = append(out.ExtensionProviders, &v2.ExtensionProviderConfig{
 							Name:              extProviderName,
-							EnvoyExtAuthzHTTP: envoyExtAuthzHttpConfig,
+							EnvoyExtAuthzHTTP: envoyExtAuthzHTTPConfig,
 						})
 					}
 				}
