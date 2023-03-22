@@ -26,8 +26,8 @@ type pruneConfig struct {
 
 var (
 	builtinTypes = []schema.GroupVersionKind{
-		gvk("autoscaling", "v2beta1", "HorizontalPodAutoscaler"),
-		gvk("policy", "v1beta1", "PodDisruptionBudget"),
+		gvk("autoscaling", "v2", "HorizontalPodAutoscaler"),
+		gvk("policy", "v1", "PodDisruptionBudget"),
 		gvk("route.openshift.io", "v1", "Route"),
 		gvk("apps", "v1", "Deployment"),
 		gvk("apps", "v1", "DaemonSet"),
