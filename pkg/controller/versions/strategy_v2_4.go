@@ -280,7 +280,7 @@ func (v *versionStrategyV2_4) ValidateRequest(ctx context.Context, cl client.Cli
 }
 	hasRootCAConfigMapName := ContainsRootCAConfigMapNameField(smcp)
 	if hasRootCAConfigMapName {
-	return admission.ValidationResponse(false, "SMCP does not allow this RootCAConfigMapName field")
+	return admission.ValidationResponse(false, "SMCP does not allow RootCAConfigMapName field")
 }
 	return admission.ValidationResponse(true, "")
 }
