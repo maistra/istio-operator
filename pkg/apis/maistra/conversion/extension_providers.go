@@ -21,15 +21,8 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, values map[string
 
 	var extensionProvidersValues []map[string]interface{}
 	for _, ext := range in.ExtensionProviders {
-		if ext.Prometheus == nil && ext.EnvoyExtAuthzHTTP == nil {
-			return fmt.Errorf("extension provider %s does not define any provider - it must specify one of: prometheus or envoyExtAuthzHttp", ext.Name)
-		}
-		if ext.Prometheus != nil && ext.EnvoyExtAuthzHTTP != nil {
-			return fmt.Errorf("extension provider %s must specify only one type of provider: prometheus or envoyExtAuthzHttp", ext.Name)
-		}
 		if ext.Prometheus != nil {
 			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
-				// TODO: check empty string
 				"name":       ext.Name,
 				"prometheus": map[string]interface{}{},
 			})

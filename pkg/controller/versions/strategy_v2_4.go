@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"time"
 
 	pkgerrors "github.com/pkg/errors"
 	authorizationv1 "k8s.io/api/authorization/v1"
@@ -134,6 +135,7 @@ func (v *versionStrategyV2_4) ValidateV2(ctx context.Context, cl client.Client, 
 	allErrors = v.validateRuntime(spec, allErrors)
 	allErrors = v.validateMixerDisabled(spec, allErrors)
 	allErrors = v.validateAddons(spec, allErrors)
+	allErrors = v.validateExtensionProviders(spec, allErrors)
 	return NewValidationError(allErrors...)
 }
 
@@ -188,6 +190,34 @@ func (v *versionStrategyV2_4) validateAddons(spec *v2.ControlPlaneSpec, allError
 	if spec.Addons.ThreeScale != nil {
 		allErrors = append(allErrors, fmt.Errorf("support for 3scale has been removed in v2.1; "+
 			"please remove the spec.addons.3scale section from the SMCP and configure the 3scale WebAssembly adapter using a ServiceMeshExtension resource"))
+	}
+	return allErrors
+}
+
+func (v *versionStrategyV2_4) validateExtensionProviders(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.ExtensionProviders == nil {
+		return allErrors
+	}
+	for _, ext := range spec.ExtensionProviders {
+		if ext.Prometheus == nil && ext.EnvoyExtAuthzHTTP == nil {
+			allErrors = append(allErrors, fmt.Errorf("extension provider %s does not define any provider - "+
+				"it must specify one of: prometheus or envoyExtAuthzHttp", ext.Name))
+		}
+		if ext.Prometheus != nil && ext.EnvoyExtAuthzHTTP != nil {
+			allErrors = append(allErrors, fmt.Errorf("extension provider %s must specify only one type of provider: "+
+				"prometheus or envoyExtAuthzHttp", ext.Name))
+		}
+		if ext.Name == "" {
+			allErrors = append(allErrors, fmt.Errorf("extension provider name cannot be empty"))
+		}
+		if ext.EnvoyExtAuthzHTTP != nil {
+			if ext.EnvoyExtAuthzHTTP.Timeout != nil {
+				if _, err := time.ParseDuration(*ext.EnvoyExtAuthzHTTP.Timeout); err != nil {
+					allErrors = append(allErrors, fmt.Errorf("invalid extension provider: envoyExtAuthzHttp.timeout "+
+						"must be specified in the duration format - got %s", *ext.EnvoyExtAuthzHTTP.Timeout))
+				}
+			}
+		}
 	}
 	return allErrors
 }
