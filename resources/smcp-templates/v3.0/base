@@ -1,0 +1,58 @@
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+metadata:
+  name: base
+spec:
+  version: v3.0
+  gateways:
+    enabled: true
+    ingress:
+      enabled: true
+      ingress: false
+      service:
+        type: ClusterIP
+    egress:
+      enabled: true
+    openshiftRoute:
+      enabled: true
+
+  general:
+    logging:
+      componentLevels:
+        default: warn
+
+  proxy:
+    networking:
+      dns:
+        refreshRate: 300s
+
+  security:
+    identity:
+      type: Kubernetes
+
+  telemetry:
+    type: Istiod
+
+  policy:
+    type: None
+
+  tracing:
+    type: Jaeger
+
+  addons:
+    jaeger:
+      name: jaeger
+      install:
+        storage:
+          type: Memory
+        ingress:
+          enabled: true
+    kiali:
+      enabled: true
+      name: kiali
+      install:
+        dashboard:
+          viewOnly: false
+        service:
+          ingress:
+            enabled: true

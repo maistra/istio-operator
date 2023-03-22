@@ -65,18 +65,24 @@ func (v *ControlPlaneMutator) Handle(ctx context.Context, req admission.Request)
 		case admissionv1beta1.Create:
 			log.Info("Setting .spec.version to default value", "version", versions.DefaultVersion.String())
 			mutator.SetVersion(mutator.DefaultVersion())
+			currentVersion = mutator.DefaultVersion()
 		case admissionv1beta1.Update:
 			oldVersion := mutator.OldVersion()
 			if currentVersion != oldVersion && oldVersion != versions.InvalidVersion.String() {
 				log.Info("Setting .spec.version to existing value", "version", oldVersion)
 				mutator.SetVersion(oldVersion)
+				currentVersion = oldVersion
 			}
 		}
 	}
 
 	if len(mutator.GetProfiles()) == 0 {
-		log.Info("Setting .spec.profiles to default value", "profiles", []string{v1.DefaultTemplate})
-		mutator.SetProfiles([]string{v1.DefaultTemplate})
+		defaultProfiles := []string{v1.DefaultTemplate}
+		if currentVersion == versions.V3_0.String() {
+			defaultProfiles = []string{"projectsail"}
+		}
+		log.Info("Setting .spec.profiles to default value", "profiles", defaultProfiles)
+		mutator.SetProfiles(defaultProfiles)
 	}
 
 	patches := mutator.GetPatches()

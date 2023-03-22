@@ -1,0 +1,22 @@
+{{ $gateway := index .Values "gateways" "istio-ingressgateway" }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $gateway.name }}
+{{- if not $gateway.namespace }}
+  namespace: {{ $gateway.namespace | default .Release.Namespace }}
+{{- else }}
+  namespace: {{ $gateway.namespace | default .Release.Namespace }}
+{{- end }}
+  labels:
+    maistra-version: "3.0.0"
+{{ $gateway.labels | toYaml | indent 4 }}
+    release: {{ .Release.Name }}
+  annotations:
+    "maistra.io/internal": "true"
+spec:
+  podSelector:
+    matchLabels:
+{{ $gateway.labels | toYaml | indent 6 }}
+  ingress:
+  - {}

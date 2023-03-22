@@ -577,7 +577,7 @@ func TestReconcileReturnsConflictError(t *testing.T) {
 			member := newMember()
 			appNs := newAppNamespace()
 			roleBinding := newMeshRoleBinding()
-			smcp := newControlPlane(versions.DefaultVersion.String())
+			smcp := newControlPlane(versions.V2_4.String())
 
 			_, tracker, r := createClientAndReconciler(smcp, member, appNs, roleBinding)
 			tracker.AddReactor(tc.verb, tc.resource, func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {

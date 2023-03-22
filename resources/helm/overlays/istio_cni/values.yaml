@@ -1,3 +1,0 @@
-cni:
-  defaultResourceName: ossm-cni
-  enabled: false

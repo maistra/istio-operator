@@ -32,53 +32,11 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 		daemonsetName     string
 	}{
 		{
-			name:              "Default Supported Versions SMCP v2.2",
-			supportedVersions: versions.GetSupportedVersions(),
-			instanceVersion:   versions.V2_2.Version(),
-			containerNames:    []string{"install-cni-v2-0", "install-cni-v2-1", "install-cni-v2-2"},
-			daemonsetName:     "istio-cni-node",
-		},
-		{
-			name:              "Default Supported Versions SMCP v2.3",
-			supportedVersions: versions.GetSupportedVersions(),
-			instanceVersion:   versions.V2_3.Version(),
-			containerNames:    []string{"install-cni"},
-			daemonsetName:     "istio-cni-node-v2-3",
-		},
-		{
-			name:              "v2.0 only",
-			supportedVersions: []versions.Version{versions.V2_0},
-			instanceVersion:   versions.V2_0.Version(),
-			containerNames:    []string{"install-cni-v2-0"},
-			daemonsetName:     "istio-cni-node",
-		},
-		{
-			name:              "v2.1 only",
-			supportedVersions: []versions.Version{versions.V2_1},
-			instanceVersion:   versions.V2_1.Version(),
-			containerNames:    []string{"install-cni-v2-1"},
-			daemonsetName:     "istio-cni-node",
-		},
-		{
-			name:              "v2.2 only",
-			supportedVersions: []versions.Version{versions.V2_2},
-			instanceVersion:   versions.V2_2.Version(),
-			containerNames:    []string{"install-cni-v2-2"},
-			daemonsetName:     "istio-cni-node",
-		},
-		{
-			name:              "v2.3 only",
-			supportedVersions: []versions.Version{versions.V2_3},
-			instanceVersion:   versions.V2_3.Version(),
-			containerNames:    []string{"install-cni"},
-			daemonsetName:     "istio-cni-node-v2-3",
-		},
-		{
-			name:              "v2.4 only",
+			name:              "v3.0 only",
 			supportedVersions: []versions.Version{versions.V2_4},
-			instanceVersion:   versions.V2_4.Version(),
+			instanceVersion:   versions.V3_0.Version(),
 			containerNames:    []string{"install-cni"},
-			daemonsetName:     "istio-cni-node-v2-4",
+			daemonsetName:     "istio-cni-node",
 		},
 	}
 
@@ -93,7 +51,7 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 			renderings, err := internalRenderCNI(ctx, cl, config, &dc, tc.supportedVersions, tc.instanceVersion)
 			assert.Success(err, "internalRenderCNI", t)
 			assert.True(renderings != nil, "renderings should not be nil", t)
-			cniManifests := renderings["istio_cni"]
+			cniManifests := renderings["cni"]
 			assert.True(cniManifests != nil, "CNI manifests are not present", t)
 
 			var foundDaemonSet bool

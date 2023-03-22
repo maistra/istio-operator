@@ -54,13 +54,6 @@ function retrieveIstioRelease() {
       rm -rf ${EXTRACT_DIR}
       ${EXTRACT_CMD}
       cp -rf ${EXTRACT_DIR}/manifests/charts/* "${HELM_DIR}/"
-      # grafana dashboards
-      mkdir -p "${HELM_DIR}/istio-telemetry/grafana/dashboards"
-      cp -rf ${EXTRACT_DIR}/manifests/addons/dashboards/* "${HELM_DIR}/istio-telemetry/grafana/dashboards/"
-      #(
-      #  cd "${HELM_DIR}/istio"
-      #  helm dep update
-      #)
   )
 }
 
