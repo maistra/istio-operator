@@ -11,6 +11,7 @@ require (
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-logr/logr v0.2.1
+	github.com/goccy/go-yaml v1.8.8
 	github.com/google/go-cmp v0.5.2
 	github.com/gregjones/httpcache v0.0.0-20181110185634-c63ab54fda8f // indirect
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.1.0

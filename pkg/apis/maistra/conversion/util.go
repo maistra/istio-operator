@@ -26,29 +26,26 @@ func interfaceToStringArray(in []interface{}) []string {
 	return strArr
 }
 
-func stringToInterfaceArray(value []string) []interface{} {
-	valLen := len(value)
-	rawVal := make([]interface{}, valLen)
-	for i, val := range value {
-		rawVal[i] = val
+func stringToInterfaceArray(in []string) []interface{} {
+	out := make([]interface{}, len(in))
+	for i, val := range in {
+		out[i] = val
 	}
-	return rawVal
+	return out
 }
 
 func mapOfInterfaceToString(in map[string]interface{}) map[string]string {
-	valLen := len(in)
-	rawVal := make(map[string]string, valLen)
+	out := make(map[string]string, len(in))
 	for k, v := range in {
-		rawVal[k] = v.(string)
+		out[k] = v.(string)
 	}
-	return rawVal
+	return out
 }
 
 func mapOfStringToInterface(in map[string]string) map[string]interface{} {
-	valLen := len(in)
-	rawVal := make(map[string]interface{}, valLen)
+	out := make(map[string]interface{}, len(in))
 	for k, v := range in {
-		rawVal[k] = v
+		out[k] = v
 	}
-	return rawVal
+	return out
 }

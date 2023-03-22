@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -136,6 +137,8 @@ func (v *versionStrategyV1_1) ValidateV1(ctx context.Context, cl client.Client, 
 			allErrors = append(allErrors, err)
 		}
 	}
+
+	allErrors = append(allErrors, v.validateExtensionProviders(smcp, allErrors)...)
 
 	smmr := &v1.ServiceMeshMemberRoll{}
 	err := cl.Get(ctx, client.ObjectKey{Name: common.MemberRollName, Namespace: smcp.GetNamespace()}, smmr)
@@ -299,4 +302,48 @@ func (v *versionStrategyV1_1) GetPolicyType(in *v1.HelmValues, mixerPolicyEnable
 
 func (v *versionStrategyV1_1) GetTrustDomainFieldPath() string {
 	return v.conversionImpl.GetTrustDomainFieldPath()
+}
+
+func (v *versionStrategyV1_1) validateExtensionProviders(smcp *v1.ServiceMeshControlPlane, allErrors []error) []error {
+	var extenstionProviders []map[string]interface{}
+	if rawExtensionProviders, ok, err := smcp.Spec.Istio.GetSlice("meshConfig.extensionProviders"); err != nil {
+		allErrors = append(allErrors, fmt.Errorf("failed to parse 'meshConfig.extensionProviders': %s", err))
+		return allErrors
+	} else if !ok {
+		return allErrors
+	} else {
+		extenstionProviders = interfaceSliceToSliceOfMaps(rawExtensionProviders)
+	}
+
+	for _, ext := range extenstionProviders {
+		name, nameFound := ext["name"]
+		if !nameFound {
+			allErrors = append(allErrors, fmt.Errorf("extension providers must specify name"))
+		}
+		if name == "" {
+			allErrors = append(allErrors, fmt.Errorf("extension provider name cannot be empty"))
+		}
+		_, foundPrometheus := ext["prometheus"]
+		rawEnvoyExtAuthzHTTP, foundEnvoyExtAuthzHTTP := ext["envoyExtAuthzHttp"]
+		if !foundPrometheus && !foundEnvoyExtAuthzHTTP {
+			allErrors = append(allErrors, fmt.Errorf("extension provider %s does not define any provider - "+
+				"it must specify one of: prometheus or envoyExtAuthzHttp", name))
+		}
+		if foundPrometheus && foundEnvoyExtAuthzHTTP {
+			allErrors = append(allErrors, fmt.Errorf("extension provider '%s' must specify only one type of provider: "+
+				"prometheus or envoyExtAuthzHttp", name))
+		}
+		if foundEnvoyExtAuthzHTTP {
+			if envoyExtAuthzHTTP, ok := rawEnvoyExtAuthzHTTP.(map[string]interface{}); ok {
+				if timeout, ok := envoyExtAuthzHTTP["timeout"]; ok {
+					if _, err := time.ParseDuration(timeout.(string)); err != nil {
+						allErrors = append(allErrors, fmt.Errorf("invalid extension provider 'invalid-timeout': "+
+							"envoyExtAuthzHttp.timeout must be specified in the duration format - got '1sec'"))
+					}
+				}
+			}
+		}
+	}
+
+	return allErrors
 }

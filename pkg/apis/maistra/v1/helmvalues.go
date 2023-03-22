@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/goccy/go-yaml"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/json"
 )
@@ -319,6 +320,13 @@ func (h *HelmValues) RemoveField(path string) {
 func (h *HelmValues) UnmarshalJSON(in []byte) error {
 	err := json.Unmarshal(in, &h.data)
 	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h *HelmValues) UnmarshalYAML(in []byte) error {
+	if err := yaml.Unmarshal(in, &h.data); err != nil {
 		return err
 	}
 	return nil
