@@ -77,10 +77,10 @@ func TestMemberRollWithControlPlaneNamespaceIsRejected(t *testing.T) {
 
 func TestMemberValidation(t *testing.T) {
 	testCases := []struct {
-		members        []string
-		memberSelector *meta.LabelSelector
-		valid          bool
-		message        string
+		members   []string
+		selectors []meta.LabelSelector
+		valid     bool
+		message   string
 	}{
 		{valid: true, members: nil},
 		{valid: true, members: []string{}},
@@ -88,7 +88,7 @@ func TestMemberValidation(t *testing.T) {
 		{valid: true, members: []string{"ns-1"}},
 		{valid: true, members: []string{"ns1", "ns2"}},
 		{valid: true, members: []string{"*"}},
-		{valid: true, members: []string{}, memberSelector: &meta.LabelSelector{}},
+		{valid: true, members: []string{}, selectors: []meta.LabelSelector{{}}},
 		{valid: false, members: []string{""}, message: ".spec.members contains invalid value ''. Must be a valid namespace name."},
 		{valid: false, members: []string{"-badname"}, message: ".spec.members contains invalid value '-badname'. Must be a valid namespace name."},
 		{valid: false, members: []string{"badname-"}, message: ".spec.members contains invalid value 'badname-'. Must be a valid namespace name."},
@@ -99,7 +99,7 @@ func TestMemberValidation(t *testing.T) {
 		{valid: false, members: []string{"ns1", "*"}, message: "when .spec.members contains an asterisk ('*'), it must contain no other entries"},
 		{valid: false, members: []string{"*", "*"}, message: "duplicate namespace in .spec.members: *"},
 		{valid: false, members: []string{"duplicate-ns", "foo", "duplicate-ns"}, message: "duplicate namespace in .spec.members: duplicate-ns"},
-		{valid: false, members: []string{"ns"}, memberSelector: &meta.LabelSelector{}, message: "combining .spec.members and .spec.memberSelector is not allowed"},
+		{valid: false, members: []string{"ns"}, selectors: []meta.LabelSelector{{}}, message: "combining .spec.members and .spec.memberSelectors is not allowed"},
 	}
 	for _, tc := range testCases {
 		name := ""
@@ -110,15 +110,15 @@ func TestMemberValidation(t *testing.T) {
 		} else {
 			name = "[" + strings.Join(tc.members, ",") + "]"
 		}
-		if tc.memberSelector != nil {
-			name += "+selector"
+		if tc.selectors != nil {
+			name += "+selectors"
 		}
 		t.Run(name, func(t *testing.T) {
 			validator, tracker := createMemberRollValidatorTestFixture(smcp)
 			tracker.AddReactor("create", "subjectaccessreviews", createSubjectAccessReviewReactor(true, true, nil))
 
 			smmr := newMemberRoll("default", "istio-system", tc.members...)
-			smmr.Spec.MemberSelector = tc.memberSelector
+			smmr.Spec.MemberSelectors = tc.selectors
 			response := validator.Handle(ctx, createCreateRequest(smmr))
 			if tc.valid {
 				assert.True(response.Allowed, "Expected validator to allow ServiceMeshMemberRoll", t)

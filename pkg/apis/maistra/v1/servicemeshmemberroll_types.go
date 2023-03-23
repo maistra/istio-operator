@@ -62,9 +62,9 @@ type ServiceMeshMemberRollSpec struct {
 	// +nullable
 	Members []string `json:"members,omitempty"`
 
-	// Include namespaces with label keys and values matching this selector.
+	// Include namespaces whose labels match any of the specified selectors.
 	// +optional
-	MemberSelector *metav1.LabelSelector `json:"memberSelector,omitempty"`
+	MemberSelectors []metav1.LabelSelector `json:"memberSelectors,omitempty"`
 }
 
 func (smmr *ServiceMeshMemberRoll) IsMember(ns *core.Namespace) bool {
@@ -84,8 +84,13 @@ func (smmr *ServiceMeshMemberRoll) isIncluded(ns *core.Namespace) bool {
 		}
 	}
 
-	// check if namespace labels match the label selector
-	return selectorMatches(smmr.Spec.MemberSelector, ns.Labels)
+	// check if namespace labels match any label selector
+	for _, selector := range smmr.Spec.MemberSelectors {
+		if selectorMatches(selector, ns.Labels) {
+			return true
+		}
+	}
+	return false
 }
 
 func hasAsterisk(members []string) bool {
@@ -105,14 +110,10 @@ func (smmr *ServiceMeshMemberRoll) isExcluded(ns *core.Namespace) bool {
 // spec.members or defines a member selector. In either case, the list of members
 // is dynamic, as the member namespace list can change with no change to the SMMR.
 func (smmr *ServiceMeshMemberRoll) MatchesNamespacesDynamically() bool {
-	return hasAsterisk(smmr.Spec.Members) || smmr.Spec.MemberSelector != nil
+	return hasAsterisk(smmr.Spec.Members) || len(smmr.Spec.MemberSelectors) > 0
 }
 
-func selectorMatches(selector *metav1.LabelSelector, labels map[string]string) bool {
-	if selector == nil {
-		return false
-	}
-
+func selectorMatches(selector metav1.LabelSelector, labels map[string]string) bool {
 	for k, v := range selector.MatchLabels {
 		if labels[k] != v {
 			return false
