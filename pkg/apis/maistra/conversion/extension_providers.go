@@ -86,45 +86,45 @@ func populateExtensionProvidersConfig(in *v1.HelmValues, out *v2.ControlPlaneSpe
 			}
 			if rawExtAuthz, ok := provider["envoyExtAuthzHttp"]; ok {
 				if extAuthz, ok := rawExtAuthz.(map[string]interface{}); ok {
-					extAuthzConfig := &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{
+					config := &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{
 						Service: extAuthz["service"].(string),
 						Port:    extAuthz["port"].(int64),
 					}
 					if rawTimeout, ok := extAuthz["timeout"]; ok {
-						extAuthzConfig.Timeout = strPtr(rawTimeout.(string))
+						config.Timeout = strPtr(rawTimeout.(string))
 					}
 					if rawPathPrefix, ok := extAuthz["pathPrefix"]; ok {
-						extAuthzConfig.PathPrefix = strPtr(rawPathPrefix.(string))
+						config.PathPrefix = strPtr(rawPathPrefix.(string))
 					}
 					if rawFailOpen, ok := extAuthz["failOpen"]; ok {
-						extAuthzConfig.FailOpen = boolPtr(rawFailOpen.(bool))
+						config.FailOpen = boolPtr(rawFailOpen.(bool))
 					}
 					if statusOnError, ok := extAuthz["statusOnError"]; ok {
-						extAuthzConfig.StatusOnError = strPtr(statusOnError.(string))
+						config.StatusOnError = strPtr(statusOnError.(string))
 					}
 					if rawIncludeRequestHeadersInCheck, ok := extAuthz["includeRequestHeadersInCheck"]; ok {
-						extAuthzConfig.IncludeRequestHeadersInCheck = interfaceToStringArray(rawIncludeRequestHeadersInCheck.([]interface{}))
+						config.IncludeRequestHeadersInCheck = interfaceToStringArray(rawIncludeRequestHeadersInCheck.([]interface{}))
 					}
 					if rawIncludeAdditionalHeadersInCheck, ok := extAuthz["includeAdditionalHeadersInCheck"]; ok {
-						extAuthzConfig.IncludeAdditionalHeadersInCheck = mapOfInterfaceToString(rawIncludeAdditionalHeadersInCheck.(map[string]interface{}))
+						config.IncludeAdditionalHeadersInCheck = mapOfInterfaceToString(rawIncludeAdditionalHeadersInCheck.(map[string]interface{}))
 					}
 					if rawIncludeRequestBodyInCheck, ok := extAuthz["includeRequestBodyInCheck"]; ok {
 						if includeRequestBodyInCheck, ok := rawIncludeRequestBodyInCheck.(map[string]interface{}); ok {
-							extAuthzConfig.IncludeRequestBodyInCheck = &v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig{}
+							config.IncludeRequestBodyInCheck = &v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig{}
 							if maxRequestBytes, ok := includeRequestBodyInCheck["maxRequestBytes"]; ok {
-								extAuthzConfig.IncludeRequestBodyInCheck.MaxRequestBytes = int64Ptr(maxRequestBytes.(int64))
+								config.IncludeRequestBodyInCheck.MaxRequestBytes = int64Ptr(maxRequestBytes.(int64))
 							}
 							if allowPartialMessage, ok := includeRequestBodyInCheck["allowPartialMessage"]; ok {
-								extAuthzConfig.IncludeRequestBodyInCheck.AllowPartialMessage = boolPtr(allowPartialMessage.(bool))
+								config.IncludeRequestBodyInCheck.AllowPartialMessage = boolPtr(allowPartialMessage.(bool))
 							}
 							if packAsBytes, ok := includeRequestBodyInCheck["packAsBytes"]; ok {
-								extAuthzConfig.IncludeRequestBodyInCheck.PackAsBytes = boolPtr(packAsBytes.(bool))
+								config.IncludeRequestBodyInCheck.PackAsBytes = boolPtr(packAsBytes.(bool))
 							}
 						}
 					}
 					out.ExtensionProviders = append(out.ExtensionProviders, &v2.ExtensionProviderConfig{
 						Name:              provider["name"].(string),
-						EnvoyExtAuthzHTTP: extAuthzConfig,
+						EnvoyExtAuthzHTTP: config,
 					})
 				}
 			}
