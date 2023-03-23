@@ -9,15 +9,7 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
-var (
-	extensionProvidersTestCases []conversionExtensionProvidersTestCase
-	completeIstio               = v1.NewHelmValues(map[string]interface{}{
-		"global": map[string]interface{}{
-			"multiCluster":  globalMultiClusterDefaults,
-			"meshExpansion": globalMeshExpansionDefaults,
-		},
-	})
-)
+var extensionProvidersTestCases []conversionExtensionProvidersTestCase
 
 type conversionExtensionProvidersTestCase struct {
 	name       string
@@ -42,17 +34,15 @@ func TestExtensionProvidersConversionFromV2(t *testing.T) {
 				t.Fatalf("error converting to values: %s", err)
 			}
 
-			helmValues := &v1.HelmValues{}
-			if err := helmValues.UnmarshalYAML([]byte(tc.helmValues)); err != nil {
+			expectedHelmValues := v1.HelmValues{}
+			if err := expectedHelmValues.UnmarshalYAML([]byte(tc.helmValues)); err != nil {
 				t.Fatalf("failed to parse helm values: %s", err)
 			}
-			if !reflect.DeepEqual(helmValues.DeepCopy(), actualHelmValues.DeepCopy()) {
-				t.Errorf("unexpected output converting v2 to values:\n\texpected:\n%#v\n\tgot:\n%#v", helmValues.GetContent(), actualHelmValues.GetContent())
+			if !reflect.DeepEqual(expectedHelmValues.DeepCopy(), actualHelmValues.DeepCopy()) {
+				t.Errorf("unexpected output converting v2 to values:\n\texpected:\n%#v\n\tgot:\n%#v", expectedHelmValues.GetContent(), actualHelmValues.GetContent())
 			}
-			specv2 := &v2.ControlPlaneSpec{}
-			// use expected values
-			mergeMaps(completeIstio.DeepCopy().GetContent(), actualHelmValues.DeepCopy().GetContent())
-			if err := populateExtensionProvidersConfig(actualHelmValues.DeepCopy(), specv2); err != nil {
+			specv2 := v2.ControlPlaneSpec{}
+			if err := populateExtensionProvidersConfig(expectedHelmValues.DeepCopy(), &specv2); err != nil {
 				t.Fatalf("error converting from values: %s", err)
 			}
 			assertEquals(t, tc.spec.ExtensionProviders, specv2.ExtensionProviders)
