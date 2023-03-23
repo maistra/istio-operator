@@ -9,11 +9,19 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
-var extensionProvidersTestCases []conversionTestCase
+var extensionProvidersTestCases []conversionExtensionProvidersTestCase
+
+type conversionExtensionProvidersTestCase struct {
+	name       string
+	spec       *v2.ControlPlaneSpec
+	helmValues string
+}
 
 func init() {
 	for _, v := range versions.AllV2Versions {
-		extensionProvidersTestCases = append(extensionProvidersTestCases, extensionProvidersTestCasesV2(v)...)
+		if v.AtLeast(versions.V2_4) {
+			extensionProvidersTestCases = append(extensionProvidersTestCases, extensionProvidersTestCasesV2(v)...)
+		}
 	}
 }
 
@@ -21,40 +29,36 @@ func TestExtensionProvidersConversionFromV2(t *testing.T) {
 	for _, tc := range extensionProvidersTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			specCopy := tc.spec.DeepCopy()
-			helmValues := v1.NewHelmValues(make(map[string]interface{}))
-			if err := populateExtensionProvidersValues(specCopy, helmValues.GetContent()); err != nil {
-				t.Fatalf("error converting to values: %s", err)
+			actualHelmValues := v1.NewHelmValues(make(map[string]interface{}))
+			if err := populateExtensionProvidersValues(specCopy, actualHelmValues.GetContent()); err != nil {
+				t.Errorf("error converting to values: %s", err)
 			}
-			if !reflect.DeepEqual(tc.isolatedIstio.DeepCopy(), helmValues.DeepCopy()) {
-				t.Errorf("unexpected output converting v2 to values:\n\texpected:\n%#v\n\tgot:\n%#v", tc.isolatedIstio.GetContent(), helmValues.GetContent())
+
+			expectedHelmValues := v1.HelmValues{}
+			if err := expectedHelmValues.UnmarshalYAML([]byte(tc.helmValues)); err != nil {
+				t.Fatalf("failed to parse helm values: %s", err)
 			}
-			specv2 := &v2.ControlPlaneSpec{}
-			// use expected values
-			helmValues = tc.isolatedIstio.DeepCopy()
-			mergeMaps(tc.completeIstio.DeepCopy().GetContent(), helmValues.GetContent())
-			if err := populateExtensionProvidersConfig(helmValues.DeepCopy(), specv2); err != nil {
-				t.Fatalf("error converting from values: %s", err)
+			if !reflect.DeepEqual(expectedHelmValues.DeepCopy(), actualHelmValues.DeepCopy()) {
+				t.Errorf("unexpected output converting v2 to values:\n\texpected:\n%#v\n\tgot:\n%#v", expectedHelmValues.GetContent(), actualHelmValues.GetContent())
+			}
+			specv2 := v2.ControlPlaneSpec{}
+			if err := populateExtensionProvidersConfig(expectedHelmValues.DeepCopy(), &specv2); err != nil {
+				t.Errorf("error converting from values: %s", err)
 			}
 			assertEquals(t, tc.spec.ExtensionProviders, specv2.ExtensionProviders)
 		})
 	}
 }
 
-func extensionProvidersTestCasesV2(version versions.Version) []conversionTestCase {
+func extensionProvidersTestCasesV2(version versions.Version) []conversionExtensionProvidersTestCase {
 	ver := version.String()
-	return []conversionTestCase{
+	return []conversionExtensionProvidersTestCase{
 		{
 			name: "nil." + ver,
 			spec: &v2.ControlPlaneSpec{
 				Version: ver,
 			},
-			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
-			completeIstio: v1.NewHelmValues(map[string]interface{}{
-				"global": map[string]interface{}{
-					"multiCluster":  globalMultiClusterDefaults,
-					"meshExpansion": globalMeshExpansionDefaults,
-				},
-			}),
+			helmValues: "{}",
 		},
 		{
 			name: "empty." + ver,
@@ -62,17 +66,10 @@ func extensionProvidersTestCasesV2(version versions.Version) []conversionTestCas
 				Version:            ver,
 				ExtensionProviders: []*v2.ExtensionProviderConfig{},
 			},
-			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-				"meshConfig": map[string]interface{}{
-					"extensionProviders": []interface{}{},
-				},
-			}),
-			completeIstio: v1.NewHelmValues(map[string]interface{}{
-				"global": map[string]interface{}{
-					"multiCluster":  globalMultiClusterDefaults,
-					"meshExpansion": globalMeshExpansionDefaults,
-				},
-			}),
+			helmValues: `
+meshConfig:
+  extensionProviders: []
+`,
 		},
 		{
 			name: "prometheus." + ver,
@@ -85,22 +82,89 @@ func extensionProvidersTestCasesV2(version versions.Version) []conversionTestCas
 					},
 				},
 			},
-			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-				"meshConfig": map[string]interface{}{
-					"extensionProviders": []interface{}{
-						map[string]interface{}{
-							"name":       "prometheus",
-							"prometheus": map[string]interface{}{},
+			helmValues: `
+meshConfig:
+  extensionProviders:
+  - name: prometheus
+    prometheus: {}
+`,
+		},
+		{
+			name: "envoyExtAuthzHttp." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				ExtensionProviders: []*v2.ExtensionProviderConfig{
+					{
+						Name: "ext-authz-http",
+						EnvoyExtAuthzHTTP: &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{
+							Service:                      "ext-authz.foo.svc.cluster.local",
+							Port:                         8000,
+							Timeout:                      strPtr("1s"),
+							PathPrefix:                   strPtr("/authz"),
+							FailOpen:                     boolPtr(true),
+							StatusOnError:                strPtr("500"),
+							IncludeRequestHeadersInCheck: []string{"x-ext-authz"},
+							IncludeAdditionalHeadersInCheck: map[string]string{
+								"x-ext-authz-additional-header": "value",
+							},
+							IncludeRequestBodyInCheck: &v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig{
+								MaxRequestBytes:     int64Ptr(100),
+								AllowPartialMessage: boolPtr(true),
+								PackAsBytes:         boolPtr(true),
+							},
 						},
 					},
 				},
-			}),
-			completeIstio: v1.NewHelmValues(map[string]interface{}{
-				"global": map[string]interface{}{
-					"multiCluster":  globalMultiClusterDefaults,
-					"meshExpansion": globalMeshExpansionDefaults,
+			},
+			helmValues: `
+meshConfig:
+  extensionProviders:
+  - name: ext-authz-http
+    envoyExtAuthzHttp:
+      service: ext-authz.foo.svc.cluster.local
+      port: 8000
+      timeout: 1s
+      pathPrefix: "/authz"
+      failOpen: true
+      statusOnError: "500"
+      includeRequestHeadersInCheck:
+      - x-ext-authz
+      includeAdditionalHeadersInCheck:
+        x-ext-authz-additional-header: value
+      includeRequestBodyInCheck:
+        maxRequestBytes: 100
+        allowPartialMessage: true
+        packAsBytes: true
+`,
+		},
+		{
+			name: "prometheus-and-envoyExtAuthzHttp." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				ExtensionProviders: []*v2.ExtensionProviderConfig{
+					{
+						Name: "ext-authz-http",
+						EnvoyExtAuthzHTTP: &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{
+							Service: "ext-authz.foo.svc.cluster.local",
+							Port:    8000,
+						},
+					},
+					{
+						Name:       "prometheus",
+						Prometheus: &v2.ExtensionProviderPrometheusConfig{},
+					},
 				},
-			}),
+			},
+			helmValues: `
+meshConfig:
+  extensionProviders:
+  - name: ext-authz-http
+    envoyExtAuthzHttp:
+      service: ext-authz.foo.svc.cluster.local
+      port: 8000
+  - name: prometheus
+    prometheus: {}
+`,
 		},
 	}
 }

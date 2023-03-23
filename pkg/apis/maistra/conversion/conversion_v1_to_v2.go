@@ -224,8 +224,10 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 	}
 
 	// Extension providers
-	if err := populateExtensionProvidersConfig(values, out); err != nil {
-		return err
+	if version.AtLeast(versions.V2_4) {
+		if err := populateExtensionProvidersConfig(values, out); err != nil {
+			return err
+		}
 	}
 
 	// Runtime
