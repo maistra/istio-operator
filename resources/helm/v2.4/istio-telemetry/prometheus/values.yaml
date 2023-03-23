@@ -108,10 +108,10 @@ prometheus:
   # When this option is set as false, this certificate provisioning mechanism is disabled.
   provisionPrometheusCert: true
 
-  configReloader: 
-    image: quay.io/prometheus-operator/prometheus-config-reloader:v0.63.0
-    resources: {}
-
   scrapingNamespaces: []
+
+prometheusConfigReloader:
+  image: quay.io/prometheus-operator/prometheus-config-reloader:v0.63.0
+  resources: {}
 
 revision: ""

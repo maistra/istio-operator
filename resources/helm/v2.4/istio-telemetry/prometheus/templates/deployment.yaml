@@ -128,10 +128,10 @@ spec:
             name: istio-certs
           {{- end }}
         - name: config-reloader
-{{- if contains "/" .Values.prometheus.configReloader.image }}
-          image: "{{ .Values.prometheus.configReloader.image }}"
+{{- if contains "/" .Values.prometheusConfigReloader.image }}
+          image: "{{ .Values.prometheusConfigReloader.image }}"
 {{- else }}
-          image: "{{ .Values.global.hub }}/{{ .Values.prometheus.configReloader.image }}:{{ .Values.global.tag }}"
+          image: "{{ .Values.global.hub }}/{{ .Values.prometheusConfigReloader.image }}:{{ .Values.global.tag }}"
 {{- end }}
 {{- if .Values.global.imagePullPolicy }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
@@ -142,8 +142,8 @@ spec:
           command:
           - /usr/bin/prometheus-config-reloader
           resources:
-{{- if .Values.prometheus.configReloader.resources }}
-{{ toYaml .Values.prometheus.configReloader.resources | indent 12 }}
+{{- if .Values.prometheusConfigReloader.resources }}
+{{ toYaml .Values.prometheusConfigReloader.resources | indent 12 }}
 {{- else }}
             limits:
               cpu: 100m
