@@ -5,15 +5,9 @@ import (
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
-func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
+func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[string]interface{}) error {
 	if in.ExtensionProviders == nil {
 		return nil
-	}
-
-	if len(in.ExtensionProviders) == 0 {
-		if err := setHelmMapSliceValue(values, "meshConfig.extensionProviders", []map[string]interface{}{}); err != nil {
-			return err
-		}
 	}
 
 	var extensionProvidersValues []map[string]interface{}
@@ -25,48 +19,49 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, values map[string
 			})
 		}
 		if ext.EnvoyExtAuthzHTTP != nil {
-			envoyExtAuthzHTTPValues := map[string]interface{}{
-				"service": ext.EnvoyExtAuthzHTTP.Service,
-				"port":    ext.EnvoyExtAuthzHTTP.Port,
+			extAuthz := ext.EnvoyExtAuthzHTTP
+			values := map[string]interface{}{
+				"service": extAuthz.Service,
+				"port":    extAuthz.Port,
 			}
-			if ext.EnvoyExtAuthzHTTP.Timeout != nil {
-				envoyExtAuthzHTTPValues["timeout"] = *ext.EnvoyExtAuthzHTTP.Timeout
+			if extAuthz.Timeout != nil {
+				values["timeout"] = *extAuthz.Timeout
 			}
-			if ext.EnvoyExtAuthzHTTP.PathPrefix != nil {
-				envoyExtAuthzHTTPValues["pathPrefix"] = *ext.EnvoyExtAuthzHTTP.PathPrefix
+			if extAuthz.PathPrefix != nil {
+				values["pathPrefix"] = *extAuthz.PathPrefix
 			}
-			if ext.EnvoyExtAuthzHTTP.FailOpen != nil {
-				envoyExtAuthzHTTPValues["failOpen"] = *ext.EnvoyExtAuthzHTTP.FailOpen
+			if extAuthz.FailOpen != nil {
+				values["failOpen"] = *extAuthz.FailOpen
 			}
-			if ext.EnvoyExtAuthzHTTP.StatusOnError != nil {
-				envoyExtAuthzHTTPValues["statusOnError"] = *ext.EnvoyExtAuthzHTTP.StatusOnError
+			if extAuthz.StatusOnError != nil {
+				values["statusOnError"] = *extAuthz.StatusOnError
 			}
-			if ext.EnvoyExtAuthzHTTP.IncludeRequestHeadersInCheck != nil {
-				envoyExtAuthzHTTPValues["includeRequestHeadersInCheck"] = stringToInterfaceArray(ext.EnvoyExtAuthzHTTP.IncludeRequestHeadersInCheck)
+			if extAuthz.IncludeRequestHeadersInCheck != nil {
+				values["includeRequestHeadersInCheck"] = stringToInterfaceArray(extAuthz.IncludeRequestHeadersInCheck)
 			}
-			if ext.EnvoyExtAuthzHTTP.IncludeAdditionalHeadersInCheck != nil {
-				envoyExtAuthzHTTPValues["includeAdditionalHeadersInCheck"] = mapOfStringToInterface(ext.EnvoyExtAuthzHTTP.IncludeAdditionalHeadersInCheck)
+			if extAuthz.IncludeAdditionalHeadersInCheck != nil {
+				values["includeAdditionalHeadersInCheck"] = mapOfStringToInterface(extAuthz.IncludeAdditionalHeadersInCheck)
 			}
-			if ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck != nil {
+			if extAuthz.IncludeRequestBodyInCheck != nil {
 				includeRequestBodyInCheckValues := map[string]interface{}{}
-				if ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck.MaxRequestBytes != nil {
-					includeRequestBodyInCheckValues["maxRequestBytes"] = *ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck.MaxRequestBytes
+				if extAuthz.IncludeRequestBodyInCheck.MaxRequestBytes != nil {
+					includeRequestBodyInCheckValues["maxRequestBytes"] = *extAuthz.IncludeRequestBodyInCheck.MaxRequestBytes
 				}
-				if ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck.AllowPartialMessage != nil {
-					includeRequestBodyInCheckValues["allowPartialMessage"] = *ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck.AllowPartialMessage
+				if extAuthz.IncludeRequestBodyInCheck.AllowPartialMessage != nil {
+					includeRequestBodyInCheckValues["allowPartialMessage"] = *extAuthz.IncludeRequestBodyInCheck.AllowPartialMessage
 				}
-				if ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck.PackAsBytes != nil {
-					includeRequestBodyInCheckValues["packAsBytes"] = *ext.EnvoyExtAuthzHTTP.IncludeRequestBodyInCheck.PackAsBytes
+				if extAuthz.IncludeRequestBodyInCheck.PackAsBytes != nil {
+					includeRequestBodyInCheckValues["packAsBytes"] = *extAuthz.IncludeRequestBodyInCheck.PackAsBytes
 				}
-				envoyExtAuthzHTTPValues["includeRequestBodyInCheck"] = includeRequestBodyInCheckValues
+				values["includeRequestBodyInCheck"] = includeRequestBodyInCheckValues
 			}
 			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
 				"name":              ext.Name,
-				"envoyExtAuthzHttp": envoyExtAuthzHTTPValues,
+				"envoyExtAuthzHttp": values,
 			})
 		}
 	}
-	if err := setHelmMapSliceValue(values, "meshConfig.extensionProviders", extensionProvidersValues); err != nil {
+	if err := setHelmMapSliceValue(allValues, "meshConfig.extensionProviders", extensionProvidersValues); err != nil {
 		return err
 	}
 	return nil
