@@ -68,67 +68,67 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 }
 
 func populateExtensionProvidersConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
-	if rawExtProviders, ok, err := in.GetSlice("meshConfig.extensionProviders"); ok {
-		if len(rawExtProviders) == 0 {
-			out.ExtensionProviders = []*v2.ExtensionProviderConfig{}
-		}
-		for _, rawExtProvider := range rawExtProviders {
-			if extProvider, ok := rawExtProvider.(map[string]interface{}); ok {
-				if _, ok := extProvider["prometheus"]; ok {
-					out.ExtensionProviders = append(out.ExtensionProviders, &v2.ExtensionProviderConfig{
-						Name:       extProvider["name"].(string),
-						Prometheus: &v2.ExtensionProviderPrometheusConfig{},
-					})
-				}
-				if rawEnvoyExtAuthzHTTP, ok := extProvider["envoyExtAuthzHttp"]; ok {
-					if envoyExtAuthzHTTP, ok := rawEnvoyExtAuthzHTTP.(map[string]interface{}); ok {
-						extProviderName := extProvider["name"].(string)
-						envoyExtAuthzHTTPConfig := &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{
-							Service: envoyExtAuthzHTTP["service"].(string),
-							Port:    envoyExtAuthzHTTP["port"].(int64),
-						}
-						if rawTimeout, ok := envoyExtAuthzHTTP["timeout"]; ok {
-							envoyExtAuthzHTTPConfig.Timeout = strPtr(rawTimeout.(string))
-						}
-						if rawPathPrefix, ok := envoyExtAuthzHTTP["pathPrefix"]; ok {
-							envoyExtAuthzHTTPConfig.PathPrefix = strPtr(rawPathPrefix.(string))
-						}
-						if rawFailOpen, ok := envoyExtAuthzHTTP["failOpen"]; ok {
-							envoyExtAuthzHTTPConfig.FailOpen = boolPtr(rawFailOpen.(bool))
-						}
-						if statusOnError, ok := envoyExtAuthzHTTP["statusOnError"]; ok {
-							envoyExtAuthzHTTPConfig.StatusOnError = strPtr(statusOnError.(string))
-						}
-						if rawIncludeRequestHeadersInCheck, ok := envoyExtAuthzHTTP["includeRequestHeadersInCheck"]; ok {
-							envoyExtAuthzHTTPConfig.IncludeRequestHeadersInCheck = interfaceToStringArray(rawIncludeRequestHeadersInCheck.([]interface{}))
-						}
-						if rawIncludeAdditionalHeadersInCheck, ok := envoyExtAuthzHTTP["includeAdditionalHeadersInCheck"]; ok {
-							envoyExtAuthzHTTPConfig.IncludeAdditionalHeadersInCheck = mapOfInterfaceToString(rawIncludeAdditionalHeadersInCheck.(map[string]interface{}))
-						}
-						if rawIncludeRequestBodyInCheck, ok := envoyExtAuthzHTTP["includeRequestBodyInCheck"]; ok {
-							if includeRequestBodyInCheck, ok := rawIncludeRequestBodyInCheck.(map[string]interface{}); ok {
-								envoyExtAuthzHTTPConfig.IncludeRequestBodyInCheck = &v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig{}
-								if maxRequestBytes, ok := includeRequestBodyInCheck["maxRequestBytes"]; ok {
-									envoyExtAuthzHTTPConfig.IncludeRequestBodyInCheck.MaxRequestBytes = int64Ptr(maxRequestBytes.(int64))
-								}
-								if allowPartialMessage, ok := includeRequestBodyInCheck["allowPartialMessage"]; ok {
-									envoyExtAuthzHTTPConfig.IncludeRequestBodyInCheck.AllowPartialMessage = boolPtr(allowPartialMessage.(bool))
-								}
-								if packAsBytes, ok := includeRequestBodyInCheck["packAsBytes"]; ok {
-									envoyExtAuthzHTTPConfig.IncludeRequestBodyInCheck.PackAsBytes = boolPtr(packAsBytes.(bool))
-								}
+	rawProviders, ok, err := in.GetSlice("meshConfig.extensionProviders")
+	if err != nil {
+		return err
+	} else if !ok {
+		return nil
+	}
+
+	out.ExtensionProviders = []*v2.ExtensionProviderConfig{}
+	for _, rawProvider := range rawProviders {
+		if provider, ok := rawProvider.(map[string]interface{}); ok {
+			if _, ok := provider["prometheus"]; ok {
+				out.ExtensionProviders = append(out.ExtensionProviders, &v2.ExtensionProviderConfig{
+					Name:       provider["name"].(string),
+					Prometheus: &v2.ExtensionProviderPrometheusConfig{},
+				})
+			}
+			if rawExtAuthz, ok := provider["envoyExtAuthzHttp"]; ok {
+				if extAuthz, ok := rawExtAuthz.(map[string]interface{}); ok {
+					extAuthzConfig := &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{
+						Service: extAuthz["service"].(string),
+						Port:    extAuthz["port"].(int64),
+					}
+					if rawTimeout, ok := extAuthz["timeout"]; ok {
+						extAuthzConfig.Timeout = strPtr(rawTimeout.(string))
+					}
+					if rawPathPrefix, ok := extAuthz["pathPrefix"]; ok {
+						extAuthzConfig.PathPrefix = strPtr(rawPathPrefix.(string))
+					}
+					if rawFailOpen, ok := extAuthz["failOpen"]; ok {
+						extAuthzConfig.FailOpen = boolPtr(rawFailOpen.(bool))
+					}
+					if statusOnError, ok := extAuthz["statusOnError"]; ok {
+						extAuthzConfig.StatusOnError = strPtr(statusOnError.(string))
+					}
+					if rawIncludeRequestHeadersInCheck, ok := extAuthz["includeRequestHeadersInCheck"]; ok {
+						extAuthzConfig.IncludeRequestHeadersInCheck = interfaceToStringArray(rawIncludeRequestHeadersInCheck.([]interface{}))
+					}
+					if rawIncludeAdditionalHeadersInCheck, ok := extAuthz["includeAdditionalHeadersInCheck"]; ok {
+						extAuthzConfig.IncludeAdditionalHeadersInCheck = mapOfInterfaceToString(rawIncludeAdditionalHeadersInCheck.(map[string]interface{}))
+					}
+					if rawIncludeRequestBodyInCheck, ok := extAuthz["includeRequestBodyInCheck"]; ok {
+						if includeRequestBodyInCheck, ok := rawIncludeRequestBodyInCheck.(map[string]interface{}); ok {
+							extAuthzConfig.IncludeRequestBodyInCheck = &v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig{}
+							if maxRequestBytes, ok := includeRequestBodyInCheck["maxRequestBytes"]; ok {
+								extAuthzConfig.IncludeRequestBodyInCheck.MaxRequestBytes = int64Ptr(maxRequestBytes.(int64))
+							}
+							if allowPartialMessage, ok := includeRequestBodyInCheck["allowPartialMessage"]; ok {
+								extAuthzConfig.IncludeRequestBodyInCheck.AllowPartialMessage = boolPtr(allowPartialMessage.(bool))
+							}
+							if packAsBytes, ok := includeRequestBodyInCheck["packAsBytes"]; ok {
+								extAuthzConfig.IncludeRequestBodyInCheck.PackAsBytes = boolPtr(packAsBytes.(bool))
 							}
 						}
-						out.ExtensionProviders = append(out.ExtensionProviders, &v2.ExtensionProviderConfig{
-							Name:              extProviderName,
-							EnvoyExtAuthzHTTP: envoyExtAuthzHTTPConfig,
-						})
 					}
+					out.ExtensionProviders = append(out.ExtensionProviders, &v2.ExtensionProviderConfig{
+						Name:              provider["name"].(string),
+						EnvoyExtAuthzHTTP: extAuthzConfig,
+					})
 				}
 			}
 		}
-	} else if err != nil {
-		return err
 	}
 
 	return nil
