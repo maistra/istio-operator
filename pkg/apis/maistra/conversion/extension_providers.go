@@ -11,52 +11,52 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 	}
 
 	var extensionProvidersValues []map[string]interface{}
-	for _, ext := range in.ExtensionProviders {
-		if ext.Prometheus != nil {
+	for _, provider := range in.ExtensionProviders {
+		if provider.Prometheus != nil {
 			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
-				"name":       ext.Name,
+				"name":       provider.Name,
 				"prometheus": map[string]interface{}{},
 			})
 		}
-		if ext.EnvoyExtAuthzHTTP != nil {
-			extAuthz := ext.EnvoyExtAuthzHTTP
+		if provider.EnvoyExtAuthzHTTP != nil {
+			config := provider.EnvoyExtAuthzHTTP
 			values := map[string]interface{}{
-				"service": extAuthz.Service,
-				"port":    extAuthz.Port,
+				"service": config.Service,
+				"port":    config.Port,
 			}
-			if extAuthz.Timeout != nil {
-				values["timeout"] = *extAuthz.Timeout
+			if config.Timeout != nil {
+				values["timeout"] = *config.Timeout
 			}
-			if extAuthz.PathPrefix != nil {
-				values["pathPrefix"] = *extAuthz.PathPrefix
+			if config.PathPrefix != nil {
+				values["pathPrefix"] = *config.PathPrefix
 			}
-			if extAuthz.FailOpen != nil {
-				values["failOpen"] = *extAuthz.FailOpen
+			if config.FailOpen != nil {
+				values["failOpen"] = *config.FailOpen
 			}
-			if extAuthz.StatusOnError != nil {
-				values["statusOnError"] = *extAuthz.StatusOnError
+			if config.StatusOnError != nil {
+				values["statusOnError"] = *config.StatusOnError
 			}
-			if extAuthz.IncludeRequestHeadersInCheck != nil {
-				values["includeRequestHeadersInCheck"] = stringToInterfaceArray(extAuthz.IncludeRequestHeadersInCheck)
+			if config.IncludeRequestHeadersInCheck != nil {
+				values["includeRequestHeadersInCheck"] = stringToInterfaceArray(config.IncludeRequestHeadersInCheck)
 			}
-			if extAuthz.IncludeAdditionalHeadersInCheck != nil {
-				values["includeAdditionalHeadersInCheck"] = mapOfStringToInterface(extAuthz.IncludeAdditionalHeadersInCheck)
+			if config.IncludeAdditionalHeadersInCheck != nil {
+				values["includeAdditionalHeadersInCheck"] = mapOfStringToInterface(config.IncludeAdditionalHeadersInCheck)
 			}
-			if extAuthz.IncludeRequestBodyInCheck != nil {
+			if config.IncludeRequestBodyInCheck != nil {
 				includeRequestBodyInCheckValues := map[string]interface{}{}
-				if extAuthz.IncludeRequestBodyInCheck.MaxRequestBytes != nil {
-					includeRequestBodyInCheckValues["maxRequestBytes"] = *extAuthz.IncludeRequestBodyInCheck.MaxRequestBytes
+				if config.IncludeRequestBodyInCheck.MaxRequestBytes != nil {
+					includeRequestBodyInCheckValues["maxRequestBytes"] = *config.IncludeRequestBodyInCheck.MaxRequestBytes
 				}
-				if extAuthz.IncludeRequestBodyInCheck.AllowPartialMessage != nil {
-					includeRequestBodyInCheckValues["allowPartialMessage"] = *extAuthz.IncludeRequestBodyInCheck.AllowPartialMessage
+				if config.IncludeRequestBodyInCheck.AllowPartialMessage != nil {
+					includeRequestBodyInCheckValues["allowPartialMessage"] = *config.IncludeRequestBodyInCheck.AllowPartialMessage
 				}
-				if extAuthz.IncludeRequestBodyInCheck.PackAsBytes != nil {
-					includeRequestBodyInCheckValues["packAsBytes"] = *extAuthz.IncludeRequestBodyInCheck.PackAsBytes
+				if config.IncludeRequestBodyInCheck.PackAsBytes != nil {
+					includeRequestBodyInCheckValues["packAsBytes"] = *config.IncludeRequestBodyInCheck.PackAsBytes
 				}
 				values["includeRequestBodyInCheck"] = includeRequestBodyInCheckValues
 			}
 			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
-				"name":              ext.Name,
+				"name":              provider.Name,
 				"envoyExtAuthzHttp": values,
 			})
 		}
