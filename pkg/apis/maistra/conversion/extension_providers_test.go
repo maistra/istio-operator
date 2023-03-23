@@ -31,7 +31,7 @@ func TestExtensionProvidersConversionFromV2(t *testing.T) {
 			specCopy := tc.spec.DeepCopy()
 			actualHelmValues := v1.NewHelmValues(make(map[string]interface{}))
 			if err := populateExtensionProvidersValues(specCopy, actualHelmValues.GetContent()); err != nil {
-				t.Fatalf("error converting to values: %s", err)
+				t.Errorf("error converting to values: %s", err)
 			}
 
 			expectedHelmValues := v1.HelmValues{}
@@ -43,7 +43,7 @@ func TestExtensionProvidersConversionFromV2(t *testing.T) {
 			}
 			specv2 := v2.ControlPlaneSpec{}
 			if err := populateExtensionProvidersConfig(expectedHelmValues.DeepCopy(), &specv2); err != nil {
-				t.Fatalf("error converting from values: %s", err)
+				t.Errorf("error converting from values: %s", err)
 			}
 			assertEquals(t, tc.spec.ExtensionProviders, specv2.ExtensionProviders)
 		})
