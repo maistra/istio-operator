@@ -3,8 +3,9 @@ package versions
 import (
 	"testing"
 
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 )
 
 type validateExtensionProviderTestCase struct {
@@ -49,6 +50,7 @@ meshConfig:
       service: ext-authz.foo.svc.cluster.local,
       port: 8000,
       timeout: 1s
+      failOpen: true
 `,
 	},
 	{
