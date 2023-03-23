@@ -68,10 +68,10 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 }
 
 func populateExtensionProvidersConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
-	rawProviders, ok, err := in.GetSlice("meshConfig.extensionProviders")
+	rawProviders, exists, err := in.GetSlice("meshConfig.extensionProviders")
 	if err != nil {
 		return err
-	} else if !ok {
+	} else if !exists {
 		return nil
 	}
 
