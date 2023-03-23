@@ -440,7 +440,7 @@ func (r *MemberRollReconciler) getRequiredNamespaces(ctx context.Context, smmr *
 		}
 	}
 
-	// 2. add all namespaces that match wildcards in spec.members or the spec.memberSelector
+	// 2. add all namespaces that match spec.members or spec.memberSelectors
 	nsList := &corev1.NamespaceList{}
 	err := r.Client.List(ctx, nsList)
 	if err != nil {

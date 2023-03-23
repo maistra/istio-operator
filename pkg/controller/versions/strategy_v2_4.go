@@ -736,9 +736,11 @@ func (v *versionStrategyV2_4) createMemberRoll(ctx context.Context, cr *common.C
 				},
 			},
 			Spec: v1.ServiceMeshMemberRollSpec{
-				MemberSelector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						"istio-injection": "enabled",
+				MemberSelectors: []metav1.LabelSelector{
+					{
+						MatchLabels: map[string]string{
+							"istio-injection": "enabled",
+						},
 					},
 				},
 			},

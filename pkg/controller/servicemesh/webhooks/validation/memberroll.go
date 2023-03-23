@@ -82,8 +82,8 @@ func (v *MemberRollValidator) Handle(ctx context.Context, req admission.Request)
 		return badRequest("ServiceMeshMemberRoll may not be created in the same project/namespace as the operator")
 	}
 
-	if len(smmr.Spec.Members) > 0 && smmr.Spec.MemberSelector != nil {
-		return badRequest("combining .spec.members and .spec.memberSelector is not allowed")
+	if len(smmr.Spec.Members) > 0 && len(smmr.Spec.MemberSelectors) > 0 {
+		return badRequest("combining .spec.members and .spec.memberSelectors is not allowed")
 	}
 
 	// check if namespace names conform to DNS-1123 (we must check this in code, because +kubebuilder:validation:Pattern can't be applied to array elements yet)

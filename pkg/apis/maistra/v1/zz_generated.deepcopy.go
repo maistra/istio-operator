@@ -310,10 +310,12 @@ func (in *ServiceMeshMemberRollSpec) DeepCopyInto(out *ServiceMeshMemberRollSpec
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.MemberSelector != nil {
-		in, out := &in.MemberSelector, &out.MemberSelector
-		*out = new(metav1.LabelSelector)
-		(*in).DeepCopyInto(*out)
+	if in.MemberSelectors != nil {
+		in, out := &in.MemberSelectors, &out.MemberSelectors
+		*out = make([]metav1.LabelSelector, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	return
 }
