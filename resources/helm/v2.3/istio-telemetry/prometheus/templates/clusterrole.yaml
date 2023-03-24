@@ -3,7 +3,7 @@ kind: ClusterRole
 metadata:
   name: prometheus-{{ .Release.Namespace }}
   labels:
-    maistra-version: "2.3.2"
+    maistra-version: "2.3.3"
     app: prometheus
     release: {{ .Release.Name }}
 rules:
