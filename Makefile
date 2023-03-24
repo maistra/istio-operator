@@ -18,11 +18,11 @@ THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 -include Makefile.overrides
 
-MAISTRA_VERSION        ?= 2.3.2
+MAISTRA_VERSION        ?= 2.3.3
 MAISTRA_BRANCH         ?= maistra-2.3
 ISTIO_VERSION          ?= 1.14.5
-REPLACES_PRODUCT_CSV   ?= 2.3.1
-REPLACES_COMMUNITY_CSV ?= 2.3.1
+REPLACES_PRODUCT_CSV   ?= 2.3.2
+REPLACES_COMMUNITY_CSV ?= 2.3.2
 VERSION                ?= development
 CONTAINER_CLI          ?= docker
 COMMUNITY              ?= true

@@ -6,7 +6,7 @@ metadata:
   name: istiod-{{ .Values.revision | default "default" }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.3.2"
+    maistra-version: "2.3.3"
     app: istiod
     release: {{ .Release.Name }}
     istio.io/rev: {{ .Values.revision | default "default" }}
@@ -34,7 +34,7 @@ metadata:
   name: istiod-{{ .Values.revision | default "default" }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.3.2"
+    maistra-version: "2.3.3"
     app: istiod
     release: {{ .Release.Name }}
     istio.io/rev: {{ .Values.revision | default "default" }}
