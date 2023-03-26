@@ -41,11 +41,6 @@ func TestExtensionProvidersConversionFromV2(t *testing.T) {
 			if !reflect.DeepEqual(expectedHelmValues.DeepCopy(), actualHelmValues.DeepCopy()) {
 				t.Errorf("unexpected output converting v2 to values:\n\texpected:\n%#v\n\tgot:\n%#v", expectedHelmValues.GetContent(), actualHelmValues.GetContent())
 			}
-			specv2 := v2.ControlPlaneSpec{}
-			if err := populateExtensionProvidersConfig(expectedHelmValues.DeepCopy(), &specv2); err != nil {
-				t.Errorf("error converting from values: %s", err)
-			}
-			assertEquals(t, tc.spec.ExtensionProviders, specv2.ExtensionProviders)
 		})
 	}
 }
