@@ -490,40 +490,6 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version
 		} else if err != nil {
 			return err
 		}
-	case v2.CertificateAuthorityTypeCertManager:
-		setCA = true
-		ca.Type = v2.CertificateAuthorityTypeCertManager
-		if caAddress, ok, err := in.GetAndRemoveString("global.caAddress"); ok {
-			ca.CertManager = &v2.CertManagerCertificateAuthorityConfig{
-				Address: caAddress,
-			}
-		} else if err != nil {
-			return err
-		}
-
-		if _, ok, err := in.GetAndRemoveSlice("pilot.extraArgs"); !ok {
-			if err != nil {
-				return err
-			}
-		}
-
-		if _, ok, err := in.GetAndRemoveSlice("pilot.extraVolumeMounts"); !ok {
-			if err != nil {
-				return err
-			}
-		}
-
-		if _, ok, err := in.GetAndRemoveSlice("pilot.extraVolumes"); !ok {
-			if err != nil {
-				return err
-			}
-		}
-
-		if _, ok, err := getAndClearComponentEnv(in, "pilot", "ENABLE_CA_SERVER"); !ok {
-			if err != nil {
-				return err
-			}
-		}
 
 	case "":
 		// don't configure CA

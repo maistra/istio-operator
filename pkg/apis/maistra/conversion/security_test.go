@@ -1033,3 +1033,93 @@ func TestSecurityConversionFromV2(t *testing.T) {
 		})
 	}
 }
+
+type conversionFromV2TestCase struct {
+	name       string
+	spec       *v2.ControlPlaneSpec
+	helmValues string
+	ver        versions.Version
+}
+
+var conversionFromV2SecurityTestCases = []conversionFromV2TestCase{
+	{
+		name: "ca.cert-manager.v2_3",
+		spec: &v2.ControlPlaneSpec{
+			Security: &v2.SecurityConfig{
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeCertManager,
+					CertManager: &v2.CertManagerCertificateAuthorityConfig{
+						Address: "my-istio-csr.namespace.svc.cluster.local",
+					},
+				},
+			},
+		},
+		helmValues: `
+global:
+  caAddress: my-istio-csr.namespace.svc.cluster.local
+pilot:
+  ca:
+    implementation: cert-manager
+  extraArgs:
+  - "--tlsCertFile=/etc/cert-manager/tls/tls.crt"
+  - "--tlsKeyFile=/etc/cert-manager/tls/tls.key"
+  - "--caCertFile=/etc/cert-manager/ca/root-cert.pem"
+  extraVolumeMounts:
+  - name: cert-manager
+    mountPath: /etc/cert-manager/tls
+    readyOnly: "true"
+  - name: ca-root-cert
+    mountPath: /etc/cert-manager/ca
+    readyOnly: "true"
+  extraVolumes:
+  - name: cert-manager
+    secret:
+      secretName: istiod-tls
+  - name: ca-root-cert
+    configMap:
+      name: istio-ca-root-cert
+`,
+		ver: versions.V2_3,
+	},
+	{
+		name: "ca.cert-manager.v2_4",
+		spec: &v2.ControlPlaneSpec{
+			Security: &v2.SecurityConfig{
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeCertManager,
+					CertManager: &v2.CertManagerCertificateAuthorityConfig{
+						Address: "my-istio-csr.namespace.svc.cluster.local",
+					},
+				},
+			},
+		},
+		helmValues: `
+global:
+  caAddress: my-istio-csr.namespace.svc.cluster.local
+pilot:
+  ca:
+    implementation: cert-manager
+`,
+		ver: versions.V2_4,
+	},
+}
+
+func TestSecurityConversionFromV2ToV1(t *testing.T) {
+	for _, tc := range conversionFromV2SecurityTestCases {
+		t.Run(tc.name, func(t *testing.T) {
+			specCopy := tc.spec.DeepCopy()
+			actualHelmValues := v1.NewHelmValues(make(map[string]interface{}))
+			if err := populateSecurityValues(specCopy, actualHelmValues.GetContent(), tc.ver); err != nil {
+				t.Errorf("error converting to values: %s", err)
+			}
+
+			expectedHelmValues := v1.HelmValues{}
+			if err := expectedHelmValues.UnmarshalYAML([]byte(tc.helmValues)); err != nil {
+				t.Fatalf("failed to parse helm values: %s", err)
+			}
+			if !reflect.DeepEqual(expectedHelmValues.DeepCopy(), actualHelmValues.DeepCopy()) {
+				t.Errorf("unexpected output converting v2 to values:\n\texpected:\n%#v\n\tgot:\n%#v", expectedHelmValues.GetContent(), actualHelmValues.GetContent())
+			}
+		})
+	}
+}
