@@ -156,16 +156,8 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			addEnvToComponent(in, "pilot", "ENABLE_CA_SERVER", "false")
 
 			// Istio 1.16+ has configured optional volumes and volume mounts for TLS certs provided by istio-csr
-			// and there is no need to configure them when "well known" paths are used.
-			if version.Compare(versions.V2_4) >= 0 {
-				extraArgs := []string{
-					"--tlsCertFile=/var/run/secrets/istiod/tls/tls.crt",
-					"--tlsKeyFile=/var/run/secrets/istiod/tls/tls.key",
-					"--caCertFile=/var/run/secrets/istiod/ca/root-cert.pem",
-				}
-				if err := setHelmStringSliceValue(values, "pilot.extraArgs", extraArgs); err != nil {
-					return fmt.Errorf("cert-manager ca config: failed setting extra args in helm chart : %s", err.Error())
-				}
+			// and there is no need to configure them when certs are created under "well known" paths
+			if version.AtLeast(versions.V2_4) {
 				break
 			}
 

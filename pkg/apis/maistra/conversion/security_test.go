@@ -104,13 +104,7 @@ func securityTestCasesV2(version versions.Version) []conversionTestCase {
 	pilotValuesForCertManager := map[string]interface{}{
 		"ca": map[string]interface{}{"implementation": "cert-manager"},
 	}
-	if version.Version() >= versions.V2_4 {
-		pilotValuesForCertManager["extraArgs"] = []string{
-			"--tlsCertFile=/var/run/secrets/istiod/tls/tls.crt",
-			"--tlsKeyFile=/var/run/secrets/istiod/tls/tls.key",
-			"--caCertFile=/var/run/secrets/istiod/ca/root-cert.pem",
-		}
-	} else {
+	if version.LessThan(versions.V2_4) {
 		pilotValuesForCertManager["extraArgs"] = []string{
 			"--tlsCertFile=/etc/cert-manager/tls/tls.crt",
 			"--tlsKeyFile=/etc/cert-manager/tls/tls.key",
