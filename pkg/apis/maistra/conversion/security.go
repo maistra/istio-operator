@@ -140,10 +140,6 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				return err
 			}
 		case v2.CertificateAuthorityTypeCertManager:
-			if err := setHelmStringValue(values, "pilot.ca.implementation", string(security.CertificateAuthority.Type)); err != nil {
-				return fmt.Errorf("cert-manager ca config: failed converting CA implementation to helm: %s", err.Error())
-			}
-
 			certManagerConf := security.CertificateAuthority.CertManager
 			if certManagerConf == nil {
 				break

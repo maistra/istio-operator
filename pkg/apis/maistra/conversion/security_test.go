@@ -1058,8 +1058,6 @@ var conversionFromV2SecurityTestCases = []conversionFromV2TestCase{
 global:
   caAddress: my-istio-csr.namespace.svc.cluster.local
 pilot:
-  ca:
-    implementation: cert-manager
   extraArgs:
   - "--tlsCertFile=/etc/cert-manager/tls/tls.crt"
   - "--tlsKeyFile=/etc/cert-manager/tls/tls.key"
@@ -1096,9 +1094,6 @@ pilot:
 		helmValues: `
 global:
   caAddress: my-istio-csr.namespace.svc.cluster.local
-pilot:
-  ca:
-    implementation: cert-manager
 `,
 		ver: versions.V2_4,
 	},
