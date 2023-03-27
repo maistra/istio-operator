@@ -240,7 +240,7 @@ func validateProtocolDetection(spec *v2.ControlPlaneSpec, allErrors []error) []e
 }
 
 func validateUnsupportedAPIs(version Ver, spec *v2.ControlPlaneSpec, allErrors []error) []error {
-	if spec.ExtensionProviders != nil && !version.AtLeast(V2_4) {
+	if spec.ExtensionProviders != nil && version.LessThan(V2_4) {
 		allErrors = append(allErrors, fmt.Errorf("spec.extensionProviders is supported in SMCP v2.4 and higher;"+
 			"in previous versions use spec.techPreview.meshConfig.extensionProviders"))
 	}
