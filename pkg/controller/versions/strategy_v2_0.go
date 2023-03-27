@@ -527,5 +527,6 @@ func (v *versionStrategyV2_0) GetTrustDomainFieldPath() string {
 }
 
 func (v *versionStrategyV2_0) validateGlobal(spec *v2.ControlPlaneSpec, allErrors []error) []error {
-	return checkControlPlaneModeNotSet(spec, allErrors)
+	allErrors = checkControlPlaneModeNotSet(spec, allErrors)
+	return checkExtensionProvidersNotSet(spec, allErrors)
 }

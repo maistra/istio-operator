@@ -51,6 +51,13 @@ func checkControlPlaneModeNotSet(spec *v2.ControlPlaneSpec, allErrors []error) [
 	return allErrors
 }
 
+func checkExtensionProvidersNotSet(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.ExtensionProviders != nil {
+		return append(allErrors, fmt.Errorf("the spec.extensionProviders field is only supported in version 2.4 and above"))
+	}
+	return allErrors
+}
+
 func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, cl client.Client, allErrors []error) []error {
 	isClusterScoped, err := version.Strategy().IsClusterScoped(spec)
 	if err != nil {
