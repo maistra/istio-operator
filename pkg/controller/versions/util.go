@@ -359,19 +359,3 @@ func GetMissingDependency(err error) string {
 	}
 	return ""
 }
-
-func interfaceSliceToSliceOfMaps(in []interface{}) []map[string]interface{} {
-	out := make([]map[string]interface{}, len(in))
-	for i, v := range in {
-		out[i] = v.(map[string]interface{})
-	}
-	return out
-}
-
-func errorsToStrings(errs []error) []string {
-	var out []string
-	for _, e := range errs {
-		out = append(out, e.Error())
-	}
-	return out
-}
