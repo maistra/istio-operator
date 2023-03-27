@@ -220,26 +220,10 @@ func strPtr(val string) *string {
 	return valPtr
 }
 
-func interfaceToStringArray(in []interface{}) []string {
-	strArr := make([]string, len(in))
-	for i, v := range in {
-		strArr[i] = v.(string)
-	}
-	return strArr
-}
-
 func stringToInterfaceArray(in []string) []interface{} {
 	out := make([]interface{}, len(in))
 	for i, val := range in {
 		out[i] = val
-	}
-	return out
-}
-
-func mapOfInterfaceToString(in map[string]interface{}) map[string]string {
-	out := make(map[string]string, len(in))
-	for k, v := range in {
-		out[k] = v.(string)
 	}
 	return out
 }
