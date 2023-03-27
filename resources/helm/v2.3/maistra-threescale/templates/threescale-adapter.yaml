@@ -6,7 +6,7 @@ metadata:
   name: threescale
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.3.2"
+    maistra-version: "2.3.3"
     app: 3scale-istio-adapter
     chart: {{ template "threescale.chart" . }}
     heritage: {{ .Release.Service }}
