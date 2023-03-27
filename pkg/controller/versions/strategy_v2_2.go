@@ -142,7 +142,6 @@ func (v *versionStrategyV2_2) ValidateV1(ctx context.Context, cl client.Client, 
 func (v *versionStrategyV2_2) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
 	allErrors = v.validateGlobal(spec, allErrors)
-	allErrors = validateUnsupportedAPIs(v.Version(), spec, allErrors)
 	allErrors = validateGateways(ctx, meta, spec, cl, allErrors)
 	allErrors = validatePolicyType(spec, v.Ver, allErrors)
 	allErrors = validateTelemetryType(spec, v.Ver, allErrors)
@@ -609,5 +608,6 @@ func (v *versionStrategyV2_2) GetTrustDomainFieldPath() string {
 }
 
 func (v *versionStrategyV2_2) validateGlobal(spec *v2.ControlPlaneSpec, allErrors []error) []error {
-	return checkControlPlaneModeNotSet(spec, allErrors)
+	allErrors = checkControlPlaneModeNotSet(spec, allErrors)
+	return checkExtensionProvidersNotSet(spec, allErrors)
 }

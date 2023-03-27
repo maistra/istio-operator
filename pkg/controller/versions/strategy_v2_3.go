@@ -131,7 +131,6 @@ func (v *versionStrategyV2_3) ValidateV1(_ context.Context, _ client.Client, _ *
 func (v *versionStrategyV2_3) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
 	allErrors = v.validateGlobal(ctx, v.Ver, meta, spec, cl, allErrors)
-	allErrors = validateUnsupportedAPIs(v.Version(), spec, allErrors)
 	allErrors = validateGateways(ctx, meta, spec, cl, allErrors)
 	allErrors = validatePolicyType(spec, v.Ver, allErrors)
 	allErrors = validateTelemetryType(spec, v.Ver, allErrors)
@@ -705,18 +704,18 @@ func (v *versionStrategyV2_3) validateGlobal(
 	spec *v2.ControlPlaneSpec, cl client.Client, allErrors []error,
 ) []error {
 	if spec.Mode != "" {
-		return append(allErrors,
+		allErrors = append(allErrors,
 			fmt.Errorf("the spec.mode field is not supported in version 2.3; use spec.techPreview.%s",
 				v2.TechPreviewControlPlaneModeKey))
 	} else if spec.TechPreview != nil {
 		if mode, found, _ := spec.TechPreview.GetString(v2.TechPreviewControlPlaneModeKey); found {
 			if mode != v2.TechPreviewControlPlaneModeValueClusterScoped && mode != v2.TechPreviewControlPlaneModeValueMultiTenant {
-				return append(allErrors,
+				allErrors = append(allErrors,
 					fmt.Errorf("spec.techPreview.%s must be either %s or %s",
 						v2.TechPreviewControlPlaneModeKey, v2.TechPreviewControlPlaneModeValueMultiTenant, v2.TechPreviewControlPlaneModeValueClusterScoped))
 			}
 		}
 	}
-
+	allErrors = checkExtensionProvidersNotSet(spec, allErrors)
 	return validateGlobal(ctx, version, meta, spec, cl, allErrors)
 }

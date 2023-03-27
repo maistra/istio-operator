@@ -51,6 +51,13 @@ func checkControlPlaneModeNotSet(spec *v2.ControlPlaneSpec, allErrors []error) [
 	return allErrors
 }
 
+func checkExtensionProvidersNotSet(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.ExtensionProviders != nil {
+		return append(allErrors, fmt.Errorf("the spec.extensionProviders field is only supported in version 2.4 and above"))
+	}
+	return allErrors
+}
+
 func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, cl client.Client, allErrors []error) []error {
 	isClusterScoped, err := version.Strategy().IsClusterScoped(spec)
 	if err != nil {
@@ -235,14 +242,6 @@ func validateProtocolDetection(spec *v2.ControlPlaneSpec, allErrors []error) []e
 		if _, err := time.ParseDuration(autoDetect.Timeout); err != nil {
 			allErrors = append(allErrors, fmt.Errorf("failed parsing spec.proxy.networking.protocol.autoDetect.timeout, not a valid duration: %s", err.Error()))
 		}
-	}
-	return allErrors
-}
-
-func validateUnsupportedAPIs(version Ver, spec *v2.ControlPlaneSpec, allErrors []error) []error {
-	if spec.ExtensionProviders != nil && version.LessThan(V2_4) {
-		allErrors = append(allErrors, fmt.Errorf("spec.extensionProviders is supported in SMCP v2.4 and higher;"+
-			"in previous versions use spec.techPreview.meshConfig.extensionProviders"))
 	}
 	return allErrors
 }
