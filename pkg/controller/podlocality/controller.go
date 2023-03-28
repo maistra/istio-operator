@@ -6,6 +6,7 @@ import (
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -182,13 +183,22 @@ func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, nil
 	}
 
-	pod.Labels[NodeRegionLabel] = node.Labels[NodeRegionLabel]
-	pod.Labels[NodeZoneLabel] = node.Labels[NodeZoneLabel]
-	pod.Labels[NodeRegionLabelGA] = node.Labels[NodeRegionLabelGA]
-	pod.Labels[NodeZoneLabelGA] = node.Labels[NodeZoneLabelGA]
-	pod.Labels[IstioSubzoneLabel] = node.Labels[IstioSubzoneLabel]
+	patch := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pod.Name,
+			Namespace: pod.Namespace,
+			Labels: map[string]string{
+				NodeRegionLabel:   node.Labels[NodeRegionLabel],
+				NodeZoneLabel:     node.Labels[NodeZoneLabel],
+				NodeRegionLabelGA: node.Labels[NodeRegionLabelGA],
+				NodeZoneLabelGA:   node.Labels[NodeZoneLabelGA],
+				IstioSubzoneLabel: node.Labels[IstioSubzoneLabel],
+			},
+		},
+		Spec: pod.Spec,
+	}
 
-	err = r.Client.Update(ctx, pod)
+	err = r.Client.Patch(ctx, patch, client.Merge)
 	if err != nil {
 		reqLogger.Info(fmt.Sprintf("Error updating pod's labels: %v", err))
 		return reconcile.Result{}, err
