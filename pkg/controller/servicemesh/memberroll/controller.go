@@ -274,8 +274,10 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	switch len(meshList.Items) {
 	case 0:
 		mesh = nil
+		internalmetrics.ResetMemberCounter()
 	case 1:
 		mesh = &meshList.Items[0]
+		internalmetrics.ResetMemberCounter()
 	default: // more than 1 SMCP found
 		reason := maistrav1.ConditionReasonMultipleSMCP
 		message := "Multiple ServiceMeshControlPlane resources exist in the namespace"
@@ -765,12 +767,15 @@ func getNamespaces(members *maistrav1.ServiceMeshMemberList) []string {
 // Returns the Service Mesh ControlPlane mode
 // Used for the internal custom metrics
 func getMeshMode(mesh *maistrav2.ServiceMeshControlPlane) (string, error) {
-	isClusterWide, _, err := mesh.Status.AppliedValues.Istio.GetBool("global.clusterWide")
+	isClusterWide, found, err := mesh.Status.AppliedValues.Istio.GetBool("global.clusterWide")
 	if err != nil {
 		return "", err
+	}
+	if !found {
+		return internalmetrics.ControlPlaneModeValueMultiTenant, nil
 	}
 	if isClusterWide {
 		return internalmetrics.ControlPlaneModeValueClusterScoped, nil
 	}
-	return internalmetrics.ControlPlaneModeValueMultiTenant, nil
+	return "", nil
 }
