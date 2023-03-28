@@ -120,12 +120,12 @@ func securityTestCasesV2(version versions.Version) []conversionTestCase {
 			map[string]interface{}{
 				"name":      "cert-manager",
 				"mountPath": "/etc/cert-manager/tls",
-				"readyOnly": "true",
+				"readOnly":  true,
 			},
 			map[string]interface{}{
 				"name":      "ca-root-cert",
 				"mountPath": "/etc/cert-manager/ca",
-				"readyOnly": "true",
+				"readOnly":  true,
 			},
 		}
 		pilotValuesForCertManager["extraVolumes"] = []interface{}{
