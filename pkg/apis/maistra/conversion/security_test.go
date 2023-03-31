@@ -101,43 +101,6 @@ func securityTestCasesV2(version versions.Version) []conversionTestCase {
 		}
 	}
 
-	pilotValuesForCertManager := map[string]interface{}{
-		"ca": map[string]interface{}{"implementation": "cert-manager"},
-	}
-	if version.LessThan(versions.V2_4) {
-		pilotValuesForCertManager["extraArgs"] = []string{
-			"--tlsCertFile=/etc/cert-manager/tls/tls.crt",
-			"--tlsKeyFile=/etc/cert-manager/tls/tls.key",
-			"--caCertFile=/etc/cert-manager/ca/root-cert.pem",
-		}
-		pilotValuesForCertManager["extraVolumeMounts"] = []interface{}{
-			map[string]interface{}{
-				"name":      "cert-manager",
-				"mountPath": "/etc/cert-manager/tls",
-				"readOnly":  true,
-			},
-			map[string]interface{}{
-				"name":      "ca-root-cert",
-				"mountPath": "/etc/cert-manager/ca",
-				"readOnly":  true,
-			},
-		}
-		pilotValuesForCertManager["extraVolumes"] = []interface{}{
-			map[string]interface{}{
-				"name": "cert-manager",
-				"secret": map[string]interface{}{
-					"secretName": "istiod-tls",
-				},
-			},
-			map[string]interface{}{
-				"name": "ca-root-cert",
-				"configMap": map[string]interface{}{
-					"name": "istio-ca-root-cert",
-				},
-			},
-		}
-	}
-
 	return []conversionTestCase{
 		{
 			name: "nil." + ver,
@@ -1006,10 +969,10 @@ pilot:
   extraVolumeMounts:
   - name: cert-manager
     mountPath: /etc/cert-manager/tls
-    readyOnly: "true"
+    readOnly: true
   - name: ca-root-cert
     mountPath: /etc/cert-manager/ca
-    readyOnly: "true"
+    readOnly: true
   extraVolumes:
   - name: cert-manager
     secret:
