@@ -939,7 +939,6 @@ type conversionFromV2TestCase struct {
 	name               string
 	spec               *v2.ControlPlaneSpec
 	expectedHelmValues v1.HelmValues
-	ver                versions.Version
 }
 
 var conversionFromV2SecurityTestCases = []conversionFromV2TestCase{
@@ -981,7 +980,6 @@ pilot:
     configMap:
       name: istio-ca-root-cert
 `),
-		ver: versions.V2_3,
 	},
 	{
 		name: "ca.cert-manager.v2_4",
@@ -1003,7 +1001,6 @@ pilot:
   env:
     ENABLE_CA_SERVER: "false"
 `),
-		ver: versions.V2_4,
 	},
 }
 
