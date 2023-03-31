@@ -1494,24 +1494,3 @@ func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 		})
 	}
 }
-
-func mergeMaps(source, target map[string]interface{}) {
-	for key, val := range source {
-		if targetvalue, ok := target[key]; ok {
-			if targetmap, ok := targetvalue.(map[string]interface{}); ok {
-				if valmap, ok := val.(map[string]interface{}); ok {
-					mergeMaps(valmap, targetmap)
-					continue
-				} else if valmap == nil {
-					delete(target, key)
-					continue
-				} else {
-					panic(fmt.Sprintf("trying to merge non-map into map: key=%v, value=:%v", key, val))
-				}
-			} else if _, ok := val.(map[string]interface{}); ok {
-				panic(fmt.Sprintf("trying to merge map into non-map: key=%v, value=:%v", key, targetvalue))
-			}
-		}
-		target[key] = val
-	}
-}
