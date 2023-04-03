@@ -1,0 +1,46 @@
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+spec:
+  profiles:
+  - base
+  - small
+
+  runtime:
+    defaults:
+      container:
+        imageRegistry: registry.redhat.io/openshift-service-mesh
+        imageTag: 2.4.0
+    components:
+      grafana:
+        container:
+          imageName: grafana-rhel8
+      pilot:
+        container:
+          imageName: pilot-rhel8
+      prometheus:
+        container:
+          imageName: prometheus-rhel8
+      3scale:
+        container:
+          imageRegistry: registry.redhat.io/openshift-service-mesh
+          imageName: 3scale-istio-adapter-rhel8
+          imageTag: 2.0.0
+      global.oauthproxy:
+        container:
+          imageRegistry: registry.redhat.io/openshift4
+          imageName: ose-oauth-proxy
+          imageTag: v4.4
+          imagePullPolicy: IfNotPresent
+      rateLimiting.rls:
+        container:
+          imageName: ratelimit-rhel8
+
+  proxy:
+    runtime:
+      container:
+        imageName: proxyv2-rhel8
+    networking:
+      initialization:
+        initContainer:
+          runtime:
+            imageName: proxy-init-rhel7

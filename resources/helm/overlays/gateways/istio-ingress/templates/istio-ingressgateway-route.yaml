@@ -1,5 +1,4 @@
 {{ $gateway := index .Values "gateways" "istio-ingressgateway" }}
-{{- if and $gateway.enabled $gateway.routeConfig.enabled }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -20,4 +19,3 @@ spec:
     name: {{ $gateway.name | default "istio-ingressgateway" }}
   port:
     targetPort: 8080
-{{- end }}

@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/discovery/fake"
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
@@ -94,6 +95,7 @@ func TestManifestValidation(t *testing.T) {
 		setupFn       customSetup
 		errorMessages map[versions.Version]string // expected error message for each version
 		errorMessage  string                      // common error message (expected for all versions)
+		skipVersions  sets.String
 	}{
 		{
 			name: "error getting smmr",
@@ -198,6 +200,7 @@ func TestManifestValidation(t *testing.T) {
 				versions.V2_3: "namespace of manifest b/another-ingress not in mesh",
 				versions.V2_4: "namespace of manifest b/another-ingress not in mesh",
 			},
+			skipVersions: sets.String{versions.V3_0.String(): {}},
 		},
 		{
 			name: "valid namespaces",
@@ -270,7 +273,10 @@ func TestManifestValidation(t *testing.T) {
 
 	for _, tc := range testCases {
 		name := tc.name
-		for _, version := range versions.GetSupportedVersions() {
+		for _, version := range versions.AllV2Versions {
+			if tc.skipVersions.Has(version.String()) {
+				continue
+			}
 			tc.controlPlane.Spec.Version = version.String()
 			tc.name = name + "." + tc.controlPlane.Spec.Version
 			t.Run(tc.name, func(t *testing.T) {

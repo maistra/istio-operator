@@ -180,8 +180,6 @@ To run the Operator locally, you need to set the following environment variables
 - `ISTIO_CNI_IMAGE=some-registry/istio-cni-image:latest`
 - `ISTIO_CNI_IMAGE_PULL_SECRET=my-pull-secret` (required if the registry hosting the CNI image is not public; secret must be in operator's namespace as defined above)
 
-Make sure you run `tmp/build/docker_build.sh` before running the Operator to generate the Helm charts and templates in `tmp/_output/resources`.
-
 Before running the Operator, don't forget to stop the Operator running in the cluster:
 ```bash
 oc -n istio-operator scale deployment istio-operator --replicas 0

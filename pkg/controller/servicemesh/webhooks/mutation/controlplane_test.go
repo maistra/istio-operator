@@ -107,6 +107,7 @@ func TestCreate(t *testing.T) {
 			name: "default-profile.v1",
 			controlPlanes: func() (runtime.Object, runtime.Object) {
 				controlPlane := newControlPlaneV1("istio-system")
+				controlPlane.Spec.Version = versions.V2_4.String()
 				controlPlane.Spec.Template = ""
 
 				mutatedControlPlane := controlPlane.DeepCopy()
@@ -118,6 +119,7 @@ func TestCreate(t *testing.T) {
 			name: "default-profile.v2",
 			controlPlanes: func() (runtime.Object, runtime.Object) {
 				controlPlane := newControlPlaneV2("istio-system")
+				controlPlane.Spec.Version = versions.V2_4.String()
 				controlPlane.Spec.Profiles = nil
 
 				mutatedControlPlane := controlPlane.DeepCopy()
@@ -326,7 +328,7 @@ func newControlPlaneV1(namespace string) *maistrav1.ServiceMeshControlPlane {
 			Namespace: namespace,
 		},
 		Spec: maistrav1.ControlPlaneSpec{
-			Version:  versions.DefaultVersion.String(),
+			Version:  versions.V2_4.String(),
 			Template: maistrav1.DefaultTemplate,
 		},
 	}
@@ -339,7 +341,7 @@ func newControlPlaneV2(namespace string) *maistrav2.ServiceMeshControlPlane {
 			Namespace: namespace,
 		},
 		Spec: maistrav2.ControlPlaneSpec{
-			Version:  versions.DefaultVersion.String(),
+			Version:  versions.V2_4.String(),
 			Profiles: []string{maistrav1.DefaultTemplate},
 		},
 	}

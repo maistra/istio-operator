@@ -1,0 +1,54 @@
+{{ if and .Values.tracing.enabled (eq .Values.tracing.provider "jaeger") }}
+
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: disable-mtls-jaeger-collector
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: "3.0.0"
+    app: {{ .Values.tracing.provider }}
+    release: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+  {{- if eq .Values.tracing.jaeger.template "all-in-one"}}
+      app.kubernetes.io/component: all-in-one
+  {{- else }}
+      app.kubernetes.io/component: collector
+  {{- end }}
+      app.kubernetes.io/instance: {{ .Values.tracing.jaeger.resourceName | default "jaeger" }}
+  mtls:
+    mode: DISABLE
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: disable-mtls-jaeger-collector
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: "3.0.0"
+    app: {{ .Values.tracing.provider }}
+    release: {{ .Release.Name }}
+spec:
+  host: {{ .Values.tracing.jaeger.resourceName | default "jaeger" }}-collector.{{ .Release.Namespace }}.svc
+  trafficPolicy:
+    tls:
+      mode: DISABLE
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: disable-mtls-zipkin
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: "3.0.0"
+    app: {{ .Values.tracing.provider }}
+    release: {{ .Release.Name }}
+spec:
+  host: zipkin
+  trafficPolicy:
+    tls:
+      mode: DISABLE
+
+{{ end }}

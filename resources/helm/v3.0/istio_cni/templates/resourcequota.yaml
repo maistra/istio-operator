@@ -1,0 +1,18 @@
+{{- if .Values.cni.resourceQuotas.enabled }}
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  labels:
+    maistra-version: "3.0.0"
+  name: istio-cni-resource-quota
+  namespace: {{ .Release.Namespace }}
+spec:
+  hard:
+    pods: {{ .Values.cni.resourceQuotas.pods | quote }}
+  scopeSelector:
+    matchExpressions:
+    - operator: In
+      scopeName: PriorityClass
+      values:
+      - system-node-critical
+{{- end }}

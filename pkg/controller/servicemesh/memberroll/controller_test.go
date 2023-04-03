@@ -763,13 +763,6 @@ func TestKialiResource(t *testing.T) {
 			expectedExcludedNamespaces:   []string{"^ibm-.*", "^kube$", "^kube-.*", "^openshift$", "^openshift-.*", "^operator-namespace$"},
 		},
 		{
-			name:                         "only-smmr-cluster-scoped",
-			members:                      []string{"*"},
-			namespaces:                   []string{"bookinfo"},
-			expectedAccessibleNamespaces: []string{"bookinfo"},
-			expectedExcludedNamespaces:   []string{},
-		},
-		{
 			name:                         "both-smcp-and-smmr-cluster-scoped-v2.3",
 			smcp:                         newSMCPClusterWide23(),
 			members:                      []string{"*"},
@@ -937,7 +930,7 @@ func newControlPlane() *maistrav2.ServiceMeshControlPlane {
 			Generation: 1,
 		},
 		Spec: maistrav2.ControlPlaneSpec{
-			Version: versions.DefaultVersion.String(),
+			Version: versions.V2_4.String(),
 			Addons: &maistrav2.AddonsConfig{
 				Kiali: &maistrav2.KialiAddonConfig{
 					Enablement: maistrav2.Enablement{

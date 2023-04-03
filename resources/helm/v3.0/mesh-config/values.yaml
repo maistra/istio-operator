@@ -1,0 +1,64 @@
+# meshConfig defines runtime configuration of components, including Istiod and istio-agent behavior
+# See https://istio.io/docs/reference/config/istio.mesh.v1alpha1/ for all available options
+meshConfig:
+  # The namespace to treat as the administrative root namespace for Istio configuration.
+  # When processing a leaf namespace Istio will search for declarations in that namespace first
+  # and if none are found it will search in the root namespace. Any matching declaration found in the root namespace
+  # is processed as if it were declared in the leaf namespace.
+  rootNamespace:
+
+global:
+  multiCluster:
+    # Should be set to the name of the cluster this installation will run in. This is required for sidecar injection
+    # to properly label proxies
+    clusterName: ""
+
+  # Default mtls policy. If true, mtls between services will be enabled by default.
+  mtls:
+    # Default setting for service-to-service mtls. Can be set explicitly using
+    # destination rules or service annotations.
+    enabled: false
+    # If set to true, and a given service does not have a corresponding DestinationRule configured,
+    # or its DestinationRule does not have TLSSettings specified, Istio configures client side
+    # TLS configuration automatically, based on the server side mTLS authentication policy and the
+    # availibity of sidecars.
+    auto: true
+
+telemetry:
+  enabled: true
+  v2:
+    # For Null VM case now.
+    # This also enables metadata exchange.
+    enabled: true
+    metadataExchange:
+      # Indicates whether to enable WebAssembly runtime for metadata exchange filter.
+      wasmEnabled: false
+    # Indicate if prometheus stats filter is enabled or not
+    prometheus:
+      enabled: true
+      # Indicates whether to enable WebAssembly runtime for stats filter.
+      wasmEnabled: false
+      # overrides stats EnvoyFilter configuration.
+      configOverride:
+        gateway: {}
+        inboundSidecar: {}
+        outboundSidecar: {}
+    # stackdriver filter settings.
+    stackdriver:
+      enabled: false
+      logging: false
+      monitoring: false
+      topology: false # deprecated. setting this to true will have no effect, as this option is no longer supported.
+      disableOutbound: false
+      #  configOverride parts give you the ability to override the low level configuration params passed to envoy filter.
+
+      configOverride: {}
+      #  e.g.
+      #  disable_server_access_logging: false
+      #  disable_host_header_fallback: true
+    # Access Log Policy Filter Settings. This enables filtering of access logs from stackdriver.
+    accessLogPolicy:
+      enabled: false
+      # To reduce the number of successful logs, default log window duration is
+      # set to 12 hours.
+      logWindowDuration: "43200s"

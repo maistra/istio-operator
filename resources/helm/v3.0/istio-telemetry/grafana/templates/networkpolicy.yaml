@@ -1,0 +1,19 @@
+# This is to support routes on ocp 3.11 installs
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: istio-grafana-ingress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: "3.0.0"
+    app: grafana
+    release: {{ .Release.Name }}
+  annotations:
+    "maistra.io/internal": "true"
+spec:
+  podSelector:
+    matchLabels:
+      app: grafana
+  ingress:
+  - ports:
+    port: 3001

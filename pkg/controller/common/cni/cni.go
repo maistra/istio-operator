@@ -34,9 +34,9 @@ func InitConfig(m manager.Manager) (Config, error) {
 		log.Info(fmt.Sprintf("CNI is disabled for this installation: %v", config.Enabled))
 		return config, nil
 	}
-	log.Info(fmt.Sprintf("CNI is enabled for this installation: %v", config.Enabled))
-
 	config.Enabled = true
+
+	log.Info(fmt.Sprintf("CNI is enabled for this installation: %v", config.Enabled))
 
 	_, err := m.GetRESTMapper().ResourcesFor(schema.GroupVersionResource{
 		Group:    "k8s.cni.cncf.io",
@@ -46,11 +46,9 @@ func InitConfig(m manager.Manager) (Config, error) {
 
 	if err == nil {
 		config.UseMultus = true
-		if len(common.Config.OLM.Images.V2_0.CNI) == 0 {
-			return config, fmt.Errorf("configuration olm.relatedImage.v2_0.cni must be set")
-		}
-		if len(common.Config.OLM.Images.V2_1.CNI) == 0 {
-			return config, fmt.Errorf("configuration olm.relatedImage.v2_1.cni must be set")
+		if len(common.Config.OLM.Images.V2_0.CNI) == 0 && len(common.Config.OLM.Images.V2_1.CNI) == 0 &&
+			len(common.Config.OLM.Images.V3_0.CNI) == 0 {
+			return config, fmt.Errorf("one of olm.relatedImage.v2_0/v2_1/v3_0.cni must be set")
 		}
 
 		secret, _ := os.LookupEnv("ISTIO_CNI_IMAGE_PULL_SECRET")

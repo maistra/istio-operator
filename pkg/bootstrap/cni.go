@@ -32,7 +32,7 @@ func internalInstallCNI(ctx context.Context, cl client.Client, config cni.Config
 	if err != nil {
 		return err
 	}
-	return internalProcessManifests(ctx, cl, renderings["istio_cni"])
+	return internalProcessManifests(ctx, cl, renderings["cni"])
 }
 
 func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config, dc discovery.DiscoveryInterface,
@@ -53,6 +53,7 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 	cni["image_v2_2"] = common.Config.OLM.Images.V2_2.CNI
 	cni["image_v2_3"] = common.Config.OLM.Images.V2_3.CNI
 	cni["image_v2_4"] = common.Config.OLM.Images.V2_4.CNI
+	cni["image"] = common.Config.OLM.Images.V3_0.CNI
 	cni["imagePullSecrets"] = config.ImagePullSecrets
 	// TODO: imagePullPolicy, resources
 
@@ -65,6 +66,8 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 	cni["configMap_v2_4"] = "cni_network_config"
 
 	cni["chained"] = !config.UseMultus
+	cni["cniConfFileName"] = "istio-cni.conf"
+	cni["privileged"] = true
 	if config.UseMultus {
 		cni["cniBinDir"] = "/opt/multus/bin"
 		cni["cniConfDir"] = "/etc/cni/multus/net.d"

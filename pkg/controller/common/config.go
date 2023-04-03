@@ -39,6 +39,7 @@ type images struct {
 	V2_2 v2_2ImageNames `json:"v2_2,omitempty"`
 	V2_3 v2_3ImageNames `json:"v2_3,omitempty"`
 	V2_4 v2_4ImageNames `json:"v2_4,omitempty"`
+	V3_0 v3_0ImageNames `json:"v3_0,omitempty"`
 }
 
 // V1_1ImageNames used by deployments
@@ -116,6 +117,13 @@ type v2_4ImageNames struct {
 	Prometheus string `json:"prometheus,omitempty"`
 	ProxyV2    string `json:"proxyv2,omitempty"`
 	RLS        string `json:"rls,omitempty"`
+}
+
+type v3_0ImageNames struct {
+	CNI     string `json:"cni,omitempty"`
+	Pilot   string `json:"pilot,omitempty"`
+	ProxyV2 string `json:"proxyv2,omitempty"`
+	RLS     string `json:"rls,omitempty"`
 }
 
 type oauthProxy struct {

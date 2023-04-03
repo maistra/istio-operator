@@ -18,7 +18,7 @@ function patchTemplates() {
   echo "patching Istio Helm charts"
 
   # MAISTRA-506 add a maistra-control-plane label for deployment specs
-  for file in $(find "${HELM_DIR}" -name "*.yaml" -print0 -o -name "*.yaml.tpl" | xargs -0 grep -Hl '^kind: Deployment'); do
+  for file in $(find "${HELM_DIR}" -name "*.yaml" -not \( -name "values.yaml" -prune \) -print0| xargs -0 grep -Hl '^kind: Deployment'); do
     sed_wrap -i -e '/^spec:/,$ { /template:$/,$ { /metadata:$/,$ { s/^\(.*\)labels:/\1labels:\
 \1  maistra-control-plane: {{ .Release.Namespace }}/ } } }' "$file"
   done
@@ -44,10 +44,8 @@ function patchTemplates() {
 {{- end }}\
 ' "${HELM_DIR}/istio-control/istio-discovery/templates/configmap.yaml"
 
-  # - nuke unnecessary files from base
-  rm -rf "${HELM_DIR}/base/templates" "${HELM_DIR}/base/files" "${HELM_DIR}/base/crds/crd-operator.yaml"
-
   # rename base/crds to istio-init/files
+  mkdir -p "${HELM_DIR}/istio-init/files"
   mv "${HELM_DIR}"/base/crds/* "${HELM_DIR}/istio-init/files"
   rm -rf "${HELM_DIR}/base"
   CRD_DIR="${HELM_DIR}/istio-init/files" "${SOURCE_DIR}/build/split-istio-crds.sh"
@@ -70,12 +68,6 @@ function patchTemplates() {
       sed_wrap -i -e '/^metadata:/ a\
   labels:\
     maistra-version: "'"${MAISTRA_VERSION}"'"' "$file"
-    fi
-    if grep -l '\.Values\.global\.istioNamespace' "$file"; then
-      sed_wrap -i -e 's/\.Values\.global\.istioNamespace/.Release.Namespace/' "$file"
-    fi
-    if grep -l -e '{{- if not (eq .Values.revision "") *}}-{{ .Values.revision }}{{- end }}' "$file"; then
-      sed_wrap -i -e 's/{{- if not (eq .Values.revision "") *}}-{{ .Values.revision }}{{- end }}/-{{ .Values.revision | default "default" }}/' "$file"
     fi
     if grep -l 'operator\.istio\.io' "$file"; then
       sed_wrap -i -e '/operator\.istio\.io/d' "$file"
@@ -140,15 +132,7 @@ function patchGalley() {
   - apiGroups: [""]\
     resources: ["pods/finalizers"]\
     verbs: ["update"]' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
-  sed_wrap -i -e '/- apiGroups:.*admissionregistration\.k8s\.io/,/verbs:/ d' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
-  sed_wrap -i -e '/- apiGroups:.*certificates\.k8s\.io/,/verbs:/ d' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
-  sed_wrap -i -e '/- apiGroups:.*authentication\.k8s\.io/,/verbs:/ d' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
 
-  # remove istiod-reader ClusterRole and ClusterRoleBindings
-  rm "${HELM_DIR}/istio-control/istio-discovery/templates/reader-clusterrole.yaml"
-  rm "${HELM_DIR}/istio-control/istio-discovery/templates/reader-clusterrolebinding.yaml"
-
-  convertClusterRoleBinding "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrolebinding.yaml" ""
   sed_wrap -i -e '/- "discovery"/ a\
 {{- if not .Values.global.clusterWide }}\
           - --memberRollName=default\
@@ -157,36 +141,12 @@ function patchGalley() {
           - --enableIngressClassName=false\
 {{- end}}' "${deployment}"
 
-  ############## disable webhook config updates ############################
-  # Name of the mutatingwebhookconfiguration to patch, if istioctl is not used.
-  sed_wrap -i -e '/env:/ a\
-          - name: INJECTION_WEBHOOK_CONFIG_NAME\
-            value: ""' "${deployment}"
-
-  # Name of validatingwebhookconfiguration to patch.
-  # Empty will skip using cluster admin to patch.
-  sed_wrap -i -e '/env:/ a\
-          - name: VALIDATION_WEBHOOK_CONFIG_NAME\
-            value: ""' "${deployment}"
-
-  # Disable PRIORITIZED_LEADER_ELECTION so that MutatingWebhookConfigurations aren't watched
-  sed_wrap -i -e '/env:/ a\
-          - name: PRIORITIZED_LEADER_ELECTION\
-            value: "false"' "${deployment}"
-  ##############################################################################
-
   # remove privileged security settings
   sed_wrap -i -r -e '/template:/,/containers:/ { /securityContext:/,/containers:/ { /containers:/! d }}' \
       -e '/containers:/,$ { /securityContext:/,/capabilities:/ { /capabilities:|securityContext:/! d }}' "${deployment}"
 
   sed_wrap -i -e '/base:/ a\
   validationURL: ""' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
-
-  # always istiod
-  sed_wrap -i -e '/{{- if ne .Values.revision ""}}/,/{{- end }}/d' \
-      -e '/matchLabels:/a\
-\      app: istiod\
-\      istio.io/rev: {{ .Values.revision | default "default" }}' "${deployment}"
 
   # IOR
   # shellcheck disable=SC2016
@@ -231,10 +191,6 @@ function patchGalley() {
 
   sed_wrap -i -e '/base:/ i\
 gateways: {}\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
-
-  sed_wrap -i -e '/sidecarInjectorWebhook:/ a\
-  objectSelector:\
-    enabled: false\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
 
   # analysis
   sed_wrap -i -e '/PILOT_ENABLE_ANALYSIS/ i\
@@ -303,13 +259,6 @@ gatewayAPI:
   k8sIngress:\
     enabled: false' "${HELM_DIR}/gateways/istio-ingress/values.yaml"
 
-  # Disable defaultTemplates to avoid injection of arbitrary things
-  sed_wrap -i -e 's/defaultTemplates: \[\]/\# defaultTemplates: \[\]/' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
-  sed_wrap -i -e '/{{- if .Values.sidecarInjectorWebhook.defaultTemplates }}/,+7d' "${HELM_DIR}/istio-control/istio-discovery/templates/istiod-injector-configmap.yaml"
-  sed_wrap -i -e '/policy:/ i\
-    defaultTemplates: [sidecar]
-' "${HELM_DIR}/istio-control/istio-discovery/templates/istiod-injector-configmap.yaml"
-
   # shellcheck disable=SC2016
   sed_wrap -i -e 's/\(^ *\)- containerPort: {{ $val.targetPort | default $val.port }}/\1- name: {{ $val.name }}\
 \1  containerPort: {{ $val.targetPort | default $val.port }}/' "${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml" "${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml"
@@ -338,6 +287,7 @@ gatewayAPI:
           - name: PROXY_XDS_VIA_AGENT\
             value: "true"
 ' "${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml" "${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml"
+
   sed_wrap -i -e 's/proxyMetadata: {}/proxyMetadata:\
       ISTIO_META_DNS_CAPTURE: "true"\
       ISTIO_META_DNS_AUTO_ALLOCATE: "true"\
@@ -360,14 +310,6 @@ gatewayAPI:
 {{- end }}
 ' "${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml" "${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml"
 
-  # parameterize runAsUser, runAsGroup, ans fsGroup
-  # shellcheck disable=SC2016
-  sed_wrap -i -E -e 's/(runAsUser|runAsGroup|fsGroup): 1337/\1: {{ $gateway.\1 }}/' \
-    "${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml" \
-    "${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml" \
-    "${HELM_DIR}/gateways/istio-egress/templates/injected-deployment.yaml" \
-    "${HELM_DIR}/gateways/istio-ingress/templates/injected-deployment.yaml"
-
   # install in specified namespace
   for file in "${HELM_DIR}"/gateways/istio-ingress/templates/*.yaml; do
     # shellcheck disable=SC2016
@@ -377,58 +319,6 @@ gatewayAPI:
     # shellcheck disable=SC2016
     sed_wrap -i -e 's/^\( *\)namespace:.*/\1namespace: {{ $gateway.namespace | default .Release.Namespace }}/' "$file"
   done
-}
-
-function patchSidecarInjector() {
-  echo "patching Sidecar Injector specific Helm charts"
-  # Instead of patching mutatingwebhook.yaml, we now overlay it.
-
-  # - change privileged value on istio-proxy injection configmap to false
-  # setting the proper values will fix this:
-  # global.proxy.privileged=false
-  # global.proxy.enableCoreDump=false
-  # however, we need to ensure privileged is set for istio_init
-  sed_wrap -i -e '/- name: istio-init/,/- name: enable-core-dump/ {
-    /privileged:/d
-    /allowPrivilegeEscalation:/d
-    / *- ALL/a\
-        - KILL\
-        - MKNOD\
-        - SETGID\
-        - SETUID
-  }' "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
-
-  sed_wrap -i -e 's/runAsUser: 1337/runAsUser: {{ .ProxyUID }}/g' \
-    -e 's/runAsGroup: 1337/runAsGroup: {{ .ProxyUID }}/g' \
-    -e 's/fsGroup: 1337/fsGroup: {{ .ProxyGID }}/g' "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
-  sed_wrap -i -e 's/fsGroup: 1337/fsGroup: {{ .ProxyGID }}/g' "${HELM_DIR}/istio-control/istio-discovery/files/gateway-injection-template.yaml"
-
-  sed_wrap -i -e '/- name: istio-proxy/,/resources:/ {
-    / *- ALL/a\
-        - KILL\
-        - MKNOD\
-        - SETGID\
-        - SETUID
-  }' "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
-
-  # replace 'default' in CA_ADDR spec to use valueOrDefault
-  sed_wrap -i -e 's/value: istiod-{{ .Values.revision | default "default" }}.*$/value: istiod-{{ valueOrDefault .Values.revision "default" }}.{{ .Values.global.istioNamespace }}.svc:15012/' \
-      "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml" \
-      "${HELM_DIR}/istio-control/istio-discovery/files/gateway-injection-template.yaml"
-
-  # never apply init container, even for validation
-  sed_wrap -i -e '/^  initContainers:/,/^  containers:/ {/^  containers:/!d}' \
-      "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
-  # use the correct cni network defintion
-  # shellcheck disable=SC2016
-  sed_wrap -i -e '/annotations:/,$s/`istio-cni`/.Values.istio_cni.istio_cni_network/' \
-      "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
-  # status port is incorrect
-  sed_wrap -i -e 's/statusPort: 15020$/statusPort: 15021/' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
-  # exclude 15090 from inbound ports
-  # shellcheck disable=SC2016
-  sed_wrap -i -e 's$traffic.sidecar.istio.io/excludeInboundPorts: "{{ excludeInboundPort (annotation .ObjectMeta `status.sidecar.istio.io/port` .Values.global.proxy.statusPort) (annotation .ObjectMeta `traffic.sidecar.istio.io/excludeInboundPorts` .Values.global.proxy.excludeInboundPorts) }}"$traffic.sidecar.istio.io/excludeInboundPorts: "15090,{{ excludeInboundPort (annotation .ObjectMeta `status.sidecar.istio.io/port` .Values.global.proxy.statusPort) (annotation .ObjectMeta `traffic.sidecar.istio.io/excludeInboundPorts` .Values.global.proxy.excludeInboundPorts) }}"$' \
-      "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
 }
 
 # The following modifications are made to the generated helm template for the Kiali yaml file
@@ -446,43 +336,26 @@ function patchKialiTemplate() {
   rm "${HELM_DIR}/istio-telemetry/kiali/templates/_affinity.tpl"
 }
 
-# The following modifications are made to the upstream kiali configuration for deployment on OpenShift
-function patchKialiOpenShift() {
-  echo "more patching of Kiali specific Helm charts"
-  echo "Nothing to do - using kiali operator and the kiali-cr.yaml"
+function patchCNI() {
+  sed_wrap -i -e '/- get/ a\
+- apiGroups:\
+  - security.openshift.io\
+  resources:\
+  - securitycontextconstraints\
+  resourceNames:\
+  - privileged\
+  verbs:\
+  - use' "${HELM_DIR}/istio_cni/templates/clusterrole.yaml"
 }
 
-function patchGrafanaTemplate() {
-  # add extra values
-  sed_wrap -i -e '/passphraseKey:/ a\
-  persistenceResources:\
-    requests:\
-      storage: "5Gi" # PVC spec.resources.requests.storage default value' "${HELM_DIR}/istio-telemetry/grafana/values.yaml"
-
-  # add configurable capacity
-  sed_wrap -i -e 's/5Gi/{{\ .Values.grafana.persistenceResources.requests.storage\ \|\ quote\ }}/' "${HELM_DIR}/istio-telemetry/grafana/templates/pvc.yaml"
-}
-
-function convertClusterToNamespaced() {
-  # $1 - file to convert
-  # $2 - cluster kind
-  # $3 - namespaced kind
-  # $4 - dereference
-  sed_wrap -i -e 's/^\(\( *\)kind.*'"$2"'.*$\)/\2kind: {{ if .Values.global.clusterWide }}'"$2"'{{ else }}'"$3"'{{ end }}/' "${1}"
-  sed_wrap -i -e '/metadata:/ a\
-  {{ if not .Values.global.clusterWide }}namespace: {{ '"$4"'.Release.Namespace }}{{ end }}' "${1}"
-}
-
-function convertClusterRoleBinding() {
-  convertClusterToNamespaced "$1" "ClusterRoleBinding" "RoleBinding" "$2"
-}
 
 function removeUnsupportedCharts() {
   echo "removing unsupported Helm charts"
-  rm -rf "${HELM_DIR}/istio-cni"
   rm -rf "${HELM_DIR}/istiocoredns"
   rm -rf "${HELM_DIR}/istiod-remote"
   rm -rf "${HELM_DIR}/istio-operator"
+  # FIXME: we rename the upstream chart for now to get it to work with our operator
+  mv "${HELM_DIR}/istio-cni" "${HELM_DIR}/istio_cni"
 }
 
 function moveEnvoyFiltersToMeshConfigChart() {
@@ -535,7 +408,7 @@ global:\
 
 function copyGlobalValues() {
   echo "copying global.yaml file from overlay charts as global.yaml file is removed in upstream but it's still needed."
-  cp "${SOURCE_DIR}/resources/helm/overlays/global.yaml" "${SOURCE_DIR}/resources/helm/v2.4/"
+  cp "${SOURCE_DIR}/resources/helm/overlays/global.yaml" "${HELM_DIR}/"
 }
 
 # This hack is hopefully only needed for a few versions until this PR is merged: https://github.com/istio/istio/pull/39375
@@ -552,8 +425,6 @@ function patchPilotServingCert() {
 {{- if .Values.pilot.extraVolumes }}\
 {{ toYaml .Values.pilot.extraVolumes | indent 6 }}\
 {{- end }}' "${HELM_DIR}/istio-control/istio-discovery/templates/deployment.yaml"
-
-
 
   # add extra volume mounts (by prepending to volumesMounts: block)
   sed_wrap -i -e '/volumeMounts:/ a\
@@ -580,15 +451,12 @@ function hacks() {
 
 copyOverlay
 removeUnsupportedCharts
-
 patchTemplates
-
 patchGalley
 patchGateways
-patchSidecarInjector
 moveEnvoyFiltersToMeshConfigChart
 copyGlobalValues
 patchPilotServingCert
-patchGrafanaTemplate
+patchCNI
 # TODO: remove this hack once the image is updated to include workingDir
 hacks

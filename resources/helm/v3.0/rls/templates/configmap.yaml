@@ -1,0 +1,16 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  labels:
+    maistra-version: "3.0.0"
+    app: rls
+    istio.io/rev: {{ .Values.revision | default "default" }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: rls-{{ .Values.revision | default "default" }}
+  namespace: {{ .Release.Namespace }}
+data:
+  config.yaml: |
+{{- if .Values.rateLimiting.rawRules }}
+{{ toYaml .Values.rateLimiting.rawRules | indent 4 }}
+{{- end }}

@@ -3,6 +3,7 @@ package versions
 import "k8s.io/apimachinery/pkg/util/sets"
 
 const (
+	BaseChart            = "base"
 	DiscoveryChart       = "istio-discovery"
 	GatewayEgressChart   = "istio-egress"
 	GatewayIngressChart  = "istio-ingress"

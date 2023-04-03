@@ -1,0 +1,149 @@
+{{- if .Values.kiali.install }}
+apiVersion: kiali.io/v1alpha1
+kind: Kiali
+metadata:
+  labels:
+    maistra-version: "3.0.0"
+  name: {{ .Values.kiali.resourceName | default "kiali" }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  version: "v1.65"
+  installation_tag: "Kiali [{{ .Release.Namespace }}]"
+  istio_namespace: "{{ .Release.Namespace }}"
+
+  auth:
+    strategy: "openshift"
+
+  deployment:
+    accessible_namespaces: []
+{{- if and .Values.kiali.hub .Values.kiali.image }}
+    image_name: "{{ .Values.kiali.hub }}/{{ .Values.kiali.image }}"
+{{- end }}
+    image_pull_policy: "{{ .Values.global.imagePullPolicy }}"
+{{- if .Values.global.imagePullSecrets }}
+    image_pull_secrets: 
+{{- range .Values.global.imagePullSecrets }}
+    - {{ . }}
+{{- end }}
+{{- end }}
+{{- if .Values.kiali.ingress }}
+{{- if .Values.kiali.ingress.enabled }}
+    ingress:
+      enabled: {{ .Values.kiali.ingress.enabled }}
+{{- end }}
+{{- end }}
+    namespace: "{{ .Release.Namespace }}"
+{{- if .Values.kiali.dashboard }}
+{{- if .Values.kiali.dashboard.viewOnlyMode }}
+    view_only_mode: {{ .Values.kiali.dashboard.viewOnlyMode }}
+{{- end }}
+{{- end }}
+
+{{- if or .Values.kiali.resources .Values.kiali.deployment_resources }}
+    resources:
+    {{- if .Values.kiali.resources}}
+{{ toYaml .Values.kiali.resources | indent 6 }}
+    {{- else }}
+{{ toYaml .Values.kiali.deployment_resources | indent 6 }}
+    {{- end }}
+{{- end }}
+
+{{- if or .Values.kiali.tolerations .Values.kiali.deployment_tolerations .Values.global.defaultTolerations }}
+    tolerations:
+    {{- if .Values.kiali.tolerations }}
+{{ toYaml .Values.kiali.tolerations | indent 6 }}
+    {{- else if .Values.kiali.deployment_tolerations }}
+{{ toYaml .Values.kiali.deployment_tolerations | indent 6 }}
+    {{- else }}
+{{ toYaml .Values.global.defaultTolerations | indent 6 }}
+    {{- end }}
+{{- end }}
+
+{{- if or .Values.kiali.nodeSelector .Values.kiali.deployment_nodeSelector .Values.global.defaultNodeSelector }}
+    node_selector:
+    {{- if .Values.kiali.nodeSelector }}
+{{ toYaml .Values.kiali.nodeSelector | indent 6 }}
+    {{- else if .Values.kiali.deployment_nodeSelector }}
+{{ toYaml .Values.kiali.deployment_nodeSelector | indent 6 }}
+    {{- else }}
+{{ toYaml .Values.global.defaultNodeSelector | indent 6 }}
+    {{- end }}
+{{- end }}
+
+    pod_labels:
+      sidecar.istio.io/inject: "false"
+
+{{- if or .Values.kiali.affinity .Values.kiali.deployment_affinity }}
+    affinity:
+    {{- if .Values.kiali.affinity }}
+        {{- if .Values.kiali.affinity.nodeAffinity }}
+      node:
+{{ toYaml .Values.kiali.affinity.nodeAffinity | indent 8 }}
+        {{- end }}
+        {{- if .Values.kiali.affinity.podAffinity }}
+      pod:
+{{ toYaml .Values.kiali.affinity.podAffinity | indent 8 }}
+        {{- end }}
+        {{- if .Values.kiali.affinity.podAntiAffinity }}
+      pod_anti:
+{{ toYaml .Values.kiali.affinity.podAntiAffinity | indent 8 }}
+        {{- end }}
+    {{- else }}
+{{ toYaml .Values.kiali.deployment_affinity | indent 6 }}
+    {{- end }}
+{{- end }}
+
+  external_services:
+    custom_dashboards:
+      namespace_label: kubernetes_namespace
+    istio:
+      config_map_name: istio-{{ .Values.revision | default "default" }}
+      url_service_version: http://istiod-{{ .Values.revision | default "default" }}.{{ .Release.Namespace }}:15014/version
+      istiod_deployment_name: istiod-{{ .Values.revision | default "default" }}
+      istio_sidecar_injector_config_map_name: istio-sidecar-injector-{{ .Values.revision | default "default" }}
+    grafana:
+      auth:
+        type: "basic"
+        use_kiali_token: false
+        username: "internal"
+        password: ""
+      enabled: true
+      in_cluster_url: "https://grafana.{{ .Release.Namespace }}.svc:3000"
+{{- if .Values.kiali.dashboard }}
+{{- if .Values.kiali.dashboard.grafanaURL }}
+      url: "{{ .Values.kiali.dashboard.grafanaURL }}"
+{{- end }}
+{{- end }}
+    prometheus:
+      auth:
+        type: "basic"
+        use_kiali_token: false
+        username: "internal"
+        password: ""
+      url: "https://prometheus.{{ .Release.Namespace }}.svc:9090"
+    tracing:
+      auth:
+        type: "basic"
+        use_kiali_token: false
+        username: "internal"
+        password: ""
+      enabled: true
+{{- if .Values.kiali.jaegerInClusterURL }}
+      in_cluster_url: "{{ .Values.kiali.jaegerInClusterURL }}"
+{{- else }}
+      in_cluster_url: "https://{{ .Values.tracing.jaeger.resourceName | default "jaeger" }}-query.{{ .Release.Namespace }}.svc"
+{{- end }}
+      namespace: "{{ .Release.Namespace }}"
+      service : ""
+{{- if .Values.kiali.dashboard }}
+{{- if .Values.kiali.dashboard.jaegerURL }}
+      url: "{{ .Values.kiali.dashboard.jaegerURL }}"
+{{- end }}
+{{- end }}
+      use_grpc: false
+
+{{- if .Values.kiali.contextPath }}
+  server:
+    web_root: "{{ .Values.kiali.contextPath }}"
+{{- end }}
+{{- end }}
