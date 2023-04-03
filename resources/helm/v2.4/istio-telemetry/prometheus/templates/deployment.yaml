@@ -70,9 +70,7 @@ spec:
           terminationMessagePolicy: File
           volumeMounts:
           - name: config-volume
-            mountPath: /etc/prometheus/config
-          - name: config-out-volume
-            mountPath: /etc/prometheus/config_out      
+            mountPath: /etc/prometheus/config    
       containers:
           # OAuth proxy
         - name: prometheus-proxy
@@ -141,7 +139,7 @@ spec:
           args:
             - '--storage.tsdb.retention.time={{ .Values.prometheus.retention }}'
             - '--storage.tsdb.path=/prometheus'
-            - '--config.file=/etc/prometheus//config_out/prometheus.env.yml'
+            - '--config.file=/etc/prometheus//config/prometheus.yml'
             - '--web.enable-lifecycle'
           ports:
             - containerPort: 9090
@@ -177,9 +175,9 @@ spec:
 {{ toYaml .Values.global.defaultResources | indent 12 }}
 {{- end }}
           volumeMounts:
-          - name: config-out-volume
-            mountPath: /etc/prometheus/config_out
-          - name: prometheus-prometheus-db
+          - name: config-volume
+            mountPath: /etc/prometheus/config
+          - name: prometheus-db-volume
             mountPath: /prometheus
           {{- if and .Values.prometheus.provisionPrometheusCert (not .Values.meshConfig.enablePrometheusMerge) }}
           - mountPath: /etc/istio-certs
@@ -195,8 +193,8 @@ spec:
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
 {{- end }}
           args:
-          - '--reload-url=http://localhost:9090/-/reload'
-          - '--config-file=/etc/prometheus/config/prometheus.yml'
+            - '--reload-url=http://localhost:9090/-/reload'
+            - '--config-file=/etc/prometheus/config/prometheus.yml'
           command:
           - /bin/prometheus-config-reloader
           resources:
@@ -221,8 +219,6 @@ spec:
           volumeMounts:
           - name: config-volume
             mountPath: /etc/prometheus/config
-          - name: config-out-volume
-            mountPath: /etc/prometheus/config_out
 {{- if and .Values.prometheus.provisionPrometheusCert (not .Values.meshConfig.enablePrometheusMerge) }}
         - name: istio-proxy
 {{- if contains "/" .Values.global.proxy.image }}
@@ -371,8 +367,6 @@ spec:
       - name: config-volume
         configMap:
           name: prometheus
-      - name: config-out-volume
-        emptyDir: {}
       - name: prometheus-db-volume
         emptyDir: {}    
 
