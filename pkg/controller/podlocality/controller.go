@@ -1,13 +1,15 @@
 package podlocality
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/go-logr/logr"
+	"gomodules.xyz/jsonpatch/v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -134,6 +136,63 @@ func podHasSidecar(pod v1.Pod) bool {
 	return pod.Annotations[IstioSidecarStatusAnnotation] != ""
 }
 
+type podTopologyLabels struct {
+	NodeRegionLabel   string
+	NodeZoneLabel     string
+	NodeRegionLabelGA string
+	NodeZoneLabelGA   string
+	IstioSubzoneLabel string
+}
+
+type podLabelPatch struct {
+	labels podTopologyLabels
+}
+
+func newPodLabelPatch(labels podTopologyLabels) *podLabelPatch {
+	return &podLabelPatch{
+		labels: labels,
+	}
+}
+
+func (p *podLabelPatch) Type() types.PatchType {
+	return types.JSONPatchType
+}
+
+func (p *podLabelPatch) Data(obj runtime.Object) ([]byte, error) {
+	data := []jsonpatch.Operation{
+		{
+			Operation: "add",
+			Path:      "/metadata/labels/failure-domain.beta.kubernetes.io~1region",
+			Value:     p.labels.NodeRegionLabel,
+		},
+		{
+			Operation: "add",
+			Path:      "/metadata/labels/failure-domain.beta.kubernetes.io~1zone",
+			Value:     p.labels.NodeZoneLabel,
+		},
+		{
+			Operation: "add",
+			Path:      "/metadata/labels/topology.kubernetes.io~1region",
+			Value:     p.labels.NodeRegionLabelGA,
+		},
+		{
+			Operation: "add",
+			Path:      "/metadata/labels/topology.kubernetes.io~1zone",
+			Value:     p.labels.NodeZoneLabelGA,
+		},
+		{
+			Operation: "add",
+			Path:      "/metadata/labels/topology.istio.io~1subzone",
+			Value:     p.labels.IstioSubzoneLabel,
+		},
+	}
+	json, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	return json, nil
+}
+
 var _ reconcile.Reconciler = &PodLocalityReconciler{}
 
 // PodLocalityReconciler copies the node's region/zone labels to the pod after it's scheduled to a node
@@ -183,22 +242,15 @@ func (r *PodLocalityReconciler) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, nil
 	}
 
-	patch := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      pod.Name,
-			Namespace: pod.Namespace,
-			Labels: map[string]string{
-				NodeRegionLabel:   node.Labels[NodeRegionLabel],
-				NodeZoneLabel:     node.Labels[NodeZoneLabel],
-				NodeRegionLabelGA: node.Labels[NodeRegionLabelGA],
-				NodeZoneLabelGA:   node.Labels[NodeZoneLabelGA],
-				IstioSubzoneLabel: node.Labels[IstioSubzoneLabel],
-			},
-		},
-		Spec: pod.Spec,
-	}
+	patch := newPodLabelPatch(podTopologyLabels{
+		NodeRegionLabel:   node.Labels[NodeRegionLabel],
+		NodeZoneLabel:     node.Labels[NodeZoneLabel],
+		NodeRegionLabelGA: node.Labels[NodeRegionLabelGA],
+		NodeZoneLabelGA:   node.Labels[NodeZoneLabelGA],
+		IstioSubzoneLabel: node.Labels[IstioSubzoneLabel],
+	})
 
-	err = r.Client.Patch(ctx, patch, client.Merge)
+	err = r.Client.Patch(ctx, pod, patch)
 	if err != nil {
 		reqLogger.Info(fmt.Sprintf("Error updating pod's labels: %v", err))
 		return reconcile.Result{}, err
