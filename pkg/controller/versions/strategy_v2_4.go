@@ -487,7 +487,7 @@ func (v *versionStrategyV2_4) Render(ctx context.Context, cr *common.ControllerR
 			if errors.IsNotFound(err) {
 				log.V(2).Info(fmt.Sprintf("memberroll not found in namespace %s", smcp.GetNamespace()))
 			} else {
-				return nil, fmt.Errorf("error setting prometheus namespaces")
+				return nil, fmt.Errorf("error setting prometheus namespaces: %s", err)
 			}
 		}
 
