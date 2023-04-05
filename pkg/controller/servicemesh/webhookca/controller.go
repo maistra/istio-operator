@@ -3,9 +3,8 @@ package webhookca
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"github.com/go-logr/logr"
+	"github.com/maistra/istio-operator/pkg/controller/common"
 	v1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -21,8 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	"github.com/maistra/istio-operator/pkg/controller/common"
+	"strings"
 )
 
 const controllerName = "webhookca-controller"
@@ -49,7 +47,7 @@ var autoRegistrationMap = map[string]CABundleSource{
 		SecretNameKeyPairs: []SecretNameKeyPair{
 			{
 				SecretName: galleySecretName,
-				Key:        common.IstioRootCertKey,
+				Keys:       []string{common.IstioRootCertKey},
 			},
 		},
 	},
@@ -57,7 +55,7 @@ var autoRegistrationMap = map[string]CABundleSource{
 		SecretNameKeyPairs: []SecretNameKeyPair{
 			{
 				SecretName: sidecarInjectorSecretName,
-				Key:        common.IstioRootCertKey,
+				Keys:       []string{common.IstioRootCertKey},
 			},
 		},
 	},
@@ -65,15 +63,15 @@ var autoRegistrationMap = map[string]CABundleSource{
 		SecretNameKeyPairs: []SecretNameKeyPair{
 			{
 				SecretName: istiodCustomCertSecretName,
-				Key:        common.IstiodCertKey,
+				Keys:       []string{common.IstiodCertKey, common.IstiodTLSSecretCertKey},
 			},
 			{
 				SecretName: istiodSecretName,
-				Key:        common.IstiodCertKey,
+				Keys:       []string{common.IstiodCertKey},
 			},
 			{
 				SecretName: istiodCertManagerSecretName,
-				Key:        common.IstiodCertManagerCertKey,
+				Keys:       []string{common.IstiodTLSSecretCertKey},
 			},
 		},
 	},
@@ -81,15 +79,15 @@ var autoRegistrationMap = map[string]CABundleSource{
 		SecretNameKeyPairs: []SecretNameKeyPair{
 			{
 				SecretName: istiodCustomCertSecretName,
-				Key:        common.IstiodCertKey,
+				Keys:       []string{common.IstiodCertKey, common.IstiodTLSSecretCertKey},
 			},
 			{
 				SecretName: istiodSecretName,
-				Key:        common.IstiodCertKey,
+				Keys:       []string{common.IstiodCertKey},
 			},
 			{
 				SecretName: istiodCertManagerSecretName,
-				Key:        common.IstiodCertManagerCertKey,
+				Keys:       []string{common.IstiodTLSSecretCertKey},
 			},
 		},
 	},

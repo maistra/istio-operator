@@ -27,7 +27,7 @@ const (
 	galleyWebhookNameTestPrefix           = "istio-galley"
 	sidecarInjectorWebhookNameTestPrefix  = "istio-sidecar-injector"
 	istiodMutatingWebhookNameTestPrefix   = "istiod-foo"
-	istiodValidatingWebhookNameTextPrefix = "istiod-foo"
+	istiodValidatingWebhookNameTestPrefix = "istiod-foo"
 	v11GalleySecretName                   = "istio.istio-galley-service-account"
 	v11SidecarInjectorSecretName          = "istio.istio-sidecar-injector-service-account"
 	v20SelfSignedSecretName               = "istio-ca-secret"
@@ -153,11 +153,11 @@ func TestMAISTRA_2040(t *testing.T) {
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("validatingwebhookconfigurations").
-							Named(webhookName(istiodValidatingWebhookNameTextPrefix, testNamespace)).IsSeen(),
+							Named(webhookName(istiodValidatingWebhookNameTestPrefix, testNamespace)).IsSeen(),
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").
-							Named(webhookName(istiodValidatingWebhookNameTextPrefix, testNamespace)).
+							Named(webhookName(istiodValidatingWebhookNameTestPrefix, testNamespace)).
 							Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
 					),
 					Timeout: eventTimeout,
@@ -230,7 +230,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").
-							Named(webhookName(istiodValidatingWebhookNameTextPrefix, testNamespace)).
+							Named(webhookName(istiodValidatingWebhookNameTestPrefix, testNamespace)).
 							Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
 					),
 					Timeout: eventTimeout,
@@ -265,7 +265,7 @@ func TestMAISTRA_2040(t *testing.T) {
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").
-							Named(webhookName(istiodValidatingWebhookNameTextPrefix, testNamespace)).
+							Named(webhookName(istiodValidatingWebhookNameTestPrefix, testNamespace)).
 							Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
 					),
 					Timeout: eventTimeout,
@@ -301,7 +301,7 @@ func TestMAISTRA_2040(t *testing.T) {
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").
-							Named(webhookName(istiodValidatingWebhookNameTextPrefix, testNamespace)).
+							Named(webhookName(istiodValidatingWebhookNameTestPrefix, testNamespace)).
 							Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
 					),
 					Timeout: eventTimeout,
@@ -563,7 +563,7 @@ func create1xMutatingWebhook(namespace string) *arv1beta1.MutatingWebhookConfigu
 func create2xValidatingWebhook() *arv1beta1.ValidatingWebhookConfiguration {
 	return &arv1beta1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: webhookName(istiodValidatingWebhookNameTextPrefix, testNamespace),
+			Name: webhookName(istiodValidatingWebhookNameTestPrefix, testNamespace),
 		},
 		Webhooks: []arv1beta1.ValidatingWebhook{
 			{

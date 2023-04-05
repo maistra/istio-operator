@@ -27,7 +27,8 @@ const (
 	appNamespace               = "app-namespace"
 	galleyWebhookName          = galleyWebhookNamePrefix + appNamespace
 	sidecarInjectorWebhookName = sidecarInjectorWebhookNamePrefix + appNamespace
-	istiodWebhookName          = istiodWebhookNamePrefix + "default-" + appNamespace
+	istiodMutatingWebhookName  = istiodWebhookNamePrefix + "default-" + appNamespace
+	istioValidatorWebhookName  = istioValidatorWebhookNamePrefix + "default-" + appNamespace
 	istioOperatorWebhookName   = "istio-operator.servicemesh-resources.maistra.io"
 	caBundleConfigMapName      = "maistra-operator-cabundle"
 )
@@ -53,14 +54,14 @@ var (
 	istiodInjectorRequest = reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Namespace: mutatingNamespaceValue,
-			Name:      istiodWebhookName,
+			Name:      istiodMutatingWebhookName,
 		},
 	}
 
 	istiodValidatorRequest = reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Namespace: validatingNamespaceValue,
-			Name:      istiodWebhookName,
+			Name:      istioValidatorWebhookName,
 		},
 	}
 
@@ -118,8 +119,8 @@ func cases() []testCase {
 		},
 		{
 			name:        "istiod-injector-webhook",
-			webhook:     newMutatingWebhookConfig(istiodWebhookName, caBundleValue),
-			webhookName: istiodWebhookName,
+			webhook:     newMutatingWebhookConfig(istiodMutatingWebhookName, caBundleValue),
+			webhookName: istiodMutatingWebhookName,
 			source:      autoRegistrationMap[istiodWebhookNamePrefix],
 			objectName:  istiodSecretName,
 			dataKey:     common.IstiodCertKey,
@@ -128,9 +129,31 @@ func cases() []testCase {
 			getter:      mutatingWebhook,
 		},
 		{
-			name:        "istiod-validating-webhook",
-			webhook:     newValidatingWebhookConfig(istiodWebhookName, caBundleValue),
-			webhookName: istiodWebhookName,
+			name:        "istiod-injector-webhook-cacerts",
+			webhook:     newMutatingWebhookConfig(istiodMutatingWebhookName, caBundleValue),
+			webhookName: istiodMutatingWebhookName,
+			source:      autoRegistrationMap[istiodWebhookNamePrefix],
+			objectName:  istiodCustomCertSecretName,
+			dataKey:     common.IstiodCertKey,
+			kind:        "Secret",
+			request:     istiodInjectorRequest,
+			getter:      mutatingWebhook,
+		},
+		{
+			name:        "istiod-injector-webhook-cacerts-tls-secret",
+			webhook:     newMutatingWebhookConfig(istiodMutatingWebhookName, caBundleValue),
+			webhookName: istiodMutatingWebhookName,
+			source:      autoRegistrationMap[istiodWebhookNamePrefix],
+			objectName:  istiodCustomCertSecretName,
+			dataKey:     common.IstiodTLSSecretCertKey,
+			kind:        "Secret",
+			request:     istiodInjectorRequest,
+			getter:      mutatingWebhook,
+		},
+		{
+			name:        "istio-validating-validating-webhook",
+			webhook:     newValidatingWebhookConfig(istioValidatorWebhookName, caBundleValue),
+			webhookName: istioValidatorWebhookName,
 			source:      autoRegistrationMap[istiodWebhookNamePrefix],
 			objectName:  istiodSecretName,
 			dataKey:     common.IstiodCertKey,
@@ -139,12 +162,34 @@ func cases() []testCase {
 			getter:      validatingWebhook,
 		},
 		{
-			name:        "istiod-validating-webhook-cert-manager",
-			webhook:     newValidatingWebhookConfig(istiodWebhookName, caBundleValue),
-			webhookName: istiodWebhookName,
+			name:        "istio-validating-webhook-cacerts",
+			webhook:     newValidatingWebhookConfig(istioValidatorWebhookName, caBundleValue),
+			webhookName: istioValidatorWebhookName,
+			source:      autoRegistrationMap[istiodWebhookNamePrefix],
+			objectName:  istiodCustomCertSecretName,
+			dataKey:     common.IstiodCertKey,
+			kind:        "Secret",
+			request:     istiodValidatorRequest,
+			getter:      validatingWebhook,
+		},
+		{
+			name:        "istio-validating-webhook-cacerts-tls-secret",
+			webhook:     newValidatingWebhookConfig(istioValidatorWebhookName, caBundleValue),
+			webhookName: istioValidatorWebhookName,
+			source:      autoRegistrationMap[istiodWebhookNamePrefix],
+			objectName:  istiodCustomCertSecretName,
+			dataKey:     common.IstiodTLSSecretCertKey,
+			kind:        "Secret",
+			request:     istiodValidatorRequest,
+			getter:      validatingWebhook,
+		},
+		{
+			name:        "istio-validating-webhook-cert-manager",
+			webhook:     newValidatingWebhookConfig(istioValidatorWebhookName, caBundleValue),
+			webhookName: istioValidatorWebhookName,
 			source:      autoRegistrationMap[istiodWebhookNamePrefix],
 			objectName:  istiodCertManagerSecretName,
-			dataKey:     common.IstiodCertManagerCertKey,
+			dataKey:     common.IstiodTLSSecretCertKey,
 			kind:        "Secret",
 			request:     istiodValidatorRequest,
 			getter:      validatingWebhook,
