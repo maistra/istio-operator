@@ -217,7 +217,7 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
-			internalmetrics.ResetMemberCounter()
+			internalmetrics.ResetSMCPMember()
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object
@@ -274,10 +274,10 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	switch len(meshList.Items) {
 	case 0:
 		mesh = nil
-		internalmetrics.ResetMemberCounter()
+		internalmetrics.ResetSMCPMember()
 	case 1:
 		mesh = &meshList.Items[0]
-		internalmetrics.ResetMemberCounter()
+		internalmetrics.ResetSMCPMember()
 	default: // more than 1 SMCP found
 		reason := maistrav1.ConditionReasonMultipleSMCP
 		message := "Multiple ServiceMeshControlPlane resources exist in the namespace"
@@ -458,7 +458,7 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		internalmetrics.GetMemberCounter(mesh.GetNamespace(), mesh.Spec.Version, meshMode).Set(float64(len(roll.Status.ConfiguredMembers)))
+		internalmetrics.GetSMCPMember(mesh.GetNamespace(), mesh.Spec.Version, meshMode).Set(float64(len(roll.Status.ConfiguredMembers)))
 	}
 	return reconcile.Result{}, nil
 }

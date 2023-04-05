@@ -19,17 +19,17 @@ const (
 
 // MetricsType defines all of istio-operator's metrics.
 type MetricsType struct {
-	MemberCounter *prometheus.GaugeVec
+	SMCPMember *prometheus.GaugeVec
 }
 
 // Metrics contains all of istio-operator's own internal metrics.
 // These metrics can be accessed directly to update their values, or
 // you can use available utility functions defined below.
 var Metrics = MetricsType{
-	MemberCounter: prometheus.NewGaugeVec(
+	SMCPMember: prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "servicemesh_member_count",
-			Help: "Counts the total number of Service Mesh Control Plane Namespaces.",
+			Name: "servicemesh_members",
+			Help: "Number of SMCP members per namespace, mesh mode and version.",
 		},
 		[]string{labelSMCPNamespace, labelSMCPVersion, labelSMCPMode},
 	),
@@ -38,18 +38,18 @@ var Metrics = MetricsType{
 // RegisterMetrics must be called at startup to prepare the Prometheus scrape endpoint.
 func RegisterMetrics() {
 	metrics.Registry.MustRegister(
-		Metrics.MemberCounter,
+		Metrics.SMCPMember,
 	)
 }
 
-func GetMemberCounter(smcpNamespace, smcpVersion, smcpMode string) prometheus.Gauge {
-	return Metrics.MemberCounter.With(prometheus.Labels{
+func GetSMCPMember(smcpNamespace, smcpVersion, smcpMode string) prometheus.Gauge {
+	return Metrics.SMCPMember.With(prometheus.Labels{
 		labelSMCPNamespace: smcpNamespace,
 		labelSMCPVersion:   smcpVersion,
 		labelSMCPMode:      smcpMode,
 	})
 }
 
-func ResetMemberCounter() {
-	Metrics.MemberCounter.Reset()
+func ResetSMCPMember() {
+	Metrics.SMCPMember.Reset()
 }
