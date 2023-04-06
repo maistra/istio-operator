@@ -526,7 +526,7 @@ github.com/operator-framework/operator-sdk/version
 github.com/otiai10/copy
 # github.com/pborman/uuid v1.2.0
 github.com/pborman/uuid
-# github.com/pelletier/go-toml v1.2.0
+# github.com/pelletier/go-toml v1.7.0
 github.com/pelletier/go-toml
 # github.com/peterbourgon/diskv v2.0.1+incompatible
 github.com/peterbourgon/diskv
@@ -608,9 +608,10 @@ github.com/xeipuuv/gojsonreference
 github.com/xeipuuv/gojsonschema
 # go.etcd.io/bbolt v1.3.4
 go.etcd.io/bbolt
-# go.mongodb.org/mongo-driver v1.1.2
+# go.mongodb.org/mongo-driver v1.1.2 => go.mongodb.org/mongo-driver v1.5.0
 go.mongodb.org/mongo-driver/bson
 go.mongodb.org/mongo-driver/bson/bsoncodec
+go.mongodb.org/mongo-driver/bson/bsonoptions
 go.mongodb.org/mongo-driver/bson/bsonrw
 go.mongodb.org/mongo-driver/bson/bsontype
 go.mongodb.org/mongo-driver/bson/primitive
@@ -1351,3 +1352,4 @@ sigs.k8s.io/yaml
 # github.com/operator-framework/operator-sdk => github.com/maistra/operator-sdk v0.0.0-20210824135520-3b25565223d4
 # github.com/Masterminds/goutils => github.com/Masterminds/goutils v1.1.1
 # github.com/mikefarah/yaml/v2 => gopkg.in/yaml.v2 v2.4.0
+# go.mongodb.org/mongo-driver => go.mongodb.org/mongo-driver v1.5.0
