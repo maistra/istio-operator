@@ -15,7 +15,7 @@ metadata:
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: quay.io/maistra/istio-ubi8-operator:2.4.0
-    createdAt: 2022-12-19T14:03:48EST
+    createdAt: 2023-04-06T13:11:55CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.4.0-0"
     operators.openshift.io/infrastructure-features: '[]'
@@ -530,6 +530,8 @@ spec:
         spec:
 
           replicas: 1
+          strategy:
+            type: Recreate
           selector:
             matchLabels:
               name: istio-operator
@@ -581,6 +583,8 @@ spec:
                   ports:
                     - containerPort: 11999
                       name: validation
+                    - containerPort: 11200
+                      name: probes
                     - containerPort: 60000
                       name: metrics
                   command:
@@ -599,6 +603,11 @@ spec:
                       value: istio-operator
                       #        - name: ISTIO_CNI_IMAGE_PULL_SECRET
                       #          value: name-of-secret
+                  readinessProbe:
+                    httpGet:
+                      scheme: HTTP
+                      path: /readyz
+                      port: 11200
                   volumeMounts:
                     - name: operator-olm-config
                       mountPath: /etc/operator/olm

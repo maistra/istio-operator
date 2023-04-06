@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -44,6 +45,7 @@ var (
 	metricsPort             int32 = 8383
 	operatorMetricsPort     int32 = 8686
 	admissionControllerPort       = 11999
+	healthProbeBindAddress        = ":11200"
 )
 var log = logf.Log.WithName("cmd")
 
@@ -136,9 +138,10 @@ func main() {
 
 	// Set default manager options
 	options := manager.Options{
-		Namespace:          namespace,
-		Port:               admissionControllerPort,
-		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		Namespace:              namespace,
+		Port:                   admissionControllerPort,
+		MetricsBindAddress:     net.JoinHostPort(metricsHost, fmt.Sprint(metricsPort)),
+		HealthProbeBindAddress: healthProbeBindAddress,
 	}
 
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
@@ -181,6 +184,16 @@ func main() {
 
 	// Add the Metrics Service
 	addMetrics(ctx, cfg)
+
+	err = mgr.AddReadyzCheck("readiness", func(req *http.Request) error {
+		// no need to check anything; the readyz probe succeeds only when the
+		// webhooks are running (which only happens when the serving secret is present)
+		return nil
+	})
+	if err != nil {
+		log.Error(err, "error adding readyz check")
+		os.Exit(1)
+	}
 
 	log.Info("Starting the Cmd.")
 
