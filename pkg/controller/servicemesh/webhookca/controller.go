@@ -68,12 +68,16 @@ var autoRegistrationMap = map[string]CABundleSource{
 				Key:        common.IstiodCertKey,
 			},
 			{
+				SecretName: istiodCustomCertSecretName,
+				Key:        common.IstiodTLSSecretCertKey,
+			},
+			{
 				SecretName: istiodSecretName,
 				Key:        common.IstiodCertKey,
 			},
 			{
 				SecretName: istiodCertManagerSecretName,
-				Key:        common.IstiodCertManagerCertKey,
+				Key:        common.IstiodTLSSecretCertKey,
 			},
 		},
 	},
@@ -84,12 +88,16 @@ var autoRegistrationMap = map[string]CABundleSource{
 				Key:        common.IstiodCertKey,
 			},
 			{
+				SecretName: istiodCustomCertSecretName,
+				Key:        common.IstiodTLSSecretCertKey,
+			},
+			{
 				SecretName: istiodSecretName,
 				Key:        common.IstiodCertKey,
 			},
 			{
 				SecretName: istiodCertManagerSecretName,
-				Key:        common.IstiodCertManagerCertKey,
+				Key:        common.IstiodTLSSecretCertKey,
 			},
 		},
 	},
