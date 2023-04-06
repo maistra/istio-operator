@@ -3,6 +3,8 @@ package webhookca
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/go-logr/logr"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	v1 "k8s.io/api/admissionregistration/v1"
@@ -20,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"strings"
 )
 
 const controllerName = "webhookca-controller"
