@@ -3,6 +3,7 @@ package webhooks
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -41,8 +42,11 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 		return pkgerrors.Wrap(err, "error creating k8s client")
 	}
 
+	webhookServiceCreated := false
 	log.Info("Creating Maistra webhook Service")
-	if err := cl.Create(context.TODO(), newWebhookService(operatorNamespace)); err != nil {
+	if err := cl.Create(context.TODO(), newWebhookService(operatorNamespace)); err == nil {
+		webhookServiceCreated = true
+	} else {
 		if errors.IsAlreadyExists(err) {
 			log.Info("Maistra webhook Service already exists")
 		} else {
@@ -142,14 +146,16 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 	}
 	func() {
 		defer secretwatch.Stop()
-		log.Info("Waiting for Maistra webhook Secret to become available")
-		select {
-		case <-secretwatch.ResultChan():
-			log.Info("Maistra webhook Secret is now ready")
-		case <-time.After(30 * time.Second):
-			log.Info("timed out waiting for Maistra webhook Secret to become available")
+		for {
+			select {
+			case <-secretwatch.ResultChan():
+				return
+			case <-time.After(1 * time.Second):
+				log.Info("Waiting for Maistra webhook Secret to become available", "Secret", webhookSecretName)
+			}
 		}
 	}()
+	log.Info("Maistra webhook Secret is ready", "Secret", webhookSecretName)
 
 	configMapWatch, err := coreclient.ConfigMaps(operatorNamespace).Watch(ctx,
 		metav1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", webhookConfigMapName)})
@@ -159,14 +165,25 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 	}
 	func() {
 		defer configMapWatch.Stop()
-		log.Info("Waiting for Maistra webhook CA bundle ConfigMap to become available")
-		select {
-		case <-configMapWatch.ResultChan():
-			log.Info("Maistra webhook CA bundle ConfigMap is now ready")
-		case <-time.After(30 * time.Second):
-			log.Info("timed out waiting for Maistra webhook CA bundle ConfigMap to become available")
+		for {
+			select {
+			case <-configMapWatch.ResultChan():
+				return
+			case <-time.After(1 * time.Second):
+				log.Info("Waiting for Maistra webhook CA bundle ConfigMap to become available", "ConfigMap", webhookConfigMapName)
+			}
 		}
 	}()
+	log.Info("Maistra webhook CA bundle ConfigMap is ready", "ConfigMap", webhookConfigMapName)
+
+	// If we have just created the webhook Service, then the Secret didn't exist
+	// when the operator Pod was created and so the Secret couldn't have been
+	// mounted. We exit so that the container is restarted. In the next run of
+	// the container, the Secret will be mounted.
+	if webhookServiceCreated {
+		log.Info("Restarting to obtain the Maistra webhook Secret and CA bundle ConfigMap...")
+		os.Exit(0)
+	}
 
 	return nil
 }
