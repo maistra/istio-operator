@@ -31,7 +31,7 @@ type SecretCABundleSource struct {
 
 type SecretNameKeyPair struct {
 	SecretName string
-	Keys       []string
+	Key        string
 }
 
 var _ CABundleSource = (*SecretCABundleSource)(nil)
@@ -39,7 +39,6 @@ var _ CABundleSource = (*SecretCABundleSource)(nil)
 func (s *SecretCABundleSource) GetCABundle(ctx context.Context, client client.Client) ([]byte, error) {
 	var caBundle []byte
 	var errList []error
-loop:
 	for _, entry := range s.SecretNameKeyPairs {
 		namespacedName := types.NamespacedName{
 			Namespace: s.Namespace,
@@ -51,19 +50,17 @@ loop:
 			errList = append(errList, err)
 			continue
 		}
-		for _, key := range entry.Keys {
-			var ok bool
-			caBundle, ok = secret.Data[key]
-			if !ok {
-				errList = append(errList, fmt.Errorf(
-					"secret %s does not contain root certificate under key %s",
-					namespacedName,
-					key,
-				))
-				continue
-			}
-			break loop
+		var ok bool
+		caBundle, ok = secret.Data[entry.Key]
+		if !ok {
+			errList = append(errList, fmt.Errorf(
+				"secret %s does not contain root certificate under key %s",
+				namespacedName,
+				entry.Key,
+			))
+			continue
 		}
+		break
 	}
 	if caBundle == nil {
 		return nil, errors.NewAggregate(errList)

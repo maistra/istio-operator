@@ -47,7 +47,7 @@ var autoRegistrationMap = map[string]CABundleSource{
 		SecretNameKeyPairs: []SecretNameKeyPair{
 			{
 				SecretName: galleySecretName,
-				Keys:       []string{common.IstioRootCertKey},
+				Key:        common.IstioRootCertKey,
 			},
 		},
 	},
@@ -55,7 +55,7 @@ var autoRegistrationMap = map[string]CABundleSource{
 		SecretNameKeyPairs: []SecretNameKeyPair{
 			{
 				SecretName: sidecarInjectorSecretName,
-				Keys:       []string{common.IstioRootCertKey},
+				Key:        common.IstioRootCertKey,
 			},
 		},
 	},
@@ -63,15 +63,19 @@ var autoRegistrationMap = map[string]CABundleSource{
 		SecretNameKeyPairs: []SecretNameKeyPair{
 			{
 				SecretName: istiodCustomCertSecretName,
-				Keys:       []string{common.IstiodCertKey, common.IstiodTLSSecretCertKey},
+				Key:        common.IstiodCertKey,
+			},
+			{
+				SecretName: istiodCustomCertSecretName,
+				Key:        common.IstiodTLSSecretCertKey,
 			},
 			{
 				SecretName: istiodSecretName,
-				Keys:       []string{common.IstiodCertKey},
+				Key:        common.IstiodCertKey,
 			},
 			{
 				SecretName: istiodCertManagerSecretName,
-				Keys:       []string{common.IstiodTLSSecretCertKey},
+				Key:        common.IstiodTLSSecretCertKey,
 			},
 		},
 	},
@@ -79,15 +83,19 @@ var autoRegistrationMap = map[string]CABundleSource{
 		SecretNameKeyPairs: []SecretNameKeyPair{
 			{
 				SecretName: istiodCustomCertSecretName,
-				Keys:       []string{common.IstiodCertKey, common.IstiodTLSSecretCertKey},
+				Key:        common.IstiodCertKey,
+			},
+			{
+				SecretName: istiodCustomCertSecretName,
+				Key:        common.IstiodTLSSecretCertKey,
 			},
 			{
 				SecretName: istiodSecretName,
-				Keys:       []string{common.IstiodCertKey},
+				Key:        common.IstiodCertKey,
 			},
 			{
 				SecretName: istiodCertManagerSecretName,
-				Keys:       []string{common.IstiodTLSSecretCertKey},
+				Key:        common.IstiodTLSSecretCertKey,
 			},
 		},
 	},
