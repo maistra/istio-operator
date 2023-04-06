@@ -5,6 +5,8 @@ metadata:
   namespace: istio-operator
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       name: istio-operator
@@ -67,6 +69,8 @@ spec:
         ports:
         - containerPort: 11999
           name: validation
+        - containerPort: 11200
+          name: probes
         - containerPort: 60000
           name: metrics
         command:
@@ -85,6 +89,11 @@ spec:
           value: istio-operator
 #        - name: ISTIO_CNI_IMAGE_PULL_SECRET
 #          value: name-of-secret
+        readinessProbe:
+          httpGet:
+            scheme: HTTP
+            path: /readyz
+            port: 11200
         volumeMounts:
         - name: operator-olm-config
           mountPath: /etc/operator/olm
