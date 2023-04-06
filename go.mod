@@ -79,3 +79,5 @@ replace github.com/operator-framework/operator-sdk => github.com/maistra/operato
 replace github.com/Masterminds/goutils => github.com/Masterminds/goutils v1.1.1
 
 replace github.com/mikefarah/yaml/v2 => gopkg.in/yaml.v2 v2.4.0
+
+replace go.mongodb.org/mongo-driver => go.mongodb.org/mongo-driver v1.5.0
