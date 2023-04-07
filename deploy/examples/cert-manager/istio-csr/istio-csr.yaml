@@ -10,8 +10,8 @@ app:
     namespace: istio-system
     issuer:
       group: cert-manager.io
-      kind: ClusterIssuer
-      name: root-ca
+      kind: Issuer
+      name: istio-ca
 
   controller:
     configmapNamespaceSelector: "maistra.io/member-of=istio-system"

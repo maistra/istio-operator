@@ -9,7 +9,7 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: root-ca
+  name: selfsigned-ca
   namespace: cert-manager-operator
 spec:
   isCA: true
@@ -21,7 +21,7 @@ spec:
     - my-company.net
   issuerRef:
     name: selfsigned-root-issuer
-    kind: Issuer
+    kind: ClusterIssuer
     group: cert-manager.io
 ---
 apiVersion: cert-manager.io/v1
