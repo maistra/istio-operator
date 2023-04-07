@@ -1,5 +1,10 @@
 ## Integration with cert-manager and istio-csr
 
+#### Prerequisites
+
+1. Install cert-manager operator (v1.11.x+).
+2. Install OpenShift Service Mesh operator (v2.4+).
+
 #### Requirements
 
 OpenShift Service Mesh requires cert-manager to provide:
@@ -29,13 +34,14 @@ helm install cert-manager jetstack/cert-manager \
 2. Provision certificates:
 ```shell
 oc new-project istio-system
-oc apply -f deploy/examples/cert-manager/selfsigned-ca.yaml -n istio-system
+oc apply -f deploy/examples/cert-manager/istio-csr/selfsigned-ca.yaml -n istio-system
 ```
 
 3. Install cert-manager istio-csr Service:
 ```shell
-helm install -n cert-manager cert-manager-istio-csr \
-    jetstack/cert-manager-istio-csr -f deploy/examples/cert-manager/istio-csr-helm-values.yaml
+helm install istio-csr jetstack/cert-manager-istio-csr \
+    -n cert-manager \
+    -f deploy/examples/cert-manager/istio-csr-helm-values.yaml
 ```
 
 4. Deploy Istio:
