@@ -1,32 +1,33 @@
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
-  name: selfsigned
+  name: selfsigned-root-issuer
+  namespace: cert-manager-operator
 spec:
   selfSigned: {}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: istio-ca
+  name: root-ca
+  namespace: cert-manager-operator
 spec:
   isCA: true
-  duration: 2160h # 90d
-  secretName: istio-ca
-  commonName: istio-ca
+  duration: 21600h # 900d
+  secretName: root-ca
+  commonName: root-ca.my-company.net
   subject:
     organizations:
-      - cluster.local
-      - cert-manager
+    - my-company.net
   issuerRef:
-    name: selfsigned
+    name: selfsigned-root-issuer
     kind: Issuer
     group: cert-manager.io
 ---
 apiVersion: cert-manager.io/v1
-kind: Issuer
+kind: ClusterIssuer
 metadata:
-  name: istio-ca
+  name: root-ca
 spec:
   ca:
-    secretName: istio-ca
+    secretName: root-ca

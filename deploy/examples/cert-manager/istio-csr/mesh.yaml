@@ -6,14 +6,22 @@ spec:
   addons:
     grafana:
       enabled: false
-    kiali:
+  gateways:
+    ingress:
+      routeConfig:
+        enabled: false
+    egress:
       enabled: false
-    prometheus:
+    openshiftRoute:
       enabled: false
+  proxy:
+    accessLogging:
+      file:
+        name: /dev/stdout
   security:
     certificateAuthority:
       cert-manager:
-        address: cert-manager-istio-csr.cert-manager.svc:443
+        address: cert-manager-istio-csr.istio-system.svc:443
       type: cert-manager
     dataPlane:
       mtls: true
@@ -21,7 +29,11 @@ spec:
       type: ThirdParty
   tracing:
     type: None
-  version: v2.4
+  techPreview:
+    values:
+      global:
+        logging:
+          level: info
 ---
 apiVersion: maistra.io/v1
 kind: ServiceMeshMemberRoll
