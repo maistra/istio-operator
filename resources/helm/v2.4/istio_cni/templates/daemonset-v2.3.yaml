@@ -82,7 +82,7 @@ spec:
             - name: CNI_NETWORK_CONFIG
               valueFrom:
                 configMapKeyRef:
-                  name: {{ .Values.cni.defaultResourceName }}-v2-3
+                  name: {{ .Values.cni.defaultResourceName }}-config-v2-3
                   key: "{{ default "cni_network_config" .Values.cni.configMap_v2_3 }}"
             - name: CNI_NET_DIR
               value: {{ default "/etc/cni/net.d" .Values.cni.cniConfDir }}
