@@ -22,10 +22,10 @@ import (
 
 func (r *controlPlaneInstanceReconciler) PatchAddons(ctx context.Context, spec *maistrav2.ControlPlaneSpec) (reconcile.Result, error) {
 	// so far, only need to patch kiali
-	return r.patchKiali(ctx, spec.IsGrafanaEnabled(), spec.IsJaegerEnabled())
+	return r.patchKiali(ctx, spec.IsGrafanaEnabled(), spec.IsJaegerEnabled(), spec.IsPrometheusEnabled())
 }
 
-func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafanaEnabled, jaegerEnabled bool) (reconcile.Result, error) {
+func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafanaEnabled, jaegerEnabled, prometheusEnabled bool) (reconcile.Result, error) {
 	if r.Instance == nil || !r.Instance.Status.AppliedSpec.IsKialiEnabled() {
 		return common.Reconciled()
 	}
@@ -108,11 +108,13 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 	if err := updatedKiali.Spec.SetField("external_services.grafana.auth.password", rawPassword); err != nil {
 		return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.grafana.auth.password", err))
 	}
-	if err := updatedKiali.Spec.SetField("external_services.prometheus.auth.password", rawPassword); err != nil {
-		return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.prometheus.auth.password", err))
-	}
 	if err := updatedKiali.Spec.SetField("external_services.tracing.auth.password", rawPassword); err != nil {
 		return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.tracing.auth.password", err))
+	}
+	if prometheusEnabled {
+		if err := updatedKiali.Spec.SetField("external_services.prometheus.auth.password", rawPassword); err != nil {
+			return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.prometheus.auth.password", err))
+		}
 	}
 
 	// FUTURE: add support for synchronizing kiali version with control plane version

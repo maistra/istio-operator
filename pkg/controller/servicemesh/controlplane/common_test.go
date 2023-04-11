@@ -178,6 +178,12 @@ func New20SMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec)
 	return smcp
 }
 
+func NewV2xSMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec, version string) *maistrav2.ServiceMeshControlPlane {
+	smcp := NewV2SMCPResource(name, namespace, spec)
+	smcp.Spec.Version = version
+	return smcp
+}
+
 func NewV2SMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec) *maistrav2.ServiceMeshControlPlane {
 	smcp := &maistrav2.ServiceMeshControlPlane{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},

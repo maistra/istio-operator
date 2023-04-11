@@ -54,12 +54,14 @@ type installAddonsTestCase struct {
 
 func TestAddonsInstall(t *testing.T) {
 	const (
-		smcpName           = "test"
-		domain             = "test.com"
-		kialiName          = "kiali"
-		kialiExistingName  = "kiali-existing"
-		jaegerName         = "jaeger"
-		jaegerExistingName = "jaeger-existing"
+		smcpName                     = "test"
+		domain                       = "test.com"
+		kialiName                    = "kiali"
+		kialiExistingName            = "kiali-existing"
+		jaegerName                   = "jaeger"
+		jaegerExistingName           = "jaeger-existing"
+		prometheusPasswordExpected   = true
+		prometheusPasswordUnexpected = false
 	)
 
 	if testing.Verbose() {
@@ -110,7 +112,8 @@ func TestAddonsInstall(t *testing.T) {
 				jaegerRoute,
 			},
 			create: IntegrationTestValidation{
-				Verifier: Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).Passes(ExpectedKialiCreate(jaegerExistingName, domain)),
+				Verifier: Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).
+					Passes(ExpectedKialiCreate(jaegerExistingName, domain, prometheusPasswordExpected)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
 					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
@@ -134,7 +137,8 @@ func TestAddonsInstall(t *testing.T) {
 				}},
 			},
 			create: IntegrationTestValidation{
-				Verifier: Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).Passes(ExpectedKialiPatch(jaegerName, domain)),
+				Verifier: Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).
+					Passes(ExpectedKialiPatch(jaegerName, domain, true)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
 					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsSeen(),
@@ -158,7 +162,8 @@ func TestAddonsInstall(t *testing.T) {
 				jaegerRoute,
 			},
 			create: IntegrationTestValidation{
-				Verifier: Verify("patch").On("kialis").Named(kialiExistingName).In(controlPlaneNamespace).Passes(ExpectedKialiPatch(jaegerExistingName, domain)),
+				Verifier: Verify("patch").On("kialis").Named(kialiExistingName).In(controlPlaneNamespace).
+					Passes(ExpectedKialiPatch(jaegerExistingName, domain, prometheusPasswordExpected)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
 					Assert("create").On("kialis").Named(kialiExistingName).In(controlPlaneNamespace).IsNotSeen(),
@@ -174,6 +179,30 @@ func TestAddonsInstall(t *testing.T) {
 					Assert("delete").On("jaegers").Named(jaegerExistingName).In(controlPlaneNamespace).IsNotSeen(),
 				},
 			},
+		},
+		{
+			name: "kiali.existing.jaeger.existing.prometheus.disabled",
+			smcp: newSMCPForKialiJaegerPrometheusDisabledTest(smcpName, kialiName, jaegerExistingName),
+			resources: []runtime.Object{
+				&kialiv1alpha1.Kiali{Base: external.Base{
+					ObjectMeta: metav1.ObjectMeta{Name: kialiName, Namespace: controlPlaneNamespace},
+				}},
+			},
+			create: IntegrationTestValidation{
+				Verifier: Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).
+					Passes(ExpectedKialiPatch(jaegerExistingName, domain, prometheusPasswordUnexpected)),
+				Assertions: ActionAssertions{
+					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
+					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+			delete: IntegrationTestValidation{
+				Assertions: ActionAssertions{
+					Assert("delete").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
+					Assert("delete").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+			unsupportedVersions: []string{versions.V2_0.String(), versions.V2_1.String(), versions.V2_2.String(), versions.V2_3.String()},
 		},
 		{
 			name: "addons.ingress.hosts",
@@ -209,7 +238,7 @@ func TestAddonsInstall(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		supportedVersions := sets.NewString(allV2StringVersions()...).Delete(tc.unsupportedVersions...)
+		supportedVersions := sets.NewString(allV2Versions()...).Delete(tc.unsupportedVersions...)
 		for _, v := range supportedVersions.List() {
 			tc.smcp.Spec.Version = v
 			RunSimpleInstallTest(t, IntegrationTestCase{
@@ -223,7 +252,7 @@ func TestAddonsInstall(t *testing.T) {
 	}
 }
 
-func allV2StringVersions() []string {
+func allV2Versions() []string {
 	var result []string
 	for _, v := range versions.AllV2Versions {
 		result = append(result, v.String())
@@ -232,7 +261,6 @@ func allV2StringVersions() []string {
 }
 
 func NewSMCPForKialiJaegerTests(smcpName, kialiName, jaegerName string) *maistrav2.ServiceMeshControlPlane {
-	enable := true
 	return NewV2SMCPResource(smcpName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{
 		Tracing: &maistrav2.TracingConfig{
 			Type: maistrav2.TracerTypeJaeger,
@@ -242,16 +270,23 @@ func NewSMCPForKialiJaegerTests(smcpName, kialiName, jaegerName string) *maistra
 				Enablement: featureEnabled,
 			},
 			Kiali: &maistrav2.KialiAddonConfig{
-				Enablement: maistrav2.Enablement{
-					Enabled: &enable,
-				},
-				Name: kialiName,
+				Enablement: featureEnabled,
+				Name:       kialiName,
 			},
 			Jaeger: &maistrav2.JaegerAddonConfig{
 				Name: jaegerName,
 			},
+			Prometheus: &maistrav2.PrometheusAddonConfig{
+				Enablement: featureEnabled,
+			},
 		},
 	})
+}
+
+func newSMCPForKialiJaegerPrometheusDisabledTest(smcpName, kialiName, jaegerName string) *maistrav2.ServiceMeshControlPlane {
+	smcp := NewSMCPForKialiJaegerTests(smcpName, kialiName, jaegerName)
+	smcp.Spec.Addons.Prometheus = nil
+	return smcp
 }
 
 func NewSMCPForPrometheusGrafanaTests(smcpName string, grafanaHosts, prometheusHosts []string) *maistrav2.ServiceMeshControlPlane {
@@ -286,12 +321,12 @@ func NewSMCPForPrometheusGrafanaTests(smcpName string, grafanaHosts, prometheusH
 	})
 }
 
-func ExpectedKialiCreate(jaegerName, domain string) VerifierTestFunc {
+func ExpectedKialiCreate(jaegerName, domain string, foundPrometheusPassword bool) VerifierTestFunc {
 	return func(action clienttesting.Action) error {
 		createAction := action.(clienttesting.CreateAction)
 		obj := createAction.GetObject()
 		kiali := obj.(*unstructured.Unstructured)
-		if err := VerifyKialiUpdate(jaegerName, domain, maistrav1.NewHelmValues(kiali.Object)); err != nil {
+		if err := VerifyKialiUpdate(jaegerName, domain, foundPrometheusPassword, maistrav1.NewHelmValues(kiali.Object)); err != nil {
 			fmt.Printf("kiali:\n%v\n", kiali)
 			return err
 		}
@@ -299,7 +334,7 @@ func ExpectedKialiCreate(jaegerName, domain string) VerifierTestFunc {
 	}
 }
 
-func ExpectedKialiPatch(jaegerName, domain string) VerifierTestFunc {
+func ExpectedKialiPatch(jaegerName, domain string, foundPrometheusPassword bool) VerifierTestFunc {
 	return func(action clienttesting.Action) error {
 		patchAction := action.(clienttesting.PatchAction)
 		if patchAction.GetPatchType() != types.MergePatchType {
@@ -310,7 +345,7 @@ func ExpectedKialiPatch(jaegerName, domain string) VerifierTestFunc {
 			return err
 		}
 		patchValues := maistrav1.NewHelmValues(patch)
-		if err := VerifyKialiUpdate(jaegerName, domain, patchValues); err != nil {
+		if err := VerifyKialiUpdate(jaegerName, domain, foundPrometheusPassword, patchValues); err != nil {
 			fmt.Printf("patch:\n%s\n", string(patchAction.GetPatch()))
 			return err
 		}
@@ -318,7 +353,7 @@ func ExpectedKialiPatch(jaegerName, domain string) VerifierTestFunc {
 	}
 }
 
-func VerifyKialiUpdate(jaegerName, domain string, values *maistrav1.HelmValues) error {
+func VerifyKialiUpdate(jaegerName, domain string, foundPrometheusPassword bool, values *maistrav1.HelmValues) error {
 	var allErrors []error
 	expectedGrafanaURL := "https://grafana." + domain
 	if url, _, _ := values.GetString("spec.external_services.grafana.url"); url != expectedGrafanaURL {
@@ -340,8 +375,12 @@ func VerifyKialiUpdate(jaegerName, domain string, values *maistrav1.HelmValues) 
 	if _, ok, _ := values.GetString("spec.external_services.tracing.auth.password"); !ok {
 		allErrors = append(allErrors, fmt.Errorf("expected jaeger password to be set"))
 	}
-	if _, ok, _ := values.GetString("spec.external_services.prometheus.auth.password"); !ok {
-		allErrors = append(allErrors, fmt.Errorf("expected prometheus password to be set"))
+	if _, ok, _ := values.GetString("spec.external_services.prometheus.auth.password"); ok != foundPrometheusPassword {
+		if foundPrometheusPassword {
+			allErrors = append(allErrors, fmt.Errorf("expected prometheus password to be set"))
+		} else {
+			allErrors = append(allErrors, fmt.Errorf("expected prometheus password to not be set"))
+		}
 	}
 	if len(allErrors) > 0 {
 		return errors.NewAggregate(allErrors)
@@ -454,25 +493,29 @@ func TestPatchAddonsResult(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
-		smcpSpec := newSmcpSpec(tc.kialiEnabled, tc.grafanaEnabled, tc.jaegerEnabled)
-		smcp := New21SMCPResource("basic", "istio-system", smcpSpec)
-		smcp.Status = maistrav2.ControlPlaneStatus{AppliedSpec: *smcpSpec}
+	for _, v := range allV2Versions() {
+		for _, tc := range testCases {
+			t.Run(fmt.Sprintf("%s.%s", tc.name, v), func(t *testing.T) {
+				smcpSpec := newSmcpSpec(tc.kialiEnabled, tc.grafanaEnabled, tc.jaegerEnabled)
+				smcp := NewV2xSMCPResource("basic", "istio-system", smcpSpec, v)
+				smcp.Status = maistrav2.ControlPlaneStatus{AppliedSpec: *smcpSpec}
 
-		s := scheme.Scheme
-		configureKialiAPI(s)
-		configureRouteAPI(s)
+				s := scheme.Scheme
+				configureKialiAPI(s)
+				configureRouteAPI(s)
 
-		c, tracker := CreateClientWithScheme(s, tc.objects...)
-		dc := fake.FakeDiscovery{Fake: &tracker.Fake, FakedServerVersion: DefaultKubeVersion}
-		r := newReconciler(c, s, &record.FakeRecorder{}, "istio-operator", cni.Config{Enabled: true}, &dc)
-		r.instanceReconcilerFactory = NewControlPlaneInstanceReconciler
+				c, tracker := CreateClientWithScheme(s, tc.objects...)
+				dc := fake.FakeDiscovery{Fake: &tracker.Fake, FakedServerVersion: DefaultKubeVersion}
+				r := newReconciler(c, s, &record.FakeRecorder{}, "istio-operator", cni.Config{Enabled: true}, &dc)
+				r.instanceReconcilerFactory = NewControlPlaneInstanceReconciler
 
-		_, smcpReconciler := r.getOrCreateReconciler(smcp)
-		res, err := smcpReconciler.PatchAddons(context.TODO(), &smcp.Spec)
+				_, smcpReconciler := r.getOrCreateReconciler(smcp)
+				res, err := smcpReconciler.PatchAddons(context.TODO(), &smcp.Spec)
 
-		assert.Nil(err, "unexpected error occurred", t)
-		assert.Equals(res, tc.expectedReconciliationResult, "unexpected reconciliation result", t)
+				assert.Nil(err, "unexpected error occurred", t)
+				assert.Equals(res, tc.expectedReconciliationResult, "unexpected reconciliation result", t)
+			})
+		}
 	}
 }
 
