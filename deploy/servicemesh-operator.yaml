@@ -10849,7 +10849,7 @@ spec:
         oauth-proxy.query: "true"
         oauth-proxy.namespace: openshift
         oauth-proxy.name: oauth-proxy
-        oauth-proxy.tag: v4.4
+        oauth-proxy.tag: v4.9
     spec:
       serviceAccountName: istio-operator
       containers:
