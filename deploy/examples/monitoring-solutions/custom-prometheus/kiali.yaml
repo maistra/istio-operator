@@ -1,0 +1,20 @@
+apiVersion: kiali.io/v1alpha1
+kind: Kiali
+metadata:
+  name: kiali-custom-prometheus
+  namespace: istio-system-2
+spec:
+  external_services:
+    istio:
+      config_map_name: istio-basic
+      istio_sidecar_injector_config_map_name: istio-sidecar-injector-basic
+      istiod_deployment_name: istiod-basic
+      istiod_pod_monitoring_port: 15014
+      url_service_version: 'http://istiod-basic.istio-system-2:15014/version'
+    prometheus:
+      auth:
+        type: none
+      query_scope:
+        mesh_id: "basic_istio-system-2"
+      url: http://prometheus-operated.custom-prometheus.svc.cluster.local:9090
+  version: v1.57

@@ -8,12 +8,12 @@ spec:
   serviceAccountName: prometheus-k8s
   podMonitorSelector: {}
   podMonitorNamespaceSelector:
-    matchNames:
-    - custom-prometheus
+    matchLabels:
+      kubernetes.io/metadata.name: custom-prometheus
   serviceMonitorSelector: {}
   serviceMonitorNamespaceSelector:
-    matchNames:
-    - custom-prometheus
+    matchLabels:
+      kubernetes.io/metadata.name: custom-prometheus
   podMetadata:
     annotations:
       sidecar.istio.io/inject: "true"

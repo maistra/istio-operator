@@ -4,8 +4,6 @@ metadata:
   name: istio-proxies-monitor
   namespace: custom-prometheus
 spec:
-  targetLabels:
-  - app
   selector:
     matchExpressions:
     - key: istio-prometheus-ignore
@@ -41,3 +39,6 @@ spec:
     - sourceLabels: [ __meta_kubernetes_pod_name ]
       action: replace
       targetLabel: pod_name
+    - action: replace
+      replacement: "basic_istio-system-2"
+      targetLabel: mesh_id

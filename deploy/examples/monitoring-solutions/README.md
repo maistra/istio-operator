@@ -125,14 +125,11 @@ oc apply -n bookinfo-2 -f custom-prometheus/custom-prometheus-permissions.yaml
 sed "s/{{username}}/meshadmin-2/g" rbac/monitors.yaml | oc apply -n custom-prometheus -f -
 ```
 
-3. Login as `meshadmin-2` and deploy `Prometheus`:
+3. Login as `meshadmin-2` and deploy service mesh:
 ```shell
 oc login -u meshadmin-2 https://api.crc.testing:6443
-```
-
-4. Deploy SMCP:
-```shell
 oc apply -n istio-system-2 -f custom-prometheus/mesh.yaml
+oc apply -n istio-system-2 -f custom-prometheus/kiali.yaml
 sed 's/{{host}}/bookinfo-2/g' route.yaml | oc apply -n istio-system-2 -f -
 ```
 

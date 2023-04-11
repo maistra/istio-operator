@@ -7,7 +7,8 @@ spec:
     grafana:
       enabled: false
     kiali:
-      enabled: false
+      enabled: true
+      name: kiali-custom-prometheus
     prometheus:
       enabled: false
   extensionProviders:
@@ -25,7 +26,6 @@ spec:
   security:
     dataPlane:
       mtls: true
-    manageNetworkPolicy: false
   tracing:
     type: None
 ---
