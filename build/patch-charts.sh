@@ -96,12 +96,21 @@ function patchGalley() {
   # add namespace selectors
   # remove define block
   webhookconfig=${HELM_DIR}/istio-control/istio-discovery/templates/validatingwebhookconfiguration.yaml
+
+  # remove original objectSelector
+  sed_wrap -i '/.*objectSelector:/,/.*{{- end }}/d' "${webhookconfig}"
+
+  # replace namespaceSelector and insert maistra objectSelector
   sed_wrap -i -e 's|\(\(^ *\)rules:\)|\2namespaceSelector:\
 \2  matchExpressions:\
 \2  - key: maistra.io/member-of\
 \2    operator: In\
 \2    values:\
 \2    - {{ .Release.Namespace }}\
+\2objectSelector:\
+\2  matchExpressions:\
+\2  - key: maistra-version\
+\2    operator: DoesNotExist\
 \1|' "${webhookconfig}"
   sed_wrap -i -e '/rules:/ a\
       - operations:\
@@ -123,8 +132,7 @@ function patchGalley() {
         resources:\
         - "*"' "${webhookconfig}"
 
-  sed_wrap -i '/.*objectSelector:/,/.*{{- end }}/d' "${webhookconfig}"
-
+  # ensure resource updates fail if the webhook is offline
   sed_wrap -i -e 's/failurePolicy: Ignore/failurePolicy: Fail/' "${webhookconfig}"
 
   # add name to webhook port (XXX: move upstream)

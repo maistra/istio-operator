@@ -29,6 +29,10 @@ webhooks:
         operator: In
         values:
         - {{ .Release.Namespace }}
+    objectSelector:
+      matchExpressions:
+      - key: maistra-version
+        operator: DoesNotExist
     rules:
       - operations:
         - CREATE
