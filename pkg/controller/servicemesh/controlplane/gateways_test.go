@@ -302,7 +302,7 @@ func TestAdditionalIngressGatewayInstall(t *testing.T) {
 			},
 		},
 	}
-	RunSimpleInstallTest(t, testCases)
+	RunSimpleInstallTests(t, testCases)
 }
 
 func ExpectedLabelGatewayCreate(labelName string, expectedValue string) func(action clienttesting.Action) error {

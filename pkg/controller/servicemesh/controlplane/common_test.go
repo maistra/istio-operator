@@ -91,69 +91,73 @@ type IntegrationTestCase struct {
 	delete    IntegrationTestValidation
 }
 
-func RunSimpleInstallTest(t *testing.T, testCases []IntegrationTestCase) {
+func RunSimpleInstallTests(t *testing.T, testCases []IntegrationTestCase) {
+	t.Helper()
+	for _, tc := range testCases {
+		RunSimpleInstallTest(t, tc)
+	}
+}
+
+func RunSimpleInstallTest(t *testing.T, tc IntegrationTestCase) {
 	t.Helper()
 	const (
 		operatorNamespace = "istio-operator"
-		cniDaemonSetName  = "istio-node"
 		domain            = "test.com"
 	)
 	if testing.Verbose() {
 		logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(os.Stderr), zap.Level(zapcore.Level(-5))))
 	}
 
-	for _, tc := range testCases {
-		ctc := test.ControllerTestCase{
-			Name:             tc.name,
-			ConfigureGlobals: InitializeGlobals(operatorNamespace),
-			AddControllers:   []test.AddControllerFunc{Add},
-			Resources: []runtime.Object{
-				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: controlPlaneNamespace}},
-				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorNamespace}},
-				&kialiCRD,
-				&jaegerCRD,
-			},
-			GroupResources: []*restmapper.APIGroupResources{
-				CNIGroupResources,
-				// MaistraGroupResources,
-			},
-			StorageVersions: []schema.GroupVersion{maistrav2.SchemeGroupVersion},
-			Events: []test.ControllerTestEvent{
-				{
-					Name: "create-smcp",
-					Execute: func(mgr *test.FakeManager, _ *test.EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), tc.smcp)
-					},
-					Verifier:   tc.create.Verifier,
-					Assertions: tc.create.Assertions,
-					Reactors: []clienttesting.Reactor{
-						// make sure deployments come back as ready
-						test.ReactTo("create").On("deployments").In(controlPlaneNamespace).With(SetDeploymentReady),
-						// create reasonable default Host value
-						test.ReactTo("create").On("routes").In(controlPlaneNamespace).With(SetRouteHostName(domain)),
-						// create jaeger routes and services
-						test.ReactTo("create").On("jaegers").In(controlPlaneNamespace).With(SimulateJaegerInstall(domain, nil)),
-					},
-					Timeout: 20 * time.Second,
+	ctc := test.ControllerTestCase{
+		Name:             tc.name,
+		ConfigureGlobals: InitializeGlobals(operatorNamespace),
+		AddControllers:   []test.AddControllerFunc{Add},
+		Resources: []runtime.Object{
+			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: controlPlaneNamespace}},
+			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorNamespace}},
+			&kialiCRD,
+			&jaegerCRD,
+		},
+		GroupResources: []*restmapper.APIGroupResources{
+			CNIGroupResources,
+			// MaistraGroupResources,
+		},
+		StorageVersions: []schema.GroupVersion{maistrav2.SchemeGroupVersion},
+		Events: []test.ControllerTestEvent{
+			{
+				Name: "create-smcp",
+				Execute: func(mgr *test.FakeManager, _ *test.EnhancedTracker) error {
+					return mgr.GetClient().Create(context.TODO(), tc.smcp)
 				},
-				{
-					Name: "delete-smcp",
-					Execute: func(mgr *test.FakeManager, _ *test.EnhancedTracker) error {
-						return mgr.GetClient().Delete(context.TODO(), tc.smcp)
-					},
-					Verifier:   tc.delete.Verifier,
-					Assertions: tc.delete.Assertions,
-					Timeout:    10 * time.Second,
+				Verifier:   tc.create.Verifier,
+				Assertions: tc.create.Assertions,
+				Reactors: []clienttesting.Reactor{
+					// make sure deployments come back as ready
+					test.ReactTo("create").On("deployments").In(controlPlaneNamespace).With(SetDeploymentReady),
+					// create reasonable default Host value
+					test.ReactTo("create").On("routes").In(controlPlaneNamespace).With(SetRouteHostName(domain)),
+					// create jaeger routes and services
+					test.ReactTo("create").On("jaegers").In(controlPlaneNamespace).With(SimulateJaegerInstall(domain, nil)),
 				},
+				Timeout: 20 * time.Second,
 			},
-		}
-		if tc.resources != nil {
-			ctc.Resources = append(ctc.Resources, tc.resources...)
-		}
-		t.Run(tc.name, func(t *testing.T) {
-			test.RunControllerTestCase(t, ctc)
-		})
+			{
+				Name: "delete-smcp",
+				Execute: func(mgr *test.FakeManager, _ *test.EnhancedTracker) error {
+					return mgr.GetClient().Delete(context.TODO(), tc.smcp)
+				},
+				Verifier:   tc.delete.Verifier,
+				Assertions: tc.delete.Assertions,
+				Timeout:    10 * time.Second,
+			},
+		},
 	}
+	if tc.resources != nil {
+		ctc.Resources = append(ctc.Resources, tc.resources...)
+	}
+	t.Run(tc.name, func(t *testing.T) {
+		test.RunControllerTestCase(t, ctc)
+	})
 }
 
 func New22SMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec) *maistrav2.ServiceMeshControlPlane {

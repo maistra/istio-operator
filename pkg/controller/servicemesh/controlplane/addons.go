@@ -46,10 +46,6 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 
 	log.Info("patching kiali CR", kiali.Kind, kiali.GetName())
 
-	if kiali.Spec == nil {
-		kiali.Spec = maistrav1.NewHelmValues(make(map[string]interface{}))
-	}
-
 	updatedKiali := &kialiv1alpha1.Kiali{
 		Base: external.Base{
 			ObjectMeta: metav1.ObjectMeta{
@@ -61,6 +57,7 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 	}
 
 	// grafana
+	// TODO: skip if Grafana disabled
 	grafanaURL := r.grafanaURL(ctx, log)
 	if grafanaURL == "" {
 		// disable grafana
@@ -79,6 +76,7 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 	}
 
 	// jaeger
+	// TODO: skip if Jaeger disabled
 	jaegerURL := r.jaegerURL(ctx, log)
 	if jaegerURL == "" {
 		// disable jaeger

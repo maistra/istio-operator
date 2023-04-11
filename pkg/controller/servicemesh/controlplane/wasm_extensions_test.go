@@ -30,5 +30,5 @@ func TestWASMExtensionInstall(t *testing.T) {
 			},
 		},
 	}
-	RunSimpleInstallTest(t, testCases)
+	RunSimpleInstallTests(t, testCases)
 }
