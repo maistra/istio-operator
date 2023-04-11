@@ -179,7 +179,6 @@ func TestAddonsInstall(t *testing.T) {
 			name: "addons.ingress.hosts",
 			smcp: NewSMCPForPrometheusGrafanaTests(
 				controlPlaneName,
-				versions.V2_3.String(),
 				[]string{
 					"example1.com",
 					"example2.com",
@@ -239,6 +238,9 @@ func NewSMCPForKialiJaegerTests(smcpName, kialiName, jaegerName string) *maistra
 			Type: maistrav2.TracerTypeJaeger,
 		},
 		Addons: &maistrav2.AddonsConfig{
+			Grafana: &maistrav2.GrafanaAddonConfig{
+				Enablement: featureEnabled,
+			},
 			Kiali: &maistrav2.KialiAddonConfig{
 				Enablement: maistrav2.Enablement{
 					Enabled: &enable,
@@ -252,9 +254,8 @@ func NewSMCPForKialiJaegerTests(smcpName, kialiName, jaegerName string) *maistra
 	})
 }
 
-func NewSMCPForPrometheusGrafanaTests(smcpName, version string, grafanaHosts, prometheusHosts []string) *maistrav2.ServiceMeshControlPlane {
+func NewSMCPForPrometheusGrafanaTests(smcpName string, grafanaHosts, prometheusHosts []string) *maistrav2.ServiceMeshControlPlane {
 	return NewV2SMCPResource(smcpName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{
-		Version: version,
 		Addons: &maistrav2.AddonsConfig{
 			Kiali: &maistrav2.KialiAddonConfig{
 				Enablement: featureDisabled,
@@ -321,7 +322,7 @@ func VerifyKialiUpdate(jaegerName, domain string, values *maistrav1.HelmValues) 
 	var allErrors []error
 	expectedGrafanaURL := "https://grafana." + domain
 	if url, _, _ := values.GetString("spec.external_services.grafana.url"); url != expectedGrafanaURL {
-		allErrors = append(allErrors, fmt.Errorf("unexpected grafana URL, expected %s, got %s", expectedGrafanaURL, url))
+		allErrors = append(allErrors, fmt.Errorf("unexpected grafana URL, expected %s, got '%s'", expectedGrafanaURL, url))
 	}
 	if enabled, _, _ := values.GetBool("spec.external_services.grafana.enabled"); !enabled {
 		allErrors = append(allErrors, fmt.Errorf("expected grafana to be enabled"))
