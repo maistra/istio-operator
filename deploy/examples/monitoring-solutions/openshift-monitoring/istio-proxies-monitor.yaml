@@ -7,8 +7,6 @@ spec:
     matchExpressions:
     - key: istio-prometheus-ignore
       operator: DoesNotExist
-  targetLabels:
-  - app
   podMetricsEndpoints:
   - path: /stats/prometheus
     interval: 15s
@@ -41,3 +39,6 @@ spec:
     - sourceLabels: [__meta_kubernetes_pod_name]
       action: replace
       targetLabel: pod_name
+    - action: replace
+      replacement: "basic_istio-system-1"
+      targetLabel: mesh_id

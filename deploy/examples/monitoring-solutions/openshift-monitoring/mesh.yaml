@@ -8,13 +8,7 @@ spec:
       enabled: false
     kiali:
       enabled: true
-      prometheus:
-        auth:
-          bearer:
-            token: secret:thanos-querier-web-token:token
-        thanosProxy:
-          enabled: true
-        url: https://thanos-querier.openshift-monitoring.svc.cluster.local:9091
+      name: kiali-user-workload-monitoring
     prometheus:
       enabled: false
   extensionProviders:

@@ -64,15 +64,24 @@ oc login -u clusteradmin https://api.crc.testing:6443
 oc apply -f openshift-monitoring/enable-monitoring-in-user-workloads.yaml
 ```
 
-2. Install OpenShift Service Mesh operator.
+2. Wait until UWM workloads are ready and create secret for Kiali as `clusteradmin`:
+```shell
+SECRET=`oc get secret -n openshift-user-workload-monitoring | grep  prometheus-user-workload-token | head -n 1 | awk '{print $1 }'`
+TOKEN=`echo $(oc get secret $SECRET -n openshift-user-workload-monitoring -o json | jq -r '.data.token') | base64 -d`
+oc create secret generic thanos-querier-web-token -n istio-system-1 --from-literal=token=$TOKEN
+```
 
-3. Deploy control plane and an app for the first tenant:
+3. Install OpenShift Service Mesh operator.
+
+4. Deploy Kiali, Istio and bookinfo app for the first tenant:
 ```shell
 oc login -u meshadmin-1 https://api.crc.testing:6443
+oc apply -n istio-system-1 -f openshift-monitoring/kiali.yaml
 oc apply -n istio-system-1 -f openshift-monitoring/mesh.yaml
 sed 's/{{host}}/bookinfo-1/g' route.yaml | oc apply -n istio-system-1 -f -
 ```
-Wait until istiod is ready and then apply:
+
+5. Wait until istiod is ready and then apply:
 ```shell
 oc apply -n istio-system-1 -f telemetry.yaml
 oc apply -n bookinfo-1 -f openshift-monitoring/bookinfo.yaml
@@ -89,20 +98,6 @@ while true; do curl -v bookinfo-1.apps-crc.testing:80/productpage > /dev/null; s
 oc apply -n istio-system-1 -f openshift-monitoring/istiod-monitor.yaml
 oc apply -n istio-system-1 -f openshift-monitoring/istio-proxies-monitor.yaml
 oc apply -n bookinfo-1 -f openshift-monitoring/istio-proxies-monitor.yaml
-```
-
-6. Create secret and RBAC for Kiali as `clusteradmin`:
-```shell
-oc login -u clusteradmin https://api.crc.testing:6443
-SECRET=`oc get secret -n openshift-user-workload-monitoring | grep  prometheus-user-workload-token | head -n 1 | awk '{print $1 }'`
-TOKEN=`echo $(oc get secret $SECRET -n openshift-user-workload-monitoring -o json | jq -r '.data.token') | base64 -d`
-oc create secret generic thanos-querier-web-token -n istio-system-1 --from-literal=token=$TOKEN
-```
-
-7. Deploy Kiali as `meshadmin-1`:
-```shell
-oc login -u meshadmin-1 https://api.crc.testing:6443
-oc apply -n istio-system-1 -f openshift-monitoring/kiali.yaml
 ```
 
 ## Custom Prometheus Operator
