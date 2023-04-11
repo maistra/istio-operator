@@ -267,7 +267,7 @@ func (v *versionStrategyV2_4) ValidateV2Full(ctx context.Context, cl client.Clie
 		}
 	}
 	// additional validation checks that are only performed just before reconciliation
-	allErrors = validatePrometheusEnabledWhenKialiEnabled(spec, allErrors)
+	allErrors = validatePrometheusEnabledWhenDefaultKialiEnabled(spec, allErrors)
 	return NewValidationError(allErrors...)
 }
 
@@ -739,6 +739,13 @@ func (v *versionStrategyV2_4) validateGlobal(
 	}
 
 	return validateGlobal(ctx, version, meta, spec, cl, allErrors)
+}
+
+func validatePrometheusEnabledWhenDefaultKialiEnabled(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.IsKialiEnabled() && !spec.IsCustomKialiConfigured() && !spec.IsPrometheusEnabled() {
+		return append(allErrors, fmt.Errorf(".spec.addons.prometheus.enabled must be true when .spec.addons.kiali.enabled is true and spec.addons.kiali.name is not specified"))
+	}
+	return allErrors
 }
 
 func (v *versionStrategyV2_4) createMemberRoll(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) error {
