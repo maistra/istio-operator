@@ -7,7 +7,14 @@ spec:
     grafana:
       enabled: false
     kiali:
-      enabled: false
+      enabled: true
+      prometheus:
+        auth:
+          bearer:
+            token: secret:thanos-querier-web-token:token
+        thanosProxy:
+          enabled: true
+        url: https://thanos-querier.openshift-monitoring.svc.cluster.local:9091
     prometheus:
       enabled: false
   extensionProviders:
