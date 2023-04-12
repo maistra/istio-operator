@@ -68,5 +68,5 @@ func TestNetworkPolicy(t *testing.T) {
 			},
 		},
 	}
-	RunSimpleInstallTest(t, testCases)
+	RunSimpleInstallTests(t, testCases)
 }

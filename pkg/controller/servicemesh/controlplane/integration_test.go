@@ -65,7 +65,7 @@ func TestDefaultInstall(t *testing.T) {
 			},
 		},
 	}
-	RunSimpleInstallTest(t, testCases)
+	RunSimpleInstallTests(t, testCases)
 }
 
 func TestBootstrapping(t *testing.T) {

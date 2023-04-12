@@ -204,6 +204,10 @@ func (s ControlPlaneSpec) IsKialiEnabled() bool {
 		*s.Addons.Kiali.Enabled
 }
 
+func (s ControlPlaneSpec) IsCustomKialiConfigured() bool {
+	return s.Addons != nil && s.Addons.Kiali != nil && s.Addons.Kiali.Name != ""
+}
+
 func (s ControlPlaneSpec) IsPrometheusEnabled() bool {
 	return s.Addons != nil &&
 		s.Addons.Prometheus != nil &&

@@ -205,7 +205,7 @@ func TestRLS(t *testing.T) {
 			},
 		},
 	}
-	RunSimpleInstallTest(t, testCases)
+	RunSimpleInstallTests(t, testCases)
 }
 
 func checkEnvVariables(mustHaveVariables map[string]string, mustNotHaveVariables []string) func(action clienttesting.Action) error {
