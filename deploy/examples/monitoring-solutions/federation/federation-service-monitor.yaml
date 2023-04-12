@@ -16,3 +16,7 @@ spec:
     params:
       'match[]':
         - '{job="kubernetes-pods"}'
+    relabelings:
+    - action: replace
+      replacement: "basic_istio-system-3"
+      targetLabel: mesh_id
