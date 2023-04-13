@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"regexp"
 
+	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context, object *unstructured.Unstructured) error {
@@ -32,9 +34,18 @@ func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context
 			log.Error(err, "failed to generate the HTPasswd password")
 			return err
 		}
-		h := sha1.New()
-		h.Write([]byte(rawPassword))
-		auth = "internal:{SHA}" + base64.StdEncoding.EncodeToString(h.Sum(nil))
+		var version versions.Version
+		version, err = versions.ParseVersion(r.Instance.Spec.Version)
+		if err != nil {
+			log.Error(err, "invalid version specified")
+			return err
+		}
+
+		auth, err = hashPassword(version, rawPassword)
+		if err != nil {
+			log.Error(err, "hashing htpasswd failed")
+			return err
+		}
 	}
 
 	b64Password := base64.StdEncoding.EncodeToString([]byte(rawPassword))
@@ -54,6 +65,28 @@ func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context
 	}
 
 	return nil
+}
+
+func hashPassword(version versions.Version, rawPass string) (string, error) {
+	var auth, hashedPassword string
+	username := "internal"
+
+	// For SMCP versions 2.4 and above, use bcrypt hashing.
+	if version.AtLeast(versions.V2_4) {
+		hashedBytes, err1 := bcrypt.GenerateFromPassword([]byte(rawPass), bcrypt.DefaultCost)
+		if err1 != nil {
+			return "", err1
+		}
+
+		auth = fmt.Sprintf("%s:%s", username, string(hashedBytes))
+	} else { // If the SMCP version is below v2.4, we use SHA-1 to keep behavior of old SMCP versions consistent,
+		h := sha1.New()
+		h.Write([]byte(rawPass))
+		hashedPassword = base64.StdEncoding.EncodeToString(h.Sum(nil)) // hash password
+		auth = fmt.Sprintf("%s:{SHA}%s", username, hashedPassword)     // store user, hash with prefix.
+	}
+
+	return auth, nil
 }
 
 func (r *controlPlaneInstanceReconciler) getRawHtPasswd(ctx context.Context) (string, error) {
