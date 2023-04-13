@@ -1,11 +1,8 @@
-{{ if .Values.cni.enabled }}
-{{ if or (eq .Values.cni.instanceVersion "v2.0") (eq .Values.cni.instanceVersion "v2.1") (eq .Values.cni.instanceVersion "v2.2") (eq .Values.cni.instanceVersion "v2.3")}}
+{{- if and .Values.cni.enabled (has "v2.4" .Values.cni.supportedReleases) (eq .Values.cni.instanceVersion "v2.4") }}
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  labels:
-    maistra-version: "2.4.0"
-  name: istio-cni
+  name: {{ .Values.cni.defaultResourceName }}
 rules:
   - apiGroups: [""]
     resources:
@@ -20,5 +17,4 @@ rules:
       - privileged
     verbs:
       - 'use'
-{{ end }}
-{{ end }}
+{{- end }}

@@ -1,5 +1,4 @@
-{{ if .Values.cni.enabled }}
-{{- if and (has "v2.4" .Values.cni.supportedReleases) (eq .Values.cni.instanceVersion "v2.4") }}
+{{- if and .Values.cni.enabled (has "v2.4" .Values.cni.supportedReleases) (eq .Values.cni.instanceVersion "v2.4") }}
 # This ConfigMap is used to configure a self-hosted Istio CNI installation.
 kind: ConfigMap
 apiVersion: v1
@@ -23,4 +22,3 @@ data:
       }
     }
 {{- end }}
-{{ end }}
