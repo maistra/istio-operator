@@ -20,4 +20,4 @@ app:
     maxCertificateDuration: 5m
   tls:
     certificateDNSNames:
-    - cert-manager-istio-csr.istio-system.svc
+    - cert-manager-istio-csr.cert-manager.svc
