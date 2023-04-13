@@ -71,20 +71,19 @@ func hashPassword(version versions.Version, rawPass string) (string, error) {
 	var auth, hashedPassword string
 	username := "internal"
 
-	// If the SMCP version is below v2.4, we use SHA-1 to keep behavior of old SMCP versions consistent,
-	// and to keep oauth-proxy version consistent at version 4.4 in those releases.
-	if versions.V2_4.Compare(version) > 0 {
-		h := sha1.New()
-		h.Write([]byte(rawPass))
-		hashedPassword = base64.StdEncoding.EncodeToString(h.Sum(nil)) // hash password
-		auth = fmt.Sprintf("%s:{SHA}%s", username, hashedPassword)     // store user, hash with prefix.
-	} else { // For SMCP versions 2.4 and above, use bcrypt hashing.
+	// For SMCP versions 2.4 and above, use bcrypt hashing.
+	if version.AtLeast(versions.V2_4) {
 		hashedBytes, err1 := bcrypt.GenerateFromPassword([]byte(rawPass), bcrypt.DefaultCost)
 		if err1 != nil {
 			return "", err1
 		}
 
 		auth = fmt.Sprintf("%s:%s", username, string(hashedBytes))
+	} else { // If the SMCP version is below v2.4, we use SHA-1 to keep behavior of old SMCP versions consistent,
+		h := sha1.New()
+		h.Write([]byte(rawPass))
+		hashedPassword = base64.StdEncoding.EncodeToString(h.Sum(nil)) // hash password
+		auth = fmt.Sprintf("%s:{SHA}%s", username, hashedPassword)     // store user, hash with prefix.
 	}
 
 	return auth, nil
