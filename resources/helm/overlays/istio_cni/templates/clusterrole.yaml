@@ -1,8 +1,9 @@
 {{ if .Values.cni.enabled }}
+{{ if or (eq .Values.cni.instanceVersion "v2.0") (eq .Values.cni.instanceVersion "v2.1") (eq .Values.cni.instanceVersion "v2.2") (eq .Values.cni.instanceVersion "v2.3")}}
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{ .Values.cni.defaultResourceName }}
+  name: istio-cni
 rules:
   - apiGroups: [""]
     resources:
@@ -17,4 +18,5 @@ rules:
       - privileged
     verbs:
       - 'use'
+{{ end }}
 {{ end }}
