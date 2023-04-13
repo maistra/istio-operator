@@ -2,7 +2,7 @@ apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: selfsigned-root-issuer
-  namespace: cert-manager-operator
+  namespace: cert-manager
 spec:
   selfSigned: {}
 ---
@@ -10,7 +10,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: selfsigned-ca
-  namespace: cert-manager-operator
+  namespace: cert-manager
 spec:
   isCA: true
   duration: 21600h # 900d
@@ -21,7 +21,7 @@ spec:
     - my-company.net
   issuerRef:
     name: selfsigned-root-issuer
-    kind: ClusterIssuer
+    kind: Issuer
     group: cert-manager.io
 ---
 apiVersion: cert-manager.io/v1

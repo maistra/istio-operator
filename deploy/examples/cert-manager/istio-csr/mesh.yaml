@@ -6,6 +6,8 @@ spec:
   addons:
     grafana:
       enabled: false
+    kiali:
+      enabled: false
   gateways:
     ingress:
       routeConfig:

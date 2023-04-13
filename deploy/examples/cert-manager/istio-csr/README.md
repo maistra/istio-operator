@@ -15,13 +15,14 @@ oc apply -f deploy/examples/cert-manager/istio-csr/selfsigned-ca.yaml
 
 > **Note**
 >
-> Please note that the namespace of `selfsigned-root-issuer` issuer and `root-ca` certificate are created in `cert-manager-operator`
+> Please note that the namespace of `selfsigned-root-issuer` issuer and `root-ca` certificate are created in `cert-manager`
 > namespace. This is necessary, because `root-ca` is a cluster issuer, so cert-manager will look for a referenced secret 
 > in its own namespace, which is `cert-manager` in case of cert-manager provided by Red Hat.
 
 2. Install cert-manager istio-csr:
 ```shell
 oc new-project istio-system
+oc apply -f deploy/examples/cert-manager/istio-csr/istio-ca.yaml
 helm install istio-csr jetstack/cert-manager-istio-csr \
     -n istio-system \
     -f deploy/examples/cert-manager/istio-csr/istio-csr.yaml
@@ -41,6 +42,7 @@ helm install istio-csr jetstack/cert-manager-istio-csr \
 3. Deploy Istio:
 ```shell
 oc apply -f deploy/examples/cert-manager/istio-csr/mesh.yaml -n istio-system
+oc apply -f deploy/examples/cert-manager/istio-csr/route.yaml -n istio-system
 ```
 
 4. Deploy bookinfo app:
@@ -52,7 +54,6 @@ oc apply -f https://raw.githubusercontent.com/maistra/istio/maistra-2.4/samples/
 
 5. Test traffic:
 ```shell
-oc apply -f deploy/examples/cert-manager/istio-csr/route.yaml -n istio-system
 while true; do curl -v bookinfo.apps-crc.testing:80/productpage > /dev/null; sleep 1; done
 ```
 
