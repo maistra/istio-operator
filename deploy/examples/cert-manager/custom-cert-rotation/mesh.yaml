@@ -10,15 +10,27 @@ spec:
       enabled: false
     prometheus:
       enabled: false
+  gateways:
+    ingress:
+      routeConfig:
+        enabled: false
+    egress:
+      enabled: false
+    openshiftRoute:
+      enabled: false
+  proxy:
+    accessLogging:
+      file:
+        name: /dev/stdout
+  runtime:
+    components:
+      pilot:
+        container:
+          env:
+            AUTO_RELOAD_PLUGIN_CERTS: "true"
   security:
-    certificateAuthority:
-      cert-manager:
-        address: cert-manager-istio-csr.cert-manager.svc:443
-      type: cert-manager
     dataPlane:
       mtls: true
-    identity:
-      type: ThirdParty
   tracing:
     type: None
   version: v2.4
@@ -29,4 +41,5 @@ metadata:
   name: default
 spec:
   members:
-  - bookinfo
+  - httpbin
+  - sleep

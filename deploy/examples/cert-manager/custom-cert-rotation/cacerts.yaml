@@ -1,0 +1,21 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cacerts
+  namespace: istio-system
+spec:
+  secretName: cacerts
+  duration: 1440h
+  renewBefore: 360h
+  commonName: istiod-basic.istio-system.svc
+  isCA: true
+  usages:
+  - digital signature
+  - key encipherment
+  - cert sign
+  dnsNames:
+  - istiod-basic.istio-system.svc
+  issuerRef:
+    name: root-ca
+    kind: ClusterIssuer
+    group: cert-manager.io

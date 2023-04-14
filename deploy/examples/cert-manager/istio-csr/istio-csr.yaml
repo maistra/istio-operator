@@ -1,8 +1,10 @@
 replicaCount: 2
+
 image:
   repository: quay.io/jetstack/cert-manager-istio-csr
   tag: v0.6.0
   pullSecretName: ""
+
 app:
   certmanager:
     namespace: istio-system
@@ -10,14 +12,19 @@ app:
       group: cert-manager.io
       kind: Issuer
       name: istio-ca
+
   controller:
     configmapNamespaceSelector: "maistra.io/member-of=istio-system"
     leaderElectionNamespace: istio-system
+
   istio:
     namespace: istio-system
     revisions: ["basic"]
+
   server:
     maxCertificateDuration: 5m
+
   tls:
     certificateDNSNames:
-    - cert-manager-istio-csr.cert-manager.svc
+    # This DNS name must be set in the SMCP spec.security.certificateAuthority.cert-manager.address
+    - cert-manager-istio-csr.istio-system.svc

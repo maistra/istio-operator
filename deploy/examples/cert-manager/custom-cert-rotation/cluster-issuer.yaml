@@ -1,0 +1,33 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned-root-issuer
+  namespace: openshift-operators
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: root-ca
+  namespace: openshift-operators
+spec:
+  isCA: true
+  duration: 21600h # 900d
+  secretName: root-ca
+  commonName: root-ca.my-company.net
+  subject:
+    organizations:
+    - my-company.net
+  issuerRef:
+    name: selfsigned-root-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: root-ca
+spec:
+  ca:
+    secretName: root-ca
