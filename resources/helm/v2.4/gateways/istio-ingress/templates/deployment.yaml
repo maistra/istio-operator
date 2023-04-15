@@ -244,8 +244,6 @@ spec:
             value: "true"
           - name: PROXY_XDS_VIA_AGENT
             value: "true"
-          - name: ISTIO_META_UNPRIVILEGED_POD
-            value: "true"
           - name: JWT_POLICY
             value: {{ .Values.global.jwtPolicy }}
           - name: PILOT_CERT_PROVIDER
