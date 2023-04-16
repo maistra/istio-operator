@@ -306,22 +306,6 @@ function patchGateways() {
   sed_wrap -i -e 's/^\(.*\)labels:/\1labels:\
 \1  maistra.io\/gateway: {{ $gateway.name | default "istio-egressgateway" }}.{{ $gateway.namespace | default .Release.Namespace }}/' ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
 
-  # MAISTRA-1963 Mark gateways as non-privileged
-  sed_wrap -i -e '/env:/ a\
-          - name: ISTIO_META_UNPRIVILEGED_POD\
-            value: "true"
-' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
-
-  # MAISTRA-2528 Enable DNS Capture for proxies by default
-  # MAISTRA-2656 Fix missing DNS registry entries in istio-agent
-  sed_wrap -i -e '/env:/ a\
-          - name: ISTIO_META_DNS_CAPTURE\
-            value: "true"\
-          - name: ISTIO_META_DNS_AUTO_ALLOCATE\
-            value: "true"\
-          - name: PROXY_XDS_VIA_AGENT\
-            value: "true"
-' ${HELM_DIR}/gateways/istio-ingress/templates/deployment.yaml ${HELM_DIR}/gateways/istio-egress/templates/deployment.yaml
   sed_wrap -i -e 's/proxyMetadata: {}/proxyMetadata:\
       ISTIO_META_DNS_CAPTURE: "true"\
       ISTIO_META_DNS_AUTO_ALLOCATE: "true"\
