@@ -45,7 +45,7 @@ func TestExtensionProvidersConversionFromV2(t *testing.T) {
 			if err := populateExtensionProvidersConfig(expectedHelmValues.DeepCopy(), &specv2); err != nil {
 				t.Errorf("error converting from values: %s", err)
 			}
-			assertEquals(t, tc.spec.MeshConfig.ExtensionProviders, specv2.MeshConfig.ExtensionProviders)
+			assertEquals(t, tc.spec.MeshConfig, specv2.MeshConfig)
 		})
 	}
 }
