@@ -51,9 +51,9 @@ func checkControlPlaneModeNotSet(spec *v2.ControlPlaneSpec, allErrors []error) [
 	return allErrors
 }
 
-func checkExtensionProvidersNotSet(spec *v2.ControlPlaneSpec, allErrors []error) []error {
-	if spec.ExtensionProviders != nil {
-		return append(allErrors, fmt.Errorf("the spec.extensionProviders field is only supported in version 2.4 and above"))
+func checkMeshConfigNotSet(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.MeshConfig != nil {
+		return append(allErrors, fmt.Errorf("the spec.meshConfig field is only supported in version 2.4 and above"))
 	}
 	return allErrors
 }

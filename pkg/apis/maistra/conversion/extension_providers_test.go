@@ -45,7 +45,7 @@ func TestExtensionProvidersConversionFromV2(t *testing.T) {
 			if err := populateExtensionProvidersConfig(expectedHelmValues.DeepCopy(), &specv2); err != nil {
 				t.Errorf("error converting from values: %s", err)
 			}
-			assertEquals(t, tc.spec.ExtensionProviders, specv2.ExtensionProviders)
+			assertEquals(t, tc.spec.MeshConfig.ExtensionProviders, specv2.MeshConfig.ExtensionProviders)
 		})
 	}
 }
@@ -63,8 +63,10 @@ func extensionProvidersTestCasesV2(version versions.Version) []conversionExtensi
 		{
 			name: "empty." + ver,
 			spec: &v2.ControlPlaneSpec{
-				Version:            ver,
-				ExtensionProviders: []*v2.ExtensionProviderConfig{},
+				Version: ver,
+				MeshConfig: &v2.MeshConfig{
+					ExtensionProviders: []*v2.ExtensionProviderConfig{},
+				},
 			},
 			helmValues: `
 meshConfig:
@@ -75,10 +77,12 @@ meshConfig:
 			name: "prometheus." + ver,
 			spec: &v2.ControlPlaneSpec{
 				Version: ver,
-				ExtensionProviders: []*v2.ExtensionProviderConfig{
-					{
-						Name:       "prometheus",
-						Prometheus: &v2.ExtensionProviderPrometheusConfig{},
+				MeshConfig: &v2.MeshConfig{
+					ExtensionProviders: []*v2.ExtensionProviderConfig{
+						{
+							Name:       "prometheus",
+							Prometheus: &v2.ExtensionProviderPrometheusConfig{},
+						},
 					},
 				},
 			},
@@ -93,24 +97,26 @@ meshConfig:
 			name: "envoyExtAuthzHttp." + ver,
 			spec: &v2.ControlPlaneSpec{
 				Version: ver,
-				ExtensionProviders: []*v2.ExtensionProviderConfig{
-					{
-						Name: "ext-authz-http",
-						EnvoyExtAuthzHTTP: &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{
-							Service:                      "ext-authz.foo.svc.cluster.local",
-							Port:                         8000,
-							Timeout:                      strPtr("1s"),
-							PathPrefix:                   strPtr("/authz"),
-							FailOpen:                     boolPtr(true),
-							StatusOnError:                strPtr("500"),
-							IncludeRequestHeadersInCheck: []string{"x-ext-authz"},
-							IncludeAdditionalHeadersInCheck: map[string]string{
-								"x-ext-authz-additional-header": "value",
-							},
-							IncludeRequestBodyInCheck: &v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig{
-								MaxRequestBytes:     int64Ptr(100),
-								AllowPartialMessage: boolPtr(true),
-								PackAsBytes:         boolPtr(true),
+				MeshConfig: &v2.MeshConfig{
+					ExtensionProviders: []*v2.ExtensionProviderConfig{
+						{
+							Name: "ext-authz-http",
+							EnvoyExtAuthzHTTP: &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{
+								Service:                      "ext-authz.foo.svc.cluster.local",
+								Port:                         8000,
+								Timeout:                      strPtr("1s"),
+								PathPrefix:                   strPtr("/authz"),
+								FailOpen:                     boolPtr(true),
+								StatusOnError:                strPtr("500"),
+								IncludeRequestHeadersInCheck: []string{"x-ext-authz"},
+								IncludeAdditionalHeadersInCheck: map[string]string{
+									"x-ext-authz-additional-header": "value",
+								},
+								IncludeRequestBodyInCheck: &v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig{
+									MaxRequestBytes:     int64Ptr(100),
+									AllowPartialMessage: boolPtr(true),
+									PackAsBytes:         boolPtr(true),
+								},
 							},
 						},
 					},
@@ -141,17 +147,19 @@ meshConfig:
 			name: "prometheus-and-envoyExtAuthzHttp." + ver,
 			spec: &v2.ControlPlaneSpec{
 				Version: ver,
-				ExtensionProviders: []*v2.ExtensionProviderConfig{
-					{
-						Name: "ext-authz-http",
-						EnvoyExtAuthzHTTP: &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{
-							Service: "ext-authz.foo.svc.cluster.local",
-							Port:    8000,
+				MeshConfig: &v2.MeshConfig{
+					ExtensionProviders: []*v2.ExtensionProviderConfig{
+						{
+							Name: "ext-authz-http",
+							EnvoyExtAuthzHTTP: &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{
+								Service: "ext-authz.foo.svc.cluster.local",
+								Port:    8000,
+							},
 						},
-					},
-					{
-						Name:       "prometheus",
-						Prometheus: &v2.ExtensionProviderPrometheusConfig{},
+						{
+							Name:       "prometheus",
+							Prometheus: &v2.ExtensionProviderPrometheusConfig{},
+						},
 					},
 				},
 			},
