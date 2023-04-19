@@ -5,12 +5,11 @@ import (
 	"strconv"
 	"strings"
 
-	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
