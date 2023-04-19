@@ -304,10 +304,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 // `pilot.ca.implementation` is no longer used by helm charts, but it's necessary to be set to convert v1 to v2.
 // Otherwise, we wouldn't know which CA type should be set in v2 during conversion from v1.
 func populatePilotCAImplementation(values map[string]interface{}, security *v2.SecurityConfig) error {
-	if err := setHelmStringValue(values, "pilot.ca.implementation", string(security.CertificateAuthority.Type)); err != nil {
-		return fmt.Errorf("cert-manager ca config: failed converting CA implementation to helm: %s", err.Error())
-	}
-	return nil
+	return setHelmStringValue(values, "pilot.ca.implementation", string(security.CertificateAuthority.Type))
 }
 
 func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version versions.Version) error {
