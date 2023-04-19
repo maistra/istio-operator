@@ -1,7 +1,7 @@
 {{- define "sdNamespaces" }}
-{{- if gt (len .Values.prometheus.scrapingNamespaces) 0 }}
 namespaces:
   names:
+{{- if gt (len .Values.prometheus.scrapingNamespaces) 0 }}
 {{ toYaml .Values.prometheus.scrapingNamespaces | indent 2 }}
 {{- end }}
 {{- end }}
