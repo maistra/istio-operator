@@ -959,6 +959,8 @@ var conversionFromV2SecurityTestCases = []conversionFromV2TestCase{
 global:
   caAddress: my-istio-csr.namespace.svc.cluster.local
 pilot:
+  ca:
+    implementation: cert-manager
   env:
     ENABLE_CA_SERVER: "false"
   extraArgs:
@@ -998,6 +1000,8 @@ pilot:
 global:
   caAddress: my-istio-csr.namespace.svc.cluster.local
 pilot:
+  ca:
+    implementation: cert-manager
   env:
     ENABLE_CA_SERVER: "false"
 `),
@@ -1006,7 +1010,7 @@ pilot:
 
 func TestSecurityConversionFromV2ToV1(t *testing.T) {
 	for _, tc := range conversionFromV2SecurityTestCases {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name+"-v2_to_v1", func(t *testing.T) {
 			var specV1 v1.ControlPlaneSpec
 			if err := Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(tc.spec.DeepCopy(), &specV1, nil); err != nil {
 				t.Errorf("failed to convert SMCP v2 to v1: %s", err)
@@ -1015,6 +1019,18 @@ func TestSecurityConversionFromV2ToV1(t *testing.T) {
 			if !reflect.DeepEqual(tc.expectedHelmValues.DeepCopy(), specV1.Istio.DeepCopy()) {
 				t.Errorf("unexpected output converting v2 to values:\n\texpected:\n%#v\n\tgot:\n%#v", tc.expectedHelmValues.GetContent(), specV1.Istio.GetContent())
 			}
+		})
+
+		t.Run(tc.name+"-v1_to_v2", func(t *testing.T) {
+			specV1 := v1.ControlPlaneSpec{
+				Istio: tc.expectedHelmValues.DeepCopy(),
+			}
+			specV2 := v2.ControlPlaneSpec{}
+			if err := Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(&specV1, &specV2, nil); err != nil {
+				t.Errorf("failed to convert SMCP v1 to v2: %s", err)
+			}
+
+			assertEquals(t, tc.spec.Security, specV2.Security)
 		})
 	}
 }
