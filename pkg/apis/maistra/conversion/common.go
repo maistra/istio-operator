@@ -9,6 +9,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
@@ -250,4 +251,50 @@ func mapOfStringToInterface(in map[string]string) map[string]interface{} {
 		out[k] = v
 	}
 	return out
+}
+
+const defaultValues = `
+global:
+  meshExpansion:
+    enabled: false
+    useILB: false
+  multiCluster:
+    enabled: false
+    multiClusterOverrides:
+      expansionEnabled:
+      multiClusterEnabled:
+`
+
+func buildHelmValues(values string) v1.HelmValues {
+	var defaultGlobalValues v1.HelmValues
+	if err := defaultGlobalValues.UnmarshalYAML([]byte(defaultValues)); err != nil {
+		panic(fmt.Sprintf("failed to parse helm values: %s", err))
+	}
+	var out v1.HelmValues
+	if err := out.UnmarshalYAML([]byte(values)); err != nil {
+		panic(fmt.Sprintf("failed to parse helm values: %s", err))
+	}
+	mergeMaps(defaultGlobalValues.GetContent(), out.GetContent())
+	return out
+}
+
+func mergeMaps(source, target map[string]interface{}) {
+	for key, val := range source {
+		if targetvalue, ok := target[key]; ok {
+			if targetmap, ok := targetvalue.(map[string]interface{}); ok {
+				if valmap, ok := val.(map[string]interface{}); ok {
+					mergeMaps(valmap, targetmap)
+					continue
+				} else if valmap == nil {
+					delete(target, key)
+					continue
+				} else {
+					panic(fmt.Sprintf("trying to merge non-map into map: key=%v, value=:%v", key, val))
+				}
+			} else if _, ok := val.(map[string]interface{}); ok {
+				panic(fmt.Sprintf("trying to merge map into non-map: key=%v, value=:%v", key, targetvalue))
+			}
+		}
+		target[key] = val
+	}
 }
