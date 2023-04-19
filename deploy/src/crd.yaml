@@ -1540,54 +1540,6 @@ spec:
                   network:
                     type: string
                 type: object
-              extensionProviders:
-                items:
-                  properties:
-                    envoyExtAuthzHttp:
-                      properties:
-                        failOpen:
-                          type: boolean
-                        includeAdditionalHeadersInCheck:
-                          additionalProperties:
-                            type: string
-                          type: object
-                        includeRequestBodyInCheck:
-                          properties:
-                            allowPartialMessage:
-                              type: boolean
-                            maxRequestBytes:
-                              format: int64
-                              type: integer
-                            packAsBytes:
-                              type: boolean
-                          type: object
-                        includeRequestHeadersInCheck:
-                          items:
-                            type: string
-                          type: array
-                        pathPrefix:
-                          type: string
-                        port:
-                          format: int64
-                          type: integer
-                        service:
-                          type: string
-                        statusOnError:
-                          type: string
-                        timeout:
-                          type: string
-                      required:
-                      - port
-                      - service
-                      type: object
-                    name:
-                      type: string
-                    prometheus:
-                      type: object
-                  required:
-                  - name
-                  type: object
-                type: array
               gateways:
                 properties:
                   additionalEgress:
@@ -4091,6 +4043,57 @@ spec:
                   validationMessages:
                     type: boolean
                 type: object
+              meshConfig:
+                properties:
+                  extensionProviders:
+                    items:
+                      properties:
+                        envoyExtAuthzHttp:
+                          properties:
+                            failOpen:
+                              type: boolean
+                            includeAdditionalHeadersInCheck:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            includeRequestBodyInCheck:
+                              properties:
+                                allowPartialMessage:
+                                  type: boolean
+                                maxRequestBytes:
+                                  format: int64
+                                  type: integer
+                                packAsBytes:
+                                  type: boolean
+                              type: object
+                            includeRequestHeadersInCheck:
+                              items:
+                                type: string
+                              type: array
+                            pathPrefix:
+                              type: string
+                            port:
+                              format: int64
+                              type: integer
+                            service:
+                              type: string
+                            statusOnError:
+                              type: string
+                            timeout:
+                              type: string
+                          required:
+                          - port
+                          - service
+                          type: object
+                        name:
+                          type: string
+                        prometheus:
+                          type: object
+                      required:
+                      - name
+                      type: object
+                    type: array
+                type: object
               mode:
                 enum:
                 - MultiTenant
@@ -6471,54 +6474,6 @@ spec:
                       network:
                         type: string
                     type: object
-                  extensionProviders:
-                    items:
-                      properties:
-                        envoyExtAuthzHttp:
-                          properties:
-                            failOpen:
-                              type: boolean
-                            includeAdditionalHeadersInCheck:
-                              additionalProperties:
-                                type: string
-                              type: object
-                            includeRequestBodyInCheck:
-                              properties:
-                                allowPartialMessage:
-                                  type: boolean
-                                maxRequestBytes:
-                                  format: int64
-                                  type: integer
-                                packAsBytes:
-                                  type: boolean
-                              type: object
-                            includeRequestHeadersInCheck:
-                              items:
-                                type: string
-                              type: array
-                            pathPrefix:
-                              type: string
-                            port:
-                              format: int64
-                              type: integer
-                            service:
-                              type: string
-                            statusOnError:
-                              type: string
-                            timeout:
-                              type: string
-                          required:
-                          - port
-                          - service
-                          type: object
-                        name:
-                          type: string
-                        prometheus:
-                          type: object
-                      required:
-                      - name
-                      type: object
-                    type: array
                   gateways:
                     properties:
                       additionalEgress:
@@ -9021,6 +8976,57 @@ spec:
                         type: object
                       validationMessages:
                         type: boolean
+                    type: object
+                  meshConfig:
+                    properties:
+                      extensionProviders:
+                        items:
+                          properties:
+                            envoyExtAuthzHttp:
+                              properties:
+                                failOpen:
+                                  type: boolean
+                                includeAdditionalHeadersInCheck:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                includeRequestBodyInCheck:
+                                  properties:
+                                    allowPartialMessage:
+                                      type: boolean
+                                    maxRequestBytes:
+                                      format: int64
+                                      type: integer
+                                    packAsBytes:
+                                      type: boolean
+                                  type: object
+                                includeRequestHeadersInCheck:
+                                  items:
+                                    type: string
+                                  type: array
+                                pathPrefix:
+                                  type: string
+                                port:
+                                  format: int64
+                                  type: integer
+                                service:
+                                  type: string
+                                statusOnError:
+                                  type: string
+                                timeout:
+                                  type: string
+                              required:
+                              - port
+                              - service
+                              type: object
+                            name:
+                              type: string
+                            prometheus:
+                              type: object
+                          required:
+                          - name
+                          type: object
+                        type: array
                     type: object
                   mode:
                     enum:

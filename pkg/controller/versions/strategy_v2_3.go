@@ -716,6 +716,6 @@ func (v *versionStrategyV2_3) validateGlobal(
 			}
 		}
 	}
-	allErrors = checkExtensionProvidersNotSet(spec, allErrors)
+	allErrors = checkMeshConfigNotSet(spec, allErrors)
 	return validateGlobal(ctx, version, meta, spec, cl, allErrors)
 }
