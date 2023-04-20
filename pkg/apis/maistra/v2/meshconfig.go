@@ -30,5 +30,5 @@ type MeshConfig struct {
 	// ```
 	// Refer to the [kubernetes selector docs](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors)
 	// for additional detail on selector semantics.
-	DiscoverySelectors []*v1.LabelSelector `json:"discovery_selectors,omitempty"`
+	DiscoverySelectors []*v1.LabelSelector `json:"discoverySelectors,omitempty"`
 }
