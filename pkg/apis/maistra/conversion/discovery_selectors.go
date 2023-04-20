@@ -1,9 +1,10 @@
 package conversion
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func populateDiscoverySelectorsValues(in *v2.ControlPlaneSpec, out map[string]interface{}) error {
