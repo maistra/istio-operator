@@ -1693,6 +1693,17 @@ func (in *MeshConfig) DeepCopyInto(out *MeshConfig) {
 			}
 		}
 	}
+	if in.DiscoverySelectors != nil {
+		in, out := &in.DiscoverySelectors, &out.DiscoverySelectors
+		*out = make([]*metav1.LabelSelector, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(metav1.LabelSelector)
+				(*in).DeepCopyInto(*out)
+			}
+		}
+	}
 	return
 }
 

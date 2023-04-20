@@ -4045,7 +4045,7 @@ spec:
                 type: object
               meshConfig:
                 properties:
-                  discovery_selectors:
+                  discoverySelectors:
                     items:
                       properties:
                         matchExpressions:
@@ -9004,7 +9004,7 @@ spec:
                     type: object
                   meshConfig:
                     properties:
-                      discovery_selectors:
+                      discoverySelectors:
                         items:
                           properties:
                             matchExpressions:
