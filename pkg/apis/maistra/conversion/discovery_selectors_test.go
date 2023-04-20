@@ -88,10 +88,10 @@ meshConfig:
 							},
 						},
 						{
-							MatchExpressions: []*metav1.LabelSelectorRequirement{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
 								{
 									Key:      "app",
-									Operator: metav1.LabelSelectorOperatorIn,
+									Operator: metav1.LabelSelectorOpIn,
 									Values:   []string{"cassandra", "spark"},
 								},
 							},
@@ -113,5 +113,5 @@ meshConfig:
         - spark
 `,
 		},
-	},
+	}
 }
