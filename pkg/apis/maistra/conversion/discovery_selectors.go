@@ -12,19 +12,18 @@ func populateDiscoverySelectorsValues(in *v2.ControlPlaneSpec, out map[string]in
 		return nil
 	}
 
-	if len(in.MeshConfig.DiscoverySelectors) > 0 {
-		untypedSlice := make([]interface{}, len(in.MeshConfig.DiscoverySelectors))
-		for index, value := range in.MeshConfig.DiscoverySelectors {
-			untypedSlice[index] = value
-		}
-		if discoverySelectors, err := sliceToValues(untypedSlice); err == nil {
-			if err := setHelmValue(out, "meshConfig.discoverySelectors", discoverySelectors); err != nil {
-				return err
-			}
-		} else {
+	untypedSlice := make([]interface{}, len(in.MeshConfig.DiscoverySelectors))
+	for index, value := range in.MeshConfig.DiscoverySelectors {
+		untypedSlice[index] = value
+	}
+	if discoverySelectors, err := sliceToValues(untypedSlice); err == nil {
+		if err := setHelmValue(out, "meshConfig.discoverySelectors", discoverySelectors); err != nil {
 			return err
 		}
+	} else {
+		return err
 	}
+
 	return nil
 }
 

@@ -75,5 +75,43 @@ meshConfig:
   discoverySelectors: []
 `,
 		},
-	}
+		{
+			name: "discoverySelectors." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				MeshConfig: &v2.MeshConfig{
+					DiscoverySelectors: []*metav1.LabelSelector{
+						{
+							MatchLabels: map[string]string{
+								"env":    "prod",
+								"region": "us-east1",
+							},
+						},
+						{
+							MatchExpressions: []*metav1.LabelSelectorRequirement{
+								{
+									Key:      "app",
+									Operator: metav1.LabelSelectorOperatorIn,
+									Values:   []string{"cassandra", "spark"},
+								},
+							},
+						},
+					},
+				},
+			},
+			helmValues: `
+meshConfig:
+  discoverySelectors:
+  - matchLabels:
+      env: prod
+      region: us-east1
+  - matchExpressions:
+    - key: app
+      operator: In
+      values:
+        - cassandra
+        - spark
+`,
+		},
+	},
 }
