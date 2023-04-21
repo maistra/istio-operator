@@ -220,6 +220,13 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 		}
 	}
 
+	// Discovery Selectors
+	if version.AtLeast(versions.V2_4) {
+		if err := populateDiscoverySelectorsValues(in, values); err != nil {
+			return err
+		}
+	}
+
 	// Runtime - must run last as this will add values to existing child maps
 	if err := populateControlPlaneRuntimeValues(in.Runtime, values); err != nil {
 		return err

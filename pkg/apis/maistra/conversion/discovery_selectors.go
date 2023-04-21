@@ -17,35 +17,26 @@ func populateDiscoverySelectorsValues(in *v2.ControlPlaneSpec, out map[string]in
 		untypedSlice[index] = value
 	}
 	if discoverySelectors, err := sliceToValues(untypedSlice); err == nil {
-		if err := setHelmValue(out, "meshConfig.discoverySelectors", discoverySelectors); err != nil {
-			return err
-		}
+		return setHelmValue(out, "meshConfig.discoverySelectors", discoverySelectors)
 	} else {
 		return err
+
 	}
 
-	return nil
 }
 
 func populateDiscoverySelectorsConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
-	setDiscoverySelectors := false
-
-	discoverySelectors := []*metav1.LabelSelector{}
-	if ds, ok, err := in.GetFieldNoCopy("meshConfig.discoverySelectors"); ok {
+	var discoverySelectors []*metav1.LabelSelector
+	if ds, ok, err := in.GetAndRemoveSlice("meshConfig.discoverySelectors"); ok {
 		if err := fromValues(ds, &discoverySelectors); err != nil {
 			return err
 		}
-		setDiscoverySelectors = true
-		in.RemoveField("meshConfig.discoverySelectors")
-	} else if err != nil {
-		return err
-	}
-
-	if setDiscoverySelectors {
 		if out.MeshConfig == nil {
 			out.MeshConfig = &v2.MeshConfig{}
 		}
 		out.MeshConfig.DiscoverySelectors = discoverySelectors
+	} else if err != nil {
+		return err
 	}
-	return nil
+
 }

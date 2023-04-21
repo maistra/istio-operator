@@ -230,6 +230,13 @@ func Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(in *v1.ControlPlaneSpec,
 		}
 	}
 
+	// Discovery Selectors
+	if version.AtLeast(versions.V2_4) {
+		if err := populateDiscoverySelectorsConfig(values, out); err != nil {
+			return err
+		}
+	}
+
 	// Runtime
 	if err := populateControlPlaneRuntimeConfig(values, out); err != nil {
 		return err
