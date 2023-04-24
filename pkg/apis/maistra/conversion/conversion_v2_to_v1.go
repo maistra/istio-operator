@@ -218,10 +218,8 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 		if err := populateExtensionProvidersValues(in, values); err != nil {
 			return err
 		}
-	}
 
-	// Discovery Selectors
-	if version.AtLeast(versions.V2_4) {
+		// Discovery Selectors
 		if err := populateDiscoverySelectorsValues(in, values); err != nil {
 			return err
 		}

@@ -22,7 +22,6 @@ func populateDiscoverySelectorsValues(in *v2.ControlPlaneSpec, out map[string]in
 		return err
 
 	}
-
 }
 
 func populateDiscoverySelectorsConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
@@ -38,5 +37,5 @@ func populateDiscoverySelectorsConfig(in *v1.HelmValues, out *v2.ControlPlaneSpe
 	} else if err != nil {
 		return err
 	}
-
+	return nil
 }
