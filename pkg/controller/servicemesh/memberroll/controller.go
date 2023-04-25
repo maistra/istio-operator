@@ -767,15 +767,12 @@ func getNamespaces(members *maistrav1.ServiceMeshMemberList) []string {
 // Returns the Service Mesh ControlPlane mode
 // Used for the internal custom metrics
 func getMeshMode(mesh *maistrav2.ServiceMeshControlPlane) (string, error) {
-	isClusterWide, found, err := mesh.Status.AppliedValues.Istio.GetBool("global.clusterWide")
+	isClusterWide, _, err := mesh.Status.AppliedValues.Istio.GetBool("global.clusterWide")
 	if err != nil {
 		return "", err
-	}
-	if !found {
-		return internalmetrics.ControlPlaneModeValueMultiTenant, nil
 	}
 	if isClusterWide {
 		return internalmetrics.ControlPlaneModeValueClusterScoped, nil
 	}
-	return "", nil
+	return internalmetrics.ControlPlaneModeValueMultiTenant, nil
 }
