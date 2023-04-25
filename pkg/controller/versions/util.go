@@ -92,6 +92,12 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, s
 	}
 	return allErrors
 }
+func checkDiscoverySelectorsisClusterWide(spec *v2.ControlPlaneSpec, Version, allErrors []error) []error {
+	if spec.MeshConfig.DiscoverySelectors != nil {
+		return append(allErrors, fmt.Errorf("the spec.discoverySelectors must be set for ClusterWide"))
+	}
+	return allErrors
+}
 
 func validatePrometheusEnabledWhenKialiEnabled(spec *v2.ControlPlaneSpec, allErrors []error) []error {
 	if spec.IsKialiEnabled() && !spec.IsPrometheusEnabled() {
