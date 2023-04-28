@@ -94,7 +94,7 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, s
 }
 func checkDiscoverySelectorsisClusterWide(spec *v2.ControlPlaneSpec, Version, allErrors []error) []error {
 	if spec.MeshConfig.DiscoverySelectors != nil {
-		return append(allErrors, fmt.Errorf("the spec.discoverySelectors must be set for ClusterWide"))
+		return append(allErrors, fmt.Errorf("the spec.meshConfig.discoverySelectors must be set for ClusterWide"))
 	}
 	return allErrors
 }
