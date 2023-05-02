@@ -228,14 +228,6 @@ spec:
 {{ toYaml $mesh.defaultConfig | trim | indent 14 }}
 {{- end }}
 {{- end }}
-          - name: ISTIO_META_DNS_CAPTURE
-            value: "true"
-          - name: ISTIO_META_DNS_AUTO_ALLOCATE
-            value: "true"
-          - name: PROXY_XDS_VIA_AGENT
-            value: "true"
-          - name: ISTIO_META_UNPRIVILEGED_POD
-            value: "true"
           - name: JWT_POLICY
             value: {{ .Values.global.jwtPolicy }}
           - name: PILOT_CERT_PROVIDER
