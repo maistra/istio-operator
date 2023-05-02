@@ -217,7 +217,6 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
-			internalmetrics.ResetMeshMembers()
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object
@@ -238,6 +237,26 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 				// Don't remove the finalizer and return with no errors. Another reconcile
 				// attempt will be triggered when the ServiceMeshMember object deletion event arrives.
 				return reconcile.Result{}, nil
+			}
+			// Fetch associated control plane object
+			// for deleting properly the ServiceMeshMemberRoll metric.
+			controlPlane, err := r.fetchControlPlane(ctx, object.Namespace)
+			if err != nil {
+				if errors.IsNotFound(err) {
+					// Request controlPlane object not found, could have been deleted after reconcile request.
+					return reconcile.Result{}, nil
+				}
+				// Error reading the controlPlane object
+				return reconcile.Result{}, err
+			}
+			if controlPlane != nil {
+				meshNamespace := controlPlane.GetNamespace()
+				meshVersion := controlPlane.Spec.Version
+				meshMode, err := getMeshMode(controlPlane)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
+				internalmetrics.DeleteMeshMembersWithLabelsValues(meshNamespace, meshVersion, meshMode)
 			}
 			err = common.RemoveFinalizer(ctx, object, r.Client)
 			return reconcile.Result{}, err
@@ -274,10 +293,8 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 	switch len(meshList.Items) {
 	case 0:
 		mesh = nil
-		internalmetrics.ResetMeshMembers()
 	case 1:
 		mesh = &meshList.Items[0]
-		internalmetrics.ResetMeshMembers()
 	default: // more than 1 SMCP found
 		reason := maistrav1.ConditionReasonMultipleSMCP
 		message := "Multiple ServiceMeshControlPlane resources exist in the namespace"
@@ -454,11 +471,18 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		return common.RequeueWithError(prometheusErr)
 	}
 	if mesh != nil {
+		meshNamespace := mesh.GetNamespace()
+		meshVersion := mesh.Spec.Version
 		meshMode, err := getMeshMode(mesh)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		internalmetrics.GetMeshMembers(mesh.GetNamespace(), mesh.Spec.Version, meshMode).Set(float64(len(roll.Status.ConfiguredMembers)))
+		// Control plane mode would not be well set yet
+		if meshMode == "" {
+			return reconcile.Result{}, nil
+		}
+		internalmetrics.GetMeshMembers(meshNamespace, meshVersion, meshMode).
+			Set(float64(len(roll.Status.ConfiguredMembers)))
 	}
 	return reconcile.Result{}, nil
 }
@@ -775,4 +799,24 @@ func getMeshMode(mesh *maistrav2.ServiceMeshControlPlane) (string, error) {
 		return internalmetrics.ControlPlaneModeValueClusterScoped, nil
 	}
 	return internalmetrics.ControlPlaneModeValueMultiTenant, nil
+}
+
+// Fetchs the associated Service Mesh ControlPlane of the MemberRoll
+// Used for the internal custom metrics
+func (r *MemberRollReconciler) fetchControlPlane(ctx context.Context, controlPlaneNamespace string) (*maistrav2.ServiceMeshControlPlane, error) {
+	var mesh *maistrav2.ServiceMeshControlPlane
+	meshList := &maistrav2.ServiceMeshControlPlaneList{}
+	err := r.Client.List(ctx, meshList, client.InNamespace(controlPlaneNamespace))
+	if err != nil {
+		return nil, pkgerrors.Wrap(err, "Error retrieving ServiceMeshControlPlane resources")
+	}
+	switch len(meshList.Items) {
+	case 0:
+		mesh = nil
+	case 1:
+		mesh = &meshList.Items[0]
+	default: // more than 1 SMCP found
+		return nil, pkgerrors.Wrap(err, "Multiple ServiceMeshControlPlane resources exist in the namespace")
+	}
+	return mesh, nil
 }

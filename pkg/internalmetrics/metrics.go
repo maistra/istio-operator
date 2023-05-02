@@ -50,6 +50,10 @@ func GetMeshMembers(smcpNamespace, smcpVersion, smcpMode string) prometheus.Gaug
 	})
 }
 
-func ResetMeshMembers() {
-	Metrics.MeshMembers.Reset()
+func DeleteMeshMembersWithLabelsValues(smcpNamespace, smcpVersion, smcpMode string) bool {
+	return Metrics.MeshMembers.Delete(prometheus.Labels{
+		labelSMCPNamespace: smcpNamespace,
+		labelSMCPVersion:   smcpVersion,
+		labelSMCPMode:      smcpMode,
+	})
 }
