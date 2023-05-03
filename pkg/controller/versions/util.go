@@ -58,6 +58,12 @@ func checkMeshConfigNotSet(spec *v2.ControlPlaneSpec, allErrors []error) []error
 	return allErrors
 }
 
+func checkDiscoverySelectorsNotSet(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.MeshConfig.DiscoverySelectors != nil {
+		return append(allErrors, fmt.Errorf("the spec.MeshConfig.DiscoverySelectors field is only supported in version 2.4 and above"))
+	}
+	return allErrors
+}
 func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, cl client.Client, allErrors []error) []error {
 	isClusterScoped, err := version.Strategy().IsClusterScoped(spec)
 	if err != nil {
@@ -89,6 +95,12 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, s
 					fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"))
 			}
 		}
+	}
+	return allErrors
+}
+func checkDiscoverySelectorsisClusterWide(spec *v2.ControlPlaneSpec, Version, allErrors []error) []error {
+	if spec.MeshConfig.DiscoverySelectors != nil {
+		return append(allErrors, fmt.Errorf("the spec.meshConfig.discoverySelectors must be set for ClusterWide"))
 	}
 	return allErrors
 }
