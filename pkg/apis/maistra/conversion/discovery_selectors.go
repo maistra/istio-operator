@@ -20,7 +20,6 @@ func populateDiscoverySelectorsValues(in *v2.ControlPlaneSpec, out map[string]in
 		return setHelmValue(out, "meshConfig.discoverySelectors", discoverySelectors)
 	} else {
 		return err
-
 	}
 }
 
