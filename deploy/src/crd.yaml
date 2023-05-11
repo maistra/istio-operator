@@ -4045,6 +4045,31 @@ spec:
                 type: object
               meshConfig:
                 properties:
+                  discoverySelectors:
+                    items:
+                      properties:
+                        matchExpressions:
+                          items:
+                            properties:
+                              key:
+                                type: string
+                              operator:
+                                type: string
+                              values:
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                            - key
+                            - operator
+                            type: object
+                          type: array
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          type: object
+                      type: object
+                    type: array
                   extensionProviders:
                     items:
                       properties:
@@ -8979,6 +9004,31 @@ spec:
                     type: object
                   meshConfig:
                     properties:
+                      discoverySelectors:
+                        items:
+                          properties:
+                            matchExpressions:
+                              items:
+                                properties:
+                                  key:
+                                    type: string
+                                  operator:
+                                    type: string
+                                  values:
+                                    items:
+                                      type: string
+                                    type: array
+                                required:
+                                - key
+                                - operator
+                                type: object
+                              type: array
+                            matchLabels:
+                              additionalProperties:
+                                type: string
+                              type: object
+                          type: object
+                        type: array
                       extensionProviders:
                         items:
                           properties:

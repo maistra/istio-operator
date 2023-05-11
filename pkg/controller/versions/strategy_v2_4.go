@@ -738,6 +738,7 @@ func (v *versionStrategyV2_4) validateGlobal(
 		}
 	}
 
+	allErrors = checkDiscoverySelectors(spec, allErrors)
 	return validateGlobal(ctx, version, meta, spec, cl, allErrors)
 }
 

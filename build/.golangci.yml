@@ -102,7 +102,6 @@ linters-settings:
     - name: imports-blacklist
     - name: increment-decrement
     - name: identical-branches
-    - name: indent-error-flow
     - name: modifies-value-receiver
     - name: package-comments
     - name: range
