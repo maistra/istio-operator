@@ -1,0 +1,14 @@
+apiVersion: maistra.io/v1
+kind: IstioHelmInstall
+metadata:
+  labels:
+    app.kubernetes.io/name: istiohelminstall
+    app.kubernetes.io/instance: istiohelminstall-sample
+    app.kubernetes.io/part-of: sail-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: sail-operator
+  name: istiohelminstall-sample
+spec:
+  version: v3.0
+  values: {}
+

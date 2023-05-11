@@ -1,0 +1,27 @@
+# permissions for end users to view istiohelminstalls.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: istiohelminstall-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: sail-operator
+    app.kubernetes.io/part-of: sail-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: istiohelminstall-viewer-role
+rules:
+- apiGroups:
+  - maistra.io
+  resources:
+  - istiohelminstalls
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - maistra.io
+  resources:
+  - istiohelminstalls/status
+  verbs:
+  - get
