@@ -68,6 +68,8 @@ func (r *defaultPrometheusReconciler) reconcilePrometheus(ctx context.Context, p
 		return pkgerrors.Wrap(err, "error getting scrape_configs from ConfigMap")
 	}
 
+	scrapingMembers := append(members, prometheusNamespace)
+
 	for _, s := range scrapes {
 		scrape, ok := s.(map[string]interface{})
 
@@ -92,7 +94,7 @@ func (r *defaultPrometheusReconciler) reconcilePrometheus(ctx context.Context, p
 						if ok {
 							reqLogger.Info(fmt.Sprintf("Updating sd %v", v))
 
-							err = unstructured.SetNestedStringSlice(sd, members, "namespaces", "names")
+							err = unstructured.SetNestedStringSlice(sd, scrapingMembers, "namespaces", "names")
 
 							if err != nil {
 								return pkgerrors.Wrap(err, fmt.Sprintf("error setting sd %v", v))
@@ -135,10 +137,10 @@ func (r *defaultPrometheusReconciler) reconcilePrometheus(ctx context.Context, p
 			reqLogger.Info(fmt.Sprintf("skipping Prometheus update, %s/%s is no longer available", prometheusNamespace, prometheusCMName))
 			return nil
 		}
-		return pkgerrors.Wrapf(err, "cannot update Prometheus ConfigMap %s/%s with namespaces %v", prometheusNamespace, prometheusCMName, members)
+		return pkgerrors.Wrapf(err, "cannot update Prometheus ConfigMap %s/%s with namespaces %v", prometheusNamespace, prometheusCMName, scrapingMembers)
 	}
 
-	reqLogger.Info("Prometheus ConfigMap scraping namespaces updated", "namespaces", members)
+	reqLogger.Info("Prometheus ConfigMap scraping namespaces updated", "namespaces", scrapingMembers)
 
 	return nil
 }
