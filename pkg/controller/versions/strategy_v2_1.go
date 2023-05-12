@@ -627,5 +627,6 @@ func validateAndConfigureRLS(spec *v1.HelmValues) error {
 
 func (v *versionStrategyV2_1) validateGlobal(spec *v2.ControlPlaneSpec, allErrors []error) []error {
 	allErrors = checkControlPlaneModeNotSet(spec, allErrors)
-	return checkExtensionProvidersNotSet(spec, allErrors)
+	allErrors = checkDiscoverySelectorsNotSet(spec, allErrors)
+	return checkMeshConfigNotSet(spec, allErrors)
 }

@@ -10,7 +10,7 @@ metadata:
   name: {{ $gateway.name | default "istio-egressgateway" }}
   namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
-    maistra-version: "2.3.3"
+    maistra-version: "2.3.4"
 {{ $gateway.labels | toYaml | indent 4 }}
     release: {{ .Release.Name }}
     istio.io/rev: {{ .Values.revision | default "default" }}
@@ -67,6 +67,9 @@ spec:
       containers:
         - name: istio-proxy
           image: auto
+{{- if .Values.global.imagePullPolicy }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+{{- end }}
           ports:
             {{- range $key, $val := $gateway.ports }}
             - containerPort: {{ $val.targetPort | default $val.port }}

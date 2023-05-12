@@ -101,49 +101,6 @@ func securityTestCasesV2(version versions.Version) []conversionTestCase {
 		}
 	}
 
-	pilotValuesForCertManager := map[string]interface{}{
-		"ca": map[string]interface{}{"implementation": "cert-manager"},
-	}
-	if version.Version() >= versions.V2_4 {
-		pilotValuesForCertManager["extraArgs"] = []string{
-			"--tlsCertFile=/var/run/secrets/istiod/tls/tls.crt",
-			"--tlsKeyFile=/var/run/secrets/istiod/tls/tls.key",
-			"--caCertFile=/var/run/secrets/istiod/ca/root-cert.pem",
-		}
-	} else {
-		pilotValuesForCertManager["extraArgs"] = []string{
-			"--tlsCertFile=/etc/cert-manager/tls/tls.crt",
-			"--tlsKeyFile=/etc/cert-manager/tls/tls.key",
-			"--caCertFile=/etc/cert-manager/ca/root-cert.pem",
-		}
-		pilotValuesForCertManager["extraVolumeMounts"] = []interface{}{
-			map[string]interface{}{
-				"name":      "cert-manager",
-				"mountPath": "/etc/cert-manager/tls",
-				"readOnly":  true,
-			},
-			map[string]interface{}{
-				"name":      "ca-root-cert",
-				"mountPath": "/etc/cert-manager/ca",
-				"readOnly":  true,
-			},
-		}
-		pilotValuesForCertManager["extraVolumes"] = []interface{}{
-			map[string]interface{}{
-				"name": "cert-manager",
-				"secret": map[string]interface{}{
-					"secretName": "istiod-tls",
-				},
-			},
-			map[string]interface{}{
-				"name": "ca-root-cert",
-				"configMap": map[string]interface{}{
-					"name": "istio-ca-root-cert",
-				},
-			},
-		}
-	}
-
 	return []conversionTestCase{
 		{
 			name: "nil." + ver,
@@ -652,68 +609,6 @@ func securityTestCasesV2(version versions.Version) []conversionTestCase {
 			}),
 		},
 		{
-			name: "ca.cert-manager.basic" + ver,
-			spec: &v2.ControlPlaneSpec{
-				Version: ver,
-				Security: &v2.SecurityConfig{
-					CertificateAuthority: &v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeCertManager,
-						CertManager: &v2.CertManagerCertificateAuthorityConfig{
-							Address: "my-istio-csr.namespace.svc.cluster.local",
-						},
-					},
-				},
-			},
-			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-				"global": map[string]interface{}{
-					"caAddress": "my-istio-csr.namespace.svc.cluster.local",
-				},
-				"pilot": pilotValuesForCertManager,
-			}),
-			completeIstio: v1.NewHelmValues(map[string]interface{}{
-				"global": map[string]interface{}{
-					"multiCluster":  globalMultiClusterDefaults,
-					"meshExpansion": globalMeshExpansionDefaults,
-				},
-				"pilot": map[string]interface{}{
-					"env": map[string]interface{}{
-						"ENABLE_CA_SERVER": "false",
-					},
-				},
-			}),
-		},
-		{
-			name: "ca.cert-manager.casuppiled" + ver,
-			spec: &v2.ControlPlaneSpec{
-				Version: ver,
-				Security: &v2.SecurityConfig{
-					CertificateAuthority: &v2.CertificateAuthorityConfig{
-						Type: v2.CertificateAuthorityTypeCertManager,
-						CertManager: &v2.CertManagerCertificateAuthorityConfig{
-							Address: "my-istio-csr.namespace.svc.cluster.local",
-						},
-					},
-				},
-			},
-			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-				"global": map[string]interface{}{
-					"caAddress": "my-istio-csr.namespace.svc.cluster.local",
-				},
-				"pilot": pilotValuesForCertManager,
-			}),
-			completeIstio: v1.NewHelmValues(map[string]interface{}{
-				"global": map[string]interface{}{
-					"multiCluster":  globalMultiClusterDefaults,
-					"meshExpansion": globalMeshExpansionDefaults,
-				},
-				"pilot": map[string]interface{}{
-					"env": map[string]interface{}{
-						"ENABLE_CA_SERVER": "false",
-					},
-				},
-			}),
-		},
-		{
 			name: "identity.kubernetes." + ver,
 			spec: &v2.ControlPlaneSpec{
 				Version: ver,
@@ -1036,6 +931,106 @@ func TestSecurityConversionFromV2(t *testing.T) {
 				t.Fatalf("error converting from values: %s", err)
 			}
 			assertEquals(t, tc.spec.Security, specv2.Security)
+		})
+	}
+}
+
+type conversionFromV2TestCase struct {
+	name               string
+	spec               *v2.ControlPlaneSpec
+	expectedHelmValues v1.HelmValues
+}
+
+var conversionFromV2SecurityTestCases = []conversionFromV2TestCase{
+	{
+		name: "ca.cert-manager.v2_3",
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_3.String(),
+			Security: &v2.SecurityConfig{
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeCertManager,
+					CertManager: &v2.CertManagerCertificateAuthorityConfig{
+						Address: "my-istio-csr.namespace.svc.cluster.local",
+					},
+				},
+			},
+		},
+		expectedHelmValues: buildHelmValues(`
+global:
+  caAddress: my-istio-csr.namespace.svc.cluster.local
+pilot:
+  ca:
+    implementation: cert-manager
+  env:
+    ENABLE_CA_SERVER: "false"
+  extraArgs:
+  - "--tlsCertFile=/etc/cert-manager/tls/tls.crt"
+  - "--tlsKeyFile=/etc/cert-manager/tls/tls.key"
+  - "--caCertFile=/etc/cert-manager/ca/root-cert.pem"
+  extraVolumeMounts:
+  - name: cert-manager
+    mountPath: /etc/cert-manager/tls
+    readOnly: true
+  - name: ca-root-cert
+    mountPath: /etc/cert-manager/ca
+    readOnly: true
+  extraVolumes:
+  - name: cert-manager
+    secret:
+      secretName: istiod-tls
+  - name: ca-root-cert
+    configMap:
+      name: istio-ca-root-cert
+`),
+	},
+	{
+		name: "ca.cert-manager.v2_4",
+		spec: &v2.ControlPlaneSpec{
+			Version: versions.V2_4.String(),
+			Security: &v2.SecurityConfig{
+				CertificateAuthority: &v2.CertificateAuthorityConfig{
+					Type: v2.CertificateAuthorityTypeCertManager,
+					CertManager: &v2.CertManagerCertificateAuthorityConfig{
+						Address: "my-istio-csr.namespace.svc.cluster.local",
+					},
+				},
+			},
+		},
+		expectedHelmValues: buildHelmValues(`
+global:
+  caAddress: my-istio-csr.namespace.svc.cluster.local
+pilot:
+  ca:
+    implementation: cert-manager
+  env:
+    ENABLE_CA_SERVER: "false"
+`),
+	},
+}
+
+func TestSecurityConversionFromV2ToV1(t *testing.T) {
+	for _, tc := range conversionFromV2SecurityTestCases {
+		t.Run(tc.name+"-v2_to_v1", func(t *testing.T) {
+			var specV1 v1.ControlPlaneSpec
+			if err := Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(tc.spec.DeepCopy(), &specV1, nil); err != nil {
+				t.Errorf("failed to convert SMCP v2 to v1: %s", err)
+			}
+
+			if !reflect.DeepEqual(tc.expectedHelmValues.DeepCopy(), specV1.Istio.DeepCopy()) {
+				t.Errorf("unexpected output converting v2 to values:\n\texpected:\n%#v\n\tgot:\n%#v", tc.expectedHelmValues.GetContent(), specV1.Istio.GetContent())
+			}
+		})
+
+		t.Run(tc.name+"-v1_to_v2", func(t *testing.T) {
+			specV1 := v1.ControlPlaneSpec{
+				Istio: tc.expectedHelmValues.DeepCopy(),
+			}
+			specV2 := v2.ControlPlaneSpec{}
+			if err := Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(&specV1, &specV2, nil); err != nil {
+				t.Errorf("failed to convert SMCP v1 to v2: %s", err)
+			}
+
+			assertEquals(t, tc.spec.Security, specV2.Security)
 		})
 	}
 }

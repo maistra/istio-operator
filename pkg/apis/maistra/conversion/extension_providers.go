@@ -6,12 +6,12 @@ import (
 )
 
 func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[string]interface{}) error {
-	if in.ExtensionProviders == nil {
+	if in.MeshConfig == nil || in.MeshConfig.ExtensionProviders == nil {
 		return nil
 	}
 
 	var extensionProvidersValues []map[string]interface{}
-	for _, provider := range in.ExtensionProviders {
+	for _, provider := range in.MeshConfig.ExtensionProviders {
 		if provider.Prometheus != nil {
 			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
 				"name":       provider.Name,
@@ -75,11 +75,14 @@ func populateExtensionProvidersConfig(in *v1.HelmValues, out *v2.ControlPlaneSpe
 		return nil
 	}
 
-	out.ExtensionProviders = []*v2.ExtensionProviderConfig{}
+	if out.MeshConfig == nil {
+		out.MeshConfig = &v2.MeshConfig{}
+	}
+	out.MeshConfig.ExtensionProviders = []*v2.ExtensionProviderConfig{}
 	for _, rawProvider := range rawProviders {
 		if provider, ok := rawProvider.(map[string]interface{}); ok {
 			if _, ok := provider["prometheus"]; ok {
-				out.ExtensionProviders = append(out.ExtensionProviders, &v2.ExtensionProviderConfig{
+				out.MeshConfig.ExtensionProviders = append(out.MeshConfig.ExtensionProviders, &v2.ExtensionProviderConfig{
 					Name:       provider["name"].(string),
 					Prometheus: &v2.ExtensionProviderPrometheusConfig{},
 				})
@@ -122,7 +125,7 @@ func populateExtensionProvidersConfig(in *v1.HelmValues, out *v2.ControlPlaneSpe
 							}
 						}
 					}
-					out.ExtensionProviders = append(out.ExtensionProviders, &v2.ExtensionProviderConfig{
+					out.MeshConfig.ExtensionProviders = append(out.MeshConfig.ExtensionProviders, &v2.ExtensionProviderConfig{
 						Name:              provider["name"].(string),
 						EnvoyExtAuthzHTTP: config,
 					})

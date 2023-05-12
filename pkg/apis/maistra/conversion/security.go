@@ -55,7 +55,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 		switch security.CertificateAuthority.Type {
 		case v2.CertificateAuthorityTypeIstiod:
 			istiod := security.CertificateAuthority.Istiod
-			if err := setHelmStringValue(values, "pilot.ca.implementation", string(security.CertificateAuthority.Type)); err != nil {
+			if err := populatePilotCAImplementation(values, security); err != nil {
 				return err
 			}
 			if istiod == nil {
@@ -130,7 +130,7 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			}
 		case v2.CertificateAuthorityTypeCustom:
 			custom := security.CertificateAuthority.Custom
-			if err := setHelmStringValue(values, "pilot.ca.implementation", string(security.CertificateAuthority.Type)); err != nil {
+			if err := populatePilotCAImplementation(values, security); err != nil {
 				return err
 			}
 			if custom == nil {
@@ -140,8 +140,8 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 				return err
 			}
 		case v2.CertificateAuthorityTypeCertManager:
-			if err := setHelmStringValue(values, "pilot.ca.implementation", string(security.CertificateAuthority.Type)); err != nil {
-				return fmt.Errorf("cert-manager ca config: failed converting CA implementation to helm: %s", err.Error())
+			if err := populatePilotCAImplementation(values, security); err != nil {
+				return fmt.Errorf("cert-manager ca config: failed to set pilot CA implementation: %s", err)
 			}
 
 			certManagerConf := security.CertificateAuthority.CertManager
@@ -156,16 +156,8 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 			addEnvToComponent(in, "pilot", "ENABLE_CA_SERVER", "false")
 
 			// Istio 1.16+ has configured optional volumes and volume mounts for TLS certs provided by istio-csr
-			// and there is no need to configure them when "well known" paths are used.
-			if version.Compare(versions.V2_4) >= 0 {
-				extraArgs := []string{
-					"--tlsCertFile=/var/run/secrets/istiod/tls/tls.crt",
-					"--tlsKeyFile=/var/run/secrets/istiod/tls/tls.key",
-					"--caCertFile=/var/run/secrets/istiod/ca/root-cert.pem",
-				}
-				if err := setHelmStringSliceValue(values, "pilot.extraArgs", extraArgs); err != nil {
-					return fmt.Errorf("cert-manager ca config: failed setting extra args in helm chart : %s", err.Error())
-				}
+			// and there is no need to configure them when certs are created under "well known" paths
+			if version.AtLeast(versions.V2_4) {
 				break
 			}
 
@@ -307,6 +299,12 @@ func populateSecurityValues(in *v2.ControlPlaneSpec, values map[string]interface
 	}
 
 	return nil
+}
+
+// `pilot.ca.implementation` is no longer used by helm charts, but it's necessary to be set to convert v1 to v2.
+// Otherwise, we wouldn't know which CA type should be set in v2 during conversion from v1.
+func populatePilotCAImplementation(values map[string]interface{}, security *v2.SecurityConfig) error {
+	return setHelmStringValue(values, "pilot.ca.implementation", string(security.CertificateAuthority.Type))
 }
 
 func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version versions.Version) error {
@@ -498,6 +496,7 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version
 		} else if err != nil {
 			return err
 		}
+
 	case v2.CertificateAuthorityTypeCertManager:
 		setCA = true
 		ca.Type = v2.CertificateAuthorityTypeCertManager
@@ -507,30 +506,6 @@ func populateSecurityConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec, version
 			}
 		} else if err != nil {
 			return err
-		}
-
-		if _, ok, err := in.GetAndRemoveSlice("pilot.extraArgs"); !ok {
-			if err != nil {
-				return err
-			}
-		}
-
-		if _, ok, err := in.GetAndRemoveSlice("pilot.extraVolumeMounts"); !ok {
-			if err != nil {
-				return err
-			}
-		}
-
-		if _, ok, err := in.GetAndRemoveSlice("pilot.extraVolumes"); !ok {
-			if err != nil {
-				return err
-			}
-		}
-
-		if _, ok, err := getAndClearComponentEnv(in, "pilot", "ENABLE_CA_SERVER"); !ok {
-			if err != nil {
-				return err
-			}
 		}
 
 	case "":

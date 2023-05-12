@@ -218,6 +218,11 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 		if err := populateExtensionProvidersValues(in, values); err != nil {
 			return err
 		}
+
+		// Discovery Selectors
+		if err := populateDiscoverySelectorsValues(in, values); err != nil {
+			return err
+		}
 	}
 
 	// Runtime - must run last as this will add values to existing child maps

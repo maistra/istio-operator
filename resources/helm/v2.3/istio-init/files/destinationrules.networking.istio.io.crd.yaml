@@ -4,7 +4,7 @@ metadata:
   annotations:
     "helm.sh/resource-policy": keep
   labels:
-    maistra-version: "2.3.3"
+    maistra-version: "2.3.4"
     app: istio-pilot
     chart: istio
     heritage: Tiller

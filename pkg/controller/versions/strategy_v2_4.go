@@ -199,10 +199,10 @@ func (v *versionStrategyV2_4) validateAddons(spec *v2.ControlPlaneSpec, allError
 }
 
 func (v *versionStrategyV2_4) validateExtensionProviders(spec *v2.ControlPlaneSpec, allErrors []error) []error {
-	if spec.ExtensionProviders == nil {
+	if spec.MeshConfig == nil || spec.MeshConfig.ExtensionProviders == nil {
 		return allErrors
 	}
-	for _, ext := range spec.ExtensionProviders {
+	for _, ext := range spec.MeshConfig.ExtensionProviders {
 		if ext.Prometheus == nil && ext.EnvoyExtAuthzHTTP == nil {
 			allErrors = append(allErrors, fmt.Errorf("extension provider '%s' does not define any provider - "+
 				"it must specify one of: prometheus or envoyExtAuthzHttp", ext.Name))
@@ -766,6 +766,7 @@ func (v *versionStrategyV2_4) validateGlobal(
 		}
 	}
 
+	allErrors = checkDiscoverySelectors(spec, allErrors)
 	return validateGlobal(ctx, version, meta, spec, cl, allErrors)
 }
 

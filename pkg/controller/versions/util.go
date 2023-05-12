@@ -51,9 +51,16 @@ func checkControlPlaneModeNotSet(spec *v2.ControlPlaneSpec, allErrors []error) [
 	return allErrors
 }
 
-func checkExtensionProvidersNotSet(spec *v2.ControlPlaneSpec, allErrors []error) []error {
-	if spec.ExtensionProviders != nil {
-		return append(allErrors, fmt.Errorf("the spec.extensionProviders field is only supported in version 2.4 and above"))
+func checkMeshConfigNotSet(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.MeshConfig != nil {
+		return append(allErrors, fmt.Errorf("the spec.meshConfig field is only supported in version 2.4 and above"))
+	}
+	return allErrors
+}
+
+func checkDiscoverySelectorsNotSet(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.MeshConfig != nil && spec.MeshConfig.DiscoverySelectors != nil {
+		return append(allErrors, fmt.Errorf("the spec.meshConfig.discoverySelectors field is only supported in version 2.4 and above"))
 	}
 	return allErrors
 }
@@ -89,6 +96,13 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, s
 					fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"))
 			}
 		}
+	}
+	return allErrors
+}
+
+func checkDiscoverySelectors(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.Mode != v2.ClusterWideMode && spec.MeshConfig != nil && spec.MeshConfig.DiscoverySelectors != nil {
+		return append(allErrors, fmt.Errorf("spec.meshConfig.discoverySelectors may only be used when spec.mode is ClusterWide"))
 	}
 	return allErrors
 }

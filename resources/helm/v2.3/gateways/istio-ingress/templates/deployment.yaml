@@ -76,7 +76,7 @@ metadata:
   namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
     maistra.io/gateway: {{ $gateway.name | default "istio-ingressgateway" }}.{{ $gateway.namespace | default .Release.Namespace }}
-    maistra-version: "2.3.3"
+    maistra-version: "2.3.4"
 {{ $gateway.labels | toYaml | indent 4 }}
     release: {{ .Release.Name }}
     istio.io/rev: {{ .Values.revision | default "default" }}
@@ -228,14 +228,6 @@ spec:
 {{ toYaml $mesh.defaultConfig | trim | indent 14 }}
 {{- end }}
 {{- end }}
-          - name: ISTIO_META_DNS_CAPTURE
-            value: "true"
-          - name: ISTIO_META_DNS_AUTO_ALLOCATE
-            value: "true"
-          - name: PROXY_XDS_VIA_AGENT
-            value: "true"
-          - name: ISTIO_META_UNPRIVILEGED_POD
-            value: "true"
           - name: JWT_POLICY
             value: {{ .Values.global.jwtPolicy }}
           - name: PILOT_CERT_PROVIDER
