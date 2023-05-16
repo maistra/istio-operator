@@ -47,7 +47,7 @@ func TestDefaultInstall(t *testing.T) {
 			},
 		},
 	}
-	for _, v := range versions.AllV2Versions {
+	for _, v := range versions.TestedVersions {
 		if v.AtLeast(versions.V2_3) {
 			testCases = append(testCases, IntegrationTestCase{
 				name: "default." + v.String(),
@@ -96,22 +96,20 @@ func TestBootstrapping(t *testing.T) {
 	}
 
 	var testCases []testCase
-	for _, v := range versions.AllV2Versions {
-		if v.AtLeast(versions.V2_2) {
-			testCases = append(testCases, testCase{
-				version: v,
-				smcp: &maistrav2.ServiceMeshControlPlane{
-					ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
-					Spec: maistrav2.ControlPlaneSpec{
-						Version:  v.String(),
-						Profiles: []string{"maistra"},
-					},
+	for _, v := range versions.TestedVersions {
+		testCases = append(testCases, testCase{
+			version: v,
+			smcp: &maistrav2.ServiceMeshControlPlane{
+				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
+				Spec: maistrav2.ControlPlaneSpec{
+					Version:  v.String(),
+					Profiles: []string{"maistra"},
 				},
-				cniDaemonSetName:        cniDaemonSetNames[v],
-				crdCount:                19,
-				unexpectedCNIDaemonSets: unexpectedCNIDaemonSetNames(cniDaemonSetNames, v),
-			})
-		}
+			},
+			cniDaemonSetName:        cniDaemonSetNames[v],
+			crdCount:                19,
+			unexpectedCNIDaemonSets: unexpectedCNIDaemonSetNames(cniDaemonSetNames, v),
+		})
 	}
 
 	if testing.Verbose() {

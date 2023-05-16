@@ -2332,10 +2332,8 @@ func runtimeTestCasesV2(version versions.Version) []conversionTestCase {
 }
 
 func init() {
-	for _, v := range versions.AllV2Versions {
-		if v.AtLeast(versions.V2_2) {
-			runtimeTestCases = append(runtimeTestCases, runtimeTestCasesV2(v)...)
-		}
+	for _, v := range versions.TestedVersions {
+		runtimeTestCases = append(runtimeTestCases, runtimeTestCasesV2(v)...)
 	}
 }
 

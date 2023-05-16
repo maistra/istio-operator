@@ -18,7 +18,7 @@ type conversionExtensionProvidersTestCase struct {
 }
 
 func init() {
-	for _, v := range versions.AllV2Versions {
+	for _, v := range versions.TestedVersions {
 		if v.AtLeast(versions.V2_4) {
 			extensionProvidersTestCases = append(extensionProvidersTestCases, extensionProvidersTestCasesV2(v)...)
 		}
