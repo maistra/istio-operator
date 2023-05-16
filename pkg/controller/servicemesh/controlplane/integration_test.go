@@ -35,37 +35,43 @@ import (
 func TestDefaultInstall(t *testing.T) {
 	testCases := []IntegrationTestCase{
 		{
-			// TODO: add more assertions to verify default component installation
-			name: "default." + versions.V2_0.String(),
-			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: versions.V2_0.String()}),
+			name: "default." + versions.V2_2.String(),
+			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: versions.V2_2.String()}),
 			create: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("create").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsNotSeen(),
-				},
+				Assertions: generateAssertions("create", "istiod-"+controlPlaneName, "wasm-cacher-"+controlPlaneName,
+					"istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
 			},
 			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsNotSeen(),
-				},
-			},
-		},
-		{
-			// TODO: add more assertions to verify default component installation
-			name: "default." + versions.V2_1.String(),
-			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: versions.V2_1.String()}),
-			create: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("create").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsSeen(),
-				},
-			},
-			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsSeen(),
-				},
+				Assertions: generateAssertions("delete", "istiod-"+controlPlaneName, "wasm-cacher-"+controlPlaneName,
+					"istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
 			},
 		},
 	}
+	for _, v := range versions.AllV2Versions {
+		if v.AtLeast(versions.V2_3) {
+			testCases = append(testCases, IntegrationTestCase{
+				name: "default." + v.String(),
+				smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: v.String()}),
+				create: IntegrationTestValidation{
+					Assertions: generateAssertions("create",
+						"istiod-"+controlPlaneName, "istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
+				},
+				delete: IntegrationTestValidation{
+					Assertions: generateAssertions("delete",
+						"istiod-"+controlPlaneName, "istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
+				},
+			})
+		}
+	}
 	RunSimpleInstallTests(t, testCases)
+}
+
+func generateAssertions(verb string, components ...string) []ActionAssertion {
+	var assertions []ActionAssertion
+	for _, c := range components {
+		assertions = append(assertions, Assert(verb).On("deployments").Named(c).In(controlPlaneNamespace).IsSeen())
+	}
+	return assertions
 }
 
 func TestBootstrapping(t *testing.T) {
