@@ -87,7 +87,7 @@ test:
 # Helm charts generation and templates processing
 ################################################################################
 
-SUPPORTED_VERSIONS := 2.0 2.1 2.2 2.3 2.4
+SUPPORTED_VERSIONS := 2.1 2.2 2.3 2.4
 
 $(addprefix update-remote-maistra-,$(SUPPORTED_VERSIONS)): update-remote-maistra-%:
 	$(eval version:=$*)
@@ -181,10 +181,10 @@ endif
 # resource collection
 ################################################################################
 .PHONY: collect-charts
-collect-charts: collect-charts-2.0 collect-charts-2.1 collect-charts-2.2 collect-charts-2.3 collect-charts-2.4
+collect-charts: collect-charts-2.1 collect-charts-2.2 collect-charts-2.3 collect-charts-2.4
 
 .PHONY: collect-templates
-collect-templates: collect-templates-2.0 collect-templates-2.1 collect-templates-2.2 collect-templates-2.3 collect-templates-2.4
+collect-templates: collect-templates-2.1 collect-templates-2.2 collect-templates-2.3 collect-templates-2.4
 
 .PHONY: collect-olm-manifests
 collect-olm-manifests:
@@ -227,7 +227,7 @@ lint-yaml:
 lint-helm:
 	@echo "Helm version: `helm version`"
 	@${FINDFILES} -name 'Chart.yaml' -path './resources/helm/v2.?/*' \
-	-not \(	-path './resources/helm/v2.0/*' -o -path './resources/helm/v2.1/*' -o -path './resources/helm/v2.2/*' \) \
+	-not \(	-path './resources/helm/v2.1/*' -o -path './resources/helm/v2.2/*' \) \
 	-print0 | ${XARGS} -L 1 dirname | xargs -r helm lint --strict
 
 .PHONY: lint
