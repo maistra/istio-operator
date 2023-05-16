@@ -15,7 +15,7 @@ metadata:
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: quay.io/maistra/istio-ubi8-operator:2.4.0
-    createdAt: 2023-05-12T07:28:40CEST
+    createdAt: 2023-05-16T14:56:04CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.4.0-0"
     operators.openshift.io/infrastructure-features: '[]'
@@ -211,24 +211,6 @@ spec:
   - type: AllNamespaces
     supported: true
   relatedImages:
-  - name: v2_0.3scale-istio-adapter
-    image: quay.io/3scale/3scale-istio-adapter:v2.0.0
-  - name: v2_0.cni
-    image: docker.io/maistra/istio-cni-ubi8:2.0.10
-  - name: v2_0.grafana
-    image: docker.io/maistra/grafana-ubi8:2.0.10
-  - name: v2_0.mixer
-    image: docker.io/maistra/mixer-ubi8:2.0.10
-  - name: v2_0.pilot
-    image: docker.io/maistra/pilot-ubi8:2.0.10
-  - name: v2_0.prometheus
-    image: docker.io/maistra/prometheus-ubi8:2.0.10
-  - name: v2_0.proxy-init
-    image: docker.io/maistra/proxy-init-centos7:2.0.10
-  - name: v2_0.proxyv2
-    image: docker.io/maistra/proxyv2-ubi8:2.0.10
-  - name: v2_0.wasm-cacher
-    image: docker.io/maistra/pilot-ubi8:2.0.10
   - name: v2_1.cni
     image: quay.io/maistra/istio-cni-ubi8:2.1.4
   - name: v2_1.grafana
@@ -540,15 +522,6 @@ spec:
               labels:
                 name: istio-operator
               annotations:
-                olm.relatedImage.v2_0.3scale-istio-adapter: quay.io/3scale/3scale-istio-adapter:v2.0.0
-                olm.relatedImage.v2_0.cni: docker.io/maistra/istio-cni-ubi8:2.0.10
-                olm.relatedImage.v2_0.grafana: docker.io/maistra/grafana-ubi8:2.0.10
-                olm.relatedImage.v2_0.mixer: docker.io/maistra/mixer-ubi8:2.0.10
-                olm.relatedImage.v2_0.pilot: docker.io/maistra/pilot-ubi8:2.0.10
-                olm.relatedImage.v2_0.prometheus: docker.io/maistra/prometheus-ubi8:2.0.10
-                olm.relatedImage.v2_0.proxy-init: docker.io/maistra/proxy-init-centos7:2.0.10
-                olm.relatedImage.v2_0.proxyv2: docker.io/maistra/proxyv2-ubi8:2.0.10
-                olm.relatedImage.v2_0.wasm-cacher: docker.io/maistra/pilot-ubi8:2.0.10
                 olm.relatedImage.v2_1.cni: quay.io/maistra/istio-cni-ubi8:2.1.4
                 olm.relatedImage.v2_1.grafana: quay.io/maistra/grafana-ubi8:2.1.4
                 olm.relatedImage.v2_1.pilot: quay.io/maistra/pilot-ubi8:2.1.4
