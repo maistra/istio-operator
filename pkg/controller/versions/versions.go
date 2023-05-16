@@ -46,9 +46,6 @@ var (
 func init() {
 	versionToString = map[Ver]string{
 		InvalidVersion: "InvalidVersion",
-		V1_1:           "v1.1",
-		V2_0:           "v2.0",
-		V2_1:           "v2.1",
 		V2_2:           "v2.2",
 		V2_3:           "v2.3",
 		V2_4:           "v2.4",
@@ -56,9 +53,6 @@ func init() {
 
 	versionToStrategy = map[Ver]VersionStrategy{
 		InvalidVersion: &invalidVersionStrategy{InvalidVersion},
-		V1_1:           &versionStrategyV1_1{Ver: V1_1},
-		V2_0:           &versionStrategyV2_0{Ver: V2_0},
-		V2_1:           &versionStrategyV2_1{Ver: V2_1},
 		V2_2:           &versionStrategyV2_2{Ver: V2_2},
 		V2_3:           &versionStrategyV2_3{Ver: V2_3},
 		V2_4:           &versionStrategyV2_4{Ver: V2_4},
@@ -66,9 +60,6 @@ func init() {
 
 	versionToCNINetwork = map[Ver]string{
 		InvalidVersion: "",
-		V1_1:           "v1-1-istio-cni",
-		V2_0:           "v2-0-istio-cni",
-		V2_1:           "v2-1-istio-cni",
 		V2_2:           "v2-2-istio-cni",
 		V2_3:           "v2-3-istio-cni",
 		V2_4:           "v2-4-istio-cni",
