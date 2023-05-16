@@ -46,20 +46,6 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 			daemonsetName:     "istio-cni-node-v2-3",
 		},
 		{
-			name:              "v2.0 only",
-			supportedVersions: []versions.Version{versions.V2_0},
-			instanceVersion:   versions.V2_0.Version(),
-			containerNames:    []string{"install-cni-v2-0"},
-			daemonsetName:     "istio-cni-node",
-		},
-		{
-			name:              "v2.1 only",
-			supportedVersions: []versions.Version{versions.V2_1},
-			instanceVersion:   versions.V2_1.Version(),
-			containerNames:    []string{"install-cni-v2-1"},
-			daemonsetName:     "istio-cni-node",
-		},
-		{
 			name:              "v2.2 only",
 			supportedVersions: []versions.Version{versions.V2_2},
 			instanceVersion:   versions.V2_2.Version(),
