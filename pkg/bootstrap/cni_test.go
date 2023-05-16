@@ -129,14 +129,6 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 func InitializeGlobals(operatorNamespace string) func() {
 	return func() {
 		// make sure globals are initialized for testing
-		common.Config.OLM.Images.V2_1.CNI = "istio-cni-test-2_1"
-		common.Config.OLM.Images.V2_1.ThreeScale = "injected-3scale-v2.1"
-		common.Config.OLM.Images.V2_1.Grafana = "injected-grafana-v2.1"
-		common.Config.OLM.Images.V2_1.Pilot = "injected-pilot-v2.1"
-		common.Config.OLM.Images.V2_1.Prometheus = "injected-prometheus-v2.1"
-		common.Config.OLM.Images.V2_1.ProxyInit = "injected-proxy-init-v2.1"
-		common.Config.OLM.Images.V2_1.ProxyV2 = "injected-proxyv2-v2.1"
-		common.Config.OLM.Images.V2_1.WASMCacher = "injected-wasm-cacher-v2.1"
 		os.Setenv("POD_NAMESPACE", operatorNamespace)
 		common.GetOperatorNamespace()
 		if _, filename, _, ok := goruntime.Caller(0); ok {
