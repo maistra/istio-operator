@@ -173,8 +173,9 @@ func unexpectedCNIDaemonSetNames(cniDaemonSetNames map[versions.Version]string, 
 	var unexpectedCNIDaemonSets []ActionAssertion
 	for ver, daemonSetName := range cniDaemonSetNames {
 		if ver != currentVer {
-			unexpectedCNIDaemonSets = append(unexpectedCNIDaemonSets, Assert("create").On("daemonsets").Named(daemonSetName).IsNotSeen())
-			unexpectedCNIDaemonSets = append(unexpectedCNIDaemonSets, Assert("update").On("daemonsets").Named(daemonSetName).IsNotSeen())
+			unexpectedCNIDaemonSets = append(unexpectedCNIDaemonSets,
+				Assert("create").On("daemonsets").Named(daemonSetName).IsNotSeen(),
+				Assert("update").On("daemonsets").Named(daemonSetName).IsNotSeen())
 		}
 	}
 	return unexpectedCNIDaemonSets
