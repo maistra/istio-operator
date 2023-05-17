@@ -1098,7 +1098,7 @@ func proxyTestCasesV2(version versions.Version) []conversionTestCase {
 }
 
 func init() {
-	for _, v := range versions.AllV2Versions {
+	for _, v := range versions.TestedVersions {
 		proxyTestCases = append(proxyTestCases, proxyTestCasesV2(v)...)
 	}
 }

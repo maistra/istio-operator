@@ -2332,7 +2332,7 @@ func runtimeTestCasesV2(version versions.Version) []conversionTestCase {
 }
 
 func init() {
-	for _, v := range versions.AllV2Versions {
+	for _, v := range versions.TestedVersions {
 		runtimeTestCases = append(runtimeTestCases, runtimeTestCasesV2(v)...)
 	}
 }

@@ -65,260 +65,19 @@ func TestOnlyOneControlPlaneIsAllowedPerNamespace(t *testing.T) {
 
 func TestControlPlaneValidation(t *testing.T) {
 	enabled := true
-	disabled := false
-	cases := []struct {
+
+	type testCase struct {
 		name                string
 		controlPlane        runtime.Object
 		updatedControlPlane runtime.Object
 		valid               bool
 		resources           []runtime.Object
-	}{
+	}
+	testCases := []testCase{
 		{
 			name:         "blank-version",
 			controlPlane: newControlPlaneWithVersion("my-smcp", "istio-system", ""),
 			valid:        false,
-		},
-		{
-			name: "v2-default-v2.0",
-			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "some-smcp",
-					Namespace: "istio-system",
-				},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version: versions.V2_0.String(),
-				},
-			},
-			valid: true,
-		},
-		{
-			name: "v2-istiod-policy-v2.0",
-			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "some-smcp",
-					Namespace: "istio-system",
-				},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version: versions.V2_0.String(),
-					Policy: &maistrav2.PolicyConfig{
-						Type: maistrav2.PolicyTypeIstiod,
-					},
-				},
-			},
-			valid: true,
-		},
-		{
-			name: "v2-remote-policy-v2.0-fail",
-			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "some-smcp",
-					Namespace: "istio-system",
-				},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version: versions.V2_0.String(),
-					Policy: &maistrav2.PolicyConfig{
-						Remote: &maistrav2.RemotePolicyConfig{
-							Address: "some.address.com",
-						},
-					},
-				},
-			},
-			valid: false,
-		},
-		{
-			name: "v2-remote-policy-v2.0-pass",
-			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "some-smcp",
-					Namespace: "istio-system",
-				},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version: versions.V2_0.String(),
-					Policy: &maistrav2.PolicyConfig{
-						Type: maistrav2.PolicyTypeRemote,
-						Remote: &maistrav2.RemotePolicyConfig{
-							Address: "some.address.com",
-						},
-					},
-				},
-			},
-			valid: true,
-		},
-		{
-			name: "v2-istiod-telemetry-v2.0",
-			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "some-smcp",
-					Namespace: "istio-system",
-				},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version: versions.V2_0.String(),
-					Telemetry: &maistrav2.TelemetryConfig{
-						Type: maistrav2.TelemetryTypeIstiod,
-					},
-				},
-			},
-			valid: true,
-		},
-		{
-			name: "v2-remote-telemetry-v2.0-fail",
-			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "some-smcp",
-					Namespace: "istio-system",
-				},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version: versions.V2_0.String(),
-					Telemetry: &maistrav2.TelemetryConfig{
-						Remote: &maistrav2.RemoteTelemetryConfig{
-							Address: "some.address.com",
-						},
-					},
-				},
-			},
-			valid: false,
-		},
-		{
-			name: "v2-telemetry-mixer-adapters-v2.0-fail",
-			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "some-smcp",
-					Namespace: "istio-system",
-				},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version: versions.V2_0.String(),
-					Telemetry: &maistrav2.TelemetryConfig{
-						Mixer: &maistrav2.MixerTelemetryConfig{
-							Adapters: &maistrav2.MixerTelemetryAdaptersConfig{
-								KubernetesEnv:  &enabled,
-								UseAdapterCRDs: &enabled,
-							},
-						},
-					},
-				},
-			},
-			valid: false,
-		},
-		{
-			name: "v2-telemetry-mixer-adapters-v2.0-pass",
-			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "some-smcp",
-					Namespace: "istio-system",
-				},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version: versions.V2_0.String(),
-					Telemetry: &maistrav2.TelemetryConfig{
-						Mixer: &maistrav2.MixerTelemetryConfig{
-							Adapters: &maistrav2.MixerTelemetryAdaptersConfig{
-								KubernetesEnv: &enabled,
-							},
-						},
-					},
-				},
-			},
-			valid: true,
-		},
-		{
-			name: "v1-v2.0",
-			controlPlane: &maistrav1.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "some-smcp",
-					Namespace: "istio-system",
-				},
-				Spec: maistrav1.ControlPlaneSpec{
-					Version: versions.V2_0.String(),
-				},
-			},
-			valid: false,
-		},
-		{
-			name: "protocolSniffing.inbound.v2.0.enabled",
-			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "some-smcp",
-					Namespace: "istio-system",
-				},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version: versions.V2_0.String(),
-					Proxy: &maistrav2.ProxyConfig{
-						Networking: &maistrav2.ProxyNetworkingConfig{
-							Protocol: &maistrav2.ProxyNetworkProtocolConfig{
-								AutoDetect: &maistrav2.ProxyNetworkAutoProtocolDetectionConfig{
-									Inbound: &enabled,
-								},
-							},
-						},
-					},
-				},
-			},
-			valid: false,
-		},
-		{
-			name: "protocolSniffing.outbound.v2.0.enabled",
-			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "some-smcp",
-					Namespace: "istio-system",
-				},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version: versions.V2_0.String(),
-					Proxy: &maistrav2.ProxyConfig{
-						Networking: &maistrav2.ProxyNetworkingConfig{
-							Protocol: &maistrav2.ProxyNetworkProtocolConfig{
-								AutoDetect: &maistrav2.ProxyNetworkAutoProtocolDetectionConfig{
-									Outbound: &enabled,
-								},
-							},
-						},
-					},
-				},
-			},
-			valid: false,
-		},
-		{
-			name: "protocolSniffing.inbound.v2.0.disabled",
-			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "some-smcp",
-					Namespace: "istio-system",
-				},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version: versions.V2_0.String(),
-					Proxy: &maistrav2.ProxyConfig{
-						Networking: &maistrav2.ProxyNetworkingConfig{
-							Protocol: &maistrav2.ProxyNetworkProtocolConfig{
-								AutoDetect: &maistrav2.ProxyNetworkAutoProtocolDetectionConfig{
-									Inbound: &disabled,
-								},
-							},
-						},
-					},
-				},
-			},
-			valid: true,
-		},
-		{
-			name: "protocolSniffing.outbound.v2.0.disabled",
-			controlPlane: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "some-smcp",
-					Namespace: "istio-system",
-				},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version: versions.V2_0.String(),
-					Proxy: &maistrav2.ProxyConfig{
-						Networking: &maistrav2.ProxyNetworkingConfig{
-							Protocol: &maistrav2.ProxyNetworkProtocolConfig{
-								AutoDetect: &maistrav2.ProxyNetworkAutoProtocolDetectionConfig{
-									Outbound: &disabled,
-								},
-							},
-						},
-					},
-				},
-			},
-			valid: true,
 		},
 		{
 			name:                "smcp.upgrade.v2.0.to.v2.3",
@@ -346,8 +105,138 @@ func TestControlPlaneValidation(t *testing.T) {
 			},
 		},
 	}
+	for _, v := range versions.TestedVersions {
+		testCases = append(testCases,
+			testCase{
+				name: "v2-default-" + v.String(),
+				controlPlane: &maistrav2.ServiceMeshControlPlane{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-smcp",
+						Namespace: "istio-system",
+					},
+					Spec: maistrav2.ControlPlaneSpec{
+						Version: v.String(),
+					},
+				},
+				valid: true,
+			}, testCase{
+				name: "v2-istiod-policy-" + v.String(),
+				controlPlane: &maistrav2.ServiceMeshControlPlane{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-smcp",
+						Namespace: "istio-system",
+					},
+					Spec: maistrav2.ControlPlaneSpec{
+						Version: v.String(),
+						Policy: &maistrav2.PolicyConfig{
+							Type: maistrav2.PolicyTypeIstiod,
+						},
+					},
+				},
+				valid: true,
+			}, testCase{
+				name: "v2-remote-policy-" + v.String() + "-fail",
+				controlPlane: &maistrav2.ServiceMeshControlPlane{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-smcp",
+						Namespace: "istio-system",
+					},
+					Spec: maistrav2.ControlPlaneSpec{
+						Version: v.String(),
+						Policy: &maistrav2.PolicyConfig{
+							Remote: &maistrav2.RemotePolicyConfig{
+								Address: "some.address.com",
+							},
+						},
+					},
+				},
+				valid: false,
+			}, testCase{
+				name: "v2-remote-policy-" + v.String() + "-pass",
+				controlPlane: &maistrav2.ServiceMeshControlPlane{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-smcp",
+						Namespace: "istio-system",
+					},
+					Spec: maistrav2.ControlPlaneSpec{
+						Version: v.String(),
+						Policy: &maistrav2.PolicyConfig{
+							Type: maistrav2.PolicyTypeRemote,
+							Remote: &maistrav2.RemotePolicyConfig{
+								Address: "some.address.com",
+							},
+						},
+					},
+				},
+				valid: true,
+			}, testCase{
+				name: "v2-istiod-telemetry-" + v.String(),
+				controlPlane: &maistrav2.ServiceMeshControlPlane{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-smcp",
+						Namespace: "istio-system",
+					},
+					Spec: maistrav2.ControlPlaneSpec{
+						Version: v.String(),
+						Telemetry: &maistrav2.TelemetryConfig{
+							Type: maistrav2.TelemetryTypeIstiod,
+						},
+					},
+				},
+				valid: true,
+			}, testCase{
+				name: "v2-remote-telemetry-" + v.String() + "-fail",
+				controlPlane: &maistrav2.ServiceMeshControlPlane{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-smcp",
+						Namespace: "istio-system",
+					},
+					Spec: maistrav2.ControlPlaneSpec{
+						Version: v.String(),
+						Telemetry: &maistrav2.TelemetryConfig{
+							Remote: &maistrav2.RemoteTelemetryConfig{
+								Address: "some.address.com",
+							},
+						},
+					},
+				},
+				valid: false,
+			}, testCase{
+				name: "v2-telemetry-mixer-adapters-" + v.String() + "-fail",
+				controlPlane: &maistrav2.ServiceMeshControlPlane{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-smcp",
+						Namespace: "istio-system",
+					},
+					Spec: maistrav2.ControlPlaneSpec{
+						Version: v.String(),
+						Telemetry: &maistrav2.TelemetryConfig{
+							Mixer: &maistrav2.MixerTelemetryConfig{
+								Adapters: &maistrav2.MixerTelemetryAdaptersConfig{
+									KubernetesEnv:  &enabled,
+									UseAdapterCRDs: &enabled,
+								},
+							},
+						},
+					},
+				},
+				valid: false,
+			}, testCase{
+				name: "v1-api-" + v.String(),
+				controlPlane: &maistrav1.ServiceMeshControlPlane{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-smcp",
+						Namespace: "istio-system",
+					},
+					Spec: maistrav1.ControlPlaneSpec{
+						Version: v.String(),
+					},
+				},
+				valid: false,
+			})
+	}
 
-	for _, tc := range cases {
+	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			validator := createControlPlaneValidatorTestFixture(tc.resources...)
 			response := validator.Handle(ctx, createCreateRequest(tc.controlPlane))
@@ -477,31 +366,37 @@ func TestFullAffinityOnlySupportedForKiali(t *testing.T) {
 			t.Run(string(component)+"."+tc.name, func(t *testing.T) {
 				validator := createControlPlaneValidatorTestFixture()
 
-				controlPlane := &maistrav2.ServiceMeshControlPlane{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "some-smcp",
-						Namespace: "istio-system",
-					},
-					Spec: maistrav2.ControlPlaneSpec{
-						Version: versions.V2_1.String(),
-						Runtime: &maistrav2.ControlPlaneRuntimeConfig{
-							Components: map[maistrav2.ControlPlaneComponentName]*maistrav2.ComponentRuntimeConfig{
-								component: &tc.componentRuntimeConfig,
+				var controlPlane maistrav2.ServiceMeshControlPlane
+				for _, v := range versions.TestedVersions {
+					controlPlane = maistrav2.ServiceMeshControlPlane{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "some-smcp",
+							Namespace: "istio-system",
+						},
+						Spec: maistrav2.ControlPlaneSpec{
+							Version: v.String(),
+							Runtime: &maistrav2.ControlPlaneRuntimeConfig{
+								Components: map[maistrav2.ControlPlaneComponentName]*maistrav2.ComponentRuntimeConfig{
+									// nolint:exportloopref
+									component: &tc.componentRuntimeConfig,
+								},
 							},
 						},
-					},
-				}
-
-				response := validator.Handle(ctx, createCreateRequest(controlPlane))
-				if (tc.allowedForKiali && component == maistrav2.ControlPlaneComponentNameKiali) ||
-					(!tc.allowedForKiali && component != maistrav2.ControlPlaneComponentNameKiali) {
-					var reason string
-					if response.Result != nil {
-						reason = response.Result.Message
 					}
-					assert.True(response.Allowed, "Expected validator to accept valid ServiceMeshControlPlane, but rejected: "+reason, t)
-				} else {
-					assert.False(response.Allowed, "Expected validator to reject invalid ServiceMeshControlPlane", t)
+
+					t.Run(v.String(), func(t *testing.T) {
+						response := validator.Handle(ctx, createCreateRequest(&controlPlane))
+						if (tc.allowedForKiali && component == maistrav2.ControlPlaneComponentNameKiali) ||
+							(!tc.allowedForKiali && component != maistrav2.ControlPlaneComponentNameKiali) {
+							var reason string
+							if response.Result != nil {
+								reason = response.Result.Message
+							}
+							assert.True(response.Allowed, "Expected validator to accept valid ServiceMeshControlPlane, but rejected: "+reason, t)
+						} else {
+							assert.False(response.Allowed, "Expected validator to reject invalid ServiceMeshControlPlane", t)
+						}
+					})
 				}
 			})
 		}
@@ -509,7 +404,7 @@ func TestFullAffinityOnlySupportedForKiali(t *testing.T) {
 }
 
 func TestInvalidVersion(t *testing.T) {
-	validControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0")
+	validControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", versions.DefaultVersion.String())
 	invalidControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "InvalidVersion")
 	createValidator := createControlPlaneValidatorTestFixture()
 	updateValidator := createControlPlaneValidatorTestFixture(validControlPlane)
@@ -533,56 +428,6 @@ func TestInvalidVersion(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			response := tc.validator.Handle(ctx, tc.request)
 			assert.False(response.Allowed, "Expected validator to reject invalid ServiceMeshControlPlane", t)
-		})
-	}
-}
-
-// v1.1 is deprecated and skip TestVersionValidation
-func TestVersionValidation(t *testing.T) {
-	t.Skip("v1.1 is deprecated and skip TestVersionValidation")
-	type subcase struct {
-		name      string
-		smcp      *maistrav2.ServiceMeshControlPlane
-		configure func(smcp *maistrav2.ServiceMeshControlPlane)
-		allowed   bool
-	}
-
-	cases := []struct {
-		name  string
-		cases []subcase
-	}{
-		{
-			name: "v1.1",
-			cases: []subcase{
-				{
-					name:      "valid",
-					smcp:      newControlPlaneWithVersion("my-smcp", "istio-system", "v1.1"),
-					configure: func(smcp *maistrav2.ServiceMeshControlPlane) {},
-					allowed:   true,
-				},
-			},
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			for _, tc := range tc.cases {
-				t.Run(tc.name, func(t *testing.T) {
-					validator := createControlPlaneValidatorTestFixture()
-					tc.configure(tc.smcp)
-					response := validator.Handle(ctx, createCreateRequest(tc.smcp))
-					if tc.allowed {
-						defer func() {
-							if t.Failed() {
-								t.Logf("Unexpected validation Error: %s", response.Result.Message)
-							}
-						}()
-						assert.True(response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
-					} else {
-						assert.False(response.Allowed, "Expected validator to reject ServiceMeshControlPlane", t)
-						t.Logf("Validation Error: %s", response.Result.Message)
-					}
-				})
-			}
 		})
 	}
 }

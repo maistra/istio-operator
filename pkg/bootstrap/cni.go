@@ -47,8 +47,6 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 
 	cni := make(map[string]interface{})
 	cni["enabled"] = config.Enabled
-	cni["image_v1_1"] = common.Config.OLM.Images.V1_1.CNI
-	cni["image_v2_0"] = common.Config.OLM.Images.V2_0.CNI
 	cni["image_v2_1"] = common.Config.OLM.Images.V2_1.CNI
 	cni["image_v2_2"] = common.Config.OLM.Images.V2_2.CNI
 	cni["image_v2_3"] = common.Config.OLM.Images.V2_3.CNI
@@ -58,7 +56,6 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 
 	cni["logLevel"] = common.Config.OLM.CNILogLevel
 
-	cni["configMap_v2_0"] = "cni_network_config_v2_0"
 	cni["configMap_v2_1"] = "cni_network_config_v2_1"
 	cni["configMap_v2_2"] = "cni_network_config_v2_2"
 	cni["configMap_v2_3"] = "cni_network_config"
@@ -70,7 +67,6 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 		cni["cniConfDir"] = "/etc/cni/multus/net.d"
 		cni["mountedCniConfDir"] = "/host/etc/cni/multus/net.d"
 
-		cni["cniConfFileName_v2_0"] = "v2-0-istio-cni.conf"
 		cni["cniConfFileName_v2_1"] = "v2-1-istio-cni.conf"
 		cni["cniConfFileName_v2_2"] = "v2-2-istio-cni.conf"
 		cni["cniConfFileName_v2_3"] = "v2-3-istio-cni.conf"

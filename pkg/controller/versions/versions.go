@@ -38,6 +38,7 @@ const (
 
 var (
 	AllV2Versions  = []Version{V2_0, V2_1, V2_2, V2_3, V2_4}
+	TestedVersions = []Version{V2_2, V2_3, V2_4}
 	legacyVersions = map[string]bool{
 		"v1.0": true,
 	}

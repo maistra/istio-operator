@@ -35,37 +35,43 @@ import (
 func TestDefaultInstall(t *testing.T) {
 	testCases := []IntegrationTestCase{
 		{
-			// TODO: add more assertions to verify default component installation
-			name: "default." + versions.V2_0.String(),
-			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: versions.V2_0.String()}),
+			name: "default." + versions.V2_2.String(),
+			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: versions.V2_2.String()}),
 			create: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("create").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsNotSeen(),
-				},
+				Assertions: generateAssertions("create", "istiod-"+controlPlaneName, "wasm-cacher-"+controlPlaneName,
+					"istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
 			},
 			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsNotSeen(),
-				},
-			},
-		},
-		{
-			// TODO: add more assertions to verify default component installation
-			name: "default." + versions.V2_1.String(),
-			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: versions.V2_1.String()}),
-			create: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("create").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsSeen(),
-				},
-			},
-			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("deployments").Named("wasm-cacher-" + controlPlaneName).In(controlPlaneNamespace).IsSeen(),
-				},
+				Assertions: generateAssertions("delete", "istiod-"+controlPlaneName, "wasm-cacher-"+controlPlaneName,
+					"istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
 			},
 		},
 	}
+	for _, v := range versions.TestedVersions {
+		if v.AtLeast(versions.V2_3) {
+			testCases = append(testCases, IntegrationTestCase{
+				name: "default." + v.String(),
+				smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: v.String()}),
+				create: IntegrationTestValidation{
+					Assertions: generateAssertions("create",
+						"istiod-"+controlPlaneName, "istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
+				},
+				delete: IntegrationTestValidation{
+					Assertions: generateAssertions("delete",
+						"istiod-"+controlPlaneName, "istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
+				},
+			})
+		}
+	}
 	RunSimpleInstallTests(t, testCases)
+}
+
+func generateAssertions(verb string, components ...string) []ActionAssertion {
+	var assertions []ActionAssertion
+	for _, c := range components {
+		assertions = append(assertions, Assert(verb).On("deployments").Named(c).In(controlPlaneNamespace).IsSeen())
+	}
+	return assertions
 }
 
 func TestBootstrapping(t *testing.T) {
@@ -73,81 +79,37 @@ func TestBootstrapping(t *testing.T) {
 		operatorNamespace     = "istio-operator"
 		controlPlaneNamespace = "test"
 		smcpName              = "test"
-		cniDaemonSetNamev2    = "istio-cni-node"
-		cniDaemonSetNamev2_3  = "istio-cni-node-v2-3" // introduced a new cniDaemonSet in v2.3
 	)
 
-	var (
+	cniDaemonSetNames := map[versions.Version]string{
+		versions.V2_2: "istio-cni-node",
+		versions.V2_3: "istio-cni-node-v2-3",
+		versions.V2_4: "istio-cni-node-v2-4",
+	}
+
+	type testCase struct {
+		version                 versions.Version
+		smcp                    *maistrav2.ServiceMeshControlPlane
+		crdCount                int
 		cniDaemonSetName        string
-		cniDaemonSetNameInvalid string
-	)
+		unexpectedCNIDaemonSets []ActionAssertion
+	}
 
-	testCases := []struct {
-		name     string
-		smcp     *maistrav2.ServiceMeshControlPlane
-		crdCount int
-	}{
-		{
-			name: "v2.0",
+	var testCases []testCase
+	for _, v := range versions.TestedVersions {
+		testCases = append(testCases, testCase{
+			version: v,
 			smcp: &maistrav2.ServiceMeshControlPlane{
 				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
 				Spec: maistrav2.ControlPlaneSpec{
-					Version:  versions.V2_0.String(),
+					Version:  v.String(),
 					Profiles: []string{"maistra"},
 				},
 			},
-			crdCount: 26,
-		},
-		{
-			name: "v2.0.mixer",
-			smcp: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version:  versions.V2_0.String(),
-					Profiles: []string{"maistra"},
-					Policy: &maistrav2.PolicyConfig{
-						Type: maistrav2.PolicyTypeMixer,
-					},
-					Telemetry: &maistrav2.TelemetryConfig{
-						Type: maistrav2.TelemetryTypeMixer,
-					},
-				},
-			},
-			crdCount: 26,
-		},
-		{
-			name: "v2.1",
-			smcp: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version:  versions.V2_1.String(),
-					Profiles: []string{"maistra"},
-				},
-			},
-			crdCount: 17,
-		},
-		{
-			name: "v2.2",
-			smcp: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version:  versions.V2_2.String(),
-					Profiles: []string{"maistra"},
-				},
-			},
-			crdCount: 19,
-		},
-		{
-			name: "v2.3",
-			smcp: &maistrav2.ServiceMeshControlPlane{
-				ObjectMeta: metav1.ObjectMeta{Name: smcpName, Namespace: controlPlaneNamespace},
-				Spec: maistrav2.ControlPlaneSpec{
-					Version:  versions.V2_3.String(),
-					Profiles: []string{"maistra"},
-				},
-			},
-			crdCount: 19,
-		},
+			cniDaemonSetName:        cniDaemonSetNames[v],
+			crdCount:                19,
+			unexpectedCNIDaemonSets: unexpectedCNIDaemonSetNames(cniDaemonSetNames, v),
+		})
 	}
 
 	if testing.Verbose() {
@@ -155,15 +117,12 @@ func TestBootstrapping(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		if tc.name == "v2.3" {
-			cniDaemonSetName = cniDaemonSetNamev2_3
-			cniDaemonSetNameInvalid = cniDaemonSetNamev2
-		} else {
-			cniDaemonSetName = cniDaemonSetNamev2
-			cniDaemonSetNameInvalid = cniDaemonSetNamev2_3
-		}
-
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.version.String(), func(t *testing.T) {
+			assertions := ActionAssertions{
+				// verify proper number of CRDs is created
+				Assert("create").On("customresourcedefinitions").Version("v1").SeenCountIs(tc.crdCount),
+			}
+			assertions = append(assertions, tc.unexpectedCNIDaemonSets...)
 			RunControllerTestCase(t, ControllerTestCase{
 				Name:             "clean-install-cni-no-errors",
 				ConfigureGlobals: InitializeGlobals(operatorNamespace),
@@ -190,19 +149,14 @@ func TestBootstrapping(t *testing.T) {
 							// verify that a CRD is installed
 							Verify("create").On("customresourcedefinitions").Version("v1").IsSeen(),
 							// verify that the correct CNI daemonset is installed
-							Verify("create").On("daemonsets").Named(cniDaemonSetName).In(operatorNamespace).IsSeen(),
+							Verify("create").On("daemonsets").Named(tc.cniDaemonSetName).In(operatorNamespace).IsSeen(),
 							// verify readiness check triggered daemon set creation
 							VerifyReadinessCheckOccurs(controlPlaneNamespace),
 						),
-						Assertions: ActionAssertions{
-							// verify proper number of CRDs is created
-							Assert("create").On("customresourcedefinitions").Version("v1").SeenCountIs(tc.crdCount),
-							// verify that the other CNI daemonset is not installed
-							Assert("update").On("daemonsets").Named(cniDaemonSetNameInvalid).In(operatorNamespace).IsNotSeen(),
-						},
+						Assertions: assertions,
 						Reactors: []clienttesting.Reactor{
 							ReactTo("list").On("daemonsets").In(operatorNamespace).With(
-								SetDaemonSetStatus(cniDaemonSetName, appsv1.DaemonSetStatus{
+								SetDaemonSetStatus(tc.cniDaemonSetName, appsv1.DaemonSetStatus{
 									NumberAvailable:   0,
 									NumberUnavailable: 3,
 								})),
@@ -213,6 +167,18 @@ func TestBootstrapping(t *testing.T) {
 			})
 		})
 	}
+}
+
+func unexpectedCNIDaemonSetNames(cniDaemonSetNames map[versions.Version]string, currentVer versions.Version) []ActionAssertion {
+	var unexpectedCNIDaemonSets []ActionAssertion
+	for ver, daemonSetName := range cniDaemonSetNames {
+		if ver != currentVer {
+			unexpectedCNIDaemonSets = append(unexpectedCNIDaemonSets,
+				Assert("create").On("daemonsets").Named(daemonSetName).IsNotSeen(),
+				Assert("update").On("daemonsets").Named(daemonSetName).IsNotSeen())
+		}
+	}
+	return unexpectedCNIDaemonSets
 }
 
 func SetDaemonSetStatus(name string, status appsv1.DaemonSetStatus) ReactionFunc {
