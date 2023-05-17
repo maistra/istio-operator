@@ -366,31 +366,36 @@ func TestFullAffinityOnlySupportedForKiali(t *testing.T) {
 			t.Run(string(component)+"."+tc.name, func(t *testing.T) {
 				validator := createControlPlaneValidatorTestFixture()
 
-				controlPlane := &maistrav2.ServiceMeshControlPlane{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "some-smcp",
-						Namespace: "istio-system",
-					},
-					Spec: maistrav2.ControlPlaneSpec{
-						Version: versions.V2_1.String(),
-						Runtime: &maistrav2.ControlPlaneRuntimeConfig{
-							Components: map[maistrav2.ControlPlaneComponentName]*maistrav2.ComponentRuntimeConfig{
-								component: &tc.componentRuntimeConfig,
+				var controlPlane maistrav2.ServiceMeshControlPlane
+				for _, v := range versions.TestedVersions {
+					controlPlane = maistrav2.ServiceMeshControlPlane{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "some-smcp",
+							Namespace: "istio-system",
+						},
+						Spec: maistrav2.ControlPlaneSpec{
+							Version: v.String(),
+							Runtime: &maistrav2.ControlPlaneRuntimeConfig{
+								Components: map[maistrav2.ControlPlaneComponentName]*maistrav2.ComponentRuntimeConfig{
+									component: &tc.componentRuntimeConfig,
+								},
 							},
 						},
-					},
-				}
-
-				response := validator.Handle(ctx, createCreateRequest(controlPlane))
-				if (tc.allowedForKiali && component == maistrav2.ControlPlaneComponentNameKiali) ||
-					(!tc.allowedForKiali && component != maistrav2.ControlPlaneComponentNameKiali) {
-					var reason string
-					if response.Result != nil {
-						reason = response.Result.Message
 					}
-					assert.True(response.Allowed, "Expected validator to accept valid ServiceMeshControlPlane, but rejected: "+reason, t)
-				} else {
-					assert.False(response.Allowed, "Expected validator to reject invalid ServiceMeshControlPlane", t)
+
+					t.Run(v.String(), func(t *testing.T) {
+						response := validator.Handle(ctx, createCreateRequest(&controlPlane))
+						if (tc.allowedForKiali && component == maistrav2.ControlPlaneComponentNameKiali) ||
+							(!tc.allowedForKiali && component != maistrav2.ControlPlaneComponentNameKiali) {
+							var reason string
+							if response.Result != nil {
+								reason = response.Result.Message
+							}
+							assert.True(response.Allowed, "Expected validator to accept valid ServiceMeshControlPlane, but rejected: "+reason, t)
+						} else {
+							assert.False(response.Allowed, "Expected validator to reject invalid ServiceMeshControlPlane", t)
+						}
+					})
 				}
 			})
 		}
@@ -398,7 +403,7 @@ func TestFullAffinityOnlySupportedForKiali(t *testing.T) {
 }
 
 func TestInvalidVersion(t *testing.T) {
-	validControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "v1.0")
+	validControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", versions.DefaultVersion.String())
 	invalidControlPlane := newControlPlaneWithVersion("my-smcp", "istio-system", "InvalidVersion")
 	createValidator := createControlPlaneValidatorTestFixture()
 	updateValidator := createControlPlaneValidatorTestFixture(validControlPlane)
@@ -422,56 +427,6 @@ func TestInvalidVersion(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			response := tc.validator.Handle(ctx, tc.request)
 			assert.False(response.Allowed, "Expected validator to reject invalid ServiceMeshControlPlane", t)
-		})
-	}
-}
-
-// v1.1 is deprecated and skip TestVersionValidation
-func TestVersionValidation(t *testing.T) {
-	t.Skip("v1.1 is deprecated and skip TestVersionValidation")
-	type subcase struct {
-		name      string
-		smcp      *maistrav2.ServiceMeshControlPlane
-		configure func(smcp *maistrav2.ServiceMeshControlPlane)
-		allowed   bool
-	}
-
-	cases := []struct {
-		name  string
-		cases []subcase
-	}{
-		{
-			name: "v1.1",
-			cases: []subcase{
-				{
-					name:      "valid",
-					smcp:      newControlPlaneWithVersion("my-smcp", "istio-system", "v1.1"),
-					configure: func(smcp *maistrav2.ServiceMeshControlPlane) {},
-					allowed:   true,
-				},
-			},
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			for _, tc := range tc.cases {
-				t.Run(tc.name, func(t *testing.T) {
-					validator := createControlPlaneValidatorTestFixture()
-					tc.configure(tc.smcp)
-					response := validator.Handle(ctx, createCreateRequest(tc.smcp))
-					if tc.allowed {
-						defer func() {
-							if t.Failed() {
-								t.Logf("Unexpected validation Error: %s", response.Result.Message)
-							}
-						}()
-						assert.True(response.Allowed, "Expected validator to accept ServiceMeshControlPlane", t)
-					} else {
-						assert.False(response.Allowed, "Expected validator to reject ServiceMeshControlPlane", t)
-						t.Logf("Validation Error: %s", response.Result.Message)
-					}
-				})
-			}
 		})
 	}
 }
