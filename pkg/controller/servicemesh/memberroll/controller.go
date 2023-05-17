@@ -388,7 +388,7 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		if err != nil {
 			prometheusErr = pkgerrors.Wrapf(err, "could not reconcile Prometheus, because of unknown SMCP version")
 		} else if cv.AtLeast(versions.V2_4) {
-			prometheusErr = r.prometheusReconciler.reconcilePrometheus(ctx, prometheusConfigMapName, meshNamespace, allKnownMembers.List())
+			prometheusErr = r.prometheusReconciler.reconcilePrometheus(ctx, prometheusConfigMapName, meshNamespace, configuredMembers.List())
 		}
 	}
 
