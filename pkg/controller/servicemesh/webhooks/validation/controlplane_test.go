@@ -377,6 +377,7 @@ func TestFullAffinityOnlySupportedForKiali(t *testing.T) {
 							Version: v.String(),
 							Runtime: &maistrav2.ControlPlaneRuntimeConfig{
 								Components: map[maistrav2.ControlPlaneComponentName]*maistrav2.ComponentRuntimeConfig{
+									// nolint:exportloopref
 									component: &tc.componentRuntimeConfig,
 								},
 							},
