@@ -1560,7 +1560,7 @@ func clusterTestCasesV2(version versions.Version) []conversionTestCase {
 
 func init() {
 	// Deprecated v1.1 is deprecated and skip clusterTestCasesV1
-	for _, v := range versions.AllV2Versions {
+	for _, v := range versions.TestedVersions {
 		clusterTestCases = append(clusterTestCases, clusterTestCasesV2(v)...)
 	}
 }

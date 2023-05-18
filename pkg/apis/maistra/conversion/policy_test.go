@@ -355,7 +355,7 @@ func policyTestCasesV2(version versions.Version) []conversionTestCase {
 
 func init() {
 	// v1.1 is deprecated and skip policyTestCasesV1
-	for _, v := range versions.AllV2Versions {
+	for _, v := range versions.TestedVersions {
 		policyTestCases = append(policyTestCases, policyTestCasesV2(v)...)
 	}
 }

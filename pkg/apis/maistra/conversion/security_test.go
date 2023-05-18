@@ -902,7 +902,7 @@ func securityTestCasesV2(version versions.Version) []conversionTestCase {
 
 func init() {
 	// v1.1 is deprecated and skip TestCasesV1
-	for _, v := range versions.AllV2Versions {
+	for _, v := range versions.TestedVersions {
 		securityTestCases = append(securityTestCases, securityTestCasesV2(v)...)
 	}
 }

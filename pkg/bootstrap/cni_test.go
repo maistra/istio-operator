@@ -35,7 +35,7 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 			name:              "Default Supported Versions SMCP v2.2",
 			supportedVersions: versions.GetSupportedVersions(),
 			instanceVersion:   versions.V2_2.Version(),
-			containerNames:    []string{"install-cni-v2-0", "install-cni-v2-1", "install-cni-v2-2"},
+			containerNames:    []string{"install-cni-v2-1", "install-cni-v2-2"},
 			daemonsetName:     "istio-cni-node",
 		},
 		{
@@ -46,18 +46,11 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 			daemonsetName:     "istio-cni-node-v2-3",
 		},
 		{
-			name:              "v2.0 only",
-			supportedVersions: []versions.Version{versions.V2_0},
-			instanceVersion:   versions.V2_0.Version(),
-			containerNames:    []string{"install-cni-v2-0"},
-			daemonsetName:     "istio-cni-node",
-		},
-		{
-			name:              "v2.1 only",
-			supportedVersions: []versions.Version{versions.V2_1},
-			instanceVersion:   versions.V2_1.Version(),
-			containerNames:    []string{"install-cni-v2-1"},
-			daemonsetName:     "istio-cni-node",
+			name:              "Default Supported Versions SMCP v2.4",
+			supportedVersions: versions.GetSupportedVersions(),
+			instanceVersion:   versions.V2_4.Version(),
+			containerNames:    []string{"install-cni"},
+			daemonsetName:     "istio-cni-node-v2-4",
 		},
 		{
 			name:              "v2.2 only",
@@ -136,35 +129,6 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 func InitializeGlobals(operatorNamespace string) func() {
 	return func() {
 		// make sure globals are initialized for testing
-		common.Config.OLM.Images.V1_1.CNI = "istio-cni-test-1_1"
-		common.Config.OLM.Images.V2_0.CNI = "istio-cni-test-2_0"
-		common.Config.OLM.Images.V2_1.CNI = "istio-cni-test-2_1"
-		common.Config.OLM.Images.V1_1.ThreeScale = "injected-3scale-v1.1"
-		common.Config.OLM.Images.V2_0.ThreeScale = "injected-3scale-v2.0"
-		common.Config.OLM.Images.V2_1.ThreeScale = "injected-3scale-v2.1"
-		common.Config.OLM.Images.V1_1.Citadel = "injected-citadel-v1.1"
-		common.Config.OLM.Images.V1_1.Galley = "injected-galley-v1.1"
-		common.Config.OLM.Images.V1_1.Grafana = "injected-grafana-v1.1"
-		common.Config.OLM.Images.V2_0.Grafana = "injected-grafana-v2.0"
-		common.Config.OLM.Images.V2_1.Grafana = "injected-grafana-v2.1"
-		common.Config.OLM.Images.V1_1.Mixer = "injected-mixer-v1.1"
-		common.Config.OLM.Images.V2_0.Mixer = "injected-mixer-v2.0"
-		common.Config.OLM.Images.V1_1.Pilot = "injected-pilot-v1.1"
-		common.Config.OLM.Images.V2_0.Pilot = "injected-pilot-v2.0"
-		common.Config.OLM.Images.V2_1.Pilot = "injected-pilot-v2.1"
-		common.Config.OLM.Images.V1_1.Prometheus = "injected-prometheus-v1.1"
-		common.Config.OLM.Images.V2_0.Prometheus = "injected-prometheus-v2.0"
-		common.Config.OLM.Images.V2_1.Prometheus = "injected-prometheus-v2.1"
-		common.Config.OLM.Images.V1_1.ProxyInit = "injected-proxy-init-v1.1"
-		common.Config.OLM.Images.V2_0.ProxyInit = "injected-proxy-init-v2.0"
-		common.Config.OLM.Images.V2_1.ProxyInit = "injected-proxy-init-v2.1"
-		common.Config.OLM.Images.V1_1.ProxyV2 = "injected-proxyv2-v1.1"
-		common.Config.OLM.Images.V2_0.ProxyV2 = "injected-proxyv2-v2.0"
-		common.Config.OLM.Images.V2_1.ProxyV2 = "injected-proxyv2-v2.1"
-		common.Config.OLM.Images.V1_1.SidecarInjector = "injected-sidecar-injector-v1.1"
-		common.Config.OLM.Images.V1_1.IOR = "injected-ior-v1.1"
-		common.Config.OLM.Images.V2_0.WASMCacher = "injected-wasm-cacher-v2.0"
-		common.Config.OLM.Images.V2_1.WASMCacher = "injected-wasm-cacher-v2.1"
 		os.Setenv("POD_NAMESPACE", operatorNamespace)
 		common.GetOperatorNamespace()
 		if _, filename, _, ok := goruntime.Caller(0); ok {

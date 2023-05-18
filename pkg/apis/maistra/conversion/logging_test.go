@@ -76,7 +76,7 @@ func loggingTestCasesV2(version versions.Version) []conversionTestCase {
 }
 
 func init() {
-	for _, v := range versions.AllV2Versions {
+	for _, v := range versions.TestedVersions {
 		loggingTestCases = append(loggingTestCases, loggingTestCasesV2(v)...)
 	}
 }

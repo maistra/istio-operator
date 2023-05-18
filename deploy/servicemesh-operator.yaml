@@ -10860,16 +10860,6 @@ spec:
       labels:
         name: istio-operator
       annotations:
-        # 2.0 images
-        olm.relatedImage.v2_0.3scale-istio-adapter: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-3scale-istio-adapter-rhel8:1.0.0
-        olm.relatedImage.v2_0.cni: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-istio-cni-rhel8:${OSSM_20}
-        olm.relatedImage.v2_0.grafana: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-grafana-rhel8:${OSSM_20}
-        olm.relatedImage.v2_0.mixer: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-mixer-rhel8:${OSSM_20}
-        olm.relatedImage.v2_0.pilot: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-pilot-rhel8:${OSSM_20}
-        olm.relatedImage.v2_0.prometheus: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-prometheus-rhel8:${OSSM_20}
-        olm.relatedImage.v2_0.proxy-init: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-proxy-init-rhel7:${OSSM_20}
-        olm.relatedImage.v2_0.proxyv2: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-proxyv2-rhel8:${OSSM_20}
-        olm.relatedImage.v2_0.wasm-cacher: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-pilot-rhel8:${OSSM_20}
         # 2.1 images
         olm.relatedImage.v2_1.cni: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-istio-cni-rhel8:${OSSM_21}
         olm.relatedImage.v2_1.grafana: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-grafana-rhel8:${OSSM_21}

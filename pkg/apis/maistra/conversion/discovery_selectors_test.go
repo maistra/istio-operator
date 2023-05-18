@@ -20,7 +20,7 @@ type conversionDiscoverySelectorsTestCase struct {
 }
 
 func init() {
-	for _, v := range versions.AllV2Versions {
+	for _, v := range versions.TestedVersions {
 		if v.AtLeast(versions.V2_4) {
 			discoverySelectorsTestCases = append(discoverySelectorsTestCases, discoverySelectorsTestCasesV2(v)...)
 		}

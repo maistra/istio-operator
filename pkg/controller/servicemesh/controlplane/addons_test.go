@@ -255,7 +255,7 @@ func TestAddonsInstall(t *testing.T) {
 
 func allV2Versions() []string {
 	var result []string
-	for _, v := range versions.AllV2Versions {
+	for _, v := range versions.TestedVersions {
 		result = append(result, v.String())
 	}
 	return result
