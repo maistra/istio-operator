@@ -238,14 +238,8 @@ func (r *namespaceReconciler) reconcileNamespaceInMesh(ctx context.Context, name
 
 	allErrors := []error{}
 
-	// if SMCP version is 2.4+ and cluster-wide mode is enabled, istiod is given
-	// cluster-wide permissions via ClusterRoleBindings, so there's no need to
-	// create RoleBindings in member namespaces
-	if !r.clusterWideMode || r.meshVersion.LessThan(versions.V2_4) {
-		err = r.reconcileRoleBindings(ctx, namespace)
-		if err != nil {
-			allErrors = append(allErrors, err)
-		}
+	if err := r.reconcileRoleBindings(ctx, namespace); err != nil {
+		allErrors = append(allErrors, err)
 	}
 
 	if r.isCNIEnabled {
@@ -300,6 +294,12 @@ func (r *namespaceReconciler) reconcileRoleBindings(ctx context.Context, namespa
 		// since we don't copy Roles from istio-system to member namespace, there's no sense in copying RoleBindings
 		// that reference them; instead, we only need to copy RoleBindings that reference ClusterRoles
 		if meshRoleBinding.RoleRef.Kind == "Role" {
+			continue
+		}
+		// if cluster-wide mode is enabled, istiod is given cluster-wide permissions via ClusterRoleBindings,
+		// so there's no need to create RoleBindings in member namespaces, but we still have to create RoleBinding
+		// for Prometheus, otherwise it won't be able to scrape metrics from workloads in member namespaces.
+		if r.clusterWideMode && strings.HasPrefix(meshRoleBinding.Name, "istiod-") {
 			continue
 		}
 		roleBindingName := meshRoleBinding.GetName()
