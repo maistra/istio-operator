@@ -193,6 +193,7 @@ spec:
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
 {{- end }}
           args:
+            - "--watch-interval={{ .Values.prometheus.configReloadInterval }}"
             - '--reload-url=http://localhost:9090/-/reload'
             - '--config-file=/etc/prometheus/config/prometheus.yml'
           command:

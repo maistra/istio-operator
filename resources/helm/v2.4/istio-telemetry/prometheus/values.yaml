@@ -63,6 +63,8 @@ prometheus:
 
   # Controls the frequency of prometheus scraping
   scrapeInterval: 15s
+   # Controls how often the Prometheus reloader will try to trigger configuration changes
+  configReloadInterval: 10s
 
   contextPath: /prometheus
 
