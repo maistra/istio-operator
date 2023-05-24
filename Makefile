@@ -36,7 +36,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # This variable is used to construct full image tags for bundle and catalog images.
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
-# maistra.io/sail-operator-bundle:$VERSION and maistra.io/sail-operator-catalog:$VERSION.
+# maistra.io/maistraoperator-bundle:$VERSION and maistra.io/maistraoperator-catalog:$VERSION.
 IMAGE_TAG_BASE ?= quay.io/maistra-dev/istio-operator-rhel9
 
 # BUNDLE_IMG defines the image:tag used for the bundle.

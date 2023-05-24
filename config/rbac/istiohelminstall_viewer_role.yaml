@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/name: clusterrole
     app.kubernetes.io/instance: istiohelminstall-viewer-role
     app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: sail-operator
-    app.kubernetes.io/part-of: sail-operator
+    app.kubernetes.io/created-by: maistraoperator
+    app.kubernetes.io/part-of: maistraoperator
     app.kubernetes.io/managed-by: kustomize
   name: istiohelminstall-viewer-role
 rules:
