@@ -3,6 +3,7 @@ package memberroll
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -38,6 +39,7 @@ const (
 
 	statusAnnotationConfiguredMemberCount = "configuredMemberCount"
 	statusAnnotationKialiName             = "kialiName"
+	statusAnnotationPrometheus            = "PrometheusScrapingMemebers"
 )
 
 // Add creates a new ServiceMeshMemberRoll Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -388,7 +390,9 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		if err != nil {
 			prometheusErr = pkgerrors.Wrapf(err, "could not reconcile Prometheus, because of unknown SMCP version")
 		} else if cv.AtLeast(versions.V2_4) {
-			prometheusErr = r.prometheusReconciler.reconcilePrometheus(ctx, prometheusConfigMapName, meshNamespace, configuredMembers.List())
+			scrapingNamespaces := configuredMembers.List()
+			roll.Status.SetAnnotation(statusAnnotationPrometheus, strings.Join(scrapingNamespaces, ","))
+			prometheusErr = r.prometheusReconciler.reconcilePrometheus(ctx, prometheusConfigMapName, meshNamespace, scrapingNamespaces)
 		}
 	}
 
@@ -615,6 +619,15 @@ func (r *MemberRollReconciler) finalizeObject(ctx context.Context, roll *maistra
 			return false, err
 		}
 	}
+
+	scrapingNamespaces := roll.Status.GetAnnotation(statusAnnotationPrometheus)
+	if scrapingNamespaces != "" {
+		err = r.prometheusReconciler.reconcilePrometheus(ctx, prometheusConfigMapName, roll.Namespace, []string{})
+		if err != nil {
+			return false, err
+		}
+	}
+
 	return true, nil
 }
 
