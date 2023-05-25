@@ -47,9 +47,7 @@ func (r *defaultPrometheusReconciler) reconcilePrometheus(ctx context.Context, p
 	}
 
 	data := make(map[string]interface{})
-
 	err = yaml.Unmarshal([]byte(cm.Data[prometheusConfigurationFilename]), &data)
-
 	if err != nil {
 		return pkgerrors.Wrap(err, "error unmarshaling prometheus.yml")
 	}
@@ -81,41 +79,17 @@ func (r *defaultPrometheusReconciler) reconcilePrometheus(ctx context.Context, p
 			continue
 		}
 
-		f, ok, err := unstructured.NestedFieldNoCopy(scrape, prometheusScrapeSDConfigKeyName)
-
-		if err == nil {
-			if ok {
-				sds, ok := f.([]interface{})
-
-				if ok {
-					for _, v := range sds {
-						sd, ok := v.(map[string]interface{})
-
-						if ok {
-							reqLogger.Info(fmt.Sprintf("Updating sd %v", v))
-
-							err = unstructured.SetNestedStringSlice(sd, scrapingMembers, "namespaces", "names")
-
-							if err != nil {
-								return pkgerrors.Wrap(err, fmt.Sprintf("error setting sd %v", v))
-							}
-						}
-					}
-				} else {
-					return fmt.Errorf("error can not process sd %v", f)
-				}
-			} else {
-				reqLogger.Info(fmt.Sprintf("Ignoring scrape %v", s))
-			}
-		} else {
-			return pkgerrors.Wrap(err, fmt.Sprintf("error getting sd from %v", s))
+		reqLogger.V(2).Info("Processing Prometheus scrape target: %v", scrape)
+		err := processScrapeConfig(scrape, scrapingMembers)
+		if err != nil {
+			return err
 		}
 	}
 
-	updatedPrometheus := &corev1.ConfigMap{}
+	updatedConfigMap := &corev1.ConfigMap{}
 
-	updatedPrometheus.SetName(prometheusCMName)
-	updatedPrometheus.SetNamespace(prometheusNamespace)
+	updatedConfigMap.SetName(prometheusCMName)
+	updatedConfigMap.SetNamespace(prometheusNamespace)
 
 	updatedConfigurationFileData, err := yaml.Marshal(data)
 	if err != nil {
@@ -124,13 +98,13 @@ func (r *defaultPrometheusReconciler) reconcilePrometheus(ctx context.Context, p
 
 	updatedConfigurationFile := string(updatedConfigurationFileData)
 
-	reqLogger.Info(fmt.Sprintf("Prometheus updated configuration file %v", updatedConfigurationFile))
+	reqLogger.V(2).Info(fmt.Sprintf("Prometheus updated configuration file %v", updatedConfigurationFile))
 
-	updatedPrometheus.Data = map[string]string{
+	updatedConfigMap.Data = map[string]string{
 		prometheusConfigurationFilename: updatedConfigurationFile,
 	}
 
-	err = r.Client.Patch(ctx, updatedPrometheus, client.Merge)
+	err = r.Client.Patch(ctx, updatedConfigMap, client.Merge)
 
 	if err != nil {
 		if meta.IsNoMatchError(err) || errors.IsNotFound(err) || errors.IsGone(err) {
@@ -141,6 +115,53 @@ func (r *defaultPrometheusReconciler) reconcilePrometheus(ctx context.Context, p
 	}
 
 	reqLogger.Info("Prometheus ConfigMap scraping namespaces updated", "namespaces", scrapingMembers)
+
+	return nil
+}
+
+func processScrapeConfig(scrape map[string]interface{}, scrapingMembers []string) error {
+	f, ok, err := unstructured.NestedFieldNoCopy(scrape, prometheusScrapeSDConfigKeyName)
+	if err != nil {
+		return pkgerrors.Wrap(err, fmt.Sprintf("error getting sd from %v", scrape))
+	}
+
+	if !ok {
+		return nil
+	}
+
+	sds, ok := f.([]interface{})
+	if !ok {
+		return fmt.Errorf("error can not process sd %v", f)
+	}
+
+	errors := []error{}
+
+	for _, v := range sds {
+		if sd, ok := v.(map[string]interface{}); ok {
+			err = setServiceDiscoveryNamespaces(sd, scrapingMembers)
+			if err != nil {
+				errors = append(errors, err)
+			}
+		}
+	}
+
+	if len(errors) != 0 {
+		msg := ""
+		for _, e := range errors {
+			msg += fmt.Sprintf("%s\n", e.Error())
+		}
+
+		return pkgerrors.New(fmt.Sprintf("error processing scrape %v%s", scrape, msg))
+	}
+
+	return nil
+}
+
+func setServiceDiscoveryNamespaces(sd map[string]interface{}, scrapingMembers []string) error {
+	err := unstructured.SetNestedStringSlice(sd, scrapingMembers, "namespaces", "names")
+	if err != nil {
+		return pkgerrors.Wrap(err, fmt.Sprintf("error setting sd %v", sd))
+	}
 
 	return nil
 }
