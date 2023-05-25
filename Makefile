@@ -3,7 +3,15 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.0.1
+VERSION ?= 3.0.0
+MINOR_VERSION := $(shell v='$(VERSION)'; echo "$${v%.*}")
+
+# Istio repository to pull charts from
+ISTIO_REPOSITORY ?= maistra/istio
+# the branch to use when updating the commit hash below
+ISTIO_BRANCH_30 ?= maistra-3.0
+# the current commit of ${ISTIO_REPOSITORY} for v3.0. This will be used to copy charts
+ISTIO_COMMIT_30 ?= 16ff353b180a1f461bd380be6ef2d1809b8c1fba
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
@@ -46,8 +54,10 @@ ifeq ($(USE_IMAGE_DIGESTS), true)
 	BUNDLE_GEN_FLAGS += --use-image-digests
 endif
 
+# Image hub to use
+HUB ?= quay.io/maistra-dev
 # Image URL to use all building/pushing image targets
-IMG ?= ${HUB}/istio-operator:3.0
+IMAGE ?= ${HUB}/istio-operator:3.0
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.26.0
 
@@ -101,17 +111,17 @@ run: gen ## Run a controller from your host.
 
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
-	docker build -t ${IMG} .
+	docker build -t ${IMAGE} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
-	docker push ${IMG}
+	docker push ${IMAGE}
 
 # PLATFORMS defines the target platforms for  the manager image be build to provide support to multiple
-# architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
+# architectures. (i.e. make docker-buildx IMAGE=myregistry/mypoperator:0.0.1). To use this option you need to:
 # - able to use docker buildx . More info: https://docs.docker.com/build/buildx/
 # - have enable BuildKit, More info: https://docs.docker.com/develop/develop-images/build_enhancements/
-# - be able to push the image for your registry (i.e. if you do not inform a valid value via IMG=<myregistry/image:<tag>> then the export will fail)
+# - be able to push the image for your registry (i.e. if you do not inform a valid value via IMAGE=<myregistry/image:<tag>> then the export will fail)
 # To properly provided solutions that supports more than one platform you should use this option.
 PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
 .PHONY: docker-buildx
@@ -120,7 +130,7 @@ docker-buildx: test ## Build and push docker image for the manager for cross-pla
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
 	- docker buildx create --name project-v3-builder
 	docker buildx use project-v3-builder
-	- docker buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
+	- docker buildx build --push --platform=$(PLATFORMS) --tag ${IMAGE} -f Dockerfile.cross .
 	- docker buildx rm project-v3-builder
 	rm Dockerfile.cross
 
@@ -140,7 +150,7 @@ uninstall: gen kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.
 
 .PHONY: deploy
 deploy: gen kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 .PHONY: undeploy
@@ -157,8 +167,12 @@ gen-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and 
 gen-code: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
+.PHONY: gen-charts
+gen-charts: ## Pull charts from maistra/istio repository
+	hack/download-charts.sh v${MINOR_VERSION} https://github.com/${ISTIO_REPOSITORY} ${ISTIO_COMMIT_30}
+
 .PHONY: gen ## Generate everything
-gen: controller-gen gen-manifests gen-code
+gen: controller-gen gen-manifests gen-code gen-charts
 
 .PHONY: gen-check
 gen-check: gen check-clean-repo ## Verifies that changes in generated resources have been checked in
@@ -166,6 +180,11 @@ gen-check: gen check-clean-repo ## Verifies that changes in generated resources 
 .PHONY: check-clean-repo
 check-clean-repo:
 	@if [[ -n $$(git status --porcelain) ]]; then git status; git diff; echo "ERROR: Some files need to be updated, please run 'make gen' and include any changed files in your PR"; exit 1;	fi
+
+.PHONY: update-istio
+update-istio: ## Updates the Istio commit hash to latest on ${ISTIO_BRANCH_30}
+	@LATEST_COMMIT_30=`git ls-remote https://github.com/${ISTIO_REPOSITORY}.git | grep ${ISTIO_BRANCH_30} | cut -f 1` ;\
+	echo Updating to ${ISTIO_REPOSITORY}@$${LATEST_COMMIT_30}; sed -i -e "s/^\(ISTIO_COMMIT_30 ?= \).*$$/\1$${LATEST_COMMIT_30}/g" Makefile
 
 ##@ Build Dependencies
 
@@ -207,7 +226,7 @@ $(ENVTEST): $(LOCALBIN)
 .PHONY: bundle
 bundle: gen kustomize ## Generate bundle manifests and metadata, then validate generated files.
 	operator-sdk generate kustomize manifests -q
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMAGE)
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle $(BUNDLE_GEN_FLAGS)
 	operator-sdk bundle validate ./bundle
 
@@ -217,7 +236,7 @@ bundle-build: ## Build the bundle image.
 
 .PHONY: bundle-push
 bundle-push: ## Push the bundle image.
-	$(MAKE) docker-push IMG=$(BUNDLE_IMG)
+	$(MAKE) docker-push IMAGE=$(BUNDLE_IMG)
 
 .PHONY: opm
 OPM = ./bin/opm
@@ -258,7 +277,7 @@ catalog-build: opm ## Build a catalog image.
 # Push the catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
-	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+	$(MAKE) docker-push IMAGE=$(CATALOG_IMG)
 
 
 ##@ Linting
