@@ -189,15 +189,18 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 
 	log.Info("Creating Maistra Operator webhook PrometheusRule")
 	monclient, _ := clientmonitoring.NewForConfig(mgr.GetConfig())
+	prometheusRule := newPrometheusRule(operatorNamespace,
+		"maistra-operator-prometheusrule",
+		"sum without (smcp_namespace) (servicemesh_members)",
+		"cluster:servicemesh_members:sum")
 	if _, err := monclient.PrometheusRules(operatorNamespace).Create(context.TODO(),
-		newPrometheusRule(operatorNamespace,
-			"maistra-operator-prometheusrule",
-			"sum without (smcp_namespace) (servicemesh_members)",
-			"cluster:servicemesh_members:sum"), metav1.CreateOptions{}); err != nil {
+		prometheusRule, metav1.CreateOptions{}); err != nil {
 		if errors.IsAlreadyExists(err) {
 			log.Info("Maistra Operator webhook PrometheusRule already exists")
 		} else {
-			return pkgerrors.Wrap(err, "error creating Maistra Operator webhook PrometheusRule")
+			log.Error(err, "warning: failed to create Maistra Operator webhook PrometheusRule")
+			mgr.GetEventRecorderFor("maistra-operator-prometheusrule-webhook").Event(prometheusRule,
+				"Warning", "Failed", "Failed to create Maistra Operator webhook PrometheusRule")
 		}
 	}
 
