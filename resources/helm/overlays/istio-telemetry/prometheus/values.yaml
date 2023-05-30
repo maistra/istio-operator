@@ -63,6 +63,8 @@ prometheus:
 
   # Controls the frequency of prometheus scraping
   scrapeInterval: 15s
+   # Controls how often the Prometheus reloader will try to trigger configuration changes
+  configReloadInterval: 10s
 
   contextPath: /prometheus
 
@@ -107,5 +109,11 @@ prometheus:
   # is shared with Prometheus through mounted files.
   # When this option is set as false, this certificate provisioning mechanism is disabled.
   provisionPrometheusCert: true
+
+  scrapingNamespaces: []
+
+prometheusConfigReloader:
+  image: quay.io/prometheus-operator/prometheus-config-reloader:v0.63.0
+  resources: {}
 
 revision: ""

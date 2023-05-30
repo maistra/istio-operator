@@ -106,6 +106,9 @@ func (v *versionStrategyV2_4) SetImageValues(_ context.Context, _ *common.Contro
 	if err := common.UpdateField(smcpSpec.Istio, "prometheus.image", common.Config.OLM.Images.V2_4.Prometheus); err != nil {
 		return err
 	}
+	if err := common.UpdateField(smcpSpec.Istio, "prometheusConfigReloader.image", common.Config.OLM.Images.V2_4.PrometheusConfigReloader); err != nil {
+		return err
+	}
 	if err := common.UpdateField(smcpSpec.Istio, "global.proxy.image", common.Config.OLM.Images.V2_4.ProxyV2); err != nil {
 		return err
 	}
@@ -475,6 +478,31 @@ func (v *versionStrategyV2_4) Render(ctx context.Context, cr *common.ControllerR
 			}
 		}
 	}
+
+	if isComponentEnabled(spec.Istio, v2_4ChartMapping[PrometheusChart].enabledField) {
+		roll := &v1.ServiceMeshMemberRoll{}
+
+		err := cr.Client.Get(ctx, types.NamespacedName{Namespace: smcp.GetNamespace(), Name: common.MemberRollName}, roll)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				log.V(2).Info(fmt.Sprintf("memberroll not found in namespace %s", smcp.GetNamespace()))
+			} else {
+				return nil, fmt.Errorf("error setting prometheus namespaces: %s", err)
+			}
+		}
+
+		namespaces := roll.Status.ConfiguredMembers
+
+		log.Info(fmt.Sprintf("prometheus setting namespaces %v", namespaces))
+
+		err = spec.Istio.SetStringSlice("prometheus.scrapingNamespaces", namespaces)
+
+		if err != nil {
+			return nil, fmt.Errorf("error setting field prometheus.scrapingNamespaces: %v", err)
+		}
+
+	}
+
 	if isComponentEnabled(spec.Istio, v2_4ChartMapping[KialiChart].enabledField) {
 		kialiResource, _, _ := spec.Istio.GetString("kiali.resourceName")
 		if kialiResource == "" {

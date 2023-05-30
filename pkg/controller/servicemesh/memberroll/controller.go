@@ -3,6 +3,7 @@ package memberroll
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -38,24 +39,34 @@ const (
 
 	statusAnnotationConfiguredMemberCount = "configuredMemberCount"
 	statusAnnotationKialiName             = "kialiName"
+	statusAnnotationPrometheus            = "PrometheusScrapingMemebers"
 )
 
 // Add creates a new ServiceMeshMemberRoll Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	kialiReconciler := defaultKialiReconciler{Client: mgr.GetClient()}
-	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetEventRecorderFor(controllerName), &kialiReconciler))
+	prometheusReconciler := defaultPrometheusReconciler{Client: mgr.GetClient()}
+
+	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetEventRecorderFor(controllerName), &kialiReconciler, &prometheusReconciler))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(cl client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, kialiReconciler KialiReconciler) *MemberRollReconciler {
+func newReconciler(
+	cl client.Client,
+	scheme *runtime.Scheme,
+	eventRecorder record.EventRecorder,
+	kialiReconciler KialiReconciler,
+	prometheusReconciler PrometheusReconciler,
+) *MemberRollReconciler {
 	return &MemberRollReconciler{
 		ControllerResources: common.ControllerResources{
 			Client:        cl,
 			Scheme:        scheme,
 			EventRecorder: eventRecorder,
 		},
-		kialiReconciler: kialiReconciler,
+		kialiReconciler:      kialiReconciler,
+		prometheusReconciler: prometheusReconciler,
 	}
 }
 
@@ -184,7 +195,8 @@ var _ reconcile.Reconciler = &MemberRollReconciler{}
 type MemberRollReconciler struct {
 	common.ControllerResources
 
-	kialiReconciler KialiReconciler
+	kialiReconciler      KialiReconciler
+	prometheusReconciler PrometheusReconciler
 }
 
 // Reconcile reads that state of the cluster for a ServiceMeshMemberRoll object and makes changes based on the state read
@@ -369,6 +381,21 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		}
 	}
 
+	// 7. tell Prometheus about all the namespaces in the mesh
+	var prometheusErr error
+
+	if mesh != nil && mesh.Status.AppliedSpec.IsPrometheusEnabled() {
+		cv, err := versions.ParseVersion(mesh.Status.AppliedSpec.Version)
+
+		if err != nil {
+			prometheusErr = pkgerrors.Wrapf(err, "could not reconcile Prometheus, because of unknown SMCP version")
+		} else if cv.AtLeast(versions.V2_4) {
+			scrapingNamespaces := configuredMembers.List()
+			roll.Status.SetAnnotation(statusAnnotationPrometheus, strings.Join(scrapingNamespaces, ","))
+			prometheusErr = r.prometheusReconciler.reconcilePrometheus(ctx, prometheusConfigMapName, meshNamespace, scrapingNamespaces)
+		}
+	}
+
 	// 7. update the status
 	roll.Status.Members = allKnownMembers.List()
 	roll.Status.PendingMembers = allKnownMembers.Difference(upToDateMembers).Difference(terminatingMembers).List()
@@ -405,19 +432,24 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		setReadyCondition(roll, false,
 			maistrav1.ConditionReasonReconcileError,
 			fmt.Sprintf("Kiali could not be configured: %v", kialiErr))
+	} else if prometheusErr != nil {
+		setReadyCondition(roll, false,
+			maistrav1.ConditionReasonReconcileError,
+			fmt.Sprintf("Prometheus could not be configured: %v", prometheusErr))
 	} else {
 		setReadyCondition(roll, true,
 			maistrav1.ConditionReasonConfigured,
 			"All namespaces have been configured successfully")
 	}
 
-	err = r.updateStatus(ctx, roll)
-	if err != nil {
-		return reconcile.Result{}, err
+	if err = r.updateStatus(ctx, roll); err != nil {
+		return common.RequeueWithError(err)
 	} else if kialiErr != nil {
-		return reconcile.Result{}, kialiErr
+		return common.RequeueWithError(kialiErr)
+	} else if prometheusErr != nil {
+		return common.RequeueWithError(prometheusErr)
 	}
-	return reconcile.Result{}, nil
+	return common.Reconciled()
 }
 
 func getExcludedNamespaces() []string {
@@ -587,6 +619,15 @@ func (r *MemberRollReconciler) finalizeObject(ctx context.Context, roll *maistra
 			return false, err
 		}
 	}
+
+	scrapingNamespaces := roll.Status.GetAnnotation(statusAnnotationPrometheus)
+	if scrapingNamespaces != "" {
+		err = r.prometheusReconciler.reconcilePrometheus(ctx, prometheusConfigMapName, roll.Namespace, []string{})
+		if err != nil {
+			return false, err
+		}
+	}
+
 	return true, nil
 }
 

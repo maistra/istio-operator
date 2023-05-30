@@ -874,8 +874,9 @@ func createClientAndReconciler(clientObjects ...runtime.Object) (client.Client, 
 
 	fakeEventRecorder := &record.FakeRecorder{}
 	kialiReconciler := &fakeKialiReconciler{}
+	prometheusReconciler := &fakePrometheusReconciler{}
 
-	r := newReconciler(cl, scheme.Scheme, fakeEventRecorder, kialiReconciler)
+	r := newReconciler(cl, scheme.Scheme, fakeEventRecorder, kialiReconciler, prometheusReconciler)
 	return cl, enhancedTracker, r, kialiReconciler
 }
 
@@ -992,6 +993,25 @@ func (f *fakeKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName, k
 	}
 	if f.delegate != nil {
 		return f.delegate(ctx, kialiCRName, kialiCRNamespace, accessibleNamespaces, excludedNamespaces)
+	}
+	return nil
+}
+
+type fakePrometheusReconciler struct {
+	reconcilePrometheusInvoked  bool
+	prometheusConfiguredMembers []string
+	errorToReturn               error
+	delegate                    func(ctx context.Context, prometheusCMName, prometheusNamespace string, configuredMembers []string) error
+}
+
+func (f *fakePrometheusReconciler) reconcilePrometheus(ctx context.Context, prometheusCMName, prometheusNamespace string, configuredMembers []string) error {
+	f.reconcilePrometheusInvoked = true
+	f.prometheusConfiguredMembers = append([]string{}, configuredMembers...)
+	if f.errorToReturn != nil {
+		return f.errorToReturn
+	}
+	if f.delegate != nil {
+		return f.delegate(ctx, prometheusCMName, prometheusNamespace, configuredMembers)
 	}
 	return nil
 }
