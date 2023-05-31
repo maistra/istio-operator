@@ -27,9 +27,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/kubectl/pkg/scheme"
 	"maistra.io/istio-operator/pkg/common"
 	"maistra.io/istio-operator/pkg/helm"
 	"maistra.io/istio-operator/pkg/test"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -43,6 +46,7 @@ var (
 	testEnv   *envtest.Environment
 	k8sClient client.Client
 	cfg       *rest.Config
+	cancel    context.CancelFunc
 )
 
 func TestAPIs(t *testing.T) {
@@ -56,7 +60,33 @@ var _ = BeforeSuite(func() {
 
 	helm.ResourceDirectory = path.Join(common.RepositoryRoot, "resources")
 
-	err := k8sClient.Create(context.TODO(), &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: "istio-operator"}})
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
+		Scheme: scheme.Scheme,
+		NewClient: func(cache cache.Cache, config *rest.Config, options client.Options, uncachedObjects ...client.Object) (client.Client, error) {
+			return k8sClient, nil
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	controller := NewIstioHelmInstallReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), path.Join(common.RepositoryRoot, "resources"))
+	err = controller.SetupWithManager(mgr)
+	if err != nil {
+		panic(err)
+	}
+	// create new cancellable context
+	var ctx context.Context
+	ctx, cancel = context.WithCancel(context.Background())
+
+	go func() {
+		err = mgr.Start(ctx)
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	err = k8sClient.Create(context.TODO(), &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: "istio-operator"}})
 	Expect(err).NotTo(HaveOccurred())
 	err = os.Setenv("POD_NAMESPACE", "istio-operator")
 	Expect(err).NotTo(HaveOccurred())
@@ -64,6 +94,7 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
+	cancel()
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })

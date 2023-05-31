@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"os"
 
+	multusv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -34,6 +35,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	networkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 )
 
 var (
@@ -43,6 +46,8 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(multusv1.AddToScheme(scheme))
+	utilruntime.Must(networkingv1alpha3.AddToScheme(scheme))
 
 	utilruntime.Must(maistraiov1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
@@ -107,11 +112,9 @@ func main() {
 	}
 
 	helm.ResourceDirectory = resourceDirectory
-	if err = (&controllers.IstioHelmInstallReconciler{
-		ResourceDirectory: resourceDirectory,
-		Client:            mgr.GetClient(),
-		Scheme:            mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	controller := controllers.NewIstioHelmInstallReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDirectory)
+	err = controller.SetupWithManager(mgr)
+	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IstioHelmInstall")
 		os.Exit(1)
 	}

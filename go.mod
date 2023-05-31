@@ -2,17 +2,20 @@ module maistra.io/istio-operator
 
 go 1.19
 
+replace helm.sh/helm/v3 => github.com/luksa/helm/v3 v3.0.0-20230607112554-ceffc083f5a9
+
 require (
 	github.com/go-logr/logr v1.2.3
+	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.4.0
 	github.com/magiconair/properties v1.8.7
 	github.com/onsi/ginkgo/v2 v2.6.0
 	github.com/onsi/gomega v1.24.1
 	github.com/pkg/errors v0.9.1
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	helm.sh/helm/v3 v3.11.3
+	istio.io/client-go v1.17.1
 	k8s.io/api v0.26.2
 	k8s.io/apimachinery v0.26.2
-	k8s.io/cli-runtime v0.26.0
 	k8s.io/client-go v0.26.2
 	k8s.io/kubectl v0.26.0
 	sigs.k8s.io/controller-runtime v0.14.1
@@ -135,8 +138,10 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	istio.io/api v0.0.0-20230217221049-9d422bf48675 // indirect
 	k8s.io/apiextensions-apiserver v0.26.0 // indirect
 	k8s.io/apiserver v0.26.2 // indirect
+	k8s.io/cli-runtime v0.26.0 // indirect
 	k8s.io/component-base v0.26.2 // indirect
 	k8s.io/klog/v2 v2.90.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 // indirect
