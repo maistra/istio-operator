@@ -17,6 +17,8 @@ limitations under the License.
 package helm
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -24,48 +26,37 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	chartLoader "helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/release"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
 	logger               = log.Log.WithName("helm")
-	ResourceDirectory, _ = filepath.Abs("resources/charts") // "/var/lib/istio-operator/resources"
+	ResourceDirectory, _ = filepath.Abs("resources/charts")
 )
 
 // GetActionConfig Get the Helm action config from in cluster service account
-func GetActionConfig(namespace string) (*action.Configuration, error) {
+func GetActionConfig(restClientConfig *rest.Config, namespace string) (*action.Configuration, error) {
 	actionConfig := new(action.Configuration)
-	var kubeConfig *genericclioptions.ConfigFlags
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-	// Set properties manually from official rest config
-	kubeConfig = genericclioptions.NewConfigFlags(false)
-	kubeConfig.APIServer = &config.Host
-	kubeConfig.BearerToken = &config.BearerToken
-	kubeConfig.CAFile = &config.CAFile
-	kubeConfig.Namespace = &namespace
-	if err := actionConfig.Init(kubeConfig, namespace, os.Getenv("HELM_DRIVER"), logger.V(2).Info); err != nil {
+	if err := actionConfig.Init(newRESTClientGetter(restClientConfig), namespace, os.Getenv("HELM_DRIVER"), logger.V(2).Info); err != nil {
 		return nil, err
 	}
 	return actionConfig, nil
 }
 
 // UpgradeOrInstallChart upgrades a chart in cluster or installs it new if it does not already exist
-// TODO: use context
-func UpgradeOrInstallChart(chartName, chartVersion, namespace, releaseName string, values map[string]interface{}) (*release.Release, error) {
+func UpgradeOrInstallChart(ctx context.Context, restConfig *rest.Config,
+	chartName, chartVersion, namespace, releaseName string, values map[string]interface{},
+) (*release.Release, error) {
 	// Helm List Action
-	cfg, err := GetActionConfig(namespace)
+	cfg, err := GetActionConfig(restConfig, namespace)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list installed helm releases: %v", err)
 	}
 	listAction := action.NewList(cfg)
 	releases, err := listAction.Run()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list installed helm releases: %v", err)
 	}
 
 	toUpgrade := false
@@ -75,7 +66,7 @@ func UpgradeOrInstallChart(chartName, chartVersion, namespace, releaseName strin
 		}
 	}
 
-	chart, err := chartLoader.Load(path.Join(ResourceDirectory, chartVersion, chartName))
+	chart, err := chartLoader.Load(path.Join(ResourceDirectory, "charts", chartVersion, chartName))
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +74,8 @@ func UpgradeOrInstallChart(chartName, chartVersion, namespace, releaseName strin
 	if toUpgrade {
 		logger.V(2).Info("Performing helm upgrade", "chartName", chart.Name())
 		updateAction := action.NewUpgrade(cfg)
-		rel, err = updateAction.Run(releaseName, chart, values)
+		updateAction.MaxHistory = 1
+		rel, err = updateAction.RunWithContext(ctx, releaseName, chart, values)
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +85,7 @@ func UpgradeOrInstallChart(chartName, chartVersion, namespace, releaseName strin
 		installAction := action.NewInstall(cfg)
 		installAction.Namespace = namespace
 		installAction.ReleaseName = releaseName
-		rel, err = installAction.Run(chart, values)
+		rel, err = installAction.RunWithContext(ctx, chart, values)
 		if err != nil {
 			return nil, err
 		}
@@ -102,9 +94,9 @@ func UpgradeOrInstallChart(chartName, chartVersion, namespace, releaseName strin
 }
 
 // UninstallChart removes a chart from the cluster
-func UninstallChart(namespace, releaseName string) (*release.UninstallReleaseResponse, error) {
+func UninstallChart(restClientConfig *rest.Config, namespace, releaseName string) (*release.UninstallReleaseResponse, error) {
 	// Helm List Action
-	cfg, err := GetActionConfig(namespace)
+	cfg, err := GetActionConfig(restClientConfig, namespace)
 	if err != nil {
 		return nil, err
 	}

@@ -27,6 +27,7 @@ import (
 	maistraiov1 "maistra.io/istio-operator/api/v1"
 	"maistra.io/istio-operator/controllers"
 	"maistra.io/istio-operator/pkg/common"
+	"maistra.io/istio-operator/pkg/helm"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -48,10 +49,11 @@ func main() {
 	var metricsAddr string
 	var probeAddr string
 	var configFile string
+	var resourceDirectory string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&configFile, "config-file", "/etc/istio-operator/config.properties", "Location of the config file, propagated by k8s downward APIs")
-
+	flag.StringVar(&resourceDirectory, "resource-directory", "/var/lib/istio-operator/resources", "Where to find resources (e.g. charts)")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -92,9 +94,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	helm.ResourceDirectory = resourceDirectory
 	if err = (&controllers.IstioHelmInstallReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		ResourceDirectory: resourceDirectory,
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IstioHelmInstall")
 		os.Exit(1)
