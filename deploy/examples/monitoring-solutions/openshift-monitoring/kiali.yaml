@@ -21,4 +21,4 @@ spec:
       thanos_proxy:
         enabled: true
       url: https://thanos-querier.openshift-monitoring.svc.cluster.local:9091
-  version: v1.57
+  version: v1.65

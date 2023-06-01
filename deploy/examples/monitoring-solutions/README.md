@@ -1,6 +1,11 @@
 # Monitoring solutions for OpenShift Service Mesh
 
-### Prepare users and permissions
+### Prerequisites
+1. OpenShift Service Mesh Operator 2.4+.
+2. Kiali Operator 1.65+.
+3. OpenShift user-workload monitoring stack is available (`crc config set enable-cluster-monitoring true`).
+
+### Prepare users and permissions to simulate multi-tenant environment
 
 1. Prepare htpasswd identity provider
 ```shell
@@ -56,7 +61,7 @@ oc delete identity developer:developer
 oc delete identity developer:kubeadmin
 ```
 
-## Service Mesh and Monitoring integration
+## OpenShift Monitoring stack
 
 1. Enable user-workload monitoring:
 ```shell
@@ -71,34 +76,39 @@ TOKEN=`echo $(oc get secret $SECRET -n openshift-user-workload-monitoring -o jso
 oc create secret generic thanos-querier-web-token -n istio-system-1 --from-literal=token=$TOKEN
 ```
 
-3. Install OpenShift Service Mesh operator.
-
-4. Deploy Kiali, Istio and bookinfo app for the first tenant:
+3. Deploy Kiali, Istio and bookinfo app for the first tenant:
 ```shell
 oc login -u meshadmin-1 https://api.crc.testing:6443
 oc apply -n istio-system-1 -f openshift-monitoring/kiali.yaml
 oc apply -n istio-system-1 -f openshift-monitoring/mesh.yaml
-sed 's/{{host}}/bookinfo-1/g' route.yaml | oc apply -n istio-system-1 -f -
 ```
 
-5. Wait until istiod is ready and then apply:
+4. Wait until istiod is ready and then apply:
 ```shell
 oc apply -n istio-system-1 -f telemetry.yaml
-oc apply -n bookinfo-1 -f openshift-monitoring/bookinfo.yaml
+oc apply -f https://raw.githubusercontent.com/maistra/istio/maistra-2.4/samples/bookinfo/platform/kube/bookinfo.yaml -n bookinfo-1
 oc apply -n bookinfo-1 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.4/samples/bookinfo/networking/bookinfo-gateway.yaml
+oc patch -n bookinfo-1 deployment productpage-v1 -p '{"spec":{"template":{"spec":{"containers":[{"name": "productpage", "image":"quay.io/jewertow/productpage:metrics"}]}}}}'
+oc patch -n bookinfo-1 deployment productpage-v1 -p '{"spec": {"template":{"metadata":{"annotations":{"prometheus.io/scrape":"true","prometheus.io/port":"9080","prometheus.io/path":"/metrics"}}}}}'
 ```
 
-4. Generate traffic:
+5. Generate traffic:
 ```shell
-while true; do curl -v bookinfo-1.apps-crc.testing:80/productpage > /dev/null; sleep 1; done
+ISTIO_SYSTEM_1_INGRESS_HOST=$(oc get routes -n istio-system-1 istio-ingressgateway -o jsonpath='{.spec.host}')
+while true; do curl -v "http://$ISTIO_SYSTEM_1_INGRESS_HOST:80/productpage" > /dev/null; sleep 1; done
 ```
 
-5. Configure monitoring to scrape merged metrics:
+6. Configure monitoring to scrape merged metrics:
 ```shell
 oc apply -n istio-system-1 -f openshift-monitoring/istiod-monitor.yaml
 oc apply -n istio-system-1 -f openshift-monitoring/istio-proxies-monitor.yaml
 oc apply -n bookinfo-1 -f openshift-monitoring/istio-proxies-monitor.yaml
 ```
+
+7. Go to the "Observe" view and display istio-proxy and application metrics:
+
+![istio-proxy metrics](openshift-monitoring/screenshots/istio-proxy-metrics.png)
+![application-metrics](openshift-monitoring/screenshots/application-metrics.png)
 
 ## Custom Prometheus Operator
 
