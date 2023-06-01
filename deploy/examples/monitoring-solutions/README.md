@@ -86,8 +86,8 @@ oc apply -n istio-system-1 -f openshift-monitoring/mesh.yaml
 4. Wait until istiod is ready and then apply:
 ```shell
 oc apply -n istio-system-1 -f telemetry.yaml
-oc apply -f https://raw.githubusercontent.com/maistra/istio/maistra-2.4/samples/bookinfo/platform/kube/bookinfo.yaml -n bookinfo-1
 oc apply -n bookinfo-1 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.4/samples/bookinfo/networking/bookinfo-gateway.yaml
+oc apply -n bookinfo-1 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.4/samples/bookinfo/platform/kube/bookinfo.yaml
 oc patch -n bookinfo-1 deployment productpage-v1 -p '{"spec":{"template":{"spec":{"containers":[{"name": "productpage", "image":"quay.io/jewertow/productpage:metrics"}]}}}}'
 oc patch -n bookinfo-1 deployment productpage-v1 -p '{"spec": {"template":{"metadata":{"annotations":{"prometheus.io/scrape":"true","prometheus.io/port":"9080","prometheus.io/path":"/metrics"}}}}}'
 ```
@@ -117,7 +117,7 @@ oc apply -n bookinfo-1 -f openshift-monitoring/istio-proxies-monitor.yaml
 
 ## Custom Prometheus Operator
 
-1. Login as `clusteradmin` and install Prometheus Operator in the OCP console:
+1. Login as `clusteradmin` and install Prometheus Operator through the operator hub:
 ```shell
 oc login -u clusteradmin https://api.crc.testing:6443
 oc new-project custom-prometheus
@@ -143,17 +143,17 @@ sed "s/{{username}}/meshadmin-2/g" rbac/monitors.yaml | oc apply -n custom-prome
 3. Login as `meshadmin-2` and deploy service mesh:
 ```shell
 oc login -u meshadmin-2 https://api.crc.testing:6443
-oc apply -n istio-system-2 -f custom-prometheus/mesh.yaml
 oc apply -n istio-system-2 -f custom-prometheus/kiali.yaml
-sed 's/{{host}}/bookinfo-2/g' route.yaml | oc apply -n istio-system-2 -f -
+oc apply -n istio-system-2 -f custom-prometheus/mesh.yaml
 ```
 
 Wait until istiod is ready and then apply:
 ```shell
 oc apply -f custom-prometheus/prometheus.yaml
 oc apply -n istio-system-2 -f telemetry.yaml
-oc apply -n bookinfo-2 -f custom-prometheus/bookinfo.yaml
 oc apply -n bookinfo-2 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.4/samples/bookinfo/networking/bookinfo-gateway.yaml
+oc apply -n bookinfo-2 -f https://raw.githubusercontent.com/maistra/istio/maistra-2.4/samples/bookinfo/platform/kube/bookinfo.yaml
+oc patch -n bookinfo-2 deployment productpage-v1 -p '{"spec":{"template":{"spec":{"containers":[{"name": "productpage", "image":"quay.io/jewertow/productpage:metrics"}]}}}}'
 ```
 
 5. Enable monitoring:
@@ -165,8 +165,19 @@ oc apply -f custom-prometheus/app-mtls-monitor.yaml
 
 6. Generate traffic:
 ```shell
-while true; do curl -v bookinfo-2.apps-crc.testing:80/productpage > /dev/null; sleep 1; done
+ISTIO_SYSTEM_2_INGRESS_HOST=$(oc get routes -n istio-system-2 istio-ingressgateway -o jsonpath='{.spec.host}')
+while true; do curl -v "http://$ISTIO_SYSTEM_2_INGRESS_HOST:80/productpage" > /dev/null; sleep 1; done
 ```
+
+7. Expose prometheus dashboard to localhost and verify that istio-proxy and application metrics are scraped:
+```shell
+kubectl port-forward service/prometheus-operated -n custom-prometheus 9090:9090
+```
+![prometheus-targets](custom-prometheus/screenshots/prometheus-targets.png)
+
+8. Go to Kiali dashboard and verify that Prometheus scrapes application metrics over mTLS:
+
+![kiali-prometheus-mtls](custom-prometheus/screenshots/kiali-prometheus-mtls.png)
 
 ## Federating metrics from OSSM to OpenShift Monitoring
 

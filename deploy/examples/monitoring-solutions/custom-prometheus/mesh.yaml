@@ -11,9 +11,10 @@ spec:
       name: kiali-custom-prometheus
     prometheus:
       enabled: false
-  extensionProviders:
-  - name: prometheus
-    prometheus: {}
+  meshConfig:
+    extensionProviders:
+    - name: prometheus
+      prometheus: {}
   gateways:
     egress:
       enabled: false
