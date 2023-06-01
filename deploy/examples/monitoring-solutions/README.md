@@ -110,6 +110,11 @@ oc apply -n bookinfo-1 -f openshift-monitoring/istio-proxies-monitor.yaml
 ![istio-proxy metrics](openshift-monitoring/screenshots/istio-proxy-metrics.png)
 ![application-metrics](openshift-monitoring/screenshots/application-metrics.png)
 
+8. Go to Kiali dashboard and verify that users can see metrics only from the projects to which they belong:
+
+![kiali-admin-view](openshift-monitoring/screenshots/kiali-project-admin-view.png)
+![kiali-developer](openshift-monitoring/screenshots/kiali-developer-view.png)
+
 ## Custom Prometheus Operator
 
 1. Login as `clusteradmin` and install Prometheus Operator in the OCP console:
