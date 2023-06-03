@@ -13,6 +13,11 @@ ISTIO_BRANCH_30 ?= maistra-3.0
 # the current commit of ${ISTIO_REPOSITORY} for v3.0. This will be used to copy charts
 ISTIO_COMMIT_30 ?= 16ff353b180a1f461bd380be6ef2d1809b8c1fba
 
+# Istio images names
+ISTIO_CNI_IMAGE_NAME ?= install-cni
+ISTIO_PILOT_IMAGE_NAME ?= pilot
+ISTIO_PROXY_IMAGE_NAME ?= proxyv2
+
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
@@ -54,10 +59,16 @@ ifeq ($(USE_IMAGE_DIGESTS), true)
 	BUNDLE_GEN_FLAGS += --use-image-digests
 endif
 
+# Image registry url to use
+REGISTRY_URL ?= quay.io
+# Image registry org to use
+REGISTRY_ORG ?= maistra-dev
 # Image hub to use
-HUB ?= quay.io/maistra-dev
+HUB ?= ${REGISTRY_URL}/${REGISTRY_ORG}
+# Image tag to use
+TAG ?= ${MINOR_VERSION}
 # Image URL to use all building/pushing image targets
-IMAGE ?= ${HUB}/istio-operator:3.0
+IMAGE ?= ${HUB}/istio-operator:${TAG}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.26.0
 
@@ -186,6 +197,13 @@ update-istio: ## Updates the Istio commit hash to latest on ${ISTIO_BRANCH_30}
 	@LATEST_COMMIT_30=`git ls-remote https://github.com/${ISTIO_REPOSITORY}.git | grep ${ISTIO_BRANCH_30} | cut -f 1` ;\
 	echo Updating to ${ISTIO_REPOSITORY}@$${LATEST_COMMIT_30}; sed -i -e "s/^\(ISTIO_COMMIT_30 ?= \).*$$/\1$${LATEST_COMMIT_30}/g" Makefile
 
+.PHONY: patch-istio-images
+patch-istio-images: ## Patch the Istio images in the ClusterServiceVersion with the right tags
+	sed -i -e "s/images3_0.cni: .*/images3_0.cni: $(REGISTRY_URL)\/$(REGISTRY_ORG)\/$(ISTIO_CNI_IMAGE_NAME):$(TAG)/" \
+		-e "s/images3_0.istiod: .*/images3_0.istiod: $(REGISTRY_URL)\/$(REGISTRY_ORG)\/$(ISTIO_PILOT_IMAGE_NAME):$(TAG)/" \
+		-e "s/images3_0.proxy: .*/images3_0.proxy: $(REGISTRY_URL)\/$(REGISTRY_ORG)\/$(ISTIO_PROXY_IMAGE_NAME):$(TAG)/" \
+		$(shell ls bundle/manifests/*.clusterserviceversion.yaml)
+
 ##@ Build Dependencies
 
 ## Location to install dependencies to
@@ -194,11 +212,13 @@ $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
 ## Tool Binaries
+OPERATOR_SDK ?= $(LOCALBIN)/operator-sdk
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 ## Tool Versions
+OPERATOR_SDK_VERSION ?= v1.28.1
 KUSTOMIZE_VERSION ?= v3.8.7
 CONTROLLER_TOOLS_VERSION ?= v0.11.1
 
@@ -212,6 +232,19 @@ $(KUSTOMIZE): $(LOCALBIN)
 	fi
 	test -s $(LOCALBIN)/kustomize || { curl -Ss $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN); }
 
+.PHONY: operator-sdk
+operator-sdk: $(OPERATOR_SDK)
+operator-sdk: OS=$(shell go env GOOS) ARCH=$(shell go env GOARCH)
+$(OPERATOR_SDK): $(LOCALBIN)
+	@if test -x $(LOCALBIN)/operator-sdk && ! $(LOCALBIN)/operator-sdk version | grep -q $(OPERATOR_SDK_VERSION); then \
+		echo "$(LOCALBIN)/operator-sdk version is not expected $(OPERATOR_SDK_VERSION). Removing it before installing."; \
+		rm -rf $(LOCALBIN)/operator-sdk; \
+	fi
+	test -s $(LOCALBIN)/operator-sdk || \
+	wget -q -c https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_$(OS)_$(ARCH) \
+		-O $(LOCALBIN)/operator-sdk && \
+	chmod +x $(LOCALBIN)/operator-sdk;
+
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary. If wrong version is installed, it will be overwritten.
 $(CONTROLLER_GEN): $(LOCALBIN)
@@ -224,11 +257,11 @@ $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 .PHONY: bundle
-bundle: gen kustomize ## Generate bundle manifests and metadata, then validate generated files.
-	operator-sdk generate kustomize manifests -q
+bundle: gen kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
+	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMAGE)
-	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle $(BUNDLE_GEN_FLAGS)
-	operator-sdk bundle validate ./bundle
+	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
+	$(OPERATOR_SDK) bundle validate ./bundle
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
@@ -237,6 +270,10 @@ bundle-build: ## Build the bundle image.
 .PHONY: bundle-push
 bundle-push: ## Push the bundle image.
 	$(MAKE) docker-push IMAGE=$(BUNDLE_IMG)
+
+.PHONY: bundle-publish
+bundle-publish: patch-istio-images ## Create a PR for publishing in OperatorHub
+	./hack/operatorhub/publish-bundle.sh
 
 .PHONY: opm
 OPM = ./bin/opm
