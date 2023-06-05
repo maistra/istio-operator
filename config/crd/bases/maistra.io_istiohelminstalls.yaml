@@ -42,6 +42,9 @@ spec:
             type: object
           status:
             description: IstioHelmInstallStatus defines the observed state of IstioHelmInstall
+            properties:
+              appliedValues:
+                x-kubernetes-preserve-unknown-fields: true
             type: object
         type: object
     served: true

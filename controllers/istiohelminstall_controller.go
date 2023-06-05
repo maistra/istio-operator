@@ -18,13 +18,16 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 	v1 "maistra.io/istio-operator/api/v1"
-	"maistra.io/istio-operator/pkg/common"
 	"maistra.io/istio-operator/pkg/helm"
+	"maistra.io/istio-operator/pkg/istio"
+	"maistra.io/istio-operator/pkg/kube"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -32,6 +35,8 @@ import (
 
 // IstioHelmInstallReconciler reconciles a IstioHelmInstall object
 type IstioHelmInstallReconciler struct {
+	ResourceDirectory string
+	Config            *rest.Config
 	client.Client
 	Scheme *runtime.Scheme
 }
@@ -65,67 +70,79 @@ func (r *IstioHelmInstallReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	if ihi.DeletionTimestamp != nil {
-		_, err := helm.UninstallChart(req.Namespace, req.Name+"-base")
+		_, err := helm.UninstallChart(r.Config, ihi.Namespace, ihi.Name+"-base")
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		_, err = helm.UninstallChart(req.Namespace, req.Name+"-istiod")
+		_, err = helm.UninstallChart(r.Config, ihi.Namespace, ihi.Name+"-istiod")
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		_, err = helm.UninstallChart(req.Namespace, req.Name+"-cni")
+		_, err = helm.UninstallChart(r.Config, ihi.Namespace, ihi.Name+"-cni")
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = common.RemoveFinalizer(ctx, &ihi, r.Client)
+		err = kube.RemoveFinalizer(ctx, &ihi, r.Client)
 		if err != nil {
 			logger.Info("failed to remove finalizer")
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
-	if !common.HasFinalizer(&ihi) {
-		err := common.AddFinalizer(ctx, &ihi, r.Client)
+	if ihi.Spec.Version == "" {
+		return ctrl.Result{}, fmt.Errorf("no spec.version set")
+	}
+	if !kube.HasFinalizer(&ihi) {
+		err := kube.AddFinalizer(ctx, &ihi, r.Client)
 		if err != nil {
 			logger.Info("failed to add finalizer")
 			return ctrl.Result{}, err
 		}
 	}
-	values := ihi.Spec.GetValues()
-	_, found, err := unstructured.NestedString(values, "global", "istioNamespace")
-	if !found || err != nil {
-		_ = unstructured.SetNestedField(values, ihi.Namespace, "global", "istioNamespace")
+	s := istio.Maistra30Strategy{}
+	err := s.ApplyDefaults(&ihi)
+	if err != nil {
+		logger.Error(err, "failed to apply default values. requeuing request")
+		return ctrl.Result{Requeue: true}, nil
 	}
-	_ = unstructured.SetNestedField(values, true, "istio_cni", "enabled")
-	_ = unstructured.SetNestedField(values, common.Config.Images3_0.CNI, "cni", "image")
-	_ = unstructured.SetNestedField(values, common.Config.Images3_0.Istiod, "pilot", "image")
-	_ = unstructured.SetNestedField(values, common.Config.Images3_0.Proxy, "global", "proxy", "image")
-	_ = unstructured.SetNestedField(values, common.Config.Images3_0.Proxy, "global", "proxy_init", "image")
+	values := ihi.Spec.GetValues()
 
 	logger.Info("Installing components", "values", values)
+	defer func() {
+		logger.Info("Reconciliation complete. Writing status")
+		appliedValues, err := json.Marshal(values)
+		if err != nil {
+			logger.Error(err, "failed to marshal status")
+			return
+		}
+		err = r.Client.Status().Patch(ctx, &ihi, kube.NewStatusPatch(v1.IstioHelmInstallStatus{AppliedValues: appliedValues}))
+		if err != nil {
+			logger.Error(err, "failed to patch status")
+		}
+	}()
 
-	_, err = helm.UpgradeOrInstallChart("istio-cni", ihi.Spec.Version, common.GetOperatorNamespace(), req.Name+"-cni", values)
+	_, err = helm.UpgradeOrInstallChart(ctx, r.Config, "istio-cni", ihi.Spec.Version, kube.GetOperatorNamespace(), req.Name+"-cni", values)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	_, err = helm.UpgradeOrInstallChart("base", ihi.Spec.Version, req.Namespace, req.Name+"-base", values)
+	_, err = helm.UpgradeOrInstallChart(ctx, r.Config, "base", ihi.Spec.Version, req.Namespace, req.Name+"-base", values)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	_, err = helm.UpgradeOrInstallChart("istio-control/istio-discovery", ihi.Spec.Version, req.Namespace, req.Name+"-istiod", values)
+	_, err = helm.UpgradeOrInstallChart(ctx, r.Config, "istio-control/istio-discovery", ihi.Spec.Version, req.Namespace, req.Name+"-istiod", values)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	_, err = helm.UpgradeOrInstallChart("gateways/istio-ingress", ihi.Spec.Version, req.Namespace, req.Name+"-ingress", values)
+	_, err = helm.UpgradeOrInstallChart(ctx, r.Config, "gateways/istio-ingress", ihi.Spec.Version, req.Namespace, req.Name+"-ingress", values)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	_, err = helm.UpgradeOrInstallChart("gateways/istio-egress", ihi.Spec.Version, req.Namespace, req.Name+"-egress", values)
+	_, err = helm.UpgradeOrInstallChart(ctx, r.Config, "gateways/istio-egress", ihi.Spec.Version, req.Namespace, req.Name+"-egress", values)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -135,6 +152,7 @@ func (r *IstioHelmInstallReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *IstioHelmInstallReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.Config = mgr.GetConfig()
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1.IstioHelmInstall{}).
 		Complete(r)

@@ -22,6 +22,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// IstioHelmInstallSpec defines the desired state of IstioHelmInstall
+type IstioHelmInstallSpec struct {
+	Version string `json:"version,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	Values json.RawMessage `json:"values,omitempty"`
+}
+
 func (s *IstioHelmInstallSpec) GetValues() map[string]interface{} {
 	var vals map[string]interface{}
 	err := json.Unmarshal(s.Values, &vals)
@@ -31,16 +39,30 @@ func (s *IstioHelmInstallSpec) GetValues() map[string]interface{} {
 	return vals
 }
 
-// IstioHelmInstallSpec defines the desired state of IstioHelmInstall
-type IstioHelmInstallSpec struct {
-	Version string `json:"version,omitempty"`
-	// +kubebuilder:pruning:PreserveUnknownFields
-	// +kubebuilder:validation:Schemaless
-	Values json.RawMessage `json:"values,omitempty"`
+func (s *IstioHelmInstallSpec) SetValues(values map[string]interface{}) error {
+	jsonVals, err := json.Marshal(values)
+	if err != nil {
+		return err
+	}
+	s.Values = jsonVals
+	return nil
 }
 
 // IstioHelmInstallStatus defines the observed state of IstioHelmInstall
-type IstioHelmInstallStatus struct{}
+type IstioHelmInstallStatus struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	AppliedValues json.RawMessage `json:"appliedValues,omitempty"`
+}
+
+func (s *IstioHelmInstallStatus) GetAppliedValues() map[string]interface{} {
+	var vals map[string]interface{}
+	err := json.Unmarshal(s.AppliedValues, &vals)
+	if err != nil {
+		return nil
+	}
+	return vals
+}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status

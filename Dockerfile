@@ -30,7 +30,7 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 # gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder /workspace/manager .
-COPY resources /resources
+COPY resources /var/lib/istio-operator/resources
 USER 65532:65532
 
 ENTRYPOINT ["/manager"]
