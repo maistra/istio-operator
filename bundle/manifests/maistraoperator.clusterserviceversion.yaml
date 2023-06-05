@@ -14,7 +14,6 @@ metadata:
               "app.kubernetes.io/managed-by": "kustomize",
               "app.kubernetes.io/name": "istiohelminstall",
               "app.kubernetes.io/part-of": "maistraoperator"
-              "app.kubernetes.io/part-of": "maistraoperator"
             },
             "name": "istiohelminstall-sample"
           },
@@ -25,7 +24,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2023-06-03T21:40:07Z"
+    createdAt: "2023-06-05T17:25:42Z"
     operators.operatorframework.io/builder: operator-sdk-v1.28.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: maistraoperator.v3.0.0
@@ -309,8 +308,9 @@ spec:
   - istio
   - maistra
   - servicemesh
+  - envoy
   links:
-  - name: Maistraoperator
+  - name: Maistra Operator
     url: https://maistraoperator.domain
   maintainers:
   - email: istio-feedback@redhat.com

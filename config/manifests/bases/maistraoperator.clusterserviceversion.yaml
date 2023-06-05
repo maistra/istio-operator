@@ -4,7 +4,7 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
-  name: maistraoperator.v0.0.0
+  name: maistraoperator.v3.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -39,8 +39,9 @@ spec:
   - istio
   - maistra
   - servicemesh
+  - envoy
   links:
-  - name: Maistraoperator
+  - name: Maistra Operator
     url: https://maistraoperator.domain
   maintainers:
   - email: istio-feedback@redhat.com
@@ -48,4 +49,4 @@ spec:
   maturity: alpha
   provider:
     name: Red Hat, Inc.
-  version: 0.0.0
+  version: 3.0.0
