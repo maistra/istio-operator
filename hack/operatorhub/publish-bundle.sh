@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1091
 
 set -euo pipefail
 
@@ -15,7 +16,7 @@ show_help() {
 dryRun=false
 
 skipInDryRun() {
-  if $dryRun; then echo "# $@";  fi
+  if $dryRun; then echo "# $*";  fi
   if ! $dryRun; then "$@";  fi
 }
 
