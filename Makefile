@@ -193,15 +193,11 @@ update-istio: ## Updates the Istio commit hash to latest on ${ISTIO_BRANCH_30}
 	@LATEST_COMMIT_30=`git ls-remote https://github.com/${ISTIO_REPOSITORY}.git | grep ${ISTIO_BRANCH_30} | cut -f 1` ;\
 	echo Updating to ${ISTIO_REPOSITORY}@$${LATEST_COMMIT_30}; sed -i -e "s/^\(ISTIO_COMMIT_30 ?= \).*$$/\1$${LATEST_COMMIT_30}/g" Makefile
 
-REGISTRY     = $(subst /, ,$(HUB))
-REGISTRY_URL = $(word 1, $(REGISTRY))
-REGISTRY_ORG = $(word 2, $(REGISTRY))
-
 .PHONY: patch-istio-images
 patch-istio-images: ## Patch the Istio images in the ClusterServiceVersion with the right tags
-	sed -i -e "s/images3_0.cni: .*/images3_0.cni: $(REGISTRY_URL)\/$(REGISTRY_ORG)\/$(ISTIO_CNI_IMAGE_NAME):$(TAG)/" \
-		-e "s/images3_0.istiod: .*/images3_0.istiod: $(REGISTRY_URL)\/$(REGISTRY_ORG)\/$(ISTIO_PILOT_IMAGE_NAME):$(TAG)/" \
-		-e "s/images3_0.proxy: .*/images3_0.proxy: $(REGISTRY_URL)\/$(REGISTRY_ORG)\/$(ISTIO_PROXY_IMAGE_NAME):$(TAG)/" \
+	sed -i -e "s|images3_0.cni: .*|images3_0.cni: $(HUB)/$(ISTIO_CNI_IMAGE_NAME):$(TAG)|" \
+		-e "s|images3_0.istiod: .*|images3_0.istiod: $(HUB)/$(ISTIO_PILOT_IMAGE_NAME):$(TAG)|" \
+		-e "s|images3_0.proxy: .*|images3_0.proxy: $(HUB)/$(ISTIO_PROXY_IMAGE_NAME):$(TAG)|" \
 		$(shell ls bundle/manifests/*.clusterserviceversion.yaml)
 
 ##@ Build Dependencies
