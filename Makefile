@@ -286,8 +286,6 @@ bundle-publish: patch-istio-images ## Create a PR for publishing in OperatorHub
 	export GIT_USER=$(GITHUB_USER); \
 	export GITHUB_TOKEN=$(GITHUB_TOKEN); \
 	export OPERATOR_VERSION=$(OPERATOR_VERSION); \
-	export OWNER=bmangoen; \
-	export FORK=bmangoen; \
 	./hack/operatorhub/publish-bundle.sh
 
 .PHONY: bundle-nightly ## Generate nightly bundle
