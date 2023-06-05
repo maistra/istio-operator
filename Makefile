@@ -59,12 +59,8 @@ ifeq ($(USE_IMAGE_DIGESTS), true)
 	BUNDLE_GEN_FLAGS += --use-image-digests
 endif
 
-# Image registry url to use
-REGISTRY_URL ?= quay.io
-# Image registry org to use
-REGISTRY_ORG ?= maistra-dev
 # Image hub to use
-HUB ?= ${REGISTRY_URL}/${REGISTRY_ORG}
+HUB ?= quay.io/maistra-dev
 # Image tag to use
 TAG ?= ${MINOR_VERSION}
 # Image URL to use all building/pushing image targets
@@ -196,6 +192,10 @@ check-clean-repo:
 update-istio: ## Updates the Istio commit hash to latest on ${ISTIO_BRANCH_30}
 	@LATEST_COMMIT_30=`git ls-remote https://github.com/${ISTIO_REPOSITORY}.git | grep ${ISTIO_BRANCH_30} | cut -f 1` ;\
 	echo Updating to ${ISTIO_REPOSITORY}@$${LATEST_COMMIT_30}; sed -i -e "s/^\(ISTIO_COMMIT_30 ?= \).*$$/\1$${LATEST_COMMIT_30}/g" Makefile
+
+REGISTRY     = $(subst /, ,$(HUB))
+REGISTRY_URL = $(word 1, $(REGISTRY))
+REGISTRY_ORG = $(word 2, $(REGISTRY))
 
 .PHONY: patch-istio-images
 patch-istio-images: ## Patch the Istio images in the ClusterServiceVersion with the right tags
