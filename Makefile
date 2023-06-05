@@ -234,7 +234,8 @@ $(KUSTOMIZE): $(LOCALBIN)
 
 .PHONY: operator-sdk
 operator-sdk: $(OPERATOR_SDK)
-operator-sdk: OS=$(shell go env GOOS) ARCH=$(shell go env GOARCH)
+operator-sdk: OS=$(shell go env GOOS)
+operator-sdk: ARCH=$(shell go env GOARCH)
 $(OPERATOR_SDK): $(LOCALBIN)
 	@if test -x $(LOCALBIN)/operator-sdk && ! $(LOCALBIN)/operator-sdk version | grep -q $(OPERATOR_SDK_VERSION); then \
 		echo "$(LOCALBIN)/operator-sdk version is not expected $(OPERATOR_SDK_VERSION). Removing it before installing."; \

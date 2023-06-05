@@ -48,7 +48,7 @@ OPERATOR_VERSION=${OPERATOR_VERSION:-3.0.0}
 OPERATOR_HUB=${OPERATOR_HUB:-"community-operators-prod"}
 
 TMP_DIR=$(mktemp -d -t "${OPERATOR_NAME}.XXXXXXXXXX")
-#trap '{ rm -rf -- "$TMP_DIR"; }' EXIT
+trap '{ rm -rf -- "$TMP_DIR"; }' EXIT
 
 OWNER="${OWNER:-"redhat-openshift-ecosystem"}"
 HUB_REPO_URL="${HUB_REPO_URL:-https://github.com/${OWNER}/${OPERATOR_HUB}.git}"
