@@ -18,6 +18,10 @@ ISTIO_CNI_IMAGE_NAME ?= install-cni
 ISTIO_PILOT_IMAGE_NAME ?= pilot
 ISTIO_PROXY_IMAGE_NAME ?= proxyv2
 
+# GitHub creds
+GITHUB_USER ?= maistra-bot
+GITHUB_TOKEN ?= 
+
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
@@ -64,9 +68,11 @@ HUB ?= quay.io/maistra-dev
 # Image tag to use
 TAG ?= ${MINOR_VERSION}
 # Image URL to use all building/pushing image targets
-IMAGE ?= ${HUB}/istio-operator:${TAG}
+IMAGE ?= ${HUB}/istio-ubi9-operator:${TAG}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.26.0
+
+TODAY ?= $(shell date -I)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -123,6 +129,13 @@ docker-build: ## Build docker image with the manager.
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	docker push ${IMAGE}
+
+.PHONY: docker-push-nightly ## Build and push nightly docker image with the manager.
+docker-push-nightly: TAG=$(MINOR_VERSION)-nightly-$(TODAY)
+docker-push-nightly: docker-build
+	docker push ${IMAGE}
+	docker tag ${IMAGE} $(HUB)/istio-ubi9-operator:$(MINOR_VERSION)-latest
+	docker push $(HUB)/istio-ubi9-operator:$(MINOR_VERSION)-latest
 
 # PLATFORMS defines the target platforms for  the manager image be build to provide support to multiple
 # architectures. (i.e. make docker-buildx IMAGE=myregistry/mypoperator:0.0.1). To use this option you need to:
@@ -270,7 +283,21 @@ bundle-push: ## Push the bundle image.
 
 .PHONY: bundle-publish
 bundle-publish: patch-istio-images ## Create a PR for publishing in OperatorHub
+	export GIT_USER=$(GITHUB_USER); \
+	export GITHUB_TOKEN=$(GITHUB_TOKEN); \
+	export OPERATOR_VERSION=$(OPERATOR_VERSION); \
+	export OWNER=bmangoen; \
+	export FORK=bmangoen; \
 	./hack/operatorhub/publish-bundle.sh
+
+.PHONY: bundle-nightly ## Generate nightly bundle
+bundle-nightly:
+	make bundle CHANNELS=$(MINOR_VERSION)-nightly TAG=$(MINOR_VERSION)-nightly-$(TODAY)
+
+.PHONY: bundle-publish-nightly
+bundle-publish-nightly: OPERATOR_VERSION=$(VERSION)-nightly-$(TODAY)
+bundle-publish-nightly: TAG=$(MINOR_VERSION)-nightly-$(TODAY)
+bundle-publish-nightly: bundle-nightly bundle-publish
 
 .PHONY: opm
 OPM = ./bin/opm
