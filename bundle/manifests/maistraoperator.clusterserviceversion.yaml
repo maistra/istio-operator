@@ -24,7 +24,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2023-06-05T19:56:38Z"
+    createdAt: "2023-06-05T20:01:28Z"
     operators.operatorframework.io/builder: operator-sdk-v1.28.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: maistraoperator.v3.0.0
@@ -311,7 +311,7 @@ spec:
   - envoy
   links:
   - name: Maistra Operator
-    url: https://maistraoperator.domain
+    url: https://maistra.io
   maintainers:
   - email: istio-feedback@redhat.com
     name: OpenShift Service Mesh
