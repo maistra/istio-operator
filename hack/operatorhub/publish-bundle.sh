@@ -77,7 +77,7 @@ cp -a "${BUNDLE_DIR}"/. "${OPERATORS_DIR}"
 
 TITLE="operators ${OPERATOR_NAME} (${OPERATOR_VERSION})"
 skipInDryRun git add .
-skipInDryRun git commit -s -S -m"${TITLE}"
+skipInDryRun git commit -m"${TITLE}"
 
 if [[ ! $dryRun && -z $GITHUB_TOKEN ]]; then
   echo "Please provide GITHUB_TOKEN" && exit 1
