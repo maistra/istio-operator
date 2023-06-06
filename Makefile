@@ -5,6 +5,7 @@
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= 3.0.0
 MINOR_VERSION := $(shell v='$(VERSION)'; echo "$${v%.*}")
+MINIMUM_SUPPORTED_VERSION ?= v3.0
 
 # Istio repository to pull charts from
 ISTIO_REPOSITORY ?= maistra/istio
@@ -21,6 +22,26 @@ ISTIO_PROXY_IMAGE_NAME ?= proxyv2
 # GitHub creds
 GITHUB_USER ?= maistra-bot
 GITHUB_TOKEN ?= 
+
+# Git repository state
+ifndef GIT_TAG
+GIT_TAG := $(shell git describe 2> /dev/null || echo "unknown")
+endif
+ifndef GIT_REVISION
+GIT_REVISION := $(shell git rev-parse --verify HEAD 2> /dev/null || echo "unknown")
+endif
+ifndef GIT_STATUS
+GIT_STATUS := $(shell git diff-index --quiet HEAD -- 2> /dev/null; if [ "$$?" = "0" ]; then echo Clean; else echo Modified; fi)
+endif
+
+# Linker flags for the go builds
+GO_MODULE = maistra.io/istio-operator
+LD_EXTRAFLAGS  = -X ${GO_MODULE}/pkg/version.buildVersion=${VERSION}
+LD_EXTRAFLAGS += -X ${GO_MODULE}/pkg/version.buildGitRevision=${GIT_REVISION}
+LD_EXTRAFLAGS += -X ${GO_MODULE}/pkg/version.buildTag=${GIT_TAG}
+LD_EXTRAFLAGS += -X ${GO_MODULE}/pkg/version.buildStatus=${GIT_STATUS}
+LD_EXTRAFLAGS += -X ${GO_MODULE}/pkg/version.minimumSupportedVersion=${MINIMUM_SUPPORTED_VERSION}
+LD_FLAGS = -extldflags -static ${LD_EXTRAFLAGS} -s -w
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
@@ -117,8 +138,8 @@ test: envtest ## Run tests.
 ##@ Build
 
 .PHONY: build
-build: gen ## Build manager binary.
-	go build -o bin/manager main.go
+build: ## Build manager binary.
+	CGO_ENABLED=0 go build -o bin/manager -ldflags '${LD_FLAGS}' main.go
 
 .PHONY: run
 run: gen ## Run a controller from your host.
@@ -126,7 +147,7 @@ run: gen ## Run a controller from your host.
 
 .PHONY: docker-build
 docker-build: ## Build docker image with the manager.
-	docker build -t ${IMAGE} .
+	docker build -t ${IMAGE} --build-arg GIT_TAG=${GIT_TAG} --build-arg GIT_REVISION=${GIT_REVISION} --build-arg GIT_STATUS=${GIT_STATUS} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.

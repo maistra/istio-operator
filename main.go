@@ -28,6 +28,7 @@ import (
 	"maistra.io/istio-operator/controllers"
 	"maistra.io/istio-operator/pkg/common"
 	"maistra.io/istio-operator/pkg/helm"
+	"maistra.io/istio-operator/pkg/version"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -61,7 +62,7 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-
+	setupLog.Info(version.Info.String())
 	setupLog.Info("reading config")
 	err := common.ReadConfig(configFile)
 	if err != nil {
