@@ -4,7 +4,7 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
-  name: sail-operator.v0.0.0
+  name: maistraoperator.v3.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -15,8 +15,10 @@ spec:
       kind: IstioHelmInstall
       name: istiohelminstalls.maistra.io
       version: v1
-  description: Installs Service Mesh (ALPHA BUILD)
-  displayName: Service Mesh Operator
+  description: The Maistra Operator enables you to install, configure, and manage
+    an instance of Maistra service mesh. Maistra is based on the open source Istio
+    project.
+  displayName: maistraoperator
   icon:
   - base64data: ""
     mediatype: ""
@@ -34,14 +36,17 @@ spec:
   - supported: true
     type: AllNamespaces
   keywords:
-  - service mesh
   - istio
+  - maistra
+  - servicemesh
   - envoy
   links:
-  - name: Sail Operator
-    url: https://sail-operator.domain
+  - name: Maistra Operator
+    url: https://maistra.io
+  maintainers:
+  - email: istio-feedback@redhat.com
+    name: OpenShift Service Mesh
   maturity: alpha
   provider:
-    name: Service Mesh Operator
-    url: https://github.com/maistra/istio-operator
-  version: 0.0.0
+    name: Red Hat, Inc.
+  version: 3.0.0

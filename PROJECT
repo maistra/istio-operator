@@ -8,7 +8,7 @@ layout:
 plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
-projectName: sail-operator
+projectName: maistraoperator
 repo: maistra.io/istio-operator
 resources:
 - api:
