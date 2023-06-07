@@ -41,17 +41,34 @@ type IstioHelmInstallReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=maistra.io,resources=istiohelminstalls,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=maistra.io,resources=istiohelminstalls/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=maistra.io,resources=istiohelminstalls/finalizers,verbs=update
-//+kubebuilder:rbac:groups="",resources="*",verbs="*"
-//+kubebuilder:rbac:groups="networking.k8s.io",resources="networkpolicies",verbs="*"
-//+kubebuilder:rbac:groups="policy",resources="poddisruptionbudgets",verbs="*"
-//+kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles;clusterrolebindings;roles;rolebindings,verbs="*"
-//+kubebuilder:rbac:groups="apps",resources=deployments;daemonsets,verbs="*"
-//+kubebuilder:rbac:groups="admissionregistration.k8s.io",resources=validatingwebhookconfigurations;mutatingwebhookconfigurations,verbs="*"
-//+kubebuilder:rbac:groups="autoscaling",resources=horizontalpodautoscalers,verbs="*"
-//+kubebuilder:rbac:groups="apiextensions.k8s.io",resources=customresourcedefinitions,verbs="*"
+// charts to deploy (with their suffixes)
+var charts = map[string]string{
+	"istio-cni":                     "-cni",
+	"base":                          "-base",
+	"istio-control/istio-discovery": "-istiod",
+	"gateways/istio-ingress":        "-ingress",
+	"gateways/istio-egress":         "-egress",
+}
+
+func namespaceForChart(chartName string, ihi v1.IstioHelmInstall) string {
+	if chartName == "istio-cni" {
+		return kube.GetOperatorNamespace()
+	} else {
+		return ihi.Namespace
+	}
+}
+
+// +kubebuilder:rbac:groups=maistra.io,resources=istiohelminstalls,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=maistra.io,resources=istiohelminstalls/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=maistra.io,resources=istiohelminstalls/finalizers,verbs=update
+// +kubebuilder:rbac:groups="",resources="*",verbs="*"
+// +kubebuilder:rbac:groups="networking.k8s.io",resources="networkpolicies",verbs="*"
+// +kubebuilder:rbac:groups="policy",resources="poddisruptionbudgets",verbs="*"
+// +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles;clusterrolebindings;roles;rolebindings,verbs="*"
+// +kubebuilder:rbac:groups="apps",resources=deployments;daemonsets,verbs="*"
+// +kubebuilder:rbac:groups="admissionregistration.k8s.io",resources=validatingwebhookconfigurations;mutatingwebhookconfigurations,verbs="*"
+// +kubebuilder:rbac:groups="autoscaling",resources=horizontalpodautoscalers,verbs="*"
+// +kubebuilder:rbac:groups="apiextensions.k8s.io",resources=customresourcedefinitions,verbs="*"
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -70,20 +87,13 @@ func (r *IstioHelmInstallReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	if ihi.DeletionTimestamp != nil {
-		_, err := helm.UninstallChart(r.Config, ihi.Namespace, ihi.Name+"-base")
-		if err != nil {
-			return ctrl.Result{}, err
+		for chartName, suffix := range charts {
+			_, err := helm.UninstallChart(r.Config, namespaceForChart(chartName, ihi), ihi.Name+suffix)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 		}
-
-		_, err = helm.UninstallChart(r.Config, ihi.Namespace, ihi.Name+"-istiod")
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		_, err = helm.UninstallChart(r.Config, ihi.Namespace, ihi.Name+"-cni")
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		err = kube.RemoveFinalizer(ctx, &ihi, r.Client)
+		err := kube.RemoveFinalizer(ctx, &ihi, r.Client)
 		if err != nil {
 			logger.Info("failed to remove finalizer")
 			return ctrl.Result{}, err
@@ -122,31 +132,12 @@ func (r *IstioHelmInstallReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		}
 	}()
 
-	_, err = helm.UpgradeOrInstallChart(ctx, r.Config, "istio-cni", ihi.Spec.Version, kube.GetOperatorNamespace(), req.Name+"-cni", values)
-	if err != nil {
-		return ctrl.Result{}, err
+	for chartName, suffix := range charts {
+		_, err = helm.UpgradeOrInstallChart(ctx, r.Config, chartName, ihi.Spec.Version, namespaceForChart(chartName, ihi), req.Name+suffix, values)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
-
-	_, err = helm.UpgradeOrInstallChart(ctx, r.Config, "base", ihi.Spec.Version, req.Namespace, req.Name+"-base", values)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	_, err = helm.UpgradeOrInstallChart(ctx, r.Config, "istio-control/istio-discovery", ihi.Spec.Version, req.Namespace, req.Name+"-istiod", values)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	_, err = helm.UpgradeOrInstallChart(ctx, r.Config, "gateways/istio-ingress", ihi.Spec.Version, req.Namespace, req.Name+"-ingress", values)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	_, err = helm.UpgradeOrInstallChart(ctx, r.Config, "gateways/istio-egress", ihi.Spec.Version, req.Namespace, req.Name+"-egress", values)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
 	return ctrl.Result{}, nil
 }
 
