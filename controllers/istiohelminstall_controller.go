@@ -53,9 +53,8 @@ var charts = map[string]string{
 func namespaceForChart(chartName string, ihi v1.IstioHelmInstall) string {
 	if chartName == "istio-cni" {
 		return kube.GetOperatorNamespace()
-	} else {
-		return ihi.Namespace
 	}
+	return ihi.Namespace
 }
 
 // +kubebuilder:rbac:groups=maistra.io,resources=istiohelminstalls,verbs=get;list;watch;create;update;patch;delete
