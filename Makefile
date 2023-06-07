@@ -251,8 +251,7 @@ $(OPERATOR_SDK): $(LOCALBIN)
 		rm -rf $(LOCALBIN)/operator-sdk; \
 	fi
 	test -s $(LOCALBIN)/operator-sdk || \
-	wget -q -c https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_$(OS)_$(ARCH) \
-		-O $(LOCALBIN)/operator-sdk && \
+	curl -sSLo $(LOCALBIN)/operator-sdk https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_$(OS)_$(ARCH) && \
 	chmod +x $(LOCALBIN)/operator-sdk;
 
 .PHONY: controller-gen
