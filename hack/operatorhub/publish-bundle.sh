@@ -44,10 +44,10 @@ BUNDLE_DIR="${CUR_DIR}"/../../bundle/
 GIT_USER="${GIT_USER:-}"
 GITHUB_FILE="${GITHUB_FILE:-}"
 
-if [[ ! $dryRun || ! -f "${GITHUB_FILE}" ]]; then
+if [[ ! -r "${GITHUB_FILE}" ]]; then
   echo "Please provide a valid path for the GITHUB_FILE variable" && exit 1
 else
-  GITHUB_TOKEN="$(cat ${GITHUB_FILE})"
+  GITHUB_TOKEN="$(cat "${GITHUB_FILE}")"
 fi
 
 OPERATOR_NAME=maistraoperator
