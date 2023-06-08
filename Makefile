@@ -20,7 +20,7 @@ ISTIO_PROXY_IMAGE_NAME ?= proxyv2
 
 # GitHub creds
 GITHUB_USER ?= maistra-bot
-GITHUB_TOKEN ?= 
+GITHUB_FILE ?=
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
@@ -283,7 +283,7 @@ bundle-push: ## Push the bundle image.
 .PHONY: bundle-publish
 bundle-publish: patch-istio-images ## Create a PR for publishing in OperatorHub
 	export GIT_USER=$(GITHUB_USER); \
-	export GITHUB_TOKEN=$(GITHUB_TOKEN); \
+	export GITHUB_FILE=$(GITHUB_FILE); \
 	export OPERATOR_VERSION=$(OPERATOR_VERSION); \
 	./hack/operatorhub/publish-bundle.sh
 

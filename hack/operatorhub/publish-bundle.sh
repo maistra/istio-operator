@@ -41,8 +41,14 @@ done
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 BUNDLE_DIR="${CUR_DIR}"/../../bundle/
 
-GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 GIT_USER="${GIT_USER:-}"
+GITHUB_FILE="${GITHUB_FILE:-}"
+
+if [[ ! $dryRun || ! -f "${GITHUB_FILE}" ]]; then
+  echo "Please provide a valid path for the GITHUB_FILE variable" && exit 1
+else
+  GITHUB_TOKEN="$(cat ${GITHUB_FILE})"
+fi
 
 OPERATOR_NAME=maistraoperator
 OPERATOR_VERSION=${OPERATOR_VERSION:-3.0.0}
