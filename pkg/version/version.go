@@ -7,10 +7,11 @@ import (
 )
 
 var (
-	buildVersion     = "unknown"
-	buildGitRevision = "unknown"
-	buildStatus      = "unknown"
-	buildTag         = "unknown"
+	buildVersion            = "unknown"
+	buildGitRevision        = "unknown"
+	buildStatus             = "unknown"
+	buildTag                = "unknown"
+	minimumSupportedVersion = "any"
 
 	// Info exports the build version information.
 	Info BuildInfo
@@ -24,7 +25,7 @@ type BuildInfo struct {
 	GitTag                  string
 	GoVersion               string
 	GoArch                  string
-	OperatorSDK             string
+	ControllerRuntime       string
 	MinimumSupportedVersion string
 }
 
@@ -33,23 +34,24 @@ func (b BuildInfo) String() string {
 }
 
 func init() {
-	var sdkVersion string
+	var controllerRuntimeVersion string
 	bi, ok := debug.ReadBuildInfo()
 	if ok {
 		for _, dep := range bi.Deps {
-			if dep.Path == "github.com/operator-franework/operator-sdk" {
-				sdkVersion = dep.Version
+			if dep.Path == "sigs.k8s.io/controller-runtime" {
+				controllerRuntimeVersion = dep.Version
 				break
 			}
 		}
 	}
 	Info = BuildInfo{
-		Version:     buildVersion,
-		GitRevision: buildGitRevision,
-		BuildStatus: buildStatus,
-		GitTag:      buildTag,
-		GoVersion:   runtime.Version(),
-		GoArch:      fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
-		OperatorSDK: sdkVersion,
+		Version:                 buildVersion,
+		GitRevision:             buildGitRevision,
+		BuildStatus:             buildStatus,
+		GitTag:                  buildTag,
+		GoVersion:               runtime.Version(),
+		GoArch:                  fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+		ControllerRuntime:       controllerRuntimeVersion,
+		MinimumSupportedVersion: minimumSupportedVersion,
 	}
 }
