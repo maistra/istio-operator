@@ -70,6 +70,8 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # maistra.io/maistraoperator-bundle:$VERSION and maistra.io/maistraoperator-catalog:$VERSION.
 IMAGE_TAG_BASE ?= quay.io/maistra-dev/istio-operator-rhel9
 
+BUNDLE_MANIFEST_DATE := $(shell cat bundle/manifests/maistraoperator.clusterserviceversion.yaml 2>/dev/null | grep createdAt | awk '{print $$2}')
+
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
 BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(VERSION)
@@ -224,7 +226,13 @@ gen-charts: ## Pull charts from maistra/istio repository
 gen: controller-gen gen-manifests gen-code gen-charts bundle
 
 .PHONY: gen-check
-gen-check: gen check-clean-repo ## Verifies that changes in generated resources have been checked in
+gen-check: gen restore-manifest-dates check-clean-repo ## Verifies that changes in generated resources have been checked in
+
+.PHONY: restore-manifest-dates
+restore-manifest-dates:
+ifneq "${BUNDLE_MANIFEST_DATE}" ""
+	@sed -i -e "s/\(createdAt:\).*/\1 \"${BUNDLE_MANIFEST_DATE}\"/" bundle/manifests/maistraoperator.clusterserviceversion.yaml
+endif
 
 .PHONY: check-clean-repo
 check-clean-repo:
