@@ -14,7 +14,7 @@ metadata:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: controller-manager
+  name: istio-operator
   namespace: system
   labels:
     control-plane: controller-manager

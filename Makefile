@@ -69,6 +69,8 @@ HUB ?= quay.io/maistra-dev
 TAG ?= ${MINOR_VERSION}
 # Image URL to use all building/pushing image targets
 IMAGE ?= ${HUB}/istio-ubi9-operator:${TAG}
+# Namespace to deploy the controller in
+NAMESPACE ?= istio-operator
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.26.0
 
@@ -161,17 +163,22 @@ ifndef ignore-not-found
 endif
 
 .PHONY: install
-install: gen kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+install: gen-manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
 .PHONY: uninstall
-uninstall: gen kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+uninstall: kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: deploy
-deploy: gen kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE}
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
+deploy: kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	make deploy-yaml | kubectl apply -f -
+
+.PHONY: deploy-yaml
+deploy-yaml: kustomize ## Outputs YAML manifests needed to deploy the controller
+	@cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE}
+	@cd config/default && $(KUSTOMIZE) edit set namespace ${NAMESPACE}
+	@$(KUSTOMIZE) build config/default
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
@@ -239,7 +246,7 @@ $(KUSTOMIZE): $(LOCALBIN)
 		echo "$(LOCALBIN)/kustomize version is not expected $(KUSTOMIZE_VERSION). Removing it before installing."; \
 		rm -rf $(LOCALBIN)/kustomize; \
 	fi
-	test -s $(LOCALBIN)/kustomize || { curl -Ss $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN); }
+	@test -s $(LOCALBIN)/kustomize || { curl -Ss $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN); }
 
 .PHONY: operator-sdk
 operator-sdk: $(OPERATOR_SDK)
