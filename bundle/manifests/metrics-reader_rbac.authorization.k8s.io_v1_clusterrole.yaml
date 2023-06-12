@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: clusterrole
     app.kubernetes.io/part-of: maistraoperator
-  name: maistraoperator-metrics-reader
+  name: metrics-reader
 rules:
 - nonResourceURLs:
   - /metrics

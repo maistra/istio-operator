@@ -48,6 +48,7 @@ LD_FLAGS = -extldflags -static ${LD_EXTRAFLAGS} -s -w
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
 # - use the CHANNELS as arg of the bundle target (e.g make bundle CHANNELS=candidate,fast,stable)
 # - use environment variables to overwrite this value (e.g export CHANNELS="candidate,fast,stable")
+CHANNELS ?= "3.0"
 ifneq ($(origin CHANNELS), undefined)
 BUNDLE_CHANNELS := --channels=$(CHANNELS)
 endif
@@ -87,7 +88,7 @@ endif
 # Image hub to use
 HUB ?= quay.io/maistra-dev
 # Image tag to use
-TAG ?= ${MINOR_VERSION}
+TAG ?= ${MINOR_VERSION}-latest
 # Image URL to use all building/pushing image targets
 IMAGE ?= ${HUB}/istio-ubi9-operator:${TAG}
 # Namespace to deploy the controller in
@@ -220,7 +221,7 @@ gen-charts: ## Pull charts from maistra/istio repository
 	hack/download-charts.sh v${MINOR_VERSION} https://github.com/${ISTIO_REPOSITORY} ${ISTIO_COMMIT_30}
 
 .PHONY: gen ## Generate everything
-gen: controller-gen gen-manifests gen-code gen-charts
+gen: controller-gen gen-manifests gen-code gen-charts bundle
 
 .PHONY: gen-check
 gen-check: gen check-clean-repo ## Verifies that changes in generated resources have been checked in
@@ -317,7 +318,7 @@ bundle-publish: patch-istio-images ## Create a PR for publishing in OperatorHub
 
 .PHONY: bundle-nightly ## Generate nightly bundle
 bundle-nightly:
-	make bundle CHANNELS=$(MINOR_VERSION)-nightly TAG=$(MINOR_VERSION)-nightly-$(TODAY)
+	make bundle VERSION=${VERSION}-nightly-${TODAY} CHANNELS=$(MINOR_VERSION)-nightly TAG=$(MINOR_VERSION)-nightly-$(TODAY)
 
 .PHONY: bundle-publish-nightly
 bundle-publish-nightly: OPERATOR_VERSION=$(VERSION)-nightly-$(TODAY)
