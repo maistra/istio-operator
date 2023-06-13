@@ -38,6 +38,12 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - k8s.cni.cncf.io
+  resources:
+  - network-attachment-definitions
+  verbs:
+  - '*'
+- apiGroups:
   - maistra.io
   resources:
   - istiohelminstalls

@@ -68,6 +68,7 @@ func namespaceForChart(chartName string, ihi v1.IstioHelmInstall) string {
 // +kubebuilder:rbac:groups="admissionregistration.k8s.io",resources=validatingwebhookconfigurations;mutatingwebhookconfigurations,verbs="*"
 // +kubebuilder:rbac:groups="autoscaling",resources=horizontalpodautoscalers,verbs="*"
 // +kubebuilder:rbac:groups="apiextensions.k8s.io",resources=customresourcedefinitions,verbs="*"
+// +kubebuilder:rbac:groups="k8s.cni.cncf.io",resources=network-attachment-definitions,verbs="*"
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
