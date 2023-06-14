@@ -306,6 +306,7 @@ $(ENVTEST): $(LOCALBIN)
 bundle: gen kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMAGE)
+	sed -i "s|^\(    containerImage:\).*$$|\1 ${IMAGE}|g" config/manifests/bases/maistraoperator.clusterserviceversion.yaml
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
 	$(OPERATOR_SDK) bundle validate ./bundle
 
