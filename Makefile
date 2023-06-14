@@ -398,5 +398,8 @@ lint-helm: ## runs linters against helm charts
 	@${FINDFILES} -name 'Chart.yaml' -path './resources/helm/v3.?/*' \
 	-print0 | ${XARGS} -L 1 dirname | xargs -r helm lint --strict
 
+lint-bundle: operator-sdk ## runs linters against OLM metadata bundle
+	$(OPERATOR_SDK) bundle validate bundle --select-optional suite=operatorframework
+
 .PHONY: lint
-lint: lint-scripts lint-go lint-yaml lint-helm ## runs all linters
+lint: lint-scripts lint-go lint-yaml lint-helm lint-bundle ## runs all linters
