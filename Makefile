@@ -196,7 +196,7 @@ uninstall: kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube
 
 .PHONY: deploy
 deploy: kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	make deploy-yaml | kubectl apply -f -
+	make -s deploy-yaml | kubectl apply -f -
 
 .PHONY: deploy-yaml
 deploy-yaml: kustomize ## Outputs YAML manifests needed to deploy the controller
