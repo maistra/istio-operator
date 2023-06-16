@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"net/http"
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -43,7 +44,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(maistraiov1.AddToScheme(scheme))
-	//+kubebuilder:scaffold:scheme
+	// +kubebuilder:scaffold:scheme
 }
 
 func main() {
@@ -51,10 +52,12 @@ func main() {
 	var probeAddr string
 	var configFile string
 	var resourceDirectory string
+	var logAPIRequests bool
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&configFile, "config-file", "/etc/istio-operator/config.properties", "Location of the config file, propagated by k8s downward APIs")
 	flag.StringVar(&resourceDirectory, "resource-directory", "/var/lib/istio-operator/resources", "Where to find resources (e.g. charts)")
+	flag.BoolVar(&logAPIRequests, "log-api-requests", false, "Whether to log each request sent to the Kubernetes API server")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -71,7 +74,13 @@ func main() {
 	}
 	setupLog.Info("config loaded", "config", common.Config)
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	cfg := ctrl.GetConfigOrDie()
+	if logAPIRequests {
+		cfg.Wrap(func(rt http.RoundTripper) http.RoundTripper {
+			return requestLogger{rt: rt}
+		})
+	}
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
@@ -104,7 +113,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "IstioHelmInstall")
 		os.Exit(1)
 	}
-	//+kubebuilder:scaffold:builder
+	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
@@ -121,3 +130,15 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+type requestLogger struct {
+	rt http.RoundTripper
+}
+
+func (rl requestLogger) RoundTrip(req *http.Request) (*http.Response, error) {
+	log := common.LogFromContext(req.Context())
+	log.Info("Performing API request", "method", req.Method, "URL", req.URL)
+	return rl.rt.RoundTrip(req)
+}
+
+var _ http.RoundTripper = requestLogger{}
