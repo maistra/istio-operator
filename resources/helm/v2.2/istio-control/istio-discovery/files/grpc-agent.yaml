@@ -2,7 +2,7 @@
 {{- range $index, $container := .Spec.Containers }}{{ if not (eq $container.Name "istio-proxy") }}{{ $containers = append $containers $container.Name }}{{end}}{{- end}}
 metadata:
   labels:
-    maistra-version: "2.2.6"
+    maistra-version: "2.2.7"
   annotations: {
     {{- if eq (len $containers) 1 }}
     kubectl.kubernetes.io/default-logs-container: "{{ index $containers 0 }}",
