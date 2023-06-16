@@ -6,7 +6,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     app: istiod
     istio.io/rev: default
     release: istio
@@ -25,7 +25,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     app: istiod
     release: istio
 ---
@@ -36,7 +36,7 @@ metadata:
   name: istio
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     istio.io/rev: default
     release: istio
 data:
@@ -62,7 +62,7 @@ metadata:
   name: istio-sidecar-injector
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     istio.io/rev: default
     release: istio
 data:
@@ -1351,7 +1351,7 @@ kind: ClusterRole
 metadata:
   name: istiod-clusterrole-istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     app: istiod
     release: istio
 rules:
@@ -1468,7 +1468,7 @@ kind: ClusterRole
 metadata:
   name: istiod-gateway-controller-istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     app: istiod
     release: istio
 rules:
@@ -1485,7 +1485,7 @@ kind: ClusterRole
 metadata:
   name: istio-reader-clusterrole-istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     app: istio-reader
     release: istio
 rules:
@@ -1531,7 +1531,7 @@ kind: ClusterRoleBinding
 metadata:
   name: istiod-clusterrole-istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     app: istiod
     release: istio
 roleRef:
@@ -1549,7 +1549,7 @@ kind: ClusterRoleBinding
 metadata:
   name: istiod-gateway-controller-istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     app: istiod
     release: istio
 roleRef:
@@ -1567,7 +1567,7 @@ kind: ClusterRoleBinding
 metadata:
   name: istio-reader-clusterrole-istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     app: istio-reader
     release: istio
 roleRef:
@@ -1586,7 +1586,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     app: istiod
     release: istio
 rules:
@@ -1619,7 +1619,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     app: istiod
     release: istio
 roleRef:
@@ -1638,7 +1638,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     istio.io/rev: default
     app: istiod
     istio: pilot
@@ -1674,7 +1674,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     app: istiod
     istio.io/rev: default
     istio: pilot
@@ -1874,7 +1874,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     maistra-control-plane: {{ .Release.Namespace }}
     app: istiod
     release: istio
@@ -1906,7 +1906,7 @@ metadata:
   name: istiod
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     maistra-control-plane: {{ .Release.Namespace }}
     istio.io/rev: default
     app: istiod
@@ -1929,7 +1929,7 @@ metadata:
   name: stats-filter-1.13
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     maistra-control-plane: {{ .Release.Namespace }}
     istio.io/rev: default
 spec:
@@ -2048,7 +2048,7 @@ metadata:
   name: tcp-stats-filter-1.13
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     maistra-control-plane: {{ .Release.Namespace }}
     istio.io/rev: default
 spec:
@@ -2159,7 +2159,7 @@ metadata:
   name: stats-filter-1.14
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     maistra-control-plane: {{ .Release.Namespace }}
     istio.io/rev: default
 spec:
@@ -2278,7 +2278,7 @@ metadata:
   name: tcp-stats-filter-1.14
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     maistra-control-plane: {{ .Release.Namespace }}
     istio.io/rev: default
 spec:
@@ -2389,7 +2389,7 @@ metadata:
   name: stats-filter-1.15
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     maistra-control-plane: {{ .Release.Namespace }}
     istio.io/rev: default
 spec:
@@ -2508,7 +2508,7 @@ metadata:
   name: tcp-stats-filter-1.15
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     maistra-control-plane: {{ .Release.Namespace }}
     istio.io/rev: default
 spec:
@@ -2619,7 +2619,7 @@ metadata:
   name: stats-filter-1.16
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     maistra-control-plane: {{ .Release.Namespace }}
     istio.io/rev: default
 spec:
@@ -2738,7 +2738,7 @@ metadata:
   name: tcp-stats-filter-1.16
   namespace: istio-system
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     maistra-control-plane: {{ .Release.Namespace }}
     istio.io/rev: default
 spec:
@@ -2847,7 +2847,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: istio-sidecar-injector
   labels:
-    maistra-version: "2.4.0"
+    maistra-version: "2.4.1"
     maistra-control-plane: {{ .Release.Namespace }}
     istio.io/rev: default
     app: sidecar-injector
