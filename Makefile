@@ -200,13 +200,13 @@ uninstall: kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube
 
 .PHONY: deploy
 deploy: kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	make -s deploy-yaml | kubectl apply -f -
+	make deploy-yaml | kubectl apply -f -
 
 .PHONY: deploy-yaml
 deploy-yaml: kustomize ## Outputs YAML manifests needed to deploy the controller
-	@cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE}
-	@cd config/default && $(KUSTOMIZE) edit set namespace ${NAMESPACE}
-	@$(KUSTOMIZE) build config/default
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE}
+	cd config/default && $(KUSTOMIZE) edit set namespace ${NAMESPACE}
+	$(KUSTOMIZE) build config/default
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
@@ -276,11 +276,11 @@ KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/k
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
 $(KUSTOMIZE): $(LOCALBIN)
-	@if test -x $(LOCALBIN)/kustomize && ! $(LOCALBIN)/kustomize version | grep -q $(KUSTOMIZE_VERSION); then \
-		echo "$(LOCALBIN)/kustomize version is not expected $(KUSTOMIZE_VERSION). Removing it before installing."; \
+	if test -x $(LOCALBIN)/kustomize && ! $(LOCALBIN)/kustomize version | grep -q $(KUSTOMIZE_VERSION) > /dev/stderr; then \
+		echo "$(LOCALBIN)/kustomize version is not expected $(KUSTOMIZE_VERSION). Removing it before installing." > /dev/stderr; \
 		rm -rf $(LOCALBIN)/kustomize; \
 	fi
-	@test -s $(LOCALBIN)/kustomize || { curl -Ss $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN); }
+	test -s $(LOCALBIN)/kustomize || { curl -Ss $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN) > /dev/stderr; }
 
 .PHONY: operator-sdk
 operator-sdk: $(OPERATOR_SDK)
@@ -408,3 +408,5 @@ lint-bundle: operator-sdk ## runs linters against OLM metadata bundle
 
 .PHONY: lint
 lint: lint-scripts lint-go lint-yaml lint-helm lint-bundle ## runs all linters
+
+.SILENT: kustomize $(KUSTOMIZE) $(LOCALBIN) deploy-yaml
