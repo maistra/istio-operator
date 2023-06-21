@@ -29,6 +29,7 @@ import (
 	"maistra.io/istio-operator/controllers"
 	"maistra.io/istio-operator/pkg/common"
 	"maistra.io/istio-operator/pkg/helm"
+	"maistra.io/istio-operator/pkg/kube"
 	"maistra.io/istio-operator/pkg/version"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -81,12 +82,13 @@ func main() {
 		})
 	}
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         true,
-		LeaderElectionID:       "8d20bb54.maistra.io",
+		Scheme:                  scheme,
+		MetricsBindAddress:      metricsAddr,
+		Port:                    9443,
+		HealthProbeBindAddress:  probeAddr,
+		LeaderElection:          true,
+		LeaderElectionID:        "8d20bb54.maistra.io",
+		LeaderElectionNamespace: kube.GetOperatorNamespace(),
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
