@@ -1,6 +1,6 @@
 | :exclamation:  Issues for this repository are disabled |
 |--------------------------------------------------------|
-| Issues for OpenShift Service Mesh are tracked in Red Hat Jira. Please head to https://issues.redhat.com/browse/OSSM in order to browse or open an issue |
+| Issues for OpenShift Service Mesh are tracked in Red Hat Jira. Please head to the [OSSM Jira project](https://issues.redhat.com/browse/OSSM) in order to browse or open an issue |
 
 # Maistra Istio Operator
 
@@ -31,7 +31,7 @@ make undeploy
 ```
 
 ## Contributing
-We welcome community contributions! For features or bugfixes, please first create an issue in our [OSSM JIRA project](https://issues.redhat.com/browse/OSSM) and make sure to prefix your commit message with the issue ID.
+We welcome community contributions! For features or bugfixes, please first create an issue in our [OSSM Jira project](https://issues.redhat.com/browse/OSSM) and make sure to prefix your commit message with the issue ID.
 
 ### How it works
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
