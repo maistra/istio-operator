@@ -1,37 +1,26 @@
-# maistraoperator
-// TODO(user): Add simple overview of use/purpose
+| :exclamation:  Issues for this repository are disabled |
+|--------------------------------------------------------|
+| Issues for OpenShift Service Mesh are tracked in Red Hat Jira. Please head to the [OSSM Jira project](https://issues.redhat.com/browse/OSSM) in order to browse or open an issue |
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+# Maistra Istio Operator
+
+This project is an operator that can be used to manage the installation of an [Istio](https://istio.io) control plane.
 
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 
 ### Running on the cluster
-1. Install Instances of Custom Resources:
+1. Deploy the operator to the cluster:
 
 ```sh
-kubectl apply -f config/samples/
+make deploy
 ```
 
-2. Build and push your image to the location specified by `IMG`:
+2. Create an IstioHelmInstall instance to install istiod:
 
 ```sh
-make docker-build docker-push IMG=<some-registry>/istio-operator:tag
-```
-
-3. Deploy the controller to the cluster with the image specified by `IMG`:
-
-```sh
-make deploy IMG=<some-registry>/istio-operator:tag
-```
-
-### Uninstall CRDs
-To delete the CRDs from the cluster:
-
-```sh
-make uninstall
+kubectl apply -f config/samples/maistra.io_v1_istiohelminstall.yaml
 ```
 
 ### Undeploy controller
@@ -42,7 +31,7 @@ make undeploy
 ```
 
 ## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
+We welcome community contributions! For features or bugfixes, please first create an issue in our [OSSM Jira project](https://issues.redhat.com/browse/OSSM) and make sure to prefix your commit message with the issue ID.
 
 ### How it works
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
@@ -80,20 +69,3 @@ More information can be found via the [Kubebuilder Documentation](https://book.k
 Please try to keep business logic in separate packages that can be independently tested wherever possible, especially if you can avoid the usage of Kubernetes clients. It greatly simplifies testing if we don't need to use envtest everywhere.
 
 E2E tests should use the ginkgo-style BDD testing method, an example can be found in [`controllers/istiohelminstall_controller_test.go`](https://github.com/maistra/istio-operator/blob/maistra-3.0/controllers/istiohelminstall_controller_test.go) for the test code and suite setup in [`controllers/suite_test.go`](https://github.com/maistra/istio-operator/blob/maistra-3.0/controllers/suite_test.go). All other tests should use standard golang xUnit-style tests (see [`pkg/kube/finalizers_test.go`](https://github.com/maistra/istio-operator/blob/maistra-3.0/pkg/kube/finalizers_test.go) for an example).
-
-## License
-
-Copyright 2023.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-

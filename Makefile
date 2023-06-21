@@ -149,7 +149,7 @@ build: ## Build manager binary.
 
 .PHONY: run
 run: gen ## Run a controller from your host.
-	go run ./main.go
+	POD_NAMESPACE=${NAMESPACE} go run ./main.go --config-file=./hack/config.properties --resource-directory=./resources
 
 .PHONY: docker-build
 docker-build: ## Build docker image with the manager.
@@ -191,6 +191,7 @@ endif
 
 .PHONY: install
 install: gen-manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	kubectl create ns ${NAMESPACE} || echo "namespace ${NAMESPACE} already exists"
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
 .PHONY: uninstall
@@ -209,7 +210,7 @@ deploy-yaml: kustomize ## Outputs YAML manifests needed to deploy the controller
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+	make deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 ##@ Generated Code & Resources
 
