@@ -209,7 +209,7 @@ deploy-yaml: kustomize ## Outputs YAML manifests needed to deploy the controller
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+	make deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 ##@ Generated Code & Resources
 
