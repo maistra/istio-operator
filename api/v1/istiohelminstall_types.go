@@ -22,6 +22,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const IstioHelmInstallKind = "IstioHelmInstall"
+
 // IstioHelmInstallSpec defines the desired state of IstioHelmInstall
 type IstioHelmInstallSpec struct {
 	Version string `json:"version,omitempty"`
@@ -64,8 +66,8 @@ func (s *IstioHelmInstallStatus) GetAppliedValues() map[string]interface{} {
 	return vals
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // IstioHelmInstall is the Schema for the istiohelminstalls API
 type IstioHelmInstall struct {
@@ -76,7 +78,7 @@ type IstioHelmInstall struct {
 	Status IstioHelmInstallStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // IstioHelmInstallList contains a list of IstioHelmInstall
 type IstioHelmInstallList struct {

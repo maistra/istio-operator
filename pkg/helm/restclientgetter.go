@@ -2,6 +2,7 @@ package helm
 
 import (
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/rest"
@@ -11,10 +12,12 @@ import (
 
 // restClientGetter is required by helm to instantiate ActionConfig
 type restClientGetter struct {
-	config *rest.Config
+	config          *rest.Config
+	discoveryClient discovery.CachedDiscoveryInterface
+	restMapper      meta.RESTMapper
 }
 
-func newRESTClientGetter(config *rest.Config) *restClientGetter {
+func NewRESTClientGetter(config *rest.Config) genericclioptions.RESTClientGetter {
 	return &restClientGetter{
 		config: config,
 	}
@@ -25,23 +28,28 @@ func (c *restClientGetter) ToRESTConfig() (*rest.Config, error) {
 }
 
 func (c *restClientGetter) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error) {
-	oldBurst := c.config.Burst
-	// use the default (high) burst for discovery
-	c.config.Burst = 0
-	// write back the old burst value after it has been copied for discovery client creation
-	defer func() { c.config.Burst = oldBurst }()
+	if c.discoveryClient == nil {
+		oldBurst := c.config.Burst
+		// use the default (high) burst for discovery
+		c.config.Burst = 0
+		// write back the old burst value after it has been copied for discovery client creation
+		defer func() { c.config.Burst = oldBurst }()
 
-	discoveryClient, _ := discovery.NewDiscoveryClientForConfig(c.config)
-	return memory.NewMemCacheClient(discoveryClient), nil
+		discoveryClient, _ := discovery.NewDiscoveryClientForConfig(c.config)
+		c.discoveryClient = memory.NewMemCacheClient(discoveryClient)
+	}
+	return c.discoveryClient, nil
 }
 
 func (c *restClientGetter) ToRESTMapper() (meta.RESTMapper, error) {
-	// we know err is always nil
-	discoveryClient, _ := c.ToDiscoveryClient()
+	if c.restMapper == nil {
+		// we know err is always nil
+		discoveryClient, _ := c.ToDiscoveryClient()
 
-	mapper := restmapper.NewDeferredDiscoveryRESTMapper(discoveryClient)
-	expander := restmapper.NewShortcutExpander(mapper, discoveryClient)
-	return expander, nil
+		mapper := restmapper.NewDeferredDiscoveryRESTMapper(discoveryClient)
+		c.restMapper = restmapper.NewShortcutExpander(mapper, discoveryClient)
+	}
+	return c.restMapper, nil
 }
 
 func (c *restClientGetter) ToRawKubeConfigLoader() clientcmd.ClientConfig {

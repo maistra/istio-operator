@@ -20,41 +20,64 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"regexp"
 
+	admissionv1 "k8s.io/api/admissionregistration/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
-	v1 "maistra.io/istio-operator/api/v1"
+	"k8s.io/utils/pointer"
+	maistrav1 "maistra.io/istio-operator/api/v1"
 	"maistra.io/istio-operator/pkg/helm"
 	"maistra.io/istio-operator/pkg/istio"
 	"maistra.io/istio-operator/pkg/kube"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 // IstioHelmInstallReconciler reconciles a IstioHelmInstall object
 type IstioHelmInstallReconciler struct {
 	ResourceDirectory string
-	Config            *rest.Config
+	RestClientGetter  genericclioptions.RESTClientGetter
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-// charts to deploy (with their suffixes)
-var charts = map[string]string{
-	"istio-cni":                     "-cni",
+func NewIstioHelmInstallReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config, resourceDir string) *IstioHelmInstallReconciler {
+	return &IstioHelmInstallReconciler{
+		ResourceDirectory: resourceDir,
+		RestClientGetter:  helm.NewRESTClientGetter(restConfig),
+		Client:            client,
+		Scheme:            scheme,
+	}
+}
+
+// charts to deploy in the operator namespace (and their suffixes)
+var systemCharts = map[string]string{
+	"istio-cni": "-cni",
+}
+
+// charts to deploy in the ihi namespace (and their suffixes)
+var userCharts = map[string]string{
 	"base":                          "-base",
 	"istio-control/istio-discovery": "-istiod",
 	"gateways/istio-ingress":        "-ingress",
 	"gateways/istio-egress":         "-egress",
-}
-
-func namespaceForChart(chartName string, ihi v1.IstioHelmInstall) string {
-	if chartName == "istio-cni" {
-		return kube.GetOperatorNamespace()
-	}
-	return ihi.Namespace
 }
 
 // +kubebuilder:rbac:groups=maistra.io,resources=istiohelminstalls,verbs=get;list;watch;create;update;patch;delete
@@ -77,7 +100,7 @@ func namespaceForChart(chartName string, ihi v1.IstioHelmInstall) string {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *IstioHelmInstallReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithName("reconciler")
-	var ihi v1.IstioHelmInstall
+	var ihi maistrav1.IstioHelmInstall
 	if err := r.Client.Get(ctx, req.NamespacedName, &ihi); err != nil {
 		if errors.IsNotFound(err) {
 			logger.V(2).Info("IstioHelmInstall not found. Skipping reconciliation")
@@ -87,13 +110,17 @@ func (r *IstioHelmInstallReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	if ihi.DeletionTimestamp != nil {
-		for chartName, suffix := range charts {
-			_, err := helm.UninstallChart(r.Config, namespaceForChart(chartName, ihi), ihi.Name+suffix)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
+		err := helm.UninstallCharts(r.RestClientGetter, systemCharts, ihi.Name, kube.GetOperatorNamespace())
+		if err != nil {
+			return ctrl.Result{}, err
 		}
-		err := kube.RemoveFinalizer(ctx, &ihi, r.Client)
+
+		err = helm.UninstallCharts(r.RestClientGetter, userCharts, ihi.Name, ihi.Namespace)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		err = kube.RemoveFinalizer(ctx, &ihi, r.Client)
 		if err != nil {
 			logger.Info("failed to remove finalizer")
 			return ctrl.Result{}, err
@@ -126,25 +153,118 @@ func (r *IstioHelmInstallReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			logger.Error(err, "failed to marshal status")
 			return
 		}
-		err = r.Client.Status().Patch(ctx, &ihi, kube.NewStatusPatch(v1.IstioHelmInstallStatus{AppliedValues: appliedValues}))
+		err = r.Client.Status().Patch(ctx, &ihi, kube.NewStatusPatch(maistrav1.IstioHelmInstallStatus{AppliedValues: appliedValues}))
 		if err != nil {
 			logger.Error(err, "failed to patch status")
 		}
 	}()
 
-	for chartName, suffix := range charts {
-		_, err = helm.UpgradeOrInstallChart(ctx, r.Config, chartName, ihi.Spec.Version, namespaceForChart(chartName, ihi), req.Name+suffix, values)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+	ownerReference := metav1.OwnerReference{
+		APIVersion:         maistrav1.GroupVersion.String(),
+		Kind:               maistrav1.IstioHelmInstallKind,
+		Name:               ihi.Name,
+		UID:                ihi.UID,
+		Controller:         pointer.Bool(true),
+		BlockOwnerDeletion: pointer.Bool(true),
 	}
+
+	err = helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, systemCharts, values, ihi.Spec.Version, ihi.Name, kube.GetOperatorNamespace(), ownerReference)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, userCharts, values, ihi.Spec.Version, ihi.Name, ihi.Namespace, ownerReference)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *IstioHelmInstallReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.Config = mgr.GetConfig()
+	clusterScopedResourceHandler := handler.EnqueueRequestsFromMapFunc(mapOwnerAnnotationsToReconcileRequest)
+
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1.IstioHelmInstall{}).
+		For(&maistrav1.IstioHelmInstall{}).
+
+		// namespaced resources
+		Owns(&corev1.ConfigMap{}).
+		Owns(&appsv1.Deployment{}).
+		Owns(&appsv1.DaemonSet{}).
+		Owns(&corev1.Endpoints{}).
+		Owns(&corev1.ResourceQuota{}).
+		Owns(&corev1.Secret{}).
+		Owns(&corev1.Service{}).
+		Owns(&corev1.ServiceAccount{}).
+		Owns(&rbacv1.Role{}).
+		Owns(&rbacv1.RoleBinding{}).
+		Owns(&policyv1.PodDisruptionBudget{}).
+		Owns(&autoscalingv2.HorizontalPodAutoscaler{}).
+
+		// TODO: uncomment when CRDs are installed together with the operator
+		// Owns(&networkingv1alpha3.EnvoyFilter{}).
+
+		// TODO: only register NetAttachDef if the CRD is installed (may also need to watch for CRD creation)
+		// Owns(&multusv1.NetworkAttachmentDefinition{}).
+
+		// cluster-scoped resources
+		Watches(sourceForKind(&rbacv1.ClusterRole{}), clusterScopedResourceHandler).
+		Watches(sourceForKind(&rbacv1.ClusterRoleBinding{}), clusterScopedResourceHandler).
+		Watches(sourceForKind(&admissionv1.MutatingWebhookConfiguration{}), clusterScopedResourceHandler).
+		Watches(sourceForKind(&admissionv1.ValidatingWebhookConfiguration{}),
+			clusterScopedResourceHandler,
+			builder.WithPredicates(validatingWebhookConfigPredicate{})).
+
+		// +lint-watches:ignore: CustomResourceDefinition (prevents `make lint-watches` from bugging us about CRDs)
 		Complete(r)
+}
+
+func mapOwnerAnnotationsToReconcileRequest(obj client.Object) []reconcile.Request {
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		return nil
+	}
+
+	namespacedName, kind, apiGroup := helm.GetOwnerFromAnnotations(annotations)
+	if namespacedName != nil && kind == maistrav1.IstioHelmInstallKind && apiGroup == maistrav1.GroupVersion.Group {
+		return []reconcile.Request{{NamespacedName: *namespacedName}}
+	}
+	return nil
+}
+
+func sourceForKind(obj client.Object) source.Source {
+	return &source.Kind{
+		Type: obj,
+	}
+}
+
+type validatingWebhookConfigPredicate struct {
+	predicate.Funcs
+}
+
+func (v validatingWebhookConfigPredicate) Update(e event.UpdateEvent) bool {
+	if e.ObjectOld == nil || e.ObjectNew == nil {
+		return false
+	}
+
+	if matched, _ := regexp.MatchString("istiod-.*-validator", e.ObjectNew.GetName()); matched {
+		// Istiod updates the caBundle and failurePolicy fields in istiod-<ns>-validator webhook config.
+		// We must ignore changes to these fields to prevent an endless update loop.
+		clearIgnoredFields(e.ObjectOld)
+		clearIgnoredFields(e.ObjectNew)
+		return !reflect.DeepEqual(e.ObjectNew, e.ObjectOld)
+	}
+	return true
+}
+
+func clearIgnoredFields(obj client.Object) {
+	obj.SetResourceVersion("")
+	obj.SetGeneration(0)
+	obj.SetManagedFields(nil)
+	if webhookConfig, ok := obj.(*admissionv1.ValidatingWebhookConfiguration); ok {
+		for i := 0; i < len(webhookConfig.Webhooks); i++ {
+			webhookConfig.Webhooks[i].FailurePolicy = nil
+		}
+	}
 }
