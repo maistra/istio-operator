@@ -60,6 +60,48 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 				"envoyExtAuthzHttp": values,
 			})
 		}
+		if provider.EnvoyExtAuthzGRPC != nil {
+			config := provider.EnvoyExtAuthzGRPC
+			values := map[string]interface{}{
+				"service": config.Service,
+				"port":    config.Port,
+			}
+			if config.Timeout != nil {
+				values["timeout"] = *config.Timeout
+			}
+			if config.PathPrefix != nil {
+				values["pathPrefix"] = *config.PathPrefix
+			}
+			if config.FailOpen != nil {
+				values["failOpen"] = *config.FailOpen
+			}
+			if config.StatusOnError != nil {
+				values["statusOnError"] = *config.StatusOnError
+			}
+			if config.IncludeRequestHeadersInCheck != nil {
+				values["includeRequestHeadersInCheck"] = stringToInterfaceArray(config.IncludeRequestHeadersInCheck)
+			}
+			if config.IncludeAdditionalHeadersInCheck != nil {
+				values["includeAdditionalHeadersInCheck"] = mapOfStringToInterface(config.IncludeAdditionalHeadersInCheck)
+			}
+			if config.IncludeRequestBodyInCheck != nil {
+				includeRequestBodyInCheckValues := map[string]interface{}{}
+				if config.IncludeRequestBodyInCheck.MaxRequestBytes != nil {
+					includeRequestBodyInCheckValues["maxRequestBytes"] = *config.IncludeRequestBodyInCheck.MaxRequestBytes
+				}
+				if config.IncludeRequestBodyInCheck.AllowPartialMessage != nil {
+					includeRequestBodyInCheckValues["allowPartialMessage"] = *config.IncludeRequestBodyInCheck.AllowPartialMessage
+				}
+				if config.IncludeRequestBodyInCheck.PackAsBytes != nil {
+					includeRequestBodyInCheckValues["packAsBytes"] = *config.IncludeRequestBodyInCheck.PackAsBytes
+				}
+				values["includeRequestBodyInCheck"] = includeRequestBodyInCheckValues
+			}
+			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
+				"name":              provider.Name,
+				"envoyExtAuthzGrpc": values,
+			})
+		}
 	}
 	if err := setHelmMapSliceValue(allValues, "meshConfig.extensionProviders", extensionProvidersValues); err != nil {
 		return err
@@ -124,15 +166,60 @@ func populateExtensionProvidersConfig(in *v1.HelmValues, out *v2.ControlPlaneSpe
 								config.IncludeRequestBodyInCheck.PackAsBytes = boolPtr(packAsBytes.(bool))
 							}
 						}
+						out.MeshConfig.ExtensionProviders = append(out.MeshConfig.ExtensionProviders, &v2.ExtensionProviderConfig{
+							Name:              provider["name"].(string),
+							EnvoyExtAuthzHTTP: config,
+						})
+
+						if rawExtAuthz, ok := provider["envoyExtAuthzGrpc"]; ok {
+							if extAuthz, ok := rawExtAuthz.(map[string]interface{}); ok {
+								config := &v2.ExtensionProviderEnvoyExternalAuthorizationGRPCConfig{
+									Service: extAuthz["service"].(string),
+									Port:    extAuthz["port"].(int64),
+								}
+								if rawTimeout, ok := extAuthz["timeout"]; ok {
+									config.Timeout = strPtr(rawTimeout.(string))
+								}
+								if rawPathPrefix, ok := extAuthz["pathPrefix"]; ok {
+									config.PathPrefix = strPtr(rawPathPrefix.(string))
+								}
+								if rawFailOpen, ok := extAuthz["failOpen"]; ok {
+									config.FailOpen = boolPtr(rawFailOpen.(bool))
+								}
+								if statusOnError, ok := extAuthz["statusOnError"]; ok {
+									config.StatusOnError = strPtr(statusOnError.(string))
+								}
+								if rawIncludeRequestHeadersInCheck, ok := extAuthz["includeRequestHeadersInCheck"]; ok {
+									config.IncludeRequestHeadersInCheck = interfaceToStringArray(rawIncludeRequestHeadersInCheck.([]interface{}))
+								}
+								if rawIncludeAdditionalHeadersInCheck, ok := extAuthz["includeAdditionalHeadersInCheck"]; ok {
+									config.IncludeAdditionalHeadersInCheck = mapOfInterfaceToString(rawIncludeAdditionalHeadersInCheck.(map[string]interface{}))
+								}
+								if rawIncludeRequestBodyInCheck, ok := extAuthz["includeRequestBodyInCheck"]; ok {
+									if includeRequestBodyInCheck, ok := rawIncludeRequestBodyInCheck.(map[string]interface{}); ok {
+										config.IncludeRequestBodyInCheck = &v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig{}
+										if maxRequestBytes, ok := includeRequestBodyInCheck["maxRequestBytes"]; ok {
+											config.IncludeRequestBodyInCheck.MaxRequestBytes = int64Ptr(maxRequestBytes.(int64))
+										}
+										if allowPartialMessage, ok := includeRequestBodyInCheck["allowPartialMessage"]; ok {
+											config.IncludeRequestBodyInCheck.AllowPartialMessage = boolPtr(allowPartialMessage.(bool))
+										}
+										if packAsBytes, ok := includeRequestBodyInCheck["packAsBytes"]; ok {
+											config.IncludeRequestBodyInCheck.PackAsBytes = boolPtr(packAsBytes.(bool))
+										}
+									}
+								}
+								out.MeshConfig.ExtensionProviders = append(out.MeshConfig.ExtensionProviders, &v2.ExtensionProviderConfig{
+									Name:              provider["name"].(string),
+									EnvoyExtAuthzGRPC: config,
+								})
+							}
+						}
 					}
-					out.MeshConfig.ExtensionProviders = append(out.MeshConfig.ExtensionProviders, &v2.ExtensionProviderConfig{
-						Name:              provider["name"].(string),
-						EnvoyExtAuthzHTTP: config,
-					})
 				}
+				return nil
 			}
 		}
 	}
-
 	return nil
 }
