@@ -203,13 +203,13 @@ func (v *versionStrategyV2_4) validateExtensionProviders(spec *v2.ControlPlaneSp
 		return allErrors
 	}
 	for _, ext := range spec.MeshConfig.ExtensionProviders {
-		if ext.Prometheus == nil && ext.EnvoyExtAuthzHTTP == nil {
+		if ext.Prometheus == nil && ext.EnvoyExtAuthzHTTP == nil && ext.EnvoyExtAuthzGRPC == nil {
 			allErrors = append(allErrors, fmt.Errorf("extension provider '%s' does not define any provider - "+
-				"it must specify one of: prometheus or envoyExtAuthzHttp", ext.Name))
+				"it must specify one of: prometheus, envoyExtAuthzHttp, or envoyExtAuthzGrcp", ext.Name))
 		}
-		if ext.Prometheus != nil && ext.EnvoyExtAuthzHTTP != nil {
+		if ext.Prometheus != nil && ext.EnvoyExtAuthzHTTP != nil && ext.EnvoyExtAuthzGRPC == nil {
 			allErrors = append(allErrors, fmt.Errorf("extension provider '%s' must specify only one type of provider: "+
-				"prometheus or envoyExtAuthzHttp", ext.Name))
+				"prometheus, envoyExtAuthzHttp, envoyExtAuthzGrpc", ext.Name))
 		}
 		if ext.Name == "" {
 			allErrors = append(allErrors, fmt.Errorf("extension provider name cannot be empty"))
@@ -219,6 +219,14 @@ func (v *versionStrategyV2_4) validateExtensionProviders(spec *v2.ControlPlaneSp
 				if _, err := time.ParseDuration(*ext.EnvoyExtAuthzHTTP.Timeout); err != nil {
 					allErrors = append(allErrors, fmt.Errorf("invalid extension provider '%s': envoyExtAuthzHttp.timeout "+
 						"must be specified in the duration format - got '%s'", ext.Name, *ext.EnvoyExtAuthzHTTP.Timeout))
+				}
+			}
+		}
+		if ext.EnvoyExtAuthzGRPC != nil {
+			if ext.EnvoyExtAuthzGRPC.Timeout != nil {
+				if _, err := time.ParseDuration(*ext.EnvoyExtAuthzGRPC.Timeout); err != nil {
+					allErrors = append(allErrors, fmt.Errorf("invalid extension provider '%s': envoyExtAuthzGrcp.timeout "+
+						"must be specified in the duration format - got '%s'", ext.Name, *ext.EnvoyExtAuthzGRPC.Timeout))
 				}
 			}
 		}
