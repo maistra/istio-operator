@@ -147,11 +147,36 @@ generate-community-manifests:
 generate-product-manifests:
 	COMMUNITY=false REPLACES_CSV=${REPLACES_PRODUCT_CSV} ${SOURCE_DIR}/build/generate-manifests.sh
 
-################################################################################
-# resource generation
-################################################################################
-.PHONY: gen
-gen:  generate-crds update-charts update-templates update-generated-code generate-manifests
+.PHONY: deploy
+deploy: kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	make deploy-yaml | kubectl apply -f -
+
+.PHONY: deploy-yaml
+deploy-yaml: kustomize ## Outputs YAML manifests needed to deploy the controller
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE}
+	cd config/default && $(KUSTOMIZE) edit set namespace ${NAMESPACE}
+	$(KUSTOMIZE) build config/default
+
+.PHONY: undeploy
+undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	make deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+
+##@ Generated Code & Resources
+
+.PHONY: gen-manifests
+gen-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+
+.PHONY: gen-code
+gen-code: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+.PHONY: gen-charts
+gen-charts: ## Pull charts from maistra/istio repository
+	hack/download-charts.sh v${MINOR_VERSION} https://github.com/${ISTIO_REPOSITORY} ${ISTIO_COMMIT_30}
+
+.PHONY: gen ## Generate everything
+gen: controller-gen gen-manifests gen-code gen-charts bundle
 
 .PHONY: gen-check
 gen-check: gen restore-manifest-dates check-clean-repo
