@@ -29,7 +29,7 @@ metadata:
     app: istio
     release: {{ .Release.Name }}
 spec:
-  host: "*.local"
+  host: "*.{{ .Values.global.proxy.clusterDomain }}"
   {{- if .Values.global.defaultConfigVisibilitySettings }}
   exportTo:
   - '*'
