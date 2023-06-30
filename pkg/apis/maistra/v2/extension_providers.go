@@ -79,7 +79,7 @@ type ExtensionProviderEnvoyExternalAuthorizationGRPCConfig struct {
 	// authorization check request to be sent to the authorization service at the path "/check/admin" instead of "/admin".	FailOpen *bool `json:"failOpen,omitempty"`
 	// Sets the HTTP status that is returned to the client when there is a network error to the authorization service.
 	// The default status is "403" (HTTP Forbidden).
-	FailOpen *bool `json:"fail_open,omitempty"`
+	FailOpen *bool `json:"failOpen,omitempty"`
 	// Sets the HTTP status that is returned to the client when there is a network error to the authorization service.
 	// The default status is "403" (HTTP Forbidden).
 	StatusOnError *string `json:"statusOnError,omitempty"`

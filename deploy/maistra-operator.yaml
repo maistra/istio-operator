@@ -4076,7 +4076,7 @@ spec:
                       properties:
                         envoyExtAuthzGrpc:
                           properties:
-                            fail_open:
+                            failOpen:
                               type: boolean
                             includeRequestBodyInCheck:
                               properties:
@@ -9062,7 +9062,7 @@ spec:
                           properties:
                             envoyExtAuthzGrpc:
                               properties:
-                                fail_open:
+                                failOpen:
                                   type: boolean
                                 includeRequestBodyInCheck:
                                   properties:
