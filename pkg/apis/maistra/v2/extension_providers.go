@@ -76,32 +76,13 @@ type ExtensionProviderEnvoyExternalAuthorizationGRPCConfig struct {
 	Timeout *string `json:"timeout,omitempty"`
 	// Sets a prefix to the value of authorization request header *Path*.
 	// For example, setting this to "/check" for an original user request at path "/admin" will cause the
-	// authorization check request to be sent to the authorization service at the path "/check/admin" instead of "/admin".
-	PathPrefix *string `json:"pathPrefix,omitempty"`
-	// If true, the user request will be allowed even if the communication with the authorization service has failed,
-	// or if the authorization service has returned a HTTP 5xx error.
-	// Default is false and the request will be rejected with "Forbidden" response.
-	FailOpen *bool `json:"failOpen,omitempty"`
+	// authorization check request to be sent to the authorization service at the path "/check/admin" instead of "/admin".	FailOpen *bool `json:"failOpen,omitempty"`
+	// Sets the HTTP status that is returned to the client when there is a network error to the authorization service.
+	// The default status is "403" (HTTP Forbidden).
+	FailOpen *bool `json:"fail_open,omitempty"`
 	// Sets the HTTP status that is returned to the client when there is a network error to the authorization service.
 	// The default status is "403" (HTTP Forbidden).
 	StatusOnError *string `json:"statusOnError,omitempty"`
-	// List of client request headers that should be included in the authorization request sent to the authorization service.
-	// Note that in addition to the headers specified here following headers are included by default:
-	// 1. *Host*, *Method*, *Path* and *Content-Length* are automatically sent.
-	// 2. *Content-Length* will be set to 0 and the request will not have a message body. However, the authorization
-	// request can include the buffered client request body (controlled by include_request_body_in_check setting),
-	// consequently the value of Content-Length of the authorization request reflects the size of its payload size.
-	//
-	// Exact, prefix and suffix matches are supported (similar to the authorization policy rule syntax except the presence match
-	// https://istio.io/latest/docs/reference/config/security/authorization-policy/#Rule):
-	// - Exact match: "abc" will match on value "abc".
-	// - Prefix match: "abc*" will match on value "abc" and "abcd".
-	// - Suffix match: "*abc" will match on value "abc" and "xabc".
-	IncludeRequestHeadersInCheck []string `json:"includeRequestHeadersInCheck,omitempty"`
-	// Set of additional fixed headers that should be included in the authorization request sent to the authorization service.
-	// Key is the header name and value is the header value.
-	// Note that client request of the same key or headers specified in include_request_headers_in_check will be overridden.
-	IncludeAdditionalHeadersInCheck map[string]string `json:"includeAdditionalHeadersInCheck,omitempty"`
 	// If set, the client request body will be included in the authorization request sent to the authorization service.
 	IncludeRequestBodyInCheck *ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig `json:"includeRequestBodyInCheck,omitempty"`
 }

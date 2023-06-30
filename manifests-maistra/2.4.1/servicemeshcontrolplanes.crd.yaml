@@ -4075,12 +4075,8 @@ spec:
                       properties:
                         envoyExtAuthzGrpc:
                           properties:
-                            failOpen:
+                            fail_open:
                               type: boolean
-                            includeAdditionalHeadersInCheck:
-                              additionalProperties:
-                                type: string
-                              type: object
                             includeRequestBodyInCheck:
                               properties:
                                 allowPartialMessage:
@@ -4091,12 +4087,6 @@ spec:
                                 packAsBytes:
                                   type: boolean
                               type: object
-                            includeRequestHeadersInCheck:
-                              items:
-                                type: string
-                              type: array
-                            pathPrefix:
-                              type: string
                             port:
                               format: int64
                               type: integer
@@ -9071,12 +9061,8 @@ spec:
                           properties:
                             envoyExtAuthzGrpc:
                               properties:
-                                failOpen:
+                                fail_open:
                                   type: boolean
-                                includeAdditionalHeadersInCheck:
-                                  additionalProperties:
-                                    type: string
-                                  type: object
                                 includeRequestBodyInCheck:
                                   properties:
                                     allowPartialMessage:
@@ -9087,12 +9073,6 @@ spec:
                                     packAsBytes:
                                       type: boolean
                                   type: object
-                                includeRequestHeadersInCheck:
-                                  items:
-                                    type: string
-                                  type: array
-                                pathPrefix:
-                                  type: string
                                 port:
                                   format: int64
                                   type: integer
