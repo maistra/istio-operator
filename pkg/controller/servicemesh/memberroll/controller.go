@@ -244,17 +244,17 @@ func (r *MemberRollReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			if err != nil {
 				if errors.IsNotFound(err) {
 					// Request controlPlane object not found, could have been deleted after reconcile request.
-					return reconcile.Result{}, nil
+					return common.Reconciled()
 				}
 				// Error reading the controlPlane object
-				return reconcile.Result{}, err
+				return common.RequeueWithError(err)
 			}
 			if controlPlane != nil {
 				meshNamespace := controlPlane.GetNamespace()
 				meshVersion := controlPlane.Spec.Version
 				meshMode, err := getMeshMode(controlPlane)
 				if err != nil {
-					return reconcile.Result{}, err
+					return common.RequeueWithError(err)
 				}
 				internalmetrics.DeleteMeshMembersWithLabelsValues(meshNamespace, meshVersion, meshMode)
 			}
@@ -475,16 +475,16 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		meshVersion := mesh.Spec.Version
 		meshMode, err := getMeshMode(mesh)
 		if err != nil {
-			return reconcile.Result{}, err
+			return common.RequeueWithError(err)
 		}
 		// Control plane mode would not be well set yet
 		if meshMode == "" {
-			return reconcile.Result{}, nil
+			return common.Reconciled()
 		}
 		internalmetrics.GetMeshMembers(meshNamespace, meshVersion, meshMode).
 			Set(float64(len(roll.Status.ConfiguredMembers)))
 	}
-	return reconcile.Result{}, nil
+	return common.Reconciled()
 }
 
 func getExcludedNamespaces() []string {
