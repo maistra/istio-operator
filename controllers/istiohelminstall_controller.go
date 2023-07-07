@@ -168,12 +168,14 @@ func (r *IstioHelmInstallReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		BlockOwnerDeletion: pointer.Bool(true),
 	}
 
-	err = helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, systemCharts, values, ihi.Spec.Version, ihi.Name, kube.GetOperatorNamespace(), ownerReference)
+	err = helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, systemCharts, values,
+		ihi.Spec.Version, ihi.Name, kube.GetOperatorNamespace(), ownerReference, ihi.Namespace)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	err = helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, userCharts, values, ihi.Spec.Version, ihi.Name, ihi.Namespace, ownerReference)
+	err = helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, userCharts, values,
+		ihi.Spec.Version, ihi.Name, ihi.Namespace, ownerReference, ihi.Namespace)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
