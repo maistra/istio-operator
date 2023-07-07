@@ -9,6 +9,10 @@ metadata:
     install.operator.istio.io/owning-resource: {{ .Values.ownerName | default "unknown" }}
     operator.istio.io/component: "Cni"
 rules:
+- apiGroups: ["security.openshift.io"] 
+  resources: ["securitycontextconstraints"] 
+  resourceNames: ["privileged"] 
+  verbs: ["use"]
 - apiGroups: [""]
   resources: ["pods","nodes","namespaces"]
   verbs: ["get", "list", "watch"]
