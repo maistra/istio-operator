@@ -53,14 +53,14 @@ func UninstallCharts(restClientGetter genericclioptions.RESTClientGetter, charts
 func UpgradeOrInstallCharts(
 	ctx context.Context, restClientGetter genericclioptions.RESTClientGetter,
 	charts map[string]string, values map[string]interface{},
-	chartVersion, releaseNameBase, ns string, ownerReference metav1.OwnerReference,
+	chartVersion, releaseNameBase, ns string, ownerReference metav1.OwnerReference, ihiNamespace string,
 ) error {
 	actionConfig, err := newActionConfig(restClientGetter, ns)
 	if err != nil {
 		return err
 	}
 	for chartName, suffix := range charts {
-		_, err = upgradeOrInstallChart(ctx, actionConfig, chartName, chartVersion, ns, releaseNameBase+suffix, ownerReference, values)
+		_, err = upgradeOrInstallChart(ctx, actionConfig, chartName, chartVersion, ns, releaseNameBase+suffix, ownerReference, ihiNamespace, values)
 		if err != nil {
 			return err
 		}
@@ -79,7 +79,8 @@ func newActionConfig(restClientGetter genericclioptions.RESTClientGetter, namesp
 
 // upgradeOrInstallChart upgrades a chart in cluster or installs it new if it does not already exist
 func upgradeOrInstallChart(ctx context.Context, cfg *action.Configuration,
-	chartName, chartVersion, namespace, releaseName string, ownerReference metav1.OwnerReference, values map[string]interface{},
+	chartName, chartVersion, namespace, releaseName string, ownerReference metav1.OwnerReference, ihiNamespace string,
+	values map[string]interface{},
 ) (*release.Release, error) {
 	// Helm List Action
 	listAction := action.NewList(cfg)
@@ -103,7 +104,7 @@ func upgradeOrInstallChart(ctx context.Context, cfg *action.Configuration,
 	if toUpgrade {
 		logger.V(2).Info("Performing helm upgrade", "chartName", chart.Name())
 		updateAction := action.NewUpgrade(cfg)
-		updateAction.ResourceVisitor = addOwnerReferenceVisitor(ownerReference, namespace)
+		updateAction.ResourceVisitor = addOwnerReferenceVisitor(ownerReference, ihiNamespace)
 		updateAction.MaxHistory = 1
 		rel, err = updateAction.RunWithContext(ctx, releaseName, chart, values)
 		if err != nil {
@@ -113,7 +114,7 @@ func upgradeOrInstallChart(ctx context.Context, cfg *action.Configuration,
 	} else {
 		logger.V(2).Info("Performing helm install", "chartName", chart.Name())
 		installAction := action.NewInstall(cfg)
-		installAction.ResourceVisitor = addOwnerReferenceVisitor(ownerReference, namespace)
+		installAction.ResourceVisitor = addOwnerReferenceVisitor(ownerReference, ihiNamespace)
 		installAction.Namespace = namespace
 		installAction.ReleaseName = releaseName
 		rel, err = installAction.RunWithContext(ctx, chart, values)
