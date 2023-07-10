@@ -30,4 +30,15 @@ function downloadIstioCharts() {
   cp -rf "${WORK_DIR}"/"${EXTRACT_DIR}"/manifests/charts/* "${HELM_DIR}/"
 }
 
+function patchIstioCharts() {
+  # NOTE: everything in the patchIstioCharts should be here only temporarily,
+  # until we push the required changes upstream
+  sed -i '0,/rules:/s//rules:\
+- apiGroups: ["security.openshift.io"] \
+  resources: ["securitycontextconstraints"] \
+  resourceNames: ["privileged"] \
+  verbs: ["use"]/' "${HELM_DIR}/istio-cni/templates/clusterrole.yaml"
+}
+
 downloadIstioCharts
+patchIstioCharts

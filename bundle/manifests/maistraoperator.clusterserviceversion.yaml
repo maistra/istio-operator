@@ -26,7 +26,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-ubi9-operator:3.0-latest
-    createdAt: "2023-07-04T23:02:23Z"
+    createdAt: "2023-07-07T08:47:57Z"
     operators.operatorframework.io/builder: operator-sdk-v1.28.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: maistraoperator.v3.0.0
@@ -170,6 +170,14 @@ spec:
           - roles
           verbs:
           - '*'
+        - apiGroups:
+          - security.openshift.io
+          resourceNames:
+          - privileged
+          resources:
+          - securitycontextconstraints
+          verbs:
+          - use
         - apiGroups:
           - authentication.k8s.io
           resources:

@@ -25,6 +25,10 @@ func (s *Maistra30Strategy) ApplyDefaults(ihi *v1.IstioHelmInstall) error {
 	if err != nil {
 		return err
 	}
+	err = setIfNotPresent(values, "cni.privileged", true)
+	if err != nil {
+		return err
+	}
 	err = setIfNotPresent(values, "cni.image", common.Config.Images3_0.CNI)
 	if err != nil {
 		return err
