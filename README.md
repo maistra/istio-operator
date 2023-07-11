@@ -69,3 +69,9 @@ More information can be found via the [Kubebuilder Documentation](https://book.k
 Please try to keep business logic in separate packages that can be independently tested wherever possible, especially if you can avoid the usage of Kubernetes clients. It greatly simplifies testing if we don't need to use envtest everywhere.
 
 E2E tests should use the ginkgo-style BDD testing method, an example can be found in [`controllers/istiohelminstall_controller_test.go`](https://github.com/maistra/istio-operator/blob/maistra-3.0/controllers/istiohelminstall_controller_test.go) for the test code and suite setup in [`controllers/suite_test.go`](https://github.com/maistra/istio-operator/blob/maistra-3.0/controllers/suite_test.go). All other tests should use standard golang xUnit-style tests (see [`pkg/kube/finalizers_test.go`](https://github.com/maistra/istio-operator/blob/maistra-3.0/pkg/kube/finalizers_test.go) for an example).
+
+### OCP Integration Tests
+Must be logged into OCP using 'oc' client
+```sh
+make test.integration.ocp
+```
