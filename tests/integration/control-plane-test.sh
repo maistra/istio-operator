@@ -25,7 +25,6 @@ set -o pipefail
 
 WD=$(dirname "$0")
 WD=$(cd "$WD"; pwd)
-ROOT="$(git rev-parse --show-toplevel)"
 
 ISTIO_HELM_INSTALL="https://raw.githubusercontent.com/maistra/istio-operator/maistra-3.0/config/samples/maistra.io_v1_istiohelminstall.yaml"
 BRANCH="${BRANCH:-maistra-3.0}"
@@ -39,25 +38,25 @@ create-control-plane() {
 
     echo "Creating Istio Helm Install (Control Plane)"
     cd "$(git rev-parse --show-toplevel)"
-    oc apply -f ${ISTIO_HELM_INSTALL} -n ${CP_NS}
+    oc apply -f ${ISTIO_HELM_INSTALL} -n "${CP_NS}"
 
-    oc project ${CP_NS}
+    oc project "${CP_NS}"
     timeout --foreground -v -s SIGHUP -k 2m 2m bash --verbose -c \
-      'until oc get pods -n "${CP_NS}" | grep istiod; do sleep 5; done'
-    oc wait deployment istiod -n ${CP_NS} --for condition=Available=True --timeout=2m
+      "until oc get pods -n ${CP_NS} | grep istiod; do sleep 5; done"
+    oc wait deployment istiod -n "${CP_NS}" --for condition=Available=True --timeout=2m
      
     timeout --foreground -v -s SIGHUP -k 2m 2m bash --verbose -c \
-      'until oc get pods -n "${CP_NS}" | grep istio-egressgateway; do sleep 5; done'
-    oc wait deployment istio-egressgateway -n ${CP_NS} --for condition=Available=True --timeout=2m
+      "until oc get pods -n ${CP_NS} | grep istio-egressgateway; do sleep 5; done"
+    oc wait deployment istio-egressgateway -n "${CP_NS}" --for condition=Available=True --timeout=2m
 
     timeout --foreground -v -s SIGHUP -k 2m 2m bash --verbose -c \
-      'until oc get pods -n "${CP_NS}" | grep istio-ingressgateway; do sleep 5; done'
-    oc wait deployment istio-ingressgateway -n ${CP_NS} --for condition=Available=True --timeout=2m
+      "until oc get pods -n ${CP_NS} | grep istio-ingressgateway; do sleep 5; done"
+    oc wait deployment istio-ingressgateway -n "${CP_NS}" --for condition=Available=True --timeout=2m
 }
 
 check-operator-status() {
     # check that operator is still Ready after Istio Helm Install create
-    oc wait --for condition=Available -n ${OPERATOR_NS} deploy/${OPERATOR_NAME} --timeout=2m
+    oc wait --for condition=Available -n "${OPERATOR_NS}" deploy/"${OPERATOR_NAME}" --timeout=2m
 }
 
 create-control-plane

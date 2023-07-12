@@ -23,7 +23,8 @@ set -u
 set -x
 
 install-operator-ocp() { # installs istio-operator on OCP
-    local ROOT="$(git rev-parse --show-toplevel)"
+    local ROOT
+    ROOT="$(git rev-parse --show-toplevel)"
     local TAG="${TAG:-$(git rev-parse HEAD)}"
     local NS="${NS:-istio-operator}"
     local OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
@@ -31,21 +32,21 @@ install-operator-ocp() { # installs istio-operator on OCP
  
     echo "--------------------------------"
     echo "Installing operator"
-    echo "Image: $OPERATOR_IMAGE"
-    echo "Operator Namespace: "${NS}""
-    echo "Operator Name: $OPERATOR_NAME"
-    echo "ROOT: $ROOT"
+    echo "Operator Namespace: ${NS}"
+    echo "Operator Namespace: ${NS}"
+    echo "Operator Name: ${OPERATOR_NAME}"
+    echo "ROOT: ${ROOT}"
     
     oc get ns "${NS}" >/dev/null 2>&1 || oc create namespace "${NS}"
 
-    cd ${ROOT}
+    cd "${ROOT}"
     make -s deploy-yaml | kubectl apply -f -
    
     oc project "${NS}"
     timeout --foreground -v -s SIGHUP -k 2m 2m bash --verbose -c \
-      'until oc get pods -n "${NS}" | grep istio; do sleep 5; done'
+      "until oc get pods -n ${NS} | grep istio; do sleep 5; done"
 
-    oc wait --for condition=available -n "${NS}" deploy/${OPERATOR_NAME} --timeout=120s
+    oc wait --for condition=available -n "${NS}" deploy/"${OPERATOR_NAME}" --timeout=120s
 }
 
 install-operator-ocp

@@ -39,11 +39,11 @@ build_operator_image() { # compile operator source and push operator image
     make gen build
 
     timeout --foreground -v -s SIGHUP -k 5m 5m bash --verbose -c \
-      'until make docker-build; do sleep 5; done'
+      "until make docker-build; do sleep 5; done"
     
     # Retry due to push failures that randomly occur
     timeout --foreground -v -s SIGHUP -k 5m 5m bash --verbose -c \
-      'until make docker-push; do sleep 5; done'
+      "until make docker-push; do sleep 5; done"
 
     cd "$WD"
 }
