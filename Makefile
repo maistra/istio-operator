@@ -1,3 +1,16 @@
+## Copyright 2019 Red Hat, Inc.
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
 
 -include Makefile.overrides
 
@@ -25,6 +38,8 @@ ISTIO_PROXY_IMAGE_NAME ?= proxyv2
 # GitHub creds
 GITHUB_USER ?= maistra-bot
 GITHUB_TOKEN ?= 
+
+SOURCE_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
 # Git repository state
 ifndef GIT_TAG
@@ -200,6 +215,7 @@ uninstall: kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube
 
 .PHONY: deploy
 deploy: kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	$(info NAMESPACE: $(NAMESPACE))
 	make -s deploy-yaml | kubectl apply -f -
 
 .PHONY: deploy-yaml
@@ -415,3 +431,13 @@ lint-watches: ## checks if the operator watches all resource kinds present in He
 lint: lint-scripts lint-go lint-yaml lint-helm lint-bundle lint-watches ## runs all linters
 
 .SILENT: kustomize $(KUSTOMIZE) $(LOCALBIN) deploy-yaml
+
+
+################################################################################
+# run an integration test on OCP
+################################################################################
+.PHONY: test.integration.ocp
+test.integration.ocp:
+	$(info SOURCE_DIR: $(SOURCE_DIR))
+	${SOURCE_DIR}/tests/integration/operator-integ-suite-ocp.sh
+
