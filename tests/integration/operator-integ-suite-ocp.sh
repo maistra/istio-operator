@@ -24,11 +24,6 @@ set -u
 # Print commands
 set -x
 
-echo "--------------------------------"
-echo "Build an operator image"
-echo "--------------------------------"
-"${WD}"/build-operator.sh
-
 # deploy operator in OCP
 echo "--------------------------------"
 echo "Deploy istio operator in OCP"
