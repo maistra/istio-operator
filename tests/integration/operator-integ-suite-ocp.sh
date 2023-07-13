@@ -24,10 +24,12 @@ set -u
 # Print commands
 set -x
 
-echo "--------------------------------"
-echo "Build an operator image"
-echo "--------------------------------"
-"${WD}"/build-operator.sh
+if [ -v BUILD_IMAGE ]; then
+  echo "--------------------------------"
+  echo "Build an operator image"
+  echo "--------------------------------"
+  "${WD}"/build-operator.sh
+fi
 
 # deploy operator in OCP
 echo "--------------------------------"
