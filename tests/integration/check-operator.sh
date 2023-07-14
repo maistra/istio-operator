@@ -27,13 +27,15 @@ check-operator-ocp() { # Check that operator is running on OCP
     ROOT="$(git rev-parse --show-toplevel)"
     local NS="${NS:-istio-operator}"
     
+    OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
+    OPERATOR_NAMESPACE="${NS:-istio-operator}"
  
     echo "--------------------------------"
     echo "Check that operator is running as expected"
     echo "Operator Namespace: ${OPERATOR_NAMESPACE}"
     echo "Operator Name: ${OPERATOR_NAME}"
     echo "ROOT: ${ROOT}"
-    
+
     oc get ns "${OPERATOR_NAMESPACE}" >/dev/null 2>&1 || oc create namespace "${OPERATOR_NAMESPACE}"
    
     oc project "${OPERATOR_NAMESPACE}"

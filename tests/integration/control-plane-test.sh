@@ -31,6 +31,9 @@ BRANCH="${BRANCH:-maistra-3.0}"
 
 CP_NS="${CP_NS:-default}"
 
+OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
+OPERATOR_NAMESPACE="${NS:-istio-operator}"
+
 create-control-plane() {
     oc get ns "${CP_NS}" >/dev/null 2>&1 || oc create namespace "${CP_NS}"
 

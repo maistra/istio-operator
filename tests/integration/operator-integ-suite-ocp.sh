@@ -24,9 +24,6 @@ set -u
 # Print commands
 set -x
 
-export OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
-export OPERATOR_NAMESPACE="${NS:-istio-operator}"
-
 # deploy operator in OCP
 echo "--------------------------------"
 echo "Check that istio operator is running in OCP"
