@@ -29,8 +29,6 @@ WD=$(cd "$WD"; pwd)
 ISTIO_HELM_INSTALL="https://raw.githubusercontent.com/maistra/istio-operator/maistra-3.0/config/samples/maistra.io_v1_istiohelminstall.yaml"
 BRANCH="${BRANCH:-maistra-3.0}"
 
-OPERATOR_NS="${OPERATOR_NS:-istio-operator}"
-OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
 CP_NS="${CP_NS:-default}"
 
 create-control-plane() {
@@ -56,7 +54,7 @@ create-control-plane() {
 
 check-operator-status() {
     # check that operator is still Ready after Istio Helm Install create
-    oc wait --for condition=Available -n "${OPERATOR_NS}" deploy/"${OPERATOR_NAME}" --timeout=2m
+    oc wait --for condition=Available -n "${OPERATOR_NAMESPACE}" deploy/"${OPERATOR_NAME}" --timeout=2m
 }
 
 create-control-plane

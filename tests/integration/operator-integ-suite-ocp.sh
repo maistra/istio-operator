@@ -24,16 +24,14 @@ set -u
 # Print commands
 set -x
 
-echo "--------------------------------"
-echo "Build an operator image"
-echo "--------------------------------"
-"${WD}"/build-operator.sh
+export OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
+export OPERATOR_NAMESPACE="${NS:-istio-operator}"
 
 # deploy operator in OCP
 echo "--------------------------------"
-echo "Deploy istio operator in OCP"
+echo "Check that istio operator is running in OCP"
 echo "--------------------------------"
-"${WD}"/deploy-operator.sh
+"${WD}"/check-operator.sh
 
 # create a Istio Helm Install CP and test httpbin
 echo "--------------------------------"
