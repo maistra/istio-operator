@@ -27,8 +27,8 @@ check-operator-ocp() { # Check that operator is running on OCP
     ROOT="$(git rev-parse --show-toplevel)"
     local NS="${NS:-istio-operator}"
     
-    OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
-    OPERATOR_NAMESPACE="${NS:-istio-operator}"
+    local OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
+    local OPERATOR_NAMESPACE="${NS:-istio-operator}"
  
     echo "--------------------------------"
     echo "Check that operator is running as expected"
