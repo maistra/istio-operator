@@ -18,7 +18,28 @@ metadata:
             "name": "istiohelminstall-sample"
           },
           "spec": {
-            "values": {},
+            "values": {
+              "cni": {
+                "chained": false,
+                "cniBinDir": "/var/lib/cni/bin",
+                "cniConfDir": "/etc/cni/multus/net.d",
+                "cniConfFileName": "istio-cni.conf",
+                "excludeNamespaces": [
+                  "istio-system",
+                  "kube-system"
+                ],
+                "logLevel": "info",
+                "privileged": true,
+                "provider": "multus"
+              },
+              "global": {
+                "platform": "openshift"
+              },
+              "istio_cni": {
+                "chained": false,
+                "enabled": true
+              }
+            },
             "version": "v3.0"
           }
         }
@@ -26,7 +47,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-ubi9-operator:3.0-latest
-    createdAt: "2023-07-07T08:47:57Z"
+    createdAt: "2023-07-17T19:42:38Z"
     operators.operatorframework.io/builder: operator-sdk-v1.28.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: maistraoperator.v3.0.0
