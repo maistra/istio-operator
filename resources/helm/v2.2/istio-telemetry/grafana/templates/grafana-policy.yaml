@@ -5,7 +5,7 @@ metadata:
   name: grafana-ports-mtls-disabled
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.2.7"
+    maistra-version: "2.2.8"
     app: grafana
     release: {{ .Release.Name }}
 spec:
