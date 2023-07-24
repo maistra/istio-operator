@@ -8,8 +8,6 @@ metadata:
     app.kubernetes.io/name: servicemonitor
     app.kubernetes.io/instance: istio-operator-metrics-monitor
     app.kubernetes.io/component: metrics
-    app.kubernetes.io/created-by: maistraoperator
-    app.kubernetes.io/part-of: maistraoperator
     app.kubernetes.io/managed-by: kustomize
   name: istio-operator-metrics-monitor
   namespace: system

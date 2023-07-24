@@ -4,9 +4,7 @@ metadata:
   labels:
     app.kubernetes.io/name: istiohelminstall
     app.kubernetes.io/instance: istiohelminstall-sample
-    app.kubernetes.io/part-of: maistraoperator
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: maistraoperator
   name: istiohelminstall-sample
 spec:
   version: v3.0

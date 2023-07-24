@@ -6,3 +6,6 @@ images:
 - name: controller
   newName: quay.io/maistra-dev/istio-ubi9-operator
   newTag: 3.0-latest
+commonLabels:
+  app.kubernetes.io/created-by: sailoperator
+  app.kubernetes.io/part-of: sailoperator

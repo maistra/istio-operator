@@ -2,3 +2,8 @@
 resources:
 - maistra.io_v1_istiohelminstall.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+commonLabels:
+  app.kubernetes.io/created-by: sailoperator
+  app.kubernetes.io/part-of: sailoperator

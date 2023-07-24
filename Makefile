@@ -23,6 +23,8 @@ VERSION ?= 3.0.0
 MINOR_VERSION := $(shell v='$(VERSION)'; echo "$${v%.*}")
 MINIMUM_SUPPORTED_VERSION ?= v3.0
 
+OPERATOR_NAME ?= sailoperator
+
 # Istio repository to pull charts from
 ISTIO_REPOSITORY ?= maistra/istio
 # the branch to use when updating the commit hash below
@@ -61,6 +63,19 @@ LD_EXTRAFLAGS += -X ${GO_MODULE}/pkg/version.buildStatus=${GIT_STATUS}
 LD_EXTRAFLAGS += -X ${GO_MODULE}/pkg/version.minimumSupportedVersion=${MINIMUM_SUPPORTED_VERSION}
 LD_FLAGS = -extldflags -static ${LD_EXTRAFLAGS} -s -w
 
+# Image hub to use
+HUB ?= quay.io/maistra-dev
+# Image tag to use
+TAG ?= ${MINOR_VERSION}-latest
+# Image base to use
+IMAGE_BASE ?= istio-ubi9-operator
+# Image URL to use all building/pushing image targets
+IMAGE ?= ${HUB}/${IMAGE_BASE}:${TAG}
+# Namespace to deploy the controller in
+NAMESPACE ?= istio-operator
+# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.26.0
+
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
@@ -85,10 +100,10 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # This variable is used to construct full image tags for bundle and catalog images.
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
-# maistra.io/maistraoperator-bundle:$VERSION and maistra.io/maistraoperator-catalog:$VERSION.
-IMAGE_TAG_BASE ?= quay.io/maistra-dev/istio-operator-rhel9
+# quay.io/maistra-dev/istio-ubi9-operator-bundle:$VERSION and quay.io/maistra-dev/istio-ubi9-operator-catalog:$VERSION.
+IMAGE_TAG_BASE ?= ${HUB}/${IMAGE_BASE}
 
-BUNDLE_MANIFEST_DATE := $(shell cat bundle/manifests/maistraoperator.clusterserviceversion.yaml 2>/dev/null | grep createdAt | awk '{print $$2}')
+BUNDLE_MANIFEST_DATE := $(shell cat bundle/manifests/${OPERATOR_NAME}.clusterserviceversion.yaml 2>/dev/null | grep createdAt | awk '{print $$2}')
 
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
@@ -104,17 +119,6 @@ USE_IMAGE_DIGESTS ?= false
 ifeq ($(USE_IMAGE_DIGESTS), true)
 	BUNDLE_GEN_FLAGS += --use-image-digests
 endif
-
-# Image hub to use
-HUB ?= quay.io/maistra-dev
-# Image tag to use
-TAG ?= ${MINOR_VERSION}-latest
-# Image URL to use all building/pushing image targets
-IMAGE ?= ${HUB}/istio-ubi9-operator:${TAG}
-# Namespace to deploy the controller in
-NAMESPACE ?= istio-operator
-# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.26.0
 
 TODAY ?= $(shell date -I)
 
@@ -251,7 +255,7 @@ gen-check: gen restore-manifest-dates check-clean-repo ## Verifies that changes 
 .PHONY: restore-manifest-dates
 restore-manifest-dates:
 ifneq "${BUNDLE_MANIFEST_DATE}" ""
-	@sed -i -e "s/\(createdAt:\).*/\1 \"${BUNDLE_MANIFEST_DATE}\"/" bundle/manifests/maistraoperator.clusterserviceversion.yaml
+	@sed -i -e "s/\(createdAt:\).*/\1 \"${BUNDLE_MANIFEST_DATE}\"/" bundle/manifests/${OPERATOR_NAME}.clusterserviceversion.yaml
 endif
 
 .PHONY: check-clean-repo
@@ -326,7 +330,7 @@ $(ENVTEST): $(LOCALBIN)
 bundle: gen kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMAGE)
-	sed -i "s|^\(    containerImage:\).*$$|\1 ${IMAGE}|g" config/manifests/bases/maistraoperator.clusterserviceversion.yaml
+	sed -i "s|^\(    containerImage:\).*$$|\1 ${IMAGE}|g" config/manifests/bases/${OPERATOR_NAME}.clusterserviceversion.yaml
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
 	$(OPERATOR_SDK) bundle validate ./bundle
 
@@ -343,6 +347,7 @@ bundle-publish: patch-istio-images ## Create a PR for publishing in OperatorHub
 	export GIT_USER=$(GITHUB_USER); \
 	export GITHUB_TOKEN=$(GITHUB_TOKEN); \
 	export OPERATOR_VERSION=$(OPERATOR_VERSION); \
+	export OPERATOR_NAME=$(OPERATOR_NAME); \
 	./hack/operatorhub/publish-bundle.sh
 
 .PHONY: bundle-nightly ## Generate nightly bundle

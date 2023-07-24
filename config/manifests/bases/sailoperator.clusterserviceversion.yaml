@@ -6,7 +6,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-ubi9-operator:3.0-latest
-  name: maistraoperator.v3.0.0
+  name: sailoperator.v3.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -17,10 +17,8 @@ spec:
       kind: IstioHelmInstall
       name: istiohelminstalls.maistra.io
       version: v1
-  description: The Maistra Operator enables you to install, configure, and manage
-    an instance of Maistra service mesh. Maistra is based on the open source Istio
-    project.
-  displayName: maistraoperator
+  description: This is an experimental operator for installing Istio service mesh
+  displayName: Sail Operator
   icon:
   - base64data: |-
       iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAACXBIWXMAAAFiAAABYgFfJ9BTAAAH
@@ -77,11 +75,11 @@ spec:
   - servicemesh
   - envoy
   links:
-  - name: Maistra Operator
-    url: https://maistra.io
+  - name: Istio Project
+    url: https://istio.io
   maintainers:
   - email: istio-feedback@redhat.com
-    name: OpenShift Service Mesh
+    name: OpenShift Service Mesh Team
   maturity: alpha
   provider:
     name: Red Hat, Inc.
