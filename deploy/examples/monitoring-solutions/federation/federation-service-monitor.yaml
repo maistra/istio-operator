@@ -16,6 +16,7 @@ spec:
     params:
       'match[]':
         - '{job="kubernetes-pods"}'
+        - '{job="kubernetes-services"}'
     relabelings:
     - action: replace
       replacement: "basic_istio-system-3"

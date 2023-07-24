@@ -7,9 +7,6 @@ spec:
     grafana:
       enabled: false
   gateways:
-    ingress:
-      routeConfig:
-        enabled: false
     egress:
       enabled: false
     openshiftRoute:

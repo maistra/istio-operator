@@ -203,7 +203,8 @@ oc apply -n bookinfo-3 -f https://raw.githubusercontent.com/maistra/istio/maistr
 
 4. Generate traffic:
 ```shell
-while true; do curl -v bookinfo-3.apps-crc.testing:80/productpage > /dev/null; sleep 1; done
+ISTIO_SYSTEM_3_INGRESS_HOST=$(oc get routes -n istio-system-3 istio-ingressgateway -o jsonpath='{.spec.host}')
+while true; do curl -v "http://$ISTIO_SYSTEM_3_INGRESS_HOST:80/productpage" > /dev/null; sleep 1; done
 ```
 
 5. Federate metrics from Service Mesh to Monitoring:
