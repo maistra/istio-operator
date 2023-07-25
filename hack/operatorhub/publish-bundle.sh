@@ -43,8 +43,9 @@ BUNDLE_DIR="${CUR_DIR}"/../../bundle/
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 GIT_USER="${GIT_USER:-}"
 
-OPERATOR_NAME=maistraoperator
-OPERATOR_VERSION=${OPERATOR_VERSION:-3.0.0}
+# The OPERATOR_NAME is defined in Makefile
+: "${OPERATOR_NAME:?"Missing OPERATOR_NAME variable"}"
+: "${OPERATOR_VERSION:?"Missing OPERATOR_VERSION variable"}"
 OPERATOR_HUB=${OPERATOR_HUB:-"community-operators-prod"}
 
 TMP_DIR=$(mktemp -d -t "${OPERATOR_NAME}.XXXXXXXXXX")

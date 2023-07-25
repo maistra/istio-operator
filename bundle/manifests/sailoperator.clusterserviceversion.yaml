@@ -9,11 +9,11 @@ metadata:
           "kind": "IstioHelmInstall",
           "metadata": {
             "labels": {
-              "app.kubernetes.io/created-by": "maistraoperator",
+              "app.kubernetes.io/created-by": "sailoperator",
               "app.kubernetes.io/instance": "istiohelminstall-sample",
               "app.kubernetes.io/managed-by": "kustomize",
               "app.kubernetes.io/name": "istiohelminstall",
-              "app.kubernetes.io/part-of": "maistraoperator"
+              "app.kubernetes.io/part-of": "sailoperator"
             },
             "name": "istiohelminstall-sample"
           },
@@ -47,10 +47,10 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-ubi9-operator:3.0-latest
-    createdAt: "2023-07-19T14:10:02Z"
+    createdAt: "2023-07-24T15:55:12Z"
     operators.operatorframework.io/builder: operator-sdk-v1.28.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-  name: maistraoperator.v3.0.0
+  name: sailoperator.v3.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -61,10 +61,8 @@ spec:
       kind: IstioHelmInstall
       name: istiohelminstalls.maistra.io
       version: v1
-  description: The Maistra Operator enables you to install, configure, and manage
-    an instance of Maistra service mesh. Maistra is based on the open source Istio
-    project.
-  displayName: maistraoperator
+  description: This is an experimental operator for installing Istio service mesh
+  displayName: Sail Operator
   icon:
   - base64data: |-
       iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAACXBIWXMAAAFiAAABYgFfJ9BTAAAH
@@ -215,17 +213,19 @@ spec:
       deployments:
       - label:
           app.kubernetes.io/component: manager
-          app.kubernetes.io/created-by: maistraoperator
+          app.kubernetes.io/created-by: sailoperator
           app.kubernetes.io/instance: istio-operator
           app.kubernetes.io/managed-by: kustomize
           app.kubernetes.io/name: deployment
-          app.kubernetes.io/part-of: maistraoperator
+          app.kubernetes.io/part-of: sailoperator
           control-plane: istio-operator
         name: istio-operator
         spec:
           replicas: 1
           selector:
             matchLabels:
+              app.kubernetes.io/created-by: sailoperator
+              app.kubernetes.io/part-of: sailoperator
               control-plane: istio-operator
           strategy: {}
           template:
@@ -236,6 +236,8 @@ spec:
                 images3_0.proxy: quay.io/maistra-dev/proxyv2:3.0-latest
                 kubectl.kubernetes.io/default-container: manager
               labels:
+                app.kubernetes.io/created-by: sailoperator
+                app.kubernetes.io/part-of: sailoperator
                 control-plane: istio-operator
             spec:
               affinity:
@@ -381,11 +383,11 @@ spec:
   - servicemesh
   - envoy
   links:
-  - name: Maistra Operator
-    url: https://maistra.io
+  - name: Istio Project
+    url: https://istio.io
   maintainers:
   - email: istio-feedback@redhat.com
-    name: OpenShift Service Mesh
+    name: OpenShift Service Mesh Team
   maturity: alpha
   provider:
     name: Red Hat, Inc.

@@ -6,8 +6,6 @@ metadata:
     app.kubernetes.io/name: namespace
     app.kubernetes.io/instance: system
     app.kubernetes.io/component: manager
-    app.kubernetes.io/created-by: maistraoperator
-    app.kubernetes.io/part-of: maistraoperator
     app.kubernetes.io/managed-by: kustomize
   name: system
 ---
@@ -21,8 +19,6 @@ metadata:
     app.kubernetes.io/name: deployment
     app.kubernetes.io/instance: istio-operator
     app.kubernetes.io/component: manager
-    app.kubernetes.io/created-by: maistraoperator
-    app.kubernetes.io/part-of: maistraoperator
     app.kubernetes.io/managed-by: kustomize
 spec:
   selector:

@@ -6,8 +6,6 @@ metadata:
     app.kubernetes.io/name: service
     app.kubernetes.io/instance: istio-operator-metrics-service
     app.kubernetes.io/component: kube-rbac-proxy
-    app.kubernetes.io/created-by: maistraoperator
-    app.kubernetes.io/part-of: maistraoperator
     app.kubernetes.io/managed-by: kustomize
   name: istio-operator-metrics-service
   namespace: system

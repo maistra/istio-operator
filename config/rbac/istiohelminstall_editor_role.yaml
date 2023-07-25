@@ -6,8 +6,6 @@ metadata:
     app.kubernetes.io/name: clusterrole
     app.kubernetes.io/instance: istiohelminstall-editor-role
     app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: maistraoperator
-    app.kubernetes.io/part-of: maistraoperator
     app.kubernetes.io/managed-by: kustomize
   name: istiohelminstall-editor-role
 rules:
