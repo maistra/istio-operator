@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 # Copyright 2023 Red Hat, Inc.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-WD=$(dirname "$0")
-WD=$(cd "$WD"; pwd)
-
 # Exit immediately for non zero status
 set -e
 # Check unset variables
@@ -24,20 +22,21 @@ set -u
 # Print commands
 set -x
 
-# deploy operator in OCP
-echo "--------------------------------"
-echo "Check that istio operator is running in OCP"
-echo "--------------------------------"
-"${WD}"/check-operator.sh
+check-cni-ocp() { # Check that operator is running on OCP
+    local ROOT
+    ROOT="$(git rev-parse --show-toplevel)"
+    local NS="${NS:-istio-operator}"
+    
+    local OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
+    local OPERATOR_NAMESPACE="${NS:-istio-operator}"
+ 
+    echo "--------------------------------"
+    echo "Check that cni processes are running as expected"
+    echo "Operator Namespace: ${OPERATOR_NAMESPACE}"
 
-# create a Istio Helm Install CP
-echo "--------------------------------"
-echo "Create a IstioHelmInstall Control Plane and test httpbin"
-echo "--------------------------------"
-"${WD}"/control-plane-test.sh
+    oc project "${OPERATOR_NAMESPACE}"
+    timeout --foreground -v -s SIGHUP -k 2m 2m bash --verbose -c \
+      "until oc get pods -n ${NS} --field-selector status.phase=Running | grep istio-cni; do sleep 5; done"
+}
 
-# check that CNI processes are Running
-echo "--------------------------------"
-echo "Check that CNI processes are running in OCP"
-echo "--------------------------------"
-"${WD}"/check-cni.sh
+check-cni-ocp
