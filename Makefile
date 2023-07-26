@@ -208,25 +208,28 @@ ifndef ignore-not-found
   ignore-not-found = false
 endif
 
-.PHONY: install
-install: gen-manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	kubectl create ns ${NAMESPACE} || echo "namespace ${NAMESPACE} already exists"
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
-
-.PHONY: uninstall
-uninstall: kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
-
-.PHONY: deploy
-deploy: kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	$(info NAMESPACE: $(NAMESPACE))
-	make -s deploy-yaml | kubectl apply -f -
+# .PHONY: deploy
+# deploy: kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+# 	$(info NAMESPACE: $(NAMESPACE))
+# 	make -s deploy-yaml | kubectl apply -f -
 
 .PHONY: deploy-yaml
 deploy-yaml: kustomize ## Outputs YAML manifests needed to deploy the controller
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE}
 	cd config/default && $(KUSTOMIZE) edit set namespace ${NAMESPACE}
 	$(KUSTOMIZE) build config/default
+
+# .PHONY: deploy-openshift
+# deploy-openshift:
+.PHONY: deploy
+deploy: kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	@REGISTRY="$(shell oc -n openshift-image-registry get route default-route -o jsonpath='{.spec.host}')" && \
+	export IMAGE=$${REGISTRY}/$(NAMESPACE)/istio-operator:latest && \
+	docker login -u "$$(oc whoami)" -p "$$(oc whoami -t)" $${REGISTRY} && \
+	oc get ns "$(NAMESPACE)" >/dev/null 2>&1 || oc create namespace "$(NAMESPACE)" && \
+	$(MAKE) docker-build && \
+	$(MAKE) docker-push && \
+	$(MAKE) -s deploy-yaml | oc apply -f -
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
