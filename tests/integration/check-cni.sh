@@ -23,8 +23,6 @@ set -u
 set -x
 
 check-cni-ocp() { # Check that operator is running on OCP
-    local ROOT
-    ROOT="$(git rev-parse --show-toplevel)"
     local NS="${NS:-istio-operator}"
     
     local OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
