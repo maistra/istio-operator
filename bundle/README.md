@@ -50,3 +50,19 @@ $ oc adm policy add-scc-to-group privileged system:serviceaccounts:istio-system
 7. Accept the defaults and click **Create**. This creates the control plane.
 
 8. Click **Workloads** -> **Pods**. Verify that the pods were created. `Running` should appear in the **Status** column. If the pods were successfully created, then Istio is installed and ready for use. For more information, see the [Istio documentation](https://istio.io/latest/docs/setup/platform-setup/openshift/).
+
+# Customizing Istio configuration
+
+The `values` field of the `IstioHelmInstall` custom resource definition created above can be used to customize Istio configuration using Istio's `Helm` configuration values. When creating this resource with the OpenShift Container Platform web console (as described above), it will be pre-populated with configuration to enable Istio to run on OpenShift. 
+
+To view or modify the `IstioHelmInstall` resource from the OpenShift Container Platform web console:
+1. Click **Operators** -> **Installed Operators**. Under **Provided APIs**, click **Istio Helm Install**.
+2. Under **Name**, click on the instance of `IstioHelmInstall` ("istiohelminstall-sample" by default).
+3. Click **YAML** to view the `IstioHelmInstall` configuration and make modifications.
+
+For a list of available configuration for the `values` field, refer to [Istio's artifacthub chart documentation](https://artifacthub.io/packages/search?org=istio&sort=relevance&page=1) for:
+- [Base parameters](https://artifacthub.io/packages/helm/istio-official/base?modal=values)
+- [Istiod parameters](https://artifacthub.io/packages/helm/istio-official/istiod?modal=values)
+- [Gateway parameters](https://artifacthub.io/packages/helm/istio-official/gateway?modal=values)
+- [CNI parameters](https://artifacthub.io/packages/helm/istio-official/cni?modal=values)
+- [ZTunnel parameters](https://artifacthub.io/packages/helm/istio-official/ztunnel?modal=values)
