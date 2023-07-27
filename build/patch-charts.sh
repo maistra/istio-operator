@@ -18,7 +18,7 @@ function patchTemplates() {
   echo "patching Istio Helm charts"
 
   # MAISTRA-506 add a maistra-control-plane label for deployment specs
-  for file in $(find "${HELM_DIR}" -name "*.yaml" -print0 -o -name "*.yaml.tpl" | xargs -0 grep -Hl '^kind: Deployment'); do
+  for file in $(find "${HELM_DIR}" -name "*.yaml" ! -name "values.yaml" -print0 -o -name "*.yaml.tpl" | xargs -0 grep -Hl '^kind: Deployment'); do
     sed_wrap -i -e '/^spec:/,$ { /template:$/,$ { /metadata:$/,$ { s/^\(.*\)labels:/\1labels:\
 \1  maistra-control-plane: {{ .Release.Namespace }}/ } } }' "$file"
   done
