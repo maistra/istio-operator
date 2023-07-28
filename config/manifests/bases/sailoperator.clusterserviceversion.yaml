@@ -17,7 +17,10 @@ spec:
       kind: IstioHelmInstall
       name: istiohelminstalls.maistra.io
       version: v1
-  description: This is an experimental operator for installing Istio service mesh
+  description: |-
+    This is an experimental operator for installing Istio service mesh.
+
+    [See this page](https://github.com/maistra/istio-operator/blob/maistra-3.0/bundle/README.md) for instructions on how to use it.
   displayName: Sail Operator
   icon:
   - base64data: |-
