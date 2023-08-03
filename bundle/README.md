@@ -1,6 +1,6 @@
 # About the Sail Operator
 
-The Sail Operator is based on the open source Istio project. The Sail implementation pulls its code from the upstream Istio master repository with no changes to the codebase.
+The Sail Operator is based on the open source Istio project. The Sail implementation pulls its code from the upstream Istio main repository with no changes to the codebase.
 
 # Prerequisites
 
@@ -12,7 +12,7 @@ You have access to the OpenShift CLI (oc).
 
 # Installing the Sail Operator
 
-1. Navigate to the operator hub. 
+1. Navigate to the OperatorHub. 
 
 2. Click **Operator** -> **Operator Hub**.
 
@@ -51,7 +51,7 @@ $ oc adm policy add-scc-to-group privileged system:serviceaccounts:istio-system
 
 7. Accept the defaults and click **Create**. This creates the Istio control plane.
 
-8. Click **Workloads** -> **Pods**. Verify that the pods were created. `Running` should appear in the **Status** column. If the pods were successfully created, then Istio is installed and ready for use. For more information, see the [Istio documentation](https://istio.io/latest/docs/setup/platform-setup/openshift/).
+8. Click **Workloads** -> **Pods**. Verify that the pods were created. `Running` should appear in the **Status** column. If the pods were successfully created, then Istio is installed and ready for use. For more information, see the upstream [Istio documentation](https://istio.io/latest/docs/setup/platform-setup/openshift/).
 
 # Customizing Istio configuration
 
@@ -72,7 +72,7 @@ For a list of available configuration for the `values` field, refer to [Istio's 
 
 # Installing the Bookinfo Application
 
-You can use the `bookinfo` example application to explore service mesh features. Using Bookinfo, you can easily confirm that requests from a web browser pass through the mesh and reach the `bookinfo` application.
+You can use the `bookinfo` example application to explore service mesh features. Using the `bookinfo` application, you can easily confirm that requests from a web browser pass through the mesh and reach the application.
 
 The `bookinfo` application displays information about a book, similar to a single catalog entry of an online book store. The application displays a page that describes the book, lists book details (ISBN, number of pages, and other information), and book reviews. 
 
