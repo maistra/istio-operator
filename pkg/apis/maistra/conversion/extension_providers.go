@@ -1,6 +1,8 @@
 package conversion
 
 import (
+	"fmt"
+
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
@@ -81,58 +83,133 @@ func populateExtensionProvidersConfig(in *v1.HelmValues, out *v2.ControlPlaneSpe
 	out.MeshConfig.ExtensionProviders = []*v2.ExtensionProviderConfig{}
 	for _, rawProvider := range rawProviders {
 		if provider, ok := rawProvider.(map[string]interface{}); ok {
-			if _, ok := provider["prometheus"]; ok {
-				out.MeshConfig.ExtensionProviders = append(out.MeshConfig.ExtensionProviders, &v2.ExtensionProviderConfig{
-					Name:       provider["name"].(string),
-					Prometheus: &v2.ExtensionProviderPrometheusConfig{},
-				})
+			config, err := convertProviderValuesToConfig(v1.NewHelmValues(provider))
+			if err != nil {
+				return err
 			}
-			if rawExtAuthz, ok := provider["envoyExtAuthzHttp"]; ok {
-				if extAuthz, ok := rawExtAuthz.(map[string]interface{}); ok {
-					config := &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{
-						Service: extAuthz["service"].(string),
-						Port:    extAuthz["port"].(int64),
-					}
-					if rawTimeout, ok := extAuthz["timeout"]; ok {
-						config.Timeout = strPtr(rawTimeout.(string))
-					}
-					if rawPathPrefix, ok := extAuthz["pathPrefix"]; ok {
-						config.PathPrefix = strPtr(rawPathPrefix.(string))
-					}
-					if rawFailOpen, ok := extAuthz["failOpen"]; ok {
-						config.FailOpen = boolPtr(rawFailOpen.(bool))
-					}
-					if statusOnError, ok := extAuthz["statusOnError"]; ok {
-						config.StatusOnError = strPtr(statusOnError.(string))
-					}
-					if rawIncludeRequestHeadersInCheck, ok := extAuthz["includeRequestHeadersInCheck"]; ok {
-						config.IncludeRequestHeadersInCheck = interfaceToStringArray(rawIncludeRequestHeadersInCheck.([]interface{}))
-					}
-					if rawIncludeAdditionalHeadersInCheck, ok := extAuthz["includeAdditionalHeadersInCheck"]; ok {
-						config.IncludeAdditionalHeadersInCheck = mapOfInterfaceToString(rawIncludeAdditionalHeadersInCheck.(map[string]interface{}))
-					}
-					if rawIncludeRequestBodyInCheck, ok := extAuthz["includeRequestBodyInCheck"]; ok {
-						if includeRequestBodyInCheck, ok := rawIncludeRequestBodyInCheck.(map[string]interface{}); ok {
-							config.IncludeRequestBodyInCheck = &v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig{}
-							if maxRequestBytes, ok := includeRequestBodyInCheck["maxRequestBytes"]; ok {
-								config.IncludeRequestBodyInCheck.MaxRequestBytes = int64Ptr(maxRequestBytes.(int64))
-							}
-							if allowPartialMessage, ok := includeRequestBodyInCheck["allowPartialMessage"]; ok {
-								config.IncludeRequestBodyInCheck.AllowPartialMessage = boolPtr(allowPartialMessage.(bool))
-							}
-							if packAsBytes, ok := includeRequestBodyInCheck["packAsBytes"]; ok {
-								config.IncludeRequestBodyInCheck.PackAsBytes = boolPtr(packAsBytes.(bool))
-							}
-						}
-					}
-					out.MeshConfig.ExtensionProviders = append(out.MeshConfig.ExtensionProviders, &v2.ExtensionProviderConfig{
-						Name:              provider["name"].(string),
-						EnvoyExtAuthzHTTP: config,
-					})
-				}
-			}
+			out.MeshConfig.ExtensionProviders = append(out.MeshConfig.ExtensionProviders, &config)
+		} else {
+			return fmt.Errorf("could not cast extensionProviders entry to map[string]interface{}")
 		}
 	}
 
 	return nil
+}
+
+func convertProviderValuesToConfig(values *v1.HelmValues) (v2.ExtensionProviderConfig, error) {
+	var config v2.ExtensionProviderConfig
+
+	if name, ok, err := values.GetString("name"); ok {
+		config.Name = name
+	} else if err != nil {
+		return config, err
+	}
+
+	if _, found, err := values.GetMap("prometheus"); found {
+		config.Prometheus = &v2.ExtensionProviderPrometheusConfig{}
+	} else if err != nil {
+		return config, err
+	}
+
+	if rawEnvoyExtAuthzHTTP, found, err := values.GetMap("envoyExtAuthzHttp"); found {
+		config.EnvoyExtAuthzHTTP, err = convertEnvoyExtAuthzHTTPValuesToConfig(v1.NewHelmValues(rawEnvoyExtAuthzHTTP))
+		if err != nil {
+			return config, err
+		}
+	} else if err != nil {
+		return config, err
+	}
+
+	return config, nil
+}
+
+func convertEnvoyExtAuthzHTTPValuesToConfig(values *v1.HelmValues) (*v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig, error) {
+	config := &v2.ExtensionProviderEnvoyExternalAuthorizationHTTPConfig{}
+
+	if value, ok, err := values.GetString("service"); ok {
+		config.Service = value
+	} else if err != nil {
+		return config, err
+	} else {
+		return config, fmt.Errorf("service is required for envoyExtAuthzHttp")
+	}
+
+	if value, ok, err := values.GetInt64("port"); ok {
+		config.Port = value
+	} else if err != nil {
+		return config, err
+	} else {
+		return config, fmt.Errorf("port is required for envoyExtAuthzHttp")
+	}
+
+	if value, ok, err := values.GetString("timeout"); ok {
+		config.Timeout = strPtr(value)
+	} else if err != nil {
+		return config, err
+	}
+
+	if value, ok, err := values.GetString("pathPrefix"); ok {
+		config.PathPrefix = strPtr(value)
+	} else if err != nil {
+		return config, err
+	}
+
+	if value, ok, err := values.GetBool("failOpen"); ok {
+		config.FailOpen = boolPtr(value)
+	} else if err != nil {
+		return config, err
+	}
+
+	if value, ok, err := values.GetString("statusOnError"); ok {
+		config.StatusOnError = strPtr(value)
+	} else if err != nil {
+		return config, err
+	}
+
+	if value, ok, err := values.GetStringSlice("includeRequestHeadersInCheck"); ok {
+		config.IncludeRequestHeadersInCheck = value
+	} else if err != nil {
+		return config, err
+	}
+
+	if value, ok, err := values.GetStringMap("includeAdditionalHeadersInCheck"); ok {
+		config.IncludeAdditionalHeadersInCheck = value
+	} else if err != nil {
+		return config, err
+	}
+
+	if value, ok, err := values.GetMap("includeRequestBodyInCheck"); ok {
+		config.IncludeRequestBodyInCheck, err = convertIncludeRequestBodyInCheckValuesToConfig(v1.NewHelmValues(value))
+		if err != nil {
+			return config, err
+		}
+	} else if err != nil {
+		return config, err
+	}
+
+	return config, nil
+}
+
+func convertIncludeRequestBodyInCheckValuesToConfig(values *v1.HelmValues) (*v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig, error) {
+	config := &v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig{}
+
+	if value, ok, err := values.GetInt64("maxRequestBytes"); ok {
+		config.MaxRequestBytes = int64Ptr(value)
+	} else if err != nil {
+		return config, err
+	}
+
+	if value, ok, err := values.GetBool("allowPartialMessage"); ok {
+		config.AllowPartialMessage = boolPtr(value)
+	} else if err != nil {
+		return config, err
+	}
+
+	if value, ok, err := values.GetBool("packAsBytes"); ok {
+		config.PackAsBytes = boolPtr(value)
+	} else if err != nil {
+		return config, err
+	}
+
+	return config, nil
 }
