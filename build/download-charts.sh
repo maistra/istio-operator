@@ -6,7 +6,7 @@ set -e -u
 # shellcheck source=build/sed-wrapper.sh
 source "$(dirname "${BASH_SOURCE[0]}")/sed-wrapper.sh"
 
-: "${MAISTRA_VERSION:=2.3.5}"
+: "${MAISTRA_VERSION:=2.3.7}"
 : "${MAISTRA_REPO:=https://github.com/maistra/istio}"
 : "${MAISTRA_BRANCH:=maistra-2.3}"
 
