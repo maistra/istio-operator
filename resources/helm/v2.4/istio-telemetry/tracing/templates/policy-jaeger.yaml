@@ -31,7 +31,7 @@ metadata:
     app: {{ .Values.tracing.provider }}
     release: {{ .Release.Name }}
 spec:
-  host: {{ .Values.tracing.jaeger.resourceName | default "jaeger" }}-collector.{{ .Release.Namespace }}.svc
+  host: {{ .Values.tracing.jaeger.resourceName | default "jaeger" }}-collector.{{ .Release.Namespace }}.svc.cluster.local
   trafficPolicy:
     tls:
       mode: DISABLE
