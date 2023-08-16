@@ -2,6 +2,7 @@ package conversion
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -174,5 +175,40 @@ meshConfig:
     prometheus: {}
 `,
 		},
+	}
+}
+
+func TestInvalidValueType(t *testing.T) {
+	helmValues := v1.HelmValues{}
+	if err := helmValues.UnmarshalYAML([]byte(`
+meshConfig:
+  extensionProviders:
+  - envoyExtAuthzHttp:
+      service: "test"
+      port: "80"
+`)); err != nil {
+		t.Fatalf("failed to parse helm values: %s", err)
+	}
+
+	specV1 := v1.ControlPlaneSpec{
+		Version: "v2.4",
+		Istio:   &helmValues,
+	}
+	var specV2 v2.ControlPlaneSpec
+	err := Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(&specV1, &specV2, nil)
+	if err != nil {
+		t.Fatalf("failed to convert spec: %s", err)
+	}
+
+	errorMessage, found, err := specV2.TechPreview.GetString("errored.message")
+	if !found {
+		t.Fatalf("expected to find techPreview.errored.message field")
+	}
+	if err != nil {
+		t.Fatalf("failed to get techPreview.errored.message field: %s", err)
+	}
+
+	if !strings.Contains(errorMessage, "80 is of the type string") {
+		t.Fatalf("expected techPreview.errored.message to contain '80 is of the type string', got: %s", errorMessage)
 	}
 }
