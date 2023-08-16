@@ -178,35 +178,18 @@ meshConfig:
 	}
 }
 
-func TestInvalidValueType(t *testing.T) {
-	helmValues := v1.HelmValues{}
-	if err := helmValues.UnmarshalYAML([]byte(`
-meshConfig:
-  extensionProviders:
-  - envoyExtAuthzHttp:
-      service: "test"
-      port: "80"
-`)); err != nil {
-		t.Fatalf("failed to parse helm values: %s", err)
-	}
+// TestStringPortInEnvoyExtAuthzHTTPValues checks that convertEnvoyExtAuthzHTTPValuesToConfig returns an error instead
+// of panicking when the users specifies the port number using a string instead of an int.
+func TestStringPortInEnvoyExtAuthzHTTPValues(t *testing.T) {
+	helmValues := v1.NewHelmValues(
+		map[string]interface{}{
+			"service": "test",
+			"port":    "80", // string instead of an int
+		})
 
-	specV1 := v1.ControlPlaneSpec{
-		Version: "v2.4",
-		Istio:   &helmValues,
-	}
-	var specV2 v2.ControlPlaneSpec
-	if err := Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(&specV1, &specV2, nil); err != nil {
-		t.Fatalf("failed to convert spec: %s", err)
-	}
-
-	errorMessage, found, err := specV2.TechPreview.GetString("errored.message")
-	if err != nil {
-		t.Fatalf("failed to get techPreview.errored.message field: %s", err)
-	} else if !found {
-		t.Fatalf("expected to find techPreview.errored.message field")
-	}
-
-	if !strings.Contains(errorMessage, "80 is of the type string") {
-		t.Fatalf("expected techPreview.errored.message to contain '80 is of the type string', got: %s", errorMessage)
+	if _, err := convertEnvoyExtAuthzHTTPValuesToConfig(helmValues); err == nil {
+		t.Fatalf("expected convertEnvoyExtAuthzHTTPValuesToConfig to return error, but it returned nil")
+	} else if !strings.Contains(err.Error(), "80 is of the type string") {
+		t.Fatalf("expected error message to contain '80 is of the type string', got: %s", err)
 	}
 }
