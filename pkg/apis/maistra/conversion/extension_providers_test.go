@@ -195,17 +195,15 @@ meshConfig:
 		Istio:   &helmValues,
 	}
 	var specV2 v2.ControlPlaneSpec
-	err := Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(&specV1, &specV2, nil)
-	if err != nil {
+	if err := Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(&specV1, &specV2, nil); err != nil {
 		t.Fatalf("failed to convert spec: %s", err)
 	}
 
 	errorMessage, found, err := specV2.TechPreview.GetString("errored.message")
-	if !found {
-		t.Fatalf("expected to find techPreview.errored.message field")
-	}
 	if err != nil {
 		t.Fatalf("failed to get techPreview.errored.message field: %s", err)
+	} else if !found {
+		t.Fatalf("expected to find techPreview.errored.message field")
 	}
 
 	if !strings.Contains(errorMessage, "80 is of the type string") {
