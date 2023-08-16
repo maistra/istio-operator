@@ -318,19 +318,23 @@ func (v *versionStrategyV2_4) ValidateRequest(ctx context.Context, cl client.Cli
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 	if clusterScoped {
-		isClusterAdmin, err := v.isRequesterClusterAdmin(ctx, cl, req)
+		// If a user has permission to deploy the control plane in any namespace, we can
+		// let them create a cluster-scoped control plane. By doing so, we're not opening
+		// any security issues, since the user could also have created a control plane
+		// in each namespace separately to get the same information from those namespaces.
+		isClusterAdmin, err := v.isRequesterAllowedToCreateSMCPInAnyNamespace(ctx, cl, req)
 		if err != nil {
 			return admission.Errored(http.StatusInternalServerError, err)
 		}
 		if !isClusterAdmin {
-			return admission.ValidationResponse(false, "a cluster-scoped SMCP may only be created by users with cluster-admin permissions")
+			return admission.ValidationResponse(false, "a cluster-scoped SMCP may only be created by users with cluster-scoped \"create SMCP\" permissions")
 		}
 	}
 
 	return admission.ValidationResponse(true, "")
 }
 
-func (v *versionStrategyV2_4) isRequesterClusterAdmin(ctx context.Context, cl client.Client, req admission.Request) (bool, error) {
+func (v *versionStrategyV2_4) isRequesterAllowedToCreateSMCPInAnyNamespace(ctx context.Context, cl client.Client, req admission.Request) (bool, error) {
 	sar := &authorizationv1.SubjectAccessReview{
 		Spec: authorizationv1.SubjectAccessReviewSpec{
 			User:   req.AdmissionRequest.UserInfo.Username,
@@ -338,9 +342,9 @@ func (v *versionStrategyV2_4) isRequesterClusterAdmin(ctx context.Context, cl cl
 			Extra:  common.ConvertUserInfoExtra(req.AdmissionRequest.UserInfo.Extra),
 			Groups: req.AdmissionRequest.UserInfo.Groups,
 			ResourceAttributes: &authorizationv1.ResourceAttributes{
-				Verb:     "*",
-				Group:    "*",
-				Resource: "*",
+				Verb:     "create",
+				Group:    "maistra.io",
+				Resource: "servicemeshcontrolplanes",
 			},
 		},
 	}
