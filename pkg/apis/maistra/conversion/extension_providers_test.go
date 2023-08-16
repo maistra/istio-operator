@@ -2,6 +2,7 @@ package conversion
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
@@ -174,5 +175,21 @@ meshConfig:
     prometheus: {}
 `,
 		},
+	}
+}
+
+// TestStringPortInEnvoyExtAuthzHTTPValues checks that convertEnvoyExtAuthzHTTPValuesToConfig returns an error instead
+// of panicking when the users specifies the port number using a string instead of an int.
+func TestStringPortInEnvoyExtAuthzHTTPValues(t *testing.T) {
+	helmValues := v1.NewHelmValues(
+		map[string]interface{}{
+			"service": "test",
+			"port":    "80", // string instead of an int
+		})
+
+	if _, err := convertEnvoyExtAuthzHTTPValuesToConfig(helmValues); err == nil {
+		t.Fatalf("expected convertEnvoyExtAuthzHTTPValuesToConfig to return error, but it returned nil")
+	} else if !strings.Contains(err.Error(), "80 is of the type string") {
+		t.Fatalf("expected error message to contain '80 is of the type string', got: %s", err)
 	}
 }

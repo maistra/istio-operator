@@ -1319,11 +1319,11 @@ type conversionTestCase struct {
 func assertEquals(t *testing.T, expected, actual interface{}) {
 	t.Helper()
 	if diff := cmp.Diff(expected, actual, cmp.AllowUnexported(v1.HelmValues{})); diff != "" {
-		t.Logf("DeepEqual() failed, retrying after pruning empty/nil objects:\n%s", diff)
+		t.Logf("DeepEqual() failed, retrying after pruning empty/nil objects (-expected, +got):\n%s", diff)
 		prunedExpected := pruneEmptyObjects(expected)
 		prunedActual := pruneEmptyObjects(actual)
 		if diff := cmp.Diff(prunedExpected, prunedActual, cmp.AllowUnexported(v1.HelmValues{})); diff != "" {
-			t.Errorf("unexpected output converting values back to v2:\n%s", diff)
+			t.Errorf("unexpected output converting values back to v2 (-expected, +got):\n%s", diff)
 		}
 	}
 }
