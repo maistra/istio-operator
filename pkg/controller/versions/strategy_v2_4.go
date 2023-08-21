@@ -199,7 +199,6 @@ func (v *versionStrategyV2_4) validateAddons(spec *v2.ControlPlaneSpec, allError
 }
 
 func (v *versionStrategyV2_4) validateExtensionProviders(spec *v2.ControlPlaneSpec, allErrors []error) []error {
-
 	if spec.MeshConfig == nil || spec.MeshConfig.ExtensionProviders == nil {
 		return allErrors
 	}
@@ -232,6 +231,14 @@ func (v *versionStrategyV2_4) validateExtensionProviders(spec *v2.ControlPlaneSp
 				if _, err := time.ParseDuration(*ext.EnvoyExtAuthzHTTP.Timeout); err != nil {
 					allErrors = append(allErrors, fmt.Errorf("invalid extension provider '%s': envoyExtAuthzHttp.timeout "+
 						"must be specified in the duration format - got '%s'", ext.Name, *ext.EnvoyExtAuthzHTTP.Timeout))
+				}
+			}
+		}
+		if ext.EnvoyExtAuthzGRPC != nil {
+			if ext.EnvoyExtAuthzGRPC.Timeout != nil {
+				if _, err := time.ParseDuration(*ext.EnvoyExtAuthzGRPC.Timeout); err != nil {
+					allErrors = append(allErrors, fmt.Errorf("invalid extension provider '%s': envoyExtAuthzGrpc.timeout "+
+						"must be specified in the duration format - got '%s'", ext.Name, *ext.EnvoyExtAuthzGRPC.Timeout))
 				}
 			}
 		}
