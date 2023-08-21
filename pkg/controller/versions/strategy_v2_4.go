@@ -199,13 +199,15 @@ func (v *versionStrategyV2_4) validateAddons(spec *v2.ControlPlaneSpec, allError
 }
 
 func (v *versionStrategyV2_4) validateExtensionProviders(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+
+	counter := 0
+
 	if spec.MeshConfig == nil || spec.MeshConfig.ExtensionProviders == nil {
 		return allErrors
 	}
 
 	for _, ext := range spec.MeshConfig.ExtensionProviders {
 
-		counter := 0
 		if ext.Name == "" {
 			allErrors = append(allErrors, fmt.Errorf("extension provider name cannot be empty"))
 		}
@@ -221,11 +223,9 @@ func (v *versionStrategyV2_4) validateExtensionProviders(spec *v2.ControlPlaneSp
 		if counter == 0 {
 			allErrors = append(allErrors, fmt.Errorf("extension provider '%s' does not define any provider - "+
 				"it must specify one of: prometheus, envoyExtAuthzHttp, or envoyExtAuthzGrpc", ext.Name))
-		} else {
-			if counter > 1 {
-				allErrors = append(allErrors, fmt.Errorf("extension provider '%s' must specify only one type of provider: "+
-					"prometheus, envoyExtAuthzHttp, or envoyExtAuthzGrpc", ext.Name))
-			}
+		} else if counter > 1 {
+			allErrors = append(allErrors, fmt.Errorf("extension provider '%s' must specify only one type of provider: "+
+				"prometheus, envoyExtAuthzHttp, or envoyExtAuthzGrpc", ext.Name))
 		}
 		if ext.EnvoyExtAuthzHTTP != nil {
 			if ext.EnvoyExtAuthzHTTP.Timeout != nil {
@@ -236,7 +236,6 @@ func (v *versionStrategyV2_4) validateExtensionProviders(spec *v2.ControlPlaneSp
 			}
 		}
 	}
-
 	return allErrors
 }
 
