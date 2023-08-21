@@ -29,7 +29,7 @@ metadata:
     app: {{ .Values.tracing.provider }}
     release: {{ .Release.Name }}
 spec:
-  host: {{ .Values.tracing.jaeger.resourceName | default "jaeger" }}-collector.{{ .Release.Namespace }}.{{ .Values.global.proxy.clusterDomain }}
+  host: {{ .Values.tracing.jaeger.resourceName | default "jaeger" }}-collector.{{ .Release.Namespace }}.svc.{{ .Values.global.proxy.clusterDomain }}
   trafficPolicy:
     tls:
       mode: DISABLE
