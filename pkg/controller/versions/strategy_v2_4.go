@@ -200,17 +200,16 @@ func (v *versionStrategyV2_4) validateAddons(spec *v2.ControlPlaneSpec, allError
 
 func (v *versionStrategyV2_4) validateExtensionProviders(spec *v2.ControlPlaneSpec, allErrors []error) []error {
 
-	counter := 0
-
 	if spec.MeshConfig == nil || spec.MeshConfig.ExtensionProviders == nil {
 		return allErrors
 	}
 
 	for _, ext := range spec.MeshConfig.ExtensionProviders {
-
 		if ext.Name == "" {
 			allErrors = append(allErrors, fmt.Errorf("extension provider name cannot be empty"))
 		}
+
+		counter := 0
 		if ext.Prometheus != nil {
 			counter++
 		}
@@ -227,6 +226,7 @@ func (v *versionStrategyV2_4) validateExtensionProviders(spec *v2.ControlPlaneSp
 			allErrors = append(allErrors, fmt.Errorf("extension provider '%s' must specify only one type of provider: "+
 				"prometheus, envoyExtAuthzHttp, or envoyExtAuthzGrpc", ext.Name))
 		}
+
 		if ext.EnvoyExtAuthzHTTP != nil {
 			if ext.EnvoyExtAuthzHTTP.Timeout != nil {
 				if _, err := time.ParseDuration(*ext.EnvoyExtAuthzHTTP.Timeout); err != nil {
