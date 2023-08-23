@@ -44,19 +44,7 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 			if config.IncludeAdditionalHeadersInCheck != nil {
 				values["includeAdditionalHeadersInCheck"] = mapOfStringToInterface(config.IncludeAdditionalHeadersInCheck)
 			}
-			if config.IncludeRequestBodyInCheck != nil {
-				includeRequestBodyInCheckValues := map[string]interface{}{}
-				if config.IncludeRequestBodyInCheck.MaxRequestBytes != nil {
-					includeRequestBodyInCheckValues["maxRequestBytes"] = *config.IncludeRequestBodyInCheck.MaxRequestBytes
-				}
-				if config.IncludeRequestBodyInCheck.AllowPartialMessage != nil {
-					includeRequestBodyInCheckValues["allowPartialMessage"] = *config.IncludeRequestBodyInCheck.AllowPartialMessage
-				}
-				if config.IncludeRequestBodyInCheck.PackAsBytes != nil {
-					includeRequestBodyInCheckValues["packAsBytes"] = *config.IncludeRequestBodyInCheck.PackAsBytes
-				}
-				values["includeRequestBodyInCheck"] = includeRequestBodyInCheckValues
-			}
+			convertIncludeRequestBodyInCheckConfigToValues(config.IncludeRequestBodyInCheck, values)
 			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
 				"name":              provider.Name,
 				"envoyExtAuthzHttp": values,
@@ -78,19 +66,7 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 				values["statusOnError"] = *config.StatusOnError
 			}
 
-			if config.IncludeRequestBodyInCheck != nil {
-				includeRequestBodyInCheckValues := map[string]interface{}{}
-				if config.IncludeRequestBodyInCheck.MaxRequestBytes != nil {
-					includeRequestBodyInCheckValues["maxRequestBytes"] = *config.IncludeRequestBodyInCheck.MaxRequestBytes
-				}
-				if config.IncludeRequestBodyInCheck.AllowPartialMessage != nil {
-					includeRequestBodyInCheckValues["allowPartialMessage"] = *config.IncludeRequestBodyInCheck.AllowPartialMessage
-				}
-				if config.IncludeRequestBodyInCheck.PackAsBytes != nil {
-					includeRequestBodyInCheckValues["packAsBytes"] = *config.IncludeRequestBodyInCheck.PackAsBytes
-				}
-				values["includeRequestBodyInCheck"] = includeRequestBodyInCheckValues
-			}
+			convertIncludeRequestBodyInCheckConfigToValues(config.IncludeRequestBodyInCheck, values)
 			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
 				"name":              provider.Name,
 				"envoyExtAuthzGrpc": values,
@@ -101,6 +77,22 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 		return err
 	}
 	return nil
+}
+
+func convertIncludeRequestBodyInCheckConfigToValues(config *v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig, values map[string]interface{}) {
+	if config != nil {
+		includeRequestBodyInCheckValues := map[string]interface{}{}
+		if config.MaxRequestBytes != nil {
+			includeRequestBodyInCheckValues["maxRequestBytes"] = *config.MaxRequestBytes
+		}
+		if config.AllowPartialMessage != nil {
+			includeRequestBodyInCheckValues["allowPartialMessage"] = *config.AllowPartialMessage
+		}
+		if config.PackAsBytes != nil {
+			includeRequestBodyInCheckValues["packAsBytes"] = *config.PackAsBytes
+		}
+		values["includeRequestBodyInCheck"] = includeRequestBodyInCheckValues
+	}
 }
 
 func populateExtensionProvidersConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
