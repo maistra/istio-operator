@@ -45,6 +45,7 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 				values["includeAdditionalHeadersInCheck"] = mapOfStringToInterface(config.IncludeAdditionalHeadersInCheck)
 			}
 			convertIncludeRequestBodyInCheckConfigToValues(config.IncludeRequestBodyInCheck, values)
+
 			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
 				"name":              provider.Name,
 				"envoyExtAuthzHttp": values,
@@ -65,8 +66,8 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 			if config.StatusOnError != nil {
 				values["statusOnError"] = *config.StatusOnError
 			}
-
 			convertIncludeRequestBodyInCheckConfigToValues(config.IncludeRequestBodyInCheck, values)
+
 			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
 				"name":              provider.Name,
 				"envoyExtAuthzGrpc": values,
