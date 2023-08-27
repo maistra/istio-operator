@@ -4073,6 +4073,33 @@ spec:
                   extensionProviders:
                     items:
                       properties:
+                        envoyExtAuthzGrpc:
+                          properties:
+                            failOpen:
+                              type: boolean
+                            includeRequestBodyInCheck:
+                              properties:
+                                allowPartialMessage:
+                                  type: boolean
+                                maxRequestBytes:
+                                  format: int64
+                                  type: integer
+                                packAsBytes:
+                                  type: boolean
+                              type: object
+                            port:
+                              format: int64
+                              type: integer
+                            service:
+                              type: string
+                            statusOnError:
+                              type: string
+                            timeout:
+                              type: string
+                          required:
+                          - port
+                          - service
+                          type: object
                         envoyExtAuthzHttp:
                           properties:
                             failOpen:
@@ -9032,6 +9059,33 @@ spec:
                       extensionProviders:
                         items:
                           properties:
+                            envoyExtAuthzGrpc:
+                              properties:
+                                failOpen:
+                                  type: boolean
+                                includeRequestBodyInCheck:
+                                  properties:
+                                    allowPartialMessage:
+                                      type: boolean
+                                    maxRequestBytes:
+                                      format: int64
+                                      type: integer
+                                    packAsBytes:
+                                      type: boolean
+                                  type: object
+                                port:
+                                  format: int64
+                                  type: integer
+                                service:
+                                  type: string
+                                statusOnError:
+                                  type: string
+                                timeout:
+                                  type: string
+                              required:
+                              - port
+                              - service
+                              type: object
                             envoyExtAuthzHttp:
                               properties:
                                 failOpen:

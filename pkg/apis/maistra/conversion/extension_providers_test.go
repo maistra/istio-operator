@@ -175,6 +175,46 @@ meshConfig:
     prometheus: {}
 `,
 		},
+		{
+			name: "envoyExtAuthzGrpc." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				MeshConfig: &v2.MeshConfig{
+					ExtensionProviders: []*v2.ExtensionProviderConfig{
+						{
+							Name: "ext-authz-grpc",
+							EnvoyExtAuthzGRPC: &v2.ExtensionProviderEnvoyExternalAuthorizationGRPCConfig{
+								Service:       "ext-authz.foo.svc.cluster.local",
+								Port:          8000,
+								Timeout:       strPtr("1s"),
+								FailOpen:      boolPtr(true),
+								StatusOnError: strPtr("500"),
+								IncludeRequestBodyInCheck: &v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig{
+									MaxRequestBytes:     int64Ptr(100),
+									AllowPartialMessage: boolPtr(true),
+									PackAsBytes:         boolPtr(true),
+								},
+							},
+						},
+					},
+				},
+			},
+			helmValues: `
+meshConfig:
+  extensionProviders:
+  - name: ext-authz-grpc
+    envoyExtAuthzGrpc:
+      service: ext-authz.foo.svc.cluster.local
+      port: 8000
+      timeout: 1s
+      failOpen: true
+      statusOnError: "500"
+      includeRequestBodyInCheck:
+        maxRequestBytes: 100
+        allowPartialMessage: true
+        packAsBytes: true
+`,
+		},
 	}
 }
 

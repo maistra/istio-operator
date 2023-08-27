@@ -44,22 +44,33 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 			if config.IncludeAdditionalHeadersInCheck != nil {
 				values["includeAdditionalHeadersInCheck"] = mapOfStringToInterface(config.IncludeAdditionalHeadersInCheck)
 			}
-			if config.IncludeRequestBodyInCheck != nil {
-				includeRequestBodyInCheckValues := map[string]interface{}{}
-				if config.IncludeRequestBodyInCheck.MaxRequestBytes != nil {
-					includeRequestBodyInCheckValues["maxRequestBytes"] = *config.IncludeRequestBodyInCheck.MaxRequestBytes
-				}
-				if config.IncludeRequestBodyInCheck.AllowPartialMessage != nil {
-					includeRequestBodyInCheckValues["allowPartialMessage"] = *config.IncludeRequestBodyInCheck.AllowPartialMessage
-				}
-				if config.IncludeRequestBodyInCheck.PackAsBytes != nil {
-					includeRequestBodyInCheckValues["packAsBytes"] = *config.IncludeRequestBodyInCheck.PackAsBytes
-				}
-				values["includeRequestBodyInCheck"] = includeRequestBodyInCheckValues
-			}
+			convertIncludeRequestBodyInCheckConfigToValues(config.IncludeRequestBodyInCheck, values)
+
 			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
 				"name":              provider.Name,
 				"envoyExtAuthzHttp": values,
+			})
+		}
+		if provider.EnvoyExtAuthzGRPC != nil {
+			config := provider.EnvoyExtAuthzGRPC
+			values := map[string]interface{}{
+				"service": config.Service,
+				"port":    config.Port,
+			}
+			if config.Timeout != nil {
+				values["timeout"] = *config.Timeout
+			}
+			if config.FailOpen != nil {
+				values["failOpen"] = *config.FailOpen
+			}
+			if config.StatusOnError != nil {
+				values["statusOnError"] = *config.StatusOnError
+			}
+			convertIncludeRequestBodyInCheckConfigToValues(config.IncludeRequestBodyInCheck, values)
+
+			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
+				"name":              provider.Name,
+				"envoyExtAuthzGrpc": values,
 			})
 		}
 	}
@@ -67,6 +78,22 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 		return err
 	}
 	return nil
+}
+
+func convertIncludeRequestBodyInCheckConfigToValues(config *v2.ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig, values map[string]interface{}) {
+	if config != nil {
+		includeRequestBodyInCheckValues := map[string]interface{}{}
+		if config.MaxRequestBytes != nil {
+			includeRequestBodyInCheckValues["maxRequestBytes"] = *config.MaxRequestBytes
+		}
+		if config.AllowPartialMessage != nil {
+			includeRequestBodyInCheckValues["allowPartialMessage"] = *config.AllowPartialMessage
+		}
+		if config.PackAsBytes != nil {
+			includeRequestBodyInCheckValues["packAsBytes"] = *config.PackAsBytes
+		}
+		values["includeRequestBodyInCheck"] = includeRequestBodyInCheckValues
+	}
 }
 
 func populateExtensionProvidersConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
@@ -92,7 +119,6 @@ func populateExtensionProvidersConfig(in *v1.HelmValues, out *v2.ControlPlaneSpe
 			return fmt.Errorf("could not cast extensionProviders entry to map[string]interface{}")
 		}
 	}
-
 	return nil
 }
 
@@ -113,6 +139,15 @@ func convertProviderValuesToConfig(values *v1.HelmValues) (v2.ExtensionProviderC
 
 	if rawEnvoyExtAuthzHTTP, found, err := values.GetMap("envoyExtAuthzHttp"); found {
 		config.EnvoyExtAuthzHTTP, err = convertEnvoyExtAuthzHTTPValuesToConfig(v1.NewHelmValues(rawEnvoyExtAuthzHTTP))
+		if err != nil {
+			return config, err
+		}
+	} else if err != nil {
+		return config, err
+	}
+
+	if rawEnvoyExtAuthzGRPC, found, err := values.GetMap("envoyExtAuthzGrpc"); found {
+		config.EnvoyExtAuthzGRPC, err = convertEnvoyExtAuthzGRPCValuesToConfig(v1.NewHelmValues(rawEnvoyExtAuthzGRPC))
 		if err != nil {
 			return config, err
 		}
@@ -174,6 +209,55 @@ func convertEnvoyExtAuthzHTTPValuesToConfig(values *v1.HelmValues) (*v2.Extensio
 
 	if value, ok, err := values.GetStringMap("includeAdditionalHeadersInCheck"); ok {
 		config.IncludeAdditionalHeadersInCheck = value
+	} else if err != nil {
+		return config, err
+	}
+
+	if value, ok, err := values.GetMap("includeRequestBodyInCheck"); ok {
+		config.IncludeRequestBodyInCheck, err = convertIncludeRequestBodyInCheckValuesToConfig(v1.NewHelmValues(value))
+		if err != nil {
+			return config, err
+		}
+	} else if err != nil {
+		return config, err
+	}
+
+	return config, nil
+}
+
+func convertEnvoyExtAuthzGRPCValuesToConfig(values *v1.HelmValues) (*v2.ExtensionProviderEnvoyExternalAuthorizationGRPCConfig, error) {
+	config := &v2.ExtensionProviderEnvoyExternalAuthorizationGRPCConfig{}
+
+	if value, ok, err := values.GetString("service"); ok {
+		config.Service = value
+	} else if err != nil {
+		return config, err
+	} else {
+		return config, fmt.Errorf("service is required for envoyExtAuthzGRPC")
+	}
+
+	if value, ok, err := values.GetInt64("port"); ok {
+		config.Port = value
+	} else if err != nil {
+		return config, err
+	} else {
+		return config, fmt.Errorf("port is required for envoyExtAuthzGRPC")
+	}
+
+	if value, ok, err := values.GetString("timeout"); ok {
+		config.Timeout = strPtr(value)
+	} else if err != nil {
+		return config, err
+	}
+
+	if value, ok, err := values.GetBool("failOpen"); ok {
+		config.FailOpen = boolPtr(value)
+	} else if err != nil {
+		return config, err
+	}
+
+	if value, ok, err := values.GetString("statusOnError"); ok {
+		config.StatusOnError = strPtr(value)
 	} else if err != nil {
 		return config, err
 	}
