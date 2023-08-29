@@ -58,11 +58,11 @@ func TestHasFinalizer(t *testing.T) {
 		expectedResult bool
 	}{
 		{
-			obj:            &v1.IstioHelmInstall{},
+			obj:            &v1.IstioControlPlane{},
 			expectedResult: false,
 		},
 		{
-			obj: &v1.IstioHelmInstall{
+			obj: &v1.IstioControlPlane{
 				ObjectMeta: metav1.ObjectMeta{
 					Finalizers: []string{"blah"},
 				},
@@ -70,7 +70,7 @@ func TestHasFinalizer(t *testing.T) {
 			expectedResult: false,
 		},
 		{
-			obj: &v1.IstioHelmInstall{
+			obj: &v1.IstioControlPlane{
 				ObjectMeta: metav1.ObjectMeta{
 					Finalizers: []string{common.FinalizerName},
 				},
@@ -91,7 +91,7 @@ func TestAddRemoveFinalizer(t *testing.T) {
 		resultFinalizers []string
 	}{
 		{
-			obj: &v1.IstioHelmInstall{
+			obj: &v1.IstioControlPlane{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: "test",
@@ -100,7 +100,7 @@ func TestAddRemoveFinalizer(t *testing.T) {
 			resultFinalizers: []string{common.FinalizerName},
 		},
 		{
-			obj: &v1.IstioHelmInstall{
+			obj: &v1.IstioControlPlane{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:       "test",
 					Namespace:  "test",
@@ -113,7 +113,7 @@ func TestAddRemoveFinalizer(t *testing.T) {
 	for _, tc := range testCases {
 		Eventually(k8sClient.Create(context.TODO(), tc.obj)).Should(Succeed())
 		Expect(AddFinalizer(context.TODO(), tc.obj, k8sClient)).NotTo(HaveOccurred())
-		obj := &v1.IstioHelmInstall{}
+		obj := &v1.IstioControlPlane{}
 		Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: tc.obj.GetNamespace(), Name: tc.obj.GetName()}, obj)).To(Succeed())
 		Expect(obj.ObjectMeta.Finalizers).To(Equal(tc.resultFinalizers))
 		Expect(RemoveFinalizer(context.TODO(), tc.obj, k8sClient)).NotTo(HaveOccurred())

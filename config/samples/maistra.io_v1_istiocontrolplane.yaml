@@ -1,11 +1,11 @@
 apiVersion: maistra.io/v1
-kind: IstioHelmInstall
+kind: IstioControlPlane
 metadata:
   labels:
-    app.kubernetes.io/name: istiohelminstall
-    app.kubernetes.io/instance: istiohelminstall-sample
+    app.kubernetes.io/name: istiocontrolplane
+    app.kubernetes.io/instance: istiocontrolplane-sample
     app.kubernetes.io/managed-by: kustomize
-  name: istiohelminstall-sample
+  name: istiocontrolplane-sample
 spec:
   version: v3.0
   values:

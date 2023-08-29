@@ -1,29 +1,25 @@
-# permissions for end users to edit istiohelminstalls.
+# permissions for end users to view istiocontrolplanes.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: istiohelminstall-editor-role
+    app.kubernetes.io/instance: istiocontrolplane-viewer-role
     app.kubernetes.io/component: rbac
     app.kubernetes.io/managed-by: kustomize
-  name: istiohelminstall-editor-role
+  name: istiocontrolplane-viewer-role
 rules:
 - apiGroups:
   - maistra.io
   resources:
-  - istiohelminstalls
+  - istiocontrolplanes
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - maistra.io
   resources:
-  - istiohelminstalls/status
+  - istiocontrolplanes/status
   verbs:
   - get

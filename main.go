@@ -112,10 +112,10 @@ func main() {
 	}
 
 	helm.ResourceDirectory = resourceDirectory
-	controller := controllers.NewIstioHelmInstallReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDirectory)
+	controller := controllers.NewIstioControlPlaneReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDirectory)
 	err = controller.SetupWithManager(mgr)
 	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "IstioHelmInstall")
+		setupLog.Error(err, "unable to create controller", "controller", "IstioControlPlane")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

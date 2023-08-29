@@ -40,9 +40,9 @@ You have access to the OpenShift CLI (oc).
 
 1. Click the Sail Operator.
 
-1. Click **Istio Helm Install**.
+1. Click **Istio Control Plane**.
 
-1. Click **Create IstioHelmInstall**.
+1. Click **Create IstioControlPlane**.
 
 1. Accept the defaults and click **Create**. This creates the Istio control plane.
 
@@ -50,14 +50,14 @@ You have access to the OpenShift CLI (oc).
 
 ## Customizing Istio configuration
 
-The `values` field of the `IstioHelmInstall` custom resource definition, which was created when the control plane was deployed, can be used to customize Istio configuration using Istio's `Helm` configuration values. When you create this resource using the OpenShift Container Platform web console, it is pre-populated with configuration settings to enable Istio to run on OpenShift.
+The `values` field of the `IstioControlPlane` custom resource definition, which was created when the control plane was deployed, can be used to customize Istio configuration using Istio's `Helm` configuration values. When you create this resource using the OpenShift Container Platform web console, it is pre-populated with configuration settings to enable Istio to run on OpenShift.
 
-To view or modify the `IstioHelmInstall` resource from the OpenShift Container Platform web console:
+To view or modify the `IstioControlPlane` resource from the OpenShift Container Platform web console:
 
 1. Click **Operators** -> **Installed Operators**.
-1. Click **Istio Helm Install** in the **Provided APIs** column.
-1. Click `IstioHelmInstall` instance, "istiohelminstall-sample" by default, in the **Name** column.
-1. Click **YAML** to view the `IstioHelmInstall` configuration and make modifications.
+1. Click **Istio Control Plane** in the **Provided APIs** column.
+1. Click `IstioControlPlane` instance, "istiocontrolplane-sample" by default, in the **Name** column.
+1. Click **YAML** to view the `IstioControlPlane` configuration and make modifications.
 
 For a list of available configuration for the `values` field, refer to [Istio's artifacthub chart documentation](https://artifacthub.io/packages/search?org=istio&sort=relevance&page=1) for:
 

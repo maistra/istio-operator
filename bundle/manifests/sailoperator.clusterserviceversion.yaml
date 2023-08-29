@@ -6,16 +6,16 @@ metadata:
       [
         {
           "apiVersion": "maistra.io/v1",
-          "kind": "IstioHelmInstall",
+          "kind": "IstioControlPlane",
           "metadata": {
             "labels": {
               "app.kubernetes.io/created-by": "sailoperator",
-              "app.kubernetes.io/instance": "istiohelminstall-sample",
+              "app.kubernetes.io/instance": "istiocontrolplane-sample",
               "app.kubernetes.io/managed-by": "kustomize",
-              "app.kubernetes.io/name": "istiohelminstall",
+              "app.kubernetes.io/name": "istiocontrolplane",
               "app.kubernetes.io/part-of": "sailoperator"
             },
-            "name": "istiohelminstall-sample"
+            "name": "istiocontrolplane-sample"
           },
           "spec": {
             "values": {
@@ -47,7 +47,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-ubi9-operator:3.0-latest
-    createdAt: "2023-08-28T12:56:17Z"
+    createdAt: "2023-08-29T08:26:47Z"
     operators.operatorframework.io/builder: operator-sdk-v1.28.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: sailoperator.v3.0.0
@@ -56,10 +56,10 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: IstioHelmInstall is the Schema for the istiohelminstalls API
-      displayName: Istio Helm Install
-      kind: IstioHelmInstall
-      name: istiohelminstalls.maistra.io
+    - description: IstioControlPlane is the Schema for the istiocontrolplanes API
+      displayName: Istio Control Plane
+      kind: IstioControlPlane
+      name: istiocontrolplanes.maistra.io
       version: v1
   description: |-
     This is an experimental operator for installing Istio service mesh.
@@ -148,7 +148,7 @@ spec:
         - apiGroups:
           - maistra.io
           resources:
-          - istiohelminstalls
+          - istiocontrolplanes
           verbs:
           - create
           - delete
@@ -160,13 +160,13 @@ spec:
         - apiGroups:
           - maistra.io
           resources:
-          - istiohelminstalls/finalizers
+          - istiocontrolplanes/finalizers
           verbs:
           - update
         - apiGroups:
           - maistra.io
           resources:
-          - istiohelminstalls/status
+          - istiocontrolplanes/status
           verbs:
           - get
           - patch
