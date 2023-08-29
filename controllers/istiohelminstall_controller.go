@@ -76,8 +76,6 @@ var systemCharts = map[string]string{
 var userCharts = map[string]string{
 	"base":                          "-base",
 	"istio-control/istio-discovery": "-istiod",
-	"gateways/istio-ingress":        "-ingress",
-	"gateways/istio-egress":         "-egress",
 }
 
 // +kubebuilder:rbac:groups=maistra.io,resources=istiohelminstalls,verbs=get;list;watch;create;update;patch;delete
