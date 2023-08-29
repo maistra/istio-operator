@@ -20,7 +20,7 @@ make deploy
 2. Create an IstioControlPlane instance to install istiod:
 
 ```sh
-kubectl apply -f config/samples/maistra.io_v1_istiocontrolplane.yaml
+kubectl apply -f config/samples/operator.istio.io_v1alpha1_istiocontrolplane.yaml
 ```
 
 ### Undeploy controller

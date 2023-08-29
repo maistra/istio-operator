@@ -10,7 +10,7 @@ metadata:
   name: istiocontrolplane-viewer-role
 rules:
 - apiGroups:
-  - maistra.io
+  - operator.istio.io
   resources:
   - istiocontrolplanes
   verbs:
@@ -18,7 +18,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - maistra.io
+  - operator.istio.io
   resources:
   - istiocontrolplanes/status
   verbs:

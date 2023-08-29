@@ -10,7 +10,7 @@ metadata:
   name: istiocontrolplane-editor-role
 rules:
 - apiGroups:
-  - maistra.io
+  - operator.istio.io
   resources:
   - istiocontrolplanes
   verbs:
@@ -22,7 +22,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - maistra.io
+  - operator.istio.io
   resources:
   - istiocontrolplanes/status
   verbs:

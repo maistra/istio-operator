@@ -5,7 +5,7 @@ metadata:
     alm-examples: |-
       [
         {
-          "apiVersion": "maistra.io/v1",
+          "apiVersion": "operator.istio.io/v1alpha1",
           "kind": "IstioControlPlane",
           "metadata": {
             "labels": {
@@ -47,7 +47,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-ubi9-operator:3.0-latest
-    createdAt: "2023-08-29T08:26:47Z"
+    createdAt: "2023-08-29T13:42:49Z"
     operators.operatorframework.io/builder: operator-sdk-v1.28.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: sailoperator.v3.0.0
@@ -59,8 +59,8 @@ spec:
     - description: IstioControlPlane is the Schema for the istiocontrolplanes API
       displayName: Istio Control Plane
       kind: IstioControlPlane
-      name: istiocontrolplanes.maistra.io
-      version: v1
+      name: istiocontrolplanes.operator.istio.io
+      version: v1alpha1
   description: |-
     This is an experimental operator for installing Istio service mesh.
 
@@ -146,7 +146,13 @@ spec:
           verbs:
           - '*'
         - apiGroups:
-          - maistra.io
+          - networking.k8s.io
+          resources:
+          - networkpolicies
+          verbs:
+          - '*'
+        - apiGroups:
+          - operator.istio.io
           resources:
           - istiocontrolplanes
           verbs:
@@ -158,25 +164,19 @@ spec:
           - update
           - watch
         - apiGroups:
-          - maistra.io
+          - operator.istio.io
           resources:
           - istiocontrolplanes/finalizers
           verbs:
           - update
         - apiGroups:
-          - maistra.io
+          - operator.istio.io
           resources:
           - istiocontrolplanes/status
           verbs:
           - get
           - patch
           - update
-        - apiGroups:
-          - networking.k8s.io
-          resources:
-          - networkpolicies
-          verbs:
-          - '*'
         - apiGroups:
           - policy
           resources:

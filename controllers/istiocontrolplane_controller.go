@@ -35,7 +35,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 	"k8s.io/utils/pointer"
-	maistrav1 "maistra.io/istio-operator/api/v1"
+	maistrav1 "maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/helm"
 	"maistra.io/istio-operator/pkg/istio"
 	"maistra.io/istio-operator/pkg/kube"
@@ -78,9 +78,9 @@ var userCharts = map[string]string{
 	"istio-control/istio-discovery": "-istiod",
 }
 
-// +kubebuilder:rbac:groups=maistra.io,resources=istiocontrolplanes,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=maistra.io,resources=istiocontrolplanes/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=maistra.io,resources=istiocontrolplanes/finalizers,verbs=update
+// +kubebuilder:rbac:groups=operator.istio.io,resources=istiocontrolplanes,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=operator.istio.io,resources=istiocontrolplanes/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.istio.io,resources=istiocontrolplanes/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources="*",verbs="*"
 // +kubebuilder:rbac:groups="networking.k8s.io",resources="networkpolicies",verbs="*"
 // +kubebuilder:rbac:groups="policy",resources="poddisruptionbudgets",verbs="*"

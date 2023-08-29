@@ -15,8 +15,8 @@ resources:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: maistra.io
+  domain: operator.istio.io
   kind: IstioControlPlane
-  path: maistra.io/istio-operator/api/v1
-  version: v1
+  path: maistra.io/istio-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"

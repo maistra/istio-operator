@@ -1,4 +1,4 @@
-apiVersion: maistra.io/v1
+apiVersion: operator.istio.io/v1alpha1
 kind: IstioControlPlane
 metadata:
   labels:

@@ -5,7 +5,7 @@ import (
 
 	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/scheme"
-	v1 "maistra.io/istio-operator/api/v1"
+	v1 "maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/common"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"

@@ -24,7 +24,7 @@ OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
 CONTROL_PLANE_NS="${CONTROL_PLANE_NS:-istio-system}"
 
 BRANCH="${BRANCH:-maistra-3.0}"
-ISTIO_CONTROL_PLANE="${WD}/../../config/samples/maistra.io_v1_istiocontrolplane.yaml"
+ISTIO_CONTROL_PLANE="${WD}/../../config/samples/operator.istio.io_v1alpha1_istiocontrolplane.yaml"
 
 TIMEOUT="3m"
 

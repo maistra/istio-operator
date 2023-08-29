@@ -5,9 +5,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.11.1
   creationTimestamp: null
-  name: istiocontrolplanes.maistra.io
+  name: istiocontrolplanes.operator.istio.io
 spec:
-  group: maistra.io
+  group: operator.istio.io
   names:
     kind: IstioControlPlane
     listKind: IstioControlPlaneList
@@ -15,7 +15,7 @@ spec:
     singular: istiocontrolplane
   scope: Namespaced
   versions:
-  - name: v1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: IstioControlPlane is the Schema for the istiocontrolplanes API
