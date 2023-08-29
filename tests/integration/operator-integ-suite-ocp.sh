@@ -54,8 +54,6 @@ check_ready "${NAMESPACE}" "${OPERATOR_NAME}" "${OPERATOR_NAME}"
 
 
 echo "Create a IstioHelmInstall Control Plane"
-oc adm policy add-scc-to-group anyuid system:serviceaccounts:"${CONTROL_PLANE_NS}"
-oc adm policy add-scc-to-group privileged system:serviceaccounts:"${CONTROL_PLANE_NS}"
 
 oc get ns "${CONTROL_PLANE_NS}" >/dev/null 2>&1 || oc create namespace "${CONTROL_PLANE_NS}"
 oc apply -f "${ISTIO_HELM_INSTALL}" -n "${CONTROL_PLANE_NS}"
