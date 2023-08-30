@@ -50,16 +50,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// IstioControlPlaneReconciler reconciles a IstioControlPlane object
-type IstioControlPlaneReconciler struct {
+// IstioReconciler reconciles a Istio object
+type IstioReconciler struct {
 	ResourceDirectory string
 	RestClientGetter  genericclioptions.RESTClientGetter
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-func NewIstioControlPlaneReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config, resourceDir string) *IstioControlPlaneReconciler {
-	return &IstioControlPlaneReconciler{
+func NewIstioReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config, resourceDir string) *IstioReconciler {
+	return &IstioReconciler{
 		ResourceDirectory: resourceDir,
 		RestClientGetter:  helm.NewRESTClientGetter(restConfig),
 		Client:            client,
@@ -78,9 +78,9 @@ var userCharts = map[string]string{
 	"istio-control/istio-discovery": "-istiod",
 }
 
-// +kubebuilder:rbac:groups=operator.istio.io,resources=istiocontrolplanes,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=operator.istio.io,resources=istiocontrolplanes/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=operator.istio.io,resources=istiocontrolplanes/finalizers,verbs=update
+// +kubebuilder:rbac:groups=operator.istio.io,resources=istios,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=operator.istio.io,resources=istios/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.istio.io,resources=istios/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources="*",verbs="*"
 // +kubebuilder:rbac:groups="networking.k8s.io",resources="networkpolicies",verbs="*"
 // +kubebuilder:rbac:groups="policy",resources="poddisruptionbudgets",verbs="*"
@@ -97,15 +97,15 @@ var userCharts = map[string]string{
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
-func (r *IstioControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithName("reconciler")
-	var ihi maistrav1.IstioControlPlane
+	var ihi maistrav1.Istio
 	if err := r.Client.Get(ctx, req.NamespacedName, &ihi); err != nil {
 		if errors.IsNotFound(err) {
-			logger.V(2).Info("IstioControlPlane not found. Skipping reconciliation")
+			logger.V(2).Info("Istio not found. Skipping reconciliation")
 			return ctrl.Result{}, nil
 		}
-		logger.Error(err, "failed to get IstioControlPlane from cluster")
+		logger.Error(err, "failed to get Istio from cluster")
 	}
 
 	if ihi.DeletionTimestamp != nil {
@@ -152,7 +152,7 @@ func (r *IstioControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			logger.Error(err, "failed to marshal status")
 			return
 		}
-		err = r.Client.Status().Patch(ctx, &ihi, kube.NewStatusPatch(maistrav1.IstioControlPlaneStatus{AppliedValues: appliedValues}))
+		err = r.Client.Status().Patch(ctx, &ihi, kube.NewStatusPatch(maistrav1.IstioStatus{AppliedValues: appliedValues}))
 		if err != nil {
 			logger.Error(err, "failed to patch status")
 		}
@@ -160,7 +160,7 @@ func (r *IstioControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	ownerReference := metav1.OwnerReference{
 		APIVersion:         maistrav1.GroupVersion.String(),
-		Kind:               maistrav1.IstioControlPlaneKind,
+		Kind:               maistrav1.IstioKind,
 		Name:               ihi.Name,
 		UID:                ihi.UID,
 		Controller:         pointer.Bool(true),
@@ -183,11 +183,11 @@ func (r *IstioControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Re
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *IstioControlPlaneReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *IstioReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	clusterScopedResourceHandler := handler.EnqueueRequestsFromMapFunc(mapOwnerAnnotationsToReconcileRequest)
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&maistrav1.IstioControlPlane{}).
+		For(&maistrav1.Istio{}).
 
 		// namespaced resources
 		Owns(&corev1.ConfigMap{}).
@@ -228,7 +228,7 @@ func mapOwnerAnnotationsToReconcileRequest(obj client.Object) []reconcile.Reques
 	}
 
 	namespacedName, kind, apiGroup := helm.GetOwnerFromAnnotations(annotations)
-	if namespacedName != nil && kind == maistrav1.IstioControlPlaneKind && apiGroup == maistrav1.GroupVersion.Group {
+	if namespacedName != nil && kind == maistrav1.IstioKind && apiGroup == maistrav1.GroupVersion.Group {
 		return []reconcile.Request{{NamespacedName: *namespacedName}}
 	}
 	return nil

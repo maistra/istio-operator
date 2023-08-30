@@ -10,7 +10,7 @@ import (
 
 type Maistra30Strategy struct{}
 
-func (s *Maistra30Strategy) ApplyDefaults(ihi *v1.IstioControlPlane) error {
+func (s *Maistra30Strategy) ApplyDefaults(ihi *v1.Istio) error {
 	values := ihi.Spec.GetValues()
 	if values == nil {
 		values = make(map[string]interface{})

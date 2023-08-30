@@ -1,11 +1,11 @@
 apiVersion: operator.istio.io/v1alpha1
-kind: IstioControlPlane
+kind: Istio
 metadata:
   labels:
-    app.kubernetes.io/name: istiocontrolplane
-    app.kubernetes.io/instance: istiocontrolplane-sample
+    app.kubernetes.io/name: istio
+    app.kubernetes.io/instance: istio-sample
     app.kubernetes.io/managed-by: kustomize
-  name: istiocontrolplane-sample
+  name: istio-sample
 spec:
   version: v3.0
   values:

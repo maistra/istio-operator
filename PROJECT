@@ -16,7 +16,7 @@ resources:
     namespaced: true
   controller: true
   domain: operator.istio.io
-  kind: IstioControlPlane
+  kind: Istio
   path: maistra.io/istio-operator/api/v1alpha1
   version: v1alpha1
 version: "3"

@@ -12,10 +12,10 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: IstioControlPlane is the Schema for the istiocontrolplanes API
-      displayName: Istio Control Plane
-      kind: IstioControlPlane
-      name: istiocontrolplanes.operator.istio.io
+    - description: Istio represents an Istio Service Mesh deployment
+      displayName: Istio
+      kind: Istio
+      name: istios.operator.istio.io
       version: v1alpha1
   description: |-
     This is an experimental operator for installing Istio service mesh.

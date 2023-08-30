@@ -24,7 +24,7 @@ OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
 CONTROL_PLANE_NS="${CONTROL_PLANE_NS:-istio-system}"
 
 BRANCH="${BRANCH:-maistra-3.0}"
-ISTIO_CONTROL_PLANE="${WD}/../../config/samples/operator.istio.io_v1alpha1_istiocontrolplane.yaml"
+ISTIO_MANIFEST="${WD}/../../config/samples/operator.istio.io_v1alpha1_istio.yaml"
 
 TIMEOUT="3m"
 
@@ -50,7 +50,7 @@ check_ready "${NAMESPACE}" "${OPERATOR_NAME}" "${OPERATOR_NAME}"
 
 echo "Deploy Istio"
 oc get ns "${CONTROL_PLANE_NS}" >/dev/null 2>&1 || oc create namespace "${CONTROL_PLANE_NS}"
-oc apply -f "${ISTIO_CONTROL_PLANE}" -n "${CONTROL_PLANE_NS}"
+oc apply -f "${ISTIO_MANIFEST}" -n "${CONTROL_PLANE_NS}"
 
 
 echo "Check that Istio is running"

@@ -1,18 +1,18 @@
-# permissions for end users to view istiocontrolplanes.
+# permissions for end users to view istios.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: istiocontrolplane-viewer-role
+    app.kubernetes.io/instance: istio-viewer-role
     app.kubernetes.io/component: rbac
     app.kubernetes.io/managed-by: kustomize
-  name: istiocontrolplane-viewer-role
+  name: istio-viewer-role
 rules:
 - apiGroups:
   - operator.istio.io
   resources:
-  - istiocontrolplanes
+  - istios
   verbs:
   - get
   - list
@@ -20,6 +20,6 @@ rules:
 - apiGroups:
   - operator.istio.io
   resources:
-  - istiocontrolplanes/status
+  - istios/status
   verbs:
   - get

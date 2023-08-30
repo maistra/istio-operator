@@ -1,18 +1,18 @@
-# permissions for end users to edit istiocontrolplanes.
+# permissions for end users to edit istios.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: istiocontrolplane-editor-role
+    app.kubernetes.io/instance: istio-editor-role
     app.kubernetes.io/component: rbac
     app.kubernetes.io/managed-by: kustomize
-  name: istiocontrolplane-editor-role
+  name: istio-editor-role
 rules:
 - apiGroups:
   - operator.istio.io
   resources:
-  - istiocontrolplanes
+  - istios
   verbs:
   - create
   - delete
@@ -24,6 +24,6 @@ rules:
 - apiGroups:
   - operator.istio.io
   resources:
-  - istiocontrolplanes/status
+  - istios/status
   verbs:
   - get

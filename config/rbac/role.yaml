@@ -52,7 +52,7 @@ rules:
 - apiGroups:
   - operator.istio.io
   resources:
-  - istiocontrolplanes
+  - istios
   verbs:
   - create
   - delete
@@ -64,13 +64,13 @@ rules:
 - apiGroups:
   - operator.istio.io
   resources:
-  - istiocontrolplanes/finalizers
+  - istios/finalizers
   verbs:
   - update
 - apiGroups:
   - operator.istio.io
   resources:
-  - istiocontrolplanes/status
+  - istios/status
   verbs:
   - get
   - patch
