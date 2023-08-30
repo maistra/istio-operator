@@ -17,12 +17,7 @@
 WD=$(dirname "$0")
 WD=$(cd "$WD"; pwd)
 
-# Exit immediately for non zero status
-set -e
-# Check unset variables
-set -u
-# Print commands
-set -x
+set -eux -o pipefail
 
 NAMESPACE="${NAMESPACE:-istio-operator}"
 OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
@@ -53,17 +48,22 @@ echo "Check that istio operator is running"
 check_ready "${NAMESPACE}" "${OPERATOR_NAME}" "${OPERATOR_NAME}"
 
 
-echo "Create a IstioHelmInstall Control Plane"
+echo "Create a Control Plane"
 
 oc get ns "${CONTROL_PLANE_NS}" >/dev/null 2>&1 || oc create namespace "${CONTROL_PLANE_NS}"
 oc apply -f "${ISTIO_HELM_INSTALL}" -n "${CONTROL_PLANE_NS}"
 
 
-echo "Check that IstioHelmInstall Control Plane is running"
+echo "Check that Control Plane is running"
 check_ready "${CONTROL_PLANE_NS}" "istiod" "istiod"
-check_ready "${CONTROL_PLANE_NS}" "istio-egressgateway" "istio-egressgateway"
-check_ready "${CONTROL_PLANE_NS}" "istio-ingressgateway" "istio-ingressgateway"
 
+echo "Make sure only istiod got deployed and nothing else"
+res=$(oc -n "${CONTROL_PLANE_NS}" get deploy -o json | jq -j '.items | length')
+if [ "${res}" != "1" ]; then
+  echo "Expected just istiod deployment, got:"
+  oc -n "${CONTROL_PLANE_NS}" get deploy
+  exit 1
+fi
 
 echo "Check that CNI deamonset ready are running"
 timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
