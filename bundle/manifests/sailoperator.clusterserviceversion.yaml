@@ -5,17 +5,17 @@ metadata:
     alm-examples: |-
       [
         {
-          "apiVersion": "maistra.io/v1",
-          "kind": "IstioHelmInstall",
+          "apiVersion": "operator.istio.io/v1alpha1",
+          "kind": "Istio",
           "metadata": {
             "labels": {
               "app.kubernetes.io/created-by": "sailoperator",
-              "app.kubernetes.io/instance": "istiohelminstall-sample",
+              "app.kubernetes.io/instance": "istio-sample",
               "app.kubernetes.io/managed-by": "kustomize",
-              "app.kubernetes.io/name": "istiohelminstall",
+              "app.kubernetes.io/name": "istio",
               "app.kubernetes.io/part-of": "sailoperator"
             },
-            "name": "istiohelminstall-sample"
+            "name": "istio-sample"
           },
           "spec": {
             "values": {
@@ -47,7 +47,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-ubi9-operator:3.0-latest
-    createdAt: "2023-08-28T12:56:17Z"
+    createdAt: "2023-08-29T18:42:32Z"
     operators.operatorframework.io/builder: operator-sdk-v1.28.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: sailoperator.v3.0.0
@@ -56,11 +56,11 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: IstioHelmInstall is the Schema for the istiohelminstalls API
-      displayName: Istio Helm Install
-      kind: IstioHelmInstall
-      name: istiohelminstalls.maistra.io
-      version: v1
+    - description: Istio represents an Istio Service Mesh deployment
+      displayName: Istio
+      kind: Istio
+      name: istios.operator.istio.io
+      version: v1alpha1
   description: |-
     This is an experimental operator for installing Istio service mesh.
 
@@ -146,9 +146,15 @@ spec:
           verbs:
           - '*'
         - apiGroups:
-          - maistra.io
+          - networking.k8s.io
           resources:
-          - istiohelminstalls
+          - networkpolicies
+          verbs:
+          - '*'
+        - apiGroups:
+          - operator.istio.io
+          resources:
+          - istios
           verbs:
           - create
           - delete
@@ -158,25 +164,19 @@ spec:
           - update
           - watch
         - apiGroups:
-          - maistra.io
+          - operator.istio.io
           resources:
-          - istiohelminstalls/finalizers
+          - istios/finalizers
           verbs:
           - update
         - apiGroups:
-          - maistra.io
+          - operator.istio.io
           resources:
-          - istiohelminstalls/status
+          - istios/status
           verbs:
           - get
           - patch
           - update
-        - apiGroups:
-          - networking.k8s.io
-          resources:
-          - networkpolicies
-          verbs:
-          - '*'
         - apiGroups:
           - policy
           resources:

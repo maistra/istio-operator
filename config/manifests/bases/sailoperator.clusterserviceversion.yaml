@@ -12,11 +12,11 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: IstioHelmInstall is the Schema for the istiohelminstalls API
-      displayName: Istio Helm Install
-      kind: IstioHelmInstall
-      name: istiohelminstalls.maistra.io
-      version: v1
+    - description: Istio represents an Istio Service Mesh deployment
+      displayName: Istio
+      kind: Istio
+      name: istios.operator.istio.io
+      version: v1alpha1
   description: |-
     This is an experimental operator for installing Istio service mesh.
 

@@ -1,18 +1,18 @@
-# permissions for end users to edit istiohelminstalls.
+# permissions for end users to edit istios.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: istiohelminstall-editor-role
+    app.kubernetes.io/instance: istio-editor-role
     app.kubernetes.io/component: rbac
     app.kubernetes.io/managed-by: kustomize
-  name: istiohelminstall-editor-role
+  name: istio-editor-role
 rules:
 - apiGroups:
-  - maistra.io
+  - operator.istio.io
   resources:
-  - istiohelminstalls
+  - istios
   verbs:
   - create
   - delete
@@ -22,8 +22,8 @@ rules:
   - update
   - watch
 - apiGroups:
-  - maistra.io
+  - operator.istio.io
   resources:
-  - istiohelminstalls/status
+  - istios/status
   verbs:
   - get

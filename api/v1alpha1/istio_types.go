@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1
+package v1alpha1
 
 import (
 	"encoding/json"
@@ -22,17 +22,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const IstioHelmInstallKind = "IstioHelmInstall"
+const IstioKind = "Istio"
 
-// IstioHelmInstallSpec defines the desired state of IstioHelmInstall
-type IstioHelmInstallSpec struct {
+// IstioSpec defines the desired state of Istio
+type IstioSpec struct {
 	Version string `json:"version,omitempty"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	Values json.RawMessage `json:"values,omitempty"`
 }
 
-func (s *IstioHelmInstallSpec) GetValues() map[string]interface{} {
+func (s *IstioSpec) GetValues() map[string]interface{} {
 	var vals map[string]interface{}
 	err := json.Unmarshal(s.Values, &vals)
 	if err != nil {
@@ -41,7 +41,7 @@ func (s *IstioHelmInstallSpec) GetValues() map[string]interface{} {
 	return vals
 }
 
-func (s *IstioHelmInstallSpec) SetValues(values map[string]interface{}) error {
+func (s *IstioSpec) SetValues(values map[string]interface{}) error {
 	jsonVals, err := json.Marshal(values)
 	if err != nil {
 		return err
@@ -50,14 +50,14 @@ func (s *IstioHelmInstallSpec) SetValues(values map[string]interface{}) error {
 	return nil
 }
 
-// IstioHelmInstallStatus defines the observed state of IstioHelmInstall
-type IstioHelmInstallStatus struct {
+// IstioStatus defines the observed state of Istio
+type IstioStatus struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	AppliedValues json.RawMessage `json:"appliedValues,omitempty"`
 }
 
-func (s *IstioHelmInstallStatus) GetAppliedValues() map[string]interface{} {
+func (s *IstioStatus) GetAppliedValues() map[string]interface{} {
 	var vals map[string]interface{}
 	err := json.Unmarshal(s.AppliedValues, &vals)
 	if err != nil {
@@ -69,24 +69,24 @@ func (s *IstioHelmInstallStatus) GetAppliedValues() map[string]interface{} {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// IstioHelmInstall is the Schema for the istiohelminstalls API
-type IstioHelmInstall struct {
+// Istio represents an Istio Service Mesh deployment
+type Istio struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   IstioHelmInstallSpec   `json:"spec,omitempty"`
-	Status IstioHelmInstallStatus `json:"status,omitempty"`
+	Spec   IstioSpec   `json:"spec,omitempty"`
+	Status IstioStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// IstioHelmInstallList contains a list of IstioHelmInstall
-type IstioHelmInstallList struct {
+// IstioList contains a list of Istio
+type IstioList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []IstioHelmInstall `json:"items"`
+	Items           []Istio `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&IstioHelmInstall{}, &IstioHelmInstallList{})
+	SchemeBuilder.Register(&Istio{}, &IstioList{})
 }

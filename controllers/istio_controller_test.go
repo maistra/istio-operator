@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
-	v1 "maistra.io/istio-operator/api/v1"
+	v1 "maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/common"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -25,7 +25,7 @@ var testConfig = common.OperatorConfig{
 	},
 }
 
-var _ = Describe("IstioHelmInstallController", Ordered, func() {
+var _ = Describe("IstioController", Ordered, func() {
 	const ihiName = "test-istio"
 	const namespaceName = "test"
 
@@ -56,18 +56,18 @@ var _ = Describe("IstioHelmInstallController", Ordered, func() {
 		_ = k8sClient.Delete(ctx, namespace)
 	})
 
-	ihi := &v1.IstioHelmInstall{}
+	ihi := &v1.Istio{}
 
 	It("successfully reconciles the IHI", func() {
 		By("Creating the custom resource")
 		err := k8sClient.Get(ctx, ihiNamespacedName, ihi)
 		if err != nil && errors.IsNotFound(err) {
-			ihi = &v1.IstioHelmInstall{
+			ihi = &v1.Istio{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      ihiName,
 					Namespace: namespaceName,
 				},
-				Spec: v1.IstioHelmInstallSpec{
+				Spec: v1.IstioSpec{
 					Version: "v3.0",
 				},
 			}
@@ -78,7 +78,7 @@ var _ = Describe("IstioHelmInstallController", Ordered, func() {
 
 		By("Checking if the custom resource was successfully created")
 		Eventually(func() error {
-			found := &v1.IstioHelmInstall{}
+			found := &v1.Istio{}
 			return k8sClient.Get(ctx, ihiNamespacedName, found)
 		}, time.Minute, time.Second).Should(Succeed())
 
@@ -178,10 +178,10 @@ var _ = Describe("IstioHelmInstallController", Ordered, func() {
 	})
 })
 
-func expectedOwnerReference(ihi *v1.IstioHelmInstall) metav1.OwnerReference {
+func expectedOwnerReference(ihi *v1.Istio) metav1.OwnerReference {
 	return metav1.OwnerReference{
 		APIVersion:         v1.GroupVersion.String(),
-		Kind:               v1.IstioHelmInstallKind,
+		Kind:               v1.IstioKind,
 		Name:               ihi.Name,
 		UID:                ihi.UID,
 		Controller:         pointer.Bool(true),

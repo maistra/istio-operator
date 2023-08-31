@@ -2,7 +2,7 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: istiohelminstalls.maistra.io
+  name: istios.operator.istio.io
 spec:
   conversion:
     strategy: Webhook

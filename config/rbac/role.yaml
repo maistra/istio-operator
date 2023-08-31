@@ -44,9 +44,15 @@ rules:
   verbs:
   - '*'
 - apiGroups:
-  - maistra.io
+  - networking.k8s.io
   resources:
-  - istiohelminstalls
+  - networkpolicies
+  verbs:
+  - '*'
+- apiGroups:
+  - operator.istio.io
+  resources:
+  - istios
   verbs:
   - create
   - delete
@@ -56,25 +62,19 @@ rules:
   - update
   - watch
 - apiGroups:
-  - maistra.io
+  - operator.istio.io
   resources:
-  - istiohelminstalls/finalizers
+  - istios/finalizers
   verbs:
   - update
 - apiGroups:
-  - maistra.io
+  - operator.istio.io
   resources:
-  - istiohelminstalls/status
+  - istios/status
   verbs:
   - get
   - patch
   - update
-- apiGroups:
-  - networking.k8s.io
-  resources:
-  - networkpolicies
-  verbs:
-  - '*'
 - apiGroups:
   - policy
   resources:

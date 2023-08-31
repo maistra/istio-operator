@@ -24,7 +24,7 @@ OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
 CONTROL_PLANE_NS="${CONTROL_PLANE_NS:-istio-system}"
 
 BRANCH="${BRANCH:-maistra-3.0}"
-ISTIO_HELM_INSTALL="${WD}/../../config/samples/maistra.io_v1_istiohelminstall.yaml"
+ISTIO_MANIFEST="${WD}/../../config/samples/operator.istio.io_v1alpha1_istio.yaml"
 
 TIMEOUT="3m"
 
@@ -48,13 +48,12 @@ echo "Check that istio operator is running"
 check_ready "${NAMESPACE}" "${OPERATOR_NAME}" "${OPERATOR_NAME}"
 
 
-echo "Create a Control Plane"
-
+echo "Deploy Istio"
 oc get ns "${CONTROL_PLANE_NS}" >/dev/null 2>&1 || oc create namespace "${CONTROL_PLANE_NS}"
-oc apply -f "${ISTIO_HELM_INSTALL}" -n "${CONTROL_PLANE_NS}"
+oc apply -f "${ISTIO_MANIFEST}" -n "${CONTROL_PLANE_NS}"
 
 
-echo "Check that Control Plane is running"
+echo "Check that Istio is running"
 check_ready "${CONTROL_PLANE_NS}" "istiod" "istiod"
 
 echo "Make sure only istiod got deployed and nothing else"

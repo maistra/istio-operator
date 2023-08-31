@@ -26,7 +26,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	maistraiov1 "maistra.io/istio-operator/api/v1"
+	maistraiov1 "maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/controllers"
 	"maistra.io/istio-operator/pkg/common"
 	"maistra.io/istio-operator/pkg/helm"
@@ -92,7 +92,7 @@ func main() {
 		Port:                    9443,
 		HealthProbeBindAddress:  probeAddr,
 		LeaderElection:          true,
-		LeaderElectionID:        "8d20bb54.maistra.io",
+		LeaderElectionID:        "8d20bb54.istio.io",
 		LeaderElectionNamespace: kube.GetOperatorNamespace(),
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
@@ -112,10 +112,10 @@ func main() {
 	}
 
 	helm.ResourceDirectory = resourceDirectory
-	controller := controllers.NewIstioHelmInstallReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDirectory)
+	controller := controllers.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDirectory)
 	err = controller.SetupWithManager(mgr)
 	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "IstioHelmInstall")
+		setupLog.Error(err, "unable to create controller", "controller", "Istio")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

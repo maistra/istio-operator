@@ -4,13 +4,13 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	v1 "maistra.io/istio-operator/api/v1"
+	v1 "maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/common"
 )
 
 type Maistra30Strategy struct{}
 
-func (s *Maistra30Strategy) ApplyDefaults(ihi *v1.IstioHelmInstall) error {
+func (s *Maistra30Strategy) ApplyDefaults(ihi *v1.Istio) error {
 	values := ihi.Spec.GetValues()
 	if values == nil {
 		values = make(map[string]interface{})

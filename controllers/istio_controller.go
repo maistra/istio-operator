@@ -35,7 +35,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 	"k8s.io/utils/pointer"
-	maistrav1 "maistra.io/istio-operator/api/v1"
+	maistrav1 "maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/helm"
 	"maistra.io/istio-operator/pkg/istio"
 	"maistra.io/istio-operator/pkg/kube"
@@ -50,16 +50,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// IstioHelmInstallReconciler reconciles a IstioHelmInstall object
-type IstioHelmInstallReconciler struct {
+// IstioReconciler reconciles a Istio object
+type IstioReconciler struct {
 	ResourceDirectory string
 	RestClientGetter  genericclioptions.RESTClientGetter
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-func NewIstioHelmInstallReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config, resourceDir string) *IstioHelmInstallReconciler {
-	return &IstioHelmInstallReconciler{
+func NewIstioReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config, resourceDir string) *IstioReconciler {
+	return &IstioReconciler{
 		ResourceDirectory: resourceDir,
 		RestClientGetter:  helm.NewRESTClientGetter(restConfig),
 		Client:            client,
@@ -78,9 +78,9 @@ var userCharts = map[string]string{
 	"istio-control/istio-discovery": "-istiod",
 }
 
-// +kubebuilder:rbac:groups=maistra.io,resources=istiohelminstalls,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=maistra.io,resources=istiohelminstalls/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=maistra.io,resources=istiohelminstalls/finalizers,verbs=update
+// +kubebuilder:rbac:groups=operator.istio.io,resources=istios,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=operator.istio.io,resources=istios/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.istio.io,resources=istios/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources="*",verbs="*"
 // +kubebuilder:rbac:groups="networking.k8s.io",resources="networkpolicies",verbs="*"
 // +kubebuilder:rbac:groups="policy",resources="poddisruptionbudgets",verbs="*"
@@ -97,15 +97,15 @@ var userCharts = map[string]string{
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
-func (r *IstioHelmInstallReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithName("reconciler")
-	var ihi maistrav1.IstioHelmInstall
+	var ihi maistrav1.Istio
 	if err := r.Client.Get(ctx, req.NamespacedName, &ihi); err != nil {
 		if errors.IsNotFound(err) {
-			logger.V(2).Info("IstioHelmInstall not found. Skipping reconciliation")
+			logger.V(2).Info("Istio not found. Skipping reconciliation")
 			return ctrl.Result{}, nil
 		}
-		logger.Error(err, "failed to get IstioHelmInstall from cluster")
+		logger.Error(err, "failed to get Istio from cluster")
 	}
 
 	if ihi.DeletionTimestamp != nil {
@@ -152,7 +152,7 @@ func (r *IstioHelmInstallReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			logger.Error(err, "failed to marshal status")
 			return
 		}
-		err = r.Client.Status().Patch(ctx, &ihi, kube.NewStatusPatch(maistrav1.IstioHelmInstallStatus{AppliedValues: appliedValues}))
+		err = r.Client.Status().Patch(ctx, &ihi, kube.NewStatusPatch(maistrav1.IstioStatus{AppliedValues: appliedValues}))
 		if err != nil {
 			logger.Error(err, "failed to patch status")
 		}
@@ -160,7 +160,7 @@ func (r *IstioHelmInstallReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	ownerReference := metav1.OwnerReference{
 		APIVersion:         maistrav1.GroupVersion.String(),
-		Kind:               maistrav1.IstioHelmInstallKind,
+		Kind:               maistrav1.IstioKind,
 		Name:               ihi.Name,
 		UID:                ihi.UID,
 		Controller:         pointer.Bool(true),
@@ -183,11 +183,11 @@ func (r *IstioHelmInstallReconciler) Reconcile(ctx context.Context, req ctrl.Req
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *IstioHelmInstallReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *IstioReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	clusterScopedResourceHandler := handler.EnqueueRequestsFromMapFunc(mapOwnerAnnotationsToReconcileRequest)
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&maistrav1.IstioHelmInstall{}).
+		For(&maistrav1.Istio{}).
 
 		// namespaced resources
 		Owns(&corev1.ConfigMap{}).
@@ -228,7 +228,7 @@ func mapOwnerAnnotationsToReconcileRequest(obj client.Object) []reconcile.Reques
 	}
 
 	namespacedName, kind, apiGroup := helm.GetOwnerFromAnnotations(annotations)
-	if namespacedName != nil && kind == maistrav1.IstioHelmInstallKind && apiGroup == maistrav1.GroupVersion.Group {
+	if namespacedName != nil && kind == maistrav1.IstioKind && apiGroup == maistrav1.GroupVersion.Group {
 		return []reconcile.Request{{NamespacedName: *namespacedName}}
 	}
 	return nil
