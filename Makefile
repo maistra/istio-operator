@@ -30,7 +30,7 @@ ISTIO_REPOSITORY ?= maistra/istio
 # the branch to use when updating the commit hash below
 ISTIO_BRANCH_30 ?= maistra-3.0
 # the current commit of ${ISTIO_REPOSITORY} for v3.0. This will be used to copy charts
-ISTIO_COMMIT_30 ?= f6170b88b3613cbc8c37587c99a5817d14c67359
+ISTIO_COMMIT_30 ?= d2e7e067acda76099c25b1fec1e5eb51721e1374
 
 # Istio images names
 ISTIO_CNI_IMAGE_NAME ?= install-cni
