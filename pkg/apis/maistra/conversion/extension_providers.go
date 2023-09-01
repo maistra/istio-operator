@@ -45,7 +45,15 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 				values["includeAdditionalHeadersInCheck"] = mapOfStringToInterface(config.IncludeAdditionalHeadersInCheck)
 			}
 			convertIncludeRequestBodyInCheckConfigToValues(config.IncludeRequestBodyInCheck, values)
-
+			if config.HeadersToUpstreamOnAllow != nil {
+				values["headersToUpstreamOnAllow"] = stringToInterfaceArray(config.HeadersToUpstreamOnAllow)
+			}
+			if config.HeadersToDownstreamOnDeny != nil {
+				values["headersToUpstreamOnDeny"] = stringToInterfaceArray(config.HeadersToDownstreamOnDeny)
+			}
+			if config.HeadersToDownstreamOnAllow != nil {
+				values["headersToDownstreamOnAllow"] = stringToInterfaceArray(config.HeadersToDownstreamOnAllow)
+			}
 			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
 				"name":              provider.Name,
 				"envoyExtAuthzHttp": values,
@@ -218,6 +226,21 @@ func convertEnvoyExtAuthzHTTPValuesToConfig(values *v1.HelmValues) (*v2.Extensio
 		if err != nil {
 			return config, err
 		}
+	} else if err != nil {
+		return config, err
+	}
+	if value, ok, err := values.GetStringSlice("headersToUpstreamOnAllow"); ok {
+		config.HeadersToUpstreamOnAllow = value
+	} else if err != nil {
+		return config, err
+	}
+	if value, ok, err := values.GetStringSlice("headersToDownstreamOnDeny"); ok {
+		config.HeadersToDownstreamOnDeny = value
+	} else if err != nil {
+		return config, err
+	}
+	if value, ok, err := values.GetStringSlice("headersToDownstreamOnAllow"); ok {
+		config.HeadersToDownstreamOnAllow = value
 	} else if err != nil {
 		return config, err
 	}

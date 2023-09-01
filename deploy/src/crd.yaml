@@ -4104,6 +4104,18 @@ spec:
                           properties:
                             failOpen:
                               type: boolean
+                            headersToDownstreamOnAllow:
+                              items:
+                                type: string
+                              type: array
+                            headersToDownstreamOnDeny:
+                              items:
+                                type: string
+                              type: array
+                            headersToUpstreamOnAllow:
+                              items:
+                                type: string
+                              type: array
                             includeAdditionalHeadersInCheck:
                               additionalProperties:
                                 type: string
@@ -9090,6 +9102,18 @@ spec:
                               properties:
                                 failOpen:
                                   type: boolean
+                                headersToDownstreamOnAllow:
+                                  items:
+                                    type: string
+                                  type: array
+                                headersToDownstreamOnDeny:
+                                  items:
+                                    type: string
+                                  type: array
+                                headersToUpstreamOnAllow:
+                                  items:
+                                    type: string
+                                  type: array
                                 includeAdditionalHeadersInCheck:
                                   additionalProperties:
                                     type: string
