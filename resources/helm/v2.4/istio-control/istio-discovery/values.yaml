@@ -245,6 +245,7 @@ global:
   #   3 - Most preferred
   arch:
     amd64: 2
+    arm64: 2
     s390x: 2
     ppc64le: 2
 
