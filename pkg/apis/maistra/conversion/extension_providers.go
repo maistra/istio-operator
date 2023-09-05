@@ -49,7 +49,7 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 				values["headersToUpstreamOnAllow"] = stringToInterfaceArray(config.HeadersToUpstreamOnAllow)
 			}
 			if config.HeadersToDownstreamOnDeny != nil {
-				values["headersToUpstreamOnDeny"] = stringToInterfaceArray(config.HeadersToDownstreamOnDeny)
+				values["headersToDownstreamOnDeny"] = stringToInterfaceArray(config.HeadersToDownstreamOnDeny)
 			}
 			if config.HeadersToDownstreamOnAllow != nil {
 				values["headersToDownstreamOnAllow"] = stringToInterfaceArray(config.HeadersToDownstreamOnAllow)
