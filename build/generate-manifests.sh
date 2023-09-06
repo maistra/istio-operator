@@ -35,7 +35,7 @@ else
   DOCUMENTATION_URL="https://docs.openshift.com/container-platform/latest/service_mesh/v2x/servicemesh-release-notes.html"
   BUG_URL="https://issues.redhat.com/projects/OSSM"
   OLM_FEATURES="[\"Disconnected\",\"fips\"]"
-  ARCHITECTURE_LABELS=$(generateArchitectureLabels amd64 s390x ppc64le)
+  ARCHITECTURE_LABELS=$(generateArchitectureLabels amd64 s390x ppc64le arm64)
   OLM_SUBSCRIPTION_ANNOTATION="operators.openshift.io/valid-subscription: '[\"OpenShift Container Platform\", \"OpenShift Platform Plus\"]'"
 fi
 : "${DEPLOYMENT_FILE:=deploy/${BUILD_TYPE}-operator.yaml}"
