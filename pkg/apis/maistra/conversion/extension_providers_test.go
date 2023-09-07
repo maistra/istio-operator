@@ -118,9 +118,9 @@ meshConfig:
 									AllowPartialMessage: boolPtr(true),
 									PackAsBytes:         boolPtr(true),
 								},
-								HeadersToUpstreamOnAllow:   []string{"x-ext-authz"},
-								HeadersToDownstreamOnDeny:  []string{"x-ext-authz"},
-								HeadersToDownstreamOnAllow: []string{"x-ext-authz"},
+								HeadersToUpstreamOnAllow:   []string{"upstream-on-allow"},
+								HeadersToDownstreamOnDeny:  []string{"downstream-on-deny"},
+								HeadersToDownstreamOnAllow: []string{"downstream-on-allow"},
 							},
 						},
 					},
@@ -146,9 +146,11 @@ meshConfig:
         allowPartialMessage: true
         packAsBytes: true
 	  headersToUpstreamOnAllow: 
-	  - x-ext-authz
+	  - upstream-on-allow
 	  headersToDownstreamOnDeny: 
-	  - x-ext-authz
+	  - downstream-on-deny
+	  headersToDownstreamOnAllow:
+	  - downstream-on-allow
 `,
 		},
 		{
