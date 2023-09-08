@@ -960,6 +960,21 @@ func (in *ExtensionProviderEnvoyExternalAuthorizationHTTPConfig) DeepCopyInto(ou
 		*out = new(ExtensionProviderEnvoyExternalAuthorizationRequestBodyConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.HeadersToUpstreamOnAllow != nil {
+		in, out := &in.HeadersToUpstreamOnAllow, &out.HeadersToUpstreamOnAllow
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.HeadersToDownstreamOnDeny != nil {
+		in, out := &in.HeadersToDownstreamOnDeny, &out.HeadersToDownstreamOnDeny
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.HeadersToDownstreamOnAllow != nil {
+		in, out := &in.HeadersToDownstreamOnAllow, &out.HeadersToDownstreamOnAllow
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

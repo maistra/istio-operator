@@ -118,6 +118,9 @@ meshConfig:
 									AllowPartialMessage: boolPtr(true),
 									PackAsBytes:         boolPtr(true),
 								},
+								HeadersToUpstreamOnAllow:   []string{"upstream-on-allow"},
+								HeadersToDownstreamOnDeny:  []string{"downstream-on-deny"},
+								HeadersToDownstreamOnAllow: []string{"downstream-on-allow"},
 							},
 						},
 					},
@@ -142,6 +145,12 @@ meshConfig:
         maxRequestBytes: 100
         allowPartialMessage: true
         packAsBytes: true
+      headersToUpstreamOnAllow: 
+      - upstream-on-allow
+      headersToDownstreamOnDeny: 
+      - downstream-on-deny
+      headersToDownstreamOnAllow:
+      - downstream-on-allow
 `,
 		},
 		{
