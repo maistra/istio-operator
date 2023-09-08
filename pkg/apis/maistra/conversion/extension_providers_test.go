@@ -145,12 +145,12 @@ meshConfig:
         maxRequestBytes: 100
         allowPartialMessage: true
         packAsBytes: true
-	  headersToUpstreamOnAllow: 
-	  - upstream-on-allow
-	  headersToDownstreamOnDeny: 
-	  - downstream-on-deny
-	  headersToDownstreamOnAllow:
-	  - downstream-on-allow
+      headersToUpstreamOnAllow: 
+      - upstream-on-allow
+      headersToDownstreamOnDeny: 
+      - downstream-on-deny
+      headersToDownstreamOnAllow:
+      - downstream-on-allow
 `,
 		},
 		{
