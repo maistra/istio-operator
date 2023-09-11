@@ -78,3 +78,13 @@ The `bookinfo` application is exposed through the mesh, and the mesh configurati
 By deploying the `reviews` virtual service, you can specify a different behavior. For example, you can specify that if a user logs into the `bookinfo` application, then the mesh routes requests to the `reviews-v2` service, and the application displays reviews with black stars. If a user does not log into the `bookinfo` application, then the mesh routes requests to the `reviews-v3` service, and the application displays reviews with red stars.
 
 For more information, see [Bookinfo Application](https://istio.io/latest/docs/examples/bookinfo/) in the upstream Istio documentation.
+
+## Gateway Configuration
+
+The Sail Operator does not deploy Ingress or Egress Gateways. Gateways are not part of the control plane. As a security best-practice, Ingress and Egress Gateways should be deployed in a different namespace than the namespace that contains the control plane.
+
+You can deploy gateways using either the Gateway API or gateway injection. 
+
+For more information about the Gateway API, see [Getting Started with Istio and Kubernetes Gateway API](https://istio.io/latest/docs/setup/additional-setup/getting-started/) in the upstream Istio documentation.
+
+For more information about gateway injection, see [Installing Gateways](https://istio.io/latest/docs/setup/additional-setup/gateway/) in the upstream Istio documentation.
