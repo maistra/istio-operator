@@ -83,8 +83,7 @@ For more information, see [Bookinfo Application](https://istio.io/latest/docs/ex
 
 The Sail Operator does not deploy Ingress or Egress Gateways. Gateways are not part of the control plane. As a security best-practice, Ingress and Egress Gateways should be deployed in a different namespace than the namespace that contains the control plane.
 
-You can deploy gateways using either the Gateway API or gateway injection. 
+You can deploy gateways using either the Gateway API or Gateway Injection methods. Both are well documented in the Istio documentation.
 
-For more information about the Gateway API, see [Getting Started with Istio and Kubernetes Gateway API](https://istio.io/latest/docs/setup/additional-setup/getting-started/) in the upstream Istio documentation.
-
-For more information about gateway injection, see [Installing Gateways](https://istio.io/latest/docs/setup/additional-setup/gateway/) in the upstream Istio documentation.
+- To use Gateway API, follow the instructions in the [Getting Started with Istio and Kubernetes Gateway API](https://preliminary.istio.io/latest/docs/setup/additional-setup/getting-started/) page.
+- To use Gateway Injection, use the `Helm` method described in the [Installing Gateways](https://preliminary.istio.io/latest/docs/setup/additional-setup/gateway/#deploying-a-gateway) page.
