@@ -47,7 +47,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-ubi9-operator:3.0-latest
-    createdAt: "2023-09-13T15:23:53Z"
+    createdAt: "2023-09-13T16:55:03Z"
     operators.operatorframework.io/builder: operator-sdk-v1.28.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: sailoperator.v3.0.0
@@ -56,11 +56,80 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - kind: AuthorizationPolicy
+      name: authorizationpolicies.security.istio.io
+      version: v1
+    - kind: AuthorizationPolicy
+      name: authorizationpolicies.security.istio.io
+      version: v1beta1
+    - kind: DestinationRule
+      name: destinationrules.networking.istio.io
+      version: v1alpha3
+    - kind: DestinationRule
+      name: destinationrules.networking.istio.io
+      version: v1beta1
+    - kind: EnvoyFilter
+      name: envoyfilters.networking.istio.io
+      version: v1alpha3
+    - kind: Gateway
+      name: gateways.networking.istio.io
+      version: v1alpha3
+    - kind: Gateway
+      name: gateways.networking.istio.io
+      version: v1beta1
     - description: Istio represents an Istio Service Mesh deployment
       displayName: Istio
       kind: Istio
       name: istios.operator.istio.io
       version: v1alpha1
+    - kind: PeerAuthentication
+      name: peerauthentications.security.istio.io
+      version: v1beta1
+    - kind: ProxyConfig
+      name: proxyconfigs.networking.istio.io
+      version: v1beta1
+    - kind: RequestAuthentication
+      name: requestauthentications.security.istio.io
+      version: v1
+    - kind: RequestAuthentication
+      name: requestauthentications.security.istio.io
+      version: v1beta1
+    - kind: ServiceEntry
+      name: serviceentries.networking.istio.io
+      version: v1alpha3
+    - kind: ServiceEntry
+      name: serviceentries.networking.istio.io
+      version: v1beta1
+    - kind: Sidecar
+      name: sidecars.networking.istio.io
+      version: v1alpha3
+    - kind: Sidecar
+      name: sidecars.networking.istio.io
+      version: v1beta1
+    - kind: Telemetry
+      name: telemetries.telemetry.istio.io
+      version: v1alpha1
+    - kind: VirtualService
+      name: virtualservices.networking.istio.io
+      version: v1alpha3
+    - kind: VirtualService
+      name: virtualservices.networking.istio.io
+      version: v1beta1
+    - kind: WasmPlugin
+      name: wasmplugins.extensions.istio.io
+      version: v1alpha1
+    - kind: WorkloadEntry
+      name: workloadentries.networking.istio.io
+      version: v1alpha3
+    - kind: WorkloadEntry
+      name: workloadentries.networking.istio.io
+      version: v1beta1
+    - kind: WorkloadGroup
+      name: workloadgroups.networking.istio.io
+      version: v1alpha3
+    - kind: WorkloadGroup
+      name: workloadgroups.networking.istio.io
+      version: v1beta1
   description: |-
     This is an experimental operator for installing Istio service mesh.
 
@@ -125,7 +194,9 @@ spec:
           resources:
           - customresourcedefinitions
           verbs:
-          - '*'
+          - get
+          - list
+          - watch
         - apiGroups:
           - apps
           resources:
