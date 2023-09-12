@@ -46,6 +46,12 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - networking.istio.io
+  resources:
+  - envoyfilters
+  verbs:
+  - '*'
+- apiGroups:
   - networking.k8s.io
   resources:
   - networkpolicies

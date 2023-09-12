@@ -48,6 +48,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	networkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 )
 
 // IstioReconciler reconciles a Istio object
@@ -91,6 +93,7 @@ var userCharts = map[string]string{
 // +kubebuilder:rbac:groups="apiextensions.k8s.io",resources=customresourcedefinitions,verbs=get;list;watch
 // +kubebuilder:rbac:groups="k8s.cni.cncf.io",resources=network-attachment-definitions,verbs="*"
 // +kubebuilder:rbac:groups="security.openshift.io",resources=securitycontextconstraints,resourceNames=privileged,verbs=use
+// +kubebuilder:rbac:groups="networking.istio.io",resources=envoyfilters,verbs="*"
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -202,9 +205,7 @@ func (r *IstioReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&rbacv1.RoleBinding{}).
 		Owns(&policyv1.PodDisruptionBudget{}).
 		Owns(&autoscalingv2.HorizontalPodAutoscaler{}).
-
-		// TODO: uncomment when CRDs are installed together with the operator
-		// Owns(&networkingv1alpha3.EnvoyFilter{}).
+		Owns(&networkingv1alpha3.EnvoyFilter{}).
 
 		// TODO: only register NetAttachDef if the CRD is installed (may also need to watch for CRD creation)
 		// Owns(&multusv1.NetworkAttachmentDefinition{}).
