@@ -417,6 +417,7 @@ lint-scripts: ## runs linters against all shell scripts
 
 .PHONY: lint-go
 lint-go: ## runs linters against Go code
+	golangci-lint --version
 	golangci-lint run -c .golangci.yml -v
 
 .PHONY: lint-yaml
