@@ -2,7 +2,21 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
+- bases/extensions.istio.io_wasmplugins.yaml
+- bases/networking.istio.io_destinationrules.yaml
+- bases/networking.istio.io_envoyfilters.yaml
+- bases/networking.istio.io_gateways.yaml
+- bases/networking.istio.io_proxyconfigs.yaml
+- bases/networking.istio.io_serviceentries.yaml
+- bases/networking.istio.io_sidecars.yaml
+- bases/networking.istio.io_virtualservices.yaml
+- bases/networking.istio.io_workloadentries.yaml
+- bases/networking.istio.io_workloadgroups.yaml
 - bases/operator.istio.io_istios.yaml
+- bases/security.istio.io_authorizationpolicies.yaml
+- bases/security.istio.io_peerauthentications.yaml
+- bases/security.istio.io_requestauthentications.yaml
+- bases/telemetry.istio.io_telemetries.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

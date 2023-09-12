@@ -232,6 +232,11 @@ deploy-yaml: kustomize ## Outputs YAML manifests needed to deploy the controller
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	make deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
+.PHONY: deploy-example
+deploy-example: ## Deploy an example Istio resource
+	kubectl create ns istio-system || echo "namespace istio-system already exists"
+	kubectl apply -n istio-system -f config/samples/operator.istio.io_v1alpha1_istio.yaml
+
 ##@ Generated Code & Resources
 
 .PHONY: gen-manifests

@@ -106,9 +106,10 @@ func upgradeOrInstallChart(ctx context.Context, cfg *action.Configuration,
 		updateAction := action.NewUpgrade(cfg)
 		updateAction.ResourceVisitor = addOwnerReferenceVisitor(ownerReference, ihiNamespace)
 		updateAction.MaxHistory = 1
+		updateAction.SkipCRDs = true
 		rel, err = updateAction.RunWithContext(ctx, releaseName, chart, values)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to update helm chart %s: %v", chart.Name(), err)
 		}
 
 	} else {
@@ -117,9 +118,10 @@ func upgradeOrInstallChart(ctx context.Context, cfg *action.Configuration,
 		installAction.ResourceVisitor = addOwnerReferenceVisitor(ownerReference, ihiNamespace)
 		installAction.Namespace = namespace
 		installAction.ReleaseName = releaseName
+		installAction.SkipCRDs = true
 		rel, err = installAction.RunWithContext(ctx, chart, values)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to install helm chart %s: %v", chart.Name(), err)
 		}
 	}
 	return rel, nil

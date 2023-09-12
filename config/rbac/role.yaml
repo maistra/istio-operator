@@ -23,7 +23,9 @@ rules:
   resources:
   - customresourcedefinitions
   verbs:
-  - '*'
+  - get
+  - list
+  - watch
 - apiGroups:
   - apps
   resources:
