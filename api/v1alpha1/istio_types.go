@@ -68,6 +68,8 @@ func (s *IstioStatus) GetAppliedValues() map[string]interface{} {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of the control plane installation."
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="The age of the object"
 
 // Istio represents an Istio Service Mesh deployment
 type Istio struct {

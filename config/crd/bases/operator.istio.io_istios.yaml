@@ -15,7 +15,16 @@ spec:
     singular: istio
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - description: The version of the control plane installation.
+      jsonPath: .spec.version
+      name: Version
+      type: string
+    - description: The age of the object
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Istio represents an Istio Service Mesh deployment
