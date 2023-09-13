@@ -2,6 +2,7 @@ module maistra.io/istio-operator
 
 go 1.19
 
+// FIXME: https://issues.redhat.com/browse/OSSM-4819
 replace helm.sh/helm/v3 => github.com/luksa/helm/v3 v3.0.0-20230609074242-495f2d9e688e
 
 require (
