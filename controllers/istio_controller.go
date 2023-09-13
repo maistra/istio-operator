@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"regexp"
 
+	"github.com/go-logr/logr"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -150,15 +151,7 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	logger.Info("Installing components", "values", values)
 	defer func() {
 		logger.Info("Reconciliation complete. Writing status")
-		appliedValues, err := json.Marshal(values)
-		if err != nil {
-			logger.Error(err, "failed to marshal status")
-			return
-		}
-		err = r.Client.Status().Patch(ctx, &istio, kube.NewStatusPatch(v1alpha1.IstioStatus{AppliedValues: appliedValues}))
-		if err != nil {
-			logger.Error(err, "failed to patch status")
-		}
+		err = r.updateStatus(ctx, logger, &istio, values, err)
 	}()
 
 	ownerReference := metav1.OwnerReference{
@@ -220,6 +213,123 @@ func (r *IstioReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 		// +lint-watches:ignore: CustomResourceDefinition (prevents `make lint-watches` from bugging us about CRDs)
 		Complete(r)
+}
+
+func (r *IstioReconciler) updateStatus(ctx context.Context, log logr.Logger, istio *v1alpha1.Istio, values map[string]interface{}, err error) error {
+	reconciledCondition := determineReconciledCondition(err)
+	readyCondition := r.determineReadyCondition(ctx, istio)
+
+	status := istio.Status.DeepCopy()
+	status.ObservedGeneration = istio.Generation
+	status.SetCondition(reconciledCondition)
+	status.SetCondition(readyCondition)
+	status.State = deriveState(reconciledCondition, readyCondition)
+
+	appliedValues, err2 := json.Marshal(values)
+	if err2 != nil {
+		log.Error(err2, "failed to marshal status")
+		if err == nil {
+			return err2
+		}
+		return err
+	}
+	status.AppliedValues = appliedValues
+
+	statusErr := r.Client.Status().Patch(ctx, istio, kube.NewStatusPatch(*status))
+	if statusErr != nil {
+		log.Error(statusErr, "failed to patch status")
+
+		// ensure that we retry the reconcile by returning the status error
+		// (but without overriding the original error)
+		if err == nil {
+			return statusErr
+		}
+	}
+	return err
+}
+
+func deriveState(reconciledCondition, readyCondition v1alpha1.IstioCondition) v1alpha1.IstioConditionReason {
+	if reconciledCondition.Status == metav1.ConditionFalse {
+		return reconciledCondition.Reason
+	} else if readyCondition.Status == metav1.ConditionFalse {
+		return readyCondition.Reason
+	}
+
+	return v1alpha1.ConditionReasonHealthy
+}
+
+func determineReconciledCondition(err error) v1alpha1.IstioCondition {
+	if err == nil {
+		return v1alpha1.IstioCondition{
+			Type:   v1alpha1.ConditionTypeReconciled,
+			Status: metav1.ConditionTrue,
+		}
+	}
+
+	return v1alpha1.IstioCondition{
+		Type:    v1alpha1.ConditionTypeReconciled,
+		Status:  metav1.ConditionFalse,
+		Reason:  v1alpha1.ConditionReasonReconcileError,
+		Message: fmt.Sprintf("error reconciling resource: %v", err),
+	}
+}
+
+func (r *IstioReconciler) determineReadyCondition(ctx context.Context, istio *v1alpha1.Istio) v1alpha1.IstioCondition {
+	notReady := func(reason v1alpha1.IstioConditionReason, message string) v1alpha1.IstioCondition {
+		return v1alpha1.IstioCondition{
+			Type:    v1alpha1.ConditionTypeReady,
+			Status:  metav1.ConditionFalse,
+			Reason:  reason,
+			Message: message,
+		}
+	}
+
+	istiod := appsv1.Deployment{}
+	if err := r.Client.Get(ctx, istiodDeploymentKey(istio), &istiod); err != nil {
+		if errors.IsNotFound(err) {
+			return notReady(v1alpha1.ConditionReasonIstiodNotReady, "istiod Deployment not found")
+		}
+		return notReady(v1alpha1.ConditionReasonReconcileError, fmt.Sprintf("failed to get readiness: %v", err))
+	}
+
+	if istiod.Status.Replicas == 0 {
+		return notReady(v1alpha1.ConditionReasonIstiodNotReady, "istiod Deployment is scaled to zero replicas")
+	} else if istiod.Status.ReadyReplicas < istiod.Status.Replicas {
+		return notReady(v1alpha1.ConditionReasonIstiodNotReady, "not all istiod pods are ready")
+	}
+
+	cni := appsv1.DaemonSet{}
+	if err := r.Client.Get(ctx, cniDaemonSetKey(), &cni); err != nil {
+		if errors.IsNotFound(err) {
+			return notReady(v1alpha1.ConditionReasonCNINotReady, "istio-cni-node DaemonSet not found")
+		}
+		return notReady(v1alpha1.ConditionReasonReconcileError, fmt.Sprintf("failed to get readiness: %v", err))
+	}
+
+	if cni.Status.CurrentNumberScheduled == 0 {
+		return notReady(v1alpha1.ConditionReasonCNINotReady, "no istio-cni-node pods are currently scheduled")
+	} else if cni.Status.NumberReady < cni.Status.CurrentNumberScheduled {
+		return notReady(v1alpha1.ConditionReasonCNINotReady, "not all istio-cni-node pods are ready")
+	}
+
+	return v1alpha1.IstioCondition{
+		Type:   v1alpha1.ConditionTypeReady,
+		Status: metav1.ConditionTrue,
+	}
+}
+
+func cniDaemonSetKey() client.ObjectKey {
+	return client.ObjectKey{
+		Namespace: kube.GetOperatorNamespace(),
+		Name:      "istio-cni-node",
+	}
+}
+
+func istiodDeploymentKey(istio *v1alpha1.Istio) client.ObjectKey {
+	return client.ObjectKey{
+		Namespace: istio.Namespace,
+		Name:      "istiod",
+	}
 }
 
 func mapOwnerAnnotationsToReconcileRequest(obj client.Object) []reconcile.Request {
