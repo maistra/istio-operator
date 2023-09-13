@@ -421,7 +421,7 @@ lint-yaml: ## runs linters against YAML files
 .PHONY: lint-helm
 lint-helm: ## runs linters against helm charts
 	@echo "Helm version: `helm version`"
-	@${FINDFILES} -name 'Chart.yaml' -path './resources/helm/v3.?/*' \
+	@${FINDFILES} -name 'Chart.yaml' -path './resources/charts/v3.?/*' \
 	-print0 | ${XARGS} -L 1 dirname | xargs -r helm lint --strict
 
 .PHONY: lint-bundle
