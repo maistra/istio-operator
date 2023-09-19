@@ -738,13 +738,13 @@ func (v *versionStrategyV2_4) renderGateway(name, namespace, kubeVersion string,
 	}
 	if !userIDAutoassigned {
 		if gateway["runAsUser"] == nil {
-			gateway["runAsUser"] = "1337"
+			gateway["runAsUser"] = 1337
 		}
 		if gateway["runAsGroup"] == nil {
-			gateway["runAsGroup"] = "1337"
+			gateway["runAsGroup"] = 1337
 		}
 		if gateway["fsGroup"] == nil {
-			gateway["fsGroup"] = "1337"
+			gateway["fsGroup"] = 1337
 		}
 	}
 	newGateways := make(map[string]interface{})
