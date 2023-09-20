@@ -47,7 +47,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-ubi9-operator:3.0-latest
-    createdAt: "2023-09-19T23:59:15Z"
+    createdAt: "2023-09-20T17:24:33Z"
     operators.operatorframework.io/builder: operator-sdk-v1.28.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: sailoperator.v3.0.0
@@ -320,50 +320,8 @@ spec:
                 app.kubernetes.io/part-of: sailoperator
                 control-plane: istio-operator
             spec:
-              affinity:
-                nodeAffinity:
-                  requiredDuringSchedulingIgnoredDuringExecution:
-                    nodeSelectorTerms:
-                    - matchExpressions:
-                      - key: kubernetes.io/arch
-                        operator: In
-                        values:
-                        - amd64
-                        - arm64
-                        - ppc64le
-                        - s390x
-                      - key: kubernetes.io/os
-                        operator: In
-                        values:
-                        - linux
               containers:
-              - args:
-                - --secure-listen-address=0.0.0.0:8443
-                - --upstream=http://127.0.0.1:8080/
-                - --logtostderr=true
-                - --v=0
-                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.1
-                name: kube-rbac-proxy
-                ports:
-                - containerPort: 8443
-                  name: https
-                  protocol: TCP
-                resources:
-                  limits:
-                    cpu: 500m
-                    memory: 128Mi
-                  requests:
-                    cpu: 5m
-                    memory: 64Mi
-                securityContext:
-                  allowPrivilegeEscalation: false
-                  capabilities:
-                    drop:
-                    - ALL
-              - args:
-                - --health-probe-bind-address=:8081
-                - --metrics-bind-address=127.0.0.1:8080
-                command:
+              - command:
                 - /manager
                 env:
                 - name: POD_NAMESPACE
