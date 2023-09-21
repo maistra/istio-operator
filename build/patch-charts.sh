@@ -344,7 +344,7 @@ function patchSidecarInjector() {
   }' "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
 
   sed_wrap -i -e 's/runAsUser: 1337/runAsUser: {{ .ProxyUID }}/g' \
-    -e 's/runAsGroup: 1337/runAsGroup: {{ .ProxyUID }}/g' \
+    -e 's/runAsGroup: 1337/{{ if .ProxyUID }}\n      runAsGroup: {{ .ProxyUID }}\n      {{ end }}/g' \
     -e 's/fsGroup: 1337/fsGroup: {{ .ProxyGID }}/g' "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
   sed_wrap -i -e 's/fsGroup: 1337/fsGroup: {{ .ProxyGID }}/g' "${HELM_DIR}/istio-control/istio-discovery/files/gateway-injection-template.yaml"
 
