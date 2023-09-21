@@ -199,7 +199,9 @@ spec:
       {{ if .ProxyUID }}
       runAsGroup: {{ .ProxyUID }}
       {{ end }}
+      {{ if .ProxyGID }}
       fsGroup: {{ .ProxyGID }}
+      {{ end }}
       runAsNonRoot: false
       runAsUser: 0
       {{- else }}
@@ -225,13 +227,17 @@ spec:
       {{ if .ProxyUID }}
       runAsGroup: {{ .ProxyUID }}
       {{ end }}
+      {{ if .ProxyGID }}
       fsGroup: {{ .ProxyGID }}
+      {{ end }}
       {{ if or (eq (annotation .ObjectMeta `sidecar.istio.io/interceptionMode` .ProxyConfig.InterceptionMode) `TPROXY`) (eq (annotation .ObjectMeta `sidecar.istio.io/capNetBindService` .Values.global.proxy.capNetBindService) `true`) -}}
       runAsNonRoot: false
       runAsUser: 0
       {{- else -}}
       runAsNonRoot: true
+      {{ if .ProxyUID }}
       runAsUser: {{ .ProxyUID }}
+      {{ end }}
       {{- end }}
       {{- end }}
     resources:
@@ -372,5 +378,7 @@ spec:
   {{- end }}
   {{- if eq (env "ENABLE_LEGACY_FSGROUP_INJECTION" "true") "true" }}
   securityContext:
+    {{ if .ProxyGID }}
     fsGroup: {{ .ProxyGID }}
+    {{ end }}
   {{- end }}
