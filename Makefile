@@ -83,7 +83,7 @@ ENVTEST_K8S_VERSION = 1.26.0
 # - use environment variables to overwrite this value (e.g export CHANNELS="candidate,fast,stable")
 CHANNELS ?= "3.0"
 ifneq ($(origin CHANNELS), undefined)
-BUNDLE_CHANNELS := --channels=$(CHANNELS)
+BUNDLE_CHANNELS := --channels=\"$(CHANNELS)\"
 endif
 
 # DEFAULT_CHANNEL defines the default channel used in the bundle.
