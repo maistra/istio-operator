@@ -101,7 +101,7 @@ $RELATED_IMAGES"
     RELATED_IMAGES=""
   fi
 
-  ICON=$(base64 "${MY_LOCATION}/manifest-templates/${BUILD_TYPE}_rgb_icon_default_128px.png" | sed -e 's+^+      +')
+  ICON=$(cat "${MY_LOCATION}/manifest-templates/${BUILD_TYPE}_rgb_icon_default_128px.png" | base64 | sed -e 's+^+      +')
   local csv_path="${BUNDLE_DIR}/${OPERATOR_NAME}.v${MAISTRA_VERSION}.clusterserviceversion.yaml"
   cp "${MY_LOCATION}/manifest-templates/clusterserviceversion.yaml" "${csv_path}"
 
