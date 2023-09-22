@@ -333,10 +333,10 @@ function patchSidecarInjector() {
         - SETUID
   }' ${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml
 
-  sed_wrap -i -E -e 's/(^ *)(runAsUser: )1337/\1{{- if .ProxyUID }}\n\1\2{{ .ProxyUID }}\n\1{{- end }}/g' \
-    -e 's/(^ *)(runAsGroup: )1337/\1{{- if .ProxyUID }}\n\1\2{{ .ProxyUID }}\n\1{{- end }}/g' \
-    -e 's/(^ *)(fsGroup: )1337/\1{{- if .ProxyGID }}\n\1\2{{ .ProxyGID }}\n\1{{- end }}/g' "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
-  sed_wrap -i -e 's/fsGroup: 1337/fsGroup: {{ .ProxyGID }}/g' "${HELM_DIR}/istio-control/istio-discovery/files/gateway-injection-template.yaml"
+  sed_wrap -i -E -e 's/(^ *)(runAsUser: )1337/\1{{ if .ProxyUID }}\n\1\2{{ .ProxyUID }}\n\1{{ end }}/g' \
+    -e 's/(^ *)(runAsGroup: )1337/\1{{ if .ProxyUID }}\n\1\2{{ .ProxyUID }}\n\1{{ end }}/g' \
+    -e 's/(^ *)(fsGroup: )1337/\1{{ if .ProxyGID }}\n\1\2{{ .ProxyGID }}\n\1{{ end }}/g' "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
+  sed_wrap -i -E -e 's/(^ *)(fsGroup: )1337/\1{{ if .ProxyGID }}\n\1\2{{ .ProxyGID }}\n\1{{ end }}/g' "${HELM_DIR}/istio-control/istio-discovery/files/gateway-injection-template.yaml"
 
   sed_wrap -i -e '/- name: istio-proxy/,/resources:/ {
     / *- ALL/a\
