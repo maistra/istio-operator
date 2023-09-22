@@ -58,11 +58,6 @@ func populateGatewaysValues(in *v2.ControlPlaneSpec, values map[string]interface
 					return err
 				}
 			}
-			if gateways.ClusterIngress.RouteConfig != nil && gateways.ClusterIngress.RouteConfig.Enabled != nil {
-				if err := setHelmBoolValue(values, "gateways.istio-ingressgateway.routeConfig.enabled", *gateways.ClusterIngress.RouteConfig.Enabled); err != nil {
-					return err
-				}
-			}
 			if err := setHelmValue(gatewayValues, "name", "istio-ingressgateway"); err != nil {
 				return err
 			}
@@ -246,6 +241,12 @@ func gatewayIngressConfigToValues(in *v2.IngressGatewayConfig) (map[string]inter
 		return nil, err
 	}
 
+	if in.RouteConfig != nil && in.RouteConfig.Enabled != nil {
+		if err := setHelmBoolValue(gatewayValues, "routeConfig.enabled", *in.RouteConfig.Enabled); err != nil {
+			return nil, err
+		}
+	}
+
 	// gateway SDS
 	if in.SDS != nil {
 		sdsValues := make(map[string]interface{})
@@ -350,6 +351,13 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 				ingressGateway := v2.IngressGatewayConfig{
 					GatewayConfig: gc,
 				}
+				if routeEnabled, ok, err := gatewayValues.GetAndRemoveBool("routeConfig.enabled"); ok {
+					ingressGateway.RouteConfig = &v2.Enablement{
+						Enabled: &routeEnabled,
+					}
+				} else if err != nil {
+					return err
+				}
 				if rawSDSValues, ok, err := gatewayValues.GetMap("sds"); ok && len(rawSDSValues) > 0 {
 					sdsValues := v1.NewHelmValues(rawSDSValues)
 					sds := &v2.SecretDiscoveryService{}
@@ -380,13 +388,6 @@ func populateGatewaysConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 					}
 					if k8sIngressEnabled, ok, err := in.GetAndRemoveBool("global.k8sIngress.enabled"); ok {
 						clusterIngress.IngressEnabled = &k8sIngressEnabled
-					} else if err != nil {
-						return err
-					}
-					if routeEnabled, ok, err := gatewayValues.GetAndRemoveBool("routeConfig.enabled"); ok {
-						clusterIngress.RouteConfig = &v2.Enablement{
-							Enabled: &routeEnabled,
-						}
 					} else if err != nil {
 						return err
 					}

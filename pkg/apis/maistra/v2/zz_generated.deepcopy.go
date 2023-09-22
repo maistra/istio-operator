@@ -181,11 +181,6 @@ func (in *ClusterIngressGatewayConfig) DeepCopyInto(out *ClusterIngressGatewayCo
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.RouteConfig != nil {
-		in, out := &in.RouteConfig, &out.RouteConfig
-		*out = new(Enablement)
-		(*in).DeepCopyInto(*out)
-	}
 	return
 }
 
@@ -1339,6 +1334,11 @@ func (in *IngressGatewayConfig) DeepCopyInto(out *IngressGatewayConfig) {
 	if in.SDS != nil {
 		in, out := &in.SDS, &out.SDS
 		*out = new(SecretDiscoveryService)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.RouteConfig != nil {
+		in, out := &in.RouteConfig, &out.RouteConfig
+		*out = new(Enablement)
 		(*in).DeepCopyInto(*out)
 	}
 	return
