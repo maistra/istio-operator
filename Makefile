@@ -128,7 +128,7 @@ $(addprefix collect-templates-,$(SUPPORTED_VERSIONS)): collect-templates-%:
 	$(eval version:=$*)
 	mkdir -p ${TEMPLATES_OUT_DIR}/v${version}
 	cp ${RESOURCES_DIR}/smcp-templates/v${version}/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v${version}/default
-	find ${RESOURCES_DIR}/smcp-templates/v${version}/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" | xargs cp -t ${TEMPLATES_OUT_DIR}/v${version}
+	find ${RESOURCES_DIR}/smcp-templates/v${version}/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" | xargs cp {} ${TEMPLATES_OUT_DIR}/v${version}
 
 .PHONY: update-charts
 update-charts: $(addprefix update-charts-,$(SUPPORTED_VERSIONS))
