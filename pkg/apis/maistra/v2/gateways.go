@@ -90,6 +90,9 @@ type IngressGatewayConfig struct {
 	// .Values.gateways.<gateway-name>.sds.enabled
 	// +optional
 	SDS *SecretDiscoveryService `json:"sds,omitempty"`
+	// RouteConfig specifies whether to create an OpenShift Route for the ingress gateway deployment
+	// +optional
+	RouteConfig *Enablement `json:"routeConfig,omitempty"`
 }
 
 // SecretDiscoveryService configures whether or not SDS is configured for the gateway
@@ -112,9 +115,6 @@ type ClusterIngressGatewayConfig struct {
 	// MeshExpansionPorts define the port set used with multi-cluster/mesh expansion
 	// +optional
 	MeshExpansionPorts []corev1.ServicePort `json:"meshExpansionPorts,omitempty"`
-	// RouteConfig specifies whether to create an OpenShift Route for istio-ingressgateway deployment
-	// +optional
-	RouteConfig *Enablement `json:"routeConfig,omitempty"`
 }
 
 // RouterModeType represents the router modes available.

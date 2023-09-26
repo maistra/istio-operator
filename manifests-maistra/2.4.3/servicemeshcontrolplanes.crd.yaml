@@ -2141,6 +2141,11 @@ spec:
                           type: boolean
                         namespace:
                           type: string
+                        routeConfig:
+                          properties:
+                            enabled:
+                              type: boolean
+                          type: object
                         routerMode:
                           type: string
                         runtime:
@@ -7139,6 +7144,11 @@ spec:
                               type: boolean
                             namespace:
                               type: string
+                            routeConfig:
+                              properties:
+                                enabled:
+                                  type: boolean
+                              type: object
                             routerMode:
                               type: string
                             runtime:
