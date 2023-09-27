@@ -15,6 +15,14 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - description: Whether the control plane installation is ready to handle requests.
+      jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - description: The current state of this object.
+      jsonPath: .status.state
+      name: Status
+      type: string
     - description: The version of the control plane installation.
       jsonPath: .spec.version
       name: Version
@@ -53,6 +61,45 @@ spec:
             properties:
               appliedValues:
                 x-kubernetes-preserve-unknown-fields: true
+              conditions:
+                description: Represents the latest available observations of the object's
+                  current state.
+                items:
+                  description: A Condition represents a specific observation of the
+                    object's state.
+                  properties:
+                    lastTransitionTime:
+                      description: Last time the condition transitioned from one status
+                        to another.
+                      format: date-time
+                      type: string
+                    message:
+                      description: Human-readable message indicating details about
+                        the last transition.
+                      type: string
+                    reason:
+                      description: Unique, single-word, CamelCase reason for the condition's
+                        last transition.
+                      type: string
+                    status:
+                      description: The status of this condition. Can be True, False
+                        or Unknown.
+                      type: string
+                    type:
+                      description: The type of this condition.
+                      type: string
+                  type: object
+                type: array
+              observedGeneration:
+                description: ObservedGeneration is the most recent generation observed
+                  for this Istio object. It corresponds to the object's generation,
+                  which is updated on mutation by the API Server. The information
+                  in the status pertains to this particular generation of the object.
+                format: int64
+                type: integer
+              state:
+                description: Reports the current state of the object.
+                type: string
             type: object
         type: object
     served: true
