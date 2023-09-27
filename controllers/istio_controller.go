@@ -113,26 +113,21 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	if istio.DeletionTimestamp != nil {
-		err := helm.UninstallCharts(r.RestClientGetter, systemCharts, istio.Name, kube.GetOperatorNamespace())
-		if err != nil {
+		if err := r.uninstallHelmCharts(&istio); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		err = helm.UninstallCharts(r.RestClientGetter, userCharts, istio.Name, istio.Namespace)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		err = kube.RemoveFinalizer(ctx, &istio, r.Client)
-		if err != nil {
+		if err := kube.RemoveFinalizer(ctx, &istio, r.Client); err != nil {
 			logger.Info("failed to remove finalizer")
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
+
 	if istio.Spec.Version == "" {
 		return ctrl.Result{}, fmt.Errorf("no spec.version set")
 	}
+
 	if !kube.HasFinalizer(&istio) {
 		err := kube.AddFinalizer(ctx, &istio, r.Client)
 		if err != nil {
@@ -140,6 +135,7 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			return ctrl.Result{}, err
 		}
 	}
+
 	s := strategy.Maistra30Strategy{}
 	err := s.ApplyDefaults(&istio)
 	if err != nil {
@@ -149,11 +145,15 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	values := istio.Spec.GetValues()
 
 	logger.Info("Installing components", "values", values)
-	defer func() {
-		logger.Info("Reconciliation complete. Writing status")
-		err = r.updateStatus(ctx, logger, &istio, values, err)
-	}()
+	err = r.installHelmCharts(ctx, istio, values)
 
+	logger.Info("Reconciliation done. Updating status.")
+	err = r.updateStatus(ctx, logger, &istio, values, err)
+
+	return ctrl.Result{}, err
+}
+
+func (r *IstioReconciler) installHelmCharts(ctx context.Context, istio v1alpha1.Istio, values map[string]interface{}) error {
 	ownerReference := metav1.OwnerReference{
 		APIVersion:         v1alpha1.GroupVersion.String(),
 		Kind:               v1alpha1.IstioKind,
@@ -163,19 +163,27 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		BlockOwnerDeletion: pointer.Bool(true),
 	}
 
-	err = helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, systemCharts, values,
-		istio.Spec.Version, istio.Name, kube.GetOperatorNamespace(), ownerReference, istio.Namespace)
-	if err != nil {
-		return ctrl.Result{}, err
+	if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, systemCharts, values,
+		istio.Spec.Version, istio.Name, kube.GetOperatorNamespace(), ownerReference, istio.Namespace); err != nil {
+		return err
 	}
 
-	err = helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, userCharts, values,
-		istio.Spec.Version, istio.Name, istio.Namespace, ownerReference, istio.Namespace)
-	if err != nil {
-		return ctrl.Result{}, err
+	if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, userCharts, values,
+		istio.Spec.Version, istio.Name, istio.Namespace, ownerReference, istio.Namespace); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *IstioReconciler) uninstallHelmCharts(istio *v1alpha1.Istio) error {
+	if err := helm.UninstallCharts(r.RestClientGetter, systemCharts, istio.Name, kube.GetOperatorNamespace()); err != nil {
+		return err
 	}
 
-	return ctrl.Result{}, nil
+	if err := helm.UninstallCharts(r.RestClientGetter, userCharts, istio.Name, istio.Namespace); err != nil {
+		return err
+	}
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
