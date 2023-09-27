@@ -35,10 +35,10 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 	"k8s.io/utils/pointer"
-	maistrav1 "maistra.io/istio-operator/api/v1alpha1"
+	"maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/helm"
-	"maistra.io/istio-operator/pkg/istio"
 	"maistra.io/istio-operator/pkg/kube"
+	"maistra.io/istio-operator/pkg/strategy"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -74,7 +74,7 @@ var systemCharts = map[string]string{
 	"istio-cni": "-cni",
 }
 
-// charts to deploy in the ihi namespace (and their suffixes)
+// charts to deploy in the istio namespace (and their suffixes)
 var userCharts = map[string]string{
 	"base":                          "-base",
 	"istio-control/istio-discovery": "-istiod",
@@ -102,8 +102,8 @@ var userCharts = map[string]string{
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithName("reconciler")
-	var ihi maistrav1.Istio
-	if err := r.Client.Get(ctx, req.NamespacedName, &ihi); err != nil {
+	var istio v1alpha1.Istio
+	if err := r.Client.Get(ctx, req.NamespacedName, &istio); err != nil {
 		if errors.IsNotFound(err) {
 			logger.V(2).Info("Istio not found. Skipping reconciliation")
 			return ctrl.Result{}, nil
@@ -111,41 +111,41 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		logger.Error(err, "failed to get Istio from cluster")
 	}
 
-	if ihi.DeletionTimestamp != nil {
-		err := helm.UninstallCharts(r.RestClientGetter, systemCharts, ihi.Name, kube.GetOperatorNamespace())
+	if istio.DeletionTimestamp != nil {
+		err := helm.UninstallCharts(r.RestClientGetter, systemCharts, istio.Name, kube.GetOperatorNamespace())
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		err = helm.UninstallCharts(r.RestClientGetter, userCharts, ihi.Name, ihi.Namespace)
+		err = helm.UninstallCharts(r.RestClientGetter, userCharts, istio.Name, istio.Namespace)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		err = kube.RemoveFinalizer(ctx, &ihi, r.Client)
+		err = kube.RemoveFinalizer(ctx, &istio, r.Client)
 		if err != nil {
 			logger.Info("failed to remove finalizer")
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
-	if ihi.Spec.Version == "" {
+	if istio.Spec.Version == "" {
 		return ctrl.Result{}, fmt.Errorf("no spec.version set")
 	}
-	if !kube.HasFinalizer(&ihi) {
-		err := kube.AddFinalizer(ctx, &ihi, r.Client)
+	if !kube.HasFinalizer(&istio) {
+		err := kube.AddFinalizer(ctx, &istio, r.Client)
 		if err != nil {
 			logger.Info("failed to add finalizer")
 			return ctrl.Result{}, err
 		}
 	}
-	s := istio.Maistra30Strategy{}
-	err := s.ApplyDefaults(&ihi)
+	s := strategy.Maistra30Strategy{}
+	err := s.ApplyDefaults(&istio)
 	if err != nil {
 		logger.Error(err, "failed to apply default values. requeuing request")
 		return ctrl.Result{Requeue: true}, nil
 	}
-	values := ihi.Spec.GetValues()
+	values := istio.Spec.GetValues()
 
 	logger.Info("Installing components", "values", values)
 	defer func() {
@@ -155,29 +155,29 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			logger.Error(err, "failed to marshal status")
 			return
 		}
-		err = r.Client.Status().Patch(ctx, &ihi, kube.NewStatusPatch(maistrav1.IstioStatus{AppliedValues: appliedValues}))
+		err = r.Client.Status().Patch(ctx, &istio, kube.NewStatusPatch(v1alpha1.IstioStatus{AppliedValues: appliedValues}))
 		if err != nil {
 			logger.Error(err, "failed to patch status")
 		}
 	}()
 
 	ownerReference := metav1.OwnerReference{
-		APIVersion:         maistrav1.GroupVersion.String(),
-		Kind:               maistrav1.IstioKind,
-		Name:               ihi.Name,
-		UID:                ihi.UID,
+		APIVersion:         v1alpha1.GroupVersion.String(),
+		Kind:               v1alpha1.IstioKind,
+		Name:               istio.Name,
+		UID:                istio.UID,
 		Controller:         pointer.Bool(true),
 		BlockOwnerDeletion: pointer.Bool(true),
 	}
 
 	err = helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, systemCharts, values,
-		ihi.Spec.Version, ihi.Name, kube.GetOperatorNamespace(), ownerReference, ihi.Namespace)
+		istio.Spec.Version, istio.Name, kube.GetOperatorNamespace(), ownerReference, istio.Namespace)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	err = helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, userCharts, values,
-		ihi.Spec.Version, ihi.Name, ihi.Namespace, ownerReference, ihi.Namespace)
+		istio.Spec.Version, istio.Name, istio.Namespace, ownerReference, istio.Namespace)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -190,7 +190,7 @@ func (r *IstioReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	clusterScopedResourceHandler := handler.EnqueueRequestsFromMapFunc(mapOwnerAnnotationsToReconcileRequest)
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&maistrav1.Istio{}).
+		For(&v1alpha1.Istio{}).
 
 		// namespaced resources
 		Owns(&corev1.ConfigMap{}).
@@ -229,7 +229,7 @@ func mapOwnerAnnotationsToReconcileRequest(obj client.Object) []reconcile.Reques
 	}
 
 	namespacedName, kind, apiGroup := helm.GetOwnerFromAnnotations(annotations)
-	if namespacedName != nil && kind == maistrav1.IstioKind && apiGroup == maistrav1.GroupVersion.Group {
+	if namespacedName != nil && kind == v1alpha1.IstioKind && apiGroup == v1alpha1.GroupVersion.Group {
 		return []reconcile.Request{{NamespacedName: *namespacedName}}
 	}
 	return nil

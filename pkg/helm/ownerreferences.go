@@ -16,7 +16,7 @@ const (
 
 // addOwnerReferenceVisitor returns a visitor function that adds the specified
 // OwnerReference to each resource it visits
-func addOwnerReferenceVisitor(ownerReference metav1.OwnerReference, ihiNamespace string) resource.VisitorFunc {
+func addOwnerReferenceVisitor(ownerReference metav1.OwnerReference, istioNamespace string) resource.VisitorFunc {
 	return func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
@@ -27,7 +27,7 @@ func addOwnerReferenceVisitor(ownerReference metav1.OwnerReference, ihiNamespace
 			return err
 		}
 
-		if objMeta.GetNamespace() == ihiNamespace {
+		if objMeta.GetNamespace() == istioNamespace {
 			objMeta.SetOwnerReferences([]metav1.OwnerReference{ownerReference})
 		} else {
 			annotations := objMeta.GetAnnotations()
@@ -35,7 +35,7 @@ func addOwnerReferenceVisitor(ownerReference metav1.OwnerReference, ihiNamespace
 				annotations = make(map[string]string)
 			}
 			ownerAPIGroup, _, _ := strings.Cut(ownerReference.APIVersion, "/")
-			annotations[AnnotationPrimaryResource] = ihiNamespace + "/" + ownerReference.Name
+			annotations[AnnotationPrimaryResource] = istioNamespace + "/" + ownerReference.Name
 			annotations[AnnotationPrimaryResourceType] = ownerReference.Kind + "." + ownerAPIGroup
 			objMeta.SetAnnotations(annotations)
 		}

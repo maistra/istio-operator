@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 	v1 "maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/common"
@@ -26,20 +25,20 @@ var testConfig = common.OperatorConfig{
 }
 
 var _ = Describe("IstioController", Ordered, func() {
-	const ihiName = "test-istio"
-	const namespaceName = "test"
+	const istioName = "test-istio"
+	const istioNamespace = "test"
 
 	ctx := context.Background()
 
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: namespaceName,
+			Name: istioNamespace,
 		},
 	}
 
-	ihiNamespacedName := types.NamespacedName{Name: ihiName, Namespace: namespaceName}
-	deploymentNamespacedName := types.NamespacedName{Name: "istiod", Namespace: namespaceName}
-	webhookNamespacedName := types.NamespacedName{Name: "istio-sidecar-injector-" + namespaceName}
+	istioObjectKey := client.ObjectKey{Name: istioName, Namespace: istioNamespace}
+	deploymentObjectKey := client.ObjectKey{Name: "istiod", Namespace: istioNamespace}
+	webhookObjectKey := client.ObjectKey{Name: "istio-sidecar-injector-" + istioNamespace}
 
 	common.Config = testConfig
 
@@ -56,46 +55,46 @@ var _ = Describe("IstioController", Ordered, func() {
 		_ = k8sClient.Delete(ctx, namespace)
 	})
 
-	ihi := &v1.Istio{}
+	istio := &v1.Istio{}
 
-	It("successfully reconciles the IHI", func() {
+	It("successfully reconciles the resource", func() {
 		By("Creating the custom resource")
-		err := k8sClient.Get(ctx, ihiNamespacedName, ihi)
+		err := k8sClient.Get(ctx, istioObjectKey, istio)
 		if err != nil && errors.IsNotFound(err) {
-			ihi = &v1.Istio{
+			istio = &v1.Istio{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      ihiName,
-					Namespace: namespaceName,
+					Name:      istioName,
+					Namespace: istioNamespace,
 				},
 				Spec: v1.IstioSpec{
 					Version: "v3.0",
 				},
 			}
 
-			err = k8sClient.Create(ctx, ihi)
+			err = k8sClient.Create(ctx, istio)
 			Expect(err).NotTo(HaveOccurred())
 		}
 
 		By("Checking if the custom resource was successfully created")
 		Eventually(func() error {
 			found := &v1.Istio{}
-			return k8sClient.Get(ctx, ihiNamespacedName, found)
+			return k8sClient.Get(ctx, istioObjectKey, found)
 		}, time.Minute, time.Second).Should(Succeed())
 
 		istiodDeployment := &appsv1.Deployment{}
 		By("Checking if Deployment was successfully created in the reconciliation")
 		Eventually(func() error {
-			return k8sClient.Get(ctx, deploymentNamespacedName, istiodDeployment)
+			return k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
 		}, time.Minute, time.Second).Should(Succeed())
 		Expect(istiodDeployment.Spec.Template.Spec.Containers[0].Image).To(Equal(testConfig.Images3_0.Istiod))
-		Expect(istiodDeployment.ObjectMeta.OwnerReferences).To(ContainElement(expectedOwnerReference(ihi)))
+		Expect(istiodDeployment.ObjectMeta.OwnerReferences).To(ContainElement(expectedOwnerReference(istio)))
 
 		By("Checking if the status was written properly")
 		Eventually(func() string {
-			err := k8sClient.Get(ctx, ihiNamespacedName, ihi)
+			err := k8sClient.Get(ctx, istioObjectKey, istio)
 			Expect(err).NotTo(HaveOccurred())
 
-			vals := ihi.Status.GetAppliedValues()
+			vals := istio.Status.GetAppliedValues()
 			imageName, _, err := unstructured.NestedString(vals, "pilot", "image")
 			Expect(err).NotTo(HaveOccurred())
 			return imageName
@@ -107,18 +106,18 @@ var _ = Describe("IstioController", Ordered, func() {
 			istiodDeployment := &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "istiod",
-					Namespace: namespaceName,
+					Namespace: istioNamespace,
 				},
 			}
 			err := k8sClient.Delete(ctx, istiodDeployment, client.PropagationPolicy(metav1.DeletePropagationForeground))
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() error {
-				return k8sClient.Get(ctx, deploymentNamespacedName, istiodDeployment)
+				return k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
 			}, time.Minute, time.Second).Should(Succeed())
 
 			Expect(istiodDeployment.Spec.Template.Spec.Containers[0].Image).To(Equal(testConfig.Images3_0.Istiod))
-			Expect(istiodDeployment.ObjectMeta.OwnerReferences).To(ContainElement(expectedOwnerReference(ihi)))
+			Expect(istiodDeployment.ObjectMeta.OwnerReferences).To(ContainElement(expectedOwnerReference(istio)))
 		})
 	})
 
@@ -126,14 +125,14 @@ var _ = Describe("IstioController", Ordered, func() {
 		It("recreates the owned resource", func() {
 			webhook := &admissionv1.MutatingWebhookConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: webhookNamespacedName.Name,
+					Name: webhookObjectKey.Name,
 				},
 			}
 			err := k8sClient.Delete(ctx, webhook, client.PropagationPolicy(metav1.DeletePropagationForeground))
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() error {
-				err := k8sClient.Get(ctx, webhookNamespacedName, webhook)
+				err := k8sClient.Get(ctx, webhookObjectKey, webhook)
 				return err
 			}, time.Minute, time.Second).Should(Succeed())
 		})
@@ -142,7 +141,7 @@ var _ = Describe("IstioController", Ordered, func() {
 	When("an owned namespaced resource is modified", func() {
 		It("reverts the owned resource", func() {
 			istiodDeployment := &appsv1.Deployment{}
-			err := k8sClient.Get(ctx, deploymentNamespacedName, istiodDeployment)
+			err := k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
 			Expect(err).NotTo(HaveOccurred())
 
 			originalImage := istiodDeployment.Spec.Template.Spec.Containers[0].Image
@@ -151,7 +150,7 @@ var _ = Describe("IstioController", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() string {
-				err := k8sClient.Get(ctx, deploymentNamespacedName, istiodDeployment)
+				err := k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
 				Expect(err).NotTo(HaveOccurred())
 				return istiodDeployment.Spec.Template.Spec.Containers[0].Image
 			}, time.Minute, time.Second).Should(Equal(originalImage))
@@ -161,7 +160,7 @@ var _ = Describe("IstioController", Ordered, func() {
 	When("an owned cluster-scoped resource is modified", func() {
 		It("reverts the owned resource", func() {
 			webhook := &admissionv1.MutatingWebhookConfiguration{}
-			err := k8sClient.Get(ctx, webhookNamespacedName, webhook)
+			err := k8sClient.Get(ctx, webhookObjectKey, webhook)
 			Expect(err).NotTo(HaveOccurred())
 
 			origWebhooks := webhook.Webhooks
@@ -170,7 +169,7 @@ var _ = Describe("IstioController", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() []admissionv1.MutatingWebhook {
-				err := k8sClient.Get(ctx, webhookNamespacedName, webhook)
+				err := k8sClient.Get(ctx, webhookObjectKey, webhook)
 				Expect(err).NotTo(HaveOccurred())
 				return webhook.Webhooks
 			}, time.Minute, time.Second).Should(Equal(origWebhooks))
@@ -178,12 +177,12 @@ var _ = Describe("IstioController", Ordered, func() {
 	})
 })
 
-func expectedOwnerReference(ihi *v1.Istio) metav1.OwnerReference {
+func expectedOwnerReference(istio *v1.Istio) metav1.OwnerReference {
 	return metav1.OwnerReference{
 		APIVersion:         v1.GroupVersion.String(),
 		Kind:               v1.IstioKind,
-		Name:               ihi.Name,
-		UID:                ihi.UID,
+		Name:               istio.Name,
+		UID:                istio.UID,
 		Controller:         pointer.Bool(true),
 		BlockOwnerDeletion: pointer.Bool(true),
 	}
