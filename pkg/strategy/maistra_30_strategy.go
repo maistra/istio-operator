@@ -1,4 +1,4 @@
-package istio
+package strategy
 
 import (
 	"strings"
@@ -10,14 +10,14 @@ import (
 
 type Maistra30Strategy struct{}
 
-func (s *Maistra30Strategy) ApplyDefaults(ihi *v1.Istio) error {
-	values := ihi.Spec.GetValues()
+func (s *Maistra30Strategy) ApplyDefaults(istio *v1.Istio) error {
+	values := istio.Spec.GetValues()
 	if values == nil {
 		values = make(map[string]interface{})
 	}
 
 	// TODO: move this to a profile or similar file
-	err := setIfNotPresent(values, "global.istioNamespace", ihi.Namespace)
+	err := setIfNotPresent(values, "global.istioNamespace", istio.Namespace)
 	if err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ func (s *Maistra30Strategy) ApplyDefaults(ihi *v1.Istio) error {
 		return err
 	}
 
-	return ihi.Spec.SetValues(values)
+	return istio.Spec.SetValues(values)
 }
 
 func setIfNotPresent(values map[string]interface{}, key string, value interface{}) error {
