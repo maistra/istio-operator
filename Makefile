@@ -187,7 +187,7 @@ collect-2.2-charts:
 collect-2.2-templates:
 	mkdir -p ${TEMPLATES_OUT_DIR}/v2.2
 	cp ${RESOURCES_DIR}/smcp-templates/v2.2/${BUILD_TYPE} ${TEMPLATES_OUT_DIR}/v2.2/default
-	find ${RESOURCES_DIR}/smcp-templates/v2.2/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" |xargs cp {} ${TEMPLATES_OUT_DIR}/v2.2
+	find ${RESOURCES_DIR}/smcp-templates/v2.2/ -maxdepth 1 -type f ! -name "maistra" ! -name "servicemesh" -exec cp {} ${TEMPLATES_OUT_DIR}/v2.2/ \;
 
 ################################################################################
 # OLM manifest generation
