@@ -222,5 +222,7 @@ spec:
   {{- end }}
   {{- if eq (env "ENABLE_LEGACY_FSGROUP_INJECTION" "true") "true" }}
   securityContext:
+    {{- if .ProxyGID }}
     fsGroup: {{ .ProxyGID }}
+    {{- end }}
   {{- end }}

@@ -13,7 +13,7 @@ require (
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-logr/logr v0.2.1
 	github.com/goccy/go-yaml v1.8.8
-	github.com/google/go-cmp v0.5.2
+	github.com/google/go-cmp v0.5.8
 	github.com/gregjones/httpcache v0.0.0-20181110185634-c63ab54fda8f // indirect
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.1.0
 	github.com/magiconair/properties v1.8.1
@@ -24,7 +24,7 @@ require (
 	github.com/openshift/library-go v0.0.0-20200214084717-e77ad9dd8ebd
 	github.com/operator-framework/operator-sdk v0.18.0
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.5.1
+	github.com/prometheus/client_golang v1.10.0
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0

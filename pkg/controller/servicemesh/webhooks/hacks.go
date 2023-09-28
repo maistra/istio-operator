@@ -191,7 +191,7 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 	monclient, _ := clientmonitoring.NewForConfig(mgr.GetConfig())
 	prometheusRule := newPrometheusRule(operatorNamespace,
 		"maistra-operator-prometheusrule",
-		"sum without (smcp_namespace) (servicemesh_members)",
+		"sum by (smcp_version, smcp_mode) (servicemesh_members)",
 		"cluster:servicemesh_members:sum")
 	if _, err := monclient.PrometheusRules(operatorNamespace).Create(context.TODO(),
 		prometheusRule, metav1.CreateOptions{}); err != nil {
