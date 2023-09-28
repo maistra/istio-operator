@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	clientmonitoring "github.com/coreos/prometheus-operator/pkg/client/versioned/typed/monitoring/v1"
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
@@ -183,6 +185,23 @@ func createWebhookResources(ctx context.Context, mgr manager.Manager, log logr.L
 	if webhookServiceCreated {
 		log.Info("Restarting to obtain the Maistra webhook Secret and CA bundle ConfigMap...")
 		os.Exit(0)
+	}
+
+	log.Info("Creating Maistra Operator webhook PrometheusRule")
+	monclient, _ := clientmonitoring.NewForConfig(mgr.GetConfig())
+	prometheusRule := newPrometheusRule(operatorNamespace,
+		"maistra-operator-prometheusrule",
+		"sum by (smcp_version, smcp_mode) (servicemesh_members)",
+		"cluster:servicemesh_members:sum")
+	if _, err := monclient.PrometheusRules(operatorNamespace).Create(context.TODO(),
+		prometheusRule, metav1.CreateOptions{}); err != nil {
+		if errors.IsAlreadyExists(err) {
+			log.Info("Maistra Operator webhook PrometheusRule already exists")
+		} else {
+			log.Error(err, "warning: failed to create Maistra Operator webhook PrometheusRule")
+			mgr.GetEventRecorderFor("maistra-operator-prometheusrule-webhook").Event(prometheusRule,
+				"Warning", "Failed", "Failed to create Maistra Operator webhook PrometheusRule")
+		}
 	}
 
 	return nil
@@ -393,6 +412,28 @@ func rulesFor(resource string, versions []string, operations ...admissionv1.Oper
 				Resources:   []string{resource},
 			},
 			Operations: operations,
+		},
+	}
+}
+
+func newPrometheusRule(namespace, ruleName, ruleExpr, ruleRecord string) *monitoringv1.PrometheusRule {
+	return &monitoringv1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ruleName,
+			Namespace: namespace,
+		},
+		Spec: monitoringv1.PrometheusRuleSpec{
+			Groups: []monitoringv1.RuleGroup{
+				{
+					Name: ruleName + ".rules",
+					Rules: []monitoringv1.Rule{
+						{
+							Expr:   intstr.FromString(ruleExpr),
+							Record: ruleRecord,
+						},
+					},
+				},
+			},
 		},
 	}
 }

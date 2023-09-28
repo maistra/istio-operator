@@ -17,6 +17,7 @@ metadata:
     createdAt: __DATE__
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <__SEMANTIC_VERSION__"
+    __OLM_CLUSTER_MONITORING__
     operators.openshift.io/infrastructure-features: '__OLM_FEATURES__'
     __OLM_SUBSCRIPTION_ANNOTATION__
     alm-examples: |-

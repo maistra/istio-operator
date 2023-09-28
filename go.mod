@@ -7,12 +7,13 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
 	github.com/containerd/typeurl v0.0.0-20190228175220-2a93cfde8c20 // indirect
+	github.com/coreos/prometheus-operator v0.38.1-0.20200424145508-7e176fda06cc
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-logr/logr v0.2.1
 	github.com/goccy/go-yaml v1.8.8
-	github.com/google/go-cmp v0.5.2
+	github.com/google/go-cmp v0.5.8
 	github.com/gregjones/httpcache v0.0.0-20181110185634-c63ab54fda8f // indirect
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.1.0
 	github.com/magiconair/properties v1.8.1
@@ -23,6 +24,7 @@ require (
 	github.com/openshift/library-go v0.0.0-20200214084717-e77ad9dd8ebd
 	github.com/operator-framework/operator-sdk v0.18.0
 	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.10.0
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
