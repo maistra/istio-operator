@@ -58,7 +58,7 @@ function set_values() {
     config_name=$(echo "$field" | awk -F':' '{print $1}')
     config_value=$(echo "$field" | awk -F':' '{print $2}')
     if [[ "${config_name}" =~ .*Config ]]; then
-      values["${config_name}"]="${config_value}"
+      values["${config_value}"]="${config_name}"
     fi
   done
 }
@@ -95,25 +95,25 @@ function convert_type_to_yaml () {
 
 function set_fields() {
   if [ $# -ne 3 ]; then
-    echo "Usage: set_fields <proto_file> <crd_file> <config>"
+    echo "Usage: set_fields <proto_file> <crd_file> <value_name>"
     exit 1
   fi
 
   local proto_file="${1}"
   local crd_file="${2}"
-  local config="${3}"
+  local value_name="${3}"
 
   set_values "${proto_file}"
 
-  ${YQ} -i "( ${values_yaml_path}.properties.${values["${config}"]}.type ) = \"object\"" "${CRD_FILE}"
+  ${YQ} -i "( ${values_yaml_path}.properties.${value_name}.type ) = \"object\"" "${CRD_FILE}"
 
   local config_fields
-  config_fields="$(get_fields "${proto_file}" "${config}")"
+  config_fields="$(get_fields "${proto_file}" "${values["${value_name}"]}")"
 
   for field in ${config_fields}; do
     type=$(echo "$field" | awk -F':' '{print $1}')
     name=$(echo "$field" | awk -F':' '{print $2}')
-    ${YQ} -i "( ${values_yaml_path}.properties.${values["${config}"]}.properties.${name}.type ) = \"$(convert_type_to_yaml "${type}")\"" "${CRD_FILE}"
+    ${YQ} -i "( ${values_yaml_path}.properties.${value_name}.properties.${name}.type ) = \"$(convert_type_to_yaml "${type}")\"" "${CRD_FILE}"
   done
 }
 
@@ -166,8 +166,8 @@ ${YQ} -i "( ${values_yaml_path}.type ) = \"object\" |
 
 set_values "${values_types_proto_file}"
 
-for config in "${!values[@]}"; do
-  set_fields "${values_types_proto_file}" "${CRD_FILE}" "${config}"
+for value in "${!values[@]}"; do
+  set_fields "${values_types_proto_file}" "${CRD_FILE}" "${value}"
 done
 
 # set the nested fields
@@ -180,3 +180,6 @@ while true;  do
     set_nested_config_fields "${values_types_proto_file}" "${CRD_FILE}" "${nested_config}"
   done
 done
+
+# sort values.properties recursively
+${YQ} -i "( eval( ${values_yaml_path}.properties) | sort_keys(..) )" "${CRD_FILE}"
