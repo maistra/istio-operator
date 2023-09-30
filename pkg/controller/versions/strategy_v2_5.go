@@ -66,10 +66,6 @@ var v2_5ChartMapping = map[string]chartRenderingDetails{
 		path:         "istio-telemetry/kiali",
 		enabledField: "kiali",
 	},
-	ThreeScaleChart: {
-		path:         "maistra-threescale",
-		enabledField: "",
-	},
 	MeshConfigChart: {
 		path:         "mesh-config",
 		enabledField: "",
@@ -86,7 +82,7 @@ var v2_5ChartOrder = [][]string{
 	{TelemetryCommonChart, PrometheusChart},
 	{TracingChart, GatewayIngressChart, GatewayEgressChart, GrafanaChart},
 	{KialiChart},
-	{ThreeScaleChart, RLSChart},
+	{RLSChart},
 }
 
 type versionStrategyV2_5 struct {
