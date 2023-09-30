@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    maistra-version: "2.5.0"
+    app: 3scale-istio-adapter
+    chart: {{ template "threescale.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: 3scale-istio-adapter
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: 3scale-istio-adapter
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        maistra-control-plane: {{ .Release.Namespace }}
+        app: 3scale-istio-adapter
+        chart: {{ template "threescale.chart" . }}
+        heritage: {{ .Release.Service }}
+        release: {{ .Release.Name }}
+    spec:
+      serviceAccountName: threescale-service-account
+      containers:
+      - name: 3scale-istio-adapter
+{{- if contains "/" .Values.image }}
+        image: "{{ .Values.image }}"
+{{- else }}
+        image: "{{ .Values.hub }}/{{ .Values.image }}:{{ .Values.tag }}"
+{{- end }}
+        imagePullPolicy: Always
+        ports:
+        - containerPort: {{ .Values.PARAM_THREESCALE_LISTEN_ADDR }}
+          protocol: TCP
+          name: adapter
+        - containerPort: {{ .Values.PARAM_THREESCALE_METRICS_PORT }}
+          protocol: TCP
+          name: prometheus
+        env:
+        - name: "LISTEN_ADDR"
+          value: "{{ .Values.PARAM_THREESCALE_LISTEN_ADDR }}"
+        - name: "LOG_LEVEL"
+          value: "{{ .Values.PARAM_THREESCALE_LOG_LEVEL }}"
+        - name: "LOG_JSON"
+          value: "{{ .Values.PARAM_THREESCALE_LOG_JSON }}"
+        - name: "LOG_GRPC"
+          value: "{{ .Values.PARAM_THREESCALE_LOG_GRPC }}"
+        - name: "REPORT_METRICS"
+          value: "{{ .Values.PARAM_THREESCALE_REPORT_METRICS }}"
+        - name: "METRICS_PORT"
+          value: "{{ .Values.PARAM_THREESCALE_METRICS_PORT }}"
+        - name: "CACHE_TTL_SECONDS"
+          value: "{{ .Values.PARAM_THREESCALE_CACHE_TTL_SECONDS }}"
+        - name: "CACHE_REFRESH_SECONDS"
+          value: "{{ .Values.PARAM_THREESCALE_CACHE_REFRESH_SECONDS }}"
+        - name: "CACHE_ENTRIES_MAX"
+          value: "{{ .Values.PARAM_THREESCALE_CACHE_ENTRIES_MAX }}"
+        - name: "CACHE_REFRESH_RETRIES"
+          value: "{{ .Values.PARAM_THREESCALE_CACHE_REFRESH_RETRIES }}"
+        - name: "ALLOW_INSECURE_CONN"
+          value: "{{ .Values.PARAM_THREESCALE_ALLOW_INSECURE_CONN }}"
+        - name: "CLIENT_TIMEOUT_SECONDS"
+          value: "{{ .Values.PARAM_THREESCALE_CLIENT_TIMEOUT_SECONDS }}"
+        - name: "GRPC_CONN_MAX_SECONDS"
+          value: "{{ .Values.PARAM_THREESCALE_GRPC_CONN_MAX_SECONDS }}"
+        - name: "USE_CACHED_BACKEND"
+          value: "{{ .Values.PARAM_THREESCALE_USE_CACHED_BACKEND }}"
+        - name: "BACKEND_CACHE_FLUSH_INTERVAL_SECONDS"
+          value: "{{ .Values.PARAM_THREESCALE_BACKEND_CACHE_FLUSH_INTERVAL_SECONDS }}"
+        - name: "BACKEND_CACHE_POLICY_FAIL_CLOSED"
+          value: "{{ .Values.PARAM_THREESCALE_BACKEND_CACHE_POLICY_FAIL_CLOSED }}"
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      securityContext: {}
+      terminationGracePeriodSeconds: 30

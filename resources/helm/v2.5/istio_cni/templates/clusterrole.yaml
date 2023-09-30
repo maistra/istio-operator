@@ -1,0 +1,24 @@
+{{ if .Values.cni.enabled }}
+{{ if or (eq .Values.cni.instanceVersion "v2.0") (eq .Values.cni.instanceVersion "v2.1") (eq .Values.cni.instanceVersion "v2.2") (eq .Values.cni.instanceVersion "v2.3")}}
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  labels:
+    maistra-version: "2.5.0"
+  name: istio-cni
+rules:
+  - apiGroups: [""]
+    resources:
+      - pods
+    verbs:
+      - get
+  - apiGroups:
+      - security.openshift.io
+    resources:
+      - securitycontextconstraints
+    resourceNames:
+      - privileged
+    verbs:
+      - 'use'
+{{ end }}
+{{ end }}

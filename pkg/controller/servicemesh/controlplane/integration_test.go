@@ -82,9 +82,9 @@ func TestBootstrapping(t *testing.T) {
 	)
 
 	cniDaemonSetNames := map[versions.Version]string{
-		versions.V2_2: "istio-cni-node",
 		versions.V2_3: "istio-cni-node-v2-3",
 		versions.V2_4: "istio-cni-node-v2-4",
+		versions.V2_5: "istio-cni-node-v2-5",
 	}
 
 	type testCase struct {

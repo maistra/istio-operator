@@ -6,14 +6,14 @@ set -e -u
 # shellcheck source=build/sed-wrapper.sh
 source "$(dirname "${BASH_SOURCE[0]}")/sed-wrapper.sh"
 
-: "${MAISTRA_VERSION:=2.4.3}"
+: "${MAISTRA_VERSION:=2.5.0}"
 : "${MAISTRA_REPO:=https://github.com/maistra/istio}"
-: "${MAISTRA_BRANCH:=maistra-2.4}"
+: "${MAISTRA_BRANCH:=maistra-2.5}"
 
 : "${SOURCE_DIR:=$(pwd)}"
 : "${OUT_DIR:=${SOURCE_DIR}/tmp/_output}"
 
-: "${ISTIO_VERSION:=1.16.5}"
+: "${ISTIO_VERSION:=1.18.0}"
 
 RELEASES_DIR=${OUT_DIR}/helm/istio-releases
 

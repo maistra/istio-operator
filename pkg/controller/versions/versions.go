@@ -32,13 +32,14 @@ const (
 	V2_3
 	// V2_4 -> v2.4
 	V2_4
+	// V2_5 -> v2.5
+	V2_5
 	// Add new versions here, above lastKnownVersion. Remember to add a string mapping in init() below
 	lastKnownVersion Ver = iota - 1
 )
 
 var (
-	AllV2Versions  = []Version{V2_0, V2_1, V2_2, V2_3, V2_4}
-	TestedVersions = []Version{V2_2, V2_3, V2_4}
+	TestedVersions = []Version{V2_3, V2_4, V2_5}
 	legacyVersions = map[string]bool{
 		"v1.0": true,
 	}
@@ -53,6 +54,7 @@ func init() {
 		V2_2:           "v2.2",
 		V2_3:           "v2.3",
 		V2_4:           "v2.4",
+		V2_5:           "v2.5",
 	}
 
 	versionToStrategy = map[Ver]VersionStrategy{
@@ -63,6 +65,7 @@ func init() {
 		V2_2:           &versionStrategyV2_2{Ver: V2_2},
 		V2_3:           &versionStrategyV2_3{Ver: V2_3},
 		V2_4:           &versionStrategyV2_4{Ver: V2_4},
+		V2_5:           &versionStrategyV2_4{Ver: V2_5},
 	}
 
 	versionToCNINetwork = map[Ver]string{
@@ -73,6 +76,7 @@ func init() {
 		V2_2:           "v2-2-istio-cni",
 		V2_3:           "v2-3-istio-cni",
 		V2_4:           "v2-4-istio-cni",
+		V2_5:           "v2-5-istio-cni",
 	}
 
 	for v, str := range versionToString {

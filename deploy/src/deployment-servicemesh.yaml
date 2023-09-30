@@ -40,13 +40,20 @@ spec:
         olm.relatedImage.v2_3.wasm-cacher: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-pilot-rhel8:${OSSM_23}
         olm.relatedImage.v2_3.rls: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-ratelimit-rhel8:${OSSM_23}
         # 2.4 images
-        olm.relatedImage.v2_4.cni: ${OSSM_CNI_IMAGE}
-        olm.relatedImage.v2_4.grafana: ${OSSM_GRAFANA_IMAGE}
-        olm.relatedImage.v2_4.pilot: ${OSSM_PILOT_IMAGE}
+        olm.relatedImage.v2_4.cni: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-istio-cni-rhel8:${OSSM_24}
+        olm.relatedImage.v2_4.grafana: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-grafana-rhel8:${OSSM_24}
+        olm.relatedImage.v2_4.pilot: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-pilot-rhel8:${OSSM_24}
         olm.relatedImage.v2_4.prometheus: registry.redhat.io/openshift4/ose-prometheus:v4.12
         olm.relatedImage.v2_4.prometheus-config-reloader: registry.redhat.io/openshift4/ose-prometheus-config-reloader:v4.12
-        olm.relatedImage.v2_4.proxyv2: ${OSSM_PROXY_IMAGE}
-        olm.relatedImage.v2_4.rls: ${OSSM_RATELIMIT_IMAGE}
+        olm.relatedImage.v2_4.proxyv2: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-proxyv2-rhel8:${OSSM_24}
+        olm.relatedImage.v2_4.rls: registry-proxy.engineering.redhat.com/rh-osbs/openshift-service-mesh-ratelimit-rhel8:${OSSM_24}
+        # 2.5 images
+        olm.relatedImage.v2_5.cni: ${OSSM_CNI_IMAGE}
+        olm.relatedImage.v2_5.grafana: ${OSSM_GRAFANA_IMAGE}
+        olm.relatedImage.v2_5.pilot: ${OSSM_PILOT_IMAGE}
+        olm.relatedImage.v2_5.prometheus: registry.redhat.io/openshift4/ose-prometheus:v4.13
+        olm.relatedImage.v2_5.prometheus-config-reloader: registry.redhat.io/openshift4/ose-prometheus-config-reloader:v4.13
+        olm.relatedImage.v2_5.proxyv2: ${OSSM_PROXY_IMAGE}
 
         oauth-proxy.query: "true"
         oauth-proxy.namespace: openshift

@@ -1,0 +1,26 @@
+{{- if and .Values.cni.enabled (has "v2.4" .Values.cni.supportedReleases) (eq .Values.cni.instanceVersion "v2.4") }}
+# This ConfigMap is used to configure a self-hosted Istio CNI installation.
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  labels:
+    maistra-version: "2.5.0"
+  name: {{ .Values.cni.defaultResourceName }}-config-v2-4
+  namespace: {{ .Release.Namespace }}
+data:
+  # The CNI network configuration to add to the plugin chain on each node.  The special
+  # values in this config will be automatically populated.
+  cni_network_config: |-
+    {
+      "cniVersion": "0.3.1",
+      "name": "v2-4-istio-cni",
+      "type": "v2-4-istio-cni",
+      "log_level": {{ quote .Values.cni.logLevel }},
+      "log_uds_address": "__LOG_UDS_ADDRESS__",
+      "kubernetes": {
+          "kubeconfig": "__KUBECONFIG_FILEPATH__",
+          "cni_bin_dir": "{{ default "/opt/cni/bin" .Values.cni.cniBinDir }}",
+          "exclude_namespaces": [ "{{ .Release.Namespace }}" ]
+      }
+    }
+{{- end }}
