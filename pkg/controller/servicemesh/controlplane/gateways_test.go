@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"fmt"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -22,289 +23,254 @@ func TestAdditionalIngressGatewayInstall(t *testing.T) {
 	additionalGatewayName := "additional-gateway"
 	appNamespace := "app-namespace"
 	const gatewayLabel = "maistra.io/gateway"
-	testCases := []IntegrationTestCase{
-		{
-			name: "no-namespace",
-			smcp: New20SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
-				Gateways: &v2.GatewaysConfig{
-					ClusterIngress: &v2.ClusterIngressGatewayConfig{
-						IngressGatewayConfig: v2.IngressGatewayConfig{
-							GatewayConfig: v2.GatewayConfig{
-								Enablement: v2.Enablement{
-									Enabled: &enabled,
+	var testCases []IntegrationTestCase
+	for _, v := range versions.TestedVersions {
+		testCases = append(testCases,
+			IntegrationTestCase{
+				name: "no-namespace." + v.String(),
+				smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
+					Gateways: &v2.GatewaysConfig{
+						ClusterIngress: &v2.ClusterIngressGatewayConfig{
+							IngressGatewayConfig: v2.IngressGatewayConfig{
+								GatewayConfig: v2.GatewayConfig{
+									Enablement: v2.Enablement{
+										Enabled: &enabled,
+									},
+								},
+							},
+						},
+						IngressGateways: map[string]*v2.IngressGatewayConfig{
+							additionalGatewayName: {
+								GatewayConfig: v2.GatewayConfig{
+									Enablement: v2.Enablement{
+										Enabled: &enabled,
+									},
 								},
 							},
 						},
 					},
-					IngressGateways: map[string]*v2.IngressGatewayConfig{
-						additionalGatewayName: {
-							GatewayConfig: v2.GatewayConfig{
-								Enablement: v2.Enablement{
-									Enabled: &enabled,
-								},
-							},
-						},
+					Version: v.String(),
+				}),
+				create: IntegrationTestValidation{
+					Verifier: VerifyActions(
+						Verify("create").On("deployments").
+							Named("istio-ingressgateway").In(controlPlaneNamespace).
+							Passes(ExpectedLabelGatewayCreate(gatewayLabel, "istio-ingressgateway."+controlPlaneNamespace)),
+						Verify("create").On("deployments").
+							Named(additionalGatewayName).In(controlPlaneNamespace).
+							Passes(ExpectedLabelGatewayCreate(gatewayLabel, additionalGatewayName+"."+controlPlaneNamespace)),
+					),
+					Assertions: ActionAssertions{},
+				},
+				delete: IntegrationTestValidation{
+					Assertions: ActionAssertions{
+						Assert("delete").On("deployments").Named(additionalGatewayName).In(controlPlaneNamespace).IsSeen(),
 					},
 				},
-			}),
-			create: IntegrationTestValidation{
-				Verifier: VerifyActions(
-					Verify("create").On("deployments").
-						Named("istio-ingressgateway").In(controlPlaneNamespace).
-						Passes(ExpectedLabelGatewayCreate(gatewayLabel, "istio-ingressgateway."+controlPlaneNamespace)),
-					Verify("create").On("deployments").
+			},
+			IntegrationTestCase{
+				name: "cp-namespace." + v.String(),
+				smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
+					Gateways: &v2.GatewaysConfig{
+						IngressGateways: map[string]*v2.IngressGatewayConfig{
+							additionalGatewayName: {
+								GatewayConfig: v2.GatewayConfig{
+									Enablement: v2.Enablement{
+										Enabled: &enabled,
+									},
+									Namespace: controlPlaneNamespace,
+								},
+							},
+						},
+					},
+					Version: v.String(),
+				}),
+				create: IntegrationTestValidation{
+					Verifier: Verify("create").On("deployments").
 						Named(additionalGatewayName).In(controlPlaneNamespace).
 						Passes(ExpectedLabelGatewayCreate(gatewayLabel, additionalGatewayName+"."+controlPlaneNamespace)),
-				),
-				Assertions: ActionAssertions{},
-			},
-			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("deployments").Named(additionalGatewayName).In(controlPlaneNamespace).IsSeen(),
+					Assertions: ActionAssertions{},
+				},
+				delete: IntegrationTestValidation{
+					Assertions: ActionAssertions{
+						Assert("delete").On("deployments").Named(additionalGatewayName).In(controlPlaneNamespace).IsSeen(),
+					},
 				},
 			},
-		},
-		{
-			name: "cp-namespace",
-			smcp: New20SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
-				Gateways: &v2.GatewaysConfig{
-					IngressGateways: map[string]*v2.IngressGatewayConfig{
-						additionalGatewayName: {
-							GatewayConfig: v2.GatewayConfig{
-								Enablement: v2.Enablement{
-									Enabled: &enabled,
-								},
-								Namespace: controlPlaneNamespace,
+			IntegrationTestCase{
+				name: "app-namespace." + v.String(),
+				resources: []runtime.Object{
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: appNamespace}},
+					&v1.ServiceMeshMemberRoll{
+						ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: controlPlaneNamespace},
+						Status: v1.ServiceMeshMemberRollStatus{
+							ConfiguredMembers: []string{
+								appNamespace,
 							},
 						},
 					},
 				},
-			}),
-			create: IntegrationTestValidation{
-				Verifier: Verify("create").On("deployments").
-					Named(additionalGatewayName).In(controlPlaneNamespace).
-					Passes(ExpectedLabelGatewayCreate(gatewayLabel, additionalGatewayName+"."+controlPlaneNamespace)),
-				Assertions: ActionAssertions{},
-			},
-			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("deployments").Named(additionalGatewayName).In(controlPlaneNamespace).IsSeen(),
-				},
-			},
-		},
-		{
-			name: "app-namespace",
-			resources: []runtime.Object{
-				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: appNamespace}},
-				&v1.ServiceMeshMemberRoll{
-					ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: controlPlaneNamespace},
-					Status: v1.ServiceMeshMemberRollStatus{
-						ConfiguredMembers: []string{
-							appNamespace,
-						},
-					},
-				},
-			},
-			smcp: New20SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
-				Gateways: &v2.GatewaysConfig{
-					IngressGateways: map[string]*v2.IngressGatewayConfig{
-						additionalGatewayName: {
-							GatewayConfig: v2.GatewayConfig{
-								Enablement: v2.Enablement{
-									Enabled: &enabled,
+				smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
+					Gateways: &v2.GatewaysConfig{
+						IngressGateways: map[string]*v2.IngressGatewayConfig{
+							additionalGatewayName: {
+								GatewayConfig: v2.GatewayConfig{
+									Enablement: v2.Enablement{
+										Enabled: &enabled,
+									},
+									Namespace: appNamespace,
 								},
-								Namespace: appNamespace,
 							},
 						},
 					},
+					Version: v.String(),
+				}),
+				create: IntegrationTestValidation{
+					Verifier: Verify("create").On("deployments").
+						Named(additionalGatewayName).In(appNamespace).
+						Passes(ExpectedExternalGatewayCreate),
+					Assertions: ActionAssertions{},
 				},
-			}),
-			create: IntegrationTestValidation{
-				Verifier: Verify("create").On("deployments").
-					Named(additionalGatewayName).In(appNamespace).
-					Passes(ExpectedExternalGatewayCreate),
-				Assertions: ActionAssertions{},
-			},
-			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					// TODO: MAISTRA-1333 gateways in other namepsaces do not get deleted properly
-					// Assert("delete").On("deployments").Named(additionalGatewayName).In(appNamespace).IsSeen(),
+				delete: IntegrationTestValidation{
+					Assertions: ActionAssertions{
+						Assert("delete").On("deployments").Named(additionalGatewayName).In(appNamespace).IsSeen(),
+					},
 				},
 			},
-		},
-		{
-			name: "labels",
-			smcp: New20SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
-				Gateways: &v2.GatewaysConfig{
-					IngressGateways: map[string]*v2.IngressGatewayConfig{
-						additionalGatewayName: {
-							GatewayConfig: v2.GatewayConfig{
-								Enablement: v2.Enablement{
-									Enabled: &enabled,
-								},
-								Service: v2.GatewayServiceConfig{
-									Metadata: &v2.MetadataConfig{
-										Labels: map[string]string{
-											"test": "test",
+			IntegrationTestCase{
+				name: "labels." + v.String(),
+				smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
+					Gateways: &v2.GatewaysConfig{
+						IngressGateways: map[string]*v2.IngressGatewayConfig{
+							additionalGatewayName: {
+								GatewayConfig: v2.GatewayConfig{
+									Enablement: v2.Enablement{
+										Enabled: &enabled,
+									},
+									Service: v2.GatewayServiceConfig{
+										Metadata: &v2.MetadataConfig{
+											Labels: map[string]string{
+												"test": "test",
+											},
 										},
 									},
+									Namespace: controlPlaneNamespace,
 								},
-								Namespace: controlPlaneNamespace,
 							},
 						},
 					},
+					Version: v.String(),
+				}),
+				create: IntegrationTestValidation{
+					Verifier: VerifyActions(
+						Verify("create").On("networkpolicies").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(
+							ExpectedLabelMatchedByNetworkPolicy("istio", "ingressgateway"),
+						),
+						Verify("create").On("networkpolicies").Named(additionalGatewayName).In(controlPlaneNamespace).Passes(
+							ExpectedLabelMatchedByNetworkPolicy("test", "test"),
+						),
+						Verify("create").On("deployments").Named(additionalGatewayName).In(controlPlaneNamespace).Passes(
+							ExpectedLabelGatewayCreate("test", "test"),
+							ExpectedLabelGatewayCreate(gatewayLabel, additionalGatewayName+"."+controlPlaneNamespace),
+							ExpectedLabelGatewayCreate("app", additionalGatewayName),
+						),
+					),
+					Assertions: ActionAssertions{},
 				},
-			}),
-			create: IntegrationTestValidation{
-				Verifier: VerifyActions(
-					Verify("create").On("networkpolicies").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(
-						ExpectedLabelMatchedByNetworkPolicy("istio", "ingressgateway"),
-					),
-					Verify("create").On("networkpolicies").Named(additionalGatewayName).In(controlPlaneNamespace).Passes(
-						ExpectedLabelMatchedByNetworkPolicy("test", "test"),
-					),
-					Verify("create").On("deployments").Named(additionalGatewayName).In(controlPlaneNamespace).Passes(
-						ExpectedLabelGatewayCreate("test", "test"),
-					),
-				),
-				Assertions: ActionAssertions{},
-			},
-			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("deployments").Named(additionalGatewayName).In(controlPlaneNamespace).IsSeen(),
+				delete: IntegrationTestValidation{
+					Assertions: ActionAssertions{
+						Assert("delete").On("deployments").Named(additionalGatewayName).In(controlPlaneNamespace).IsSeen(),
+					},
 				},
 			},
-		},
-		{
-			name: "labels-2.1",
-			smcp: New21SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
-				Gateways: &v2.GatewaysConfig{
-					IngressGateways: map[string]*v2.IngressGatewayConfig{
-						additionalGatewayName: {
-							GatewayConfig: v2.GatewayConfig{
-								Enablement: v2.Enablement{
+			IntegrationTestCase{
+				name: "cluster-ingress-route-enabled." + v.String(),
+				smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
+					Gateways: &v2.GatewaysConfig{
+						ClusterIngress: &v2.ClusterIngressGatewayConfig{
+							IngressGatewayConfig: v2.IngressGatewayConfig{
+								RouteConfig: &v2.Enablement{
 									Enabled: &enabled,
 								},
-								Service: v2.GatewayServiceConfig{
-									Metadata: &v2.MetadataConfig{
-										Labels: map[string]string{
-											"test": "test",
-										},
-									},
+							},
+						},
+					},
+					Version: v.String(),
+				}),
+				create: IntegrationTestValidation{
+					Verifier: VerifyActions(
+						Verify("create").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(
+							ExpectedLabelGatewayCreate(gatewayLabel, "istio-ingressgateway."+controlPlaneNamespace),
+						),
+					),
+					Assertions: ActionAssertions{
+						Assert("create").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
+					},
+				},
+				delete: IntegrationTestValidation{
+					Assertions: ActionAssertions{
+						Assert("delete").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
+						Assert("delete").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
+					},
+				},
+			},
+			IntegrationTestCase{
+				name: "cluster-ingress-route-disabled." + v.String(),
+				smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
+					Gateways: &v2.GatewaysConfig{
+						ClusterIngress: &v2.ClusterIngressGatewayConfig{
+							IngressGatewayConfig: v2.IngressGatewayConfig{
+								RouteConfig: &v2.Enablement{
+									Enabled: &disabled,
 								},
-								Namespace: controlPlaneNamespace,
 							},
 						},
 					},
-				},
-			}),
-			create: IntegrationTestValidation{
-				Verifier: VerifyActions(
-					Verify("create").On("networkpolicies").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(
-						ExpectedLabelMatchedByNetworkPolicy("istio", "ingressgateway"),
+					Version: v.String(),
+				}),
+				create: IntegrationTestValidation{
+					Verifier: VerifyActions(
+						Verify("create").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(
+							ExpectedLabelGatewayCreate(gatewayLabel, "istio-ingressgateway."+controlPlaneNamespace),
+						),
 					),
-					Verify("create").On("networkpolicies").Named(additionalGatewayName).In(controlPlaneNamespace).Passes(
-						ExpectedLabelMatchedByNetworkPolicy("test", "test"),
-					),
-					Verify("create").On("deployments").Named(additionalGatewayName).In(controlPlaneNamespace).Passes(
-						ExpectedLabelGatewayCreate("test", "test"),
-						ExpectedLabelGatewayCreate(gatewayLabel, additionalGatewayName+"."+controlPlaneNamespace),
-						ExpectedLabelGatewayCreate("app", additionalGatewayName),
-					),
-				),
-				Assertions: ActionAssertions{},
-			},
-			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("deployments").Named(additionalGatewayName).In(controlPlaneNamespace).IsSeen(),
-				},
-			},
-		},
-		{
-			name: "cluster-ingress-route-enabled",
-			smcp: New21SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
-				Gateways: &v2.GatewaysConfig{
-					ClusterIngress: &v2.ClusterIngressGatewayConfig{
-						IngressGatewayConfig: v2.IngressGatewayConfig{
-							RouteConfig: &v2.Enablement{
-								Enabled: &enabled,
-							},
-						},
+					Assertions: ActionAssertions{
+						Assert("create").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsNotSeen(),
 					},
 				},
-			}),
-			create: IntegrationTestValidation{
-				Verifier: VerifyActions(
-					Verify("create").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(
-						ExpectedLabelGatewayCreate(gatewayLabel, "istio-ingressgateway."+controlPlaneNamespace),
-					),
-				),
-				Assertions: ActionAssertions{
-					Assert("create").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
-				},
-			},
-			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
-					Assert("delete").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
-				},
-			},
-		},
-		{
-			name: "cluster-ingress-route-disabled",
-			smcp: New21SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
-				Gateways: &v2.GatewaysConfig{
-					ClusterIngress: &v2.ClusterIngressGatewayConfig{
-						IngressGatewayConfig: v2.IngressGatewayConfig{
-							RouteConfig: &v2.Enablement{
-								Enabled: &disabled,
-							},
-						},
+				delete: IntegrationTestValidation{
+					Assertions: ActionAssertions{
+						Assert("delete").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
+						Assert("delete").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsNotSeen(),
 					},
 				},
-			}),
-			create: IntegrationTestValidation{
-				Verifier: VerifyActions(
-					Verify("create").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(
-						ExpectedLabelGatewayCreate(gatewayLabel, "istio-ingressgateway."+controlPlaneNamespace),
+			},
+			IntegrationTestCase{
+				// creating a route should be enabled by default
+				name: "cluster-ingress-route-undefined." + v.String(),
+				smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
+					Gateways: &v2.GatewaysConfig{
+						ClusterIngress: &v2.ClusterIngressGatewayConfig{},
+					},
+					Version: v.String(),
+				}),
+				create: IntegrationTestValidation{
+					Verifier: VerifyActions(
+						Verify("create").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(
+							ExpectedLabelGatewayCreate(gatewayLabel, "istio-ingressgateway."+controlPlaneNamespace),
+						),
 					),
-				),
-				Assertions: ActionAssertions{
-					Assert("create").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsNotSeen(),
+					Assertions: ActionAssertions{
+						Assert("create").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
+					},
 				},
-			},
-			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
-					Assert("delete").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsNotSeen(),
+				delete: IntegrationTestValidation{
+					Assertions: ActionAssertions{
+						Assert("delete").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
+						Assert("delete").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
+					},
 				},
-			},
-		},
-		{
-			// creating a route should be enabled by default
-			name: "cluster-ingress-route-undefined",
-			smcp: New21SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
-				Gateways: &v2.GatewaysConfig{
-					ClusterIngress: &v2.ClusterIngressGatewayConfig{},
-				},
-			}),
-			create: IntegrationTestValidation{
-				Verifier: VerifyActions(
-					Verify("create").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).Passes(
-						ExpectedLabelGatewayCreate(gatewayLabel, "istio-ingressgateway."+controlPlaneNamespace),
-					),
-				),
-				Assertions: ActionAssertions{
-					Assert("create").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
-				},
-			},
-			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("deployments").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
-					Assert("delete").On("routes").Named("istio-ingressgateway").In(controlPlaneNamespace).IsSeen(),
-				},
-			},
-		},
+			})
 	}
 	RunSimpleInstallTests(t, testCases)
 }
