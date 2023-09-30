@@ -33,35 +33,20 @@ import (
 )
 
 func TestDefaultInstall(t *testing.T) {
-	testCases := []IntegrationTestCase{
-		{
-			name: "default." + versions.V2_2.String(),
-			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: versions.V2_2.String()}),
+	var testCases []IntegrationTestCase
+	for _, v := range versions.TestedVersions {
+		testCases = append(testCases, IntegrationTestCase{
+			name: "default." + v.String(),
+			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: v.String()}),
 			create: IntegrationTestValidation{
-				Assertions: generateAssertions("create", "istiod-"+controlPlaneName, "wasm-cacher-"+controlPlaneName,
-					"istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
+				Assertions: generateAssertions("create",
+					"istiod-"+controlPlaneName, "istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
 			},
 			delete: IntegrationTestValidation{
-				Assertions: generateAssertions("delete", "istiod-"+controlPlaneName, "wasm-cacher-"+controlPlaneName,
-					"istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
+				Assertions: generateAssertions("delete",
+					"istiod-"+controlPlaneName, "istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
 			},
-		},
-	}
-	for _, v := range versions.TestedVersions {
-		if v.AtLeast(versions.V2_3) {
-			testCases = append(testCases, IntegrationTestCase{
-				name: "default." + v.String(),
-				smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: v.String()}),
-				create: IntegrationTestValidation{
-					Assertions: generateAssertions("create",
-						"istiod-"+controlPlaneName, "istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
-				},
-				delete: IntegrationTestValidation{
-					Assertions: generateAssertions("delete",
-						"istiod-"+controlPlaneName, "istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
-				},
-			})
-		}
+		})
 	}
 	RunSimpleInstallTests(t, testCases)
 }
