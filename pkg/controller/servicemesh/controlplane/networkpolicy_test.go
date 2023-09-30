@@ -12,61 +12,64 @@ import (
 const numberOfNetworkPolicies = 8
 
 func TestNetworkPolicy(t *testing.T) {
-	testCases := []IntegrationTestCase{
-		{
-			name: "np.enabled",
-			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
-				Version: versions.V2_1.String(),
-				Security: &v2.SecurityConfig{
-					ManageNetworkPolicy: ptrTrue,
+	var testCases []IntegrationTestCase
+	for _, v := range versions.TestedVersions {
+		testCases = append(testCases,
+			IntegrationTestCase{
+				name: "np.enabled." + v.String(),
+				smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
+					Version: v.String(),
+					Security: &v2.SecurityConfig{
+						ManageNetworkPolicy: ptrTrue,
+					},
+				}),
+				create: IntegrationTestValidation{
+					Assertions: ActionAssertions{
+						Assert("create").On("networkpolicies").In(controlPlaneNamespace).SeenCountIs(numberOfNetworkPolicies),
+					},
 				},
-			}),
-			create: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("create").On("networkpolicies").In(controlPlaneNamespace).SeenCountIs(numberOfNetworkPolicies),
-				},
-			},
-			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("networkpolicies").In(controlPlaneNamespace).SeenCountIs(numberOfNetworkPolicies),
-				},
-			},
-		},
-		{
-			name: "np.missing", // Same behavior as the above case, since the default value is `enabled`.
-			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
-				Version: versions.V2_1.String(),
-			}),
-			create: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("create").On("networkpolicies").In(controlPlaneNamespace).SeenCountIs(numberOfNetworkPolicies),
+				delete: IntegrationTestValidation{
+					Assertions: ActionAssertions{
+						Assert("delete").On("networkpolicies").In(controlPlaneNamespace).SeenCountIs(numberOfNetworkPolicies),
+					},
 				},
 			},
-			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("networkpolicies").In(controlPlaneNamespace).SeenCountIs(numberOfNetworkPolicies),
+			IntegrationTestCase{
+				name: "np.missing." + v.String(), // Same behavior as the above case, since the default value is `enabled`.
+				smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
+					Version: v.String(),
+				}),
+				create: IntegrationTestValidation{
+					Assertions: ActionAssertions{
+						Assert("create").On("networkpolicies").In(controlPlaneNamespace).SeenCountIs(numberOfNetworkPolicies),
+					},
+				},
+				delete: IntegrationTestValidation{
+					Assertions: ActionAssertions{
+						Assert("delete").On("networkpolicies").In(controlPlaneNamespace).SeenCountIs(numberOfNetworkPolicies),
+					},
 				},
 			},
-		},
-		{
-			name: "np.disabled",
-			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
-				Version: versions.V2_1.String(),
-				Security: &v2.SecurityConfig{
-					ManageNetworkPolicy: ptrFalse,
+			IntegrationTestCase{
+				name: "np.disabled." + v.String(),
+				smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &v2.ControlPlaneSpec{
+					Version: v.String(),
+					Security: &v2.SecurityConfig{
+						ManageNetworkPolicy: ptrFalse,
+					},
+				}),
+				create: IntegrationTestValidation{
+					Assertions: ActionAssertions{
+						Assert("create").On("networkpolicies").In(controlPlaneNamespace).IsNotSeen(),
+					},
 				},
-			}),
-			create: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("create").On("networkpolicies").In(controlPlaneNamespace).IsNotSeen(),
+				delete: IntegrationTestValidation{
+					Assertions: ActionAssertions{
+						Assert("delete").On("networkpolicies").In(controlPlaneNamespace).IsNotSeen(),
+					},
 				},
 			},
-			delete: IntegrationTestValidation{
-				Assertions: ActionAssertions{
-					Assert("delete").On("networkpolicies").In(controlPlaneNamespace).IsNotSeen(),
-				},
-			},
-		},
+		)
 	}
 	RunSimpleInstallTests(t, testCases)
 }
