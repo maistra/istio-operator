@@ -1311,7 +1311,6 @@ type conversionTestCase struct {
 	spec               *v2.ControlPlaneSpec
 	roundTripSpec      *v2.ControlPlaneSpec
 	isolatedIstio      *v1.HelmValues
-	isolatedThreeScale *v1.HelmValues
 	completeIstio      *v1.HelmValues
 	completeThreeScale *v1.HelmValues
 }
@@ -1404,10 +1403,6 @@ func TestCompleteJaegerConversionFromV2(t *testing.T) {
 	runTestCasesFromV2(jaegerTestCases, t)
 }
 
-func TestCompleteThreeScaleConversionFromV2(t *testing.T) {
-	runTestCasesFromV2(threeScaleTestCases, t)
-}
-
 func TestTechPreviewConversionFromV2(t *testing.T) {
 	runTestCasesFromV2(techPreviewTestCases, t)
 }
@@ -1472,15 +1467,9 @@ func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 			if diff := cmp.Diff(istio, smcpv1.Spec.Istio.DeepCopy().GetContent()); diff != "" {
 				t.Errorf("unexpected output converting v2 to Istio values: %s", diff)
 			}
-			threeScale := tc.isolatedThreeScale.DeepCopy().GetContent()
-			mergeMaps(tc.completeThreeScale.DeepCopy().GetContent(), threeScale)
-			if diff := cmp.Diff(threeScale, smcpv1.Spec.ThreeScale.DeepCopy().GetContent()); diff != "" {
-				t.Errorf("unexpected output converting v2 to ThreeScale values:%s", diff)
-			}
 			newsmcpv2 := &v2.ServiceMeshControlPlane{}
 			// use expected data
 			smcpv1.Spec.Istio = v1.NewHelmValues(istio).DeepCopy()
-			smcpv1.Spec.ThreeScale = v1.NewHelmValues(threeScale).DeepCopy()
 			if err := scheme.Convert(smcpv1, newsmcpv2, nil); err != nil {
 				t.Fatalf("error converting from values: %s", err)
 			}

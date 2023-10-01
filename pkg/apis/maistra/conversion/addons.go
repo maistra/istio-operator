@@ -41,12 +41,6 @@ func populateAddonsValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 		}
 	}
 
-	if in.Addons.ThreeScale != nil {
-		if err := populateThreeScaleAddonValues(in.Addons.ThreeScale, values); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -124,13 +118,6 @@ func populateAddonsConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 	grafana := &v2.GrafanaAddonConfig{}
 	if updated, err := populateGrafanaAddonConfig(in, grafana); updated {
 		addonsConfig.Grafana = grafana
-		setAddons = true
-	} else if err != nil {
-		return err
-	}
-	threeScale := &v2.ThreeScaleAddonConfig{}
-	if updated, err := populateThreeScaleAddonConfig(in, threeScale); updated {
-		addonsConfig.ThreeScale = threeScale
 		setAddons = true
 	} else if err != nil {
 		return err

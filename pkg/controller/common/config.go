@@ -122,7 +122,6 @@ type v2_4ImageNames struct {
 
 // v2_5ImageNames used by deployments
 type v2_5ImageNames struct {
-	ThreeScale               string `json:"3scale-istio-adapter,omitempty"`
 	CNI                      string `json:"cni,omitempty"`
 	Grafana                  string `json:"grafana,omitempty"`
 	Pilot                    string `json:"pilot,omitempty"`

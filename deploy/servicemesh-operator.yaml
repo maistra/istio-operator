@@ -217,67 +217,6 @@ spec:
             properties:
               addons:
                 properties:
-                  3scale:
-                    properties:
-                      backend:
-                        properties:
-                          cache_flush_interval:
-                            format: int32
-                            type: integer
-                          enable_cache:
-                            type: boolean
-                          policy_fail_closed:
-                            type: boolean
-                        type: object
-                      client:
-                        properties:
-                          allow_insecure_connections:
-                            type: boolean
-                          timeout:
-                            format: int32
-                            type: integer
-                        type: object
-                      enabled:
-                        type: boolean
-                      grpc:
-                        properties:
-                          max_conn_timeout:
-                            format: int32
-                            type: integer
-                        type: object
-                      listen_addr:
-                        format: int32
-                        type: integer
-                      log_grpc:
-                        type: boolean
-                      log_json:
-                        type: boolean
-                      log_level:
-                        type: string
-                      metrics:
-                        properties:
-                          port:
-                            format: int32
-                            type: integer
-                          report:
-                            type: boolean
-                        type: object
-                      system:
-                        properties:
-                          cache_max_size:
-                            format: int64
-                            type: integer
-                          cache_refresh_interval:
-                            format: int32
-                            type: integer
-                          cache_refresh_retries:
-                            format: int32
-                            type: integer
-                          cache_ttl:
-                            format: int32
-                            type: integer
-                        type: object
-                    type: object
                   grafana:
                     properties:
                       address:
@@ -5220,67 +5159,6 @@ spec:
                 properties:
                   addons:
                     properties:
-                      3scale:
-                        properties:
-                          backend:
-                            properties:
-                              cache_flush_interval:
-                                format: int32
-                                type: integer
-                              enable_cache:
-                                type: boolean
-                              policy_fail_closed:
-                                type: boolean
-                            type: object
-                          client:
-                            properties:
-                              allow_insecure_connections:
-                                type: boolean
-                              timeout:
-                                format: int32
-                                type: integer
-                            type: object
-                          enabled:
-                            type: boolean
-                          grpc:
-                            properties:
-                              max_conn_timeout:
-                                format: int32
-                                type: integer
-                            type: object
-                          listen_addr:
-                            format: int32
-                            type: integer
-                          log_grpc:
-                            type: boolean
-                          log_json:
-                            type: boolean
-                          log_level:
-                            type: string
-                          metrics:
-                            properties:
-                              port:
-                                format: int32
-                                type: integer
-                              report:
-                                type: boolean
-                            type: object
-                          system:
-                            properties:
-                              cache_max_size:
-                                format: int64
-                                type: integer
-                              cache_refresh_interval:
-                                format: int32
-                                type: integer
-                              cache_refresh_retries:
-                                format: int32
-                                type: integer
-                              cache_ttl:
-                                format: int32
-                                type: integer
-                            type: object
-                        type: object
                       grafana:
                         properties:
                           address:
