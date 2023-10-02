@@ -233,9 +233,14 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 	make deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: deploy-example
-deploy-example: ## Deploy an example Istio resource
+deploy-example: ## Deploy an example Istio resource on OpenShift
 	kubectl create ns istio-system || echo "namespace istio-system already exists"
 	kubectl apply -n istio-system -f config/samples/operator.istio.io_v1alpha1_istio.yaml
+
+.PHONY: deploy-example-kubernetes
+deploy-example-kubernetes: ## Deploy an example Istio resource on Kubernetes
+	kubectl create ns istio-system || echo "namespace istio-system already exists"
+	kubectl apply -n istio-system -f config/samples/operator.istio.io_v1alpha1_istio_kubernetes.yaml
 
 ##@ Generated Code & Resources
 
