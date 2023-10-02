@@ -24,7 +24,7 @@ OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
 CONTROL_PLANE_NS="${CONTROL_PLANE_NS:-istio-system}"
 
 BRANCH="${BRANCH:-maistra-3.0}"
-ISTIO_MANIFEST="${WD}/../../config/samples/operator.istio.io_v1alpha1_istio.yaml"
+ISTIO_MANIFEST="${WD}/../../config/samples/istio-sample-openshift.yaml"
 
 TIMEOUT="3m"
 

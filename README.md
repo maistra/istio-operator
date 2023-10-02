@@ -20,8 +20,15 @@ make deploy
 2. Create an instance of the Istio resource to install the Istio Control Plane:
 
 ```sh
-kubectl apply -f config/samples/operator.istio.io_v1alpha1_istio.yaml
+kubectl apply -f config/samples/istio-sample-openshift.yaml
 ```
+
+or 
+
+```sh
+kubectl apply -f config/samples/istio-sample-kubernetes.yaml
+```
+
 
 ### Undeploy controller
 UnDeploy the controller from the cluster:
