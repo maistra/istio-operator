@@ -20,10 +20,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path"
 	"reflect"
 	"regexp"
 
 	"github.com/go-logr/logr"
+	"gopkg.in/yaml.v3"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -32,6 +35,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
@@ -141,6 +145,12 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		logger.Error(err, "failed to apply default values. requeuing request")
 		return ctrl.Result{Requeue: true}, nil
 	}
+
+	if err := applyProfile(&istio, r.ResourceDirectory); err != nil {
+		err = r.updateStatus(ctx, logger, &istio, istio.Spec.GetValues(), err)
+		return ctrl.Result{}, err
+	}
+
 	values := istio.Spec.GetValues()
 
 	logger.Info("Installing components", "values", values)
@@ -325,6 +335,79 @@ func (r *IstioReconciler) determineReadyCondition(ctx context.Context, istio *v1
 	}
 }
 
+func applyProfile(istio *v1alpha1.Istio, resourceDir string) error {
+	profileName := istio.Spec.Profile
+	if profileName == "" {
+		profileName = "default"
+	}
+
+	profilesDir := path.Join(resourceDir, istio.Spec.Version, "profiles")
+	file := path.Join(profilesDir, profileName+".yaml")
+
+	// prevent path traversal attacks
+	if path.Dir(file) != path.Join(profilesDir) {
+		return fmt.Errorf("invalid profile name %s", profileName)
+	}
+
+	fileContents, err := os.ReadFile(file)
+	if err != nil {
+		return fmt.Errorf("failed to read profile file %v: %v", file, err)
+	}
+
+	var profile map[string]interface{}
+	err = yaml.Unmarshal(fileContents, &profile)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal profile YAML %s: %v", file, err)
+	}
+
+	profileValues, err := getValues(profile)
+	if err != nil {
+		return err
+	}
+	err = istio.Spec.SetValues(mergeValues(istio.Spec.GetValues(), profileValues))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func getValues(profile map[string]interface{}) (map[string]interface{}, error) {
+	val, found, err := unstructured.NestedFieldNoCopy(profile, "spec", "values")
+	if !found || err != nil {
+		return nil, err
+	}
+	m, ok := val.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("spec.values is not a map[string]interface{}")
+	}
+	return m, nil
+}
+
+func mergeValues(main map[string]interface{}, profile map[string]interface{}) map[string]interface{} {
+	if main == nil {
+		main = make(map[string]interface{}, 1)
+	}
+
+	for key, value := range profile {
+		// if the key doesn't already exist, add it
+		if _, exists := main[key]; !exists {
+			main[key] = value
+			continue
+		}
+
+		// at this point, key exists in both profile and main.
+		// If both are maps, recurse.
+		// If only profile is a map, ignore it. We don't want to overwrite main.
+		// If both are values, again, ignore it since we don't want to overwrite main.
+		if mainKeyAsMap, mainOK := main[key].(map[string]interface{}); mainOK {
+			if profileAsMap, profileOK := value.(map[string]interface{}); profileOK {
+				main[key] = mergeValues(mainKeyAsMap, profileAsMap)
+			}
+		}
+	}
+	return main
+}
+
 func cniDaemonSetKey() client.ObjectKey {
 	return client.ObjectKey{
 		Namespace: kube.GetOperatorNamespace(),
@@ -339,7 +422,7 @@ func istiodDeploymentKey(istio *v1alpha1.Istio) client.ObjectKey {
 	}
 }
 
-func mapOwnerAnnotationsToReconcileRequest(context context.Context, obj client.Object) []reconcile.Request {
+func mapOwnerAnnotationsToReconcileRequest(ctx context.Context, obj client.Object) []reconcile.Request {
 	annotations := obj.GetAnnotations()
 	if annotations == nil {
 		return nil

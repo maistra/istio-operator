@@ -33,7 +33,7 @@ import (
 
 var (
 	logger               = log.Log.WithName("helm")
-	ResourceDirectory, _ = filepath.Abs("resources/charts")
+	ResourceDirectory, _ = filepath.Abs("resources")
 )
 
 func UninstallCharts(restClientGetter genericclioptions.RESTClientGetter, charts map[string]string, releaseNameBase, ns string) error {
@@ -96,7 +96,7 @@ func upgradeOrInstallChart(ctx context.Context, cfg *action.Configuration,
 		}
 	}
 
-	chart, err := chartLoader.Load(path.Join(ResourceDirectory, "charts", chartVersion, chartName))
+	chart, err := chartLoader.Load(path.Join(ResourceDirectory, chartVersion, "charts", chartName))
 	if err != nil {
 		return nil, err
 	}

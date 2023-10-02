@@ -2,9 +2,12 @@ package controllers
 
 import (
 	"context"
+	"os"
+	"path"
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
@@ -294,5 +297,191 @@ func newCondition(conditionType v1.IstioConditionType, status bool, reason v1.Is
 		Type:   conditionType,
 		Status: st,
 		Reason: reason,
+	}
+}
+
+func TestApplyProfile(t *testing.T) {
+	resourceDir := t.TempDir()
+	profilesDir := path.Join(resourceDir, "v3.0", "profiles")
+	Must(t, os.MkdirAll(profilesDir, 0o755))
+
+	writeProfileFile := func(t *testing.T, path string, injectionURL string) {
+		Must(t, os.WriteFile(path, []byte(`
+apiVersion: operator.istio.io/v1alpha1
+kind: Istio
+spec:
+  values:
+    istiodRemote:
+      injectionURL: `+injectionURL), 0o644))
+	}
+
+	writeProfileFile(t, path.Join(resourceDir, "v3.0", "profiles", "default.yaml"), "value-in-default-profile")
+	writeProfileFile(t, path.Join(resourceDir, "v3.0", "profiles", "custom.yaml"), "value-in-custom-profile")
+	writeProfileFile(t, path.Join(resourceDir, "v3.0", "not-in-profiles-dir.yaml"), "should-not-be-accessible")
+
+	tests := []struct {
+		name       string
+		inputSpec  v1.IstioSpec
+		expectSpec v1.IstioSpec
+		expectErr  bool
+	}{
+		{
+			name: "no profile",
+			inputSpec: v1.IstioSpec{
+				Version: "v3.0",
+			},
+			expectSpec: v1.IstioSpec{
+				Version: "v3.0",
+				Values:  []byte(`{"istiodRemote":{"injectionURL":"value-in-default-profile"}}`),
+			},
+		},
+		{
+			name: "custom profile",
+			inputSpec: v1.IstioSpec{
+				Version: "v3.0",
+				Profile: "custom",
+			},
+			expectSpec: v1.IstioSpec{
+				Profile: "custom",
+				Version: "v3.0",
+				Values:  []byte(`{"istiodRemote":{"injectionURL":"value-in-custom-profile"}}`),
+			},
+		},
+		{
+			name: "profile not found",
+			inputSpec: v1.IstioSpec{
+				Version: "v3.0",
+				Profile: "invalid",
+			},
+			expectErr: true,
+		},
+		{
+			name: "path-traversal-attack",
+			inputSpec: v1.IstioSpec{
+				Version: "v3.0",
+				Profile: "../not-in-profiles-dir",
+			},
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := &v1.Istio{
+				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "istio-system"},
+				Spec:       tt.inputSpec,
+			}
+
+			expected := &v1.Istio{
+				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "istio-system"},
+				Spec:       tt.expectSpec,
+			}
+
+			err := applyProfile(actual, resourceDir)
+			if (err != nil) != tt.expectErr {
+				t.Errorf("applyProfile() error = %v, expectErr %v", err, tt.expectErr)
+			}
+
+			if err == nil {
+				if diff := cmp.Diff(expected, actual); diff != "" {
+					t.Errorf("profile wasn't applied properly; diff (-expected, +actual):\n%v", diff)
+				}
+			}
+		})
+	}
+}
+
+func TestMergeValues(t *testing.T) {
+	testCases := []struct {
+		name                  string
+		main, profile, expect map[string]interface{}
+	}{
+		{
+			name:    "both empty",
+			main:    make(map[string]interface{}),
+			profile: make(map[string]interface{}),
+			expect:  make(map[string]interface{}),
+		},
+		{
+			name:    "nil main",
+			main:    nil,
+			profile: map[string]interface{}{"key1": 42, "key2": "value"},
+			expect:  map[string]interface{}{"key1": 42, "key2": "value"},
+		},
+		{
+			name:    "nil profile",
+			main:    map[string]interface{}{"key1": 42, "key2": "value"},
+			profile: nil,
+			expect:  map[string]interface{}{"key1": 42, "key2": "value"},
+		},
+		{
+			name: "adds toplevel keys",
+			main: map[string]interface{}{
+				"key1": "from main",
+			},
+			profile: map[string]interface{}{
+				"key2": "from profile",
+			},
+			expect: map[string]interface{}{
+				"key1": "from main",
+				"key2": "from profile",
+			},
+		},
+		{
+			name: "adds nested keys",
+			main: map[string]interface{}{
+				"key1": map[string]interface{}{
+					"nested1": "from main",
+				},
+			},
+			profile: map[string]interface{}{
+				"key1": map[string]interface{}{
+					"nested2": "from profile",
+				},
+			},
+			expect: map[string]interface{}{
+				"key1": map[string]interface{}{
+					"nested1": "from main",
+					"nested2": "from profile",
+				},
+			},
+		},
+		{
+			name: "doesn't overwrite",
+			main: map[string]interface{}{
+				"key1": "from main",
+				"key2": map[string]interface{}{
+					"nested1": "from main",
+				},
+			},
+			profile: map[string]interface{}{
+				"key1": "from profile",
+				"key2": map[string]interface{}{
+					"nested1": "from profile",
+				},
+			},
+			expect: map[string]interface{}{
+				"key1": "from main",
+				"key2": map[string]interface{}{
+					"nested1": "from main",
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := mergeValues(tc.main, tc.profile)
+			if diff := cmp.Diff(tc.expect, result); diff != "" {
+				t.Errorf("unexpected merge result; diff (-expected, +actual):\n%v", diff)
+			}
+		})
+	}
+}
+
+func Must(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
 	}
 }
