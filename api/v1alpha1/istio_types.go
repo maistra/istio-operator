@@ -27,7 +27,11 @@ const IstioKind = "Istio"
 
 // IstioSpec defines the desired state of Istio
 type IstioSpec struct {
+	// Version defines the version of Istio to install. If not specified, the
+	// latest version supported by the operator is installed.
 	Version string `json:"version,omitempty"`
+
+	// Values defines the values to be passed to the Helm chart when installing Istio.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	Values json.RawMessage `json:"values,omitempty"`

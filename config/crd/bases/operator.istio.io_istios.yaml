@@ -53,8 +53,12 @@ spec:
             description: IstioSpec defines the desired state of Istio
             properties:
               values:
+                description: Values defines the values to be passed to the Helm chart
+                  when installing Istio.
                 x-kubernetes-preserve-unknown-fields: true
               version:
+                description: Version defines the version of Istio to install. If not
+                  specified, the latest version supported by the operator is installed.
                 type: string
             type: object
           status:
