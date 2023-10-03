@@ -80,3 +80,5 @@ replace bitbucket.org/ww/goautoneg => github.com/munnerz/goautoneg v0.0.0-201207
 replace github.com/operator-framework/operator-sdk => github.com/maistra/operator-sdk v0.0.0-20210824135520-3b25565223d4
 
 replace github.com/mikefarah/yaml/v2 => gopkg.in/yaml.v2 v2.4.0
+
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.4.8
