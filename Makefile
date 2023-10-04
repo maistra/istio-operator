@@ -160,6 +160,10 @@ help: ## Display this help.
 test: envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -coverprofile cover.out
 
+.PHONY: test.scorecard ## Runs the operator scorecard test. Needs a valid k8s cluster as pointed by the KUBECONFIG variable
+test.scorecard: operator-sdk
+	$(OPERATOR_SDK) scorecard bundle
+
 ##@ Build
 
 .PHONY: build
