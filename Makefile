@@ -228,6 +228,10 @@ deploy-yaml: kustomize ## Outputs YAML manifests needed to deploy the controller
 	cd config/default && $(KUSTOMIZE) edit set namespace ${NAMESPACE}
 	$(KUSTOMIZE) build config/default
 
+.PHONY: deploy-olm
+deploy-olm: bundle bundle-build bundle-push ## Builds and pushes the operator OLM bundle and then deploys the operator using OLM
+	$(OPERATOR_SDK) run bundle $(BUNDLE_IMG)
+
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	make deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
