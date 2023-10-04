@@ -50,3 +50,6 @@ cd "$(git rev-parse --show-toplevel)" && make deploy
 # Run the integration tests
 echo "Running integration tests"
 ./tests/integration/common-operator-integ-suite.sh --kind
+
+# Delete kind cluster
+kind delete cluster --name istio-operator
