@@ -37,7 +37,7 @@ for ((i = 1; i <= max_retries; i++)); do
     echo "Waiting for kind cluster to be running (Attempt $i/$max_retries)"
     sleep $retry_interval
 
-    if [ $i -eq $max_retries ]; then
+    if [ "$i" -eq "$max_retries" ]; then
         echo "Cluster is not ready after $max_retries attempts. Exiting."
         exit 1
     fi
