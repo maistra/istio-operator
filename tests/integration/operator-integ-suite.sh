@@ -58,7 +58,12 @@ if [ "${OCP}" == "true" ]; then
 fi
 
 BRANCH="${BRANCH:-maistra-3.0}"
-ISTIO_MANIFEST="${WD}/../../config/samples/istio-sample-kubernetes.yaml"
+
+if [ "${OCP}" == "true" ]; then
+  ISTIO_MANIFEST="${WD}/../../config/samples/istio-sample-openshift.yaml"
+else
+  ISTIO_MANIFEST="${WD}/../../config/samples/istio-sample-kubernetes.yaml"
+fi
 
 TIMEOUT="3m"
 
