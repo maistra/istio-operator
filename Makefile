@@ -458,5 +458,13 @@ lint: lint-scripts lint-go lint-yaml lint-helm lint-bundle lint-watches ## runs 
 .PHONY: test.integration.ocp
 test.integration.ocp:
 	$(info SOURCE_DIR: $(SOURCE_DIR))
-	${SOURCE_DIR}/tests/integration/operator-integ-suite-ocp.sh
+	${SOURCE_DIR}/tests/integration/operator-integ-suite.sh --ocp
+
+################################################################################
+# run an integration test on K8s
+################################################################################
+.PHONY: test.integration.k8s
+test.integration.k8s:
+	$(info SOURCE_DIR: $(SOURCE_DIR))
+	${SOURCE_DIR}/tests/integration/operator-integ-suite.sh --k8s
 
