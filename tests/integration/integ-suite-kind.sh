@@ -15,7 +15,7 @@
 # limitations under the License.
 
 WD=$(dirname "$0")
-WD=$(cd "$WD"; pwd)
+WD=$(cd "$WD" || exit; pwd)
 
 # verify if a kind cluster is running with the name istio-operator
 if ! kind get clusters | grep -q "istio-operator"; then

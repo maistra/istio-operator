@@ -44,7 +44,7 @@ else
 fi
 
 WD=$(dirname "$0")
-WD=$(cd "$WD"; pwd)
+WD=$(cd "$WD" || exit; pwd)
 
 set -eux -o pipefail
 
