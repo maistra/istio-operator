@@ -6,12 +6,14 @@ require (
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
+	github.com/containerd/containerd v1.4.8 // indirect
 	github.com/containerd/typeurl v0.0.0-20190228175220-2a93cfde8c20 // indirect
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-logr/logr v0.2.1
 	github.com/goccy/go-yaml v1.8.8
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/go-cmp v0.5.2
 	github.com/gregjones/httpcache v0.0.0-20181110185634-c63ab54fda8f // indirect
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.1.0
@@ -28,6 +30,7 @@ require (
 	github.com/spf13/viper v1.7.0
 	go.uber.org/zap v1.14.1
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
+	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.0.1
 	k8s.io/api v0.19.3
 	k8s.io/apiextensions-apiserver v0.18.6
