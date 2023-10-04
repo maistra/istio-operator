@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# To be able to run this script it's needed to pass the flag --ocp or --k8s
+# To be able to run this script it's needed to pass the flag --ocp or --kind
 if [ $# -eq 0 ]; then
   echo "No arguments provided"
   exit 1
@@ -26,7 +26,7 @@ while [ $# -gt 0 ]; do
       shift
       OCP=true
       ;;
-    --k8s)
+    --kind)
       shift
       OCP=false
       ;;
@@ -40,7 +40,7 @@ done
 if [ "${OCP}" == "true" ]; then
   echo "Running on OCP"
 else
-  echo "Running on K8s"
+  echo "Running on kind"
 fi
 
 WD=$(dirname "$0")

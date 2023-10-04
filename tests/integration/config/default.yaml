@@ -1,0 +1,7 @@
+# It's necesary to create control plane and node because of the reservation of CPU and memory. 
+# Only setting control planle it's not enough.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker

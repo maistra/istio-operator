@@ -4,11 +4,7 @@ This integration test suite is similar to the upstream Istio integration tests. 
 
 ## Pre-requisites
 
-* Install the operator: `https://github.com/fjglira/istio-operator/tree/maistra-3.0#:~:text=to%20the%20cluster%3A-,make%20deploy,-Create%20an%20instance`
-
-```
-$ cd "$(git rev-parse --show-toplevel)" && make deploy
-```
+* To perform OCP integration testing, it is essential to have a functional OCP (OpenShift Container Platform) cluster already running. However, when testing against a KinD (Kubernetes in Docker) environment, the KinD cluster will be automatically configured using the provided script.
 
 ## How to Run it Manually
 
@@ -34,7 +30,7 @@ $ docker cp `which oc` test:/bin
 ```
 *Note*: if you are running in arm64, you need to download the proper oc binary from the OCP cluster to be copied into the container. For example, if your architecture is arm64 and your os is macOs, you can download the oc binary from https://downloads-openshift-console.apps-crc.testing/arm64/linux/oc.tar and copy it into the container.
 
-3. Run `operator-integ-suite.sh --flag` in the builder container using the proper flag using the make target. Valid flags are `--ocp` and `--k8s`. 
+3. Run `operator-integ-suite.sh --flag` in the builder container using the proper flag using the make target. Valid flags are `--ocp` and `--kind`. 
 
 * To run in OCP cluster:
 ```
@@ -45,11 +41,11 @@ cd work
 (root@) make test.integration.ocp
 ```
 
-* To run in K8s cluster:
+* To run in kind cluster:
 ```
 $ docker exec -it test /bin/bash
 git config --global --add safe.directory /work
 export KUBECONFIG=/work/ci-kubeconfig
 cd work
-(root@) make test.integration.k8s
+(root@) make test.integration.kind
 ```
