@@ -17,6 +17,14 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 make deploy
 ```
 
+Alternatively, you can deploy the operator using OLM:
+
+```sh
+make deploy-olm
+```
+
+Make sure that the `HUB` and `TAG` environment variables point to your container image repository and that the repository is publicly accessible.
+
 2. Create an instance of the Istio resource to install the Istio Control Plane:
 
 ```sh
