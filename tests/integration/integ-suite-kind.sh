@@ -28,7 +28,7 @@ fi
 max_retries=30
 retry_interval=10
 
-for ((i=1; i<=$max_retries; i++)); do
+for ((i = 1; i <= max_retries; i++)); do
     if kind get clusters | grep -q "istio-operator"; then
         echo "Kind cluster is running"
         break
