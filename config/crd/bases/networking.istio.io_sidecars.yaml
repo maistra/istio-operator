@@ -30,17 +30,27 @@ spec:
               See more details at: https://istio.io/docs/reference/config/networking/sidecar.html'
             properties:
               egress:
+                description: Egress specifies the configuration of the sidecar for
+                  processing outbound traffic from the attached workload instance
+                  to other services in the mesh.
                 items:
                   properties:
                     bind:
+                      description: The IP(IPv4 or IPv6) or the Unix domain socket
+                        to which the listener should be bound to.
                       type: string
                     captureMode:
+                      description: When the bind address is an IP, the captureMode
+                        option dictates how traffic to the listener is expected to
+                        be captured (or not).
                       enum:
                       - DEFAULT
                       - IPTABLES
                       - NONE
                       type: string
                     hosts:
+                      description: One or more service hosts exposed by the listener
+                        in `namespace/dnsName` format.
                       items:
                         type: string
                       type: array
@@ -62,6 +72,8 @@ spec:
                   type: object
                 type: array
               ingress:
+                description: Ingress specifies the configuration of the sidecar for
+                  processing inbound traffic to the attached workload instance.
                 items:
                   properties:
                     bind:
@@ -69,12 +81,16 @@ spec:
                         be bound.
                       type: string
                     captureMode:
+                      description: The captureMode option dictates how traffic to
+                        the listener is expected to be captured (or not).
                       enum:
                       - DEFAULT
                       - IPTABLES
                       - NONE
                       type: string
                     defaultEndpoint:
+                      description: The IP endpoint or Unix domain socket to which
+                        traffic should be forwarded to.
                       type: string
                     port:
                       description: The port associated with the listener.
@@ -92,6 +108,9 @@ spec:
                           type: integer
                       type: object
                     tls:
+                      description: Set of TLS related options that will enable TLS
+                        termination on the sidecar for requests originating from outside
+                        the mesh.
                       properties:
                         caCertificates:
                           description: REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
@@ -103,8 +122,14 @@ spec:
                             type: string
                           type: array
                         credentialName:
+                          description: For gateways running on Kubernetes, the name
+                            of the secret that holds the TLS certs including the CA
+                            certificates.
                           type: string
                         httpsRedirect:
+                          description: If set to true, the load balancer will send
+                            a 301 redirect for all http connections, asking the clients
+                            to use HTTPS.
                           type: boolean
                         maxProtocolVersion:
                           description: 'Optional: Maximum TLS protocol version.'
@@ -125,6 +150,8 @@ spec:
                           - TLSV1_3
                           type: string
                         mode:
+                          description: 'Optional: Indicates whether connections to
+                            this port should be secured using TLS.'
                           enum:
                           - PASSTHROUGH
                           - SIMPLE
@@ -140,14 +167,20 @@ spec:
                           description: REQUIRED if mode is `SIMPLE` or `MUTUAL`.
                           type: string
                         subjectAltNames:
+                          description: A list of alternate names to verify the subject
+                            identity in the certificate presented by the client.
                           items:
                             type: string
                           type: array
                         verifyCertificateHash:
+                          description: An optional list of hex-encoded SHA-256 hashes
+                            of the authorized client certificates.
                           items:
                             type: string
                           type: array
                         verifyCertificateSpki:
+                          description: An optional list of base64-encoded SHA-256
+                            hashes of the SPKIs of authorized client certificates.
                           items:
                             type: string
                           type: array
@@ -180,10 +213,14 @@ spec:
                     type: string
                 type: object
               workloadSelector:
+                description: Criteria used to select the specific set of pods/VMs
+                  on which this `Sidecar` configuration should be applied.
                 properties:
                   labels:
                     additionalProperties:
                       type: string
+                    description: One or more labels that indicate a specific set of
+                      pods/VMs on which the configuration should be applied.
                     type: object
                 type: object
             type: object
@@ -204,17 +241,27 @@ spec:
               See more details at: https://istio.io/docs/reference/config/networking/sidecar.html'
             properties:
               egress:
+                description: Egress specifies the configuration of the sidecar for
+                  processing outbound traffic from the attached workload instance
+                  to other services in the mesh.
                 items:
                   properties:
                     bind:
+                      description: The IP(IPv4 or IPv6) or the Unix domain socket
+                        to which the listener should be bound to.
                       type: string
                     captureMode:
+                      description: When the bind address is an IP, the captureMode
+                        option dictates how traffic to the listener is expected to
+                        be captured (or not).
                       enum:
                       - DEFAULT
                       - IPTABLES
                       - NONE
                       type: string
                     hosts:
+                      description: One or more service hosts exposed by the listener
+                        in `namespace/dnsName` format.
                       items:
                         type: string
                       type: array
@@ -236,6 +283,8 @@ spec:
                   type: object
                 type: array
               ingress:
+                description: Ingress specifies the configuration of the sidecar for
+                  processing inbound traffic to the attached workload instance.
                 items:
                   properties:
                     bind:
@@ -243,12 +292,16 @@ spec:
                         be bound.
                       type: string
                     captureMode:
+                      description: The captureMode option dictates how traffic to
+                        the listener is expected to be captured (or not).
                       enum:
                       - DEFAULT
                       - IPTABLES
                       - NONE
                       type: string
                     defaultEndpoint:
+                      description: The IP endpoint or Unix domain socket to which
+                        traffic should be forwarded to.
                       type: string
                     port:
                       description: The port associated with the listener.
@@ -266,6 +319,9 @@ spec:
                           type: integer
                       type: object
                     tls:
+                      description: Set of TLS related options that will enable TLS
+                        termination on the sidecar for requests originating from outside
+                        the mesh.
                       properties:
                         caCertificates:
                           description: REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
@@ -277,8 +333,14 @@ spec:
                             type: string
                           type: array
                         credentialName:
+                          description: For gateways running on Kubernetes, the name
+                            of the secret that holds the TLS certs including the CA
+                            certificates.
                           type: string
                         httpsRedirect:
+                          description: If set to true, the load balancer will send
+                            a 301 redirect for all http connections, asking the clients
+                            to use HTTPS.
                           type: boolean
                         maxProtocolVersion:
                           description: 'Optional: Maximum TLS protocol version.'
@@ -299,6 +361,8 @@ spec:
                           - TLSV1_3
                           type: string
                         mode:
+                          description: 'Optional: Indicates whether connections to
+                            this port should be secured using TLS.'
                           enum:
                           - PASSTHROUGH
                           - SIMPLE
@@ -314,14 +378,20 @@ spec:
                           description: REQUIRED if mode is `SIMPLE` or `MUTUAL`.
                           type: string
                         subjectAltNames:
+                          description: A list of alternate names to verify the subject
+                            identity in the certificate presented by the client.
                           items:
                             type: string
                           type: array
                         verifyCertificateHash:
+                          description: An optional list of hex-encoded SHA-256 hashes
+                            of the authorized client certificates.
                           items:
                             type: string
                           type: array
                         verifyCertificateSpki:
+                          description: An optional list of base64-encoded SHA-256
+                            hashes of the SPKIs of authorized client certificates.
                           items:
                             type: string
                           type: array
@@ -354,10 +424,14 @@ spec:
                     type: string
                 type: object
               workloadSelector:
+                description: Criteria used to select the specific set of pods/VMs
+                  on which this `Sidecar` configuration should be applied.
                 properties:
                   labels:
                     additionalProperties:
                       type: string
+                    description: One or more labels that indicate a specific set of
+                      pods/VMs on which the configuration should be applied.
                     type: object
                 type: object
             type: object

@@ -62,6 +62,9 @@ spec:
                         conditions.
                       properties:
                         mode:
+                          description: This determines whether or not to apply the
+                            access logging configuration based on the direction of
+                            traffic relative to the proxied workload.
                           enum:
                           - CLIENT_AND_SERVER
                           - CLIENT
@@ -125,6 +128,8 @@ spec:
                                 - GRPC_RESPONSE_MESSAGES
                                 type: string
                               mode:
+                                description: 'Controls which mode of metrics generation
+                                  is selected: CLIENT and/or SERVER.'
                                 enum:
                                 - CLIENT_AND_SERVER
                                 - CLIENT
@@ -170,21 +175,19 @@ spec:
                   matchLabels:
                     additionalProperties:
                       type: string
+                    description: One or more labels that indicate a specific set of
+                      pods/VMs on which a policy should be applied.
                     type: object
                 type: object
               targetRef:
                 properties:
                   group:
-                    description: group is the group of the target resource.
                     type: string
                   kind:
-                    description: kind is kind of the target resource.
                     type: string
                   name:
-                    description: name is the name of the target resource.
                     type: string
                   namespace:
-                    description: namespace is the namespace of the referent.
                     type: string
                 type: object
               tracing:
@@ -222,6 +225,8 @@ spec:
                                 type: string
                             type: object
                           header:
+                            description: RequestHeader adds the value of an header
+                              from the request to each span.
                             properties:
                               defaultValue:
                                 description: Optional.
@@ -250,6 +255,9 @@ spec:
                       description: Allows tailoring of behavior to specific conditions.
                       properties:
                         mode:
+                          description: This determines whether or not to apply the
+                            tracing configuration based on the direction of traffic
+                            relative to the proxied workload.
                           enum:
                           - CLIENT_AND_SERVER
                           - CLIENT
@@ -266,6 +274,8 @@ spec:
                         type: object
                       type: array
                     randomSamplingPercentage:
+                      description: Controls the rate at which traffic will be selected
+                        for tracing if no prior sampling decision has been made.
                       nullable: true
                       type: number
                     useRequestIdForTraceSampling:

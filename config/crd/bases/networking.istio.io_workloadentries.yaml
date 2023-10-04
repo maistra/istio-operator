@@ -45,6 +45,8 @@ spec:
               more details at: https://istio.io/docs/reference/config/networking/workload-entry.html'
             properties:
               address:
+                description: Address associated with the network endpoint without
+                  the port.
                 type: string
               labels:
                 additionalProperties:
@@ -55,6 +57,8 @@ spec:
                 description: The locality associated with the endpoint.
                 type: string
               network:
+                description: Network enables Istio to group endpoints resident in
+                  the same L3 domain/network.
                 type: string
               ports:
                 additionalProperties:
@@ -62,6 +66,8 @@ spec:
                 description: Set of ports associated with the endpoint.
                 type: object
               serviceAccount:
+                description: The service account associated with the workload if a
+                  sidecar is present in the workload.
                 type: string
               weight:
                 description: The load balancing weight associated with the endpoint.
@@ -97,6 +103,8 @@ spec:
               more details at: https://istio.io/docs/reference/config/networking/workload-entry.html'
             properties:
               address:
+                description: Address associated with the network endpoint without
+                  the port.
                 type: string
               labels:
                 additionalProperties:
@@ -107,6 +115,8 @@ spec:
                 description: The locality associated with the endpoint.
                 type: string
               network:
+                description: Network enables Istio to group endpoints resident in
+                  the same L3 domain/network.
                 type: string
               ports:
                 additionalProperties:
@@ -114,6 +124,8 @@ spec:
                 description: Set of ports associated with the endpoint.
                 type: object
               serviceAccount:
+                description: The service account associated with the workload if a
+                  sidecar is present in the workload.
                 type: string
               weight:
                 description: The load balancing weight associated with the endpoint.

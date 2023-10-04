@@ -54,11 +54,15 @@ spec:
                 description: The name of a service from the service registry.
                 type: string
               subsets:
+                description: One or more named sets that represent individual versions
+                  of a service.
                 items:
                   properties:
                     labels:
                       additionalProperties:
                         type: string
+                      description: Labels apply a filter over the endpoints of a service
+                        in the service registry.
                       type: object
                     name:
                       description: Name of the subset.
@@ -80,6 +84,9 @@ spec:
                                   - UPGRADE
                                   type: string
                                 http1MaxPendingRequests:
+                                  description: Maximum number of requests that will
+                                    be queued while waiting for a ready connection
+                                    pool connection.
                                   format: int32
                                   type: integer
                                 http2MaxRequests:
@@ -97,6 +104,9 @@ spec:
                                   format: int32
                                   type: integer
                                 maxRetries:
+                                  description: Maximum number of retries that can
+                                    be outstanding to all hosts in a cluster at a
+                                    given time.
                                   format: int32
                                   type: integer
                                 useClientProtocol:
@@ -128,8 +138,14 @@ spec:
                                         probes.
                                       type: string
                                     probes:
+                                      description: Maximum number of keepalive probes
+                                        to send without response before deciding the
+                                        connection is dead.
                                       type: integer
                                     time:
+                                      description: The time duration a connection
+                                        needs to be idle before keep-alive probes
+                                        start being sent.
                                       type: string
                                   type: object
                               type: object
@@ -256,6 +272,8 @@ spec:
                                     implements consistent hashing to backend hosts.
                                   properties:
                                     minimumRingSize:
+                                      description: The minimum number of virtual nodes
+                                        to use for the hash ring.
                                       type: integer
                                   type: object
                                 useSourceIp:
@@ -296,6 +314,9 @@ spec:
                                         description: Originating region.
                                         type: string
                                       to:
+                                        description: Destination region the traffic
+                                          will fail over to when endpoints in the
+                                          'from' region becomes unhealthy.
                                         type: string
                                     type: object
                                   type: array
@@ -339,15 +360,22 @@ spec:
                               nullable: true
                               type: integer
                             consecutiveLocalOriginFailures:
+                              description: The number of consecutive locally originated
+                                failures before ejection occurs.
                               nullable: true
                               type: integer
                             interval:
                               description: Time interval between ejection sweep analysis.
                               type: string
                             maxEjectionPercent:
+                              description: Maximum % of hosts in the load balancing
+                                pool for the upstream service that can be ejected.
                               format: int32
                               type: integer
                             minHealthPercent:
+                              description: Outlier detection will be enabled as long
+                                as the associated load balancing pool has at least
+                                min_health_percent hosts in healthy mode.
                               format: int32
                               type: integer
                             splitExternalLocalOriginErrors:
@@ -374,6 +402,9 @@ spec:
                                         - UPGRADE
                                         type: string
                                       http1MaxPendingRequests:
+                                        description: Maximum number of requests that
+                                          will be queued while waiting for a ready
+                                          connection pool connection.
                                         format: int32
                                         type: integer
                                       http2MaxRequests:
@@ -391,6 +422,9 @@ spec:
                                         format: int32
                                         type: integer
                                       maxRetries:
+                                        description: Maximum number of retries that
+                                          can be outstanding to all hosts in a cluster
+                                          at a given time.
                                         format: int32
                                         type: integer
                                       useClientProtocol:
@@ -423,8 +457,14 @@ spec:
                                               keep-alive probes.
                                             type: string
                                           probes:
+                                            description: Maximum number of keepalive
+                                              probes to send without response before
+                                              deciding the connection is dead.
                                             type: integer
                                           time:
+                                            description: The time duration a connection
+                                              needs to be idle before keep-alive probes
+                                              start being sent.
                                             type: string
                                         type: object
                                     type: object
@@ -555,6 +595,8 @@ spec:
                                           hosts.
                                         properties:
                                           minimumRingSize:
+                                            description: The minimum number of virtual
+                                              nodes to use for the hash ring.
                                             type: integer
                                         type: object
                                       useSourceIp:
@@ -595,6 +637,9 @@ spec:
                                               description: Originating region.
                                               type: string
                                             to:
+                                              description: Destination region the
+                                                traffic will fail over to when endpoints
+                                                in the 'from' region becomes unhealthy.
                                               type: string
                                           type: object
                                         type: array
@@ -639,6 +684,8 @@ spec:
                                     nullable: true
                                     type: integer
                                   consecutiveLocalOriginFailures:
+                                    description: The number of consecutive locally
+                                      originated failures before ejection occurs.
                                     nullable: true
                                     type: integer
                                   interval:
@@ -646,9 +693,15 @@ spec:
                                       analysis.
                                     type: string
                                   maxEjectionPercent:
+                                    description: Maximum % of hosts in the load balancing
+                                      pool for the upstream service that can be ejected.
                                     format: int32
                                     type: integer
                                   minHealthPercent:
+                                    description: Outlier detection will be enabled
+                                      as long as the associated load balancing pool
+                                      has at least min_health_percent hosts in healthy
+                                      mode.
                                     format: int32
                                     type: integer
                                   splitExternalLocalOriginErrors:
@@ -657,6 +710,9 @@ spec:
                                     type: boolean
                                 type: object
                               port:
+                                description: Specifies the number of a port on the
+                                  destination service on which this policy is being
+                                  applied.
                                 properties:
                                   number:
                                     type: integer
@@ -666,16 +722,28 @@ spec:
                                   to the upstream service.
                                 properties:
                                   caCertificates:
+                                    description: 'OPTIONAL: The path to the file containing
+                                      certificate authority certificates to use in
+                                      verifying a presented server certificate.'
                                     type: string
                                   clientCertificate:
                                     description: REQUIRED if mode is `MUTUAL`.
                                     type: string
                                   credentialName:
+                                    description: The name of the secret that holds
+                                      the TLS certs for the client including the CA
+                                      certificates.
                                     type: string
                                   insecureSkipVerify:
+                                    description: InsecureSkipVerify specifies whether
+                                      the proxy should skip verifying the CA signature
+                                      and SAN for the server certificate corresponding
+                                      to the host.
                                     nullable: true
                                     type: boolean
                                   mode:
+                                    description: Indicates whether connections to
+                                      this port should be secured using TLS.
                                     enum:
                                     - DISABLE
                                     - SIMPLE
@@ -690,6 +758,8 @@ spec:
                                       during TLS handshake.
                                     type: string
                                   subjectAltNames:
+                                    description: A list of alternate names to verify
+                                      the subject identity in the certificate.
                                     items:
                                       type: string
                                     type: array
@@ -701,16 +771,26 @@ spec:
                             upstream service.
                           properties:
                             caCertificates:
+                              description: 'OPTIONAL: The path to the file containing
+                                certificate authority certificates to use in verifying
+                                a presented server certificate.'
                               type: string
                             clientCertificate:
                               description: REQUIRED if mode is `MUTUAL`.
                               type: string
                             credentialName:
+                              description: The name of the secret that holds the TLS
+                                certs for the client including the CA certificates.
                               type: string
                             insecureSkipVerify:
+                              description: InsecureSkipVerify specifies whether the
+                                proxy should skip verifying the CA signature and SAN
+                                for the server certificate corresponding to the host.
                               nullable: true
                               type: boolean
                             mode:
+                              description: Indicates whether connections to this port
+                                should be secured using TLS.
                               enum:
                               - DISABLE
                               - SIMPLE
@@ -725,11 +805,15 @@ spec:
                                 TLS handshake.
                               type: string
                             subjectAltNames:
+                              description: A list of alternate names to verify the
+                                subject identity in the certificate.
                               items:
                                 type: string
                               type: array
                           type: object
                         tunnel:
+                          description: Configuration of tunneling TCP over other transport
+                            or application layers for the host configured in the DestinationRule.
                           properties:
                             protocol:
                               description: Specifies which protocol to use for tunneling
@@ -748,6 +832,8 @@ spec:
                   type: object
                 type: array
               trafficPolicy:
+                description: Traffic policies to apply (load balancing policy, connection
+                  pool sizes, outlier detection).
                 properties:
                   connectionPool:
                     properties:
@@ -763,6 +849,8 @@ spec:
                             - UPGRADE
                             type: string
                           http1MaxPendingRequests:
+                            description: Maximum number of requests that will be queued
+                              while waiting for a ready connection pool connection.
                             format: int32
                             type: integer
                           http2MaxRequests:
@@ -779,6 +867,8 @@ spec:
                             format: int32
                             type: integer
                           maxRetries:
+                            description: Maximum number of retries that can be outstanding
+                              to all hosts in a cluster at a given time.
                             format: int32
                             type: integer
                           useClientProtocol:
@@ -810,8 +900,14 @@ spec:
                                   probes.
                                 type: string
                               probes:
+                                description: Maximum number of keepalive probes to
+                                  send without response before deciding the connection
+                                  is dead.
                                 type: integer
                               time:
+                                description: The time duration a connection needs
+                                  to be idle before keep-alive probes start being
+                                  sent.
                                 type: string
                             type: object
                         type: object
@@ -937,6 +1033,8 @@ spec:
                               consistent hashing to backend hosts.
                             properties:
                               minimumRingSize:
+                                description: The minimum number of virtual nodes to
+                                  use for the hash ring.
                                 type: integer
                             type: object
                           useSourceIp:
@@ -976,6 +1074,9 @@ spec:
                                   description: Originating region.
                                   type: string
                                 to:
+                                  description: Destination region the traffic will
+                                    fail over to when endpoints in the 'from' region
+                                    becomes unhealthy.
                                   type: string
                               type: object
                             type: array
@@ -1018,15 +1119,22 @@ spec:
                         nullable: true
                         type: integer
                       consecutiveLocalOriginFailures:
+                        description: The number of consecutive locally originated
+                          failures before ejection occurs.
                         nullable: true
                         type: integer
                       interval:
                         description: Time interval between ejection sweep analysis.
                         type: string
                       maxEjectionPercent:
+                        description: Maximum % of hosts in the load balancing pool
+                          for the upstream service that can be ejected.
                         format: int32
                         type: integer
                       minHealthPercent:
+                        description: Outlier detection will be enabled as long as
+                          the associated load balancing pool has at least min_health_percent
+                          hosts in healthy mode.
                         format: int32
                         type: integer
                       splitExternalLocalOriginErrors:
@@ -1052,6 +1160,9 @@ spec:
                                   - UPGRADE
                                   type: string
                                 http1MaxPendingRequests:
+                                  description: Maximum number of requests that will
+                                    be queued while waiting for a ready connection
+                                    pool connection.
                                   format: int32
                                   type: integer
                                 http2MaxRequests:
@@ -1069,6 +1180,9 @@ spec:
                                   format: int32
                                   type: integer
                                 maxRetries:
+                                  description: Maximum number of retries that can
+                                    be outstanding to all hosts in a cluster at a
+                                    given time.
                                   format: int32
                                   type: integer
                                 useClientProtocol:
@@ -1100,8 +1214,14 @@ spec:
                                         probes.
                                       type: string
                                     probes:
+                                      description: Maximum number of keepalive probes
+                                        to send without response before deciding the
+                                        connection is dead.
                                       type: integer
                                     time:
+                                      description: The time duration a connection
+                                        needs to be idle before keep-alive probes
+                                        start being sent.
                                       type: string
                                   type: object
                               type: object
@@ -1228,6 +1348,8 @@ spec:
                                     implements consistent hashing to backend hosts.
                                   properties:
                                     minimumRingSize:
+                                      description: The minimum number of virtual nodes
+                                        to use for the hash ring.
                                       type: integer
                                   type: object
                                 useSourceIp:
@@ -1268,6 +1390,9 @@ spec:
                                         description: Originating region.
                                         type: string
                                       to:
+                                        description: Destination region the traffic
+                                          will fail over to when endpoints in the
+                                          'from' region becomes unhealthy.
                                         type: string
                                     type: object
                                   type: array
@@ -1311,15 +1436,22 @@ spec:
                               nullable: true
                               type: integer
                             consecutiveLocalOriginFailures:
+                              description: The number of consecutive locally originated
+                                failures before ejection occurs.
                               nullable: true
                               type: integer
                             interval:
                               description: Time interval between ejection sweep analysis.
                               type: string
                             maxEjectionPercent:
+                              description: Maximum % of hosts in the load balancing
+                                pool for the upstream service that can be ejected.
                               format: int32
                               type: integer
                             minHealthPercent:
+                              description: Outlier detection will be enabled as long
+                                as the associated load balancing pool has at least
+                                min_health_percent hosts in healthy mode.
                               format: int32
                               type: integer
                             splitExternalLocalOriginErrors:
@@ -1328,6 +1460,8 @@ spec:
                               type: boolean
                           type: object
                         port:
+                          description: Specifies the number of a port on the destination
+                            service on which this policy is being applied.
                           properties:
                             number:
                               type: integer
@@ -1337,16 +1471,26 @@ spec:
                             upstream service.
                           properties:
                             caCertificates:
+                              description: 'OPTIONAL: The path to the file containing
+                                certificate authority certificates to use in verifying
+                                a presented server certificate.'
                               type: string
                             clientCertificate:
                               description: REQUIRED if mode is `MUTUAL`.
                               type: string
                             credentialName:
+                              description: The name of the secret that holds the TLS
+                                certs for the client including the CA certificates.
                               type: string
                             insecureSkipVerify:
+                              description: InsecureSkipVerify specifies whether the
+                                proxy should skip verifying the CA signature and SAN
+                                for the server certificate corresponding to the host.
                               nullable: true
                               type: boolean
                             mode:
+                              description: Indicates whether connections to this port
+                                should be secured using TLS.
                               enum:
                               - DISABLE
                               - SIMPLE
@@ -1361,6 +1505,8 @@ spec:
                                 TLS handshake.
                               type: string
                             subjectAltNames:
+                              description: A list of alternate names to verify the
+                                subject identity in the certificate.
                               items:
                                 type: string
                               type: array
@@ -1372,16 +1518,26 @@ spec:
                       service.
                     properties:
                       caCertificates:
+                        description: 'OPTIONAL: The path to the file containing certificate
+                          authority certificates to use in verifying a presented server
+                          certificate.'
                         type: string
                       clientCertificate:
                         description: REQUIRED if mode is `MUTUAL`.
                         type: string
                       credentialName:
+                        description: The name of the secret that holds the TLS certs
+                          for the client including the CA certificates.
                         type: string
                       insecureSkipVerify:
+                        description: InsecureSkipVerify specifies whether the proxy
+                          should skip verifying the CA signature and SAN for the server
+                          certificate corresponding to the host.
                         nullable: true
                         type: boolean
                       mode:
+                        description: Indicates whether connections to this port should
+                          be secured using TLS.
                         enum:
                         - DISABLE
                         - SIMPLE
@@ -1396,11 +1552,15 @@ spec:
                           handshake.
                         type: string
                       subjectAltNames:
+                        description: A list of alternate names to verify the subject
+                          identity in the certificate.
                         items:
                           type: string
                         type: array
                     type: object
                   tunnel:
+                    description: Configuration of tunneling TCP over other transport
+                      or application layers for the host configured in the DestinationRule.
                     properties:
                       protocol:
                         description: Specifies which protocol to use for tunneling
@@ -1417,10 +1577,14 @@ spec:
                     type: object
                 type: object
               workloadSelector:
+                description: Criteria used to select the specific set of pods/VMs
+                  on which this `DestinationRule` configuration should be applied.
                 properties:
                   matchLabels:
                     additionalProperties:
                       type: string
+                    description: One or more labels that indicate a specific set of
+                      pods/VMs on which a policy should be applied.
                     type: object
                 type: object
             type: object
@@ -1463,11 +1627,15 @@ spec:
                 description: The name of a service from the service registry.
                 type: string
               subsets:
+                description: One or more named sets that represent individual versions
+                  of a service.
                 items:
                   properties:
                     labels:
                       additionalProperties:
                         type: string
+                      description: Labels apply a filter over the endpoints of a service
+                        in the service registry.
                       type: object
                     name:
                       description: Name of the subset.
@@ -1489,6 +1657,9 @@ spec:
                                   - UPGRADE
                                   type: string
                                 http1MaxPendingRequests:
+                                  description: Maximum number of requests that will
+                                    be queued while waiting for a ready connection
+                                    pool connection.
                                   format: int32
                                   type: integer
                                 http2MaxRequests:
@@ -1506,6 +1677,9 @@ spec:
                                   format: int32
                                   type: integer
                                 maxRetries:
+                                  description: Maximum number of retries that can
+                                    be outstanding to all hosts in a cluster at a
+                                    given time.
                                   format: int32
                                   type: integer
                                 useClientProtocol:
@@ -1537,8 +1711,14 @@ spec:
                                         probes.
                                       type: string
                                     probes:
+                                      description: Maximum number of keepalive probes
+                                        to send without response before deciding the
+                                        connection is dead.
                                       type: integer
                                     time:
+                                      description: The time duration a connection
+                                        needs to be idle before keep-alive probes
+                                        start being sent.
                                       type: string
                                   type: object
                               type: object
@@ -1665,6 +1845,8 @@ spec:
                                     implements consistent hashing to backend hosts.
                                   properties:
                                     minimumRingSize:
+                                      description: The minimum number of virtual nodes
+                                        to use for the hash ring.
                                       type: integer
                                   type: object
                                 useSourceIp:
@@ -1705,6 +1887,9 @@ spec:
                                         description: Originating region.
                                         type: string
                                       to:
+                                        description: Destination region the traffic
+                                          will fail over to when endpoints in the
+                                          'from' region becomes unhealthy.
                                         type: string
                                     type: object
                                   type: array
@@ -1748,15 +1933,22 @@ spec:
                               nullable: true
                               type: integer
                             consecutiveLocalOriginFailures:
+                              description: The number of consecutive locally originated
+                                failures before ejection occurs.
                               nullable: true
                               type: integer
                             interval:
                               description: Time interval between ejection sweep analysis.
                               type: string
                             maxEjectionPercent:
+                              description: Maximum % of hosts in the load balancing
+                                pool for the upstream service that can be ejected.
                               format: int32
                               type: integer
                             minHealthPercent:
+                              description: Outlier detection will be enabled as long
+                                as the associated load balancing pool has at least
+                                min_health_percent hosts in healthy mode.
                               format: int32
                               type: integer
                             splitExternalLocalOriginErrors:
@@ -1783,6 +1975,9 @@ spec:
                                         - UPGRADE
                                         type: string
                                       http1MaxPendingRequests:
+                                        description: Maximum number of requests that
+                                          will be queued while waiting for a ready
+                                          connection pool connection.
                                         format: int32
                                         type: integer
                                       http2MaxRequests:
@@ -1800,6 +1995,9 @@ spec:
                                         format: int32
                                         type: integer
                                       maxRetries:
+                                        description: Maximum number of retries that
+                                          can be outstanding to all hosts in a cluster
+                                          at a given time.
                                         format: int32
                                         type: integer
                                       useClientProtocol:
@@ -1832,8 +2030,14 @@ spec:
                                               keep-alive probes.
                                             type: string
                                           probes:
+                                            description: Maximum number of keepalive
+                                              probes to send without response before
+                                              deciding the connection is dead.
                                             type: integer
                                           time:
+                                            description: The time duration a connection
+                                              needs to be idle before keep-alive probes
+                                              start being sent.
                                             type: string
                                         type: object
                                     type: object
@@ -1964,6 +2168,8 @@ spec:
                                           hosts.
                                         properties:
                                           minimumRingSize:
+                                            description: The minimum number of virtual
+                                              nodes to use for the hash ring.
                                             type: integer
                                         type: object
                                       useSourceIp:
@@ -2004,6 +2210,9 @@ spec:
                                               description: Originating region.
                                               type: string
                                             to:
+                                              description: Destination region the
+                                                traffic will fail over to when endpoints
+                                                in the 'from' region becomes unhealthy.
                                               type: string
                                           type: object
                                         type: array
@@ -2048,6 +2257,8 @@ spec:
                                     nullable: true
                                     type: integer
                                   consecutiveLocalOriginFailures:
+                                    description: The number of consecutive locally
+                                      originated failures before ejection occurs.
                                     nullable: true
                                     type: integer
                                   interval:
@@ -2055,9 +2266,15 @@ spec:
                                       analysis.
                                     type: string
                                   maxEjectionPercent:
+                                    description: Maximum % of hosts in the load balancing
+                                      pool for the upstream service that can be ejected.
                                     format: int32
                                     type: integer
                                   minHealthPercent:
+                                    description: Outlier detection will be enabled
+                                      as long as the associated load balancing pool
+                                      has at least min_health_percent hosts in healthy
+                                      mode.
                                     format: int32
                                     type: integer
                                   splitExternalLocalOriginErrors:
@@ -2066,6 +2283,9 @@ spec:
                                     type: boolean
                                 type: object
                               port:
+                                description: Specifies the number of a port on the
+                                  destination service on which this policy is being
+                                  applied.
                                 properties:
                                   number:
                                     type: integer
@@ -2075,16 +2295,28 @@ spec:
                                   to the upstream service.
                                 properties:
                                   caCertificates:
+                                    description: 'OPTIONAL: The path to the file containing
+                                      certificate authority certificates to use in
+                                      verifying a presented server certificate.'
                                     type: string
                                   clientCertificate:
                                     description: REQUIRED if mode is `MUTUAL`.
                                     type: string
                                   credentialName:
+                                    description: The name of the secret that holds
+                                      the TLS certs for the client including the CA
+                                      certificates.
                                     type: string
                                   insecureSkipVerify:
+                                    description: InsecureSkipVerify specifies whether
+                                      the proxy should skip verifying the CA signature
+                                      and SAN for the server certificate corresponding
+                                      to the host.
                                     nullable: true
                                     type: boolean
                                   mode:
+                                    description: Indicates whether connections to
+                                      this port should be secured using TLS.
                                     enum:
                                     - DISABLE
                                     - SIMPLE
@@ -2099,6 +2331,8 @@ spec:
                                       during TLS handshake.
                                     type: string
                                   subjectAltNames:
+                                    description: A list of alternate names to verify
+                                      the subject identity in the certificate.
                                     items:
                                       type: string
                                     type: array
@@ -2110,16 +2344,26 @@ spec:
                             upstream service.
                           properties:
                             caCertificates:
+                              description: 'OPTIONAL: The path to the file containing
+                                certificate authority certificates to use in verifying
+                                a presented server certificate.'
                               type: string
                             clientCertificate:
                               description: REQUIRED if mode is `MUTUAL`.
                               type: string
                             credentialName:
+                              description: The name of the secret that holds the TLS
+                                certs for the client including the CA certificates.
                               type: string
                             insecureSkipVerify:
+                              description: InsecureSkipVerify specifies whether the
+                                proxy should skip verifying the CA signature and SAN
+                                for the server certificate corresponding to the host.
                               nullable: true
                               type: boolean
                             mode:
+                              description: Indicates whether connections to this port
+                                should be secured using TLS.
                               enum:
                               - DISABLE
                               - SIMPLE
@@ -2134,11 +2378,15 @@ spec:
                                 TLS handshake.
                               type: string
                             subjectAltNames:
+                              description: A list of alternate names to verify the
+                                subject identity in the certificate.
                               items:
                                 type: string
                               type: array
                           type: object
                         tunnel:
+                          description: Configuration of tunneling TCP over other transport
+                            or application layers for the host configured in the DestinationRule.
                           properties:
                             protocol:
                               description: Specifies which protocol to use for tunneling
@@ -2157,6 +2405,8 @@ spec:
                   type: object
                 type: array
               trafficPolicy:
+                description: Traffic policies to apply (load balancing policy, connection
+                  pool sizes, outlier detection).
                 properties:
                   connectionPool:
                     properties:
@@ -2172,6 +2422,8 @@ spec:
                             - UPGRADE
                             type: string
                           http1MaxPendingRequests:
+                            description: Maximum number of requests that will be queued
+                              while waiting for a ready connection pool connection.
                             format: int32
                             type: integer
                           http2MaxRequests:
@@ -2188,6 +2440,8 @@ spec:
                             format: int32
                             type: integer
                           maxRetries:
+                            description: Maximum number of retries that can be outstanding
+                              to all hosts in a cluster at a given time.
                             format: int32
                             type: integer
                           useClientProtocol:
@@ -2219,8 +2473,14 @@ spec:
                                   probes.
                                 type: string
                               probes:
+                                description: Maximum number of keepalive probes to
+                                  send without response before deciding the connection
+                                  is dead.
                                 type: integer
                               time:
+                                description: The time duration a connection needs
+                                  to be idle before keep-alive probes start being
+                                  sent.
                                 type: string
                             type: object
                         type: object
@@ -2346,6 +2606,8 @@ spec:
                               consistent hashing to backend hosts.
                             properties:
                               minimumRingSize:
+                                description: The minimum number of virtual nodes to
+                                  use for the hash ring.
                                 type: integer
                             type: object
                           useSourceIp:
@@ -2385,6 +2647,9 @@ spec:
                                   description: Originating region.
                                   type: string
                                 to:
+                                  description: Destination region the traffic will
+                                    fail over to when endpoints in the 'from' region
+                                    becomes unhealthy.
                                   type: string
                               type: object
                             type: array
@@ -2427,15 +2692,22 @@ spec:
                         nullable: true
                         type: integer
                       consecutiveLocalOriginFailures:
+                        description: The number of consecutive locally originated
+                          failures before ejection occurs.
                         nullable: true
                         type: integer
                       interval:
                         description: Time interval between ejection sweep analysis.
                         type: string
                       maxEjectionPercent:
+                        description: Maximum % of hosts in the load balancing pool
+                          for the upstream service that can be ejected.
                         format: int32
                         type: integer
                       minHealthPercent:
+                        description: Outlier detection will be enabled as long as
+                          the associated load balancing pool has at least min_health_percent
+                          hosts in healthy mode.
                         format: int32
                         type: integer
                       splitExternalLocalOriginErrors:
@@ -2461,6 +2733,9 @@ spec:
                                   - UPGRADE
                                   type: string
                                 http1MaxPendingRequests:
+                                  description: Maximum number of requests that will
+                                    be queued while waiting for a ready connection
+                                    pool connection.
                                   format: int32
                                   type: integer
                                 http2MaxRequests:
@@ -2478,6 +2753,9 @@ spec:
                                   format: int32
                                   type: integer
                                 maxRetries:
+                                  description: Maximum number of retries that can
+                                    be outstanding to all hosts in a cluster at a
+                                    given time.
                                   format: int32
                                   type: integer
                                 useClientProtocol:
@@ -2509,8 +2787,14 @@ spec:
                                         probes.
                                       type: string
                                     probes:
+                                      description: Maximum number of keepalive probes
+                                        to send without response before deciding the
+                                        connection is dead.
                                       type: integer
                                     time:
+                                      description: The time duration a connection
+                                        needs to be idle before keep-alive probes
+                                        start being sent.
                                       type: string
                                   type: object
                               type: object
@@ -2637,6 +2921,8 @@ spec:
                                     implements consistent hashing to backend hosts.
                                   properties:
                                     minimumRingSize:
+                                      description: The minimum number of virtual nodes
+                                        to use for the hash ring.
                                       type: integer
                                   type: object
                                 useSourceIp:
@@ -2677,6 +2963,9 @@ spec:
                                         description: Originating region.
                                         type: string
                                       to:
+                                        description: Destination region the traffic
+                                          will fail over to when endpoints in the
+                                          'from' region becomes unhealthy.
                                         type: string
                                     type: object
                                   type: array
@@ -2720,15 +3009,22 @@ spec:
                               nullable: true
                               type: integer
                             consecutiveLocalOriginFailures:
+                              description: The number of consecutive locally originated
+                                failures before ejection occurs.
                               nullable: true
                               type: integer
                             interval:
                               description: Time interval between ejection sweep analysis.
                               type: string
                             maxEjectionPercent:
+                              description: Maximum % of hosts in the load balancing
+                                pool for the upstream service that can be ejected.
                               format: int32
                               type: integer
                             minHealthPercent:
+                              description: Outlier detection will be enabled as long
+                                as the associated load balancing pool has at least
+                                min_health_percent hosts in healthy mode.
                               format: int32
                               type: integer
                             splitExternalLocalOriginErrors:
@@ -2737,6 +3033,8 @@ spec:
                               type: boolean
                           type: object
                         port:
+                          description: Specifies the number of a port on the destination
+                            service on which this policy is being applied.
                           properties:
                             number:
                               type: integer
@@ -2746,16 +3044,26 @@ spec:
                             upstream service.
                           properties:
                             caCertificates:
+                              description: 'OPTIONAL: The path to the file containing
+                                certificate authority certificates to use in verifying
+                                a presented server certificate.'
                               type: string
                             clientCertificate:
                               description: REQUIRED if mode is `MUTUAL`.
                               type: string
                             credentialName:
+                              description: The name of the secret that holds the TLS
+                                certs for the client including the CA certificates.
                               type: string
                             insecureSkipVerify:
+                              description: InsecureSkipVerify specifies whether the
+                                proxy should skip verifying the CA signature and SAN
+                                for the server certificate corresponding to the host.
                               nullable: true
                               type: boolean
                             mode:
+                              description: Indicates whether connections to this port
+                                should be secured using TLS.
                               enum:
                               - DISABLE
                               - SIMPLE
@@ -2770,6 +3078,8 @@ spec:
                                 TLS handshake.
                               type: string
                             subjectAltNames:
+                              description: A list of alternate names to verify the
+                                subject identity in the certificate.
                               items:
                                 type: string
                               type: array
@@ -2781,16 +3091,26 @@ spec:
                       service.
                     properties:
                       caCertificates:
+                        description: 'OPTIONAL: The path to the file containing certificate
+                          authority certificates to use in verifying a presented server
+                          certificate.'
                         type: string
                       clientCertificate:
                         description: REQUIRED if mode is `MUTUAL`.
                         type: string
                       credentialName:
+                        description: The name of the secret that holds the TLS certs
+                          for the client including the CA certificates.
                         type: string
                       insecureSkipVerify:
+                        description: InsecureSkipVerify specifies whether the proxy
+                          should skip verifying the CA signature and SAN for the server
+                          certificate corresponding to the host.
                         nullable: true
                         type: boolean
                       mode:
+                        description: Indicates whether connections to this port should
+                          be secured using TLS.
                         enum:
                         - DISABLE
                         - SIMPLE
@@ -2805,11 +3125,15 @@ spec:
                           handshake.
                         type: string
                       subjectAltNames:
+                        description: A list of alternate names to verify the subject
+                          identity in the certificate.
                         items:
                           type: string
                         type: array
                     type: object
                   tunnel:
+                    description: Configuration of tunneling TCP over other transport
+                      or application layers for the host configured in the DestinationRule.
                     properties:
                       protocol:
                         description: Specifies which protocol to use for tunneling
@@ -2826,10 +3150,14 @@ spec:
                     type: object
                 type: object
               workloadSelector:
+                description: Criteria used to select the specific set of pods/VMs
+                  on which this `DestinationRule` configuration should be applied.
                 properties:
                   matchLabels:
                     additionalProperties:
                       type: string
+                    description: One or more labels that indicate a specific set of
+                      pods/VMs on which a policy should be applied.
                     type: object
                 type: object
             type: object

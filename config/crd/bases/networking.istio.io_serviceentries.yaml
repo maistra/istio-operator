@@ -63,6 +63,8 @@ spec:
                 items:
                   properties:
                     address:
+                      description: Address associated with the network endpoint without
+                        the port.
                       type: string
                     labels:
                       additionalProperties:
@@ -73,6 +75,8 @@ spec:
                       description: The locality associated with the endpoint.
                       type: string
                     network:
+                      description: Network enables Istio to group endpoints resident
+                        in the same L3 domain/network.
                       type: string
                     ports:
                       additionalProperties:
@@ -80,6 +84,8 @@ spec:
                       description: Set of ports associated with the endpoint.
                       type: object
                     serviceAccount:
+                      description: The service account associated with the workload
+                        if a sidecar is present in the workload.
                       type: string
                     weight:
                       description: The load balancing weight associated with the endpoint.
@@ -97,6 +103,8 @@ spec:
                   type: string
                 type: array
               location:
+                description: Specify whether the service should be considered external
+                  to the mesh or part of the mesh.
                 enum:
                 - MESH_EXTERNAL
                 - MESH_INTERNAL
@@ -115,6 +123,8 @@ spec:
                       description: The protocol exposed on the port.
                       type: string
                     targetPort:
+                      description: The port number on the endpoint where the traffic
+                        will be received.
                       type: integer
                   type: object
                 type: array
@@ -127,6 +137,8 @@ spec:
                 - DNS_ROUND_ROBIN
                 type: string
               subjectAltNames:
+                description: If specified, the proxy will verify that the server certificate's
+                  subject alternate name matches one of the specified values.
                 items:
                   type: string
                 type: array
@@ -136,6 +148,8 @@ spec:
                   labels:
                     additionalProperties:
                       type: string
+                    description: One or more labels that indicate a specific set of
+                      pods/VMs on which the configuration should be applied.
                     type: object
                 type: object
             type: object
@@ -187,6 +201,8 @@ spec:
                 items:
                   properties:
                     address:
+                      description: Address associated with the network endpoint without
+                        the port.
                       type: string
                     labels:
                       additionalProperties:
@@ -197,6 +213,8 @@ spec:
                       description: The locality associated with the endpoint.
                       type: string
                     network:
+                      description: Network enables Istio to group endpoints resident
+                        in the same L3 domain/network.
                       type: string
                     ports:
                       additionalProperties:
@@ -204,6 +222,8 @@ spec:
                       description: Set of ports associated with the endpoint.
                       type: object
                     serviceAccount:
+                      description: The service account associated with the workload
+                        if a sidecar is present in the workload.
                       type: string
                     weight:
                       description: The load balancing weight associated with the endpoint.
@@ -221,6 +241,8 @@ spec:
                   type: string
                 type: array
               location:
+                description: Specify whether the service should be considered external
+                  to the mesh or part of the mesh.
                 enum:
                 - MESH_EXTERNAL
                 - MESH_INTERNAL
@@ -239,6 +261,8 @@ spec:
                       description: The protocol exposed on the port.
                       type: string
                     targetPort:
+                      description: The port number on the endpoint where the traffic
+                        will be received.
                       type: integer
                   type: object
                 type: array
@@ -251,6 +275,8 @@ spec:
                 - DNS_ROUND_ROBIN
                 type: string
               subjectAltNames:
+                description: If specified, the proxy will verify that the server certificate's
+                  subject alternate name matches one of the specified values.
                 items:
                   type: string
                 type: array
@@ -260,6 +286,8 @@ spec:
                   labels:
                     additionalProperties:
                       type: string
+                    description: One or more labels that indicate a specific set of
+                      pods/VMs on which the configuration should be applied.
                     type: object
                 type: object
             type: object
