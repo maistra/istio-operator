@@ -29,11 +29,13 @@ const IstioKind = "Istio"
 type IstioSpec struct {
 	// Version defines the version of Istio to install. If not specified, the
 	// latest version supported by the operator is installed.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="Istio Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General","urn:alm:descriptor:com.tectonic.ui:select:v3.0"}
 	Version string `json:"version,omitempty"`
 
 	// Values defines the values to be passed to the Helm chart when installing Istio.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Helm Values"
 	Values json.RawMessage `json:"values,omitempty"`
 }
 
@@ -59,6 +61,7 @@ func (s *IstioSpec) SetValues(values map[string]interface{}) error {
 type IstioStatus struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
+	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Applied Helm Values"
 	AppliedValues json.RawMessage `json:"appliedValues,omitempty"`
 
 	// ObservedGeneration is the most recent generation observed for this
