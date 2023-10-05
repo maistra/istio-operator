@@ -165,6 +165,7 @@ spec:
               description: IstioSpec defines the desired state of Istio
               properties:
                 values:
+                  description: Values defines the values to be passed to the Helm chart when installing Istio.
                   properties:
                     base:
                       properties:
@@ -268,6 +269,10 @@ spec:
                               type: object
                             injectionTemplate:
                               type: string
+                            ipFamilies:
+                              type: string
+                            ipFamilyPolicy:
+                              type: string
                             labels:
                               type: object
                             name:
@@ -324,6 +329,10 @@ spec:
                             ingressPorts:
                               type: object
                             injectionTemplate:
+                              type: string
+                            ipFamilies:
+                              type: string
+                            ipFamilyPolicy:
                               type: string
                             labels:
                               type: object
@@ -388,6 +397,10 @@ spec:
                         imagePullPolicy:
                           type: string
                         imagePullSecrets:
+                          type: string
+                        ipFamilies:
+                          type: string
+                        ipFamilyPolicy:
                           type: string
                         istioNamespace:
                           type: string
@@ -634,6 +647,10 @@ spec:
                           type: string
                         image:
                           type: string
+                        ipFamilies:
+                          type: string
+                        ipFamilyPolicy:
+                          type: string
                         jwksResolverExtraRootCA:
                           type: string
                         keepaliveMaxServerConnectionAge:
@@ -720,6 +737,7 @@ spec:
                       type: object
                   type: object
                 version:
+                  description: Version defines the version of Istio to install. If not specified, the latest version supported by the operator is installed.
                   type: string
               type: object
             status:
@@ -757,7 +775,6 @@ spec:
                 state:
                   description: Reports the current state of the object.
                   type: string
->>>>>>> 35d640d6 (Sort values and run make gen)
               type: object
           type: object
       served: true
