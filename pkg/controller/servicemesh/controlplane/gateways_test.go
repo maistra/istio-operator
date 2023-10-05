@@ -2,7 +2,6 @@ package controlplane
 
 import (
 	"fmt"
-	"github.com/maistra/istio-operator/pkg/controller/versions"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -15,6 +14,7 @@ import (
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	. "github.com/maistra/istio-operator/pkg/controller/common/test"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 func TestAdditionalIngressGatewayInstall(t *testing.T) {

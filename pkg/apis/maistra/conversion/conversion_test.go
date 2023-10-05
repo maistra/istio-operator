@@ -1306,13 +1306,12 @@ var (
 )
 
 type conversionTestCase struct {
-	name               string
-	namespace          string
-	spec               *v2.ControlPlaneSpec
-	roundTripSpec      *v2.ControlPlaneSpec
-	isolatedIstio      *v1.HelmValues
-	completeIstio      *v1.HelmValues
-	completeThreeScale *v1.HelmValues
+	name          string
+	namespace     string
+	spec          *v2.ControlPlaneSpec
+	roundTripSpec *v2.ControlPlaneSpec
+	isolatedIstio *v1.HelmValues
+	completeIstio *v1.HelmValues
 }
 
 func assertEquals(t *testing.T, expected, actual interface{}) {
