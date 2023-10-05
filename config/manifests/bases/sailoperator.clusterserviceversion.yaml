@@ -16,6 +16,21 @@ spec:
       displayName: Istio
       kind: Istio
       name: istios.operator.istio.io
+      specDescriptors:
+      - description: Version defines the version of Istio to install. If not specified,
+          the latest version supported by the operator is installed.
+        displayName: Istio Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
+        - urn:alm:descriptor:com.tectonic.ui:select:v3.0
+      - description: Values defines the values to be passed to the Helm chart when
+          installing Istio.
+        displayName: Helm Values
+        path: values
+      statusDescriptors:
+      - displayName: Applied Helm Values
+        path: appliedValues
       version: v1alpha1
   description: |-
     This is an experimental operator for installing Istio service mesh.
