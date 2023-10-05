@@ -469,6 +469,12 @@ lint: lint-scripts lint-go lint-yaml lint-helm lint-bundle lint-watches ## runs 
 ################################################################################
 .PHONY: test.integration.ocp
 test.integration.ocp:
-	$(info SOURCE_DIR: $(SOURCE_DIR))
-	${SOURCE_DIR}/tests/integration/operator-integ-suite-ocp.sh
+	${SOURCE_DIR}/tests/integration/integ-suite-ocp.sh
+
+################################################################################
+# run an integration test on Kind
+################################################################################
+.PHONY: test.integration.kind
+test.integration.kind:
+	${SOURCE_DIR}/tests/integration/integ-suite-kind.sh
 

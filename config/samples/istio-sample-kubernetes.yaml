@@ -8,4 +8,9 @@ metadata:
   name: istio-sample
 spec:
   version: v3.0
-  values: {}
+  values:
+    pilot:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 1024Mi
