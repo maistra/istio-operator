@@ -65,7 +65,7 @@ func init() {
 		V2_2:           &versionStrategyV2_2{Ver: V2_2},
 		V2_3:           &versionStrategyV2_3{Ver: V2_3},
 		V2_4:           &versionStrategyV2_4{Ver: V2_4},
-		V2_5:           &versionStrategyV2_4{Ver: V2_5},
+		V2_5:           &versionStrategyV2_5{Ver: V2_5},
 	}
 
 	versionToCNINetwork = map[Ver]string{
