@@ -56,7 +56,7 @@ spec:
         # This container installs the Istio CNI binaries
         # and CNI network config file on each node.
         - name: install-cni
-          image: "{{ .Values.cni.image_v2_4 }}"
+          image: "{{ .Values.cni.image_v2_5 }}"
           imagePullPolicy: {{ .Values.cni.imagePullPolicy }}
           livenessProbe:
             httpGet:
@@ -71,17 +71,17 @@ spec:
           securityContext:
             privileged: true
           env:
-{{- if .Values.cni.cniConfFileName_v2_4 }}
+{{- if .Values.cni.cniConfFileName_v2_5 }}
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
-              value: "{{ .Values.cni.cniConfFileName_v2_4 }}"
+              value: "{{ .Values.cni.cniConfFileName_v2_5 }}"
 {{- end }}
             # The CNI network config to install on each node.
             - name: CNI_NETWORK_CONFIG
               valueFrom:
                 configMapKeyRef:
                   name: {{ .Values.cni.defaultResourceName }}-config-v2-5
-                  key: "{{ default "cni_network_config" .Values.cni.configMap_v2_4 }}"
+                  key: "{{ default "cni_network_config" .Values.cni.configMap_v2_5 }}"
             - name: CNI_NET_DIR
               value: {{ default "/etc/cni/net.d" .Values.cni.cniConfDir }}
             # Deploy as a standalone CNI plugin or as chained?
