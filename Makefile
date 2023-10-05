@@ -224,7 +224,7 @@ uninstall: kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube
 .PHONY: deploy
 deploy: kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	$(info NAMESPACE: $(NAMESPACE))
-	make -s deploy-yaml | kubectl apply -f -
+	$(MAKE) -s deploy-yaml | kubectl apply -f -
 
 .PHONY: deploy-yaml
 deploy-yaml: kustomize ## Outputs YAML manifests needed to deploy the controller
@@ -238,7 +238,7 @@ deploy-olm: bundle bundle-build bundle-push ## Builds and pushes the operator OL
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	make deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+	$(MAKE) deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: undeploy-olm
 undeploy-olm: operator-sdk ## Undeploys the operator from the cluster (used only if operator was installed via OLM)
@@ -377,7 +377,7 @@ bundle-publish: patch-istio-images ## Create a PR for publishing in OperatorHub
 
 .PHONY: bundle-nightly ## Generate nightly bundle
 bundle-nightly:
-	make bundle VERSION=${VERSION}-nightly-${TODAY} CHANNELS=$(MINOR_VERSION)-nightly TAG=$(MINOR_VERSION)-nightly-$(TODAY)
+	$(MAKE) bundle VERSION=${VERSION}-nightly-${TODAY} CHANNELS=$(MINOR_VERSION)-nightly TAG=$(MINOR_VERSION)-nightly-$(TODAY)
 
 .PHONY: bundle-publish-nightly
 bundle-publish-nightly: OPERATOR_VERSION=$(VERSION)-nightly-$(TODAY)
