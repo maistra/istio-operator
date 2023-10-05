@@ -240,6 +240,10 @@ deploy-olm: bundle bundle-build bundle-push ## Builds and pushes the operator OL
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	make deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
+.PHONY: undeploy-olm
+undeploy-olm: operator-sdk ## Undeploys the operator from the cluster (used only if operator was installed via OLM)
+	$(OPERATOR_SDK) cleanup sailoperator --delete-all
+
 .PHONY: deploy-example
 deploy-example: deploy-example-openshift
 
