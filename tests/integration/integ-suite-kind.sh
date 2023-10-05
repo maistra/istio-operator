@@ -43,10 +43,6 @@ for ((i = 1; i <= max_retries; i++)); do
     fi
 done
 
-# Deploy Operator
-echo "Deploying Operator"
-cd "$(git rev-parse --show-toplevel)" && make deploy
-
 # Run the integration tests
 echo "Running integration tests"
 ./tests/integration/common-operator-integ-suite.sh --kind

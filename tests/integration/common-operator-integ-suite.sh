@@ -15,6 +15,8 @@
 # limitations under the License.
 
 # To be able to run this script it's needed to pass the flag --ocp or --kind
+set -eux -o pipefail
+
 if [ $# -eq 0 ]; then
   echo "No arguments provided"
   exit 1
@@ -45,8 +47,6 @@ fi
 
 WD=$(dirname "$0")
 WD=$(cd "$WD" || exit; pwd)
-
-set -eux -o pipefail
 
 NAMESPACE="${NAMESPACE:-istio-operator}"
 OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
@@ -80,6 +80,12 @@ check_ready() {
     $COMMAND  wait deployment "${DEPLOYMENT_NAME}" -n "${NS}" --for condition=Available=True --timeout=${TIMEOUT}
 }
 
+# Build and pus docker image
+make docker-build docker-push
+
+# Deploy Operator
+echo "Deploying Operator"
+cd "$(git rev-parse --show-toplevel)" && make deploy
 
 # Main
 

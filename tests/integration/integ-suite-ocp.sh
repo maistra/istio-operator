@@ -16,10 +16,6 @@
 
 # To run this integration test on OCP cluster it's needed to already have the OCP cluster running and be logged in
 
-# Deploy Operator
-echo "Deploying Operator"
-cd "$(git rev-parse --show-toplevel)" && make deploy
-
 # Run the integration tests
 echo "Running integration tests"
 ./tests/integration/common-operator-integ-suite.sh --ocp
