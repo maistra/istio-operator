@@ -15,7 +15,7 @@ metadata:
       The Maistra Operator enables you to install, configure, and manage an instance of Maistra service mesh. Maistra is based on the open source Istio project.
 
     containerImage: quay.io/maistra/istio-ubi8-operator:2.5.0
-    createdAt: 2023-10-01T10:59:25CEST
+    createdAt: 2023-10-05T22:49:57CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.5.0-0"
     operators.openshift.io/infrastructure-features: '[]'
@@ -277,6 +277,8 @@ spec:
     image: quay.io/prometheus-operator/prometheus-config-reloader:v0.63.0
   - name: v2_5.proxyv2
     image: quay.io/maistra/proxyv2-ubi8:2.5.0
+  - name: v2_5.rls
+    image: quay.io/maistra/ratelimit-ubi8:2.5.0
   install:
     strategy: deployment
     spec:
@@ -569,6 +571,7 @@ spec:
                 olm.relatedImage.v2_5.prometheus: quay.io/prometheus/prometheus:v2.42.0
                 olm.relatedImage.v2_5.prometheus-config-reloader: quay.io/prometheus-operator/prometheus-config-reloader:v0.63.0
                 olm.relatedImage.v2_5.proxyv2: quay.io/maistra/proxyv2-ubi8:2.5.0
+                olm.relatedImage.v2_5.rls: quay.io/maistra/ratelimit-ubi8:2.5.0
             spec:
               serviceAccountName: istio-operator
               containers:

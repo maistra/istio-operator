@@ -10864,6 +10864,7 @@ spec:
         olm.relatedImage.v2_5.prometheus: quay.io/prometheus/prometheus:v2.42.0
         olm.relatedImage.v2_5.prometheus-config-reloader: quay.io/prometheus-operator/prometheus-config-reloader:v0.63.0
         olm.relatedImage.v2_5.proxyv2: quay.io/maistra/proxyv2-ubi8:2.5.0
+        olm.relatedImage.v2_5.rls: quay.io/maistra/ratelimit-ubi8:2.5.0
 
     spec:
       serviceAccountName: istio-operator
