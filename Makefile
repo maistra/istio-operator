@@ -241,7 +241,7 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 	make deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: undeploy-olm
-undeploy-olm: ## Undeploys the operator from the cluster (used only if operator was installed via OLM)
+undeploy-olm: operator-sdk ## Undeploys the operator from the cluster (used only if operator was installed via OLM)
 	$(OPERATOR_SDK) cleanup sailoperator --delete-all
 
 .PHONY: deploy-example
