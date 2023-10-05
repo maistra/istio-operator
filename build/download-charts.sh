@@ -51,12 +51,12 @@ function retrieveIstioRelease() {
   (
       echo "extracting Istio Helm charts to ${RELEASES_DIR}"
       cd "${RELEASES_DIR}"
-      rm -rf ${EXTRACT_DIR}
+      rm -rf "${EXTRACT_DIR}"
       ${EXTRACT_CMD}
-      cp -rf ${EXTRACT_DIR}/manifests/charts/* "${HELM_DIR}/"
+      cp -rf "${EXTRACT_DIR}"/manifests/charts/* "${HELM_DIR}/"
       # grafana dashboards
       mkdir -p "${HELM_DIR}/istio-telemetry/grafana/dashboards"
-      cp -rf ${EXTRACT_DIR}/manifests/addons/dashboards/* "${HELM_DIR}/istio-telemetry/grafana/dashboards/"
+      cp -rf "${EXTRACT_DIR}"/manifests/addons/dashboards/* "${HELM_DIR}/istio-telemetry/grafana/dashboards/"
       #(
       #  cd "${HELM_DIR}/istio"
       #  helm dep update
