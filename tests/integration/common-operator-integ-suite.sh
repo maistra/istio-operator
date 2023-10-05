@@ -80,12 +80,12 @@ check_ready() {
     $COMMAND  wait deployment "${DEPLOYMENT_NAME}" -n "${NS}" --for condition=Available=True --timeout=${TIMEOUT}
 }
 
-# Build and pus docker image
+# Build and push docker image
 make docker-build docker-push
 
 # Deploy Operator
 echo "Deploying Operator"
-cd "$(git rev-parse --show-toplevel)" && make deploy
+make -s --no-print-directory deploy
 
 # Main
 
