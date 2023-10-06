@@ -196,6 +196,14 @@ func (v *versionStrategyV2_2) validateMixerDisabled(spec *v2.ControlPlaneSpec, a
 }
 
 func (v *versionStrategyV2_2) validateAddons(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.Addons == nil {
+		return allErrors
+	}
+
+	if spec.Addons.ThreeScale != nil {
+		allErrors = append(allErrors, fmt.Errorf("support for 3scale has been removed in v2.1; "+
+			"please remove the spec.addons.3scale section from the SMCP and configure the 3scale WebAssembly adapter using a ServiceMeshExtension resource"))
+	}
 	return allErrors
 }
 

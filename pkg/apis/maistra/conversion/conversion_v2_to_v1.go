@@ -12,6 +12,17 @@ import (
 )
 
 func v2ToV1Hacks(values map[string]interface{}, out *v1.ControlPlaneSpec) error {
+	// adjustments for 3scale
+	// Need to move 3scale out of Istio values into ThreeScale field
+	if rawThreeScaleValues, ok := values["3scale"]; ok && rawThreeScaleValues != nil {
+		if threeScaleValues, ok := rawThreeScaleValues.(map[string]interface{}); ok {
+			out.ThreeScale = v1.NewHelmValues(threeScaleValues)
+		} else {
+			return fmt.Errorf("could not convert 3scale values to map[string]interface{}")
+		}
+	}
+	delete(values, "3scale")
+
 	hv := v1.NewHelmValues(values)
 	rawJaegerValues, ok, err := hv.GetFieldNoCopy("tracing.jaeger")
 	if ok {

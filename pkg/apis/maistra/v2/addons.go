@@ -16,4 +16,7 @@ type AddonsConfig struct {
 	// .Values.kiali.enabled, true if not null
 	// +optional
 	Kiali *KialiAddonConfig `json:"kiali,omitempty"`
+	// ThreeScale configures the 3scale adapter
+	// +optional
+	ThreeScale *ThreeScaleAddonConfig `json:"3scale,omitempty"`
 }

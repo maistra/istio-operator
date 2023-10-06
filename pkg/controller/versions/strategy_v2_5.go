@@ -111,6 +111,9 @@ func (v *versionStrategyV2_5) SetImageValues(_ context.Context, _ *common.Contro
 	if err := common.UpdateField(smcpSpec.Istio, "rateLimiting.rls.image", common.Config.OLM.Images.V2_5.RLS); err != nil {
 		return err
 	}
+	if err := common.UpdateField(smcpSpec.ThreeScale, "image", common.Config.OLM.Images.V2_5.ThreeScale); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -180,6 +183,14 @@ func (v *versionStrategyV2_5) validateMixerDisabled(spec *v2.ControlPlaneSpec, a
 }
 
 func (v *versionStrategyV2_5) validateAddons(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.Addons == nil {
+		return allErrors
+	}
+
+	if spec.Addons.ThreeScale != nil {
+		allErrors = append(allErrors, fmt.Errorf("support for 3scale has been removed in v2.1; "+
+			"please remove the spec.addons.3scale section from the SMCP and configure the 3scale WebAssembly adapter using a ServiceMeshExtension resource"))
+	}
 	return allErrors
 }
 
@@ -670,6 +681,18 @@ func (v *versionStrategyV2_5) Render(ctx context.Context, cr *common.ControllerR
 		}
 	} else {
 		log.V(2).Info("skipping disabled gateways charts")
+	}
+
+	if isEnabled(spec.ThreeScale) {
+		log.V(2).Info("rendering 3scale charts")
+		if chartRenderings, _, err := helm.RenderChart(
+			path.Join(v.GetChartsDir(), v2_5ChartMapping[ThreeScaleChart].path),
+			smcp.GetNamespace(), kubeVersion,
+			spec.ThreeScale.GetContent()); err == nil {
+			renderings[ThreeScaleChart] = chartRenderings[ThreeScaleChart]
+		} else {
+			allErrors = append(allErrors, err)
+		}
 	}
 
 	if len(allErrors) > 0 {
