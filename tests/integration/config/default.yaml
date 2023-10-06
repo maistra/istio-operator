@@ -1,7 +1,35 @@
-# It's necesary to create control plane and node because of the reservation of CPU and memory. 
-# Only setting control planle it's not enough.
+# This configs KinD to spin up a k8s cluster with mixed protocol LB support and GRPCContainerProbe enabled
+# This should be used to create K8s clusters with versions >= 1.23
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-  - role: control-plane
-  - role: worker
+featureGates:
+  MixedProtocolLBService: true
+  GRPCContainerProbe: true
+kubeadmConfigPatches:
+  - |
+    apiVersion: kubeadm.k8s.io/v1beta2
+    kind: ClusterConfiguration
+    metadata:
+      name: config
+    etcd:
+      local:
+        # Run etcd in a tmpfs (in RAM) for performance improvements
+        dataDir: /tmp/kind-cluster-etcd
+    # We run single node, drop leader election to reduce overhead
+    controllerManagerExtraArgs:
+      leader-elect: "false"
+    schedulerExtraArgs:
+      leader-elect: "false"
+    apiServer:
+      extraArgs:
+        "service-account-issuer": "kubernetes.default.svc"
+        "service-account-signing-key-file": "/etc/kubernetes/pki/sa.key"
+containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5000"]
+      endpoint = ["http://kind-registry:5000"]
+networking:
+  # MAISTRA specific:
+  # our prow cluster uses serviceSubnet 10.96.0.0/12, so the kind cluster must use other subnet to correctly route traffic;
+  # in this case, address 10.224.0.0 is chosen randomly from available set of subnets.
+  serviceSubnet: "10.224.0.0/12"
