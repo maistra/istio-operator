@@ -234,7 +234,8 @@ deploy-yaml: kustomize ## Outputs YAML manifests needed to deploy the controller
 
 .PHONY: deploy-olm
 deploy-olm: bundle bundle-build bundle-push ## Builds and pushes the operator OLM bundle and then deploys the operator using OLM
-	$(OPERATOR_SDK) run bundle $(BUNDLE_IMG)
+	kubectl create ns ${NAMESPACE} || echo "namespace ${NAMESPACE} already exists"
+	$(OPERATOR_SDK) run bundle $(BUNDLE_IMG) -n ${NAMESPACE}
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
@@ -242,7 +243,7 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 
 .PHONY: undeploy-olm
 undeploy-olm: operator-sdk ## Undeploys the operator from the cluster (used only if operator was installed via OLM)
-	$(OPERATOR_SDK) cleanup sailoperator --delete-all
+	$(OPERATOR_SDK) cleanup sailoperator --delete-all -n ${NAMESPACE}
 
 .PHONY: deploy-example
 deploy-example: deploy-example-openshift
