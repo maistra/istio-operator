@@ -507,7 +507,6 @@ function moveEnvoyFiltersToMeshConfigChart() {
   cp "${HELM_DIR}"/istio-control/istio-discovery/templates/_helpers.tpl "${HELM_DIR}/mesh-config/templates"
 
   sed_nowrap -n -e '/^telemetry:/,/^      logWindowDuration/ p' "${HELM_DIR}/istio-control/istio-discovery/values.yaml" > "${HELM_DIR}/mesh-config/values.yaml"
-  sed_wrap -i -n -e '/^telemetry:/,/^      logWindowDuration/ d; p' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
   sed_wrap -i -e '/multiCluster:/ i\
   # Default mtls policy. If true, mtls between services will be enabled by default.\
   mtls:\
