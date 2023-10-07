@@ -94,8 +94,8 @@ check_ready "${NAMESPACE}" "${OPERATOR_NAME}" "${OPERATOR_NAME}"
 
 
 echo "Deploy Istio"
-$COMMAND  get ns "${CONTROL_PLANE_NS}" >/dev/null 2>&1 || oc create namespace "${CONTROL_PLANE_NS}"
-$COMMAND  apply -f "${ISTIO_MANIFEST}" -n "${CONTROL_PLANE_NS}"
+$COMMAND get ns "${CONTROL_PLANE_NS}" >/dev/null 2>&1 || $COMMAND create namespace "${CONTROL_PLANE_NS}"
+$COMMAND apply -f "${ISTIO_MANIFEST}" -n "${CONTROL_PLANE_NS}"
 
 
 echo "Check that Istio is running"

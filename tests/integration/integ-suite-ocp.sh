@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -eux -o pipefail
+
 # To run this integration test on OCP cluster it's needed to already have the OCP cluster running and be logged in
 
 # Run the integration tests
