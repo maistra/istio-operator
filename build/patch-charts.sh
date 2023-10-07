@@ -306,6 +306,24 @@ gatewayAPI:
   tee >(cat >> "${HELM_DIR}/gateways/istio-ingress/values.yaml")\
       >(cat >> "${HELM_DIR}/gateways/istio-egress/values.yaml")
 
+  echo "
+telemetry:
+  enabled: true
+  v2:
+    enabled: true
+    prometheus:
+      enabled: true
+      configOverride:
+        gateway: {}
+        inboundSidecar: {}
+        outboundSidecar: {}
+    stackdriver:
+      enabled: false
+      configOverride: {}
+      disableOutbound: false" | \
+  tee >(cat >> "${HELM_DIR}/gateways/istio-ingress/values.yaml")\
+      >(cat >> "${HELM_DIR}/gateways/istio-egress/values.yaml")
+
   sed_wrap -i -e '/  logLevel:/ a\\n    tracer: zipkin' "${HELM_DIR}/gateways/istio-ingress/values.yaml"
   sed_wrap -i -e '/  logLevel:/ a\\n    tracer: zipkin' "${HELM_DIR}/gateways/istio-egress/values.yaml"
 

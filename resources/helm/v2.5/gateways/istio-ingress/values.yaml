@@ -373,3 +373,18 @@ meshConfig:
 gatewayAPI:
   enabled: false
   controllerMode: false
+
+telemetry:
+  enabled: true
+  v2:
+    enabled: true
+    prometheus:
+      enabled: true
+      configOverride:
+        gateway: {}
+        inboundSidecar: {}
+        outboundSidecar: {}
+    stackdriver:
+      enabled: false
+      configOverride: {}
+      disableOutbound: false
