@@ -499,6 +499,7 @@ function removeUnsupportedCharts() {
   rm -rf "${HELM_DIR}/istiocoredns"
   rm -rf "${HELM_DIR}/istiod-remote"
   rm -rf "${HELM_DIR}/istio-operator"
+  rm -rf "${HELM_DIR}/ztunnel"
 }
 
 function moveEnvoyFiltersToMeshConfigChart() {
