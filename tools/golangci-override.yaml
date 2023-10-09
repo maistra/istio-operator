@@ -1,0 +1,10 @@
+issues:
+  exclude-rules:
+  - linters:
+    - revive
+    text: "struct-tag: unknown option 'inline' in JSON tag"
+
+  # Don't check *_types.go files for lines that are too long (the linter complains about +kubebuilder:printcolumn lines)
+  - path: _types.go$
+    linters:
+    - lll
