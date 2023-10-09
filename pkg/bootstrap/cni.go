@@ -65,7 +65,7 @@ func internalRenderCNI(ctx context.Context, cl client.Client, config cni.Config,
 
 	cni["chained"] = !config.UseMultus
 	if config.UseMultus {
-		cni["cniBinDir"] = "/opt/multus/bin"
+		cni["cniBinDir"] = "/var/lib/cni/bin"
 		cni["cniConfDir"] = "/etc/cni/multus/net.d"
 		cni["mountedCniConfDir"] = "/host/etc/cni/multus/net.d"
 
