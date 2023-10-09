@@ -32,7 +32,6 @@ import (
 	"maistra.io/istio-operator/pkg/helm"
 	"maistra.io/istio-operator/pkg/test"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -64,7 +63,7 @@ var _ = BeforeSuite(func() {
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
-		NewClient: func(cache cache.Cache, config *rest.Config, options client.Options, uncachedObjects ...client.Object) (client.Client, error) {
+		NewClient: func(config *rest.Config, options client.Options) (client.Client, error) {
 			return k8sClient, nil
 		},
 	})
