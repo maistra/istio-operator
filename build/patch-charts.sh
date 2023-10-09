@@ -259,6 +259,10 @@ gateways: {}\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
 }
 
 function patchGateways() {
+  echo "move helpers file to gateways directory"
+  cp "${HELM_DIR}"/istio-control/istio-discovery/templates/_helpers.tpl "${HELM_DIR}/gateways/istio-ingress/templates"
+  cp "${HELM_DIR}"/istio-control/istio-discovery/templates/_helpers.tpl "${HELM_DIR}/gateways/istio-egress/templates"
+
   echo "patching Gateways specific Helm charts"
   sed_wrap -i -r -e 's/type: LoadBalancer *(#.*)?$/type: ClusterIP/' "${HELM_DIR}/gateways/istio-ingress/values.yaml"
 
@@ -299,6 +303,24 @@ function patchGateways() {
 gatewayAPI:
   enabled: false
   controllerMode: false" | \
+  tee >(cat >> "${HELM_DIR}/gateways/istio-ingress/values.yaml")\
+      >(cat >> "${HELM_DIR}/gateways/istio-egress/values.yaml")
+
+  echo "
+telemetry:
+  enabled: true
+  v2:
+    enabled: true
+    prometheus:
+      enabled: true
+      configOverride:
+        gateway: {}
+        inboundSidecar: {}
+        outboundSidecar: {}
+    stackdriver:
+      enabled: false
+      configOverride: {}
+      disableOutbound: false" | \
   tee >(cat >> "${HELM_DIR}/gateways/istio-ingress/values.yaml")\
       >(cat >> "${HELM_DIR}/gateways/istio-egress/values.yaml")
 
@@ -477,14 +499,15 @@ function removeUnsupportedCharts() {
   rm -rf "${HELM_DIR}/istiocoredns"
   rm -rf "${HELM_DIR}/istiod-remote"
   rm -rf "${HELM_DIR}/istio-operator"
+  rm -rf "${HELM_DIR}/ztunnel"
 }
 
 function moveEnvoyFiltersToMeshConfigChart() {
   echo "moving EnvoyFilter manifests to mesh-config"
   mv "${HELM_DIR}"/istio-control/istio-discovery/templates/telemetry*.yaml "${HELM_DIR}/mesh-config/templates"
+  cp "${HELM_DIR}"/istio-control/istio-discovery/templates/_helpers.tpl "${HELM_DIR}/mesh-config/templates"
 
   sed_nowrap -n -e '/^telemetry:/,/^      logWindowDuration/ p' "${HELM_DIR}/istio-control/istio-discovery/values.yaml" > "${HELM_DIR}/mesh-config/values.yaml"
-  sed_wrap -i -n -e '/^telemetry:/,/^      logWindowDuration/ d; p' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
   sed_wrap -i -e '/multiCluster:/ i\
   # Default mtls policy. If true, mtls between services will be enabled by default.\
   mtls:\
@@ -529,7 +552,7 @@ global:\
 
 function copyGlobalValues() {
   echo "copying global.yaml file from overlay charts as global.yaml file is removed in upstream but it's still needed."
-  cp "${SOURCE_DIR}/resources/helm/overlays/global.yaml" "${SOURCE_DIR}/resources/helm/v2.4/"
+  cp "${SOURCE_DIR}/resources/helm/overlays/global.yaml" "${SOURCE_DIR}/resources/helm/v2.5/"
 }
 
 # This hack is hopefully only needed for a few versions until this PR is merged: https://github.com/istio/istio/pull/39375

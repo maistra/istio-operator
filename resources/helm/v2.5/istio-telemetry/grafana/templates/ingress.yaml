@@ -1,0 +1,28 @@
+{{- if .Values.grafana.ingress.enabled -}}
+{{- range $index, $host := .Values.grafana.ingress.hosts }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: grafana{{ if gt $index 0 }}-{{ $index }}{{ end }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    maistra-version: "2.5.0"
+    app: grafana
+    release: {{ $.Release.Name }}
+{{- if gt (len $.Values.grafana.ingress.annotations) 0 }}
+  annotations:
+{{- range $key, $value := $.Values.grafana.ingress.annotations }}
+    {{ $key }}: {{ $value | quote }}
+{{- end }}
+{{- end }}
+spec:
+  host: {{ $host }}
+  to:
+    kind: Service
+    name: grafana
+  tls:
+    termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect
+---
+{{- end }}
+{{- end -}}

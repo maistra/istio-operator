@@ -1,0 +1,22 @@
+{{- if and .Values.cni.enabled (has "v2.5" .Values.cni.supportedReleases) (eq .Values.cni.instanceVersion "v2.5") }}
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  labels:
+    maistra-version: "2.5.0"
+  name: {{ .Values.cni.defaultResourceName }}
+rules:
+  - apiGroups: [""]
+    resources:
+      - pods
+    verbs:
+      - get
+  - apiGroups:
+      - security.openshift.io
+    resources:
+      - securitycontextconstraints
+    resourceNames:
+      - privileged
+    verbs:
+      - 'use'
+{{- end }}

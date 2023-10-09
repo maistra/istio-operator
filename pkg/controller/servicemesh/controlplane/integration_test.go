@@ -33,35 +33,20 @@ import (
 )
 
 func TestDefaultInstall(t *testing.T) {
-	testCases := []IntegrationTestCase{
-		{
-			name: "default." + versions.V2_2.String(),
-			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: versions.V2_2.String()}),
+	var testCases []IntegrationTestCase
+	for _, v := range versions.TestedVersions {
+		testCases = append(testCases, IntegrationTestCase{
+			name: "default." + v.String(),
+			smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: v.String()}),
 			create: IntegrationTestValidation{
-				Assertions: generateAssertions("create", "istiod-"+controlPlaneName, "wasm-cacher-"+controlPlaneName,
-					"istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
+				Assertions: generateAssertions("create",
+					"istiod-"+controlPlaneName, "istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
 			},
 			delete: IntegrationTestValidation{
-				Assertions: generateAssertions("delete", "istiod-"+controlPlaneName, "wasm-cacher-"+controlPlaneName,
-					"istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
+				Assertions: generateAssertions("delete",
+					"istiod-"+controlPlaneName, "istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
 			},
-		},
-	}
-	for _, v := range versions.TestedVersions {
-		if v.AtLeast(versions.V2_3) {
-			testCases = append(testCases, IntegrationTestCase{
-				name: "default." + v.String(),
-				smcp: NewV2SMCPResource(controlPlaneName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{Version: v.String()}),
-				create: IntegrationTestValidation{
-					Assertions: generateAssertions("create",
-						"istiod-"+controlPlaneName, "istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
-				},
-				delete: IntegrationTestValidation{
-					Assertions: generateAssertions("delete",
-						"istiod-"+controlPlaneName, "istio-ingressgateway", "istio-egressgateway", "prometheus", "grafana"),
-				},
-			})
-		}
+		})
 	}
 	RunSimpleInstallTests(t, testCases)
 }
@@ -82,9 +67,9 @@ func TestBootstrapping(t *testing.T) {
 	)
 
 	cniDaemonSetNames := map[versions.Version]string{
-		versions.V2_2: "istio-cni-node",
 		versions.V2_3: "istio-cni-node-v2-3",
 		versions.V2_4: "istio-cni-node-v2-4",
+		versions.V2_5: "istio-cni-node-v2-5",
 	}
 
 	type testCase struct {

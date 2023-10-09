@@ -29,7 +29,6 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/hacks"
-	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 var ctx = common.NewContextWithLog(context.Background(), logf.Log)
@@ -158,24 +157,6 @@ func RunSimpleInstallTest(t *testing.T, tc IntegrationTestCase) {
 	t.Run(tc.name, func(t *testing.T) {
 		test.RunControllerTestCase(t, ctc)
 	})
-}
-
-func New22SMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec) *maistrav2.ServiceMeshControlPlane {
-	smcp := NewV2SMCPResource(name, namespace, spec)
-	smcp.Spec.Version = versions.V2_2.String()
-	return smcp
-}
-
-func New21SMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec) *maistrav2.ServiceMeshControlPlane {
-	smcp := NewV2SMCPResource(name, namespace, spec)
-	smcp.Spec.Version = versions.V2_1.String()
-	return smcp
-}
-
-func New20SMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec) *maistrav2.ServiceMeshControlPlane {
-	smcp := NewV2SMCPResource(name, namespace, spec)
-	smcp.Spec.Version = versions.V2_0.String()
-	return smcp
 }
 
 func NewV2xSMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec, version string) *maistrav2.ServiceMeshControlPlane {

@@ -1,0 +1,46 @@
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+spec:
+  profiles:
+    - base
+    - small
+
+  runtime:
+    defaults:
+      container:
+        imageRegistry: docker.io/maistra
+        imageTag: 2.5.0
+    components:
+      grafana:
+        container:
+          imageName: grafana-ubi8
+      pilot:
+        container:
+          imageName: pilot-ubi8
+      prometheus:
+        container:
+          imageName: prometheus-ubi8
+      3scale:
+        container:
+          imageRegistry: quay.io/3scale
+          imageName: 3scale-istio-adapter
+          imageTag: v2.0.0
+      global.oauthproxy:
+        container:
+          imageRegistry: quay.io/openshift
+          imageName: origin-oauth-proxy
+          imageTag: "4.9"
+          imagePullPolicy: IfNotPresent
+      rateLimiting.rls:
+        container:
+          imageName: ratelimit-ubi8
+
+  proxy:
+    runtime:
+      container:
+        imageName: proxyv2-ubi8
+    networking:
+      initialization:
+        initContainer:
+          runtime:
+            imageName: proxy-init-centos7

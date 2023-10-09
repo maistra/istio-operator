@@ -62,32 +62,32 @@ function generateDeploymentFile() {
     cat deploy/src/rbac.yaml; echo -e "\n---\n"
     cat deploy/src/serviceaccount.yaml; echo -e "\n---\n"
     cat deploy/src/service.yaml; echo -e "\n---\n"
-    cat deploy/src/deployment-${BUILD_TYPE}.yaml; } >${DEPLOYMENT_FILE}
+    cat deploy/src/deployment-${BUILD_TYPE}.yaml; } >"${DEPLOYMENT_FILE}"
 }
 
 function generateCSV() {
   YQ="go run github.com/mikefarah/yq/v4"
 
-  IMAGE_SRC=$(${YQ} eval 'select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.spec.containers[0].image' ${DEPLOYMENT_FILE})
+  IMAGE_SRC=$(${YQ} eval 'select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.spec.containers[0].image' "${DEPLOYMENT_FILE}")
   if [ "$IMAGE_SRC" == "" ]; then
     echo "generateCSV(): Operator image source is empty, please verify source yaml/path to the field."
     exit 1
   fi
 
-  DEPLOYMENT_SPEC=$(${YQ} eval 'select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec' ${DEPLOYMENT_FILE} | sed 's/^/          /')
+  DEPLOYMENT_SPEC=$(${YQ} eval 'select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec' "${DEPLOYMENT_FILE}" | sed 's/^/          /')
   if [ "$DEPLOYMENT_SPEC" == "" ]; then
     echo "generateCSV(): Operator deployment spec is empty, please verify source yaml/path to the field."
     exit 1
   fi
 
-  CLUSTER_ROLE_RULES=$(${YQ} eval 'select(.kind=="ClusterRole" and .metadata.name=="istio-operator") | .rules' ${DEPLOYMENT_FILE} | sed 's/^/        /')
+  CLUSTER_ROLE_RULES=$(${YQ} eval 'select(.kind=="ClusterRole" and .metadata.name=="istio-operator") | .rules' "${DEPLOYMENT_FILE}" | sed 's/^/        /')
   if [ "$CLUSTER_ROLE_RULES" == "null" ]; then
     echo "generateCSV(): istio-operator cluster role source is empty, please verify source yaml/path to the field."
     exit 1
   fi
 
   if [ "${BUILD_TYPE}" == "maistra" ]; then
-    RELATED_IMAGES=$(${YQ} eval 'select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.metadata.annotations' ${DEPLOYMENT_FILE} | \
+    RELATED_IMAGES=$(${YQ} eval 'select(.kind=="Deployment" and .metadata.name=="istio-operator") | .spec.template.metadata.annotations' "${DEPLOYMENT_FILE}" | \
       sed -n 's/olm\.relatedImage\.\([^:]*\): *\([^ ]*\)/- name: \1\
   image: \2/p' | \
       sed 's/^/  /')
@@ -146,9 +146,9 @@ $RELATED_IMAGES"
 
 function generatePackage() {
   local package_path=${MANIFESTS_DIR}/${BUILD_TYPE}.package.yaml
-  cp "${MY_LOCATION}/manifest-templates/package.yaml" ${package_path}
-  sed -i -e 's/__NAME__/'${OPERATOR_NAME}'/g' ${package_path}
-  sed -i -e 's/__VERSION__/'"${MAISTRA_VERSION}"'/g' ${package_path}
+  cp "${MY_LOCATION}/manifest-templates/package.yaml" "${package_path}"
+  sed -i -e 's/__NAME__/'${OPERATOR_NAME}'/g' "${package_path}"
+  sed -i -e 's/__VERSION__/'"${MAISTRA_VERSION}"'/g' "${package_path}"
 }
 
 checkDependencies

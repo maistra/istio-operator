@@ -18,9 +18,9 @@ THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 -include Makefile.overrides
 
-MAISTRA_VERSION        ?= 2.4.3
-MAISTRA_BRANCH         ?= maistra-2.4
-ISTIO_VERSION          ?= 1.16.5
+MAISTRA_VERSION        ?= 2.5.0
+MAISTRA_BRANCH         ?= maistra-2.5
+ISTIO_VERSION          ?= 1.18.0
 REPLACES_PRODUCT_CSV   ?= 2.4.2
 REPLACES_COMMUNITY_CSV ?= 2.4.2
 VERSION                ?= development
@@ -87,7 +87,7 @@ test:
 # Helm charts generation and templates processing
 ################################################################################
 
-SUPPORTED_VERSIONS := 2.1 2.2 2.3 2.4
+SUPPORTED_VERSIONS := 2.1 2.2 2.3 2.4 2.5
 
 $(addprefix update-remote-maistra-,$(SUPPORTED_VERSIONS)): update-remote-maistra-%:
 	$(eval version:=$*)
@@ -181,10 +181,10 @@ endif
 # resource collection
 ################################################################################
 .PHONY: collect-charts
-collect-charts: collect-charts-2.1 collect-charts-2.2 collect-charts-2.3 collect-charts-2.4
+collect-charts: collect-charts-2.1 collect-charts-2.2 collect-charts-2.3 collect-charts-2.4 collect-charts-2.5
 
 .PHONY: collect-templates
-collect-templates: collect-templates-2.1 collect-templates-2.2 collect-templates-2.3 collect-templates-2.4
+collect-templates: collect-templates-2.1 collect-templates-2.2 collect-templates-2.3 collect-templates-2.4 collect-templates-2.5
 
 .PHONY: collect-olm-manifests
 collect-olm-manifests:

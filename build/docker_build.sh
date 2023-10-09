@@ -36,4 +36,4 @@ mkdir "${HELM_DIR}"
 cp -r "${SOURCE_DIR}/tmp/_output/helm/istio-releases/istio-1.1.0" "${HELM_DIR}/1.1.0"
 
 echo "building container ${IMAGE}..."
-${CONTAINER_CLI} build --no-cache -t "${IMAGE}" -f tmp/build/Dockerfile --build-arg build_type=${BUILD_TYPE} .
+${CONTAINER_CLI} build --no-cache -t "${IMAGE}" -f tmp/build/Dockerfile --build-arg build_type="${BUILD_TYPE}" .

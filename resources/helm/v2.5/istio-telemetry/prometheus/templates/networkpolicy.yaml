@@ -1,0 +1,19 @@
+# This is to support routes on ocp 3.11 installs
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: istio-prometheus-ingress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    maistra-version: "2.5.0"
+    app: prometheus
+    release: {{ .Release.Name }}
+  annotations:
+    "maistra.io/internal": "true"
+spec:
+  podSelector:
+    matchLabels:
+      app: prometheus
+  ingress:
+  - ports:
+    port: 3001

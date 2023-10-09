@@ -1,0 +1,21 @@
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+spec:
+  mode: ClusterWide
+  addons:
+    grafana:
+      enabled: false
+    kiali:
+      enabled: false
+    prometheus:
+      enabled: false
+  gateways:
+    enabled: false
+  tracing:
+    type: None
+  techPreview:
+    global:
+      caCertConfigMapName: ossm-ca-root-cert
+    gatewayAPI:
+      enabled: true
+      controllerMode: true
