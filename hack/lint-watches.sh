@@ -5,7 +5,7 @@ check_watches() {
     IFS=$'\n' read -r -d '' -a chartKinds <<< "$(grep -rEo "^kind: ([A-Za-z0-9]+)" --no-filename ./resources/charts | sed -e 's/^kind: //g' | sort | uniq)"
 
     # Find watched kinds in istio_controller.go
-    IFS=$'\n' read -r -d '' -a watchedKinds <<< "$(grep -Eo "(Owns|Watches)\\((.*)" ./controllers/istio_controller.go | sed 's/.*(&[^.]*\.\([^{}]*\){}).*/\1/' | sort | uniq)"
+    IFS=$'\n' read -r -d '' -a watchedKinds <<< "$(grep -Eo "(Owns|Watches)\\((.*)" ./controllers/istio_controller.go | sed 's/.*&[^.]*\.\([^{}]*\).*/\1/' | sort | uniq)"
 
     # Find ignored kinds in istio_controller.go
     IFS=$'\n' read -r -d '' -a ignoredKinds <<< "$(sed -n 's/.*\+lint-watches:ignore:\s*\(.*\)\s*/\1/p' ./controllers/istio_controller.go | sort | uniq)"

@@ -36,6 +36,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	networkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 )
@@ -95,10 +96,12 @@ func main() {
 			return requestLogger{rt: rt}
 		})
 	}
+
+	metricsOptions := metricsserver.Options{BindAddress: fmt.Sprintf("%s:%d", metricsAddr, 9443)}
+
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:                  scheme,
-		MetricsBindAddress:      metricsAddr,
-		Port:                    9443,
+		Metrics:                 metricsOptions,
 		HealthProbeBindAddress:  probeAddr,
 		LeaderElection:          true,
 		LeaderElectionID:        "8d20bb54.istio.io",

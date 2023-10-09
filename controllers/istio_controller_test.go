@@ -13,10 +13,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/utils/pointer"
 	v1 "maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/common"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"istio.io/istio/pkg/ptr"
 )
 
 var testConfig = common.OperatorConfig{
@@ -236,8 +237,8 @@ func expectedOwnerReference(istio *v1.Istio) metav1.OwnerReference {
 		Kind:               v1.IstioKind,
 		Name:               istio.Name,
 		UID:                istio.UID,
-		Controller:         pointer.Bool(true),
-		BlockOwnerDeletion: pointer.Bool(true),
+		Controller:         ptr.Of(true),
+		BlockOwnerDeletion: ptr.Of(true),
 	}
 }
 

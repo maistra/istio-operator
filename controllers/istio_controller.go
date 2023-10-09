@@ -35,7 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
-	"k8s.io/utils/pointer"
 	"maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/helm"
 	"maistra.io/istio-operator/pkg/kube"
@@ -48,9 +47,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	networkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
+	"istio.io/istio/pkg/ptr"
 )
 
 // IstioReconciler reconciles a Istio object
@@ -159,8 +158,8 @@ func (r *IstioReconciler) installHelmCharts(ctx context.Context, istio v1alpha1.
 		Kind:               v1alpha1.IstioKind,
 		Name:               istio.Name,
 		UID:                istio.UID,
-		Controller:         pointer.Bool(true),
-		BlockOwnerDeletion: pointer.Bool(true),
+		Controller:         ptr.Of(true),
+		BlockOwnerDeletion: ptr.Of(true),
 	}
 
 	if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, systemCharts, values,
@@ -212,10 +211,10 @@ func (r *IstioReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// Owns(&multusv1.NetworkAttachmentDefinition{}).
 
 		// cluster-scoped resources
-		Watches(sourceForKind(&rbacv1.ClusterRole{}), clusterScopedResourceHandler).
-		Watches(sourceForKind(&rbacv1.ClusterRoleBinding{}), clusterScopedResourceHandler).
-		Watches(sourceForKind(&admissionv1.MutatingWebhookConfiguration{}), clusterScopedResourceHandler).
-		Watches(sourceForKind(&admissionv1.ValidatingWebhookConfiguration{}),
+		Watches(&rbacv1.ClusterRole{}, clusterScopedResourceHandler).
+		Watches(&rbacv1.ClusterRoleBinding{}, clusterScopedResourceHandler).
+		Watches(&admissionv1.MutatingWebhookConfiguration{}, clusterScopedResourceHandler).
+		Watches(&admissionv1.ValidatingWebhookConfiguration{},
 			clusterScopedResourceHandler,
 			builder.WithPredicates(validatingWebhookConfigPredicate{})).
 
@@ -340,7 +339,7 @@ func istiodDeploymentKey(istio *v1alpha1.Istio) client.ObjectKey {
 	}
 }
 
-func mapOwnerAnnotationsToReconcileRequest(obj client.Object) []reconcile.Request {
+func mapOwnerAnnotationsToReconcileRequest(context context.Context, obj client.Object) []reconcile.Request {
 	annotations := obj.GetAnnotations()
 	if annotations == nil {
 		return nil
@@ -351,12 +350,6 @@ func mapOwnerAnnotationsToReconcileRequest(obj client.Object) []reconcile.Reques
 		return []reconcile.Request{{NamespacedName: *namespacedName}}
 	}
 	return nil
-}
-
-func sourceForKind(obj client.Object) source.Source {
-	return &source.Kind{
-		Type: obj,
-	}
 }
 
 type validatingWebhookConfigPredicate struct {
