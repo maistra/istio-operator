@@ -32,6 +32,10 @@ type IstioSpec struct {
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="Istio Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General","urn:alm:descriptor:com.tectonic.ui:select:v3.0"}
 	Version string `json:"version,omitempty"`
 
+	// The built-in installation configuration profile to use.
+	// When this field is left empty, the 'default' profile will be used.
+	Profile string `json:"profile,omitempty"`
+
 	// Values defines the values to be passed to the Helm chart when installing Istio.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless

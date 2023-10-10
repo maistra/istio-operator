@@ -52,6 +52,10 @@ spec:
           spec:
             description: IstioSpec defines the desired state of Istio
             properties:
+              profile:
+                description: The built-in installation configuration profile to use.
+                  When this field is left empty, the 'default' profile will be used.
+                type: string
               values:
                 description: Values defines the values to be passed to the Helm chart
                   when installing Istio.

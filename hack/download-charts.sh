@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e -u -o pipefail
+set -e -x -u -o pipefail
 
 : "${MAISTRA_RELEASE_STREAM:=$1}"
 : "${ISTIO_REPO:=$2}"
@@ -8,27 +8,36 @@ set -e -u -o pipefail
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 REPO_ROOT=$(dirname "${SCRIPT_DIR}")
-HELM_DIR="${REPO_ROOT}/resources/charts/${MAISTRA_RELEASE_STREAM}"
+MANIFEST_DIR="${REPO_ROOT}/resources/${MAISTRA_RELEASE_STREAM}"
+CHARTS_DIR="${MANIFEST_DIR}/charts"
+PROFILES_DIR="${MANIFEST_DIR}/profiles"
 CONFIG_DIR="${REPO_ROOT}/config"
 
 ISTIO_FILE="${ISTIO_COMMIT}.tar.gz"
 ISTIO_URL="${ISTIO_REPO}/archive/${ISTIO_COMMIT}.tar.gz"
 WORK_DIR=$(mktemp -d)
 EXTRACT_DIR="${ISTIO_REPO##*/}-${ISTIO_COMMIT}"
-EXTRACT_CMD="tar zxf ${ISTIO_FILE} ${EXTRACT_DIR}/manifests/charts ${EXTRACT_DIR}/manifests/addons/dashboards"
+EXTRACT_CMD="tar zxf ${ISTIO_FILE} ${EXTRACT_DIR}/manifests/charts ${EXTRACT_DIR}/manifests/profiles ${EXTRACT_DIR}/manifests/addons/dashboards"
 
-function downloadIstioCharts() {
-  rm -rf "${HELM_DIR}"
-  mkdir -p "${HELM_DIR}"
+function downloadIstioManifests() {
+  rm -rf "${CHARTS_DIR}"
+  mkdir -p "${CHARTS_DIR}"
 
-  echo "downloading charts from ${ISTIO_URL}"
-  cd "${WORK_DIR}"
+  rm -rf "${PROFILES_DIR}"
+  mkdir -p "${PROFILES_DIR}"
+
+  echo "downloading charts and profiles from ${ISTIO_URL}"
+  pushd "${WORK_DIR}"
   curl -LfO "${ISTIO_URL}"
 
   echo "extracting charts to ${WORK_DIR}/${EXTRACT_DIR}"
   ${EXTRACT_CMD}
-  echo "copying charts to ${HELM_DIR}"
-  cp -rf "${WORK_DIR}"/"${EXTRACT_DIR}"/manifests/charts/* "${HELM_DIR}/"
+  echo "copying charts to ${CHARTS_DIR}"
+  cp -rf "${WORK_DIR}"/"${EXTRACT_DIR}"/manifests/charts/* "${CHARTS_DIR}/"
+  echo "copying manifests to ${CHARTS_DIR}"
+  cp -rf "${WORK_DIR}"/"${EXTRACT_DIR}"/manifests/profiles/* "${PROFILES_DIR}/"
+
+  popd
 }
 
 function patchIstioCharts() {
@@ -38,12 +47,24 @@ function patchIstioCharts() {
 - apiGroups: ["security.openshift.io"] \
   resources: ["securitycontextconstraints"] \
   resourceNames: ["privileged"] \
-  verbs: ["use"]/' "${HELM_DIR}/istio-cni/templates/clusterrole.yaml"
+  verbs: ["use"]/' "${CHARTS_DIR}/istio-cni/templates/clusterrole.yaml"
+}
+
+function convertIstioProfiles() {
+  for profile in "${PROFILES_DIR}"/*.yaml; do
+    yq eval -i '.apiVersion="operator.istio.io/v1alpha1"
+      | .kind="Istio"
+      | del(.metadata)
+      | del(.spec.components)
+      | del(.spec.meshConfig)
+      | del(.spec.hub)
+      | del(.spec.tag)' "$profile"
+  done
 }
 
 function copyCRDs() {
   # Split the YAML file into separate CRD files
-  csplit -s --suppress-matched -f "${CONFIG_DIR}/crd/bases/istio-crd" -z "${HELM_DIR}/base/crds/crd-all.gen.yaml" '/^---$/' '{*}'
+  csplit -s --suppress-matched -f "${CONFIG_DIR}/crd/bases/istio-crd" -z "${CHARTS_DIR}/base/crds/crd-all.gen.yaml" '/^---$/' '{*}'
 
   # To hide istio CRDs in the OpenShift Console, we add them to the intenral-objects annotation in the CSV
   internalObjects=""
@@ -78,6 +99,7 @@ function copyCRDs() {
   sed -i "/operators\.operatorframework\.io\/internal-objects/ c\    operators.operatorframework.io/internal-objects: '[${internalObjects%?}]'" "${CONFIG_DIR}/manifests/bases/sailoperator.clusterserviceversion.yaml"
 }
 
-downloadIstioCharts
+downloadIstioManifests
 patchIstioCharts
+convertIstioProfiles
 copyCRDs
