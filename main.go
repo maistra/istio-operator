@@ -97,11 +97,9 @@ func main() {
 		})
 	}
 
-	metricsOptions := metricsserver.Options{BindAddress: fmt.Sprintf("%s:%d", metricsAddr, 9443)}
-
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:                  scheme,
-		Metrics:                 metricsOptions,
+		Metrics:                 metricsserver.Options{BindAddress: metricsAddr},
 		HealthProbeBindAddress:  probeAddr,
 		LeaderElection:          true,
 		LeaderElectionID:        "8d20bb54.istio.io",

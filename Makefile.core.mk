@@ -165,9 +165,10 @@ build: ## Build manager binary.
 run: gen ## Run a controller from your host.
 	POD_NAMESPACE=${NAMESPACE} go run ./main.go --config-file=./hack/config.properties --resource-directory=./resources
 
+# docker build -t ${IMAGE} --build-arg GIT_TAG=${GIT_TAG} --build-arg GIT_REVISION=${GIT_REVISION} --build-arg GIT_STATUS=${GIT_STATUS} .
 .PHONY: docker-build
-docker-build: ## Build docker image with the manager.
-	docker build -t ${IMAGE} --build-arg GIT_TAG=${GIT_TAG} --build-arg GIT_REVISION=${GIT_REVISION} --build-arg GIT_STATUS=${GIT_STATUS} .
+docker-build: build ## Build docker image with the manager.
+	docker build -t ${IMAGE} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.

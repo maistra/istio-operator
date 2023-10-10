@@ -45,9 +45,14 @@ for ((i = 1; i <= max_retries; i++)); do
     fi
 done
 
+function cleanup_kind_cluster() {
+  echo "Test exited with exit code $?."
+  echo "Cleaning up kind cluster"
+  kind delete cluster --name istio-operator || true
+}
+
+trap "cleanup_kind_cluster" EXIT
+
 # Run the integration tests
 echo "Running integration tests"
 ./tests/integration/common-operator-integ-suite.sh --kind
-
-# Delete kind cluster
-kind delete cluster --name istio-operator

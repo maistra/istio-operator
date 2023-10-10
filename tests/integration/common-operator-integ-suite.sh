@@ -49,7 +49,7 @@ WD=$(dirname "$0")
 WD=$(cd "$WD" || exit; pwd)
 
 NAMESPACE="${NAMESPACE:-istio-operator}"
-OPERATOR_NAME="${OPERATOR_NAME:-istio-operator}"
+DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-istio-operator}"
 CONTROL_PLANE_NS="${CONTROL_PLANE_NS:-istio-system}"
 COMMAND="kubectl"
 
@@ -90,7 +90,7 @@ make -s --no-print-directory deploy
 # Main
 
 echo "Check that istio operator is running"
-check_ready "${NAMESPACE}" "${OPERATOR_NAME}" "${OPERATOR_NAME}"
+check_ready "${NAMESPACE}" "${DEPLOYMENT_NAME}" "${DEPLOYMENT_NAME}"
 
 
 echo "Deploy Istio"
