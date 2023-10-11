@@ -1,23 +1,20 @@
 #!/usr/bin/env bash
 
-set -e -x -u -o pipefail
+set -e -u -o pipefail
 
 : "${MAISTRA_RELEASE_STREAM:=$1}"
 : "${ISTIO_REPO:=$2}"
 : "${ISTIO_COMMIT:=$3}"
+ CHART_URLS=("${@:4}")
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 REPO_ROOT=$(dirname "${SCRIPT_DIR}")
 MANIFEST_DIR="${REPO_ROOT}/resources/${MAISTRA_RELEASE_STREAM}"
 CHARTS_DIR="${MANIFEST_DIR}/charts"
 PROFILES_DIR="${MANIFEST_DIR}/profiles"
-CONFIG_DIR="${REPO_ROOT}/config"
 
-ISTIO_FILE="${ISTIO_COMMIT}.tar.gz"
 ISTIO_URL="${ISTIO_REPO}/archive/${ISTIO_COMMIT}.tar.gz"
 WORK_DIR=$(mktemp -d)
-EXTRACT_DIR="${ISTIO_REPO##*/}-${ISTIO_COMMIT}"
-EXTRACT_CMD="tar zxf ${ISTIO_FILE} ${EXTRACT_DIR}/manifests/charts ${EXTRACT_DIR}/manifests/profiles ${EXTRACT_DIR}/manifests/addons/dashboards"
 
 function downloadIstioManifests() {
   rm -rf "${CHARTS_DIR}"
@@ -26,16 +23,43 @@ function downloadIstioManifests() {
   rm -rf "${PROFILES_DIR}"
   mkdir -p "${PROFILES_DIR}"
 
-  echo "downloading charts and profiles from ${ISTIO_URL}"
   pushd "${WORK_DIR}"
+  echo "downloading Git archive from ${ISTIO_URL}"
   curl -LfO "${ISTIO_URL}"
 
-  echo "extracting charts to ${WORK_DIR}/${EXTRACT_DIR}"
-  ${EXTRACT_CMD}
-  echo "copying charts to ${CHARTS_DIR}"
-  cp -rf "${WORK_DIR}"/"${EXTRACT_DIR}"/manifests/charts/* "${CHARTS_DIR}/"
-  echo "copying manifests to ${CHARTS_DIR}"
-  cp -rf "${WORK_DIR}"/"${EXTRACT_DIR}"/manifests/profiles/* "${PROFILES_DIR}/"
+  ISTIO_FILE="${ISTIO_URL##*/}"
+  EXTRACT_DIR="${ISTIO_REPO##*/}-${ISTIO_COMMIT}"
+
+  if [ "${#CHART_URLS[@]}" -gt 0 ]; then
+    for url in "${CHART_URLS[@]}"; do
+      echo "downloading chart from $url"
+      curl -LfO "$url"
+
+      file="${url##*/}"
+
+      echo "extracting charts from $file to ${CHARTS_DIR}"
+      tar zxf "$file" -C "${CHARTS_DIR}"
+    done
+
+    echo "extracting profiles from ${ISTIO_FILE} to ${PROFILES_DIR}"
+    tar zxf "${ISTIO_FILE}" "${EXTRACT_DIR}/manifests/profiles"
+    echo "copying profiles to ${PROFILES_DIR}"
+    cp -rf "${WORK_DIR}"/"${EXTRACT_DIR}"/manifests/profiles/* "${PROFILES_DIR}/"
+
+  else
+    echo "extracting charts and profiles from ${ISTIO_FILE} to ${WORK_DIR}/${EXTRACT_DIR}"
+    tar zxf "${ISTIO_FILE}" "${EXTRACT_DIR}/manifests/charts" "${EXTRACT_DIR}/manifests/profiles"
+
+    echo "copying charts to ${CHARTS_DIR}"
+    cp -rf "${WORK_DIR}"/"${EXTRACT_DIR}"/manifests/charts/base "${CHARTS_DIR}/base"
+    cp -rf "${WORK_DIR}"/"${EXTRACT_DIR}"/manifests/charts/gateway "${CHARTS_DIR}/gateway"
+    cp -rf "${WORK_DIR}"/"${EXTRACT_DIR}"/manifests/charts/istio-cni "${CHARTS_DIR}/cni"
+    cp -rf "${WORK_DIR}"/"${EXTRACT_DIR}"/manifests/charts/istio-control/istio-discovery "${CHARTS_DIR}/istiod"
+    cp -rf "${WORK_DIR}"/"${EXTRACT_DIR}"/manifests/charts/ztunnel "${CHARTS_DIR}/ztunnel"
+
+    echo "copying profiles to ${PROFILES_DIR}"
+    cp -rf "${WORK_DIR}"/"${EXTRACT_DIR}"/manifests/profiles/* "${PROFILES_DIR}/"
+  fi
 
   popd
 }
@@ -47,7 +71,7 @@ function patchIstioCharts() {
 - apiGroups: ["security.openshift.io"] \
   resources: ["securitycontextconstraints"] \
   resourceNames: ["privileged"] \
-  verbs: ["use"]/' "${CHARTS_DIR}/istio-cni/templates/clusterrole.yaml"
+  verbs: ["use"]/' "${CHARTS_DIR}/cni/templates/clusterrole.yaml"
 }
 
 function convertIstioProfiles() {
@@ -62,44 +86,6 @@ function convertIstioProfiles() {
   done
 }
 
-function copyCRDs() {
-  # Split the YAML file into separate CRD files
-  csplit -s --suppress-matched -f "${CONFIG_DIR}/crd/bases/istio-crd" -z "${CHARTS_DIR}/base/crds/crd-all.gen.yaml" '/^---$/' '{*}'
-
-  # To hide istio CRDs in the OpenShift Console, we add them to the intenral-objects annotation in the CSV
-  internalObjects=""
-
-  # Rename the split files to <api group>_<resource name>.yaml
-  for file in "${CONFIG_DIR}/crd/bases/istio-crd"*; do
-    # Extract the group and resource from each CRD
-    group=$(grep -oP '^\s*group:\s*\K.*' "$file" | tr -d '[:space:]')
-    resource=$(grep -oP '^\s*plural:\s*\K.*' "$file" | tr -d '[:space:]')
-    # Add the CRD to the list of internal objects
-    internalObjects+="\"${resource}.${group}\","
-    # Rename the file to <group>_<resource>.yaml
-    mv "$file" "${CONFIG_DIR}/crd/bases/${group}_${resource}.yaml"
-  done
-
-  # Remove existing list of CRD files from kustomization.yaml
-  sed -i '/resources:/,/#+kubebuilder:scaffold:crdkustomizeresource/ {
-    /resources:/n
-    /#+kubebuilder:scaffold:crdkustomizeresource/!d
-    }' "${CONFIG_DIR}/crd/kustomization.yaml"
-
-  # Create YAML snippet containing list of CRD files
-  { cd "${CONFIG_DIR}/crd"; find "bases/"*.yaml | sed 's/^/- /'; } > "${CONFIG_DIR}/crd/crdfiles.yaml"
-
-  # Insert snippet into kustomization.yaml
-  sed -i '/resources:/r '"${CONFIG_DIR}/crd/crdfiles.yaml" "${CONFIG_DIR}/crd/kustomization.yaml"
-
-  # Remove snippet file
-  rm "${CONFIG_DIR}/crd/crdfiles.yaml"
-
-  # Update internal-objects annotation in CSV
-  sed -i "/operators\.operatorframework\.io\/internal-objects/ c\    operators.operatorframework.io/internal-objects: '[${internalObjects%?}]'" "${CONFIG_DIR}/manifests/bases/sailoperator.clusterserviceversion.yaml"
-}
-
 downloadIstioManifests
 patchIstioCharts
 convertIstioProfiles
-copyCRDs

@@ -60,8 +60,11 @@ spec:
                   when installing Istio.
                 x-kubernetes-preserve-unknown-fields: true
               version:
-                description: Version defines the version of Istio to install. If not
-                  specified, the latest version supported by the operator is installed.
+                description: 'Version defines the version of Istio to install. Must
+                  be one of: latest. If not specified, the latest version supported
+                  by the operator is installed.'
+                enum:
+                - latest
                 type: string
             type: object
           status:

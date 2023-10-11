@@ -19,14 +19,14 @@ metadata:
           },
           "spec": {
             "profile": "openshift",
-            "version": "v3.0"
+            "version": "latest"
           }
         }
       ]
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-operator:3.0-latest
-    createdAt: "2023-10-24T03:06:14Z"
+    createdAt: "2023-10-24T08:06:14Z"
     operators.operatorframework.io/builder: operator-sdk-v1.32.0
     operators.operatorframework.io/internal-objects: '["wasmplugins.extensions.istio.io","destinationrules.networking.istio.io","envoyfilters.networking.istio.io","gateways.networking.istio.io","proxyconfigs.networking.istio.io","serviceentries.networking.istio.io","sidecars.networking.istio.io","virtualservices.networking.istio.io","workloadentries.networking.istio.io","workloadgroups.networking.istio.io","authorizationpolicies.security.istio.io","peerauthentications.security.istio.io","requestauthentications.security.istio.io","telemetries.telemetry.istio.io"]'
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -62,13 +62,14 @@ spec:
       kind: Istio
       name: istios.operator.istio.io
       specDescriptors:
-      - description: Version defines the version of Istio to install. If not specified,
-          the latest version supported by the operator is installed.
+      - description: 'Version defines the version of Istio to install. Must be one
+          of: latest. If not specified, the latest version supported by the operator
+          is installed.'
         displayName: Istio Version
         path: version
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
-        - urn:alm:descriptor:com.tectonic.ui:select:v3.0
+        - urn:alm:descriptor:com.tectonic.ui:select:latest
       - description: The built-in installation configuration profile to use. When
           this field is left empty, the 'default' profile will be used.
         displayName: Profile
@@ -310,9 +311,6 @@ spec:
           template:
             metadata:
               annotations:
-                images3_0.cni: quay.io/maistra-dev/install-cni:3.0-latest
-                images3_0.istiod: quay.io/maistra-dev/pilot:3.0-latest
-                images3_0.proxy: quay.io/maistra-dev/proxyv2:3.0-latest
                 kubectl.kubernetes.io/default-container: manager
               labels:
                 app.kubernetes.io/created-by: sailoperator

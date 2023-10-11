@@ -29,9 +29,6 @@ spec:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
-        images3_0.istiod: quay.io/maistra-dev/pilot:3.0-latest
-        images3_0.proxy: quay.io/maistra-dev/proxyv2:3.0-latest
-        images3_0.cni: quay.io/maistra-dev/install-cni:3.0-latest
       labels:
         control-plane: istio-operator
     spec:

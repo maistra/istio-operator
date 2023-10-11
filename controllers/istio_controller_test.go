@@ -24,11 +24,12 @@ import (
 	"istio.io/istio/pkg/ptr"
 )
 
-var testConfig = common.OperatorConfig{
-	Images3_0: common.ImageConfig3_0{
-		Istiod: "maistra.io/test:latest",
-	},
-}
+var testConfig = common.OperatorConfig{}
+
+const (
+	istioVersion = "latest"
+	pilotImage   = "maistra.io/test:latest"
+)
 
 var _ = Describe("IstioController", Ordered, func() {
 	const istioName = "test-istio"
@@ -74,7 +75,8 @@ var _ = Describe("IstioController", Ordered, func() {
 					Namespace: istioNamespace,
 				},
 				Spec: v1.IstioSpec{
-					Version: "v3.0",
+					Version: istioVersion,
+					Values:  []byte(`{"pilot":{"image":"` + pilotImage + `"}}`),
 				},
 			}
 
@@ -93,7 +95,7 @@ var _ = Describe("IstioController", Ordered, func() {
 		Eventually(func() error {
 			return k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
 		}, time.Minute, time.Second).Should(Succeed())
-		Expect(istiodDeployment.Spec.Template.Spec.Containers[0].Image).To(Equal(testConfig.Images3_0.Istiod))
+		Expect(istiodDeployment.Spec.Template.Spec.Containers[0].Image).To(Equal(pilotImage))
 		Expect(istiodDeployment.ObjectMeta.OwnerReferences).To(ContainElement(expectedOwnerReference(istio)))
 
 		By("Checking if the status is updated")
@@ -112,7 +114,7 @@ var _ = Describe("IstioController", Ordered, func() {
 			imageName, _, err := unstructured.NestedString(vals, "pilot", "image")
 			Expect(err).NotTo(HaveOccurred())
 			return imageName
-		}, time.Minute, time.Second).Should(Equal(testConfig.Images3_0.Istiod))
+		}, time.Minute, time.Second).Should(Equal(pilotImage))
 	})
 
 	When("istiod and istio-cni-node readiness changes", func() {
@@ -174,7 +176,7 @@ var _ = Describe("IstioController", Ordered, func() {
 				return k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
 			}, time.Minute, time.Second).Should(Succeed())
 
-			Expect(istiodDeployment.Spec.Template.Spec.Containers[0].Image).To(Equal(testConfig.Images3_0.Istiod))
+			Expect(istiodDeployment.Spec.Template.Spec.Containers[0].Image).To(Equal(pilotImage))
 			Expect(istiodDeployment.ObjectMeta.OwnerReferences).To(ContainElement(expectedOwnerReference(istio)))
 		})
 	})
@@ -302,8 +304,9 @@ func newCondition(conditionType v1.IstioConditionType, status bool, reason v1.Is
 }
 
 func TestApplyProfile(t *testing.T) {
+	const version = "my-version"
 	resourceDir := t.TempDir()
-	profilesDir := path.Join(resourceDir, "v3.0", "profiles")
+	profilesDir := path.Join(resourceDir, version, "profiles")
 	Must(t, os.MkdirAll(profilesDir, 0o755))
 
 	writeProfileFile := func(t *testing.T, path string, values ...string) {
@@ -319,9 +322,9 @@ spec:
 		Must(t, os.WriteFile(path, []byte(yaml), 0o644))
 	}
 
-	writeProfileFile(t, path.Join(resourceDir, "v3.0", "profiles", "default.yaml"), "1-from-default", "2-from-default")
-	writeProfileFile(t, path.Join(resourceDir, "v3.0", "profiles", "custom.yaml"), "1-from-custom")
-	writeProfileFile(t, path.Join(resourceDir, "v3.0", "not-in-profiles-dir.yaml"), "should-not-be-accessible")
+	writeProfileFile(t, path.Join(resourceDir, version, "profiles", "default.yaml"), "1-from-default", "2-from-default")
+	writeProfileFile(t, path.Join(resourceDir, version, "profiles", "custom.yaml"), "1-from-custom")
+	writeProfileFile(t, path.Join(resourceDir, version, "not-in-profiles-dir.yaml"), "should-not-be-accessible")
 
 	tests := []struct {
 		name       string
@@ -332,30 +335,30 @@ spec:
 		{
 			name: "no profile",
 			inputSpec: v1.IstioSpec{
-				Version: "v3.0",
+				Version: version,
 				// no profile is specified; default profile should be used
 			},
 			expectSpec: v1.IstioSpec{
-				Version: "v3.0",
+				Version: version,
 				Values:  []byte(`{"value1":"1-from-default","value2":"2-from-default"}`),
 			},
 		},
 		{
 			name: "custom profile",
 			inputSpec: v1.IstioSpec{
-				Version: "v3.0",
+				Version: version,
 				Profile: "custom", // both custom and default profile should be used (with custom taking precedence)
 			},
 			expectSpec: v1.IstioSpec{
 				Profile: "custom",
-				Version: "v3.0",
+				Version: version,
 				Values:  []byte(`{"value1":"1-from-custom","value2":"2-from-default"}`),
 			},
 		},
 		{
 			name: "profile not found",
 			inputSpec: v1.IstioSpec{
-				Version: "v3.0",
+				Version: version,
 				Profile: "invalid",
 			},
 			expectErr: true,
@@ -363,7 +366,7 @@ spec:
 		{
 			name: "path-traversal-attack",
 			inputSpec: v1.IstioSpec{
-				Version: "v3.0",
+				Version: version,
 				Profile: "../not-in-profiles-dir",
 			},
 			expectErr: true,

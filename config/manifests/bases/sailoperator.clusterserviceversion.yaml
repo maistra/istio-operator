@@ -18,13 +18,14 @@ spec:
       kind: Istio
       name: istios.operator.istio.io
       specDescriptors:
-      - description: Version defines the version of Istio to install. If not specified,
-          the latest version supported by the operator is installed.
+      - description: 'Version defines the version of Istio to install. Must be one
+          of: latest. If not specified, the latest version supported by the operator
+          is installed.'
         displayName: Istio Version
         path: version
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
-        - urn:alm:descriptor:com.tectonic.ui:select:v3.0
+        - urn:alm:descriptor:com.tectonic.ui:select:latest
       - description: The built-in installation configuration profile to use. When
           this field is left empty, the 'default' profile will be used.
         displayName: Profile
