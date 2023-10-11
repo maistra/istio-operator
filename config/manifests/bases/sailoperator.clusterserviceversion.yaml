@@ -25,6 +25,10 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
         - urn:alm:descriptor:com.tectonic.ui:select:v3.0
+      - description: The built-in installation configuration profile to use. When
+          this field is left empty, the 'default' profile will be used.
+        displayName: Profile
+        path: profile
       - description: Values defines the values to be passed to the Helm chart when
           installing Istio.
         displayName: Helm Values

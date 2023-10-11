@@ -34,6 +34,7 @@ type IstioSpec struct {
 
 	// The built-in installation configuration profile to use.
 	// When this field is left empty, the 'default' profile will be used.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Profile"
 	Profile string `json:"profile,omitempty"`
 
 	// Values defines the values to be passed to the Helm chart when installing Istio.
