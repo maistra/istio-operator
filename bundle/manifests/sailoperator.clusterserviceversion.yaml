@@ -18,28 +18,7 @@ metadata:
             "name": "istio-sample"
           },
           "spec": {
-            "values": {
-              "cni": {
-                "chained": false,
-                "cniBinDir": "/var/lib/cni/bin",
-                "cniConfDir": "/etc/cni/multus/net.d",
-                "cniConfFileName": "istio-cni.conf",
-                "excludeNamespaces": [
-                  "istio-system",
-                  "kube-system"
-                ],
-                "logLevel": "info",
-                "privileged": true,
-                "provider": "multus"
-              },
-              "global": {
-                "platform": "openshift"
-              },
-              "istio_cni": {
-                "chained": false,
-                "enabled": true
-              }
-            },
+            "profile": "openshift",
             "version": "v3.0"
           }
         }
@@ -47,7 +26,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-ubi9-operator:3.0-latest
-    createdAt: "2023-10-05T10:18:58Z"
+    createdAt: "2023-10-11T19:47:15Z"
     operators.operatorframework.io/builder: operator-sdk-v1.31.0
     operators.operatorframework.io/internal-objects: '["wasmplugins.extensions.istio.io","destinationrules.networking.istio.io","envoyfilters.networking.istio.io","gateways.networking.istio.io","proxyconfigs.networking.istio.io","serviceentries.networking.istio.io","sidecars.networking.istio.io","virtualservices.networking.istio.io","workloadentries.networking.istio.io","workloadgroups.networking.istio.io","authorizationpolicies.security.istio.io","peerauthentications.security.istio.io","requestauthentications.security.istio.io","telemetries.telemetry.istio.io"]'
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
