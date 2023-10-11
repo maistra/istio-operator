@@ -21,16 +21,9 @@
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= 3.0.0
 MINOR_VERSION := $(shell v='$(VERSION)'; echo "$${v%.*}")
-MINIMUM_SUPPORTED_VERSION ?= v3.0
 
 OPERATOR_NAME ?= sailoperator
 
-# Istio repository to pull charts from
-ISTIO_REPOSITORY ?= maistra/istio
-# the branch to use when updating the commit hash below
-ISTIO_BRANCH_30 ?= maistra-3.0
-# the current commit of ${ISTIO_REPOSITORY} for v3.0. This will be used to copy charts
-ISTIO_COMMIT_30 ?= 4f6e87b39e9e628f4193b64c1bc210807bd66a8b
 
 # Istio images names
 ISTIO_CNI_IMAGE_NAME ?= install-cni
@@ -60,7 +53,6 @@ LD_EXTRAFLAGS  = -X ${GO_MODULE}/pkg/version.buildVersion=${VERSION}
 LD_EXTRAFLAGS += -X ${GO_MODULE}/pkg/version.buildGitRevision=${GIT_REVISION}
 LD_EXTRAFLAGS += -X ${GO_MODULE}/pkg/version.buildTag=${GIT_TAG}
 LD_EXTRAFLAGS += -X ${GO_MODULE}/pkg/version.buildStatus=${GIT_STATUS}
-LD_EXTRAFLAGS += -X ${GO_MODULE}/pkg/version.minimumSupportedVersion=${MINIMUM_SUPPORTED_VERSION}
 LD_FLAGS = -extldflags -static ${LD_EXTRAFLAGS} -s -w
 
 # Image hub to use
@@ -264,10 +256,28 @@ gen-code: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 
 .PHONY: gen-charts
 gen-charts: ## Pull charts from maistra/istio repository
-	hack/download-charts.sh v${MINOR_VERSION} https://github.com/${ISTIO_REPOSITORY} ${ISTIO_COMMIT_30}
+	# use yq to generate a list of download-charts.sh commands for each version in versions.yaml; these commands are
+	# passed to sh and executed; in a nutshell, the yq command generates commands like:
+	# ./hack/download-charts.sh <version> <git repo> <commit> [chart1] [chart2] ...
+	@yq eval 'to_entries | .[] | "./hack/download-charts.sh " + .key + " " + .value.repo + " " + .value.commit + " " + ((.value.charts // []) | join(" "))' < versions.yaml | sh
+
+	# calls copy-crds.sh with the name of the first version listed in versions.yaml (this should be the highest version)
+	@hack/copy-crds.sh "resources/$$(yq eval 'keys | .[0]' versions.yaml)/charts"
+
+.PHONY: update-version-list
+update-version-list: ## Updates the urn:alm:descriptor:com.tectonic.ui:select entries in istio_types.go to match the supported versions of the Helm charts
+	@echo "Updating version list in istio_types.go..."
+	@selectValues=$$(yq e 'keys | .[] | ", \"urn:alm:descriptor:com.tectonic.ui:select:" + . + "\""' versions.yaml | tr -d '\n'); \
+		versionsEnum=$$(yq e 'keys | .[]' versions.yaml | tr '\n' ';' | sed 's/;$$//g'); \
+		versions=$$(yq e 'keys | .[]' versions.yaml | tr '\n' ',' | sed -e 's/,/, /g' -e 's/, $$//g'); \
+		sed -i -E \
+			-e "s/(\/\/ \+operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName=\"Istio Version\",xDescriptors=\{.*fieldGroup:General\")[^}]*(})/\1$$selectValues}/g" \
+			-e "s/(\/\/ \+kubebuilder:validation:Enum=)(.*)/\1$$versionsEnum/g" \
+			-e "s/(\/\/ \Must be one of:)(.*)/\1 $$versions./g" \
+			api/v1alpha1/istio_types.go
 
 .PHONY: gen ## Generate everything
-gen: controller-gen gen-manifests gen-code gen-charts bundle
+gen: update-version-list controller-gen gen-manifests gen-code gen-charts bundle
 
 .PHONY: gen-check
 gen-check: gen restore-manifest-dates check-clean-repo ## Verifies that changes in generated resources have been checked in
@@ -279,16 +289,10 @@ ifneq "${BUNDLE_MANIFEST_DATE}" ""
 endif
 
 .PHONY: update-istio
-update-istio: ## Updates the Istio commit hash to latest on ${ISTIO_BRANCH_30}
-	$(eval ISTIO_COMMIT_30=$(shell git ls-remote https://github.com/${ISTIO_REPOSITORY}.git | grep ${ISTIO_BRANCH_30} | cut -f 1))
-	@echo Updating to ${ISTIO_REPOSITORY}@${ISTIO_COMMIT_30}; sed -i -e "s/^\(ISTIO_COMMIT_30 ?= \).*$$/\1${ISTIO_COMMIT_30}/g" Makefile.core.mk
-
-.PHONY: patch-istio-images
-patch-istio-images: ## Patch the Istio images in the ClusterServiceVersion with the right tags
-	sed -i -e "s|images3_0.cni: .*|images3_0.cni: $(HUB)/$(ISTIO_CNI_IMAGE_NAME):$(TAG)|" \
-		-e "s|images3_0.istiod: .*|images3_0.istiod: $(HUB)/$(ISTIO_PILOT_IMAGE_NAME):$(TAG)|" \
-		-e "s|images3_0.proxy: .*|images3_0.proxy: $(HUB)/$(ISTIO_PROXY_IMAGE_NAME):$(TAG)|" \
-		$(shell ls bundle/manifests/*.clusterserviceversion.yaml)
+update-istio: ## Updates the Istio commit hash in the 'latest' entry in versions.yaml to the latest commit in the branch
+	$(eval COMMIT=$(shell yq eval '"git ls-remote " + .latest.repo + ".git | grep " + .latest.branch + " | cut -f 1"' versions.yaml | sh))
+	@echo Updating version 'latest' to commit ${COMMIT}
+	@yq -i '.latest.commit="${COMMIT}"' versions.yaml
 
 ##@ Build Dependencies
 
@@ -361,7 +365,7 @@ bundle-push: ## Push the bundle image.
 	$(MAKE) docker-push IMAGE=$(BUNDLE_IMG)
 
 .PHONY: bundle-publish
-bundle-publish: patch-istio-images ## Create a PR for publishing in OperatorHub
+bundle-publish: ## Create a PR for publishing in OperatorHub
 	export GIT_USER=$(GITHUB_USER); \
 	export GITHUB_TOKEN=$(GITHUB_TOKEN); \
 	export OPERATOR_VERSION=$(OPERATOR_VERSION); \

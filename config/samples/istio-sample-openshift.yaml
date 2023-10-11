@@ -7,5 +7,5 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: istio-sample
 spec:
-  version: v3.0
+  version: latest
   profile: openshift

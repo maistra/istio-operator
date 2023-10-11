@@ -17,15 +17,7 @@ var (
 	RepositoryRoot = filepath.Join(filepath.Dir(b), "../../")
 )
 
-type OperatorConfig struct {
-	Images3_0 ImageConfig3_0 `properties:"images3_0"`
-}
-
-type ImageConfig3_0 struct {
-	Istiod string `properties:"istiod"`
-	Proxy  string `properties:"proxy"`
-	CNI    string `properties:"cni"`
-}
+type OperatorConfig struct{}
 
 func ReadConfig(configFile string) error {
 	p, err := properties.LoadFile(configFile, properties.UTF8)

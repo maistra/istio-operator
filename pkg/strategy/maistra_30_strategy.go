@@ -5,7 +5,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	v1 "maistra.io/istio-operator/api/v1alpha1"
-	"maistra.io/istio-operator/pkg/common"
 )
 
 type Maistra30Strategy struct{}
@@ -26,22 +25,6 @@ func (s *Maistra30Strategy) ApplyDefaults(istio *v1.Istio) error {
 		return err
 	}
 	err = setIfNotPresent(values, "cni.privileged", true)
-	if err != nil {
-		return err
-	}
-	err = setIfNotPresent(values, "cni.image", common.Config.Images3_0.CNI)
-	if err != nil {
-		return err
-	}
-	err = setIfNotPresent(values, "pilot.image", common.Config.Images3_0.Istiod)
-	if err != nil {
-		return err
-	}
-	err = setIfNotPresent(values, "global.proxy.image", common.Config.Images3_0.Proxy)
-	if err != nil {
-		return err
-	}
-	err = setIfNotPresent(values, "global.proxy_init.image", common.Config.Images3_0.Proxy)
 	if err != nil {
 		return err
 	}

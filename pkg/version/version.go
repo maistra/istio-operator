@@ -7,11 +7,10 @@ import (
 )
 
 var (
-	buildVersion            = "unknown"
-	buildGitRevision        = "unknown"
-	buildStatus             = "unknown"
-	buildTag                = "unknown"
-	minimumSupportedVersion = "any"
+	buildVersion     = "unknown"
+	buildGitRevision = "unknown"
+	buildStatus      = "unknown"
+	buildTag         = "unknown"
 
 	// Info exports the build version information.
 	Info BuildInfo
@@ -19,14 +18,13 @@ var (
 
 // BuildInfo describes version information about the binary build.
 type BuildInfo struct {
-	Version                 string
-	GitRevision             string
-	BuildStatus             string
-	GitTag                  string
-	GoVersion               string
-	GoArch                  string
-	ControllerRuntime       string
-	MinimumSupportedVersion string
+	Version           string
+	GitRevision       string
+	BuildStatus       string
+	GitTag            string
+	GoVersion         string
+	GoArch            string
+	ControllerRuntime string
 }
 
 func (b BuildInfo) String() string {
@@ -45,13 +43,12 @@ func init() {
 		}
 	}
 	Info = BuildInfo{
-		Version:                 buildVersion,
-		GitRevision:             buildGitRevision,
-		BuildStatus:             buildStatus,
-		GitTag:                  buildTag,
-		GoVersion:               runtime.Version(),
-		GoArch:                  fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
-		ControllerRuntime:       controllerRuntimeVersion,
-		MinimumSupportedVersion: minimumSupportedVersion,
+		Version:           buildVersion,
+		GitRevision:       buildGitRevision,
+		BuildStatus:       buildStatus,
+		GitTag:            buildTag,
+		GoVersion:         runtime.Version(),
+		GoArch:            fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+		ControllerRuntime: controllerRuntimeVersion,
 	}
 }

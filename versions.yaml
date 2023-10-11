@@ -1,0 +1,7 @@
+# This file defines all the Istio versions supported by this operator.
+# The latest version must be listed first, so that the CRDs from the latest version
+# are copied to the config/crd directory.
+latest:
+  repo: https://github.com/maistra/istio
+  branch: maistra-3.0
+  commit: 4f6e87b39e9e628f4193b64c1bc210807bd66a8b

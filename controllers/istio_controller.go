@@ -75,13 +75,13 @@ func NewIstioReconciler(client client.Client, scheme *runtime.Scheme, restConfig
 
 // charts to deploy in the operator namespace (and their suffixes)
 var systemCharts = map[string]string{
-	"istio-cni": "-cni",
+	"cni": "-cni",
 }
 
 // charts to deploy in the istio namespace (and their suffixes)
 var userCharts = map[string]string{
-	"base":                          "-base",
-	"istio-control/istio-discovery": "-istiod",
+	"base":   "-base",
+	"istiod": "-istiod",
 }
 
 // +kubebuilder:rbac:groups=operator.istio.io,resources=istios,verbs=get;list;watch;create;update;patch;delete
