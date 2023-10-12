@@ -279,7 +279,7 @@ endif
 .PHONY: update-istio
 update-istio: ## Updates the Istio commit hash to latest on ${ISTIO_BRANCH_30}
 	$(eval ISTIO_COMMIT_30=$(shell git ls-remote https://github.com/${ISTIO_REPOSITORY}.git | grep ${ISTIO_BRANCH_30} | cut -f 1))
-	@echo Updating to ${ISTIO_REPOSITORY}@${ISTIO_COMMIT_30}; sed -i -e "s/^\(ISTIO_COMMIT_30 ?= \).*$$/\1${ISTIO_COMMIT_30}/g" Makefile
+	@echo Updating to ${ISTIO_REPOSITORY}@${ISTIO_COMMIT_30}; sed -i -e "s/^\(ISTIO_COMMIT_30 ?= \).*$$/\1${ISTIO_COMMIT_30}/g" Makefile.core.mk
 
 .PHONY: patch-istio-images
 patch-istio-images: ## Patch the Istio images in the ClusterServiceVersion with the right tags
