@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e -u
+set -eu -o pipefail
 
 # include sed_wrap
 # shellcheck source=build/sed-wrapper.sh
@@ -21,9 +21,10 @@ RELEASES_DIR=${OUT_DIR}/helm/istio-releases
 PLATFORM=linux
 
 ISTIO_NAME=istio-${ISTIO_VERSION}
-ISTIO_FILE="${MAISTRA_BRANCH}.zip"
+MAISTRA_BRANCH_WITHOUT_SLASH="${MAISTRA_BRANCH/\//-}"
+ISTIO_FILE="${MAISTRA_BRANCH_WITHOUT_SLASH}.zip"
 ISTIO_URL="${MAISTRA_REPO}/archive/${MAISTRA_BRANCH}.zip"
-EXTRACT_DIR="${MAISTRA_REPO##*/}-${MAISTRA_BRANCH}"
+EXTRACT_DIR="${MAISTRA_REPO##*/}-${MAISTRA_BRANCH_WITHOUT_SLASH}"
 EXTRACT_CMD="unzip ${ISTIO_FILE} ${EXTRACT_DIR}/manifests/charts/* ${EXTRACT_DIR}/manifests/addons/dashboards/*"
 RELEASE_DIR="${RELEASES_DIR}/${ISTIO_NAME}"
 
@@ -44,7 +45,7 @@ function retrieveIstioRelease() {
       fi
       echo "downloading Istio Release: ${ISTIO_URL}"
       cd "${RELEASES_DIR}"
-      curl -LfO "${ISTIO_URL}"
+      curl -Lf -o "${ISTIO_FILE}" "${ISTIO_URL}"
     )
   fi
 
