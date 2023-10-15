@@ -148,8 +148,8 @@ export
 test: envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -coverprofile cover.out
 
-.PHONY: test.scorecard ## Runs the operator scorecard test.
-test.scorecard: operator-sdk
+.PHONY: test.scorecard
+test.scorecard: operator-sdk ## Runs the operator scorecard test.
 	OPERATOR_SDK=$(OPERATOR_SDK) ${SOURCE_DIR}/tests/scorecard-test.sh
 
 .PHONY: test.integration.ocp
@@ -178,8 +178,8 @@ docker-build: build ## Build docker image with the manager.
 docker-push: ## Push docker image with the manager.
 	docker push ${IMAGE}
 
-.PHONY: docker-push-nightly ## Build and push nightly docker image with the manager.
-docker-push-nightly: TAG=$(MINOR_VERSION)-nightly-$(TODAY)
+.PHONY: docker-push-nightly
+docker-push-nightly: TAG=$(MINOR_VERSION)-nightly-$(TODAY) ## Build and push nightly docker image with the manager.
 docker-push-nightly: docker-build
 	docker push ${IMAGE}
 	docker tag ${IMAGE} $(HUB)/$(IMAGE_BASE):$(MINOR_VERSION)-latest
@@ -341,8 +341,8 @@ gen-charts: ## Pull charts from maistra/istio repository
 	@# calls copy-crds.sh with the version specified in the .crdSourceVersion field in versions.yaml
 	@hack/copy-crds.sh "resources/$$(yq eval '.crdSourceVersion' versions.yaml)/charts"
 
-.PHONY: gen ## Generate everything
-gen: controller-gen gen-api gen-charts gen-manifests gen-code bundle
+.PHONY: gen
+gen: controller-gen gen-api gen-charts gen-manifests gen-code bundle ## Generate everything
 
 .PHONY: gen-check
 gen-check: gen restore-manifest-dates check-clean-repo ## Verifies that changes in generated resources have been checked in
@@ -447,8 +447,8 @@ bundle-publish: ## Create a PR for publishing in OperatorHub
 	export OPERATOR_NAME=$(OPERATOR_NAME); \
 	./hack/operatorhub/publish-bundle.sh
 
-.PHONY: bundle-nightly ## Generate nightly bundle
-bundle-nightly: VERSION:=$(VERSION)-nightly-$(TODAY)
+.PHONY: bundle-nightly
+bundle-nightly: VERSION:=$(VERSION)-nightly-$(TODAY)  ## Generate nightly bundle
 bundle-nightly: CHANNELS:=$(MINOR_VERSION)-nightly
 bundle-nightly: TAG=$(MINOR_VERSION)-nightly-$(TODAY)
 bundle-nightly: bundle
