@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 
@@ -77,7 +76,7 @@ func processFile(fileName string, written sets.String) {
 								panic(fmt.Errorf("output file exists: %s", outFileName))
 							} else if os.IsNotExist(err) {
 								log.Info(fmt.Sprintf("writing CRD %s to %s", name, outFileName))
-								if err := ioutil.WriteFile(outFileName, []byte(object), 0o664); err != nil {
+								if err := os.WriteFile(outFileName, []byte(object), 0o664); err != nil {
 									log.Error(err, fmt.Sprintf("error writing CRD to %s", outFileName))
 									panic(err)
 								}
@@ -104,7 +103,7 @@ func processFile(fileName string, written sets.String) {
 }
 
 func readFile(name string) string {
-	data, err := ioutil.ReadFile(name)
+	data, err := os.ReadFile(name)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("error reading file: %s", name))
 		panic(err)
