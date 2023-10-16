@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -275,7 +274,7 @@ func TestRemoveTypeObjectFromOpenAPISchema(t *testing.T) {
 }
 
 func createTempDirectoryWithCRDFiles(crdFileContents ...string) (dirPath string) {
-	dir, err := ioutil.TempDir("", "crds_test_charts")
+	dir, err := os.MkdirTemp("", "crds_test_charts")
 	test.PanicOnError(err)
 
 	istioInitFilesDir := path.Join(dir, "istio-init", "files")
@@ -283,7 +282,7 @@ func createTempDirectoryWithCRDFiles(crdFileContents ...string) (dirPath string)
 	test.PanicOnError(err)
 	for i, contents := range crdFileContents {
 		filename := fmt.Sprintf("crd-%d.yaml", i)
-		err := ioutil.WriteFile(path.Join(istioInitFilesDir, filename), []byte(contents), os.ModePerm)
+		err := os.WriteFile(path.Join(istioInitFilesDir, filename), []byte(contents), os.ModePerm)
 		test.PanicOnError(err)
 	}
 	return dir

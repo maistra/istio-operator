@@ -3,7 +3,7 @@ package versions
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
 	"strings"
 
@@ -75,12 +75,12 @@ func (v Ver) getSMCPProfile(name string, targetNamespace string) (*v1.ControlPla
 		return nil, nil, fmt.Errorf("profile name contains invalid character '/'")
 	}
 
-	profileContent, err := ioutil.ReadFile(path.Join(v.GetUserTemplatesDir(), name))
+	profileContent, err := os.ReadFile(path.Join(v.GetUserTemplatesDir(), name))
 	if err != nil {
 		// if we can't read from the user profile path, try from the default path
 		// we use two paths because Kubernetes will not auto-update volume mounted
 		// configmaps mounted in directories with pre-existing content
-		defaultProfileContent, defaultErr := ioutil.ReadFile(path.Join(v.GetDefaultTemplatesDir(), name))
+		defaultProfileContent, defaultErr := os.ReadFile(path.Join(v.GetDefaultTemplatesDir(), name))
 		if defaultErr != nil {
 			return nil, nil, fmt.Errorf("template cannot be loaded from user or default directory. Error from user: %s. Error from default: %s", err, defaultErr)
 		}
