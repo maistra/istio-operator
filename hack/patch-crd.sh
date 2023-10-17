@@ -4,9 +4,7 @@ set -e -u
 
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-source hack/sed_wrapper.sh
-
-: "${YQ:=${CUR_DIR}/../bin/yq}"
+: "${YQ:=yq}"
 : "${ISTIO_RELEASE:=master}"
 : "${VALUES_TYPES_PROTO_FILE_URL:=https://raw.githubusercontent.com/istio/istio/${ISTIO_RELEASE}/operator/pkg/apis/istio/v1alpha1/values_types.proto}"
 : "${CRD_FILE:=${CUR_DIR}/../bundle/manifests/operator.istio.io_istios.yaml}"
@@ -46,7 +44,8 @@ function get_fields() {
   awk "/message ${config}/{ f = 1 } f; /}/{ f = 0 }" "${proto_file}" \
     | grep "^  [a-z]\|^  .*Config" \
     | grep -v "//*\|\[deprecated=true\]" \
-    | awk '/;/{if ($1=="repeated") {printf "%s:%s ",$2,$3} else if ($1=="map<string,") {printf "object:%s ",$3} else {printf "%s:%s ",$1,$2}}'
+    | awk '/;/{gsub(";","");print $0}' \
+    | awk '{if ($1=="repeated") {type=$2;name=$3} else if ($1=="map<string,") {type="object";name=$3} else if ($0~/json_name/) {type=$1;name=substr(substr($5,0,length($5)-2),13)} else {type=$1;name=$2;}{print type":"name}}'
 }
 
 # Adds all the main configuration values into the values array
@@ -130,7 +129,7 @@ function set_fields() {
   #   properties:
   #     base:
   #       type: object
-  ${YQ} -i "( ${values_yaml_path}.properties.${value_name}.type ) = \"object\"" "${CRD_FILE}"
+  ${YQ} -i "( ${values_yaml_path}.properties.${value_name}.type ) = \"object\"" "${crd_file}"
 
   local config_fields
   config_fields="$(get_fields "${proto_file}" "${values["${value_name}"]}")"
@@ -148,7 +147,25 @@ function set_fields() {
     #       properties:
     #         enableCRDTemplates:
     #           type: boolean
-    ${YQ} -i "( ${values_yaml_path}.properties.${value_name}.properties.${name}.type ) = \"$(convert_type_to_yaml "${type}")\"" "${CRD_FILE}"
+    ${YQ} -i "( ${values_yaml_path}.properties.${value_name}.properties.${name}.type ) = \"$(convert_type_to_yaml "${type}")\"" "${crd_file}"
+  done
+}
+
+function get_nested_config_paths() {
+  if [ $# -ne 1 ]; then
+    echo "Usage: get_nested_config_paths <config_name>"
+    exit 1
+  fi
+
+  local config_name="${1}"
+
+  total_configs=$(${YQ} "( ${values_yaml_path} | .. | select(. == \"${config_name}\") | [{\"path\":path}] )" "${crd_file}" | \
+    grep -c "path:")
+
+  for config_number in $(seq 0 "$(( "${total_configs}" - 1))"); do
+    ${YQ} "( ${values_yaml_path} | .. | select(. == \"${config_name}\") | [{\"path\":path}] )" "${crd_file}" | \
+      ${YQ} ".${config_number}.path" | sed -e 's/.*type.*//g' -e 's/-\ /./g' | tr -d '\n'
+    echo
   done
 }
 
@@ -192,46 +209,41 @@ function set_nested_config_fields() {
   
   config_fields="$(get_fields "${proto_file}" "${config}")"
 
-  # Adding <nested_config>.properties with the proper indent
-  # Example:
-  # values:
-  #   properties:
-  #     gateways:
-  #       properties:
-  #         istio_egressgateway:
-  #           type: EgressGatewayConfig
-  #           properties:
-  sed_wrap -i -e 's/^\([[:space:]]*\)type: '"${config}"'$/&\n\1properties:/' "${crd_file}"
+  paths="$(get_nested_config_paths "${config}")"
 
-  for field in ${config_fields}; do
-    type=$(echo "$field" | awk -F':' '{print $1}')
-    name=$(echo "$field" | awk -F':' '{print $2}')
-    # Adding every field_name and field_type of the nested configuration
+  for nested_config_path in ${paths}; do
+    for field in ${config_fields}; do
+      type=$(echo "$field" | awk -F':' '{print $1}')
+      name=$(echo "$field" | awk -F':' '{print $2}')
+      if [ -n "${type}" ] && [ -n "${name}" ]; then
+        # Adding every field_name and field_type of the nested configuration
+        # Example:
+        # values:
+        #   properties:
+        #     gateways:
+        #       properties:
+        #         istio_egressgateway:
+        #           type: EgressGatewayConfig
+        #           properties:
+        #             name:
+        #               type: string
+        ${YQ} -i "( ${nested_config_path}.properties.${name}.type ) = \"$(convert_type_to_yaml "${type}")\"" "${crd_file}"
+      fi
+    done
+
+    # Changing the <nested_config>.type to object
     # Example:
     # values:
     #   properties:
     #     gateways:
     #       properties:
     #         istio_egressgateway:
-    #           type: EgressGatewayConfig
+    #           type: object
     #           properties:
     #             name:
     #               type: string
-    sed_wrap -i -e '/type: '"${config}"'/,/properties:/ {s/^\([[:space:]]*\)properties:$/&\n\1  '"${name}"':\n\1    type: '"$(convert_type_to_yaml "${type}")"'/}' "${crd_file}"
+    ${YQ} -i "( ${nested_config_path}.type ) = \"object\"" "${crd_file}"
   done
-
-  # Changing the <nested_config>.type to object
-  # Example:
-  # values:
-  #   properties:
-  #     gateways:
-  #       properties:
-  #         istio_egressgateway:
-  #           type: object
-  #           properties:
-  #             name:
-  #               type: string
-  sed_wrap -i -e 's/type: '"${config}"'/type: object/' "${crd_file}"
 }
 
 ## MAIN

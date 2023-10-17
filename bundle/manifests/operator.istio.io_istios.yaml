@@ -164,6 +164,9 @@ spec:
             spec:
               description: IstioSpec defines the desired state of Istio
               properties:
+                profile:
+                  description: The built-in installation configuration profile to use. When this field is left empty, the 'default' profile will be used.
+                  type: string
                 values:
                   description: Values defines the values to be passed to the Helm chart when installing Istio.
                   properties:
@@ -249,7 +252,7 @@ spec:
                       properties:
                         enabled:
                           type: boolean
-                        istio_egressgateway:
+                        istio-egressgateway:
                           properties:
                             additionalContainers:
                               type: object
@@ -306,7 +309,7 @@ spec:
                                   type: string
                               type: object
                           type: object
-                        istio_ingressgateway:
+                        istio-ingressgateway:
                           properties:
                             additionalContainers:
                               type: object
@@ -500,7 +503,6 @@ spec:
                         revision:
                           type: string
                         sds:
-                          properties:
                           type: object
                         sts:
                           properties:
@@ -731,7 +733,6 @@ spec:
                                   type: boolean
                               type: object
                             stackdriver:
-                              properties:
                               type: object
                           type: object
                       type: object
