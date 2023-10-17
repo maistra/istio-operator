@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"fmt"
+	"math/big"
 	"regexp"
 
 	"golang.org/x/crypto/bcrypt"
@@ -29,7 +30,7 @@ func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context
 	} else {
 		log.Info("Creating HTPasswd entry", object.GetKind(), object.GetName())
 
-		rawPassword, err = generatePassword(255)
+		rawPassword, err = generatePassword(72) // 72 is the maximum length of a password for bcrypt
 		if err != nil {
 			log.Error(err, "failed to generate the HTPasswd password")
 			return err
@@ -155,12 +156,17 @@ func (r *controlPlaneInstanceReconciler) patchProxySecret(ctx context.Context, o
 	return nil
 }
 
-func generatePassword(n int) (string, error) {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
+func generatePassword(length int) (string, error) {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	numLetters := big.NewInt(int64(len(letters)))
+	ret := make([]byte, length)
+	for i := 0; i < length; i++ {
+		num, err := rand.Int(rand.Reader, numLetters)
+		if err != nil {
+			return "", err
+		}
+		ret[i] = letters[num.Int64()]
 	}
 
-	return base64.StdEncoding.EncodeToString(b), nil
+	return string(ret), nil
 }
