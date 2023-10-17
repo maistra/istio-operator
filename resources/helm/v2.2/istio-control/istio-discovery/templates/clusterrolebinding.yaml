@@ -4,7 +4,7 @@ metadata:
   name: istiod-clusterrole-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.2.10"
+    maistra-version: "2.2.11"
     app: istiod
     release: {{ .Release.Name }}
 roleRef:
@@ -23,7 +23,7 @@ metadata:
   name: istiod-gateway-controller-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.2.10"
+    maistra-version: "2.2.11"
     app: istiod
     release: {{ .Release.Name }}
 roleRef:
