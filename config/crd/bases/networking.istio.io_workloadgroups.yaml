@@ -110,6 +110,8 @@ spec:
                         type: integer
                       scheme:
                         type: string
+                    required:
+                    - port
                     type: object
                   initialDelaySeconds:
                     description: Number of seconds after the container has started
@@ -132,6 +134,8 @@ spec:
                         type: string
                       port:
                         type: integer
+                    required:
+                    - port
                     type: object
                   timeoutSeconds:
                     description: Number of seconds after which the probe times out.
@@ -171,6 +175,8 @@ spec:
                     description: The load balancing weight associated with the endpoint.
                     type: integer
                 type: object
+            required:
+            - template
             type: object
           status:
             type: object
@@ -271,6 +277,8 @@ spec:
                         type: integer
                       scheme:
                         type: string
+                    required:
+                    - port
                     type: object
                   initialDelaySeconds:
                     description: Number of seconds after the container has started
@@ -293,6 +301,8 @@ spec:
                         type: string
                       port:
                         type: integer
+                    required:
+                    - port
                     type: object
                   timeoutSeconds:
                     description: Number of seconds after which the probe times out.
@@ -332,6 +342,8 @@ spec:
                     description: The load balancing weight associated with the endpoint.
                     type: integer
                 type: object
+            required:
+            - template
             type: object
           status:
             type: object
@@ -341,4 +353,3 @@ spec:
     storage: false
     subresources:
       status: {}
-

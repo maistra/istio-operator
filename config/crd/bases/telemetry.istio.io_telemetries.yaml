@@ -78,6 +78,8 @@ spec:
                           name:
                             description: Required.
                             type: string
+                        required:
+                        - name
                         type: object
                       type: array
                   type: object
@@ -162,6 +164,8 @@ spec:
                           name:
                             description: Required.
                             type: string
+                        required:
+                        - name
                         type: object
                       type: array
                     reportingInterval:
@@ -271,6 +275,8 @@ spec:
                           name:
                             description: Required.
                             type: string
+                        required:
+                        - name
                         type: object
                       type: array
                     randomSamplingPercentage:
@@ -292,4 +298,3 @@ spec:
     storage: true
     subresources:
       status: {}
-

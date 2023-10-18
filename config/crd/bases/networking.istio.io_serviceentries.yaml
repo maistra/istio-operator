@@ -126,6 +126,9 @@ spec:
                       description: The port number on the endpoint where the traffic
                         will be received.
                       type: integer
+                  required:
+                  - number
+                  - name
                   type: object
                 type: array
               resolution:
@@ -152,6 +155,8 @@ spec:
                       pods/VMs on which the configuration should be applied.
                     type: object
                 type: object
+            required:
+            - hosts
             type: object
           status:
             type: object
@@ -264,6 +269,9 @@ spec:
                       description: The port number on the endpoint where the traffic
                         will be received.
                       type: integer
+                  required:
+                  - number
+                  - name
                   type: object
                 type: array
               resolution:
@@ -290,6 +298,8 @@ spec:
                       pods/VMs on which the configuration should be applied.
                     type: object
                 type: object
+            required:
+            - hosts
             type: object
           status:
             type: object
@@ -299,4 +309,3 @@ spec:
     storage: false
     subresources:
       status: {}
-

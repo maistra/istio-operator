@@ -71,6 +71,10 @@ spec:
                           type: string
                         targetPort:
                           type: integer
+                      required:
+                      - number
+                      - protocol
+                      - name
                       type: object
                     tls:
                       description: Set of TLS related options that govern the server's
@@ -149,6 +153,9 @@ spec:
                             type: string
                           type: array
                       type: object
+                  required:
+                  - port
+                  - hosts
                   type: object
                 type: array
             type: object
@@ -208,6 +215,10 @@ spec:
                           type: string
                         targetPort:
                           type: integer
+                      required:
+                      - number
+                      - protocol
+                      - name
                       type: object
                     tls:
                       description: Set of TLS related options that govern the server's
@@ -286,6 +297,9 @@ spec:
                             type: string
                           type: array
                       type: object
+                  required:
+                  - port
+                  - hosts
                   type: object
                 type: array
             type: object
@@ -297,4 +311,3 @@ spec:
     storage: false
     subresources:
       status: {}
-

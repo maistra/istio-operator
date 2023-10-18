@@ -43,8 +43,8 @@ spec:
       openAPIV3Schema:
         properties:
           spec:
-            description: PeerAuthentication defines how traffic will be tunneled (or
-              not) to the sidecar.
+            description: 'Peer authentication configuration for workloads. See more
+              details at: https://istio.io/docs/reference/config/security/peer_authentication.html'
             properties:
               mtls:
                 description: Mutual TLS settings for workload.

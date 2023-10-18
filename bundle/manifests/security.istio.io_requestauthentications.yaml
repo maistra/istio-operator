@@ -30,8 +30,8 @@ spec:
       openAPIV3Schema:
         properties:
           spec:
-            description: RequestAuthentication defines what request authentication
-              methods are supported by a workload.
+            description: 'Request authentication configuration for workloads. See
+              more details at: https://istio.io/docs/reference/config/security/request_authentication.html'
             properties:
               jwtRules:
                 description: Define the list of JWTs that can be validated at the
@@ -59,6 +59,8 @@ spec:
                             description: The prefix that should be stripped before
                               decoding the token.
                             type: string
+                        required:
+                        - name
                         type: object
                       type: array
                     fromParams:
@@ -98,6 +100,8 @@ spec:
                       description: This field specifies the header name to output
                         a successfully verified JWT payload to the backend.
                       type: string
+                  required:
+                  - issuer
                   type: object
                 type: array
               selector:
@@ -135,8 +139,8 @@ spec:
       openAPIV3Schema:
         properties:
           spec:
-            description: RequestAuthentication defines what request authentication
-              methods are supported by a workload.
+            description: 'Request authentication configuration for workloads. See
+              more details at: https://istio.io/docs/reference/config/security/request_authentication.html'
             properties:
               jwtRules:
                 description: Define the list of JWTs that can be validated at the
@@ -164,6 +168,8 @@ spec:
                             description: The prefix that should be stripped before
                               decoding the token.
                             type: string
+                        required:
+                        - name
                         type: object
                       type: array
                     fromParams:
@@ -203,6 +209,8 @@ spec:
                       description: This field specifies the header name to output
                         a successfully verified JWT payload to the backend.
                       type: string
+                  required:
+                  - issuer
                   type: object
                 type: array
               selector:
