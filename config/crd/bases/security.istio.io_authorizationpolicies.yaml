@@ -183,6 +183,8 @@ spec:
                             items:
                               type: string
                             type: array
+                        required:
+                        - key
                         type: object
                       type: array
                   type: object
@@ -378,6 +380,8 @@ spec:
                             items:
                               type: string
                             type: array
+                        required:
+                        - key
                         type: object
                       type: array
                   type: object
@@ -412,4 +416,3 @@ spec:
     storage: true
     subresources:
       status: {}
-

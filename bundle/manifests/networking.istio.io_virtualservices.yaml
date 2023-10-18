@@ -173,6 +173,8 @@ spec:
                         status:
                           description: Specifies the HTTP response status to be returned.
                           type: integer
+                      required:
+                      - status
                       type: object
                     fault:
                       description: Fault injection policy to apply on HTTP traffic
@@ -545,6 +547,8 @@ spec:
                         subset:
                           description: The name of a subset within the service.
                           type: string
+                      required:
+                      - host
                       type: object
                     mirror_percent:
                       nullable: true
@@ -583,6 +587,8 @@ spec:
                               subset:
                                 description: The name of a subset within the service.
                                 type: string
+                            required:
+                            - host
                             type: object
                           percentage:
                             description: Percentage of the traffic to be mirrored
@@ -592,6 +598,8 @@ spec:
                                 format: double
                                 type: number
                             type: object
+                        required:
+                        - destination
                         type: object
                       type: array
                     name:
@@ -711,6 +719,8 @@ spec:
                               subset:
                                 description: The name of a subset within the service.
                                 type: string
+                            required:
+                            - host
                             type: object
                           headers:
                             properties:
@@ -750,6 +760,8 @@ spec:
                               of traffic to be forwarded to the destination.
                             format: int32
                             type: integer
+                        required:
+                        - destination
                         type: object
                       type: array
                     timeout:
@@ -820,12 +832,16 @@ spec:
                               subset:
                                 description: The name of a subset within the service.
                                 type: string
+                            required:
+                            - host
                             type: object
                           weight:
                             description: Weight specifies the relative proportion
                               of traffic to be forwarded to the destination.
                             format: int32
                             type: integer
+                        required:
+                        - destination
                         type: object
                       type: array
                   type: object
@@ -871,6 +887,8 @@ spec:
                             description: Source namespace constraining the applicability
                               of a rule to workloads in that namespace.
                             type: string
+                        required:
+                        - sniHosts
                         type: object
                       type: array
                     route:
@@ -897,14 +915,20 @@ spec:
                               subset:
                                 description: The name of a subset within the service.
                                 type: string
+                            required:
+                            - host
                             type: object
                           weight:
                             description: Weight specifies the relative proportion
                               of traffic to be forwarded to the destination.
                             format: int32
                             type: integer
+                        required:
+                        - destination
                         type: object
                       type: array
+                  required:
+                  - match
                   type: object
                 type: array
             type: object
@@ -1065,6 +1089,8 @@ spec:
                         status:
                           description: Specifies the HTTP response status to be returned.
                           type: integer
+                      required:
+                      - status
                       type: object
                     fault:
                       description: Fault injection policy to apply on HTTP traffic
@@ -1437,6 +1463,8 @@ spec:
                         subset:
                           description: The name of a subset within the service.
                           type: string
+                      required:
+                      - host
                       type: object
                     mirror_percent:
                       nullable: true
@@ -1475,6 +1503,8 @@ spec:
                               subset:
                                 description: The name of a subset within the service.
                                 type: string
+                            required:
+                            - host
                             type: object
                           percentage:
                             description: Percentage of the traffic to be mirrored
@@ -1484,6 +1514,8 @@ spec:
                                 format: double
                                 type: number
                             type: object
+                        required:
+                        - destination
                         type: object
                       type: array
                     name:
@@ -1603,6 +1635,8 @@ spec:
                               subset:
                                 description: The name of a subset within the service.
                                 type: string
+                            required:
+                            - host
                             type: object
                           headers:
                             properties:
@@ -1642,6 +1676,8 @@ spec:
                               of traffic to be forwarded to the destination.
                             format: int32
                             type: integer
+                        required:
+                        - destination
                         type: object
                       type: array
                     timeout:
@@ -1712,12 +1748,16 @@ spec:
                               subset:
                                 description: The name of a subset within the service.
                                 type: string
+                            required:
+                            - host
                             type: object
                           weight:
                             description: Weight specifies the relative proportion
                               of traffic to be forwarded to the destination.
                             format: int32
                             type: integer
+                        required:
+                        - destination
                         type: object
                       type: array
                   type: object
@@ -1763,6 +1803,8 @@ spec:
                             description: Source namespace constraining the applicability
                               of a rule to workloads in that namespace.
                             type: string
+                        required:
+                        - sniHosts
                         type: object
                       type: array
                     route:
@@ -1789,14 +1831,20 @@ spec:
                               subset:
                                 description: The name of a subset within the service.
                                 type: string
+                            required:
+                            - host
                             type: object
                           weight:
                             description: Weight specifies the relative proportion
                               of traffic to be forwarded to the destination.
                             format: int32
                             type: integer
+                        required:
+                        - destination
                         type: object
                       type: array
+                  required:
+                  - match
                   type: object
                 type: array
             type: object
