@@ -300,11 +300,13 @@ OPERATOR_SDK ?= $(LOCALBIN)/operator-sdk
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
+OPM ?= $(LOCALBIN)/opm
 
 ## Tool Versions
 OPERATOR_SDK_VERSION ?= v1.31.0
 KUSTOMIZE_VERSION ?= v3.8.7
 CONTROLLER_TOOLS_VERSION ?= v0.11.1
+OPM_VERSION ?= v1.23.0
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
@@ -316,7 +318,7 @@ $(KUSTOMIZE): $(LOCALBIN)
 	fi
 	test -s $(LOCALBIN)/kustomize || { curl -Ss $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN) > /dev/stderr; }
 
-.PHONY: operator-sdk
+.PHONY: operator-sdk $(OPERATOR_SDK)
 operator-sdk: $(OPERATOR_SDK)
 operator-sdk: OS=$(shell go env GOOS)
 operator-sdk: ARCH=$(shell go env GOARCH)
@@ -326,7 +328,7 @@ $(OPERATOR_SDK): $(LOCALBIN)
 		rm -rf $(LOCALBIN)/operator-sdk; \
 	fi
 	test -s $(LOCALBIN)/operator-sdk || \
-	curl -sSLo $(LOCALBIN)/operator-sdk https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_$(OS)_$(ARCH) && \
+	curl -sSLfo $(LOCALBIN)/operator-sdk https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_$(OS)_$(ARCH) && \
 	chmod +x $(LOCALBIN)/operator-sdk;
 
 .PHONY: controller-gen
@@ -375,22 +377,18 @@ bundle-publish-nightly: OPERATOR_VERSION=$(VERSION)-nightly-$(TODAY)
 bundle-publish-nightly: TAG=$(MINOR_VERSION)-nightly-$(TODAY)
 bundle-publish-nightly: bundle-nightly bundle-publish
 
-.PHONY: opm
-OPM = ./bin/opm
-opm: ## Download opm locally if necessary.
-ifeq (,$(wildcard $(OPM)))
-ifeq (,$(shell which opm 2>/dev/null))
-	@{ \
-	set -e ;\
-	mkdir -p $(dir $(OPM)) ;\
-	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
-	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.23.0/$${OS}-$${ARCH}-opm ;\
-	chmod +x $(OPM) ;\
-	}
-else
-OPM = $(shell which opm)
-endif
-endif
+.PHONY: opm $(OPM)
+opm: $(OPM)
+opm: OS=$(shell go env GOOS)
+opm: ARCH=$(shell go env GOARCH)
+$(OPM): $(LOCALBIN)
+	@if test -x $(LOCALBIN)/opm && ! $(LOCALBIN)/opm version | grep -q $(OPM_VERSION); then \
+		echo "$(LOCALBIN)/opm version is not expected $(OPM_VERSION). Removing it before installing."; \
+		rm -f $(LOCALBIN)/opm; \
+	fi
+	test -s $(LOCALBIN)/opm || \
+	curl -sSLfo $(LOCALBIN)/opm https://github.com/operator-framework/operator-registry/releases/download/$(OPM_VERSION)/$(OS)-$(ARCH)-opm && \
+	chmod +x $(LOCALBIN)/opm;
 
 # A comma-separated list of bundle images (e.g. make catalog-build BUNDLE_IMGS=example.com/operator-bundle:v0.1.0,example.com/operator-bundle:v0.2.0).
 # These images MUST exist in a registry and be pull-able.
