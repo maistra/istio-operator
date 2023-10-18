@@ -75,7 +75,7 @@ OPERATORS_DIR="operators/${OPERATOR_NAME}/${OPERATOR_VERSION}/"
 mkdir -p "${OPERATORS_DIR}"
 cp -a "${BUNDLE_DIR}"/. "${OPERATORS_DIR}"
 
-TITLE="operators ${OPERATOR_NAME} (${OPERATOR_VERSION})"
+TITLE="operator ${OPERATOR_NAME} (${OPERATOR_VERSION})"
 skipInDryRun git add .
 skipInDryRun git commit -s -m"${TITLE}"
 
@@ -83,7 +83,7 @@ if [[ ! $dryRun && -z $GITHUB_TOKEN ]]; then
   echo "Please provide GITHUB_TOKEN" && exit 1
 fi
 
-skipInDryRun git push fork "${BRANCH}"
+skipInDryRun git push -f fork "${BRANCH}"
 
 PAYLOAD=$(mktemp)
 
