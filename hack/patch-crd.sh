@@ -151,6 +151,11 @@ function set_fields() {
   done
 }
 
+# Gets the nested configurations full path
+# Params:
+#   $1: The name of the nested configuration
+# Example of the full formatted path of a nested configuration:
+# .spec.versions.0.schema.openAPIV3Schema.properties.spec.properties.values.properties.gateways.properties.istio-egressgateway
 function get_nested_config_paths() {
   if [ $# -ne 1 ]; then
     echo "Usage: get_nested_config_paths <config_name>"
@@ -159,9 +164,11 @@ function get_nested_config_paths() {
 
   local config_name="${1}"
 
+  # Counting the number of paths for a specific nested configuration
   total_configs=$(${YQ} "( ${values_yaml_path} | .. | select(. == \"${config_name}\") | [{\"path\":path}] )" "${crd_file}" | \
     grep -c "path:")
 
+  # Formatting the path from the yq yaml output
   for config_number in $(seq 0 "$(( "${total_configs}" - 1))"); do
     ${YQ} "( ${values_yaml_path} | .. | select(. == \"${config_name}\") | [{\"path\":path}] )" "${crd_file}" | \
       ${YQ} ".${config_number}.path" | sed -e 's/.*type.*//g' -e 's/-\ /./g' | tr -d '\n'
@@ -177,7 +184,7 @@ function get_nested_config_paths() {
 #   properties:
 #     gateways:
 #       properties:
-#         istio_egressgateway:
+#         istio-egressgateway:
 #           type: EgressGatewayConfig #here it is a nested configuration
 function get_nested_config_fields() {
   if [ $# -ne 1 ]; then
@@ -222,7 +229,7 @@ function set_nested_config_fields() {
         #   properties:
         #     gateways:
         #       properties:
-        #         istio_egressgateway:
+        #         istio-egressgateway:
         #           type: EgressGatewayConfig
         #           properties:
         #             name:
@@ -237,7 +244,7 @@ function set_nested_config_fields() {
     #   properties:
     #     gateways:
     #       properties:
-    #         istio_egressgateway:
+    #         istio-egressgateway:
     #           type: object
     #           properties:
     #             name:
