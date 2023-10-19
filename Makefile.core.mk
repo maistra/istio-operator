@@ -68,7 +68,7 @@ HUB ?= quay.io/maistra-dev
 # Image tag to use
 TAG ?= ${MINOR_VERSION}-latest
 # Image base to use
-IMAGE_BASE ?= istio-ubi9-operator
+IMAGE_BASE ?= istio-operator
 # Image URL to use all building/pushing image targets
 IMAGE ?= ${HUB}/${IMAGE_BASE}:${TAG}
 # Namespace to deploy the controller in
@@ -100,7 +100,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # This variable is used to construct full image tags for bundle and catalog images.
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
-# quay.io/maistra-dev/istio-ubi9-operator-bundle:$VERSION and quay.io/maistra-dev/istio-ubi9-operator-catalog:$VERSION.
+# quay.io/maistra-dev/istio-operator-bundle:$VERSION and quay.io/maistra-dev/istio-operator-catalog:$VERSION.
 IMAGE_TAG_BASE ?= ${HUB}/${IMAGE_BASE}
 
 BUNDLE_MANIFEST_DATE := $(shell cat bundle/manifests/${OPERATOR_NAME}.clusterserviceversion.yaml 2>/dev/null | grep createdAt | awk '{print $$2}')
@@ -178,8 +178,8 @@ docker-push: ## Push docker image with the manager.
 docker-push-nightly: TAG=$(MINOR_VERSION)-nightly-$(TODAY)
 docker-push-nightly: docker-build
 	docker push ${IMAGE}
-	docker tag ${IMAGE} $(HUB)/istio-ubi9-operator:$(MINOR_VERSION)-latest
-	docker push $(HUB)/istio-ubi9-operator:$(MINOR_VERSION)-latest
+	docker tag ${IMAGE} $(HUB)/$(IMAGE_BASE):$(MINOR_VERSION)-latest
+	docker push $(HUB)/$(IMAGE_BASE):$(MINOR_VERSION)-latest
 
 # PLATFORMS defines the target platforms for  the manager image be build to provide support to multiple
 # architectures. (i.e. make docker-buildx IMAGE=myregistry/mypoperator:0.0.1). To use this option you need to:
