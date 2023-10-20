@@ -1,0 +1,17 @@
+apiVersion: operator.istio.io/v1alpha1
+kind: Istio
+spec:
+  values:
+    global:
+      proxy:
+        resources:
+          requests:
+            cpu: 10m
+            memory: 40Mi
+    pilot:
+      autoscaleEnabled: false
+    gateways:
+      istio-egressgateway:
+        autoscaleEnabled: false
+      istio-ingressgateway:
+        autoscaleEnabled: false
