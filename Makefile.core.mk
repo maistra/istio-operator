@@ -231,10 +231,12 @@ deploy-olm: bundle bundle-build bundle-push ## Builds and pushes the operator OL
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	kubectl delete istios.operator.istio.io --all --all-namespaces --wait=true
 	$(MAKE) deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: undeploy-olm
 undeploy-olm: operator-sdk ## Undeploys the operator from the cluster (used only if operator was installed via OLM)
+	kubectl delete istios.operator.istio.io --all --all-namespaces --wait=true
 	$(OPERATOR_SDK) cleanup sailoperator --delete-all -n ${NAMESPACE}
 
 .PHONY: deploy-example
