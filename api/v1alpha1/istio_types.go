@@ -28,10 +28,10 @@ const IstioKind = "Istio"
 // IstioSpec defines the desired state of Istio
 type IstioSpec struct {
 	// Version defines the version of Istio to install.
-	// Must be one of: latest.
+	// Must be one of: latest, v1.19.3, v1.19.1, v1.18.5.
 	// If not specified, the latest version supported by the operator is installed.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="Istio Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:latest"}
-	// +kubebuilder:validation:Enum=latest
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="Istio Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:latest", "urn:alm:descriptor:com.tectonic.ui:select:v1.19.3", "urn:alm:descriptor:com.tectonic.ui:select:v1.19.1", "urn:alm:descriptor:com.tectonic.ui:select:v1.18.5"}
+	// +kubebuilder:validation:Enum=latest;v1.19.3;v1.19.1;v1.18.5
 	Version string `json:"version,omitempty"`
 
 	// The built-in installation configuration profile to use.
