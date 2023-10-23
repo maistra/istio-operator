@@ -16,42 +16,50 @@
 
 set -eux -o pipefail
 
-WD=$(dirname "$0")
-WD=$(cd "$WD" || exit; pwd)
+SCRIPTPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+ROOT=$(dirname "$(dirname "${SCRIPTPATH}")")
 
-# verify if a kind cluster is running with the name istio-operator
-if ! kind get clusters | grep -q "istio-operator"; then
-    echo "No kind cluster found"
-    # Create cluster
-    kind create cluster --name istio-operator --config "${WD}/config/default.yaml"
-fi
+# shellcheck source=common/scripts/kind_provisioner.sh
+source "${ROOT}/common/scripts/kind_provisioner.sh"
 
-# Wait until kind cluster is running
-max_retries=30
-retry_interval=10
+# We run a local-registry in a docker container that KinD nodes pull from
+export KIND_REGISTRY_NAME="kind-registry"
+export KIND_REGISTRY_PORT="5000"
+export KIND_REGISTRY="localhost:${KIND_REGISTRY_PORT}"
+export DEFAULT_CLUSTER_YAML="${SCRIPTPATH}/config/default.yaml"
+export IP_FAMILY="${IP_FAMILY:-ipv4}"
+export ARTIFACTS="${ARTIFACTS:-$(mktemp -d)}"
 
-for ((i = 1; i <= max_retries; i++)); do
-    if kind get clusters | grep -q "istio-operator"; then
-        echo "Kind cluster is running"
-        break
-    fi
+# Use the local registry instead of the default HUB
+export HUB="${KIND_REGISTRY}"
+# Workaround make inside make: ovewrite this variable so it is not recomputed in Makefile.core.mk
+export IMAGE="${HUB}/${IMAGE_BASE:-istio-operator}:${TAG:-latest}"
 
-    echo "Waiting for kind cluster to be running (Attempt $i/$max_retries)"
-    sleep $retry_interval
+# Copied from Istio: https://github.com/istio/istio/blob/861abfbc050c5be41154054853fe70336a851ce9/prow/lib.sh#L149
+function setup_kind_registry() {
+  # create a registry container if it not running already
+  running="$(docker inspect -f '{{.State.Running}}' "${KIND_REGISTRY_NAME}" 2>/dev/null || true)"
+  if [[ "${running}" != 'true' ]]; then
+      docker run \
+        -d --restart=always -p "${KIND_REGISTRY_PORT}:5000" --name "${KIND_REGISTRY_NAME}" \
+        gcr.io/istio-testing/registry:2
 
-    if [ "$i" -eq "$max_retries" ]; then
-        echo "Cluster is not ready after $max_retries attempts. Exiting."
-        exit 1
-    fi
-done
+    # Allow kind nodes to reach the registry
+    docker network connect "kind" "${KIND_REGISTRY_NAME}"
+  fi
 
-function cleanup_kind_cluster() {
-  echo "Test exited with exit code $?."
-  echo "Cleaning up kind cluster"
-  kind delete cluster --name istio-operator || true
+  # https://docs.tilt.dev/choosing_clusters.html#discovering-the-registry
+  for cluster in $(kind get clusters); do
+    # TODO get context/config from existing variables
+    kind export kubeconfig --name="${cluster}"
+    for node in $(kind get nodes --name="${cluster}"); do
+      kubectl annotate node "${node}" "kind.x-k8s.io/registry=localhost:${KIND_REGISTRY_PORT}" --overwrite;
+    done
+  done
 }
 
-trap "cleanup_kind_cluster" EXIT
+setup_kind_cluster "istio-operator" "" "" "true" "true"
+setup_kind_registry
 
 # Run the integration tests
 echo "Running integration tests"
