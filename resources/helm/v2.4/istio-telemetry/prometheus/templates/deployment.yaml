@@ -5,7 +5,7 @@ metadata:
   name: prometheus
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.4.4"
+    maistra-version: "2.4.5"
     app: prometheus
     release: {{ .Release.Name }}
 spec:
