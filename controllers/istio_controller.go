@@ -341,6 +341,18 @@ func applyProfile(istio *v1alpha1.Istio, resourceDir string) error {
 		profileName = "default"
 	}
 
+	if err := applyProfile0(istio, resourceDir, profileName); err != nil {
+		return err
+	}
+
+	if profileName != "default" {
+		return applyProfile0(istio, resourceDir, "default")
+	}
+
+	return nil
+}
+
+func applyProfile0(istio *v1alpha1.Istio, resourceDir string, profileName string) error {
 	profilesDir := path.Join(resourceDir, istio.Spec.Version, "profiles")
 	file := path.Join(profilesDir, profileName+".yaml")
 
