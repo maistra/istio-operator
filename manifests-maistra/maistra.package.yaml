@@ -1,5 +1,5 @@
 packageName: maistraoperator
 channels:
 - name: "2.0"
-  currentCSV: maistraoperator.v2.2.11
+  currentCSV: maistraoperator.v2.2.12
 defaultChannel: "2.0"
