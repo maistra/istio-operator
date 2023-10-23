@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"testing"
@@ -305,18 +306,21 @@ func TestApplyProfile(t *testing.T) {
 	profilesDir := path.Join(resourceDir, "v3.0", "profiles")
 	Must(t, os.MkdirAll(profilesDir, 0o755))
 
-	writeProfileFile := func(t *testing.T, path string, injectionURL string) {
-		Must(t, os.WriteFile(path, []byte(`
+	writeProfileFile := func(t *testing.T, path string, values ...string) {
+		yaml := `
 apiVersion: operator.istio.io/v1alpha1
 kind: Istio
 spec:
-  values:
-    istiodRemote:
-      injectionURL: `+injectionURL), 0o644))
+  values:`
+		for i, val := range values {
+			yaml += fmt.Sprintf(`
+    value%d: %s`, i+1, val)
+		}
+		Must(t, os.WriteFile(path, []byte(yaml), 0o644))
 	}
 
-	writeProfileFile(t, path.Join(resourceDir, "v3.0", "profiles", "default.yaml"), "value-in-default-profile")
-	writeProfileFile(t, path.Join(resourceDir, "v3.0", "profiles", "custom.yaml"), "value-in-custom-profile")
+	writeProfileFile(t, path.Join(resourceDir, "v3.0", "profiles", "default.yaml"), "1-from-default", "2-from-default")
+	writeProfileFile(t, path.Join(resourceDir, "v3.0", "profiles", "custom.yaml"), "1-from-custom")
 	writeProfileFile(t, path.Join(resourceDir, "v3.0", "not-in-profiles-dir.yaml"), "should-not-be-accessible")
 
 	tests := []struct {
@@ -329,22 +333,23 @@ spec:
 			name: "no profile",
 			inputSpec: v1.IstioSpec{
 				Version: "v3.0",
+				// no profile is specified; default profile should be used
 			},
 			expectSpec: v1.IstioSpec{
 				Version: "v3.0",
-				Values:  []byte(`{"istiodRemote":{"injectionURL":"value-in-default-profile"}}`),
+				Values:  []byte(`{"value1":"1-from-default","value2":"2-from-default"}`),
 			},
 		},
 		{
 			name: "custom profile",
 			inputSpec: v1.IstioSpec{
 				Version: "v3.0",
-				Profile: "custom",
+				Profile: "custom", // both custom and default profile should be used (with custom taking precedence)
 			},
 			expectSpec: v1.IstioSpec{
 				Profile: "custom",
 				Version: "v3.0",
-				Values:  []byte(`{"istiodRemote":{"injectionURL":"value-in-custom-profile"}}`),
+				Values:  []byte(`{"value1":"1-from-custom","value2":"2-from-default"}`),
 			},
 		},
 		{
