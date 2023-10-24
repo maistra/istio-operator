@@ -44,4 +44,4 @@ RBAC_PROXY_LATEST_VERSION=$(getLatestVersion brancz/kube-rbac-proxy | cut -d/ -f
 sed -i "s|gcr.io/kubebuilder/kube-rbac-proxy:.*|gcr.io/kubebuilder/kube-rbac-proxy:${RBAC_PROXY_LATEST_VERSION}|" "${ROOTDIR}/config/default/manager_auth_proxy_patch.yaml"
 
 # Regenerate files
-make gen
+make update-istio gen
