@@ -2,14 +2,14 @@
 
 set -e -u -o pipefail
 
-: "${MAISTRA_RELEASE_STREAM:=$1}"
+: "${ISTIO_VERSION:=$1}"
 : "${ISTIO_REPO:=$2}"
 : "${ISTIO_COMMIT:=$3}"
- CHART_URLS=("${@:4}")
+CHART_URLS=("${@:4}")
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 REPO_ROOT=$(dirname "${SCRIPT_DIR}")
-MANIFEST_DIR="${REPO_ROOT}/resources/${MAISTRA_RELEASE_STREAM}"
+MANIFEST_DIR="${REPO_ROOT}/resources/${ISTIO_VERSION}"
 CHARTS_DIR="${MANIFEST_DIR}/charts"
 PROFILES_DIR="${MANIFEST_DIR}/profiles"
 

@@ -2,33 +2,33 @@
 # The latest version must be listed first, so that the CRDs from the latest version
 # are copied to the config/crd directory.
 latest:
-  repo: https://github.com/maistra/istio
-  branch: maistra-3.0
-  commit: 4f6e87b39e9e628f4193b64c1bc210807bd66a8b
+  repo: https://github.com/istio/istio
+  branch: master
+  commit: 4c65649a9b116584281fadcaf8c3dd6b42d34036
 v1.19.3:
   repo: https://github.com/istio/istio
   commit: 41218ffa66c12acf77ad08b3ef07d296218d0929
   charts:
-  - https://istio-release.storage.googleapis.com/charts/base-1.19.3.tgz
-  - https://istio-release.storage.googleapis.com/charts/istiod-1.19.3.tgz
-  - https://istio-release.storage.googleapis.com/charts/gateway-1.19.3.tgz
-  - https://istio-release.storage.googleapis.com/charts/cni-1.19.3.tgz
-  - https://istio-release.storage.googleapis.com/charts/ztunnel-1.19.3.tgz
+    - https://istio-release.storage.googleapis.com/charts/base-1.19.3.tgz
+    - https://istio-release.storage.googleapis.com/charts/istiod-1.19.3.tgz
+    - https://istio-release.storage.googleapis.com/charts/gateway-1.19.3.tgz
+    - https://istio-release.storage.googleapis.com/charts/cni-1.19.3.tgz
+    - https://istio-release.storage.googleapis.com/charts/ztunnel-1.19.3.tgz
 v1.19.1:
   repo: https://github.com/istio/istio
   commit: a780cd199d51787fab562748696d531e3d11c7a7
   charts:
-  - https://istio-release.storage.googleapis.com/charts/base-1.19.1.tgz
-  - https://istio-release.storage.googleapis.com/charts/istiod-1.19.1.tgz
-  - https://istio-release.storage.googleapis.com/charts/gateway-1.19.1.tgz
-  - https://istio-release.storage.googleapis.com/charts/cni-1.19.1.tgz
-  - https://istio-release.storage.googleapis.com/charts/ztunnel-1.19.1.tgz
+    - https://istio-release.storage.googleapis.com/charts/base-1.19.1.tgz
+    - https://istio-release.storage.googleapis.com/charts/istiod-1.19.1.tgz
+    - https://istio-release.storage.googleapis.com/charts/gateway-1.19.1.tgz
+    - https://istio-release.storage.googleapis.com/charts/cni-1.19.1.tgz
+    - https://istio-release.storage.googleapis.com/charts/ztunnel-1.19.1.tgz
 v1.18.5:
   repo: https://github.com/istio/istio
   commit: 1.18.5
   charts:
-  - https://istio-release.storage.googleapis.com/charts/base-1.18.5.tgz
-  - https://istio-release.storage.googleapis.com/charts/istiod-1.18.5.tgz
-  - https://istio-release.storage.googleapis.com/charts/gateway-1.18.5.tgz
-  - https://istio-release.storage.googleapis.com/charts/cni-1.18.5.tgz
-  - https://istio-release.storage.googleapis.com/charts/ztunnel-1.18.5.tgz
+    - https://istio-release.storage.googleapis.com/charts/base-1.18.5.tgz
+    - https://istio-release.storage.googleapis.com/charts/istiod-1.18.5.tgz
+    - https://istio-release.storage.googleapis.com/charts/gateway-1.18.5.tgz
+    - https://istio-release.storage.googleapis.com/charts/cni-1.18.5.tgz
+    - https://istio-release.storage.googleapis.com/charts/ztunnel-1.18.5.tgz
