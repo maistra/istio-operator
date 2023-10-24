@@ -15,7 +15,7 @@
 # limitations under the License.
 
 # To be able to run this script it's needed to pass the flag --ocp or --kind
-set -eux -o pipefail
+set -eu -o pipefail
 
 if [ $# -eq 0 ]; then
   echo "No arguments provided"
@@ -72,11 +72,11 @@ check_ready() {
     local POD_NAME=$2
     local DEPLOYMENT_NAME=$3
 
-    echo "Check POD: NAME SPACE: \"${NS}\"   POD NAME: \"${POD_NAME}\""
+    echo "Check POD: NAMESPACE: \"${NS}\"   POD NAME: \"${POD_NAME}\""
     timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
     "until $COMMAND  get pod --field-selector=status.phase=Running -n ${NS} | grep ${POD_NAME}; do sleep 5; done"
 
-    echo "Check Deployment Available: NAME SPACE: \"${NS}\"   DEPLOYMENT NAME: \"${DEPLOYMENT_NAME}\""
+    echo "Check Deployment Available: NAMESPACE: \"${NS}\"   DEPLOYMENT NAME: \"${DEPLOYMENT_NAME}\""
     $COMMAND  wait deployment "${DEPLOYMENT_NAME}" -n "${NS}" --for condition=Available=True --timeout=${TIMEOUT}
 }
 
@@ -92,23 +92,53 @@ make -s --no-print-directory deploy
 echo "Check that istio operator is running"
 check_ready "${NAMESPACE}" "${DEPLOYMENT_NAME}" "${DEPLOYMENT_NAME}"
 
+versions=$(yq eval 'keys | .[]' versions.yaml)
+echo "Versions to test: ${versions//$'\n'/ }"
+for ver in ${versions}; do
+    echo "--------------------------------------------------------------"
+    echo "Deploy Istio version '${ver}'"
+    $COMMAND get ns "${CONTROL_PLANE_NS}" >/dev/null 2>&1 || $COMMAND create namespace "${CONTROL_PLANE_NS}"
+    sed -e "s/version:.*/version: ${ver}/g" "${ISTIO_MANIFEST}" | $COMMAND apply -f - -n "${CONTROL_PLANE_NS}"
 
-echo "Deploy Istio"
-$COMMAND get ns "${CONTROL_PLANE_NS}" >/dev/null 2>&1 || $COMMAND create namespace "${CONTROL_PLANE_NS}"
-$COMMAND apply -f "${ISTIO_MANIFEST}" -n "${CONTROL_PLANE_NS}"
+    # older versions of istio don't run on OpenShift without anyuid and privileged SCC
+    if [ "${OCP}" == "true" ] && [ "$ver" != "latest" ]; then
+        echo "Configure anyuid and privileged SCC in ${CONTROL_PLANE_NS}"
+        oc adm policy add-scc-to-group anyuid "system:serviceaccounts:${CONTROL_PLANE_NS}"
+        oc adm policy add-scc-to-group privileged "system:serviceaccounts:${CONTROL_PLANE_NS}"
+    fi
 
+    echo "Check that Istio is running"
+    check_ready "${CONTROL_PLANE_NS}" "istiod" "istiod"
 
-echo "Check that Istio is running"
-check_ready "${CONTROL_PLANE_NS}" "istiod" "istiod"
+    echo "Make sure only istiod got deployed and nothing else"
+    res=$($COMMAND  -n "${CONTROL_PLANE_NS}" get deploy -o json | jq -j '.items | length')
+    if [ "${res}" != "1" ]; then
+      echo "Expected just istiod deployment, got:"
+      $COMMAND  -n "${CONTROL_PLANE_NS}" get deploy
+      exit 1
+    fi
 
-echo "Make sure only istiod got deployed and nothing else"
-res=$($COMMAND  -n "${CONTROL_PLANE_NS}" get deploy -o json | jq -j '.items | length')
-if [ "${res}" != "1" ]; then
-  echo "Expected just istiod deployment, got:"
-  $COMMAND  -n "${CONTROL_PLANE_NS}" get deploy
-  exit 1
-fi
+    echo "Check that CNI deamonset ready are running"
+    timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
+        "until $COMMAND  rollout status ds/istio-cni-node -n ${NAMESPACE}; do sleep 5; done"
 
-echo "Check that CNI deamonset ready are running"
-timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
-    "until $COMMAND  rollout status ds/istio-cni-node -n ${NAMESPACE}; do sleep 5; done"
+    echo "Undeploy Istio"
+    $COMMAND delete -f "${ISTIO_MANIFEST}" -n "${CONTROL_PLANE_NS}"
+
+    echo "Check that Istio has been deleted"
+    if $COMMAND get deployment "istiod" -n "${CONTROL_PLANE_NS}" &>/dev/null; then
+      echo "Expected istiod deployment to have been deleted, but it still exists:"
+      $COMMAND -n "${CONTROL_PLANE_NS}" get deploy
+      exit 1
+    fi
+
+    if [ "${OCP}" == "true" ] && [ "$ver" != "latest" ]; then
+        echo "Remove anyuid and privileged SCC in ${CONTROL_PLANE_NS}"
+        oc adm policy remove-scc-from-group anyuid "system:serviceaccounts:${CONTROL_PLANE_NS}"
+        oc adm policy remove-scc-from-group privileged "system:serviceaccounts:${CONTROL_PLANE_NS}"
+    fi
+
+    echo "Delete namespace ${CONTROL_PLANE_NS}"
+    $COMMAND delete ns "${CONTROL_PLANE_NS}"
+done
+
