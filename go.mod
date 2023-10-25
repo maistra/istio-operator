@@ -1,6 +1,8 @@
 module maistra.io/istio-operator
 
-go 1.20
+go 1.21
+
+toolchain go1.21.3
 
 // FIXME: https://issues.redhat.com/browse/OSSM-4819
 replace helm.sh/helm/v3 => github.com/jwendell/helm/v3 v3.0.0-20231009190954-d1b15f943d79
@@ -21,7 +23,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.13.1
 	istio.io/client-go v1.19.0-alpha.1.0.20231024010802-0f82c4ad72a5
-	istio.io/istio v0.0.0-20231024020332-8b7c91c1866a
+	istio.io/istio v0.0.0-20231025020751-19722ffcd106
 	k8s.io/api v0.28.3
 	k8s.io/apimachinery v0.28.3
 	k8s.io/cli-runtime v0.28.3
