@@ -354,6 +354,13 @@ bundle: gen kustomize operator-sdk ## Generate bundle manifests and metadata, th
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMAGE)
 	sed -i "s|^\(    containerImage:\).*$$|\1 ${IMAGE}|g" config/manifests/bases/${OPERATOR_NAME}.clusterserviceversion.yaml
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
+
+	# check if the only change in the CSV is the createdAt timestamp; if so, revert the change
+	@csvPath="bundle/manifests/${OPERATOR_NAME}.clusterserviceversion.yaml"; \
+		if ! (git diff "$$csvPath" | grep '^[+-][^+-][^+-]' | grep -v "createdAt:" >/dev/null); then \
+			echo "reverting timestamp change in $$csvPath"; \
+			git checkout "$$csvPath"; \
+		fi
 	$(OPERATOR_SDK) bundle validate ./bundle
 
 .PHONY: bundle-build
