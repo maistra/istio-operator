@@ -5,11 +5,11 @@ set -e -u
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 : "${YQ:=yq}"
-: "${ISTIO_RELEASE:=master}"
-: "${VALUES_TYPES_PROTO_FILE_URL:=https://raw.githubusercontent.com/istio/istio/${ISTIO_RELEASE}/operator/pkg/apis/istio/v1alpha1/values_types.proto}"
-: "${CRD_FILE:=${CUR_DIR}/../bundle/manifests/operator.istio.io_istios.yaml}"
+: "${API_VERSION:=v1alpha1}"
+: "${VERSIONS_FILE:=${CUR_DIR}/../versions.yaml}"
+: "${CRD_FILE:=${CUR_DIR}/../config/crd/bases/operator.istio.io_istios.yaml}"
 
-values_yaml_path=".spec.versions.[] | select(.name == strenv(API_VERSION)) | .schema.openAPIV3Schema.properties.spec.properties.values"
+values_yaml_path=".spec.versions.[] | select(.name == \"${API_VERSION}\") | .schema.openAPIV3Schema.properties.spec.properties.values"
 
 declare -A values
 
@@ -23,7 +23,10 @@ function download_values_types_proto_file() {
   fi
 
   dst_dir="${1}"
-  curl --silent "${VALUES_TYPES_PROTO_FILE_URL}" --output "${dst_dir}/values_types.proto"
+
+  # Getting the values_types.proto url from the latest version
+  values_types_proto_file_url="$(${YQ} 'to_entries | .[0].value | .repo + "/" + .commit + "/operator/pkg/apis/istio/v1alpha1/values_types.proto"' "${VERSIONS_FILE}"  | sed "s/github.com/raw.githubusercontent.com/")"
+  curl --silent "${values_types_proto_file_url}" --output "${dst_dir}/values_types.proto"
   echo "${dst_dir}/values_types.proto"
 }
 
