@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -31,7 +31,7 @@ const (
 	pilotImage   = "maistra.io/test:latest"
 )
 
-var _ = Describe("IstioController", Ordered, func() {
+var _ = ginkgo.Describe("IstioController", ginkgo.Ordered, func() {
 	const istioName = "test-istio"
 	const istioNamespace = "test"
 
@@ -50,23 +50,23 @@ var _ = Describe("IstioController", Ordered, func() {
 
 	common.Config = testConfig
 
-	BeforeAll(func() {
-		By("Creating the Namespace to perform the tests")
+	ginkgo.BeforeAll(func() {
+		ginkgo.By("Creating the Namespace to perform the tests")
 		err := k8sClient.Create(ctx, namespace)
-		Expect(err).To(Not(HaveOccurred()))
+		gomega.Expect(err).To(gomega.Not(gomega.HaveOccurred()))
 	})
 
-	AfterAll(func() {
+	ginkgo.AfterAll(func() {
 		// TODO(user): Attention if you improve this code by adding other context test you MUST
 		// be aware of the current delete namespace limitations. More info: https://book.kubebuilder.io/reference/envtest.html#testing-considerations
-		By("Deleting the Namespace to perform the tests")
+		ginkgo.By("Deleting the Namespace to perform the tests")
 		_ = k8sClient.Delete(ctx, namespace)
 	})
 
 	istio := &v1.Istio{}
 
-	It("successfully reconciles the resource", func() {
-		By("Creating the custom resource")
+	ginkgo.It("successfully reconciles the resource", func() {
+		ginkgo.By("Creating the custom resource")
 		err := k8sClient.Get(ctx, istioObjectKey, istio)
 		if err != nil && errors.IsNotFound(err) {
 			istio = &v1.Istio{
@@ -81,88 +81,88 @@ var _ = Describe("IstioController", Ordered, func() {
 			}
 
 			err = k8sClient.Create(ctx, istio)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
 
-		By("Checking if the resource was successfully created")
-		Eventually(func() error {
+		ginkgo.By("Checking if the resource was successfully created")
+		gomega.Eventually(func() error {
 			found := &v1.Istio{}
 			return k8sClient.Get(ctx, istioObjectKey, found)
-		}, time.Minute, time.Second).Should(Succeed())
+		}, time.Minute, time.Second).Should(gomega.Succeed())
 
 		istiodDeployment := &appsv1.Deployment{}
-		By("Checking if Deployment was successfully created in the reconciliation")
-		Eventually(func() error {
+		ginkgo.By("Checking if Deployment was successfully created in the reconciliation")
+		gomega.Eventually(func() error {
 			return k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
-		}, time.Minute, time.Second).Should(Succeed())
-		Expect(istiodDeployment.Spec.Template.Spec.Containers[0].Image).To(Equal(pilotImage))
-		Expect(istiodDeployment.ObjectMeta.OwnerReferences).To(ContainElement(expectedOwnerReference(istio)))
+		}, time.Minute, time.Second).Should(gomega.Succeed())
+		gomega.Expect(istiodDeployment.Spec.Template.Spec.Containers[0].Image).To(gomega.Equal(pilotImage))
+		gomega.Expect(istiodDeployment.ObjectMeta.OwnerReferences).To(gomega.ContainElement(expectedOwnerReference(istio)))
 
-		By("Checking if the status is updated")
-		Eventually(func() int64 {
+		ginkgo.By("Checking if the status is updated")
+		gomega.Eventually(func() int64 {
 			err := k8sClient.Get(ctx, istioObjectKey, istio)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			return istio.Status.ObservedGeneration
-		}, time.Minute, time.Second).Should(Equal(istio.ObjectMeta.Generation))
+		}, time.Minute, time.Second).Should(gomega.Equal(istio.ObjectMeta.Generation))
 
-		By("Checking if the appliedValues are written properly")
-		Eventually(func() string {
+		ginkgo.By("Checking if the appliedValues are written properly")
+		gomega.Eventually(func() string {
 			err := k8sClient.Get(ctx, istioObjectKey, istio)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			vals := istio.Status.GetAppliedValues()
 			imageName, _, err := unstructured.NestedString(vals, "pilot", "image")
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			return imageName
-		}, time.Minute, time.Second).Should(Equal(pilotImage))
+		}, time.Minute, time.Second).Should(gomega.Equal(pilotImage))
 	})
 
-	When("istiod and istio-cni-node readiness changes", func() {
-		It("marks updates the status of the istio resource", func() {
-			By("setting the Ready condition status to true when both are ready", func() {
+	ginkgo.When("istiod and istio-cni-node readiness changes", func() {
+		ginkgo.It("marks updates the status of the istio resource", func() {
+			ginkgo.By("setting the Ready condition status to true when both are ready", func() {
 				istiodDeployment := &appsv1.Deployment{}
 				err := k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
-				Expect(err).NotTo(HaveOccurred())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 				istiodDeployment.Status.Replicas = 1
 				istiodDeployment.Status.ReadyReplicas = 1
 				err = k8sClient.Status().Update(ctx, istiodDeployment)
-				Expect(err).NotTo(HaveOccurred())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				cniDaemonSet := &appsv1.DaemonSet{}
 				err = k8sClient.Get(ctx, cniObjectKey, cniDaemonSet)
-				Expect(err).NotTo(HaveOccurred())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 				cniDaemonSet.Status.CurrentNumberScheduled = 3
 				cniDaemonSet.Status.NumberReady = 3
 				err = k8sClient.Status().Update(ctx, cniDaemonSet)
-				Expect(err).NotTo(HaveOccurred())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-				Eventually(func() metav1.ConditionStatus {
+				gomega.Eventually(func() metav1.ConditionStatus {
 					err := k8sClient.Get(ctx, istioObjectKey, istio)
-					Expect(err).NotTo(HaveOccurred())
+					gomega.Expect(err).NotTo(gomega.HaveOccurred())
 					return istio.Status.GetCondition(v1.ConditionTypeReady).Status
-				}, time.Minute, time.Second).Should(Equal(metav1.ConditionTrue))
+				}, time.Minute, time.Second).Should(gomega.Equal(metav1.ConditionTrue))
 			})
 
-			By("setting the Ready condition status to false when istiod isn't ready", func() {
+			ginkgo.By("setting the Ready condition status to false when istiod isn't ready", func() {
 				istiodDeployment := &appsv1.Deployment{}
 				err := k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
-				Expect(err).NotTo(HaveOccurred())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				istiodDeployment.Status.ReadyReplicas = 0
 				err = k8sClient.Status().Update(ctx, istiodDeployment)
-				Expect(err).NotTo(HaveOccurred())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-				Eventually(func() metav1.ConditionStatus {
+				gomega.Eventually(func() metav1.ConditionStatus {
 					err := k8sClient.Get(ctx, istioObjectKey, istio)
-					Expect(err).NotTo(HaveOccurred())
+					gomega.Expect(err).NotTo(gomega.HaveOccurred())
 					return istio.Status.GetCondition(v1.ConditionTypeReady).Status
-				}, time.Minute, time.Second).Should(Equal(metav1.ConditionFalse))
+				}, time.Minute, time.Second).Should(gomega.Equal(metav1.ConditionFalse))
 			})
 		})
 	})
 
-	When("an owned namespaced resource is deleted", func() {
-		It("recreates the owned resource", func() {
+	ginkgo.When("an owned namespaced resource is deleted", func() {
+		ginkgo.It("recreates the owned resource", func() {
 			istiodDeployment := &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "istiod",
@@ -170,69 +170,69 @@ var _ = Describe("IstioController", Ordered, func() {
 				},
 			}
 			err := k8sClient.Delete(ctx, istiodDeployment, client.PropagationPolicy(metav1.DeletePropagationForeground))
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			Eventually(func() error {
+			gomega.Eventually(func() error {
 				return k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
-			}, time.Minute, time.Second).Should(Succeed())
+			}, time.Minute, time.Second).Should(gomega.Succeed())
 
-			Expect(istiodDeployment.Spec.Template.Spec.Containers[0].Image).To(Equal(pilotImage))
-			Expect(istiodDeployment.ObjectMeta.OwnerReferences).To(ContainElement(expectedOwnerReference(istio)))
+			gomega.Expect(istiodDeployment.Spec.Template.Spec.Containers[0].Image).To(gomega.Equal(pilotImage))
+			gomega.Expect(istiodDeployment.ObjectMeta.OwnerReferences).To(gomega.ContainElement(expectedOwnerReference(istio)))
 		})
 	})
 
-	When("an owned cluster-scoped resource is deleted", func() {
-		It("recreates the owned resource", func() {
+	ginkgo.When("an owned cluster-scoped resource is deleted", func() {
+		ginkgo.It("recreates the owned resource", func() {
 			webhook := &admissionv1.MutatingWebhookConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: webhookObjectKey.Name,
 				},
 			}
 			err := k8sClient.Delete(ctx, webhook, client.PropagationPolicy(metav1.DeletePropagationForeground))
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			Eventually(func() error {
+			gomega.Eventually(func() error {
 				err := k8sClient.Get(ctx, webhookObjectKey, webhook)
 				return err
-			}, time.Minute, time.Second).Should(Succeed())
+			}, time.Minute, time.Second).Should(gomega.Succeed())
 		})
 	})
 
-	When("an owned namespaced resource is modified", func() {
-		It("reverts the owned resource", func() {
+	ginkgo.When("an owned namespaced resource is modified", func() {
+		ginkgo.It("reverts the owned resource", func() {
 			istiodDeployment := &appsv1.Deployment{}
 			err := k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			originalImage := istiodDeployment.Spec.Template.Spec.Containers[0].Image
 			istiodDeployment.Spec.Template.Spec.Containers[0].Image = "user-supplied-image"
 			err = k8sClient.Update(ctx, istiodDeployment)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			Eventually(func() string {
+			gomega.Eventually(func() string {
 				err := k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
-				Expect(err).NotTo(HaveOccurred())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 				return istiodDeployment.Spec.Template.Spec.Containers[0].Image
-			}, time.Minute, time.Second).Should(Equal(originalImage))
+			}, time.Minute, time.Second).Should(gomega.Equal(originalImage))
 		})
 	})
 
-	When("an owned cluster-scoped resource is modified", func() {
-		It("reverts the owned resource", func() {
+	ginkgo.When("an owned cluster-scoped resource is modified", func() {
+		ginkgo.It("reverts the owned resource", func() {
 			webhook := &admissionv1.MutatingWebhookConfiguration{}
 			err := k8sClient.Get(ctx, webhookObjectKey, webhook)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			origWebhooks := webhook.Webhooks
 			webhook.Webhooks = []admissionv1.MutatingWebhook{}
 			err = k8sClient.Update(ctx, webhook)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			Eventually(func() []admissionv1.MutatingWebhook {
+			gomega.Eventually(func() []admissionv1.MutatingWebhook {
 				err := k8sClient.Get(ctx, webhookObjectKey, webhook)
-				Expect(err).NotTo(HaveOccurred())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 				return webhook.Webhooks
-			}, time.Minute, time.Second).Should(Equal(origWebhooks))
+			}, time.Minute, time.Second).Should(gomega.Equal(origWebhooks))
 		})
 	})
 })

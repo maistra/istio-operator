@@ -22,8 +22,8 @@ import (
 	"path"
 	"testing"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
@@ -51,13 +51,13 @@ var (
 const operatorNamespace = "istio-operator"
 
 func TestAPIs(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Controller Suite")
+	gomega.RegisterFailHandler(ginkgo.Fail)
+	ginkgo.RunSpecs(t, "Controller Suite")
 }
 
-var _ = BeforeSuite(func() {
+var _ = ginkgo.BeforeSuite(func() {
 	testEnv, k8sClient, cfg = test.SetupEnv()
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+	logf.SetLogger(zap.New(zap.WriteTo(ginkgo.GinkgoWriter), zap.UseDevMode(true)))
 
 	helm.ResourceDirectory = path.Join(common.RepositoryRoot, "resources")
 
@@ -88,14 +88,14 @@ var _ = BeforeSuite(func() {
 	}()
 
 	err = k8sClient.Create(context.TODO(), &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: operatorNamespace}})
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	err = os.Setenv("POD_NAMESPACE", operatorNamespace)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 })
 
-var _ = AfterSuite(func() {
-	By("tearing down the test environment")
+var _ = ginkgo.AfterSuite(func() {
+	ginkgo.By("tearing down the test environment")
 	cancel()
 	err := testEnv.Stop()
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 })
