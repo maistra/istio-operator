@@ -100,13 +100,6 @@ for ver in ${versions}; do
     $COMMAND get ns "${CONTROL_PLANE_NS}" >/dev/null 2>&1 || $COMMAND create namespace "${CONTROL_PLANE_NS}"
     sed -e "s/version:.*/version: ${ver}/g" "${ISTIO_MANIFEST}" | $COMMAND apply -f - -n "${CONTROL_PLANE_NS}"
 
-    # older versions of istio don't run on OpenShift without anyuid and privileged SCC
-    if [ "${OCP}" == "true" ] && [ "$ver" != "latest" ]; then
-        echo "Configure anyuid and privileged SCC in ${CONTROL_PLANE_NS}"
-        oc adm policy add-scc-to-group anyuid "system:serviceaccounts:${CONTROL_PLANE_NS}"
-        oc adm policy add-scc-to-group privileged "system:serviceaccounts:${CONTROL_PLANE_NS}"
-    fi
-
     echo "Check that Istio is running"
     check_ready "${CONTROL_PLANE_NS}" "istiod" "istiod"
 
@@ -130,12 +123,6 @@ for ver in ${versions}; do
       echo "Expected istiod deployment to have been deleted, but it still exists:"
       $COMMAND -n "${CONTROL_PLANE_NS}" get deploy
       exit 1
-    fi
-
-    if [ "${OCP}" == "true" ] && [ "$ver" != "latest" ]; then
-        echo "Remove anyuid and privileged SCC in ${CONTROL_PLANE_NS}"
-        oc adm policy remove-scc-from-group anyuid "system:serviceaccounts:${CONTROL_PLANE_NS}"
-        oc adm policy remove-scc-from-group privileged "system:serviceaccounts:${CONTROL_PLANE_NS}"
     fi
 
     echo "Delete namespace ${CONTROL_PLANE_NS}"
