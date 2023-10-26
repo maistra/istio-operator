@@ -132,3 +132,10 @@ spec:
           - name: ingressgateway-ca-certs
             secretName: istio-ingressgateway-ca-certs
             mountPath: /etc/istio/ingressgateway-ca-certs
+    meshConfig:
+      defaultConfig:
+        proxyMetadata: {}
+      enablePrometheusMerge: true
+      # Opt-out of global http2 upgrades.
+      # Destination rule is used to opt-in.
+      # h2_upgrade_policy: DO_NOT_UPGRADE

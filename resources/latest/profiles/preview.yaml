@@ -11,3 +11,11 @@ spec:
           wasmEnabled: true
         prometheus:
           wasmEnabled: true
+    meshConfig:
+      defaultConfig:
+        proxyMetadata:
+          # Enable Istio agent to handle DNS requests for known hosts
+          # Unknown hosts will automatically be resolved using upstream dns servers in resolv.conf
+          ISTIO_META_DNS_CAPTURE: "true"
+          # Enable dynamic bootstrap generation.
+          BOOTSTRAP_XDS_AGENT: "true"
