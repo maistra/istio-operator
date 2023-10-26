@@ -78,6 +78,7 @@ function convertIstioProfiles() {
   for profile in "${PROFILES_DIR}"/*.yaml; do
     yq eval -i '.apiVersion="operator.istio.io/v1alpha1"
       | .kind="Istio"
+      | (select(.spec.meshConfig) | .spec.values.meshConfig)=.spec.meshConfig
       | del(.metadata)
       | del(.spec.components)
       | del(.spec.meshConfig)

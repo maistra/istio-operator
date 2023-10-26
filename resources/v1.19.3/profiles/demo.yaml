@@ -15,3 +15,18 @@ spec:
         autoscaleEnabled: false
       istio-ingressgateway:
         autoscaleEnabled: false
+    meshConfig:
+      accessLogFile: /dev/stdout
+      extensionProviders:
+        - name: otel
+          envoyOtelAls:
+            service: opentelemetry-collector.istio-system.svc.cluster.local
+            port: 4317
+        - name: skywalking
+          skywalking:
+            service: tracing.istio-system.svc.cluster.local
+            port: 11800
+        - name: otel-tracing
+          opentelemetry:
+            port: 4317
+            service: opentelemetry-collector.otel-collector.svc.cluster.local
