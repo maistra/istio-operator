@@ -72,6 +72,12 @@ function patchIstioCharts() {
   resources: ["securitycontextconstraints"] \
   resourceNames: ["privileged"] \
   verbs: ["use"]/' "${CHARTS_DIR}/cni/templates/clusterrole.yaml"
+
+  # Remove fsGroup, runAsUser, runAsGroup from istiod deployment so that it can run on OpenShift
+  sed -i "${CHARTS_DIR}/istiod/templates/deployment.yaml" \
+    -e '/fsGroup: 1337/d' \
+    -e '/runAsUser: 1337/d' \
+    -e '/runAsGroup: 1337/d'
 }
 
 function convertIstioProfiles() {

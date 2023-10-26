@@ -79,7 +79,6 @@ spec:
       priorityClassName: "{{ .Values.global.priorityClassName }}"
 {{- end }}
       securityContext:
-        fsGroup: 1337
       containers:
         - name: discovery
 {{- if contains "/" .Values.pilot.image }}
@@ -188,8 +187,6 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
-            runAsUser: 1337
-            runAsGroup: 1337
             runAsNonRoot: true
             capabilities:
               drop:
