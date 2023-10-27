@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -52,7 +52,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestHasFinalizer(t *testing.T) {
-	gomega.RegisterTestingT(t)
+	RegisterTestingT(t)
 	testCases := []struct {
 		obj            client.Object
 		expectedResult bool
@@ -79,12 +79,12 @@ func TestHasFinalizer(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		gomega.Expect(HasFinalizer(tc.obj)).To(gomega.Equal(tc.expectedResult))
+		Expect(HasFinalizer(tc.obj)).To(Equal(tc.expectedResult))
 	}
 }
 
 func TestAddRemoveFinalizer(t *testing.T) {
-	gomega.RegisterTestingT(t)
+	RegisterTestingT(t)
 
 	testCases := []struct {
 		obj              client.Object
@@ -111,12 +111,12 @@ func TestAddRemoveFinalizer(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		gomega.Eventually(k8sClient.Create(context.TODO(), tc.obj)).Should(gomega.Succeed())
-		gomega.Expect(AddFinalizer(context.TODO(), tc.obj, k8sClient)).NotTo(gomega.HaveOccurred())
+		Eventually(k8sClient.Create(context.TODO(), tc.obj)).Should(Succeed())
+		Expect(AddFinalizer(context.TODO(), tc.obj, k8sClient)).NotTo(HaveOccurred())
 		obj := &v1.Istio{}
-		gomega.Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: tc.obj.GetNamespace(), Name: tc.obj.GetName()}, obj)).To(gomega.Succeed())
-		gomega.Expect(obj.ObjectMeta.Finalizers).To(gomega.Equal(tc.resultFinalizers))
-		gomega.Expect(RemoveFinalizer(context.TODO(), tc.obj, k8sClient)).NotTo(gomega.HaveOccurred())
-		gomega.Eventually(k8sClient.Delete(context.TODO(), tc.obj)).Should(gomega.Succeed())
+		Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: tc.obj.GetNamespace(), Name: tc.obj.GetName()}, obj)).To(Succeed())
+		Expect(obj.ObjectMeta.Finalizers).To(Equal(tc.resultFinalizers))
+		Expect(RemoveFinalizer(context.TODO(), tc.obj, k8sClient)).NotTo(HaveOccurred())
+		Eventually(k8sClient.Delete(context.TODO(), tc.obj)).Should(Succeed())
 	}
 }
