@@ -102,7 +102,7 @@ To configure gateway injection with the `bookinfo` application, we have provided
 2. Configure the `bookinfo` application with the new gateway:
 
     ```sh
-    $ oc -n bookinfo apply -f https://raw.githubusercontent.com/istio/istio/master/samples/bookinfo/networking/bookinfo-gateway.yaml
+    $ oc apply -f https://raw.githubusercontent.com/istio/istio/master/samples/bookinfo/networking/bookinfo-gateway.yaml
     ```
 
 3. On OpenShift, you can use a [Route](https://docs.openshift.com/container-platform/4.13/networking/routes/route-configuration.html) to expose the gateway externally: 
