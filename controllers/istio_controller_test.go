@@ -303,7 +303,7 @@ func newCondition(conditionType v1.IstioConditionType, status bool, reason v1.Is
 	}
 }
 
-func TestApplyProfile(t *testing.T) {
+func TestApplyProfiles(t *testing.T) {
 	const version = "my-version"
 	resourceDir := t.TempDir()
 	profilesDir := path.Join(resourceDir, version, "profiles")
@@ -316,82 +316,96 @@ kind: Istio
 spec:
   values:`
 		for i, val := range values {
-			yaml += fmt.Sprintf(`
+			if val != "" {
+				yaml += fmt.Sprintf(`
     value%d: %s`, i+1, val)
+			}
 		}
 		Must(t, os.WriteFile(path, []byte(yaml), 0o644))
 	}
 
-	writeProfileFile(t, path.Join(resourceDir, version, "profiles", "default.yaml"), "1-from-default", "2-from-default")
-	writeProfileFile(t, path.Join(resourceDir, version, "profiles", "custom.yaml"), "1-from-custom")
+	writeProfileFile(t, path.Join(profilesDir, "default.yaml"), "1-from-default", "2-from-default")
+	writeProfileFile(t, path.Join(profilesDir, "overlay.yaml"), "", "2-from-overlay")
+	writeProfileFile(t, path.Join(profilesDir, "custom.yaml"), "1-from-custom")
 	writeProfileFile(t, path.Join(resourceDir, version, "not-in-profiles-dir.yaml"), "should-not-be-accessible")
 
 	tests := []struct {
-		name       string
-		inputSpec  v1.IstioSpec
-		expectSpec v1.IstioSpec
-		expectErr  bool
+		name         string
+		profiles     []string
+		values       map[string]interface{}
+		expectValues map[string]interface{}
+		expectErr    bool
 	}{
 		{
-			name: "no profile",
-			inputSpec: v1.IstioSpec{
-				Version: version,
-				// no profile is specified; default profile should be used
-			},
-			expectSpec: v1.IstioSpec{
-				Version: version,
-				Values:  []byte(`{"value1":"1-from-default","value2":"2-from-default"}`),
+			name:         "nil default profiles",
+			profiles:     nil,
+			values:       nil,
+			expectValues: map[string]interface{}{},
+		},
+		{
+			name:     "default profile only",
+			profiles: []string{"default"},
+			values:   nil,
+			expectValues: map[string]interface{}{
+				"value1": "1-from-default",
+				"value2": "2-from-default",
 			},
 		},
 		{
-			name: "custom profile",
-			inputSpec: v1.IstioSpec{
-				Version: version,
-				Profile: "custom", // both custom and default profile should be used (with custom taking precedence)
-			},
-			expectSpec: v1.IstioSpec{
-				Profile: "custom",
-				Version: version,
-				Values:  []byte(`{"value1":"1-from-custom","value2":"2-from-default"}`),
+			name:     "default and overlay",
+			profiles: []string{"default", "overlay"},
+			values:   nil,
+			expectValues: map[string]interface{}{
+				"value1": "1-from-default",
+				"value2": "2-from-overlay",
 			},
 		},
 		{
-			name: "profile not found",
-			inputSpec: v1.IstioSpec{
-				Version: version,
-				Profile: "invalid",
+			name:     "default and overlay and custom",
+			profiles: []string{"default", "overlay", "custom"},
+			expectValues: map[string]interface{}{
+				"value1": "1-from-custom",
+				"value2": "2-from-overlay",
 			},
+		},
+		{
+			name:     "values override profiles",
+			profiles: []string{"default", "overlay", "custom"},
+			values: map[string]interface{}{
+				"value1": "1-from-spec-values",
+				"value2": "2-from-spec-values",
+			},
+			expectValues: map[string]interface{}{
+				"value1": "1-from-spec-values",
+				"value2": "2-from-spec-values",
+			},
+		},
+		{
+			name:      "default profile empty",
+			profiles:  []string{""},
 			expectErr: true,
 		},
 		{
-			name: "path-traversal-attack",
-			inputSpec: v1.IstioSpec{
-				Version: version,
-				Profile: "../not-in-profiles-dir",
-			},
+			name:      "profile not found",
+			profiles:  []string{"invalid"},
+			expectErr: true,
+		},
+		{
+			name:      "path-traversal-attack",
+			profiles:  []string{"../not-in-profiles-dir"},
 			expectErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := &v1.Istio{
-				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "istio-system"},
-				Spec:       tt.inputSpec,
-			}
-
-			expected := &v1.Istio{
-				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "istio-system"},
-				Spec:       tt.expectSpec,
-			}
-
-			err := applyProfile(actual, resourceDir)
+			actual, err := applyProfiles(profilesDir, tt.profiles, tt.values)
 			if (err != nil) != tt.expectErr {
 				t.Errorf("applyProfile() error = %v, expectErr %v", err, tt.expectErr)
 			}
 
 			if err == nil {
-				if diff := cmp.Diff(expected, actual); diff != "" {
+				if diff := cmp.Diff(tt.expectValues, actual); diff != "" {
 					t.Errorf("profile wasn't applied properly; diff (-expected, +actual):\n%v", diff)
 				}
 			}
@@ -401,77 +415,98 @@ spec:
 
 func TestMergeValues(t *testing.T) {
 	testCases := []struct {
-		name                  string
-		main, profile, expect map[string]interface{}
+		name                    string
+		overrides, base, expect map[string]interface{}
 	}{
 		{
-			name:    "both empty",
-			main:    make(map[string]interface{}),
-			profile: make(map[string]interface{}),
-			expect:  make(map[string]interface{}),
+			name:      "both empty",
+			base:      make(map[string]interface{}),
+			overrides: make(map[string]interface{}),
+			expect:    make(map[string]interface{}),
 		},
 		{
-			name:    "nil main",
-			main:    nil,
-			profile: map[string]interface{}{"key1": 42, "key2": "value"},
-			expect:  map[string]interface{}{"key1": 42, "key2": "value"},
+			name:      "nil overrides",
+			base:      map[string]interface{}{"key1": 42, "key2": "value"},
+			overrides: nil,
+			expect:    map[string]interface{}{"key1": 42, "key2": "value"},
 		},
 		{
-			name:    "nil profile",
-			main:    map[string]interface{}{"key1": 42, "key2": "value"},
-			profile: nil,
-			expect:  map[string]interface{}{"key1": 42, "key2": "value"},
+			name:      "nil base",
+			base:      nil,
+			overrides: map[string]interface{}{"key1": 42, "key2": "value"},
+			expect:    map[string]interface{}{"key1": 42, "key2": "value"},
 		},
 		{
 			name: "adds toplevel keys",
-			main: map[string]interface{}{
-				"key1": "from main",
+			base: map[string]interface{}{
+				"key2": "from base",
 			},
-			profile: map[string]interface{}{
-				"key2": "from profile",
+			overrides: map[string]interface{}{
+				"key1": "from overrides",
 			},
 			expect: map[string]interface{}{
-				"key1": "from main",
-				"key2": "from profile",
+				"key1": "from overrides",
+				"key2": "from base",
 			},
 		},
 		{
 			name: "adds nested keys",
-			main: map[string]interface{}{
+			base: map[string]interface{}{
 				"key1": map[string]interface{}{
-					"nested1": "from main",
+					"nested2": "from base",
 				},
 			},
-			profile: map[string]interface{}{
+			overrides: map[string]interface{}{
 				"key1": map[string]interface{}{
-					"nested2": "from profile",
+					"nested1": "from overrides",
 				},
 			},
 			expect: map[string]interface{}{
 				"key1": map[string]interface{}{
-					"nested1": "from main",
-					"nested2": "from profile",
+					"nested1": "from overrides",
+					"nested2": "from base",
 				},
 			},
 		},
 		{
-			name: "doesn't overwrite",
-			main: map[string]interface{}{
-				"key1": "from main",
+			name: "overrides overrides base",
+			base: map[string]interface{}{
+				"key1": "from base",
 				"key2": map[string]interface{}{
-					"nested1": "from main",
+					"nested1": "from base",
 				},
 			},
-			profile: map[string]interface{}{
-				"key1": "from profile",
+			overrides: map[string]interface{}{
+				"key1": "from overrides",
 				"key2": map[string]interface{}{
-					"nested1": "from profile",
+					"nested1": "from overrides",
 				},
 			},
 			expect: map[string]interface{}{
-				"key1": "from main",
+				"key1": "from overrides",
 				"key2": map[string]interface{}{
-					"nested1": "from main",
+					"nested1": "from overrides",
+				},
+			},
+		},
+		{
+			name: "mismatched types",
+			base: map[string]interface{}{
+				"key1": map[string]interface{}{
+					"desc": "key1 is a map in base",
+				},
+				"key2": "key2 is a string in base",
+			},
+			overrides: map[string]interface{}{
+				"key1": "key1 is a string in overrides",
+				"key2": map[string]interface{}{
+					"desc": "key2 is a map in overrides",
+				},
+			},
+			expect: map[string]interface{}{
+				"key1": "key1 is a string in overrides",
+				"key2": map[string]interface{}{
+					"desc": "key2 is a map in overrides",
 				},
 			},
 		},
@@ -479,7 +514,7 @@ func TestMergeValues(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := mergeValues(tc.main, tc.profile)
+			result := mergeOverwrite(tc.base, tc.overrides)
 			if diff := cmp.Diff(tc.expect, result); diff != "" {
 				t.Errorf("unexpected merge result; diff (-expected, +actual):\n%v", diff)
 			}

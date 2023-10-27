@@ -54,19 +54,22 @@ import (
 
 	networkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"istio.io/istio/pkg/ptr"
+	"istio.io/istio/pkg/util/sets"
 )
 
 // IstioReconciler reconciles a Istio object
 type IstioReconciler struct {
 	ResourceDirectory string
+	DefaultProfiles   []string
 	RestClientGetter  genericclioptions.RESTClientGetter
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-func NewIstioReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config, resourceDir string) *IstioReconciler {
+func NewIstioReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config, resourceDir string, defaultProfiles []string) *IstioReconciler {
 	return &IstioReconciler{
 		ResourceDirectory: resourceDir,
+		DefaultProfiles:   defaultProfiles,
 		RestClientGetter:  helm.NewRESTClientGetter(restConfig),
 		Client:            client,
 		Scheme:            scheme,
@@ -146,12 +149,16 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	if err := applyProfile(&istio, r.ResourceDirectory); err != nil {
+	values := istio.Spec.GetValues()
+	profiles := r.DefaultProfiles
+	if istio.Spec.Profile != "" {
+		profiles = append(profiles, istio.Spec.Profile)
+	}
+	profilesDir := path.Join(r.ResourceDirectory, istio.Spec.Version, "profiles")
+	if values, err = applyProfiles(profilesDir, profiles, values); err != nil {
 		err = r.updateStatus(ctx, logger, &istio, istio.Spec.GetValues(), err)
 		return ctrl.Result{}, err
 	}
-
-	values := istio.Spec.GetValues()
 
 	logger.Info("Installing components", "values", values)
 	err = r.installHelmCharts(ctx, istio, values)
@@ -335,52 +342,54 @@ func (r *IstioReconciler) determineReadyCondition(ctx context.Context, istio *v1
 	}
 }
 
-func applyProfile(istio *v1alpha1.Istio, resourceDir string) error {
-	profileName := istio.Spec.Profile
-	if profileName == "" {
-		profileName = "default"
+func applyProfiles(profilesDir string, profiles []string, specValues map[string]interface{}) (map[string]interface{}, error) {
+	// start with an empty values map
+	values := make(map[string]interface{})
+
+	// apply profiles in order, overwriting values from previous profiles
+	alreadyApplied := sets.New[string]()
+	for _, profile := range profiles {
+		if profile == "" {
+			return nil, fmt.Errorf("profile name cannot be empty")
+		}
+		if alreadyApplied.Contains(profile) {
+			continue
+		}
+		alreadyApplied.Insert(profile)
+
+		profileValues, err := getProfileValues(profilesDir, profile)
+		if err != nil {
+			return nil, err
+		}
+		values = mergeOverwrite(values, profileValues)
 	}
 
-	if err := applyProfile0(istio, resourceDir, profileName); err != nil {
-		return err
-	}
+	// lastly, apply values from Istio.spec.values, overwriting values from profiles
+	values = mergeOverwrite(values, specValues)
 
-	if profileName != "default" {
-		return applyProfile0(istio, resourceDir, "default")
-	}
-
-	return nil
+	return values, nil
 }
 
-func applyProfile0(istio *v1alpha1.Istio, resourceDir string, profileName string) error {
-	profilesDir := path.Join(resourceDir, istio.Spec.Version, "profiles")
+func getProfileValues(profilesDir string, profileName string) (map[string]interface{}, error) {
 	file := path.Join(profilesDir, profileName+".yaml")
 
 	// prevent path traversal attacks
 	if path.Dir(file) != path.Join(profilesDir) {
-		return fmt.Errorf("invalid profile name %s", profileName)
+		return nil, fmt.Errorf("invalid profile name %s", profileName)
 	}
 
 	fileContents, err := os.ReadFile(file)
 	if err != nil {
-		return fmt.Errorf("failed to read profile file %v: %v", file, err)
+		return nil, fmt.Errorf("failed to read profile file %v: %v", file, err)
 	}
 
 	var profile map[string]interface{}
 	err = yaml.Unmarshal(fileContents, &profile)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal profile YAML %s: %v", file, err)
+		return nil, fmt.Errorf("failed to unmarshal profile YAML %s: %v", file, err)
 	}
 
-	profileValues, err := getValues(profile)
-	if err != nil {
-		return err
-	}
-	err = istio.Spec.SetValues(mergeValues(istio.Spec.GetValues(), profileValues))
-	if err != nil {
-		return err
-	}
-	return nil
+	return getValues(profile)
 }
 
 func getValues(profile map[string]interface{}) (map[string]interface{}, error) {
@@ -395,29 +404,31 @@ func getValues(profile map[string]interface{}) (map[string]interface{}, error) {
 	return m, nil
 }
 
-func mergeValues(main map[string]interface{}, profile map[string]interface{}) map[string]interface{} {
-	if main == nil {
-		main = make(map[string]interface{}, 1)
+func mergeOverwrite(base map[string]interface{}, overrides map[string]interface{}) map[string]interface{} {
+	if base == nil {
+		base = make(map[string]interface{}, 1)
 	}
 
-	for key, value := range profile {
+	for key, value := range overrides {
 		// if the key doesn't already exist, add it
-		if _, exists := main[key]; !exists {
-			main[key] = value
+		if _, exists := base[key]; !exists {
+			base[key] = value
 			continue
 		}
 
-		// at this point, key exists in both profile and main.
-		// If both are maps, recurse.
-		// If only profile is a map, ignore it. We don't want to overwrite main.
-		// If both are values, again, ignore it since we don't want to overwrite main.
-		if mainKeyAsMap, mainOK := main[key].(map[string]interface{}); mainOK {
-			if profileAsMap, profileOK := value.(map[string]interface{}); profileOK {
-				main[key] = mergeValues(mainKeyAsMap, profileAsMap)
-			}
+		// At this point, key exists in both base and overrides.
+		// If both are maps, recurse so that we override only specific values in the map.
+		// If only override value is a map, overwrite base value completely.
+		// If both are values, overwrite base.
+		childOverrides, overrideValueIsMap := value.(map[string]interface{})
+		childBase, baseValueIsMap := base[key].(map[string]interface{})
+		if baseValueIsMap && overrideValueIsMap {
+			base[key] = mergeOverwrite(childBase, childOverrides)
+		} else {
+			base[key] = value
 		}
 	}
-	return main
+	return base
 }
 
 func cniDaemonSetKey() client.ObjectKey {
