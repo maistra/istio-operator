@@ -87,7 +87,7 @@ get_internal_registry() {
 
   # Check if default route already exist
   if [ -z "$(${COMMAND} get route default-route -n openshift-image-registry -o name)" ]; then
-    echo "Route default-route does not exist, so you can perform patching here."
+    echo "Route default-route does not exist, patching DefaultRoute to true on Image Registry."
     ${COMMAND} patch configs.imageregistry.operator.openshift.io/cluster --patch '{"spec":{"defaultRoute":true}}' --type=merge
   
     timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
