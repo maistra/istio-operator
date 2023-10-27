@@ -44,6 +44,10 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:select:minimal
         - urn:alm:descriptor:com.tectonic.ui:select:preview
         - urn:alm:descriptor:com.tectonic.ui:select:remote
+      - description: RawValues defines the values to be passed to the Helm chart when
+          installing Istio and that do not need a CRD validation.
+        displayName: Helm RawValues
+        path: rawValues
       - description: Values defines the values to be passed to the Helm chart when
           installing Istio.
         displayName: Helm Values

@@ -48,6 +48,12 @@ type IstioSpec struct {
 	// +kubebuilder:validation:Schemaless
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Helm Values"
 	Values json.RawMessage `json:"values,omitempty"`
+
+	// RawValues defines the values to be passed to the Helm chart when installing Istio and that do not need a CRD validation.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Helm RawValues"
+	RawValues json.RawMessage `json:"rawValues,omitempty"`
 }
 
 func (s *IstioSpec) GetValues() map[string]interface{} {
@@ -66,6 +72,15 @@ func (s *IstioSpec) SetValues(values map[string]interface{}) error {
 	}
 	s.Values = jsonVals
 	return nil
+}
+
+func (s *IstioSpec) GetRawValues() map[string]interface{} {
+	var rawVals map[string]interface{}
+	err := json.Unmarshal(s.RawValues, &rawVals)
+	if err != nil {
+		return nil
+	}
+	return rawVals
 }
 
 // IstioStatus defines the observed state of Istio
