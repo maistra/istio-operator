@@ -14,118 +14,208 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# To be able to run this script it's needed to pass the flag --ocp or --kind
+# To be able to run this script, it's needed to pass the flag --ocp or --kind
 set -eu -o pipefail
 
-if [ $# -eq 0 ]; then
-  echo "No arguments provided"
-  exit 1
-fi
-
-while [ $# -gt 0 ]; do
-  case "$1" in
-    --ocp)
-      shift
-      OCP=true
-      ;;
-    --kind)
-      shift
-      OCP=false
-      ;;
-    *)
-      echo "Invalid flag: $1"
-      exit 1
-      ;;
-  esac
-done
-
-if [ "${OCP}" == "true" ]; then
-  echo "Running on OCP"
-else
-  echo "Running on kind"
-fi
-
-WD=$(dirname "$0")
-WD=$(cd "$WD" || exit; pwd)
-
-NAMESPACE="${NAMESPACE:-istio-operator}"
-DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-istio-operator}"
-CONTROL_PLANE_NS="${CONTROL_PLANE_NS:-istio-system}"
-COMMAND="kubectl"
-
-if [ "${OCP}" == "true" ]; then
-  COMMAND="oc"
-fi
-
-BRANCH="${BRANCH:-maistra-3.0}"
-
-if [ "${OCP}" == "true" ]; then
-  ISTIO_MANIFEST="${WD}/../../config/samples/istio-sample-openshift.yaml"
-else
-  ISTIO_MANIFEST="${WD}/../../config/samples/istio-sample-kubernetes.yaml"
-fi
-
-TIMEOUT="3m"
-
-check_ready() {
-    local NS=$1
-    local POD_NAME=$2
-    local DEPLOYMENT_NAME=$3
-
-    echo "Check POD: NAMESPACE: \"${NS}\"   POD NAME: \"${POD_NAME}\""
-    timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
-    "until $COMMAND  get pod --field-selector=status.phase=Running -n ${NS} | grep ${POD_NAME}; do sleep 5; done"
-
-    echo "Check Deployment Available: NAMESPACE: \"${NS}\"   DEPLOYMENT NAME: \"${DEPLOYMENT_NAME}\""
-    $COMMAND  wait deployment "${DEPLOYMENT_NAME}" -n "${NS}" --for condition=Available=True --timeout=${TIMEOUT}
+check_arguments() {
+  if [ $# -eq 0 ]; then
+    echo "No arguments provided"
+    exit 1
+  fi
 }
 
-# Build and push docker image
-make docker-build docker-push
+parse_flags() {
+  SKIP_BUILD=false
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --ocp)
+        shift
+        OCP=true
+        ;;
+      --kind)
+        shift
+        OCP=false
+        ;;
+      --skip-build)
+        shift
+        SKIP_BUILD=true
+        ;;
+      *)
+        echo "Invalid flag: $1"
+        exit 1
+        ;;
+    esac
+  done
 
-# Deploy Operator
-echo "Deploying Operator"
-make -s --no-print-directory deploy
+  if [ "${OCP}" == "true" ]; then
+    echo "Running on OCP"
+  else
+    echo "Running on kind"
+  fi
+}
 
-# Main
+initialize_variables() {
+  WD=$(dirname "$0")
+  WD=$(cd "${WD}" || exit; pwd)
 
-echo "Check that istio operator is running"
-check_ready "${NAMESPACE}" "${DEPLOYMENT_NAME}" "${DEPLOYMENT_NAME}"
+  NAMESPACE="${NAMESPACE:-istio-operator}"
+  DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-istio-operator}"
+  CONTROL_PLANE_NS="${CONTROL_PLANE_NS:-istio-system}"
+  COMMAND="kubectl"
 
-versions=$(yq eval 'keys | .[]' versions.yaml)
-echo "Versions to test: ${versions//$'\n'/ }"
-for ver in ${versions}; do
+  if [ "${OCP}" == "true" ]; then
+    COMMAND="oc"
+  fi
+
+  echo "Using command: ${COMMAND}"
+
+  if [ "${OCP}" == "true" ]; then
+    ISTIO_MANIFEST="${WD}/../../config/samples/istio-sample-openshift.yaml"
+  else
+    ISTIO_MANIFEST="${WD}/../../config/samples/istio-sample-kubernetes.yaml"
+  fi
+
+  TIMEOUT="3m"
+}
+
+get_internal_registry() {
+  # Validate that the internal registry is running, configure the variable to be used in the Makefile. 
+  # If there is no internal registry, the test can't be executed targeting to the internal registry
+
+  # Check if the registry pods are running
+  ${COMMAND} get pods -n openshift-image-registry --no-headers | grep -v "Running" && echo "It looks like the OCP image registry is not deployed or Running. This tests scenario requires it. Aborting." && exit 1
+
+  # Check if default route already exist
+  if [ -z "$(${COMMAND} get route default-route -n openshift-image-registry -o name)" ]; then
+    echo "Route default-route does not exist, so you can perform patching here."
+    ${COMMAND} patch configs.imageregistry.operator.openshift.io/cluster --patch '{"spec":{"defaultRoute":true}}' --type=merge
+  
+    timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
+      "until ${COMMAND} get route default-route -n openshift-image-registry &> /dev/null; do sleep 5; done && echo 'The 'default-route' has been created.'"
+  fi
+
+  # Get the registry route
+  URL=$(${COMMAND} get route default-route -n openshift-image-registry --template='{{ .spec.host }}')
+  # Hub will be equal to the route url/project-name(NameSpace) 
+  export HUB="${URL}/${NAMESPACE}"
+  echo "Internal registry URL: ${HUB}"
+
+  # Create namespace where operator will be located
+  # This is needed because the roles are created in the namespace where the operator is deployed
+  ${COMMAND} create namespace "${NAMESPACE}" || true
+
+  # Adding roles to avoid the need to be authenticated to push images to the internal registry
+  # Using envsubst to replace the variable NAMESPACE in the yaml file
+  envsubst < "${WD}/config/role-bindings.yaml" | ${COMMAND} apply -f -
+
+  # Login to the internal registry when running on CRC
+  # Take into count that you will need to add before the registry URL as Insecure registry in "/etc/docker/daemon.json"
+  if [[ ${URL} == *".apps-crc.testing"* ]]; then
+    echo "Executing Docker login to the internal registry"
+    if ! oc whoami -t | docker login -u "$(${COMMAND} whoami)" --password-stdin "${URL}"; then
+      echo "***** Error: Failed to log in to Docker registry."
+      echo "***** Check the error and if is related to 'tls: failed to verify certificate' please add the registry URL as Insecure registry in '/etc/docker/daemon.json'"
+      exit 1
+    fi
+  fi
+}
+
+build_and_push_image() {
+  # Build and push docker image
+  # Notes: to be able to build and push to the local registry we need to set these variables to be used in the Makefile
+  # IMAGE ?= ${HUB}/${IMAGE_BASE}:${TAG}, so we need to pass hub, image_base, and tag to be able to build and push the image
+  echo "Building and pushing image"
+  echo "Image base: ${IMAGE_BASE}"
+  echo " Tag: ${TAG}"
+  IMAGE=${HUB}/${IMAGE_BASE}:${TAG} make docker-build docker-push
+}
+
+deploy_operator() {
+  echo "Deploying Operator"
+  if [ "${OCP}" == "true" ]; then
+    # This is a workaround
+    # To avoid errors of certificates meanwhile we are pulling the operator image from the internal registry
+    # We need to set image $HUB to a fixed known value
+    # This value always will be equal to the svc url of the internal registry
+    HUB="image-registry.openshift-image-registry.svc:5000/istio-operator"
+  fi
+  IMAGE=${HUB}/${IMAGE_BASE}:${TAG} make -s --no-print-directory deploy
+}
+
+check_ready() {
+  local NS=$1
+  local POD_NAME=$2
+  local DEPLOYMENT_NAME=$3
+
+  echo "Check POD: NAME SPACE: \"${NS}\"   POD NAME: \"${POD_NAME}\""
+  timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
+    "until ${COMMAND} get pod --field-selector=status.phase=Running -n ${NS} | grep ${POD_NAME}; do sleep 5; done"
+
+  echo "Check Deployment Available: NAME SPACE: \"${NS}\"   DEPLOYMENT NAME: \"${DEPLOYMENT_NAME}\""
+  ${COMMAND} wait deployment "${DEPLOYMENT_NAME}" -n "${NS}" --for condition=Available=True --timeout=${TIMEOUT}
+}
+
+main_test() {
+  # Add here all the validation tests for the operator
+  echo "Check that istio operator is running"
+  check_ready "${NAMESPACE}" "${DEPLOYMENT_NAME}" "${DEPLOYMENT_NAME}"
+  
+  # Deploy and test every istio version inside versions.yaml
+  versions=$(yq eval 'keys | .[]' versions.yaml)
+  echo "Versions to test: ${versions//$'\n'/ }"
+  for ver in ${versions}; do
     echo "--------------------------------------------------------------"
     echo "Deploy Istio version '${ver}'"
-    $COMMAND get ns "${CONTROL_PLANE_NS}" >/dev/null 2>&1 || $COMMAND create namespace "${CONTROL_PLANE_NS}"
-    sed -e "s/version:.*/version: ${ver}/g" "${ISTIO_MANIFEST}" | $COMMAND apply -f - -n "${CONTROL_PLANE_NS}"
+    ${COMMAND} get ns "${CONTROL_PLANE_NS}" >/dev/null 2>&1 || ${COMMAND} create namespace "${CONTROL_PLANE_NS}"
+    sed -e "s/version:.*/version: ${ver}/g" "${ISTIO_MANIFEST}" | ${COMMAND} apply -f - -n "${CONTROL_PLANE_NS}"
 
     echo "Check that Istio is running"
     check_ready "${CONTROL_PLANE_NS}" "istiod" "istiod"
 
     echo "Make sure only istiod got deployed and nothing else"
-    res=$($COMMAND  -n "${CONTROL_PLANE_NS}" get deploy -o json | jq -j '.items | length')
+    res=$(${COMMAND}  -n "${CONTROL_PLANE_NS}" get deploy -o json | jq -j '.items | length')
     if [ "${res}" != "1" ]; then
       echo "Expected just istiod deployment, got:"
-      $COMMAND  -n "${CONTROL_PLANE_NS}" get deploy
+      ${COMMAND}  -n "${CONTROL_PLANE_NS}" get deploy
       exit 1
     fi
 
     echo "Check that CNI deamonset ready are running"
     timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
-        "until $COMMAND  rollout status ds/istio-cni-node -n ${NAMESPACE}; do sleep 5; done"
+        "until ${COMMAND}  rollout status ds/istio-cni-node -n ${NAMESPACE}; do sleep 5; done"
 
     echo "Undeploy Istio"
-    $COMMAND delete -f "${ISTIO_MANIFEST}" -n "${CONTROL_PLANE_NS}"
+    ${COMMAND} delete -f "${ISTIO_MANIFEST}" -n "${CONTROL_PLANE_NS}"
 
     echo "Check that Istio has been deleted"
-    if $COMMAND get deployment "istiod" -n "${CONTROL_PLANE_NS}" &>/dev/null; then
+    if ${COMMAND} get deployment "istiod" -n "${CONTROL_PLANE_NS}" &>/dev/null; then
       echo "Expected istiod deployment to have been deleted, but it still exists:"
-      $COMMAND -n "${CONTROL_PLANE_NS}" get deploy
+      ${COMMAND} -n "${CONTROL_PLANE_NS}" get deploy
       exit 1
     fi
 
     echo "Delete namespace ${CONTROL_PLANE_NS}"
-    $COMMAND delete ns "${CONTROL_PLANE_NS}"
-done
+    ${COMMAND} delete ns "${CONTROL_PLANE_NS}"
+  done
+}
 
+# PRE SETUP: Get arguments and initialize variables
+check_arguments "$@"
+parse_flags "$@"
+initialize_variables
+
+if [ "${SKIP_BUILD}" == "false" ]; then
+  # SETUP
+  if [ "${OCP}" == "true" ]; then
+    # Internal Registry is only available in OCP clusters
+    get_internal_registry
+  fi
+
+  # BUILD AND PUSH IMAGE
+  build_and_push_image
+fi
+
+# Deploy the operator
+deploy_operator
+# RUNNING TEST VALIDATIONS
+main_test
