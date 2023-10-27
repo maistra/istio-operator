@@ -147,11 +147,11 @@ check_ready() {
   local POD_NAME=$2
   local DEPLOYMENT_NAME=$3
 
-  echo "Check POD: NAME SPACE: \"${NS}\"   POD NAME: \"${POD_NAME}\""
+  echo "Check POD: NAMESPACE: \"${NS}\"   POD NAME: \"${POD_NAME}\""
   timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
     "until ${COMMAND} get pod --field-selector=status.phase=Running -n ${NS} | grep ${POD_NAME}; do sleep 5; done"
 
-  echo "Check Deployment Available: NAME SPACE: \"${NS}\"   DEPLOYMENT NAME: \"${DEPLOYMENT_NAME}\""
+  echo "Check Deployment Available: NAMESPACE: \"${NS}\"   DEPLOYMENT NAME: \"${DEPLOYMENT_NAME}\""
   ${COMMAND} wait deployment "${DEPLOYMENT_NAME}" -n "${NS}" --for condition=Available=True --timeout=${TIMEOUT}
 }
 
