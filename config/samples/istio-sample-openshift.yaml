@@ -8,4 +8,3 @@ metadata:
   name: istio-sample
 spec:
   version: latest
-  profile: openshift
