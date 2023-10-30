@@ -79,7 +79,7 @@ By deploying the `reviews` virtual service, you can specify a different behavior
 
 For more information, see [Bookinfo Application](https://istio.io/latest/docs/examples/bookinfo/) in the upstream Istio documentation.
 
-After following the instructions to [Deploying the application](https://istio.io/latest/docs/examples/bookinfo/#start-the-application-services), **you will need to create and configure a gateway** for the `bookinfo` application to be accessible outside the cluster.
+After following the instructions for [Deploying the application](https://istio.io/latest/docs/examples/bookinfo/#start-the-application-services), **you will need to create and configure a gateway** for the `bookinfo` application to be accessible outside the cluster.
 
 ## Creating and Configuring Gateways
 
@@ -91,12 +91,12 @@ You can deploy gateways using either the Gateway API or Gateway Injection method
 
 Gateway Injection uses the same mechanisms as Istio sidecar injection to create a gateway from a `Deployment` resource that is paired with a `Service` resource that can be made accessible from outside the cluster. For more information, see [Installing Gateways](https://preliminary.istio.io/latest/docs/setup/additional-setup/gateway/#deploying-a-gateway).
 
-To configure gateway injection with the `bookinfo` application, we have provided a [sample gateway configuration](samples/ingress-gateway.yaml?raw=1) that should be applied in the namespace where the application is installed:
+To configure gateway injection with the `bookinfo` application, we have provided a [sample gateway configuration](../config/samples/ingress-gateway.yaml?raw=1) that should be applied in the namespace where the application is installed:
 
 1. Create the `istio-ingressgateway` deployment and service:
 
     ```sh
-    $ oc apply -f ingress/gateway.yaml
+    $ oc apply -f -n <app-namespace> ingress-gateway.yaml
     ```
 
 2. Configure the `bookinfo` application with the new gateway:
@@ -135,7 +135,7 @@ To configure `bookinfo` with a gateway using `Gateway API`:
 1. Create and configure a gateway using a `Gateway` and `HTTPRoute` resource:
 
     ```sh
-    $ oc apply -f https://raw.githubusercontent.com/istio/istio/release-1.19/samples/bookinfo/gateway-api/bookinfo-gateway.yaml
+    $ oc apply -f https://raw.githubusercontent.com/istio/istio/master/samples/bookinfo/gateway-api/bookinfo-gateway.yaml
     ```
 
 2. Retrieve the host, port and gateway URL:
