@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e -x -u -o pipefail
+set -euo pipefail
 
 : "${CHARTS_DIR:=$1}"
 

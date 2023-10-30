@@ -15,6 +15,7 @@ PROFILES_DIR="${MANIFEST_DIR}/profiles"
 
 ISTIO_URL="${ISTIO_REPO}/archive/${ISTIO_COMMIT}.tar.gz"
 WORK_DIR=$(mktemp -d)
+trap 'rm -rf "${WORK_DIR}"' EXIT
 
 function downloadIstioManifests() {
   rm -rf "${CHARTS_DIR}"
@@ -23,9 +24,9 @@ function downloadIstioManifests() {
   rm -rf "${PROFILES_DIR}"
   mkdir -p "${PROFILES_DIR}"
 
-  pushd "${WORK_DIR}"
+  pushd "${WORK_DIR}" >/dev/null
   echo "downloading Git archive from ${ISTIO_URL}"
-  curl -LfO "${ISTIO_URL}"
+  curl -sSLfO "${ISTIO_URL}"
 
   ISTIO_FILE="${ISTIO_URL##*/}"
   EXTRACT_DIR="${ISTIO_REPO##*/}-${ISTIO_COMMIT}"
@@ -33,7 +34,7 @@ function downloadIstioManifests() {
   if [ "${#CHART_URLS[@]}" -gt 0 ]; then
     for url in "${CHART_URLS[@]}"; do
       echo "downloading chart from $url"
-      curl -LfO "$url"
+      curl -sSLfO "$url"
 
       file="${url##*/}"
 
@@ -61,7 +62,8 @@ function downloadIstioManifests() {
     cp -rf "${WORK_DIR}"/"${EXTRACT_DIR}"/manifests/profiles/* "${PROFILES_DIR}/"
   fi
 
-  popd
+  echo
+  popd >/dev/null
 }
 
 function patchIstioCharts() {

@@ -256,12 +256,12 @@ gen-code: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 
 .PHONY: gen-charts
 gen-charts: ## Pull charts from maistra/istio repository
-	# use yq to generate a list of download-charts.sh commands for each version in versions.yaml; these commands are
-	# passed to sh and executed; in a nutshell, the yq command generates commands like:
-	# ./hack/download-charts.sh <version> <git repo> <commit> [chart1] [chart2] ...
+	@# use yq to generate a list of download-charts.sh commands for each version in versions.yaml; these commands are
+	@# passed to sh and executed; in a nutshell, the yq command generates commands like:
+	@# ./hack/download-charts.sh <version> <git repo> <commit> [chart1] [chart2] ...
 	@yq eval 'to_entries | .[] | "./hack/download-charts.sh " + .key + " " + .value.repo + " " + .value.commit + " " + ((.value.charts // []) | join(" "))' < versions.yaml | sh
 
-	# calls copy-crds.sh with the name of the first version listed in versions.yaml (this should be the highest version)
+	@# calls copy-crds.sh with the name of the first version listed in versions.yaml (this should be the highest version)
 	@hack/copy-crds.sh "resources/$$(yq eval 'keys | .[0]' versions.yaml)/charts"
 
 .PHONY: update-version-list
@@ -316,11 +316,11 @@ KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/k
 .PHONY: kustomize $(KUSTOMIZE)
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
 $(KUSTOMIZE): $(LOCALBIN)
-	if test -x $(LOCALBIN)/kustomize && ! $(LOCALBIN)/kustomize version | grep -q $(KUSTOMIZE_VERSION) > /dev/stderr; then \
+	@if test -x $(LOCALBIN)/kustomize && ! $(LOCALBIN)/kustomize version | grep -q $(KUSTOMIZE_VERSION) > /dev/stderr; then \
 		echo "$(LOCALBIN)/kustomize version is not expected $(KUSTOMIZE_VERSION). Removing it before installing." > /dev/stderr; \
 		rm -rf $(LOCALBIN)/kustomize; \
 	fi
-	test -s $(LOCALBIN)/kustomize || { curl -SsLf $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN) > /dev/stderr; }
+	@test -s $(LOCALBIN)/kustomize || { curl -SsLf $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN) > /dev/stderr; }
 
 .PHONY: operator-sdk $(OPERATOR_SDK)
 operator-sdk: $(OPERATOR_SDK)
@@ -331,14 +331,14 @@ $(OPERATOR_SDK): $(LOCALBIN)
 		echo "$(LOCALBIN)/operator-sdk version is not expected $(OPERATOR_SDK_VERSION). Removing it before installing."; \
 		rm -rf $(LOCALBIN)/operator-sdk; \
 	fi
-	test -s $(LOCALBIN)/operator-sdk || \
+	@test -s $(LOCALBIN)/operator-sdk || \
 	curl -sSLfo $(LOCALBIN)/operator-sdk https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_$(OS)_$(ARCH) && \
 	chmod +x $(LOCALBIN)/operator-sdk;
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary. If wrong version is installed, it will be overwritten.
 $(CONTROLLER_GEN): $(LOCALBIN)
-	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
+	@test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
 
 .PHONY: envtest
