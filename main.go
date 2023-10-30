@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	multusv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -60,12 +61,14 @@ func main() {
 	var probeAddr string
 	var configFile string
 	var resourceDirectory string
+	var defaultProfiles string
 	var logAPIRequests bool
 	var printVersion bool
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&configFile, "config-file", "/etc/istio-operator/config.properties", "Location of the config file, propagated by k8s downward APIs")
 	flag.StringVar(&resourceDirectory, "resource-directory", "/var/lib/istio-operator/resources", "Where to find resources (e.g. charts)")
+	flag.StringVar(&defaultProfiles, "default-profiles", "default", "One or more comma-separated profile names that are always applied to each Istio resource")
 	flag.BoolVar(&logAPIRequests, "log-api-requests", false, "Whether to log each request sent to the Kubernetes API server")
 	flag.BoolVar(&printVersion, "version", printVersion, "Prints version information and exits")
 
@@ -78,6 +81,11 @@ func main() {
 	if printVersion {
 		fmt.Println(version.Info)
 		os.Exit(0)
+	}
+
+	if defaultProfiles == "" {
+		setupLog.Error(nil, "--default-profiles shouldn't be empty")
+		os.Exit(1)
 	}
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
@@ -122,7 +130,7 @@ func main() {
 	}
 
 	helm.ResourceDirectory = resourceDirectory
-	controller := controllers.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDirectory)
+	controller := controllers.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDirectory, strings.Split(defaultProfiles, ","))
 	err = controller.SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Istio")
