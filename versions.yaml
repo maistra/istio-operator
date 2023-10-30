@@ -4,7 +4,7 @@
 latest:
   repo: https://github.com/istio/istio
   branch: master
-  commit: d5023b070a368ff94bf7286282312b8a95568224
+  commit: 639fe4593d8e3f7642891a6af0fda239df043b6f
 v1.19.3:
   repo: https://github.com/istio/istio
   commit: 41218ffa66c12acf77ad08b3ef07d296218d0929
