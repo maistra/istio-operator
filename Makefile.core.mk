@@ -290,9 +290,7 @@ endif
 
 .PHONY: update-istio
 update-istio: ## Updates the Istio commit hash in the 'latest' entry in versions.yaml to the latest commit in the branch
-	$(eval COMMIT=$(shell yq eval '"git ls-remote --heads " + .latest.repo + ".git " + .latest.branch + " | cut -f 1"' versions.yaml | sh))
-	@echo Updating version 'latest' to commit ${COMMIT}
-	@yq -i '.latest.commit="${COMMIT}"' versions.yaml
+	@hack/update-istio.sh
 
 ##@ Build Dependencies
 
