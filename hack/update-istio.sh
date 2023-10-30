@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-SLEEP_TIME=60
+SLEEP_TIME=10
 
 COMMIT=$(yq eval '"git ls-remote --heads " + .latest.repo + ".git " + .latest.branch + " | cut -f 1"' versions.yaml | sh)
 CURRENT=$(yq .latest.commit versions.yaml)
