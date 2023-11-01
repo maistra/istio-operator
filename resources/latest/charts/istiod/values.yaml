@@ -32,6 +32,8 @@ pilot:
 
   env: {}
 
+  affinity: {}
+
   cpu:
     targetAverageUtilization: 80
 
@@ -235,7 +237,7 @@ global:
   # Dev builds from prow are on gcr.io
   hub: gcr.io/istio-testing
   # Default tag for Istio images.
-  tag: 1.21-alpha.7aa04ee418cd163b83ce3843a08986679645fdd0
+  tag: 1.21-alpha.2065fb3fc3cf3b4755caece32a29c27381174ec8
   # Variant of the image to use.
   # Currently supported are: [debug, distroless]
   variant: ""
