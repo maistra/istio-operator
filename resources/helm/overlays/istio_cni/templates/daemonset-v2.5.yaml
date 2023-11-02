@@ -35,7 +35,7 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: maistra.io/ignore-cni
+              - key: maistra.io/exclude-cni
                 operator: NotIn
                 values:
                 - "true"
