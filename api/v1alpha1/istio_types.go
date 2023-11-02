@@ -27,6 +27,7 @@ const IstioKind = "Istio"
 
 // IstioSpec defines the desired state of Istio
 type IstioSpec struct {
+	// +sail:version
 	// Version defines the version of Istio to install.
 	// Must be one of: latest, v1.20.0-rc.0, v1.19.3, v1.19.1.
 	// If not specified, the latest version supported by the operator is installed.
@@ -34,9 +35,12 @@ type IstioSpec struct {
 	// +kubebuilder:validation:Enum=latest;v1.20.0-rc.0;v1.19.3;v1.19.1
 	Version string `json:"version,omitempty"`
 
+	// +sail:profile
 	// The built-in installation configuration profile to use.
-	// When this field is left empty, the 'default' profile will be used.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Profile"
+	// The 'default' profile is always applied. On OpenShift, the 'openshift' profile is also applied on top of 'default'.
+	// Must be one of: ambient, default, demo, empty, external, minimal, openshift, preview, remote.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Profile",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:ambient", "urn:alm:descriptor:com.tectonic.ui:select:default", "urn:alm:descriptor:com.tectonic.ui:select:demo", "urn:alm:descriptor:com.tectonic.ui:select:empty", "urn:alm:descriptor:com.tectonic.ui:select:external", "urn:alm:descriptor:com.tectonic.ui:select:minimal", "urn:alm:descriptor:com.tectonic.ui:select:openshift", "urn:alm:descriptor:com.tectonic.ui:select:preview", "urn:alm:descriptor:com.tectonic.ui:select:remote"}
+	// +kubebuilder:validation:Enum=ambient;default;demo;empty;external;minimal;openshift;preview;remote
 	Profile string `json:"profile,omitempty"`
 
 	// Values defines the values to be passed to the Helm chart when installing Istio.
