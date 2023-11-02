@@ -61,13 +61,13 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               version:
                 description: 'Version defines the version of Istio to install. Must
-                  be one of: latest, v1.19.3, v1.19.1, v1.18.5. If not specified,
+                  be one of: latest, v1.20.0-rc.0, v1.19.3, v1.19.1. If not specified,
                   the latest version supported by the operator is installed.'
                 enum:
                 - latest
+                - v1.20.0-rc.0
                 - v1.19.3
                 - v1.19.1
-                - v1.18.5
                 type: string
             type: object
           status:

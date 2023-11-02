@@ -25,7 +25,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-operator:3.0-latest
-    createdAt: "2023-10-27T12:19:35Z"
+    createdAt: "2023-11-02T14:47:12Z"
     operators.operatorframework.io/builder: operator-sdk-v1.32.0
     operators.operatorframework.io/internal-objects: '["wasmplugins.extensions.istio.io","destinationrules.networking.istio.io","envoyfilters.networking.istio.io","gateways.networking.istio.io","proxyconfigs.networking.istio.io","serviceentries.networking.istio.io","sidecars.networking.istio.io","virtualservices.networking.istio.io","workloadentries.networking.istio.io","workloadgroups.networking.istio.io","authorizationpolicies.security.istio.io","peerauthentications.security.istio.io","requestauthentications.security.istio.io","telemetries.telemetry.istio.io"]'
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -62,16 +62,16 @@ spec:
       name: istios.operator.istio.io
       specDescriptors:
       - description: 'Version defines the version of Istio to install. Must be one
-          of: latest, v1.19.3, v1.19.1, v1.18.5. If not specified, the latest version
-          supported by the operator is installed.'
+          of: latest, v1.20.0-rc.0, v1.19.3, v1.19.1. If not specified, the latest
+          version supported by the operator is installed.'
         displayName: Istio Version
         path: version
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
         - urn:alm:descriptor:com.tectonic.ui:select:latest
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.20.0-rc.0
         - urn:alm:descriptor:com.tectonic.ui:select:v1.19.3
         - urn:alm:descriptor:com.tectonic.ui:select:v1.19.1
-        - urn:alm:descriptor:com.tectonic.ui:select:v1.18.5
       - description: The built-in installation configuration profile to use. When
           this field is left empty, the 'default' profile will be used.
         displayName: Profile

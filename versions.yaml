@@ -11,6 +11,15 @@ latest:
     - https://storage.googleapis.com/istio-build/dev/1.21-alpha.937cd21f61c40016595233e6a7c7b25e56c81196/helm/gateway-1.21-alpha.937cd21f61c40016595233e6a7c7b25e56c81196.tgz
     - https://storage.googleapis.com/istio-build/dev/1.21-alpha.937cd21f61c40016595233e6a7c7b25e56c81196/helm/istiod-1.21-alpha.937cd21f61c40016595233e6a7c7b25e56c81196.tgz
     - https://storage.googleapis.com/istio-build/dev/1.21-alpha.937cd21f61c40016595233e6a7c7b25e56c81196/helm/ztunnel-1.21-alpha.937cd21f61c40016595233e6a7c7b25e56c81196.tgz
+v1.20.0-rc.0:
+  repo: https://github.com/istio/istio
+  commit: 1c84bbd12ed32b8b6280e451e12787eda0413ca8
+  charts:
+    - https://istio-release.storage.googleapis.com/charts/base-1.20.0-rc.0.tgz
+    - https://istio-release.storage.googleapis.com/charts/istiod-1.20.0-rc.0.tgz
+    - https://istio-release.storage.googleapis.com/charts/gateway-1.20.0-rc.0.tgz
+    - https://istio-release.storage.googleapis.com/charts/cni-1.20.0-rc.0.tgz
+    - https://istio-release.storage.googleapis.com/charts/ztunnel-1.20.0-rc.0.tgz
 v1.19.3:
   repo: https://github.com/istio/istio
   commit: 41218ffa66c12acf77ad08b3ef07d296218d0929
@@ -29,12 +38,3 @@ v1.19.1:
     - https://istio-release.storage.googleapis.com/charts/gateway-1.19.1.tgz
     - https://istio-release.storage.googleapis.com/charts/cni-1.19.1.tgz
     - https://istio-release.storage.googleapis.com/charts/ztunnel-1.19.1.tgz
-v1.18.5:
-  repo: https://github.com/istio/istio
-  commit: 1.18.5
-  charts:
-    - https://istio-release.storage.googleapis.com/charts/base-1.18.5.tgz
-    - https://istio-release.storage.googleapis.com/charts/istiod-1.18.5.tgz
-    - https://istio-release.storage.googleapis.com/charts/gateway-1.18.5.tgz
-    - https://istio-release.storage.googleapis.com/charts/cni-1.18.5.tgz
-    - https://istio-release.storage.googleapis.com/charts/ztunnel-1.18.5.tgz
