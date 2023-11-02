@@ -37,7 +37,9 @@ spec:
             nodeSelectorTerms:
             - matchExpressions:
               - key: maistra.io/ignore-cni
-                operator: DoesNotExist
+                operator: NotIn
+                values:
+                - "true"
       nodeSelector:
         kubernetes.io/os: linux
       tolerations:
