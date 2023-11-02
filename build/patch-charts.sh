@@ -165,6 +165,13 @@ function patchGalley() {
           - --enableIngressClassName=false\
 {{- end}}' "${deployment}"
 
+  sed_wrap -i -e '/# sidecar injection controller/ a\
+  {{ if .Values.global.clusterWide }}\
+  - apiGroups: ["admissionregistration.k8s.io"]\
+    resources: ["mutatingwebhookconfigurations"]\
+    verbs: ["get", "list", "watch", "update", "patch"]\
+  {{ end }}' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
+
   ############## disable webhook config updates ############################
   # Name of the mutatingwebhookconfiguration to patch, if istioctl is not used.
   sed_wrap -i -e '/env:/ a\

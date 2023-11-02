@@ -9,6 +9,11 @@ metadata:
     release: {{ .Release.Name }}
 rules:
   # sidecar injection controller
+  {{ if .Values.global.clusterWide }}
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources: ["mutatingwebhookconfigurations"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  {{ end }}
 
   # configuration validation webhook controller
 
