@@ -129,6 +129,8 @@ SHELL = /usr/bin/env bash -o pipefail
 .PHONY: all
 all: build
 
+export
+
 ##@ Testing
 
 .PHONY: test
