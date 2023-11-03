@@ -38,12 +38,10 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
         - urn:alm:descriptor:com.tectonic.ui:select:ambient
-        - urn:alm:descriptor:com.tectonic.ui:select:default
         - urn:alm:descriptor:com.tectonic.ui:select:demo
         - urn:alm:descriptor:com.tectonic.ui:select:empty
         - urn:alm:descriptor:com.tectonic.ui:select:external
         - urn:alm:descriptor:com.tectonic.ui:select:minimal
-        - urn:alm:descriptor:com.tectonic.ui:select:openshift
         - urn:alm:descriptor:com.tectonic.ui:select:preview
         - urn:alm:descriptor:com.tectonic.ui:select:remote
       - description: Values defines the values to be passed to the Helm chart when

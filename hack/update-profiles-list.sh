@@ -8,8 +8,11 @@ enumValues=""
 
 IFS=',' read -ra elements <<< "${profiles}"
 for element in "${elements[@]}"; do
-	selectValues+=', "urn:alm:descriptor:com.tectonic.ui:select:'$element'"'
-	enumValues+=$element';'
+  if [[ "$element" != "default" && "$element" != "openshift" ]]; then
+    # skip default and openshift profiles in the drop-down, since these profiles are always applied
+    selectValues+=', "urn:alm:descriptor:com.tectonic.ui:select:'$element'"'
+  fi
+  enumValues+=$element';'
 done
 
 enumValues=${enumValues::-1}    # remove last semicolon
@@ -19,4 +22,4 @@ sed -i -E \
   -e "/\+sail:profile/,/Profile string/ s/(\/\/ \+operator-sdk:csv:customresourcedefinitions:type=spec,displayName=\"Profile\",xDescriptors=\{.*fieldGroup:General\")[^}]*(})/\1$selectValues}/g" \
   -e "/\+sail:profile/,/Profile string/ s/(\/\/ \+kubebuilder:validation:Enum=)(.*)/\1$enumValues/g" \
   -e "/\+sail:profile/,/Profile string/ s/(\/\/ Must be one of:)(.*)/\1 ${profiles//,/, }./g" \
-	api/v1alpha1/istio_types.go
+  api/v1alpha1/istio_types.go

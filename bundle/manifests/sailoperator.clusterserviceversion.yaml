@@ -25,7 +25,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-operator:3.0-latest
-    createdAt: "2023-11-03T08:06:23Z"
+    createdAt: "2023-11-03T11:45:20Z"
     operators.operatorframework.io/builder: operator-sdk-v1.32.0
     operators.operatorframework.io/internal-objects: '["wasmplugins.extensions.istio.io","destinationrules.networking.istio.io","envoyfilters.networking.istio.io","gateways.networking.istio.io","proxyconfigs.networking.istio.io","serviceentries.networking.istio.io","sidecars.networking.istio.io","virtualservices.networking.istio.io","workloadentries.networking.istio.io","workloadgroups.networking.istio.io","authorizationpolicies.security.istio.io","peerauthentications.security.istio.io","requestauthentications.security.istio.io","telemetries.telemetry.istio.io"]'
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -81,12 +81,10 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
         - urn:alm:descriptor:com.tectonic.ui:select:ambient
-        - urn:alm:descriptor:com.tectonic.ui:select:default
         - urn:alm:descriptor:com.tectonic.ui:select:demo
         - urn:alm:descriptor:com.tectonic.ui:select:empty
         - urn:alm:descriptor:com.tectonic.ui:select:external
         - urn:alm:descriptor:com.tectonic.ui:select:minimal
-        - urn:alm:descriptor:com.tectonic.ui:select:openshift
         - urn:alm:descriptor:com.tectonic.ui:select:preview
         - urn:alm:descriptor:com.tectonic.ui:select:remote
       - description: Values defines the values to be passed to the Helm chart when
