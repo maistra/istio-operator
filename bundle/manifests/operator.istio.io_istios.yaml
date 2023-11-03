@@ -52,8 +52,20 @@ spec:
             description: IstioSpec defines the desired state of Istio
             properties:
               profile:
-                description: The built-in installation configuration profile to use.
-                  When this field is left empty, the 'default' profile will be used.
+                description: 'The built-in installation configuration profile to use.
+                  The ''default'' profile is always applied. On OpenShift, the ''openshift''
+                  profile is also applied on top of ''default''. Must be one of: ambient,
+                  default, demo, empty, external, minimal, openshift, preview, remote.'
+                enum:
+                - ambient
+                - default
+                - demo
+                - empty
+                - external
+                - minimal
+                - openshift
+                - preview
+                - remote
                 type: string
               values:
                 description: Values defines the values to be passed to the Helm chart
