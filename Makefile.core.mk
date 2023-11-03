@@ -266,23 +266,14 @@ gen-charts: ## Pull charts from maistra/istio repository
 	@# find the profiles used in the downloaded charts and update list of available profiles
 	@hack/update-profiles-list.sh
 
+	@# update the urn:alm:descriptor:com.tectonic.ui:select entries in istio_types.go to match the supported versions of the Helm charts
+	@hack/update-version-list.sh
+
 	@# calls copy-crds.sh with the name of the first version listed in versions.yaml (this should be the highest version)
 	@hack/copy-crds.sh "resources/$$(yq eval 'keys | .[0]' versions.yaml)/charts"
 
-.PHONY: update-version-list
-update-version-list: ## Updates the urn:alm:descriptor:com.tectonic.ui:select entries in istio_types.go to match the supported versions of the Helm charts
-	@echo "Updating version list in istio_types.go..."
-	@selectValues=$$(yq e 'keys | .[] | ", \"urn:alm:descriptor:com.tectonic.ui:select:" + . + "\""' versions.yaml | tr -d '\n'); \
-		versionsEnum=$$(yq e 'keys | .[]' versions.yaml | tr '\n' ';' | sed 's/;$$//g'); \
-		versions=$$(yq e 'keys | .[]' versions.yaml | tr '\n' ',' | sed -e 's/,/, /g' -e 's/, $$//g'); \
-		sed -i -E \
-			-e "/\+sail:version/,/Version string/ s/(\/\/ \+operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName=\"Istio Version\",xDescriptors=\{.*fieldGroup:General\")[^}]*(})/\1$$selectValues}/g" \
-			-e "/\+sail:version/,/Version string/ s/(\/\/ \+kubebuilder:validation:Enum=)(.*)/\1$$versionsEnum/g" \
-			-e "/\+sail:version/,/Version string/ s/(\/\/ \Must be one of:)(.*)/\1 $$versions./g" \
-			api/v1alpha1/istio_types.go
-
 .PHONY: gen ## Generate everything
-gen: update-version-list controller-gen gen-charts gen-manifests gen-code bundle
+gen: controller-gen gen-charts gen-manifests gen-code bundle
 
 .PHONY: gen-check
 gen-check: gen restore-manifest-dates check-clean-repo ## Verifies that changes in generated resources have been checked in
