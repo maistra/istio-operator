@@ -24,6 +24,7 @@ import (
 	"path"
 	"reflect"
 	"regexp"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"gopkg.in/yaml.v3"
@@ -42,7 +43,6 @@ import (
 	"maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/helm"
 	"maistra.io/istio-operator/pkg/kube"
-	"maistra.io/istio-operator/pkg/strategy"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -142,20 +142,21 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 	}
 
-	s := strategy.Maistra30Strategy{}
-	err := s.ApplyDefaults(&istio)
-	if err != nil {
-		logger.Error(err, "failed to apply default values. requeuing request")
-		return ctrl.Result{Requeue: true}, nil
-	}
-
 	values := istio.Spec.GetValues()
+
 	profiles := r.DefaultProfiles
 	if istio.Spec.Profile != "" {
 		profiles = append(profiles, istio.Spec.Profile)
 	}
 	profilesDir := path.Join(r.ResourceDirectory, istio.Spec.Version, "profiles")
+
+	var err error
 	if values, err = applyProfiles(profilesDir, profiles, values); err != nil {
+		err = r.updateStatus(ctx, logger, &istio, istio.Spec.GetValues(), err)
+		return ctrl.Result{}, err
+	}
+
+	if values, err = applyOverrides(&istio, values); err != nil {
 		err = r.updateStatus(ctx, logger, &istio, istio.Spec.GetValues(), err)
 		return ctrl.Result{}, err
 	}
@@ -167,6 +168,18 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	err = r.updateStatus(ctx, logger, &istio, values, err)
 
 	return ctrl.Result{}, err
+}
+
+func applyOverrides(istio *v1alpha1.Istio, values map[string]interface{}) (map[string]interface{}, error) {
+	if values == nil {
+		values = make(map[string]interface{})
+	}
+
+	if err := unstructured.SetNestedField(values, istio.Namespace, strings.Split("global.istioNamespace", ".")...); err != nil {
+		return nil, err
+	}
+
+	return values, nil
 }
 
 func (r *IstioReconciler) installHelmCharts(ctx context.Context, istio v1alpha1.Istio, values map[string]interface{}) error {
