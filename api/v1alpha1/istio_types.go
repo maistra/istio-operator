@@ -49,7 +49,7 @@ type IstioSpec struct {
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Helm Values"
 	Values json.RawMessage `json:"values,omitempty"`
 
-	// RawValues defines the values to be passed to the Helm chart when installing Istio and that do not need a CRD validation.
+	// RawValues defines the non-validated values to be passed to the Helm chart when installing Istio.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Helm RawValues"
