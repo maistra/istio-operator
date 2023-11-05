@@ -27,13 +27,12 @@ function patchTemplates() {
   # Patch gateway deployment
   sed_wrap -i -e 's/{{- toJsonMap .Labels | nindent 4 }}/{{- toJsonMap (strdict "maistra-version" "'"${MAISTRA_VERSION}"'").Labels | nindent 4}}/' "${HELM_DIR}/istio-control/istio-discovery/files/kube-gateway.yaml"
   sed_wrap -i -e '/"service.istio.io\/canonical-revision" "latest"/ a\
-            "maistra-control-plane" .ReleaseNamespace\
+            "maistra-control-plane" .Values.global.istioNamespace\
             "maistra-version" "'"${MAISTRA_VERSION}"'"' "${HELM_DIR}/istio-control/istio-discovery/files/kube-gateway.yaml"
-  sed_wrap -i -e 's/\.Values\.global\.istioNamespace/.ReleaseNamespace/' "${HELM_DIR}/istio-control/istio-discovery/files/kube-gateway.yaml"
   # Patch gateway service
   sed_wrap -i -e 's/{{ toJsonMap .Labels | nindent 4}}/{{ toJsonMap\
       (strdict\
-        "maistra-control-plane" .ReleaseNamespace\
+        "maistra-control-plane" .Values.global.istioNamespace\
         "maistra-version" "'"${MAISTRA_VERSION}"'"\
       ).Labels | nindent 4}}/' "${HELM_DIR}/istio-control/istio-discovery/files/kube-gateway.yaml"
 

@@ -39,7 +39,7 @@ spec:
             "sidecar.istio.io/inject" "false"
             "service.istio.io/canonical-name" .DeploymentName
             "service.istio.io/canonical-revision" "latest"
-            "maistra-control-plane" .ReleaseNamespace
+            "maistra-control-plane" .Values.global.istioNamespace
             "maistra-version" "2.5.0"
            )
           .Labels
@@ -94,7 +94,7 @@ spec:
         {{- if .Values.global.caAddress }}
           value: {{ .Values.global.caAddress }}
         {{- else }}
-          value: istiod{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}.{{ .ReleaseNamespace }}.svc:15012
+          value: istiod{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}.{{ .Values.global.istioNamespace }}.svc:15012
         {{- end }}
         - name: POD_NAME
           valueFrom:
@@ -267,7 +267,7 @@ metadata:
   labels:
     {{ toJsonMap
       (strdict
-        "maistra-control-plane" .ReleaseNamespace
+        "maistra-control-plane" .Values.global.istioNamespace
         "maistra-version" "2.5.0"
       ).Labels | nindent 4}}
   name: {{.DeploymentName | quote}}
