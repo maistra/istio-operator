@@ -24,9 +24,12 @@ function patchTemplates() {
   done
 
   # OSSM-5312: add maistra-control-plane and maistra-version to kube-gateway template, which is populated by Gateway deployment controller.
+  # Patch gateway deployment
   sed_wrap -i -e '/"service.istio.io\/canonical-revision" "latest"/ a\
             "maistra-control-plane" .ReleaseNamespace\
             "maistra-version" "'"${MAISTRA_VERSION}"'"' "${HELM_DIR}/istio-control/istio-discovery/files/kube-gateway.yaml"
+  sed_wrap -i -e 's/\.Values\.global\.istioNamespace/.ReleaseNamespace/' "${HELM_DIR}/istio-control/istio-discovery/files/kube-gateway.yaml"
+  # Patch gateway service
   sed_wrap -i -e 's/{{ toJsonMap .Labels | nindent 4}}/{{ toJsonMap\
       (strdict\
         "maistra-control-plane" .ReleaseNamespace\
