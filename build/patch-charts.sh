@@ -18,10 +18,13 @@ function patchTemplates() {
   echo "patching Istio Helm charts"
 
   # MAISTRA-506 add a maistra-control-plane label for deployment specs
-  for file in $(find "${HELM_DIR}" -name "*.yaml" ! -name "values.yaml" -print0 -o -name "*.yaml.tpl" | xargs -0 grep -Hl '^kind: Deployment'); do
+  for file in $(find "${HELM_DIR}" -name "*.yaml" ! -name "values.yaml" ! -name "kube-gateway.yaml" -print0 -o -name "*.yaml.tpl" | xargs -0 grep -Hl '^kind: Deployment'); do
     sed_wrap -i -e '/^spec:/,$ { /template:$/,$ { /metadata:$/,$ { s/^\(.*\)labels:/\1labels:\
 \1  maistra-control-plane: {{ .Release.Namespace }}/ } } }' "$file"
   done
+  sed_wrap -i -e '/"service.istio.io\/canonical-revision" "latest"/ a\
+            "maistra-control-plane" .ReleaseNamespace\
+            "maistra-version" "'"${MAISTRA_VERSION}"'"' "${HELM_DIR}/istio-control/istio-discovery/files/kube-gateway.yaml"
 
   # role and role binding are for istiod only
   sed_wrap -i -e '/labels:/ i\
