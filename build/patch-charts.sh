@@ -22,9 +22,16 @@ function patchTemplates() {
     sed_wrap -i -e '/^spec:/,$ { /template:$/,$ { /metadata:$/,$ { s/^\(.*\)labels:/\1labels:\
 \1  maistra-control-plane: {{ .Release.Namespace }}/ } } }' "$file"
   done
+
+  # OSSM-5312: add maistra-control-plane and maistra-version to kube-gateway template, which is populated by Gateway deployment controller.
   sed_wrap -i -e '/"service.istio.io\/canonical-revision" "latest"/ a\
             "maistra-control-plane" .ReleaseNamespace\
             "maistra-version" "'"${MAISTRA_VERSION}"'"' "${HELM_DIR}/istio-control/istio-discovery/files/kube-gateway.yaml"
+  sed_wrap -i -e 's/{{ toJsonMap .Labels | nindent 4}}/{{ toJsonMap\
+      (strdict\
+        "maistra-control-plane" .ReleaseNamespace\
+        "maistra-version" "'"${MAISTRA_VERSION}"'"\
+      ).Labels | nindent 4}}/' "${HELM_DIR}/istio-control/istio-discovery/files/kube-gateway.yaml"
 
   # role and role binding are for istiod only
   sed_wrap -i -e '/labels:/ i\
@@ -62,7 +69,7 @@ function patchTemplates() {
   # - add a maistra-version label to all objects which have a release label
   # do this after we've separated crds
   # shellcheck disable=SC2044
-  for file in $(find "${HELM_DIR}" -name "*.yaml" -o -name "*.yaml.tpl"); do
+  for file in $(find "${HELM_DIR}" -name "*.yaml" ! -name "kube-gateway.yaml" -o -name "*.yaml.tpl"); do
     if grep -l 'release: ' "$file"; then
       sed_wrap -i -e '/^metadata:/,/^[^ {]/ { s/^\(.*\)labels:/\1labels:\
 \1  maistra-version: "'"${MAISTRA_VERSION}"'"/ }' "$file"
