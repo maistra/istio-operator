@@ -31,6 +31,15 @@ spec:
 {{ toYaml .Values.cni.podAnnotations | indent 8 }}
         {{- end }}
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: maistra.io/exclude-cni
+                operator: NotIn
+                values:
+                - "true"
       nodeSelector:
         kubernetes.io/os: linux
       tolerations:
