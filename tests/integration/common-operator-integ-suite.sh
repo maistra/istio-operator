@@ -132,14 +132,17 @@ build_and_push_image() {
 
 deploy_operator() {
   echo "Deploying Operator"
+  local TARGET="deploy"
   if [ "${OCP}" == "true" ]; then
     # This is a workaround
     # To avoid errors of certificates meanwhile we are pulling the operator image from the internal registry
     # We need to set image $HUB to a fixed known value
     # This value always will be equal to the svc url of the internal registry
     HUB="image-registry.openshift-image-registry.svc:5000/istio-operator"
+
+    TARGET="deploy-openshift"
   fi
-  IMAGE=${HUB}/${IMAGE_BASE}:${TAG} make -s --no-print-directory deploy
+  IMAGE=${HUB}/${IMAGE_BASE}:${TAG} make -s --no-print-directory ${TARGET}
 }
 
 check_ready() {

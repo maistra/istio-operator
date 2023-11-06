@@ -218,6 +218,17 @@ deploy-yaml: kustomize ## Outputs YAML manifests needed to deploy the controller
 	cd config/default && $(KUSTOMIZE) edit set namespace ${NAMESPACE}
 	$(KUSTOMIZE) build config/default
 
+.PHONY: deploy-openshift # TODO: remove this target and use deploy-olm instead (when we fix the internal registry TLS issues when using operator-sdk run bundle)
+deploy-openshift: kustomize ## Deploy controller to OpenShift via YAML manifests
+	$(info NAMESPACE: $(NAMESPACE))
+	$(MAKE) -s deploy-yaml-openshift | kubectl apply -f -
+
+.PHONY: deploy-yaml-openshift
+deploy-yaml-openshift: kustomize ## Outputs YAML manifests needed to deploy the controller in OpenShift
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE}
+	cd config/default && $(KUSTOMIZE) edit set namespace ${NAMESPACE}
+	$(KUSTOMIZE) build config/openshift
+
 .PHONY: deploy-olm
 deploy-olm: bundle bundle-build bundle-push ## Builds and pushes the operator OLM bundle and then deploys the operator using OLM
 	kubectl create ns ${NAMESPACE} || echo "namespace ${NAMESPACE} already exists"
