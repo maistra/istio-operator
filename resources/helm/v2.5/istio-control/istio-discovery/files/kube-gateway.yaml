@@ -55,7 +55,11 @@ spec:
       serviceAccountName: {{.ServiceAccount | quote}}
       containers:
       - name: istio-proxy
+      {{- if contains "/" (annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy.image) }}
+        image: "{{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy.image }}"
+      {{- else }}
         image: "{{ .ProxyImage }}"
+      {{- end }}
         {{with .Values.global.imagePullPolicy }}imagePullPolicy: "{{.}}"{{end}}
         ports:
         - containerPort: 15021
