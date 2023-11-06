@@ -1,0 +1,7 @@
+resources:
+- ../default
+
+patches:
+- path: default_overlay_profile_patch.yaml
+  target:
+    kind: Deployment
