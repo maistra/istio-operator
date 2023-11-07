@@ -57,7 +57,7 @@ spec:
 
     This version of the operator supports the following Istio versions:
 
-    - latest (2e96db56)
+    - latest (162afd73)
     - v1.20.0-rc.0
     - v1.19.3
     - v1.19.1
