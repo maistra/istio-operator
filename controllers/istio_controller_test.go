@@ -16,9 +16,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	v1 "maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/common"
+	"maistra.io/istio-operator/pkg/helm"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"istio.io/istio/pkg/ptr"
@@ -110,8 +110,7 @@ var _ = Describe("IstioController", Ordered, func() {
 			err := k8sClient.Get(ctx, istioObjectKey, istio)
 			Expect(err).NotTo(HaveOccurred())
 
-			vals := istio.Status.GetAppliedValues()
-			imageName, _, err := unstructured.NestedString(vals, "pilot", "image")
+			imageName, _, err := istio.Status.GetAppliedValues().GetString("pilot.image")
 			Expect(err).NotTo(HaveOccurred())
 			return imageName
 		}, time.Minute, time.Second).Should(Equal(pilotImage))
@@ -332,21 +331,21 @@ spec:
 	tests := []struct {
 		name         string
 		profiles     []string
-		values       map[string]interface{}
-		expectValues map[string]interface{}
+		values       helm.HelmValues
+		expectValues helm.HelmValues
 		expectErr    bool
 	}{
 		{
 			name:         "nil default profiles",
 			profiles:     nil,
 			values:       nil,
-			expectValues: map[string]interface{}{},
+			expectValues: helm.HelmValues{},
 		},
 		{
 			name:     "default profile only",
 			profiles: []string{"default"},
 			values:   nil,
-			expectValues: map[string]interface{}{
+			expectValues: helm.HelmValues{
 				"value1": "1-from-default",
 				"value2": "2-from-default",
 			},
@@ -355,7 +354,7 @@ spec:
 			name:     "default and overlay",
 			profiles: []string{"default", "overlay"},
 			values:   nil,
-			expectValues: map[string]interface{}{
+			expectValues: helm.HelmValues{
 				"value1": "1-from-default",
 				"value2": "2-from-overlay",
 			},
@@ -363,7 +362,7 @@ spec:
 		{
 			name:     "default and overlay and custom",
 			profiles: []string{"default", "overlay", "custom"},
-			expectValues: map[string]interface{}{
+			expectValues: helm.HelmValues{
 				"value1": "1-from-custom",
 				"value2": "2-from-overlay",
 			},
@@ -371,11 +370,11 @@ spec:
 		{
 			name:     "values override profiles",
 			profiles: []string{"default", "overlay", "custom"},
-			values: map[string]interface{}{
+			values: helm.HelmValues{
 				"value1": "1-from-spec-values",
 				"value2": "2-from-spec-values",
 			},
-			expectValues: map[string]interface{}{
+			expectValues: helm.HelmValues{
 				"value1": "1-from-spec-values",
 				"value2": "2-from-spec-values",
 			},
@@ -413,7 +412,7 @@ spec:
 	}
 }
 
-func TestMergeValues(t *testing.T) {
+func TestMergeOverwrite(t *testing.T) {
 	testCases := []struct {
 		name                    string
 		overrides, base, expect map[string]interface{}
