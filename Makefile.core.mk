@@ -399,22 +399,18 @@ bundle-publish-nightly: bundle-nightly bundle-publish
 patch-istio-crd: ## Update Istio CRD's openAPIV3Schema values
 	@hack/patch-istio-crd.sh
 
-.PHONY: opm
-OPM = ./bin/opm
-opm: ## Download opm locally if necessary.
-ifeq (,$(wildcard $(OPM)))
-ifeq (,$(shell which opm 2>/dev/null))
-	@{ \
-	set -e ;\
-	mkdir -p $(dir $(OPM)) ;\
-	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
-	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.23.0/$${OS}-$${ARCH}-opm ;\
-	chmod +x $(OPM) ;\
-	}
-else
-OPM = $(shell which opm)
-endif
-endif
+.PHONY: opm $(OPM)
+opm: $(OPM)
+opm: OS=$(shell go env GOOS)
+opm: ARCH=$(shell go env GOARCH)
+$(OPM): $(LOCALBIN)
+	@if test -x $(LOCALBIN)/opm && ! $(LOCALBIN)/opm version | grep -q $(OPM_VERSION); then \
+		echo "$(LOCALBIN)/opm version is not expected $(OPM_VERSION). Removing it before installing."; \
+		rm -f $(LOCALBIN)/opm; \
+	fi
+	test -s $(LOCALBIN)/opm || \
+	curl -sSLfo $(LOCALBIN)/opm https://github.com/operator-framework/operator-registry/releases/download/$(OPM_VERSION)/$(OS)-$(ARCH)-opm && \
+	chmod +x $(LOCALBIN)/opm;
 
 # A comma-separated list of bundle images (e.g. make catalog-build BUNDLE_IMGS=example.com/operator-bundle:v0.1.0,example.com/operator-bundle:v0.2.0).
 # These images MUST exist in a registry and be pull-able.
