@@ -158,7 +158,7 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 func (r *IstioReconciler) getAggregatedValues(istio v1alpha1.Istio) (helm.HelmValues, error) {
 	// 1. start with values aggregated from default profiles and the profile in Istio.spec.profile
-	values, err := r.getValuesFromProfiles(istio)
+	values, err := getValuesFromProfiles(r.getProfilesDir(istio), r.getProfiles(istio))
 	if err != nil {
 		return nil, err
 	}
@@ -173,14 +173,15 @@ func (r *IstioReconciler) getAggregatedValues(istio v1alpha1.Istio) (helm.HelmVa
 	return applyOverrides(&istio, values)
 }
 
-func (r *IstioReconciler) getValuesFromProfiles(istio v1alpha1.Istio) (helm.HelmValues, error) {
-	profiles := r.DefaultProfiles
-	if istio.Spec.Profile != "" {
-		profiles = append(profiles, istio.Spec.Profile)
+func (r *IstioReconciler) getProfiles(istio v1alpha1.Istio) []string {
+	if istio.Spec.Profile == "" {
+		return r.DefaultProfiles
 	}
-	profilesDir := path.Join(r.ResourceDirectory, istio.Spec.Version, "profiles")
+	return append(r.DefaultProfiles, istio.Spec.Profile)
+}
 
-	return getValuesFromProfiles(profilesDir, profiles)
+func (r *IstioReconciler) getProfilesDir(istio v1alpha1.Istio) string {
+	return path.Join(r.ResourceDirectory, istio.Spec.Version, "profiles")
 }
 
 func applyOverrides(istio *v1alpha1.Istio, values helm.HelmValues) (helm.HelmValues, error) {
@@ -378,7 +379,13 @@ func getValuesFromProfiles(profilesDir string, profiles []string) (helm.HelmValu
 		}
 		alreadyApplied.Insert(profile)
 
-		profileValues, err := getProfileValues(profilesDir, profile)
+		file := path.Join(profilesDir, profile+".yaml")
+		// prevent path traversal attacks
+		if path.Dir(file) != profilesDir {
+			return nil, fmt.Errorf("invalid profile name %s", profile)
+		}
+
+		profileValues, err := getProfileValues(file)
 		if err != nil {
 			return nil, err
 		}
@@ -388,14 +395,7 @@ func getValuesFromProfiles(profilesDir string, profiles []string) (helm.HelmValu
 	return values, nil
 }
 
-func getProfileValues(profilesDir string, profileName string) (helm.HelmValues, error) {
-	file := path.Join(profilesDir, profileName+".yaml")
-
-	// prevent path traversal attacks
-	if path.Dir(file) != path.Join(profilesDir) {
-		return nil, fmt.Errorf("invalid profile name %s", profileName)
-	}
-
+func getProfileValues(file string) (helm.HelmValues, error) {
 	fileContents, err := os.ReadFile(file)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read profile file %v: %v", file, err)
