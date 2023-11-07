@@ -141,23 +141,8 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 	}
 
-	values := istio.Spec.GetValues()
-
-	profiles := r.DefaultProfiles
-	if istio.Spec.Profile != "" {
-		profiles = append(profiles, istio.Spec.Profile)
-	}
-	profilesDir := path.Join(r.ResourceDirectory, istio.Spec.Version, "profiles")
-
-	var err error
-	if values, err = applyProfiles(profilesDir, profiles, values); err != nil {
-		err = r.updateStatus(ctx, logger, &istio, istio.Spec.GetValues(), err)
-		return ctrl.Result{}, err
-	}
-
-	values = mergeOverwrite(istio.Spec.GetRawValues(), values)
-
-	if values, err = applyOverrides(&istio, values); err != nil {
+	values, err := r.getAggregatedValues(istio)
+	if err != nil {
 		err = r.updateStatus(ctx, logger, &istio, istio.Spec.GetValues(), err)
 		return ctrl.Result{}, err
 	}
@@ -169,6 +154,28 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	err = r.updateStatus(ctx, logger, &istio, values, err)
 
 	return ctrl.Result{}, err
+}
+
+func (r *IstioReconciler) getAggregatedValues(istio v1alpha1.Istio) (helm.HelmValues, error) {
+	values := istio.Spec.GetValues()
+
+	profiles := r.DefaultProfiles
+	if istio.Spec.Profile != "" {
+		profiles = append(profiles, istio.Spec.Profile)
+	}
+	profilesDir := path.Join(r.ResourceDirectory, istio.Spec.Version, "profiles")
+
+	var err error
+	if values, err = applyProfiles(profilesDir, profiles, values); err != nil {
+		return nil, err
+	}
+
+	values = mergeOverwrite(istio.Spec.GetRawValues(), values)
+
+	if values, err = applyOverrides(&istio, values); err != nil {
+		return nil, err
+	}
+	return values, nil
 }
 
 func applyOverrides(istio *v1alpha1.Istio, values helm.HelmValues) (helm.HelmValues, error) {
