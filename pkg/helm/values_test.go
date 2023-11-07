@@ -17,7 +17,7 @@ func TestGetString(t *testing.T) {
 		{
 			name: "valid Key",
 			input: HelmValues{
-				"foo": map[string]interface{}{
+				"foo": map[string]any{
 					"bar": "baz",
 				},
 			},
@@ -37,7 +37,7 @@ func TestGetString(t *testing.T) {
 		{
 			name: "nonexistent key",
 			input: HelmValues{
-				"foo": map[string]interface{}{
+				"foo": map[string]any{
 					"bar": "baz",
 				},
 			},
@@ -82,14 +82,14 @@ func TestSet(t *testing.T) {
 		{
 			name: "Valid Key",
 			input: HelmValues{
-				"foo": map[string]interface{}{
+				"foo": map[string]any{
 					"bar": "baz",
 				},
 			},
 			key: "foo.bar",
 			val: "newVal",
 			expected: HelmValues{
-				"foo": map[string]interface{}{
+				"foo": map[string]any{
 					"bar": "newVal",
 				},
 			},
@@ -97,14 +97,14 @@ func TestSet(t *testing.T) {
 		{
 			name: "Non-Existent Key",
 			input: HelmValues{
-				"foo": map[string]interface{}{
+				"foo": map[string]any{
 					"bar": "baz",
 				},
 			},
 			key: "foo.baz",
 			val: "newVal",
 			expected: HelmValues{
-				"foo": map[string]interface{}{
+				"foo": map[string]any{
 					"bar": "baz",
 					"baz": "newVal",
 				},

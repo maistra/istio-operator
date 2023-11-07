@@ -415,53 +415,53 @@ spec:
 func TestMergeOverwrite(t *testing.T) {
 	testCases := []struct {
 		name                    string
-		overrides, base, expect map[string]interface{}
+		overrides, base, expect map[string]any
 	}{
 		{
 			name:      "both empty",
-			base:      make(map[string]interface{}),
-			overrides: make(map[string]interface{}),
-			expect:    make(map[string]interface{}),
+			base:      make(map[string]any),
+			overrides: make(map[string]any),
+			expect:    make(map[string]any),
 		},
 		{
 			name:      "nil overrides",
-			base:      map[string]interface{}{"key1": 42, "key2": "value"},
+			base:      map[string]any{"key1": 42, "key2": "value"},
 			overrides: nil,
-			expect:    map[string]interface{}{"key1": 42, "key2": "value"},
+			expect:    map[string]any{"key1": 42, "key2": "value"},
 		},
 		{
 			name:      "nil base",
 			base:      nil,
-			overrides: map[string]interface{}{"key1": 42, "key2": "value"},
-			expect:    map[string]interface{}{"key1": 42, "key2": "value"},
+			overrides: map[string]any{"key1": 42, "key2": "value"},
+			expect:    map[string]any{"key1": 42, "key2": "value"},
 		},
 		{
 			name: "adds toplevel keys",
-			base: map[string]interface{}{
+			base: map[string]any{
 				"key2": "from base",
 			},
-			overrides: map[string]interface{}{
+			overrides: map[string]any{
 				"key1": "from overrides",
 			},
-			expect: map[string]interface{}{
+			expect: map[string]any{
 				"key1": "from overrides",
 				"key2": "from base",
 			},
 		},
 		{
 			name: "adds nested keys",
-			base: map[string]interface{}{
-				"key1": map[string]interface{}{
+			base: map[string]any{
+				"key1": map[string]any{
 					"nested2": "from base",
 				},
 			},
-			overrides: map[string]interface{}{
-				"key1": map[string]interface{}{
+			overrides: map[string]any{
+				"key1": map[string]any{
 					"nested1": "from overrides",
 				},
 			},
-			expect: map[string]interface{}{
-				"key1": map[string]interface{}{
+			expect: map[string]any{
+				"key1": map[string]any{
 					"nested1": "from overrides",
 					"nested2": "from base",
 				},
@@ -469,42 +469,42 @@ func TestMergeOverwrite(t *testing.T) {
 		},
 		{
 			name: "overrides overrides base",
-			base: map[string]interface{}{
+			base: map[string]any{
 				"key1": "from base",
-				"key2": map[string]interface{}{
+				"key2": map[string]any{
 					"nested1": "from base",
 				},
 			},
-			overrides: map[string]interface{}{
+			overrides: map[string]any{
 				"key1": "from overrides",
-				"key2": map[string]interface{}{
+				"key2": map[string]any{
 					"nested1": "from overrides",
 				},
 			},
-			expect: map[string]interface{}{
+			expect: map[string]any{
 				"key1": "from overrides",
-				"key2": map[string]interface{}{
+				"key2": map[string]any{
 					"nested1": "from overrides",
 				},
 			},
 		},
 		{
 			name: "mismatched types",
-			base: map[string]interface{}{
-				"key1": map[string]interface{}{
+			base: map[string]any{
+				"key1": map[string]any{
 					"desc": "key1 is a map in base",
 				},
 				"key2": "key2 is a string in base",
 			},
-			overrides: map[string]interface{}{
+			overrides: map[string]any{
 				"key1": "key1 is a string in overrides",
-				"key2": map[string]interface{}{
+				"key2": map[string]any{
 					"desc": "key2 is a map in overrides",
 				},
 			},
-			expect: map[string]interface{}{
+			expect: map[string]any{
 				"key1": "key1 is a string in overrides",
-				"key2": map[string]interface{}{
+				"key2": map[string]any{
 					"desc": "key2 is a map in overrides",
 				},
 			},

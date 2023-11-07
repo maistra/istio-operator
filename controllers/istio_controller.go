@@ -397,7 +397,7 @@ func getProfileValues(profilesDir string, profileName string) (helm.HelmValues, 
 		return nil, fmt.Errorf("failed to read profile file %v: %v", file, err)
 	}
 
-	var profile map[string]interface{}
+	var profile map[string]any
 	err = yaml.Unmarshal(fileContents, &profile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal profile YAML %s: %v", file, err)
@@ -407,16 +407,16 @@ func getProfileValues(profilesDir string, profileName string) (helm.HelmValues, 
 	if !found || err != nil {
 		return nil, err
 	}
-	m, ok := val.(map[string]interface{})
+	m, ok := val.(map[string]any)
 	if !ok {
-		return nil, fmt.Errorf("spec.values is not a map[string]interface{}")
+		return nil, fmt.Errorf("spec.values is not a map[string]any")
 	}
 	return m, nil
 }
 
-func mergeOverwrite(base map[string]interface{}, overrides map[string]interface{}) map[string]interface{} {
+func mergeOverwrite(base map[string]any, overrides map[string]any) map[string]any {
 	if base == nil {
-		base = make(map[string]interface{}, 1)
+		base = make(map[string]any, 1)
 	}
 
 	for key, value := range overrides {
@@ -430,8 +430,8 @@ func mergeOverwrite(base map[string]interface{}, overrides map[string]interface{
 		// If both are maps, recurse so that we override only specific values in the map.
 		// If only override value is a map, overwrite base value completely.
 		// If both are values, overwrite base.
-		childOverrides, overrideValueIsMap := value.(map[string]interface{})
-		childBase, baseValueIsMap := base[key].(map[string]interface{})
+		childOverrides, overrideValueIsMap := value.(map[string]any)
+		childBase, baseValueIsMap := base[key].(map[string]any)
 		if baseValueIsMap && overrideValueIsMap {
 			base[key] = mergeOverwrite(childBase, childOverrides)
 		} else {
