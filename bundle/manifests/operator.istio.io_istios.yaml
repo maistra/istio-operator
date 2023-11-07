@@ -532,6 +532,8 @@ spec:
                     type: object
                   pilot:
                     properties:
+                      affinity:
+                        type: object
                       autoscaleBehavior:
                         type: object
                       autoscaleEnabled:

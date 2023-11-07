@@ -21,7 +21,6 @@
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= 3.0.0
 MINOR_VERSION := $(shell v='$(VERSION)'; echo "$${v%.*}")
-MINIMUM_SUPPORTED_VERSION ?= v3.0
 
 OPERATOR_NAME ?= sailoperator
 
@@ -285,7 +284,7 @@ gen-charts: ## Pull charts from maistra/istio repository
 	@hack/copy-crds.sh "resources/$$(yq eval 'keys | .[0]' versions.yaml)/charts"
 
 .PHONY: gen ## Generate everything
-gen: update-version-list controller-gen gen-manifests gen-code gen-charts patch-istio-crd bundle
+gen: controller-gen gen-charts gen-manifests gen-code patch-istio-crd bundle
 
 .PHONY: gen-check
 gen-check: gen restore-manifest-dates check-clean-repo ## Verifies that changes in generated resources have been checked in
