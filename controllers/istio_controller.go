@@ -156,6 +156,8 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 
+	values = mergeOverwrite(istio.Spec.GetRawValues(), values)
+
 	if values, err = applyOverrides(&istio, values); err != nil {
 		err = r.updateStatus(ctx, logger, &istio, istio.Spec.GetValues(), err)
 		return ctrl.Result{}, err

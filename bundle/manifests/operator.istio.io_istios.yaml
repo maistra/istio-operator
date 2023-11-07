@@ -67,6 +67,10 @@ spec:
                 - preview
                 - remote
                 type: string
+              rawValues:
+                description: RawValues defines the non-validated values to be passed
+                  to the Helm chart when installing Istio.
+                x-kubernetes-preserve-unknown-fields: true
               values:
                 description: Values defines the values to be passed to the Helm chart
                   when installing Istio.
