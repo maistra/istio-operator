@@ -52,7 +52,7 @@ func UninstallCharts(restClientGetter genericclioptions.RESTClientGetter, charts
 
 func UpgradeOrInstallCharts(
 	ctx context.Context, restClientGetter genericclioptions.RESTClientGetter,
-	charts map[string]string, values map[string]interface{},
+	charts map[string]string, values HelmValues,
 	chartVersion, releaseNameBase, ns string, ownerReference metav1.OwnerReference, istioNamespace string,
 ) error {
 	actionConfig, err := newActionConfig(restClientGetter, ns)
@@ -80,7 +80,7 @@ func newActionConfig(restClientGetter genericclioptions.RESTClientGetter, namesp
 // upgradeOrInstallChart upgrades a chart in cluster or installs it new if it does not already exist
 func upgradeOrInstallChart(ctx context.Context, cfg *action.Configuration,
 	chartName, chartVersion, namespace, releaseName string, ownerReference metav1.OwnerReference, istioNamespace string,
-	values map[string]interface{},
+	values HelmValues,
 ) (*release.Release, error) {
 	// Helm List Action
 	listAction := action.NewList(cfg)

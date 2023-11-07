@@ -24,7 +24,6 @@ import (
 	"path"
 	"reflect"
 	"regexp"
-	"strings"
 
 	"github.com/go-logr/logr"
 	"gopkg.in/yaml.v3"
@@ -172,19 +171,19 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	return ctrl.Result{}, err
 }
 
-func applyOverrides(istio *v1alpha1.Istio, values map[string]interface{}) (map[string]interface{}, error) {
+func applyOverrides(istio *v1alpha1.Istio, values helm.HelmValues) (helm.HelmValues, error) {
 	if values == nil {
-		values = make(map[string]interface{})
+		values = helm.HelmValues{}
 	}
 
-	if err := unstructured.SetNestedField(values, istio.Namespace, strings.Split("global.istioNamespace", ".")...); err != nil {
+	if err := values.Set("global.istioNamespace", istio.Namespace); err != nil {
 		return nil, err
 	}
 
 	return values, nil
 }
 
-func (r *IstioReconciler) installHelmCharts(ctx context.Context, istio v1alpha1.Istio, values map[string]interface{}) error {
+func (r *IstioReconciler) installHelmCharts(ctx context.Context, istio v1alpha1.Istio, values helm.HelmValues) error {
 	ownerReference := metav1.OwnerReference{
 		APIVersion:         v1alpha1.GroupVersion.String(),
 		Kind:               v1alpha1.IstioKind,
@@ -254,7 +253,7 @@ func (r *IstioReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *IstioReconciler) updateStatus(ctx context.Context, log logr.Logger, istio *v1alpha1.Istio, values map[string]interface{}, err error) error {
+func (r *IstioReconciler) updateStatus(ctx context.Context, log logr.Logger, istio *v1alpha1.Istio, values helm.HelmValues, err error) error {
 	reconciledCondition := determineReconciledCondition(err)
 	readyCondition := r.determineReadyCondition(ctx, istio)
 
@@ -357,9 +356,9 @@ func (r *IstioReconciler) determineReadyCondition(ctx context.Context, istio *v1
 	}
 }
 
-func applyProfiles(profilesDir string, profiles []string, specValues map[string]interface{}) (map[string]interface{}, error) {
+func applyProfiles(profilesDir string, profiles []string, specValues helm.HelmValues) (helm.HelmValues, error) {
 	// start with an empty values map
-	values := make(map[string]interface{})
+	values := helm.HelmValues{}
 
 	// apply profiles in order, overwriting values from previous profiles
 	alreadyApplied := sets.New[string]()
@@ -385,7 +384,7 @@ func applyProfiles(profilesDir string, profiles []string, specValues map[string]
 	return values, nil
 }
 
-func getProfileValues(profilesDir string, profileName string) (map[string]interface{}, error) {
+func getProfileValues(profilesDir string, profileName string) (helm.HelmValues, error) {
 	file := path.Join(profilesDir, profileName+".yaml")
 
 	// prevent path traversal attacks
@@ -398,30 +397,26 @@ func getProfileValues(profilesDir string, profileName string) (map[string]interf
 		return nil, fmt.Errorf("failed to read profile file %v: %v", file, err)
 	}
 
-	var profile map[string]interface{}
+	var profile map[string]any
 	err = yaml.Unmarshal(fileContents, &profile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal profile YAML %s: %v", file, err)
 	}
 
-	return getValues(profile)
-}
-
-func getValues(profile map[string]interface{}) (map[string]interface{}, error) {
 	val, found, err := unstructured.NestedFieldNoCopy(profile, "spec", "values")
 	if !found || err != nil {
 		return nil, err
 	}
-	m, ok := val.(map[string]interface{})
+	m, ok := val.(map[string]any)
 	if !ok {
-		return nil, fmt.Errorf("spec.values is not a map[string]interface{}")
+		return nil, fmt.Errorf("spec.values is not a map[string]any")
 	}
 	return m, nil
 }
 
-func mergeOverwrite(base map[string]interface{}, overrides map[string]interface{}) map[string]interface{} {
+func mergeOverwrite(base map[string]any, overrides map[string]any) map[string]any {
 	if base == nil {
-		base = make(map[string]interface{}, 1)
+		base = make(map[string]any, 1)
 	}
 
 	for key, value := range overrides {
@@ -435,8 +430,8 @@ func mergeOverwrite(base map[string]interface{}, overrides map[string]interface{
 		// If both are maps, recurse so that we override only specific values in the map.
 		// If only override value is a map, overwrite base value completely.
 		// If both are values, overwrite base.
-		childOverrides, overrideValueIsMap := value.(map[string]interface{})
-		childBase, baseValueIsMap := base[key].(map[string]interface{})
+		childOverrides, overrideValueIsMap := value.(map[string]any)
+		childBase, baseValueIsMap := base[key].(map[string]any)
 		if baseValueIsMap && overrideValueIsMap {
 			base[key] = mergeOverwrite(childBase, childOverrides)
 		} else {

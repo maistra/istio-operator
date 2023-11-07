@@ -21,6 +21,7 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"maistra.io/istio-operator/pkg/helm"
 )
 
 const IstioKind = "Istio"
@@ -56,16 +57,15 @@ type IstioSpec struct {
 	RawValues json.RawMessage `json:"rawValues,omitempty"`
 }
 
-func (s *IstioSpec) GetValues() map[string]interface{} {
-	var vals map[string]interface{}
-	err := json.Unmarshal(s.Values, &vals)
-	if err != nil {
-		return nil
-	}
-	return vals
+func (s *IstioSpec) GetValues() helm.HelmValues {
+	return toHelmValues(s.Values)
 }
 
-func (s *IstioSpec) SetValues(values map[string]interface{}) error {
+func (s *IstioSpec) GetRawValues() helm.HelmValues {
+	return toHelmValues(s.RawValues)
+}
+
+func (s *IstioSpec) SetValues(values helm.HelmValues) error {
 	jsonVals, err := json.Marshal(values)
 	if err != nil {
 		return err
@@ -74,13 +74,13 @@ func (s *IstioSpec) SetValues(values map[string]interface{}) error {
 	return nil
 }
 
-func (s *IstioSpec) GetRawValues() map[string]interface{} {
-	var rawVals map[string]interface{}
-	err := json.Unmarshal(s.RawValues, &rawVals)
+func toHelmValues(rawMessage json.RawMessage) helm.HelmValues {
+	var vals helm.HelmValues
+	err := json.Unmarshal(rawMessage, &vals)
 	if err != nil {
 		return nil
 	}
-	return rawVals
+	return vals
 }
 
 // IstioStatus defines the observed state of Istio
@@ -103,13 +103,8 @@ type IstioStatus struct {
 	State IstioConditionReason `json:"state,omitempty"`
 }
 
-func (s *IstioStatus) GetAppliedValues() map[string]interface{} {
-	var vals map[string]interface{}
-	err := json.Unmarshal(s.AppliedValues, &vals)
-	if err != nil {
-		return nil
-	}
-	return vals
+func (s *IstioStatus) GetAppliedValues() helm.HelmValues {
+	return toHelmValues(s.AppliedValues)
 }
 
 // GetCondition returns the condition of the specified type
