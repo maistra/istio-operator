@@ -247,9 +247,6 @@ function patchGalley() {
             value: "false"\
 {{- end }}' "${deployment}"
 
-  sed_wrap -i -e 's/istio-ca-root-cert/"{{ .Values.global.caCertConfigMapName }}"/g' \
-      "${deployment}"
-
   sed_wrap -i -e '/base:/ i\
 gateways: {}\n' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
 
