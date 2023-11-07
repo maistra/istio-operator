@@ -16,7 +16,7 @@ func (h HelmValues) GetString(key string) (string, bool, error) {
 
 // Set sets the value of a nested field to a deep copy of the value provided.
 // Returns an error if value cannot be set because one of the nesting levels is not a map[string]any.
-func (h HelmValues) Set(key string, val interface{}) error {
+func (h HelmValues) Set(key string, val any) error {
 	return unstructured.SetNestedField(h, val, toKeys(key)...)
 }
 
