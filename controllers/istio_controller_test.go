@@ -302,7 +302,7 @@ func newCondition(conditionType v1.IstioConditionType, status bool, reason v1.Is
 	}
 }
 
-func TestApplyProfiles(t *testing.T) {
+func TestGetValuesFromProfiles(t *testing.T) {
 	const version = "my-version"
 	resourceDir := t.TempDir()
 	profilesDir := path.Join(resourceDir, version, "profiles")
@@ -331,20 +331,17 @@ spec:
 	tests := []struct {
 		name         string
 		profiles     []string
-		values       helm.HelmValues
 		expectValues helm.HelmValues
 		expectErr    bool
 	}{
 		{
 			name:         "nil default profiles",
 			profiles:     nil,
-			values:       nil,
 			expectValues: helm.HelmValues{},
 		},
 		{
 			name:     "default profile only",
 			profiles: []string{"default"},
-			values:   nil,
 			expectValues: helm.HelmValues{
 				"value1": "1-from-default",
 				"value2": "2-from-default",
@@ -353,7 +350,6 @@ spec:
 		{
 			name:     "default and overlay",
 			profiles: []string{"default", "overlay"},
-			values:   nil,
 			expectValues: helm.HelmValues{
 				"value1": "1-from-default",
 				"value2": "2-from-overlay",
@@ -365,18 +361,6 @@ spec:
 			expectValues: helm.HelmValues{
 				"value1": "1-from-custom",
 				"value2": "2-from-overlay",
-			},
-		},
-		{
-			name:     "values override profiles",
-			profiles: []string{"default", "overlay", "custom"},
-			values: helm.HelmValues{
-				"value1": "1-from-spec-values",
-				"value2": "2-from-spec-values",
-			},
-			expectValues: helm.HelmValues{
-				"value1": "1-from-spec-values",
-				"value2": "2-from-spec-values",
 			},
 		},
 		{
@@ -398,7 +382,7 @@ spec:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual, err := applyProfiles(profilesDir, tt.profiles, tt.values)
+			actual, err := getValuesFromProfiles(profilesDir, tt.profiles)
 			if (err != nil) != tt.expectErr {
 				t.Errorf("applyProfile() error = %v, expectErr %v", err, tt.expectErr)
 			}

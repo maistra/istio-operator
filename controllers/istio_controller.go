@@ -157,36 +157,36 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 }
 
 func (r *IstioReconciler) getAggregatedValues(istio v1alpha1.Istio) (helm.HelmValues, error) {
-	values := istio.Spec.GetValues()
+	// 1. start with values aggregated from default profiles and the profile in Istio.spec.profile
+	values, err := r.getValuesFromProfiles(istio)
+	if err != nil {
+		return nil, err
+	}
 
+	// 2. apply values from Istio.spec.values, overwriting values from profiles
+	values = mergeOverwrite(values, istio.Spec.GetValues())
+
+	// 3. apply values from Istio.spec.rawValues, overwriting the current values
+	values = mergeOverwrite(values, istio.Spec.GetRawValues())
+
+	// 4. override values that are not configurable by the user
+	return applyOverrides(&istio, values)
+}
+
+func (r *IstioReconciler) getValuesFromProfiles(istio v1alpha1.Istio) (helm.HelmValues, error) {
 	profiles := r.DefaultProfiles
 	if istio.Spec.Profile != "" {
 		profiles = append(profiles, istio.Spec.Profile)
 	}
 	profilesDir := path.Join(r.ResourceDirectory, istio.Spec.Version, "profiles")
 
-	var err error
-	if values, err = applyProfiles(profilesDir, profiles, values); err != nil {
-		return nil, err
-	}
-
-	values = mergeOverwrite(istio.Spec.GetRawValues(), values)
-
-	if values, err = applyOverrides(&istio, values); err != nil {
-		return nil, err
-	}
-	return values, nil
+	return getValuesFromProfiles(profilesDir, profiles)
 }
 
 func applyOverrides(istio *v1alpha1.Istio, values helm.HelmValues) (helm.HelmValues, error) {
-	if values == nil {
-		values = helm.HelmValues{}
-	}
-
 	if err := values.Set("global.istioNamespace", istio.Namespace); err != nil {
 		return nil, err
 	}
-
 	return values, nil
 }
 
@@ -363,7 +363,7 @@ func (r *IstioReconciler) determineReadyCondition(ctx context.Context, istio *v1
 	}
 }
 
-func applyProfiles(profilesDir string, profiles []string, specValues helm.HelmValues) (helm.HelmValues, error) {
+func getValuesFromProfiles(profilesDir string, profiles []string) (helm.HelmValues, error) {
 	// start with an empty values map
 	values := helm.HelmValues{}
 
@@ -384,9 +384,6 @@ func applyProfiles(profilesDir string, profiles []string, specValues helm.HelmVa
 		}
 		values = mergeOverwrite(values, profileValues)
 	}
-
-	// lastly, apply values from Istio.spec.values, overwriting values from profiles
-	values = mergeOverwrite(values, specValues)
 
 	return values, nil
 }
