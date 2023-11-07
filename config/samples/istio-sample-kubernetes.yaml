@@ -8,7 +8,7 @@ metadata:
   name: istio-sample
 spec:
   version: latest
-  values:
+  rawValues:
     pilot:
       resources:
         requests:
