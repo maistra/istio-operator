@@ -395,8 +395,8 @@ bundle-publish-nightly: OPERATOR_VERSION=$(VERSION)-nightly-$(TODAY)
 bundle-publish-nightly: TAG=$(MINOR_VERSION)-nightly-$(TODAY)
 bundle-publish-nightly: bundle-nightly bundle-publish
 
-.PHONY: patch-istio-crd ## Update Istio CRD's openAPIV3Schema values
-patch-istio-crd:
+.PHONY: patch-istio-crd
+patch-istio-crd: ## Update Istio CRD's openAPIV3Schema values
 	@hack/patch-istio-crd.sh
 
 .PHONY: opm
