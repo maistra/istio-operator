@@ -332,7 +332,7 @@ spec:
           optional: true
       - name: istio-csr-ca-configmap
         configMap:
-          name: "{{ .Values.global.caCertConfigMapName }}"
+          name: {{ .Values.global.caCertConfigMapName }}
           defaultMode: 420
           optional: true
   {{- if .Values.pilot.jwksResolverExtraRootCA }}

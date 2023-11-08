@@ -254,7 +254,7 @@ spec:
       {{- if eq .Values.global.pilotCertProvider "istiod" }}
       - name: istiod-ca-cert
         configMap:
-          name: istio-ca-root-cert
+          name: {{ .Values.global.caCertConfigMapName }}
       {{- end }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:

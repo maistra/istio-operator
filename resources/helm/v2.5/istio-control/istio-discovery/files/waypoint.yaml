@@ -207,7 +207,7 @@ spec:
               expirationSeconds: 43200
               path: istio-token
       - configMap:
-          name: istio-ca-root-cert
+          name: {{ .Values.global.caCertConfigMapName }}
         name: istiod-ca-cert
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
