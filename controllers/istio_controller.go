@@ -141,7 +141,7 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 	}
 
-	values, err := r.getAggregatedValues(istio)
+	values, err := getAggregatedValues(istio, r.DefaultProfiles, r.ResourceDirectory)
 	if err != nil {
 		err = r.updateStatus(ctx, logger, &istio, istio.Spec.GetValues(), err)
 		return ctrl.Result{}, err
@@ -156,9 +156,9 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	return ctrl.Result{}, err
 }
 
-func (r *IstioReconciler) getAggregatedValues(istio v1alpha1.Istio) (helm.HelmValues, error) {
+func getAggregatedValues(istio v1alpha1.Istio, defaultProfiles []string, resourceDir string) (helm.HelmValues, error) {
 	// 1. start with values aggregated from default profiles and the profile in Istio.spec.profile
-	values, err := getValuesFromProfiles(r.getProfilesDir(istio), r.getProfiles(istio))
+	values, err := getValuesFromProfiles(getProfilesDir(resourceDir, istio), getProfiles(istio, defaultProfiles))
 	if err != nil {
 		return nil, err
 	}
@@ -173,15 +173,15 @@ func (r *IstioReconciler) getAggregatedValues(istio v1alpha1.Istio) (helm.HelmVa
 	return applyOverrides(&istio, values)
 }
 
-func (r *IstioReconciler) getProfiles(istio v1alpha1.Istio) []string {
+func getProfiles(istio v1alpha1.Istio, defaultProfiles []string) []string {
 	if istio.Spec.Profile == "" {
-		return r.DefaultProfiles
+		return defaultProfiles
 	}
-	return append(r.DefaultProfiles, istio.Spec.Profile)
+	return append(defaultProfiles, istio.Spec.Profile)
 }
 
-func (r *IstioReconciler) getProfilesDir(istio v1alpha1.Istio) string {
-	return path.Join(r.ResourceDirectory, istio.Spec.Version, "profiles")
+func getProfilesDir(resourceDir string, istio v1alpha1.Istio) string {
+	return path.Join(resourceDir, istio.Spec.Version, "profiles")
 }
 
 func applyOverrides(istio *v1alpha1.Istio, values helm.HelmValues) (helm.HelmValues, error) {
