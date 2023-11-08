@@ -2,9 +2,11 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
+	"reflect"
 	"testing"
 	"time"
 
@@ -300,6 +302,84 @@ func newCondition(conditionType v1.IstioConditionType, status bool, reason v1.Is
 		Status: st,
 		Reason: reason,
 	}
+}
+
+// TestGetAggregatedValues tests that the values are sourced from the following sources
+// (with each source overriding the values from the previous sources):
+//   - default profile(s)
+//   - profile selected in Istio.spec.profile
+//   - Istio.spec.values
+//   - Istio.spec.rawValues
+//   - other (non-value) fields in the Istio resource (e.g. the value global.istioNamespace is set from Istio.metadata.namespace)
+func TestGetAggregatedValues(t *testing.T) {
+	const version = "my-version"
+	resourceDir := t.TempDir()
+	profilesDir := path.Join(resourceDir, version, "profiles")
+	Must(t, os.MkdirAll(profilesDir, 0o755))
+
+	Must(t, os.WriteFile(path.Join(profilesDir, "default.yaml"), []byte((`
+apiVersion: operator.istio.io/v1alpha1
+kind: Istio
+spec:
+  values:
+    key1: from-default-profile
+    key2: from-default-profile  # this gets overridden in my-profile
+    key3: from-default-profile  # this gets overridden in my-profile and values
+    key4: from-default-profile  # this gets overridden in my-profile, values, and rawValues`)), 0o644))
+
+	Must(t, os.WriteFile(path.Join(profilesDir, "my-profile.yaml"), []byte((`
+apiVersion: operator.istio.io/v1alpha1
+kind: Istio
+spec:
+  values:
+    key2: overridden-in-my-profile
+    key3: overridden-in-my-profile  # this gets overridden in values
+    key4: overridden-in-my-profile  # this gets overridden in rawValues`)), 0o644))
+
+	istio := v1.Istio{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-istio",
+			Namespace: "my-istio-namespace",
+		},
+		Spec: v1.IstioSpec{
+			Version: version,
+			Profile: "my-profile",
+			Values: toJSON(helm.HelmValues{
+				"key3": "overridden-in-values",
+				"key4": "overridden-in-values", // this gets overridden in rawValues
+			}),
+			RawValues: toJSON(helm.HelmValues{
+				"key4": "overridden-in-raw-values",
+			}),
+		},
+	}
+
+	result, err := getAggregatedValues(istio, []string{"default"}, resourceDir)
+	if err != nil {
+		t.Errorf("Expected no error, but got an error: %v", err)
+	}
+
+	expected := helm.HelmValues{
+		"key1": "from-default-profile",
+		"key2": "overridden-in-my-profile",
+		"key3": "overridden-in-values",
+		"key4": "overridden-in-raw-values",
+		"global": map[string]any{
+			"istioNamespace": "my-istio-namespace", // this value is always added/overridden based on Istio.metadata.namespace
+		},
+	}
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("Result does not match the expected HelmValues.\nExpected: %v\nActual: %v", expected, result)
+	}
+}
+
+func toJSON(values helm.HelmValues) json.RawMessage {
+	jsonVals, err := json.Marshal(values)
+	if err != nil {
+		panic(err)
+	}
+	return jsonVals
 }
 
 func TestGetValuesFromProfiles(t *testing.T) {
