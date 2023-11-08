@@ -2,9 +2,11 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
+	"reflect"
 	"testing"
 	"time"
 
@@ -302,7 +304,85 @@ func newCondition(conditionType v1.IstioConditionType, status bool, reason v1.Is
 	}
 }
 
-func TestApplyProfiles(t *testing.T) {
+// TestGetAggregatedValues tests that the values are sourced from the following sources
+// (with each source overriding the values from the previous sources):
+//   - default profile(s)
+//   - profile selected in Istio.spec.profile
+//   - Istio.spec.values
+//   - Istio.spec.rawValues
+//   - other (non-value) fields in the Istio resource (e.g. the value global.istioNamespace is set from Istio.metadata.namespace)
+func TestGetAggregatedValues(t *testing.T) {
+	const version = "my-version"
+	resourceDir := t.TempDir()
+	profilesDir := path.Join(resourceDir, version, "profiles")
+	Must(t, os.MkdirAll(profilesDir, 0o755))
+
+	Must(t, os.WriteFile(path.Join(profilesDir, "default.yaml"), []byte((`
+apiVersion: operator.istio.io/v1alpha1
+kind: Istio
+spec:
+  values:
+    key1: from-default-profile
+    key2: from-default-profile  # this gets overridden in my-profile
+    key3: from-default-profile  # this gets overridden in my-profile and values
+    key4: from-default-profile  # this gets overridden in my-profile, values, and rawValues`)), 0o644))
+
+	Must(t, os.WriteFile(path.Join(profilesDir, "my-profile.yaml"), []byte((`
+apiVersion: operator.istio.io/v1alpha1
+kind: Istio
+spec:
+  values:
+    key2: overridden-in-my-profile
+    key3: overridden-in-my-profile  # this gets overridden in values
+    key4: overridden-in-my-profile  # this gets overridden in rawValues`)), 0o644))
+
+	istio := v1.Istio{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-istio",
+			Namespace: "my-istio-namespace",
+		},
+		Spec: v1.IstioSpec{
+			Version: version,
+			Profile: "my-profile",
+			Values: toJSON(helm.HelmValues{
+				"key3": "overridden-in-values",
+				"key4": "overridden-in-values", // this gets overridden in rawValues
+			}),
+			RawValues: toJSON(helm.HelmValues{
+				"key4": "overridden-in-raw-values",
+			}),
+		},
+	}
+
+	result, err := getAggregatedValues(istio, []string{"default"}, resourceDir)
+	if err != nil {
+		t.Errorf("Expected no error, but got an error: %v", err)
+	}
+
+	expected := helm.HelmValues{
+		"key1": "from-default-profile",
+		"key2": "overridden-in-my-profile",
+		"key3": "overridden-in-values",
+		"key4": "overridden-in-raw-values",
+		"global": map[string]any{
+			"istioNamespace": "my-istio-namespace", // this value is always added/overridden based on Istio.metadata.namespace
+		},
+	}
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("Result does not match the expected HelmValues.\nExpected: %v\nActual: %v", expected, result)
+	}
+}
+
+func toJSON(values helm.HelmValues) json.RawMessage {
+	jsonVals, err := json.Marshal(values)
+	if err != nil {
+		panic(err)
+	}
+	return jsonVals
+}
+
+func TestGetValuesFromProfiles(t *testing.T) {
 	const version = "my-version"
 	resourceDir := t.TempDir()
 	profilesDir := path.Join(resourceDir, version, "profiles")
@@ -331,20 +411,17 @@ spec:
 	tests := []struct {
 		name         string
 		profiles     []string
-		values       helm.HelmValues
 		expectValues helm.HelmValues
 		expectErr    bool
 	}{
 		{
 			name:         "nil default profiles",
 			profiles:     nil,
-			values:       nil,
 			expectValues: helm.HelmValues{},
 		},
 		{
 			name:     "default profile only",
 			profiles: []string{"default"},
-			values:   nil,
 			expectValues: helm.HelmValues{
 				"value1": "1-from-default",
 				"value2": "2-from-default",
@@ -353,7 +430,6 @@ spec:
 		{
 			name:     "default and overlay",
 			profiles: []string{"default", "overlay"},
-			values:   nil,
 			expectValues: helm.HelmValues{
 				"value1": "1-from-default",
 				"value2": "2-from-overlay",
@@ -365,18 +441,6 @@ spec:
 			expectValues: helm.HelmValues{
 				"value1": "1-from-custom",
 				"value2": "2-from-overlay",
-			},
-		},
-		{
-			name:     "values override profiles",
-			profiles: []string{"default", "overlay", "custom"},
-			values: helm.HelmValues{
-				"value1": "1-from-spec-values",
-				"value2": "2-from-spec-values",
-			},
-			expectValues: helm.HelmValues{
-				"value1": "1-from-spec-values",
-				"value2": "2-from-spec-values",
 			},
 		},
 		{
@@ -398,7 +462,7 @@ spec:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual, err := applyProfiles(profilesDir, tt.profiles, tt.values)
+			actual, err := getValuesFromProfiles(profilesDir, tt.profiles)
 			if (err != nil) != tt.expectErr {
 				t.Errorf("applyProfile() error = %v, expectErr %v", err, tt.expectErr)
 			}

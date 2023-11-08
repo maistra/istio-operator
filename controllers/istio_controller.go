@@ -141,23 +141,8 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 	}
 
-	values := istio.Spec.GetValues()
-
-	profiles := r.DefaultProfiles
-	if istio.Spec.Profile != "" {
-		profiles = append(profiles, istio.Spec.Profile)
-	}
-	profilesDir := path.Join(r.ResourceDirectory, istio.Spec.Version, "profiles")
-
-	var err error
-	if values, err = applyProfiles(profilesDir, profiles, values); err != nil {
-		err = r.updateStatus(ctx, logger, &istio, istio.Spec.GetValues(), err)
-		return ctrl.Result{}, err
-	}
-
-	values = mergeOverwrite(istio.Spec.GetRawValues(), values)
-
-	if values, err = applyOverrides(&istio, values); err != nil {
+	values, err := getAggregatedValues(istio, r.DefaultProfiles, r.ResourceDirectory)
+	if err != nil {
 		err = r.updateStatus(ctx, logger, &istio, istio.Spec.GetValues(), err)
 		return ctrl.Result{}, err
 	}
@@ -171,15 +156,38 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	return ctrl.Result{}, err
 }
 
-func applyOverrides(istio *v1alpha1.Istio, values helm.HelmValues) (helm.HelmValues, error) {
-	if values == nil {
-		values = helm.HelmValues{}
-	}
-
-	if err := values.Set("global.istioNamespace", istio.Namespace); err != nil {
+func getAggregatedValues(istio v1alpha1.Istio, defaultProfiles []string, resourceDir string) (helm.HelmValues, error) {
+	// 1. start with values aggregated from default profiles and the profile in Istio.spec.profile
+	values, err := getValuesFromProfiles(getProfilesDir(resourceDir, istio), getProfiles(istio, defaultProfiles))
+	if err != nil {
 		return nil, err
 	}
 
+	// 2. apply values from Istio.spec.values, overwriting values from profiles
+	values = mergeOverwrite(values, istio.Spec.GetValues())
+
+	// 3. apply values from Istio.spec.rawValues, overwriting the current values
+	values = mergeOverwrite(values, istio.Spec.GetRawValues())
+
+	// 4. override values that are not configurable by the user
+	return applyOverrides(&istio, values)
+}
+
+func getProfiles(istio v1alpha1.Istio, defaultProfiles []string) []string {
+	if istio.Spec.Profile == "" {
+		return defaultProfiles
+	}
+	return append(defaultProfiles, istio.Spec.Profile)
+}
+
+func getProfilesDir(resourceDir string, istio v1alpha1.Istio) string {
+	return path.Join(resourceDir, istio.Spec.Version, "profiles")
+}
+
+func applyOverrides(istio *v1alpha1.Istio, values helm.HelmValues) (helm.HelmValues, error) {
+	if err := values.Set("global.istioNamespace", istio.Namespace); err != nil {
+		return nil, err
+	}
 	return values, nil
 }
 
@@ -356,7 +364,7 @@ func (r *IstioReconciler) determineReadyCondition(ctx context.Context, istio *v1
 	}
 }
 
-func applyProfiles(profilesDir string, profiles []string, specValues helm.HelmValues) (helm.HelmValues, error) {
+func getValuesFromProfiles(profilesDir string, profiles []string) (helm.HelmValues, error) {
 	// start with an empty values map
 	values := helm.HelmValues{}
 
@@ -371,27 +379,23 @@ func applyProfiles(profilesDir string, profiles []string, specValues helm.HelmVa
 		}
 		alreadyApplied.Insert(profile)
 
-		profileValues, err := getProfileValues(profilesDir, profile)
+		file := path.Join(profilesDir, profile+".yaml")
+		// prevent path traversal attacks
+		if path.Dir(file) != profilesDir {
+			return nil, fmt.Errorf("invalid profile name %s", profile)
+		}
+
+		profileValues, err := getProfileValues(file)
 		if err != nil {
 			return nil, err
 		}
 		values = mergeOverwrite(values, profileValues)
 	}
 
-	// lastly, apply values from Istio.spec.values, overwriting values from profiles
-	values = mergeOverwrite(values, specValues)
-
 	return values, nil
 }
 
-func getProfileValues(profilesDir string, profileName string) (helm.HelmValues, error) {
-	file := path.Join(profilesDir, profileName+".yaml")
-
-	// prevent path traversal attacks
-	if path.Dir(file) != path.Join(profilesDir) {
-		return nil, fmt.Errorf("invalid profile name %s", profileName)
-	}
-
+func getProfileValues(file string) (helm.HelmValues, error) {
 	fileContents, err := os.ReadFile(file)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read profile file %v: %v", file, err)
