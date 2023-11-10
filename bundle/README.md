@@ -256,3 +256,18 @@ To install Prometheus you will need to follow this steps:
         ```sh
         $ oc get route kiali -o jsonpath='{.spec.host}' -n istio-system
         ```
+## Deleting Istio
+
+1. In the OpenShift web console, click **Operators** -> **Installed Operators**.
+
+1. Click **Istio** in the **Provided APIs** column.
+
+1. Click the Options menu, and select **Delete Istio**. 
+
+1. At the prompt to confirm the action, click **Delete**.
+
+1. In the OpenShift web console, click **Operators** -> **Installed Operators**.
+
+1. Click the Options menu, and select **Uninstall Operator**. 
+
+1. At the prompt to confirm the action, click **Uninstall**.
