@@ -78,7 +78,10 @@ var _ = Describe("IstioController", Ordered, func() {
 				},
 				Spec: v1.IstioSpec{
 					Version: istioVersion,
-					Values:  []byte(`{"pilot":{"image":"` + pilotImage + `"}}`),
+					Values: []byte(`{
+						"pilot":{"image":"` + pilotImage + `"},
+						"istio_cni":{"enabled":true}
+					}`),
 				},
 			}
 

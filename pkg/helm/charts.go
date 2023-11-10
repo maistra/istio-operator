@@ -36,13 +36,14 @@ var (
 	ResourceDirectory, _ = filepath.Abs("resources")
 )
 
-func UninstallCharts(restClientGetter genericclioptions.RESTClientGetter, charts map[string]string, releaseNameBase, ns string) error {
+func UninstallCharts(restClientGetter genericclioptions.RESTClientGetter, charts []string, releaseNameBase, ns string) error {
 	actionConfig, err := newActionConfig(restClientGetter, ns)
 	if err != nil {
 		return err
 	}
-	for _, suffix := range charts {
-		_, err = uninstallChart(actionConfig, ns, releaseNameBase+suffix)
+	for _, chartName := range charts {
+		releaseName := fmt.Sprintf("%s-%s", releaseNameBase, chartName)
+		_, err = uninstallChart(actionConfig, ns, releaseName)
 		if err != nil {
 			return err
 		}
@@ -52,15 +53,16 @@ func UninstallCharts(restClientGetter genericclioptions.RESTClientGetter, charts
 
 func UpgradeOrInstallCharts(
 	ctx context.Context, restClientGetter genericclioptions.RESTClientGetter,
-	charts map[string]string, values HelmValues,
+	charts []string, values HelmValues,
 	chartVersion, releaseNameBase, ns string, ownerReference metav1.OwnerReference, istioNamespace string,
 ) error {
 	actionConfig, err := newActionConfig(restClientGetter, ns)
 	if err != nil {
 		return err
 	}
-	for chartName, suffix := range charts {
-		_, err = upgradeOrInstallChart(ctx, actionConfig, chartName, chartVersion, ns, releaseNameBase+suffix, ownerReference, istioNamespace, values)
+	for _, chartName := range charts {
+		releaseName := fmt.Sprintf("%s-%s", releaseNameBase, chartName)
+		_, err = upgradeOrInstallChart(ctx, actionConfig, chartName, chartVersion, ns, releaseName, ownerReference, istioNamespace, values)
 		if err != nil {
 			return err
 		}
