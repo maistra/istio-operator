@@ -75,16 +75,8 @@ func NewIstioReconciler(client client.Client, scheme *runtime.Scheme, restConfig
 	}
 }
 
-// charts to deploy in the operator namespace (and their suffixes)
-var systemCharts = map[string]string{
-	"cni": "-cni",
-}
-
-// charts to deploy in the istio namespace (and their suffixes)
-var userCharts = map[string]string{
-	"base":   "-base",
-	"istiod": "-istiod",
-}
+// charts to deploy in the istio namespace
+var userCharts = []string{"base", "istiod"}
 
 // +kubebuilder:rbac:groups=operator.istio.io,resources=istios,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.istio.io,resources=istios/status,verbs=get;update;patch
@@ -201,9 +193,13 @@ func (r *IstioReconciler) installHelmCharts(ctx context.Context, istio v1alpha1.
 		BlockOwnerDeletion: ptr.Of(true),
 	}
 
-	if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, systemCharts, values,
-		istio.Spec.Version, istio.Name, kube.GetOperatorNamespace(), ownerReference, istio.Namespace); err != nil {
+	if cniEnabled, err := isCNIEnabled(values); err != nil {
 		return err
+	} else if cniEnabled {
+		if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, []string{"cni"}, values,
+			istio.Spec.Version, istio.Name, kube.GetOperatorNamespace(), ownerReference, istio.Namespace); err != nil {
+			return err
+		}
 	}
 
 	if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, userCharts, values,
@@ -214,7 +210,7 @@ func (r *IstioReconciler) installHelmCharts(ctx context.Context, istio v1alpha1.
 }
 
 func (r *IstioReconciler) uninstallHelmCharts(istio *v1alpha1.Istio) error {
-	if err := helm.UninstallCharts(r.RestClientGetter, systemCharts, istio.Name, kube.GetOperatorNamespace()); err != nil {
+	if err := helm.UninstallCharts(r.RestClientGetter, []string{"cni"}, istio.Name, kube.GetOperatorNamespace()); err != nil {
 		return err
 	}
 
@@ -222,6 +218,11 @@ func (r *IstioReconciler) uninstallHelmCharts(istio *v1alpha1.Istio) error {
 		return err
 	}
 	return nil
+}
+
+func isCNIEnabled(values helm.HelmValues) (bool, error) {
+	enabled, _, err := values.GetBool("istio_cni.enabled")
+	return enabled, err
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -263,7 +264,10 @@ func (r *IstioReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *IstioReconciler) updateStatus(ctx context.Context, log logr.Logger, istio *v1alpha1.Istio, values helm.HelmValues, err error) error {
 	reconciledCondition := determineReconciledCondition(err)
-	readyCondition := r.determineReadyCondition(ctx, istio)
+	readyCondition, err := r.determineReadyCondition(ctx, istio)
+	if err != nil {
+		return err
+	}
 
 	status := istio.Status.DeepCopy()
 	status.ObservedGeneration = istio.Generation
@@ -320,7 +324,7 @@ func determineReconciledCondition(err error) v1alpha1.IstioCondition {
 	}
 }
 
-func (r *IstioReconciler) determineReadyCondition(ctx context.Context, istio *v1alpha1.Istio) v1alpha1.IstioCondition {
+func (r *IstioReconciler) determineReadyCondition(ctx context.Context, istio *v1alpha1.Istio) (v1alpha1.IstioCondition, error) {
 	notReady := func(reason v1alpha1.IstioConditionReason, message string) v1alpha1.IstioCondition {
 		return v1alpha1.IstioCondition{
 			Type:    v1alpha1.ConditionTypeReady,
@@ -333,35 +337,39 @@ func (r *IstioReconciler) determineReadyCondition(ctx context.Context, istio *v1
 	istiod := appsv1.Deployment{}
 	if err := r.Client.Get(ctx, istiodDeploymentKey(istio), &istiod); err != nil {
 		if errors.IsNotFound(err) {
-			return notReady(v1alpha1.ConditionReasonIstiodNotReady, "istiod Deployment not found")
+			return notReady(v1alpha1.ConditionReasonIstiodNotReady, "istiod Deployment not found"), nil
 		}
-		return notReady(v1alpha1.ConditionReasonReconcileError, fmt.Sprintf("failed to get readiness: %v", err))
+		return notReady(v1alpha1.ConditionReasonReconcileError, fmt.Sprintf("failed to get readiness: %v", err)), nil
 	}
 
 	if istiod.Status.Replicas == 0 {
-		return notReady(v1alpha1.ConditionReasonIstiodNotReady, "istiod Deployment is scaled to zero replicas")
+		return notReady(v1alpha1.ConditionReasonIstiodNotReady, "istiod Deployment is scaled to zero replicas"), nil
 	} else if istiod.Status.ReadyReplicas < istiod.Status.Replicas {
-		return notReady(v1alpha1.ConditionReasonIstiodNotReady, "not all istiod pods are ready")
+		return notReady(v1alpha1.ConditionReasonIstiodNotReady, "not all istiod pods are ready"), nil
 	}
 
-	cni := appsv1.DaemonSet{}
-	if err := r.Client.Get(ctx, cniDaemonSetKey(), &cni); err != nil {
-		if errors.IsNotFound(err) {
-			return notReady(v1alpha1.ConditionReasonCNINotReady, "istio-cni-node DaemonSet not found")
+	if cniEnabled, err := isCNIEnabled(istio.Spec.GetValues()); err != nil {
+		return v1alpha1.IstioCondition{}, err
+	} else if cniEnabled {
+		cni := appsv1.DaemonSet{}
+		if err := r.Client.Get(ctx, cniDaemonSetKey(), &cni); err != nil {
+			if errors.IsNotFound(err) {
+				return notReady(v1alpha1.ConditionReasonCNINotReady, "istio-cni-node DaemonSet not found"), nil
+			}
+			return notReady(v1alpha1.ConditionReasonReconcileError, fmt.Sprintf("failed to get readiness: %v", err)), nil
 		}
-		return notReady(v1alpha1.ConditionReasonReconcileError, fmt.Sprintf("failed to get readiness: %v", err))
-	}
 
-	if cni.Status.CurrentNumberScheduled == 0 {
-		return notReady(v1alpha1.ConditionReasonCNINotReady, "no istio-cni-node pods are currently scheduled")
-	} else if cni.Status.NumberReady < cni.Status.CurrentNumberScheduled {
-		return notReady(v1alpha1.ConditionReasonCNINotReady, "not all istio-cni-node pods are ready")
+		if cni.Status.CurrentNumberScheduled == 0 {
+			return notReady(v1alpha1.ConditionReasonCNINotReady, "no istio-cni-node pods are currently scheduled"), nil
+		} else if cni.Status.NumberReady < cni.Status.CurrentNumberScheduled {
+			return notReady(v1alpha1.ConditionReasonCNINotReady, "not all istio-cni-node pods are ready"), nil
+		}
 	}
 
 	return v1alpha1.IstioCondition{
 		Type:   v1alpha1.ConditionTypeReady,
 		Status: metav1.ConditionTrue,
-	}
+	}, nil
 }
 
 func getValuesFromProfiles(profilesDir string, profiles []string) (helm.HelmValues, error) {
