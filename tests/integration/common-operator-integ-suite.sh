@@ -178,7 +178,7 @@ main_test() {
     echo "Make sure only istiod got deployed and nothing else"
     res=$(${COMMAND}  -n "${CONTROL_PLANE_NS}" get deploy -o json | jq -j '.items | length')
     if [ "${res}" != "1" ]; then
-      echo "Expected just istiod deployment, got:"
+      echo "FAIL: Expected just istiod deployment, got:"
       ${COMMAND}  -n "${CONTROL_PLANE_NS}" get deploy
       exit 1
     fi
@@ -190,7 +190,8 @@ main_test() {
     else
       echo "Check that CNI daemonset was not deployed"
       if ${COMMAND} get ds/istio-cni-node -n "${NAMESPACE}" > /dev/null 2>&1; then
-        echo "Expected CNI daemonset to not exist, but it does"
+        echo "FAIL: Expected CNI daemonset to not exist, but it does:"
+        ${COMMAND} get ds/istio-cni-node -n "${NAMESPACE}"
         exit 1
       fi
     fi
@@ -200,7 +201,7 @@ main_test() {
 
     echo "Check that Istio has been deleted"
     if ${COMMAND} get deployment "istiod" -n "${CONTROL_PLANE_NS}" &>/dev/null; then
-      echo "Expected istiod deployment to have been deleted, but it still exists:"
+      echo "FAIL: Expected istiod deployment to have been deleted, but it still exists:"
       ${COMMAND} -n "${CONTROL_PLANE_NS}" get deploy
       exit 1
     fi
