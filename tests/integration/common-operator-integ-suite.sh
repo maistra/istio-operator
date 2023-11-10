@@ -183,9 +183,17 @@ main_test() {
       exit 1
     fi
 
-    echo "Check that CNI deamonset ready are running"
-    timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
+    if [ "${OCP}" == "true" ]; then
+      echo "Check that CNI deamonset is ready"
+      timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
         "until ${COMMAND}  rollout status ds/istio-cni-node -n ${NAMESPACE}; do sleep 5; done"
+    else
+      echo "Check that CNI daemonset was not deployed"
+      if ${COMMAND} get ds/istio-cni-node -n "${NAMESPACE}" > /dev/null 2>&1; then
+        echo "Expected CNI daemonset to not exist, but it does"
+        exit 1
+      fi
+    fi
 
     echo "Undeploy Istio"
     ${COMMAND} delete -f "${ISTIO_MANIFEST}" -n "${CONTROL_PLANE_NS}"
