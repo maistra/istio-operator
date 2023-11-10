@@ -82,8 +82,7 @@ var _ = Describe("IstioController", Ordered, func() {
 				},
 			}
 
-			err = k8sClient.Create(ctx, istio)
-			Expect(err).NotTo(HaveOccurred())
+			ExpectSuccess(k8sClient.Create(ctx, istio))
 		}
 
 		By("Checking if the resource was successfully created")
@@ -102,18 +101,16 @@ var _ = Describe("IstioController", Ordered, func() {
 
 		By("Checking if the status is updated")
 		Eventually(func() int64 {
-			err := k8sClient.Get(ctx, istioObjectKey, istio)
-			Expect(err).NotTo(HaveOccurred())
+			ExpectSuccess(k8sClient.Get(ctx, istioObjectKey, istio))
 			return istio.Status.ObservedGeneration
 		}, time.Minute, time.Second).Should(Equal(istio.ObjectMeta.Generation))
 
 		By("Checking if the appliedValues are written properly")
 		Eventually(func() string {
-			err := k8sClient.Get(ctx, istioObjectKey, istio)
-			Expect(err).NotTo(HaveOccurred())
+			ExpectSuccess(k8sClient.Get(ctx, istioObjectKey, istio))
 
 			imageName, _, err := istio.Status.GetAppliedValues().GetString("pilot.image")
-			Expect(err).NotTo(HaveOccurred())
+			ExpectSuccess(err)
 			return imageName
 		}, time.Minute, time.Second).Should(Equal(pilotImage))
 	})
@@ -122,40 +119,32 @@ var _ = Describe("IstioController", Ordered, func() {
 		It("marks updates the status of the istio resource", func() {
 			By("setting the Ready condition status to true when both are ready", func() {
 				istiodDeployment := &appsv1.Deployment{}
-				err := k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
-				Expect(err).NotTo(HaveOccurred())
+				ExpectSuccess(k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment))
 				istiodDeployment.Status.Replicas = 1
 				istiodDeployment.Status.ReadyReplicas = 1
-				err = k8sClient.Status().Update(ctx, istiodDeployment)
-				Expect(err).NotTo(HaveOccurred())
+				ExpectSuccess(k8sClient.Status().Update(ctx, istiodDeployment))
 
 				cniDaemonSet := &appsv1.DaemonSet{}
-				err = k8sClient.Get(ctx, cniObjectKey, cniDaemonSet)
-				Expect(err).NotTo(HaveOccurred())
+				ExpectSuccess(k8sClient.Get(ctx, cniObjectKey, cniDaemonSet))
 				cniDaemonSet.Status.CurrentNumberScheduled = 3
 				cniDaemonSet.Status.NumberReady = 3
-				err = k8sClient.Status().Update(ctx, cniDaemonSet)
-				Expect(err).NotTo(HaveOccurred())
+				ExpectSuccess(k8sClient.Status().Update(ctx, cniDaemonSet))
 
 				Eventually(func() metav1.ConditionStatus {
-					err := k8sClient.Get(ctx, istioObjectKey, istio)
-					Expect(err).NotTo(HaveOccurred())
+					ExpectSuccess(k8sClient.Get(ctx, istioObjectKey, istio))
 					return istio.Status.GetCondition(v1.ConditionTypeReady).Status
 				}, time.Minute, time.Second).Should(Equal(metav1.ConditionTrue))
 			})
 
 			By("setting the Ready condition status to false when istiod isn't ready", func() {
 				istiodDeployment := &appsv1.Deployment{}
-				err := k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
-				Expect(err).NotTo(HaveOccurred())
+				ExpectSuccess(k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment))
 
 				istiodDeployment.Status.ReadyReplicas = 0
-				err = k8sClient.Status().Update(ctx, istiodDeployment)
-				Expect(err).NotTo(HaveOccurred())
+				ExpectSuccess(k8sClient.Status().Update(ctx, istiodDeployment))
 
 				Eventually(func() metav1.ConditionStatus {
-					err := k8sClient.Get(ctx, istioObjectKey, istio)
-					Expect(err).NotTo(HaveOccurred())
+					ExpectSuccess(k8sClient.Get(ctx, istioObjectKey, istio))
 					return istio.Status.GetCondition(v1.ConditionTypeReady).Status
 				}, time.Minute, time.Second).Should(Equal(metav1.ConditionFalse))
 			})
@@ -170,8 +159,7 @@ var _ = Describe("IstioController", Ordered, func() {
 					Namespace: istioNamespace,
 				},
 			}
-			err := k8sClient.Delete(ctx, istiodDeployment, client.PropagationPolicy(metav1.DeletePropagationForeground))
-			Expect(err).NotTo(HaveOccurred())
+			ExpectSuccess(k8sClient.Delete(ctx, istiodDeployment, client.PropagationPolicy(metav1.DeletePropagationForeground)))
 
 			Eventually(func() error {
 				return k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
@@ -189,8 +177,7 @@ var _ = Describe("IstioController", Ordered, func() {
 					Name: webhookObjectKey.Name,
 				},
 			}
-			err := k8sClient.Delete(ctx, webhook, client.PropagationPolicy(metav1.DeletePropagationForeground))
-			Expect(err).NotTo(HaveOccurred())
+			ExpectSuccess(k8sClient.Delete(ctx, webhook, client.PropagationPolicy(metav1.DeletePropagationForeground)))
 
 			Eventually(func() error {
 				err := k8sClient.Get(ctx, webhookObjectKey, webhook)
@@ -202,17 +189,14 @@ var _ = Describe("IstioController", Ordered, func() {
 	When("an owned namespaced resource is modified", func() {
 		It("reverts the owned resource", func() {
 			istiodDeployment := &appsv1.Deployment{}
-			err := k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
-			Expect(err).NotTo(HaveOccurred())
+			ExpectSuccess(k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment))
 
 			originalImage := istiodDeployment.Spec.Template.Spec.Containers[0].Image
 			istiodDeployment.Spec.Template.Spec.Containers[0].Image = "user-supplied-image"
-			err = k8sClient.Update(ctx, istiodDeployment)
-			Expect(err).NotTo(HaveOccurred())
+			ExpectSuccess(k8sClient.Update(ctx, istiodDeployment))
 
 			Eventually(func() string {
-				err := k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment)
-				Expect(err).NotTo(HaveOccurred())
+				ExpectSuccess(k8sClient.Get(ctx, deploymentObjectKey, istiodDeployment))
 				return istiodDeployment.Spec.Template.Spec.Containers[0].Image
 			}, time.Minute, time.Second).Should(Equal(originalImage))
 		})
@@ -221,17 +205,14 @@ var _ = Describe("IstioController", Ordered, func() {
 	When("an owned cluster-scoped resource is modified", func() {
 		It("reverts the owned resource", func() {
 			webhook := &admissionv1.MutatingWebhookConfiguration{}
-			err := k8sClient.Get(ctx, webhookObjectKey, webhook)
-			Expect(err).NotTo(HaveOccurred())
+			ExpectSuccess(k8sClient.Get(ctx, webhookObjectKey, webhook))
 
 			origWebhooks := webhook.Webhooks
 			webhook.Webhooks = []admissionv1.MutatingWebhook{}
-			err = k8sClient.Update(ctx, webhook)
-			Expect(err).NotTo(HaveOccurred())
+			ExpectSuccess(k8sClient.Update(ctx, webhook))
 
 			Eventually(func() []admissionv1.MutatingWebhook {
-				err := k8sClient.Get(ctx, webhookObjectKey, webhook)
-				Expect(err).NotTo(HaveOccurred())
+				ExpectSuccess(k8sClient.Get(ctx, webhookObjectKey, webhook))
 				return webhook.Webhooks
 			}, time.Minute, time.Second).Should(Equal(origWebhooks))
 		})
@@ -590,4 +571,8 @@ func Must(t *testing.T, err error) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func ExpectSuccess(err error) {
+	Expect(err).NotTo(HaveOccurred())
 }
