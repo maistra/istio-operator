@@ -284,7 +284,7 @@ gen-charts: ## Pull charts from maistra/istio repository
 	@hack/copy-crds.sh "resources/$$(yq eval 'keys | .[0]' versions.yaml)/charts"
 
 .PHONY: gen ## Generate everything
-gen: controller-gen gen-charts gen-manifests gen-code bundle
+gen: controller-gen gen-charts gen-manifests gen-code patch-istio-crd bundle
 
 .PHONY: gen-check
 gen-check: gen restore-manifest-dates check-clean-repo ## Verifies that changes in generated resources have been checked in
@@ -394,6 +394,10 @@ bundle-nightly: bundle
 bundle-publish-nightly: OPERATOR_VERSION=$(VERSION)-nightly-$(TODAY)
 bundle-publish-nightly: TAG=$(MINOR_VERSION)-nightly-$(TODAY)
 bundle-publish-nightly: bundle-nightly bundle-publish
+
+.PHONY: patch-istio-crd
+patch-istio-crd: ## Update Istio CRD's openAPIV3Schema values
+	@hack/patch-istio-crd.sh
 
 .PHONY: opm $(OPM)
 opm: $(OPM)
