@@ -1,10 +1,6 @@
 apiVersion: operator.istio.io/v1alpha1
 kind: Istio
 metadata:
-  labels:
-    app.kubernetes.io/name: istio
-    app.kubernetes.io/instance: istio-sample
-    app.kubernetes.io/managed-by: kustomize
   name: istio-sample
 spec:
   version: latest
