@@ -47,7 +47,7 @@ var _ = Describe("IstioController", Ordered, func() {
 
 	istioObjectKey := client.ObjectKey{Name: istioName, Namespace: istioNamespace}
 	deploymentObjectKey := client.ObjectKey{Name: "istiod", Namespace: istioNamespace}
-	cniObjectKey := client.ObjectKey{Name: "istio-cni-node", Namespace: operatorNamespace}
+	cniObjectKey := client.ObjectKey{Name: "istio-cni-node", Namespace: istioNamespace}
 	webhookObjectKey := client.ObjectKey{Name: "istio-sidecar-injector-" + istioNamespace}
 
 	common.Config = testConfig
