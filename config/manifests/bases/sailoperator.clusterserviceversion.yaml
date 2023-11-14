@@ -37,6 +37,7 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
         - urn:alm:descriptor:com.tectonic.ui:select:ambient
+        - urn:alm:descriptor:com.tectonic.ui:select:default
         - urn:alm:descriptor:com.tectonic.ui:select:demo
         - urn:alm:descriptor:com.tectonic.ui:select:empty
         - urn:alm:descriptor:com.tectonic.ui:select:external
