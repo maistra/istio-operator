@@ -140,7 +140,7 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	logger.Info("Installing components", "values", values)
-	err = r.installHelmCharts(ctx, istio, values)
+	err = r.installHelmCharts(ctx, &istio, values)
 
 	logger.Info("Reconciliation done. Updating status.")
 	err = r.updateStatus(ctx, logger, &istio, values, err)
@@ -183,7 +183,7 @@ func applyOverrides(istio *v1alpha1.Istio, values helm.HelmValues) (helm.HelmVal
 	return values, nil
 }
 
-func (r *IstioReconciler) installHelmCharts(ctx context.Context, istio v1alpha1.Istio, values helm.HelmValues) error {
+func (r *IstioReconciler) installHelmCharts(ctx context.Context, istio *v1alpha1.Istio, values helm.HelmValues) error {
 	ownerReference := metav1.OwnerReference{
 		APIVersion:         v1alpha1.GroupVersion.String(),
 		Kind:               v1alpha1.IstioKind,
@@ -197,20 +197,20 @@ func (r *IstioReconciler) installHelmCharts(ctx context.Context, istio v1alpha1.
 		return err
 	} else if cniEnabled {
 		if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, []string{"cni"}, values,
-			istio.Spec.Version, istio.Name, kube.GetOperatorNamespace(), ownerReference, istio.Namespace); err != nil {
+			istio.Spec.Version, istio.Name, istio.Namespace, ownerReference); err != nil {
 			return err
 		}
 	}
 
 	if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, userCharts, values,
-		istio.Spec.Version, istio.Name, istio.Namespace, ownerReference, istio.Namespace); err != nil {
+		istio.Spec.Version, istio.Name, istio.Namespace, ownerReference); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (r *IstioReconciler) uninstallHelmCharts(istio *v1alpha1.Istio) error {
-	if err := helm.UninstallCharts(r.RestClientGetter, []string{"cni"}, istio.Name, kube.GetOperatorNamespace()); err != nil {
+	if err := helm.UninstallCharts(r.RestClientGetter, []string{"cni"}, istio.Name, istio.Namespace); err != nil {
 		return err
 	}
 
@@ -352,7 +352,7 @@ func (r *IstioReconciler) determineReadyCondition(ctx context.Context, istio *v1
 		return v1alpha1.IstioCondition{}, err
 	} else if cniEnabled {
 		cni := appsv1.DaemonSet{}
-		if err := r.Client.Get(ctx, cniDaemonSetKey(), &cni); err != nil {
+		if err := r.Client.Get(ctx, cniDaemonSetKey(istio), &cni); err != nil {
 			if errors.IsNotFound(err) {
 				return notReady(v1alpha1.ConditionReasonCNINotReady, "istio-cni-node DaemonSet not found"), nil
 			}
@@ -453,9 +453,9 @@ func mergeOverwrite(base map[string]any, overrides map[string]any) map[string]an
 	return base
 }
 
-func cniDaemonSetKey() client.ObjectKey {
+func cniDaemonSetKey(istio *v1alpha1.Istio) client.ObjectKey {
 	return client.ObjectKey{
-		Namespace: kube.GetOperatorNamespace(),
+		Namespace: istio.Namespace,
 		Name:      "istio-cni-node",
 	}
 }
