@@ -4,8 +4,8 @@ set -euo pipefail
 
 SLEEP_TIME=10
 
-COMMIT=$(yq eval '"git ls-remote --heads " + .latest.repo + ".git " + .latest.branch + " | cut -f 1"' versions.yaml | sh)
-CURRENT=$(yq .latest.commit versions.yaml)
+COMMIT=$(yq '.versions | "git ls-remote --heads " + .latest.repo + ".git " + .latest.branch + " | cut -f 1"' versions.yaml | sh)
+CURRENT=$(yq .versions.latest.commit versions.yaml)
 
 if [ "${COMMIT}" == "${CURRENT}" ]; then
   echo "versions.yaml is already up-to-date with latest commit ${COMMIT}."
@@ -25,7 +25,7 @@ echo
 FULL_VERSION=$(curl -sSfL "${URL}")
 echo Full version: "${FULL_VERSION}"
 
-yq -i '
+yq -i '.versions |
     .latest.commit="'"${COMMIT}"'" |
     .latest.charts=[
         "https://storage.googleapis.com/istio-build/dev/'"${FULL_VERSION}"'/helm/base-'"${FULL_VERSION}"'.tgz",

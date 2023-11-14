@@ -1,9 +1,9 @@
 #!/bin/env bash
 
 function updateVersionsInIstioTypeComment() {
-    selectValues=$(yq e 'keys | .[] | ", \"urn:alm:descriptor:com.tectonic.ui:select:" + . + "\""' versions.yaml | tr -d '\n')
-    versionsEnum=$(yq e 'keys | .[]' versions.yaml | tr '\n' ';' | sed 's/;$//g')
-    versions=$(yq e 'keys | .[]' versions.yaml | tr '\n' ',' | sed -e 's/,/, /g' -e 's/, $//g')
+    selectValues=$(yq '.versions | keys | .[] | ", \"urn:alm:descriptor:com.tectonic.ui:select:" + . + "\""' versions.yaml | tr -d '\n')
+    versionsEnum=$(yq '.versions | keys | .[]' versions.yaml | tr '\n' ';' | sed 's/;$//g')
+    versions=$(yq '.versions | keys | .[]' versions.yaml | tr '\n' ',' | sed -e 's/,/, /g' -e 's/, $//g')
 
     sed -i -E \
       -e "/\+sail:version/,/Version string/ s/(\/\/ \+operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName=\"Istio Version\",xDescriptors=\{.*fieldGroup:General\")[^}]*(})/\1$selectValues}/g" \
@@ -20,7 +20,7 @@ function updateVersionsInCSVDescription() {
     # - stores latest commit in $latestCommit
     # - iterates over keys and prints them; if the key is "latest", appends the hash stored in $latestCommit
     # shellcheck disable=SC2016
-    yq e '.latest.commit as $latestCommit | keys | .[] | (select(. == "latest") | . + " (" + $latestCommit + ")") // .' versions.yaml > "$tmpFile"
+    yq '.versions | .latest.commit as $latestCommit | keys | .[] | (select(. == "latest") | . + " (" + $latestCommit + ")") // .' versions.yaml > "$tmpFile"
 
     # truncate the latest commit hash to 8 characters
     sed -i -E 's/(latest \(.{8}).*\)/\1\)/g' "$tmpFile"
