@@ -272,7 +272,7 @@ gen-charts: ## Pull charts from maistra/istio repository
 	@# use yq to generate a list of download-charts.sh commands for each version in versions.yaml; these commands are
 	@# passed to sh and executed; in a nutshell, the yq command generates commands like:
 	@# ./hack/download-charts.sh <version> <git repo> <commit> [chart1] [chart2] ...
-	@yq eval 'to_entries | .[] | "./hack/download-charts.sh " + .key + " " + .value.repo + " " + .value.commit + " " + ((.value.charts // []) | join(" "))' < versions.yaml | sh
+	@yq eval '.versions | to_entries | .[] | "./hack/download-charts.sh " + .key + " " + .value.repo + " " + .value.commit + " " + ((.value.charts // []) | join(" "))' < versions.yaml | sh
 
 	@# find the profiles used in the downloaded charts and update list of available profiles
 	@hack/update-profiles-list.sh
@@ -280,8 +280,8 @@ gen-charts: ## Pull charts from maistra/istio repository
 	@# update the urn:alm:descriptor:com.tectonic.ui:select entries in istio_types.go to match the supported versions of the Helm charts
 	@hack/update-version-list.sh
 
-	@# calls copy-crds.sh with the name of the first version listed in versions.yaml (this should be the highest version)
-	@hack/copy-crds.sh "resources/$$(yq eval 'keys | .[0]' versions.yaml)/charts"
+	@# calls copy-crds.sh with the version specified in the .crdSourceVersion field in versions.yaml
+	@hack/copy-crds.sh "resources/$$(yq eval '.crdSourceVersion' versions.yaml)/charts"
 
 .PHONY: gen ## Generate everything
 gen: controller-gen gen-charts gen-manifests gen-code patch-istio-crd bundle
