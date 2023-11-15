@@ -36,7 +36,9 @@ You have access to the OpenShift CLI (oc).
     $ oc new-project istio-system
     ```
 
-1. In the OpenShift web console, select `istio-system` in the **Project** drop-down menu.
+1. In the OpenShift Container Platform web console, click **Operators** -> **Installed Operators**. 
+
+1. Select `istio-system` in the **Project** drop-down menu.
 
 1. Click the Sail Operator.
 
@@ -46,7 +48,7 @@ You have access to the OpenShift CLI (oc).
 
 1. Accept the defaults and click **Create**. This creates the Istio control plane.
 
-1. Click **Workloads** -> **Pods**. Verify that the pods were created. `Running` should appear in the **Status** column. If the pods were successfully created, then Istio is installed and ready for use. For more information, see the upstream [Istio documentation](https://istio.io/latest/docs/setup/platform-setup/openshift/).
+1. Confirm `Ready` appears in the `Status` column.
 
 ## Customizing Istio configuration
 
@@ -160,7 +162,7 @@ Istio can be integrated with other software to provide additional functionality 
 
 `Prometheus` is an open-source systems monitoring and alerting toolkit. You can use `Prometheus` with the Sail Operator to keep an eye on how healthy Istio and the apps in the service mesh are, for more information, see [Prometheus](https://istio.io/latest/docs/ops/integrations/prometheus/). 
 
-To install Prometheus you will need to follow this steps:
+To install Prometheus, perform the following steps:
 
 1. Deploy `Prometheus`:
 
@@ -184,7 +186,7 @@ To install Prometheus you will need to follow this steps:
 
 `Grafana` is an open-source platform for monitoring and observability. You can use `Grafana` with the Sail Operator to configure dahsboards for istio, see [Grafana](https://istio.io/latest/docs/ops/integrations/grafana/) for more information. 
 
-To install Prometheus you will need to follow this steps:
+To install Grafana, perform the following steps:
 
 1. Deploy `Grafana`:
     
@@ -209,7 +211,7 @@ To install Prometheus you will need to follow this steps:
 
 `Jaeger` is an open-source end-to-end distributed tracing system. You can use `Jaeger` with the Sail Operator to monitor and troubleshoot transactions in complex distributed systems, see [Jaeger](https://istio.io/latest/docs/ops/integrations/jaeger/) for more information. 
 
-To install Prometheus you will need to follow this steps:
+To install Jaeger, perform the following steps:
 
 1. Deploy `Jaeger`:
     
@@ -235,7 +237,7 @@ To install Prometheus you will need to follow this steps:
 
 `Kiali` is an open-source project that provides a graphical user interface to visualize the service mesh topology, see [Kiali](https://istio.io/latest/docs/ops/integrations/kiali/) for more information. 
 
-To install Prometheus you will need to follow this steps:
+To install Kiali, perform the following steps:
 
 1. Deploy `Kiali`:
     
@@ -264,7 +266,7 @@ You can use the `oc explain` command to display the valid values for the fields 
 
 ## Deleting Istio
 
-1. In the OpenShift web console, click **Operators** -> **Installed Operators**.
+1. In the OpenShift Container Platform web console, click **Operators** -> **Installed Operators**.
 
 1. Click **Istio** in the **Provided APIs** column.
 
@@ -272,8 +274,8 @@ You can use the `oc explain` command to display the valid values for the fields 
 
 1. At the prompt to confirm the action, click **Delete**.
 
-1. In the OpenShift web console, click **Operators** -> **Installed Operators**.
+1. In the OpenShift Container Platform web console, click **Operators** -> **Installed Operators**.
 
-1. Click the Options menu, and select **Uninstall Operator**. 
+1. Locate the Sail Operator. Click the Options menu, and select **Uninstall Operator**. 
 
 1. At the prompt to confirm the action, click **Uninstall**.
