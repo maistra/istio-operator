@@ -640,11 +640,10 @@ spec:
                       type: object
                   type: object
                 version:
-                  description: 'Version defines the version of Istio to install. Must be one of: v1.20.0-rc.0, v1.19.3, v1.19.1, latest. If not specified, the latest version supported by the operator is installed.'
+                  description: 'Version defines the version of Istio to install. Must be one of: v1.20.0, v1.19.4, latest. If not specified, the latest version supported by the operator is installed.'
                   enum:
-                    - v1.20.0-rc.0
-                    - v1.19.3
-                    - v1.19.1
+                    - v1.20.0
+                    - v1.19.4
                     - latest
                   type: string
               type: object
