@@ -30,10 +30,10 @@ const IstioKind = "Istio"
 type IstioSpec struct {
 	// +sail:version
 	// Version defines the version of Istio to install.
-	// Must be one of: v1.20.0-rc.0, v1.19.3, v1.19.1, latest.
+	// Must be one of: v1.20.0, v1.19.4, latest.
 	// If not specified, the latest version supported by the operator is installed.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="Istio Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.0-rc.0", "urn:alm:descriptor:com.tectonic.ui:select:v1.19.3", "urn:alm:descriptor:com.tectonic.ui:select:v1.19.1", "urn:alm:descriptor:com.tectonic.ui:select:latest"}
-	// +kubebuilder:validation:Enum=v1.20.0-rc.0;v1.19.3;v1.19.1;latest
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="Istio Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.0", "urn:alm:descriptor:com.tectonic.ui:select:v1.19.4", "urn:alm:descriptor:com.tectonic.ui:select:latest"}
+	// +kubebuilder:validation:Enum=v1.20.0;v1.19.4;latest
 	Version string `json:"version,omitempty"`
 
 	// +sail:profile
