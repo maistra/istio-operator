@@ -256,6 +256,12 @@ To install Prometheus you will need to follow this steps:
         ```sh
         $ oc get route kiali -o jsonpath='{.spec.host}' -n istio-system
         ```
+## Validating the configuration
+
+The Operator validates the contents of the `spec.values` field. When the Operator parses this field, and encounters an unknown value, it generates an error message. To force the Operator to pass an unknown value, use the `spec.rawValues` field.
+
+You can use the `oc explain` command to display the valid values for the fields in the Istio Custom Resoure Definition (CRD) file. For example, `oc explain istio.spec.values`.
+
 ## Deleting Istio
 
 1. In the OpenShift web console, click **Operators** -> **Installed Operators**.
