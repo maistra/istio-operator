@@ -3,4 +3,4 @@ kind: Istio
 metadata:
   name: istio-sample
 spec:
-  version: latest
+  version: v1.20.0
