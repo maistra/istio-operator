@@ -72,9 +72,7 @@ function set_values() {
   for field in ${values_fields}; do
     config_name=$(echo "$field" | awk -F':' '{print $1}')
     config_value=$(echo "$field" | awk -F':' '{print $2}')
-    if [[ "${config_name}" =~ .*Config ]]; then
-      values["${config_value}"]="${config_name}"
-    fi
+    values["${config_value}"]="${config_name}"
   done
 }
 
@@ -92,7 +90,7 @@ function convert_type_to_yaml () {
       echo "boolean" 
       ;;
     "google.protobuf.Value")
-      echo "string"
+      echo "object" # TODO: this could be any type, not just object (see values.tag)
       ;;
     "string")
       echo "string"
@@ -124,15 +122,15 @@ function set_fields() {
   local crd_file="${2}"
   local value_name="${3}"
 
-  set_values "${proto_file}"
-
   # Adding values.properties.<value_name>.type: object
   # Example:
   # values:
   #   properties:
   #     base:
   #       type: object
-  ${YQ} -i "( ${values_yaml_path}.properties.${value_name}.type ) = \"object\"" "${crd_file}"
+  openAPIType=$(convert_type_to_yaml "${values[${value_name}]}")
+  echo "Changing ${value_name} type to ${openAPIType}"
+  ${YQ} -i "( ${values_yaml_path}.properties.${value_name}.type ) = \"${openAPIType}\"" "${crd_file}"
 
   local config_fields
   config_fields="$(get_fields "${proto_file}" "${values["${value_name}"]}")"
@@ -150,7 +148,9 @@ function set_fields() {
     #       properties:
     #         enableCRDTemplates:
     #           type: boolean
-    ${YQ} -i "( ${values_yaml_path}.properties.${value_name}.properties.${name}.type ) = \"$(convert_type_to_yaml "${type}")\"" "${crd_file}"
+    openAPIType=$(convert_type_to_yaml "${type}")
+    echo "Changing ${value_name}.${name} type to ${openAPIType}"
+    ${YQ} -i "( ${values_yaml_path}.properties.${value_name}.properties.${name}.type ) = \"${openAPIType}\"" "${crd_file}"
   done
 }
 
@@ -237,7 +237,11 @@ function set_nested_config_fields() {
         #           properties:
         #             name:
         #               type: string
-        ${YQ} -i "( ${nested_config_path}.properties.${name}.type ) = \"$(convert_type_to_yaml "${type}")\"" "${crd_file}"
+        openAPIType=$(convert_type_to_yaml "${type}")
+        prefixToRemove=".spec.versions.0.schema.openAPIV3Schema.properties.spec.properties.values.properties."
+        #shellcheck disable=SC2001
+        echo "Changing $(echo "${nested_config_path#"$prefixToRemove"}" | sed "s/.properties//g").${name} type to ${openAPIType}"
+        ${YQ} -i "( ${nested_config_path}.properties.${name}.type ) = \"${openAPIType}\"" "${crd_file}"
       fi
     done
 
@@ -252,6 +256,9 @@ function set_nested_config_fields() {
     #           properties:
     #             name:
     #               type: string
+    prefixToRemove=".spec.versions.0.schema.openAPIV3Schema.properties.spec.properties.values.properties."
+    #shellcheck disable=SC2001
+    echo "Changing $(echo "${nested_config_path#"$prefixToRemove"}" | sed "s/.properties//g") type to object"
     ${YQ} -i "( ${nested_config_path}.type ) = \"object\"" "${crd_file}"
   done
 }
