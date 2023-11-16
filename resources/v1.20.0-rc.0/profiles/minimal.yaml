@@ -1,4 +1,0 @@
-# The minimal profile will install just the core control plane
-apiVersion: operator.istio.io/v1alpha1
-kind: Istio
-spec: {}
