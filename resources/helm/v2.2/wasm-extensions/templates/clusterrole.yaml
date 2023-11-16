@@ -3,7 +3,7 @@ kind: ClusterRole
 metadata:
   name: wasm-cacher-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
   labels:
-    maistra-version: "2.2.12"
+    maistra-version: "2.2.13"
     release: {{ .Release.Name }}
     app: wasm-cacher
     istio.io/rev: {{ .Values.revision | default "default" }}
