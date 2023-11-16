@@ -276,6 +276,10 @@ ${YQ} -i "( ${values_yaml_path}.type ) = \"object\" |
 
 set_values "${values_types_proto_file}"
 
+# remove "gateways", since we don't support the deployment if ingress/egress
+# gateways via the Istio resource
+unset 'values["gateways"]'
+
 for value in "${!values[@]}"; do
   set_fields "${values_types_proto_file}" "${CRD_FILE}" "${value}"
 done
