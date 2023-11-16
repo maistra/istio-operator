@@ -48,7 +48,7 @@ function get_fields() {
     | grep "^  [a-z]\|^  .*Config" \
     | grep -v "//*\|\[deprecated=true\]" \
     | awk '/;/{gsub(";","");print $0}' \
-    | awk '{if ($1=="repeated") {type=$2;name=$3} else if ($1=="map<string,") {type="object";name=$3} else if ($0~/json_name/) {type=$1;name=substr(substr($5,0,length($5)-2),13)} else {type=$1;name=$2;}{print type":"name}}'
+    | awk '{if ($1=="repeated") {type="array-"$2;name=$3} else if ($1=="map<string,") {type="object";name=$3} else if ($0~/json_name/) {type=$1;name=substr(substr($5,0,length($5)-2),13)} else {type=$1;name=$2;}{print type":"name}}'
 }
 
 # Adds all the main configuration values into the values array
@@ -68,7 +68,7 @@ function set_values() {
   # The format of a configuration is config_name:config_value. Ex: PilotConfig:pilot
   values_fields="$(awk "/message Values/{ f = 1 } f; /}/{ f = 0 }" "${proto_file}" \
     | grep -v "//*\|\[deprecated=true\]" \
-    | awk '/;/{if ($1=="repeated") {printf "%s:%s ",$2,$3} else {printf "%s:%s ",$1,$2}}')"
+    | awk '/;/{if ($1=="repeated") {printf "array-%s:%s ",$2,$3} else {printf "%s:%s ",$1,$2}}')"
   for field in ${values_fields}; do
     config_name=$(echo "$field" | awk -F':' '{print $1}')
     config_value=$(echo "$field" | awk -F':' '{print $2}')
@@ -98,6 +98,10 @@ function convert_type_to_yaml () {
     "uint32")
       echo "integer"
       ;;
+    "array-"*)
+      array_type="$(echo "${config}" | awk -F'-'  '{print $2}')"
+      echo "array-$(convert_type_to_yaml "${array_type}")"
+      ;;
     *"Config")
       echo "${config}"
       ;;
@@ -105,6 +109,47 @@ function convert_type_to_yaml () {
       echo "object"
       ;;
   esac
+}
+
+function format_type() {
+  if [ $# -ne 3 ]; then
+    echo "Usage: format_array_type <crd_file> <field_path> <openapi_type>"
+    exit 1
+  fi
+
+  local crd_file="${1}"
+  local field_path="${2}"
+  local openapi_type="${3}"
+  local type
+  local array_type
+
+  if [[ "${openapi_type}" =~ "array-".* ]]; then
+    type="array"
+    array_type="$(echo "${openapi_type}" | awk -F'-'  '{print $2}')"
+
+    # Adding values.properties.<value_name>.type.items: <array_type>
+    # Example:
+    # values:
+    #   properties:
+    #     revisionTags:
+    #       items:
+    #         type: string
+    ${YQ} -i "( ${field_path}.items.type ) = \"${array_type}\"" "${crd_file}"
+  else
+    type="${openapi_type}"
+  fi
+
+  prefixToRemove=".spec.properties.values.properties."
+  #shellcheck disable=SC2001
+  echo "Changing $(echo "${field_path#*"$prefixToRemove"}" | sed "s/.properties//g") type to ${type}"
+
+  # Adding values.properties.<value_name>.type.items: <array_type>
+  # Example:
+  # values:
+  #   properties:
+  #     revisionTags:
+  #       type: array
+  ${YQ} -i "( ${field_path}.type ) = \"${type}\"" "${crd_file}"
 }
 
 # Adds all the fields of a value into the CRD file
@@ -129,8 +174,7 @@ function set_fields() {
   #     base:
   #       type: object
   openAPIType=$(convert_type_to_yaml "${values[${value_name}]}")
-  echo "Changing ${value_name} type to ${openAPIType}"
-  ${YQ} -i "( ${values_yaml_path}.properties.${value_name}.type ) = \"${openAPIType}\"" "${crd_file}"
+  format_type "${crd_file}" "${values_yaml_path}.properties.${value_name}" "${openAPIType}"
 
   local config_fields
   config_fields="$(get_fields "${proto_file}" "${values["${value_name}"]}")"
@@ -149,8 +193,7 @@ function set_fields() {
     #         enableCRDTemplates:
     #           type: boolean
     openAPIType=$(convert_type_to_yaml "${type}")
-    echo "Changing ${value_name}.${name} type to ${openAPIType}"
-    ${YQ} -i "( ${values_yaml_path}.properties.${value_name}.properties.${name}.type ) = \"${openAPIType}\"" "${crd_file}"
+    format_type "${crd_file}" "${values_yaml_path}.properties.${value_name}.properties.${name}" "${openAPIType}"
   done
 }
 
@@ -238,10 +281,7 @@ function set_nested_config_fields() {
         #             name:
         #               type: string
         openAPIType=$(convert_type_to_yaml "${type}")
-        prefixToRemove=".spec.versions.0.schema.openAPIV3Schema.properties.spec.properties.values.properties."
-        #shellcheck disable=SC2001
-        echo "Changing $(echo "${nested_config_path#"$prefixToRemove"}" | sed "s/.properties//g").${name} type to ${openAPIType}"
-        ${YQ} -i "( ${nested_config_path}.properties.${name}.type ) = \"${openAPIType}\"" "${crd_file}"
+        format_type "${crd_file}" "${nested_config_path}.properties.${name}" "${openAPIType}"
       fi
     done
 
@@ -256,10 +296,7 @@ function set_nested_config_fields() {
     #           properties:
     #             name:
     #               type: string
-    prefixToRemove=".spec.versions.0.schema.openAPIV3Schema.properties.spec.properties.values.properties."
-    #shellcheck disable=SC2001
-    echo "Changing $(echo "${nested_config_path#"$prefixToRemove"}" | sed "s/.properties//g") type to object"
-    ${YQ} -i "( ${nested_config_path}.type ) = \"object\"" "${crd_file}"
+    format_type "${crd_file}" "${nested_config_path}" "object"
   done
 }
 

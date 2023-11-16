@@ -103,7 +103,9 @@ spec:
                         enabled:
                           type: boolean
                         excludeNamespaces:
-                          type: string
+                          items:
+                            type: string
+                          type: array
                         hub:
                           type: string
                         image:
@@ -157,7 +159,9 @@ spec:
                         caName:
                           type: string
                         certSigners:
-                          type: string
+                          items:
+                            type: string
+                          type: array
                         configCluster:
                           type: boolean
                         configRootNamespace:
@@ -165,7 +169,9 @@ spec:
                         configValidation:
                           type: boolean
                         defaultConfigVisibilitySettings:
-                          type: string
+                          items:
+                            type: string
+                          type: array
                         externalIstiod:
                           type: boolean
                         hub:
@@ -173,9 +179,13 @@ spec:
                         imagePullPolicy:
                           type: string
                         imagePullSecrets:
-                          type: string
+                          items:
+                            type: string
+                          type: array
                         ipFamilies:
-                          type: string
+                          items:
+                            type: string
+                          type: array
                         ipFamilyPolicy:
                           type: string
                         istioNamespace:
@@ -224,7 +234,9 @@ spec:
                         platform:
                           type: string
                         podDNSSearchNamespaces:
-                          type: string
+                          items:
+                            type: string
+                          type: array
                         proxy:
                           properties:
                             autoInject:
@@ -346,7 +358,9 @@ spec:
                         enabled:
                           type: boolean
                         excludeNamespaces:
-                          type: string
+                          items:
+                            type: string
+                          type: array
                         hub:
                           type: string
                         image:
@@ -425,13 +439,17 @@ spec:
                         env:
                           type: object
                         extraContainerArgs:
-                          type: object
+                          items:
+                            type: object
+                          type: array
                         hub:
                           type: string
                         image:
                           type: string
                         ipFamilies:
-                          type: string
+                          items:
+                            type: string
+                          type: array
                         ipFamilyPolicy:
                           type: string
                         jwksResolverExtraRootCA:
@@ -439,7 +457,9 @@ spec:
                         keepaliveMaxServerConnectionAge:
                           type: object
                         plugins:
-                          type: string
+                          items:
+                            type: string
+                          type: array
                         podLabels:
                           type: object
                         seccompProfile:
@@ -447,11 +467,15 @@ spec:
                         serviceAnnotations:
                           type: object
                         subscribedResources:
-                          type: string
+                          items:
+                            type: string
+                          type: array
                         tag:
                           type: object
                         topologySpreadConstraints:
-                          type: object
+                          items:
+                            type: object
+                          type: array
                         traceSampling:
                           type: object
                         useMCP:
@@ -459,20 +483,30 @@ spec:
                         variant:
                           type: string
                         volumeMounts:
-                          type: object
+                          items:
+                            type: object
+                          type: array
                         volumes:
-                          type: object
+                          items:
+                            type: object
+                          type: array
                       type: object
                     revision:
                       type: string
                     revisionTags:
-                      type: string
+                      items:
+                        type: string
+                      type: array
                     sidecarInjectorWebhook:
                       properties:
                         alwaysInjectSelector:
-                          type: object
+                          items:
+                            type: object
+                          type: array
                         defaultTemplates:
-                          type: string
+                          items:
+                            type: string
+                          type: array
                         enableNamespacesByDefault:
                           type: boolean
                         injectedAnnotations:
@@ -480,7 +514,9 @@ spec:
                         injectionURL:
                           type: string
                         neverInjectSelector:
-                          type: object
+                          items:
+                            type: object
+                          type: array
                         objectSelector:
                           type: object
                         reinvocationPolicy:
