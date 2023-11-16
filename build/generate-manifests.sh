@@ -143,9 +143,11 @@ $RELATED_IMAGES"
     sed -i -e 's+__REPLACES_CSV__+'"  replaces: $OPERATOR_NAME.v$REPLACES_CSV"'+g' "${csv_path}"
   fi
 
-  if ! (git diff "${csv_path}" | grep '^[+-][^+-][^+-]' | grep -v "createdAt:" >/dev/null); then
-    echo "Reverting the timestamp change in ${csv_path} as there were no other changes";
-    git checkout "${csv_path}";
+  if git show HEAD:"${csv_path}" >/dev/null 2>&1; then
+    if ! (git diff "${csv_path}" | grep '^[+-][^+-][^+-]' | grep -v "createdAt:" >/dev/null); then
+      echo "Reverting the timestamp change in ${csv_path} as there were no other changes";
+      git checkout "${csv_path}";
+    fi
   fi
 }
 
