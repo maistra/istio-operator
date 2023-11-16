@@ -137,15 +137,17 @@ spec:
                             labelPods:
                               type: object
                             tag:
-                              type: string
+                              type: object
                           type: object
                         seccompProfile:
                           type: object
                         tag:
-                          type: string
+                          type: object
                         variant:
                           type: string
                       type: object
+                    defaultRevision:
+                      type: string
                     gateways:
                       properties:
                         enabled:
@@ -408,7 +410,7 @@ spec:
                               type: integer
                           type: object
                         tag:
-                          type: string
+                          type: object
                         tracer:
                           properties:
                             datadog:
@@ -505,12 +507,12 @@ spec:
                             labelPods:
                               type: object
                             tag:
-                              type: string
+                              type: object
                           type: object
                         seccompProfile:
                           type: object
                         tag:
-                          type: string
+                          type: object
                         variant:
                           type: string
                       type: object
@@ -521,6 +523,10 @@ spec:
                         injectionURL:
                           type: string
                       type: object
+                    meshConfig:
+                      type: object
+                    ownerName:
+                      type: string
                     pilot:
                       properties:
                         affinity:
@@ -570,7 +576,7 @@ spec:
                         subscribedResources:
                           type: string
                         tag:
-                          type: string
+                          type: object
                         topologySpreadConstraints:
                           type: object
                         traceSampling:
@@ -584,6 +590,10 @@ spec:
                         volumes:
                           type: object
                       type: object
+                    revision:
+                      type: string
+                    revisionTags:
+                      type: string
                     sidecarInjectorWebhook:
                       properties:
                         alwaysInjectSelector:
@@ -637,6 +647,8 @@ spec:
                             stackdriver:
                               type: object
                           type: object
+                      type: object
+                    ztunnel:
                       type: object
                   type: object
                 version:
