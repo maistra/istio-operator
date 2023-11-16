@@ -274,6 +274,9 @@ gen-charts: ## Pull charts from maistra/istio repository
 	@# ./hack/download-charts.sh <version> <git repo> <commit> [chart1] [chart2] ...
 	@yq eval '.versions | to_entries | .[] | "./hack/download-charts.sh " + .key + " " + .value.repo + " " + .value.commit + " " + ((.value.charts // []) | join(" "))' < versions.yaml | sh
 
+	@# remove old version directories
+	@hack/remove-old-versions.sh
+
 	@# find the profiles used in the downloaded charts and update list of available profiles
 	@hack/update-profiles-list.sh
 
