@@ -90,6 +90,7 @@ spec:
                     properties:
                       affinity:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       ambient:
                         properties:
                           configDir:
@@ -148,12 +149,13 @@ spec:
                           labelPods:
                             type: object
                           tag:
-                            type: object
+                            type: string
                         type: object
                       seccompProfile:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       tag:
-                        type: object
+                        type: string
                       variant:
                         type: string
                     type: object
@@ -217,6 +219,7 @@ spec:
                         type: string
                       meshNetworks:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       mountMtlsCerts:
                         type: boolean
                       multiCluster:
@@ -272,6 +275,7 @@ spec:
                             type: string
                           lifecycle:
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           logLevel:
                             type: string
                           privileged:
@@ -304,7 +308,7 @@ spec:
                             type: integer
                         type: object
                       tag:
-                        type: object
+                        type: string
                       tracer:
                         properties:
                           datadog:
@@ -345,6 +349,7 @@ spec:
                     properties:
                       affinity:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       ambient:
                         properties:
                           configDir:
@@ -403,12 +408,13 @@ spec:
                           labelPods:
                             type: object
                           tag:
-                            type: object
+                            type: string
                         type: object
                       seccompProfile:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       tag:
-                        type: object
+                        type: string
                       variant:
                         type: string
                     type: object
@@ -421,14 +427,17 @@ spec:
                     type: object
                   meshConfig:
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   ownerName:
                     type: string
                   pilot:
                     properties:
                       affinity:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       autoscaleBehavior:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       autoscaleEnabled:
                         type: boolean
                       autoscaleMax:
@@ -443,13 +452,16 @@ spec:
                         type: object
                       deploymentLabels:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       enabled:
                         type: boolean
                       env:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       extraContainerArgs:
                         items:
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         type: array
                       hub:
                         type: string
@@ -471,19 +483,23 @@ spec:
                         type: array
                       podLabels:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       seccompProfile:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       serviceAnnotations:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       subscribedResources:
                         items:
                           type: string
                         type: array
                       tag:
-                        type: object
+                        type: string
                       topologySpreadConstraints:
                         items:
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         type: array
                       traceSampling:
                         type: object
@@ -494,10 +510,12 @@ spec:
                       volumeMounts:
                         items:
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         type: array
                       volumes:
                         items:
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         type: array
                     type: object
                   revision:
@@ -511,6 +529,7 @@ spec:
                       alwaysInjectSelector:
                         items:
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         type: array
                       defaultTemplates:
                         items:
@@ -520,20 +539,24 @@ spec:
                         type: boolean
                       injectedAnnotations:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       injectionURL:
                         type: string
                       neverInjectSelector:
                         items:
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         type: array
                       objectSelector:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       reinvocationPolicy:
                         type: string
                       rewriteAppHTTPProbe:
                         type: boolean
                       templates:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                     type: object
                   telemetry:
                     properties:
@@ -568,6 +591,7 @@ spec:
                     type: object
                   ztunnel:
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                 type: object
               version:
                 description: 'Version defines the version of Istio to install. Must

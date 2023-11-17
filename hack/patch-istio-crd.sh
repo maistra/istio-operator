@@ -13,6 +13,13 @@ values_yaml_path=".spec.versions.[] | select(.name == \"${API_VERSION}\") | .sch
 
 declare -A values
 
+# Map containing all the google.protobuf.Value fields
+declare -A HARDCODED_PROTOBUF_VALUE_ITEMS=( 
+  ["tag"]="string"
+  ["ztunnel"]="object"
+  ["meshConfig"]="object"
+)
+
 # Downloads the values_types.proto file from ${VALUES_TYPES_PROTO_FILE_URL} url
 # Params:
 #   $1: The full path of the output directory where values_types.proto file is stored
@@ -90,7 +97,10 @@ function convert_type_to_yaml () {
       echo "boolean" 
       ;;
     "google.protobuf.Value")
-      echo "object" # TODO: this could be any type, not just object (see values.tag)
+      echo "value"
+      ;;
+    "google.protobuf.Struct")
+      echo "struct"
       ;;
     "string")
       echo "string"
@@ -123,23 +133,47 @@ function format_type() {
   local type
   local array_type
 
-  if [[ "${openapi_type}" =~ "array-".* ]]; then
-    type="array"
-    array_type="$(echo "${openapi_type}" | awk -F'-'  '{print $2}')"
-
-    # Adding values.properties.<value_name>.type.items: <array_type>
-    # Example:
-    # values:
-    #   properties:
-    #     revisionTags:
-    #       items:
-    #         type: string
-    ${YQ} -i "( ${field_path}.items.type ) = \"${array_type}\"" "${crd_file}"
-  else
-    type="${openapi_type}"
-  fi
-
   prefixToRemove=".spec.properties.values.properties."
+
+  case "${openapi_type}" in
+    "array-string" | "array-integer" | "array-boolean")
+      type="array"
+      array_type="$(echo "${openapi_type}" | awk -F'-'  '{print $2}')"
+
+      # Adding values.properties.<value_name>.type.items: <array_type>
+      # Example:
+      # values:
+      #   properties:
+      #     revisionTags:
+      #       items:
+      #         type: string
+      ${YQ} -i "( ${field_path}.items.type ) = \"${array_type}\"" "${crd_file}"
+      ;;
+    "array-struct")
+      type="array"
+      ${YQ} -i "( ${field_path}.items.type ) = \"object\"" "${crd_file}"
+      ${YQ} -i "( ${field_path}.items.x-kubernetes-preserve-unknown-fields ) = true" "${crd_file}"
+      ;;
+    "struct")
+      type="object"
+      ${YQ} -i "( ${field_path}.x-kubernetes-preserve-unknown-fields ) = true" "${crd_file}"
+      ;;
+    "value")
+      field_name="$(echo "${field_path}" | awk -F'.' '{print $NF}')"
+      if [ ! ${HARDCODED_PROTOBUF_VALUE_ITEMS["${field_name}"]+exists} ]; then
+        #shellcheck disable=SC2001
+        >&2 echo "Error: $(echo "${field_path#*"$prefixToRemove"}" | sed "s/.properties//g")'s type is google.protobuf.Value. Please declare it into the HARDCODED_PROTOBUF_VALUE_ITEMS variable"
+        exit 1
+      fi
+      type="${HARDCODED_PROTOBUF_VALUE_ITEMS["${field_name}"]}"
+      [ "${type}" == "object" ] && \
+        ${YQ} -i "( ${field_path}.x-kubernetes-preserve-unknown-fields ) = true" "${crd_file}"
+      ;;
+    *)
+      type="${openapi_type}"
+      ;;
+  esac
+
   #shellcheck disable=SC2001
   echo "Changing $(echo "${field_path#*"$prefixToRemove"}" | sed "s/.properties//g") type to ${type}"
 
