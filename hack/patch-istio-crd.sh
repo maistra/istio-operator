@@ -13,6 +13,7 @@ values_yaml_path=".spec.versions.[] | select(.name == \"${API_VERSION}\") | .sch
 
 declare -A values
 
+# Map containing all the google.protobuf.Value fields
 declare -A HARDCODED_PROTOBUF_VALUE_ITEMS=( 
   ["tag"]="string"
   ["ztunnel"]="object"
@@ -159,7 +160,8 @@ function format_type() {
       ;;
     "value")
       field_name="$(echo "${field_path}" | awk -F'.' '{print $NF}')"
-      if [ ! ${HARDCODED_PROTOBUF_VALUE_ITEMS["${field_name}"]+exists} ]; then 
+      if [ ! ${HARDCODED_PROTOBUF_VALUE_ITEMS["${field_name}"]+exists} ]; then
+        #shellcheck disable=SC2001
         >&2 echo "Error: $(echo "${field_path#*"$prefixToRemove"}" | sed "s/.properties//g")'s type is google.protobuf.Value. Please declare it into the HARDCODED_PROTOBUF_VALUE_ITEMS variable"
         exit 1
       fi
