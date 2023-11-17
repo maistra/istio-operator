@@ -489,9 +489,9 @@ func (v validatingWebhookConfigPredicate) Update(e event.UpdateEvent) bool {
 		return false
 	}
 
-	if matched, _ := regexp.MatchString("istiod-.*-validator", e.ObjectNew.GetName()); matched {
-		// Istiod updates the caBundle and failurePolicy fields in istiod-<ns>-validator webhook config.
-		// We must ignore changes to these fields to prevent an endless update loop.
+	if matched, _ := regexp.MatchString("istiod-.*-validator|istio-validator.*", e.ObjectNew.GetName()); matched {
+		// Istiod updates the caBundle and failurePolicy fields in istiod-<ns>-validator and istio-validator[-<rev>]-<ns>
+		// webhook configs. We must ignore changes to these fields to prevent an endless update loop.
 		clearIgnoredFields(e.ObjectOld)
 		clearIgnoredFields(e.ObjectNew)
 		return !reflect.DeepEqual(e.ObjectNew, e.ObjectOld)
