@@ -1,6 +1,6 @@
 # About the Sail Operator
 
-The Sail Operator is based on the open source Istio project. The Sail implementation pulls its code from the upstream Istio main repository with no changes to the codebase.
+The Sail Operator is able to install and manage the lifecycle of the Istio control plane in an OpenShift cluster.
 
 ## Prerequisites
 
@@ -30,11 +30,13 @@ You have access to the OpenShift CLI (oc).
 
 ## Deploying Istio
 
-1. Create the project where Istio is going to be deployed:  
+1. In the OpenShift Container Platform web console, click **Home** -> **Projects**. 
 
-    ```sh
-    $ oc new-project istio-system
-    ```
+1. Click **Create Project**.
+
+1. At the prompt, you must enter a name for the project in the **Name** field. For example, `istio-system`. The Operator deploys Istio to the project you specify. The other fields provide supplementary information and are optional.
+
+1. Click **Create**.
 
 1. In the OpenShift Container Platform web console, click **Operators** -> **Installed Operators**. 
 
@@ -46,9 +48,9 @@ You have access to the OpenShift CLI (oc).
 
 1. Click **Create Istio**.
 
-1. Accept the defaults and click **Create**. This creates the Istio control plane.
+1. Accept the defaults and click **Create**. This action deploys the Istio control plane.
 
-1. Confirm `Ready` appears in the `Status` column.
+1.When `Ready` appears in the `Status` column, Istio is successfully deployed.
 
 ## Customizing Istio configuration
 
@@ -279,3 +281,13 @@ You can use the `oc explain` command to display the valid values for the fields 
 1. Locate the Sail Operator. Click the Options menu, and select **Uninstall Operator**. 
 
 1. At the prompt to confirm the action, click **Uninstall**.
+
+1. In the OpenShift Container Platform web console, click  **Home** -> **Projects**.
+
+1. Locate the name of the project and click the Options menu.
+
+1. Click **Delete Project**.
+
+1. At the prompt to confirm the action, enter the name of the project.
+
+1. Click **Delete**.
