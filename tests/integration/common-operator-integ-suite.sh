@@ -158,6 +158,11 @@ check_ready() {
   ${COMMAND} wait deployment "${DEPLOYMENT_NAME}" -n "${NS}" --for condition=Available=True --timeout=${TIMEOUT}
 }
 
+logFailure() {
+  echo
+  echo "FAIL: $*"
+}
+
 main_test() {
   # Add here all the validation tests for the operator
   echo "Check that istio operator is running"
@@ -172,13 +177,33 @@ main_test() {
     ${COMMAND} get ns "${CONTROL_PLANE_NS}" >/dev/null 2>&1 || ${COMMAND} create namespace "${CONTROL_PLANE_NS}"
     sed -e "s/version:.*/version: ${ver}/g" "${ISTIO_MANIFEST}" | ${COMMAND} apply -f - -n "${CONTROL_PLANE_NS}"
 
+    echo "Wait for Istio to be Reconciled"
+    ${COMMAND} wait istio/istio-sample -n "${CONTROL_PLANE_NS}" --for condition=Reconciled=True --timeout=${TIMEOUT}
+
+    echo "Wait for Istio to be Ready"
+    ${COMMAND} wait istio/istio-sample -n "${CONTROL_PLANE_NS}" --for condition=Ready=True --timeout=${TIMEOUT}
+
+    echo "Give the operator 30s to settle down"
+    sleep 30
+
+    echo "Check that the operator has stopped reconciling the resource (waiting 30s)"
+    # wait for 30s, then check the last 30s of the log
+    sleep 30
+    last30secondsOfLog=$(${COMMAND} logs "deploy/${DEPLOYMENT_NAME}" -n "${NAMESPACE}" --since 30s)
+    if echo "$last30secondsOfLog" | grep "Reconciliation done" >/dev/null 2>&1; then
+        logFailure "Expected istio-operator to stop reconciling the resource, but it didn't:"
+        echo "$last30secondsOfLog"
+        echo "Note: The above log was captured at $(date)"
+        exit 1
+    fi
+
     echo "Check that Istio is running"
     check_ready "${CONTROL_PLANE_NS}" "istiod" "istiod"
 
     echo "Make sure only istiod got deployed and nothing else"
     res=$(${COMMAND}  -n "${CONTROL_PLANE_NS}" get deploy -o json | jq -j '.items | length')
     if [ "${res}" != "1" ]; then
-      echo "FAIL: Expected just istiod deployment, got:"
+      logFailure "Expected just istiod deployment, got:"
       ${COMMAND}  -n "${CONTROL_PLANE_NS}" get deploy
       exit 1
     fi
@@ -190,7 +215,7 @@ main_test() {
     else
       echo "Check that CNI daemonset was not deployed"
       if ${COMMAND} get ds/istio-cni-node -n "${CONTROL_PLANE_NS}" > /dev/null 2>&1; then
-        echo "FAIL: Expected CNI daemonset to not exist, but it does:"
+        logFailure "Expected CNI daemonset to not exist, but it does:"
         ${COMMAND} get ds/istio-cni-node -n "${CONTROL_PLANE_NS}"
         exit 1
       fi
@@ -201,7 +226,7 @@ main_test() {
 
     echo "Check that Istio has been deleted"
     if ${COMMAND} get deployment "istiod" -n "${CONTROL_PLANE_NS}" &>/dev/null; then
-      echo "FAIL: Expected istiod deployment to have been deleted, but it still exists:"
+      logFailure "Expected istiod deployment to have been deleted, but it still exists:"
       ${COMMAND} -n "${CONTROL_PLANE_NS}" get deploy
       exit 1
     fi
