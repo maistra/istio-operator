@@ -285,6 +285,10 @@ func (r *IstioReconciler) updateStatus(ctx context.Context, log logr.Logger, ist
 	}
 	status.AppliedValues = appliedValues
 
+	if reflect.DeepEqual(istio.Status, *status) {
+		return nil
+	}
+
 	statusErr := r.Client.Status().Patch(ctx, istio, kube.NewStatusPatch(*status))
 	if statusErr != nil {
 		log.Error(statusErr, "failed to patch status")
