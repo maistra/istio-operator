@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -93,6 +94,35 @@ func add(mgr manager.Manager, r *MemberReconciler) error {
 				!reflect.DeepEqual(o.GetFinalizers(), n.GetFinalizers()) ||
 				n.GetDeletionTimestamp() != nil
 		},
+	})
+	if err != nil {
+		return err
+	}
+
+	// watch namespaces so that the member-of label is re-added when it's removed
+	err = c.Watch(&source.Kind{Type: &corev1.Namespace{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(ns handler.MapObject) []reconcile.Request {
+			namespace := ns.Object.(*corev1.Namespace)
+			smmKey := types.NamespacedName{
+				Namespace: namespace.Name,
+				Name:      common.MemberName,
+			}
+
+			smm := &maistrav1.ServiceMeshMember{}
+			if err := mgr.GetClient().Get(ctx, smmKey, smm); err != nil {
+				if !errors.IsNotFound(err) {
+					log := common.LogFromContext(ctx)
+					log.Error(err, "Could not get ServiceMeshMember", "ServiceMeshMember", smmKey)
+				}
+				return nil
+			}
+			return []reconcile.Request{{NamespacedName: smmKey}}
+		}),
+	}, predicate.Funcs{
+		CreateFunc:  func(createEvent event.CreateEvent) bool { return false },
+		UpdateFunc:  func(event event.UpdateEvent) bool { return true },
+		DeleteFunc:  func(deleteEvent event.DeleteEvent) bool { return false },
+		GenericFunc: func(_ event.GenericEvent) bool { return false },
 	})
 	if err != nil {
 		return err
