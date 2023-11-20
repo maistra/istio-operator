@@ -50,7 +50,7 @@ You have access to the OpenShift CLI (oc).
 
 1. Accept the defaults and click **Create**. This action deploys the Istio control plane.
 
-1.When `State: Healthy` appears in the `Status` column, Istio is successfully deployed.
+1. When `State: Healthy` appears in the `Status` column, Istio is successfully deployed.
 
 ## Customizing Istio configuration
 
@@ -70,6 +70,47 @@ For a list of available configuration for the `values` field, refer to [Istio's 
 - [Gateway parameters](https://artifacthub.io/packages/helm/istio-official/gateway?modal=values)
 - [CNI parameters](https://artifacthub.io/packages/helm/istio-official/cni?modal=values)
 - [ZTunnel parameters](https://artifacthub.io/packages/helm/istio-official/ztunnel?modal=values)
+
+## Installing the istioctl tool
+
+The `istioctl` tool is a configuration command line utility that allows service operators to debug and diagnose Istio service mesh deployments.
+
+### Prerequisites
+
+Use an `istioctl` version that is the same version as the Istio control plane for the Service Mesh deployment. See [Istio Releases](https://github.com/istio/istio/releases) for a list of valid releases, including Beta releases.
+
+### Procedure
+
+1. Confirm if you have `istioctl` installed, and if so which version, by running the following command at the terminal:
+
+    ```sh
+    $ istioctl version
+    ```
+
+1. Confirm the version of Istio you are using by running the following command at the terminal:
+
+    ```sh
+    $ oc -n istio-system get istio
+    ```
+
+1. Install `istioctl` by running the following command at the terminal: 
+
+    ```sh
+    $ curl -sL https://istio.io/downloadIstioctl | ISTIO_VERSION=<version> sh -
+    ```
+    Replace `<version>` with the version of Istio you are using.
+
+1. Put the `istioctl` directory on path by running the following command at the terminal:
+  
+    ```sh
+    $ export PATH=$HOME/.istioctl/bin:$PATH
+    ```
+
+1. Confirm that the `istioctl` client version and the Istio control plane version now match (or are within one version) by running the following command at the terminal:
+  
+    ```sh
+    $ istioctl version
+    ```
 
 ## Installing the Bookinfo Application
 
