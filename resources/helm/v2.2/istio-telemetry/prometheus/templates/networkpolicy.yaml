@@ -5,7 +5,7 @@ metadata:
   name: istio-prometheus-ingress
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.2.12"
+    maistra-version: "2.2.13"
     app: prometheus
     release: {{ .Release.Name }}
   annotations:
