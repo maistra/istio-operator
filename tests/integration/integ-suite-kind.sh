@@ -31,7 +31,7 @@ export IP_FAMILY="${IP_FAMILY:-ipv4}"
 export ARTIFACTS="${ARTIFACTS:-$(mktemp -d)}"
 
 # Set variable for cluster kind name
-export KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-istio-operator}"
+export KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-operator-integration-tests}"
 
 # Use the local registry instead of the default HUB
 export HUB="${KIND_REGISTRY}"
