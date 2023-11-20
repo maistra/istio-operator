@@ -30,6 +30,9 @@ export DEFAULT_CLUSTER_YAML="${SCRIPTPATH}/config/default.yaml"
 export IP_FAMILY="${IP_FAMILY:-ipv4}"
 export ARTIFACTS="${ARTIFACTS:-$(mktemp -d)}"
 
+# Set variable for cluster kind name
+export KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-operator-integration-tests}"
+
 # Use the local registry instead of the default HUB
 export HUB="${KIND_REGISTRY}"
 # Workaround make inside make: ovewrite this variable so it is not recomputed in Makefile.core.mk
@@ -49,16 +52,14 @@ function setup_kind_registry() {
   fi
 
   # https://docs.tilt.dev/choosing_clusters.html#discovering-the-registry
-  for cluster in $(kind get clusters); do
-    # TODO get context/config from existing variables
-    kind export kubeconfig --name="${cluster}"
-    for node in $(kind get nodes --name="${cluster}"); do
-      kubectl annotate node "${node}" "kind.x-k8s.io/registry=localhost:${KIND_REGISTRY_PORT}" --overwrite;
-    done
+  # TODO get context/config from existing variables
+  kind export kubeconfig --name="${KIND_CLUSTER_NAME}"
+  for node in $(kind get nodes --name="${KIND_CLUSTER_NAME}"); do
+    kubectl annotate node "${node}" "kind.x-k8s.io/registry=localhost:${KIND_REGISTRY_PORT}" --overwrite;
   done
 }
 
-setup_kind_cluster "istio-operator" "" "" "true" "true"
+setup_kind_cluster "${KIND_CLUSTER_NAME}" "" "" "true" "true"
 setup_kind_registry
 
 # Run the integration tests
