@@ -50,7 +50,7 @@ You have access to the OpenShift CLI (oc).
 
 1. Accept the defaults and click **Create**. This action deploys the Istio control plane.
 
-1.When `Ready` appears in the `Status` column, Istio is successfully deployed.
+1.When `State: Healthy` appears in the `Status` column, Istio is successfully deployed.
 
 ## Customizing Istio configuration
 
