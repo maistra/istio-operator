@@ -172,7 +172,7 @@ Istio includes support for Kubernetes [Gateway API](https://gateway-api.sigs.k8s
 As of Kubernetes 1.28 and OpenShift 4.14, the Kubernetes Gateway API CRDs are not available by default and must be enabled to be used. This can be done with the command:
 
 ```sh
-$ oc get crd gateways.gateway.networking.k8s.io &> /dev/null ||  { oc kustomize "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.8.0" | oc apply -f -; }
+$ oc get crd gateways.gateway.networking.k8s.io &> /dev/null ||  { oc kustomize "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v1.0.0" | oc apply -f -; }
 ```
 
 To configure `bookinfo` with a gateway using `Gateway API`:
