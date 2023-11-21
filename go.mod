@@ -4,9 +4,6 @@ go 1.21
 
 toolchain go1.21.3
 
-// FIXME: https://issues.redhat.com/browse/OSSM-4819
-replace helm.sh/helm/v3 => github.com/jwendell/helm/v3 v3.0.0-20231009190954-d1b15f943d79
-
 // Client-go does not handle different versions of mergo due to some breaking changes - use the matching version
 // This replacement is aligned with istio/istio's go.mod
 replace github.com/imdario/mergo => github.com/imdario/mergo v0.3.5

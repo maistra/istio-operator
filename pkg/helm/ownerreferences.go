@@ -1,12 +1,16 @@
 package helm
 
 import (
+	"bytes"
+	"io"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/meta"
+	"gopkg.in/yaml.v3"
+	"helm.sh/helm/v3/pkg/postrender"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/cli-runtime/pkg/resource"
 )
 
 const (
@@ -14,33 +18,85 @@ const (
 	AnnotationPrimaryResourceType = "operator-sdk/primary-resource-type"
 )
 
-// addOwnerReferenceVisitor returns a visitor function that adds the specified
-// OwnerReference to each resource it visits
-func addOwnerReferenceVisitor(ownerReference metav1.OwnerReference, istioNamespace string) resource.VisitorFunc {
-	return func(info *resource.Info, err error) error {
-		if err != nil {
-			return err
-		}
-
-		objMeta, err := meta.Accessor(info.Object)
-		if err != nil {
-			return err
-		}
-
-		if objMeta.GetNamespace() == istioNamespace {
-			objMeta.SetOwnerReferences([]metav1.OwnerReference{ownerReference})
-		} else {
-			annotations := objMeta.GetAnnotations()
-			if annotations == nil {
-				annotations = make(map[string]string)
-			}
-			ownerAPIGroup, _, _ := strings.Cut(ownerReference.APIVersion, "/")
-			annotations[AnnotationPrimaryResource] = istioNamespace + "/" + ownerReference.Name
-			annotations[AnnotationPrimaryResourceType] = ownerReference.Kind + "." + ownerAPIGroup
-			objMeta.SetAnnotations(annotations)
-		}
-		return nil
+// NewOwnerReferencePostRenderer creates a Helm PostRenderer that adds the
+// specified OwnerReference to each rendered manifest
+func NewOwnerReferencePostRenderer(ownerReference metav1.OwnerReference, ownerNamespace string) postrender.PostRenderer {
+	return OwnerReferencePostRenderer{
+		ownerReference: ownerReference,
+		ownerNamespace: ownerNamespace,
 	}
+}
+
+type OwnerReferencePostRenderer struct {
+	ownerReference metav1.OwnerReference
+	ownerNamespace string
+}
+
+var _ postrender.PostRenderer = OwnerReferencePostRenderer{}
+
+func (pr OwnerReferencePostRenderer) Run(renderedManifests *bytes.Buffer) (modifiedManifests *bytes.Buffer, err error) {
+	modifiedManifests = &bytes.Buffer{}
+	encoder := yaml.NewEncoder(modifiedManifests)
+	encoder.SetIndent(2)
+	decoder := yaml.NewDecoder(renderedManifests)
+	for {
+		manifest := map[string]any{}
+
+		if err := decoder.Decode(&manifest); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+
+		if manifest == nil {
+			continue
+		}
+
+		manifest, err = pr.addOwnerReference(manifest)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := encoder.Encode(manifest); err != nil {
+			return nil, err
+		}
+	}
+	return modifiedManifests, nil
+}
+
+func (pr OwnerReferencePostRenderer) addOwnerReference(manifest map[string]any) (map[string]any, error) {
+	objNamespace, hasNamespace, err := unstructured.NestedFieldNoCopy(manifest, "metadata", "namespace")
+	if err != nil {
+		return nil, err
+	}
+	if hasNamespace && objNamespace == pr.ownerNamespace {
+		ownerReferences, _, err := unstructured.NestedSlice(manifest, "metadata", "ownerReferences")
+		if err != nil {
+			return nil, err
+		}
+
+		ref, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&pr.ownerReference)
+		if err != nil {
+			return nil, err
+		}
+		ownerReferences = append(ownerReferences, ref)
+
+		if err := unstructured.SetNestedSlice(manifest, ownerReferences, "metadata", "ownerReferences"); err != nil {
+			return nil, err
+		}
+	} else {
+		ownerAPIGroup, _, _ := strings.Cut(pr.ownerReference.APIVersion, "/")
+		ownerType := pr.ownerReference.Kind + "." + ownerAPIGroup
+		ownerKey := pr.ownerNamespace + "/" + pr.ownerReference.Name
+		if err := unstructured.SetNestedField(manifest, ownerType, "metadata", "annotations", AnnotationPrimaryResourceType); err != nil {
+			return nil, err
+		}
+		if err := unstructured.SetNestedField(manifest, ownerKey, "metadata", "annotations", AnnotationPrimaryResource); err != nil {
+			return nil, err
+		}
+	}
+	return manifest, nil
 }
 
 func GetOwnerFromAnnotations(annotations map[string]string) (*types.NamespacedName, string, string) {

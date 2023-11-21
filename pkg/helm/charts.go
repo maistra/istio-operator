@@ -106,7 +106,7 @@ func upgradeOrInstallChart(ctx context.Context, cfg *action.Configuration,
 	if toUpgrade {
 		logger.V(2).Info("Performing helm upgrade", "chartName", chart.Name())
 		updateAction := action.NewUpgrade(cfg)
-		updateAction.ResourceVisitor = addOwnerReferenceVisitor(ownerReference, namespace)
+		updateAction.PostRenderer = NewOwnerReferencePostRenderer(ownerReference, namespace)
 		updateAction.MaxHistory = 1
 		updateAction.SkipCRDs = true
 		rel, err = updateAction.RunWithContext(ctx, releaseName, chart, values)
@@ -117,7 +117,7 @@ func upgradeOrInstallChart(ctx context.Context, cfg *action.Configuration,
 	} else {
 		logger.V(2).Info("Performing helm install", "chartName", chart.Name())
 		installAction := action.NewInstall(cfg)
-		installAction.ResourceVisitor = addOwnerReferenceVisitor(ownerReference, namespace)
+		installAction.PostRenderer = NewOwnerReferencePostRenderer(ownerReference, namespace)
 		installAction.Namespace = namespace
 		installAction.ReleaseName = releaseName
 		installAction.SkipCRDs = true
