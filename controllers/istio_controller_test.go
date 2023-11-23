@@ -577,5 +577,6 @@ func Must(t *testing.T, err error) {
 }
 
 func ExpectSuccess(err error) {
+	GinkgoHelper()
 	Expect(err).NotTo(HaveOccurred())
 }
