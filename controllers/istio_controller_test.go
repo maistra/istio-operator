@@ -50,6 +50,33 @@ var _ = Describe("IstioController", Ordered, func() {
 	cniObjectKey := client.ObjectKey{Name: "istio-cni-node", Namespace: istioNamespace}
 	webhookObjectKey := client.ObjectKey{Name: "istio-sidecar-injector-" + istioNamespace}
 
+	istioMeshConfigValues := string(`{
+		"accessLogFile": "/dev/stdout",
+    "enableTracing": true
+	}`)
+
+	istioPilotValues := string(`{
+		"image":"` + pilotImage + `",
+		"env": {
+			"PILOT_ENABLE_GATEWAY_API": true, 
+			"PILOT_ENABLE_GATEWAY_API_DEPLOYMENT_CONTROLLER": true,
+			"PILOT_ENABLE_GATEWAY_API_GATEWAYCLASS_CONTROLLER": false,
+			"PILOT_ENABLE_GATEWAY_API_STATUS": true
+		}
+	}`)
+
+	istioCNIValues := string(`{
+		"enabled":true,
+		"excludeNamespaces": ["openshift", "kube-system"]
+	}`)
+
+	istioValues := []byte(`{
+		"donotexist": "shouldbeomitted",
+		"meshConfig": ` + istioMeshConfigValues + `,
+		"pilot": ` + istioPilotValues + `,
+		"istio_cni": ` + istioCNIValues + `
+	}`)
+
 	common.Config = testConfig
 
 	BeforeAll(func() {
@@ -78,10 +105,7 @@ var _ = Describe("IstioController", Ordered, func() {
 				},
 				Spec: v1.IstioSpec{
 					Version: istioVersion,
-					Values: []byte(`{
-						"pilot":{"image":"` + pilotImage + `"},
-						"istio_cni":{"enabled":true}
-					}`),
+					Values:  istioValues,
 				},
 			}
 
@@ -107,6 +131,21 @@ var _ = Describe("IstioController", Ordered, func() {
 			ExpectSuccess(k8sClient.Get(ctx, istioObjectKey, istio))
 			return istio.Status.ObservedGeneration
 		}, time.Minute, time.Second).Should(Equal(istio.ObjectMeta.Generation))
+
+		By("Checking if Istio Values are set correctly")
+		expectedIstio := &v1.Istio{
+			Spec: v1.IstioSpec{
+				Values: []byte(`{
+					"meshConfig": ` + istioMeshConfigValues + `,
+					"pilot": ` + istioPilotValues + `,
+					"istio_cni": ` + istioCNIValues + `
+				}`),
+			},
+		}
+		Eventually(func() helm.HelmValues {
+			ExpectSuccess(k8sClient.Get(ctx, istioObjectKey, istio))
+			return istio.Spec.GetValues()
+		}, time.Minute, time.Second).Should(Equal(expectedIstio.Spec.GetValues()))
 
 		By("Checking if the appliedValues are written properly")
 		Eventually(func() string {
