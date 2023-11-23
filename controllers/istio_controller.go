@@ -264,7 +264,7 @@ func (r *IstioReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *IstioReconciler) updateStatus(ctx context.Context, log logr.Logger, istio *v1alpha1.Istio, values helm.HelmValues, err error) error {
 	reconciledCondition := determineReconciledCondition(err)
-	readyCondition, err := r.determineReadyCondition(ctx, istio)
+	readyCondition, err := r.determineReadyCondition(ctx, istio, values)
 	if err != nil {
 		return err
 	}
@@ -328,7 +328,7 @@ func determineReconciledCondition(err error) v1alpha1.IstioCondition {
 	}
 }
 
-func (r *IstioReconciler) determineReadyCondition(ctx context.Context, istio *v1alpha1.Istio) (v1alpha1.IstioCondition, error) {
+func (r *IstioReconciler) determineReadyCondition(ctx context.Context, istio *v1alpha1.Istio, values helm.HelmValues) (v1alpha1.IstioCondition, error) {
 	notReady := func(reason v1alpha1.IstioConditionReason, message string) v1alpha1.IstioCondition {
 		return v1alpha1.IstioCondition{
 			Type:    v1alpha1.ConditionTypeReady,
@@ -338,21 +338,25 @@ func (r *IstioReconciler) determineReadyCondition(ctx context.Context, istio *v1
 		}
 	}
 
-	istiod := appsv1.Deployment{}
-	if err := r.Client.Get(ctx, istiodDeploymentKey(istio), &istiod); err != nil {
-		if errors.IsNotFound(err) {
-			return notReady(v1alpha1.ConditionReasonIstiodNotReady, "istiod Deployment not found"), nil
+	if istiodKey, err := istiodDeploymentKey(istio, values); err == nil {
+		istiod := appsv1.Deployment{}
+		if err := r.Client.Get(ctx, istiodKey, &istiod); err != nil {
+			if errors.IsNotFound(err) {
+				return notReady(v1alpha1.ConditionReasonIstiodNotReady, "istiod Deployment not found"), nil
+			}
+			return notReady(v1alpha1.ConditionReasonReconcileError, fmt.Sprintf("failed to get readiness: %v", err)), nil
 		}
-		return notReady(v1alpha1.ConditionReasonReconcileError, fmt.Sprintf("failed to get readiness: %v", err)), nil
+
+		if istiod.Status.Replicas == 0 {
+			return notReady(v1alpha1.ConditionReasonIstiodNotReady, "istiod Deployment is scaled to zero replicas"), nil
+		} else if istiod.Status.ReadyReplicas < istiod.Status.Replicas {
+			return notReady(v1alpha1.ConditionReasonIstiodNotReady, "not all istiod pods are ready"), nil
+		}
+	} else {
+		return v1alpha1.IstioCondition{}, err
 	}
 
-	if istiod.Status.Replicas == 0 {
-		return notReady(v1alpha1.ConditionReasonIstiodNotReady, "istiod Deployment is scaled to zero replicas"), nil
-	} else if istiod.Status.ReadyReplicas < istiod.Status.Replicas {
-		return notReady(v1alpha1.ConditionReasonIstiodNotReady, "not all istiod pods are ready"), nil
-	}
-
-	if cniEnabled, err := isCNIEnabled(istio.Spec.GetValues()); err != nil {
+	if cniEnabled, err := isCNIEnabled(values); err != nil {
 		return v1alpha1.IstioCondition{}, err
 	} else if cniEnabled {
 		cni := appsv1.DaemonSet{}
@@ -464,11 +468,21 @@ func cniDaemonSetKey(istio *v1alpha1.Istio) client.ObjectKey {
 	}
 }
 
-func istiodDeploymentKey(istio *v1alpha1.Istio) client.ObjectKey {
+func istiodDeploymentKey(istio *v1alpha1.Istio, values helm.HelmValues) (client.ObjectKey, error) {
+	revision, _, err := values.GetString("revision")
+	if err != nil {
+		return client.ObjectKey{}, err
+	}
+
+	name := "istiod"
+	if revision != "" {
+		name += "-" + revision
+	}
+
 	return client.ObjectKey{
 		Namespace: istio.Namespace,
-		Name:      "istiod",
-	}
+		Name:      name,
+	}, nil
 }
 
 func mapOwnerAnnotationsToReconcileRequest(ctx context.Context, obj client.Object) []reconcile.Request {
