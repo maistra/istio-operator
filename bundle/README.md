@@ -52,6 +52,10 @@ You have access to the OpenShift CLI (oc).
 
 1. When `State: Healthy` appears in the `Status` column, Istio is successfully deployed.
 
+## Selecting the Istio version
+
+The `version` field of the `Istio` custom resource definition defines which version of Istio can be deployed. For a list of available versions, see the [versions.yaml](../versions.yaml) file. This can be set using the `Istio Version` when creating a new `Istio` with the OpenShift Container Platform web console.
+
 ## Customizing Istio configuration
 
 The `values` field of the `Istio` custom resource definition, which was created when the control plane was deployed, can be used to customize Istio configuration using Istio's `Helm` configuration values. When you create this resource using the OpenShift Container Platform web console, it is pre-populated with configuration settings to enable Istio to run on OpenShift.
@@ -63,6 +67,27 @@ To view or modify the `Istio` resource from the OpenShift Container Platform web
 1. Click `Istio` instance, "istio-sample" by default, in the **Name** column.
 1. Click **YAML** to view the `Istio` configuration and make modifications.
 
+An example configuration:
+
+```
+apiVersion: operator.istio.io/v1alpha1
+kind: Istio
+metadata:
+  name: example
+spec:
+  version: v1.20.0
+  values:
+    global:
+      mtls:
+        enabled: true
+      trustDomainAliases:
+      - example.net
+    meshConfig:
+      trustDomain: example.com
+      trustDomainAliases:
+      - example.net
+```
+
 For a list of available configuration for the `values` field, refer to [Istio's artifacthub chart documentation](https://artifacthub.io/packages/search?org=istio&sort=relevance&page=1) for:
 
 - [Base parameters](https://artifacthub.io/packages/helm/istio-official/base?modal=values)
@@ -70,6 +95,12 @@ For a list of available configuration for the `values` field, refer to [Istio's 
 - [Gateway parameters](https://artifacthub.io/packages/helm/istio-official/gateway?modal=values)
 - [CNI parameters](https://artifacthub.io/packages/helm/istio-official/cni?modal=values)
 - [ZTunnel parameters](https://artifacthub.io/packages/helm/istio-official/ztunnel?modal=values)
+
+## Validating the configuration
+
+The Operator validates the contents of the `spec.values` field. When the Operator parses this field, and encounters an unknown value, it generates an error message. To force the Operator to pass an unknown value, use the `spec.rawValues` field.
+
+You can use the `oc explain` command to display the valid values for the fields in the Istio Custom Resoure Definition (CRD) file. For example, `oc explain istio.spec.values`.
 
 ## Installing the istioctl tool
 
@@ -301,11 +332,6 @@ To install Kiali, perform the following steps:
         ```sh
         $ oc get route kiali -o jsonpath='{.spec.host}' -n istio-system
         ```
-## Validating the configuration
-
-The Operator validates the contents of the `spec.values` field. When the Operator parses this field, and encounters an unknown value, it generates an error message. To force the Operator to pass an unknown value, use the `spec.rawValues` field.
-
-You can use the `oc explain` command to display the valid values for the fields in the Istio Custom Resoure Definition (CRD) file. For example, `oc explain istio.spec.values`.
 
 ## Deleting Istio
 
