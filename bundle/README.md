@@ -54,7 +54,11 @@ You have access to the OpenShift CLI (oc).
 
 ## Selecting the Istio version
 
-The `version` field of the `Istio` custom resource definition defines which version of Istio can be deployed. For a list of available versions, see the [versions.yaml](../versions.yaml) file. This can be set using the `Istio Version` when creating a new `Istio` with the OpenShift Container Platform web console.
+The `version` field of the `Istio` custom resource definition defines which version of Istio can be deployed. This can be set using the `Istio Version` drop down menu when creating a new `Istio` with the OpenShift Container Platform web console. For a list of available versions, see the [versions.yaml](versions.yaml) file or use the command:
+
+  ```sh
+  $ kubectl explain istio.spec.version
+  ```
 
 ## Customizing Istio configuration
 
@@ -98,9 +102,9 @@ For a list of available configuration for the `values` field, refer to [Istio's 
 
 ## Validating the configuration
 
-The Operator validates the contents of the `spec.values` field. When the Operator parses this field, and encounters an unknown value, it generates an error message. To force the Operator to pass an unknown value, use the `spec.rawValues` field.
+The Kubernetes API server validates the contents of the `spec.values` field. When it encounters an unknown value, it generates an error message. To pass an unknown value, use the `spec.rawValues` field.
 
-You can use the `oc explain` command to display the valid values for the fields in the Istio Custom Resoure Definition (CRD) file. For example, `oc explain istio.spec.values`.
+You can use the `kubectl explain` command to display the valid values for the fields in the Istio Custom Resoure Definition (CRD) file. For example, `kubectl explain istio.spec.values`.
 
 ## Installing the istioctl tool
 
