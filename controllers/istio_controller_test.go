@@ -13,15 +13,18 @@ import (
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"gopkg.in/yaml.v3"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/kubectl/pkg/scheme"
 	v1 "maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/common"
 	"maistra.io/istio-operator/pkg/helm"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"istio.io/istio/pkg/ptr"
 )
@@ -285,6 +288,278 @@ func newCondition(conditionType v1.IstioConditionType, status bool, reason v1.Is
 		Type:   conditionType,
 		Status: st,
 		Reason: reason,
+	}
+}
+
+func TestDetermineReadyCondition(t *testing.T) {
+	testCases := []struct {
+		name          string
+		cniEnabled    bool
+		values        string
+		clientObjects []client.Object
+		expected      v1.IstioCondition
+	}{
+		{
+			name:   "Istiod ready",
+			values: "",
+			clientObjects: []client.Object{
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "istiod",
+						Namespace: "istio-system",
+					},
+					Status: appsv1.DeploymentStatus{
+						Replicas:          2,
+						ReadyReplicas:     2,
+						AvailableReplicas: 2,
+					},
+				},
+			},
+			expected: v1.IstioCondition{
+				Type:   v1.ConditionTypeReady,
+				Status: metav1.ConditionTrue,
+			},
+		},
+		{
+			name:   "Istiod not ready",
+			values: "",
+			clientObjects: []client.Object{
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "istiod",
+						Namespace: "istio-system",
+					},
+					Status: appsv1.DeploymentStatus{
+						Replicas:          2,
+						ReadyReplicas:     1,
+						AvailableReplicas: 1,
+					},
+				},
+			},
+			expected: v1.IstioCondition{
+				Type:    v1.ConditionTypeReady,
+				Status:  metav1.ConditionFalse,
+				Reason:  v1.ConditionReasonIstiodNotReady,
+				Message: "not all istiod pods are ready",
+			},
+		},
+		{
+			name:   "Istiod scaled to zero",
+			values: "",
+			clientObjects: []client.Object{
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "istiod",
+						Namespace: "istio-system",
+					},
+					Status: appsv1.DeploymentStatus{
+						Replicas:          0,
+						ReadyReplicas:     0,
+						AvailableReplicas: 0,
+					},
+				},
+			},
+			expected: v1.IstioCondition{
+				Type:    v1.ConditionTypeReady,
+				Status:  metav1.ConditionFalse,
+				Reason:  v1.ConditionReasonIstiodNotReady,
+				Message: "istiod Deployment is scaled to zero replicas",
+			},
+		},
+		{
+			name:          "Istiod not found",
+			values:        ``,
+			clientObjects: []client.Object{},
+			expected: v1.IstioCondition{
+				Type:    v1.ConditionTypeReady,
+				Status:  metav1.ConditionFalse,
+				Reason:  v1.ConditionReasonIstiodNotReady,
+				Message: "istiod Deployment not found",
+			},
+		},
+		{
+			name: "Istiod and CNI ready",
+			values: `
+istio_cni:
+  enabled: true
+`,
+			clientObjects: []client.Object{
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "istiod",
+						Namespace: "istio-system",
+					},
+					Status: appsv1.DeploymentStatus{
+						Replicas:          2,
+						ReadyReplicas:     2,
+						AvailableReplicas: 2,
+					},
+				},
+				&appsv1.DaemonSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "istio-cni-node",
+						Namespace: "istio-system",
+					},
+					Status: appsv1.DaemonSetStatus{
+						CurrentNumberScheduled: 3,
+						NumberReady:            3,
+					},
+				},
+			},
+			expected: v1.IstioCondition{
+				Type:   v1.ConditionTypeReady,
+				Status: metav1.ConditionTrue,
+			},
+		},
+		{
+			name: "CNI not ready",
+			values: `
+istio_cni:
+  enabled: true
+`,
+			clientObjects: []client.Object{
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "istiod",
+						Namespace: "istio-system",
+					},
+					Status: appsv1.DeploymentStatus{
+						Replicas:          2,
+						ReadyReplicas:     2,
+						AvailableReplicas: 2,
+					},
+				},
+				&appsv1.DaemonSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "istio-cni-node",
+						Namespace: "istio-system",
+					},
+					Status: appsv1.DaemonSetStatus{
+						CurrentNumberScheduled: 1,
+						NumberReady:            0,
+					},
+				},
+			},
+			expected: v1.IstioCondition{
+				Type:    v1.ConditionTypeReady,
+				Status:  metav1.ConditionFalse,
+				Reason:  v1.ConditionReasonCNINotReady,
+				Message: "not all istio-cni-node pods are ready",
+			},
+		},
+		{
+			name: "CNI pods not scheduled",
+			values: `
+istio_cni:
+  enabled: true
+`,
+			clientObjects: []client.Object{
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "istiod",
+						Namespace: "istio-system",
+					},
+					Status: appsv1.DeploymentStatus{
+						Replicas:          2,
+						ReadyReplicas:     2,
+						AvailableReplicas: 2,
+					},
+				},
+				&appsv1.DaemonSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "istio-cni-node",
+						Namespace: "istio-system",
+					},
+					Status: appsv1.DaemonSetStatus{
+						CurrentNumberScheduled: 0,
+						NumberReady:            0,
+					},
+				},
+			},
+			expected: v1.IstioCondition{
+				Type:    v1.ConditionTypeReady,
+				Status:  metav1.ConditionFalse,
+				Reason:  v1.ConditionReasonCNINotReady,
+				Message: "no istio-cni-node pods are currently scheduled",
+			},
+		},
+		{
+			name: "CNI not found",
+			values: `
+istio_cni:
+  enabled: true
+`,
+			clientObjects: []client.Object{
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "istiod",
+						Namespace: "istio-system",
+					},
+					Status: appsv1.DeploymentStatus{
+						Replicas:          2,
+						ReadyReplicas:     2,
+						AvailableReplicas: 2,
+					},
+				},
+			},
+			expected: v1.IstioCondition{
+				Type:    v1.ConditionTypeReady,
+				Status:  metav1.ConditionFalse,
+				Reason:  v1.ConditionReasonCNINotReady,
+				Message: "istio-cni-node DaemonSet not found",
+			},
+		},
+		{
+			name:   "Non-default revision",
+			values: "revision: my-revision",
+			clientObjects: []client.Object{
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "istiod-my-revision",
+						Namespace: "istio-system",
+					},
+					Status: appsv1.DeploymentStatus{
+						Replicas:          2,
+						ReadyReplicas:     2,
+						AvailableReplicas: 2,
+					},
+				},
+			},
+			expected: v1.IstioCondition{
+				Type:   v1.ConditionTypeReady,
+				Status: metav1.ConditionTrue,
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			s := scheme.Scheme
+			s.AddKnownTypes(v1.GroupVersion, &v1.Istio{})
+			cl := fake.NewClientBuilder().WithScheme(s).WithObjects(tt.clientObjects...).Build()
+
+			r := &IstioReconciler{Client: cl, Scheme: s}
+
+			var values map[string]any
+			Must(t, yaml.Unmarshal([]byte(tt.values), &values))
+
+			istio := &v1.Istio{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "my-istio",
+					Namespace: "istio-system",
+				},
+			}
+
+			result, err := r.determineReadyCondition(context.TODO(), istio, values)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			if result.Type != tt.expected.Type || result.Status != tt.expected.Status ||
+				result.Reason != tt.expected.Reason || result.Message != tt.expected.Message {
+				t.Errorf("Unexpected result.\nGot:\n    %+v\nexpected:\n    %+v", result, tt.expected)
+			}
+		})
 	}
 }
 
