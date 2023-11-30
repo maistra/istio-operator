@@ -698,6 +698,16 @@ spec:
                                 type: object
                             type: object
                           type: array
+                        proxyProtocol:
+                          description: The upstream PROXY protocol settings.
+                          properties:
+                            version:
+                              description: The PROXY protocol version to use.
+                              enum:
+                              - V1
+                              - V2
+                              type: string
+                          type: object
                         tls:
                           description: TLS related settings for connections to the
                             upstream service.
@@ -1382,6 +1392,16 @@ spec:
                           type: object
                       type: object
                     type: array
+                  proxyProtocol:
+                    description: The upstream PROXY protocol settings.
+                    properties:
+                      version:
+                        description: The PROXY protocol version to use.
+                        enum:
+                        - V1
+                        - V2
+                        type: string
+                    type: object
                   tls:
                     description: TLS related settings for connections to the upstream
                       service.
@@ -2145,6 +2165,16 @@ spec:
                                 type: object
                             type: object
                           type: array
+                        proxyProtocol:
+                          description: The upstream PROXY protocol settings.
+                          properties:
+                            version:
+                              description: The PROXY protocol version to use.
+                              enum:
+                              - V1
+                              - V2
+                              type: string
+                          type: object
                         tls:
                           description: TLS related settings for connections to the
                             upstream service.
@@ -2829,6 +2859,16 @@ spec:
                           type: object
                       type: object
                     type: array
+                  proxyProtocol:
+                    description: The upstream PROXY protocol settings.
+                    properties:
+                      version:
+                        description: The PROXY protocol version to use.
+                        enum:
+                        - V1
+                        - V2
+                        type: string
+                    type: object
                   tls:
                     description: TLS related settings for connections to the upstream
                       service.
