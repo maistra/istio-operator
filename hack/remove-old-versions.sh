@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/bin/bash
 
 function removeOldVersions() {
     versions=$(yq eval '.versions | keys | .[]' versions.yaml | tr $'\n' ' ')

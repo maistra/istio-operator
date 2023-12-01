@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 set -e -u -o pipefail
 
@@ -67,6 +67,7 @@ function downloadIstioManifests() {
 }
 
 function patchIstioCharts() {
+  echo "patching istio charts ${CHARTS_DIR}/cni/templates/clusterrole.yaml "
   # NOTE: everything in the patchIstioCharts should be here only temporarily,
   # until we push the required changes upstream
   sed -i '0,/rules:/s//rules:\
@@ -74,7 +75,8 @@ function patchIstioCharts() {
   resources: ["securitycontextconstraints"] \
   resourceNames: ["privileged"] \
   verbs: ["use"]/' "${CHARTS_DIR}/cni/templates/clusterrole.yaml"
-
+  
+  echo "patching istio charts ${CHARTS_DIR}/istiod/templates/deployment.yaml "
   # Remove fsGroup, runAsUser, runAsGroup from istiod deployment so that it can run on OpenShift
   sed -i "${CHARTS_DIR}/istiod/templates/deployment.yaml" \
     -e '/fsGroup: 1337/d' \
