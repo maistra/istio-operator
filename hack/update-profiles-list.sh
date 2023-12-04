@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/bin/bash
 
 # generate a comma-separated list of all profiles across all versions in resources/
 profiles=$(find resources/*/profiles -type f -name "*.yaml" -print0 | xargs -0 -n1 basename | sort | uniq | sed 's/\.yaml$//' | tr $'\n' ',' | sed 's/,$//')

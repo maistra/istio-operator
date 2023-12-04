@@ -123,7 +123,7 @@ endif
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
-SHELL = /usr/bin/env bash -o pipefail
+SHELL = /bin/bash -o pipefail
 .SHELLFLAGS = -ec
 
 .PHONY: all
