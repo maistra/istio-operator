@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/env bash
 
 function updateVersionsInIstioTypeComment() {
     selectValues=$(yq '.versions | keys | .[] | ", \"urn:alm:descriptor:com.tectonic.ui:select:" + . + "\""' versions.yaml | tr -d '\n')

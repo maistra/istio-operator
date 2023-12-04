@@ -307,7 +307,6 @@ update-istio: ## Updates the Istio commit hash in the 'latest' entry in versions
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
 $(LOCALBIN):
-	echo "mkdir -p $(LOCALBIN)"
 	mkdir -p $(LOCALBIN)
 
 ## Tool Binaries
