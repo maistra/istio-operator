@@ -7,12 +7,12 @@ check_watches() {
     read -r -a chartKinds <<< "$(grep -rEo "^kind: ([A-Za-z0-9]+)" --no-filename ./resources/*/charts | sed -e 's/^kind: //g' | sort | uniq | tr '\n' ' ')"
     echo "Kinds in charts: ${chartKinds[*]}"
 
-    # Find watched kinds in istio_controller.go
-    read -r -a watchedKinds <<< "$(grep -Eo "(Owns|Watches)\\((.*)" ./controllers/istio_controller.go | sed 's/.*&[^.]*\.\([^{}]*\).*/\1/' | sort | uniq | tr '\n' ' ')"
+    # Find watched kinds in istiorevision_controller.go
+    read -r -a watchedKinds <<< "$(grep -Eo "(Owns|Watches)\\((.*)" ./controllers/istiorevision/istiorevision_controller.go | sed 's/.*&[^.]*\.\([^{}]*\).*/\1/' | sort | uniq | tr '\n' ' ')"
     echo "Watched kinds: ${watchedKinds[*]}"
 
-    # Find ignored kinds in istio_controller.go
-    read -r -a ignoredKinds <<< "$(sed -n 's/.*\+lint-watches:ignore:\s*\(\w*\).*/\1/p' ./controllers/istio_controller.go | sort | uniq | tr '\n' ' ')"
+    # Find ignored kinds in istiorevision_controller.go
+    read -r -a ignoredKinds <<< "$(sed -n 's/.*\+lint-watches:ignore:\s*\(\w*\).*/\1/p' ./controllers/istiorevision/istiorevision_controller.go | sort | uniq | tr '\n' ' ')"
     echo "Ignored kinds: ${ignoredKinds[*]}"
 
     # Check for missing lines
@@ -26,7 +26,7 @@ check_watches() {
 
     # Print missing lines, if any
     if [[ ${#missing_kinds[@]} -gt 0 ]]; then
-        printf "The following kinds aren't watched in istio_controller.go:\n"
+        printf "The following kinds aren't watched in istiorevision_controller.go:\n"
         for line in "${missing_kinds[@]}"; do
             printf "  - %s\n" "$line"
         done

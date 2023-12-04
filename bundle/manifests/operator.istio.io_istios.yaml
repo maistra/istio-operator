@@ -8,6 +8,8 @@ metadata:
 spec:
   group: operator.istio.io
   names:
+    categories:
+    - istio-io
     kind: Istio
     listKind: IstioList
     plural: istios
@@ -606,8 +608,6 @@ spec:
           status:
             description: IstioStatus defines the observed state of Istio
             properties:
-              appliedValues:
-                x-kubernetes-preserve-unknown-fields: true
               conditions:
                 description: Represents the latest available observations of the object's
                   current state.

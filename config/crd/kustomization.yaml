@@ -12,6 +12,7 @@ resources:
 - bases/networking.istio.io_virtualservices.yaml
 - bases/networking.istio.io_workloadentries.yaml
 - bases/networking.istio.io_workloadgroups.yaml
+- bases/operator.istio.io_istiorevisions.yaml
 - bases/operator.istio.io_istios.yaml
 - bases/security.istio.io_authorizationpolicies.yaml
 - bases/security.istio.io_peerauthentications.yaml

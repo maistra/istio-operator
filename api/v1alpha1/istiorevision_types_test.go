@@ -11,52 +11,52 @@ import (
 func TestGetCondition(t *testing.T) {
 	testCases := []struct {
 		name           string
-		istioStatus    *IstioStatus
-		conditionType  IstioConditionType
-		expectedResult IstioCondition
+		istioStatus    *IstioRevisionStatus
+		conditionType  IstioRevisionConditionType
+		expectedResult IstioRevisionCondition
 	}{
 		{
 			name: "condition found",
-			istioStatus: &IstioStatus{
-				Conditions: []IstioCondition{
+			istioStatus: &IstioRevisionStatus{
+				Conditions: []IstioRevisionCondition{
 					{
-						Type:   ConditionTypeReconciled,
+						Type:   IstioRevisionConditionTypeReconciled,
 						Status: metav1.ConditionTrue,
 					},
 					{
-						Type:   ConditionTypeReady,
+						Type:   IstioRevisionConditionTypeReady,
 						Status: metav1.ConditionFalse,
 					},
 				},
 			},
-			conditionType: ConditionTypeReady,
-			expectedResult: IstioCondition{
-				Type:   ConditionTypeReady,
+			conditionType: IstioRevisionConditionTypeReady,
+			expectedResult: IstioRevisionCondition{
+				Type:   IstioRevisionConditionTypeReady,
 				Status: metav1.ConditionFalse,
 			},
 		},
 		{
 			name: "condition not found",
-			istioStatus: &IstioStatus{
-				Conditions: []IstioCondition{
+			istioStatus: &IstioRevisionStatus{
+				Conditions: []IstioRevisionCondition{
 					{
-						Type:   ConditionTypeReconciled,
+						Type:   IstioRevisionConditionTypeReconciled,
 						Status: metav1.ConditionTrue,
 					},
 				},
 			},
-			conditionType: ConditionTypeReady,
-			expectedResult: IstioCondition{
-				Type:   ConditionTypeReady,
+			conditionType: IstioRevisionConditionTypeReady,
+			expectedResult: IstioRevisionCondition{
+				Type:   IstioRevisionConditionTypeReady,
 				Status: metav1.ConditionUnknown,
 			},
 		},
 		{
-			name:          "nil IstioStatus",
-			istioStatus:   (*IstioStatus)(nil),
-			conditionType: ConditionTypeReady,
-			expectedResult: IstioCondition{
-				Type:   ConditionTypeReady,
+			name:          "nil IstioRevisionStatus",
+			istioStatus:   (*IstioRevisionStatus)(nil),
+			conditionType: IstioRevisionConditionTypeReady,
+			expectedResult: IstioRevisionCondition{
+				Type:   IstioRevisionConditionTypeReady,
 				Status: metav1.ConditionUnknown,
 			},
 		},
@@ -79,29 +79,29 @@ func TestSetCondition(t *testing.T) {
 
 	testCases := []struct {
 		name      string
-		existing  []IstioCondition
-		condition IstioCondition
-		expected  []IstioCondition
+		existing  []IstioRevisionCondition
+		condition IstioRevisionCondition
+		expected  []IstioRevisionCondition
 	}{
 		{
 			name: "add",
-			existing: []IstioCondition{
+			existing: []IstioRevisionCondition{
 				{
-					Type:   ConditionTypeReconciled,
+					Type:   IstioRevisionConditionTypeReconciled,
 					Status: metav1.ConditionTrue,
 				},
 			},
-			condition: IstioCondition{
-				Type:   ConditionTypeReady,
+			condition: IstioRevisionCondition{
+				Type:   IstioRevisionConditionTypeReady,
 				Status: metav1.ConditionFalse,
 			},
-			expected: []IstioCondition{
+			expected: []IstioRevisionCondition{
 				{
-					Type:   ConditionTypeReconciled,
+					Type:   IstioRevisionConditionTypeReconciled,
 					Status: metav1.ConditionTrue,
 				},
 				{
-					Type:               ConditionTypeReady,
+					Type:               IstioRevisionConditionTypeReady,
 					Status:             metav1.ConditionFalse,
 					LastTransitionTime: metav1.NewTime(truncatedCurrTime),
 				},
@@ -109,30 +109,30 @@ func TestSetCondition(t *testing.T) {
 		},
 		{
 			name: "update with status change",
-			existing: []IstioCondition{
+			existing: []IstioRevisionCondition{
 				{
-					Type:               ConditionTypeReconciled,
+					Type:               IstioRevisionConditionTypeReconciled,
 					Status:             metav1.ConditionTrue,
 					LastTransitionTime: metav1.NewTime(prevTime),
 				},
 				{
-					Type:               ConditionTypeReady,
+					Type:               IstioRevisionConditionTypeReady,
 					Status:             metav1.ConditionFalse,
 					LastTransitionTime: metav1.NewTime(prevTime),
 				},
 			},
-			condition: IstioCondition{
-				Type:   ConditionTypeReady,
+			condition: IstioRevisionCondition{
+				Type:   IstioRevisionConditionTypeReady,
 				Status: metav1.ConditionTrue,
 			},
-			expected: []IstioCondition{
+			expected: []IstioRevisionCondition{
 				{
-					Type:               ConditionTypeReconciled,
+					Type:               IstioRevisionConditionTypeReconciled,
 					Status:             metav1.ConditionTrue,
 					LastTransitionTime: metav1.NewTime(prevTime),
 				},
 				{
-					Type:               ConditionTypeReady,
+					Type:               IstioRevisionConditionTypeReady,
 					Status:             metav1.ConditionTrue,
 					LastTransitionTime: metav1.NewTime(truncatedCurrTime),
 				},
@@ -140,34 +140,34 @@ func TestSetCondition(t *testing.T) {
 		},
 		{
 			name: "update without status change",
-			existing: []IstioCondition{
+			existing: []IstioRevisionCondition{
 				{
-					Type:               ConditionTypeReconciled,
+					Type:               IstioRevisionConditionTypeReconciled,
 					Status:             metav1.ConditionTrue,
 					LastTransitionTime: metav1.NewTime(prevTime),
 				},
 				{
-					Type:               ConditionTypeReady,
+					Type:               IstioRevisionConditionTypeReady,
 					Status:             metav1.ConditionFalse,
-					Reason:             ConditionReasonIstiodNotReady,
+					Reason:             IstioRevisionConditionReasonIstiodNotReady,
 					LastTransitionTime: metav1.NewTime(prevTime),
 				},
 			},
-			condition: IstioCondition{
-				Type:   ConditionTypeReady,
+			condition: IstioRevisionCondition{
+				Type:   IstioRevisionConditionTypeReady,
 				Status: metav1.ConditionFalse, // same as previous status
-				Reason: ConditionReasonCNINotReady,
+				Reason: IstioRevisionConditionReasonCNINotReady,
 			},
-			expected: []IstioCondition{
+			expected: []IstioRevisionCondition{
 				{
-					Type:               ConditionTypeReconciled,
+					Type:               IstioRevisionConditionTypeReconciled,
 					Status:             metav1.ConditionTrue,
 					LastTransitionTime: metav1.NewTime(prevTime),
 				},
 				{
-					Type:               ConditionTypeReady,
+					Type:               IstioRevisionConditionTypeReady,
 					Status:             metav1.ConditionFalse,
-					Reason:             ConditionReasonCNINotReady,
+					Reason:             IstioRevisionConditionReasonCNINotReady,
 					LastTransitionTime: metav1.NewTime(prevTime), // original lastTransitionTime must be preserved
 				},
 			},
@@ -176,7 +176,7 @@ func TestSetCondition(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			status := IstioStatus{
+			status := IstioRevisionStatus{
 				Conditions: tc.existing,
 			}
 

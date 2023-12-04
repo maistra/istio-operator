@@ -75,22 +75,8 @@ func (s *IstioSpec) SetValues(values helm.HelmValues) error {
 	return nil
 }
 
-func toHelmValues(rawMessage json.RawMessage) helm.HelmValues {
-	var vals helm.HelmValues
-	err := json.Unmarshal(rawMessage, &vals)
-	if err != nil {
-		return nil
-	}
-	return vals
-}
-
 // IstioStatus defines the observed state of Istio
 type IstioStatus struct {
-	// +kubebuilder:pruning:PreserveUnknownFields
-	// +kubebuilder:validation:Schemaless
-	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Applied Helm Values"
-	AppliedValues json.RawMessage `json:"appliedValues,omitempty"`
-
 	// ObservedGeneration is the most recent generation observed for this
 	// Istio object. It corresponds to the object's generation, which is
 	// updated on mutation by the API Server. The information in the status
@@ -104,10 +90,6 @@ type IstioStatus struct {
 	State IstioConditionReason `json:"state,omitempty"`
 }
 
-func (s *IstioStatus) GetAppliedValues() helm.HelmValues {
-	return toHelmValues(s.AppliedValues)
-}
-
 // GetCondition returns the condition of the specified type
 func (s *IstioStatus) GetCondition(conditionType IstioConditionType) IstioCondition {
 	if s != nil {
@@ -119,9 +101,6 @@ func (s *IstioStatus) GetCondition(conditionType IstioConditionType) IstioCondit
 	}
 	return IstioCondition{Type: conditionType, Status: metav1.ConditionUnknown}
 }
-
-// testTime is only in unit tests to pin the time to a fixed value
-var testTime *time.Time
 
 // SetCondition sets a specific condition in the list of conditions
 func (s *IstioStatus) SetCondition(condition IstioCondition) {
@@ -182,32 +161,36 @@ type IstioConditionType string
 type IstioConditionReason string
 
 const (
-	// ConditionTypeReconciled signifies whether the controller has
+	// IstioConditionTypeReconciled signifies whether the controller has
 	// successfully reconciled the resources defined through the CR.
-	ConditionTypeReconciled IstioConditionType = "Reconciled"
+	IstioConditionTypeReconciled IstioConditionType = "Reconciled"
 
-	// ConditionReasonReconcileError indicates that the reconciliation of the resource has failed, but will be retried.
-	ConditionReasonReconcileError IstioConditionReason = "ReconcileError"
+	// IstioConditionReasonReconcileError indicates that the reconciliation of the resource has failed, but will be retried.
+	IstioConditionReasonReconcileError IstioConditionReason = "ReconcileError"
 )
 
 const (
-	// ConditionTypeReady signifies whether any Deployment, StatefulSet,
+	// IstioConditionTypeReady signifies whether any Deployment, StatefulSet,
 	// etc. resources are Ready.
-	ConditionTypeReady IstioConditionType = "Ready"
+	IstioConditionTypeReady IstioConditionType = "Ready"
 
-	// ConditionReasonIstiodNotReady indicates that the control plane is fully reconciled, but istiod is not ready.
-	ConditionReasonIstiodNotReady IstioConditionReason = "IstiodNotReady"
+	// IstioConditionReasonIstioRevisionNotFound indicates that the active IstioRevision is not found.
+	IstioConditionReasonIstioRevisionNotFound IstioConditionReason = "ActiveRevisionNotFound"
 
-	// ConditionReasonCNINotReady indicates that the control plane is fully reconciled, but istio-cni-node is not ready.
-	ConditionReasonCNINotReady IstioConditionReason = "CNINotReady"
+	// IstioConditionReasonIstiodNotReady indicates that the control plane is fully reconciled, but istiod is not ready.
+	IstioConditionReasonIstiodNotReady IstioConditionReason = "IstiodNotReady"
+
+	// IstioConditionReasonCNINotReady indicates that the control plane is fully reconciled, but istio-cni-node is not ready.
+	IstioConditionReasonCNINotReady IstioConditionReason = "CNINotReady"
 )
 
 const (
-	// ConditionReasonHealthy indicates that the control plane is fully reconciled and that all components are ready.
-	ConditionReasonHealthy IstioConditionReason = "Healthy"
+	// IstioConditionReasonHealthy indicates that the control plane is fully reconciled and that all components are ready.
+	IstioConditionReasonHealthy IstioConditionReason = "Healthy"
 )
 
 // +kubebuilder:object:root=true
+// +kubebuilder:resource:categories=istio-io
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status",description="Whether the control plane installation is ready to handle requests."
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.state",description="The current state of this object."

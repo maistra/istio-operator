@@ -1,16 +1,10 @@
-package controllers
+package istiorevision
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"os"
-	"path"
-	"reflect"
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"gopkg.in/yaml.v3"
@@ -22,7 +16,6 @@ import (
 	"k8s.io/kubectl/pkg/scheme"
 	v1 "maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/common"
-	"maistra.io/istio-operator/pkg/helm"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -36,7 +29,7 @@ const (
 	pilotImage   = "maistra.io/test:latest"
 )
 
-var _ = Describe("IstioController", Ordered, func() {
+var _ = Describe("IstioRevisionController", Ordered, func() {
 	const istioName = "test-istio"
 	const istioNamespace = "test"
 
@@ -68,18 +61,18 @@ var _ = Describe("IstioController", Ordered, func() {
 		_ = k8sClient.Delete(ctx, namespace)
 	})
 
-	istio := &v1.Istio{}
+	istio := &v1.IstioRevision{}
 
 	It("successfully reconciles the resource", func() {
 		By("Creating the custom resource")
 		err := k8sClient.Get(ctx, istioObjectKey, istio)
 		if err != nil && errors.IsNotFound(err) {
-			istio = &v1.Istio{
+			istio = &v1.IstioRevision{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      istioName,
 					Namespace: istioNamespace,
 				},
-				Spec: v1.IstioSpec{
+				Spec: v1.IstioRevisionSpec{
 					Version: istioVersion,
 					Values: []byte(`{
 						"pilot":{"image":"` + pilotImage + `"},
@@ -93,7 +86,7 @@ var _ = Describe("IstioController", Ordered, func() {
 
 		By("Checking if the resource was successfully created")
 		Eventually(func() error {
-			found := &v1.Istio{}
+			found := &v1.IstioRevision{}
 			return k8sClient.Get(ctx, istioObjectKey, found)
 		}, time.Minute, time.Second).Should(Succeed())
 
@@ -110,15 +103,6 @@ var _ = Describe("IstioController", Ordered, func() {
 			ExpectSuccess(k8sClient.Get(ctx, istioObjectKey, istio))
 			return istio.Status.ObservedGeneration
 		}, time.Minute, time.Second).Should(Equal(istio.ObjectMeta.Generation))
-
-		By("Checking if the appliedValues are written properly")
-		Eventually(func() string {
-			ExpectSuccess(k8sClient.Get(ctx, istioObjectKey, istio))
-
-			imageName, _, err := istio.Status.GetAppliedValues().GetString("pilot.image")
-			ExpectSuccess(err)
-			return imageName
-		}, time.Minute, time.Second).Should(Equal(pilotImage))
 	})
 
 	When("istiod and istio-cni-node readiness changes", func() {
@@ -138,7 +122,7 @@ var _ = Describe("IstioController", Ordered, func() {
 
 				Eventually(func() metav1.ConditionStatus {
 					ExpectSuccess(k8sClient.Get(ctx, istioObjectKey, istio))
-					return istio.Status.GetCondition(v1.ConditionTypeReady).Status
+					return istio.Status.GetCondition(v1.IstioRevisionConditionTypeReady).Status
 				}, time.Minute, time.Second).Should(Equal(metav1.ConditionTrue))
 			})
 
@@ -151,7 +135,7 @@ var _ = Describe("IstioController", Ordered, func() {
 
 				Eventually(func() metav1.ConditionStatus {
 					ExpectSuccess(k8sClient.Get(ctx, istioObjectKey, istio))
-					return istio.Status.GetCondition(v1.ConditionTypeReady).Status
+					return istio.Status.GetCondition(v1.IstioRevisionConditionTypeReady).Status
 				}, time.Minute, time.Second).Should(Equal(metav1.ConditionFalse))
 			})
 		})
@@ -225,10 +209,10 @@ var _ = Describe("IstioController", Ordered, func() {
 	})
 })
 
-func expectedOwnerReference(istio *v1.Istio) metav1.OwnerReference {
+func expectedOwnerReference(istio *v1.IstioRevision) metav1.OwnerReference {
 	return metav1.OwnerReference{
 		APIVersion:         v1.GroupVersion.String(),
-		Kind:               v1.IstioKind,
+		Kind:               v1.IstioRevisionKind,
 		Name:               istio.Name,
 		UID:                istio.UID,
 		Controller:         ptr.Of(true),
@@ -239,33 +223,33 @@ func expectedOwnerReference(istio *v1.Istio) metav1.OwnerReference {
 func TestDeriveState(t *testing.T) {
 	testCases := []struct {
 		name                string
-		reconciledCondition v1.IstioCondition
-		readyCondition      v1.IstioCondition
-		expectedState       v1.IstioConditionReason
+		reconciledCondition v1.IstioRevisionCondition
+		readyCondition      v1.IstioRevisionCondition
+		expectedState       v1.IstioRevisionConditionReason
 	}{
 		{
 			name:                "healthy",
-			reconciledCondition: newCondition(v1.ConditionTypeReconciled, true, ""),
-			readyCondition:      newCondition(v1.ConditionTypeReady, true, ""),
-			expectedState:       v1.ConditionReasonHealthy,
+			reconciledCondition: newCondition(v1.IstioRevisionConditionTypeReconciled, true, ""),
+			readyCondition:      newCondition(v1.IstioRevisionConditionTypeReady, true, ""),
+			expectedState:       v1.IstioRevisionConditionReasonHealthy,
 		},
 		{
 			name:                "not reconciled",
-			reconciledCondition: newCondition(v1.ConditionTypeReconciled, false, v1.ConditionReasonReconcileError),
-			readyCondition:      newCondition(v1.ConditionTypeReady, true, ""),
-			expectedState:       v1.ConditionReasonReconcileError,
+			reconciledCondition: newCondition(v1.IstioRevisionConditionTypeReconciled, false, v1.IstioRevisionConditionReasonReconcileError),
+			readyCondition:      newCondition(v1.IstioRevisionConditionTypeReady, true, ""),
+			expectedState:       v1.IstioRevisionConditionReasonReconcileError,
 		},
 		{
 			name:                "not ready",
-			reconciledCondition: newCondition(v1.ConditionTypeReconciled, true, ""),
-			readyCondition:      newCondition(v1.ConditionTypeReady, false, v1.ConditionReasonIstiodNotReady),
-			expectedState:       v1.ConditionReasonIstiodNotReady,
+			reconciledCondition: newCondition(v1.IstioRevisionConditionTypeReconciled, true, ""),
+			readyCondition:      newCondition(v1.IstioRevisionConditionTypeReady, false, v1.IstioRevisionConditionReasonIstiodNotReady),
+			expectedState:       v1.IstioRevisionConditionReasonIstiodNotReady,
 		},
 		{
 			name:                "not reconciled nor ready",
-			reconciledCondition: newCondition(v1.ConditionTypeReconciled, false, v1.ConditionReasonReconcileError),
-			readyCondition:      newCondition(v1.ConditionTypeReady, false, v1.ConditionReasonIstiodNotReady),
-			expectedState:       v1.ConditionReasonReconcileError, // reconcile reason takes precedence over ready reason
+			reconciledCondition: newCondition(v1.IstioRevisionConditionTypeReconciled, false, v1.IstioRevisionConditionReasonReconcileError),
+			readyCondition:      newCondition(v1.IstioRevisionConditionTypeReady, false, v1.IstioRevisionConditionReasonIstiodNotReady),
+			expectedState:       v1.IstioRevisionConditionReasonReconcileError, // reconcile reason takes precedence over ready reason
 		},
 	}
 
@@ -279,12 +263,12 @@ func TestDeriveState(t *testing.T) {
 	}
 }
 
-func newCondition(conditionType v1.IstioConditionType, status bool, reason v1.IstioConditionReason) v1.IstioCondition {
+func newCondition(conditionType v1.IstioRevisionConditionType, status bool, reason v1.IstioRevisionConditionReason) v1.IstioRevisionCondition {
 	st := metav1.ConditionFalse
 	if status {
 		st = metav1.ConditionTrue
 	}
-	return v1.IstioCondition{
+	return v1.IstioRevisionCondition{
 		Type:   conditionType,
 		Status: st,
 		Reason: reason,
@@ -297,7 +281,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 		cniEnabled    bool
 		values        string
 		clientObjects []client.Object
-		expected      v1.IstioCondition
+		expected      v1.IstioRevisionCondition
 	}{
 		{
 			name:   "Istiod ready",
@@ -315,8 +299,8 @@ func TestDetermineReadyCondition(t *testing.T) {
 					},
 				},
 			},
-			expected: v1.IstioCondition{
-				Type:   v1.ConditionTypeReady,
+			expected: v1.IstioRevisionCondition{
+				Type:   v1.IstioRevisionConditionTypeReady,
 				Status: metav1.ConditionTrue,
 			},
 		},
@@ -336,10 +320,10 @@ func TestDetermineReadyCondition(t *testing.T) {
 					},
 				},
 			},
-			expected: v1.IstioCondition{
-				Type:    v1.ConditionTypeReady,
+			expected: v1.IstioRevisionCondition{
+				Type:    v1.IstioRevisionConditionTypeReady,
 				Status:  metav1.ConditionFalse,
-				Reason:  v1.ConditionReasonIstiodNotReady,
+				Reason:  v1.IstioRevisionConditionReasonIstiodNotReady,
 				Message: "not all istiod pods are ready",
 			},
 		},
@@ -359,10 +343,10 @@ func TestDetermineReadyCondition(t *testing.T) {
 					},
 				},
 			},
-			expected: v1.IstioCondition{
-				Type:    v1.ConditionTypeReady,
+			expected: v1.IstioRevisionCondition{
+				Type:    v1.IstioRevisionConditionTypeReady,
 				Status:  metav1.ConditionFalse,
-				Reason:  v1.ConditionReasonIstiodNotReady,
+				Reason:  v1.IstioRevisionConditionReasonIstiodNotReady,
 				Message: "istiod Deployment is scaled to zero replicas",
 			},
 		},
@@ -370,10 +354,10 @@ func TestDetermineReadyCondition(t *testing.T) {
 			name:          "Istiod not found",
 			values:        ``,
 			clientObjects: []client.Object{},
-			expected: v1.IstioCondition{
-				Type:    v1.ConditionTypeReady,
+			expected: v1.IstioRevisionCondition{
+				Type:    v1.IstioRevisionConditionTypeReady,
 				Status:  metav1.ConditionFalse,
-				Reason:  v1.ConditionReasonIstiodNotReady,
+				Reason:  v1.IstioRevisionConditionReasonIstiodNotReady,
 				Message: "istiod Deployment not found",
 			},
 		},
@@ -406,8 +390,8 @@ istio_cni:
 					},
 				},
 			},
-			expected: v1.IstioCondition{
-				Type:   v1.ConditionTypeReady,
+			expected: v1.IstioRevisionCondition{
+				Type:   v1.IstioRevisionConditionTypeReady,
 				Status: metav1.ConditionTrue,
 			},
 		},
@@ -440,10 +424,10 @@ istio_cni:
 					},
 				},
 			},
-			expected: v1.IstioCondition{
-				Type:    v1.ConditionTypeReady,
+			expected: v1.IstioRevisionCondition{
+				Type:    v1.IstioRevisionConditionTypeReady,
 				Status:  metav1.ConditionFalse,
-				Reason:  v1.ConditionReasonCNINotReady,
+				Reason:  v1.IstioRevisionConditionReasonCNINotReady,
 				Message: "not all istio-cni-node pods are ready",
 			},
 		},
@@ -476,10 +460,10 @@ istio_cni:
 					},
 				},
 			},
-			expected: v1.IstioCondition{
-				Type:    v1.ConditionTypeReady,
+			expected: v1.IstioRevisionCondition{
+				Type:    v1.IstioRevisionConditionTypeReady,
 				Status:  metav1.ConditionFalse,
-				Reason:  v1.ConditionReasonCNINotReady,
+				Reason:  v1.IstioRevisionConditionReasonCNINotReady,
 				Message: "no istio-cni-node pods are currently scheduled",
 			},
 		},
@@ -502,10 +486,10 @@ istio_cni:
 					},
 				},
 			},
-			expected: v1.IstioCondition{
-				Type:    v1.ConditionTypeReady,
+			expected: v1.IstioRevisionCondition{
+				Type:    v1.IstioRevisionConditionTypeReady,
 				Status:  metav1.ConditionFalse,
-				Reason:  v1.ConditionReasonCNINotReady,
+				Reason:  v1.IstioRevisionConditionReasonCNINotReady,
 				Message: "istio-cni-node DaemonSet not found",
 			},
 		},
@@ -525,8 +509,8 @@ istio_cni:
 					},
 				},
 			},
-			expected: v1.IstioCondition{
-				Type:   v1.ConditionTypeReady,
+			expected: v1.IstioRevisionCondition{
+				Type:   v1.IstioRevisionConditionTypeReady,
 				Status: metav1.ConditionTrue,
 			},
 		},
@@ -534,23 +518,21 @@ istio_cni:
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			s := scheme.Scheme
-			s.AddKnownTypes(v1.GroupVersion, &v1.Istio{})
-			cl := fake.NewClientBuilder().WithScheme(s).WithObjects(tt.clientObjects...).Build()
+			cl := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(tt.clientObjects...).Build()
 
-			r := &IstioReconciler{Client: cl, Scheme: s}
+			r := &IstioRevisionReconciler{Client: cl, Scheme: scheme.Scheme}
 
 			var values map[string]any
 			Must(t, yaml.Unmarshal([]byte(tt.values), &values))
 
-			istio := &v1.Istio{
+			rev := &v1.IstioRevision{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "my-istio",
 					Namespace: "istio-system",
 				},
 			}
 
-			result, err := r.determineReadyCondition(context.TODO(), istio, values)
+			result, err := r.determineReadyCondition(context.TODO(), rev, values)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
@@ -558,287 +540,6 @@ istio_cni:
 			if result.Type != tt.expected.Type || result.Status != tt.expected.Status ||
 				result.Reason != tt.expected.Reason || result.Message != tt.expected.Message {
 				t.Errorf("Unexpected result.\nGot:\n    %+v\nexpected:\n    %+v", result, tt.expected)
-			}
-		})
-	}
-}
-
-// TestGetAggregatedValues tests that the values are sourced from the following sources
-// (with each source overriding the values from the previous sources):
-//   - default profile(s)
-//   - profile selected in Istio.spec.profile
-//   - Istio.spec.values
-//   - Istio.spec.rawValues
-//   - other (non-value) fields in the Istio resource (e.g. the value global.istioNamespace is set from Istio.metadata.namespace)
-func TestGetAggregatedValues(t *testing.T) {
-	const version = "my-version"
-	resourceDir := t.TempDir()
-	profilesDir := path.Join(resourceDir, version, "profiles")
-	Must(t, os.MkdirAll(profilesDir, 0o755))
-
-	Must(t, os.WriteFile(path.Join(profilesDir, "default.yaml"), []byte((`
-apiVersion: operator.istio.io/v1alpha1
-kind: Istio
-spec:
-  values:
-    key1: from-default-profile
-    key2: from-default-profile  # this gets overridden in my-profile
-    key3: from-default-profile  # this gets overridden in my-profile and values
-    key4: from-default-profile  # this gets overridden in my-profile, values, and rawValues`)), 0o644))
-
-	Must(t, os.WriteFile(path.Join(profilesDir, "my-profile.yaml"), []byte((`
-apiVersion: operator.istio.io/v1alpha1
-kind: Istio
-spec:
-  values:
-    key2: overridden-in-my-profile
-    key3: overridden-in-my-profile  # this gets overridden in values
-    key4: overridden-in-my-profile  # this gets overridden in rawValues`)), 0o644))
-
-	istio := v1.Istio{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-istio",
-			Namespace: "my-istio-namespace",
-		},
-		Spec: v1.IstioSpec{
-			Version: version,
-			Profile: "my-profile",
-			Values: toJSON(helm.HelmValues{
-				"key3": "overridden-in-values",
-				"key4": "overridden-in-values", // this gets overridden in rawValues
-			}),
-			RawValues: toJSON(helm.HelmValues{
-				"key4": "overridden-in-raw-values",
-			}),
-		},
-	}
-
-	result, err := getAggregatedValues(istio, []string{"default"}, resourceDir)
-	if err != nil {
-		t.Errorf("Expected no error, but got an error: %v", err)
-	}
-
-	expected := helm.HelmValues{
-		"key1": "from-default-profile",
-		"key2": "overridden-in-my-profile",
-		"key3": "overridden-in-values",
-		"key4": "overridden-in-raw-values",
-		"global": map[string]any{
-			"istioNamespace": "my-istio-namespace", // this value is always added/overridden based on Istio.metadata.namespace
-		},
-	}
-
-	if !reflect.DeepEqual(result, expected) {
-		t.Errorf("Result does not match the expected HelmValues.\nExpected: %v\nActual: %v", expected, result)
-	}
-}
-
-func toJSON(values helm.HelmValues) json.RawMessage {
-	jsonVals, err := json.Marshal(values)
-	if err != nil {
-		panic(err)
-	}
-	return jsonVals
-}
-
-func TestGetValuesFromProfiles(t *testing.T) {
-	const version = "my-version"
-	resourceDir := t.TempDir()
-	profilesDir := path.Join(resourceDir, version, "profiles")
-	Must(t, os.MkdirAll(profilesDir, 0o755))
-
-	writeProfileFile := func(t *testing.T, path string, values ...string) {
-		yaml := `
-apiVersion: operator.istio.io/v1alpha1
-kind: Istio
-spec:
-  values:`
-		for i, val := range values {
-			if val != "" {
-				yaml += fmt.Sprintf(`
-    value%d: %s`, i+1, val)
-			}
-		}
-		Must(t, os.WriteFile(path, []byte(yaml), 0o644))
-	}
-
-	writeProfileFile(t, path.Join(profilesDir, "default.yaml"), "1-from-default", "2-from-default")
-	writeProfileFile(t, path.Join(profilesDir, "overlay.yaml"), "", "2-from-overlay")
-	writeProfileFile(t, path.Join(profilesDir, "custom.yaml"), "1-from-custom")
-	writeProfileFile(t, path.Join(resourceDir, version, "not-in-profiles-dir.yaml"), "should-not-be-accessible")
-
-	tests := []struct {
-		name         string
-		profiles     []string
-		expectValues helm.HelmValues
-		expectErr    bool
-	}{
-		{
-			name:         "nil default profiles",
-			profiles:     nil,
-			expectValues: helm.HelmValues{},
-		},
-		{
-			name:     "default profile only",
-			profiles: []string{"default"},
-			expectValues: helm.HelmValues{
-				"value1": "1-from-default",
-				"value2": "2-from-default",
-			},
-		},
-		{
-			name:     "default and overlay",
-			profiles: []string{"default", "overlay"},
-			expectValues: helm.HelmValues{
-				"value1": "1-from-default",
-				"value2": "2-from-overlay",
-			},
-		},
-		{
-			name:     "default and overlay and custom",
-			profiles: []string{"default", "overlay", "custom"},
-			expectValues: helm.HelmValues{
-				"value1": "1-from-custom",
-				"value2": "2-from-overlay",
-			},
-		},
-		{
-			name:      "default profile empty",
-			profiles:  []string{""},
-			expectErr: true,
-		},
-		{
-			name:      "profile not found",
-			profiles:  []string{"invalid"},
-			expectErr: true,
-		},
-		{
-			name:      "path-traversal-attack",
-			profiles:  []string{"../not-in-profiles-dir"},
-			expectErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			actual, err := getValuesFromProfiles(profilesDir, tt.profiles)
-			if (err != nil) != tt.expectErr {
-				t.Errorf("applyProfile() error = %v, expectErr %v", err, tt.expectErr)
-			}
-
-			if err == nil {
-				if diff := cmp.Diff(tt.expectValues, actual); diff != "" {
-					t.Errorf("profile wasn't applied properly; diff (-expected, +actual):\n%v", diff)
-				}
-			}
-		})
-	}
-}
-
-func TestMergeOverwrite(t *testing.T) {
-	testCases := []struct {
-		name                    string
-		overrides, base, expect map[string]any
-	}{
-		{
-			name:      "both empty",
-			base:      make(map[string]any),
-			overrides: make(map[string]any),
-			expect:    make(map[string]any),
-		},
-		{
-			name:      "nil overrides",
-			base:      map[string]any{"key1": 42, "key2": "value"},
-			overrides: nil,
-			expect:    map[string]any{"key1": 42, "key2": "value"},
-		},
-		{
-			name:      "nil base",
-			base:      nil,
-			overrides: map[string]any{"key1": 42, "key2": "value"},
-			expect:    map[string]any{"key1": 42, "key2": "value"},
-		},
-		{
-			name: "adds toplevel keys",
-			base: map[string]any{
-				"key2": "from base",
-			},
-			overrides: map[string]any{
-				"key1": "from overrides",
-			},
-			expect: map[string]any{
-				"key1": "from overrides",
-				"key2": "from base",
-			},
-		},
-		{
-			name: "adds nested keys",
-			base: map[string]any{
-				"key1": map[string]any{
-					"nested2": "from base",
-				},
-			},
-			overrides: map[string]any{
-				"key1": map[string]any{
-					"nested1": "from overrides",
-				},
-			},
-			expect: map[string]any{
-				"key1": map[string]any{
-					"nested1": "from overrides",
-					"nested2": "from base",
-				},
-			},
-		},
-		{
-			name: "overrides overrides base",
-			base: map[string]any{
-				"key1": "from base",
-				"key2": map[string]any{
-					"nested1": "from base",
-				},
-			},
-			overrides: map[string]any{
-				"key1": "from overrides",
-				"key2": map[string]any{
-					"nested1": "from overrides",
-				},
-			},
-			expect: map[string]any{
-				"key1": "from overrides",
-				"key2": map[string]any{
-					"nested1": "from overrides",
-				},
-			},
-		},
-		{
-			name: "mismatched types",
-			base: map[string]any{
-				"key1": map[string]any{
-					"desc": "key1 is a map in base",
-				},
-				"key2": "key2 is a string in base",
-			},
-			overrides: map[string]any{
-				"key1": "key1 is a string in overrides",
-				"key2": map[string]any{
-					"desc": "key2 is a map in overrides",
-				},
-			},
-			expect: map[string]any{
-				"key1": "key1 is a string in overrides",
-				"key2": map[string]any{
-					"desc": "key2 is a map in overrides",
-				},
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			result := mergeOverwrite(tc.base, tc.overrides)
-			if diff := cmp.Diff(tc.expect, result); diff != "" {
-				t.Errorf("unexpected merge result; diff (-expected, +actual):\n%v", diff)
 			}
 		})
 	}

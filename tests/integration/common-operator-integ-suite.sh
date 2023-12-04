@@ -224,12 +224,9 @@ main_test() {
     echo "Undeploy Istio"
     ${COMMAND} delete -f "${ISTIO_MANIFEST}" -n "${CONTROL_PLANE_NS}"
 
-    echo "Check that Istio has been deleted"
-    if ${COMMAND} get deployment "istiod" -n "${CONTROL_PLANE_NS}" &>/dev/null; then
-      logFailure "Expected istiod deployment to have been deleted, but it still exists:"
-      ${COMMAND} -n "${CONTROL_PLANE_NS}" get deploy
-      exit 1
-    fi
+    echo "Check that istiod deployment has been deleted (waiting $TIMEOUT)"
+    timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
+      "until ! ${COMMAND} get deployment istiod -n ${CONTROL_PLANE_NS}; do sleep 5; done"
 
     echo "Delete namespace ${CONTROL_PLANE_NS}"
     ${COMMAND} delete ns "${CONTROL_PLANE_NS}"

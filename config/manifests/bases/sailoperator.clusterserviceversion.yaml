@@ -44,9 +44,6 @@ spec:
           installing Istio.
         displayName: Helm Values
         path: values
-      statusDescriptors:
-      - displayName: Applied Helm Values
-        path: appliedValues
       version: v1alpha1
   description: |-
     This is an experimental operator for installing Istio service mesh.
