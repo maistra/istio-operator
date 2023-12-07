@@ -18,7 +18,6 @@ package istiorevision
 
 import (
 	"context"
-	"os"
 	"path"
 	"testing"
 
@@ -88,8 +87,6 @@ var _ = BeforeSuite(func() {
 	}()
 
 	err = k8sClient.Create(context.TODO(), &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: operatorNamespace}})
-	Expect(err).NotTo(HaveOccurred())
-	err = os.Setenv("POD_NAMESPACE", operatorNamespace)
 	Expect(err).NotTo(HaveOccurred())
 })
 
