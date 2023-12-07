@@ -87,8 +87,12 @@ func main() {
 
 	operatorNamespace := os.Getenv("POD_NAMESPACE")
 	if operatorNamespace == "" {
-		setupLog.Error(nil, "POD_NAMESPACE environment variable not set")
-		os.Exit(1)
+		contents, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+		operatorNamespace = string(contents)
+		if err != nil || operatorNamespace == "" {
+			setupLog.Error(err, "can't determine namespace this operator is running in; if running outside of a pod, please set the POD_NAMESPACE environment variable")
+			os.Exit(1)
+		}
 	}
 
 	if defaultProfiles == "" {
