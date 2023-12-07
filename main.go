@@ -33,7 +33,6 @@ import (
 	"maistra.io/istio-operator/controllers/istiorevision"
 	"maistra.io/istio-operator/pkg/common"
 	"maistra.io/istio-operator/pkg/helm"
-	"maistra.io/istio-operator/pkg/kube"
 	"maistra.io/istio-operator/pkg/version"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -84,12 +83,19 @@ func main() {
 		os.Exit(0)
 	}
 
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	operatorNamespace := os.Getenv("POD_NAMESPACE")
+	if operatorNamespace == "" {
+		setupLog.Error(nil, "POD_NAMESPACE environment variable not set")
+		os.Exit(1)
+	}
+
 	if defaultProfiles == "" {
 		setupLog.Error(nil, "--default-profiles shouldn't be empty")
 		os.Exit(1)
 	}
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	setupLog.Info(version.Info.String())
 	setupLog.Info("reading config")
 	err := common.ReadConfig(configFile)
@@ -112,7 +118,7 @@ func main() {
 		HealthProbeBindAddress:  probeAddr,
 		LeaderElection:          true,
 		LeaderElectionID:        "8d20bb54.istio.io",
-		LeaderElectionNamespace: kube.GetOperatorNamespace(),
+		LeaderElectionNamespace: operatorNamespace,
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
