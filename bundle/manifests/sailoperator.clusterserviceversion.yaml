@@ -18,7 +18,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-operator:3.0-latest
-    createdAt: "2023-12-07T03:13:49Z"
+    createdAt: "2023-12-07T06:13:49Z"
     operators.operatorframework.io/builder: operator-sdk-v1.32.0
     operators.operatorframework.io/internal-objects: '["wasmplugins.extensions.istio.io","destinationrules.networking.istio.io","envoyfilters.networking.istio.io","gateways.networking.istio.io","proxyconfigs.networking.istio.io","serviceentries.networking.istio.io","sidecars.networking.istio.io","virtualservices.networking.istio.io","workloadentries.networking.istio.io","workloadgroups.networking.istio.io","authorizationpolicies.security.istio.io","peerauthentications.security.istio.io","requestauthentications.security.istio.io","telemetries.telemetry.istio.io"]'
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -49,6 +49,9 @@ spec:
     - kind: Gateway
       name: gateways.networking.istio.io
       version: v1beta1
+    - kind: IstioRevision
+      name: istiorevisions.operator.istio.io
+      version: v1alpha1
     - description: Istio represents an Istio Service Mesh deployment
       displayName: Istio
       kind: Istio
@@ -80,9 +83,6 @@ spec:
           installing Istio.
         displayName: Helm Values
         path: values
-      statusDescriptors:
-      - displayName: Applied Helm Values
-        path: appliedValues
       version: v1alpha1
     - kind: PeerAuthentication
       name: peerauthentications.security.istio.io
@@ -236,6 +236,32 @@ spec:
           - networkpolicies
           verbs:
           - '*'
+        - apiGroups:
+          - operator.istio.io
+          resources:
+          - istiorevisions
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - operator.istio.io
+          resources:
+          - istiorevisions/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - operator.istio.io
+          resources:
+          - istiorevisions/status
+          verbs:
+          - get
+          - patch
+          - update
         - apiGroups:
           - operator.istio.io
           resources:

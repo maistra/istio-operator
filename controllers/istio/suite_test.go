@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package istio
 
 import (
 	"context"
@@ -71,7 +71,7 @@ var _ = BeforeSuite(func() {
 		panic(err)
 	}
 
-	controller := NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), path.Join(common.RepositoryRoot, "resources"), []string{"default"})
+	controller := NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), path.Join(common.RepositoryRoot, "resources"), []string{"default"})
 	err = controller.SetupWithManager(mgr)
 	if err != nil {
 		panic(err)

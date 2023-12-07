@@ -29,7 +29,8 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	maistraiov1 "maistra.io/istio-operator/api/v1alpha1"
-	"maistra.io/istio-operator/controllers"
+	"maistra.io/istio-operator/controllers/istio"
+	"maistra.io/istio-operator/controllers/istiorevision"
 	"maistra.io/istio-operator/pkg/common"
 	"maistra.io/istio-operator/pkg/helm"
 	"maistra.io/istio-operator/pkg/kube"
@@ -129,11 +130,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	helm.ResourceDirectory = resourceDirectory
-	controller := controllers.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDirectory, strings.Split(defaultProfiles, ","))
-	err = controller.SetupWithManager(mgr)
+	err = istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDirectory, strings.Split(defaultProfiles, ",")).
+		SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Istio")
+		os.Exit(1)
+	}
+
+	helm.ResourceDirectory = resourceDirectory
+	err = istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig()).
+		SetupWithManager(mgr)
+	if err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "IstioRevision")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

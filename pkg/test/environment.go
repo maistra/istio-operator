@@ -29,8 +29,7 @@ func SetupEnv() (*envtest.Environment, client.Client, *rest.Config) {
 		panic(err)
 	}
 
-	utilruntime.Must(v1alpha1.AddToScheme(scheme.Scheme))
-	utilruntime.Must(networkingv1alpha3.AddToScheme(scheme.Scheme))
+	SetupScheme()
 
 	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	if err != nil {
@@ -38,4 +37,9 @@ func SetupEnv() (*envtest.Environment, client.Client, *rest.Config) {
 	}
 
 	return testEnv, k8sClient, cfg
+}
+
+func SetupScheme() {
+	utilruntime.Must(v1alpha1.AddToScheme(scheme.Scheme))
+	utilruntime.Must(networkingv1alpha3.AddToScheme(scheme.Scheme))
 }
