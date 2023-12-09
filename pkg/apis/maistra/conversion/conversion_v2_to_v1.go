@@ -209,7 +209,7 @@ func Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(in *v2.ControlPlaneSpec,
 	}
 
 	// Addons
-	if err := populateAddonsValues(in, values); err != nil {
+	if err := populateAddonsValues(in, values, namespace); err != nil {
 		return err
 	}
 

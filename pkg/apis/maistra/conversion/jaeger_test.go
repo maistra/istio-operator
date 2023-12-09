@@ -122,19 +122,8 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 				Tracing: &v2.TracingConfig{
 					Type: v2.TracerTypeJaeger,
 				},
-				Addons: &v2.AddonsConfig{
-					Jaeger: &v2.JaegerAddonConfig{
-						Name: "my-jaeger",
-					},
-				},
 			},
-			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-				"tracing": map[string]interface{}{
-					"jaeger": map[string]interface{}{
-						"resourceName": "my-jaeger",
-					},
-				},
-			}),
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 			completeIstio: v1.NewHelmValues(map[string]interface{}{
 				"global": map[string]interface{}{
 					"multiCluster":  globalMultiClusterDefaults,
@@ -162,18 +151,11 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 				},
 				Addons: &v2.AddonsConfig{
 					Jaeger: &v2.JaegerAddonConfig{
-						Name:    "my-jaeger",
 						Install: &v2.JaegerInstallConfig{},
 					},
 				},
 			},
-			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-				"tracing": map[string]interface{}{
-					"jaeger": map[string]interface{}{
-						"resourceName": "my-jaeger",
-					},
-				},
-			}),
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 			completeIstio: v1.NewHelmValues(map[string]interface{}{
 				"global": map[string]interface{}{
 					"multiCluster":  globalMultiClusterDefaults,
@@ -201,20 +183,13 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 				},
 				Addons: &v2.AddonsConfig{
 					Jaeger: &v2.JaegerAddonConfig{
-						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
 							Storage: &v2.JaegerStorageConfig{},
 						},
 					},
 				},
 			},
-			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-				"tracing": map[string]interface{}{
-					"jaeger": map[string]interface{}{
-						"resourceName": "my-jaeger",
-					},
-				},
-			}),
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 			completeIstio: v1.NewHelmValues(map[string]interface{}{
 				"global": map[string]interface{}{
 					"multiCluster":  globalMultiClusterDefaults,
@@ -242,7 +217,6 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 				},
 				Addons: &v2.AddonsConfig{
 					Jaeger: &v2.JaegerAddonConfig{
-						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
 							Storage: &v2.JaegerStorageConfig{
 								Type: v2.JaegerStorageTypeMemory,
@@ -254,8 +228,7 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 				"tracing": map[string]interface{}{
 					"jaeger": map[string]interface{}{
-						"resourceName": "my-jaeger",
-						"template":     "all-in-one",
+						"template": "all-in-one",
 					},
 				},
 			}),
@@ -286,7 +259,6 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 				},
 				Addons: &v2.AddonsConfig{
 					Jaeger: &v2.JaegerAddonConfig{
-						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
 							Storage: &v2.JaegerStorageConfig{
 								Type:   v2.JaegerStorageTypeMemory,
@@ -299,8 +271,7 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 				"tracing": map[string]interface{}{
 					"jaeger": map[string]interface{}{
-						"resourceName": "my-jaeger",
-						"template":     "all-in-one",
+						"template": "all-in-one",
 					},
 				},
 			}),
@@ -331,7 +302,6 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 				},
 				Addons: &v2.AddonsConfig{
 					Jaeger: &v2.JaegerAddonConfig{
-						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
 							Storage: &v2.JaegerStorageConfig{
 								Type: v2.JaegerStorageTypeMemory,
@@ -346,8 +316,7 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 				"tracing": map[string]interface{}{
 					"jaeger": map[string]interface{}{
-						"resourceName": "my-jaeger",
-						"template":     "all-in-one",
+						"template": "all-in-one",
 						"memory": map[string]interface{}{
 							"max_traces": 15000,
 						},
@@ -381,7 +350,6 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 				},
 				Addons: &v2.AddonsConfig{
 					Jaeger: &v2.JaegerAddonConfig{
-						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
 							Storage: &v2.JaegerStorageConfig{
 								Type: v2.JaegerStorageTypeElasticsearch,
@@ -393,8 +361,7 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 				"tracing": map[string]interface{}{
 					"jaeger": map[string]interface{}{
-						"resourceName": "my-jaeger",
-						"template":     "production-elasticsearch",
+						"template": "production-elasticsearch",
 					},
 				},
 			}),
@@ -425,7 +392,6 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 				},
 				Addons: &v2.AddonsConfig{
 					Jaeger: &v2.JaegerAddonConfig{
-						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
 							Storage: &v2.JaegerStorageConfig{
 								Type:          v2.JaegerStorageTypeElasticsearch,
@@ -438,8 +404,7 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 				"tracing": map[string]interface{}{
 					"jaeger": map[string]interface{}{
-						"resourceName": "my-jaeger",
-						"template":     "production-elasticsearch",
+						"template": "production-elasticsearch",
 					},
 				},
 			}),
@@ -470,7 +435,6 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 				},
 				Addons: &v2.AddonsConfig{
 					Jaeger: &v2.JaegerAddonConfig{
-						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
 							Storage: &v2.JaegerStorageConfig{
 								Type: v2.JaegerStorageTypeElasticsearch,
@@ -495,8 +459,7 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 				"tracing": map[string]interface{}{
 					"jaeger": map[string]interface{}{
-						"resourceName": "my-jaeger",
-						"template":     "production-elasticsearch",
+						"template": "production-elasticsearch",
 						"elasticsearch": map[string]interface{}{
 							"nodeCount":        5,
 							"redundancyPolicy": "ZeroRedundancy",
@@ -540,20 +503,13 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 				},
 				Addons: &v2.AddonsConfig{
 					Jaeger: &v2.JaegerAddonConfig{
-						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
 							Ingress: &v2.JaegerIngressConfig{},
 						},
 					},
 				},
 			},
-			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
-				"tracing": map[string]interface{}{
-					"jaeger": map[string]interface{}{
-						"resourceName": "my-jaeger",
-					},
-				},
-			}),
+			isolatedIstio: v1.NewHelmValues(map[string]interface{}{}),
 			completeIstio: v1.NewHelmValues(map[string]interface{}{
 				"global": map[string]interface{}{
 					"multiCluster":  globalMultiClusterDefaults,
@@ -581,7 +537,6 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 				},
 				Addons: &v2.AddonsConfig{
 					Jaeger: &v2.JaegerAddonConfig{
-						Name: "my-jaeger",
 						Install: &v2.JaegerInstallConfig{
 							Ingress: &v2.JaegerIngressConfig{
 								Enablement: v2.Enablement{
@@ -602,9 +557,6 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 			},
 			isolatedIstio: v1.NewHelmValues(map[string]interface{}{
 				"tracing": map[string]interface{}{
-					"jaeger": map[string]interface{}{
-						"resourceName": "my-jaeger",
-					},
 					"ingress": map[string]interface{}{
 						"enabled": true,
 						"annotations": map[string]interface{}{
@@ -637,9 +589,12 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 	}
 }
 
+var jaegerConversionTestCasesV2 []conversionTestCaseV2
+
 func init() {
 	for _, v := range versions.TestedVersions {
 		jaegerTestCases = append(jaegerTestCases, jaegerTestCasesV2(v)...)
+		jaegerConversionTestCasesV2 = append(jaegerConversionTestCasesV2, createJaegerTestCases(v)...)
 	}
 }
 
@@ -648,7 +603,7 @@ func TestJaegerConversionFromV2(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			specCopy := tc.spec.DeepCopy()
 			helmValues := v1.NewHelmValues(make(map[string]interface{}))
-			if err := populateAddonsValues(specCopy, helmValues.GetContent()); err != nil {
+			if err := populateAddonsValues(specCopy, helmValues.GetContent(), "istio-system"); err != nil {
 				t.Fatalf("error converting to values: %s", err)
 			}
 			if !reflect.DeepEqual(tc.isolatedIstio.DeepCopy(), helmValues.DeepCopy()) {
@@ -663,5 +618,42 @@ func TestJaegerConversionFromV2(t *testing.T) {
 			}
 			assertEquals(t, tc.spec.Addons, specv2.Addons)
 		})
+	}
+}
+
+func createJaegerTestCases(version versions.Version) []conversionTestCaseV2 {
+	ver := version.String()
+	return []conversionTestCaseV2{
+		{
+			name: "custom-jaeger." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Addons: &v2.AddonsConfig{
+					Jaeger: &v2.JaegerAddonConfig{
+						Name: "custom-jaeger",
+					},
+				},
+				Tracing: &v2.TracingConfig{
+					Type: v2.TracerTypeJaeger,
+				},
+				Version: ver,
+			},
+			expectedHelmValues: buildHelmValues(`
+global:
+  enableTracing: true
+  proxy:
+    tracer: zipkin
+meshConfig:
+  defaultConfig:
+    tracing:
+      zipkin:
+        address: custom-jaeger-collector.istio-system.svc:9411
+  enableTracing: true
+tracing:
+  enabled: true
+  jaeger:
+    resourceName: custom-jaeger
+  provider: jaeger
+`),
+		},
 	}
 }

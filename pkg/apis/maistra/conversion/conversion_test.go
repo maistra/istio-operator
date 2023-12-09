@@ -2,6 +2,7 @@ package conversion
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -1491,6 +1492,45 @@ func runTestCasesFromV2(testCases []conversionTestCase, t *testing.T) {
 				tc.roundTripSpec.DeepCopyInto(&smcpv2.Spec)
 			}
 			assertEquals(t, smcpv2, newsmcpv2)
+		})
+	}
+}
+
+type conversionTestCaseV2 struct {
+	name               string
+	spec               *v2.ControlPlaneSpec
+	expectedHelmValues v1.HelmValues
+}
+
+func TestConversion(t *testing.T) {
+	var testCases []conversionTestCaseV2
+	testCases = append(testCases, jaegerConversionTestCasesV2...)
+	testCases = append(testCases, securityConversionTestCasesV2...)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Run(tc.name+"-v2_to_v1", func(t *testing.T) {
+				var specV1 v1.ControlPlaneSpec
+				if err := Convert_v2_ControlPlaneSpec_To_v1_ControlPlaneSpec(tc.spec.DeepCopy(), &specV1, nil); err != nil {
+					t.Errorf("failed to convert SMCP v2 to v1: %s", err)
+				}
+
+				if !reflect.DeepEqual(tc.expectedHelmValues.DeepCopy(), specV1.Istio.DeepCopy()) {
+					t.Errorf("unexpected output converting v2 to values:\n\texpected:\n%#v\n\tgot:\n%#v", tc.expectedHelmValues.GetContent(), specV1.Istio.GetContent())
+				}
+			})
+
+			t.Run(tc.name+"-v1_to_v2", func(t *testing.T) {
+				specV1 := v1.ControlPlaneSpec{
+					Istio: tc.expectedHelmValues.DeepCopy(),
+				}
+				specV2 := v2.ControlPlaneSpec{}
+				if err := Convert_v1_ControlPlaneSpec_To_v2_ControlPlaneSpec(&specV1, &specV2, nil); err != nil {
+					t.Errorf("failed to convert SMCP v1 to v2: %s", err)
+				}
+
+				assertEquals(t, tc.spec.Security, specV2.Security)
+			})
 		})
 	}
 }

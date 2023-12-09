@@ -651,7 +651,7 @@ func TestKialiConversionFromV2(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			specCopy := tc.spec.DeepCopy()
 			helmValues := v1.NewHelmValues(make(map[string]interface{}))
-			if err := populateAddonsValues(specCopy, helmValues.GetContent()); err != nil {
+			if err := populateAddonsValues(specCopy, helmValues.GetContent(), "istio-system"); err != nil {
 				t.Fatalf("error converting to values: %s", err)
 			}
 			if !reflect.DeepEqual(tc.isolatedIstio.DeepCopy(), helmValues.DeepCopy()) {

@@ -5,7 +5,7 @@ import (
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
-func populateAddonsValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
+func populateAddonsValues(in *v2.ControlPlaneSpec, values map[string]interface{}, ns string) error {
 	if in.Addons == nil {
 		return nil
 	}
@@ -30,7 +30,7 @@ func populateAddonsValues(in *v2.ControlPlaneSpec, values map[string]interface{}
 	}
 
 	if in.Addons.Jaeger != nil {
-		if err := populateJaegerAddonValues(in.Addons.Jaeger, values); err != nil {
+		if err := populateJaegerAddonValues(in.Addons.Jaeger, values, ns); err != nil {
 			return err
 		}
 	}

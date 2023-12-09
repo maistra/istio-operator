@@ -7,7 +7,7 @@ import (
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 )
 
-func populateJaegerAddonValues(jaeger *v2.JaegerAddonConfig, values map[string]interface{}) (reterr error) {
+func populateJaegerAddonValues(jaeger *v2.JaegerAddonConfig, values map[string]interface{}, ns string) (reterr error) {
 	if jaeger == nil {
 		return nil
 	}
@@ -30,6 +30,10 @@ func populateJaegerAddonValues(jaeger *v2.JaegerAddonConfig, values map[string]i
 
 	if jaeger.Name != "" {
 		if err := setHelmStringValue(jaegerValues, "resourceName", jaeger.Name); err != nil {
+			return err
+		}
+		collectorAddr := fmt.Sprintf("%s-collector.%s.svc:9411", jaeger.Name, ns)
+		if err := setHelmStringValue(values, "meshConfig.defaultConfig.tracing.zipkin.address", collectorAddr); err != nil {
 			return err
 		}
 	}
@@ -129,11 +133,9 @@ func populateJaegerAddonConfig(in *v1.HelmValues, out *v2.JaegerAddonConfig) (bo
 		return false, nil
 	}
 	tracingValues := v1.NewHelmValues(rawTracingValues)
-	rawJaegerValues, ok, err := tracingValues.GetMap("jaeger")
+	rawJaegerValues, _, err := tracingValues.GetMap("jaeger")
 	if err != nil {
 		return false, err
-	} else if !ok || len(rawJaegerValues) == 0 {
-		return false, nil
 	}
 	jaegerValues := v1.NewHelmValues(rawJaegerValues)
 
