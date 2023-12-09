@@ -119,6 +119,7 @@ spec:
                     type: object
                 type: object
               targetRef:
+                description: Optional.
                 properties:
                   group:
                     description: group is the group of the target resource.
@@ -237,6 +238,7 @@ spec:
                     type: object
                 type: object
               targetRef:
+                description: Optional.
                 properties:
                   group:
                     description: group is the group of the target resource.
