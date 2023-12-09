@@ -213,10 +213,10 @@ func (v *versionStrategyV2_5) validateExtensionProviders(spec *v2.ControlPlaneSp
 
 		if counter == 0 {
 			allErrors = append(allErrors, fmt.Errorf("extension provider '%s' does not define any provider - "+
-				"it must specify one of: prometheus, zipkin, envoyExtAuthzHttp, or envoyExtAuthzGrpc", ext.Name))
+				"it must specify one of: prometheus, zipkin, opentelemetry, envoyOtelAls, envoyExtAuthzHttp, or envoyExtAuthzGrpc", ext.Name))
 		} else if counter > 1 {
 			allErrors = append(allErrors, fmt.Errorf("extension provider '%s' must specify only one type of provider: "+
-				"prometheus, zipkin, envoyExtAuthzHttp, or envoyExtAuthzGrpc", ext.Name))
+				"prometheus, zipkin, opentelemetry, envoyOtelAls, envoyExtAuthzHttp, or envoyExtAuthzGrpc", ext.Name))
 		}
 
 		if ext.EnvoyExtAuthzHTTP != nil {

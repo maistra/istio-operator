@@ -7,6 +7,10 @@ type ExtensionProviderConfig struct {
 	Prometheus *ExtensionProviderPrometheusConfig `json:"prometheus,omitempty"`
 	// Zipkin configures a tracing provider that uses the Zipkin API.
 	Zipkin *ExtensionProviderZipkinTracingConfig `json:"zipkin,omitempty"`
+	// Opentelemetry configures an OpenTelemetry tracing provider.
+	Opentelemetry *ExtensionProviderOtelTracingConfig `json:"opentelemetry,omitempty"`
+	// EnvoyOtelAls configures an Envoy Open Telemetry Access Logging Service provider.
+	EnvoyOtelAls *ExtensionProviderEnvoyOtelLogConfig `json:"envoyOtelAls,omitempty"`
 	// EnvoyExtAuthzHTTP configures an external authorizer that implements
 	// the Envoy ext_authz filter authorization check service using the HTTP API.
 	EnvoyExtAuthzHTTP *ExtensionProviderEnvoyExternalAuthorizationHTTPConfig `json:"envoyExtAuthzHttp,omitempty"`
@@ -29,6 +33,27 @@ type ExtensionProviderZipkinTracingConfig struct {
 	// Optional. A 128 bit trace id will be used in Istio.
 	// If true, will result in a 64 bit trace id being used.
 	Enable64bitTraceID *bool `json:"enable64bitTraceId,omitempty"`
+}
+
+type ExtensionProviderOtelTracingConfig struct {
+	// REQUIRED. Specifies the OpenTelemetry endpoint that will receive OTLP traces.
+	// Example: “otlp.default.svc.cluster.local” or “bar/otlp.example.com”.
+	Service string `json:"service"`
+	// REQUIRED. Specifies the port of the service.
+	Port int64 `json:"port"`
+	// Optional. Controls the overall path length allowed in a reported span.
+	// NOTE: currently only controls max length of the path tag.
+	MaxTagLength *int64 `json:"maxTagLength,omitempty"`
+}
+
+type ExtensionProviderEnvoyOtelLogConfig struct {
+	// REQUIRED. Specifies the service that implements the Envoy ALS gRPC authorization service.
+	// Example: “envoy-als.foo.svc.cluster.local” or “bar/envoy-als.example.com”.
+	Service string `json:"service"`
+	// REQUIRED. Specifies the port of the service.
+	Port int64 `json:"port"`
+	// Optional. The friendly name of the access log. Defaults: "otel_envoy_accesslog"
+	LogName *string `json:"logName,omitempty"`
 }
 
 type ExtensionProviderEnvoyExternalAuthorizationHTTPConfig struct {

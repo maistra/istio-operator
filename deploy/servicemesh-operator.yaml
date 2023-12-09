@@ -4155,8 +4155,35 @@ spec:
                           - port
                           - service
                           type: object
+                        envoyOtelAls:
+                          properties:
+                            logName:
+                              type: string
+                            port:
+                              format: int64
+                              type: integer
+                            service:
+                              type: string
+                          required:
+                          - port
+                          - service
+                          type: object
                         name:
                           type: string
+                        opentelemetry:
+                          properties:
+                            maxTagLength:
+                              format: int64
+                              type: integer
+                            port:
+                              format: int64
+                              type: integer
+                            service:
+                              type: string
+                          required:
+                          - port
+                          - service
+                          type: object
                         prometheus:
                           type: object
                         zipkin:
@@ -9174,8 +9201,35 @@ spec:
                               - port
                               - service
                               type: object
+                            envoyOtelAls:
+                              properties:
+                                logName:
+                                  type: string
+                                port:
+                                  format: int64
+                                  type: integer
+                                service:
+                                  type: string
+                              required:
+                              - port
+                              - service
+                              type: object
                             name:
                               type: string
+                            opentelemetry:
+                              properties:
+                                maxTagLength:
+                                  format: int64
+                                  type: integer
+                                port:
+                                  format: int64
+                                  type: integer
+                                service:
+                                  type: string
+                              required:
+                              - port
+                              - service
+                              type: object
                             prometheus:
                               type: object
                             zipkin:

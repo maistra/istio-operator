@@ -39,6 +39,36 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 			})
 		}
 
+		if provider.Opentelemetry != nil {
+			config := provider.Opentelemetry
+			values := map[string]interface{}{
+				"service": config.Service,
+				"port":    config.Port,
+			}
+			if config.MaxTagLength != nil {
+				values["maxTagLength"] = config.MaxTagLength
+			}
+			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
+				"name":          provider.Name,
+				"opentelemetry": values,
+			})
+		}
+
+		if provider.EnvoyOtelAls != nil {
+			config := provider.EnvoyOtelAls
+			values := map[string]interface{}{
+				"service": config.Service,
+				"port":    config.Port,
+			}
+			if config.LogName != nil {
+				values["logName"] = config.LogName
+			}
+			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
+				"name":         provider.Name,
+				"envoyOtelAls": values,
+			})
+		}
+
 		if provider.EnvoyExtAuthzHTTP != nil {
 			config := provider.EnvoyExtAuthzHTTP
 			values := map[string]interface{}{
@@ -173,6 +203,24 @@ func convertProviderValuesToConfig(values *v1.HelmValues) (v2.ExtensionProviderC
 		return config, err
 	}
 
+	if rawConfig, found, err := values.GetMap("opentelemetry"); found {
+		config.Opentelemetry, err = convertOtelValuesToConfig(v1.NewHelmValues(rawConfig))
+		if err != nil {
+			return config, err
+		}
+	} else if err != nil {
+		return config, err
+	}
+
+	if rawConfig, found, err := values.GetMap("envoyOtelAls"); found {
+		config.EnvoyOtelAls, err = convertEnvoyOtelAlsValuesToConfig(v1.NewHelmValues(rawConfig))
+		if err != nil {
+			return config, err
+		}
+	} else if err != nil {
+		return config, err
+	}
+
 	if rawEnvoyExtAuthzHTTP, found, err := values.GetMap("envoyExtAuthzHttp"); found {
 		config.EnvoyExtAuthzHTTP, err = convertEnvoyExtAuthzHTTPValuesToConfig(v1.NewHelmValues(rawEnvoyExtAuthzHTTP))
 		if err != nil {
@@ -217,6 +265,56 @@ func convertZipkinValuesToConfig(values *v1.HelmValues) (*v2.ExtensionProviderZi
 	}
 	if value, ok, err := values.GetBool("enable64bitTraceId"); ok {
 		config.Enable64bitTraceID = boolPtr(value)
+	} else if err != nil {
+		return config, err
+	}
+
+	return config, nil
+}
+
+func convertOtelValuesToConfig(values *v1.HelmValues) (*v2.ExtensionProviderOtelTracingConfig, error) {
+	config := &v2.ExtensionProviderOtelTracingConfig{}
+	if value, ok, err := values.GetString("service"); ok {
+		config.Service = value
+	} else if err != nil {
+		return config, err
+	} else {
+		return config, fmt.Errorf("service is required for opentelemetry")
+	}
+	if value, ok, err := values.GetInt64("port"); ok {
+		config.Port = value
+	} else if err != nil {
+		return config, err
+	} else {
+		return config, fmt.Errorf("port is required for opentelemetry")
+	}
+	if value, ok, err := values.GetInt64("maxTagLength"); ok {
+		config.MaxTagLength = int64Ptr(value)
+	} else if err != nil {
+		return config, err
+	}
+
+	return config, nil
+}
+
+func convertEnvoyOtelAlsValuesToConfig(values *v1.HelmValues) (*v2.ExtensionProviderEnvoyOtelLogConfig, error) {
+	config := &v2.ExtensionProviderEnvoyOtelLogConfig{}
+	if value, ok, err := values.GetString("service"); ok {
+		config.Service = value
+	} else if err != nil {
+		return config, err
+	} else {
+		return config, fmt.Errorf("service is required for envoyOtelAls")
+	}
+	if value, ok, err := values.GetInt64("port"); ok {
+		config.Port = value
+	} else if err != nil {
+		return config, err
+	} else {
+		return config, fmt.Errorf("port is required for envoyOtelAls")
+	}
+	if value, ok, err := values.GetString("logName"); ok {
+		config.LogName = strPtr(value)
 	} else if err != nil {
 		return config, err
 	}

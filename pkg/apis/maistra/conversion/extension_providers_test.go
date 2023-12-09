@@ -149,6 +149,110 @@ meshConfig:
 `,
 		},
 		{
+			name: "opentelemetry_required_fields." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				MeshConfig: &v2.MeshConfig{
+					ExtensionProviders: []*v2.ExtensionProviderConfig{
+						{
+							Name: "opentelemetry",
+							Opentelemetry: &v2.ExtensionProviderOtelTracingConfig{
+								Service: "otlp.default.svc.cluster.local",
+								Port:    8000,
+							},
+						},
+					},
+				},
+			},
+			helmValues: `
+meshConfig:
+  extensionProviders:
+  - name: opentelemetry
+    opentelemetry:
+      service: otlp.default.svc.cluster.local
+      port: 8000
+`,
+		},
+		{
+			name: "opentelemetry_all_fields." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				MeshConfig: &v2.MeshConfig{
+					ExtensionProviders: []*v2.ExtensionProviderConfig{
+						{
+							Name: "opentelemetry",
+							Opentelemetry: &v2.ExtensionProviderOtelTracingConfig{
+								Service:      "otlp.default.svc.cluster.local",
+								Port:         8000,
+								MaxTagLength: int64Ptr(64),
+							},
+						},
+					},
+				},
+			},
+			helmValues: `
+meshConfig:
+  extensionProviders:
+  - name: opentelemetry
+    opentelemetry:
+      service: otlp.default.svc.cluster.local
+      port: 8000
+      maxTagLength: 64
+`,
+		},
+		{
+			name: "envoyOtelAls_required_fields." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				MeshConfig: &v2.MeshConfig{
+					ExtensionProviders: []*v2.ExtensionProviderConfig{
+						{
+							Name: "envoyOtelAls",
+							EnvoyOtelAls: &v2.ExtensionProviderEnvoyOtelLogConfig{
+								Service: "envoy-als.foo.svc.cluster.local",
+								Port:    8000,
+							},
+						},
+					},
+				},
+			},
+			helmValues: `
+meshConfig:
+  extensionProviders:
+  - name: envoyOtelAls
+    envoyOtelAls:
+      service: envoy-als.foo.svc.cluster.local
+      port: 8000
+`,
+		},
+		{
+			name: "envoyOtelAls_all_fields." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				MeshConfig: &v2.MeshConfig{
+					ExtensionProviders: []*v2.ExtensionProviderConfig{
+						{
+							Name: "envoyOtelAls",
+							EnvoyOtelAls: &v2.ExtensionProviderEnvoyOtelLogConfig{
+								Service: "envoy-als.foo.svc.cluster.local",
+								Port:    8000,
+								LogName: strPtr("otel_envoy_accesslog"),
+							},
+						},
+					},
+				},
+			},
+			helmValues: `
+meshConfig:
+  extensionProviders:
+  - name: envoyOtelAls
+    envoyOtelAls:
+      service: envoy-als.foo.svc.cluster.local
+      port: 8000
+      logName: otel_envoy_accesslog
+`,
+		},
+		{
 			name: "envoyExtAuthzHttp." + ver,
 			spec: &v2.ControlPlaneSpec{
 				Version: ver,
