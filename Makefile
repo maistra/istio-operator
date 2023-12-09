@@ -149,6 +149,8 @@ generate-product-manifests:
 
 ################################################################################
 # resource generation
+## If update-generated-code does not write changes,
+## move this project directory inside $GOPATH/src
 ################################################################################
 .PHONY: gen
 gen:  generate-crds update-charts update-templates update-generated-code generate-manifests

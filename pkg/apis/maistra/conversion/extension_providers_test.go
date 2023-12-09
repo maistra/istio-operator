@@ -95,6 +95,60 @@ meshConfig:
 `,
 		},
 		{
+			name: "zipkin_required_fields." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				MeshConfig: &v2.MeshConfig{
+					ExtensionProviders: []*v2.ExtensionProviderConfig{
+						{
+							Name: "zipkin",
+							Zipkin: &v2.ExtensionProviderZipkinTracingConfig{
+								Service: "zipkin.default.svc.cluster.local",
+								Port:    8000,
+							},
+						},
+					},
+				},
+			},
+			helmValues: `
+meshConfig:
+  extensionProviders:
+  - name: zipkin
+    zipkin:
+      service: zipkin.default.svc.cluster.local
+      port: 8000
+`,
+		},
+		{
+			name: "zipkin_all_fields." + ver,
+			spec: &v2.ControlPlaneSpec{
+				Version: ver,
+				MeshConfig: &v2.MeshConfig{
+					ExtensionProviders: []*v2.ExtensionProviderConfig{
+						{
+							Name: "zipkin",
+							Zipkin: &v2.ExtensionProviderZipkinTracingConfig{
+								Service:            "zipkin.default.svc.cluster.local",
+								Port:               8000,
+								MaxTagLength:       int64Ptr(64),
+								Enable64bitTraceID: boolPtr(true),
+							},
+						},
+					},
+				},
+			},
+			helmValues: `
+meshConfig:
+  extensionProviders:
+  - name: zipkin
+    zipkin:
+      service: zipkin.default.svc.cluster.local
+      port: 8000
+      maxTagLength: 64
+      enable64bitTraceId: true
+`,
+		},
+		{
 			name: "envoyExtAuthzHttp." + ver,
 			spec: &v2.ControlPlaneSpec{
 				Version: ver,
@@ -240,5 +294,34 @@ func TestStringPortInEnvoyExtAuthzHTTPValues(t *testing.T) {
 		t.Fatalf("expected convertEnvoyExtAuthzHTTPValuesToConfig to return error, but it returned nil")
 	} else if !strings.Contains(err.Error(), "80 is of the type string") {
 		t.Fatalf("expected error message to contain '80 is of the type string', got: %s", err)
+	}
+}
+
+// TestConversionExtensionProviderZipkin checks v1 helmValues to v2 spec
+func TestConverionExtensionProviderZipkin(t *testing.T) {
+	helmValues := v1.NewHelmValues(
+		map[string]interface{}{
+			"name": "zipkin",
+			"zipkin": map[string]interface{}{
+				"service": "jaeger-collector.istio-system.svc.cluster.local",
+				"port":    int64(9411),
+			},
+		})
+	if _, err := convertProviderValuesToConfig(helmValues); err != nil {
+		t.Fatalf("expected convertProviderValuesToConfig to return no error, got: %s", err)
+	}
+
+	helmValuesFull := v1.NewHelmValues(
+		map[string]interface{}{
+			"name": "zipkin",
+			"zipkin": map[string]interface{}{
+				"service":            "jaeger-collector.istio-system.svc.cluster.local",
+				"port":               int64(9411),
+				"enable64bitTraceId": true,
+				"maxTagLength":       int64(128),
+			},
+		})
+	if _, err := convertProviderValuesToConfig(helmValuesFull); err != nil {
+		t.Fatalf("expected convertProviderValuesToConfig to return no error, got: %s", err)
 	}
 }

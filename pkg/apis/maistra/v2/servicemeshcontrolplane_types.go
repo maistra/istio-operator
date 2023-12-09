@@ -220,3 +220,7 @@ func (s ControlPlaneSpec) IsGrafanaEnabled() bool {
 func (s ControlPlaneSpec) IsJaegerEnabled() bool {
 	return s.Tracing != nil && s.Tracing.Type == TracerTypeJaeger
 }
+
+func (s ControlPlaneSpec) IsStackdriverEnabled() bool {
+	return s.Tracing != nil && s.Tracing.Type == TracerTypeStackdriver
+}

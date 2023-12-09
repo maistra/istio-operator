@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"reflect"
 	"time"
 
 	pkgerrors "github.com/pkg/errors"
@@ -133,6 +134,7 @@ func (v *versionStrategyV2_5) ValidateV2(ctx context.Context, cl client.Client, 
 	allErrors = v.validateMixerDisabled(spec, allErrors)
 	allErrors = v.validateAddons(spec, allErrors)
 	allErrors = v.validateExtensionProviders(spec, allErrors)
+	allErrors = v.validateExtensionProviderZipkin(spec, allErrors)
 	return NewValidationError(allErrors...)
 }
 
@@ -202,21 +204,19 @@ func (v *versionStrategyV2_5) validateExtensionProviders(spec *v2.ControlPlaneSp
 		}
 
 		counter := 0
-		if ext.Prometheus != nil {
-			counter++
+		valueOfExt := reflect.ValueOf(*ext)
+		for i := 0; i < valueOfExt.NumField(); i++ {
+			if valueOfExt.Field(i).Kind() == reflect.Ptr && !valueOfExt.Field(i).IsNil() {
+				counter++
+			}
 		}
-		if ext.EnvoyExtAuthzHTTP != nil {
-			counter++
-		}
-		if ext.EnvoyExtAuthzGRPC != nil {
-			counter++
-		}
+
 		if counter == 0 {
 			allErrors = append(allErrors, fmt.Errorf("extension provider '%s' does not define any provider - "+
-				"it must specify one of: prometheus, envoyExtAuthzHttp, or envoyExtAuthzGrpc", ext.Name))
+				"it must specify one of: prometheus, zipkin, envoyExtAuthzHttp, or envoyExtAuthzGrpc", ext.Name))
 		} else if counter > 1 {
 			allErrors = append(allErrors, fmt.Errorf("extension provider '%s' must specify only one type of provider: "+
-				"prometheus, envoyExtAuthzHttp, or envoyExtAuthzGrpc", ext.Name))
+				"prometheus, zipkin, envoyExtAuthzHttp, or envoyExtAuthzGrpc", ext.Name))
 		}
 
 		if ext.EnvoyExtAuthzHTTP != nil {
@@ -236,6 +236,23 @@ func (v *versionStrategyV2_5) validateExtensionProviders(spec *v2.ControlPlaneSp
 			}
 		}
 	}
+	return allErrors
+}
+
+func (v *versionStrategyV2_5) validateExtensionProviderZipkin(spec *v2.ControlPlaneSpec, allErrors []error) []error {
+	if spec.MeshConfig == nil || spec.MeshConfig.ExtensionProviders == nil {
+		return allErrors
+	}
+	// we don't allow to set both existing Jaeger/Stackdriver and extensionProvider.zipkin at the same time
+	if spec.IsJaegerEnabled() || spec.IsStackdriverEnabled() {
+		for _, ext := range spec.MeshConfig.ExtensionProviders {
+			if ext.Zipkin != nil {
+				allErrors = append(allErrors, fmt.Errorf("extension provider '%s' can not define zipkin provider "+
+					"when spec.tracing.type is Jaeger or Stackdriver", ext.Name))
+			}
+		}
+	}
+
 	return allErrors
 }
 
