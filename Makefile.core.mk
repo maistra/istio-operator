@@ -152,8 +152,7 @@ test.integration.kind:
 ##@ Build
 
 .PHONY: build
-build: ## Build manager binary.
-	CGO_ENABLED=0 go build -o bin/manager -ldflags '${LD_FLAGS}' cmd/main.go
+build: build-amd64 ## Build manager binary.
 
 .PHONY: run
 run: gen ## Run a controller from your host.
@@ -175,6 +174,20 @@ docker-push-nightly: docker-build
 	docker tag ${IMAGE} $(HUB)/$(IMAGE_BASE):$(MINOR_VERSION)-latest
 	docker push $(HUB)/$(IMAGE_BASE):$(MINOR_VERSION)-latest
 
+# NIGHTLY defines if the nightly image should be pushed or not
+NIGHTLY ?= false
+
+# BUILDX_OUTPUT defines the buildx output
+# --load builds locally the container image
+# --push builds and pushes the container image to a registry
+BUILDX_OUTPUT ?= --push
+
+# BUILDX_TAGS are the --tag flag passed to the docker buildx build command.
+BUILDX_TAGS = --tag ${IMAGE}
+ifeq ($(NIGHTLY),true)
+BUILDX_TAGS += --tag $(HUB)/$(IMAGE_BASE):$(MINOR_VERSION)-nightly-$(TODAY)
+endif
+
 # PLATFORMS defines the target platforms for  the manager image be build to provide support to multiple
 # architectures. (i.e. make docker-buildx IMAGE=myregistry/mypoperator:0.0.1). To use this option you need to:
 # - able to use docker buildx . More info: https://docs.docker.com/build/buildx/
@@ -182,14 +195,29 @@ docker-push-nightly: docker-build
 # - be able to push the image for your registry (i.e. if you do not inform a valid value via IMAGE=<myregistry/image:<tag>> then the export will fail)
 # To properly provided solutions that supports more than one platform you should use this option.
 PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
+PLATFORM_ARCHITECTURES = $(shell echo ${PLATFORMS} | sed -e 's/,/\ /g' -e 's/linux\///g')
+
+ifndef BUILDX
+define BUILDX
+.PHONY: build-$(1)
+build-$(1): ## Build manager binary for specific architecture.
+	GOARCH=$(1) LDFLAGS="$(LD_FLAGS)" common/scripts/gobuild.sh $(REPO_ROOT)/out/$(TARGET_OS)_$(1)/manager main.go
+
+.PHONY: build-all
+build-all: build-$(1)
+endef
+
+$(foreach arch,$(PLATFORM_ARCHITECTURES),$(eval $(call BUILDX,$(arch))))
+endif
+
 .PHONY: docker-buildx
-docker-buildx: test ## Build and push docker image for the manager for cross-platform support
+docker-buildx: test build-all ## Build and push (by default) docker image for the manager for cross-platform support
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
-	- docker buildx create --name project-v4-builder
-	docker buildx use project-v4-builder
-	- docker buildx build --push --platform=$(PLATFORMS) --tag ${IMAGE} -f Dockerfile.cross .
-	- docker buildx rm project-v4-builder
+	- docker buildx create --name project-v3-builder
+	docker buildx use project-v3-builder
+	- docker buildx build $(BUILDX_OUTPUT) --platform=$(PLATFORMS) $(BUILDX_TAGS) -f Dockerfile.cross .
+	- docker buildx rm project-v3-builder
 	rm Dockerfile.cross
 
 ##@ Deployment
