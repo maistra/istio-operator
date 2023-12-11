@@ -52,7 +52,7 @@ spec:
 
     - v1.20.0
     - v1.19.4
-    - latest (fa4bfeb1)
+    - latest (29c9fafe)
 
     [See this page](https://github.com/maistra/istio-operator/blob/maistra-3.0/bundle/README.md) for instructions on how to use it.
   displayName: Sail Operator
