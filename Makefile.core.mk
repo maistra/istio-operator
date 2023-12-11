@@ -197,7 +197,6 @@ endif
 PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
 PLATFORM_ARCHITECTURES = $(shell echo ${PLATFORMS} | sed -e 's/,/\ /g' -e 's/linux\///g')
 
-ifndef BUILDX
 define BUILDX
 .PHONY: build-$(1)
 build-$(1): ## Build manager binary for specific architecture.
@@ -208,7 +207,6 @@ build-all: build-$(1)
 endef
 
 $(foreach arch,$(PLATFORM_ARCHITECTURES),$(eval $(call BUILDX,$(arch))))
-endif
 
 .PHONY: docker-buildx
 docker-buildx: test build-all ## Build and push (by default) docker image for the manager for cross-platform support
