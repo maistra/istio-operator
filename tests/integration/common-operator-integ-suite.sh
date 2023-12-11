@@ -123,13 +123,13 @@ get_internal_registry() {
 }
 
 build_and_push_image() {
-  # Build and push docker image
+  # Build and push docker multi-platform image
   # Notes: to be able to build and push to the local registry we need to set these variables to be used in the Makefile
   # IMAGE ?= ${HUB}/${IMAGE_BASE}:${TAG}, so we need to pass hub, image_base, and tag to be able to build and push the image
   echo "Building and pushing image"
   echo "Image base: ${IMAGE_BASE}"
   echo " Tag: ${TAG}"
-  IMAGE=${HUB}/${IMAGE_BASE}:${TAG} make docker-build docker-push
+  IMAGE=${HUB}/${IMAGE_BASE}:${TAG} make docker-buildx
 }
 
 deploy_operator() {
