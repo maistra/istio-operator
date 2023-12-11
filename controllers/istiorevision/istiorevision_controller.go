@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strings"
 
 	"github.com/go-logr/logr"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
@@ -32,6 +33,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 	"maistra.io/istio-operator/api/v1alpha1"
@@ -50,15 +53,19 @@ import (
 	"istio.io/istio/pkg/ptr"
 )
 
+const cniReleaseNameBase = "istio"
+
 // IstioRevisionReconciler reconciles an IstioRevision object
 type IstioRevisionReconciler struct {
+	CNINamespace     string
 	RestClientGetter genericclioptions.RESTClientGetter
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-func NewIstioRevisionReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config) *IstioRevisionReconciler {
+func NewIstioRevisionReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config, cniNamespace string) *IstioRevisionReconciler {
 	return &IstioRevisionReconciler{
+		CNINamespace:     cniNamespace,
 		RestClientGetter: helm.NewRESTClientGetter(restConfig),
 		Client:           client,
 		Scheme:           scheme,
@@ -66,7 +73,7 @@ func NewIstioRevisionReconciler(client client.Client, scheme *runtime.Scheme, re
 }
 
 // charts to deploy in the istio namespace
-var userCharts = []string{"base", "istiod"}
+var userCharts = []string{"istiod"}
 
 // +kubebuilder:rbac:groups=operator.istio.io,resources=istiorevisions,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.istio.io,resources=istiorevisions/status,verbs=get;update;patch
@@ -154,25 +161,33 @@ func (r *IstioRevisionReconciler) installHelmCharts(ctx context.Context, rev *v1
 		Controller:         ptr.Of(true),
 		BlockOwnerDeletion: ptr.Of(true),
 	}
+	ownerNamespace := rev.Namespace
 
 	if cniEnabled, err := isCNIEnabled(values); err != nil {
 		return err
 	} else if cniEnabled {
-		if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, []string{"cni"}, values,
-			rev.Spec.Version, rev.Name, rev.Namespace, ownerReference); err != nil {
+		if shouldInstallCNI, err := r.isOldestRevisionWithCNI(ctx, rev); shouldInstallCNI {
+			if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, []string{"cni"}, values,
+				rev.Spec.Version, cniReleaseNameBase, r.CNINamespace, ownerReference, ownerNamespace); err != nil {
+				return err
+			}
+		} else if err != nil {
 			return err
+		} else {
+			logger := log.FromContext(ctx)
+			logger.Info("Skipping istio-cni-node installation because CNI is already installed and owned by another IstioRevision")
 		}
 	}
 
 	if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, userCharts, values,
-		rev.Spec.Version, rev.Name, rev.Namespace, ownerReference); err != nil {
+		rev.Spec.Version, rev.Name, rev.Namespace, ownerReference, ownerNamespace); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (r *IstioRevisionReconciler) uninstallHelmCharts(rev *v1alpha1.IstioRevision) error {
-	if err := helm.UninstallCharts(r.RestClientGetter, []string{"cni"}, rev.Name, rev.Namespace); err != nil {
+	if err := helm.UninstallCharts(r.RestClientGetter, []string{"cni"}, cniReleaseNameBase, r.CNINamespace); err != nil {
 		return err
 	}
 
@@ -182,6 +197,27 @@ func (r *IstioRevisionReconciler) uninstallHelmCharts(rev *v1alpha1.IstioRevisio
 	return nil
 }
 
+func (r *IstioRevisionReconciler) isOldestRevisionWithCNI(ctx context.Context, rev *v1alpha1.IstioRevision) (bool, error) {
+	revList := v1alpha1.IstioRevisionList{}
+	if err := r.Client.List(ctx, &revList); err != nil {
+		return false, err
+	}
+
+	oldestRevision := *rev
+	for _, item := range revList.Items {
+		cniEnabled, err := isCNIEnabled(item.Spec.GetValues())
+		// we ignore errors here so that one faulty IstioRevision doesn't break the reconciliation of all others
+		if err == nil && cniEnabled &&
+			(item.CreationTimestamp.Before(&oldestRevision.CreationTimestamp) ||
+				item.CreationTimestamp.Equal(&oldestRevision.CreationTimestamp) &&
+					strings.Compare(item.Name, oldestRevision.Name) < 0) {
+
+			oldestRevision = item
+		}
+	}
+	return oldestRevision.UID == rev.UID, nil
+}
+
 func isCNIEnabled(values helm.HelmValues) (bool, error) {
 	enabled, _, err := values.GetBool("istio_cni.enabled")
 	return enabled, err
@@ -189,35 +225,35 @@ func isCNIEnabled(values helm.HelmValues) (bool, error) {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *IstioRevisionReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	clusterScopedResourceHandler := handler.EnqueueRequestsFromMapFunc(mapOwnerAnnotationsToReconcileRequest)
+	eventHandler := handler.EnqueueRequestsFromMapFunc(r.mapOwnerToReconcileRequest)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.IstioRevision{}).
 
 		// namespaced resources
-		Owns(&corev1.ConfigMap{}).
-		Owns(&appsv1.Deployment{}).
-		Owns(&appsv1.DaemonSet{}).
-		Owns(&corev1.Endpoints{}).
-		Owns(&corev1.ResourceQuota{}).
-		Owns(&corev1.Secret{}).
-		Owns(&corev1.Service{}).
-		Owns(&corev1.ServiceAccount{}).
-		Owns(&rbacv1.Role{}).
-		Owns(&rbacv1.RoleBinding{}).
-		Owns(&policyv1.PodDisruptionBudget{}).
-		Owns(&autoscalingv2.HorizontalPodAutoscaler{}).
-		Owns(&networkingv1alpha3.EnvoyFilter{}).
+		Watches(&corev1.ConfigMap{}, eventHandler).
+		Watches(&appsv1.Deployment{}, eventHandler).
+		Watches(&appsv1.DaemonSet{}, eventHandler).
+		Watches(&corev1.Endpoints{}, eventHandler).
+		Watches(&corev1.ResourceQuota{}, eventHandler).
+		Watches(&corev1.Secret{}, eventHandler).
+		Watches(&corev1.Service{}, eventHandler).
+		Watches(&corev1.ServiceAccount{}, eventHandler).
+		Watches(&rbacv1.Role{}, eventHandler).
+		Watches(&rbacv1.RoleBinding{}, eventHandler).
+		Watches(&policyv1.PodDisruptionBudget{}, eventHandler).
+		Watches(&autoscalingv2.HorizontalPodAutoscaler{}, eventHandler).
+		Watches(&networkingv1alpha3.EnvoyFilter{}, eventHandler).
 
 		// TODO: only register NetAttachDef if the CRD is installed (may also need to watch for CRD creation)
 		// Owns(&multusv1.NetworkAttachmentDefinition{}).
 
 		// cluster-scoped resources
-		Watches(&rbacv1.ClusterRole{}, clusterScopedResourceHandler).
-		Watches(&rbacv1.ClusterRoleBinding{}, clusterScopedResourceHandler).
-		Watches(&admissionv1.MutatingWebhookConfiguration{}, clusterScopedResourceHandler).
+		Watches(&rbacv1.ClusterRole{}, eventHandler).
+		Watches(&rbacv1.ClusterRoleBinding{}, eventHandler).
+		Watches(&admissionv1.MutatingWebhookConfiguration{}, eventHandler).
 		Watches(&admissionv1.ValidatingWebhookConfiguration{},
-			clusterScopedResourceHandler,
+			eventHandler,
 			builder.WithPredicates(validatingWebhookConfigPredicate{})).
 
 		// +lint-watches:ignore: CustomResourceDefinition (prevents `make lint-watches` from bugging us about CRDs)
@@ -314,7 +350,7 @@ func (r *IstioRevisionReconciler) determineReadyCondition(ctx context.Context,
 		return v1alpha1.IstioRevisionCondition{}, err
 	} else if cniEnabled {
 		cni := appsv1.DaemonSet{}
-		if err := r.Client.Get(ctx, cniDaemonSetKey(rev), &cni); err != nil {
+		if err := r.Client.Get(ctx, r.cniDaemonSetKey(), &cni); err != nil {
 			if errors.IsNotFound(err) {
 				return notReady(v1alpha1.IstioRevisionConditionReasonCNINotReady, "istio-cni-node DaemonSet not found"), nil
 			}
@@ -334,9 +370,9 @@ func (r *IstioRevisionReconciler) determineReadyCondition(ctx context.Context,
 	}, nil
 }
 
-func cniDaemonSetKey(rev *v1alpha1.IstioRevision) client.ObjectKey {
+func (r *IstioRevisionReconciler) cniDaemonSetKey() client.ObjectKey {
 	return client.ObjectKey{
-		Namespace: rev.Namespace,
+		Namespace: r.CNINamespace,
 		Name:      "istio-cni-node",
 	}
 }
@@ -358,17 +394,62 @@ func istiodDeploymentKey(rev *v1alpha1.IstioRevision, values helm.HelmValues) (c
 	}, nil
 }
 
-func mapOwnerAnnotationsToReconcileRequest(ctx context.Context, obj client.Object) []reconcile.Request {
-	annotations := obj.GetAnnotations()
-	if annotations == nil {
-		return nil
+func (r *IstioRevisionReconciler) mapOwnerToReconcileRequest(ctx context.Context, obj client.Object) []reconcile.Request {
+	logger := log.FromContext(ctx)
+	ownerKind := v1alpha1.IstioRevisionKind
+	ownerAPIGroup := v1alpha1.GroupVersion.Group
+
+	var requests []reconcile.Request
+
+	for _, ref := range obj.GetOwnerReferences() {
+		refGV, err := schema.ParseGroupVersion(ref.APIVersion)
+		if err != nil {
+			logger.Error(err, "Could not parse OwnerReference APIVersion", "api version", ref.APIVersion)
+			continue
+		}
+
+		if ref.Kind == ownerKind && refGV.Group == ownerAPIGroup {
+			requests = append(requests, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      ref.Name,
+					Namespace: obj.GetNamespace(),
+				},
+			})
+		}
 	}
 
+	annotations := obj.GetAnnotations()
 	namespacedName, kind, apiGroup := helm.GetOwnerFromAnnotations(annotations)
-	if namespacedName != nil && kind == v1alpha1.IstioRevisionKind && apiGroup == v1alpha1.GroupVersion.Group {
-		return []reconcile.Request{{NamespacedName: *namespacedName}}
+	if namespacedName != nil && kind == ownerKind && apiGroup == ownerAPIGroup {
+		requests = append(requests, reconcile.Request{NamespacedName: *namespacedName})
 	}
-	return nil
+
+	// HACK: because CNI components are shared between multiple IstioRevisions, we need to trigger a reconcile
+	// of all IstioRevisions that have CNI enabled whenever a CNI component changes so that their status is
+	// updated (e.g. readiness).
+	if obj.GetNamespace() == r.CNINamespace &&
+		annotations != nil && annotations["meta.helm.sh/release-name"] == cniReleaseNameBase+"-cni" {
+
+		revList := v1alpha1.IstioRevisionList{}
+		if err := r.Client.List(ctx, &revList); err != nil {
+			logger.Error(err, "Could not list IstioRevisions")
+		} else {
+			for _, item := range revList.Items {
+				if cniEnabled, err := isCNIEnabled(item.Spec.GetValues()); err != nil {
+					logger.Error(err, "Could not determine if CNI is enabled")
+				} else if cniEnabled {
+					requests = append(requests, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Name:      item.Name,
+							Namespace: item.Namespace,
+						},
+					})
+				}
+			}
+		}
+	}
+
+	return requests
 }
 
 type validatingWebhookConfigPredicate struct {

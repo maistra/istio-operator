@@ -70,7 +70,7 @@ var _ = BeforeSuite(func() {
 		panic(err)
 	}
 
-	controller := NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig())
+	controller := NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), operatorNamespace)
 	err = controller.SetupWithManager(mgr)
 	if err != nil {
 		panic(err)
