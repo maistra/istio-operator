@@ -43,7 +43,7 @@ var _ = Describe("IstioRevisionController", Ordered, func() {
 
 	istioObjectKey := client.ObjectKey{Name: istioName, Namespace: istioNamespace}
 	deploymentObjectKey := client.ObjectKey{Name: "istiod", Namespace: istioNamespace}
-	cniObjectKey := client.ObjectKey{Name: "istio-cni-node", Namespace: istioNamespace}
+	cniObjectKey := client.ObjectKey{Name: "istio-cni-node", Namespace: operatorNamespace}
 	webhookObjectKey := client.ObjectKey{Name: "istio-sidecar-injector-" + istioNamespace}
 
 	common.Config = testConfig
@@ -206,6 +206,52 @@ var _ = Describe("IstioRevisionController", Ordered, func() {
 				return webhook.Webhooks
 			}, time.Minute, time.Second).Should(Equal(origWebhooks))
 		})
+	})
+
+	It("supports concurrent deployment of two control planes", func() {
+		rev2ObjectKey := client.ObjectKey{Name: istioName + "2", Namespace: istioNamespace}
+		deployment2ObjectKey := client.ObjectKey{Name: "istiod-rev2", Namespace: istioNamespace}
+
+		rev2 := &v1.IstioRevision{}
+
+		By("Creating the second IstioRevision instance")
+		err := k8sClient.Get(ctx, rev2ObjectKey, rev2)
+		if err != nil && errors.IsNotFound(err) {
+			rev2 = &v1.IstioRevision{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      rev2ObjectKey.Name,
+					Namespace: rev2ObjectKey.Namespace,
+				},
+				Spec: v1.IstioRevisionSpec{
+					Version: istioVersion,
+					Values: []byte(`{
+						"revision": "rev2",
+						"pilot":{"image":"` + pilotImage + `"}
+					}`),
+				},
+			}
+
+			ExpectSuccess(k8sClient.Create(ctx, rev2))
+		}
+
+		By("Checking if the resource was successfully created")
+		Eventually(func() error {
+			return k8sClient.Get(ctx, rev2ObjectKey, &v1.IstioRevision{})
+		}, time.Minute, time.Second).Should(Succeed())
+
+		By("Checking if the status is updated")
+		Eventually(func() int64 {
+			ExpectSuccess(k8sClient.Get(ctx, rev2ObjectKey, rev2))
+			return rev2.Status.ObservedGeneration
+		}, time.Minute, time.Second).Should(Equal(rev2.ObjectMeta.Generation))
+
+		istiodDeployment := &appsv1.Deployment{}
+		By("Checking if Deployment was successfully created in the reconciliation")
+		Eventually(func() error {
+			return k8sClient.Get(ctx, deployment2ObjectKey, istiodDeployment)
+		}, time.Minute, time.Second).Should(Succeed())
+		Expect(istiodDeployment.Spec.Template.Spec.Containers[0].Image).To(Equal(pilotImage))
+		Expect(istiodDeployment.ObjectMeta.OwnerReferences).To(ContainElement(expectedOwnerReference(rev2)))
 	})
 })
 
@@ -382,7 +428,7 @@ istio_cni:
 				&appsv1.DaemonSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "istio-cni-node",
-						Namespace: "istio-system",
+						Namespace: operatorNamespace,
 					},
 					Status: appsv1.DaemonSetStatus{
 						CurrentNumberScheduled: 3,
@@ -416,7 +462,7 @@ istio_cni:
 				&appsv1.DaemonSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "istio-cni-node",
-						Namespace: "istio-system",
+						Namespace: operatorNamespace,
 					},
 					Status: appsv1.DaemonSetStatus{
 						CurrentNumberScheduled: 1,
@@ -452,7 +498,7 @@ istio_cni:
 				&appsv1.DaemonSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "istio-cni-node",
-						Namespace: "istio-system",
+						Namespace: operatorNamespace,
 					},
 					Status: appsv1.DaemonSetStatus{
 						CurrentNumberScheduled: 0,
@@ -520,7 +566,7 @@ istio_cni:
 		t.Run(tt.name, func(t *testing.T) {
 			cl := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(tt.clientObjects...).Build()
 
-			r := &IstioRevisionReconciler{Client: cl, Scheme: scheme.Scheme}
+			r := NewIstioRevisionReconciler(cl, scheme.Scheme, nil, operatorNamespace)
 
 			var values map[string]any
 			Must(t, yaml.Unmarshal([]byte(tt.values), &values))
