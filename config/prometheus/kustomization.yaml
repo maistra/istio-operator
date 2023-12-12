@@ -1,7 +1,10 @@
-resources:
-- monitor.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-commonLabels:
-  app.kubernetes.io/created-by: sailoperator
-  app.kubernetes.io/part-of: sailoperator
+
+resources:
+- monitor.yaml
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/created-by: sailoperator
+    app.kubernetes.io/part-of: sailoperator
