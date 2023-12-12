@@ -17,6 +17,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 )
 
+const version = "v1.20.0"
+
 var (
 	cfg       *rest.Config
 	k8sClient client.Client
@@ -66,6 +68,9 @@ func TestHasFinalizer(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Finalizers: []string{"blah"},
 				},
+				Spec: v1.IstioSpec{
+					Version: version,
+				},
 			},
 			expectedResult: false,
 		},
@@ -73,6 +78,9 @@ func TestHasFinalizer(t *testing.T) {
 			obj: &v1.Istio{
 				ObjectMeta: metav1.ObjectMeta{
 					Finalizers: []string{common.FinalizerName},
+				},
+				Spec: v1.IstioSpec{
+					Version: version,
 				},
 			},
 			expectedResult: true,
@@ -96,6 +104,9 @@ func TestAddRemoveFinalizer(t *testing.T) {
 					Name:      "test",
 					Namespace: "test",
 				},
+				Spec: v1.IstioSpec{
+					Version: version,
+				},
 			},
 			resultFinalizers: []string{common.FinalizerName},
 		},
@@ -105,6 +116,9 @@ func TestAddRemoveFinalizer(t *testing.T) {
 					Name:       "test",
 					Namespace:  "test",
 					Finalizers: []string{common.FinalizerName},
+				},
+				Spec: v1.IstioSpec{
+					Version: version,
 				},
 			},
 			resultFinalizers: []string{common.FinalizerName},
