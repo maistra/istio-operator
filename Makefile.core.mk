@@ -182,10 +182,10 @@ NIGHTLY ?= false
 # --push builds and pushes the container image to a registry
 BUILDX_OUTPUT ?= --push
 
-# BUILDX_TAGS are the --tag flag passed to the docker buildx build command.
-BUILDX_TAGS = --tag ${IMAGE}
+# BUILDX_ADDITIONAL_TAGS are the additional --tag flags passed to the docker buildx build command.
+BUILDX_ADDITIONAL_TAGS =
 ifeq ($(NIGHTLY),true)
-BUILDX_TAGS += --tag $(HUB)/$(IMAGE_BASE):$(MINOR_VERSION)-nightly-$(TODAY)
+BUILDX_ADDITIONAL_TAGS += --tag $(HUB)/$(IMAGE_BASE):$(MINOR_VERSION)-nightly-$(TODAY)
 endif
 
 # PLATFORMS defines the target platforms for  the manager image be build to provide support to multiple
@@ -217,7 +217,7 @@ docker-buildx: test build-all ## Build and push (by default) docker image for th
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
 	- docker buildx create --name project-v3-builder
 	docker buildx use project-v3-builder
-	- docker buildx build $(BUILDX_OUTPUT) --platform=$(PLATFORMS) $(BUILDX_TAGS) -f Dockerfile.cross .
+	- docker buildx build $(BUILDX_OUTPUT) --platform=$(PLATFORMS) --tag ${IMAGE} $(BUILDX_ADDITIONAL_TAGS) -f Dockerfile.cross .
 	- docker buildx rm project-v3-builder
 	rm Dockerfile.cross
 
