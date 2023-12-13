@@ -557,28 +557,17 @@ spec:
                           type: boolean
                         v2:
                           properties:
-                            access_log_policy:
-                              properties:
-                                enabled:
-                                  type: boolean
-                                logWindowDuration:
-                                  type: object
-                              type: object
                             enabled:
                               type: boolean
-                            metadata_exchange:
-                              properties:
-                                wasmEnabled:
-                                  type: boolean
-                              type: object
                             prometheus:
                               properties:
                                 enabled:
                                   type: boolean
-                                wasmEnabled:
-                                  type: boolean
                               type: object
                             stackdriver:
+                              properties:
+                                enabled:
+                                  type: boolean
                               type: object
                           type: object
                       type: object

@@ -163,38 +163,12 @@ telemetry:
     # For Null VM case now.
     # This also enables metadata exchange.
     enabled: true
-    metadataExchange:
-      # Indicates whether to enable WebAssembly runtime for metadata exchange filter.
-      wasmEnabled: false
     # Indicate if prometheus stats filter is enabled or not
     prometheus:
       enabled: true
-      # Indicates whether to enable WebAssembly runtime for stats filter.
-      wasmEnabled: false
-      # overrides stats EnvoyFilter configuration.
-      configOverride:
-        gateway: {}
-        inboundSidecar: {}
-        outboundSidecar: {}
     # stackdriver filter settings.
     stackdriver:
       enabled: false
-      logging: false
-      monitoring: false
-      topology: false # deprecated. setting this to true will have no effect, as this option is no longer supported.
-      disableOutbound: false
-      #  configOverride parts give you the ability to override the low level configuration params passed to envoy filter.
-
-      configOverride: {}
-      #  e.g.
-      #  disable_server_access_logging: false
-      #  disable_host_header_fallback: true
-    # Access Log Policy Filter Settings. This enables filtering of access logs from stackdriver.
-    accessLogPolicy:
-      enabled: false
-      # To reduce the number of successful logs, default log window duration is
-      # set to 12 hours.
-      logWindowDuration: "43200s"
 # Revision is set as 'version' label and part of the resource names when installing multiple control planes.
 revision: ""
 
@@ -241,7 +215,7 @@ global:
   # Dev builds from prow are on gcr.io
   hub: gcr.io/istio-testing
   # Default tag for Istio images.
-  tag: 1.21-alpha.503e47d0d393f50c8b7dba797e17a87691050268
+  tag: 1.21-alpha.8c74063ea7ab759339a5697be01c03afdce3a2c5
   # Variant of the image to use.
   # Currently supported are: [debug, distroless]
   variant: ""
