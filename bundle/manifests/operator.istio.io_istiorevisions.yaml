@@ -61,11 +61,12 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               version:
                 description: 'Version defines the version of IstioRevision to install.
-                  Must be one of: v1.20.0, v1.19.4, latest.'
+                  Must be one of: v1.20.0, v1.19.4, latest, gwAPIControllerMode.'
                 enum:
                 - v1.20.0
                 - v1.19.4
                 - latest
+                - gwAPIControllerMode
                 type: string
             required:
             - version

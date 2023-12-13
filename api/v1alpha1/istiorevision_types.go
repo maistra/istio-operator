@@ -30,9 +30,9 @@ const IstioRevisionKind = "IstioRevision"
 type IstioRevisionSpec struct {
 	// +sail:version
 	// Version defines the version of IstioRevision to install.
-	// Must be one of: v1.20.0, v1.19.4, latest.
+	// Must be one of: v1.20.0, v1.19.4, latest, gwAPIControllerMode.
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="IstioRevision Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.0", "urn:alm:descriptor:com.tectonic.ui:select:v1.19.4", "urn:alm:descriptor:com.tectonic.ui:select:latest"}
-	// +kubebuilder:validation:Enum=v1.20.0;v1.19.4;latest
+	// +kubebuilder:validation:Enum=v1.20.0;v1.19.4;latest;gwAPIControllerMode
 	Version string `json:"version"`
 
 	// Values defines the values to be passed to the Helm chart when installing IstioRevision.

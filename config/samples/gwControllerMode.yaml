@@ -1,0 +1,16 @@
+apiVersion: operator.istio.io/v1alpha1
+kind: Istio
+metadata:
+  name: istio-gw
+  namespace: istio-gw
+spec:
+  version: gwAPIControllerMode
+  values:
+    meshConfig:
+      gatewayAPI:
+        controllerMode: true
+        defaultClassName: openshift-default
+        controllerName: openshift.io/gateway-controller
+    global:
+      hub: quay.io/jwendell
+      tag: gwAPIControllerMode

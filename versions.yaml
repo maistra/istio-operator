@@ -38,3 +38,6 @@ versions:
       - https://storage.googleapis.com/istio-build/dev/1.21-alpha.503e47d0d393f50c8b7dba797e17a87691050268/helm/gateway-1.21-alpha.503e47d0d393f50c8b7dba797e17a87691050268.tgz
       - https://storage.googleapis.com/istio-build/dev/1.21-alpha.503e47d0d393f50c8b7dba797e17a87691050268/helm/istiod-1.21-alpha.503e47d0d393f50c8b7dba797e17a87691050268.tgz
       - https://storage.googleapis.com/istio-build/dev/1.21-alpha.503e47d0d393f50c8b7dba797e17a87691050268/helm/ztunnel-1.21-alpha.503e47d0d393f50c8b7dba797e17a87691050268.tgz
+  gwAPIControllerMode:
+    repo: https://github.com/jwendell/istio
+    commit: 93321f3cf2b645ddb09f6a28ef1ef481e8221bb4
