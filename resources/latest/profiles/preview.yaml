@@ -5,12 +5,6 @@ apiVersion: operator.istio.io/v1alpha1
 kind: Istio
 spec:
   values:
-    telemetry:
-      v2:
-        metadataExchange:
-          wasmEnabled: true
-        prometheus:
-          wasmEnabled: true
     meshConfig:
       defaultConfig:
         proxyMetadata:
