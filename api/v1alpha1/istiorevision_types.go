@@ -29,13 +29,13 @@ const IstioRevisionKind = "IstioRevision"
 // IstioRevisionSpec defines the desired state of IstioRevision
 type IstioRevisionSpec struct {
 	// +sail:version
-	// Version defines the version of IstioRevision to install.
+	// Defines the version of Istio to install.
 	// Must be one of: v1.20.0, v1.19.4, latest.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="IstioRevision Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.0", "urn:alm:descriptor:com.tectonic.ui:select:v1.19.4", "urn:alm:descriptor:com.tectonic.ui:select:latest"}
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="Istio Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.0", "urn:alm:descriptor:com.tectonic.ui:select:v1.19.4", "urn:alm:descriptor:com.tectonic.ui:select:latest"}
 	// +kubebuilder:validation:Enum=v1.20.0;v1.19.4;latest
 	Version string `json:"version"`
 
-	// Values defines the values to be passed to the Helm chart when installing IstioRevision.
+	// Defines the values to be passed to the Helm charts when installing Istio.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Helm Values"
@@ -174,7 +174,7 @@ const (
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of the control plane installation."
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="The age of the object"
 
-// IstioRevision represents an IstioRevision Service Mesh deployment
+// IstioRevision represents a single revision of an Istio Service Mesh deployment
 type IstioRevision struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

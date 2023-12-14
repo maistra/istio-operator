@@ -13,13 +13,33 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - description: IstioRevision represents a single revision of an Istio Service
+        Mesh deployment
+      displayName: Istio Revision
+      kind: IstioRevision
+      name: istiorevisions.operator.istio.io
+      specDescriptors:
+      - description: 'Defines the version of Istio to install. Must be one of: v1.20.0,
+          v1.19.4, latest.'
+        displayName: Istio Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.20.0
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.19.4
+        - urn:alm:descriptor:com.tectonic.ui:select:latest
+      - description: Defines the values to be passed to the Helm charts when installing
+          Istio.
+        displayName: Helm Values
+        path: values
+      version: v1alpha1
     - description: Istio represents an Istio Service Mesh deployment
       displayName: Istio
       kind: Istio
       name: istios.operator.istio.io
       specDescriptors:
-      - description: 'Version defines the version of Istio to install. Must be one
-          of: v1.20.0, v1.19.4, latest.'
+      - description: 'Defines the version of Istio to install. Must be one of: v1.20.0,
+          v1.19.4, latest.'
         displayName: Istio Version
         path: version
         x-descriptors:
@@ -35,12 +55,12 @@ spec:
         path: profile
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:hidden
-      - description: RawValues defines the non-validated values to be passed to the
-          Helm chart when installing Istio.
+      - description: Defines the non-validated values to be passed to the Helm charts
+          when installing Istio.
         displayName: Helm RawValues
         path: rawValues
-      - description: Values defines the values to be passed to the Helm chart when
-          installing Istio.
+      - description: Defines the values to be passed to the Helm charts when installing
+          Istio.
         displayName: Helm Values
         path: values
       version: v1alpha1
