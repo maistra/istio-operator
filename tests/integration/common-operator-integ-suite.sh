@@ -25,7 +25,6 @@ check_arguments() {
 }
 
 parse_flags() {
-  SKIP_BUILD=false
   while [ $# -gt 0 ]; do
     case "$1" in
       --ocp)
@@ -35,10 +34,6 @@ parse_flags() {
       --kind)
         shift
         OCP=false
-        ;;
-      --skip-build)
-        shift
-        SKIP_BUILD=true
         ;;
       *)
         echo "Invalid flag: $1"
@@ -62,6 +57,8 @@ initialize_variables() {
   DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-istio-operator}"
   CONTROL_PLANE_NS="${CONTROL_PLANE_NS:-istio-system}"
   COMMAND="kubectl"
+  SKIP_BUILD="${SKIP_BUILD:-false}"
+  SKIP_DEPLOY="${SKIP_DEPLOY:-false}"
 
   if [ "${OCP}" == "true" ]; then
     COMMAND="oc"
@@ -127,7 +124,7 @@ build_and_push_image() {
   echo "Building and pushing image"
   echo "Image base: ${IMAGE_BASE}"
   echo " Tag: ${TAG}"
-  IMAGE=${HUB}/${IMAGE_BASE}:${TAG} make docker-build docker-push
+  IMAGE=${HUB}/${IMAGE_BASE}:${TAG} make docker-buildx
 }
 
 deploy_operator() {
@@ -238,6 +235,7 @@ check_arguments "$@"
 parse_flags "$@"
 initialize_variables
 
+# Allow to skip the build step
 if [ "${SKIP_BUILD}" == "false" ]; then
   # SETUP
   if [ "${OCP}" == "true" ]; then
@@ -249,7 +247,9 @@ if [ "${SKIP_BUILD}" == "false" ]; then
   build_and_push_image
 fi
 
-# Deploy the operator
-deploy_operator
+# Allow to skip the deploy step
+if [ "${SKIP_DEPLOY}" == "false" ]; then
+  deploy_operator
+fi
 # RUNNING TEST VALIDATIONS
 main_test
