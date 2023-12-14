@@ -98,6 +98,9 @@ func (r *IstioReconciler) doReconcile(ctx context.Context, istio v1alpha1.Istio)
 	if istio.Spec.Version == "" {
 		return fmt.Errorf("no spec.version set")
 	}
+	if istio.Spec.Namespace == "" {
+		return fmt.Errorf("no spec.namespace set")
+	}
 
 	var values helm.HelmValues
 	if values, err = getAggregatedValues(istio, r.DefaultProfiles, r.ResourceDirectory); err != nil {
@@ -126,8 +129,7 @@ func (r *IstioReconciler) createOrUpdateIstioRevision(ctx context.Context, istio
 		// create new
 		rev = v1alpha1.IstioRevision{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      istio.Name,
-				Namespace: istio.Namespace,
+				Name: istio.Name,
 				OwnerReferences: []metav1.OwnerReference{
 					{
 						APIVersion:         v1alpha1.GroupVersion.String(),
@@ -140,8 +142,9 @@ func (r *IstioReconciler) createOrUpdateIstioRevision(ctx context.Context, istio
 				},
 			},
 			Spec: v1alpha1.IstioRevisionSpec{
-				Version: istio.Spec.Version,
-				Values:  valuesRawMessage,
+				Version:   istio.Spec.Version,
+				Namespace: istio.Spec.Namespace,
+				Values:    valuesRawMessage,
 			},
 		}
 		logger.Info("Creating IstioRevision", "name", istio.Name, "spec", rev.Spec)
@@ -157,7 +160,7 @@ func (r *IstioReconciler) getActiveRevision(ctx context.Context, istio *v1alpha1
 }
 
 func (r *IstioReconciler) getActiveRevisionKey(istio *v1alpha1.Istio) types.NamespacedName {
-	return types.NamespacedName{Name: istio.Name, Namespace: istio.Namespace}
+	return types.NamespacedName{Name: istio.Name}
 }
 
 func getAggregatedValues(istio v1alpha1.Istio, defaultProfiles []string, resourceDir string) (helm.HelmValues, error) {
@@ -189,7 +192,7 @@ func getProfilesDir(resourceDir string, istio v1alpha1.Istio) string {
 }
 
 func applyOverrides(istio *v1alpha1.Istio, values helm.HelmValues) (helm.HelmValues, error) {
-	if err := values.Set("global.istioNamespace", istio.Namespace); err != nil {
+	if err := values.Set("global.istioNamespace", istio.Spec.Namespace); err != nil {
 		return nil, err
 	}
 	return values, nil

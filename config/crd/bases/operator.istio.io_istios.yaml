@@ -14,7 +14,7 @@ spec:
     listKind: IstioList
     plural: istios
     singular: istio
-  scope: Namespaced
+  scope: Cluster
   versions:
     - additionalPrinterColumns:
         - description: Whether the control plane installation is ready to handle requests.
@@ -49,6 +49,9 @@ spec:
             spec:
               description: IstioSpec defines the desired state of Istio
               properties:
+                namespace:
+                  description: Namespace to which the Istio components should be installed.
+                  type: string
                 profile:
                   description: 'The built-in installation configuration profile to use. The ''default'' profile is always applied. On OpenShift, the ''openshift'' profile is also applied on top of ''default''. Must be one of: ambient, default, demo, empty, external, minimal, openshift, preview, remote.'
                   enum:
@@ -584,6 +587,7 @@ spec:
                     - latest
                   type: string
               required:
+                - namespace
                 - version
               type: object
             status:

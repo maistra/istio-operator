@@ -41,7 +41,7 @@ var _ = Describe("IstioRevisionController", Ordered, func() {
 		},
 	}
 
-	istioObjectKey := client.ObjectKey{Name: istioName, Namespace: istioNamespace}
+	istioObjectKey := client.ObjectKey{Name: istioName}
 	deploymentObjectKey := client.ObjectKey{Name: "istiod", Namespace: istioNamespace}
 	cniObjectKey := client.ObjectKey{Name: "istio-cni-node", Namespace: operatorNamespace}
 	webhookObjectKey := client.ObjectKey{Name: "istio-sidecar-injector-" + istioNamespace}
@@ -69,11 +69,11 @@ var _ = Describe("IstioRevisionController", Ordered, func() {
 		if err != nil && errors.IsNotFound(err) {
 			istio = &v1.IstioRevision{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      istioName,
-					Namespace: istioNamespace,
+					Name: istioName,
 				},
 				Spec: v1.IstioRevisionSpec{
-					Version: istioVersion,
+					Version:   istioVersion,
+					Namespace: istioNamespace,
 					Values: []byte(`{
 						"pilot":{"image":"` + pilotImage + `"},
 						"istio_cni":{"enabled":true}
@@ -209,7 +209,7 @@ var _ = Describe("IstioRevisionController", Ordered, func() {
 	})
 
 	It("supports concurrent deployment of two control planes", func() {
-		rev2ObjectKey := client.ObjectKey{Name: istioName + "2", Namespace: istioNamespace}
+		rev2ObjectKey := client.ObjectKey{Name: istioName + "2"}
 		deployment2ObjectKey := client.ObjectKey{Name: "istiod-rev2", Namespace: istioNamespace}
 
 		rev2 := &v1.IstioRevision{}
@@ -223,7 +223,8 @@ var _ = Describe("IstioRevisionController", Ordered, func() {
 					Namespace: rev2ObjectKey.Namespace,
 				},
 				Spec: v1.IstioRevisionSpec{
-					Version: istioVersion,
+					Version:   istioVersion,
+					Namespace: istioNamespace,
 					Values: []byte(`{
 						"revision": "rev2",
 						"pilot":{"image":"` + pilotImage + `"}
@@ -573,7 +574,9 @@ istio_cni:
 
 			rev := &v1.IstioRevision{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "my-istio",
+					Name: "my-istio",
+				},
+				Spec: v1.IstioRevisionSpec{
 					Namespace: "istio-system",
 				},
 			}

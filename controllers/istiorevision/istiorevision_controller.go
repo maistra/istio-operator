@@ -121,6 +121,9 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if rev.Spec.Version == "" {
 		return ctrl.Result{}, fmt.Errorf("no spec.version set")
 	}
+	if rev.Spec.Namespace == "" {
+		return ctrl.Result{}, fmt.Errorf("no spec.namespace set")
+	}
 
 	if !kube.HasFinalizer(&rev) {
 		err := kube.AddFinalizer(ctx, &rev, r.Client)
@@ -146,7 +149,7 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 }
 
 func applyOverridesToIstioRevision(rev *v1alpha1.IstioRevision, values helm.HelmValues) (helm.HelmValues, error) {
-	if err := values.Set("global.istioNamespace", rev.Namespace); err != nil {
+	if err := values.Set("global.istioNamespace", rev.Spec.Namespace); err != nil {
 		return nil, err
 	}
 	return values, nil
@@ -161,14 +164,13 @@ func (r *IstioRevisionReconciler) installHelmCharts(ctx context.Context, rev *v1
 		Controller:         ptr.Of(true),
 		BlockOwnerDeletion: ptr.Of(true),
 	}
-	ownerNamespace := rev.Namespace
 
 	if cniEnabled, err := isCNIEnabled(values); err != nil {
 		return err
 	} else if cniEnabled {
 		if shouldInstallCNI, err := r.isOldestRevisionWithCNI(ctx, rev); shouldInstallCNI {
 			if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, []string{"cni"}, values,
-				rev.Spec.Version, cniReleaseNameBase, r.CNINamespace, ownerReference, ownerNamespace); err != nil {
+				rev.Spec.Version, cniReleaseNameBase, r.CNINamespace, ownerReference); err != nil {
 				return err
 			}
 		} else if err != nil {
@@ -180,7 +182,7 @@ func (r *IstioRevisionReconciler) installHelmCharts(ctx context.Context, rev *v1
 	}
 
 	if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, userCharts, values,
-		rev.Spec.Version, rev.Name, rev.Namespace, ownerReference, ownerNamespace); err != nil {
+		rev.Spec.Version, rev.Name, rev.Spec.Namespace, ownerReference); err != nil {
 		return err
 	}
 	return nil
@@ -191,7 +193,7 @@ func (r *IstioRevisionReconciler) uninstallHelmCharts(rev *v1alpha1.IstioRevisio
 		return err
 	}
 
-	if err := helm.UninstallCharts(r.RestClientGetter, userCharts, rev.Name, rev.Namespace); err != nil {
+	if err := helm.UninstallCharts(r.RestClientGetter, userCharts, rev.Name, rev.Spec.Namespace); err != nil {
 		return err
 	}
 	return nil
@@ -389,7 +391,7 @@ func istiodDeploymentKey(rev *v1alpha1.IstioRevision, values helm.HelmValues) (c
 	}
 
 	return client.ObjectKey{
-		Namespace: rev.Namespace,
+		Namespace: rev.Spec.Namespace,
 		Name:      name,
 	}, nil
 }
@@ -441,7 +443,7 @@ func (r *IstioRevisionReconciler) mapOwnerToReconcileRequest(ctx context.Context
 					requests = append(requests, reconcile.Request{
 						NamespacedName: types.NamespacedName{
 							Name:      item.Name,
-							Namespace: item.Namespace,
+							Namespace: item.Spec.Namespace,
 						},
 					})
 				}
