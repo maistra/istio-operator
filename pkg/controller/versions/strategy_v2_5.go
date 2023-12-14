@@ -297,26 +297,6 @@ func (v *versionStrategyV2_5) ValidateUpgrade(ctx context.Context, cl client.Cli
 }
 
 func (v *versionStrategyV2_5) ValidateUpdate(ctx context.Context, cl client.Client, oldSMCPObject, newSMCPObject metav1.Object) error {
-	oldSMCP, err := toSMCP(oldSMCPObject)
-	if err != nil {
-		return err
-	}
-	newSMCP, err := toSMCP(newSMCPObject)
-	if err != nil {
-		return err
-	}
-
-	oldClusterScoped, err := v.IsClusterScoped(&oldSMCP.Spec)
-	if err != nil {
-		return err
-	}
-	newClusterScoped, err := v.IsClusterScoped(&newSMCP.Spec)
-	if err != nil {
-		return err
-	}
-	if oldClusterScoped != newClusterScoped {
-		return fmt.Errorf("field spec.mode is immutable; to change its value, delete the ServiceMeshControlPlane and recreate it")
-	}
 	return nil
 }
 
