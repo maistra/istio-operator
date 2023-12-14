@@ -66,11 +66,11 @@ func (pr OwnerReferencePostRenderer) Run(renderedManifests *bytes.Buffer) (modif
 }
 
 func (pr OwnerReferencePostRenderer) addOwnerReference(manifest map[string]any) (map[string]any, error) {
-	objNamespace, hasNamespace, err := unstructured.NestedFieldNoCopy(manifest, "metadata", "namespace")
+	objNamespace, objHasNamespace, err := unstructured.NestedFieldNoCopy(manifest, "metadata", "namespace")
 	if err != nil {
 		return nil, err
 	}
-	if hasNamespace && objNamespace == pr.ownerNamespace {
+	if pr.ownerNamespace == "" || objHasNamespace && objNamespace == pr.ownerNamespace {
 		ownerReferences, _, err := unstructured.NestedSlice(manifest, "metadata", "ownerReferences")
 		if err != nil {
 			return nil, err

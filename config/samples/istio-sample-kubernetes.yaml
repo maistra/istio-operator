@@ -4,6 +4,7 @@ metadata:
   name: istio-sample
 spec:
   version: v1.20.1
+  namespace: istio-system
   rawValues:
     pilot:
       resources:

@@ -27,14 +27,13 @@ import (
 )
 
 var (
-	ctx      = context.Background()
-	istioKey = types.NamespacedName{
-		Name:      "my-istio",
-		Namespace: "my-istio-namespace",
+	ctx            = context.Background()
+	istioNamespace = "my-istio-namespace"
+	istioKey       = types.NamespacedName{
+		Name: "my-istio",
 	}
 	objectMeta = metav1.ObjectMeta{
-		Name:      istioKey.Name,
-		Namespace: istioKey.Namespace,
+		Name: istioKey.Name,
 	}
 )
 
@@ -60,7 +59,6 @@ func TestReconcile(t *testing.T) {
 		istio := &v1alpha1.Istio{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:              istioKey.Name,
-				Namespace:         istioKey.Namespace,
 				DeletionTimestamp: oneMinuteAgo(),
 				Finalizers:        []string{"dummy"}, // the fake client doesn't allow you to add a deleted object unless it has a finalizer
 			},
@@ -248,8 +246,10 @@ func TestUpdateStatus(t *testing.T) {
 			wantErr: false,
 			revision: &v1alpha1.IstioRevision{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      istioKey.Name,
-					Namespace: istioKey.Namespace,
+					Name: istioKey.Name,
+				},
+				Spec: v1alpha1.IstioRevisionSpec{
+					Namespace: istioNamespace,
 				},
 				Status: v1alpha1.IstioRevisionStatus{
 					State: v1alpha1.IstioRevisionConditionReasonHealthy,
@@ -327,11 +327,11 @@ func TestUpdateStatus(t *testing.T) {
 			istio: &v1alpha1.Istio{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:       istioKey.Name,
-					Namespace:  istioKey.Namespace,
 					Generation: 100,
 				},
 				Spec: v1alpha1.IstioSpec{
-					Version: "my-version",
+					Version:   "my-version",
+					Namespace: istioNamespace,
 				},
 				Status: v1alpha1.IstioStatus{
 					ObservedGeneration: 100,
@@ -356,8 +356,10 @@ func TestUpdateStatus(t *testing.T) {
 			},
 			revision: &v1alpha1.IstioRevision{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      istioKey.Name,
-					Namespace: istioKey.Namespace,
+					Name: istioKey.Name,
+				},
+				Spec: v1alpha1.IstioRevisionSpec{
+					Namespace: istioNamespace,
 				},
 				Status: v1alpha1.IstioRevisionStatus{
 					State: v1alpha1.IstioRevisionConditionReasonHealthy,
@@ -410,11 +412,11 @@ func TestUpdateStatus(t *testing.T) {
 				istio = &v1alpha1.Istio{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       istioKey.Name,
-						Namespace:  istioKey.Namespace,
 						Generation: 100,
 					},
 					Spec: v1alpha1.IstioSpec{
-						Version: "my-version",
+						Version:   "my-version",
+						Namespace: istioNamespace,
 					},
 				}
 			}
@@ -493,8 +495,7 @@ func TestCreateOrUpdateIstioRevision(t *testing.T) {
 			}
 
 			revKey := types.NamespacedName{
-				Name:      istioKey.Name,
-				Namespace: istioKey.Namespace,
+				Name: istioKey.Name,
 			}
 			rev := &v1alpha1.IstioRevision{}
 			Must(t, cl.Get(ctx, revKey, rev))
@@ -539,7 +540,7 @@ func newFakeClientBuilder() *fake.ClientBuilder {
 //   - profile selected in IstioRevision.spec.profile
 //   - IstioRevision.spec.values
 //   - IstioRevision.spec.rawValues
-//   - other (non-value) fields in the IstioRevision resource (e.g. the value global.istioNamespace is set from IstioRevision.metadata.namespace)
+//   - other (non-value) fields in the IstioRevision resource (e.g. the value global.istioNamespace is set from IstioRevision.spec.namespace)
 func TestGetAggregatedValues(t *testing.T) {
 	const version = "my-version"
 	resourceDir := t.TempDir()
@@ -568,8 +569,9 @@ spec:
 	istio := v1alpha1.Istio{
 		ObjectMeta: objectMeta,
 		Spec: v1alpha1.IstioSpec{
-			Version: version,
-			Profile: "my-profile",
+			Version:   version,
+			Profile:   "my-profile",
+			Namespace: istioNamespace,
 			Values: toJSON(helm.HelmValues{
 				"key3": "overridden-in-values",
 				"key4": "overridden-in-values", // this gets overridden in rawValues
@@ -591,7 +593,7 @@ spec:
 		"key3": "overridden-in-values",
 		"key4": "overridden-in-raw-values",
 		"global": map[string]any{
-			"istioNamespace": istioKey.Namespace, // this value is always added/overridden based on IstioRevision.metadata.namespace
+			"istioNamespace": istioNamespace, // this value is always added/overridden based on IstioRevision.spec.namespace
 		},
 	}
 
