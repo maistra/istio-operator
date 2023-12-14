@@ -70,12 +70,12 @@ spec:
                 - remote
                 type: string
               rawValues:
-                description: RawValues defines the non-validated values to be passed
-                  to the Helm chart when installing Istio.
+                description: Defines the non-validated values to be passed to the
+                  Helm charts when installing Istio.
                 x-kubernetes-preserve-unknown-fields: true
               values:
-                description: Values defines the values to be passed to the Helm chart
-                  when installing Istio.
+                description: Defines the values to be passed to the Helm charts when
+                  installing Istio.
                 properties:
                   base:
                     properties:
@@ -585,8 +585,8 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
               version:
-                description: 'Version defines the version of Istio to install. Must
-                  be one of: v1.20.0, v1.19.4, latest.'
+                description: 'Defines the version of Istio to install. Must be one
+                  of: v1.20.0, v1.19.4, latest.'
                 enum:
                 - v1.20.0
                 - v1.19.4

@@ -38,7 +38,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: IstioRevision represents an IstioRevision Service Mesh deployment
+        description: IstioRevision represents a single revision of an Istio Service
+          Mesh deployment
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -56,12 +57,12 @@ spec:
             description: IstioRevisionSpec defines the desired state of IstioRevision
             properties:
               values:
-                description: Values defines the values to be passed to the Helm chart
-                  when installing IstioRevision.
+                description: Defines the values to be passed to the Helm charts when
+                  installing Istio.
                 x-kubernetes-preserve-unknown-fields: true
               version:
-                description: 'Version defines the version of IstioRevision to install.
-                  Must be one of: v1.20.0, v1.19.4, latest.'
+                description: 'Defines the version of Istio to install. Must be one
+                  of: v1.20.0, v1.19.4, latest.'
                 enum:
                 - v1.20.0
                 - v1.19.4

@@ -18,7 +18,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-operator:3.0-latest
-    createdAt: "2023-12-14T03:07:40Z"
+    createdAt: "2023-12-14T17:03:34Z"
     operators.operatorframework.io/builder: operator-sdk-v1.32.0
     operators.operatorframework.io/internal-objects: '["wasmplugins.extensions.istio.io","destinationrules.networking.istio.io","envoyfilters.networking.istio.io","gateways.networking.istio.io","proxyconfigs.networking.istio.io","serviceentries.networking.istio.io","sidecars.networking.istio.io","virtualservices.networking.istio.io","workloadentries.networking.istio.io","workloadgroups.networking.istio.io","authorizationpolicies.security.istio.io","peerauthentications.security.istio.io","requestauthentications.security.istio.io","telemetries.telemetry.istio.io"]'
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -49,16 +49,33 @@ spec:
     - kind: Gateway
       name: gateways.networking.istio.io
       version: v1beta1
-    - kind: IstioRevision
+    - description: IstioRevision represents a single revision of an Istio Service
+        Mesh deployment
+      displayName: Istio Revision
+      kind: IstioRevision
       name: istiorevisions.operator.istio.io
+      specDescriptors:
+      - description: 'Defines the version of Istio to install. Must be one of: v1.20.0,
+          v1.19.4, latest.'
+        displayName: Istio Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.20.0
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.19.4
+        - urn:alm:descriptor:com.tectonic.ui:select:latest
+      - description: Defines the values to be passed to the Helm charts when installing
+          Istio.
+        displayName: Helm Values
+        path: values
       version: v1alpha1
     - description: Istio represents an Istio Service Mesh deployment
       displayName: Istio
       kind: Istio
       name: istios.operator.istio.io
       specDescriptors:
-      - description: 'Version defines the version of Istio to install. Must be one
-          of: v1.20.0, v1.19.4, latest.'
+      - description: 'Defines the version of Istio to install. Must be one of: v1.20.0,
+          v1.19.4, latest.'
         displayName: Istio Version
         path: version
         x-descriptors:
@@ -74,12 +91,12 @@ spec:
         path: profile
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:hidden
-      - description: RawValues defines the non-validated values to be passed to the
-          Helm chart when installing Istio.
+      - description: Defines the non-validated values to be passed to the Helm charts
+          when installing Istio.
         displayName: Helm RawValues
         path: rawValues
-      - description: Values defines the values to be passed to the Helm chart when
-          installing Istio.
+      - description: Defines the values to be passed to the Helm charts when installing
+          Istio.
         displayName: Helm Values
         path: values
       version: v1alpha1

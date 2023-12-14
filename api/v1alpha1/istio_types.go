@@ -29,7 +29,7 @@ const IstioKind = "Istio"
 // IstioSpec defines the desired state of Istio
 type IstioSpec struct {
 	// +sail:version
-	// Version defines the version of Istio to install.
+	// Defines the version of Istio to install.
 	// Must be one of: v1.20.0, v1.19.4, latest.
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="Istio Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.0", "urn:alm:descriptor:com.tectonic.ui:select:v1.19.4", "urn:alm:descriptor:com.tectonic.ui:select:latest"}
 	// +kubebuilder:validation:Enum=v1.20.0;v1.19.4;latest
@@ -44,13 +44,13 @@ type IstioSpec struct {
 	// +kubebuilder:validation:Enum=ambient;default;demo;empty;external;minimal;openshift;preview;remote
 	Profile string `json:"profile,omitempty"`
 
-	// Values defines the values to be passed to the Helm chart when installing Istio.
+	// Defines the values to be passed to the Helm charts when installing Istio.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Helm Values"
 	Values json.RawMessage `json:"values,omitempty"`
 
-	// RawValues defines the non-validated values to be passed to the Helm chart when installing Istio.
+	// Defines the non-validated values to be passed to the Helm charts when installing Istio.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Helm RawValues"
