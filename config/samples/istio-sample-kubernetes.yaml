@@ -3,7 +3,7 @@ kind: Istio
 metadata:
   name: istio-sample
 spec:
-  version: v1.20.0
+  version: v1.20.1
   rawValues:
     pilot:
       resources:
