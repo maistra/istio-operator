@@ -19,7 +19,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-operator:3.0-latest
-    createdAt: "2023-12-15T13:29:42Z"
+    createdAt: "2023-12-15T14:45:47Z"
     operators.operatorframework.io/builder: operator-sdk-v1.32.0
     operators.operatorframework.io/internal-objects: '["wasmplugins.extensions.istio.io","destinationrules.networking.istio.io","envoyfilters.networking.istio.io","gateways.networking.istio.io","proxyconfigs.networking.istio.io","serviceentries.networking.istio.io","sidecars.networking.istio.io","virtualservices.networking.istio.io","workloadentries.networking.istio.io","workloadgroups.networking.istio.io","authorizationpolicies.security.istio.io","peerauthentications.security.istio.io","requestauthentications.security.istio.io","telemetries.telemetry.istio.io"]'
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -51,7 +51,9 @@ spec:
       name: gateways.networking.istio.io
       version: v1beta1
     - description: IstioRevision represents a single revision of an Istio Service
-        Mesh deployment
+        Mesh deployment. Users shouldn't create IstioRevision objects directly. Instead,
+        they should create an Istio object and allow the Istio operator to create
+        the underlying IstioRevision object(s).
       displayName: Istio Revision
       kind: IstioRevision
       name: istiorevisions.operator.istio.io
@@ -76,7 +78,13 @@ spec:
         displayName: Helm Values
         path: values
       version: v1alpha1
-    - description: Istio represents an Istio Service Mesh deployment
+    - description: Istio represents an Istio Service Mesh deployment consisting of
+        one or more control plane instances (represented by one or more IstioRevision
+        objects). To deploy an Istio Service Mesh, a user creates an Istio object
+        with the desired Istio version and configuration. The Istio operator then
+        creates an IstioRevision object, which in turn creates the underlying Deployment
+        objects for istiod and other control plane components, similar to how a Deployment
+        object in Kubernetes creates ReplicaSets that create the Pods.
       displayName: Istio
       kind: Istio
       name: istios.operator.istio.io
