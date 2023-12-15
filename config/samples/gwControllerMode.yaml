@@ -1,0 +1,16 @@
+apiVersion: operator.istio.io/v1alpha1
+kind: Istio
+metadata:
+  name: istio-gw
+spec:
+  version: gwAPIControllerMode
+  namespace: istio-gw
+  values:
+    global:
+      hub: quay.io/maistra-dev
+      tag: gwAPIControllerMode
+    pilot:
+      env:
+        PILOT_ENABLE_GATEWAY_CONTROLLER_MODE: true
+        PILOT_GATEWAY_API_DEFAULT_GATEWAYCLASS_NAME: openshift-default
+        PILOT_GATEWAY_API_CONTROLLER_NAME: openshift.io/gateway-controller

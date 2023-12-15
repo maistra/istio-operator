@@ -47,3 +47,9 @@ versions:
       - https://storage.googleapis.com/istio-build/dev/1.21-alpha.76c0eaa23aece941547b4a4a287773eeaefe1315/helm/gateway-1.21-alpha.76c0eaa23aece941547b4a4a287773eeaefe1315.tgz
       - https://storage.googleapis.com/istio-build/dev/1.21-alpha.76c0eaa23aece941547b4a4a287773eeaefe1315/helm/istiod-1.21-alpha.76c0eaa23aece941547b4a4a287773eeaefe1315.tgz
       - https://storage.googleapis.com/istio-build/dev/1.21-alpha.76c0eaa23aece941547b4a4a287773eeaefe1315/helm/ztunnel-1.21-alpha.76c0eaa23aece941547b4a4a287773eeaefe1315.tgz
+
+  # Temporary PoC that uses a branch in our fork of istio/istio
+  gwAPIControllerMode:
+    repo: https://github.com/maistra/istio
+    branch: gw-controller-mode-env1
+    commit: 6108f9b442f35996f0153ecbdf6e98895a79ae46
