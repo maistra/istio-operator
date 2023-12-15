@@ -21,7 +21,7 @@ require (
 	istio.io/istio v0.0.0-20231215121337-d3141f901d5a
 	k8s.io/api v0.29.0
 	k8s.io/apimachinery v0.29.0
-	k8s.io/cli-runtime v0.28.4
+	k8s.io/cli-runtime v0.29.0
 	k8s.io/client-go v0.29.0
 	k8s.io/kubectl v0.28.4
 	sigs.k8s.io/controller-runtime v0.16.3
