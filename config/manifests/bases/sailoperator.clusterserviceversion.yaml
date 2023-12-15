@@ -14,7 +14,9 @@ spec:
   customresourcedefinitions:
     owned:
     - description: IstioRevision represents a single revision of an Istio Service
-        Mesh deployment
+        Mesh deployment. Users shouldn't create IstioRevision objects directly. Instead,
+        they should create an Istio object and allow the Istio operator to create
+        the underlying IstioRevision object(s).
       displayName: Istio Revision
       kind: IstioRevision
       name: istiorevisions.operator.istio.io
@@ -39,7 +41,13 @@ spec:
         displayName: Helm Values
         path: values
       version: v1alpha1
-    - description: Istio represents an Istio Service Mesh deployment
+    - description: Istio represents an Istio Service Mesh deployment consisting of
+        one or more control plane instances (represented by one or more IstioRevision
+        objects). To deploy an Istio Service Mesh, a user creates an Istio object
+        with the desired Istio version and configuration. The Istio operator then
+        creates an IstioRevision object, which in turn creates the underlying Deployment
+        objects for istiod and other control plane components, similar to how a Deployment
+        object in Kubernetes creates ReplicaSets that create the Pods.
       displayName: Istio
       kind: Istio
       name: istios.operator.istio.io

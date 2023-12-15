@@ -39,7 +39,9 @@ spec:
     schema:
       openAPIV3Schema:
         description: IstioRevision represents a single revision of an Istio Service
-          Mesh deployment
+          Mesh deployment. Users shouldn't create IstioRevision objects directly.
+          Instead, they should create an Istio object and allow the Istio operator
+          to create the underlying IstioRevision object(s).
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation

@@ -200,7 +200,13 @@ const (
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of the control plane installation."
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="The age of the object"
 
-// Istio represents an Istio Service Mesh deployment
+// Istio represents an Istio Service Mesh deployment consisting of one or more
+// control plane instances (represented by one or more IstioRevision objects).
+// To deploy an Istio Service Mesh, a user creates an Istio object with the
+// desired Istio version and configuration. The Istio operator then creates
+// an IstioRevision object, which in turn creates the underlying Deployment
+// objects for istiod and other control plane components, similar to how a
+// Deployment object in Kubernetes creates ReplicaSets that create the Pods.
 type Istio struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

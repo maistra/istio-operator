@@ -36,7 +36,7 @@ spec:
       name: v1alpha1
       schema:
         openAPIV3Schema:
-          description: Istio represents an Istio Service Mesh deployment
+          description: Istio represents an Istio Service Mesh deployment consisting of one or more control plane instances (represented by one or more IstioRevision objects). To deploy an Istio Service Mesh, a user creates an Istio object with the desired Istio version and configuration. The Istio operator then creates an IstioRevision object, which in turn creates the underlying Deployment objects for istiod and other control plane components, similar to how a Deployment object in Kubernetes creates ReplicaSets that create the Pods.
           properties:
             apiVersion:
               description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'

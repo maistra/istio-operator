@@ -178,7 +178,10 @@ const (
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of the control plane installation."
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="The age of the object"
 
-// IstioRevision represents a single revision of an Istio Service Mesh deployment
+// IstioRevision represents a single revision of an Istio Service Mesh deployment.
+// Users shouldn't create IstioRevision objects directly. Instead, they should
+// create an Istio object and allow the Istio operator to create the underlying
+// IstioRevision object(s).
 type IstioRevision struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
