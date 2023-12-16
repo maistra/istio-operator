@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -107,10 +108,10 @@ func (r *IstioReconciler) doReconcile(ctx context.Context, istio v1alpha1.Istio)
 		return err
 	}
 
-	return r.createOrUpdateIstioRevision(ctx, &istio, values)
+	return r.reconcileActiveRevision(ctx, &istio, values)
 }
 
-func (r *IstioReconciler) createOrUpdateIstioRevision(ctx context.Context, istio *v1alpha1.Istio, values helm.HelmValues) error {
+func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1alpha1.Istio, values helm.HelmValues) error {
 	logger := log.FromContext(ctx).WithName("reconciler")
 
 	valuesRawMessage, err := json.Marshal(values)
@@ -129,7 +130,7 @@ func (r *IstioReconciler) createOrUpdateIstioRevision(ctx context.Context, istio
 		// create new
 		rev = v1alpha1.IstioRevision{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: istio.Name,
+				Name: r.getActiveRevisionName(istio),
 				OwnerReferences: []metav1.OwnerReference{
 					{
 						APIVersion:         v1alpha1.GroupVersion.String(),
@@ -160,7 +161,25 @@ func (r *IstioReconciler) getActiveRevision(ctx context.Context, istio *v1alpha1
 }
 
 func (r *IstioReconciler) getActiveRevisionKey(istio *v1alpha1.Istio) types.NamespacedName {
-	return types.NamespacedName{Name: istio.Name}
+	return types.NamespacedName{
+		Name: r.getActiveRevisionName(istio),
+	}
+}
+
+func (r *IstioReconciler) getActiveRevisionName(istio *v1alpha1.Istio) string {
+	var strategy v1alpha1.UpdateStrategyType
+	if istio.Spec.UpdateStrategy != nil {
+		strategy = istio.Spec.UpdateStrategy.Type
+	}
+
+	switch strategy {
+	default:
+		fallthrough
+	case v1alpha1.UpdateStrategyTypeInPlace:
+		return istio.Name
+	case v1alpha1.UpdateStrategyTypeRevisionBased:
+		return istio.Name + "-" + strings.ReplaceAll(istio.Spec.Version, ".", "-")
+	}
 }
 
 func getAggregatedValues(istio v1alpha1.Istio, defaultProfiles []string, resourceDir string) (helm.HelmValues, error) {
