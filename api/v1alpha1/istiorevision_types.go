@@ -166,6 +166,17 @@ const (
 )
 
 const (
+	// IstioRevisionConditionTypeInUse signifies whether any workload is configured to use the revision.
+	IstioRevisionConditionTypeInUse IstioRevisionConditionType = "InUse"
+
+	// IstioRevisionConditionReasonReferencedByWorkloads indicates that the revision is referenced by at least one pod or namespace.
+	IstioRevisionConditionReasonReferencedByWorkloads IstioRevisionConditionReason = "ReferencedByWorkloads"
+
+	// IstioRevisionConditionReasonNotReferenced indicates that the revision is not referenced by any pod or namespace.
+	IstioRevisionConditionReasonNotReferenced IstioRevisionConditionReason = "NotReferencedByAnything"
+)
+
+const (
 	// IstioRevisionConditionReasonHealthy indicates that the control plane is fully reconciled and that all components are ready.
 	IstioRevisionConditionReasonHealthy IstioRevisionConditionReason = "Healthy"
 )
@@ -175,6 +186,7 @@ const (
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status",description="Whether the control plane installation is ready to handle requests."
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.state",description="The current state of this object."
+// +kubebuilder:printcolumn:name="In use",type="string",JSONPath=".status.conditions[?(@.type==\"InUse\")].status",description="Whether the revision is being used by workloads."
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of the control plane installation."
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="The age of the object"
 

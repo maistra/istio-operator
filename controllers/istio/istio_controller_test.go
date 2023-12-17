@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubectl/pkg/scheme"
@@ -124,7 +125,7 @@ func TestReconcile(t *testing.T) {
 		}
 	})
 
-	t.Run("returns error when getAggregatedValues fails", func(t *testing.T) {
+	t.Run("returns error when computeIstioRevisionValues fails", func(t *testing.T) {
 		istio := &v1alpha1.Istio{
 			ObjectMeta: objectMeta,
 			Spec: v1alpha1.IstioSpec{
@@ -562,6 +563,217 @@ func TestReconcileActiveRevision(t *testing.T) {
 	}
 }
 
+func TestPruneInactiveRevisions(t *testing.T) {
+	test.SetupScheme()
+	resourceDir := t.TempDir()
+
+	const istioName = "my-istio"
+	const istioUID = "my-uid"
+	const version = "my-version"
+
+	ownedByIstio := metav1.OwnerReference{
+		APIVersion:         v1alpha1.GroupVersion.String(),
+		Kind:               v1alpha1.IstioKind,
+		Name:               istioName,
+		UID:                istioUID,
+		Controller:         ptr.Of(true),
+		BlockOwnerDeletion: ptr.Of(true),
+	}
+
+	ownedByAnotherIstio := metav1.OwnerReference{
+		APIVersion:         v1alpha1.GroupVersion.String(),
+		Kind:               v1alpha1.IstioKind,
+		Name:               "some-other-Istio",
+		UID:                "some-other-uid",
+		Controller:         ptr.Of(true),
+		BlockOwnerDeletion: ptr.Of(true),
+	}
+
+	tenSecondsAgo := metav1.Time{Time: time.Now().Add(-10 * time.Second)}
+	oneMinuteAgo := metav1.Time{Time: time.Now().Add(-1 * time.Minute)}
+	testCases := []struct {
+		name                string
+		revName             string
+		ownerReference      metav1.OwnerReference
+		inUseCondition      *v1alpha1.IstioRevisionCondition
+		rev                 *v1alpha1.IstioRevision
+		expectDeletion      bool
+		expectRequeueAfter  *time.Duration
+		additionalRevisions []*v1alpha1.IstioRevision
+	}{
+		{
+			name:           "preserves active IstioRevision even if not in use",
+			revName:        istioName,
+			ownerReference: ownedByIstio,
+			inUseCondition: &v1alpha1.IstioRevisionCondition{
+				Type:               v1alpha1.IstioRevisionConditionTypeInUse,
+				Status:             metav1.ConditionFalse,
+				LastTransitionTime: oneMinuteAgo,
+			},
+			expectDeletion:     false,
+			expectRequeueAfter: nil,
+		},
+		{
+			name:           "preserves non-active IstioRevision that's in use",
+			revName:        istioName + "-non-active",
+			ownerReference: ownedByIstio,
+			inUseCondition: &v1alpha1.IstioRevisionCondition{
+				Type:               v1alpha1.IstioRevisionConditionTypeInUse,
+				Status:             metav1.ConditionTrue,
+				LastTransitionTime: tenSecondsAgo,
+			},
+			expectDeletion:     false,
+			expectRequeueAfter: nil,
+		},
+		{
+			name:           "preserves unused non-active IstioRevision during grace period",
+			revName:        istioName + "-non-active",
+			ownerReference: ownedByIstio,
+			inUseCondition: &v1alpha1.IstioRevisionCondition{
+				Type:               v1alpha1.IstioRevisionConditionTypeInUse,
+				Status:             metav1.ConditionFalse,
+				LastTransitionTime: tenSecondsAgo,
+			},
+			expectDeletion:     false,
+			expectRequeueAfter: ptr.Of((v1alpha1.DefaultRevisionDeletionGracePeriodSeconds - 10) * time.Second),
+		},
+		{
+			name:           "preserves IstioRevision owned by a different Istio",
+			revName:        "other-istio-non-active",
+			ownerReference: ownedByAnotherIstio,
+			inUseCondition: &v1alpha1.IstioRevisionCondition{
+				Type:               v1alpha1.IstioRevisionConditionTypeInUse,
+				Status:             metav1.ConditionFalse,
+				LastTransitionTime: oneMinuteAgo,
+			},
+			expectDeletion:     false,
+			expectRequeueAfter: nil,
+		},
+		{
+			name:           "deletes non-active IstioRevision that's not in use",
+			revName:        istioName + "-non-active",
+			ownerReference: ownedByIstio,
+			inUseCondition: &v1alpha1.IstioRevisionCondition{
+				Type:               v1alpha1.IstioRevisionConditionTypeInUse,
+				Status:             metav1.ConditionFalse,
+				LastTransitionTime: oneMinuteAgo,
+			},
+			expectDeletion:     true,
+			expectRequeueAfter: nil,
+		},
+		{
+			name:           "returns requeueAfter of earliest IstioRevision requiring pruning",
+			revName:        istioName + "-non-active",
+			ownerReference: ownedByIstio,
+			inUseCondition: &v1alpha1.IstioRevisionCondition{
+				Type:               v1alpha1.IstioRevisionConditionTypeInUse,
+				Status:             metav1.ConditionFalse,
+				LastTransitionTime: oneMinuteAgo,
+			},
+			additionalRevisions: []*v1alpha1.IstioRevision{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            istioName + "-non-active2",
+						OwnerReferences: []metav1.OwnerReference{ownedByIstio},
+					},
+					Status: v1alpha1.IstioRevisionStatus{
+						Conditions: []v1alpha1.IstioRevisionCondition{
+							{
+								Type:               v1alpha1.IstioRevisionConditionTypeInUse,
+								Status:             metav1.ConditionFalse,
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-25 * time.Second)},
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            istioName + "-non-active3",
+						OwnerReferences: []metav1.OwnerReference{ownedByIstio},
+					},
+					Status: v1alpha1.IstioRevisionStatus{
+						Conditions: []v1alpha1.IstioRevisionCondition{
+							{
+								Type:               v1alpha1.IstioRevisionConditionTypeInUse,
+								Status:             metav1.ConditionFalse,
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-20 * time.Second)},
+							},
+						},
+					},
+				},
+			},
+			expectDeletion:     true,
+			expectRequeueAfter: ptr.Of((v1alpha1.DefaultRevisionDeletionGracePeriodSeconds - 25) * time.Second),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			istio := &v1alpha1.Istio{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: istioName,
+					UID:  istioUID,
+				},
+				Spec: v1alpha1.IstioSpec{
+					Version: version,
+				},
+			}
+
+			rev := &v1alpha1.IstioRevision{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            tc.revName,
+					OwnerReferences: []metav1.OwnerReference{tc.ownerReference},
+				},
+				Status: v1alpha1.IstioRevisionStatus{
+					Conditions: []v1alpha1.IstioRevisionCondition{*tc.inUseCondition},
+				},
+			}
+
+			initObjs := []client.Object{istio, rev}
+			for _, additionalRev := range tc.additionalRevisions {
+				initObjs = append(initObjs, additionalRev)
+			}
+
+			cl := newFakeClientBuilder().WithObjects(initObjs...).Build()
+			reconciler := NewIstioReconciler(cl, scheme.Scheme, resourceDir, nil)
+
+			result, err := reconciler.pruneInactiveRevisions(ctx, istio)
+			if err != nil {
+				t.Errorf("Expected no error, but got: %v", err)
+			}
+
+			revisionWasDeleted := errors.IsNotFound(cl.Get(ctx, client.ObjectKeyFromObject(rev), rev))
+			if tc.expectDeletion && !revisionWasDeleted {
+				t.Error("Expected IstioRevision to be deleted, but it wasn't")
+			} else if revisionWasDeleted && !tc.expectDeletion {
+				t.Error("Expected IstioRevision to be preserved, but it was deleted")
+			}
+
+			if tc.expectRequeueAfter == nil {
+				if result.RequeueAfter != 0 {
+					t.Errorf("Didn't expect Istio to be requeued, but it was; requeueAfter: %v", result.RequeueAfter)
+				}
+			} else {
+				if result.RequeueAfter == 0 {
+					t.Error("Expected Istio to be requeued, but it wasn't")
+				} else {
+					diff := abs(result.RequeueAfter - *tc.expectRequeueAfter)
+					if diff > time.Second {
+						t.Errorf("Expected result.RequeueAfter to be around %v, but got %v", *tc.expectRequeueAfter, result.RequeueAfter)
+					}
+				}
+			}
+		})
+	}
+}
+
+func abs(duration time.Duration) time.Duration {
+	if duration < 0 {
+		return -duration
+	}
+	return duration
+}
+
 func TestGetActiveRevisionName(t *testing.T) {
 	tests := []struct {
 		name                 string
@@ -597,7 +809,6 @@ func TestGetActiveRevisionName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &IstioReconciler{}
 			istio := &v1alpha1.Istio{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-istio",
@@ -611,7 +822,7 @@ func TestGetActiveRevisionName(t *testing.T) {
 					Type: *tt.updateStrategyType,
 				}
 			}
-			actual := r.getActiveRevisionName(istio)
+			actual := getActiveRevisionName(istio)
 			if actual != tt.expectedRevisionName {
 				t.Errorf("getActiveRevisionName() = %v, want %v", actual, tt.expectedRevisionName)
 			}
@@ -625,6 +836,53 @@ func newFakeClientBuilder() *fake.ClientBuilder {
 		WithStatusSubresource(&v1alpha1.Istio{})
 }
 
+func TestGetPruningGracePeriod(t *testing.T) {
+	tests := []struct {
+		name           string
+		updateStrategy *v1alpha1.IstioUpdateStrategy
+		expected       time.Duration
+	}{
+		{
+			name:           "Nil update strategy",
+			updateStrategy: nil,
+			expected:       v1alpha1.DefaultRevisionDeletionGracePeriodSeconds * time.Second,
+		},
+		{
+			name:           "Nil grace period",
+			updateStrategy: &v1alpha1.IstioUpdateStrategy{},
+			expected:       v1alpha1.DefaultRevisionDeletionGracePeriodSeconds * time.Second,
+		},
+		{
+			name: "Grace period less than minimum",
+			updateStrategy: &v1alpha1.IstioUpdateStrategy{
+				InactiveRevisionDeletionGracePeriodSeconds: ptr.Of(int64(v1alpha1.MinRevisionDeletionGracePeriodSeconds - 10)),
+			},
+			expected: v1alpha1.MinRevisionDeletionGracePeriodSeconds * time.Second,
+		},
+		{
+			name: "Grace period more than minimum",
+			updateStrategy: &v1alpha1.IstioUpdateStrategy{
+				InactiveRevisionDeletionGracePeriodSeconds: ptr.Of(int64(v1alpha1.MinRevisionDeletionGracePeriodSeconds + 10)),
+			},
+			expected: (v1alpha1.MinRevisionDeletionGracePeriodSeconds + 10) * time.Second,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			istio := &v1alpha1.Istio{
+				Spec: v1alpha1.IstioSpec{
+					UpdateStrategy: tt.updateStrategy,
+				},
+			}
+			got := getPruningGracePeriod(istio)
+			if got != tt.expected {
+				t.Errorf("getPruningGracePeriod() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
 // TestGetAggregatedValues tests that the values are sourced from the following sources
 // (with each source overriding the values from the previous sources):
 //   - default profile(s)
@@ -632,7 +890,7 @@ func newFakeClientBuilder() *fake.ClientBuilder {
 //   - IstioRevision.spec.values
 //   - IstioRevision.spec.rawValues
 //   - other (non-value) fields in the IstioRevision resource (e.g. the value global.istioNamespace is set from IstioRevision.spec.namespace)
-func TestGetAggregatedValues(t *testing.T) {
+func TestComputeIstioRevisionValues(t *testing.T) {
 	const version = "my-version"
 	resourceDir := t.TempDir()
 	profilesDir := path.Join(resourceDir, version, "profiles")
@@ -673,7 +931,7 @@ spec:
 		},
 	}
 
-	result, err := getAggregatedValues(istio, []string{"default"}, resourceDir)
+	result, err := computeIstioRevisionValues(istio, []string{"default"}, resourceDir)
 	if err != nil {
 		t.Errorf("Expected no error, but got an error: %v", err)
 	}
@@ -686,6 +944,7 @@ spec:
 		"global": map[string]any{
 			"istioNamespace": istioNamespace, // this value is always added/overridden based on IstioRevision.spec.namespace
 		},
+		"revision": objectMeta.Name,
 	}
 
 	if !reflect.DeepEqual(result, expected) {

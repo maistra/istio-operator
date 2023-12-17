@@ -2,6 +2,7 @@ package istiorevision
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"k8s.io/kubectl/pkg/scheme"
 	v1 "maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/common"
+	"maistra.io/istio-operator/pkg/test"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -42,9 +44,9 @@ var _ = Describe("IstioRevisionController", Ordered, func() {
 	}
 
 	istioObjectKey := client.ObjectKey{Name: istioName}
-	deploymentObjectKey := client.ObjectKey{Name: "istiod", Namespace: istioNamespace}
+	deploymentObjectKey := client.ObjectKey{Name: "istiod-" + istioName, Namespace: istioNamespace}
 	cniObjectKey := client.ObjectKey{Name: "istio-cni-node", Namespace: operatorNamespace}
-	webhookObjectKey := client.ObjectKey{Name: "istio-sidecar-injector-" + istioNamespace}
+	webhookObjectKey := client.ObjectKey{Name: "istio-sidecar-injector-" + istioName + "-" + istioNamespace}
 
 	common.Config = testConfig
 
@@ -75,6 +77,8 @@ var _ = Describe("IstioRevisionController", Ordered, func() {
 					Version:   istioVersion,
 					Namespace: istioNamespace,
 					Values: []byte(`{
+						"global":{"istioNamespace":"` + istioNamespace + `"},
+						"revision":"` + istioName + `",
 						"pilot":{"image":"` + pilotImage + `"},
 						"istio_cni":{"enabled":true}
 					}`),
@@ -145,8 +149,8 @@ var _ = Describe("IstioRevisionController", Ordered, func() {
 		It("recreates the owned resource", func() {
 			istiodDeployment := &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "istiod",
-					Namespace: istioNamespace,
+					Name:      deploymentObjectKey.Name,
+					Namespace: deploymentObjectKey.Namespace,
 				},
 			}
 			ExpectSuccess(k8sClient.Delete(ctx, istiodDeployment, client.PropagationPolicy(metav1.DeletePropagationForeground)))
@@ -209,8 +213,9 @@ var _ = Describe("IstioRevisionController", Ordered, func() {
 	})
 
 	It("supports concurrent deployment of two control planes", func() {
-		rev2ObjectKey := client.ObjectKey{Name: istioName + "2"}
-		deployment2ObjectKey := client.ObjectKey{Name: "istiod-rev2", Namespace: istioNamespace}
+		rev2Name := istioName + "2"
+		rev2ObjectKey := client.ObjectKey{Name: rev2Name}
+		deployment2ObjectKey := client.ObjectKey{Name: "istiod-" + rev2Name, Namespace: istioNamespace}
 
 		rev2 := &v1.IstioRevision{}
 
@@ -219,14 +224,14 @@ var _ = Describe("IstioRevisionController", Ordered, func() {
 		if err != nil && errors.IsNotFound(err) {
 			rev2 = &v1.IstioRevision{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      rev2ObjectKey.Name,
-					Namespace: rev2ObjectKey.Namespace,
+					Name: rev2ObjectKey.Name,
 				},
 				Spec: v1.IstioRevisionSpec{
 					Version:   istioVersion,
 					Namespace: istioNamespace,
 					Values: []byte(`{
-						"revision": "rev2",
+						"global":{"istioNamespace":"` + istioNamespace + `"},
+						"revision": "` + rev2ObjectKey.Name + `",
 						"pilot":{"image":"` + pilotImage + `"}
 					}`),
 				},
@@ -591,6 +596,205 @@ istio_cni:
 				t.Errorf("Unexpected result.\nGot:\n    %+v\nexpected:\n    %+v", result, tt.expected)
 			}
 		})
+	}
+}
+
+func TestDetermineInUseCondition(t *testing.T) {
+	test.SetupScheme()
+
+	testCases := []struct {
+		podLabels           map[string]string
+		podAnnotations      map[string]string
+		nsLabels            map[string]string
+		enableAllNamespaces bool
+		matchesRevision     string
+	}{
+		// no labels on namespace or pod
+		{
+			nsLabels:        map[string]string{},
+			podLabels:       map[string]string{},
+			matchesRevision: "",
+		},
+
+		// namespace labels only
+		{
+			nsLabels:        map[string]string{"istio-injection": "enabled"},
+			matchesRevision: "default",
+		},
+		{
+			nsLabels:        map[string]string{"istio.io/rev": "default"},
+			matchesRevision: "default",
+		},
+		{
+			nsLabels:        map[string]string{"istio.io/rev": "my-rev"},
+			matchesRevision: "my-rev",
+		},
+		{
+			nsLabels:        map[string]string{"istio.io/rev": "default", "istio-injection": "enabled"},
+			matchesRevision: "default",
+		},
+		{
+			nsLabels:        map[string]string{"istio.io/rev": "my-rev", "istio-injection": "enabled"},
+			matchesRevision: "default",
+		},
+
+		// pod labels only
+		{
+			podLabels:       map[string]string{"istio.io/rev": "default"},
+			matchesRevision: "default",
+		},
+		{
+			podLabels:       map[string]string{"istio.io/rev": "my-rev"},
+			matchesRevision: "my-rev",
+		},
+		{
+			podLabels:       map[string]string{"sidecar.istio.io/inject": "true"},
+			matchesRevision: "default",
+		},
+		{
+			podLabels:       map[string]string{"sidecar.istio.io/inject": "true", "istio.io/rev": "my-rev"},
+			matchesRevision: "my-rev",
+		},
+
+		// ns and pod labels
+		{
+			nsLabels:        map[string]string{"istio-injection": "enabled"},
+			podLabels:       map[string]string{"istio.io/rev": "default"},
+			matchesRevision: "default",
+		},
+		{
+			nsLabels:        map[string]string{"istio-injection": "enabled"},
+			podLabels:       map[string]string{"istio.io/rev": "my-rev"},
+			matchesRevision: "default",
+		},
+		{
+			nsLabels:        map[string]string{"istio.io/rev": "default"},
+			podLabels:       map[string]string{"istio.io/rev": "default"},
+			matchesRevision: "default",
+		},
+		{
+			nsLabels:        map[string]string{"istio.io/rev": "default"},
+			podLabels:       map[string]string{"istio.io/rev": "my-rev"},
+			matchesRevision: "default",
+		},
+		{
+			nsLabels:        map[string]string{"istio.io/rev": "my-rev"},
+			podLabels:       map[string]string{"istio.io/rev": "default"},
+			matchesRevision: "my-rev",
+		},
+		{
+			nsLabels:        map[string]string{"istio.io/rev": "my-rev"},
+			podLabels:       map[string]string{"istio.io/rev": "my-rev"},
+			matchesRevision: "my-rev",
+		},
+		{
+			nsLabels:        map[string]string{"istio.io/rev": "default", "istio-injection": "enabled"},
+			podLabels:       map[string]string{"istio.io/rev": "default"},
+			matchesRevision: "default",
+		},
+		{
+			nsLabels:        map[string]string{"istio.io/rev": "default", "istio-injection": "enabled"},
+			podLabels:       map[string]string{"istio.io/rev": "my-rev"},
+			matchesRevision: "default",
+		},
+		{
+			nsLabels:        map[string]string{"istio.io/rev": "my-rev", "istio-injection": "enabled"},
+			podLabels:       map[string]string{"istio.io/rev": "default"},
+			matchesRevision: "default",
+		},
+		{
+			nsLabels:        map[string]string{"istio.io/rev": "my-rev", "istio-injection": "enabled"},
+			podLabels:       map[string]string{"istio.io/rev": "my-rev"},
+			matchesRevision: "default",
+		},
+
+		// special case: when Values.sidecarInjectorWebhook.enableNamespacesByDefault is true, all pods should match the default revision
+		// unless they are in one of the system namespaces ("kube-system","kube-public","kube-node-lease","local-path-storage")
+		{
+			enableAllNamespaces: true,
+			matchesRevision:     "default",
+		},
+	}
+
+	for _, revName := range []string{"default", "my-rev"} {
+		for _, tc := range testCases {
+			nameBuilder := strings.Builder{}
+			nameBuilder.WriteString(revName + ":")
+			if len(tc.nsLabels) == 0 && len(tc.podLabels) == 0 {
+				nameBuilder.WriteString("no labels")
+			}
+			if len(tc.nsLabels) > 0 {
+				nameBuilder.WriteString("NS:")
+				for k, v := range tc.nsLabels {
+					nameBuilder.WriteString(k + ":" + v + ",")
+				}
+			}
+			if len(tc.podLabels) > 0 {
+				nameBuilder.WriteString("POD:")
+				for k, v := range tc.podLabels {
+					nameBuilder.WriteString(k + ":" + v + ",")
+				}
+			}
+			name := strings.TrimSuffix(nameBuilder.String(), ",")
+
+			t.Run(name, func(t *testing.T) {
+				rev := &v1.IstioRevision{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: revName,
+					},
+					Spec: v1.IstioRevisionSpec{
+						Namespace: "istio-system",
+						Version:   "my-version",
+					},
+				}
+				if tc.enableAllNamespaces {
+					rev.Spec.Values = []byte(`{"sidecarInjectorWebhook":{"enableNamespacesByDefault":true}}`)
+				}
+
+				namespace := "bookinfo"
+				ns := &corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   namespace,
+						Labels: tc.nsLabels,
+					},
+				}
+
+				pod := &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "some-pod",
+						Namespace:   namespace,
+						Labels:      tc.podLabels,
+						Annotations: tc.podAnnotations,
+					},
+				}
+
+				cl := fake.NewClientBuilder().
+					WithScheme(scheme.Scheme).
+					WithObjects(rev, ns, pod).
+					Build()
+
+				r := NewIstioRevisionReconciler(cl, scheme.Scheme, nil, operatorNamespace)
+
+				result, err := r.determineInUseCondition(context.TODO(), rev)
+				if err != nil {
+					t.Fatalf("Unexpected error: %v", err)
+				}
+				if result.Type != v1.IstioRevisionConditionTypeInUse {
+					t.Errorf("unexpected condition type: %v", result.Type)
+				}
+
+				expectedStatus := metav1.ConditionFalse
+				if revName == tc.matchesRevision {
+					expectedStatus = metav1.ConditionTrue
+				}
+
+				if result.Status != expectedStatus {
+					t.Errorf("Unexpected status. Revision %s reports being in use, but shouldn't be\n"+
+						"revision: %s\nexpected revision: %s\nnamespace labels: %+v\npod labels: %+v",
+						revName, revName, tc.matchesRevision, tc.nsLabels, tc.podLabels)
+				}
+			})
+		}
 	}
 }
 

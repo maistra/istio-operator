@@ -31,6 +31,9 @@ type UpdateStrategyType string
 const (
 	UpdateStrategyTypeInPlace       UpdateStrategyType = "InPlace"
 	UpdateStrategyTypeRevisionBased UpdateStrategyType = "RevisionBased"
+
+	DefaultRevisionDeletionGracePeriodSeconds = 30
+	MinRevisionDeletionGracePeriodSeconds     = 30
 )
 
 // IstioSpec defines the desired state of Istio
@@ -104,13 +107,20 @@ type IstioUpdateStrategy struct {
 	// +kubebuilder:validation:Enum=InPlace;RevisionBased
 	Type UpdateStrategyType `json:"type,omitempty"`
 
+	// Defines how many seconds the operator should wait before removing a non-active revision after all
+	// the workloads have stopped using it. You may want to set this value on the order of minutes.
+	// The minimum and the default value is 30.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=2,displayName="Inactive Revision Deletion Grace Period (seconds)",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:number"}
+	// +kubebuilder:validation:Minimum=30
+	InactiveRevisionDeletionGracePeriodSeconds *int64 `json:"inactiveRevisionDeletionGracePeriodSeconds,omitempty"`
+
 	// Defines whether the workloads should be moved from one control plane instance to another
 	// automatically. If updateWorkloads is true, the operator moves the workloads from the old
 	// control plane instance to the new one after the new control plane is ready.
 	// If updateWorkloads is false, the user must move the workloads manually by updating the
 	// istio.io/rev labels on the namespace and/or the pods.
 	// Defaults to false.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=2,displayName="Update Workloads Automatically",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:booleanSwitch"}
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=3,displayName="Update Workloads Automatically",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:booleanSwitch"}
 	UpdateWorkloads bool `json:"updateWorkloads,omitempty"`
 }
 
