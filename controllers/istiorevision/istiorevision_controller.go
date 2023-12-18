@@ -442,7 +442,6 @@ func (r *IstioRevisionReconciler) isRevisionReferencedByWorkloads(ctx context.Co
 			logger.Info("Revision is referenced by Namespace", "Namespace", ns.Name)
 			return true, nil
 		}
-		ns := ns
 		nsMap[ns.Name] = ns
 	}
 
