@@ -27,6 +27,10 @@ spec:
       jsonPath: .status.state
       name: Status
       type: string
+    - description: Whether the revision is being used by workloads.
+      jsonPath: .status.conditions[?(@.type=="InUse")].status
+      name: In use
+      type: string
     - description: The version of the control plane installation.
       jsonPath: .spec.version
       name: Version

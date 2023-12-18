@@ -53,7 +53,13 @@ import (
 	"istio.io/istio/pkg/ptr"
 )
 
-const cniReleaseNameBase = "istio"
+const (
+	cniReleaseNameBase         = "istio"
+	IstioInjectionLabel        = "istio-injection"
+	IstioInjectionEnabledValue = "enabled"
+	IstioRevLabel              = "istio.io/rev"
+	IstioSidecarInjectLabel    = "sidecar.istio.io/inject"
+)
 
 // IstioRevisionReconciler reconciles an IstioRevision object
 type IstioRevisionReconciler struct {
@@ -118,13 +124,6 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
-	if rev.Spec.Version == "" {
-		return ctrl.Result{}, fmt.Errorf("no spec.version set")
-	}
-	if rev.Spec.Namespace == "" {
-		return ctrl.Result{}, fmt.Errorf("no spec.namespace set")
-	}
-
 	if !kube.HasFinalizer(&rev) {
 		err := kube.AddFinalizer(ctx, &rev, r.Client)
 		if err != nil {
@@ -133,14 +132,13 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	values, err := applyOverridesToIstioRevision(&rev, rev.Spec.GetValues())
-	if err != nil {
-		err = r.updateStatus(ctx, logger, &rev, values, err)
+	values := rev.Spec.GetValues()
+	if err := validateIstioRevision(rev, values); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	logger.Info("Installing components", "values", values)
-	err = r.installHelmCharts(ctx, &rev, values)
+	err := r.installHelmCharts(ctx, &rev, values)
 
 	logger.Info("Reconciliation done. Updating status.")
 	err = r.updateStatus(ctx, logger, &rev, values, err)
@@ -148,11 +146,32 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	return ctrl.Result{}, err
 }
 
-func applyOverridesToIstioRevision(rev *v1alpha1.IstioRevision, values helm.HelmValues) (helm.HelmValues, error) {
-	if err := values.Set("global.istioNamespace", rev.Spec.Namespace); err != nil {
-		return nil, err
+func validateIstioRevision(rev v1alpha1.IstioRevision, values helm.HelmValues) error {
+	if rev.Spec.Version == "" {
+		return fmt.Errorf("spec.version not set")
 	}
-	return values, nil
+	if rev.Spec.Namespace == "" {
+		return fmt.Errorf("spec.namespace not set")
+	}
+
+	if revision, found, err := values.GetString("revision"); err != nil {
+		return fmt.Errorf("failed to get revision from values: %v", err)
+	} else if !found {
+		return fmt.Errorf("spec.values.revision not set")
+	} else if rev.Name == v1alpha1.DefaultRevision && revision != "" {
+		return fmt.Errorf("spec.values.revision must be \"\" when IstioRevision name is %s", v1alpha1.DefaultRevision)
+	} else if rev.Name != v1alpha1.DefaultRevision && revision != rev.Name {
+		return fmt.Errorf("spec.values.revision does not match IstioRevision name")
+	}
+
+	if istioNamesspace, found, err := values.GetString("global.istioNamespace"); err != nil {
+		return fmt.Errorf("failed to get global.istioNamespace from values: %v", err)
+	} else if !found {
+		return fmt.Errorf("spec.values.global.istioNamespace not set")
+	} else if rev.Spec.Namespace != istioNamesspace {
+		return fmt.Errorf("spec.values.global.istioNamespace does not match spec.namespace")
+	}
+	return nil
 }
 
 func (r *IstioRevisionReconciler) installHelmCharts(ctx context.Context, rev *v1alpha1.IstioRevision, values helm.HelmValues) error {
@@ -227,35 +246,47 @@ func isCNIEnabled(values helm.HelmValues) (bool, error) {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *IstioRevisionReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	eventHandler := handler.EnqueueRequestsFromMapFunc(r.mapOwnerToReconcileRequest)
+	// ownedResourceHandler handles resources that are owned by the IstioRevision CR
+	ownedResourceHandler := handler.EnqueueRequestsFromMapFunc(r.mapOwnerToReconcileRequest)
+
+	// nsHandler handles namespaces that reference the IstioRevision CR via the istio.io/rev or istio-injection labels.
+	// The handler triggers the reconciliation of the referenced IstioRevision CR so that its InUse condition is updated.
+	nsHandler := handler.EnqueueRequestsFromMapFunc(r.mapNamespaceToReconcileRequest)
+
+	// podHandler handles pods that reference the IstioRevision CR via the istio.io/rev or sidecar.istio.io/inject labels.
+	// The handler triggers the reconciliation of the referenced IstioRevision CR so that its InUse condition is updated.
+	podHandler := handler.EnqueueRequestsFromMapFunc(r.mapPodToReconcileRequest)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.IstioRevision{}).
 
 		// namespaced resources
-		Watches(&corev1.ConfigMap{}, eventHandler).
-		Watches(&appsv1.Deployment{}, eventHandler).
-		Watches(&appsv1.DaemonSet{}, eventHandler).
-		Watches(&corev1.Endpoints{}, eventHandler).
-		Watches(&corev1.ResourceQuota{}, eventHandler).
-		Watches(&corev1.Secret{}, eventHandler).
-		Watches(&corev1.Service{}, eventHandler).
-		Watches(&corev1.ServiceAccount{}, eventHandler).
-		Watches(&rbacv1.Role{}, eventHandler).
-		Watches(&rbacv1.RoleBinding{}, eventHandler).
-		Watches(&policyv1.PodDisruptionBudget{}, eventHandler).
-		Watches(&autoscalingv2.HorizontalPodAutoscaler{}, eventHandler).
-		Watches(&networkingv1alpha3.EnvoyFilter{}, eventHandler).
+		Watches(&corev1.ConfigMap{}, ownedResourceHandler).
+		Watches(&appsv1.Deployment{}, ownedResourceHandler).
+		Watches(&appsv1.DaemonSet{}, ownedResourceHandler).
+		Watches(&corev1.Endpoints{}, ownedResourceHandler).
+		Watches(&corev1.ResourceQuota{}, ownedResourceHandler).
+		Watches(&corev1.Secret{}, ownedResourceHandler).
+		Watches(&corev1.Service{}, ownedResourceHandler).
+		Watches(&corev1.ServiceAccount{}, ownedResourceHandler).
+		Watches(&rbacv1.Role{}, ownedResourceHandler).
+		Watches(&rbacv1.RoleBinding{}, ownedResourceHandler).
+		Watches(&policyv1.PodDisruptionBudget{}, ownedResourceHandler).
+		Watches(&autoscalingv2.HorizontalPodAutoscaler{}, ownedResourceHandler).
+		Watches(&networkingv1alpha3.EnvoyFilter{}, ownedResourceHandler).
 
 		// TODO: only register NetAttachDef if the CRD is installed (may also need to watch for CRD creation)
 		// Owns(&multusv1.NetworkAttachmentDefinition{}).
 
+		Watches(&corev1.Namespace{}, nsHandler).
+		Watches(&corev1.Pod{}, podHandler).
+
 		// cluster-scoped resources
-		Watches(&rbacv1.ClusterRole{}, eventHandler).
-		Watches(&rbacv1.ClusterRoleBinding{}, eventHandler).
-		Watches(&admissionv1.MutatingWebhookConfiguration{}, eventHandler).
+		Watches(&rbacv1.ClusterRole{}, ownedResourceHandler).
+		Watches(&rbacv1.ClusterRoleBinding{}, ownedResourceHandler).
+		Watches(&admissionv1.MutatingWebhookConfiguration{}, ownedResourceHandler).
 		Watches(&admissionv1.ValidatingWebhookConfiguration{},
-			eventHandler,
+			ownedResourceHandler,
 			builder.WithPredicates(validatingWebhookConfigPredicate{})).
 
 		// +lint-watches:ignore: CustomResourceDefinition (prevents `make lint-watches` from bugging us about CRDs)
@@ -268,11 +299,16 @@ func (r *IstioRevisionReconciler) updateStatus(ctx context.Context, log logr.Log
 	if err != nil {
 		return err
 	}
+	inUseCondition, err := r.determineInUseCondition(ctx, rev)
+	if err != nil {
+		return err
+	}
 
 	status := rev.Status.DeepCopy()
 	status.ObservedGeneration = rev.Generation
 	status.SetCondition(reconciledCondition)
 	status.SetCondition(readyCondition)
+	status.SetCondition(inUseCondition)
 	status.State = deriveState(reconciledCondition, readyCondition)
 
 	if reflect.DeepEqual(rev.Status, *status) {
@@ -372,6 +408,108 @@ func (r *IstioRevisionReconciler) determineReadyCondition(ctx context.Context,
 	}, nil
 }
 
+func (r *IstioRevisionReconciler) determineInUseCondition(ctx context.Context, rev *v1alpha1.IstioRevision) (v1alpha1.IstioRevisionCondition, error) {
+	isReferenced, err := r.isRevisionReferencedByWorkloads(ctx, rev)
+	if err != nil {
+		return v1alpha1.IstioRevisionCondition{}, err
+	}
+
+	if isReferenced {
+		return v1alpha1.IstioRevisionCondition{
+			Type:    v1alpha1.IstioRevisionConditionTypeInUse,
+			Status:  metav1.ConditionTrue,
+			Reason:  v1alpha1.IstioRevisionConditionReasonReferencedByWorkloads,
+			Message: "Referenced by at least one pod or namespace",
+		}, nil
+	}
+	return v1alpha1.IstioRevisionCondition{
+		Type:    v1alpha1.IstioRevisionConditionTypeInUse,
+		Status:  metav1.ConditionFalse,
+		Reason:  v1alpha1.IstioRevisionConditionReasonNotReferenced,
+		Message: "Not referenced by any pod or namespace",
+	}, nil
+}
+
+func (r *IstioRevisionReconciler) isRevisionReferencedByWorkloads(ctx context.Context, rev *v1alpha1.IstioRevision) (bool, error) {
+	logger := log.FromContext(ctx)
+	nsList := corev1.NamespaceList{}
+	nsMap := map[string]corev1.Namespace{}
+	if err := r.Client.List(ctx, &nsList); err != nil { // TODO: can we optimize this by specifying a label selector
+		return false, err
+	}
+	for _, ns := range nsList.Items {
+		if namespaceReferencesRevision(ns, rev) {
+			logger.V(2).Info("Revision is referenced by Namespace", "Namespace", ns.Name)
+			return true, nil
+		}
+		nsMap[ns.Name] = ns
+	}
+
+	podList := corev1.PodList{}
+	if err := r.Client.List(ctx, &podList); err != nil { // TODO: can we optimize this by specifying a label selector
+		return false, err
+	}
+	for _, pod := range podList.Items {
+		if ns, found := nsMap[pod.Namespace]; found && podReferencesRevision(pod, ns, rev) {
+			logger.V(2).Info("Revision is referenced by Pod", "Pod", client.ObjectKeyFromObject(&pod))
+			return true, nil
+		}
+	}
+
+	values := rev.Spec.GetValues()
+	if enableNamespacesByDefault, _, err := values.GetBool("sidecarInjectorWebhook.enableNamespacesByDefault"); err != nil {
+		return false, err
+	} else if enableNamespacesByDefault && rev.Name == v1alpha1.DefaultRevision {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func namespaceReferencesRevision(ns corev1.Namespace, rev *v1alpha1.IstioRevision) bool {
+	return rev.Name == getReferencedRevisionFromNamespace(ns.Labels)
+}
+
+func podReferencesRevision(pod corev1.Pod, ns corev1.Namespace, rev *v1alpha1.IstioRevision) bool {
+	return rev.Name == getReferencedRevisionFromPod(pod.GetLabels(), pod.GetAnnotations(), ns.GetLabels())
+}
+
+func getReferencedRevisionFromNamespace(labels map[string]string) string {
+	if labels[IstioInjectionLabel] == IstioInjectionEnabledValue {
+		return v1alpha1.DefaultRevision
+	}
+	revision := labels[IstioRevLabel]
+	if revision != "" {
+		return revision
+	}
+	// TODO: if .Values.sidecarInjectorWebhook.enableNamespacesByDefault is true, then all namespaces except system namespaces should use the "default" revision
+
+	return ""
+}
+
+func getReferencedRevisionFromPod(podLabels, podAnnotations, nsLabels map[string]string) string {
+	// if pod was already injected, the revision that did the injection is specified in the istio.io/rev annotation
+	revision := podAnnotations[IstioRevLabel]
+	if revision != "" {
+		return revision
+	}
+
+	// pod is marked for injection by a specific revision, but wasn't injected (e.g. because it was created before the revision was applied)
+	revisionFromNamespace := getReferencedRevisionFromNamespace(nsLabels)
+	if podLabels[IstioSidecarInjectLabel] != "false" {
+		if revisionFromNamespace != "" {
+			return revisionFromNamespace
+		}
+		revisionFromPod := podLabels[IstioRevLabel]
+		if revisionFromPod != "" {
+			return revisionFromPod
+		} else if podLabels[IstioSidecarInjectLabel] == "true" {
+			return v1alpha1.DefaultRevision
+		}
+	}
+	return ""
+}
+
 func (r *IstioRevisionReconciler) cniDaemonSetKey() client.ObjectKey {
 	return client.ObjectKey{
 		Namespace: r.CNINamespace,
@@ -452,6 +590,29 @@ func (r *IstioRevisionReconciler) mapOwnerToReconcileRequest(ctx context.Context
 	}
 
 	return requests
+}
+
+func (r *IstioRevisionReconciler) mapNamespaceToReconcileRequest(ctx context.Context, ns client.Object) []reconcile.Request {
+	revision := getReferencedRevisionFromNamespace(ns.GetLabels())
+	if revision != "" {
+		return []reconcile.Request{{NamespacedName: types.NamespacedName{Name: revision}}}
+	}
+	return nil
+}
+
+func (r *IstioRevisionReconciler) mapPodToReconcileRequest(ctx context.Context, pod client.Object) []reconcile.Request {
+	// TODO: rewrite getReferencedRevisionFromPod to use lazy loading to avoid loading the namespace if the pod references a revision directly
+	ns := corev1.Namespace{}
+	err := r.Client.Get(ctx, types.NamespacedName{Name: pod.GetNamespace()}, &ns)
+	if err != nil {
+		return nil
+	}
+
+	revision := getReferencedRevisionFromPod(pod.GetLabels(), pod.GetAnnotations(), ns.GetLabels())
+	if revision != "" {
+		return []reconcile.Request{{NamespacedName: types.NamespacedName{Name: revision}}}
+	}
+	return nil
 }
 
 type validatingWebhookConfigPredicate struct {

@@ -77,6 +77,14 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:select:v1.19.5
         - urn:alm:descriptor:com.tectonic.ui:select:latest
         - urn:alm:descriptor:com.tectonic.ui:select:gwAPIControllerMode
+      - description: Defines how many seconds the operator should wait before removing
+          a non-active revision after all the workloads have stopped using it. You
+          may want to set this value on the order of minutes. The minimum and the
+          default value is 30.
+        displayName: Inactive Revision Deletion Grace Period (seconds)
+        path: updateStrategy.inactiveRevisionDeletionGracePeriodSeconds
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:number
       - description: Defines whether the workloads should be moved from one control
           plane instance to another automatically. If updateWorkloads is true, the
           operator moves the workloads from the old control plane instance to the

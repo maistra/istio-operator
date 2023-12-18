@@ -75,6 +75,8 @@ initialize_variables() {
     ISTIO_MANIFEST="${WD}/../../config/samples/istio-sample-kubernetes.yaml"
   fi
 
+  ISTIO_NAME=$(yq eval '.metadata.name' "$ISTIO_MANIFEST")
+
   TIMEOUT="3m"
 }
 
@@ -175,13 +177,13 @@ main_test() {
     echo "--------------------------------------------------------------"
     echo "Deploy Istio version '${ver}'"
     ${COMMAND} get ns "${CONTROL_PLANE_NS}" >/dev/null 2>&1 || ${COMMAND} create namespace "${CONTROL_PLANE_NS}"
-    sed -e "s/version:.*/version: ${ver}/g" "${ISTIO_MANIFEST}" | ${COMMAND} apply -f - -n "${CONTROL_PLANE_NS}"
+    sed -e "s/version:.*/version: ${ver}/g" "${ISTIO_MANIFEST}" | ${COMMAND} apply -f -
 
     echo "Wait for Istio to be Reconciled"
-    ${COMMAND} wait istio/istio-sample -n "${CONTROL_PLANE_NS}" --for condition=Reconciled=True --timeout=${TIMEOUT}
+    ${COMMAND} wait "istio/${ISTIO_NAME}" --for condition=Reconciled=True --timeout=${TIMEOUT}
 
     echo "Wait for Istio to be Ready"
-    ${COMMAND} wait istio/istio-sample -n "${CONTROL_PLANE_NS}" --for condition=Ready=True --timeout=${TIMEOUT}
+    ${COMMAND} wait "istio/${ISTIO_NAME}" --for condition=Ready=True --timeout=${TIMEOUT}
 
     echo "Give the operator 30s to settle down"
     sleep 30
@@ -222,7 +224,7 @@ main_test() {
     fi
 
     echo "Undeploy Istio"
-    ${COMMAND} delete -f "${ISTIO_MANIFEST}" -n "${CONTROL_PLANE_NS}"
+    ${COMMAND} delete -f "${ISTIO_MANIFEST}"
 
     echo "Check that istiod deployment has been deleted (waiting $TIMEOUT)"
     timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
