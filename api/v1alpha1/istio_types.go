@@ -26,6 +26,13 @@ import (
 
 const IstioKind = "Istio"
 
+type UpdateStrategyType string
+
+const (
+	UpdateStrategyTypeInPlace       UpdateStrategyType = "InPlace"
+	UpdateStrategyTypeRevisionBased UpdateStrategyType = "RevisionBased"
+)
+
 // IstioSpec defines the desired state of Istio
 type IstioSpec struct {
 	// +sail:version
@@ -34,6 +41,10 @@ type IstioSpec struct {
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="Istio Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.1", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.0", "urn:alm:descriptor:com.tectonic.ui:select:v1.19.5", "urn:alm:descriptor:com.tectonic.ui:select:latest"}
 	// +kubebuilder:validation:Enum=v1.20.1;v1.20.0;v1.19.5;latest
 	Version string `json:"version"`
+
+	// Defines the update strategy to use when the version in the Istio CR is updated.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Update Strategy"
+	UpdateStrategy *IstioUpdateStrategy `json:"updateStrategy,omitempty"`
 
 	// +sail:profile
 	// The built-in installation configuration profile to use.
@@ -57,7 +68,7 @@ type IstioSpec struct {
 	// Defines the non-validated values to be passed to the Helm charts when installing Istio.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Helm RawValues"
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Raw Helm Values"
 	RawValues json.RawMessage `json:"rawValues,omitempty"`
 }
 
@@ -76,6 +87,31 @@ func (s *IstioSpec) SetValues(values helm.HelmValues) error {
 	}
 	s.Values = jsonVals
 	return nil
+}
+
+// IstioUpdateStrategy defines how the control plane should be updated when the version in
+// the Istio CR is updated.
+type IstioUpdateStrategy struct {
+	// Type of strategy to use. Can be "InPlace" or "RevisionBased". When the "InPlace" strategy
+	// is used, the existing Istio control plane is updated in-place. The workloads therefore
+	// don't need to be moved from one control plane instance to another. When the "RevisionBased"
+	// strategy is used, a new Istio control plane instance is created for every change to the
+	// Istio.spec.version field. The old control plane remains in place until all workloads have
+	// been moved to the new control plane instance.
+	//
+	// The "InPlace" strategy is the default.	TODO: change default to "RevisionBased"
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="Type",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:select:InPlace", "urn:alm:descriptor:com.tectonic.ui:select:RevisionBased"}
+	// +kubebuilder:validation:Enum=InPlace;RevisionBased
+	Type UpdateStrategyType `json:"type,omitempty"`
+
+	// Defines whether the workloads should be moved from one control plane instance to another
+	// automatically. If updateWorkloads is true, the operator moves the workloads from the old
+	// control plane instance to the new one after the new control plane is ready.
+	// If updateWorkloads is false, the user must move the workloads manually by updating the
+	// istio.io/rev labels on the namespace and/or the pods.
+	// Defaults to false.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=2,displayName="Update Workloads Automatically",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:booleanSwitch"}
+	UpdateWorkloads bool `json:"updateWorkloads,omitempty"`
 }
 
 // IstioStatus defines the observed state of Istio

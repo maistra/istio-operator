@@ -5,6 +5,8 @@ metadata:
 spec:
   version: v1.20.1
   namespace: istio-system
+  updateStrategy:
+    type: InPlace
   rawValues:
     pilot:
       resources:

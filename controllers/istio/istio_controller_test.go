@@ -160,7 +160,7 @@ func TestReconcile(t *testing.T) {
 		}
 	})
 
-	t.Run("returns error when createOrUpdateIstioRevision fails", func(t *testing.T) {
+	t.Run("returns error when reconcileActiveRevision fails", func(t *testing.T) {
 		istio := &v1alpha1.Istio{
 			ObjectMeta: objectMeta,
 			Spec: v1alpha1.IstioSpec{
@@ -440,9 +440,11 @@ func TestUpdateStatus(t *testing.T) {
 	}
 }
 
-func TestCreateOrUpdateIstioRevision(t *testing.T) {
+func TestReconcileActiveRevision(t *testing.T) {
 	test.SetupScheme()
 	resourceDir := t.TempDir()
+
+	const version = "my-version"
 
 	testCases := []struct {
 		name                 string
@@ -451,12 +453,12 @@ func TestCreateOrUpdateIstioRevision(t *testing.T) {
 		expectOwnerReference bool
 	}{
 		{
-			name:                 "creates IstioRevision if it doesn't exist",
+			name:                 "creates IstioRevision",
 			istioValues:          helm.HelmValues{"key": "value"},
 			expectOwnerReference: true,
 		},
 		{
-			name:                 "updates IstioRevision if it already exists",
+			name:                 "updates IstioRevision",
 			istioValues:          helm.HelmValues{"key": "new-value"},
 			revValues:            &helm.HelmValues{"key": "old-value"},
 			expectOwnerReference: false,
@@ -465,64 +467,153 @@ func TestCreateOrUpdateIstioRevision(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			istio := &v1alpha1.Istio{
-				ObjectMeta: objectMeta,
-				Spec: v1alpha1.IstioSpec{
-					Version: "my-version",
-					Values:  toJSON(tc.istioValues),
+			subCases := []struct {
+				name               string
+				updateStrategyType *v1alpha1.UpdateStrategyType
+				revName            string
+			}{
+				{
+					name:               "default update strategy",
+					updateStrategyType: nil,
+					revName:            "my-istio",
+				},
+				{
+					name:               "InPlace",
+					updateStrategyType: ptr.Of(v1alpha1.UpdateStrategyTypeInPlace),
+					revName:            "my-istio",
+				},
+				{
+					name:               "RevisionBased",
+					updateStrategyType: ptr.Of(v1alpha1.UpdateStrategyTypeRevisionBased),
+					revName:            "my-istio-" + version,
 				},
 			}
-			initObjs := []client.Object{istio}
 
-			if tc.revValues != nil {
-				initObjs = append(initObjs,
-					&v1alpha1.IstioRevision{
+			for _, sc := range subCases {
+				t.Run(sc.name, func(t *testing.T) {
+					istio := &v1alpha1.Istio{
 						ObjectMeta: objectMeta,
-						Spec: v1alpha1.IstioRevisionSpec{
-							Version: "my-version",
-							Values:  toJSON(*tc.revValues),
+						Spec: v1alpha1.IstioSpec{
+							Version: version,
+							Values:  toJSON(tc.istioValues),
 						},
-					},
-				)
+					}
+					if sc.updateStrategyType != nil {
+						istio.Spec.UpdateStrategy = &v1alpha1.IstioUpdateStrategy{
+							Type: *sc.updateStrategyType,
+						}
+					}
+
+					initObjs := []client.Object{istio}
+
+					if tc.revValues != nil {
+						initObjs = append(initObjs,
+							&v1alpha1.IstioRevision{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: sc.revName,
+								},
+								Spec: v1alpha1.IstioRevisionSpec{
+									Version: version,
+									Values:  toJSON(*tc.revValues),
+								},
+							},
+						)
+					}
+
+					cl := newFakeClientBuilder().WithObjects(initObjs...).Build()
+					reconciler := NewIstioReconciler(cl, scheme.Scheme, resourceDir, nil)
+
+					err := reconciler.reconcileActiveRevision(ctx, istio, tc.istioValues)
+					if err != nil {
+						t.Errorf("Expected no error, but got: %v", err)
+					}
+
+					revKey := types.NamespacedName{Name: sc.revName}
+					rev := &v1alpha1.IstioRevision{}
+					Must(t, cl.Get(ctx, revKey, rev))
+
+					var expectedOwnerRefs []metav1.OwnerReference
+					if tc.expectOwnerReference {
+						expectedOwnerRefs = []metav1.OwnerReference{
+							{
+								APIVersion:         v1alpha1.GroupVersion.String(),
+								Kind:               v1alpha1.IstioKind,
+								Name:               istio.Name,
+								UID:                istio.UID,
+								Controller:         ptr.Of(true),
+								BlockOwnerDeletion: ptr.Of(true),
+							},
+						}
+					}
+					if diff := cmp.Diff(rev.OwnerReferences, expectedOwnerRefs); diff != "" {
+						t.Errorf("invalid ownerReference; diff (-expected, +actual):\n%v", diff)
+					}
+
+					if istio.Spec.Version != rev.Spec.Version {
+						t.Errorf("IstioRevision.spec.version doesn't match Istio.spec.version; expected %s, got %s", istio.Spec.Version, rev.Spec.Version)
+					}
+
+					if diff := cmp.Diff(tc.istioValues, fromJSON(rev.Spec.Values)); diff != "" {
+						t.Errorf("IstioRevision.spec.values don't match Istio.spec.values; diff (-expected, +actual):\n%v", diff)
+					}
+				})
 			}
+		})
+	}
+}
 
-			cl := newFakeClientBuilder().WithObjects(initObjs...).Build()
-			reconciler := NewIstioReconciler(cl, scheme.Scheme, resourceDir, nil)
+func TestGetActiveRevisionName(t *testing.T) {
+	tests := []struct {
+		name                 string
+		version              string
+		updateStrategyType   *v1alpha1.UpdateStrategyType
+		expectedRevisionName string
+	}{
+		{
+			name:                 "No update strategy specified",
+			version:              "1.0.0",
+			updateStrategyType:   nil,
+			expectedRevisionName: "test-istio",
+		},
+		{
+			name:                 "InPlace",
+			version:              "1.0.0",
+			updateStrategyType:   ptr.Of(v1alpha1.UpdateStrategyTypeInPlace),
+			expectedRevisionName: "test-istio",
+		},
+		{
+			name:                 "RevisionBased v1.0.0",
+			version:              "1.0.0",
+			updateStrategyType:   ptr.Of(v1alpha1.UpdateStrategyTypeRevisionBased),
+			expectedRevisionName: "test-istio-1-0-0",
+		},
+		{
+			name:                 "RevisionBased v2.0.0",
+			version:              "2.0.0",
+			updateStrategyType:   ptr.Of(v1alpha1.UpdateStrategyTypeRevisionBased),
+			expectedRevisionName: "test-istio-2-0-0",
+		},
+	}
 
-			err := reconciler.createOrUpdateIstioRevision(ctx, istio, tc.istioValues)
-			if err != nil {
-				t.Errorf("Expected no error, but got: %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &IstioReconciler{}
+			istio := &v1alpha1.Istio{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-istio",
+				},
+				Spec: v1alpha1.IstioSpec{
+					Version: tt.version,
+				},
 			}
-
-			revKey := types.NamespacedName{
-				Name: istioKey.Name,
-			}
-			rev := &v1alpha1.IstioRevision{}
-			Must(t, cl.Get(ctx, revKey, rev))
-
-			var expectedOwnerRefs []metav1.OwnerReference
-			if tc.expectOwnerReference {
-				expectedOwnerRefs = []metav1.OwnerReference{
-					{
-						APIVersion:         v1alpha1.GroupVersion.String(),
-						Kind:               v1alpha1.IstioKind,
-						Name:               istio.Name,
-						UID:                istio.UID,
-						Controller:         ptr.Of(true),
-						BlockOwnerDeletion: ptr.Of(true),
-					},
+			if tt.updateStrategyType != nil {
+				istio.Spec.UpdateStrategy = &v1alpha1.IstioUpdateStrategy{
+					Type: *tt.updateStrategyType,
 				}
 			}
-			if diff := cmp.Diff(rev.OwnerReferences, expectedOwnerRefs); diff != "" {
-				t.Errorf("invalid ownerReference; diff (-expected, +actual):\n%v", diff)
-			}
-
-			if istio.Spec.Version != rev.Spec.Version {
-				t.Errorf("IstioRevision.spec.version doesn't match Istio.spec.version; expected %s, got %s", istio.Spec.Version, rev.Spec.Version)
-			}
-
-			if diff := cmp.Diff(tc.istioValues, fromJSON(rev.Spec.Values)); diff != "" {
-				t.Errorf("IstioRevision.spec.values don't match Istio.spec.values; diff (-expected, +actual):\n%v", diff)
+			actual := r.getActiveRevisionName(istio)
+			if actual != tt.expectedRevisionName {
+				t.Errorf("getActiveRevisionName() = %v, want %v", actual, tt.expectedRevisionName)
 			}
 		})
 	}
