@@ -160,6 +160,7 @@ func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1
 }
 
 func (r *IstioReconciler) pruneInactiveRevisions(ctx context.Context, istio *v1alpha1.Istio) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
 	revisions, err := r.getNonActiveRevisions(ctx, istio)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -179,6 +180,7 @@ func (r *IstioReconciler) pruneInactiveRevisions(ctx context.Context, istio *v1a
 		pruneTimestamp := inUseCondition.LastTransitionTime.Time.Add(getPruningGracePeriod(istio))
 		expired := pruneTimestamp.Before(time.Now())
 		if expired {
+			logger.Info("Deleting expired IstioRevision", "IstioRevision", rev.Name)
 			err = r.Client.Delete(ctx, &rev)
 			if err != nil {
 				return ctrl.Result{}, err
