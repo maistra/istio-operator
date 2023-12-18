@@ -53,7 +53,13 @@ import (
 	"istio.io/istio/pkg/ptr"
 )
 
-const cniReleaseNameBase = "istio"
+const (
+	cniReleaseNameBase         = "istio"
+	IstioInjectionLabel        = "istio-injection"
+	IstioInjectionEnabledValue = "enabled"
+	IstioRevLabel              = "istio.io/rev"
+	IstioSidecarInjectLabel    = "sidecar.istio.io/inject"
+)
 
 // IstioRevisionReconciler reconciles an IstioRevision object
 type IstioRevisionReconciler struct {
@@ -411,14 +417,14 @@ func (r *IstioRevisionReconciler) determineInUseCondition(ctx context.Context, r
 			Type:    v1alpha1.IstioRevisionConditionTypeInUse,
 			Status:  metav1.ConditionTrue,
 			Reason:  v1alpha1.IstioRevisionConditionReasonReferencedByWorkloads,
-			Message: "The IstioRevision is referenced by at least one pod or namespace",
+			Message: "Referenced by at least one pod or namespace",
 		}, nil
 	}
 	return v1alpha1.IstioRevisionCondition{
 		Type:    v1alpha1.IstioRevisionConditionTypeInUse,
 		Status:  metav1.ConditionFalse,
 		Reason:  v1alpha1.IstioRevisionConditionReasonNotReferenced,
-		Message: "The IstioRevision is not referenced by any pod or namespace",
+		Message: "Not referenced by any pod or namespace",
 	}, nil
 }
 
@@ -452,7 +458,7 @@ func (r *IstioRevisionReconciler) isRevisionReferencedByWorkloads(ctx context.Co
 	values := rev.Spec.GetValues()
 	if enableNamespacesByDefault, _, err := values.GetBool("sidecarInjectorWebhook.enableNamespacesByDefault"); err != nil {
 		return false, err
-	} else if enableNamespacesByDefault && rev.Name == "default" {
+	} else if enableNamespacesByDefault && rev.Name == v1alpha1.DefaultRevision {
 		return true, nil
 	}
 
@@ -468,10 +474,10 @@ func podReferencesRevision(pod corev1.Pod, ns corev1.Namespace, rev *v1alpha1.Is
 }
 
 func getReferencedRevisionFromNamespace(labels map[string]string) string {
-	if labels["istio-injection"] == "enabled" {
-		return "default"
+	if labels[IstioInjectionLabel] == IstioInjectionEnabledValue {
+		return v1alpha1.DefaultRevision
 	}
-	revision := labels["istio.io/rev"]
+	revision := labels[IstioRevLabel]
 	if revision != "" {
 		return revision
 	}
@@ -482,22 +488,22 @@ func getReferencedRevisionFromNamespace(labels map[string]string) string {
 
 func getReferencedRevisionFromPod(podLabels, podAnnotations, nsLabels map[string]string) string {
 	// if pod was already injected, the revision that did the injection is specified in the istio.io/rev annotation
-	revision := podAnnotations["istio.io/rev"]
+	revision := podAnnotations[IstioRevLabel]
 	if revision != "" {
 		return revision
 	}
 
 	// pod is marked for injection by a specific revision, but wasn't injected (e.g. because it was created before the revision was applied)
 	revisionFromNamespace := getReferencedRevisionFromNamespace(nsLabels)
-	if podLabels["sidecar.istio.io/inject"] != "false" {
+	if podLabels[IstioSidecarInjectLabel] != "false" {
 		if revisionFromNamespace != "" {
 			return revisionFromNamespace
 		}
-		revisionFromPod := podLabels["istio.io/rev"]
+		revisionFromPod := podLabels[IstioRevLabel]
 		if revisionFromPod != "" {
 			return revisionFromPod
-		} else if podLabels["sidecar.istio.io/inject"] == "true" {
-			return "default"
+		} else if podLabels[IstioSidecarInjectLabel] == "true" {
+			return v1alpha1.DefaultRevision
 		}
 	}
 	return ""

@@ -24,7 +24,10 @@ import (
 	"maistra.io/istio-operator/pkg/helm"
 )
 
-const IstioRevisionKind = "IstioRevision"
+const (
+	IstioRevisionKind = "IstioRevision"
+	DefaultRevision   = "default"
+)
 
 // IstioRevisionSpec defines the desired state of IstioRevision
 type IstioRevisionSpec struct {

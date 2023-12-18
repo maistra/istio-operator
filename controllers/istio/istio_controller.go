@@ -219,9 +219,10 @@ func (r *IstioReconciler) getNonActiveRevisions(ctx context.Context, istio *v1al
 		return nil, err
 	}
 
+	activeRevisionName := getActiveRevisionName(istio)
 	nonActiveRevisions := []v1alpha1.IstioRevision{}
 	for _, rev := range revList.Items {
-		if isRevisionOwnedByIstio(rev, istio) && rev.Name != getActiveRevisionName(istio) {
+		if isRevisionOwnedByIstio(rev, istio) && rev.Name != activeRevisionName {
 			nonActiveRevisions = append(nonActiveRevisions, rev)
 		}
 	}
@@ -294,7 +295,7 @@ func applyOverrides(istio *v1alpha1.Istio, values helm.HelmValues) (helm.HelmVal
 	// mutatingwebhook manifest; the webhook performs injection on namespaces labeled with "istio-injection: enabled"
 	// only when revision is "", but not also for "default", which it should, since elsewhere in the same manifest,
 	// the "" revision is mapped to "default".
-	if revisionName == "default" {
+	if revisionName == v1alpha1.DefaultRevision {
 		revisionName = ""
 	}
 	if err := values.Set("revision", revisionName); err != nil {
