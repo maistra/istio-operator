@@ -158,7 +158,9 @@ func validateIstioRevision(rev v1alpha1.IstioRevision, values helm.HelmValues) e
 		return fmt.Errorf("failed to get revision from values: %v", err)
 	} else if !found {
 		return fmt.Errorf("spec.values.revision not set")
-	} else if rev.Name != revision {
+	} else if rev.Name == v1alpha1.DefaultRevision && revision != "" {
+		return fmt.Errorf("spec.values.revision must be \"\" when IstioRevision name is %s", v1alpha1.DefaultRevision)
+	} else if rev.Name != v1alpha1.DefaultRevision && revision != rev.Name {
 		return fmt.Errorf("spec.values.revision does not match IstioRevision name")
 	}
 
