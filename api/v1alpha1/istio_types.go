@@ -109,6 +109,7 @@ type IstioUpdateStrategy struct {
 	// control plane instance to the new one after the new control plane is ready.
 	// If updateWorkloads is false, the user must move the workloads manually by updating the
 	// istio.io/rev labels on the namespace and/or the pods.
+	// Defaults to false.
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=2,displayName="Update Workloads Automatically",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:booleanSwitch"}
 	UpdateWorkloads bool `json:"updateWorkloads,omitempty"`
 }

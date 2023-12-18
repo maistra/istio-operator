@@ -107,7 +107,7 @@ spec:
                       plane instance to the new one after the new control plane is
                       ready. If updateWorkloads is false, the user must move the workloads
                       manually by updating the istio.io/rev labels on the namespace
-                      and/or the pods.
+                      and/or the pods. Defaults to false.
                     type: boolean
                 type: object
               values:

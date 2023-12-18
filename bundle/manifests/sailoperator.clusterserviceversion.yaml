@@ -22,7 +22,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-operator:3.0-latest
-    createdAt: "2023-12-17T13:45:46Z"
+    createdAt: "2023-12-18T14:35:58Z"
     operators.operatorframework.io/builder: operator-sdk-v1.32.0
     operators.operatorframework.io/internal-objects: '["wasmplugins.extensions.istio.io","destinationrules.networking.istio.io","envoyfilters.networking.istio.io","gateways.networking.istio.io","proxyconfigs.networking.istio.io","serviceentries.networking.istio.io","sidecars.networking.istio.io","virtualservices.networking.istio.io","workloadentries.networking.istio.io","workloadgroups.networking.istio.io","authorizationpolicies.security.istio.io","peerauthentications.security.istio.io","requestauthentications.security.istio.io","telemetries.telemetry.istio.io"]'
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -120,7 +120,7 @@ spec:
           operator moves the workloads from the old control plane instance to the
           new one after the new control plane is ready. If updateWorkloads is false,
           the user must move the workloads manually by updating the istio.io/rev labels
-          on the namespace and/or the pods.
+          on the namespace and/or the pods. Defaults to false.
         displayName: Update Workloads Automatically
         path: updateStrategy.updateWorkloads
         x-descriptors:
