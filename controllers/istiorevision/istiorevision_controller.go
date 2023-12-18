@@ -439,7 +439,7 @@ func (r *IstioRevisionReconciler) isRevisionReferencedByWorkloads(ctx context.Co
 	}
 	for _, ns := range nsList.Items {
 		if namespaceReferencesRevision(ns, rev) {
-			logger.Info("Revision is referenced by Namespace", "Namespace", ns.Name)
+			logger.V(2).Info("Revision is referenced by Namespace", "Namespace", ns.Name)
 			return true, nil
 		}
 		nsMap[ns.Name] = ns
@@ -451,7 +451,7 @@ func (r *IstioRevisionReconciler) isRevisionReferencedByWorkloads(ctx context.Co
 	}
 	for _, pod := range podList.Items {
 		if ns, found := nsMap[pod.Namespace]; found && podReferencesRevision(pod, ns, rev) {
-			logger.Info("Revision is referenced by Pod", "Pod", client.ObjectKeyFromObject(&pod))
+			logger.V(2).Info("Revision is referenced by Pod", "Pod", client.ObjectKeyFromObject(&pod))
 			return true, nil
 		}
 	}
