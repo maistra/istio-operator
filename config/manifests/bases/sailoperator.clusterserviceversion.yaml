@@ -22,7 +22,7 @@ spec:
       name: istiorevisions.operator.istio.io
       specDescriptors:
       - description: 'Defines the version of Istio to install. Must be one of: v1.20.1,
-          v1.20.0, v1.19.5, latest.'
+          v1.20.0, v1.19.5, latest, gwAPIControllerMode.'
         displayName: Istio Version
         path: version
         x-descriptors:
@@ -31,6 +31,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:select:v1.20.0
         - urn:alm:descriptor:com.tectonic.ui:select:v1.19.5
         - urn:alm:descriptor:com.tectonic.ui:select:latest
+        - urn:alm:descriptor:com.tectonic.ui:select:gwAPIControllerMode
       - description: Namespace to which the Istio components should be installed.
         displayName: Namespace
         path: namespace
@@ -66,7 +67,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:select:InPlace
         - urn:alm:descriptor:com.tectonic.ui:select:RevisionBased
       - description: 'Defines the version of Istio to install. Must be one of: v1.20.1,
-          v1.20.0, v1.19.5, latest.'
+          v1.20.0, v1.19.5, latest, gwAPIControllerMode.'
         displayName: Istio Version
         path: version
         x-descriptors:
@@ -75,6 +76,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:select:v1.20.0
         - urn:alm:descriptor:com.tectonic.ui:select:v1.19.5
         - urn:alm:descriptor:com.tectonic.ui:select:latest
+        - urn:alm:descriptor:com.tectonic.ui:select:gwAPIControllerMode
       - description: Defines whether the workloads should be moved from one control
           plane instance to another automatically. If updateWorkloads is true, the
           operator moves the workloads from the old control plane instance to the
@@ -120,6 +122,7 @@ spec:
     - v1.20.0
     - v1.19.5
     - latest (76c0eaa2)
+    - gwAPIControllerMode
 
     [See this page](https://github.com/maistra/istio-operator/blob/maistra-3.0/bundle/README.md) for instructions on how to use it.
   displayName: Sail Operator

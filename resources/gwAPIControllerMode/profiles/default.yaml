@@ -1,0 +1,13 @@
+apiVersion: operator.istio.io/v1alpha1
+kind: Istio
+spec:
+  # Most default values come from the helm chart's values.yaml
+  # Below are the things that differ
+  values:
+    defaultRevision: ""
+    global:
+      istioNamespace: istio-system
+      configValidation: true
+    gateways:
+      istio-ingressgateway: {}
+      istio-egressgateway: {}
