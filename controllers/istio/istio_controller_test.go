@@ -566,7 +566,7 @@ func TestUpdateStatus(t *testing.T) {
 
 			Must(t, cl.Get(ctx, istioKey, istio))
 			// clear timestamps for comparison
-			for i, _ := range istio.Status.Conditions {
+			for i := range istio.Status.Conditions {
 				istio.Status.Conditions[i].LastTransitionTime = metav1.Time{}
 			}
 			if diff := cmp.Diff(tc.expectedStatus, istio.Status); diff != "" {

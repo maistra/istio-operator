@@ -371,9 +371,7 @@ func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Isti
 	}
 
 	// count the ready, in-use, and total revisions
-	if revisions, err := r.getRevisions(ctx, istio); err != nil {
-		return err
-	} else {
+	if revisions, err := r.getRevisions(ctx, istio); err == nil {
 		status.Revisions.Total = int32(len(revisions))
 		status.Revisions.Ready = 0
 		status.Revisions.InUse = 0
@@ -385,6 +383,8 @@ func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Isti
 				status.Revisions.InUse++
 			}
 		}
+	} else {
+		return err
 	}
 
 	if reflect.DeepEqual(istio.Status, *status) {
