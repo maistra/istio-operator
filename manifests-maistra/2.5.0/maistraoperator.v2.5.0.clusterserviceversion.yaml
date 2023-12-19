@@ -647,7 +647,6 @@ spec:
           - 'urn:alm:descriptor:com.tectonic.ui:select:v2.5'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v2.4'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v2.3'
-          - 'urn:alm:descriptor:com.tectonic.ui:select:v2.2'
       - displayName: Control Plane Mode
         description: 'NOTE: only applies if version is v2.4 or higher'
         path: mode
