@@ -30,7 +30,7 @@ spec:
       jsonPath: .status.revisions.inUse
       name: In use
       type: string
-    - description: The current state of this object.
+    - description: The current state of the active revision.
       jsonPath: .status.state
       name: Active Revision
       type: string
