@@ -161,7 +161,7 @@ func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1
 
 func (r *IstioReconciler) pruneInactiveRevisions(ctx context.Context, istio *v1alpha1.Istio) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	revisions, err := r.getNonActiveRevisions(ctx, istio)
+	revisions, err := r.getRevisions(ctx, istio)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -171,6 +171,9 @@ func (r *IstioReconciler) pruneInactiveRevisions(ctx context.Context, istio *v1a
 	// - finds the time when the next revision is to be pruned
 	var nextPruneTimestamp *time.Time
 	for _, rev := range revisions {
+		if isActiveRevision(istio, &rev) {
+			continue
+		}
 		inUseCondition := rev.Status.GetCondition(v1alpha1.IstioRevisionConditionTypeInUse)
 		inUse := inUseCondition.Status == metav1.ConditionTrue
 		if inUse {
@@ -215,29 +218,35 @@ func (r *IstioReconciler) getActiveRevision(ctx context.Context, istio *v1alpha1
 	return rev, err
 }
 
-func (r *IstioReconciler) getNonActiveRevisions(ctx context.Context, istio *v1alpha1.Istio) ([]v1alpha1.IstioRevision, error) {
+func (r *IstioReconciler) getRevisions(ctx context.Context, istio *v1alpha1.Istio) ([]v1alpha1.IstioRevision, error) {
 	revList := v1alpha1.IstioRevisionList{}
 	if err := r.Client.List(ctx, &revList); err != nil {
 		return nil, err
 	}
 
-	activeRevisionName := getActiveRevisionName(istio)
-	nonActiveRevisions := []v1alpha1.IstioRevision{}
+	revisions := []v1alpha1.IstioRevision{}
 	for _, rev := range revList.Items {
-		if isRevisionOwnedByIstio(rev, istio) && rev.Name != activeRevisionName {
-			nonActiveRevisions = append(nonActiveRevisions, rev)
+		if isRevisionOwnedByIstio(rev, istio) {
+			revisions = append(revisions, rev)
 		}
 	}
-	return nonActiveRevisions, nil
+	return revisions, nil
 }
 
 func isRevisionOwnedByIstio(rev v1alpha1.IstioRevision, istio *v1alpha1.Istio) bool {
+	if istio.UID == "" {
+		panic(fmt.Sprintf("No UID set in Istio %q; did you forget to set it in your test?", istio.Name))
+	}
 	for _, owner := range rev.OwnerReferences {
 		if owner.UID == istio.UID {
 			return true
 		}
 	}
 	return false
+}
+
+func isActiveRevision(istio *v1alpha1.Istio, rev *v1alpha1.IstioRevision) bool {
+	return rev.Name == getActiveRevisionName(istio)
 }
 
 func getActiveRevisionKey(istio *v1alpha1.Istio) types.NamespacedName {
@@ -322,6 +331,7 @@ func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Isti
 	status := istio.Status.DeepCopy()
 	status.ObservedGeneration = istio.Generation
 
+	// set Reconciled and Ready conditions
 	if reconciliationErr != nil {
 		status.SetCondition(v1alpha1.IstioCondition{
 			Type:    v1alpha1.IstioConditionTypeReconciled,
@@ -357,6 +367,23 @@ func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Isti
 			status.State = convertConditionReason(rev.Status.State)
 		} else {
 			return err
+		}
+	}
+
+	// count the ready, in-use, and total revisions
+	if revisions, err := r.getRevisions(ctx, istio); err != nil {
+		return err
+	} else {
+		status.Revisions.Total = int32(len(revisions))
+		status.Revisions.Ready = 0
+		status.Revisions.InUse = 0
+		for _, rev := range revisions {
+			if rev.Status.GetCondition(v1alpha1.IstioRevisionConditionTypeReady).Status == metav1.ConditionTrue {
+				status.Revisions.Ready++
+			}
+			if rev.Status.GetCondition(v1alpha1.IstioRevisionConditionTypeInUse).Status == metav1.ConditionTrue {
+				status.Revisions.InUse++
+			}
 		}
 	}
 

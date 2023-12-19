@@ -30,9 +30,11 @@ import (
 var (
 	ctx            = context.Background()
 	istioNamespace = "my-istio-namespace"
+	istioName      = "my-istio"
 	istioKey       = types.NamespacedName{
-		Name: "my-istio",
+		Name: istioName,
 	}
+	istioUID   = types.UID("my-istio-uid")
 	objectMeta = metav1.ObjectMeta{
 		Name: istioKey.Name,
 	}
@@ -209,11 +211,47 @@ func TestUpdateStatus(t *testing.T) {
 	generation := int64(100)
 	oneMinuteAgo := oneMinuteAgo()
 
+	ownedByIstio := metav1.OwnerReference{
+		APIVersion:         v1alpha1.GroupVersion.String(),
+		Kind:               v1alpha1.IstioKind,
+		Name:               istioName,
+		UID:                istioUID,
+		Controller:         ptr.Of(true),
+		BlockOwnerDeletion: ptr.Of(true),
+	}
+
+	ownedByAnotherIstio := metav1.OwnerReference{
+		APIVersion:         v1alpha1.GroupVersion.String(),
+		Kind:               v1alpha1.IstioKind,
+		Name:               "some-other-Istio",
+		UID:                "some-other-uid",
+		Controller:         ptr.Of(true),
+		BlockOwnerDeletion: ptr.Of(true),
+	}
+
+	revision := func(name string, ownerRef metav1.OwnerReference, reconciled, ready, inUse bool) v1alpha1.IstioRevision {
+		return v1alpha1.IstioRevision{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            name,
+				OwnerReferences: []metav1.OwnerReference{ownerRef},
+			},
+			Spec: v1alpha1.IstioRevisionSpec{Namespace: istioNamespace},
+			Status: v1alpha1.IstioRevisionStatus{
+				State: v1alpha1.IstioRevisionConditionReasonHealthy,
+				Conditions: []v1alpha1.IstioRevisionCondition{
+					{Type: v1alpha1.IstioRevisionConditionTypeReconciled, Status: toConditionStatus(reconciled)},
+					{Type: v1alpha1.IstioRevisionConditionTypeReady, Status: toConditionStatus(ready)},
+					{Type: v1alpha1.IstioRevisionConditionTypeInUse, Status: toConditionStatus(inUse)},
+				},
+			},
+		}
+	}
+
 	testCases := []struct {
 		name              string
 		reconciliationErr error
 		istio             *v1alpha1.Istio
-		revision          *v1alpha1.IstioRevision
+		revisions         []v1alpha1.IstioRevision
 		interceptorFuncs  *interceptor.Funcs
 		disallowWrites    bool
 		wantErr           bool
@@ -235,9 +273,9 @@ func TestUpdateStatus(t *testing.T) {
 					},
 					{
 						Type:    v1alpha1.IstioConditionTypeReady,
-						Status:  metav1.ConditionFalse,
+						Status:  metav1.ConditionUnknown,
 						Reason:  v1alpha1.IstioConditionReasonReconcileError,
-						Message: "reconciliation error",
+						Message: "cannot determine readiness due to reconciliation error",
 					},
 				},
 			},
@@ -245,27 +283,56 @@ func TestUpdateStatus(t *testing.T) {
 		{
 			name:    "mirrors status of active revision",
 			wantErr: false,
-			revision: &v1alpha1.IstioRevision{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: istioKey.Name,
-				},
-				Spec: v1alpha1.IstioRevisionSpec{
-					Namespace: istioNamespace,
-				},
-				Status: v1alpha1.IstioRevisionStatus{
-					State: v1alpha1.IstioRevisionConditionReasonHealthy,
-					Conditions: []v1alpha1.IstioRevisionCondition{
-						{
-							Type:    v1alpha1.IstioRevisionConditionTypeReconciled,
-							Status:  metav1.ConditionTrue,
-							Reason:  v1alpha1.IstioRevisionConditionReasonHealthy,
-							Message: "reconciled message",
+			revisions: []v1alpha1.IstioRevision{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            istioKey.Name,
+						OwnerReferences: []metav1.OwnerReference{ownedByIstio},
+					},
+					Spec: v1alpha1.IstioRevisionSpec{
+						Namespace: istioNamespace,
+					},
+					Status: v1alpha1.IstioRevisionStatus{
+						State: v1alpha1.IstioRevisionConditionReasonHealthy,
+						Conditions: []v1alpha1.IstioRevisionCondition{
+							{
+								Type:    v1alpha1.IstioRevisionConditionTypeReconciled,
+								Status:  metav1.ConditionTrue,
+								Reason:  v1alpha1.IstioRevisionConditionReasonHealthy,
+								Message: "reconciled message",
+							},
+							{
+								Type:    v1alpha1.IstioRevisionConditionTypeReady,
+								Status:  metav1.ConditionTrue,
+								Reason:  v1alpha1.IstioRevisionConditionReasonHealthy,
+								Message: "ready message",
+							},
 						},
-						{
-							Type:    v1alpha1.IstioRevisionConditionTypeReady,
-							Status:  metav1.ConditionTrue,
-							Reason:  v1alpha1.IstioRevisionConditionReasonHealthy,
-							Message: "ready message",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            istioKey.Name + "-not-active",
+						OwnerReferences: []metav1.OwnerReference{ownedByIstio},
+					},
+					Spec: v1alpha1.IstioRevisionSpec{
+						Namespace: istioNamespace,
+					},
+					Status: v1alpha1.IstioRevisionStatus{
+						State: v1alpha1.IstioRevisionConditionReasonHealthy,
+						Conditions: []v1alpha1.IstioRevisionCondition{
+							{
+								Type:    v1alpha1.IstioRevisionConditionTypeReconciled,
+								Status:  metav1.ConditionFalse,
+								Reason:  v1alpha1.IstioRevisionConditionReasonHealthy,
+								Message: "shouldn't mirror this revision",
+							},
+							{
+								Type:    v1alpha1.IstioRevisionConditionTypeReady,
+								Status:  metav1.ConditionFalse,
+								Reason:  v1alpha1.IstioRevisionConditionReasonHealthy,
+								Message: "shouldn't mirror this revision",
+							},
 						},
 					},
 				},
@@ -287,13 +354,49 @@ func TestUpdateStatus(t *testing.T) {
 						Message: "ready message",
 					},
 				},
+				Revisions: v1alpha1.RevisionSummary{
+					Total: 2,
+					Ready: 1,
+					InUse: 0,
+				},
+			},
+		},
+		{
+			name:    "shows correct revision counts",
+			wantErr: false,
+			revisions: []v1alpha1.IstioRevision{
+				// owned by the Istio under test; 3 todal, 2 ready, 1 in use
+				revision(istioKey.Name, ownedByIstio, true, true, true),
+				revision(istioKey.Name+"-old1", ownedByIstio, true, true, false),
+				revision(istioKey.Name+"-old2", ownedByIstio, true, false, false),
+				// not owned by the Istio being tested; shouldn't affect counts
+				revision("some-other-istio", ownedByAnotherIstio, true, true, true),
+			},
+			expectedStatus: v1alpha1.IstioStatus{
+				State:              v1alpha1.IstioConditionReasonHealthy,
+				ObservedGeneration: generation,
+				Conditions: []v1alpha1.IstioCondition{
+					{
+						Type:   v1alpha1.IstioConditionTypeReconciled,
+						Status: metav1.ConditionTrue,
+					},
+					{
+						Type:   v1alpha1.IstioConditionTypeReady,
+						Status: metav1.ConditionTrue,
+					},
+				},
+				Revisions: v1alpha1.RevisionSummary{
+					Total: 3,
+					Ready: 2,
+					InUse: 1,
+				},
 			},
 		},
 		{
 			name:    "active revision not found",
 			wantErr: false,
 			expectedStatus: v1alpha1.IstioStatus{
-				State:              v1alpha1.IstioConditionReasonHealthy,
+				State:              v1alpha1.IstioConditionReasonIstioRevisionNotFound,
 				ObservedGeneration: generation,
 				Conditions: []v1alpha1.IstioCondition{
 					{
@@ -328,6 +431,7 @@ func TestUpdateStatus(t *testing.T) {
 			istio: &v1alpha1.Istio{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:       istioKey.Name,
+					UID:        istioUID,
 					Generation: 100,
 				},
 				Spec: v1alpha1.IstioSpec{
@@ -355,30 +459,50 @@ func TestUpdateStatus(t *testing.T) {
 					},
 				},
 			},
-			revision: &v1alpha1.IstioRevision{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: istioKey.Name,
-				},
-				Spec: v1alpha1.IstioRevisionSpec{
-					Namespace: istioNamespace,
-				},
-				Status: v1alpha1.IstioRevisionStatus{
-					State: v1alpha1.IstioRevisionConditionReasonHealthy,
-					Conditions: []v1alpha1.IstioRevisionCondition{
-						{
-							Type:               v1alpha1.IstioRevisionConditionTypeReconciled,
-							Status:             metav1.ConditionTrue,
-							Reason:             v1alpha1.IstioRevisionConditionReasonHealthy,
-							Message:            "reconciled message",
-							LastTransitionTime: *oneMinuteAgo,
+			revisions: []v1alpha1.IstioRevision{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: istioKey.Name,
+					},
+					Spec: v1alpha1.IstioRevisionSpec{
+						Namespace: istioNamespace,
+					},
+					Status: v1alpha1.IstioRevisionStatus{
+						State: v1alpha1.IstioRevisionConditionReasonHealthy,
+						Conditions: []v1alpha1.IstioRevisionCondition{
+							{
+								Type:               v1alpha1.IstioRevisionConditionTypeReconciled,
+								Status:             metav1.ConditionTrue,
+								Reason:             v1alpha1.IstioRevisionConditionReasonHealthy,
+								Message:            "reconciled message",
+								LastTransitionTime: *oneMinuteAgo,
+							},
+							{
+								Type:               v1alpha1.IstioRevisionConditionTypeReady,
+								Status:             metav1.ConditionTrue,
+								Reason:             v1alpha1.IstioRevisionConditionReasonHealthy,
+								Message:            "ready message",
+								LastTransitionTime: *oneMinuteAgo,
+							},
 						},
-						{
-							Type:               v1alpha1.IstioRevisionConditionTypeReady,
-							Status:             metav1.ConditionTrue,
-							Reason:             v1alpha1.IstioRevisionConditionReasonHealthy,
-							Message:            "ready message",
-							LastTransitionTime: *oneMinuteAgo,
-						},
+					},
+				},
+			},
+			expectedStatus: v1alpha1.IstioStatus{
+				State:              v1alpha1.IstioConditionReasonHealthy,
+				ObservedGeneration: generation,
+				Conditions: []v1alpha1.IstioCondition{
+					{
+						Type:    v1alpha1.IstioConditionTypeReconciled,
+						Status:  metav1.ConditionTrue,
+						Reason:  v1alpha1.IstioConditionReasonHealthy,
+						Message: "reconciled message",
+					},
+					{
+						Type:    v1alpha1.IstioConditionTypeReady,
+						Status:  metav1.ConditionTrue,
+						Reason:  v1alpha1.IstioConditionReasonHealthy,
+						Message: "ready message",
 					},
 				},
 			},
@@ -413,6 +537,7 @@ func TestUpdateStatus(t *testing.T) {
 				istio = &v1alpha1.Istio{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       istioKey.Name,
+						UID:        istioUID,
 						Generation: 100,
 					},
 					Spec: v1alpha1.IstioSpec{
@@ -423,8 +548,9 @@ func TestUpdateStatus(t *testing.T) {
 			}
 
 			initObjs := []client.Object{istio}
-			if tc.revision != nil {
-				initObjs = append(initObjs, tc.revision)
+			for _, rev := range tc.revisions {
+				rev := rev
+				initObjs = append(initObjs, &rev)
 			}
 
 			cl := newFakeClientBuilder().
@@ -437,8 +563,24 @@ func TestUpdateStatus(t *testing.T) {
 			if (err != nil) != tc.wantErr {
 				t.Errorf("updateStatus() error = %v, wantErr %v", err, tc.wantErr)
 			}
+
+			Must(t, cl.Get(ctx, istioKey, istio))
+			// clear timestamps for comparison
+			for i, _ := range istio.Status.Conditions {
+				istio.Status.Conditions[i].LastTransitionTime = metav1.Time{}
+			}
+			if diff := cmp.Diff(tc.expectedStatus, istio.Status); diff != "" {
+				t.Errorf("status wasn't updated as expected; diff (-expected, +actual):\n%v", diff)
+			}
 		})
 	}
+}
+
+func toConditionStatus(b bool) metav1.ConditionStatus {
+	if b {
+		return metav1.ConditionTrue
+	}
+	return metav1.ConditionFalse
 }
 
 func TestReconcileActiveRevision(t *testing.T) {

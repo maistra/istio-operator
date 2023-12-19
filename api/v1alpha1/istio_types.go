@@ -137,6 +137,21 @@ type IstioStatus struct {
 
 	// Reports the current state of the object.
 	State IstioConditionReason `json:"state,omitempty"`
+
+	// Reports information about the underlying IstioRevisions.
+	Revisions RevisionSummary `json:"revisions,omitempty"`
+}
+
+// IstioRevisions contains information on the number of IstioRevisions associated with this Istio.
+type RevisionSummary struct {
+	// Total number of IstioRevisions currently associated with this Istio.
+	Total int32 `json:"total"`
+
+	// Number of IstioRevisions that are Ready.
+	Ready int32 `json:"ready"`
+
+	// Number of IstioRevisions that are currently in use.
+	InUse int32 `json:"inUse"`
 }
 
 // GetCondition returns the condition of the specified type
@@ -241,8 +256,10 @@ const (
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster,categories=istio-io
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status",description="Whether the control plane installation is ready to handle requests."
-// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.state",description="The current state of this object."
+// +kubebuilder:printcolumn:name="Revisions",type="string",JSONPath=".status.revisions.total",description="Total number of IstioRevision objects currently associated with this object."
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.revisions.ready",description="Number of revisions that are ready."
+// +kubebuilder:printcolumn:name="In use",type="string",JSONPath=".status.revisions.inUse",description="Number of revisions that are currently being used by workloads."
+// +kubebuilder:printcolumn:name="Active Revision",type="string",JSONPath=".status.state",description="The current state of this object."
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of the control plane installation."
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="The age of the object"
 
