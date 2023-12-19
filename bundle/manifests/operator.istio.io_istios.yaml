@@ -17,13 +17,22 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - description: Whether the control plane installation is ready to handle requests.
-      jsonPath: .status.conditions[?(@.type=="Ready")].status
+    - description: Total number of IstioRevision objects currently associated with
+        this object.
+      jsonPath: .status.revisions.total
+      name: Revisions
+      type: string
+    - description: Number of revisions that are ready.
+      jsonPath: .status.revisions.ready
       name: Ready
       type: string
-    - description: The current state of this object.
+    - description: Number of revisions that are currently being used by workloads.
+      jsonPath: .status.revisions.inUse
+      name: In use
+      type: string
+    - description: The current state of the active revision.
       jsonPath: .status.state
-      name: Status
+      name: Active Revision
       type: string
     - description: The version of the control plane installation.
       jsonPath: .spec.version
@@ -682,6 +691,27 @@ spec:
                   in the status pertains to this particular generation of the object.
                 format: int64
                 type: integer
+              revisions:
+                description: Reports information about the underlying IstioRevisions.
+                properties:
+                  inUse:
+                    description: Number of IstioRevisions that are currently in use.
+                    format: int32
+                    type: integer
+                  ready:
+                    description: Number of IstioRevisions that are Ready.
+                    format: int32
+                    type: integer
+                  total:
+                    description: Total number of IstioRevisions currently associated
+                      with this Istio.
+                    format: int32
+                    type: integer
+                required:
+                - inUse
+                - ready
+                - total
+                type: object
               state:
                 description: Reports the current state of the object.
                 type: string
