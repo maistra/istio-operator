@@ -153,11 +153,11 @@ test.integration.kind:
 
 .PHONY: build
 build: ## Build manager binary.
-	CGO_ENABLED=0 go build -o bin/manager -ldflags '${LD_FLAGS}' main.go
+	CGO_ENABLED=0 go build -o bin/manager -ldflags '${LD_FLAGS}' cmd/main.go
 
 .PHONY: run
 run: gen ## Run a controller from your host.
-	POD_NAMESPACE=${NAMESPACE} go run ./main.go --config-file=./hack/config.properties --resource-directory=./resources
+	POD_NAMESPACE=${NAMESPACE} go run ./cmd/main.go --config-file=./hack/config.properties --resource-directory=./resources
 
 # docker build -t ${IMAGE} --build-arg GIT_TAG=${GIT_TAG} --build-arg GIT_REVISION=${GIT_REVISION} --build-arg GIT_STATUS=${GIT_STATUS} .
 .PHONY: docker-build
@@ -186,10 +186,10 @@ PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
 docker-buildx: test ## Build and push docker image for the manager for cross-platform support
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
-	- docker buildx create --name project-v3-builder
-	docker buildx use project-v3-builder
+	- docker buildx create --name project-v4-builder
+	docker buildx use project-v4-builder
 	- docker buildx build --push --platform=$(PLATFORMS) --tag ${IMAGE} -f Dockerfile.cross .
-	- docker buildx rm project-v3-builder
+	- docker buildx rm project-v4-builder
 	rm Dockerfile.cross
 
 ##@ Deployment
@@ -322,7 +322,6 @@ OPM ?= $(LOCALBIN)/opm
   CONTROLLER_TOOLS_VERSION ?= v0.13.0
   OPM_VERSION ?= v1.33.0
 
-KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize $(KUSTOMIZE)
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
 $(KUSTOMIZE): $(LOCALBIN)
@@ -330,8 +329,7 @@ $(KUSTOMIZE): $(LOCALBIN)
 		echo "$(LOCALBIN)/kustomize version is not expected $(KUSTOMIZE_VERSION). Removing it before installing." > /dev/stderr; \
 		rm -rf $(LOCALBIN)/kustomize; \
 	fi
-	@test -s $(LOCALBIN)/kustomize || { curl -SsLf $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN) > /dev/stderr; }
-
+	@test -s $(LOCALBIN)/kustomize || GOBIN=$(LOCALBIN) GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v5@$(KUSTOMIZE_VERSION) > /dev/stderr
 .PHONY: operator-sdk $(OPERATOR_SDK)
 operator-sdk: $(OPERATOR_SDK)
 operator-sdk: OS=$(shell go env GOOS)
