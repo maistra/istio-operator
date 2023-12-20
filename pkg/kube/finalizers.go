@@ -2,13 +2,13 @@ package kube
 
 import (
 	"context"
-	"fmt"
 
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"maistra.io/istio-operator/pkg/common"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"istio.io/istio/pkg/util/sets"
 )
@@ -20,8 +20,8 @@ func HasFinalizer(obj client.Object) bool {
 }
 
 func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) error {
-	reqLogger := common.LogFromContext(ctx)
-	reqLogger.Info(fmt.Sprintf("Removing finalizer from %s", obj.GetObjectKind().GroupVersionKind().Kind))
+	reqLogger := log.FromContext(ctx)
+	reqLogger.Info("Removing finalizer")
 
 	objectMeta := getObjectMeta(obj)
 	finalizers := sets.New(objectMeta.GetFinalizers()...)
@@ -39,8 +39,8 @@ func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) e
 }
 
 func AddFinalizer(ctx context.Context, obj client.Object, cl client.Client) error {
-	reqLogger := common.LogFromContext(ctx)
-	reqLogger.Info(fmt.Sprintf("Adding finalizer to %s", obj.GetObjectKind().GroupVersionKind().Kind))
+	reqLogger := log.FromContext(ctx)
+	reqLogger.Info("Adding finalizer")
 
 	objectMeta := getObjectMeta(obj)
 	finalizers := sets.New(objectMeta.GetFinalizers()...)

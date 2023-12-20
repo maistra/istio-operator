@@ -43,6 +43,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -102,7 +103,7 @@ var userCharts = []string{"istiod"}
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithName("reconciler")
+	logger := log.FromContext(ctx)
 	var rev v1alpha1.IstioRevision
 	if err := r.Client.Get(ctx, req.NamespacedName, &rev); err != nil {
 		if errors.IsNotFound(err) {
@@ -137,11 +138,11 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	logger.Info("Installing components", "values", values)
+	logger.Info("Installing components")
 	err := r.installHelmCharts(ctx, &rev, values)
 
 	logger.Info("Reconciliation done. Updating status.")
-	err = r.updateStatus(ctx, logger, &rev, values, err)
+	err = r.updateStatus(ctx, &rev, values, err)
 
 	return ctrl.Result{}, err
 }
@@ -258,6 +259,15 @@ func (r *IstioRevisionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	podHandler := handler.EnqueueRequestsFromMapFunc(r.mapPodToReconcileRequest)
 
 	return ctrl.NewControllerManagedBy(mgr).
+		WithOptions(controller.Options{
+			LogConstructor: func(req *reconcile.Request) logr.Logger {
+				logger := mgr.GetLogger().WithName("ctrlr").WithName("istiorev")
+				if req != nil {
+					logger = logger.WithValues("IstioRevision", req.Name)
+				}
+				return logger
+			},
+		}).
 		For(&v1alpha1.IstioRevision{}).
 
 		// namespaced resources
@@ -293,7 +303,8 @@ func (r *IstioRevisionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *IstioRevisionReconciler) updateStatus(ctx context.Context, log logr.Logger, rev *v1alpha1.IstioRevision, values helm.HelmValues, err error) error {
+func (r *IstioRevisionReconciler) updateStatus(ctx context.Context, rev *v1alpha1.IstioRevision, values helm.HelmValues, err error) error {
+	logger := log.FromContext(ctx)
 	reconciledCondition := r.determineReconciledCondition(err)
 	readyCondition, err := r.determineReadyCondition(ctx, rev, values)
 	if err != nil {
@@ -317,7 +328,7 @@ func (r *IstioRevisionReconciler) updateStatus(ctx context.Context, log logr.Log
 
 	statusErr := r.Client.Status().Patch(ctx, rev, kube.NewStatusPatch(*status))
 	if statusErr != nil {
-		log.Error(statusErr, "failed to patch status")
+		logger.Error(statusErr, "failed to patch status")
 
 		// ensure that we retry the reconcile by returning the status error
 		// (but without overriding the original error)
@@ -463,6 +474,7 @@ func (r *IstioRevisionReconciler) isRevisionReferencedByWorkloads(ctx context.Co
 		return true, nil
 	}
 
+	logger.V(2).Info("Revision is not referenced by any Pod or Namespace")
 	return false, nil
 }
 

@@ -36,6 +36,7 @@ import (
 	"maistra.io/istio-operator/pkg/version"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
@@ -177,8 +178,8 @@ type requestLogger struct {
 }
 
 func (rl requestLogger) RoundTrip(req *http.Request) (*http.Response, error) {
-	log := common.LogFromContext(req.Context())
-	log.Info("Performing API request", "method", req.Method, "URL", req.URL)
+	logger := log.FromContext(req.Context())
+	logger.Info("Performing API request", "method", req.Method, "URL", req.URL)
 	return rl.rt.RoundTrip(req)
 }
 
