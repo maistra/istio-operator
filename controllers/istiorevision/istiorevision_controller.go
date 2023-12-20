@@ -46,7 +46,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -103,14 +103,14 @@ var userCharts = []string{"istiod"}
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	log := logf.FromContext(ctx)
 	var rev v1alpha1.IstioRevision
 	if err := r.Client.Get(ctx, req.NamespacedName, &rev); err != nil {
 		if errors.IsNotFound(err) {
-			logger.V(2).Info("IstioRevision not found. Skipping reconciliation")
+			log.V(2).Info("IstioRevision not found. Skipping reconciliation")
 			return ctrl.Result{}, nil
 		}
-		logger.Error(err, "failed to get IstioRevision from cluster")
+		log.Error(err, "failed to get IstioRevision from cluster")
 	}
 
 	if rev.DeletionTimestamp != nil {
@@ -119,7 +119,7 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 
 		if err := kube.RemoveFinalizer(ctx, &rev, r.Client); err != nil {
-			logger.Info("failed to remove finalizer")
+			log.Info("failed to remove finalizer")
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
@@ -128,7 +128,7 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if !kube.HasFinalizer(&rev) {
 		err := kube.AddFinalizer(ctx, &rev, r.Client)
 		if err != nil {
-			logger.Info("failed to add finalizer")
+			log.Info("failed to add finalizer")
 			return ctrl.Result{}, err
 		}
 	}
@@ -138,10 +138,10 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	logger.Info("Installing components")
+	log.Info("Installing components")
 	err := r.installHelmCharts(ctx, &rev, values)
 
-	logger.Info("Reconciliation done. Updating status.")
+	log.Info("Reconciliation done. Updating status.")
 	err = r.updateStatus(ctx, &rev, values, err)
 
 	return ctrl.Result{}, err
@@ -196,8 +196,8 @@ func (r *IstioRevisionReconciler) installHelmCharts(ctx context.Context, rev *v1
 		} else if err != nil {
 			return err
 		} else {
-			logger := log.FromContext(ctx)
-			logger.Info("Skipping istio-cni-node installation because CNI is already installed and owned by another IstioRevision")
+			log := logf.FromContext(ctx)
+			log.Info("Skipping istio-cni-node installation because CNI is already installed and owned by another IstioRevision")
 		}
 	}
 
@@ -261,11 +261,11 @@ func (r *IstioRevisionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(controller.Options{
 			LogConstructor: func(req *reconcile.Request) logr.Logger {
-				logger := mgr.GetLogger().WithName("ctrlr").WithName("istiorev")
+				log := mgr.GetLogger().WithName("ctrlr").WithName("istiorev")
 				if req != nil {
-					logger = logger.WithValues("IstioRevision", req.Name)
+					log = log.WithValues("IstioRevision", req.Name)
 				}
-				return logger
+				return log
 			},
 		}).
 		For(&v1alpha1.IstioRevision{}).
@@ -304,7 +304,7 @@ func (r *IstioRevisionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *IstioRevisionReconciler) updateStatus(ctx context.Context, rev *v1alpha1.IstioRevision, values helm.HelmValues, err error) error {
-	logger := log.FromContext(ctx)
+	log := logf.FromContext(ctx)
 	reconciledCondition := r.determineReconciledCondition(err)
 	readyCondition, err := r.determineReadyCondition(ctx, rev, values)
 	if err != nil {
@@ -328,7 +328,7 @@ func (r *IstioRevisionReconciler) updateStatus(ctx context.Context, rev *v1alpha
 
 	statusErr := r.Client.Status().Patch(ctx, rev, kube.NewStatusPatch(*status))
 	if statusErr != nil {
-		logger.Error(statusErr, "failed to patch status")
+		log.Error(statusErr, "failed to patch status")
 
 		// ensure that we retry the reconcile by returning the status error
 		// (but without overriding the original error)
@@ -442,7 +442,7 @@ func (r *IstioRevisionReconciler) determineInUseCondition(ctx context.Context, r
 }
 
 func (r *IstioRevisionReconciler) isRevisionReferencedByWorkloads(ctx context.Context, rev *v1alpha1.IstioRevision) (bool, error) {
-	logger := log.FromContext(ctx)
+	log := logf.FromContext(ctx)
 	nsList := corev1.NamespaceList{}
 	nsMap := map[string]corev1.Namespace{}
 	if err := r.Client.List(ctx, &nsList); err != nil { // TODO: can we optimize this by specifying a label selector
@@ -450,7 +450,7 @@ func (r *IstioRevisionReconciler) isRevisionReferencedByWorkloads(ctx context.Co
 	}
 	for _, ns := range nsList.Items {
 		if namespaceReferencesRevision(ns, rev) {
-			logger.V(2).Info("Revision is referenced by Namespace", "Namespace", ns.Name)
+			log.V(2).Info("Revision is referenced by Namespace", "Namespace", ns.Name)
 			return true, nil
 		}
 		nsMap[ns.Name] = ns
@@ -462,7 +462,7 @@ func (r *IstioRevisionReconciler) isRevisionReferencedByWorkloads(ctx context.Co
 	}
 	for _, pod := range podList.Items {
 		if ns, found := nsMap[pod.Namespace]; found && podReferencesRevision(pod, ns, rev) {
-			logger.V(2).Info("Revision is referenced by Pod", "Pod", client.ObjectKeyFromObject(&pod))
+			log.V(2).Info("Revision is referenced by Pod", "Pod", client.ObjectKeyFromObject(&pod))
 			return true, nil
 		}
 	}
@@ -474,7 +474,7 @@ func (r *IstioRevisionReconciler) isRevisionReferencedByWorkloads(ctx context.Co
 		return true, nil
 	}
 
-	logger.V(2).Info("Revision is not referenced by any Pod or Namespace")
+	log.V(2).Info("Revision is not referenced by any Pod or Namespace")
 	return false, nil
 }
 
@@ -547,7 +547,7 @@ func istiodDeploymentKey(rev *v1alpha1.IstioRevision, values helm.HelmValues) (c
 }
 
 func (r *IstioRevisionReconciler) mapOwnerToReconcileRequest(ctx context.Context, obj client.Object) []reconcile.Request {
-	logger := log.FromContext(ctx)
+	log := logf.FromContext(ctx)
 	ownerKind := v1alpha1.IstioRevisionKind
 	ownerAPIGroup := v1alpha1.GroupVersion.Group
 
@@ -556,7 +556,7 @@ func (r *IstioRevisionReconciler) mapOwnerToReconcileRequest(ctx context.Context
 	for _, ref := range obj.GetOwnerReferences() {
 		refGV, err := schema.ParseGroupVersion(ref.APIVersion)
 		if err != nil {
-			logger.Error(err, "Could not parse OwnerReference APIVersion", "api version", ref.APIVersion)
+			log.Error(err, "Could not parse OwnerReference APIVersion", "api version", ref.APIVersion)
 			continue
 		}
 
@@ -584,11 +584,11 @@ func (r *IstioRevisionReconciler) mapOwnerToReconcileRequest(ctx context.Context
 
 		revList := v1alpha1.IstioRevisionList{}
 		if err := r.Client.List(ctx, &revList); err != nil {
-			logger.Error(err, "Could not list IstioRevisions")
+			log.Error(err, "Could not list IstioRevisions")
 		} else {
 			for _, item := range revList.Items {
 				if cniEnabled, err := isCNIEnabled(item.Spec.GetValues()); err != nil {
-					logger.Error(err, "Could not determine if CNI is enabled")
+					log.Error(err, "Could not determine if CNI is enabled")
 				} else if cniEnabled {
 					requests = append(requests, reconcile.Request{
 						NamespacedName: types.NamespacedName{

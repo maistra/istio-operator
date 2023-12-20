@@ -39,7 +39,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"istio.io/istio/pkg/ptr"
@@ -73,25 +73,25 @@ func NewIstioReconciler(client client.Client, scheme *runtime.Scheme, resourceDi
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	log := logf.FromContext(ctx)
 
 	var istio v1alpha1.Istio
 	if err := r.Client.Get(ctx, req.NamespacedName, &istio); err != nil {
 		if errors.IsNotFound(err) {
-			logger.V(2).Info("Istio not found. Skipping reconciliation")
+			log.V(2).Info("Istio not found. Skipping reconciliation")
 			return ctrl.Result{}, nil
 		}
-		logger.Error(err, "failed to get Istio from cluster")
+		log.Error(err, "failed to get Istio from cluster")
 	}
 
 	if istio.DeletionTimestamp != nil {
 		return ctrl.Result{}, nil
 	}
 
-	logger.Info("Reconciling")
+	log.Info("Reconciling")
 	result, err := r.doReconcile(ctx, istio)
 
-	logger.Info("Reconciliation done. Updating status.")
+	log.Info("Reconciliation done. Updating status.")
 	err = r.updateStatus(ctx, &istio, err)
 
 	return result, err
@@ -120,7 +120,7 @@ func (r *IstioReconciler) doReconcile(ctx context.Context, istio v1alpha1.Istio)
 }
 
 func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1alpha1.Istio, values helm.HelmValues) error {
-	logger := log.FromContext(ctx)
+	log := logf.FromContext(ctx)
 
 	valuesRawMessage, err := json.Marshal(values)
 	if err != nil {
@@ -128,14 +128,14 @@ func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1
 	}
 
 	activeRevisionName := getActiveRevisionName(istio)
-	logger = logger.WithValues("IstioRevision", activeRevisionName)
+	log = log.WithValues("IstioRevision", activeRevisionName)
 
 	rev, err := r.getActiveRevision(ctx, istio)
 	if err == nil {
 		// update
 		rev.Spec.Version = istio.Spec.Version
 		rev.Spec.Values = valuesRawMessage
-		logger.Info("Updating IstioRevision")
+		log.Info("Updating IstioRevision")
 		return r.Client.Update(ctx, &rev)
 	} else if errors.IsNotFound(err) {
 		// create new
@@ -159,14 +159,14 @@ func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1
 				Values:    valuesRawMessage,
 			},
 		}
-		logger.Info("Creating IstioRevision")
+		log.Info("Creating IstioRevision")
 		return r.Client.Create(ctx, &rev)
 	}
 	return err
 }
 
 func (r *IstioReconciler) pruneInactiveRevisions(ctx context.Context, istio *v1alpha1.Istio) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	log := logf.FromContext(ctx)
 	revisions, err := r.getRevisions(ctx, istio)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -178,38 +178,38 @@ func (r *IstioReconciler) pruneInactiveRevisions(ctx context.Context, istio *v1a
 	var nextPruneTimestamp *time.Time
 	for _, rev := range revisions {
 		if isActiveRevision(istio, &rev) {
-			logger.V(2).Info("IstioRevision is the active revision", "IstioRevision", rev.Name)
+			log.V(2).Info("IstioRevision is the active revision", "IstioRevision", rev.Name)
 			continue
 		}
 		inUseCondition := rev.Status.GetCondition(v1alpha1.IstioRevisionConditionTypeInUse)
 		inUse := inUseCondition.Status == metav1.ConditionTrue
 		if inUse {
-			logger.V(2).Info("IstioRevision is in use", "IstioRevision", rev.Name)
+			log.V(2).Info("IstioRevision is in use", "IstioRevision", rev.Name)
 			continue
 		}
 
 		pruneTimestamp := inUseCondition.LastTransitionTime.Time.Add(getPruningGracePeriod(istio))
 		expired := pruneTimestamp.Before(time.Now())
 		if expired {
-			logger.Info("Deleting expired IstioRevision", "IstioRevision", rev.Name)
+			log.Info("Deleting expired IstioRevision", "IstioRevision", rev.Name)
 			err = r.Client.Delete(ctx, &rev)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 		} else {
-			logger.V(2).Info("IstioRevision is not in use, but hasn't yet expired", "IstioRevision", rev.Name, "InUseLastTransitionTime", inUseCondition.LastTransitionTime)
+			log.V(2).Info("IstioRevision is not in use, but hasn't yet expired", "IstioRevision", rev.Name, "InUseLastTransitionTime", inUseCondition.LastTransitionTime)
 			if nextPruneTimestamp == nil || nextPruneTimestamp.After(pruneTimestamp) {
 				nextPruneTimestamp = &pruneTimestamp
 			}
 		}
 	}
 	if nextPruneTimestamp == nil {
-		logger.V(2).Info("No IstioRevisions to prune")
+		log.V(2).Info("No IstioRevisions to prune")
 		return ctrl.Result{}, nil
 	}
 
 	requeueAfter := time.Until(*nextPruneTimestamp)
-	logger.Info("Requeueing Istio resource for cleanup of expired IstioRevision", "RequeueAfter", requeueAfter)
+	log.Info("Requeueing Istio resource for cleanup of expired IstioRevision", "RequeueAfter", requeueAfter)
 	// requeue so that we prune the next revision at the right time (if we didn't, we would prune it when
 	// something else triggers another reconciliation)
 	return ctrl.Result{RequeueAfter: requeueAfter}, nil
@@ -339,11 +339,11 @@ func (r *IstioReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(controller.Options{
 			LogConstructor: func(req *reconcile.Request) logr.Logger {
-				logger := mgr.GetLogger().WithName("ctrlr").WithName("istio")
+				log := mgr.GetLogger().WithName("ctrlr").WithName("istio")
 				if req != nil {
-					logger = logger.WithValues("Istio", req.Name)
+					log = log.WithValues("Istio", req.Name)
 				}
-				return logger
+				return log
 			},
 		}).
 		For(&v1alpha1.Istio{}).

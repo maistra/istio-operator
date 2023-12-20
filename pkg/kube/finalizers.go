@@ -8,7 +8,7 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"maistra.io/istio-operator/pkg/common"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"istio.io/istio/pkg/util/sets"
 )
@@ -20,8 +20,8 @@ func HasFinalizer(obj client.Object) bool {
 }
 
 func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) error {
-	reqLogger := log.FromContext(ctx)
-	reqLogger.Info("Removing finalizer")
+	log := logf.FromContext(ctx)
+	log.Info("Removing finalizer")
 
 	objectMeta := getObjectMeta(obj)
 	finalizers := sets.New(objectMeta.GetFinalizers()...)
@@ -39,8 +39,8 @@ func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) e
 }
 
 func AddFinalizer(ctx context.Context, obj client.Object, cl client.Client) error {
-	reqLogger := log.FromContext(ctx)
-	reqLogger.Info("Adding finalizer")
+	log := logf.FromContext(ctx)
+	log.Info("Adding finalizer")
 
 	objectMeta := getObjectMeta(obj)
 	finalizers := sets.New(objectMeta.GetFinalizers()...)
