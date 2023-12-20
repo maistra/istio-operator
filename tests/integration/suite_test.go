@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package istio
+package integration
 
 import (
 	"context"
@@ -27,6 +27,8 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/scheme"
+	"maistra.io/istio-operator/controllers/istio"
+	"maistra.io/istio-operator/controllers/istiorevision"
 	"maistra.io/istio-operator/pkg/common"
 	"maistra.io/istio-operator/pkg/helm"
 	"maistra.io/istio-operator/pkg/test"
@@ -70,11 +72,18 @@ var _ = BeforeSuite(func() {
 		panic(err)
 	}
 
-	controller := NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), path.Join(common.RepositoryRoot, "resources"), []string{"default"})
-	err = controller.SetupWithManager(mgr)
+	istioReconciler := istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), path.Join(common.RepositoryRoot, "resources"), []string{"default"})
+	err = istioReconciler.SetupWithManager(mgr)
 	if err != nil {
 		panic(err)
 	}
+
+	istioRevisionReconciler := istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), operatorNamespace)
+	err = istioRevisionReconciler.SetupWithManager(mgr)
+	if err != nil {
+		panic(err)
+	}
+
 	// create new cancellable context
 	var ctx context.Context
 	ctx, cancel = context.WithCancel(context.Background())
