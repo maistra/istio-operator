@@ -451,7 +451,7 @@ lint-watches: ## checks if the operator watches all resource kinds present in He
 	@hack/lint-watches.sh
 
 .PHONY: lint
-lint: lint-scripts lint-go lint-yaml lint-helm lint-bundle lint-watches ## runs all linters
+lint: lint-scripts lint-copyright-banner lint-go lint-yaml lint-helm lint-bundle lint-watches ## runs all linters
 
 .PHONY: format
 format: format-go tidy-go ## Auto formats all code. This should be run before sending a PR.
