@@ -10,14 +10,14 @@ import (
 	"maistra.io/istio-operator/pkg/common"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	networkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 )
 
 func SetupEnv() (*envtest.Environment, client.Client, *rest.Config) {
-	log.SetLogger(zap.New(zap.UseDevMode(true)))
+	logf.SetLogger(zap.New(zap.UseDevMode(true)))
 
 	testEnv := &envtest.Environment{
 		CRDDirectoryPaths:     []string{path.Join(common.RepositoryRoot, "config", "crd", "bases")},

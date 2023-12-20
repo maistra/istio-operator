@@ -28,11 +28,11 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
-	logger               = log.Log.WithName("helm")
+	log                  = logf.Log.WithName("helm")
 	ResourceDirectory, _ = filepath.Abs("resources")
 )
 
@@ -72,7 +72,7 @@ func UpgradeOrInstallCharts(ctx context.Context, restClientGetter genericcliopti
 // newActionConfig Create a new Helm action config from in-cluster service account
 func newActionConfig(restClientGetter genericclioptions.RESTClientGetter, namespace string) (*action.Configuration, error) {
 	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(restClientGetter, namespace, os.Getenv("HELM_DRIVER"), logger.V(2).Info); err != nil {
+	if err := actionConfig.Init(restClientGetter, namespace, os.Getenv("HELM_DRIVER"), log.V(2).Info); err != nil {
 		return nil, err
 	}
 	return actionConfig, nil
@@ -103,7 +103,7 @@ func upgradeOrInstallChart(ctx context.Context, cfg *action.Configuration,
 	}
 	var rel *release.Release
 	if toUpgrade {
-		logger.V(2).Info("Performing helm upgrade", "chartName", chart.Name())
+		log.V(2).Info("Performing helm upgrade", "chartName", chart.Name())
 		updateAction := action.NewUpgrade(cfg)
 		updateAction.PostRenderer = NewOwnerReferencePostRenderer(ownerReference, "")
 		updateAction.MaxHistory = 1
@@ -114,7 +114,7 @@ func upgradeOrInstallChart(ctx context.Context, cfg *action.Configuration,
 		}
 
 	} else {
-		logger.V(2).Info("Performing helm install", "chartName", chart.Name())
+		log.V(2).Info("Performing helm install", "chartName", chart.Name())
 		installAction := action.NewInstall(cfg)
 		installAction.PostRenderer = NewOwnerReferencePostRenderer(ownerReference, "")
 		installAction.Namespace = namespace
