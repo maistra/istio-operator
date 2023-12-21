@@ -561,12 +561,7 @@ func (r *IstioRevisionReconciler) mapOwnerToReconcileRequest(ctx context.Context
 		}
 
 		if ref.Kind == ownerKind && refGV.Group == ownerAPIGroup {
-			requests = append(requests, reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name:      ref.Name,
-					Namespace: obj.GetNamespace(),
-				},
-			})
+			requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{Name: ref.Name}})
 		}
 	}
 
