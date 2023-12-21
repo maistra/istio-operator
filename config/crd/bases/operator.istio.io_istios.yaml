@@ -170,6 +170,8 @@ spec:
                               type: string
                             labelPods:
                               type: object
+                            repairPods:
+                              type: object
                             tag:
                               type: string
                           type: object
@@ -428,6 +430,8 @@ spec:
                             initContainerName:
                               type: string
                             labelPods:
+                              type: object
+                            repairPods:
                               type: object
                             tag:
                               type: string
