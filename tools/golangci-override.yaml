@@ -1,5 +1,9 @@
 issues:
   exclude-rules:
+  - path: ^tests/integration/
+    text: "dot-imports: should not use dot imports"
+  - path: ^tests/integration/
+    text: "ST1001: should not use dot imports"
   - linters:
     - revive
     text: "struct-tag: unknown option 'inline' in JSON tag"

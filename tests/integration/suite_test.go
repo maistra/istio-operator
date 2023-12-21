@@ -72,36 +72,28 @@ var _ = BeforeSuite(func() {
 		panic(err)
 	}
 
-	istioReconciler := istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), path.Join(common.RepositoryRoot, "resources"), []string{"default"})
-	err = istioReconciler.SetupWithManager(mgr)
-	if err != nil {
-		panic(err)
-	}
+	Expect(istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), path.Join(common.RepositoryRoot, "resources"), []string{"default"}).
+		SetupWithManager(mgr)).To(Succeed())
 
-	istioRevisionReconciler := istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), operatorNamespace)
-	err = istioRevisionReconciler.SetupWithManager(mgr)
-	if err != nil {
-		panic(err)
-	}
+	Expect(istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), operatorNamespace).
+		SetupWithManager(mgr)).To(Succeed())
 
 	// create new cancellable context
 	var ctx context.Context
 	ctx, cancel = context.WithCancel(context.Background())
 
 	go func() {
-		err = mgr.Start(ctx)
-		if err != nil {
+		if err := mgr.Start(ctx); err != nil {
 			panic(err)
 		}
 	}()
 
-	err = k8sClient.Create(context.TODO(), &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: operatorNamespace}})
-	Expect(err).NotTo(HaveOccurred())
+	operatorNs := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: operatorNamespace}}
+	Expect(k8sClient.Create(context.TODO(), operatorNs)).To(Succeed())
 })
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	cancel()
-	err := testEnv.Stop()
-	Expect(err).NotTo(HaveOccurred())
+	Expect(testEnv.Stop()).To(Succeed())
 })
