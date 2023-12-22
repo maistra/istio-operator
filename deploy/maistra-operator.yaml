@@ -4159,6 +4159,22 @@ spec:
                           type: string
                         prometheus:
                           type: object
+                        zipkin:
+                          properties:
+                            enable64bitTraceId:
+                              type: boolean
+                            maxTagLength:
+                              format: int64
+                              type: integer
+                            port:
+                              format: int64
+                              type: integer
+                            service:
+                              type: string
+                          required:
+                          - port
+                          - service
+                          type: object
                       required:
                       - name
                       type: object
@@ -9161,6 +9177,22 @@ spec:
                             name:
                               type: string
                             prometheus:
+                              type: object
+                            zipkin:
+                              properties:
+                                enable64bitTraceId:
+                                  type: boolean
+                                maxTagLength:
+                                  format: int64
+                                  type: integer
+                                port:
+                                  format: int64
+                                  type: integer
+                                service:
+                                  type: string
+                              required:
+                              - port
+                              - service
                               type: object
                           required:
                           - name

@@ -20,6 +20,25 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 				"prometheus": map[string]interface{}{},
 			})
 		}
+
+		if provider.Zipkin != nil {
+			config := provider.Zipkin
+			values := map[string]interface{}{
+				"service": config.Service,
+				"port":    config.Port,
+			}
+			if config.MaxTagLength != nil {
+				values["maxTagLength"] = *config.MaxTagLength
+			}
+			if config.Enable64bitTraceID != nil {
+				values["enable64bitTraceId"] = *config.Enable64bitTraceID
+			}
+			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
+				"name":   provider.Name,
+				"zipkin": values,
+			})
+		}
+
 		if provider.EnvoyExtAuthzHTTP != nil {
 			config := provider.EnvoyExtAuthzHTTP
 			values := map[string]interface{}{
@@ -145,6 +164,15 @@ func convertProviderValuesToConfig(values *v1.HelmValues) (v2.ExtensionProviderC
 		return config, err
 	}
 
+	if rawConfig, found, err := values.GetMap("zipkin"); found {
+		config.Zipkin, err = convertZipkinValuesToConfig(v1.NewHelmValues(rawConfig))
+		if err != nil {
+			return config, err
+		}
+	} else if err != nil {
+		return config, err
+	}
+
 	if rawEnvoyExtAuthzHTTP, found, err := values.GetMap("envoyExtAuthzHttp"); found {
 		config.EnvoyExtAuthzHTTP, err = convertEnvoyExtAuthzHTTPValuesToConfig(v1.NewHelmValues(rawEnvoyExtAuthzHTTP))
 		if err != nil {
@@ -159,6 +187,36 @@ func convertProviderValuesToConfig(values *v1.HelmValues) (v2.ExtensionProviderC
 		if err != nil {
 			return config, err
 		}
+	} else if err != nil {
+		return config, err
+	}
+
+	return config, nil
+}
+
+func convertZipkinValuesToConfig(values *v1.HelmValues) (*v2.ExtensionProviderZipkinTracingConfig, error) {
+	config := &v2.ExtensionProviderZipkinTracingConfig{}
+	if value, ok, err := values.GetString("service"); ok {
+		config.Service = value
+	} else if err != nil {
+		return config, err
+	} else {
+		return config, fmt.Errorf("service is required for zipkin")
+	}
+	if value, ok, err := values.GetInt64("port"); ok {
+		config.Port = value
+	} else if err != nil {
+		return config, err
+	} else {
+		return config, fmt.Errorf("port is required for zipkin")
+	}
+	if value, ok, err := values.GetInt64("maxTagLength"); ok {
+		config.MaxTagLength = int64Ptr(value)
+	} else if err != nil {
+		return config, err
+	}
+	if value, ok, err := values.GetBool("enable64bitTraceId"); ok {
+		config.Enable64bitTraceID = boolPtr(value)
 	} else if err != nil {
 		return config, err
 	}
