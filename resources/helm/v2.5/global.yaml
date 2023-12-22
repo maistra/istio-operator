@@ -402,15 +402,6 @@ meshConfig:
       ISTIO_META_DNS_AUTO_ALLOCATE: "true"
       # required to enable dns capture
       PROXY_XDS_VIA_AGENT: "true"
-    tracing:
-#      tlsSettings:
-#        mode: DISABLE # DISABLE, SIMPLE, MUTUAL, ISTIO_MUTUAL
-#        clientCertificate: # example: /etc/istio/tracer/cert-chain.pem
-#        privateKey:        # example: /etc/istio/tracer/key.pem
-#        caCertificates:    # example: /etc/istio/tracer/root-cert.pem
-#        sni:               # example: tracer.somedomain
-#        subjectAltNames: []
-        # - tracer.somedomain
 
 base:
   validationURL: ""
