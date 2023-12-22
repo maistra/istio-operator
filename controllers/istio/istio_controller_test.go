@@ -1365,8 +1365,8 @@ func noWrites(t *testing.T) interceptor.Funcs {
 			t.Fatal("unexpected call to SubResourceUpdate in", string(debug.Stack()))
 			return nil
 		},
-		SubResourcePatch: func(_ context.Context, _ client.Client, _ string, _ client.Object, _ client.Patch, _ ...client.SubResourcePatchOption) error {
-			t.Fatal("unexpected call to SubResourcePatch in", string(debug.Stack()))
+		SubResourcePatch: func(_ context.Context, _ client.Client, _ string, obj client.Object, _ client.Patch, _ ...client.SubResourcePatchOption) error {
+			t.Fatalf("unexpected call to SubResourcePatch with the object %+v: %v", obj, string(debug.Stack()))
 			return nil
 		},
 	}
