@@ -6,6 +6,7 @@ import (
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 func populateTracingValues(in *v2.ControlPlaneSpec, values map[string]interface{}) error {
@@ -29,10 +30,20 @@ func populateTracingValues(in *v2.ControlPlaneSpec, values map[string]interface{
 			if err := setHelmStringValue(values, "tracing.provider", "none"); err != nil {
 				return err
 			}
-			// Istio doesn't support "none". "zipkin" is the default.
-			// See https://github.com/istio/istio/blob/d4d148f1c923bd9226c581b81067965daa4060df/operator/pkg/apis/istio/v1alpha1/values_types.pb.go#L66-L70
-			if err := setHelmStringValue(values, "global.proxy.tracer", "zipkin"); err != nil {
+			ver, err := versions.ParseVersion(in.Version)
+			if err != nil {
 				return err
+			}
+			if ver.AtLeast(versions.V2_2) {
+				if err := setHelmStringValue(values, "global.proxy.tracer", "none"); err != nil {
+					return err
+				}
+			} else {
+				// Istio didn't support "none" before the release 1.12 and "zipkin" was the default.
+				// See https://github.com/istio/istio/blob/d4d148f1c923bd9226c581b81067965daa4060df/operator/pkg/apis/istio/v1alpha1/values_types.pb.go#L66-L70
+				if err := setHelmStringValue(values, "global.proxy.tracer", "zipkin"); err != nil {
+					return err
+				}
 			}
 		case v2.TracerTypeJaeger:
 			if err := setHelmStringValue(values, "tracing.provider", "jaeger"); err != nil {

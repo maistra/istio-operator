@@ -39,7 +39,7 @@ func jaegerTestCasesV2(version versions.Version) []conversionTestCase {
 					"meshExpansion": globalMeshExpansionDefaults,
 					"enableTracing": false,
 					"proxy": map[string]interface{}{
-						"tracer": "zipkin",
+						"tracer": "none",
 					},
 				},
 				"meshConfig": map[string]interface{}{
