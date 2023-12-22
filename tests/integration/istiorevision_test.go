@@ -26,8 +26,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"maistra.io/istio-operator/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"istio.io/istio/pkg/ptr"
 )
 
 var _ = Describe("IstioRevision resource", Ordered, func() {
@@ -104,7 +102,7 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 		Step("Checking if Deployment was successfully created in the reconciliation")
 		Eventually(k8sClient.Get).WithArguments(ctx, istiodKey, istiod).Should(Succeed())
 		Expect(istiod.Spec.Template.Spec.Containers[0].Image).To(Equal(pilotImage))
-		Expect(istiod.ObjectMeta.OwnerReferences).To(ContainElement(expectedOwnerReference(rev)))
+		Expect(istiod.ObjectMeta.OwnerReferences).To(ContainElement(NewOwnerReference(rev)))
 
 		Step("Checking if the status is updated")
 		Eventually(func(g Gomega) {
@@ -163,7 +161,7 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 
 			Eventually(k8sClient.Get).WithArguments(ctx, istiodKey, istiod).Should(Succeed())
 			Expect(istiod.Spec.Template.Spec.Containers[0].Image).To(Equal(pilotImage))
-			Expect(istiod.ObjectMeta.OwnerReferences).To(ContainElement(expectedOwnerReference(rev)))
+			Expect(istiod.ObjectMeta.OwnerReferences).To(ContainElement(NewOwnerReference(rev)))
 		})
 	})
 
@@ -254,17 +252,6 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 		istiod := &appsv1.Deployment{}
 		Eventually(k8sClient.Get).WithArguments(ctx, istiod2Key, istiod).Should(Succeed())
 		Expect(istiod.Spec.Template.Spec.Containers[0].Image).To(Equal(pilotImage))
-		Expect(istiod.ObjectMeta.OwnerReferences).To(ContainElement(expectedOwnerReference(rev2)))
+		Expect(istiod.ObjectMeta.OwnerReferences).To(ContainElement(NewOwnerReference(rev2)))
 	})
 })
-
-func expectedOwnerReference(rev *v1alpha1.IstioRevision) metav1.OwnerReference {
-	return metav1.OwnerReference{
-		APIVersion:         v1alpha1.GroupVersion.String(),
-		Kind:               v1alpha1.IstioRevisionKind,
-		Name:               rev.Name,
-		UID:                rev.UID,
-		Controller:         ptr.Of(true),
-		BlockOwnerDeletion: ptr.Of(true),
-	}
-}
