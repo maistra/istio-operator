@@ -188,7 +188,8 @@ ifeq ($(NIGHTLY),true)
 BUILDX_ADDITIONAL_TAGS += --tag $(HUB)/$(IMAGE_BASE):$(MINOR_VERSION)-nightly-$(TODAY)
 endif
 
-BUILDX_BUILD_ARG = --build-arg TARGETOS=$(TARGET_OS)
+# BUILDX_BUILD_ARGS are the additional --build-arg flags passed to the docker buildx build command.
+BUILDX_BUILD_ARGS = --build-arg TARGETOS=$(TARGET_OS)
 
 # PLATFORMS defines the target platforms for  the manager image be build to provide support to multiple
 # architectures. (i.e. make docker-buildx IMAGE=myregistry/mypoperator:0.0.1). To use this option you need to:
@@ -217,10 +218,10 @@ endif
 docker-buildx: test build-all ## Build and push (by default) docker image for the manager for cross-platform support
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
-	- docker buildx create --name project-v3-builder
-	docker buildx use project-v3-builder
-	- docker buildx build $(BUILDX_OUTPUT) --platform=$(PLATFORMS) --tag ${IMAGE} $(BUILDX_ADDITIONAL_TAGS) $(BUILDX_BUILD_ARG) -f Dockerfile.cross .
-	- docker buildx rm project-v3-builder
+	- docker buildx create --name project-v4-builder
+	docker buildx use project-v4-builder
+	- docker buildx build $(BUILDX_OUTPUT) --platform=$(PLATFORMS) --tag ${IMAGE} $(BUILDX_ADDITIONAL_TAGS) $(BUILDX_BUILD_ARGS) -f Dockerfile.cross .
+	- docker buildx rm project-v4-builder
 	rm Dockerfile.cross
 
 ##@ Deployment
