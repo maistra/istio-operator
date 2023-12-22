@@ -245,7 +245,7 @@ func (v *versionStrategyV2_4) validateExtensionProviders(spec *v2.ControlPlaneSp
 
 		// validate extension provider zipkin is not set in a v2.4 SMCP
 		if ext.Zipkin != nil {
-			allErrors = append(allErrors, fmt.Errorf("extension provider zipkin should not be set in v2.4 SMCP - it can be sepcified in v2.5"))
+			allErrors = append(allErrors, fmt.Errorf("extension provider 'zipkin' is not supported in SMCP v2.4 - the minimum version required is v2.5"))
 		}
 	}
 	return allErrors
