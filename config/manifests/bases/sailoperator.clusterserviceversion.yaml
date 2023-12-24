@@ -132,7 +132,7 @@ spec:
     - v1.20.1
     - v1.20.0
     - v1.19.5
-    - latest (12986678)
+    - latest (c4a2d4de)
     - gwAPIControllerMode
 
     [See this page](https://github.com/maistra/istio-operator/blob/maistra-3.0/bundle/README.md) for instructions on how to use it.
