@@ -40,13 +40,13 @@ versions:
   latest:
     repo: https://github.com/istio/istio
     branch: master
-    commit: a7b4f369e654d5dfcbd739a7e83e8cb02ab2c3c5
+    commit: 8d8ad7d43033d3094fb41d7050e0983fac7a64d2
     charts:
-      - https://storage.googleapis.com/istio-build/dev/1.21-alpha.a7b4f369e654d5dfcbd739a7e83e8cb02ab2c3c5/helm/base-1.21-alpha.a7b4f369e654d5dfcbd739a7e83e8cb02ab2c3c5.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.21-alpha.a7b4f369e654d5dfcbd739a7e83e8cb02ab2c3c5/helm/cni-1.21-alpha.a7b4f369e654d5dfcbd739a7e83e8cb02ab2c3c5.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.21-alpha.a7b4f369e654d5dfcbd739a7e83e8cb02ab2c3c5/helm/gateway-1.21-alpha.a7b4f369e654d5dfcbd739a7e83e8cb02ab2c3c5.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.21-alpha.a7b4f369e654d5dfcbd739a7e83e8cb02ab2c3c5/helm/istiod-1.21-alpha.a7b4f369e654d5dfcbd739a7e83e8cb02ab2c3c5.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.21-alpha.a7b4f369e654d5dfcbd739a7e83e8cb02ab2c3c5/helm/ztunnel-1.21-alpha.a7b4f369e654d5dfcbd739a7e83e8cb02ab2c3c5.tgz
+      - https://storage.googleapis.com/istio-build/dev/1.21-alpha.8d8ad7d43033d3094fb41d7050e0983fac7a64d2/helm/base-1.21-alpha.8d8ad7d43033d3094fb41d7050e0983fac7a64d2.tgz
+      - https://storage.googleapis.com/istio-build/dev/1.21-alpha.8d8ad7d43033d3094fb41d7050e0983fac7a64d2/helm/cni-1.21-alpha.8d8ad7d43033d3094fb41d7050e0983fac7a64d2.tgz
+      - https://storage.googleapis.com/istio-build/dev/1.21-alpha.8d8ad7d43033d3094fb41d7050e0983fac7a64d2/helm/gateway-1.21-alpha.8d8ad7d43033d3094fb41d7050e0983fac7a64d2.tgz
+      - https://storage.googleapis.com/istio-build/dev/1.21-alpha.8d8ad7d43033d3094fb41d7050e0983fac7a64d2/helm/istiod-1.21-alpha.8d8ad7d43033d3094fb41d7050e0983fac7a64d2.tgz
+      - https://storage.googleapis.com/istio-build/dev/1.21-alpha.8d8ad7d43033d3094fb41d7050e0983fac7a64d2/helm/ztunnel-1.21-alpha.8d8ad7d43033d3094fb41d7050e0983fac7a64d2.tgz
   # Temporary PoC that uses a branch in our fork of istio/istio
   gwAPIControllerMode:
     repo: https://github.com/maistra/istio
