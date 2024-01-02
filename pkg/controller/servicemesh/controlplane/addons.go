@@ -103,8 +103,10 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 	if err := updatedKiali.Spec.SetField("external_services.grafana.auth.password", rawPassword); err != nil {
 		return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.grafana.auth.password", err))
 	}
-	if err := updatedKiali.Spec.SetField("external_services.tracing.auth.password", rawPassword); err != nil {
-		return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.tracing.auth.password", err))
+	if jaegerEnabled {
+		if err := updatedKiali.Spec.SetField("external_services.tracing.auth.password", rawPassword); err != nil {
+			return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.tracing.auth.password", err))
+		}
 	}
 	if prometheusEnabled {
 		if err := updatedKiali.Spec.SetField("external_services.prometheus.auth.password", rawPassword); err != nil {
