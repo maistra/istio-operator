@@ -46,7 +46,7 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 				"port":    config.Port,
 			}
 			if config.MaxTagLength != nil {
-				values["maxTagLength"] = config.MaxTagLength
+				values["maxTagLength"] = *config.MaxTagLength
 			}
 			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
 				"name":          provider.Name,
@@ -61,7 +61,7 @@ func populateExtensionProvidersValues(in *v2.ControlPlaneSpec, allValues map[str
 				"port":    config.Port,
 			}
 			if config.LogName != nil {
-				values["logName"] = config.LogName
+				values["logName"] = *config.LogName
 			}
 			extensionProvidersValues = append(extensionProvidersValues, map[string]interface{}{
 				"name":         provider.Name,
