@@ -18,7 +18,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.13.3
 	istio.io/client-go v1.19.0-alpha.1.0.20231218173549-90d93ee965be
-	istio.io/istio v0.0.0-20231231031532-e745389c0503
+	istio.io/istio v0.0.0-20240102023734-3b8f22d89c81
 	k8s.io/api v0.29.0
 	k8s.io/apimachinery v0.29.0
 	k8s.io/cli-runtime v0.29.0
@@ -150,7 +150,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20231212172506-995d672761c0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231212172506-995d672761c0 // indirect
 	google.golang.org/grpc v1.60.0 // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
+	google.golang.org/protobuf v1.32.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
