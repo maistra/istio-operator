@@ -81,20 +81,15 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 	var jaegerURL string
 	if jaegerEnabled {
 		jaegerURL = r.jaegerURL(ctx, log)
-	}
-	if jaegerURL == "" {
-		// disable jaeger
-		if err := updatedKiali.Spec.SetField("external_services.tracing.enabled", false); err != nil {
-			return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.tracing.enabled", err))
-		}
-	} else {
-		// enable jaeger and set URL
-		// XXX: should we also configure the in_cluster_url
-		if err := updatedKiali.Spec.SetField("external_services.tracing.url", jaegerURL); err != nil {
-			return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.tracing.url", err))
-		}
-		if err := updatedKiali.Spec.SetField("external_services.tracing.enabled", true); err != nil {
-			return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.tracing.enabled", err))
+		if jaegerURL != "" {
+			// enable jaeger and set URL
+			// XXX: should we also configure the in_cluster_url
+			if err := updatedKiali.Spec.SetField("external_services.tracing.url", jaegerURL); err != nil {
+				return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.tracing.url", err))
+			}
+			if err := updatedKiali.Spec.SetField("external_services.tracing.enabled", true); err != nil {
+				return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.tracing.enabled", err))
+			}
 		}
 	}
 
@@ -108,8 +103,10 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 	if err := updatedKiali.Spec.SetField("external_services.grafana.auth.password", rawPassword); err != nil {
 		return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.grafana.auth.password", err))
 	}
-	if err := updatedKiali.Spec.SetField("external_services.tracing.auth.password", rawPassword); err != nil {
-		return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.tracing.auth.password", err))
+	if jaegerEnabled {
+		if err := updatedKiali.Spec.SetField("external_services.tracing.auth.password", rawPassword); err != nil {
+			return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.tracing.auth.password", err))
+		}
 	}
 	if prometheusEnabled {
 		if err := updatedKiali.Spec.SetField("external_services.prometheus.auth.password", rawPassword); err != nil {
@@ -155,7 +152,7 @@ func (r *controlPlaneInstanceReconciler) grafanaURL(ctx context.Context, log log
 func (r *controlPlaneInstanceReconciler) jaegerURL(ctx context.Context, log logr.Logger) string {
 	log.Info("attempting to auto-detect Jaeger for Kiali")
 	if r.Instance.Status.AppliedSpec.Addons == nil || !r.Instance.Status.AppliedSpec.IsJaegerEnabled() {
-		log.Info("Jaeger is not installed, disabling tracing in Kiali")
+		log.Info("Jaeger is not installed")
 		return ""
 	}
 	jaegerName := "jaeger"
@@ -171,13 +168,13 @@ func (r *controlPlaneInstanceReconciler) jaegerURL(ctx context.Context, log logr
 		})
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			log.Error(err, "error retrieving Jaeger route - will disable it in Kiali")
+			log.Error(err, "error retrieving Jaeger route")
 			// we aren't going to return here - Grafana is optional for Kiali; Kiali can still run without it
 		}
 		return ""
 	} else if len(jaegerRoutes.Items) == 0 {
 		// no routes
-		log.Info("could not locate Jaeger query route resource, disabling tracing in Kiali")
+		log.Info("could not locate Jaeger query route resource")
 		return ""
 	}
 	// we'll just use the first.  there should only ever be one route
