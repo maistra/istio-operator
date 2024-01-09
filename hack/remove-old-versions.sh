@@ -15,7 +15,7 @@
 # limitations under the License.
 
 function removeOldVersions() {
-    versions=$(yq eval '.versions | keys | .[]' versions.yaml | tr $'\n' ' ')
+    versions=$(yq eval '.versions[].name' versions.yaml | tr $'\n' ' ')
     for subdirectory in resources/*/; do
         version=$(basename "$subdirectory")
         if [[ ! " ${versions} " == *" $version "* ]]; then
