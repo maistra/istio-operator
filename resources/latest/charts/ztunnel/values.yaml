@@ -1,7 +1,7 @@
 # Hub to pull from. Image will be `Hub/Image:Tag-Variant`
 hub: gcr.io/istio-testing
 # Tag to pull from. Image will be `Hub/Image:Tag-Variant`
-tag: 1.21-alpha.34d9da2f0b10ae104535070e4391ba6e7037e61c
+tag: 1.21-alpha.e6756e191920f089340a263a6204983c114939ee
 # Variant to pull. Options are "debug" or "distroless". Unset will use the default for the given version.
 variant: ""
 
@@ -75,3 +75,7 @@ caAddress: ""
 
 # Used to locate istiod.
 istioNamespace: istio-system
+
+# Configuration log level of ztunnel binary, default is info.
+# Valid values are: trace, debug, info, warn, error
+logLevel: info
