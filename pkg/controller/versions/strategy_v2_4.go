@@ -247,6 +247,17 @@ func (v *versionStrategyV2_4) validateExtensionProviders(spec *v2.ControlPlaneSp
 		if ext.Zipkin != nil {
 			allErrors = append(allErrors, fmt.Errorf("extension provider 'zipkin' is not supported in SMCP v2.4 - the minimum version required is v2.5"))
 		}
+
+		// validate extension provider opentelemetry is not set in a v2.4 SMCP
+		if ext.Opentelemetry != nil {
+			allErrors = append(allErrors, fmt.Errorf("extension provider 'opentelemetry' is not supported in SMCP v2.4 - the minimum version required is v2.5"))
+		}
+
+		// validate extension provider envoyOtelAls is not set in a v2.4 SMCP
+		if ext.EnvoyOtelAls != nil {
+			allErrors = append(allErrors, fmt.Errorf("extension provider 'envoyOtelAls' is not supported in SMCP v2.4 - the minimum version required is v2.5"))
+		}
+
 	}
 	return allErrors
 }
