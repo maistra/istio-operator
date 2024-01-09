@@ -46,7 +46,8 @@ function download_values_types_proto_file() {
   dst_dir="${1}"
 
   # Getting the values_types.proto url from the latest version
-  values_types_proto_file_url="$(${YQ} '.versions[.crdSourceVersion] | .repo + "/" + .commit + "/operator/pkg/apis/istio/v1alpha1/values_types.proto"' "${VERSIONS_FILE}"  | sed "s/github.com/raw.githubusercontent.com/")"
+  # shellcheck disable=SC2016
+  values_types_proto_file_url="$(${YQ} '.crdSourceVersion as $crdSourceVersion | .versions[] | select(.name == $crdSourceVersion) | .repo + "/" + .commit + "/operator/pkg/apis/istio/v1alpha1/values_types.proto"' "${VERSIONS_FILE}"  | sed "s/github.com/raw.githubusercontent.com/")"
   curl --silent "${values_types_proto_file_url}" --output "${dst_dir}/values_types.proto"
   echo "${dst_dir}/values_types.proto"
 }

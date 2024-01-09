@@ -171,7 +171,7 @@ main_test() {
   check_ready "${NAMESPACE}" "${DEPLOYMENT_NAME}" "${DEPLOYMENT_NAME}"
   
   # Deploy and test every istio version inside versions.yaml
-  versions=$(yq eval '.versions | keys | .[]' versions.yaml)
+  versions=$(yq eval '.versions[].name' versions.yaml)
   echo "Versions to test: ${versions//$'\n'/ }"
   for ver in ${versions}; do
     echo "--------------------------------------------------------------"

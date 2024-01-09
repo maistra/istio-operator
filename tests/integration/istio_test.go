@@ -36,10 +36,6 @@ var _ = Describe("Istio resource", Ordered, func() {
 		istioNamespace    = "istio-test"
 		workloadNamespace = "istio-test-workloads"
 
-		istioVersion = "latest"
-		oldVersion   = "v1.20.0"
-		newVersion   = "v1.20.1" // TODO: get these versions from versions.yaml
-
 		gracePeriod = 30 * time.Second
 		pilotImage  = "maistra.io/test:latest"
 	)
@@ -83,7 +79,7 @@ var _ = Describe("Istio resource", Ordered, func() {
 					Name: istioName,
 				},
 				Spec: v1alpha1.IstioSpec{
-					Version:   istioVersion,
+					Version:   defaultVersion,
 					Namespace: istioNamespace,
 					UpdateStrategy: &v1alpha1.IstioUpdateStrategy{
 						Type: v1alpha1.UpdateStrategyTypeInPlace,

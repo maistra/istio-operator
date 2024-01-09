@@ -5,50 +5,49 @@
 # typically backwards-compatible, the following field should point to the
 # most recent version.
 crdSourceVersion: latest
-# The list of versions to support. The `versions` field is a map, where the
-# key is the name of the version, and the value is an object containing the
-# Git repository and commit hash (these are used to get the profiles), and
-# the list of URLs for the Helm charts.
+# The list of versions to support. Each item specifies the name of the version,
+# the Git repository and commit hash for retrieving the profiles, and
+# a list of URLs for retrieving the charts.
 versions:
-  v1.20.1:
-    repo: https://github.com/istio/istio
-    commit: 1.20.1
-    charts:
-      - https://istio-release.storage.googleapis.com/charts/base-1.20.1.tgz
-      - https://istio-release.storage.googleapis.com/charts/istiod-1.20.1.tgz
-      - https://istio-release.storage.googleapis.com/charts/gateway-1.20.1.tgz
-      - https://istio-release.storage.googleapis.com/charts/cni-1.20.1.tgz
-      - https://istio-release.storage.googleapis.com/charts/ztunnel-1.20.1.tgz
-  v1.20.0:
-    repo: https://github.com/istio/istio
-    commit: 1.20.0
-    charts:
-      - https://istio-release.storage.googleapis.com/charts/base-1.20.0.tgz
-      - https://istio-release.storage.googleapis.com/charts/istiod-1.20.0.tgz
-      - https://istio-release.storage.googleapis.com/charts/gateway-1.20.0.tgz
-      - https://istio-release.storage.googleapis.com/charts/cni-1.20.0.tgz
-      - https://istio-release.storage.googleapis.com/charts/ztunnel-1.20.0.tgz
-  v1.19.5:
-    repo: https://github.com/istio/istio
-    commit: 1.19.5
-    charts:
-      - https://istio-release.storage.googleapis.com/charts/base-1.19.5.tgz
-      - https://istio-release.storage.googleapis.com/charts/istiod-1.19.5.tgz
-      - https://istio-release.storage.googleapis.com/charts/gateway-1.19.5.tgz
-      - https://istio-release.storage.googleapis.com/charts/cni-1.19.5.tgz
-      - https://istio-release.storage.googleapis.com/charts/ztunnel-1.19.5.tgz
-  latest:
-    repo: https://github.com/istio/istio
-    branch: master
-    commit: e6756e191920f089340a263a6204983c114939ee
-    charts:
-      - https://storage.googleapis.com/istio-build/dev/1.21-alpha.e6756e191920f089340a263a6204983c114939ee/helm/base-1.21-alpha.e6756e191920f089340a263a6204983c114939ee.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.21-alpha.e6756e191920f089340a263a6204983c114939ee/helm/cni-1.21-alpha.e6756e191920f089340a263a6204983c114939ee.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.21-alpha.e6756e191920f089340a263a6204983c114939ee/helm/gateway-1.21-alpha.e6756e191920f089340a263a6204983c114939ee.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.21-alpha.e6756e191920f089340a263a6204983c114939ee/helm/istiod-1.21-alpha.e6756e191920f089340a263a6204983c114939ee.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.21-alpha.e6756e191920f089340a263a6204983c114939ee/helm/ztunnel-1.21-alpha.e6756e191920f089340a263a6204983c114939ee.tgz
-  # Temporary PoC that uses a branch in our fork of istio/istio
-  gwAPIControllerMode:
-    repo: https://github.com/maistra/istio
-    branch: gw-controller-mode-env1
-    commit: 6108f9b442f35996f0153ecbdf6e98895a79ae46
+- name: v1.20.1
+  repo: https://github.com/istio/istio
+  commit: 1.20.1
+  charts:
+    - https://istio-release.storage.googleapis.com/charts/base-1.20.1.tgz
+    - https://istio-release.storage.googleapis.com/charts/istiod-1.20.1.tgz
+    - https://istio-release.storage.googleapis.com/charts/gateway-1.20.1.tgz
+    - https://istio-release.storage.googleapis.com/charts/cni-1.20.1.tgz
+    - https://istio-release.storage.googleapis.com/charts/ztunnel-1.20.1.tgz
+- name: v1.20.0
+  repo: https://github.com/istio/istio
+  commit: 1.20.0
+  charts:
+    - https://istio-release.storage.googleapis.com/charts/base-1.20.0.tgz
+    - https://istio-release.storage.googleapis.com/charts/istiod-1.20.0.tgz
+    - https://istio-release.storage.googleapis.com/charts/gateway-1.20.0.tgz
+    - https://istio-release.storage.googleapis.com/charts/cni-1.20.0.tgz
+    - https://istio-release.storage.googleapis.com/charts/ztunnel-1.20.0.tgz
+- name: v1.19.5
+  repo: https://github.com/istio/istio
+  commit: 1.19.5
+  charts:
+    - https://istio-release.storage.googleapis.com/charts/base-1.19.5.tgz
+    - https://istio-release.storage.googleapis.com/charts/istiod-1.19.5.tgz
+    - https://istio-release.storage.googleapis.com/charts/gateway-1.19.5.tgz
+    - https://istio-release.storage.googleapis.com/charts/cni-1.19.5.tgz
+    - https://istio-release.storage.googleapis.com/charts/ztunnel-1.19.5.tgz
+- name: latest
+  repo: https://github.com/istio/istio
+  branch: master
+  commit: e6756e191920f089340a263a6204983c114939ee
+  charts:
+    - https://storage.googleapis.com/istio-build/dev/1.21-alpha.e6756e191920f089340a263a6204983c114939ee/helm/base-1.21-alpha.e6756e191920f089340a263a6204983c114939ee.tgz
+    - https://storage.googleapis.com/istio-build/dev/1.21-alpha.e6756e191920f089340a263a6204983c114939ee/helm/cni-1.21-alpha.e6756e191920f089340a263a6204983c114939ee.tgz
+    - https://storage.googleapis.com/istio-build/dev/1.21-alpha.e6756e191920f089340a263a6204983c114939ee/helm/gateway-1.21-alpha.e6756e191920f089340a263a6204983c114939ee.tgz
+    - https://storage.googleapis.com/istio-build/dev/1.21-alpha.e6756e191920f089340a263a6204983c114939ee/helm/istiod-1.21-alpha.e6756e191920f089340a263a6204983c114939ee.tgz
+    - https://storage.googleapis.com/istio-build/dev/1.21-alpha.e6756e191920f089340a263a6204983c114939ee/helm/ztunnel-1.21-alpha.e6756e191920f089340a263a6204983c114939ee.tgz
+# Temporary PoC that uses a branch in our fork of istio/istio
+- name: gwAPIControllerMode
+  repo: https://github.com/maistra/istio
+  branch: gw-controller-mode-env1
+  commit: 6108f9b442f35996f0153ecbdf6e98895a79ae46

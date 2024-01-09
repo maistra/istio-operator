@@ -33,8 +33,6 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 		revName        = "test-istiorevision"
 		istioNamespace = "istiorevision-test"
 
-		istioVersion = "v1.20.0" // TODO: get this from versions.yaml
-
 		pilotImage = "maistra.io/test:latest"
 	)
 
@@ -82,7 +80,7 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 				Name: revName,
 			},
 			Spec: v1alpha1.IstioRevisionSpec{
-				Version:   istioVersion,
+				Version:   defaultVersion,
 				Namespace: istioNamespace,
 				Values: []byte(`{
 						"global":{"istioNamespace":"` + istioNamespace + `"},
@@ -228,7 +226,7 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 				Name: rev2Key.Name,
 			},
 			Spec: v1alpha1.IstioRevisionSpec{
-				Version:   istioVersion,
+				Version:   defaultVersion,
 				Namespace: istioNamespace,
 				Values: []byte(`{
 						"global":{"istioNamespace":"` + istioNamespace + `"},
