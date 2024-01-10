@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-operator:3.0-latest
-    createdAt: "2024-01-09T03:07:52Z"
+    createdAt: "2024-01-12T13:46:06Z"
     description: Experimental operator for installing Istio service mesh
     operators.operatorframework.io/builder: operator-sdk-v1.33.0
     operators.operatorframework.io/internal-objects: '["wasmplugins.extensions.istio.io","destinationrules.networking.istio.io","envoyfilters.networking.istio.io","gateways.networking.istio.io","proxyconfigs.networking.istio.io","serviceentries.networking.istio.io","sidecars.networking.istio.io","virtualservices.networking.istio.io","workloadentries.networking.istio.io","workloadgroups.networking.istio.io","authorizationpolicies.security.istio.io","peerauthentications.security.istio.io","requestauthentications.security.istio.io","telemetries.telemetry.istio.io"]'
@@ -36,12 +36,9 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - kind: AuthorizationPolicy
-      name: authorizationpolicies.security.istio.io
-      version: v1
-    - kind: AuthorizationPolicy
-      name: authorizationpolicies.security.istio.io
-      version: v1beta1
+    - kind: WasmPlugin
+      name: wasmplugins.extensions.istio.io
+      version: v1alpha1
     - kind: DestinationRule
       name: destinationrules.networking.istio.io
       version: v1alpha3
@@ -56,6 +53,39 @@ spec:
       version: v1alpha3
     - kind: Gateway
       name: gateways.networking.istio.io
+      version: v1beta1
+    - kind: ProxyConfig
+      name: proxyconfigs.networking.istio.io
+      version: v1beta1
+    - kind: ServiceEntry
+      name: serviceentries.networking.istio.io
+      version: v1alpha3
+    - kind: ServiceEntry
+      name: serviceentries.networking.istio.io
+      version: v1beta1
+    - kind: Sidecar
+      name: sidecars.networking.istio.io
+      version: v1alpha3
+    - kind: Sidecar
+      name: sidecars.networking.istio.io
+      version: v1beta1
+    - kind: VirtualService
+      name: virtualservices.networking.istio.io
+      version: v1alpha3
+    - kind: VirtualService
+      name: virtualservices.networking.istio.io
+      version: v1beta1
+    - kind: WorkloadEntry
+      name: workloadentries.networking.istio.io
+      version: v1alpha3
+    - kind: WorkloadEntry
+      name: workloadentries.networking.istio.io
+      version: v1beta1
+    - kind: WorkloadGroup
+      name: workloadgroups.networking.istio.io
+      version: v1alpha3
+    - kind: WorkloadGroup
+      name: workloadgroups.networking.istio.io
       version: v1beta1
     - description: IstioRevision represents a single revision of an Istio Service
         Mesh deployment. Users shouldn't create IstioRevision objects directly. Instead,
@@ -165,11 +195,14 @@ spec:
         displayName: Helm Values
         path: values
       version: v1alpha1
+    - kind: AuthorizationPolicy
+      name: authorizationpolicies.security.istio.io
+      version: v1
+    - kind: AuthorizationPolicy
+      name: authorizationpolicies.security.istio.io
+      version: v1beta1
     - kind: PeerAuthentication
       name: peerauthentications.security.istio.io
-      version: v1beta1
-    - kind: ProxyConfig
-      name: proxyconfigs.networking.istio.io
       version: v1beta1
     - kind: RequestAuthentication
       name: requestauthentications.security.istio.io
@@ -177,42 +210,9 @@ spec:
     - kind: RequestAuthentication
       name: requestauthentications.security.istio.io
       version: v1beta1
-    - kind: ServiceEntry
-      name: serviceentries.networking.istio.io
-      version: v1alpha3
-    - kind: ServiceEntry
-      name: serviceentries.networking.istio.io
-      version: v1beta1
-    - kind: Sidecar
-      name: sidecars.networking.istio.io
-      version: v1alpha3
-    - kind: Sidecar
-      name: sidecars.networking.istio.io
-      version: v1beta1
     - kind: Telemetry
       name: telemetries.telemetry.istio.io
       version: v1alpha1
-    - kind: VirtualService
-      name: virtualservices.networking.istio.io
-      version: v1alpha3
-    - kind: VirtualService
-      name: virtualservices.networking.istio.io
-      version: v1beta1
-    - kind: WasmPlugin
-      name: wasmplugins.extensions.istio.io
-      version: v1alpha1
-    - kind: WorkloadEntry
-      name: workloadentries.networking.istio.io
-      version: v1alpha3
-    - kind: WorkloadEntry
-      name: workloadentries.networking.istio.io
-      version: v1beta1
-    - kind: WorkloadGroup
-      name: workloadgroups.networking.istio.io
-      version: v1alpha3
-    - kind: WorkloadGroup
-      name: workloadgroups.networking.istio.io
-      version: v1beta1
   description: |-
     This is an experimental operator for installing Istio service mesh.
 
@@ -233,6 +233,18 @@ spec:
     spec:
       clusterPermissions:
       - rules:
+        - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
         - apiGroups:
           - ""
           resources:
@@ -360,25 +372,13 @@ spec:
           - securitycontextconstraints
           verbs:
           - use
-        - apiGroups:
-          - authentication.k8s.io
-          resources:
-          - tokenreviews
-          verbs:
-          - create
-        - apiGroups:
-          - authorization.k8s.io
-          resources:
-          - subjectaccessreviews
-          verbs:
-          - create
         serviceAccountName: istio-operator
       deployments:
       - label:
           app.kubernetes.io/component: manager
           app.kubernetes.io/created-by: sailoperator
           app.kubernetes.io/instance: istio-operator
-          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/managed-by: helm
           app.kubernetes.io/name: deployment
           app.kubernetes.io/part-of: sailoperator
           control-plane: istio-operator

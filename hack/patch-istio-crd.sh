@@ -21,7 +21,7 @@ CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 : "${YQ:=yq}"
 : "${API_VERSION:=v1alpha1}"
 : "${VERSIONS_FILE:=${CUR_DIR}/../versions.yaml}"
-: "${CRD_FILE:=${CUR_DIR}/../config/crd/bases/operator.istio.io_istios.yaml}"
+: "${CRD_FILE:=${CUR_DIR}/../chart/crds/operator.istio.io_istios.yaml}"
 
 values_yaml_path=".spec.versions.[] | select(.name == \"${API_VERSION}\") | .schema.openAPIV3Schema.properties.spec.properties.values"
 

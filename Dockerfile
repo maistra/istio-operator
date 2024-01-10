@@ -3,7 +3,9 @@
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest 
 # gcr.io/distroless/static:nonroot
 
-ADD bin/manager /manager
+ARG TARGETOS TARGETARCH
+
+ADD out/${TARGETOS:-linux}_${TARGETARCH:-amd64}/manager /manager
 ADD resources /var/lib/istio-operator/resources
 
 USER 65532:65532

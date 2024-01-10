@@ -28,13 +28,13 @@ Make sure that the `HUB` and `TAG` environment variables point to your container
 2. Create an instance of the Istio resource to install the Istio Control Plane:
 
 ```sh
-kubectl apply -f config/samples/istio-sample-openshift.yaml
+kubectl apply -f chart/samples/istio-sample-openshift.yaml
 ```
 
 or 
 
 ```sh
-kubectl apply -f config/samples/istio-sample-kubernetes.yaml
+kubectl apply -f chart/samples/istio-sample-kubernetes.yaml
 ```
 
 

@@ -70,9 +70,9 @@ initialize_variables() {
   echo "Using command: ${COMMAND}"
 
   if [ "${OCP}" == "true" ]; then
-    ISTIO_MANIFEST="${WD}/../../config/samples/istio-sample-openshift.yaml"
+    ISTIO_MANIFEST="${WD}/../../chart/samples/istio-sample-openshift.yaml"
   else
-    ISTIO_MANIFEST="${WD}/../../config/samples/istio-sample-kubernetes.yaml"
+    ISTIO_MANIFEST="${WD}/../../chart/samples/istio-sample-kubernetes.yaml"
   fi
 
   ISTIO_NAME=$(yq eval '.metadata.name' "$ISTIO_MANIFEST")

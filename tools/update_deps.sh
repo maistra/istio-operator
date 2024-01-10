@@ -42,9 +42,9 @@ OPERATOR_SDK_LATEST_VERSION=$(getLatestVersion operator-framework/operator-sdk)
 sed -i "s|OPERATOR_SDK_VERSION ?= .*|OPERATOR_SDK_VERSION ?= ${OPERATOR_SDK_LATEST_VERSION}|" "${ROOTDIR}/Makefile.core.mk"
 find "${ROOTDIR}/config/scorecard" -type f -exec sed -i "s|quay.io/operator-framework/scorecard-test:.*|quay.io/operator-framework/scorecard-test:${OPERATOR_SDK_LATEST_VERSION}|" {} +
 
-# Update kustomize
-KUSTOMIZE_LATEST_VERSION=$(getLatestVersion kubernetes-sigs/kustomize | cut -d/ -f2)
-sed -i "s|KUSTOMIZE_VERSION ?= .*|KUSTOMIZE_VERSION ?= ${KUSTOMIZE_LATEST_VERSION}|" "${ROOTDIR}/Makefile.core.mk"
+# Update helm
+HELM_LATEST_VERSION=$(getLatestVersion helm/helm | cut -d/ -f2)
+sed -i "s|HELM_VERSION ?= .*|HELM_VERSION ?= ${HELM_LATEST_VERSION}|" "${ROOTDIR}/Makefile.core.mk"
 
 # Update controller-tools
 CONTROLLER_TOOLS_LATEST_VERSION=$(getLatestVersion kubernetes-sigs/controller-tools)
