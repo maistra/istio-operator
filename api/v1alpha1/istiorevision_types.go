@@ -24,18 +24,25 @@ import (
 	"maistra.io/istio-operator/pkg/helm"
 )
 
-const IstioRevisionKind = "IstioRevision"
+const (
+	IstioRevisionKind = "IstioRevision"
+	DefaultRevision   = "default"
+)
 
 // IstioRevisionSpec defines the desired state of IstioRevision
 type IstioRevisionSpec struct {
 	// +sail:version
-	// Version defines the version of IstioRevision to install.
-	// Must be one of: v1.20.0, v1.19.4, latest.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="IstioRevision Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.0", "urn:alm:descriptor:com.tectonic.ui:select:v1.19.4", "urn:alm:descriptor:com.tectonic.ui:select:latest"}
-	// +kubebuilder:validation:Enum=v1.20.0;v1.19.4;latest
+	// Defines the version of Istio to install.
+	// Must be one of: v1.20.1, v1.20.0, v1.19.5, latest, gwAPIControllerMode.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="Istio Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.1", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.0", "urn:alm:descriptor:com.tectonic.ui:select:v1.19.5", "urn:alm:descriptor:com.tectonic.ui:select:latest", "urn:alm:descriptor:com.tectonic.ui:select:gwAPIControllerMode"}
+	// +kubebuilder:validation:Enum=v1.20.1;v1.20.0;v1.19.5;latest;gwAPIControllerMode
 	Version string `json:"version"`
 
-	// Values defines the values to be passed to the Helm chart when installing IstioRevision.
+	// Namespace to which the Istio components should be installed.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors={"urn:alm:descriptor:io.kubernetes:Namespace"}
+	Namespace string `json:"namespace"`
+
+	// Defines the values to be passed to the Helm charts when installing Istio.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Helm Values"
@@ -162,19 +169,34 @@ const (
 )
 
 const (
+	// IstioRevisionConditionTypeInUse signifies whether any workload is configured to use the revision.
+	IstioRevisionConditionTypeInUse IstioRevisionConditionType = "InUse"
+
+	// IstioRevisionConditionReasonReferencedByWorkloads indicates that the revision is referenced by at least one pod or namespace.
+	IstioRevisionConditionReasonReferencedByWorkloads IstioRevisionConditionReason = "ReferencedByWorkloads"
+
+	// IstioRevisionConditionReasonNotReferenced indicates that the revision is not referenced by any pod or namespace.
+	IstioRevisionConditionReasonNotReferenced IstioRevisionConditionReason = "NotReferencedByAnything"
+)
+
+const (
 	// IstioRevisionConditionReasonHealthy indicates that the control plane is fully reconciled and that all components are ready.
 	IstioRevisionConditionReasonHealthy IstioRevisionConditionReason = "Healthy"
 )
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:shortName=istiorev,categories=istio-io
+// +kubebuilder:resource:scope=Cluster,shortName=istiorev,categories=istio-io
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status",description="Whether the control plane installation is ready to handle requests."
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.state",description="The current state of this object."
+// +kubebuilder:printcolumn:name="In use",type="string",JSONPath=".status.conditions[?(@.type==\"InUse\")].status",description="Whether the revision is being used by workloads."
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of the control plane installation."
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="The age of the object"
 
-// IstioRevision represents an IstioRevision Service Mesh deployment
+// IstioRevision represents a single revision of an Istio Service Mesh deployment.
+// Users shouldn't create IstioRevision objects directly. Instead, they should
+// create an Istio object and allow the Istio operator to create the underlying
+// IstioRevision object(s).
 type IstioRevision struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

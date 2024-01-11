@@ -1,9 +1,13 @@
 apiVersion: operator.istio.io/v1alpha1
 kind: Istio
 metadata:
-  name: istio-sample
+  name: default
 spec:
-  version: v1.20.0
+  version: v1.20.1
+  namespace: istio-system
+  updateStrategy:
+    type: InPlace
+    inactiveRevisionDeletionGracePeriodSeconds: 30
   rawValues:
     pilot:
       resources:

@@ -23,7 +23,10 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"strings"
+	"time"
 
+	"github.com/go-logr/logr"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,7 +38,9 @@ import (
 	"maistra.io/istio-operator/pkg/kube"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"istio.io/istio/pkg/ptr"
 	"istio.io/istio/pkg/util/sets"
@@ -68,66 +73,75 @@ func NewIstioReconciler(client client.Client, scheme *runtime.Scheme, resourceDi
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithName("reconciler")
+	log := logf.FromContext(ctx)
 
 	var istio v1alpha1.Istio
 	if err := r.Client.Get(ctx, req.NamespacedName, &istio); err != nil {
 		if errors.IsNotFound(err) {
-			logger.V(2).Info("Istio not found. Skipping reconciliation")
+			log.V(2).Info("Istio not found. Skipping reconciliation")
 			return ctrl.Result{}, nil
 		}
-		logger.Error(err, "failed to get Istio from cluster")
+		log.Error(err, "failed to get Istio from cluster")
 	}
 
 	if istio.DeletionTimestamp != nil {
 		return ctrl.Result{}, nil
 	}
 
-	logger.Info("Reconciling")
-	err := r.doReconcile(ctx, istio)
+	log.Info("Reconciling")
+	result, err := r.doReconcile(ctx, istio)
 
-	logger.Info("Reconciliation done. Updating status.")
+	log.Info("Reconciliation done. Updating status.")
 	err = r.updateStatus(ctx, &istio, err)
 
-	return ctrl.Result{}, err
+	return result, err
 }
 
 // doReconcile is the function that actually reconciles the Istio object. Any error reported by this
 // function should get reported in the status of the Istio object by the caller.
-func (r *IstioReconciler) doReconcile(ctx context.Context, istio v1alpha1.Istio) (err error) {
+func (r *IstioReconciler) doReconcile(ctx context.Context, istio v1alpha1.Istio) (result ctrl.Result, err error) {
 	if istio.Spec.Version == "" {
-		return fmt.Errorf("no spec.version set")
+		return ctrl.Result{}, fmt.Errorf("no spec.version set")
+	}
+	if istio.Spec.Namespace == "" {
+		return ctrl.Result{}, fmt.Errorf("no spec.namespace set")
 	}
 
 	var values helm.HelmValues
-	if values, err = getAggregatedValues(istio, r.DefaultProfiles, r.ResourceDirectory); err != nil {
-		return err
+	if values, err = computeIstioRevisionValues(istio, r.DefaultProfiles, r.ResourceDirectory); err != nil {
+		return ctrl.Result{}, err
 	}
 
-	return r.createOrUpdateIstioRevision(ctx, &istio, values)
+	if err = r.reconcileActiveRevision(ctx, &istio, values); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return r.pruneInactiveRevisions(ctx, &istio)
 }
 
-func (r *IstioReconciler) createOrUpdateIstioRevision(ctx context.Context, istio *v1alpha1.Istio, values helm.HelmValues) error {
-	logger := log.FromContext(ctx).WithName("reconciler")
+func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1alpha1.Istio, values helm.HelmValues) error {
+	log := logf.FromContext(ctx)
 
 	valuesRawMessage, err := json.Marshal(values)
 	if err != nil {
 		return err
 	}
 
+	activeRevisionName := getActiveRevisionName(istio)
+	log = log.WithValues("IstioRevision", activeRevisionName)
+
 	rev, err := r.getActiveRevision(ctx, istio)
 	if err == nil {
 		// update
 		rev.Spec.Version = istio.Spec.Version
 		rev.Spec.Values = valuesRawMessage
-		logger.Info("Updating IstioRevision", "name", istio.Name, "spec", rev.Spec)
+		log.Info("Updating IstioRevision")
 		return r.Client.Update(ctx, &rev)
 	} else if errors.IsNotFound(err) {
 		// create new
 		rev = v1alpha1.IstioRevision{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      istio.Name,
-				Namespace: istio.Namespace,
+				Name: activeRevisionName,
 				OwnerReferences: []metav1.OwnerReference{
 					{
 						APIVersion:         v1alpha1.GroupVersion.String(),
@@ -140,27 +154,139 @@ func (r *IstioReconciler) createOrUpdateIstioRevision(ctx context.Context, istio
 				},
 			},
 			Spec: v1alpha1.IstioRevisionSpec{
-				Version: istio.Spec.Version,
-				Values:  valuesRawMessage,
+				Version:   istio.Spec.Version,
+				Namespace: istio.Spec.Namespace,
+				Values:    valuesRawMessage,
 			},
 		}
-		logger.Info("Creating IstioRevision", "name", istio.Name, "spec", rev.Spec)
+		log.Info("Creating IstioRevision")
 		return r.Client.Create(ctx, &rev)
 	}
 	return err
 }
 
+func (r *IstioReconciler) pruneInactiveRevisions(ctx context.Context, istio *v1alpha1.Istio) (ctrl.Result, error) {
+	log := logf.FromContext(ctx)
+	revisions, err := r.getRevisions(ctx, istio)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// the following code does two things:
+	// - prunes revisions whose grace period has expired
+	// - finds the time when the next revision is to be pruned
+	var nextPruneTimestamp *time.Time
+	for _, rev := range revisions {
+		if isActiveRevision(istio, &rev) {
+			log.V(2).Info("IstioRevision is the active revision", "IstioRevision", rev.Name)
+			continue
+		}
+		inUseCondition := rev.Status.GetCondition(v1alpha1.IstioRevisionConditionTypeInUse)
+		inUse := inUseCondition.Status == metav1.ConditionTrue
+		if inUse {
+			log.V(2).Info("IstioRevision is in use", "IstioRevision", rev.Name)
+			continue
+		}
+
+		pruneTimestamp := inUseCondition.LastTransitionTime.Time.Add(getPruningGracePeriod(istio))
+		expired := pruneTimestamp.Before(time.Now())
+		if expired {
+			log.Info("Deleting expired IstioRevision", "IstioRevision", rev.Name)
+			err = r.Client.Delete(ctx, &rev)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		} else {
+			log.V(2).Info("IstioRevision is not in use, but hasn't yet expired", "IstioRevision", rev.Name, "InUseLastTransitionTime", inUseCondition.LastTransitionTime)
+			if nextPruneTimestamp == nil || nextPruneTimestamp.After(pruneTimestamp) {
+				nextPruneTimestamp = &pruneTimestamp
+			}
+		}
+	}
+	if nextPruneTimestamp == nil {
+		log.V(2).Info("No IstioRevisions to prune")
+		return ctrl.Result{}, nil
+	}
+
+	requeueAfter := time.Until(*nextPruneTimestamp)
+	log.Info("Requeueing Istio resource for cleanup of expired IstioRevision", "RequeueAfter", requeueAfter)
+	// requeue so that we prune the next revision at the right time (if we didn't, we would prune it when
+	// something else triggers another reconciliation)
+	return ctrl.Result{RequeueAfter: requeueAfter}, nil
+}
+
+func getPruningGracePeriod(istio *v1alpha1.Istio) time.Duration {
+	strategy := istio.Spec.UpdateStrategy
+	period := int64(v1alpha1.DefaultRevisionDeletionGracePeriodSeconds)
+	if strategy != nil && strategy.InactiveRevisionDeletionGracePeriodSeconds != nil {
+		period = *strategy.InactiveRevisionDeletionGracePeriodSeconds
+	}
+	if period < v1alpha1.MinRevisionDeletionGracePeriodSeconds {
+		period = v1alpha1.MinRevisionDeletionGracePeriodSeconds
+	}
+	return time.Duration(period) * time.Second
+}
+
 func (r *IstioReconciler) getActiveRevision(ctx context.Context, istio *v1alpha1.Istio) (v1alpha1.IstioRevision, error) {
 	rev := v1alpha1.IstioRevision{}
-	err := r.Client.Get(ctx, r.getActiveRevisionKey(istio), &rev)
+	err := r.Client.Get(ctx, getActiveRevisionKey(istio), &rev)
 	return rev, err
 }
 
-func (r *IstioReconciler) getActiveRevisionKey(istio *v1alpha1.Istio) types.NamespacedName {
-	return types.NamespacedName{Name: istio.Name, Namespace: istio.Namespace}
+func (r *IstioReconciler) getRevisions(ctx context.Context, istio *v1alpha1.Istio) ([]v1alpha1.IstioRevision, error) {
+	revList := v1alpha1.IstioRevisionList{}
+	if err := r.Client.List(ctx, &revList); err != nil {
+		return nil, err
+	}
+
+	revisions := []v1alpha1.IstioRevision{}
+	for _, rev := range revList.Items {
+		if isRevisionOwnedByIstio(rev, istio) {
+			revisions = append(revisions, rev)
+		}
+	}
+	return revisions, nil
 }
 
-func getAggregatedValues(istio v1alpha1.Istio, defaultProfiles []string, resourceDir string) (helm.HelmValues, error) {
+func isRevisionOwnedByIstio(rev v1alpha1.IstioRevision, istio *v1alpha1.Istio) bool {
+	if istio.UID == "" {
+		panic(fmt.Sprintf("No UID set in Istio %q; did you forget to set it in your test?", istio.Name))
+	}
+	for _, owner := range rev.OwnerReferences {
+		if owner.UID == istio.UID {
+			return true
+		}
+	}
+	return false
+}
+
+func isActiveRevision(istio *v1alpha1.Istio, rev *v1alpha1.IstioRevision) bool {
+	return rev.Name == getActiveRevisionName(istio)
+}
+
+func getActiveRevisionKey(istio *v1alpha1.Istio) types.NamespacedName {
+	return types.NamespacedName{
+		Name: getActiveRevisionName(istio),
+	}
+}
+
+func getActiveRevisionName(istio *v1alpha1.Istio) string {
+	var strategy v1alpha1.UpdateStrategyType
+	if istio.Spec.UpdateStrategy != nil {
+		strategy = istio.Spec.UpdateStrategy.Type
+	}
+
+	switch strategy {
+	default:
+		fallthrough
+	case v1alpha1.UpdateStrategyTypeInPlace:
+		return istio.Name
+	case v1alpha1.UpdateStrategyTypeRevisionBased:
+		return istio.Name + "-" + strings.ReplaceAll(istio.Spec.Version, ".", "-")
+	}
+}
+
+func computeIstioRevisionValues(istio v1alpha1.Istio, defaultProfiles []string, resourceDir string) (helm.HelmValues, error) {
 	// 1. start with values aggregated from default profiles and the profile in Istio.spec.profile
 	values, err := getValuesFromProfiles(getProfilesDir(resourceDir, istio), getProfiles(istio, defaultProfiles))
 	if err != nil {
@@ -189,7 +315,20 @@ func getProfilesDir(resourceDir string, istio v1alpha1.Istio) string {
 }
 
 func applyOverrides(istio *v1alpha1.Istio, values helm.HelmValues) (helm.HelmValues, error) {
-	if err := values.Set("global.istioNamespace", istio.Namespace); err != nil {
+	revisionName := getActiveRevisionName(istio)
+
+	// Set revision name to "" if revision name is "default". This is a temporary fix until we fix the injection
+	// mutatingwebhook manifest; the webhook performs injection on namespaces labeled with "istio-injection: enabled"
+	// only when revision is "", but not also for "default", which it should, since elsewhere in the same manifest,
+	// the "" revision is mapped to "default".
+	if revisionName == v1alpha1.DefaultRevision {
+		revisionName = ""
+	}
+	if err := values.Set("revision", revisionName); err != nil {
+		return nil, err
+	}
+
+	if err := values.Set("global.istioNamespace", istio.Spec.Namespace); err != nil {
 		return nil, err
 	}
 	return values, nil
@@ -198,6 +337,15 @@ func applyOverrides(istio *v1alpha1.Istio, values helm.HelmValues) (helm.HelmVal
 // SetupWithManager sets up the controller with the Manager.
 func (r *IstioReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		WithOptions(controller.Options{
+			LogConstructor: func(req *reconcile.Request) logr.Logger {
+				log := mgr.GetLogger().WithName("ctrlr").WithName("istio")
+				if req != nil {
+					log = log.WithValues("Istio", req.Name)
+				}
+				return log
+			},
+		}).
 		For(&v1alpha1.Istio{}).
 		Owns(&v1alpha1.IstioRevision{}).
 		Complete(r)
@@ -207,6 +355,7 @@ func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Isti
 	status := istio.Status.DeepCopy()
 	status.ObservedGeneration = istio.Generation
 
+	// set Reconciled and Ready conditions
 	if reconciliationErr != nil {
 		status.SetCondition(v1alpha1.IstioCondition{
 			Type:    v1alpha1.IstioConditionTypeReconciled,
@@ -243,6 +392,23 @@ func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Isti
 		} else {
 			return err
 		}
+	}
+
+	// count the ready, in-use, and total revisions
+	if revisions, err := r.getRevisions(ctx, istio); err == nil {
+		status.Revisions.Total = int32(len(revisions))
+		status.Revisions.Ready = 0
+		status.Revisions.InUse = 0
+		for _, rev := range revisions {
+			if rev.Status.GetCondition(v1alpha1.IstioRevisionConditionTypeReady).Status == metav1.ConditionTrue {
+				status.Revisions.Ready++
+			}
+			if rev.Status.GetCondition(v1alpha1.IstioRevisionConditionTypeInUse).Status == metav1.ConditionTrue {
+				status.Revisions.InUse++
+			}
+		}
+	} else {
+		return err
 	}
 
 	if reflect.DeepEqual(istio.Status, *status) {

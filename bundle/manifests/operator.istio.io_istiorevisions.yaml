@@ -16,7 +16,7 @@ spec:
     shortNames:
     - istiorev
     singular: istiorevision
-  scope: Namespaced
+  scope: Cluster
   versions:
   - additionalPrinterColumns:
     - description: Whether the control plane installation is ready to handle requests.
@@ -26,6 +26,10 @@ spec:
     - description: The current state of this object.
       jsonPath: .status.state
       name: Status
+      type: string
+    - description: Whether the revision is being used by workloads.
+      jsonPath: .status.conditions[?(@.type=="InUse")].status
+      name: In use
       type: string
     - description: The version of the control plane installation.
       jsonPath: .spec.version
@@ -38,7 +42,10 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: IstioRevision represents an IstioRevision Service Mesh deployment
+        description: IstioRevision represents a single revision of an Istio Service
+          Mesh deployment. Users shouldn't create IstioRevision objects directly.
+          Instead, they should create an Istio object and allow the Istio operator
+          to create the underlying IstioRevision object(s).
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -55,19 +62,25 @@ spec:
           spec:
             description: IstioRevisionSpec defines the desired state of IstioRevision
             properties:
+              namespace:
+                description: Namespace to which the Istio components should be installed.
+                type: string
               values:
-                description: Values defines the values to be passed to the Helm chart
-                  when installing IstioRevision.
+                description: Defines the values to be passed to the Helm charts when
+                  installing Istio.
                 x-kubernetes-preserve-unknown-fields: true
               version:
-                description: 'Version defines the version of IstioRevision to install.
-                  Must be one of: v1.20.0, v1.19.4, latest.'
+                description: 'Defines the version of Istio to install. Must be one
+                  of: v1.20.1, v1.20.0, v1.19.5, latest, gwAPIControllerMode.'
                 enum:
+                - v1.20.1
                 - v1.20.0
-                - v1.19.4
+                - v1.19.5
                 - latest
+                - gwAPIControllerMode
                 type: string
             required:
+            - namespace
             - version
             type: object
           status:

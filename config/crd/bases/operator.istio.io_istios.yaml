@@ -14,16 +14,24 @@ spec:
     listKind: IstioList
     plural: istios
     singular: istio
-  scope: Namespaced
+  scope: Cluster
   versions:
     - additionalPrinterColumns:
-        - description: Whether the control plane installation is ready to handle requests.
-          jsonPath: .status.conditions[?(@.type=="Ready")].status
+        - description: Total number of IstioRevision objects currently associated with this object.
+          jsonPath: .status.revisions.total
+          name: Revisions
+          type: string
+        - description: Number of revisions that are ready.
+          jsonPath: .status.revisions.ready
           name: Ready
           type: string
-        - description: The current state of this object.
+        - description: Number of revisions that are currently being used by workloads.
+          jsonPath: .status.revisions.inUse
+          name: In use
+          type: string
+        - description: The current state of the active revision.
           jsonPath: .status.state
-          name: Status
+          name: Active Revision
           type: string
         - description: The version of the control plane installation.
           jsonPath: .spec.version
@@ -36,7 +44,7 @@ spec:
       name: v1alpha1
       schema:
         openAPIV3Schema:
-          description: Istio represents an Istio Service Mesh deployment
+          description: Istio represents an Istio Service Mesh deployment consisting of one or more control plane instances (represented by one or more IstioRevision objects). To deploy an Istio Service Mesh, a user creates an Istio object with the desired Istio version and configuration. The Istio operator then creates an IstioRevision object, which in turn creates the underlying Deployment objects for istiod and other control plane components, similar to how a Deployment object in Kubernetes creates ReplicaSets that create the Pods.
           properties:
             apiVersion:
               description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
@@ -49,6 +57,9 @@ spec:
             spec:
               description: IstioSpec defines the desired state of Istio
               properties:
+                namespace:
+                  description: Namespace to which the Istio components should be installed.
+                  type: string
                 profile:
                   description: 'The built-in installation configuration profile to use. The ''default'' profile is always applied. On OpenShift, the ''openshift'' profile is also applied on top of ''default''. Must be one of: ambient, default, demo, empty, external, minimal, openshift, preview, remote.'
                   enum:
@@ -63,10 +74,28 @@ spec:
                     - remote
                   type: string
                 rawValues:
-                  description: RawValues defines the non-validated values to be passed to the Helm chart when installing Istio.
+                  description: Defines the non-validated values to be passed to the Helm charts when installing Istio.
                   x-kubernetes-preserve-unknown-fields: true
+                updateStrategy:
+                  description: Defines the update strategy to use when the version in the Istio CR is updated.
+                  properties:
+                    inactiveRevisionDeletionGracePeriodSeconds:
+                      description: Defines how many seconds the operator should wait before removing a non-active revision after all the workloads have stopped using it. You may want to set this value on the order of minutes. The minimum and the default value is 30.
+                      format: int64
+                      minimum: 30
+                      type: integer
+                    type:
+                      description: "Type of strategy to use. Can be \"InPlace\" or \"RevisionBased\". When the \"InPlace\" strategy is used, the existing Istio control plane is updated in-place. The workloads therefore don't need to be moved from one control plane instance to another. When the \"RevisionBased\" strategy is used, a new Istio control plane instance is created for every change to the Istio.spec.version field. The old control plane remains in place until all workloads have been moved to the new control plane instance. \n The \"InPlace\" strategy is the default.\tTODO: change default to \"RevisionBased\""
+                      enum:
+                        - InPlace
+                        - RevisionBased
+                      type: string
+                    updateWorkloads:
+                      description: Defines whether the workloads should be moved from one control plane instance to another automatically. If updateWorkloads is true, the operator moves the workloads from the old control plane instance to the new one after the new control plane is ready. If updateWorkloads is false, the user must move the workloads manually by updating the istio.io/rev labels on the namespace and/or the pods. Defaults to false.
+                      type: boolean
+                  type: object
                 values:
-                  description: Values defines the values to be passed to the Helm chart when installing Istio.
+                  description: Defines the values to be passed to the Helm charts when installing Istio.
                   properties:
                     base:
                       properties:
@@ -140,6 +169,8 @@ spec:
                             initContainerName:
                               type: string
                             labelPods:
+                              type: object
+                            repairPods:
                               type: object
                             tag:
                               type: string
@@ -400,6 +431,8 @@ spec:
                               type: string
                             labelPods:
                               type: object
+                            repairPods:
+                              type: object
                             tag:
                               type: string
                           type: object
@@ -576,13 +609,16 @@ spec:
                       x-kubernetes-preserve-unknown-fields: true
                   type: object
                 version:
-                  description: 'Version defines the version of Istio to install. Must be one of: v1.20.0, v1.19.4, latest.'
+                  description: 'Defines the version of Istio to install. Must be one of: v1.20.1, v1.20.0, v1.19.5, latest, gwAPIControllerMode.'
                   enum:
+                    - v1.20.1
                     - v1.20.0
-                    - v1.19.4
+                    - v1.19.5
                     - latest
+                    - gwAPIControllerMode
                   type: string
               required:
+                - namespace
                 - version
               type: object
             status:
@@ -615,6 +651,26 @@ spec:
                   description: ObservedGeneration is the most recent generation observed for this Istio object. It corresponds to the object's generation, which is updated on mutation by the API Server. The information in the status pertains to this particular generation of the object.
                   format: int64
                   type: integer
+                revisions:
+                  description: Reports information about the underlying IstioRevisions.
+                  properties:
+                    inUse:
+                      description: Number of IstioRevisions that are currently in use.
+                      format: int32
+                      type: integer
+                    ready:
+                      description: Number of IstioRevisions that are Ready.
+                      format: int32
+                      type: integer
+                    total:
+                      description: Total number of IstioRevisions currently associated with this Istio.
+                      format: int32
+                      type: integer
+                  required:
+                    - inUse
+                    - ready
+                    - total
+                  type: object
                 state:
                   description: Reports the current state of the object.
                   type: string

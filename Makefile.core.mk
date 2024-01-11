@@ -152,12 +152,11 @@ test.integration.kind:
 ##@ Build
 
 .PHONY: build
-build: ## Build manager binary.
-	CGO_ENABLED=0 go build -o bin/manager -ldflags '${LD_FLAGS}' main.go
+build: build-amd64 ## Build manager binary.
 
 .PHONY: run
 run: gen ## Run a controller from your host.
-	POD_NAMESPACE=${NAMESPACE} go run ./main.go --config-file=./hack/config.properties --resource-directory=./resources
+	POD_NAMESPACE=${NAMESPACE} go run ./cmd/main.go --config-file=./hack/config.properties --resource-directory=./resources
 
 # docker build -t ${IMAGE} --build-arg GIT_TAG=${GIT_TAG} --build-arg GIT_REVISION=${GIT_REVISION} --build-arg GIT_STATUS=${GIT_STATUS} .
 .PHONY: docker-build
@@ -175,6 +174,23 @@ docker-push-nightly: docker-build
 	docker tag ${IMAGE} $(HUB)/$(IMAGE_BASE):$(MINOR_VERSION)-latest
 	docker push $(HUB)/$(IMAGE_BASE):$(MINOR_VERSION)-latest
 
+# NIGHTLY defines if the nightly image should be pushed or not
+NIGHTLY ?= false
+
+# BUILDX_OUTPUT defines the buildx output
+# --load builds locally the container image
+# --push builds and pushes the container image to a registry
+BUILDX_OUTPUT ?= --push
+
+# BUILDX_ADDITIONAL_TAGS are the additional --tag flags passed to the docker buildx build command.
+BUILDX_ADDITIONAL_TAGS =
+ifeq ($(NIGHTLY),true)
+BUILDX_ADDITIONAL_TAGS += --tag $(HUB)/$(IMAGE_BASE):$(MINOR_VERSION)-nightly-$(TODAY)
+endif
+
+# BUILDX_BUILD_ARGS are the additional --build-arg flags passed to the docker buildx build command.
+BUILDX_BUILD_ARGS = --build-arg TARGETOS=$(TARGET_OS)
+
 # PLATFORMS defines the target platforms for  the manager image be build to provide support to multiple
 # architectures. (i.e. make docker-buildx IMAGE=myregistry/mypoperator:0.0.1). To use this option you need to:
 # - able to use docker buildx . More info: https://docs.docker.com/build/buildx/
@@ -182,14 +198,30 @@ docker-push-nightly: docker-build
 # - be able to push the image for your registry (i.e. if you do not inform a valid value via IMAGE=<myregistry/image:<tag>> then the export will fail)
 # To properly provided solutions that supports more than one platform you should use this option.
 PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
+PLATFORM_ARCHITECTURES = $(shell echo ${PLATFORMS} | sed -e 's/,/\ /g' -e 's/linux\///g')
+
+ifndef BUILDX
+define BUILDX
+.PHONY: build-$(1)
+build-$(1): ## Build manager binary for specific architecture.
+	GOARCH=$(1) LDFLAGS="$(LD_FLAGS)" common/scripts/gobuild.sh $(REPO_ROOT)/out/$(TARGET_OS)_$(1)/manager cmd/main.go
+
+.PHONY: build-all
+build-all: build-$(1)
+endef
+
+$(foreach arch,$(PLATFORM_ARCHITECTURES),$(eval $(call BUILDX,$(arch))))
+undefine BUILDX
+endif
+
 .PHONY: docker-buildx
-docker-buildx: test ## Build and push docker image for the manager for cross-platform support
+docker-buildx: test build-all ## Build and push (by default) docker image for the manager for cross-platform support
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
-	- docker buildx create --name project-v3-builder
-	docker buildx use project-v3-builder
-	- docker buildx build --push --platform=$(PLATFORMS) --tag ${IMAGE} -f Dockerfile.cross .
-	- docker buildx rm project-v3-builder
+	- docker buildx create --name project-v4-builder
+	docker buildx use project-v4-builder
+	- docker buildx build $(BUILDX_OUTPUT) --platform=$(PLATFORMS) --tag ${IMAGE} $(BUILDX_ADDITIONAL_TAGS) $(BUILDX_BUILD_ARGS) -f Dockerfile.cross .
+	- docker buildx rm project-v4-builder
 	rm Dockerfile.cross
 
 ##@ Deployment
@@ -317,12 +349,11 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 OPM ?= $(LOCALBIN)/opm
 
 ## Tool Versions
-  OPERATOR_SDK_VERSION ?= v1.32.0
+  OPERATOR_SDK_VERSION ?= v1.33.0
   KUSTOMIZE_VERSION ?= v5.3.0
   CONTROLLER_TOOLS_VERSION ?= v0.13.0
-  OPM_VERSION ?= v1.33.0
+  OPM_VERSION ?= v1.34.0
 
-KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize $(KUSTOMIZE)
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
 $(KUSTOMIZE): $(LOCALBIN)
@@ -330,8 +361,7 @@ $(KUSTOMIZE): $(LOCALBIN)
 		echo "$(LOCALBIN)/kustomize version is not expected $(KUSTOMIZE_VERSION). Removing it before installing." > /dev/stderr; \
 		rm -rf $(LOCALBIN)/kustomize; \
 	fi
-	@test -s $(LOCALBIN)/kustomize || { curl -SsLf $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN) > /dev/stderr; }
-
+	@test -s $(LOCALBIN)/kustomize || GOBIN=$(LOCALBIN) GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v5@$(KUSTOMIZE_VERSION) > /dev/stderr
 .PHONY: operator-sdk $(OPERATOR_SDK)
 operator-sdk: $(OPERATOR_SDK)
 operator-sdk: OS=$(shell go env GOOS)
@@ -451,7 +481,7 @@ lint-watches: ## checks if the operator watches all resource kinds present in He
 	@hack/lint-watches.sh
 
 .PHONY: lint
-lint: lint-scripts lint-go lint-yaml lint-helm lint-bundle lint-watches ## runs all linters
+lint: lint-scripts lint-copyright-banner lint-go lint-yaml lint-helm lint-bundle lint-watches ## runs all linters
 
 .PHONY: format
 format: format-go tidy-go ## Auto formats all code. This should be run before sending a PR.
