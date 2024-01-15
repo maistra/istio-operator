@@ -212,10 +212,10 @@ function patchGalley() {
   # IOR
   # shellcheck disable=SC2016
   sed_wrap -i -e '/env:/ a\
-{{- $iorEnabled := "true" }}\
+{{- $iorEnabled := "false" }}\
 {{- $gateway := index .Values "gateways" "istio-ingressgateway" }}\
-{{- if or (not .Values.gateways.enabled) (not $gateway) (not $gateway.ior_enabled) }}\
-{{- $iorEnabled = "false" }}\
+{{- if and (.Values.gateways.enabled) ($gateway) ($gateway.ior_enabled) }}\
+{{- $iorEnabled = "true" }}\
 {{- end }}\
           - name: ENABLE_IOR\
             value: "{{ $iorEnabled }}"\
