@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.13.0
+    controller-gen.kubebuilder.io/version: v0.14.0
   creationTimestamp: null
   name: istios.operator.istio.io
 spec:
@@ -45,23 +45,29 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Istio represents an Istio Service Mesh deployment consisting
-          of one or more control plane instances (represented by one or more IstioRevision
-          objects). To deploy an Istio Service Mesh, a user creates an Istio object
-          with the desired Istio version and configuration. The Istio operator then
-          creates an IstioRevision object, which in turn creates the underlying Deployment
+        description: |-
+          Istio represents an Istio Service Mesh deployment consisting of one or more
+          control plane instances (represented by one or more IstioRevision objects).
+          To deploy an Istio Service Mesh, a user creates an Istio object with the
+          desired Istio version and configuration. The Istio operator then creates
+          an IstioRevision object, which in turn creates the underlying Deployment
           objects for istiod and other control plane components, similar to how a
           Deployment object in Kubernetes creates ReplicaSets that create the Pods.
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -72,10 +78,10 @@ spec:
                 description: Namespace to which the Istio components should be installed.
                 type: string
               profile:
-                description: 'The built-in installation configuration profile to use.
-                  The ''default'' profile is always applied. On OpenShift, the ''openshift''
-                  profile is also applied on top of ''default''. Must be one of: ambient,
-                  default, demo, empty, external, minimal, openshift, preview, remote.'
+                description: |-
+                  The built-in installation configuration profile to use.
+                  The 'default' profile is always applied. On OpenShift, the 'openshift' profile is also applied on top of 'default'.
+                  Must be one of: ambient, default, demo, empty, external, minimal, openshift, preview, remote.
                 enum:
                 - ambient
                 - default
@@ -96,35 +102,36 @@ spec:
                   the Istio CR is updated.
                 properties:
                   inactiveRevisionDeletionGracePeriodSeconds:
-                    description: Defines how many seconds the operator should wait
-                      before removing a non-active revision after all the workloads
-                      have stopped using it. You may want to set this value on the
-                      order of minutes. The minimum and the default value is 30.
+                    description: |-
+                      Defines how many seconds the operator should wait before removing a non-active revision after all
+                      the workloads have stopped using it. You may want to set this value on the order of minutes.
+                      The minimum and the default value is 30.
                     format: int64
                     minimum: 30
                     type: integer
                   type:
                     description: "Type of strategy to use. Can be \"InPlace\" or \"RevisionBased\".
-                      When the \"InPlace\" strategy is used, the existing Istio control
-                      plane is updated in-place. The workloads therefore don't need
+                      When the \"InPlace\" strategy\nis used, the existing Istio control
+                      plane is updated in-place. The workloads therefore\ndon't need
                       to be moved from one control plane instance to another. When
-                      the \"RevisionBased\" strategy is used, a new Istio control
-                      plane instance is created for every change to the Istio.spec.version
+                      the \"RevisionBased\"\nstrategy is used, a new Istio control
+                      plane instance is created for every change to the\nIstio.spec.version
                       field. The old control plane remains in place until all workloads
-                      have been moved to the new control plane instance. \n The \"InPlace\"
-                      strategy is the default.\tTODO: change default to \"RevisionBased\""
+                      have\nbeen moved to the new control plane instance.\n\n\nThe
+                      \"InPlace\" strategy is the default.\tTODO: change default to
+                      \"RevisionBased\""
                     enum:
                     - InPlace
                     - RevisionBased
                     type: string
                   updateWorkloads:
-                    description: Defines whether the workloads should be moved from
-                      one control plane instance to another automatically. If updateWorkloads
-                      is true, the operator moves the workloads from the old control
-                      plane instance to the new one after the new control plane is
-                      ready. If updateWorkloads is false, the user must move the workloads
-                      manually by updating the istio.io/rev labels on the namespace
-                      and/or the pods. Defaults to false.
+                    description: |-
+                      Defines whether the workloads should be moved from one control plane instance to another
+                      automatically. If updateWorkloads is true, the operator moves the workloads from the old
+                      control plane instance to the new one after the new control plane is ready.
+                      If updateWorkloads is false, the user must move the workloads manually by updating the
+                      istio.io/rev labels on the namespace and/or the pods.
+                      Defaults to false.
                     type: boolean
                 type: object
               values:
@@ -643,8 +650,9 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
               version:
-                description: 'Defines the version of Istio to install. Must be one
-                  of: v1.20.1, v1.20.0, v1.19.5, latest, gwAPIControllerMode.'
+                description: |-
+                  Defines the version of Istio to install.
+                  Must be one of: v1.20.1, v1.20.0, v1.19.5, latest, gwAPIControllerMode.
                 enum:
                 - v1.20.1
                 - v1.20.0
@@ -689,10 +697,11 @@ spec:
                   type: object
                 type: array
               observedGeneration:
-                description: ObservedGeneration is the most recent generation observed
-                  for this Istio object. It corresponds to the object's generation,
-                  which is updated on mutation by the API Server. The information
-                  in the status pertains to this particular generation of the object.
+                description: |-
+                  ObservedGeneration is the most recent generation observed for this
+                  Istio object. It corresponds to the object's generation, which is
+                  updated on mutation by the API Server. The information in the status
+                  pertains to this particular generation of the object.
                 format: int64
                 type: integer
               revisions:

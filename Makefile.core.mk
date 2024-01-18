@@ -351,8 +351,8 @@ OPM ?= $(LOCALBIN)/opm
 ## Tool Versions
   OPERATOR_SDK_VERSION ?= v1.33.0
   KUSTOMIZE_VERSION ?= v5.3.0
-  CONTROLLER_TOOLS_VERSION ?= v0.13.0
-  OPM_VERSION ?= v1.34.0
+  CONTROLLER_TOOLS_VERSION ?= v0.14.0
+  OPM_VERSION ?= v1.36.0
 
 .PHONY: kustomize $(KUSTOMIZE)
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
