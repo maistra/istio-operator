@@ -74,6 +74,31 @@ func (v *ControlPlaneMutator) Handle(ctx context.Context, req admission.Request)
 		}
 	}
 
+	newOpenShiftRoute := mutator.NewOpenShiftRoute()
+	if newOpenShiftRoute == nil {
+		oldVersion, err := versions.ParseVersion(mutator.OldVersion())
+
+		if err == nil {
+			oldOpenShiftRoute := mutator.OldOpenShiftRoute()
+
+			if oldOpenShiftRoute == nil {
+				switch req.AdmissionRequest.Operation {
+				case admissionv1beta1.Create:
+					mutator.SetOpenShiftRoute(false)
+				case admissionv1beta1.Update:
+					if oldVersion.LessThan(versions.V2_5) {
+						mutator.SetOpenShiftRoute(true)
+					} else {
+						mutator.SetOpenShiftRoute(false)
+					}
+				}
+			} else {
+				mutator.SetOpenShiftRoute(*oldOpenShiftRoute)
+			}
+
+		}
+	}
+
 	if len(mutator.GetProfiles()) == 0 {
 		log.Info("Setting .spec.profiles to default value", "profiles", []string{v1.DefaultTemplate})
 		mutator.SetProfiles([]string{v1.DefaultTemplate})
@@ -148,6 +173,9 @@ type smcpmutator interface {
 	GetProfiles() []string
 	SetProfiles(profiles []string)
 	GetPatches() []jsonpatch.JsonPatchOperation
+	NewOpenShiftRoute() *bool
+	OldOpenShiftRoute() *bool
+	SetOpenShiftRoute(bool)
 }
 
 type smcppatch struct {
@@ -207,6 +235,16 @@ func (m *smcpv1mutator) GetProfiles() []string {
 	return m.smcp.Spec.Profiles
 }
 
+func (m *smcpv1mutator) OldOpenShiftRoute() *bool {
+	return nil
+}
+
+func (m *smcpv1mutator) NewOpenShiftRoute() *bool {
+	return nil
+}
+
+func (m *smcpv1mutator) SetOpenShiftRoute(value bool) {}
+
 type smcpv2mutator struct {
 	*smcppatch
 	smcp    *v2.ServiceMeshControlPlane
@@ -236,4 +274,16 @@ func (m *smcpv2mutator) OldVersion() string {
 
 func (m *smcpv2mutator) GetProfiles() []string {
 	return m.smcp.Spec.Profiles
+}
+
+func (m *smcpv2mutator) OldOpenShiftRoute() *bool {
+	return m.oldsmcp.Spec.Gateways.OpenShiftRoute.Enabled
+}
+
+func (m *smcpv2mutator) NewOpenShiftRoute() *bool {
+	return m.smcp.Spec.Gateways.OpenShiftRoute.Enabled
+}
+
+func (m *smcpv2mutator) SetOpenShiftRoute(value bool) {
+	m.patches = append(m.patches, jsonpatch.NewPatch("add", "/spec/gateways/openshiftRoute", value))
 }
