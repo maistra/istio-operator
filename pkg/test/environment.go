@@ -34,7 +34,7 @@ func SetupEnv() (*envtest.Environment, client.Client, *rest.Config) {
 	logf.SetLogger(zap.New(zap.UseDevMode(true)))
 
 	testEnv := &envtest.Environment{
-		CRDDirectoryPaths:     []string{path.Join(common.RepositoryRoot, "config", "crd", "bases")},
+		CRDDirectoryPaths:     []string{path.Join(common.RepositoryRoot, "chart", "crds")},
 		ErrorIfCRDPathMissing: true,
 	}
 
