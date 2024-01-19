@@ -40,7 +40,7 @@ function updateVersionsInCSVDescription() {
     sed -i -E 's/(latest \(.{8}).*\)/\1\)/g' "$tmpFile"
 
     # 2. replace the version list in the CSV description
-    csv="config/manifests/bases/sailoperator.clusterserviceversion.yaml"
+    csvDescription="chart/values.yaml"
     awk '
         /This version of the operator supports the following Istio versions:/ {
             in_version_list = 1;
@@ -57,7 +57,7 @@ function updateVersionsInCSVDescription() {
         !in_version_list {
             print;
         }
-    ' "$csv" > "$csv.tmp" && mv "$csv.tmp" "$csv"
+    ' "$csvDescription" > "$csvDescription.tmp" && mv "$csvDescription.tmp" "$csvDescription"
 
     rm "$tmpFile"
 }

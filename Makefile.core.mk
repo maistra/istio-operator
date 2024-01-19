@@ -231,35 +231,31 @@ ifndef ignore-not-found
 endif
 
 .PHONY: install
-install: gen-manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+install: gen-manifests ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	kubectl create ns ${NAMESPACE} || echo "namespace ${NAMESPACE} already exists"
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+	kubectl apply -f chart/crds
 
 .PHONY: uninstall
-uninstall: kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+uninstall: ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	kubectl delete --ignore-not-found=$(ignore-not-found) -f chart/crds
 
 .PHONY: deploy
-deploy: kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+deploy: helm ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	$(info NAMESPACE: $(NAMESPACE))
 	$(MAKE) -s deploy-yaml | kubectl apply -f -
 
 .PHONY: deploy-yaml
-deploy-yaml: kustomize ## Outputs YAML manifests needed to deploy the controller
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE}
-	cd config/default && $(KUSTOMIZE) edit set namespace ${NAMESPACE}
-	$(KUSTOMIZE) build config/default
+deploy-yaml: helm ## Outputs YAML manifests needed to deploy the controller
+	$(HELM) template chart chart --namespace ${NAMESPACE} --include-crds --set image="${IMAGE}"
 
 .PHONY: deploy-openshift # TODO: remove this target and use deploy-olm instead (when we fix the internal registry TLS issues when using operator-sdk run bundle)
-deploy-openshift: kustomize ## Deploy controller to OpenShift via YAML manifests
+deploy-openshift: helm ## Deploy controller to OpenShift via YAML manifests
 	$(info NAMESPACE: $(NAMESPACE))
 	$(MAKE) -s deploy-yaml-openshift | kubectl apply -f -
 
 .PHONY: deploy-yaml-openshift
-deploy-yaml-openshift: kustomize ## Outputs YAML manifests needed to deploy the controller in OpenShift
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE}
-	cd config/default && $(KUSTOMIZE) edit set namespace ${NAMESPACE}
-	$(KUSTOMIZE) build config/openshift
+deploy-yaml-openshift: helm ## Outputs YAML manifests needed to deploy the controller in OpenShift
+	$(HELM) template chart chart --namespace ${NAMESPACE} --include-crds --set image="${IMAGE}" --set platform="openshift"
 
 .PHONY: deploy-olm
 deploy-olm: bundle bundle-build bundle-push ## Builds and pushes the operator OLM bundle and then deploys the operator using OLM
@@ -282,18 +278,18 @@ deploy-example: deploy-example-openshift
 .PHONY: deploy-example-openshift
 deploy-example-openshift: ## Deploy an example Istio resource on OpenShift
 	kubectl create ns istio-system || echo "namespace istio-system already exists"
-	kubectl apply -n istio-system -f config/samples/istio-sample-openshift.yaml
+	kubectl apply -n istio-system -f chart/samples/istio-sample-openshift.yaml
 
 .PHONY: deploy-example-kubernetes
 deploy-example-kubernetes: ## Deploy an example Istio resource on Kubernetes
 	kubectl create ns istio-system || echo "namespace istio-system already exists"
-	kubectl apply -n istio-system -f config/samples/istio-sample-kubernetes.yaml
+	kubectl apply -n istio-system -f chart/samples/istio-sample-kubernetes.yaml
 
 ##@ Generated Code & Resources
 
 .PHONY: gen-manifests
-gen-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+gen-manifests: controller-gen ## Generate WebhookConfiguration and CustomResourceDefinition objects.
+	$(CONTROLLER_GEN) crd webhook paths="./..." output:crd:artifacts:config=chart/crds
 
 .PHONY: gen-code
 gen-code: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -343,25 +339,25 @@ $(LOCALBIN):
 
 ## Tool Binaries
 OPERATOR_SDK ?= $(LOCALBIN)/operator-sdk
-KUSTOMIZE ?= $(LOCALBIN)/kustomize
+HELM ?= $(LOCALBIN)/helm
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 OPM ?= $(LOCALBIN)/opm
 
 ## Tool Versions
   OPERATOR_SDK_VERSION ?= v1.33.0
-  KUSTOMIZE_VERSION ?= v5.3.0
+  HELM_VERSION ?= v3.13.3
   CONTROLLER_TOOLS_VERSION ?= v0.13.0
   OPM_VERSION ?= v1.34.0
 
-.PHONY: kustomize $(KUSTOMIZE)
-kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
-$(KUSTOMIZE): $(LOCALBIN)
-	@if test -x $(LOCALBIN)/kustomize && ! $(LOCALBIN)/kustomize version | grep -q $(KUSTOMIZE_VERSION) > /dev/stderr; then \
-		echo "$(LOCALBIN)/kustomize version is not expected $(KUSTOMIZE_VERSION). Removing it before installing." > /dev/stderr; \
-		rm -rf $(LOCALBIN)/kustomize; \
+.PHONY: helm $(HELM)
+helm: $(HELM) ## Download helm locally if necessary. If wrong version is installed, it will be removed before downloading.
+$(HELM): $(LOCALBIN)
+	@if test -x $(LOCALBIN)/helm && ! $(LOCALBIN)/helm version | grep -q $(shell v='$(HELM_VERSION)'; echo "$${v%.*}") > /dev/stderr; then \
+		echo "$(LOCALBIN)/helm version is not expected $(HELM_VERSION). Removing it before installing." > /dev/stderr; \
+		rm -rf $(LOCALBIN)/helm; \
 	fi
-	@test -s $(LOCALBIN)/kustomize || GOBIN=$(LOCALBIN) GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v5@$(KUSTOMIZE_VERSION) > /dev/stderr
+	@test -s $(LOCALBIN)/helm || GOBIN=$(LOCALBIN) GO111MODULE=on go install helm.sh/helm/v3/cmd/helm@$(HELM_VERSION) > /dev/stderr
 .PHONY: operator-sdk $(OPERATOR_SDK)
 operator-sdk: $(OPERATOR_SDK)
 operator-sdk: OS=$(shell go env GOOS)
@@ -387,11 +383,8 @@ $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 .PHONY: bundle
-bundle: gen kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
-	$(OPERATOR_SDK) generate kustomize manifests -q
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMAGE)
-	sed -i "s|^\(    containerImage:\).*$$|\1 ${IMAGE}|g" config/manifests/bases/${OPERATOR_NAME}.clusterserviceversion.yaml
-	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
+bundle: gen helm operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
+	$(HELM) template chart chart --include-crds --set platform=openshift --set image="${IMAGE}" --set bundleGeneration=true | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
 
 	# check if the only change in the CSV is the createdAt timestamp; if so, revert the change
 	@csvPath="bundle/manifests/${OPERATOR_NAME}.clusterserviceversion.yaml"; \
@@ -486,6 +479,6 @@ lint: lint-scripts lint-copyright-banner lint-go lint-yaml lint-helm lint-bundle
 .PHONY: format
 format: format-go tidy-go ## Auto formats all code. This should be run before sending a PR.
 
-.SILENT: kustomize $(KUSTOMIZE) $(LOCALBIN) deploy-yaml
+.SILENT: helm $(HELM) $(LOCALBIN) deploy-yaml
 
 include common/Makefile.common.mk

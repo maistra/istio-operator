@@ -1,6 +1,0 @@
-## Append samples you want in your CSV to this file as resources ##
-resources:
-- istio-sample-openshift.yaml
-#+kubebuilder:scaffold:manifestskustomizesamples
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
