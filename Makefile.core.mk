@@ -255,7 +255,7 @@ deploy-openshift: helm ## Deploy controller to OpenShift via YAML manifests
 
 .PHONY: deploy-yaml-openshift
 deploy-yaml-openshift: helm ## Outputs YAML manifests needed to deploy the controller in OpenShift
-	$(HELM) template chart chart --namespace ${NAMESPACE} --include-crds --set image="${IMAGE}" --set platform="OpenShift"
+	$(HELM) template chart chart --namespace ${NAMESPACE} --include-crds --set image="${IMAGE}" --set platform="openshift"
 
 .PHONY: deploy-olm
 deploy-olm: bundle bundle-build bundle-push ## Builds and pushes the operator OLM bundle and then deploys the operator using OLM

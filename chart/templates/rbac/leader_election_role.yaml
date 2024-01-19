@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/component: rbac
     app.kubernetes.io/managed-by: helm
   name: leader-election-role
+  namespace: {{ .Release.Namespace }}
 rules:
 - apiGroups:
   - ""
