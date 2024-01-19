@@ -129,7 +129,8 @@ build_and_push_image() {
   echo "Building and pushing image"
   echo "Image base: ${IMAGE_BASE}"
   echo " Tag: ${TAG}"
-  IMAGE=${HUB}/${IMAGE_BASE}:${TAG} make docker-build docker-push
+  # running docker build inside another container layer causes issues with bind mounts
+  BUILD_WITH_CONTAINER=0 IMAGE=${HUB}/${IMAGE_BASE}:${TAG} make docker-build docker-push
 }
 
 deploy_operator() {
@@ -144,7 +145,8 @@ deploy_operator() {
 
     TARGET="deploy-openshift"
   fi
-  IMAGE=${HUB}/${IMAGE_BASE}:${TAG} make -s --no-print-directory ${TARGET}
+  # running docker build inside another container layer causes issues with bind mounts
+  BUILD_WITH_CONTAINER=0 IMAGE=${HUB}/${IMAGE_BASE}:${TAG} make -s --no-print-directory ${TARGET}
 }
 
 check_ready() {
