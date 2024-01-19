@@ -40,7 +40,7 @@ go mod tidy
 # Update operator-sdk
 OPERATOR_SDK_LATEST_VERSION=$(getLatestVersion operator-framework/operator-sdk)
 sed -i "s|OPERATOR_SDK_VERSION ?= .*|OPERATOR_SDK_VERSION ?= ${OPERATOR_SDK_LATEST_VERSION}|" "${ROOTDIR}/Makefile.core.mk"
-find "${ROOTDIR}/config/scorecard" -type f -exec sed -i "s|quay.io/operator-framework/scorecard-test:.*|quay.io/operator-framework/scorecard-test:${OPERATOR_SDK_LATEST_VERSION}|" {} +
+find "${ROOTDIR}/chart/templates/olm/scorecard.yaml" -type f -exec sed -i "s|quay.io/operator-framework/scorecard-test:.*|quay.io/operator-framework/scorecard-test:${OPERATOR_SDK_LATEST_VERSION}|" {} +
 
 # Update helm
 HELM_LATEST_VERSION=$(getLatestVersion helm/helm | cut -d/ -f2)
@@ -56,7 +56,7 @@ sed -i "s|OPM_VERSION ?= .*|OPM_VERSION ?= ${OPM_LATEST_VERSION}|" "${ROOTDIR}/M
 
 # Update kube-rbac-proxy
 RBAC_PROXY_LATEST_VERSION=$(getLatestVersion brancz/kube-rbac-proxy | cut -d/ -f1)
-sed -i "s|gcr.io/kubebuilder/kube-rbac-proxy:.*|gcr.io/kubebuilder/kube-rbac-proxy:${RBAC_PROXY_LATEST_VERSION}|" "${ROOTDIR}/config/default/manager_auth_proxy_patch.yaml"
+sed -i "s|gcr.io/kubebuilder/kube-rbac-proxy:.*|gcr.io/kubebuilder/kube-rbac-proxy:${RBAC_PROXY_LATEST_VERSION}|" "${ROOTDIR}/chart/templates/deployment.yaml"
 
 # Regenerate files
 make update-istio gen
