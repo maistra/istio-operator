@@ -18,8 +18,8 @@ set -euo pipefail
 
 SLEEP_TIME=10
 
-COMMIT=$(yq '.versions | select(.name == "latest") | "git ls-remote --heads " + .repo + ".git " + .branch + " | cut -f 1"' versions.yaml | sh)
-CURRENT=$(yq '.versions | select(.name == "latest") | .commit' versions.yaml)
+COMMIT=$(yq '.versions[] | select(.name == "latest") | "git ls-remote --heads " + .repo + ".git " + .branch + " | cut -f 1"' versions.yaml | sh)
+CURRENT=$(yq '.versions[] | select(.name == "latest") | .commit' versions.yaml)
 
 if [ "${COMMIT}" == "${CURRENT}" ]; then
   echo "versions.yaml is already up-to-date with latest commit ${COMMIT}."
@@ -39,9 +39,9 @@ echo
 FULL_VERSION=$(curl -sSfL "${URL}")
 echo Full version: "${FULL_VERSION}"
 
+yq -i '(.versions[] | select(.name == "latest") | .commit) = "'"${COMMIT}"'"' versions.yaml
 yq -i '
-    .versions | select(.name == "latest") | .commit="'"${COMMIT}"'" |
-    .versions | select(.name == "latest") | .charts=[
+    (.versions[] | select(.name == "latest") | .charts) = [
         "https://storage.googleapis.com/istio-build/dev/'"${FULL_VERSION}"'/helm/base-'"${FULL_VERSION}"'.tgz",
         "https://storage.googleapis.com/istio-build/dev/'"${FULL_VERSION}"'/helm/cni-'"${FULL_VERSION}"'.tgz",
         "https://storage.googleapis.com/istio-build/dev/'"${FULL_VERSION}"'/helm/gateway-'"${FULL_VERSION}"'.tgz",
