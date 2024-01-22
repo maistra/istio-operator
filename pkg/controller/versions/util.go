@@ -77,6 +77,7 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, s
 	}
 
 	if isClusterScoped {
+		// TODO(jewertow): allow to create more than 1 control plane if one of them is a gateway-controller; do not allow to create more than 1 gateway-controllers
 		// allow SMCP create/update only when no SMCP exists or when a single SMCP exists and we're updating it
 		if len(smcps.Items) > 1 || len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
 			return append(allErrors,
