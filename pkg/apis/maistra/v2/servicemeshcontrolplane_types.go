@@ -195,6 +195,30 @@ type Enablement struct {
 	Enabled *bool `json:"enabled,omitempty"`
 }
 
+func (s ControlPlaneSpec) IsClusterScoped() bool {
+	return s.Mode == ClusterWideMode
+}
+
+func (s ControlPlaneSpec) IsGatewayController() (bool, error) {
+	if s.TechPreview != nil {
+		rawGatewayAPI, found, err := s.TechPreview.GetMap("gatewayAPI")
+		if err != nil {
+			return false, err
+		} else if !found {
+			return false, nil
+		}
+
+		isControllerMode, found, err := v1.NewHelmValues(rawGatewayAPI).GetBool("controllerMode")
+		if err != nil {
+			return false, err
+		} else if !found {
+			return false, nil
+		}
+		return isControllerMode, nil
+	}
+	return false, nil
+}
+
 func (s ControlPlaneSpec) IsKialiEnabled() bool {
 	return s.Addons != nil &&
 		s.Addons.Kiali != nil &&

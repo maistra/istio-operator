@@ -17,7 +17,7 @@ import (
 type validationTestCase struct {
 	name         string
 	smcp         *maistrav2.ControlPlaneSpec
-	existingObjs map[*metav1.ObjectMeta]runtime.Object
+	existingObjs []*maistrav2.ServiceMeshControlPlane
 	expectedErr  error
 }
 
@@ -32,37 +32,71 @@ func NewV2SMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec)
 	return smcp
 }
 
+var (
+	simpleMultiTenant = newSmcpSpec("mode: MultiTenant")
+	simpleClusterWide = newSmcpSpec("mode: ClusterWide")
+
+	clusterWideGatewayController = newSmcpSpec(`
+mode: ClusterWide
+techPreview:
+  gatewayAPI:
+    controllerMode: true`)
+)
+
 var testCases = []validationTestCase{
 	{
-		name:         "creating multi-tenant SMCP when no other SMCPs exists - no errors",
-		smcp:         newSmcpSpec(`mode: ClusterWide`),
-		existingObjs: map[*metav1.ObjectMeta]runtime.Object{},
+		name: "creating multi-tenant SMCP when no other SMCPs exists - no errors",
+		smcp: newSmcpSpec(`mode: ClusterWide`),
+	},
+	{
+		name: "creating cluster-wide gateway controller when multi-tenant SMCP exists - no errors",
+		smcp: clusterWideGatewayController,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
+			NewV2SMCPResource("basic", "istio-system-2", clusterWideGatewayController),
+		},
+	},
+	{
+		name: "creating cluster-wide gateway controller when simple cluster-wide SMCP exists - no errors",
+		smcp: clusterWideGatewayController,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
+			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
+		},
 	},
 	{
 		name: "creating multi-tenant SMCP when cluster-wide SMCP exists - expected error",
-		smcp: newSmcpSpec(`mode: MultiTenant`),
-		existingObjs: map[*metav1.ObjectMeta]runtime.Object{
-			&metav1.ObjectMeta{Name: "basic", Namespace: "istio-system-1"}: NewV2SMCPResource(
-				"basic", "istio-system-1", newSmcpSpec(`mode: ClusterWide`)),
+		smcp: simpleMultiTenant,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleClusterWide),
+			NewV2SMCPResource("basic", "istio-system-2", simpleMultiTenant),
 		},
 		expectedErr: fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"),
 	},
 	{
 		name: "creating cluster-wide SMCP when cluster-wide SMCP exists - expected error",
-		smcp: newSmcpSpec(`mode: ClusterWide`),
-		existingObjs: map[*metav1.ObjectMeta]runtime.Object{
-			&metav1.ObjectMeta{Name: "basic", Namespace: "istio-system-1"}: NewV2SMCPResource(
-				"basic", "istio-system-1", newSmcpSpec(`mode: ClusterWide`)),
+		smcp: simpleClusterWide,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleClusterWide),
+			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
 		},
 		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
 	},
 	{
 		name: "creating cluster-wide SMCP when multi-tenant SMCP exists - expected error",
-		smcp: newSmcpSpec(`
-mode: ClusterWide`),
-		existingObjs: map[*metav1.ObjectMeta]runtime.Object{
-			&metav1.ObjectMeta{Name: "basic", Namespace: "istio-system-1"}: NewV2SMCPResource("basic", "istio-system-1", newSmcpSpec(`
-mode: MultiTenant`)),
+		smcp: simpleClusterWide,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
+			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
+		},
+		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
+	},
+	{
+		name: "creating cluster-wide gateway controller SMCP when another already exists - expected error",
+		smcp: clusterWideGatewayController,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
+			NewV2SMCPResource("basic", "istio-system-2", clusterWideGatewayController),
 		},
 		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
 	},
@@ -71,12 +105,12 @@ mode: MultiTenant`)),
 func TestValidateV2(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			c := fakeClient{tc.existingObjs}
+			c := newFakeClient(tc.existingObjs)
 			v := versionStrategyV2_5{Ver: V2_5}
 			err := v.ValidateV2(context.TODO(), c, &metav1.ObjectMeta{Name: "basic", Namespace: "istio-sytem"}, tc.smcp)
 
 			if tc.expectedErr == nil {
-				assert.Nil(err, "got unexpected error: ", t)
+				assert.Nil(err, "unexpected error occurred", t)
 			} else {
 				assert.Equals(err.Error(), tc.expectedErr.Error(), "unexpected error occurred", t)
 			}
@@ -95,6 +129,14 @@ func newSmcpSpec(specYaml string) *maistrav2.ControlPlaneSpec {
 
 type fakeClient struct {
 	objects map[*metav1.ObjectMeta]runtime.Object
+}
+
+func newFakeClient(smcps []*maistrav2.ServiceMeshControlPlane) *fakeClient {
+	objects := map[*metav1.ObjectMeta]runtime.Object{}
+	for _, smcp := range smcps {
+		objects[&metav1.ObjectMeta{Name: smcp.Name, Namespace: smcp.Namespace}] = smcp
+	}
+	return &fakeClient{objects}
 }
 
 func (f fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
