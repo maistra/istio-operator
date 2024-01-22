@@ -1,6 +1,8 @@
 package v2
 
 import (
+	"strconv"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
@@ -200,6 +202,25 @@ func (s ControlPlaneSpec) IsClusterScoped() bool {
 }
 
 func (s ControlPlaneSpec) IsGatewayController() (bool, error) {
+	if s.Runtime != nil && s.Runtime.Components != nil {
+		pilot, found := s.Runtime.Components[ControlPlaneComponentNamePilot]
+		if !found {
+			goto CheckTechPreview
+		}
+		if pilot.Container != nil && pilot.Container.Env != nil {
+			controllerModeEnabledStr, found := pilot.Container.Env["PILOT_ENABLE_GATEWAY_CONTROLLER_MODE"]
+			if !found {
+				goto CheckTechPreview
+			}
+			controllerModeEnabled, err := strconv.ParseBool(controllerModeEnabledStr)
+			if err != nil {
+				return false, err
+			}
+			return controllerModeEnabled, nil
+		}
+	}
+
+CheckTechPreview:
 	if s.TechPreview != nil {
 		rawGatewayAPI, found, err := s.TechPreview.GetMap("gatewayAPI")
 		if err != nil {
