@@ -65,6 +65,14 @@ var testCases = []validationTestCase{
 		},
 	},
 	{
+		name: "creating simple cluster-wide SMCP when cluster-wide gateway controller exists - no errors",
+		smcp: simpleClusterWide,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
+			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
+		},
+	},
+	{
 		name: "creating multi-tenant SMCP when cluster-wide SMCP exists - expected error",
 		smcp: simpleMultiTenant,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{

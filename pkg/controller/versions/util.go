@@ -79,9 +79,9 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, s
 
 	if spec.IsClusterScoped() {
 		// do not allow creating more than one cluster-wide gateway controller
-		if len(smcps.Items) > 1 && isGatewayController && checkIfGatewayControllerAlreadyExists(smcps.Items) ||
+		if len(smcps.Items) > 1 && countGatewayControllers(smcps.Items) > 1 ||
 			// do not allow creating more than one cluster-wide SMCPs
-			len(smcps.Items) > 1 && !isGatewayController && !checkIfGatewayControllerAlreadyExists(smcps.Items) ||
+			len(smcps.Items) > 1 && !isGatewayController && countGatewayControllers(smcps.Items) == 0 ||
 			// allow create/update SMCP when a single instance exists and we're updating it
 			len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
 			return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
@@ -104,7 +104,7 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, s
 	return allErrors
 }
 
-func checkIfGatewayControllerAlreadyExists(existingSmcps []v2.ServiceMeshControlPlane) bool {
+func countGatewayControllers(existingSmcps []v2.ServiceMeshControlPlane) int {
 	var foundGatewayControllersCount int
 	for _, smcp := range existingSmcps {
 		isGatewayController, err := smcp.Spec.IsGatewayController()
@@ -115,7 +115,7 @@ func checkIfGatewayControllerAlreadyExists(existingSmcps []v2.ServiceMeshControl
 			foundGatewayControllersCount++
 		}
 	}
-	return foundGatewayControllersCount > 1
+	return foundGatewayControllersCount
 }
 
 func checkDiscoverySelectors(spec *v2.ControlPlaneSpec, allErrors []error) []error {
