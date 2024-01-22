@@ -33,9 +33,9 @@ const (
 type IstioRevisionSpec struct {
 	// +sail:version
 	// Defines the version of Istio to install.
-	// Must be one of: v1.20.1, v1.20.0, v1.19.5, latest, gwAPIControllerMode.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="Istio Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.1", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.0", "urn:alm:descriptor:com.tectonic.ui:select:v1.19.5", "urn:alm:descriptor:com.tectonic.ui:select:latest", "urn:alm:descriptor:com.tectonic.ui:select:gwAPIControllerMode"}
-	// +kubebuilder:validation:Enum=v1.20.1;v1.20.0;v1.19.5;latest;gwAPIControllerMode
+	// Must be one of: v1.20.2, v1.20.1, v1.19.6, latest, gwAPIControllerMode.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="Istio Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.2", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.1", "urn:alm:descriptor:com.tectonic.ui:select:v1.19.6", "urn:alm:descriptor:com.tectonic.ui:select:latest", "urn:alm:descriptor:com.tectonic.ui:select:gwAPIControllerMode"}
+	// +kubebuilder:validation:Enum=v1.20.2;v1.20.1;v1.19.6;latest;gwAPIControllerMode
 	Version string `json:"version"`
 
 	// Namespace to which the Istio components should be installed.

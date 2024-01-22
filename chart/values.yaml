@@ -16,9 +16,9 @@ csv:
 
     This version of the operator supports the following Istio versions:
 
+    - v1.20.2
     - v1.20.1
-    - v1.20.0
-    - v1.19.5
+    - v1.19.6
     - latest (f1d07d2f)
     - gwAPIControllerMode
 
