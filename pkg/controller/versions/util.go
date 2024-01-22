@@ -80,7 +80,7 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, s
 	if spec.IsClusterScoped() {
 		// do not allow creating more than one cluster-wide gateway controller
 		if len(smcps.Items) > 1 && countGatewayControllers(smcps.Items) > 1 ||
-			// do not allow creating more than one cluster-wide SMCPs
+			// do not allow creating more than one cluster-wide SMCP
 			len(smcps.Items) > 1 && !isGatewayController && countGatewayControllers(smcps.Items) == 0 ||
 			// allow create/update SMCP when a single instance exists and we're updating it
 			len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
