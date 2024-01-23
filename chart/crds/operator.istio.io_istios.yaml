@@ -211,6 +211,8 @@ spec:
                         variant:
                           type: string
                       type: object
+                    compatibilityVersion:
+                      type: string
                     defaultRevision:
                       type: string
                     global:
@@ -572,6 +574,8 @@ spec:
                             x-kubernetes-preserve-unknown-fields: true
                           type: array
                       type: object
+                    profile:
+                      type: string
                     revision:
                       type: string
                     revisionTags:
