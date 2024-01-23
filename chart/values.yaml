@@ -27,7 +27,6 @@ csv:
     mediatype: image/png
   keywords:
   - istio
-  - maistra
   - servicemesh
   - envoy
 image: quay.io/maistra-dev/istio-operator:3.0-latest
