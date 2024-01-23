@@ -102,6 +102,8 @@ spec:
                           connections.
                         type: string
                       maxConcurrentStreams:
+                        description: The maximum number of concurrent streams allowed
+                          for a peer on one HTTP/2 connection.
                         format: int32
                         type: integer
                       maxRequestsPerConnection:
@@ -201,6 +203,8 @@ spec:
                                 pool connections.
                               type: string
                             maxConcurrentStreams:
+                              description: The maximum number of concurrent streams
+                                allowed for a peer on one HTTP/2 connection.
                               format: int32
                               type: integer
                             maxRequestsPerConnection:
@@ -486,6 +490,8 @@ spec:
                           connections.
                         type: string
                       maxConcurrentStreams:
+                        description: The maximum number of concurrent streams allowed
+                          for a peer on one HTTP/2 connection.
                         format: int32
                         type: integer
                       maxRequestsPerConnection:
@@ -585,6 +591,8 @@ spec:
                                 pool connections.
                               type: string
                             maxConcurrentStreams:
+                              description: The maximum number of concurrent streams
+                                allowed for a peer on one HTTP/2 connection.
                               format: int32
                               type: integer
                             maxRequestsPerConnection:
