@@ -88,6 +88,7 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, n
 					return append(allErrors, otherSmcpExists)
 				}
 			}
+			// only cluster-wide gateway controller can be created when other SMCP exist
 			if !newSmcp.IsGatewayController() {
 				return append(allErrors, otherSmcpExists)
 			}
