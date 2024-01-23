@@ -241,6 +241,13 @@ func (r *IstioRevisionReconciler) isOldestRevisionWithCNI(ctx context.Context, r
 }
 
 func isCNIEnabled(values helm.HelmValues) (bool, error) {
+	// TODO: remove this temporary hack when we introduce Istio.spec.components.cni.enabled
+	if profile, _, err := values.GetString("profile"); err != nil {
+		return false, err
+	} else if profile == "openshift" {
+		return true, nil
+	}
+
 	enabled, _, err := values.GetBool("istio_cni.enabled")
 	return enabled, err
 }
