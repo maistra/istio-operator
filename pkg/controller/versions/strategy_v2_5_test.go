@@ -37,6 +37,11 @@ var (
 	simpleMultiTenant = newSmcpSpec("mode: MultiTenant")
 	simpleClusterWide = newSmcpSpec("mode: ClusterWide")
 
+	multiTenantGatewayController = newSmcpSpec(`
+techPreview:
+  gatewayAPI:
+    controllerMode: true`)
+
 	clusterWideGatewayController = newSmcpSpec(`
 mode: ClusterWide
 techPreview:
@@ -75,6 +80,21 @@ var testCases = []validationTestCase{
 		},
 	},
 	{
+		name: "creating cluster-wide gateway controller when multi-tenant gateway controller exists - no errors",
+		smcp: clusterWideGatewayController,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", multiTenantGatewayController),
+		},
+	},
+	{
+		name: "creating cluster-wide gateway controller when multi-tenant gateway controller exists - no errors (2nd execution)",
+		smcp: clusterWideGatewayController,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", multiTenantGatewayController),
+			NewV2SMCPResource("basic", "istio-system-2", clusterWideGatewayController),
+		},
+	},
+	{
 		name: "creating custom cluster-wide gateway controller when multi-tenant SMCP exists - no errors",
 		smcp: clusterWideCustomizedGatewayController,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
@@ -87,6 +107,21 @@ var testCases = []validationTestCase{
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
 			NewV2SMCPResource("basic", "istio-system-2", clusterWideCustomizedGatewayController),
+		},
+	},
+	{
+		name: "creating cluster-wide gateway-controller when multi-tenant SMCP exists - no errors",
+		smcp: clusterWideGatewayController,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
+		},
+	},
+	{
+		name: "creating cluster-wide gateway-controller when multi-tenant SMCP exists - no errors (2nd execution)",
+		smcp: clusterWideGatewayController,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
+			NewV2SMCPResource("basic", "istio-system-2", clusterWideGatewayController),
 		},
 	},
 	{
@@ -150,21 +185,21 @@ var testCases = []validationTestCase{
 		},
 	},
 	{
-		name: "creating multi-tenant SMCP when cluster-wide SMCP exists - expected error",
-		smcp: simpleMultiTenant,
+		name: "creating cluster-wide SMCP when multi-tenant gateway controller exists - error expected",
+		smcp: simpleClusterWide,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
-			NewV2SMCPResource("basic", "istio-system-1", simpleClusterWide),
+			NewV2SMCPResource("basic", "istio-system-1", multiTenantGatewayController),
 		},
-		expectedErr: fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"),
+		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
 	},
 	{
-		name: "creating multi-tenant SMCP when cluster-wide SMCP exists - expected error (2nd execution)",
-		smcp: simpleMultiTenant,
+		name: "creating cluster-wide SMCP when multi-tenant gateway controller exists - error expected (2nd execution)",
+		smcp: simpleClusterWide,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
-			NewV2SMCPResource("basic", "istio-system-1", simpleClusterWide),
-			NewV2SMCPResource("basic", "istio-system-2", simpleMultiTenant),
+			NewV2SMCPResource("basic", "istio-system-1", multiTenantGatewayController),
+			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
 		},
-		expectedErr: fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"),
+		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
 	},
 	{
 		name: "creating cluster-wide SMCP when cluster-wide SMCP exists - expected error",
@@ -179,23 +214,6 @@ var testCases = []validationTestCase{
 		smcp: simpleClusterWide,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", simpleClusterWide),
-			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
-		},
-		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
-	},
-	{
-		name: "creating cluster-wide SMCP when multi-tenant SMCP exists - expected error",
-		smcp: simpleClusterWide,
-		existingObjs: []*maistrav2.ServiceMeshControlPlane{
-			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
-		},
-		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
-	},
-	{
-		name: "creating cluster-wide SMCP when multi-tenant SMCP exists - expected error (2nd execution)",
-		smcp: simpleClusterWide,
-		existingObjs: []*maistrav2.ServiceMeshControlPlane{
-			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
 			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
 		},
 		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
@@ -233,6 +251,24 @@ var testCases = []validationTestCase{
 			NewV2SMCPResource("basic", "istio-system-2", clusterWideCustomizedGatewayController),
 		},
 		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
+	},
+	// TODO: Create multi-tenant SMCP when cluster-wide gateway controller exists - no errors
+	{
+		name: "creating multi-tenant SMCP when cluster-wide SMCP exists - expected error",
+		smcp: simpleMultiTenant,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleClusterWide),
+		},
+		expectedErr: fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"),
+	},
+	{
+		name: "creating multi-tenant SMCP when cluster-wide SMCP exists - expected error (2nd execution)",
+		smcp: simpleMultiTenant,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleClusterWide),
+			NewV2SMCPResource("basic", "istio-system-2", simpleMultiTenant),
+		},
+		expectedErr: fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"),
 	},
 }
 
