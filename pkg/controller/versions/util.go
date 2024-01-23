@@ -66,7 +66,7 @@ func checkDiscoverySelectorsNotSet(spec *v2.ControlPlaneSpec, allErrors []error)
 }
 
 func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, cl client.Client, allErrors []error) []error {
-	isGatewayController, err := spec.IsGatewayController()
+	isNewGatewayController, err := spec.IsGatewayController()
 	if err != nil {
 		return append(allErrors, err)
 	}
@@ -81,33 +81,29 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, s
 		// 1 SMCP already exists and new one is created
 		if len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
 			isExistingClusterWide := smcps.Items[0].Spec.IsClusterScoped()
-			isExistingGatewayController, _ := smcps.Items[0].Spec.IsGatewayController()
+			isExistingGatewayController, err := smcps.Items[0].Spec.IsGatewayController()
 			if err != nil {
 				return append(allErrors, err)
 			}
-			if isGatewayController && isExistingGatewayController && isExistingClusterWide {
-				return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
-			}
-			if isGatewayController && !isExistingGatewayController && isExistingClusterWide {
-				return allErrors
-			}
-			if isExistingClusterWide && isExistingGatewayController {
-				return allErrors
-			}
-			if !isGatewayController {
-				return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
-			}
 			if isExistingClusterWide {
+				// allow cluster-wide gateway controller when another cluster-wide non gateway controller already exists
+				// this is the case where openshift-ingress controller and cluster-wide mesh co-exist
+				if (isNewGatewayController && !isExistingGatewayController) || (!isNewGatewayController && isExistingGatewayController) {
+					return allErrors
+				}
+				// do not allow more than 1 cluster-wide gateway controller
+				if isNewGatewayController && isExistingGatewayController {
+					return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
+				}
+			}
+			if !isNewGatewayController {
 				return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
 			}
 		}
-		if len(smcps.Items) > 1 {
-			if isGatewayController && countGatewayControllers(smcps.Items) > 1 {
-				return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
-			}
-			if !isGatewayController && countGatewayControllers(smcps.Items) == 0 {
-				return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
-			}
+		if len(smcps.Items) > 1 &&
+			(isNewGatewayController && countGatewayControllers(smcps.Items) > 1 ||
+				!isNewGatewayController && countGatewayControllers(smcps.Items) == 0) {
+			return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
 		}
 	} else {
 		for _, smcp := range smcps.Items {
