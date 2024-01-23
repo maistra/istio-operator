@@ -103,11 +103,7 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, n
 			if smcp.UID == meta.GetUID() {
 				continue
 			}
-			clusterScoped, err := version.Strategy().IsClusterScoped(&smcp.Spec)
-			if err != nil {
-				return append(allErrors, err)
-			}
-			if clusterScoped {
+			if smcp.Spec.IsClusterScoped() && !smcp.Spec.IsGatewayController() {
 				return append(allErrors,
 					fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"))
 			}
