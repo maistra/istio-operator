@@ -201,7 +201,7 @@ func (s ControlPlaneSpec) IsClusterScoped() bool {
 	return s.Mode == ClusterWideMode
 }
 
-func (s ControlPlaneSpec) IsGatewayController() (bool, error) {
+func (s ControlPlaneSpec) IsGatewayController() bool {
 	if s.Runtime != nil && s.Runtime.Components != nil {
 		pilot, found := s.Runtime.Components[ControlPlaneComponentNamePilot]
 		if !found {
@@ -214,9 +214,9 @@ func (s ControlPlaneSpec) IsGatewayController() (bool, error) {
 			}
 			controllerModeEnabled, err := strconv.ParseBool(controllerModeEnabledStr)
 			if err != nil {
-				return false, err
+				return false
 			}
-			return controllerModeEnabled, nil
+			return controllerModeEnabled
 		}
 	}
 
@@ -224,20 +224,20 @@ CheckTechPreview:
 	if s.TechPreview != nil {
 		rawGatewayAPI, found, err := s.TechPreview.GetMap("gatewayAPI")
 		if err != nil {
-			return false, err
+			return false
 		} else if !found {
-			return false, nil
+			return false
 		}
 
 		isControllerMode, found, err := v1.NewHelmValues(rawGatewayAPI).GetBool("controllerMode")
 		if err != nil {
-			return false, err
+			return false
 		} else if !found {
-			return false, nil
+			return false
 		}
-		return isControllerMode, nil
+		return isControllerMode
 	}
-	return false, nil
+	return false
 }
 
 func (s ControlPlaneSpec) IsKialiEnabled() bool {

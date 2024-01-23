@@ -65,44 +65,35 @@ func checkDiscoverySelectorsNotSet(spec *v2.ControlPlaneSpec, allErrors []error)
 	return allErrors
 }
 
-func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, cl client.Client, allErrors []error) []error {
-	isNewGatewayController, err := spec.IsGatewayController()
-	if err != nil {
-		return append(allErrors, err)
-	}
-
+func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, newSmcp *v2.ControlPlaneSpec, cl client.Client, allErrors []error) []error {
 	smcps := v2.ServiceMeshControlPlaneList{}
-	err = cl.List(ctx, &smcps)
+	err := cl.List(ctx, &smcps)
 	if err != nil {
 		return append(allErrors, err)
 	}
 
-	if spec.IsClusterScoped() {
-		// 1 SMCP already exists and new one is created
+	if newSmcp.IsClusterScoped() {
+		// an SMCP already exists and new one is created
 		if len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
-			isExistingClusterWide := smcps.Items[0].Spec.IsClusterScoped()
-			isExistingGatewayController, err := smcps.Items[0].Spec.IsGatewayController()
-			if err != nil {
-				return append(allErrors, err)
-			}
-			if isExistingClusterWide {
+			currentSmcp := smcps.Items[0].Spec
+			if currentSmcp.IsClusterScoped() {
 				// allow cluster-wide gateway controller when another cluster-wide non gateway controller already exists
 				// this is the case where openshift-ingress controller and cluster-wide mesh co-exist
-				if (isNewGatewayController && !isExistingGatewayController) || (!isNewGatewayController && isExistingGatewayController) {
+				if (newSmcp.IsGatewayController() && !currentSmcp.IsGatewayController()) || (!newSmcp.IsGatewayController() && currentSmcp.IsGatewayController()) {
 					return allErrors
 				}
 				// do not allow more than 1 cluster-wide gateway controller
-				if isNewGatewayController && isExistingGatewayController {
+				if newSmcp.IsGatewayController() && currentSmcp.IsGatewayController() {
 					return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
 				}
 			}
-			if !isNewGatewayController {
+			if !newSmcp.IsGatewayController() {
 				return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
 			}
 		}
 		if len(smcps.Items) > 1 &&
-			(isNewGatewayController && countGatewayControllers(smcps.Items) > 1 ||
-				!isNewGatewayController && countGatewayControllers(smcps.Items) == 0) {
+			(newSmcp.IsGatewayController() && countGatewayControllers(smcps.Items) > 1 ||
+				!newSmcp.IsGatewayController() && countGatewayControllers(smcps.Items) == 0) {
 			return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
 		}
 	} else {
@@ -126,11 +117,7 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, s
 func countGatewayControllers(existingSmcps []v2.ServiceMeshControlPlane) int {
 	var foundGatewayControllersCount int
 	for _, smcp := range existingSmcps {
-		isGatewayController, err := smcp.Spec.IsGatewayController()
-		if err != nil {
-			continue
-		}
-		if smcp.Spec.IsClusterScoped() && isGatewayController {
+		if smcp.Spec.IsClusterScoped() && smcp.Spec.IsGatewayController() {
 			foundGatewayControllersCount++
 		}
 	}
