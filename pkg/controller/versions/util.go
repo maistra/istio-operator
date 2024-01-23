@@ -73,6 +73,7 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, n
 	}
 
 	if newSmcp.IsClusterScoped() {
+		otherSmcpExists := fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist")
 		// an SMCP already exists and new one is created
 		if len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
 			currentSmcp := smcps.Items[0].Spec
@@ -84,17 +85,17 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, n
 				}
 				// do not allow more than 1 cluster-wide gateway controller
 				if newSmcp.IsGatewayController() && currentSmcp.IsGatewayController() {
-					return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
+					return append(allErrors, otherSmcpExists)
 				}
 			}
 			if !newSmcp.IsGatewayController() {
-				return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
+				return append(allErrors, otherSmcpExists)
 			}
 		}
 		if len(smcps.Items) > 1 &&
 			(newSmcp.IsGatewayController() && countGatewayControllers(smcps.Items) > 1 ||
 				!newSmcp.IsGatewayController() && countGatewayControllers(smcps.Items) == 0) {
-			return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
+			return append(allErrors, otherSmcpExists)
 		}
 	} else {
 		for _, smcp := range smcps.Items {
