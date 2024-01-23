@@ -3,6 +3,7 @@ package versions
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/uuid"
 
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
@@ -28,7 +29,7 @@ func NewV2SMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec)
 	spec.DeepCopyInto(&smcp.Spec)
 	smcp.Spec.Profiles = []string{"maistra"}
 	smcp.Spec.Version = "v2.5"
-	smcp.UID = "c3ac6dc8-f845-4410-96a9-31856c800a44"
+	smcp.UID = uuid.NewUUID()
 	return smcp
 }
 
@@ -63,11 +64,25 @@ var testCases = []validationTestCase{
 		smcp: clusterWideGatewayController,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
+		},
+	},
+	{
+		name: "creating cluster-wide gateway controller when multi-tenant SMCP exists - no errors (2nd execution)",
+		smcp: clusterWideGatewayController,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
 			NewV2SMCPResource("basic", "istio-system-2", clusterWideGatewayController),
 		},
 	},
 	{
 		name: "creating custom cluster-wide gateway controller when multi-tenant SMCP exists - no errors",
+		smcp: clusterWideCustomizedGatewayController,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
+		},
+	},
+	{
+		name: "creating custom cluster-wide gateway controller when multi-tenant SMCP exists - no errors (2nd execution)",
 		smcp: clusterWideCustomizedGatewayController,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
@@ -78,12 +93,26 @@ var testCases = []validationTestCase{
 		name: "creating cluster-wide gateway controller when simple cluster-wide SMCP exists - no errors",
 		smcp: clusterWideGatewayController,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
+		},
+	},
+	{
+		name: "creating cluster-wide gateway controller when simple cluster-wide SMCP exists - no errors (2nd execution)",
+		smcp: clusterWideGatewayController,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
 			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
 		},
 	},
 	{
 		name: "creating custom cluster-wide gateway controller when simple cluster-wide SMCP exists - no errors",
+		smcp: clusterWideCustomizedGatewayController,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
+		},
+	},
+	{
+		name: "creating custom cluster-wide gateway controller when simple cluster-wide SMCP exists - no errors (2nd execution)",
 		smcp: clusterWideCustomizedGatewayController,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", clusterWideCustomizedGatewayController),
@@ -95,6 +124,13 @@ var testCases = []validationTestCase{
 		smcp: simpleClusterWide,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
+		},
+	},
+	{
+		name: "creating simple cluster-wide SMCP when cluster-wide gateway controller exists - no errors (2nd execution)",
+		smcp: simpleClusterWide,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
 			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
 		},
 	},
@@ -103,11 +139,26 @@ var testCases = []validationTestCase{
 		smcp: simpleClusterWide,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", clusterWideCustomizedGatewayController),
+		},
+	},
+	{
+		name: "creating simple cluster-wide SMCP when custom cluster-wide gateway controller exists - no errors (2nd execution)",
+		smcp: simpleClusterWide,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", clusterWideCustomizedGatewayController),
 			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
 		},
 	},
 	{
 		name: "creating multi-tenant SMCP when cluster-wide SMCP exists - expected error",
+		smcp: simpleMultiTenant,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleClusterWide),
+		},
+		expectedErr: fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"),
+	},
+	{
+		name: "creating multi-tenant SMCP when cluster-wide SMCP exists - expected error (2nd execution)",
 		smcp: simpleMultiTenant,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", simpleClusterWide),
@@ -120,12 +171,28 @@ var testCases = []validationTestCase{
 		smcp: simpleClusterWide,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", simpleClusterWide),
+		},
+		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
+	},
+	{
+		name: "creating cluster-wide SMCP when cluster-wide SMCP exists - expected error (2nd execution)",
+		smcp: simpleClusterWide,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleClusterWide),
 			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
 		},
 		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
 	},
 	{
 		name: "creating cluster-wide SMCP when multi-tenant SMCP exists - expected error",
+		smcp: simpleClusterWide,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
+		},
+		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
+	},
+	{
+		name: "creating cluster-wide SMCP when multi-tenant SMCP exists - expected error (2nd execution)",
 		smcp: simpleClusterWide,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
@@ -138,12 +205,28 @@ var testCases = []validationTestCase{
 		smcp: clusterWideGatewayController,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
+		},
+		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
+	},
+	{
+		name: "creating cluster-wide gateway controller SMCP when another already exists - expected error (2nd execution)",
+		smcp: clusterWideGatewayController,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
 			NewV2SMCPResource("basic", "istio-system-2", clusterWideGatewayController),
 		},
 		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
 	},
 	{
 		name: "creating custom cluster-wide gateway controller SMCP when another already exists - expected error",
+		smcp: clusterWideCustomizedGatewayController,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
+		},
+		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
+	},
+	{
+		name: "creating custom cluster-wide gateway controller SMCP when another already exists - expected error (2nd execution)",
 		smcp: clusterWideCustomizedGatewayController,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
@@ -163,7 +246,11 @@ func TestValidateV2(t *testing.T) {
 			if tc.expectedErr == nil {
 				assert.Nil(err, "unexpected error occurred", t)
 			} else {
-				assert.Equals(err.Error(), tc.expectedErr.Error(), "unexpected error occurred", t)
+				if err == nil {
+					t.Errorf("expected error '%s', but no error was returned", tc.expectedErr)
+				} else {
+					assert.Equals(err.Error(), tc.expectedErr.Error(), "unexpected error occurred", t)
+				}
 			}
 		})
 	}

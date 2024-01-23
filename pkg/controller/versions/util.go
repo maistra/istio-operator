@@ -78,13 +78,36 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, s
 	}
 
 	if spec.IsClusterScoped() {
-		// do not allow creating more than one cluster-wide gateway controller
-		if len(smcps.Items) > 1 && countGatewayControllers(smcps.Items) > 1 ||
-			// do not allow creating more than one cluster-wide SMCP
-			len(smcps.Items) > 1 && !isGatewayController && countGatewayControllers(smcps.Items) == 0 ||
-			// allow create/update SMCP when a single instance exists and we're updating it
-			len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
-			return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
+		// 1 SMCP already exists and new one is created
+		if len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
+			isExistingClusterWide := smcps.Items[0].Spec.IsClusterScoped()
+			isExistingGatewayController, _ := smcps.Items[0].Spec.IsGatewayController()
+			if err != nil {
+				return append(allErrors, err)
+			}
+			if isGatewayController && isExistingGatewayController && isExistingClusterWide {
+				return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
+			}
+			if isGatewayController && !isExistingGatewayController && isExistingClusterWide {
+				return allErrors
+			}
+			if isExistingClusterWide && isExistingGatewayController {
+				return allErrors
+			}
+			if !isGatewayController {
+				return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
+			}
+			if isExistingClusterWide {
+				return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
+			}
+		}
+		if len(smcps.Items) > 1 {
+			if isGatewayController && countGatewayControllers(smcps.Items) > 1 {
+				return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
+			}
+			if !isGatewayController && countGatewayControllers(smcps.Items) == 0 {
+				return append(allErrors, fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"))
+			}
 		}
 	} else {
 		for _, smcp := range smcps.Items {
