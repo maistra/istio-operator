@@ -1,5 +1,7 @@
 name: sailoperator
-deploymentName: istio-operator
+deployment:
+  name: istio-operator
+  annotations: {}
 service:
   port: 8443
 serviceAccountName: istio-operator
