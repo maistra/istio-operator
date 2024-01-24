@@ -112,6 +112,13 @@ ifeq ($(USE_IMAGE_DIGESTS), true)
 	BUNDLE_GEN_FLAGS += --use-image-digests
 endif
 
+# Default flags used when rendering chart templates locally
+HELM_TEMPL_DEF_FLAGS = --include-crds --set image="${IMAGE}"
+# VALUES_FILE defines a values file to be used to overwrite default values from chart
+ifdef VALUES_FILE
+	HELM_TEMPL_DEF_FLAGS += --values $(VALUES_FILE)
+endif
+
 TODAY ?= $(shell date -I)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
@@ -246,7 +253,7 @@ deploy: helm ## Deploy controller to the K8s cluster specified in ~/.kube/config
 
 .PHONY: deploy-yaml
 deploy-yaml: helm ## Outputs YAML manifests needed to deploy the controller
-	$(HELM) template chart chart --namespace ${NAMESPACE} --include-crds --set image="${IMAGE}"
+	$(HELM) template chart chart $(HELM_TEMPL_DEF_FLAGS) --namespace ${NAMESPACE}
 
 .PHONY: deploy-openshift # TODO: remove this target and use deploy-olm instead (when we fix the internal registry TLS issues when using operator-sdk run bundle)
 deploy-openshift: helm ## Deploy controller to OpenShift via YAML manifests
@@ -255,7 +262,7 @@ deploy-openshift: helm ## Deploy controller to OpenShift via YAML manifests
 
 .PHONY: deploy-yaml-openshift
 deploy-yaml-openshift: helm ## Outputs YAML manifests needed to deploy the controller in OpenShift
-	$(HELM) template chart chart --namespace ${NAMESPACE} --include-crds --set image="${IMAGE}" --set platform="openshift"
+	$(HELM) template chart chart $(HELM_TEMPL_DEF_FLAGS) --namespace ${NAMESPACE} --set platform="openshift"
 
 .PHONY: deploy-olm
 deploy-olm: bundle bundle-build bundle-push ## Builds and pushes the operator OLM bundle and then deploys the operator using OLM
@@ -384,7 +391,7 @@ $(ENVTEST): $(LOCALBIN)
 
 .PHONY: bundle
 bundle: gen helm operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
-	$(HELM) template chart chart --include-crds --set platform=openshift --set image="${IMAGE}" --set bundleGeneration=true | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
+	$(HELM) template chart chart $(HELM_TEMPL_DEF_FLAGS) --set platform=openshift --set bundleGeneration=true | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
 
 	# check if the only change in the CSV is the createdAt timestamp; if so, revert the change
 	@csvPath="bundle/manifests/${OPERATOR_NAME}.clusterserviceversion.yaml"; \
