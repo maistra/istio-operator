@@ -114,9 +114,9 @@ endif
 
 # Default flags used when rendering chart templates locally
 HELM_TEMPL_DEF_FLAGS = --include-crds --set image="${IMAGE}"
-# VALUES_FILE_OVERWRITE defines a values file to be used to overwrite default values from chart
-ifdef VALUES_FILE_OVERWRITE
-	HELM_TEMPL_DEF_FLAGS += --values $(VALUES_FILE_OVERWRITE)
+# VALUES_FILE defines a values file to be used to overwrite default values from chart
+ifdef VALUES_FILE
+	HELM_TEMPL_DEF_FLAGS += --values $(VALUES_FILE)
 endif
 
 TODAY ?= $(shell date -I)
