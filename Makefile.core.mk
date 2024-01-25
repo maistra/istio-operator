@@ -277,7 +277,7 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 .PHONY: undeploy-olm
 undeploy-olm: operator-sdk ## Undeploys the operator from the cluster (used only if operator was installed via OLM)
 	kubectl delete istios.operator.istio.io --all --all-namespaces --wait=true
-	$(OPERATOR_SDK) cleanup sailoperator --delete-all -n ${NAMESPACE}
+	$(OPERATOR_SDK) cleanup $(OPERATOR_NAME) --delete-all -n ${NAMESPACE}
 
 .PHONY: deploy-example
 deploy-example: deploy-example-openshift
