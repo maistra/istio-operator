@@ -31,7 +31,16 @@ var (
 	RepositoryRoot = filepath.Join(filepath.Dir(b), "../../")
 )
 
-type OperatorConfig struct{}
+type OperatorConfig struct {
+	ImageDigests map[string]IstioImageConfig `properties:"images"`
+}
+
+type IstioImageConfig struct {
+	IstiodImage  string `properties:"istiod"`
+	ProxyImage   string `properties:"proxy"`
+	CNIImage     string `properties:"cni"`
+	ZTunnelImage string `properties:"ztunnel"`
+}
 
 func ReadConfig(configFile string) error {
 	p, err := properties.LoadFile(configFile, properties.UTF8)
@@ -47,5 +56,11 @@ func ReadConfig(configFile string) error {
 	if err != nil {
 		return err
 	}
+	// replace "_" in versions with "." and prefix with 'v' (e.g. 1_20_0 => v1.20.0)
+	newImageDigests := make(map[string]IstioImageConfig, len(Config.ImageDigests))
+	for k, v := range Config.ImageDigests {
+		newImageDigests["v"+strings.Replace(k, "_", ".", -1)] = v
+	}
+	Config.ImageDigests = newImageDigests
 	return nil
 }

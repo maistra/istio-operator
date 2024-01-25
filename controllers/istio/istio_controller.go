@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"maistra.io/istio-operator/api/v1alpha1"
+	"maistra.io/istio-operator/pkg/common"
 	"maistra.io/istio-operator/pkg/helm"
 	"maistra.io/istio-operator/pkg/kube"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -287,19 +288,27 @@ func getActiveRevisionName(istio *v1alpha1.Istio) string {
 }
 
 func computeIstioRevisionValues(istio v1alpha1.Istio, defaultProfiles []string, resourceDir string) (helm.HelmValues, error) {
-	// 1. start with values aggregated from default profiles and the profile in Istio.spec.profile
-	values, err := getValuesFromProfiles(getProfilesDir(resourceDir, istio), getProfiles(istio, defaultProfiles))
+	// 1. get userValues from Istio.spec.values
+	userValues := istio.Spec.GetValues()
+
+	// 2. apply values from Istio.spec.rawValues, overwriting the current userValues
+	userValues = mergeOverwrite(userValues, istio.Spec.GetRawValues())
+
+	// 3. apply image digests from configuration, if not already set by user
+	var err error
+	userValues, err = applyImageDigests(&istio, userValues, common.Config)
 	if err != nil {
 		return nil, err
 	}
 
-	// 2. apply values from Istio.spec.values, overwriting values from profiles
-	values = mergeOverwrite(values, istio.Spec.GetValues())
+	// 4. apply userValues on top of defaultValues from profiles
+	defaultValues, err := getValuesFromProfiles(getProfilesDir(resourceDir, istio), getProfiles(istio, defaultProfiles))
+	if err != nil {
+		return nil, err
+	}
+	values := mergeOverwrite(defaultValues, userValues)
 
-	// 3. apply values from Istio.spec.rawValues, overwriting the current values
-	values = mergeOverwrite(values, istio.Spec.GetRawValues())
-
-	// 4. override values that are not configurable by the user
+	// 5. override values that are not configurable by the user
 	return applyOverrides(&istio, values)
 }
 
@@ -332,6 +341,54 @@ func applyOverrides(istio *v1alpha1.Istio, values helm.HelmValues) (helm.HelmVal
 		return nil, err
 	}
 	return values, nil
+}
+
+func applyImageDigests(istio *v1alpha1.Istio, values helm.HelmValues, config common.OperatorConfig) (helm.HelmValues, error) {
+	imageDigests, digestsDefined := config.ImageDigests[istio.Spec.Version]
+	// if we don't have default image digests defined for this version, it's a no-op
+	if !digestsDefined {
+		return values, nil
+	}
+	// set image digests for components unless they've been configured by the user
+	if !hasUserDefinedImage("pilot", values) {
+		if err := values.Set("pilot.image", imageDigests.IstiodImage); err != nil {
+			return values, err
+		}
+	}
+	if !hasUserDefinedImage("istio-cni", values) {
+		if err := values.Set("istio-cni.image", imageDigests.CNIImage); err != nil {
+			return values, err
+		}
+	}
+	if !hasUserDefinedImage("global.proxy", values) {
+		if err := values.Set("global.proxy.image", imageDigests.ProxyImage); err != nil {
+			return values, err
+		}
+	}
+	if !hasUserDefinedImage("global.proxy_init", values) {
+		if err := values.Set("global.proxy_init.image", imageDigests.ProxyImage); err != nil {
+			return values, err
+		}
+	}
+	if !hasUserDefinedImage("ztunnel", values) {
+		if err := values.Set("ztunnel.image", imageDigests.ZTunnelImage); err != nil {
+			return values, err
+		}
+	}
+	return values, nil
+}
+
+func hasUserDefinedImage(component string, values helm.HelmValues) bool {
+	if _, userDefined, _ := values.GetString(component + ".image"); userDefined {
+		return true
+	}
+	if _, userDefined, _ := values.GetString(component + ".hub"); userDefined {
+		return true
+	}
+	if _, userDefined, _ := values.GetString(component + ".tag"); userDefined {
+		return true
+	}
+	return false
 }
 
 // SetupWithManager sets up the controller with the Manager.

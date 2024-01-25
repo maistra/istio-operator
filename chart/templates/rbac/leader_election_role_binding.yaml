@@ -14,5 +14,5 @@ roleRef:
   name: leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: {{ .Values.deploymentName }}
+  name: {{ .Values.deployment.name }}
   namespace: {{ .Release.Namespace }}

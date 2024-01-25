@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubectl/pkg/scheme"
 	v1alpha1 "maistra.io/istio-operator/api/v1alpha1"
+	"maistra.io/istio-operator/pkg/common"
 	"maistra.io/istio-operator/pkg/helm"
 	"maistra.io/istio-operator/pkg/test"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -1322,6 +1323,203 @@ func TestMergeOverwrite(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result := mergeOverwrite(tc.base, tc.overrides)
 			if diff := cmp.Diff(tc.expect, result); diff != "" {
+				t.Errorf("unexpected merge result; diff (-expected, +actual):\n%v", diff)
+			}
+		})
+	}
+}
+
+func TestApplyImageDigests(t *testing.T) {
+	testCases := []struct {
+		name         string
+		config       common.OperatorConfig
+		inputIstio   *v1alpha1.Istio
+		inputValues  helm.HelmValues
+		expectValues helm.HelmValues
+	}{
+		{
+			name: "no-config",
+			config: common.OperatorConfig{
+				ImageDigests: map[string]common.IstioImageConfig{},
+			},
+			inputIstio: &v1alpha1.Istio{
+				Spec: v1alpha1.IstioSpec{
+					Version: "v1.20.0",
+				},
+			},
+			inputValues: map[string]any{
+				"pilot": map[string]any{
+					"image": "istiod-test",
+				},
+			},
+			expectValues: map[string]any{
+				"pilot": map[string]any{
+					"image": "istiod-test",
+				},
+			},
+		},
+		{
+			name: "no-user-values",
+			config: common.OperatorConfig{
+				ImageDigests: map[string]common.IstioImageConfig{
+					"v1.20.0": {
+						IstiodImage:  "istiod-test",
+						ProxyImage:   "proxy-test",
+						CNIImage:     "cni-test",
+						ZTunnelImage: "ztunnel-test",
+					},
+				},
+			},
+			inputIstio: &v1alpha1.Istio{
+				Spec: v1alpha1.IstioSpec{
+					Version: "v1.20.0",
+				},
+			},
+			inputValues: helm.HelmValues{},
+			expectValues: map[string]any{
+				"pilot": map[string]any{
+					"image": "istiod-test",
+				},
+				"global": map[string]any{
+					"proxy": map[string]any{
+						"image": "proxy-test",
+					},
+					"proxy_init": map[string]any{
+						"image": "proxy-test",
+					},
+				},
+				"istio-cni": map[string]any{
+					"image": "cni-test",
+				},
+				"ztunnel": map[string]any{
+					"image": "ztunnel-test",
+				},
+			},
+		},
+		{
+			name: "user-supplied-image",
+			config: common.OperatorConfig{
+				ImageDigests: map[string]common.IstioImageConfig{
+					"v1.20.0": {
+						IstiodImage:  "istiod-test",
+						ProxyImage:   "proxy-test",
+						CNIImage:     "cni-test",
+						ZTunnelImage: "ztunnel-test",
+					},
+				},
+			},
+			inputIstio: &v1alpha1.Istio{
+				Spec: v1alpha1.IstioSpec{
+					Version: "v1.20.0",
+				},
+			},
+			inputValues: map[string]any{
+				"pilot": map[string]any{
+					"image": "istiod-custom",
+				},
+			},
+			expectValues: map[string]any{
+				"pilot": map[string]any{
+					"image": "istiod-custom",
+				},
+				"global": map[string]any{
+					"proxy": map[string]any{
+						"image": "proxy-test",
+					},
+					"proxy_init": map[string]any{
+						"image": "proxy-test",
+					},
+				},
+				"istio-cni": map[string]any{
+					"image": "cni-test",
+				},
+				"ztunnel": map[string]any{
+					"image": "ztunnel-test",
+				},
+			},
+		},
+		{
+			name: "user-supplied-hub-tag",
+			config: common.OperatorConfig{
+				ImageDigests: map[string]common.IstioImageConfig{
+					"v1.20.0": {
+						IstiodImage:  "istiod-test",
+						ProxyImage:   "proxy-test",
+						CNIImage:     "cni-test",
+						ZTunnelImage: "ztunnel-test",
+					},
+				},
+			},
+			inputIstio: &v1alpha1.Istio{
+				Spec: v1alpha1.IstioSpec{
+					Version: "v1.20.0",
+				},
+			},
+			inputValues: map[string]any{
+				"pilot": map[string]any{
+					"hub": "docker.io/istio",
+					"tag": "1.20.1",
+				},
+			},
+			expectValues: map[string]any{
+				"pilot": map[string]any{
+					"hub": "docker.io/istio",
+					"tag": "1.20.1",
+				},
+				"global": map[string]any{
+					"proxy": map[string]any{
+						"image": "proxy-test",
+					},
+					"proxy_init": map[string]any{
+						"image": "proxy-test",
+					},
+				},
+				"istio-cni": map[string]any{
+					"image": "cni-test",
+				},
+				"ztunnel": map[string]any{
+					"image": "ztunnel-test",
+				},
+			},
+		},
+		{
+			name: "version-without-defaults",
+			config: common.OperatorConfig{
+				ImageDigests: map[string]common.IstioImageConfig{
+					"v1.20.0": {
+						IstiodImage:  "istiod-test",
+						ProxyImage:   "proxy-test",
+						CNIImage:     "cni-test",
+						ZTunnelImage: "ztunnel-test",
+					},
+				},
+			},
+			inputIstio: &v1alpha1.Istio{
+				Spec: v1alpha1.IstioSpec{
+					Version: "v1.20.1",
+				},
+			},
+			inputValues: map[string]any{
+				"pilot": map[string]any{
+					"hub": "docker.io/istio",
+					"tag": "1.20.2",
+				},
+			},
+			expectValues: map[string]any{
+				"pilot": map[string]any{
+					"hub": "docker.io/istio",
+					"tag": "1.20.2",
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := applyImageDigests(tc.inputIstio, tc.inputValues, tc.config)
+			if err != nil {
+				t.Error(err)
+			}
+			if diff := cmp.Diff(tc.expectValues, result); diff != "" {
 				t.Errorf("unexpected merge result; diff (-expected, +actual):\n%v", diff)
 			}
 		})
