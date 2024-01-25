@@ -5,6 +5,7 @@ service:
 serviceAccountName: istio-operator
 
 csv:
+  displayName: Sail Operator
   categories: OpenShift Optional, Integration & Delivery, Networking, Security
   capabilities: Seamless Upgrades
   description: Experimental operator for installing Istio service mesh
