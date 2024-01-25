@@ -128,7 +128,7 @@ spec:
       version: v1alpha1
   description: |-
 {{ indent 4 .Values.csv.longDescription }}
-  displayName: Sail Operator
+  displayName: {{ .Values.csv.displayName }}
   icon:
   - base64data: {{ .Values.csv.icon.base64data }}
     mediatype: {{ .Values.csv.icon.mediatype }}
