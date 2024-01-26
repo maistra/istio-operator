@@ -244,7 +244,7 @@ endif
 .PHONY: install
 install: gen-manifests ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	kubectl create ns ${NAMESPACE} || echo "namespace ${NAMESPACE} already exists"
-	kubectl apply -f chart/crds
+	kubectl create -f chart/crds
 
 .PHONY: uninstall
 uninstall: ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
@@ -300,7 +300,7 @@ deploy-example-kubernetes: ## Deploy an example Istio resource on Kubernetes
 
 .PHONY: gen-manifests
 gen-manifests: controller-gen ## Generate WebhookConfiguration and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) crd webhook paths="./..." output:crd:artifacts:config=chart/crds
+	$(CONTROLLER_GEN) crd:allowDangerousTypes=true webhook paths="./..." output:crd:artifacts:config=chart/crds
 
 .PHONY: gen-code
 gen-code: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -326,7 +326,7 @@ gen-charts: ## Pull charts from maistra/istio repository
 	@hack/copy-crds.sh "resources/$$(yq eval '.crdSourceVersion' versions.yaml)/charts"
 
 .PHONY: gen ## Generate everything
-gen: controller-gen gen-charts gen-manifests gen-code patch-istio-crd bundle
+gen: controller-gen gen-charts gen-manifests gen-code bundle
 
 .PHONY: gen-check
 gen-check: gen restore-manifest-dates check-clean-repo ## Verifies that changes in generated resources have been checked in

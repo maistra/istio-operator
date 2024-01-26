@@ -606,18 +606,32 @@ func TestReconcileActiveRevision(t *testing.T) {
 
 	testCases := []struct {
 		name                 string
-		istioValues          helm.HelmValues
+		istioValues          v1alpha1.Values
 		revValues            *helm.HelmValues
 		expectOwnerReference bool
 	}{
 		{
-			name:                 "creates IstioRevision",
-			istioValues:          helm.HelmValues{"key": "value"},
+			name: "creates IstioRevision",
+			istioValues: v1alpha1.Values{
+				Pilot: &v1alpha1.PilotConfig{
+					Hub: "quay.io/hub",
+				},
+				MeshConfig: &v1alpha1.MeshConfig{
+					AccessLogFile: "/dev/stdout",
+				},
+			},
 			expectOwnerReference: true,
 		},
 		{
-			name:                 "updates IstioRevision",
-			istioValues:          helm.HelmValues{"key": "new-value"},
+			name: "updates IstioRevision",
+			istioValues: v1alpha1.Values{
+				Pilot: &v1alpha1.PilotConfig{
+					Hub: "quay.io/new-hub",
+				},
+				MeshConfig: &v1alpha1.MeshConfig{
+					AccessLogFile: "/dev/stdout",
+				},
+			},
 			revValues:            &helm.HelmValues{"key": "old-value"},
 			expectOwnerReference: false,
 		},
@@ -653,7 +667,7 @@ func TestReconcileActiveRevision(t *testing.T) {
 						ObjectMeta: objectMeta,
 						Spec: v1alpha1.IstioSpec{
 							Version: version,
-							Values:  toJSON(tc.istioValues),
+							Values:  &tc.istioValues,
 						},
 					}
 					if sc.updateStrategyType != nil {
@@ -681,7 +695,7 @@ func TestReconcileActiveRevision(t *testing.T) {
 					cl := newFakeClientBuilder().WithObjects(initObjs...).Build()
 					reconciler := NewIstioReconciler(cl, scheme.Scheme, resourceDir, nil)
 
-					err := reconciler.reconcileActiveRevision(ctx, istio, tc.istioValues)
+					err := reconciler.reconcileActiveRevision(ctx, istio, tc.istioValues.ToHelmValues())
 					if err != nil {
 						t.Errorf("Expected no error, but got: %v", err)
 					}
@@ -711,7 +725,7 @@ func TestReconcileActiveRevision(t *testing.T) {
 						t.Errorf("IstioRevision.spec.version doesn't match Istio.spec.version; expected %s, got %s", istio.Spec.Version, rev.Spec.Version)
 					}
 
-					if diff := cmp.Diff(tc.istioValues, fromJSON(rev.Spec.Values)); diff != "" {
+					if diff := cmp.Diff(tc.istioValues.ToHelmValues(), fromJSON(rev.Spec.Values)); diff != "" {
 						t.Errorf("IstioRevision.spec.values don't match Istio.spec.values; diff (-expected, +actual):\n%v", diff)
 					}
 				})
@@ -1058,19 +1072,21 @@ apiVersion: operator.istio.io/v1alpha1
 kind: IstioRevision
 spec:
   values:
-    key1: from-default-profile
-    key2: from-default-profile  # this gets overridden in my-profile
-    key3: from-default-profile  # this gets overridden in my-profile and values
-    key4: from-default-profile  # this gets overridden in my-profile, values, and rawValues`)), 0o644))
+    defaultRevision: from-default-profile
+    ownerName: from-default-profile  # this gets overridden in my-profile
+    pilot: 
+      hub: from-default-profile      # this gets overridden in my-profile and values
+      image: from-default-profile    # this gets overridden in my-profile, values, and rawValues`)), 0o644))
 
 	Must(t, os.WriteFile(path.Join(profilesDir, "my-profile.yaml"), []byte((`
 apiVersion: operator.istio.io/v1alpha1
 kind: IstioRevision
 spec:
   values:
-    key2: overridden-in-my-profile
-    key3: overridden-in-my-profile  # this gets overridden in values
-    key4: overridden-in-my-profile  # this gets overridden in rawValues`)), 0o644))
+    ownerName: overridden-in-my-profile
+    pilot:
+      hub: overridden-in-my-profile    # this gets overridden in values
+      image: overridden-in-my-profile  # this gets overridden in rawValues`)), 0o644))
 
 	istio := v1alpha1.Istio{
 		ObjectMeta: objectMeta,
@@ -1078,12 +1094,16 @@ spec:
 			Version:   version,
 			Profile:   "my-profile",
 			Namespace: istioNamespace,
-			Values: toJSON(helm.HelmValues{
-				"key3": "overridden-in-values",
-				"key4": "overridden-in-values", // this gets overridden in rawValues
-			}),
+			Values: &v1alpha1.Values{
+				Pilot: &v1alpha1.PilotConfig{
+					Hub:   "overridden-in-values",
+					Image: "overridden-in-values", // this gets overridden in rawValues,
+				},
+			},
 			RawValues: toJSON(helm.HelmValues{
-				"key4": "overridden-in-raw-values",
+				"pilot": map[string]any{
+					"image": "overridden-in-raw-values",
+				},
 			}),
 		},
 	}
@@ -1094,10 +1114,12 @@ spec:
 	}
 
 	expected := helm.HelmValues{
-		"key1": "from-default-profile",
-		"key2": "overridden-in-my-profile",
-		"key3": "overridden-in-values",
-		"key4": "overridden-in-raw-values",
+		"defaultRevision": "from-default-profile",
+		"ownerName":       "overridden-in-my-profile",
+		"pilot": map[string]any{
+			"hub":   "overridden-in-values",
+			"image": "overridden-in-raw-values",
+		},
 		"global": map[string]any{
 			"istioNamespace": istioNamespace, // this value is always added/overridden based on IstioRevision.spec.namespace
 		},
