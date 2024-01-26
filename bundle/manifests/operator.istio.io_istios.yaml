@@ -1171,8 +1171,6 @@ spec:
                       variant:
                         type: string
                     type: object
-                  compatibilityVersion:
-                    type: string
                   defaultRevision:
                     type: string
                   global:
@@ -7093,8 +7091,6 @@ spec:
                           type: object
                         type: array
                     type: object
-                  profile:
-                    type: string
                   revision:
                     type: string
                   revisionTags:
