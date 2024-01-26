@@ -60,7 +60,7 @@ type CNIConfig struct {
 	CniConfFileName   string              `json:"cniConfFileName,omitempty"`
 	CniNetnsDir       string              `json:"cniNetnsDir,omitempty"`
 	ExcludeNamespaces []string            `json:"excludeNamespaces,omitempty"`
-	Affinity          k8sv1.Affinity      `json:"affinity,omitempty"`
+	Affinity          *k8sv1.Affinity     `json:"affinity,omitempty"`
 	PspClusterRole    string              `json:"psp_cluster_role,omitempty"`
 	LogLevel          string              `json:"logLevel,omitempty"`
 	Repair            *CNIRepairConfig    `json:"repair,omitempty"`
@@ -133,53 +133,6 @@ type DefaultResourcesConfig struct {
 	//
 	// See https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#resource-requests-and-limits-of-pod-and-container
 	Requests *ResourcesRequestsConfig `json:"requests,omitempty"`
-}
-
-// Configuration for an egress gateway.
-type EgressGatewayConfig struct {
-	// Controls whether auto scaling with a HorizontalPodAutoscaler is enabled.
-	AutoscaleEnabled bool `json:"autoscaleEnabled,omitempty"`
-	// maxReplicas setting for HorizontalPodAutoscaler.
-	AutoscaleMax uint32 `json:"autoscaleMax,omitempty"`
-	// minReplicas setting for HorizontalPodAutoscaler.
-	AutoscaleMin  uint32 `json:"autoscaleMin,omitempty"`
-	CustomService bool   `json:"customService,omitempty"`
-	// Controls whether an egress gateway is enabled.
-	Enabled bool `json:"enabled,omitempty"`
-	// Environment variables passed to the proxy container.
-	Env    k8sv1.EnvVar      `json:"env,omitempty"`
-	Labels map[string]string `json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	Name   string            `json:"name,omitempty"`
-	// Ports Configuration for the egress gateway service.
-	Ports []*PortsConfig `json:"ports,omitempty"`
-	// Config for secret volume mounts.
-	SecretVolumes []*SecretVolume `json:"secretVolumes,omitempty"`
-	// Annotations to add to the egress gateway service.
-	ServiceAnnotations map[string]string `json:"serviceAnnotations,omitempty"`
-	// Service type.
-	//
-	// See https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-	Type string `json:"type,omitempty"`
-	// Enables cross-cluster access using SNI matching.
-	Zvpn                 *ZeroVPNConfig    `json:"zvpn,omitempty"`
-	ConfigVolumes        k8sv1.Volume      `json:"configVolumes,omitempty"`
-	AdditionalContainers map[string]string `json:"additionalContainers,omitempty"`
-	RunAsRoot            bool              `json:"runAsRoot,omitempty"`
-	// The injection template to use for the gateway. If not set, no injection will be performed.
-	InjectionTemplate string          `json:"injectionTemplate,omitempty"`
-	ServiceAccount    *ServiceAccount `json:"serviceAccount,omitempty"`
-	IPFamilies        []string        `json:"ipFamilies,omitempty"`
-	IPFamilyPolicy    string          `json:"ipFamilyPolicy,omitempty"` // Next available 31.
-}
-
-// Configuration for gateways.
-type GatewaysConfig struct {
-	// Configuration for an egress gateway.
-	IstioEgressgateway *EgressGatewayConfig `json:"istio_egressgateway,omitempty"`
-	// Controls whether any gateways are enabled.
-	Enabled bool `json:"enabled,omitempty"`
-	// Configuration for an ingress gateway.
-	IstioIngressgateway *IngressGatewayConfig `json:"istio_ingressgateway,omitempty"`
 }
 
 // Global Configuration for Istio components.
@@ -319,54 +272,6 @@ type GlobalLoggingConfig struct {
 	Level string `json:"level,omitempty"`
 }
 
-// Configuration for an ingress gateway.
-type IngressGatewayConfig struct {
-	// Controls whether auto scaling with a HorizontalPodAutoscaler is enabled.
-	AutoscaleEnabled bool `json:"autoscaleEnabled,omitempty"`
-	// maxReplicas setting for HorizontalPodAutoscaler.
-	AutoscaleMax uint32 `json:"autoscaleMax,omitempty"`
-	// minReplicas setting for HorizontalPodAutoscaler.
-	AutoscaleMin  uint32 `json:"autoscaleMin,omitempty"`
-	CustomService bool   `json:"customService,omitempty"`
-	// Controls whether an ingress gateway is enabled.
-	Enabled bool `json:"enabled,omitempty"`
-	// Environment variables passed to the proxy container.
-	Env                      []k8sv1.EnvVar    `json:"env,omitempty"`
-	Labels                   map[string]string `json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	LoadBalancerIP           string            `json:"loadBalancerIP,omitempty"`
-	LoadBalancerSourceRanges []string          `json:"loadBalancerSourceRanges,omitempty"`
-	Name                     string            `json:"name,omitempty"`
-	// Port Configuration for the ingress gateway.
-	Ports []*PortsConfig `json:"ports,omitempty"`
-	// Config for secret volume mounts.
-	SecretVolumes []*SecretVolume `json:"secretVolumes,omitempty"`
-	// Annotations to add to the egress gateway service.
-	ServiceAnnotations map[string]string `json:"serviceAnnotations,omitempty"`
-	// Service type.
-	//
-	// See https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-	Type string `json:"type,omitempty"`
-	// Enables cross-cluster access using SNI matching.
-	Zvpn                  *IngressGatewayZvpnConfig `json:"zvpn,omitempty"`
-	ExternalTrafficPolicy string                    `json:"externalTrafficPolicy,omitempty"`
-	IngressPorts          []k8sv1.ServicePort       `json:"ingressPorts,omitempty"`
-	AdditionalContainers  []k8sv1.Container         `json:"additionalContainers,omitempty"`
-	ConfigVolumes         []k8sv1.Volume            `json:"configVolumes,omitempty"`
-	RunAsRoot             bool                      `json:"runAsRoot,omitempty"`
-	// The injection template to use for the gateway. If not set, no injection will be performed.
-	InjectionTemplate string          `json:"injectionTemplate,omitempty"`
-	ServiceAccount    *ServiceAccount `json:"serviceAccount,omitempty"`
-	IPFamilies        []string        `json:"ipFamilies,omitempty"`
-	IPFamilyPolicy    string          `json:"ipFamilyPolicy,omitempty"` // Next available 50.
-}
-
-// IngressGatewayZvpnConfig enables cross-cluster access using SNI matching.
-type IngressGatewayZvpnConfig struct {
-	// Controls whether ZeroVPN is enabled.
-	Enabled bool   `json:"enabled,omitempty"`
-	Suffix  string `json:"suffix,omitempty"`
-}
-
 // MultiClusterConfig specifies the Configuration for Istio mesh across multiple clusters through the istio gateways.
 type MultiClusterConfig struct {
 	// Enables the connection between two kubernetes clusters via their respective ingressgateway services.
@@ -438,7 +343,7 @@ type PilotConfig struct {
 	//	ENV_VAR_1: value1
 	//	ENV_VAR_2: value2
 	Env                map[string]string `json:"env,omitempty"`
-	Affinity           k8sv1.Affinity    `json:"affinity"`
+	Affinity           *k8sv1.Affinity   `json:"affinity,omitempty"`
 	ServiceAnnotations map[string]string `json:"serviceAnnotations,omitempty"`
 	// ConfigSource describes a source of configuration data for networking
 	// rules, and other Istio configuration artifacts. Multiple data sources
@@ -726,10 +631,9 @@ type IstiodRemoteConfig struct {
 }
 
 type Values struct {
-	Cni      *CNIConfig      `json:"cni,omitempty"`
-	Gateways *GatewaysConfig `json:"gateways,omitempty"`
-	Global   *GlobalConfig   `json:"global,omitempty"`
-	Pilot    *PilotConfig    `json:"pilot,omitempty"`
+	Cni    *CNIConfig    `json:"cni,omitempty"`
+	Global *GlobalConfig `json:"global,omitempty"`
+	Pilot  *PilotConfig  `json:"pilot,omitempty"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	Ztunnel map[string]string `json:"ztunnel,omitempty"`
