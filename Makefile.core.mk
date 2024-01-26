@@ -244,7 +244,7 @@ endif
 .PHONY: install
 install: gen-manifests ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	kubectl create ns ${NAMESPACE} || echo "namespace ${NAMESPACE} already exists"
-	kubectl create -f chart/crds
+	kubectl apply --server-side=true -f chart/crds
 
 .PHONY: uninstall
 uninstall: ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
