@@ -2,7 +2,7 @@ defaults:
   # Hub to pull from. Image will be `Hub/Image:Tag-Variant`
   hub: gcr.io/istio-testing
   # Tag to pull from. Image will be `Hub/Image:Tag-Variant`
-  tag: 1.22-alpha.3a6c87f4221c989c26352d1c76dc9c7407c0829f
+  tag: 1.22-alpha.9a7b7ee215d5006b444083a2b5e2639b0f30ae4a
   # Variant to pull. Options are "debug" or "distroless". Unset will use the default for the given version.
   variant: ""
 
@@ -58,9 +58,6 @@ defaults:
     defaultConfig:
       proxyMetadata: {}
 
-  # Ambient redirection mode: "iptables" or "ebpf"
-  redirectMode: "iptables"
-
   # This value defines:
   # 1. how many seconds kube waits for ztunnel pod to gracefully exit before forcibly terminating it (this value)
   # 2. how many seconds ztunnel waits to drain its own connections (this value - 1 sec)
@@ -80,3 +77,9 @@ defaults:
   # Configuration log level of ztunnel binary, default is info.
   # Valid values are: trace, debug, info, warn, error
   logLevel: info
+
+  # Set to `type: RuntimeDefault` to use the default profile if available.
+  seLinuxOptions: {}
+  # TODO Ambient inpod - for OpenShift, set to the following to get writable sockets in hostmounts to work, eventually consider CSI driver instead
+  #seLinuxOptions:
+  #  type: spc_t

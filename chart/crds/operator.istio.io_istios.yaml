@@ -145,10 +145,10 @@ spec:
                           properties:
                             configDir:
                               type: string
+                            dnsCapture:
+                              type: boolean
                             enabled:
                               type: boolean
-                            redirectMode:
-                              type: string
                           type: object
                         chained:
                           type: boolean
@@ -408,10 +408,10 @@ spec:
                           properties:
                             configDir:
                               type: string
+                            dnsCapture:
+                              type: boolean
                             enabled:
                               type: boolean
-                            redirectMode:
-                              type: string
                           type: object
                         chained:
                           type: boolean
