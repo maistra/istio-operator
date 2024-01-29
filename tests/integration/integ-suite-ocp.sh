@@ -18,6 +18,15 @@ set -eux -o pipefail
 
 # To run this integration test on OCP cluster it's needed to already have the OCP cluster running and be logged in
 
+# Check the current architecture to set the correct operator image by ussing --arm64 when needed
+# Others architectures like p and z are not supported yet
+architecture=$(uname -m)
+ARCH=""
+if [[ "$architecture" == "aarch64" || "$architecture" == "arm64" ]]; then
+    echo "Running on arm64 architecture"
+    ARCH="--arm64"
+fi
+
 # Run the integration tests
 echo "Running integration tests"
-./tests/integration/common-operator-integ-suite.sh --ocp
+./tests/integration/common-operator-integ-suite.sh --ocp ${ARCH}

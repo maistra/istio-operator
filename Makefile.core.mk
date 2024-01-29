@@ -68,6 +68,9 @@ NAMESPACE ?= istio-operator
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.26.0
 
+# Set DOCKER_BUILD_FLAGS to specify flags to pass to 'docker build', default to empty. Example: --platform=linux/arm64
+DOCKER_BUILD_FLAGS ?= ""
+
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
@@ -168,7 +171,7 @@ run: gen ## Run a controller from your host.
 # docker build -t ${IMAGE} --build-arg GIT_TAG=${GIT_TAG} --build-arg GIT_REVISION=${GIT_REVISION} --build-arg GIT_STATUS=${GIT_STATUS} .
 .PHONY: docker-build
 docker-build: build ## Build docker image with the manager.
-	docker build -t ${IMAGE} .
+	docker build ${DOCKER_BUILD_FLAGS} -t ${IMAGE} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -258,7 +261,8 @@ deploy-yaml: helm ## Outputs YAML manifests needed to deploy the controller
 .PHONY: deploy-openshift # TODO: remove this target and use deploy-olm instead (when we fix the internal registry TLS issues when using operator-sdk run bundle)
 deploy-openshift: helm ## Deploy controller to OpenShift via YAML manifests
 	$(info NAMESPACE: $(NAMESPACE))
-	$(MAKE) -s deploy-yaml-openshift | kubectl apply -f -
+	export HELM_TEMPL_DEF_FLAGS="--include-crds --set image='${IMAGE}'" && \
+		$(MAKE) -s deploy-yaml-openshift | kubectl apply -f -
 
 .PHONY: deploy-yaml-openshift
 deploy-yaml-openshift: helm ## Outputs YAML manifests needed to deploy the controller in OpenShift
