@@ -72,7 +72,13 @@ func UpgradeOrInstallCharts(ctx context.Context, restClientGetter genericcliopti
 // newActionConfig Create a new Helm action config from in-cluster service account
 func newActionConfig(restClientGetter genericclioptions.RESTClientGetter, namespace string) (*action.Configuration, error) {
 	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(restClientGetter, namespace, os.Getenv("HELM_DRIVER"), log.V(2).Info); err != nil {
+	logAdapter := func(format string, v ...interface{}) {
+		logv2 := log.V(2)
+		if logv2.Enabled() {
+			logv2.Info(fmt.Sprintf(format, v...))
+		}
+	}
+	if err := actionConfig.Init(restClientGetter, namespace, os.Getenv("HELM_DRIVER"), logAdapter); err != nil {
 		return nil, err
 	}
 	return actionConfig, nil
