@@ -240,6 +240,23 @@ CheckTechPreview:
 	return false
 }
 
+func (s ControlPlaneSpec) GetCaCertConfigMapName() (caRootCertConfigMapName string) {
+	caRootCertConfigMapName = "istio-ca-root-cert"
+	if s.TechPreview != nil {
+		rawGlobal, found, err := s.TechPreview.GetMap("global")
+		if err != nil || !found {
+			return
+		}
+
+		caRootCertConfigMapNameValue, found, err := v1.NewHelmValues(rawGlobal).GetString("caCertConfigMapName")
+		if err != nil || !found {
+			return
+		}
+		caRootCertConfigMapName = caRootCertConfigMapNameValue
+	}
+	return
+}
+
 func (s ControlPlaneSpec) IsKialiEnabled() bool {
 	return s.Addons != nil &&
 		s.Addons.Kiali != nil &&

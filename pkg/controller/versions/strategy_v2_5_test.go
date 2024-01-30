@@ -3,12 +3,12 @@ package versions
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/uuid"
-
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
@@ -29,13 +29,15 @@ func NewV2SMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec)
 	spec.DeepCopyInto(&smcp.Spec)
 	smcp.Spec.Profiles = []string{"maistra"}
 	smcp.Spec.Version = "v2.5"
-	smcp.UID = uuid.NewUUID()
+	smcp.UID = uuids[spec]
 	return smcp
 }
 
 var (
-	simpleMultiTenant = newSmcpSpec("mode: MultiTenant")
-	simpleClusterWide = newSmcpSpec("mode: ClusterWide")
+	simpleMultiTenant  = newSmcpSpec("mode: MultiTenant")
+	simpleMultiTenant2 = simpleMultiTenant.DeepCopy()
+	simpleClusterWide  = newSmcpSpec("mode: ClusterWide")
+	simpleClusterWide2 = simpleClusterWide.DeepCopy()
 
 	multiTenantGatewayController = newSmcpSpec(`
 techPreview:
@@ -46,13 +48,44 @@ techPreview:
 mode: ClusterWide
 techPreview:
   gatewayAPI:
-    controllerMode: true`)
+    controllerMode: true
+  global:
+    caCertConfigMapName: ossm-ca-root-cert
+`)
+
+	clusterWideGatewayController2 = clusterWideGatewayController.DeepCopy()
+
+	clusterWideGatewayControllerDefaultCA = newSmcpSpec(`
+mode: ClusterWide
+techPreview:
+  gatewayAPI:
+    controllerMode: true
+`)
+
+	uuids = map[*maistrav2.ControlPlaneSpec]types.UID{
+		simpleMultiTenant:                     uuid.NewUUID(),
+		simpleMultiTenant2:                    uuid.NewUUID(),
+		simpleClusterWide:                     uuid.NewUUID(),
+		simpleClusterWide2:                    uuid.NewUUID(),
+		multiTenantGatewayController:          uuid.NewUUID(),
+		clusterWideGatewayController:          uuid.NewUUID(),
+		clusterWideGatewayController2:         uuid.NewUUID(),
+		clusterWideGatewayControllerDefaultCA: uuid.NewUUID(),
+	}
 )
 
 var testCases = []validationTestCase{
+	// TODO: add test cases where 2 multi-tenant control planes already exist
 	{
 		name: "creating multi-tenant SMCP when no other SMCPs exists - no errors",
 		smcp: newSmcpSpec(`mode: ClusterWide`),
+	},
+	{
+		name: "creating multi-tenant SMCP when another multi-tenant already exists - no errors",
+		smcp: simpleMultiTenant,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant2),
+		},
 	},
 	{
 		name: "creating cluster-wide gateway controller when multi-tenant SMCP exists - no errors",
@@ -182,7 +215,7 @@ var testCases = []validationTestCase{
 		name: "creating cluster-wide SMCP when cluster-wide SMCP exists - expected error",
 		smcp: simpleClusterWide,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
-			NewV2SMCPResource("basic", "istio-system-1", simpleClusterWide),
+			NewV2SMCPResource("basic", "istio-system-1", simpleClusterWide2),
 		},
 		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
 	},
@@ -191,7 +224,7 @@ var testCases = []validationTestCase{
 		smcp: simpleClusterWide,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", simpleClusterWide),
-			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
+			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide2),
 		},
 		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
 	},
@@ -199,7 +232,7 @@ var testCases = []validationTestCase{
 		name: "creating cluster-wide gateway controller SMCP when another already exists - expected error",
 		smcp: clusterWideGatewayController,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
-			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
+			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController2),
 		},
 		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
 	},
@@ -208,7 +241,7 @@ var testCases = []validationTestCase{
 		smcp: clusterWideGatewayController,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
-			NewV2SMCPResource("basic", "istio-system-2", clusterWideGatewayController),
+			NewV2SMCPResource("basic", "istio-system-2", clusterWideGatewayController2),
 		},
 		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
 	},
@@ -229,6 +262,91 @@ var testCases = []validationTestCase{
 		},
 		expectedErr: fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"),
 	},
+	{
+		name: "creating cluster-wide gateway controller with default CA config map name when multi-tenant SMCP exists - error expected",
+		smcp: clusterWideGatewayControllerDefaultCA,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
+		},
+		expectedErr: fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName"),
+	},
+	{
+		name: "creating cluster-wide gateway controller with default CA config map name when multi-tenant SMCP exists - error expected (2nd execution)",
+		smcp: clusterWideGatewayControllerDefaultCA,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
+			NewV2SMCPResource("basic", "istio-system-2", clusterWideGatewayControllerDefaultCA),
+		},
+		expectedErr: fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName"),
+	},
+	{
+		name: "creating cluster-wide gateway controller with default CA config map name when multi-tenant gateway controller exists - error expected",
+		smcp: clusterWideGatewayControllerDefaultCA,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", multiTenantGatewayController),
+		},
+		expectedErr: fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName"),
+	},
+	{
+		name: "creating cluster-wide gateway controller with default CA config map name when multi-tenant gateway controller exists - error expected (2nd execution)",
+		smcp: clusterWideGatewayControllerDefaultCA,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", multiTenantGatewayController),
+			NewV2SMCPResource("basic", "istio-system-2", clusterWideGatewayControllerDefaultCA),
+		},
+		expectedErr: fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName"),
+	},
+	{
+		name: "creating cluster-wide gateway controller with default CA config map name when simple cluster-wide SMCP exists - error expected",
+		smcp: clusterWideGatewayControllerDefaultCA,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
+		},
+		expectedErr: fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName"),
+	},
+	{
+		name: "creating cluster-wide gateway controller with default CA config map name when simple cluster-wide SMCP exists - error expected (2nd execution)",
+		smcp: clusterWideGatewayControllerDefaultCA,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", simpleClusterWide),
+			NewV2SMCPResource("basic", "istio-system-2", clusterWideGatewayControllerDefaultCA),
+		},
+		expectedErr: fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName"),
+	},
+	{
+		name: "creating simple cluster-wide SMCP with default CA config map name when cluster-wide gateway controller with default CA config map name exists - error expected",
+		smcp: simpleClusterWide,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayControllerDefaultCA),
+		},
+		expectedErr: fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName"),
+	},
+	{
+		name: "creating simple cluster-wide SMCP with default CA config map name when cluster-wide gateway controller with default CA config map name exists - error expected (2nd execution)",
+		smcp: simpleClusterWide,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayControllerDefaultCA),
+			NewV2SMCPResource("basic", "istio-system-2", simpleClusterWide),
+		},
+		expectedErr: fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName"),
+	},
+	{
+		name: "creating multi-tenant SMCP when cluster-wide gateway controller with default CA config map name exists - error expected",
+		smcp: simpleMultiTenant,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayControllerDefaultCA),
+		},
+		expectedErr: fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName"),
+	},
+	{
+		name: "creating multi-tenant SMCP when cluster-wide gateway controller with default CA config map name exists - error expected (2nd execution)",
+		smcp: simpleMultiTenant,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayControllerDefaultCA),
+			NewV2SMCPResource("basic", "istio-system-2", simpleMultiTenant),
+		},
+		expectedErr: fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName"),
+	},
 }
 
 func TestValidateV2(t *testing.T) {
@@ -236,7 +354,7 @@ func TestValidateV2(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			c := newFakeClient(tc.existingObjs)
 			v := versionStrategyV2_5{Ver: V2_5}
-			err := v.ValidateV2(context.TODO(), c, &metav1.ObjectMeta{Name: "basic", Namespace: "istio-sytem"}, tc.smcp)
+			err := v.ValidateV2(context.TODO(), c, &metav1.ObjectMeta{Name: "basic", Namespace: "istio-sytem", UID: uuids[tc.smcp]}, tc.smcp)
 
 			if tc.expectedErr == nil {
 				assert.Nil(err, "unexpected error occurred", t)

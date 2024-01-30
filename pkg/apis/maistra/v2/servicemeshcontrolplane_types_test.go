@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-var testCases = []struct {
+var isGatewayControllerTestCases = []struct {
 	name                string
 	smcpSpec            *ControlPlaneSpec
 	isGatewayController bool
@@ -124,7 +124,7 @@ techPreview:
 }
 
 func TestIsGatewayController(t *testing.T) {
-	for _, tc := range testCases {
+	for _, tc := range isGatewayControllerTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.smcpSpec.IsGatewayController() != tc.isGatewayController {
 				t.Errorf("exptected to get %t, got %t", tc.isGatewayController, tc.smcpSpec.IsGatewayController())

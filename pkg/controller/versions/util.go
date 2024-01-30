@@ -72,8 +72,9 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, n
 		return append(allErrors, err)
 	}
 
+	otherSmcpExists := fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist")
+	overlappingCaCertNameErr := fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName")
 	if newSmcp.IsClusterScoped() {
-		otherSmcpExists := fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist")
 		// an SMCP already exists and new one is created
 		if len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
 			currentSmcp := smcps.Items[0].Spec
@@ -81,6 +82,9 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, n
 				// allow cluster-wide gateway controller when another cluster-wide non gateway controller already exists
 				// this is the case where openshift-ingress controller and cluster-wide mesh co-exist
 				if (newSmcp.IsGatewayController() && !currentSmcp.IsGatewayController()) || (!newSmcp.IsGatewayController() && currentSmcp.IsGatewayController()) {
+					if newSmcp.GetCaCertConfigMapName() == currentSmcp.GetCaCertConfigMapName() {
+						return append(allErrors, overlappingCaCertNameErr)
+					}
 					return allErrors
 				}
 				// do not allow more than 1 cluster-wide gateway controller
@@ -88,15 +92,27 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, n
 					return append(allErrors, otherSmcpExists)
 				}
 			}
-			// only cluster-wide gateway controller can be created when other SMCP exist
+			// only cluster-wide gateway controller can be created when another SMCP exist
 			if !newSmcp.IsGatewayController() {
 				return append(allErrors, otherSmcpExists)
 			}
+			if newSmcp.GetCaCertConfigMapName() == currentSmcp.GetCaCertConfigMapName() {
+				return append(allErrors, overlappingCaCertNameErr)
+			}
 		}
-		if len(smcps.Items) > 1 &&
-			(newSmcp.IsGatewayController() && countGatewayControllers(smcps.Items) > 1 ||
-				!newSmcp.IsGatewayController() && countGatewayControllers(smcps.Items) == 0) {
-			return append(allErrors, otherSmcpExists)
+		if len(smcps.Items) > 1 {
+			if newSmcp.IsGatewayController() && countGatewayControllers(smcps.Items) > 1 ||
+				!newSmcp.IsGatewayController() && countGatewayControllers(smcps.Items) == 0 {
+				return append(allErrors, otherSmcpExists)
+			}
+			for _, smcp := range smcps.Items {
+				if meta.GetUID() == smcp.GetUID() {
+					continue
+				}
+				if newSmcp.GetCaCertConfigMapName() == smcp.Spec.GetCaCertConfigMapName() {
+					return append(allErrors, overlappingCaCertNameErr)
+				}
+			}
 		}
 	} else {
 		for _, smcp := range smcps.Items {
@@ -107,6 +123,10 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, n
 			if smcp.Spec.IsClusterScoped() && !smcp.Spec.IsGatewayController() {
 				return append(allErrors,
 					fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"))
+			}
+			// do not allow creating multi-tenant mesh when gateway-controller with default caCertConfigMapName already exists
+			if smcp.Spec.IsClusterScoped() && smcp.Spec.GetCaCertConfigMapName() == newSmcp.GetCaCertConfigMapName() {
+				return append(allErrors, overlappingCaCertNameErr)
 			}
 		}
 	}
