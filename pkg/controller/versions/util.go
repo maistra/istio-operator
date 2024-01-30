@@ -65,20 +65,6 @@ func checkDiscoverySelectorsNotSet(spec *v2.ControlPlaneSpec, allErrors []error)
 	return allErrors
 }
 
-func validateOverlappingCaCertConfigMapNames(meta *metav1.ObjectMeta, newSmcp *v2.ControlPlaneSpec, smcps *v2.ServiceMeshControlPlaneList, allErrors []error) []error {
-	overlappingCaCertNameErr := fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName")
-	for _, smcp := range smcps.Items {
-		if meta.GetUID() == smcp.GetUID() {
-			continue
-		}
-		// do not allow creating an SMCP when at least one cluster-wide SMCP exists and CA root cert config map names overlap
-		if (smcp.Spec.IsClusterScoped() || newSmcp.IsClusterScoped()) && newSmcp.GetCaCertConfigMapName() == smcp.Spec.GetCaCertConfigMapName() {
-			return append(allErrors, overlappingCaCertNameErr)
-		}
-	}
-	return allErrors
-}
-
 func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, newSmcp *v2.ControlPlaneSpec, cl client.Client, allErrors []error) []error {
 	smcps := v2.ServiceMeshControlPlaneList{}
 	err := cl.List(ctx, &smcps)
@@ -87,7 +73,6 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, n
 	}
 
 	otherSmcpExists := fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist")
-	//overlappingCaCertNameErr := fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName")
 	if newSmcp.IsClusterScoped() {
 		// an SMCP already exists and new one is created
 		if len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
@@ -96,7 +81,7 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, n
 				// allow cluster-wide gateway controller when another cluster-wide non gateway controller already exists
 				// this is the case where openshift-ingress controller and cluster-wide mesh co-exist
 				if (newSmcp.IsGatewayController() && !currentSmcp.IsGatewayController()) || (!newSmcp.IsGatewayController() && currentSmcp.IsGatewayController()) {
-					goto ValidateOverlappingConfigMapNames
+					return append(allErrors, validateOverlappingCaCertConfigMapNames(meta, newSmcp, &smcps, allErrors)...)
 				}
 				// do not allow more than 1 cluster-wide gateway controller
 				if newSmcp.IsGatewayController() && currentSmcp.IsGatewayController() {
@@ -126,8 +111,21 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, n
 			}
 		}
 	}
-ValidateOverlappingConfigMapNames:
-	allErrors = append(allErrors, validateOverlappingCaCertConfigMapNames(meta, newSmcp, &smcps, allErrors)...)
+
+	return append(allErrors, validateOverlappingCaCertConfigMapNames(meta, newSmcp, &smcps, allErrors)...)
+}
+
+func validateOverlappingCaCertConfigMapNames(meta *metav1.ObjectMeta, newSmcp *v2.ControlPlaneSpec, smcps *v2.ServiceMeshControlPlaneList, allErrors []error) []error {
+	overlappingCaCertNameErr := fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName")
+	for _, smcp := range smcps.Items {
+		if meta.GetUID() == smcp.GetUID() {
+			continue
+		}
+		// do not allow creating an SMCP when at least one cluster-wide SMCP exists and CA root cert config map names overlap
+		if (smcp.Spec.IsClusterScoped() || newSmcp.IsClusterScoped()) && newSmcp.GetCaCertConfigMapName() == smcp.Spec.GetCaCertConfigMapName() {
+			return append(allErrors, overlappingCaCertNameErr)
+		}
+	}
 	return allErrors
 }
 
