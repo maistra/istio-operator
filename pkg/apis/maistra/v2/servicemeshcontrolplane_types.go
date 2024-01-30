@@ -214,7 +214,7 @@ func (s ControlPlaneSpec) IsGatewayController() bool {
 			}
 			controllerModeEnabled, err := strconv.ParseBool(controllerModeEnabledStr)
 			if err != nil {
-				return false
+				goto CheckTechPreview
 			}
 			return controllerModeEnabled
 		}
