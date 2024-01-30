@@ -114,7 +114,7 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	if rev.DeletionTimestamp != nil {
-		if err := r.uninstallHelmCharts(&rev); err != nil {
+		if err := r.uninstallHelmCharts(ctx, &rev); err != nil {
 			return ctrl.Result{}, err
 		}
 
@@ -208,12 +208,12 @@ func (r *IstioRevisionReconciler) installHelmCharts(ctx context.Context, rev *v1
 	return nil
 }
 
-func (r *IstioRevisionReconciler) uninstallHelmCharts(rev *v1alpha1.IstioRevision) error {
-	if err := helm.UninstallCharts(r.RestClientGetter, []string{"cni"}, cniReleaseNameBase, r.CNINamespace); err != nil {
+func (r *IstioRevisionReconciler) uninstallHelmCharts(ctx context.Context, rev *v1alpha1.IstioRevision) error {
+	if err := helm.UninstallCharts(ctx, r.RestClientGetter, []string{"cni"}, cniReleaseNameBase, r.CNINamespace); err != nil {
 		return err
 	}
 
-	if err := helm.UninstallCharts(r.RestClientGetter, userCharts, rev.Name, rev.Spec.Namespace); err != nil {
+	if err := helm.UninstallCharts(ctx, r.RestClientGetter, userCharts, rev.Name, rev.Spec.Namespace); err != nil {
 		return err
 	}
 	return nil
