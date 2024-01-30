@@ -185,6 +185,21 @@ var testCases = []validationTestCase{
 		},
 	},
 	{
+		name: "creating multi-tenant SMCP when cluster-wide gateway controller exists - no errors",
+		smcp: simpleMultiTenant,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
+		},
+	},
+	{
+		name: "creating multi-tenant SMCP when cluster-wide gateway controller exists - no errors (2nd execution)",
+		smcp: simpleMultiTenant,
+		existingObjs: []*maistrav2.ServiceMeshControlPlane{
+			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
+			NewV2SMCPResource("basic", "istio-system-2", simpleMultiTenant),
+		},
+	},
+	{
 		name: "creating cluster-wide SMCP when multi-tenant gateway controller exists - error expected",
 		smcp: simpleClusterWide,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
@@ -247,8 +262,8 @@ var testCases = []validationTestCase{
 		name: "creating custom cluster-wide gateway controller SMCP when another already exists - expected error (2nd execution)",
 		smcp: clusterWideCustomizedGatewayController,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
-			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
-			NewV2SMCPResource("basic", "istio-system-2", clusterWideCustomizedGatewayController),
+			NewV2SMCPResource("basic", "istio-system-1", clusterWideCustomizedGatewayController),
+			NewV2SMCPResource("basic", "istio-system-2", clusterWideGatewayController),
 		},
 		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
 	},
@@ -268,21 +283,6 @@ var testCases = []validationTestCase{
 			NewV2SMCPResource("basic", "istio-system-2", simpleMultiTenant),
 		},
 		expectedErr: fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"),
-	},
-	{
-		name: "creating multi-tenant SMCP when cluster-wide gateway controller exists - no errors",
-		smcp: simpleMultiTenant,
-		existingObjs: []*maistrav2.ServiceMeshControlPlane{
-			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
-		},
-	},
-	{
-		name: "creating multi-tenant SMCP when cluster-wide gateway controller exists - no errors (2nd execution)",
-		smcp: simpleMultiTenant,
-		existingObjs: []*maistrav2.ServiceMeshControlPlane{
-			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant),
-			NewV2SMCPResource("basic", "istio-system-2", clusterWideGatewayController),
-		},
 	},
 }
 
