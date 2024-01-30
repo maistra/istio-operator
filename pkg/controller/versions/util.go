@@ -103,6 +103,7 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, n
 			if smcp.UID == meta.GetUID() {
 				continue
 			}
+			// do not allow creating multi-tenant mesh when another (non-gateway controller) cluster-wide mesh already exists
 			if smcp.Spec.IsClusterScoped() && !smcp.Spec.IsGatewayController() {
 				return append(allErrors,
 					fmt.Errorf("no other SMCPs may be created when a cluster-scoped SMCP exists"))
