@@ -223,16 +223,12 @@ func (s ControlPlaneSpec) IsGatewayController() bool {
 CheckTechPreview:
 	if s.TechPreview != nil {
 		rawGatewayAPI, found, err := s.TechPreview.GetMap("gatewayAPI")
-		if err != nil {
-			return false
-		} else if !found {
+		if err != nil || !found {
 			return false
 		}
 
 		isControllerMode, found, err := v1.NewHelmValues(rawGatewayAPI).GetBool("controllerMode")
-		if err != nil {
-			return false
-		} else if !found {
+		if err != nil || !found {
 			return false
 		}
 		return isControllerMode
