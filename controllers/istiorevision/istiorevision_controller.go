@@ -45,7 +45,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -255,15 +254,15 @@ func isCNIEnabled(values helm.HelmValues) (bool, error) {
 // SetupWithManager sets up the controller with the Manager.
 func (r *IstioRevisionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// ownedResourceHandler handles resources that are owned by the IstioRevision CR
-	ownedResourceHandler := handler.EnqueueRequestsFromMapFunc(r.mapOwnerToReconcileRequest)
+	ownedResourceHandler := EnqueueRequestsFromMapFunc(r.mapOwnerToReconcileRequest)
 
 	// nsHandler handles namespaces that reference the IstioRevision CR via the istio.io/rev or istio-injection labels.
 	// The handler triggers the reconciliation of the referenced IstioRevision CR so that its InUse condition is updated.
-	nsHandler := handler.EnqueueRequestsFromMapFunc(r.mapNamespaceToReconcileRequest)
+	nsHandler := EnqueueRequestsFromMapFunc(r.mapNamespaceToReconcileRequest)
 
 	// podHandler handles pods that reference the IstioRevision CR via the istio.io/rev or sidecar.istio.io/inject labels.
 	// The handler triggers the reconciliation of the referenced IstioRevision CR so that its InUse condition is updated.
-	podHandler := handler.EnqueueRequestsFromMapFunc(r.mapPodToReconcileRequest)
+	podHandler := EnqueueRequestsFromMapFunc(r.mapPodToReconcileRequest)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(controller.Options{

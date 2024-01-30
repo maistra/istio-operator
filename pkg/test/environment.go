@@ -17,6 +17,7 @@ package test
 import (
 	"path"
 
+	"go.uber.org/zap/zapcore"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/scheme"
@@ -31,7 +32,7 @@ import (
 )
 
 func SetupEnv() (*envtest.Environment, client.Client, *rest.Config) {
-	logf.SetLogger(zap.New(zap.UseDevMode(true)))
+	logf.SetLogger(zap.New(zap.UseDevMode(true), zap.Level(zapcore.Level(-2))))
 
 	testEnv := &envtest.Environment{
 		CRDDirectoryPaths:     []string{path.Join(common.RepositoryRoot, "chart", "crds")},
