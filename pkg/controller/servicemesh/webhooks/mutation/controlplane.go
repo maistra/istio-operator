@@ -76,10 +76,18 @@ func (v *ControlPlaneMutator) Handle(ctx context.Context, req admission.Request)
 
 	// As we are deprecating IOR, on creating a v2.5 SMCP we want to disable IOR if not specified explicitly
 	if req.AdmissionRequest.Operation == admissionv1beta1.Create {
-		newOpenShiftRoute := mutator.NewOpenShiftRoute()
+		newOpenShiftRoute := mutator.IsOpenShiftRouteEnabled()
 
 		if newOpenShiftRoute == nil {
-			if versions.V2_5.Version().String() == currentVersion {
+			var ver versions.Version
+			var err error
+			// If version is not specified
+			if currentVersion == "" {
+				ver, err = versions.ParseVersion(mutator.DefaultVersion())
+			} else {
+				ver, err = versions.ParseVersion(currentVersion)
+			}
+			if err == nil && ver.AtLeast(versions.V2_5.Version()) {
 				mutator.SetOpenShiftRoute(false)
 			}
 		}
@@ -159,7 +167,7 @@ type smcpmutator interface {
 	GetProfiles() []string
 	SetProfiles(profiles []string)
 	GetPatches() []jsonpatch.JsonPatchOperation
-	NewOpenShiftRoute() *bool
+	IsOpenShiftRouteEnabled() *bool
 	SetOpenShiftRoute(bool)
 }
 
@@ -220,7 +228,7 @@ func (m *smcpv1mutator) GetProfiles() []string {
 	return m.smcp.Spec.Profiles
 }
 
-func (m *smcpv1mutator) NewOpenShiftRoute() *bool {
+func (m *smcpv1mutator) IsOpenShiftRouteEnabled() *bool {
 	return nil
 }
 
@@ -257,7 +265,7 @@ func (m *smcpv2mutator) GetProfiles() []string {
 	return m.smcp.Spec.Profiles
 }
 
-func (m *smcpv2mutator) NewOpenShiftRoute() *bool {
+func (m *smcpv2mutator) IsOpenShiftRouteEnabled() *bool {
 	gateways := m.smcp.Spec.Gateways
 
 	if gateways == nil {
@@ -270,7 +278,7 @@ func (m *smcpv2mutator) NewOpenShiftRoute() *bool {
 		return nil
 	}
 
-	return nil
+	return route.Enabled
 }
 
 func (m *smcpv2mutator) SetOpenShiftRoute(value bool) {
