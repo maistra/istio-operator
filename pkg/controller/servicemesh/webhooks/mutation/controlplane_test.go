@@ -15,10 +15,13 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
+var featureDisabled = false
+
 func TestNoMutation(t *testing.T) {
 	testCases := []struct {
-		name         string
-		controlPlane func() runtime.Object
+		name             string
+		controlPlane     func() runtime.Object
+		expectedResponse admission.Response
 	}{
 		{
 			name: "deleted-allowed.v1",
@@ -29,6 +32,7 @@ func TestNoMutation(t *testing.T) {
 				controlPlane.DeletionTimestamp = now()
 				return controlPlane
 			},
+			expectedResponse: acceptWithNoMutation,
 		},
 		{
 			name: "deleted-allowed.v2",
@@ -39,6 +43,7 @@ func TestNoMutation(t *testing.T) {
 				controlPlane.DeletionTimestamp = now()
 				return controlPlane
 			},
+			expectedResponse: acceptWithNoMutation,
 		},
 		{
 			name: "unwatched-namespace.v1",
@@ -48,6 +53,7 @@ func TestNoMutation(t *testing.T) {
 				controlPlane.Spec.Template = ""
 				return controlPlane
 			},
+			expectedResponse: acceptWithNoMutation,
 		},
 		{
 			name: "unwatched-namespace.v2",
@@ -57,6 +63,7 @@ func TestNoMutation(t *testing.T) {
 				controlPlane.Spec.Profiles = nil
 				return controlPlane
 			},
+			expectedResponse: acceptWithNoMutation,
 		},
 		{
 			name: "no-mutation.v1",
@@ -66,6 +73,7 @@ func TestNoMutation(t *testing.T) {
 				controlPlane.Spec.Template = maistrav1.DefaultTemplate
 				return controlPlane
 			},
+			expectedResponse: acceptWithNoMutation,
 		},
 		{
 			name: "no-mutation.v2",
@@ -74,6 +82,7 @@ func TestNoMutation(t *testing.T) {
 				controlPlane.Spec.Version = versions.DefaultVersion.String()
 				return controlPlane
 			},
+			expectedResponse: acceptWithDefaultMutation,
 		},
 	}
 	for _, tc := range testCases {
@@ -81,7 +90,7 @@ func TestNoMutation(t *testing.T) {
 			mutator := createControlPlaneMutatorTestFixture()
 			mutator.namespaceFilter = "istio-system"
 			response := mutator.Handle(ctx, newCreateRequest(tc.controlPlane()))
-			assert.DeepEquals(response, acceptWithNoMutation, "Expected mutator to accept ServiceMeshControlPlane with no mutation", t)
+			assert.DeepEquals(response, tc.expectedResponse, "Expected mutator to accept ServiceMeshControlPlane with no mutation", t)
 		})
 	}
 }
@@ -122,6 +131,13 @@ func TestCreate(t *testing.T) {
 
 				mutatedControlPlane := controlPlane.DeepCopy()
 				mutatedControlPlane.Spec.Profiles = []string{maistrav1.DefaultTemplate}
+				mutatedControlPlane.Spec.Gateways = &maistrav2.GatewaysConfig{
+					OpenShiftRoute: &maistrav2.OpenShiftRouteConfig{
+						Enablement: maistrav2.Enablement{
+							Enabled: &featureDisabled,
+						},
+					},
+				}
 				return controlPlane, mutatedControlPlane
 			},
 		},

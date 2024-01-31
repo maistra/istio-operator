@@ -74,28 +74,14 @@ func (v *ControlPlaneMutator) Handle(ctx context.Context, req admission.Request)
 		}
 	}
 
-	newOpenShiftRoute := mutator.NewOpenShiftRoute()
-	if newOpenShiftRoute == nil {
-		oldVersion, err := versions.ParseVersion(mutator.OldVersion())
+	// As we are deprecating IOR, on creating a v2.5 SMCP we want to disable IOR if not specified explicitly
+	if req.AdmissionRequest.Operation == admissionv1beta1.Create {
+		newOpenShiftRoute := mutator.NewOpenShiftRoute()
 
-		if err == nil {
-			oldOpenShiftRoute := mutator.OldOpenShiftRoute()
-
-			if oldOpenShiftRoute == nil {
-				switch req.AdmissionRequest.Operation {
-				case admissionv1beta1.Create:
-					mutator.SetOpenShiftRoute(false)
-				case admissionv1beta1.Update:
-					if oldVersion.LessThan(versions.V2_5) {
-						mutator.SetOpenShiftRoute(true)
-					} else {
-						mutator.SetOpenShiftRoute(false)
-					}
-				}
-			} else {
-				mutator.SetOpenShiftRoute(*oldOpenShiftRoute)
+		if newOpenShiftRoute == nil {
+			if versions.V2_5.Version().String() == currentVersion {
+				mutator.SetOpenShiftRoute(false)
 			}
-
 		}
 	}
 
@@ -174,7 +160,6 @@ type smcpmutator interface {
 	SetProfiles(profiles []string)
 	GetPatches() []jsonpatch.JsonPatchOperation
 	NewOpenShiftRoute() *bool
-	OldOpenShiftRoute() *bool
 	SetOpenShiftRoute(bool)
 }
 
@@ -235,10 +220,6 @@ func (m *smcpv1mutator) GetProfiles() []string {
 	return m.smcp.Spec.Profiles
 }
 
-func (m *smcpv1mutator) OldOpenShiftRoute() *bool {
-	return nil
-}
-
 func (m *smcpv1mutator) NewOpenShiftRoute() *bool {
 	return nil
 }
@@ -276,14 +257,22 @@ func (m *smcpv2mutator) GetProfiles() []string {
 	return m.smcp.Spec.Profiles
 }
 
-func (m *smcpv2mutator) OldOpenShiftRoute() *bool {
-	return m.oldsmcp.Spec.Gateways.OpenShiftRoute.Enabled
-}
-
 func (m *smcpv2mutator) NewOpenShiftRoute() *bool {
-	return m.smcp.Spec.Gateways.OpenShiftRoute.Enabled
+	gateways := m.smcp.Spec.Gateways
+
+	if gateways == nil {
+		return nil
+	}
+
+	route := gateways.OpenShiftRoute
+
+	if route == nil {
+		return nil
+	}
+
+	return nil
 }
 
 func (m *smcpv2mutator) SetOpenShiftRoute(value bool) {
-	m.patches = append(m.patches, jsonpatch.NewPatch("add", "/spec/gateways/openshiftRoute", value))
+	m.patches = append(m.patches, jsonpatch.NewPatch("add", "/spec/gateways/openshiftRoute/enabled", value))
 }

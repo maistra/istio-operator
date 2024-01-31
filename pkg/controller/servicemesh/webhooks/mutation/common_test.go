@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"gomodules.xyz/jsonpatch/v2"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +22,10 @@ var (
 	testScheme = test.GetScheme()
 )
 
-var acceptWithNoMutation = admission.Allowed("")
+var (
+	acceptWithDefaultMutation = admission.Patched("", jsonpatch.NewPatch("add", "/spec/gateways/openshiftRoute/enabled", false))
+	acceptWithNoMutation      = admission.Allowed("")
+)
 
 func newCreateRequest(obj runtime.Object) admission.Request {
 	request := createRequest(obj)
