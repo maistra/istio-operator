@@ -3,6 +3,7 @@ package versions
 import (
 	"context"
 	"fmt"
+
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -74,6 +75,10 @@ techPreview:
 	}
 )
 
+// Function ValidateV2 is called in the strategy.Render function and in controlPlaneController.Handle,
+// and the test cases below are duplicated to cover validation during and after rendering.
+// In other words, when an SMCP B is created when an SMCP A exists, ValidateV2 will be called twice and first call
+// to client.List will return [SMCP A] and next time it will return [SMCP A, SMCP B].
 var testCases = []validationTestCase{
 	// TODO: add test cases where 2 multi-tenant control planes already exist
 	{
