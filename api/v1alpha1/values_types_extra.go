@@ -15,11 +15,6 @@
 package v1alpha1
 
 import (
-	"encoding/json"
-	"fmt"
-	"strings"
-
-	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 	k8sv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -28,50 +23,12 @@ type SDSConfigToken struct {
 	Aud string `json:"aud,omitempty"`
 }
 
-func (x *Values) ToHelmValues() helm.HelmValues {
-	var obj helm.HelmValues
-	data, err := json.Marshal(x)
-	if err != nil {
-		panic(err)
-	}
-	if err = json.Unmarshal(data, &obj); err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-func FromHelmValues[V any](helmValues helm.HelmValues, values V) (V, error) {
-	data, err := json.Marshal(helmValues)
-	if err != nil {
-		return values, err
-	}
-
-	decoder := json.NewDecoder(strings.NewReader(string(data)))
-	err = decoder.Decode(&values)
-	if err != nil {
-		return values, fmt.Errorf("failed to unmarshal into Values struct: %v:\n%v", err, string(data))
-	}
-	return values, nil
-}
-
 type CNIValues struct {
 	// Configuration for the Istio CNI plugin.
 	Cni *CNIConfig `json:"cni,omitempty"`
 
 	// Part of the global configuration applicable to the Istio CNI component.
 	Global *CNIGlobalConfig `json:"global,omitempty"`
-}
-
-func (x *CNIValues) ToHelmValues() helm.HelmValues {
-	var obj helm.HelmValues
-	data, err := json.Marshal(x)
-	if err != nil {
-		panic(err)
-	}
-	if err = json.Unmarshal(data, &obj); err != nil {
-		panic(err)
-	}
-	return obj
 }
 
 // Part of the Global Configuration used in the Istio CNI chart.

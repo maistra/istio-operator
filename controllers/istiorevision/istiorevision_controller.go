@@ -169,7 +169,7 @@ func (r *IstioRevisionReconciler) installHelmCharts(ctx context.Context, rev *v1
 		BlockOwnerDeletion: ptr.Of(true),
 	}
 
-	values := rev.Spec.Values.ToHelmValues()
+	values := helm.FromValues(rev.Spec.Values)
 	_, err := r.ChartManager.UpgradeOrInstallChart(ctx, r.getChartDir(rev, "istiod"), values, rev.Spec.Namespace, getReleaseName(rev, "istiod"), ownerReference)
 	return err
 }

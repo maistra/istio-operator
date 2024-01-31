@@ -15,6 +15,8 @@
 package helm
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -42,4 +44,30 @@ func (h HelmValues) Set(key string, val any) error {
 
 func toKeys(key string) []string {
 	return strings.Split(key, ".")
+}
+
+func FromValues(values any) HelmValues {
+	var obj HelmValues
+	data, err := json.Marshal(values)
+	if err != nil {
+		panic(err)
+	}
+	if err = json.Unmarshal(data, &obj); err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+func ToValues[V any](helmValues HelmValues, values V) (V, error) {
+	data, err := json.Marshal(helmValues)
+	if err != nil {
+		return values, err
+	}
+
+	decoder := json.NewDecoder(strings.NewReader(string(data)))
+	err = decoder.Decode(&values)
+	if err != nil {
+		return values, fmt.Errorf("failed to unmarshal into Values struct: %v:\n%v", err, string(data))
+	}
+	return values, nil
 }
