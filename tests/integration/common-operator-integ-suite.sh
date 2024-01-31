@@ -26,7 +26,6 @@ check_arguments() {
 
 parse_flags() {
   SKIP_BUILD=false
-  ARCH="x86_64"
   while [ $# -gt 0 ]; do
     case "$1" in
       --ocp)
@@ -40,10 +39,6 @@ parse_flags() {
       --skip-build)
         shift
         SKIP_BUILD=true
-        ;;
-      --arm64)
-        shift
-        ARCH="arm64"
         ;;
       *)
         echo "Invalid flag: $1"
@@ -135,11 +130,15 @@ build_and_push_image() {
   echo "Image base: ${IMAGE_BASE}"
   echo " Tag: ${TAG}"
 
-  # If ARCH is not x86_64, we need to set DOCKER_BUILD_FLAGS to --platform=linux/arm64
+  # Check the current architecture to build the image for the same architecture
+  # For now we are only building for arm64 and x86_64 because z and p are not supported by the operator yet.
   DOCKER_BUILD_FLAGS=""
-  if [ "${ARCH}" == "arm64" ]; then
-    DOCKER_BUILD_FLAGS="--platform=linux/arm64"
+  architecture=$(uname -m)
+  if [[ "$architecture" == "aarch64" || "$architecture" == "arm64" ]]; then
+      echo "Running on arm64 architecture"
+      DOCKER_BUILD_FLAGS="--platform=linux/arm64"
   fi
+
   # running docker build inside another container layer causes issues with bind mounts
   BUILD_WITH_CONTAINER=0 DOCKER_BUILD_FLAGS=${DOCKER_BUILD_FLAGS} IMAGE=${HUB}/${IMAGE_BASE}:${TAG} make docker-build docker-push
 }
