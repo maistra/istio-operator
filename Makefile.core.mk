@@ -69,7 +69,7 @@ NAMESPACE ?= istio-operator
 ENVTEST_K8S_VERSION = 1.26.0
 
 # Set DOCKER_BUILD_FLAGS to specify flags to pass to 'docker build', default to empty. Example: --platform=linux/arm64
-DOCKER_BUILD_FLAGS ?= ""
+DOCKER_BUILD_FLAGS ?= "--platform=$(TARGET_OS)/$(TARGET_ARCH)"
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
