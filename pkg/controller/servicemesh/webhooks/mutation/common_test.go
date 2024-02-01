@@ -13,8 +13,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
+	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
 var (
@@ -23,8 +25,15 @@ var (
 )
 
 var (
-	acceptWithDefaultMutation = admission.Patched("", jsonpatch.NewPatch("add", "/spec/gateways/openshiftRoute/enabled", false))
-	acceptWithNoMutation      = admission.Allowed("")
+	acceptWithNoMutation        = admission.Allowed("")
+	acceptV2WithDefaultMutation = admission.Patched("",
+		jsonpatch.NewPatch("add", "/spec/version", versions.DefaultVersion.String()),
+		jsonpatch.NewPatch("add", "/spec/gateways/openshiftRoute/enabled", false),
+		jsonpatch.NewPatch("add", "/spec/profiles", []interface{}{v1.DefaultTemplate}),
+	)
+	acceptV1WithDefaultMutation = admission.Patched("",
+		jsonpatch.NewPatch("add", "/spec/version", versions.V1_1.String()),
+		jsonpatch.NewPatch("add", "/spec/profiles", []interface{}{v1.DefaultTemplate}))
 )
 
 func newCreateRequest(obj runtime.Object) admission.Request {
