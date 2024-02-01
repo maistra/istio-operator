@@ -153,6 +153,14 @@ func TestCreate(t *testing.T) {
 	}
 }
 
+func TestUpgradingToV2_5(t *testing.T) {
+	t.Run("upgrading from v2_4 to default version", func(t *testing.T) {
+		mutator := createControlPlaneMutatorTestFixture()
+		response := mutator.Handle(ctx, newUpdateRequest(newControlPlaneV2_4("istio-system"), newControlPlaneV2("istio-system")))
+		assert.DeepEquals(response, acceptWithNoMutation, "Expected mutator to accept ServiceMeshControlPlane with no mutation", t)
+	})
+}
+
 func TestVersionIsDefaultedToOldSMCPVersionOnUpdate(t *testing.T) {
 	testCases := []struct {
 		name         string
@@ -366,6 +374,19 @@ func newControlPlaneV2(namespace string) *maistrav2.ServiceMeshControlPlane {
 		},
 		Spec: maistrav2.ControlPlaneSpec{
 			Version:  versions.DefaultVersion.String(),
+			Profiles: []string{maistrav1.DefaultTemplate},
+		},
+	}
+}
+
+func newControlPlaneV2_4(namespace string) *maistrav2.ServiceMeshControlPlane {
+	return &maistrav2.ServiceMeshControlPlane{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-smcp",
+			Namespace: namespace,
+		},
+		Spec: maistrav2.ControlPlaneSpec{
+			Version:  versions.V2_4.String(),
 			Profiles: []string{maistrav1.DefaultTemplate},
 		},
 	}
