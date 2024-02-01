@@ -396,9 +396,11 @@ func newFakeClient(smcps []*maistrav2.ServiceMeshControlPlane) *fakeClient {
 	return &fakeClient{objects}
 }
 
+//nolint:staticcheck
 func (f fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+	//nolint:staticcheck
 	if val, exists := f.objects[&metav1.ObjectMeta{Name: key.Name, Namespace: key.Namespace}]; exists {
-		//nolint:ineffassign
+		//nolint:ineffassign,staticcheck
 		obj = val
 	}
 	return nil
