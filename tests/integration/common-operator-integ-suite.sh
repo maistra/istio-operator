@@ -85,7 +85,7 @@ get_internal_registry() {
   # If there is no internal registry, the test can't be executed targeting to the internal registry
 
   # Check if the registry pods are running
-  ${COMMAND} get pods -n openshift-image-registry --no-headers | grep -v "Running" && echo "It looks like the OCP image registry is not deployed or Running. This tests scenario requires it. Aborting." && exit 1
+  ${COMMAND} get pods -n openshift-image-registry --no-headers | grep -v "Running\|Completed" && echo "It looks like the OCP image registry is not deployed or Running. This tests scenario requires it. Aborting." && exit 1
 
   # Check if default route already exist
   if [ -z "$(${COMMAND} get route default-route -n openshift-image-registry -o name)" ]; then

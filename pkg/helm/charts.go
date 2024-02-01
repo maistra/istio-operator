@@ -31,13 +31,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var (
-	log                  = logf.Log.WithName("helm")
-	ResourceDirectory, _ = filepath.Abs("resources")
-)
+var ResourceDirectory, _ = filepath.Abs("resources")
 
-func UninstallCharts(restClientGetter genericclioptions.RESTClientGetter, charts []string, releaseNameBase, ns string) error {
-	actionConfig, err := newActionConfig(restClientGetter, ns)
+func UninstallCharts(ctx context.Context, restClientGetter genericclioptions.RESTClientGetter, charts []string, releaseNameBase, ns string) error {
+	actionConfig, err := newActionConfig(ctx, restClientGetter, ns)
 	if err != nil {
 		return err
 	}
@@ -55,7 +52,7 @@ func UpgradeOrInstallCharts(ctx context.Context, restClientGetter genericcliopti
 	charts []string, values HelmValues,
 	chartVersion, releaseNameBase, ns string, ownerReference metav1.OwnerReference,
 ) error {
-	actionConfig, err := newActionConfig(restClientGetter, ns)
+	actionConfig, err := newActionConfig(ctx, restClientGetter, ns)
 	if err != nil {
 		return err
 	}
@@ -70,9 +67,16 @@ func UpgradeOrInstallCharts(ctx context.Context, restClientGetter genericcliopti
 }
 
 // newActionConfig Create a new Helm action config from in-cluster service account
-func newActionConfig(restClientGetter genericclioptions.RESTClientGetter, namespace string) (*action.Configuration, error) {
+func newActionConfig(ctx context.Context, restClientGetter genericclioptions.RESTClientGetter, namespace string) (*action.Configuration, error) {
 	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(restClientGetter, namespace, os.Getenv("HELM_DRIVER"), log.V(2).Info); err != nil {
+	logAdapter := func(format string, v ...interface{}) {
+		log := logf.FromContext(ctx)
+		logv2 := log.V(2)
+		if logv2.Enabled() {
+			logv2.Info(fmt.Sprintf(format, v...))
+		}
+	}
+	if err := actionConfig.Init(restClientGetter, namespace, os.Getenv("HELM_DRIVER"), logAdapter); err != nil {
 		return nil, err
 	}
 	return actionConfig, nil
@@ -83,6 +87,8 @@ func upgradeOrInstallChart(ctx context.Context, cfg *action.Configuration,
 	chartName, chartVersion, namespace, releaseName string,
 	ownerReference metav1.OwnerReference, values HelmValues,
 ) (*release.Release, error) {
+	log := logf.FromContext(ctx)
+
 	// Helm List Action
 	listAction := action.NewList(cfg)
 	releases, err := listAction.Run()

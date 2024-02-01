@@ -116,7 +116,8 @@ ifeq ($(USE_IMAGE_DIGESTS), true)
 endif
 
 # Default flags used when rendering chart templates locally
-HELM_TEMPL_DEF_FLAGS = --include-crds --set image="${IMAGE}"
+HELM_TEMPL_DEF_FLAGS = --include-crds --set image='${IMAGE}'
+
 # VALUES_FILE defines a values file to be used to overwrite default values from chart
 ifdef VALUES_FILE
 	HELM_TEMPL_DEF_FLAGS += --values $(VALUES_FILE)
@@ -252,7 +253,7 @@ uninstall: ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. C
 .PHONY: deploy
 deploy: helm ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	$(info NAMESPACE: $(NAMESPACE))
-	$(MAKE) -s deploy-yaml | kubectl apply -f -
+	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" -s deploy-yaml | kubectl apply -f -
 
 .PHONY: deploy-yaml
 deploy-yaml: helm ## Outputs YAML manifests needed to deploy the controller
@@ -261,8 +262,7 @@ deploy-yaml: helm ## Outputs YAML manifests needed to deploy the controller
 .PHONY: deploy-openshift # TODO: remove this target and use deploy-olm instead (when we fix the internal registry TLS issues when using operator-sdk run bundle)
 deploy-openshift: helm ## Deploy controller to OpenShift via YAML manifests
 	$(info NAMESPACE: $(NAMESPACE))
-	export HELM_TEMPL_DEF_FLAGS="--include-crds --set image='${IMAGE}'" && \
-		$(MAKE) -s deploy-yaml-openshift | kubectl apply -f -
+	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" -s deploy-yaml-openshift | kubectl apply -f -
 
 .PHONY: deploy-yaml-openshift
 deploy-yaml-openshift: helm ## Outputs YAML manifests needed to deploy the controller in OpenShift
@@ -276,7 +276,7 @@ deploy-olm: bundle bundle-build bundle-push ## Builds and pushes the operator OL
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	kubectl delete istios.operator.istio.io --all --all-namespaces --wait=true
-	$(MAKE) deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: undeploy-olm
 undeploy-olm: operator-sdk ## Undeploys the operator from the cluster (used only if operator was installed via OLM)

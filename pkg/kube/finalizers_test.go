@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 )
 
-const version = "v1.20.0"
+const version = "v1.20.2"
 
 var (
 	cfg       *rest.Config
