@@ -765,7 +765,7 @@ func (v *versionStrategyV2_5) validateGlobal(
 	}
 
 	allErrors = checkDiscoverySelectors(spec, allErrors)
-	return validateGlobal(ctx, version, meta, spec, cl, allErrors)
+	return validateGlobal(ctx, meta, spec, cl, allErrors)
 }
 
 func (v *versionStrategyV2_5) createMemberRoll(ctx context.Context, cr *common.ControllerResources, smcp *v2.ServiceMeshControlPlane) error {

@@ -65,7 +65,7 @@ func checkDiscoverySelectorsNotSet(spec *v2.ControlPlaneSpec, allErrors []error)
 	return allErrors
 }
 
-func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, newSmcp *v2.ControlPlaneSpec, cl client.Client, allErrors []error) []error {
+func validateGlobal(ctx context.Context, meta *metav1.ObjectMeta, newSmcp *v2.ControlPlaneSpec, cl client.Client, allErrors []error) []error {
 	smcps := v2.ServiceMeshControlPlaneList{}
 	err := cl.List(ctx, &smcps)
 	if err != nil {
@@ -115,7 +115,9 @@ func validateGlobal(ctx context.Context, version Ver, meta *metav1.ObjectMeta, n
 	return append(allErrors, validateOverlappingCaCertConfigMapNames(meta, newSmcp, &smcps, allErrors)...)
 }
 
-func validateOverlappingCaCertConfigMapNames(meta *metav1.ObjectMeta, newSmcp *v2.ControlPlaneSpec, smcps *v2.ServiceMeshControlPlaneList, allErrors []error) []error {
+func validateOverlappingCaCertConfigMapNames(
+	meta *metav1.ObjectMeta, newSmcp *v2.ControlPlaneSpec, smcps *v2.ServiceMeshControlPlaneList, allErrors []error,
+) []error {
 	overlappingCaCertNameErr := fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName")
 	for _, smcp := range smcps.Items {
 		if meta.GetUID() == smcp.GetUID() {

@@ -718,5 +718,5 @@ func (v *versionStrategyV2_3) validateGlobal(
 	}
 	allErrors = checkMeshConfigNotSet(spec, allErrors)
 	allErrors = checkDiscoverySelectorsNotSet(spec, allErrors)
-	return validateGlobal(ctx, version, meta, spec, cl, allErrors)
+	return validateGlobal(ctx, meta, spec, cl, allErrors)
 }

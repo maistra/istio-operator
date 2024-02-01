@@ -319,7 +319,8 @@ var testCases = []validationTestCase{
 		expectedErr: fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName"),
 	},
 	{
-		name: "creating simple cluster-wide SMCP with default CA config map name when cluster-wide gateway controller with default CA config map name exists - error expected",
+		name: "creating simple cluster-wide SMCP with default CA config map name when cluster-wide gateway controller " +
+			"with default CA config map name exists - error expected",
 		smcp: simpleClusterWide,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayControllerDefaultCA),
@@ -327,7 +328,8 @@ var testCases = []validationTestCase{
 		expectedErr: fmt.Errorf("cannot create cluster-wide SMCP with overlapping caCertConfigMapName"),
 	},
 	{
-		name: "creating simple cluster-wide SMCP with default CA config map name when cluster-wide gateway controller with default CA config map name exists - error expected (2nd execution)",
+		name: "creating simple cluster-wide SMCP with default CA config map name when cluster-wide gateway controller " +
+			"with default CA config map name exists - error expected (2nd execution)",
 		smcp: simpleClusterWide,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
 			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayControllerDefaultCA),
@@ -359,7 +361,7 @@ func TestValidateV2(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			c := newFakeClient(tc.existingObjs)
 			v := versionStrategyV2_5{Ver: V2_5}
-			err := v.ValidateV2(context.TODO(), c, &metav1.ObjectMeta{Name: "basic", Namespace: "istio-sytem", UID: uuids[tc.smcp]}, tc.smcp)
+			err := v.ValidateV2(context.TODO(), c, &metav1.ObjectMeta{Name: "basic", Namespace: "istio-system", UID: uuids[tc.smcp]}, tc.smcp)
 
 			if tc.expectedErr == nil {
 				assert.Nil(err, "unexpected error occurred", t)

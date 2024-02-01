@@ -2,10 +2,9 @@ package v2
 
 import (
 	"fmt"
+	"testing"
 
 	"sigs.k8s.io/yaml"
-
-	"testing"
 )
 
 var isGatewayControllerTestCases = []struct {
