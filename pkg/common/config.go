@@ -56,10 +56,10 @@ func ReadConfig(configFile string) error {
 	if err != nil {
 		return err
 	}
-	// replace "_" in versions with "." and prefix with 'v' (e.g. 1_20_0 => v1.20.0)
+	// replace "_" in versions with "." (e.g. v1_20_0 => v1.20.0)
 	newImageDigests := make(map[string]IstioImageConfig, len(Config.ImageDigests))
 	for k, v := range Config.ImageDigests {
-		newImageDigests["v"+strings.Replace(k, "_", ".", -1)] = v
+		newImageDigests[strings.Replace(k, "_", ".", -1)] = v
 	}
 	Config.ImageDigests = newImageDigests
 	return nil
