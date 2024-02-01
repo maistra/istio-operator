@@ -249,7 +249,8 @@ uninstall: ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. C
 .PHONY: deploy
 deploy: helm ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	$(info NAMESPACE: $(NAMESPACE))
-	$(MAKE) -s deploy-yaml | kubectl apply -f -
+	export HELM_TEMPL_DEF_FLAGS="--include-crds --set image='${IMAGE}'" && \
+		$(MAKE) -s deploy-yaml | kubectl apply -f -
 
 .PHONY: deploy-yaml
 deploy-yaml: helm ## Outputs YAML manifests needed to deploy the controller
@@ -258,7 +259,8 @@ deploy-yaml: helm ## Outputs YAML manifests needed to deploy the controller
 .PHONY: deploy-openshift # TODO: remove this target and use deploy-olm instead (when we fix the internal registry TLS issues when using operator-sdk run bundle)
 deploy-openshift: helm ## Deploy controller to OpenShift via YAML manifests
 	$(info NAMESPACE: $(NAMESPACE))
-	$(MAKE) -s deploy-yaml-openshift | kubectl apply -f -
+	export HELM_TEMPL_DEF_FLAGS="--include-crds --set image='${IMAGE}'" && \
+		$(MAKE) -s deploy-yaml-openshift | kubectl apply -f -
 
 .PHONY: deploy-yaml-openshift
 deploy-yaml-openshift: helm ## Outputs YAML manifests needed to deploy the controller in OpenShift
