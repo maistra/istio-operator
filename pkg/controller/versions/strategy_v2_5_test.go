@@ -3,6 +3,7 @@ package versions
 import (
 	"context"
 	"fmt"
+	"testing"
 
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common/test/assert"
@@ -12,8 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
-
-	"testing"
 )
 
 type validationTestCase struct {
@@ -399,6 +398,7 @@ func newFakeClient(smcps []*maistrav2.ServiceMeshControlPlane) *fakeClient {
 
 func (f fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
 	if val, exists := f.objects[&metav1.ObjectMeta{Name: key.Name, Namespace: key.Namespace}]; exists {
+		//nolint:ineffassign
 		obj = val
 	}
 	return nil
@@ -413,6 +413,7 @@ func (f fakeClient) List(ctx context.Context, list runtime.Object, opts ...clien
 				l.Items = append(l.Items, *o)
 			}
 		}
+		//nolint:ineffassign
 		list = l
 	default:
 		panic("unsupported resource")
