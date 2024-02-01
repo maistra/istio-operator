@@ -133,14 +133,22 @@ build_and_push_image() {
   # Check the current architecture to build the image for the same architecture
   # For now we are only building for arm64 and x86_64 because z and p are not supported by the operator yet.
   DOCKER_BUILD_FLAGS=""
-  architecture=$(uname -m)
-  if [[ "$architecture" == "aarch64" || "$architecture" == "arm64" ]]; then
+  TARGET_ARCH=$(uname -m)
+
+  if [[ "$TARGET_ARCH" == "aarch64" || "$TARGET_ARCH" == "arm64" ]]; then
       echo "Running on arm64 architecture"
-      DOCKER_BUILD_FLAGS="--platform=linux/arm64"
+      TARGET_ARCH="arm64"
+      DOCKER_BUILD_FLAGS="--platform=linux/${TARGET_ARCH}"
+  elif [[ "$TARGET_ARCH" == "x86_64" || "$TARGET_ARCH" == "amd64" ]]; then
+      echo "Running on x86_64 architecture"
+      TARGET_ARCH="amd64"
+  else
+      echo "Unsupported architecture: ${TARGET_ARCH}"
+      exit 1
   fi
 
   # running docker build inside another container layer causes issues with bind mounts
-  BUILD_WITH_CONTAINER=0 DOCKER_BUILD_FLAGS=${DOCKER_BUILD_FLAGS} IMAGE=${HUB}/${IMAGE_BASE}:${TAG} make docker-build docker-push
+  BUILD_WITH_CONTAINER=0 DOCKER_BUILD_FLAGS=${DOCKER_BUILD_FLAGS} IMAGE=${HUB}/${IMAGE_BASE}:${TAG} TARGET_ARCH=${TARGET_ARCH} make docker-build docker-push
 }
 
 deploy_operator() {

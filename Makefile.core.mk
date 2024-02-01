@@ -163,7 +163,7 @@ test.integration.kind:
 ##@ Build
 
 .PHONY: build
-build: build-amd64 ## Build manager binary.
+build: build-$(TARGET_ARCH) ## Build manager binary.
 
 .PHONY: run
 run: gen ## Run a controller from your host.
