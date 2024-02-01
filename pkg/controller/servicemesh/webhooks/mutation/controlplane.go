@@ -88,7 +88,7 @@ func (v *ControlPlaneMutator) Handle(ctx context.Context, req admission.Request)
 				ver, err = versions.ParseVersion(currentVersion)
 			}
 			if err == nil && ver.AtLeast(versions.V2_5.Version()) {
-				mutator.SetOpenShiftRoute(false)
+				mutator.SetOpenShiftRouteEnabled(false)
 			}
 		}
 	}
@@ -168,7 +168,7 @@ type smcpmutator interface {
 	SetProfiles(profiles []string)
 	GetPatches() []jsonpatch.JsonPatchOperation
 	IsOpenShiftRouteEnabled() *bool
-	SetOpenShiftRoute(bool)
+	SetOpenShiftRouteEnabled(bool)
 }
 
 type smcppatch struct {
@@ -232,7 +232,7 @@ func (m *smcpv1mutator) IsOpenShiftRouteEnabled() *bool {
 	return nil
 }
 
-func (m *smcpv1mutator) SetOpenShiftRoute(value bool) {}
+func (m *smcpv1mutator) SetOpenShiftRouteEnabled(value bool) {}
 
 type smcpv2mutator struct {
 	*smcppatch
@@ -281,6 +281,6 @@ func (m *smcpv2mutator) IsOpenShiftRouteEnabled() *bool {
 	return route.Enabled
 }
 
-func (m *smcpv2mutator) SetOpenShiftRoute(value bool) {
+func (m *smcpv2mutator) SetOpenShiftRouteEnabled(value bool) {
 	m.patches = append(m.patches, jsonpatch.NewPatch("add", "/spec/gateways/openshiftRoute/enabled", value))
 }
