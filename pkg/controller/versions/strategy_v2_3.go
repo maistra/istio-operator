@@ -130,7 +130,7 @@ func (v *versionStrategyV2_3) ValidateV1(_ context.Context, _ client.Client, _ *
 
 func (v *versionStrategyV2_3) ValidateV2(ctx context.Context, cl client.Client, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec) error {
 	var allErrors []error
-	allErrors = v.validateGlobal(ctx, v.Ver, meta, spec, cl, allErrors)
+	allErrors = v.validateGlobal(ctx, meta, spec, cl, allErrors)
 	allErrors = validateGateways(ctx, meta, spec, cl, allErrors)
 	allErrors = validatePolicyType(spec, v.Ver, allErrors)
 	allErrors = validateTelemetryType(spec, v.Ver, allErrors)
@@ -700,8 +700,7 @@ func (v *versionStrategyV2_3) GetTrustDomainFieldPath() string {
 }
 
 func (v *versionStrategyV2_3) validateGlobal(
-	ctx context.Context, version Ver, meta *metav1.ObjectMeta,
-	spec *v2.ControlPlaneSpec, cl client.Client, allErrors []error,
+	ctx context.Context, meta *metav1.ObjectMeta, spec *v2.ControlPlaneSpec, cl client.Client, allErrors []error,
 ) []error {
 	if spec.Mode != "" {
 		allErrors = append(allErrors,
