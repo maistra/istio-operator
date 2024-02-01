@@ -205,29 +205,31 @@ func (s ControlPlaneSpec) IsGatewayController() bool {
 	if s.Runtime != nil && s.Runtime.Components != nil {
 		pilot, found := s.Runtime.Components[ControlPlaneComponentNamePilot]
 		if !found {
-			goto CheckTechPreview
+			return s.isTechPreviewGatewayController()
 		}
 		if pilot.Container != nil && pilot.Container.Env != nil {
 			controllerModeEnabledStr, found := pilot.Container.Env["PILOT_ENABLE_GATEWAY_CONTROLLER_MODE"]
 			if !found {
-				goto CheckTechPreview
+				return s.isTechPreviewGatewayController()
 			}
 			controllerModeEnabled, err := strconv.ParseBool(controllerModeEnabledStr)
 			if err != nil {
-				goto CheckTechPreview
+				return s.isTechPreviewGatewayController()
 			}
 			return controllerModeEnabled
 		}
 	}
+	return s.isTechPreviewGatewayController()
+}
 
-CheckTechPreview:
+func (s ControlPlaneSpec) isTechPreviewGatewayController() bool {
 	if s.TechPreview != nil {
-		rawGatewayAPI, found, err := s.TechPreview.GetMap("gatewayAPI")
+		gatewayAPI, found, err := s.TechPreview.GetMap("gatewayAPI")
 		if err != nil || !found {
 			return false
 		}
 
-		isControllerMode, found, err := v1.NewHelmValues(rawGatewayAPI).GetBool("controllerMode")
+		isControllerMode, found, err := v1.NewHelmValues(gatewayAPI).GetBool("controllerMode")
 		if err != nil || !found {
 			return false
 		}
