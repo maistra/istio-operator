@@ -68,6 +68,9 @@ NAMESPACE ?= istio-operator
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.26.0
 
+# Set DOCKER_BUILD_FLAGS to specify flags to pass to 'docker build', default to empty. Example: --platform=linux/arm64
+DOCKER_BUILD_FLAGS ?= "--platform=$(TARGET_OS)/$(TARGET_ARCH)"
+
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
@@ -160,7 +163,7 @@ test.integration.kind:
 ##@ Build
 
 .PHONY: build
-build: build-amd64 ## Build manager binary.
+build: build-$(TARGET_ARCH) ## Build manager binary.
 
 .PHONY: run
 run: gen ## Run a controller from your host.
@@ -169,7 +172,7 @@ run: gen ## Run a controller from your host.
 # docker build -t ${IMAGE} --build-arg GIT_TAG=${GIT_TAG} --build-arg GIT_REVISION=${GIT_REVISION} --build-arg GIT_STATUS=${GIT_STATUS} .
 .PHONY: docker-build
 docker-build: build ## Build docker image with the manager.
-	docker build -t ${IMAGE} .
+	docker build ${DOCKER_BUILD_FLAGS} -t ${IMAGE} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
