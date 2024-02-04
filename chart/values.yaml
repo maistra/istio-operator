@@ -19,7 +19,7 @@ csv:
     - v1.20.2
     - v1.20.1
     - v1.19.6
-    - latest (0b8912da)
+    - latest (3c51cc80)
     - gwAPIControllerMode
 
     [See this page](https://github.com/maistra/istio-operator/blob/maistra-3.0/bundle/README.md) for instructions on how to use it.
