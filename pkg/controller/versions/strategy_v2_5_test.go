@@ -83,7 +83,7 @@ var testCases = []validationTestCase{
 	// TODO: add test cases where 2 multi-tenant control planes already exist
 	{
 		name: "creating multi-tenant SMCP when no other SMCPs exists - no errors",
-		smcp: newSmcpSpec(`mode: ClusterWide`),
+		smcp: simpleMultiTenant,
 	},
 	{
 		name: "creating multi-tenant SMCP when another multi-tenant already exists - no errors",
