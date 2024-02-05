@@ -242,15 +242,6 @@ var testCases = []validationTestCase{
 		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
 	},
 	{
-		name: "creating cluster-wide gateway controller SMCP when another already exists - expected error (2nd execution)",
-		smcp: clusterWideGatewayController,
-		existingObjs: []*maistrav2.ServiceMeshControlPlane{
-			NewV2SMCPResource("basic", "istio-system-1", clusterWideGatewayController),
-			NewV2SMCPResource("basic", "istio-system-2", clusterWideGatewayController2),
-		},
-		expectedErr: fmt.Errorf("a cluster-scoped SMCP may only be created when no other SMCPs exist"),
-	},
-	{
 		name: "creating multi-tenant SMCP when cluster-wide SMCP exists - expected error",
 		smcp: simpleMultiTenant,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{

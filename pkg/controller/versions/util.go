@@ -91,8 +91,7 @@ func validateGlobal(ctx context.Context, meta *metav1.ObjectMeta, newSmcp *v2.Co
 			}
 		}
 		if len(smcps.Items) > 1 {
-			if newSmcp.IsGatewayController() && countGatewayControllers(smcps.Items) > 1 ||
-				!newSmcp.IsGatewayController() && countGatewayControllers(smcps.Items) == 0 {
+			if !newSmcp.IsGatewayController() && countGatewayControllers(smcps.Items) == 0 {
 				return append(allErrors, otherSmcpExists)
 			}
 		}
