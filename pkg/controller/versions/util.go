@@ -78,15 +78,12 @@ func validateGlobal(ctx context.Context, meta *metav1.ObjectMeta, newSmcp *v2.Co
 		if len(smcps.Items) == 1 && smcps.Items[0].UID != meta.GetUID() {
 			currentSmcp := smcps.Items[0].Spec
 			if currentSmcp.IsClusterScoped() {
-				// allow cluster-wide gateway controller when another cluster-wide non gateway controller already exists
+				// allow creating cluster-wide gateway controller when existing cluster-wide SMCP is not a gateway controller and vice versa;
 				// this is the case where openshift-ingress controller and cluster-wide mesh co-exist
-				if (newSmcp.IsGatewayController() && !currentSmcp.IsGatewayController()) || (!newSmcp.IsGatewayController() && currentSmcp.IsGatewayController()) {
-					return append(allErrors, validateOverlappingCaCertConfigMapNames(meta, newSmcp, &smcps, allErrors)...)
-				}
-				// do not allow more than 1 cluster-wide gateway controller
-				if newSmcp.IsGatewayController() && currentSmcp.IsGatewayController() {
+				if newSmcp.IsGatewayController() == currentSmcp.IsGatewayController() {
 					return append(allErrors, otherSmcpExists)
 				}
+				return append(allErrors, validateOverlappingCaCertConfigMapNames(meta, newSmcp, &smcps, allErrors)...)
 			}
 			// only cluster-wide gateway controller can be created when another SMCP exist
 			if !newSmcp.IsGatewayController() {
