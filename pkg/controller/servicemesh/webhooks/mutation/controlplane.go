@@ -74,6 +74,25 @@ func (v *ControlPlaneMutator) Handle(ctx context.Context, req admission.Request)
 		}
 	}
 
+	// As we are deprecating IOR, on creating a v2.5 SMCP we want to disable IOR if not specified explicitly
+	if req.AdmissionRequest.Operation == admissionv1beta1.Create {
+		newOpenShiftRoute := mutator.IsOpenShiftRouteEnabled()
+
+		if newOpenShiftRoute == nil {
+			var ver versions.Version
+			var err error
+			// If version is not specified
+			if currentVersion == "" {
+				ver, err = versions.ParseVersion(mutator.DefaultVersion())
+			} else {
+				ver, err = versions.ParseVersion(currentVersion)
+			}
+			if err == nil && ver.AtLeast(versions.V2_5.Version()) {
+				mutator.SetOpenShiftRouteEnabled(false)
+			}
+		}
+	}
+
 	if len(mutator.GetProfiles()) == 0 {
 		log.Info("Setting .spec.profiles to default value", "profiles", []string{v1.DefaultTemplate})
 		mutator.SetProfiles([]string{v1.DefaultTemplate})
@@ -148,6 +167,8 @@ type smcpmutator interface {
 	GetProfiles() []string
 	SetProfiles(profiles []string)
 	GetPatches() []jsonpatch.JsonPatchOperation
+	IsOpenShiftRouteEnabled() *bool
+	SetOpenShiftRouteEnabled(bool)
 }
 
 type smcppatch struct {
@@ -207,6 +228,12 @@ func (m *smcpv1mutator) GetProfiles() []string {
 	return m.smcp.Spec.Profiles
 }
 
+func (m *smcpv1mutator) IsOpenShiftRouteEnabled() *bool {
+	return nil
+}
+
+func (m *smcpv1mutator) SetOpenShiftRouteEnabled(value bool) {}
+
 type smcpv2mutator struct {
 	*smcppatch
 	smcp    *v2.ServiceMeshControlPlane
@@ -236,4 +263,24 @@ func (m *smcpv2mutator) OldVersion() string {
 
 func (m *smcpv2mutator) GetProfiles() []string {
 	return m.smcp.Spec.Profiles
+}
+
+func (m *smcpv2mutator) IsOpenShiftRouteEnabled() *bool {
+	gateways := m.smcp.Spec.Gateways
+
+	if gateways == nil {
+		return nil
+	}
+
+	route := gateways.OpenShiftRoute
+
+	if route == nil {
+		return nil
+	}
+
+	return route.Enabled
+}
+
+func (m *smcpv2mutator) SetOpenShiftRouteEnabled(value bool) {
+	m.patches = append(m.patches, jsonpatch.NewPatch("add", "/spec/gateways/openshiftRoute/enabled", value))
 }
