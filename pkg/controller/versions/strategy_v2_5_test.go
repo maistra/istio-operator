@@ -37,6 +37,7 @@ func NewV2SMCPResource(name, namespace string, spec *maistrav2.ControlPlaneSpec)
 var (
 	simpleMultiTenant  = newSmcpSpec("mode: MultiTenant")
 	simpleMultiTenant2 = simpleMultiTenant.DeepCopy()
+	simpleMultiTenant3 = simpleMultiTenant.DeepCopy()
 	simpleClusterWide  = newSmcpSpec("mode: ClusterWide")
 	simpleClusterWide2 = simpleClusterWide.DeepCopy()
 
@@ -66,6 +67,7 @@ techPreview:
 	uuids = map[*maistrav2.ControlPlaneSpec]types.UID{
 		simpleMultiTenant:                     uuid.NewUUID(),
 		simpleMultiTenant2:                    uuid.NewUUID(),
+		simpleMultiTenant3:                    uuid.NewUUID(),
 		simpleClusterWide:                     uuid.NewUUID(),
 		simpleClusterWide2:                    uuid.NewUUID(),
 		multiTenantGatewayController:          uuid.NewUUID(),
@@ -80,16 +82,16 @@ techPreview:
 // In other words, when an SMCP B is created when an SMCP A exists, ValidateV2 will be called twice and first call
 // to client.List will return [SMCP A] and next time it will return [SMCP A, SMCP B].
 var testCases = []validationTestCase{
-	// TODO: add test cases where 2 multi-tenant control planes already exist
 	{
 		name: "creating multi-tenant SMCP when no other SMCPs exists - no errors",
 		smcp: simpleMultiTenant,
 	},
 	{
-		name: "creating multi-tenant SMCP when another multi-tenant already exists - no errors",
+		name: "creating multi-tenant SMCP when others multi-tenant already exist - no errors",
 		smcp: simpleMultiTenant,
 		existingObjs: []*maistrav2.ServiceMeshControlPlane{
-			NewV2SMCPResource("basic", "istio-system-1", simpleMultiTenant2),
+			NewV2SMCPResource("basic", "istio-system-2", simpleMultiTenant2),
+			NewV2SMCPResource("basic", "istio-system-3", simpleMultiTenant3),
 		},
 	},
 	{
