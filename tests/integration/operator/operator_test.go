@@ -1,9 +1,7 @@
-package installation_test
+package integration_operator
 
 import (
-	"bytes"
 	"fmt"
-	"os/exec"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -11,109 +9,67 @@ import (
 
 var _ = Describe("Operator", func() {
 	BeforeEach(func() {
-		// Add there code to run before each test
+		// Add there code to run before each test if needed
 	})
 
-	It("can be installed", func() {
-		// Install the operator here with default profile
-		By("using the helm chart with default values")
-		GinkgoWriter.Print("Deploying Operator using default helm charts located in /chart folder\n")
-		deployOperator()
-		Expect("Operator Running").To(Equal("Hugo"))
+	When("a fresh cluster exist", func() {
+		It("the operator can be installed", func() {
+			By("using the helm chart with default values")
+			GinkgoWriter.Println("Deploying Operator using default helm charts located in /chart folder")
+
+			// This is only for downstream testing, because the operator will be installed previously in CI pipeline
+			if skipDeploy == "true" {
+				Skip("Skipping the deployment of the operator and the tests")
+			} else {
+				deployOperator()
+			}
+
+			Expect(operatorIsRunning()).To(Equal(true))
+		})
 	})
 
-	It("can be unistalled", func() {
+	When("the operator is installed", func() {
+		Context("a control plane can be installed and uninstalled", func() {
+			istioVersions, err := getIstioVersions("/work/versions.yaml")
+			if err != nil {
+				Fail(fmt.Sprintf("Error getting istio versions from version.yaml file: %v", err))
+			}
 
-		Expect("Operator Uninstalled").To(Equal("Hugo"))
+			It("for every istio version in version.yaml file", func() {
+				for _, version := range istioVersions {
+					fmt.Print("Deploying Istio Control Plane for version: ", version)
+					deployIstioControlPlane(version)
+
+					Expect(istioControlPlaneIsInstalledAndRunning(version)).To(Equal(true))
+					Expect(checkOnlyIstioIsDeployed(control_plane_ns)).To(Equal(true))
+
+					if ocp == "true" {
+						// CNI Daemon is deployed only in OCP clusters
+						Expect(cniDaemonIsDeployed(namespace)).To(Equal(true))
+					} else {
+						Expect(cniDaemonIsDeployed(namespace)).To(Equal(false))
+					}
+
+					undeployIstioControlPlane(version)
+
+					Expect(checkNamespaceEmpty(control_plane_ns)).To(Equal(true))
+
+					// Delete the namespace and check if deleted to be able to install the next version
+					// TODO: check if this can be moved to a after each test
+					Expect(deleteAndCheckNamespaceIsDeleted()).To(Equal(true))
+				}
+			})
+		})
 	})
+
+	When("the operator is installed", func() {
+		It("can be unistalled", func() {
+			GinkgoWriter.Println("Un-Deploying Operator by using helm templates generated")
+
+			undeployOperator()
+
+			Expect(operatorIsRunning()).To(Equal(false))
+		})
+	})
+
 })
-
-func deployOperator() {
-	if ocp == "true" {
-		GinkgoWriter.Print("Deploying to OpenShift cluster\n")
-		deployOpenShift()
-	} else {
-		GinkgoWriter.Print("Deploying to Kubernetes cluster\n")
-		deployKubernetes()
-	}
-}
-
-func deployKubernetes() error {
-	// Generate deployment manifests
-	cmd := exec.Command("kustomize", "build", "config/default")
-	output, err := cmd.Output()
-	print("******** Output ********\n")
-	print(output)
-	if err != nil {
-		return err
-	}
-
-	// Apply deployment manifests to Kubernetes cluster
-	cmd = exec.Command("kubectl", "apply", "-f", "-")
-	cmd.Stdin = bytes.NewBuffer(output)
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func deployOpenShift() error {
-
-	if err := setControllerImage(); err != nil {
-		fmt.Printf("Error setting controller image: %v\n", err)
-		return err
-	}
-
-	if err := setNamespace(); err != nil {
-		fmt.Printf("Error setting namespace: %v\n", err)
-		return err
-	}
-
-	if err := applyYAMLWithKustomize(); err != nil {
-		fmt.Printf("Error applying YAML manifests: %v\n", err)
-		return err
-	}
-
-	return nil
-}
-
-func applyYAMLWithKustomize() error {
-	output, err := exec.Command("kubectl", "apply", "-k", "../../../config/openshift").CombinedOutput()
-	if err != nil {
-		fmt.Printf("Error applying YAML manifests: %v\n", err)
-		return err
-	}
-	fmt.Println(string(output))
-	return nil
-}
-
-func setControllerImage() error {
-	print("Setting Controller Image with Kustomize\n")
-	cmd := exec.Command("kustomize", "edit", "set", "image", fmt.Sprintf("controller=%s", image))
-	cmd.Dir = "../../../config/manager"
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("Error setting namespace in YAML manifests: %v\n", err)
-		return err
-	}
-
-	fmt.Println(string(output))
-
-	return nil
-}
-
-func setNamespace() error {
-	print("Setting Namespace to be replaced\n")
-	cmd := exec.Command("kustomize", "edit", "set", "namespace", namespace)
-	cmd.Dir = "../../../config/default"
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("Error setting namespace in YAML manifests: %v\n", err)
-		return err
-	}
-
-	fmt.Println(string(output))
-
-	return nil
-}

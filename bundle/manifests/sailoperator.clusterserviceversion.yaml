@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-operator:3.0-latest
-    createdAt: "2024-02-01T03:31:49Z"
+    createdAt: "2024-02-06T03:04:22Z"
     description: Experimental operator for installing Istio service mesh
     operators.operatorframework.io/builder: operator-sdk-v1.33.0
     operators.operatorframework.io/internal-objects: '["wasmplugins.extensions.istio.io","destinationrules.networking.istio.io","envoyfilters.networking.istio.io","gateways.networking.istio.io","proxyconfigs.networking.istio.io","serviceentries.networking.istio.io","sidecars.networking.istio.io","virtualservices.networking.istio.io","workloadentries.networking.istio.io","workloadgroups.networking.istio.io","authorizationpolicies.security.istio.io","peerauthentications.security.istio.io","requestauthentications.security.istio.io","telemetries.telemetry.istio.io"]'
@@ -221,7 +221,7 @@ spec:
     - v1.20.2
     - v1.20.1
     - v1.19.6
-    - latest (b07759be)
+    - latest (062ce409)
     - gwAPIControllerMode
 
     [See this page](https://github.com/maistra/istio-operator/blob/maistra-3.0/bundle/README.md) for instructions on how to use it.
