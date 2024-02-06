@@ -29,22 +29,6 @@ type IngressControllerMode int32
 // Specifies which tracer to use.
 type Tracer int32
 
-// Specifies the sidecar's default behavior when handling outbound traffic from the application.
-type OutboundTrafficPolicyConfigMode int32
-
-// ArchConfig specifies the pod scheduling target architecture(amd64, ppc64le, s390x, arm64)
-// for all the Istio control plane components.
-type ArchConfig struct {
-	// Sets pod scheduling weight for amd64 arch
-	Amd64 uint32 `json:"amd64,omitempty"`
-	// Sets pod scheduling weight for ppc64le arch.
-	Ppc64Le uint32 `json:"ppc64le,omitempty"`
-	// Sets pod scheduling weight for s390x arch.
-	S390X uint32 `json:"s390x,omitempty"`
-	// Sets pod scheduling weight for arm64 arch.
-	Arm64 uint32 `json:"arm64,omitempty"`
-}
-
 // Configuration for CNI.
 type CNIConfig struct {
 	// Controls whether CNI is enabled.
@@ -60,30 +44,20 @@ type CNIConfig struct {
 	CniConfFileName   string              `json:"cniConfFileName,omitempty"`
 	CniNetnsDir       string              `json:"cniNetnsDir,omitempty"`
 	ExcludeNamespaces []string            `json:"excludeNamespaces,omitempty"`
-	Affinity          *k8sv1.Affinity     `json:"affinity,omitempty"`
 	PspClusterRole    string              `json:"psp_cluster_role,omitempty"`
 	LogLevel          string              `json:"logLevel,omitempty"`
 	Repair            *CNIRepairConfig    `json:"repair,omitempty"`
 	Chained           bool                `json:"chained,omitempty"`
 	ResourceQuotas    *ResourceQuotas     `json:"resource_quotas,omitempty"`
-	Resources         *Resources          `json:"resources,omitempty"`
 	Privileged        bool                `json:"privileged,omitempty"`
 	// The Container seccompProfile
 	//
 	// See: https://kubernetes.io/docs/tutorials/security/seccomp/
 	SeccompProfile map[string]string `json:"seccompProfile,omitempty"`
-	Ambient        *CNIAmbientConfig `json:"ambient,omitempty"`
 	Provider       string            `json:"provider,omitempty"`
 	// K8s rolling update strategy
 	// +kubebuilder:validation:XIntOrString
 	RollingMaxUnavailable *intstr.IntOrString `json:"rollingMaxUnavailable,omitempty"`
-}
-
-type CNIAmbientConfig struct {
-	// Controls whether ambient redirection is enabled
-	Enabled      bool   `json:"enabled,omitempty"`
-	RedirectMode string `json:"redirectMode,omitempty"`
-	ConfigDir    string `json:"configDir,omitempty"`
 }
 
 type CNIRepairConfig struct {
@@ -108,33 +82,6 @@ type ResourceQuotas struct {
 	Pods    int64 `json:"pods,omitempty"`
 }
 
-// Mirrors Resources for unmarshaling.
-type Resources struct {
-	Limits   map[string]string `json:"limits,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	Requests map[string]string `json:"requests,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-}
-
-// Mirrors ServiceAccount for unmarshaling.
-type ServiceAccount struct {
-	Annotations map[string]string `json:"annotations,omitempty"`
-}
-
-// DefaultPodDisruptionBudgetConfig specifies the default pod disruption budget configuration.
-//
-// See https://kubernetes.io/docs/concepts/workloads/pods/disruptions/
-type DefaultPodDisruptionBudgetConfig struct {
-	// Controls whether a PodDisruptionBudget with a default minAvailable value of 1 is created for each deployment.
-	Enabled bool `json:"enabled,omitempty"`
-}
-
-// DefaultResourcesConfig specifies the default k8s resources settings for all Istio control plane components.
-type DefaultResourcesConfig struct {
-	// k8s resources settings.
-	//
-	// See https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#resource-requests-and-limits-of-pod-and-container
-	Requests *ResourcesRequestsConfig `json:"requests,omitempty"`
-}
-
 // Global Configuration for Istio components.
 type GlobalConfig struct {
 	// List of certSigners to allow "approve" action in the ClusterRole
@@ -145,12 +92,6 @@ type GlobalConfig struct {
 	DefaultConfigVisibilitySettings []string `json:"defaultConfigVisibilitySettings,omitempty"`
 	// Specifies the docker hub for Istio images.
 	Hub string `json:"hub,omitempty"`
-	// Specifies the image pull policy for the Istio images. one of Always, Never, IfNotPresent.
-	// Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated.
-	//
-	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
-	ImagePullPolicy  string   `json:"imagePullPolicy,omitempty"` // ImagePullPolicy             v1.PullPolicy                 `json:"imagePullPolicy,omitempty"`
-	ImagePullSecrets []string `json:"imagePullSecrets,omitempty"`
 	// Specifies the default namespace for the Istio control plane components.
 	IstioNamespace string `json:"istioNamespace,omitempty"`
 	LogAsJSON      bool   `json:"logAsJson,omitempty"`
@@ -282,11 +223,6 @@ type MultiClusterConfig struct {
 	IncludeEnvoyFilter bool   `json:"includeEnvoyFilter,omitempty"`
 }
 
-// OutboundTrafficPolicyConfig controls the default behavior of the sidecar for handling outbound traffic from the application.
-type OutboundTrafficPolicyConfig struct {
-	Mode OutboundTrafficPolicyConfigMode `json:"mode,omitempty"`
-}
-
 // Configuration for Pilot.
 type PilotConfig struct {
 	// Controls whether Pilot is enabled.
@@ -343,7 +279,6 @@ type PilotConfig struct {
 	//	ENV_VAR_1: value1
 	//	ENV_VAR_2: value2
 	Env                map[string]string `json:"env,omitempty"`
-	Affinity           *k8sv1.Affinity   `json:"affinity,omitempty"`
 	ServiceAnnotations map[string]string `json:"serviceAnnotations,omitempty"`
 	// ConfigSource describes a source of configuration data for networking
 	// rules, and other Istio configuration artifacts. Multiple data sources
@@ -363,8 +298,6 @@ type PilotConfig struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	ExtraContainerArgs []map[string]string `json:"extraContainerArgs,omitempty"`
-	VolumeMounts       []k8sv1.VolumeMount `json:"volumeMounts,omitempty"`
-	Volumes            []k8sv1.Volume      `json:"volumes,omitempty"`
 	IPFamilies         []map[string]string `json:"ipFamilies,omitempty"`
 	IPFamilyPolicy     string              `json:"ipFamilyPolicy,omitempty"`
 }
@@ -511,15 +444,6 @@ type ResourcesRequestsConfig struct {
 // Configuration for the SecretDiscoveryService instead of using K8S secrets to mount the certificates.
 type SDSConfig struct{}
 
-// Configuration for secret volume mounts.
-//
-// See https://kubernetes.io/docs/concepts/configuration/secret/#using-secrets.
-type SecretVolume struct {
-	MountPath  string `json:"mountPath,omitempty"`
-	Name       string `json:"name,omitempty"`
-	SecretName string `json:"secretName,omitempty"`
-}
-
 // SidecarInjectorConfig is described in istio.io documentation.
 type SidecarInjectorConfig struct {
 	// Enables sidecar auto-injection in namespaces by default.
@@ -634,15 +558,11 @@ type Values struct {
 	Cni    *CNIConfig    `json:"cni,omitempty"`
 	Global *GlobalConfig `json:"global,omitempty"`
 	Pilot  *PilotConfig  `json:"pilot,omitempty"`
-	// +kubebuilder:pruning:PreserveUnknownFields
-	// +kubebuilder:validation:Schemaless
-	Ztunnel map[string]string `json:"ztunnel,omitempty"`
 	// Controls whether telemetry is exported for Pilot.
 	Telemetry              *TelemetryConfig       `json:"telemetry,omitempty"`
 	SidecarInjectorWebhook *SidecarInjectorConfig `json:"sidecarInjectorWebhook,omitempty"`
 	IstioCni               *CNIConfig             `json:"istio_cni,omitempty"`
 	Revision               string                 `json:"revision,omitempty"`
-	OwnerName              string                 `json:"ownerName,omitempty"`
 	MeshConfig             *MeshConfig            `json:"meshConfig,omitempty"`
 	Base                   *BaseConfig            `json:"base,omitempty"`
 	IstiodRemote           *IstiodRemoteConfig    `json:"istiodRemote,omitempty"`
