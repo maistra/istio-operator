@@ -80,7 +80,7 @@ spec:
                   description: |-
                     The built-in installation configuration profile to use.
                     The 'default' profile is always applied. On OpenShift, the 'openshift' profile is also applied on top of 'default'.
-                    Must be one of: ambient, default, demo, empty, external, minimal, openshift, preview, remote.
+                    Must be one of: ambient, default, demo, empty, external, minimal, openshift-ambient, openshift, preview, remote.
                   enum:
                     - ambient
                     - default
@@ -88,6 +88,7 @@ spec:
                     - empty
                     - external
                     - minimal
+                    - openshift-ambient
                     - openshift
                     - preview
                     - remote
