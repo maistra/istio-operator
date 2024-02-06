@@ -16,162 +16,148 @@ spec:
     singular: istio
   scope: Cluster
   versions:
-    - additionalPrinterColumns:
-        - description: Total number of IstioRevision objects currently associated with this object.
-          jsonPath: .status.revisions.total
-          name: Revisions
-          type: string
-        - description: Number of revisions that are ready.
-          jsonPath: .status.revisions.ready
-          name: Ready
-          type: string
-        - description: Number of revisions that are currently being used by workloads.
-          jsonPath: .status.revisions.inUse
-          name: In use
-          type: string
-        - description: The current state of the active revision.
-          jsonPath: .status.state
-          name: Active Revision
-          type: string
-        - description: The version of the control plane installation.
-          jsonPath: .spec.version
-          name: Version
-          type: string
-        - description: The age of the object
-          jsonPath: .metadata.creationTimestamp
-          name: Age
-          type: date
-      name: v1alpha1
-      schema:
-        openAPIV3Schema:
-          description: |-
-            Istio represents an Istio Service Mesh deployment consisting of one or more
-            control plane instances (represented by one or more IstioRevision objects).
-            To deploy an Istio Service Mesh, a user creates an Istio object with the
-            desired Istio version and configuration. The Istio operator then creates
-            an IstioRevision object, which in turn creates the underlying Deployment
-            objects for istiod and other control plane components, similar to how a
-            Deployment object in Kubernetes creates ReplicaSets that create the Pods.
-          properties:
-            apiVersion:
-              description: |-
-                APIVersion defines the versioned schema of this representation of an object.
-                Servers should convert recognized schemas to the latest internal value, and
-                may reject unrecognized values.
-                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
-              type: string
-            kind:
-              description: |-
-                Kind is a string value representing the REST resource this object represents.
-                Servers may infer this from the endpoint the client submits requests to.
-                Cannot be updated.
-                In CamelCase.
-                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
-              type: string
-            metadata:
-              type: object
-            spec:
-              description: IstioSpec defines the desired state of Istio
-              properties:
-                namespace:
-                  description: Namespace to which the Istio components should be installed.
-                  type: string
-                profile:
-                  description: |-
-                    The built-in installation configuration profile to use.
-                    The 'default' profile is always applied. On OpenShift, the 'openshift' profile is also applied on top of 'default'.
-                    Must be one of: ambient, default, demo, empty, external, minimal, openshift-ambient, openshift, preview, remote.
-                  enum:
-                    - ambient
-                    - default
-                    - demo
-                    - empty
-                    - external
-                    - minimal
-                    - openshift-ambient
-                    - openshift
-                    - preview
-                    - remote
-                  type: string
-                rawValues:
-                  description: Defines the non-validated values to be passed to the Helm charts when installing Istio.
-                  x-kubernetes-preserve-unknown-fields: true
-                updateStrategy:
-                  description: Defines the update strategy to use when the version in the Istio CR is updated.
-                  properties:
-                    inactiveRevisionDeletionGracePeriodSeconds:
-                      description: |-
-                        Defines how many seconds the operator should wait before removing a non-active revision after all
-                        the workloads have stopped using it. You may want to set this value on the order of minutes.
-                        The minimum and the default value is 30.
-                      format: int64
-                      minimum: 30
-                      type: integer
-                    type:
-                      description: "Type of strategy to use. Can be \"InPlace\" or \"RevisionBased\". When the \"InPlace\" strategy\nis used, the existing Istio control plane is updated in-place. The workloads therefore\ndon't need to be moved from one control plane instance to another. When the \"RevisionBased\"\nstrategy is used, a new Istio control plane instance is created for every change to the\nIstio.spec.version field. The old control plane remains in place until all workloads have\nbeen moved to the new control plane instance.\n\n\nThe \"InPlace\" strategy is the default.\tTODO: change default to \"RevisionBased\""
-                      enum:
-                        - InPlace
-                        - RevisionBased
-                      type: string
-                    updateWorkloads:
-                      description: |-
-                        Defines whether the workloads should be moved from one control plane instance to another
-                        automatically. If updateWorkloads is true, the operator moves the workloads from the old
-                        control plane instance to the new one after the new control plane is ready.
-                        If updateWorkloads is false, the user must move the workloads manually by updating the
-                        istio.io/rev labels on the namespace and/or the pods.
-                        Defaults to false.
-                      type: boolean
-                  type: object
-                values:
-                  description: Defines the values to be passed to the Helm charts when installing Istio.
-                  properties:
-                    base:
-                      properties:
-                        enableCRDTemplates:
-                          type: boolean
-                        enableIstioConfigCRDs:
-                          type: boolean
-                        validateGateway:
-                          type: boolean
-                        validationURL:
-                          type: string
-                      type: object
-                    cni:
-                      properties:
-                        affinity:
-                          type: object
-                          x-kubernetes-preserve-unknown-fields: true
-                        ambient:
-                          properties:
-                            configDir:
-                              type: string
-                            dnsCapture:
-                              type: boolean
-                            enabled:
-                              type: boolean
-                          type: object
-                        chained:
-                          type: boolean
-                        cniBinDir:
-                          type: string
-                        cniConfDir:
-                          type: string
-                        cniConfFileName:
-                          type: string
-                        cniNetnsDir:
-                          type: string
-                        enabled:
-                          type: boolean
-                        excludeNamespaces:
-                          items:
-                            type: string
-                          enabled:
-                            description: Controls whether ambient redirection is enabled
-                            type: boolean
-                          redirectMode:
-                            type: string
-                        type: object
+  - additionalPrinterColumns:
+    - description: Total number of IstioRevision objects currently associated with
+        this object.
+      jsonPath: .status.revisions.total
+      name: Revisions
+      type: string
+    - description: Number of revisions that are ready.
+      jsonPath: .status.revisions.ready
+      name: Ready
+      type: string
+    - description: Number of revisions that are currently being used by workloads.
+      jsonPath: .status.revisions.inUse
+      name: In use
+      type: string
+    - description: The current state of the active revision.
+      jsonPath: .status.state
+      name: Active Revision
+      type: string
+    - description: The version of the control plane installation.
+      jsonPath: .spec.version
+      name: Version
+      type: string
+    - description: The age of the object
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          Istio represents an Istio Service Mesh deployment consisting of one or more
+          control plane instances (represented by one or more IstioRevision objects).
+          To deploy an Istio Service Mesh, a user creates an Istio object with the
+          desired Istio version and configuration. The Istio operator then creates
+          an IstioRevision object, which in turn creates the underlying Deployment
+          objects for istiod and other control plane components, similar to how a
+          Deployment object in Kubernetes creates ReplicaSets that create the Pods.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: IstioSpec defines the desired state of Istio
+            properties:
+              namespace:
+                description: Namespace to which the Istio components should be installed.
+                type: string
+              profile:
+                description: |-
+                  The built-in installation configuration profile to use.
+                  The 'default' profile is always applied. On OpenShift, the 'openshift' profile is also applied on top of 'default'.
+                  Must be one of: ambient, default, demo, empty, external, minimal, openshift-ambient, openshift, preview, remote.
+                enum:
+                - ambient
+                - default
+                - demo
+                - empty
+                - external
+                - minimal
+                - openshift-ambient
+                - openshift
+                - preview
+                - remote
+                type: string
+              rawValues:
+                description: Defines the non-validated values to be passed to the
+                  Helm charts when installing Istio.
+                x-kubernetes-preserve-unknown-fields: true
+              updateStrategy:
+                description: Defines the update strategy to use when the version in
+                  the Istio CR is updated.
+                properties:
+                  inactiveRevisionDeletionGracePeriodSeconds:
+                    description: |-
+                      Defines how many seconds the operator should wait before removing a non-active revision after all
+                      the workloads have stopped using it. You may want to set this value on the order of minutes.
+                      The minimum and the default value is 30.
+                    format: int64
+                    minimum: 30
+                    type: integer
+                  type:
+                    description: "Type of strategy to use. Can be \"InPlace\" or \"RevisionBased\".
+                      When the \"InPlace\" strategy\nis used, the existing Istio control
+                      plane is updated in-place. The workloads therefore\ndon't need
+                      to be moved from one control plane instance to another. When
+                      the \"RevisionBased\"\nstrategy is used, a new Istio control
+                      plane instance is created for every change to the\nIstio.spec.version
+                      field. The old control plane remains in place until all workloads
+                      have\nbeen moved to the new control plane instance.\n\n\nThe
+                      \"InPlace\" strategy is the default.\tTODO: change default to
+                      \"RevisionBased\""
+                    enum:
+                    - InPlace
+                    - RevisionBased
+                    type: string
+                  updateWorkloads:
+                    description: |-
+                      Defines whether the workloads should be moved from one control plane instance to another
+                      automatically. If updateWorkloads is true, the operator moves the workloads from the old
+                      control plane instance to the new one after the new control plane is ready.
+                      If updateWorkloads is false, the user must move the workloads manually by updating the
+                      istio.io/rev labels on the namespace and/or the pods.
+                      Defaults to false.
+                    type: boolean
+                type: object
+              values:
+                description: Defines the values to be passed to the Helm charts when
+                  installing Istio.
+                properties:
+                  base:
+                    description: Configuration for base component
+                    properties:
+                      enableCRDTemplates:
+                        description: For Helm2 use, adds the CRDs to templates.
+                        type: boolean
+                      enableIstioConfigCRDs:
+                        description: For istioctl usage to disable istio config crds
+                          in base
+                        type: boolean
+                      validateGateway:
+                        type: boolean
+                      validationURL:
+                        description: URL to use for validating webhook.
+                        type: string
+                    type: object
+                  cni:
+                    description: Configuration for CNI.
+                    properties:
                       chained:
                         type: boolean
                       cniBinDir:
@@ -2072,25 +2058,148 @@ spec:
                               And it should be used together with `OutlierDetection` to detect unhealthy endpoints, otherwise has no effect.
                             items:
                               type: string
-                            dnsCapture:
-                              type: boolean
-                            enabled:
-                              type: boolean
-                          type: object
-                        chained:
-                          type: boolean
-                        cniBinDir:
-                          type: string
-                        cniConfDir:
-                          type: string
-                        cniConfFileName:
-                          type: string
-                        cniNetnsDir:
-                          type: string
-                        enabled:
-                          type: boolean
-                        excludeNamespaces:
-                          items:
+                            type: array
+                        type: object
+                      meshMTLS:
+                        description: "The below configuration parameters can be used
+                          to specify TLSConfig for mesh traffic.\nFor example, a user
+                          could enable min TLS version for ISTIO_MUTUAL traffic and
+                          specify a curve for non ISTIO_MUTUAL traffic like below:\n```yaml\nmeshConfig:\n\n\n\tmeshMTLS:\n\t
+                          \ minProtocolVersion: TLSV1_3\n\ttlsDefaults:\n\t  Note:
+                          applicable only for non ISTIO_MUTUAL scenarios\n\t  ecdhCurves:\n\t
+                          \   - P-256\n\t    - P-512\n\n\n```\nConfiguration of mTLS
+                          for traffic between workloads with ISTIO_MUTUAL TLS traffic.\n\n\nNote:
+                          Mesh mTLS does not respect ECDH curves."
+                        properties:
+                          cipherSuites:
+                            description: |-
+                              Optional: If specified, the TLS connection will only support the specified cipher list when negotiating TLS 1.0-1.2.
+                              If not specified, the following cipher suites will be used:
+                              ```
+                              ECDHE-ECDSA-AES256-GCM-SHA384
+                              ECDHE-RSA-AES256-GCM-SHA384
+                              ECDHE-ECDSA-AES128-GCM-SHA256
+                              ECDHE-RSA-AES128-GCM-SHA256
+                              AES256-GCM-SHA384
+                              AES128-GCM-SHA256
+                              ```
+                            items:
+                              type: string
+                            type: array
+                          ecdhCurves:
+                            description: |-
+                              Optional: If specified, the TLS connection will only support the specified ECDH curves for the DH key exchange.
+                              If not specified, the default curves enforced by Envoy will be used. For details about the default curves, refer to
+                              [Ecdh Curves](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/transport_sockets/tls/v3/common.proto).
+                            items:
+                              type: string
+                            type: array
+                          minProtocolVersion:
+                            description: |-
+                              Optional: the minimum TLS protocol version. The default minimum
+                              TLS version will be TLS 1.2. As servers may not be Envoy and be
+                              set to TLS 1.2 (e.g., workloads using mTLS without sidecars), the
+                              minimum TLS version for clients may also be TLS 1.2.
+                              In the current Istio implementation, the maximum TLS protocol version
+                              is TLS 1.3.
+                            format: int32
+                            type: integer
+                        type: object
+                      outboundClusterStatName:
+                        description: |-
+                          Name to be used while emitting statistics for outbound clusters. The same pattern is used while computing stat prefix for
+                          network filters like TCP and Redis.
+                          By default, Istio emits statistics with the pattern `outbound|<port>|<subsetname>|<service-FQDN>`.
+                          For example `outbound|8080|v2|reviews.prod.svc.cluster.local`. This can be used to override that pattern.
+
+
+                          A Pattern can be composed of various pre-defined variables. The following variables are supported.
+
+
+                          - `%SERVICE%` - Will be substituted with name of the service.
+                          - `%SERVICE_FQDN%` - Will be substituted with FQDN of the service.
+                          - `%SERVICE_PORT%` - Will be substituted with port of the service.
+                          - `%SERVICE_PORT_NAME%` - Will be substituted with port name of the service.
+                          - `%SUBSET_NAME%` - Will be substituted with subset.
+
+
+                          Following are some examples of supported patterns for reviews:
+
+
+                          - `%SERVICE_FQDN%_%SERVICE_PORT%` will use `reviews.prod.svc.cluster.local_7443` as the stats name.
+                          - `%SERVICE%` will use reviews.prod as the stats name.
+                        type: string
+                      outboundTrafficPolicy:
+                        description: |-
+                          Set the default behavior of the sidecar for handling outbound
+                          traffic from the application.  If your application uses one or
+                          more external services that are not known apriori, setting the
+                          policy to `ALLOW_ANY` will cause the sidecars to route any unknown
+                          traffic originating from the application to its requested
+                          destination. Users are strongly encouraged to use ServiceEntries
+                          to explicitly declare any external dependencies, instead of using
+                          `ALLOW_ANY`, so that traffic to these services can be
+                          monitored. Can be overridden at a Sidecar level by setting the
+                          `OutboundTrafficPolicy` in the [Sidecar
+                          API](https://istio.io/docs/reference/config/networking/sidecar/#OutboundTrafficPolicy).
+                          Default mode is `ALLOW_ANY` which means outbound traffic to unknown destinations will be allowed.
+                        properties:
+                          mode:
+                            format: int32
+                            type: integer
+                        type: object
+                      pathNormalization:
+                        description: |-
+                          ProxyPathNormalization configures how URL paths in incoming and outgoing HTTP requests are
+                          normalized by the sidecars and gateways.
+                          The normalized paths will be used in all aspects through the requests' lifetime on the
+                          sidecars and gateways, which includes routing decisions in outbound direction (client proxy),
+                          authorization policy match and enforcement in inbound direction (server proxy), and the URL
+                          path proxied to the upstream service.
+                          If not set, the NormalizationType.DEFAULT configuration will be used.
+                        properties:
+                          normalization:
+                            format: int32
+                            type: integer
+                        type: object
+                      proxyHttpPort:
+                        description: Port on which Envoy should listen for HTTP PROXY
+                          requests if set.
+                        format: int32
+                        type: integer
+                      proxyInboundListenPort:
+                        description: |-
+                          Port on which Envoy should listen for all inbound traffic to the pod/vm will be captured to.
+                          Default port is 15006.
+                        format: int32
+                        type: integer
+                      proxyListenPort:
+                        description: |-
+                          Port on which Envoy should listen for all outbound traffic to other services.
+                          Default port is 15001.
+                        format: int32
+                        type: integer
+                      rootNamespace:
+                        description: |-
+                          The namespace to treat as the administrative root namespace for
+                          Istio configuration. When processing a leaf namespace Istio will search for
+                          declarations in that namespace first and if none are found it will
+                          search in the root namespace. Any matching declaration found in the root
+                          namespace is processed as if it were declared in the leaf namespace.
+
+
+                          The precise semantics of this processing are documented on each resource
+                          type.
+                        type: string
+                      tcpKeepalive:
+                        description: If set then set `SO_KEEPALIVE` on the socket
+                          to enable TCP Keepalives.
+                        properties:
+                          interval:
+                            description: |-
+                              The time duration between keep-alive probes.
+                              Default is to use the OS level configuration
+                              (unless overridden, Linux defaults to 75s.)
                             type: string
                           probes:
                             description: |-
@@ -2163,85 +2272,7 @@ spec:
                           or `td3/ns/foo/sa/a-service-account` will be treated the same in the Istio mesh.
                         items:
                           type: string
-                        neverInjectSelector:
-                          items:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                          type: array
-                        objectSelector:
-                          type: object
-                          x-kubernetes-preserve-unknown-fields: true
-                        reinvocationPolicy:
-                          type: string
-                        rewriteAppHTTPProbe:
-                          type: boolean
-                        templates:
-                          type: object
-                          x-kubernetes-preserve-unknown-fields: true
-                      type: object
-                    telemetry:
-                      properties:
-                        enabled:
-                          type: boolean
-                        v2:
-                          properties:
-                            enabled:
-                              type: boolean
-                            prometheus:
-                              properties:
-                                enabled:
-                                  type: boolean
-                              type: object
-                            stackdriver:
-                              properties:
-                                enabled:
-                                  type: boolean
-                              type: object
-                          type: object
-                      type: object
-                    ztunnel:
-                      type: object
-                      x-kubernetes-preserve-unknown-fields: true
-                  type: object
-                version:
-                  description: |-
-                    Defines the version of Istio to install.
-                    Must be one of: v1.20.2, v1.20.1, v1.19.6, latest, gwAPIControllerMode.
-                  enum:
-                    - v1.20.2
-                    - v1.20.1
-                    - v1.19.6
-                    - latest
-                    - gwAPIControllerMode
-                  type: string
-              required:
-                - namespace
-                - version
-              type: object
-            status:
-              description: IstioStatus defines the observed state of Istio
-              properties:
-                conditions:
-                  description: Represents the latest available observations of the object's current state.
-                  items:
-                    description: A Condition represents a specific observation of the object's state.
-                    properties:
-                      lastTransitionTime:
-                        description: Last time the condition transitioned from one status to another.
-                        format: date-time
-                        type: string
-                      message:
-                        description: Human-readable message indicating details about the last transition.
-                        type: string
-                      reason:
-                        description: Unique, single-word, CamelCase reason for the condition's last transition.
-                        type: string
-                      status:
-                        description: The status of this condition. Can be True, False or Unknown.
-                        type: string
-                      type:
-                        description: The type of this condition.
-                        type: string
+                        type: array
                     type: object
                   pilot:
                     description: Configuration for Pilot.
@@ -2668,11 +2699,11 @@ spec:
               version:
                 description: |-
                   Defines the version of Istio to install.
-                  Must be one of: v1.20.1, v1.20.0, v1.19.5, latest, gwAPIControllerMode.
+                  Must be one of: v1.20.2, v1.20.1, v1.19.6, latest, gwAPIControllerMode.
                 enum:
+                - v1.20.2
                 - v1.20.1
-                - v1.20.0
-                - v1.19.5
+                - v1.19.6
                 - latest
                 - gwAPIControllerMode
                 type: string
