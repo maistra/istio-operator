@@ -1556,6 +1556,11 @@ func (in *ProxyConfig) DeepCopyInto(out *ProxyConfig) {
 		*out = new(StartupProbe)
 		**out = **in
 	}
+	if in.Resources != nil {
+		in, out := &in.Resources, &out.Resources
+		*out = new(corev1.ResourceRequirements)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Lifecycle != nil {
 		in, out := &in.Lifecycle, &out.Lifecycle
 		*out = make(map[string]string, len(*in))

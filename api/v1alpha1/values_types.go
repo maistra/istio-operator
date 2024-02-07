@@ -414,9 +414,13 @@ type ProxyConfig struct {
 	ReadinessFailureThreshold uint32        `json:"readinessFailureThreshold,omitempty"`
 	StartupProbe              *StartupProbe `json:"startupProbe,omitempty"`
 	// Default port used for the Pilot agent's health checks.
-	StatusPort           uint32 `json:"statusPort,omitempty"`
-	Tracer               Tracer `json:"tracer,omitempty"`
-	ExcludeOutboundPorts string `json:"excludeOutboundPorts,omitempty"`
+	StatusPort uint32 `json:"statusPort,omitempty"`
+	// K8s resources settings.
+	//
+	// See https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#resource-requests-and-limits-of-pod-and-container
+	Resources            *k8sv1.ResourceRequirements `json:"resources,omitempty"`
+	Tracer               Tracer                      `json:"tracer,omitempty"`
+	ExcludeOutboundPorts string                      `json:"excludeOutboundPorts,omitempty"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	Lifecycle            map[string]string `json:"lifecycle,omitempty"`
