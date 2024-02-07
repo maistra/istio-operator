@@ -85,10 +85,14 @@ var _ = Describe("Istio resource", Ordered, func() {
 						Type: v1alpha1.UpdateStrategyTypeInPlace,
 						InactiveRevisionDeletionGracePeriodSeconds: ptr.Of(int64(gracePeriod.Seconds())),
 					},
-					Values: []byte(`{
-						"pilot":{"image":"` + pilotImage + `"},
-						"istio_cni":{"enabled":true}
-					}`),
+					Values: &v1alpha1.Values{
+						Pilot: &v1alpha1.PilotConfig{
+							Image: pilotImage,
+						},
+						IstioCni: &v1alpha1.CNIConfig{
+							Enabled: true,
+						},
+					},
 				},
 			}
 			Expect(k8sClient.Create(ctx, istio)).To(Succeed())
