@@ -24,10 +24,12 @@ import (
 )
 
 // Mode for the ingress controller.
-type IngressControllerMode int32
+// +kubebuilder:validation:Enum=UNSPECIFIED;DEFAULT;STRICT;OFF
+type IngressControllerMode string
 
 // Specifies which tracer to use.
-type Tracer int32
+// +kubebuilder:validation:Enum=zipkin;lightstep;datadog;stackdriver;openCensusAgent;none
+type Tracer string
 
 // Configuration for CNI.
 type CNIConfig struct {
@@ -82,6 +84,14 @@ type ResourceQuotas struct {
 	Pods    int64 `json:"pods,omitempty"`
 }
 
+// DefaultPodDisruptionBudgetConfig specifies the default pod disruption budget configuration.
+//
+// See https://kubernetes.io/docs/concepts/workloads/pods/disruptions/
+type DefaultPodDisruptionBudgetConfig struct {
+	// Controls whether a PodDisruptionBudget with a default minAvailable value of 1 is created for each deployment.
+	Enabled bool `json:"enabled,omitempty"`
+}
+
 // Global Configuration for Istio components.
 type GlobalConfig struct {
 	// List of certSigners to allow "approve" action in the ClusterRole
@@ -90,6 +100,8 @@ type GlobalConfig struct {
 	// Controls whether the server-side validation is enabled.
 	ConfigValidation                bool     `json:"configValidation,omitempty"`
 	DefaultConfigVisibilitySettings []string `json:"defaultConfigVisibilitySettings,omitempty"`
+	// Specifies the default pod disruption budget configuration.
+	DefaultPodDisruptionBudget *DefaultPodDisruptionBudgetConfig `json:"defaultPodDisruptionBudget,omitempty"`
 	// Specifies the docker hub for Istio images.
 	Hub string `json:"hub,omitempty"`
 	// Specifies the default namespace for the Istio control plane components.

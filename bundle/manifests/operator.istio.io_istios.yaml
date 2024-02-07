@@ -291,6 +291,15 @@ spec:
                         items:
                           type: string
                         type: array
+                      defaultPodDisruptionBudget:
+                        description: Specifies the default pod disruption budget configuration.
+                        properties:
+                          enabled:
+                            description: Controls whether a PodDisruptionBudget with
+                              a default minAvailable value of 1 is created for each
+                              deployment.
+                            type: boolean
+                        type: object
                       externalIstiod:
                         description: Controls whether one external istiod is enabled.
                         type: boolean
@@ -570,8 +579,14 @@ spec:
                             type: integer
                           tracer:
                             description: Specifies which tracer to use.
-                            format: int32
-                            type: integer
+                            enum:
+                            - zipkin
+                            - lightstep
+                            - datadog
+                            - stackdriver
+                            - openCensusAgent
+                            - none
+                            type: string
                         type: object
                       proxy_init:
                         description: Specifies the Configuration for proxy_init container
@@ -1138,8 +1153,14 @@ spec:
                             type: integer
                           tracer:
                             description: Specifies which tracer to use.
-                            format: int32
-                            type: integer
+                            enum:
+                            - zipkin
+                            - lightstep
+                            - datadog
+                            - stackdriver
+                            - openCensusAgent
+                            - none
+                            type: string
                         type: object
                       defaultDestinationRuleExportTo:
                         description: |-
@@ -2013,8 +2034,12 @@ spec:
                         description: |-
                           Defines whether to use Istio ingress controller for annotated or all ingress resources.
                           Default mode is `STRICT`.
-                        format: int32
-                        type: integer
+                        enum:
+                        - UNSPECIFIED
+                        - DEFAULT
+                        - STRICT
+                        - "OFF"
+                        type: string
                       ingressSelector:
                         description: |-
                           Defines which gateway deployment to use as the Ingress controller. This field corresponds to
