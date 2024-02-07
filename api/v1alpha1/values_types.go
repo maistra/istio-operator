@@ -17,6 +17,8 @@ package v1alpha1
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	k8sv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -609,4 +611,21 @@ func (v *Values) ToHelmValues() helm.HelmValues {
 		panic(err)
 	}
 	return obj
+}
+
+func ValuesFromHelmValues(helmValues helm.HelmValues) (*Values, error) {
+	data, err := json.Marshal(helmValues)
+	if err != nil {
+		return nil, err
+	}
+
+	values := Values{}
+	decoder := json.NewDecoder(strings.NewReader(string(data)))
+	decoder.DisallowUnknownFields()
+
+	err = decoder.Decode(&values)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal into Values struct: %v:\n%v", err, string(data))
+	}
+	return &values, nil
 }

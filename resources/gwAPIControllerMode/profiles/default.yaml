@@ -8,6 +8,3 @@ spec:
     global:
       istioNamespace: istio-system
       configValidation: true
-    gateways:
-      istio-ingressgateway: {}
-      istio-egressgateway: {}

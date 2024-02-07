@@ -22,6 +22,4 @@ spec:
       excludeNamespaces:
         - kube-system
     meshConfig:
-      defaultConfig:
-        proxyMetadata:
-          ISTIO_META_ENABLE_HBONE: "true"
+      defaultConfig: {}

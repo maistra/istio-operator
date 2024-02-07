@@ -16,7 +16,6 @@ package integration
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"time"
 
@@ -116,22 +115,19 @@ var _ = Describe("Istio resource", Ordered, func() {
 			Expect(rev.Spec).To(Equal(v1alpha1.IstioRevisionSpec{
 				Version:   istio.Spec.Version,
 				Namespace: istio.Spec.Namespace,
-				Values: deprettify([]byte(`{
-					"defaultRevision":"",
-					"gateways":{
-						"istio-egressgateway":{},
-						"istio-ingressgateway":{}
+				Values: &v1alpha1.Values{
+					Global: &v1alpha1.GlobalConfig{
+						ConfigValidation: true,
+						IstioNamespace:   istio.Spec.Namespace,
 					},
-					"global":{
-						"configValidation":true,
-						"istioNamespace":"` + istio.Spec.Namespace + `"
+					IstioCni: &v1alpha1.CNIConfig{
+						Enabled: true,
 					},
-					"istio_cni": {
-						"enabled":true
+					Pilot: &v1alpha1.PilotConfig{
+						Image: pilotImage,
 					},
-					"pilot":{"image":"` + pilotImage + `"},
-					"revision":"` + revKey.Name + `"
-				}`)),
+					Revision: revKey.Name,
+				},
 			}))
 		})
 
@@ -154,22 +150,19 @@ var _ = Describe("Istio resource", Ordered, func() {
 				Expect(rev.Spec).To(Equal(v1alpha1.IstioRevisionSpec{
 					Version:   istio.Spec.Version,
 					Namespace: istio.Spec.Namespace,
-					Values: deprettify([]byte(`{
-						"defaultRevision":"",
-						"gateways":{
-							"istio-egressgateway":{},
-							"istio-ingressgateway":{}
+					Values: &v1alpha1.Values{
+						Global: &v1alpha1.GlobalConfig{
+							ConfigValidation: true,
+							IstioNamespace:   istio.Spec.Namespace,
 						},
-						"global":{
-							"configValidation":true,
-							"istioNamespace":"` + istio.Spec.Namespace + `"
+						IstioCni: &v1alpha1.CNIConfig{
+							Enabled: true,
 						},
-						"istio_cni": {
-							"enabled":true
+						Pilot: &v1alpha1.PilotConfig{
+							Image: pilotImage,
 						},
-						"pilot":{"image":"` + pilotImage + `"},
-						"revision": "` + revKey.Name + `"
-					}`)),
+						Revision: revKey.Name,
+					},
 				}))
 			})
 		})
@@ -477,16 +470,4 @@ func getRevisionName(istio *v1alpha1.Istio, version string) string {
 		panic("istio.Name is empty")
 	}
 	return istio.Name + "-" + strings.ReplaceAll(version, ".", "-")
-}
-
-func deprettify(bytes []byte) []byte {
-	var obj map[string]any
-	if err := json.Unmarshal(bytes, &obj); err != nil {
-		panic(err)
-	}
-	bytes, err := json.Marshal(obj)
-	if err != nil {
-		panic(err)
-	}
-	return bytes
 }

@@ -21,7 +21,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"encoding/json"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -1015,8 +1014,8 @@ func (in *IstioRevisionSpec) DeepCopyInto(out *IstioRevisionSpec) {
 	*out = *in
 	if in.Values != nil {
 		in, out := &in.Values, &out.Values
-		*out = make(json.RawMessage, len(*in))
-		copy(*out, *in)
+		*out = new(Values)
+		(*in).DeepCopyInto(*out)
 	}
 }
 

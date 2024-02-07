@@ -18,7 +18,6 @@ package istio
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -108,7 +107,7 @@ func (r *IstioReconciler) doReconcile(ctx context.Context, istio v1alpha1.Istio)
 		return ctrl.Result{}, fmt.Errorf("no spec.namespace set")
 	}
 
-	var values helm.HelmValues
+	var values *v1alpha1.Values
 	if values, err = computeIstioRevisionValues(istio, r.DefaultProfiles, r.ResourceDirectory); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -120,13 +119,8 @@ func (r *IstioReconciler) doReconcile(ctx context.Context, istio v1alpha1.Istio)
 	return r.pruneInactiveRevisions(ctx, &istio)
 }
 
-func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1alpha1.Istio, values helm.HelmValues) error {
+func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1alpha1.Istio, values *v1alpha1.Values) error {
 	log := logf.FromContext(ctx)
-
-	valuesRawMessage, err := json.Marshal(values)
-	if err != nil {
-		return err
-	}
 
 	activeRevisionName := getActiveRevisionName(istio)
 	log = log.WithValues("IstioRevision", activeRevisionName)
@@ -135,7 +129,7 @@ func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1
 	if err == nil {
 		// update
 		rev.Spec.Version = istio.Spec.Version
-		rev.Spec.Values = valuesRawMessage
+		rev.Spec.Values = values
 		log.Info("Updating IstioRevision")
 		return r.Client.Update(ctx, &rev)
 	} else if errors.IsNotFound(err) {
@@ -157,7 +151,7 @@ func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1
 			Spec: v1alpha1.IstioRevisionSpec{
 				Version:   istio.Spec.Version,
 				Namespace: istio.Spec.Namespace,
-				Values:    valuesRawMessage,
+				Values:    values,
 			},
 		}
 		log.Info("Creating IstioRevision")
@@ -287,23 +281,23 @@ func getActiveRevisionName(istio *v1alpha1.Istio) string {
 	}
 }
 
-func computeIstioRevisionValues(istio v1alpha1.Istio, defaultProfiles []string, resourceDir string) (helm.HelmValues, error) {
+func computeIstioRevisionValues(istio v1alpha1.Istio, defaultProfiles []string, resourceDir string) (*v1alpha1.Values, error) {
 	// get userValues from Istio.spec.values
-	userValues := istio.Spec.GetValues()
+	userValues := istio.Spec.Values
 
 	// apply image digests from configuration, if not already set by user
-	var err error
-	userValues, err = applyImageDigests(&istio, userValues, common.Config)
-	if err != nil {
-		return nil, err
-	}
+	userValues = applyImageDigests(&istio, userValues, common.Config)
 
 	// apply userValues on top of defaultValues from profiles
 	defaultValues, err := getValuesFromProfiles(getProfilesDir(resourceDir, istio), getProfiles(istio, defaultProfiles))
 	if err != nil {
 		return nil, err
 	}
-	values := mergeOverwrite(defaultValues, userValues)
+	mergedHelmValues := mergeOverwrite(defaultValues, userValues.ToHelmValues())
+	values, err := v1alpha1.ValuesFromHelmValues(mergedHelmValues)
+	if err != nil {
+		return nil, err
+	}
 
 	// override values that are not configurable by the user
 	return applyOverrides(&istio, values)
@@ -320,7 +314,7 @@ func getProfilesDir(resourceDir string, istio v1alpha1.Istio) string {
 	return path.Join(resourceDir, istio.Spec.Version, "profiles")
 }
 
-func applyOverrides(istio *v1alpha1.Istio, values helm.HelmValues) (helm.HelmValues, error) {
+func applyOverrides(istio *v1alpha1.Istio, values *v1alpha1.Values) (*v1alpha1.Values, error) {
 	revisionName := getActiveRevisionName(istio)
 
 	// Set revision name to "" if revision name is "default". This is a temporary fix until we fix the injection
@@ -330,62 +324,64 @@ func applyOverrides(istio *v1alpha1.Istio, values helm.HelmValues) (helm.HelmVal
 	if revisionName == v1alpha1.DefaultRevision {
 		revisionName = ""
 	}
-	if err := values.Set("revision", revisionName); err != nil {
-		return nil, err
-	}
+	values.Revision = revisionName
 
-	if err := values.Set("global.istioNamespace", istio.Spec.Namespace); err != nil {
-		return nil, err
+	if values.Global == nil {
+		values.Global = &v1alpha1.GlobalConfig{}
 	}
+	values.Global.IstioNamespace = istio.Spec.Namespace
 	return values, nil
 }
 
-func applyImageDigests(istio *v1alpha1.Istio, values helm.HelmValues, config common.OperatorConfig) (helm.HelmValues, error) {
+func applyImageDigests(istio *v1alpha1.Istio, values *v1alpha1.Values, config common.OperatorConfig) *v1alpha1.Values {
 	imageDigests, digestsDefined := config.ImageDigests[istio.Spec.Version]
 	// if we don't have default image digests defined for this version, it's a no-op
 	if !digestsDefined {
-		return values, nil
+		return values
 	}
-	// set image digests for components unless they've been configured by the user
-	if !hasUserDefinedImage("pilot", values) {
-		if err := values.Set("pilot.image", imageDigests.IstiodImage); err != nil {
-			return values, err
-		}
-	}
-	if !hasUserDefinedImage("istio-cni", values) {
-		if err := values.Set("istio-cni.image", imageDigests.CNIImage); err != nil {
-			return values, err
-		}
-	}
-	if !hasUserDefinedImage("global.proxy", values) {
-		if err := values.Set("global.proxy.image", imageDigests.ProxyImage); err != nil {
-			return values, err
-		}
-	}
-	if !hasUserDefinedImage("global.proxy_init", values) {
-		if err := values.Set("global.proxy_init.image", imageDigests.ProxyImage); err != nil {
-			return values, err
-		}
-	}
-	if !hasUserDefinedImage("ztunnel", values) {
-		if err := values.Set("ztunnel.image", imageDigests.ZTunnelImage); err != nil {
-			return values, err
-		}
-	}
-	return values, nil
-}
 
-func hasUserDefinedImage(component string, values helm.HelmValues) bool {
-	if _, userDefined, _ := values.GetString(component + ".image"); userDefined {
-		return true
+	if values == nil {
+		values = &v1alpha1.Values{}
 	}
-	if _, userDefined, _ := values.GetString(component + ".hub"); userDefined {
-		return true
+
+	// set image digests for components unless they've been configured by the user
+	if values.Pilot == nil {
+		values.Pilot = &v1alpha1.PilotConfig{}
 	}
-	if _, userDefined, _ := values.GetString(component + ".tag"); userDefined {
-		return true
+	if values.Pilot.Image == "" && values.Pilot.Hub == "" && values.Pilot.Tag == nil {
+		values.Pilot.Image = imageDigests.IstiodImage
 	}
-	return false
+
+	if values.Cni == nil {
+		values.Cni = &v1alpha1.CNIConfig{}
+	}
+	if values.Cni.Image == "" && values.Cni.Hub == "" && values.Cni.Tag == nil {
+		values.Cni.Image = imageDigests.CNIImage
+	}
+
+	if values.Global == nil {
+		values.Global = &v1alpha1.GlobalConfig{}
+	}
+
+	if values.Global.Proxy == nil {
+		values.Global.Proxy = &v1alpha1.ProxyConfig{}
+	}
+	if values.Global.Proxy.Image == "" {
+		values.Global.Proxy.Image = imageDigests.ProxyImage
+	}
+
+	if values.Global.ProxyInit == nil {
+		values.Global.ProxyInit = &v1alpha1.ProxyInitConfig{}
+	}
+	if values.Global.ProxyInit.Image == "" {
+		values.Global.ProxyInit.Image = imageDigests.ProxyImage
+	}
+
+	// TODO: add this once the API supports ambient
+	// if !hasUserDefinedImage("ztunnel", values) {
+	// 	values.ZTunnel.Image = imageDigests.ZTunnelImage
+	// }
+	return values
 }
 
 // SetupWithManager sets up the controller with the Manager.

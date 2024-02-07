@@ -17,11 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"encoding/json"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"maistra.io/istio-operator/pkg/helm"
 )
 
 const (
@@ -43,23 +41,8 @@ type IstioRevisionSpec struct {
 	Namespace string `json:"namespace"`
 
 	// Defines the values to be passed to the Helm charts when installing Istio.
-	// +kubebuilder:pruning:PreserveUnknownFields
-	// +kubebuilder:validation:Schemaless
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Helm Values"
-	Values json.RawMessage `json:"values,omitempty"`
-}
-
-func (s *IstioRevisionSpec) GetValues() helm.HelmValues {
-	return toHelmValues(s.Values)
-}
-
-func (s *IstioRevisionSpec) SetValues(values helm.HelmValues) error {
-	jsonVals, err := json.Marshal(values)
-	if err != nil {
-		return err
-	}
-	s.Values = jsonVals
-	return nil
+	Values *Values `json:"values,omitempty"`
 }
 
 // IstioRevisionStatus defines the observed state of IstioRevision
