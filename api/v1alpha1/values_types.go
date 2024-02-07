@@ -568,6 +568,8 @@ type Values struct {
 	IstiodRemote           *IstiodRemoteConfig    `json:"istiodRemote,omitempty"`
 	RevisionTags           []string               `json:"revisionTags,omitempty"`
 	DefaultRevision        string                 `json:"defaultRevision,omitempty"`
+	Profile                string                 `json:"profile,omitempty"`
+	CompatibilityVersion   string                 `json:"compatibilityVersion,omitempty"`
 }
 
 // ZeroVPNConfig enables cross-cluster access using SNI matching.
