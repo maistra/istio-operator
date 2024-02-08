@@ -1,6 +1,6 @@
 spec:
   template: default
-  version: v2.1
+  version: v2.5
   cluster:
     name: Kubernetes
     network: main
